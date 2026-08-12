@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/SCD.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/SCD.h

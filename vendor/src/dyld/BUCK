@@ -1,0 +1,351 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the dyld pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: system_dyld_obj
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) system_dyld_obj   -- review before committing.
+# cmake target: system_dyld_obj  ->  src/external/dyld/system_dyld_obj
+# 28 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/dyld/launch-cache
+
+cc_header_root(
+    name = "system_dyld_inc_src",
+    headers = glob(["src/*.h", "src/**/*.h"]),
+    root = "src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_dyld_inc_dyld3",
+    headers = glob(["dyld3/*.h", "dyld3/**/*.h"]),
+    root = "dyld3",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_dyld_inc_dyld3_shared_cache",
+    headers = glob(["dyld3/shared-cache/*.h", "dyld3/shared-cache/**/*.h"]),
+    root = "dyld3/shared-cache",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_dyld_inc_include_mach_o",
+    headers = glob(["include/mach-o/*.h", "include/mach-o/**/*.h"]),
+    root = "include/mach-o",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_dyld_inc_include",
+    headers = glob(["include/*.h", "include/**/*.h"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_dyld_inc_dyld",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_dyld_obj",
+    srcs = [
+        "dyld3/APIs.cpp",
+        "dyld3/APIs_macOS.cpp",
+        "dyld3/AllImages.cpp",
+        "dyld3/Closure.cpp",
+        "dyld3/ClosureBuilder.cpp",
+        "dyld3/ClosureFileSystemPhysical.cpp",
+        "dyld3/ClosureWriter.cpp",
+        "dyld3/Diagnostics.cpp",
+        "dyld3/Loading.cpp",
+        "dyld3/Logging.cpp",
+        "dyld3/MachOAnalyzer.cpp",
+        "dyld3/MachOAnalyzerSet.cpp",
+        "dyld3/MachOFile.cpp",
+        "dyld3/MachOLoaded.cpp",
+        "dyld3/PathOverrides.cpp",
+        "dyld3/RootsChecker.cpp",
+        "dyld3/Tracing.cpp",
+        "dyld3/libdyldEntryVector.cpp",
+        "dyld3/shared-cache/DyldSharedCache.cpp",
+        "src/dyldAPIsInLibSystem.cpp",
+        "src/dyldLock.cpp",
+        "src/dyld_process_info.cpp",
+        "src/dyld_process_info_notify.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBCPP_NO_EXCEPTIONS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-nostdinc",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-DBUILDING_LIBDYLD=1",
+    ],
+    prefix_headers = [
+        "//darwin/duct:CrashReporterClient.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_dyld_inc_src",
+        ":system_dyld_inc_dyld3",
+        ":system_dyld_inc_dyld3_shared_cache",
+        ":system_dyld_inc_include_mach_o",
+        ":system_dyld_inc_include",
+        "//darwin:sdk_env",
+        ":system_dyld_inc_dyld",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_dyld_obj2",
+    srcs = [
+        "src/dyldLibSystemGlue.c",
+        "src/dyld_stub_binder.S",
+        "src/start_glue.S",
+        "src/threadLocalHelpers.S",
+        "src/threadLocalVariables.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBCPP_NO_EXCEPTIONS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-DBUILDING_LIBDYLD=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_dyld_inc_src",
+        ":system_dyld_inc_dyld3",
+        ":system_dyld_inc_dyld3_shared_cache",
+        ":system_dyld_inc_include_mach_o",
+        ":system_dyld_inc_include",
+        "//darwin:sdk_env",
+        ":system_dyld_inc_dyld",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_dyld_obj
+
+# BEGIN generated: system_loader
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) system_loader   -- review before committing.
+# cmake target: system_loader  ->  system_loader
+# 36 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/dyld/launch-cache
+
+cc_header_root(
+    name = "system_loader_inc_dyld_src",
+    headers = glob(["src/*.h", "src/**/*.h"]),
+    root = "src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_loader_inc_dyld_dyld3",
+    headers = glob(["dyld3/*.h", "dyld3/**/*.h"]),
+    root = "dyld3",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_loader_inc_dyld_dyld3_shared_cache",
+    headers = glob(["dyld3/shared-cache/*.h", "dyld3/shared-cache/**/*.h"]),
+    root = "dyld3/shared-cache",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_loader_inc_dyld_include_mach_o",
+    headers = glob(["include/mach-o/*.h", "include/mach-o/**/*.h"]),
+    root = "include/mach-o",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_loader_inc_dyld_include",
+    headers = glob(["include/*.h", "include/**/*.h"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_loader_inc_dyld",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_loader_obj",
+    srcs = [
+        "dyld3/BootArgs.cpp",
+        "dyld3/Closure.cpp",
+        "dyld3/ClosureBuilder.cpp",
+        "dyld3/ClosureFileSystemNull.cpp",
+        "dyld3/ClosureFileSystemPhysical.cpp",
+        "dyld3/ClosureWriter.cpp",
+        "dyld3/Diagnostics.cpp",
+        "dyld3/Loading.cpp",
+        "dyld3/MachOAnalyzer.cpp",
+        "dyld3/MachOAnalyzerSet.cpp",
+        "dyld3/MachOFile.cpp",
+        "dyld3/MachOLoaded.cpp",
+        "dyld3/PathOverrides.cpp",
+        "dyld3/RootsChecker.cpp",
+        "dyld3/SharedCacheRuntime.cpp",
+        "dyld3/Tracing.cpp",
+        "dyld3/shared-cache/DyldSharedCache.cpp",
+        "src/ImageLoader.cpp",
+        "src/ImageLoaderMachO.cpp",
+        "src/ImageLoaderMachOClassic.cpp",
+        "src/ImageLoaderMachOCompressed.cpp",
+        "src/ImageLoaderMegaDylib.cpp",
+        "src/dyld2.cpp",
+        "src/dyldAPIs.cpp",
+        "src/dyldInitialization.cpp",
+        "src/dyldLock.cpp",
+        "src/dyldNew.cpp",
+        "src/dyld_debugger.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBCPP_NO_EXCEPTIONS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-nostdinc",
+        "-DBUILDING_DYLD=1",
+        "-DPRIVATE=1",
+        "-gfull",
+        "-fPIC",
+        "-fno-stack-check",
+    ],
+    prefix_headers = [
+        "//darwin/duct:CrashReporterClient.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_loader_inc_dyld_src",
+        ":system_loader_inc_dyld_dyld3",
+        ":system_loader_inc_dyld_dyld3_shared_cache",
+        ":system_loader_inc_dyld_include_mach_o",
+        ":system_loader_inc_dyld_include",
+        "//darwin:sdk_env",
+        ":system_loader_inc_dyld",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_loader_obj2",
+    srcs = [
+        "darling/src/hell.c",
+        "darling/src/sandbox-dummy.c",
+        "src/dyldExceptions.c",
+        "src/dyldStartup.S",
+        "src/glue.c",
+        "src/start_glue.S",
+        "src/stub_binding_helper.S",
+        "version.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBCPP_NO_EXCEPTIONS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-DBUILDING_DYLD=1",
+        "-DPRIVATE=1",
+        "-gfull",
+        "-fPIC",
+        "-fno-stack-check",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_loader_inc_dyld_src",
+        ":system_loader_inc_dyld_dyld3",
+        ":system_loader_inc_dyld_dyld3_shared_cache",
+        ":system_loader_inc_dyld_include_mach_o",
+        ":system_loader_inc_dyld_include",
+        "//darwin:sdk_env",
+        ":system_loader_inc_dyld",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_loader
+
+# BEGIN generated: dyld binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries dyld   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "dyld",
+    objs = [
+        # system_loader
+        ":system_loader_obj",
+        ":system_loader_obj2",
+    ],
+    linker_flags = [
+        "-Wl,-dylinker",
+        "-Wl,-dead_strip",
+        "-Wl,-data_const",
+        "-Wl,-e,__dyld_start",
+        "-Wl,-fixup_chains",
+        "-Wl,-image_base,0x1fe00000",
+    ],
+    link_flag_files = {
+        "-Wl,-exported_symbols_list": "src/dyld.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//vendor/src:libc_static",
+        "//vendor/src:system_blocks_static",
+        "//vendor/src:cxx_static",
+        "//vendor/src:unwind_static",
+        "//darwin/libm:system_m_static",
+        "//vendor/src:cxxabi_static",
+        "//vendor/src:keymgr_static",
+        "//darwin/duct:system_duct_static",
+        "//vendor/src:pthread_static",
+        "//vendor/src:macho_static",
+        "//vendor/pins/libtrace:system_trace_static",
+        "//vendor/src:corecrypto_static",
+        "//vendor/src:libc_static64",
+        "//vendor/src:compiler_rt_static64",
+        "//vendor/src:platform_static64",
+        "//vendor/src:system_kernel_static64",
+        "//darwin/libsimple:libsimple_cider",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dyld binary
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_dyld.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/cctools/include/mach/arm/_structs.h
+../../../../../../../../../../../vendor/pins/cctools/include/mach/arm/_structs.h

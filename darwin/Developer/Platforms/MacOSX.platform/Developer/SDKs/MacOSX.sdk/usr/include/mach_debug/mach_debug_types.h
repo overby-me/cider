@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach_debug/mach_debug_types.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach_debug/mach_debug_types.h

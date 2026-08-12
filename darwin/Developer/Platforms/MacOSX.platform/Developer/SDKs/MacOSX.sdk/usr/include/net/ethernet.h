@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/net/ethernet.h
+../../../../../../../../../../vendor/pins/xnu/bsd/net/ethernet.h

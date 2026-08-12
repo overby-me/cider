@@ -1,1 +1,1 @@
-../../../../../../../../../pins/xnu/libsyscall/wrappers/libproc/libproc_internal.h
+../../../../../../../../../vendor/pins/xnu/libsyscall/wrappers/libproc/libproc_internal.h

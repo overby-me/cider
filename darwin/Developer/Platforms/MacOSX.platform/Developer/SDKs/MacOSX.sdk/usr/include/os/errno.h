@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libc/libdarwin/h/errno.h
+../../../../../../../../../../vendor/pins/libc/libdarwin/h/errno.h

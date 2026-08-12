@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/rpc.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/rpc.h

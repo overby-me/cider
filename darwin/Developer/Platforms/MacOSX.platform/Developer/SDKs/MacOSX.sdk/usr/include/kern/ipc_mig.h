@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/ipc_mig.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/ipc_mig.h

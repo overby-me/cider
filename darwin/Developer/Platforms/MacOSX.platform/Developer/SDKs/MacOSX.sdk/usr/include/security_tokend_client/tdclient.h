@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/SecurityTokend/lib/tdclient.h
+../../../../../../../../../../vendor/pins/SecurityTokend/lib/tdclient.h

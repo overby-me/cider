@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libkern/firehose/ioctl_private.h
+../../../../../../../../../../vendor/pins/xnu/libkern/firehose/ioctl_private.h

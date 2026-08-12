@@ -36,22 +36,22 @@ darwin_binary(
         # xip_extract_cpio
         ":xip_extract_cpio_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:lzma_dylib",
-        "//buck-src:xar_dylib",
-        "//buck-src:bz2_dylib",
-        "//buck-src:xml2_dylib",
-        "//buck-src:z_dylib",
-        "//buck-src:icucore_dylib",
-        "//buck-src/libcxx:cxx_dylib",
-        "//buck-src:system_final",
+        "//vendor/src:lzma_dylib",
+        "//vendor/src:xar_dylib",
+        "//vendor/src:bz2_dylib",
+        "//vendor/src:xml2_dylib",
+        "//vendor/src:z_dylib",
+        "//vendor/src:icucore_dylib",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )

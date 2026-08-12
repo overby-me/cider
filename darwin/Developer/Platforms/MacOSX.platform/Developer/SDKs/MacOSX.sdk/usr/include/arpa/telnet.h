@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libc/include/arpa/telnet.h
+../../../../../../../../../../vendor/pins/libc/include/arpa/telnet.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/misc_protos.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/misc_protos.h

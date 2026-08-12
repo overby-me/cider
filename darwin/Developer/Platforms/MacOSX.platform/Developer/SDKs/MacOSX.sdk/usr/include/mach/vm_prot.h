@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/vm_prot.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/vm_prot.h

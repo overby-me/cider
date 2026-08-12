@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/telemetry.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/telemetry.h

@@ -19,13 +19,13 @@ darwin_binary(
     objs = [
         ":stack_probe_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
-    dylibs = ["//buck-src:system_final"],
+    dylibs = ["//vendor/src:system_final"],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -37,9 +37,9 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_Security",
-        "//buck-src:fw_CoreFoundation",
-        "//buck-src:fw_CFNetwork",
+        "//vendor/src:fw_Security",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CFNetwork",
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
@@ -52,17 +52,17 @@ darwin_binary(
     objs = [
         ":sec_probe_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
-        "//buck-src:Security_final",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Security_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -74,7 +74,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         "//darwin/CoreAudio:fw_AudioToolbox",
         "//darwin/CoreAudio:fw_CoreAudio",
         "//darwin/frameworks:fw_CoreServices",
@@ -89,20 +89,20 @@ darwin_binary(
     objs = [
         ":audio_probe_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     # AudioToolbox's own headers are C++ (AudioQueue.h declares classes), so the probe is a
     # .cpp and the link needs libc++ alongside the frameworks.
     dylibs = [
-        "//buck-src:system_final",
-        "//buck-src/libcxx:cxx_dylib",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
         "//darwin/CoreAudio:AudioToolbox_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -125,13 +125,13 @@ darwin_binary(
     objs = [
         ":dispatch_probe_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
-    dylibs = ["//buck-src:system_final"],
+    dylibs = ["//vendor/src:system_final"],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -150,13 +150,13 @@ darwin_binary(
     objs = [
         ":loadall_probe_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
-    dylibs = ["//buck-src:system_final"],
+    dylibs = ["//vendor/src:system_final"],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )

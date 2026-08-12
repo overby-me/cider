@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/config_types.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/config_types.h

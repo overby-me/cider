@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libxpc/include/xpc/activity.h
+../../../../../../../../../../vendor/pins/libxpc/include/xpc/activity.h

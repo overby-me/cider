@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/netinet/dhcp.h
+../../../../../../../../../../vendor/pins/xnu/bsd/netinet/dhcp.h

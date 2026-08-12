@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libsyscall/mach/mach/vm_page_size.h
+../../../../../../../../../../vendor/pins/xnu/libsyscall/mach/mach/vm_page_size.h

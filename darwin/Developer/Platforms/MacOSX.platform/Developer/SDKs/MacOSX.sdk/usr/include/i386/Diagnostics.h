@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/Diagnostics.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/Diagnostics.h

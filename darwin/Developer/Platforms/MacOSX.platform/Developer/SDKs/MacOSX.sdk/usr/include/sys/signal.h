@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/signal.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/signal.h

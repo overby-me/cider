@@ -169,7 +169,7 @@ common is that the host build passes throughout.
     `DerivedSources/JavaScriptCore/JavaScriptCore -> ../..` into the tree it was creating:
     13 directories became 1147 at 266 levels deep, `except OSError` swallowed the
     ENAMETOOLONG, and buck2 then died crawling the wreckage. Invisible on the host, whose
-    `buck-src` still held the plain symlink.
+    `vendor/src` still held the plain symlink.
   * **wrapgen could not dlopen anything.** The generated `.buckconfig.local` had no
     `elf_lib_dirs`, so all 22 `wrap_elf` targets failed. The lowering needed the same
     libraries declared separately, via `extraTools`, because a wrap action carries them as
@@ -180,7 +180,7 @@ common is that the host build passes throughout.
     the WRAPPED clang injecting the same dirs through `NIX_CFLAGS_COMPILE`.
   * **fseventsd needs kernel UAPI headers**, which are not a library and so were in no list.
   * **The lowering symlinked `src/` into the store**, so the pins could not be planted at
-    `pins/<pin>` and every one of the 1798 lowered targets died on "Permission
+    `vendor/pins/<pin>` and every one of the 1798 lowered targets died on "Permission
     denied". One word: the top-level exclusion list had `name != "src"` rewritten to
     `name != "projectSrc"`, which is a Nix binding name and matches no directory.
 

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/stringpiece.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/stringpiece.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/ulocdata.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/ulocdata.h

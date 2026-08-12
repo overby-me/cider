@@ -1,1 +1,1 @@
-../../pins/AvailabilityVersions/AvailabilityVersions.h
+../../vendor/pins/AvailabilityVersions/AvailabilityVersions.h

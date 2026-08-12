@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/librpcsvc/gen/rstat.h
+../../../../../../../../../../vendor/pins/librpcsvc/gen/rstat.h

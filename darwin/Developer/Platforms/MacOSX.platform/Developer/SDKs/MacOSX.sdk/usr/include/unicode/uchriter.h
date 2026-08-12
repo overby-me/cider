@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/uchriter.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/uchriter.h

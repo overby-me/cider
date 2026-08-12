@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libplatform/private/_simple.h
+../../../../../../../../../vendor/pins/libplatform/private/_simple.h

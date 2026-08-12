@@ -1,1 +1,1 @@
-../../../../../../../../../pins/ncurses/darling/include/termcap.h
+../../../../../../../../../vendor/pins/ncurses/darling/include/termcap.h

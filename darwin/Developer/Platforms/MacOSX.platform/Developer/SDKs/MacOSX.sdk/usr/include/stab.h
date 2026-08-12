@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/include/stab.h
+../../../../../../../../../vendor/pins/libc/include/stab.h

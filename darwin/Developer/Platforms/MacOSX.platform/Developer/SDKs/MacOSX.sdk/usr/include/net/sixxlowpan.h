@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/net/sixxlowpan.h
+../../../../../../../../../../vendor/pins/xnu/bsd/net/sixxlowpan.h

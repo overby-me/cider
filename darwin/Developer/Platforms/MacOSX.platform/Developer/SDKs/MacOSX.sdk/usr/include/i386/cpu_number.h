@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/cpu_number.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/cpu_number.h

@@ -101,8 +101,8 @@ darwin_dylib(
         ":xcselect_obj",
     ],
     siblings = [
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],
@@ -2927,17 +2927,17 @@ darwin_binary(
         # clang_shim
         ":clang_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2955,17 +2955,17 @@ darwin_binary(
         # BuildStrings_shim
         ":BuildStrings_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2983,17 +2983,17 @@ darwin_binary(
         # CpMac_shim
         ":CpMac_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3011,17 +3011,17 @@ darwin_binary(
         # DeRez_shim
         ":DeRez_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3039,17 +3039,17 @@ darwin_binary(
         # GetFileInfo_shim
         ":GetFileInfo_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3067,17 +3067,17 @@ darwin_binary(
         # MergePef_shim
         ":MergePef_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3095,17 +3095,17 @@ darwin_binary(
         # MvMac_shim
         ":MvMac_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3123,17 +3123,17 @@ darwin_binary(
         # ResMerger_shim
         ":ResMerger_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3151,17 +3151,17 @@ darwin_binary(
         # RezDet_shim
         ":RezDet_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3179,17 +3179,17 @@ darwin_binary(
         # RezWack_shim
         ":RezWack_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3207,17 +3207,17 @@ darwin_binary(
         # Rez_shim
         ":Rez_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3235,17 +3235,17 @@ darwin_binary(
         # SetFile_shim
         ":SetFile_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3263,17 +3263,17 @@ darwin_binary(
         # SplitForks_shim
         ":SplitForks_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3291,17 +3291,17 @@ darwin_binary(
         # UnRezWack_shim
         ":UnRezWack_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3319,17 +3319,17 @@ darwin_binary(
         # agvtool_shim
         ":agvtool_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3347,17 +3347,17 @@ darwin_binary(
         # ar_shim
         ":ar_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3375,17 +3375,17 @@ darwin_binary(
         # as_shim
         ":as_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3403,17 +3403,17 @@ darwin_binary(
         # asa_shim
         ":asa_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3431,17 +3431,17 @@ darwin_binary(
         # bison_shim
         ":bison_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3459,17 +3459,17 @@ darwin_binary(
         # clang++_shim
         ":clang++_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3487,17 +3487,17 @@ darwin_binary(
         # cpp_shim
         ":cpp_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3515,17 +3515,17 @@ darwin_binary(
         # ctags_shim
         ":ctags_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3543,17 +3543,17 @@ darwin_binary(
         # desdp_shim
         ":desdp_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3571,17 +3571,17 @@ darwin_binary(
         # dsymutil_shim
         ":dsymutil_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3599,17 +3599,17 @@ darwin_binary(
         # dwarfdump_shim
         ":dwarfdump_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3627,17 +3627,17 @@ darwin_binary(
         # flex++_shim
         ":flex++_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3655,17 +3655,17 @@ darwin_binary(
         # flex_shim
         ":flex_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3683,17 +3683,17 @@ darwin_binary(
         # g++_shim
         ":g++_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3711,17 +3711,17 @@ darwin_binary(
         # gatherheaderdoc_shim
         ":gatherheaderdoc_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3739,17 +3739,17 @@ darwin_binary(
         # gcc_shim
         ":gcc_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3767,17 +3767,17 @@ darwin_binary(
         # gcov_shim
         ":gcov_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3795,17 +3795,17 @@ darwin_binary(
         # genstrings_shim
         ":genstrings_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3823,17 +3823,17 @@ darwin_binary(
         # git-cvsserver_shim
         ":git-cvsserver_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3851,17 +3851,17 @@ darwin_binary(
         # git-receive-pack_shim
         ":git-receive-pack_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3879,17 +3879,17 @@ darwin_binary(
         # git-shell_shim
         ":git-shell_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3907,17 +3907,17 @@ darwin_binary(
         # git-upload-archive_shim
         ":git-upload-archive_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3935,17 +3935,17 @@ darwin_binary(
         # git-upload-pack_shim
         ":git-upload-pack_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3963,17 +3963,17 @@ darwin_binary(
         # git_shim
         ":git_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3991,17 +3991,17 @@ darwin_binary(
         # gm4_shim
         ":gm4_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4019,17 +4019,17 @@ darwin_binary(
         # gnumake_shim
         ":gnumake_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4047,17 +4047,17 @@ darwin_binary(
         # gperf_shim
         ":gperf_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4075,17 +4075,17 @@ darwin_binary(
         # hdxml2manxml_shim
         ":hdxml2manxml_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4103,17 +4103,17 @@ darwin_binary(
         # headerdoc2html_shim
         ":headerdoc2html_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4131,17 +4131,17 @@ darwin_binary(
         # ibtool_shim
         ":ibtool_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4159,17 +4159,17 @@ darwin_binary(
         # ictool_shim
         ":ictool_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4187,17 +4187,17 @@ darwin_binary(
         # indent_shim
         ":indent_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4215,17 +4215,17 @@ darwin_binary(
         # instruments_shim
         ":instruments_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4243,17 +4243,17 @@ darwin_binary(
         # iprofiler_shim
         ":iprofiler_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4271,17 +4271,17 @@ darwin_binary(
         # ld_shim
         ":ld_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4299,17 +4299,17 @@ darwin_binary(
         # lex_shim
         ":lex_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4327,17 +4327,17 @@ darwin_binary(
         # lldb_shim
         ":lldb_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4355,17 +4355,17 @@ darwin_binary(
         # llvm-g++_shim
         ":llvm-g++_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4383,17 +4383,17 @@ darwin_binary(
         # llvm-gcc_shim
         ":llvm-gcc_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4411,17 +4411,17 @@ darwin_binary(
         # lorder_shim
         ":lorder_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4439,17 +4439,17 @@ darwin_binary(
         # m4_shim
         ":m4_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4467,17 +4467,17 @@ darwin_binary(
         # make_shim
         ":make_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4495,17 +4495,17 @@ darwin_binary(
         # mig_shim
         ":mig_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4523,17 +4523,17 @@ darwin_binary(
         # mkdep_shim
         ":mkdep_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4551,17 +4551,17 @@ darwin_binary(
         # nasm_shim
         ":nasm_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4579,17 +4579,17 @@ darwin_binary(
         # ndisasm_shim
         ":ndisasm_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4607,17 +4607,17 @@ darwin_binary(
         # nmedit_shim
         ":nmedit_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4635,17 +4635,17 @@ darwin_binary(
         # objdump_shim
         ":objdump_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4663,17 +4663,17 @@ darwin_binary(
         # opendiff_shim
         ":opendiff_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4691,17 +4691,17 @@ darwin_binary(
         # ranlib_shim
         ":ranlib_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4719,17 +4719,17 @@ darwin_binary(
         # rebase_shim
         ":rebase_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4747,17 +4747,17 @@ darwin_binary(
         # resolveLinks_shim
         ":resolveLinks_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4775,17 +4775,17 @@ darwin_binary(
         # rpcgen_shim
         ":rpcgen_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4803,17 +4803,17 @@ darwin_binary(
         # sdef_shim
         ":sdef_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4831,17 +4831,17 @@ darwin_binary(
         # sdp_shim
         ":sdp_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4859,17 +4859,17 @@ darwin_binary(
         # svn_shim
         ":svn_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4887,17 +4887,17 @@ darwin_binary(
         # svnadmin_shim
         ":svnadmin_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4915,17 +4915,17 @@ darwin_binary(
         # svndumpfilter_shim
         ":svndumpfilter_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4943,17 +4943,17 @@ darwin_binary(
         # svnlook_shim
         ":svnlook_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4971,17 +4971,17 @@ darwin_binary(
         # svnserve_shim
         ":svnserve_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4999,17 +4999,17 @@ darwin_binary(
         # svnsync_shim
         ":svnsync_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5027,17 +5027,17 @@ darwin_binary(
         # svnversion_shim
         ":svnversion_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5055,17 +5055,17 @@ darwin_binary(
         # swift_shim
         ":swift_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5083,17 +5083,17 @@ darwin_binary(
         # swiftc_shim
         ":swiftc_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5111,17 +5111,17 @@ darwin_binary(
         # unifdef_shim
         ":unifdef_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5139,17 +5139,17 @@ darwin_binary(
         # unifdefall_shim
         ":unifdefall_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5167,17 +5167,17 @@ darwin_binary(
         # xcodebuild_shim
         ":xcodebuild_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5195,17 +5195,17 @@ darwin_binary(
         # xcscontrol_shim
         ":xcscontrol_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5223,17 +5223,17 @@ darwin_binary(
         # xcsdiagnose_shim
         ":xcsdiagnose_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5251,17 +5251,17 @@ darwin_binary(
         # xed_shim
         ":xed_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5279,17 +5279,17 @@ darwin_binary(
         # xml2man_shim
         ":xml2man_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5307,17 +5307,17 @@ darwin_binary(
         # yacc_shim
         ":yacc_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5365,17 +5365,17 @@ darwin_binary(
         # xcode-select
         ":xcode-select_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5439,17 +5439,17 @@ darwin_binary(
         # cmpdylib_shim
         ":cmpdylib_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5501,17 +5501,17 @@ darwin_binary(
         # codesign_allocate_shim
         ":codesign_allocate_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5563,17 +5563,17 @@ darwin_binary(
         # ctf_insert_shim
         ":ctf_insert_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5625,17 +5625,17 @@ darwin_binary(
         # install_name_tool_shim
         ":install_name_tool_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5687,17 +5687,17 @@ darwin_binary(
         # libtool_shim
         ":libtool_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5749,17 +5749,17 @@ darwin_binary(
         # lipo_shim
         ":lipo_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5811,17 +5811,17 @@ darwin_binary(
         # nm_shim
         ":nm_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5873,17 +5873,17 @@ darwin_binary(
         # otool_shim
         ":otool_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5935,17 +5935,17 @@ darwin_binary(
         # pagestuff_shim
         ":pagestuff_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5997,17 +5997,17 @@ darwin_binary(
         # redo_prebinding_shim
         ":redo_prebinding_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6059,17 +6059,17 @@ darwin_binary(
         # segedit_shim
         ":segedit_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6121,17 +6121,17 @@ darwin_binary(
         # size_shim
         ":size_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6183,17 +6183,17 @@ darwin_binary(
         # strings_shim
         ":strings_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6245,17 +6245,17 @@ darwin_binary(
         # strip_shim
         ":strip_shim_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6306,17 +6306,17 @@ darwin_binary(
         # xcrun
         ":xcrun_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6342,18 +6342,18 @@ darwin_binary(
     objs = [
         # crt1 FIRST, then the archive: crt1 is what references _main and an archive member is
         # only pulled in to resolve a reference that already exists.
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
         ":xcrun_rs_lib",
     ],
     dylibs = [
         "//darwin/xcselect:xcselect_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )

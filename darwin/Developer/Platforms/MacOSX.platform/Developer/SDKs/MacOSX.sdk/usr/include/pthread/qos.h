@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libpthread/include/pthread/qos.h
+../../../../../../../../../../vendor/pins/libpthread/include/pthread/qos.h

@@ -1,15 +1,15 @@
-//! SPLIT buck-src INTO A PACKAGE PER PIN.
+//! SPLIT vendor/src INTO A PACKAGE PER PIN.
 //!
 //! THE RUST REWRITE of the python buck-split-pins (#98), and the LAST python in scripts/. It
 //! operates on the buck2 tree rather than on the cmake reference, which is why it is ported and
 //! not deleted like the frozen generators were.
 //!
-//! buck-src/BUCK holds every materialized pin, and the Nix-lowered path has to PARSE it. One
+//! vendor/src/BUCK holds every materialized pin, and the Nix-lowered path has to PARSE it. One
 //! package per pin keeps that small enough to evaluate. Moving a block is not a cut and paste:
 //!   a GLOB cannot cross a package boundary, so a block whose glob reaches a sibling pin STAYS;
 //!   a FILE reference the new package does not own becomes a LABEL, backed by an export_file in
-//!     the owner, recorded as a hint because buck-src cannot be walked to resolve a name;
-//!   a bare :name meant "this package", which is no longer buck-src;
+//!     the owner, recorded as a hint because vendor/src cannot be walked to resolve a name;
+//!   a bare :name meant "this package", which is no longer vendor/src;
 //!   every moved target needs visibility, and every target left behind that a pin package now
 //!     names needs it too, which is the direction people forget.
 //!
@@ -19,7 +19,7 @@
 //! is stable, so no tie arises here; ties break by name below rather than by luck.
 //!
 //! Usage:
-//!   cider-split-pins --list                  # what is in buck-src/BUCK, by pin
+//!   cider-split-pins --list                  # what is in vendor/src/BUCK, by pin
 //!   cider-split-pins --all [--dry-run]
 //!   cider-split-pins --only a,b [--dry-run]
 
@@ -39,9 +39,9 @@ const NOT_A_PATH: &[&str] =
     &["//", ":", "-", "gen:", "dylib:", "dep:", "objs:", "ldflag:", "toolchains//"];
 
 const USAGE: &str = "\
-cider-split-pins: split buck-src into a package per pin.
+cider-split-pins: split vendor/src into a package per pin.
 
-  cider-split-pins --list                  # what is in buck-src/BUCK, by pin
+  cider-split-pins --list                  # what is in vendor/src/BUCK, by pin
   cider-split-pins --all [--dry-run]
   cider-split-pins --only a,b [--dry-run]
 ";
@@ -149,7 +149,7 @@ fn blocks(text: &str) -> Vec<(String, usize, usize)> {
 
 /// (files, glob dirs) a block really names, by checking the disk. Shape is not enough to tell a
 /// path from anything else: an install_name reads as an absolute path and a header_map KEY as a
-/// relative one, so a string counts only if it RESOLVES under buck-src.
+/// relative one, so a string counts only if it RESOLVES under vendor/src.
 fn pin_paths(buck_src_dir: &str, body: &str) -> (BTreeSet<String>, BTreeSet<String>) {
     let mut files = BTreeSet::new();
     let mut globs = BTreeSet::new();
@@ -328,7 +328,7 @@ fn read_split_pins(path: &str) -> BTreeSet<String> {
 
 fn write_split_pins(path: &str, pins: &BTreeSet<String>) -> Result<(), String> {
     let mut s = String::new();
-    s.push_str("# Pins that have their own package, buck-src/<pin>/BUCK.\n");
+    s.push_str("# Pins that have their own package, vendor/src/<pin>/BUCK.\n");
     s.push_str("# THIS FILE IS THE SWITCH: the SDK maps name a listed pin's headers by\n");
     s.push_str("# label instead of by path, and gen-buck-from-ninja (deleted) writes a listed\n");
     s.push_str("# pin's blocks into its own package. cider-split-pins keeps it.\n");
@@ -353,7 +353,7 @@ fn add_hint(hints: &mut BTreeMap<String, BTreeMap<String, String>>, pkg: &str, p
     format!("//{pkg}:{name}")
 }
 
-/// How `pkg` refers to a buck-src-relative file it does not own.
+/// How `pkg` refers to a vendor/src-relative file it does not own.
 fn label_for_file(
     path: &str,
     pkg: &str,
@@ -362,9 +362,9 @@ fn label_for_file(
 ) -> String {
     let pin = owner_of(path);
     let (owner, rel) = if pins.contains(pin) {
-        (format!("buck-src/{pin}"), path[pin.len() + 1..].to_string())
+        (format!("vendor/src/{pin}"), path[pin.len() + 1..].to_string())
     } else {
-        ("buck-src".to_string(), path.to_string())
+        ("vendor/src".to_string(), path.to_string())
     };
     if owner == pkg {
         return rel;
@@ -382,7 +382,7 @@ fn labelize(
     hints: &mut BTreeMap<String, BTreeMap<String, String>>,
 ) -> String {
     let (files, _globs) = pin_paths(&ctx.buck_src_dir, body);
-    let own: Option<&str> = pkg.strip_prefix("buck-src/");
+    let own: Option<&str> = pkg.strip_prefix("vendor/src/");
     let mut ordered: Vec<&String> = files.iter().collect();
     // Longest first, so a path that is a prefix of another does not eat it.
     ordered.sort_by(|a, b| b.len().cmp(&a.len()).then(a.cmp(b)));
@@ -393,7 +393,7 @@ fn labelize(
                 continue; // its own pin: already package-relative
             }
         } else if !pins.contains(owner_of(path)) {
-            continue; // buck-src still owns it
+            continue; // vendor/src still owns it
         }
         let label = label_for_file(path, pkg, pins, hints);
         body = body.replace(&format!("\"{path}\""), &format!("\"{label}\""));
@@ -433,7 +433,7 @@ fn rewrite_for_pin(
     hints: &mut BTreeMap<String, BTreeMap<String, String>>,
 ) -> String {
     // Files in OTHER packages first, while the paths are still whole.
-    let body = labelize(ctx, body, &format!("buck-src/{pin}"), pins, hints);
+    let body = labelize(ctx, body, &format!("vendor/src/{pin}"), pins, hints);
     // The pin DIRECTORY itself, BEFORE the prefix strip: a pin holding a directory of its own
     // name would otherwise lose it.
     let mut out = String::new();
@@ -459,7 +459,7 @@ fn rewrite_for_pin(
     }
     // Its own pin's paths are package-relative there.
     let body = out.replace(&format!("\"{pin}/"), "\"");
-    // A bare :name meant "this package", which is no longer buck-src.
+    // A bare :name meant "this package", which is no longer vendor/src.
     let mut res = String::new();
     let b = body.as_bytes();
     let mut i = 0;
@@ -482,8 +482,8 @@ fn rewrite_for_pin(
                         res.push_str(&body[i..=ne]);
                     } else {
                         let pkg = match dest {
-                            Some(d) => format!("//buck-src/{d}"),
-                            None => "//buck-src".to_string(),
+                            Some(d) => format!("//vendor/src/{d}"),
+                            None => "//vendor/src".to_string(),
                         };
                         res.push_str(&format!("\"{prefix}{pkg}:{name}\""));
                     }
@@ -525,7 +525,7 @@ fn walk_buck(repo: &str, dir: &str, out: &mut Vec<String>) {
     }
 }
 
-/// Give a buck-src target PUBLIC visibility once another package names it. Visibility cuts both
+/// Give a vendor/src target PUBLIC visibility once another package names it. Visibility cuts both
 /// ways, and this is the direction people forget.
 fn publicise_referenced(ctx: &Ctx) -> Result<usize, String> {
     let mut wanted: HashSet<String> = HashSet::new();
@@ -539,9 +539,9 @@ fn publicise_referenced(ctx: &Ctx) -> Result<usize, String> {
             Ok(t) => t,
             Err(_) => continue,
         };
-        // "(?:[a-z]+:)?//buck-src:([A-Za-z0-9_.+-]+)"
+        // "(?:[a-z]+:)?//vendor/src:([A-Za-z0-9_.+-]+)"
         for s in strings_in(&text) {
-            let core = match s.find("//buck-src:") {
+            let core = match s.find("//vendor/src:") {
                 Some(0) => &s[..],
                 Some(k) => {
                     let head = &s[..k];
@@ -553,7 +553,7 @@ fn publicise_referenced(ctx: &Ctx) -> Result<usize, String> {
                 }
                 None => continue,
             };
-            let name = &core["//buck-src:".len()..];
+            let name = &core["//vendor/src:".len()..];
             if !name.is_empty() && name.bytes().all(is_name_char) {
                 wanted.insert(name.to_string());
             }
@@ -599,17 +599,17 @@ fn repoint(ctx: &Ctx, names: &HashMap<String, String>) -> usize {
             Ok(t) => t,
             Err(_) => continue,
         };
-        // //buck-src:(name)(?![A-Za-z0-9_.+-]) : the maximal name run must BE a moved name.
+        // //vendor/src:(name)(?![A-Za-z0-9_.+-]) : the maximal name run must BE a moved name.
         let mut t = String::new();
         let b = orig.as_bytes();
         let mut i = 0;
         while i < b.len() {
-            if orig[i..].starts_with("//buck-src:") {
-                let ns = i + "//buck-src:".len();
+            if orig[i..].starts_with("//vendor/src:") {
+                let ns = i + "//vendor/src:".len();
                 let ne = name_run(b, ns);
                 let name = &orig[ns..ne];
                 if let Some(dest) = names.get(name) {
-                    t.push_str(&format!("//buck-src/{dest}:{name}"));
+                    t.push_str(&format!("//vendor/src/{dest}:{name}"));
                     i = ne;
                     continue;
                 }
@@ -618,7 +618,7 @@ fn repoint(ctx: &Ctx, names: &HashMap<String, String>) -> usize {
             t.push(c);
             i += c.len_utf8();
         }
-        // `:name` meant "this package" only inside buck-src/BUCK itself.
+        // `:name` meant "this package" only inside vendor/src/BUCK itself.
         if f == &ctx.buck_src {
             let src = t.clone();
             let b = src.as_bytes();
@@ -639,7 +639,7 @@ fn repoint(ctx: &Ctx, names: &HashMap<String, String>) -> usize {
                         if ne > ns && ne < b.len() && b[ne] == b'"' {
                             let name = &src[ns..ne];
                             if let Some(dest) = names.get(name) {
-                                o.push_str(&format!("\"{prefix}//buck-src/{dest}:{name}\""));
+                                o.push_str(&format!("\"{prefix}//vendor/src/{dest}:{name}\""));
                                 i = ne + 1;
                                 continue;
                             }
@@ -671,7 +671,7 @@ fn fix_mig_out_base(ctx: &Ctx, text: &str) -> usize {
         let mut pin: Option<String> = None;
         for line in call.split('\n') {
             let t = line.trim_start();
-            if let Some(rest) = t.strip_prefix("defs = \"//buck-src/") {
+            if let Some(rest) = t.strip_prefix("defs = \"//vendor/src/") {
                 let b = rest.as_bytes();
                 let e = name_run(b, 0);
                 if e > 0 && rest[e..].starts_with(':') {
@@ -773,7 +773,7 @@ fn movable(ctx: &Ctx, text: &str, pins: &BTreeSet<String>) -> Movable {
     m
 }
 
-/// Calls left in buck-src/BUCK that GLOB into exactly one migrated pin: a glob cannot cross a
+/// Calls left in vendor/src/BUCK that GLOB into exactly one migrated pin: a glob cannot cross a
 /// package boundary, so these travel one TARGET at a time.
 fn orphan_roots(ctx: &Ctx, text: &str, pins: &BTreeSet<String>) -> Vec<(usize, usize, String, Vec<String>)> {
     let mut found = Vec::new();
@@ -851,7 +851,7 @@ fn migrate(ctx: &Ctx, pins: &[String], dry: bool) -> Result<i32, String> {
     }
     keep.push_str(&text[last..]);
     // 1b. What stays behind still names files that just changed owner.
-    let kept = labelize(ctx, &keep, "buck-src", &all_pins, &mut hints);
+    let kept = labelize(ctx, &keep, "vendor/src", &all_pins, &mut hints);
     fs::write(&ctx.buck_src, kept).map_err(|e| format!("cannot write: {e}"))?;
     write_hints(&ctx.hints_path, &hints)?;
     for (pin, bodies) in &per_pin {
@@ -872,7 +872,7 @@ fn migrate(ctx: &Ctx, pins: &[String], dry: bool) -> Result<i32, String> {
         let sep = if existing.trim().is_empty() { "" } else { "\n\n" };
         let body = format!("{head}{}{sep}{}", existing.trim_end_matches('\n'), bodies.join("\n"));
         fs::write(&f, body).map_err(|e| format!("cannot write {f}: {e}"))?;
-        println!("  buck-src/{pin}: {} block(s)", bodies.len());
+        println!("  vendor/src/{pin}: {} block(s)", bodies.len());
     }
 
     // 1c. Hand-written calls that glob a migrated pin travel as single TARGETS.
@@ -923,7 +923,7 @@ fn migrate(ctx: &Ctx, pins: &[String], dry: bool) -> Result<i32, String> {
     updated.extend(m.move_.keys().cloned());
     write_split_pins(&ctx.split_pins, &updated)?;
     println!("  repointed references in {} file(s)", repoint(ctx, &names));
-    println!("  opened up {} buck-src target(s) now named from outside", publicise_referenced(ctx)?);
+    println!("  opened up {} vendor/src target(s) now named from outside", publicise_referenced(ctx)?);
     let text = fs::read_to_string(&ctx.buck_src).map_err(|e| format!("cannot read: {e}"))?;
     println!("  fixed out_base on {} mig target(s)", fix_mig_out_base(ctx, &text));
 
@@ -963,8 +963,8 @@ fn main() -> ExitCode {
         Err(e) => return die(e),
     };
     let ctx = Ctx {
-        buck_src: format!("{repo}/buck-src/BUCK"),
-        buck_src_dir: format!("{repo}/buck-src"),
+        buck_src: format!("{repo}/vendor/src/BUCK"),
+        buck_src_dir: format!("{repo}/vendor/src"),
         split_pins: format!("{repo}/buck/generated/split-pins.txt"),
         hints_path: format!("{repo}/buck/generated/export-hints.json"),
         repo,

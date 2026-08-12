@@ -6,7 +6,7 @@
 # list (rewritten to `name != "projectSrc"`, a Nix binding name that matches no directory),
 # src became a symlink into the store and all 1798 lowered targets died with
 #
-#   ln: failed to create symbolic link 'pins/xnu': Permission denied
+#   ln: failed to create symbolic link 'vendor/pins/xnu': Permission denied
 #
 # Nothing caught it, because the only thing that exercises the lowering is a 90 minute build.
 # This reads the staging script instead, in seconds, and it is a fair check precisely because
@@ -86,14 +86,14 @@ def main [
     #
     # 1. The pins land under src/external. Without these the SDK symlink farm does not
     #    resolve.
-    let pins = ($lines | where {|l| $l =~ '^ln -sfn [^ ]+ pins/' })
-    # 2. EVERY buck-src ALIAS MUST BE UNIQUE. A pin is aliased as buck-src/<basename> and
-    #    basenames are NOT unique: pins/ciderd/xnu-sys/xnu ends in xnu exactly like
-    #    pins/xnu, so both claimed buck-src/xnu and the second silently overwrote the
-    #    first. Everything resolving through buck-src/xnu then got the wrong tree, which
+    let pins = ($lines | where {|l| $l =~ '^ln -sfn [^ ]+ vendor/pins/' })
+    # 2. EVERY vendor/src ALIAS MUST BE UNIQUE. A pin is aliased as vendor/src/<basename> and
+    #    basenames are NOT unique: vendor/pins/ciderd/xnu-sys/xnu ends in xnu exactly like
+    #    vendor/pins/xnu, so both claimed vendor/src/xnu and the second silently overwrote the
+    #    first. Everything resolving through vendor/src/xnu then got the wrong tree, which
     #    surfaced 90 minutes later as "redeclaration of __dso_handle with a different type"
     #    in the Security cone, naming SDK headers that have nothing to do with xnu.
-    let aliases = ($lines | where {|l| $l =~ '^ln -sfn [^ ]+ buck-src/' }
+    let aliases = ($lines | where {|l| $l =~ '^ln -sfn [^ ]+ vendor/src/' }
         | each {|l| $l | split row " " | last })
     let dupe_aliases = ($aliases | uniq -d)
     # 3. AND NO rm -f AGAINST A PIN PATH. rm -f cannot remove a DIRECTORY, so where the path
@@ -111,7 +111,7 @@ def main [
 
     mut failed = false
     if ($pins | is-empty) {
-        say "FAIL: no pin is planted at pins/<pin>"
+        say "FAIL: no pin is planted at vendor/pins/<pin>"
         $failed = true
     }
     if ($mk_external | is-empty) {
@@ -119,9 +119,9 @@ def main [
         $failed = true
     }
     if ($dupe_aliases | is-not-empty) {
-        say $"FAIL: ($dupe_aliases | length) buck-src alias\(es) claimed by more than one pin,"
+        say $"FAIL: ($dupe_aliases | length) vendor/src alias\(es) claimed by more than one pin,"
         say "      so the later one silently overwrites the earlier and its consumers get the"
-        say "      wrong tree. A nested pin must not take a buck-src alias at all:"
+        say "      wrong tree. A nested pin must not take a vendor/src alias at all:"
         $dupe_aliases | each {|a| say $"  ($a)" }
         $failed = true
     }
@@ -192,7 +192,7 @@ def main [
     if $failed {
         say ""
         say "The staging script cannot build. See the top-level exclusion list in"
-        say "nix/lib/ciderBuck2Lower.nix: src, buck-src, buck-out and buck-rust all have to"
+        say "nix/lib/ciderBuck2Lower.nix: src, vendor/src, buck-out and vendor/rust all have to"
         say "stay out of the symlink-everything loop, because each is rebuilt below it."
         exit 1
     }

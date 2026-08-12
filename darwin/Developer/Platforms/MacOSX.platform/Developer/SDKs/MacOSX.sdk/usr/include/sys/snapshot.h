@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/snapshot.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/snapshot.h

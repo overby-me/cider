@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/bsd/sys/_types/_os_inline.h
+../../../../../../../../../../../vendor/pins/xnu/bsd/sys/_types/_os_inline.h

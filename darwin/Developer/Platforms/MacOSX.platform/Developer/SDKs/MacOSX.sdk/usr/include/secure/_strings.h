@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libc/include/secure/_strings.h
+../../../../../../../../../../vendor/pins/libc/include/secure/_strings.h

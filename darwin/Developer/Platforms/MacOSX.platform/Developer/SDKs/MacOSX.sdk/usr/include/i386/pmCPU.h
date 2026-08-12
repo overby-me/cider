@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/pmCPU.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/pmCPU.h

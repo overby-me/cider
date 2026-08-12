@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/bytestriebuilder.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/bytestriebuilder.h

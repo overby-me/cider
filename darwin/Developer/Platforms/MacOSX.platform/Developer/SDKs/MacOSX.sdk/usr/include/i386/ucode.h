@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/ucode.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/ucode.h

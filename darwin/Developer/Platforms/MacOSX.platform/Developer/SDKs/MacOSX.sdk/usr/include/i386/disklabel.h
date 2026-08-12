@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/i386/disklabel.h
+../../../../../../../../../../vendor/pins/xnu/bsd/i386/disklabel.h

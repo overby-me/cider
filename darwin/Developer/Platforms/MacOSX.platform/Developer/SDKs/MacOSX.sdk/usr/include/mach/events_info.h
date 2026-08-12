@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/events_info.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/events_info.h

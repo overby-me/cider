@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libtelnet/auth.h
+../../../../../../../../../../vendor/pins/libtelnet/auth.h

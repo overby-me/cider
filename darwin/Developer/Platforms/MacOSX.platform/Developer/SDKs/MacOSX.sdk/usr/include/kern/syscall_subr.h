@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/syscall_subr.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/syscall_subr.h

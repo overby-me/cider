@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/symtable.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/symtable.h

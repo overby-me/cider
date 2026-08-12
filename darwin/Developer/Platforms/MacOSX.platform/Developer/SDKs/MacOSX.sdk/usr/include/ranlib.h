@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/include/ranlib.h
+../../../../../../../../../vendor/pins/libc/include/ranlib.h

@@ -42,25 +42,25 @@ This is the thing to internalise before trying to pull anything across.
    `cider-libc`, ...), each pinned by revision in **`nix/submodules.json`**:
 
    ```json
-   { "path": "pins/libdispatch", "owner": "darlinghq",
+   { "path": "vendor/pins/libdispatch", "owner": "darlinghq",
      "repo": "cider-libdispatch", "rev": "380f03c1...", "hash": "sha256-..." }
    ```
 
    Upstream advances these with "Update Submodules" commits (e.g. `7276777e`). Those commits
    change *pointers*, so applying one here means **bumping `rev` and `hash` in
-   `nix/submodules.json`**, not merging a diff. The 147 pinned `pins/<pin>`
+   `nix/submodules.json`**, not merging a diff. The 147 pinned `vendor/pins/<pin>`
    directories are **empty mount points** in this tree; content is fetched by
-   `nix/lib/cider-src.nix` and materialised into `buck-src/<pin>` at build time.
+   `nix/lib/cider-src.nix` and materialised into `vendor/src/<pin>` at build time.
 
-   **But `pins/` is not only pins.** Three trees there are vendored first-party
+   **But `vendor/pins/` is not only pins.** Three trees there are vendored first-party
    content, tracked in this repo and NOT in `nix/submodules.json`, so they take patches
    directly:
 
    | path | files | note |
    |---|---|---|
-   | `pins/ciderd/xnu-sys/` | 2,164 | the XNU shim, still built (`ciderd_xnu_sys`) |
-   | `pins/libpthread_workqueue-0.8.2/` | 40 | vendored |
-   | `pins/libtrace/` | 28 | vendored, see its `VENDORED.md` |
+   | `vendor/pins/ciderd/xnu-sys/` | 2,164 | the XNU shim, still built (`ciderd_xnu_sys`) |
+   | `vendor/pins/libpthread_workqueue-0.8.2/` | 40 | vendored |
+   | `vendor/pins/libtrace/` | 28 | vendored, see its `VENDORED.md` |
 
 ## Directory mapping
 
@@ -90,7 +90,7 @@ directly.**
 |---|---|---|
 | `linux/startup/mldr/` | `darwin/loader/` | the Mach-O loader, rewritten (`mldr-rs`) |
 | `linux/startup/cider.c` | `linux/launcher/` | the `cider` binary, rewritten |
-| `pins/ciderd` (was a submodule) | `linux/server/` | the DAEMON rewritten in Rust; no longer a submodule. Its `xnu-sys/` (2,164 files) stays in `pins/ciderd/` and is still built unchanged |
+| `vendor/pins/ciderd` (was a submodule) | `linux/server/` | the DAEMON rewritten in Rust; no longer a submodule. Its `xnu-sys/` (2,164 files) stays in `vendor/pins/ciderd/` and is still built unchanged |
 
 An upstream fix to any of these must be **re-implemented**, not cherry-picked. Read the
 upstream change for its *intent* and apply that intent to the Rust.
@@ -103,7 +103,7 @@ upstream change for its *intent* and apply that intent to the Rust.
 ### Here only (no upstream counterpart)
 
 - `darwin/dirserv/`, `darwin/sandbox-exec/` -- first-party additions
-- `buck/`, `buck-src/`, `buck-rust/` -- the buck2 build (the point of this fork)
+- `buck/`, `vendor/src/`, `vendor/rust/` -- the buck2 build (the point of this fork)
 - `nix/`, `flake.nix`, `flake.lock` -- the Nix endpoints
 - `scripts/`, `docs/`, `plan/`, `changelog.md`, `templates/`, `tools/`, `patches/`
 
@@ -131,7 +131,7 @@ Done once, so it need not be redone from scratch:
 | Fedora 44 build fixes | 5 | **all already present** -- the fork converged independently, because clang 21 under Nix surfaces the same strictness Fedora 44's toolchain does (libaks `int*`, OpenDirectory Foundation import, ImageIO, DiskArbitration, SecurityFoundation) |
 | `dnsinfo.h` symlink (`27dd667e`) | 1 | **was genuinely missing -- applied**, see the fix for #59 |
 | submodule bumps | 5 | **the real remaining work**: bump `rev`/`hash` in `nix/submodules.json`, selectively |
-| configd removal / SystemConfiguration | 4 | already converged; we deleted vendored configd and pin `pins/configd` |
+| configd removal / SystemConfiguration | 4 | already converged; we deleted vendored configd and pin `vendor/pins/configd` |
 | **`3d9752422d5e` "Add symbol for rustls crate"** | 1 | **MISSING and goal-relevant** -- it is not a symbol list, it adds `SCDynamicStore.c` defining `SCDynamicStoreCreateWithOptions` and `kSCDynamicStoreUseSessionKeys`, which the rustls crate resolves. Neither exists here |
 | stub frameworks, symbol lists, `.github` | ~14 | parity only, or not carried here: WebKit (Bibdesk), InstantMessage and AddressBook Xcode symbols, SDK stub headers for PubSub/QuickTime/Message |
 

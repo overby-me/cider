@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/simple_lock.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/simple_lock.h

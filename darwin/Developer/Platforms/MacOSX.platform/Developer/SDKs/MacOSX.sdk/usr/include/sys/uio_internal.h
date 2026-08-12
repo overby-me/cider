@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/uio_internal.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/uio_internal.h

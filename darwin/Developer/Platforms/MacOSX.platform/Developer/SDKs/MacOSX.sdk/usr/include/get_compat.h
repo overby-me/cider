@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/gen/get_compat.h
+../../../../../../../../../vendor/pins/libc/gen/get_compat.h

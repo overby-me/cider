@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/machine/cpu_capabilities.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/machine/cpu_capabilities.h

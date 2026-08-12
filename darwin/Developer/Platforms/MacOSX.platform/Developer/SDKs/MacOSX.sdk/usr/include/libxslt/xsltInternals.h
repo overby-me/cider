@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libxslt/libxslt/libxslt/xsltInternals.h
+../../../../../../../../../../vendor/pins/libxslt/libxslt/libxslt/xsltInternals.h

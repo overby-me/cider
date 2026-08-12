@@ -1,4 +1,4 @@
-# cider-src-normalise: the buck-src symlink normaliser, moved off Python (#99).
+# cider-src-normalise: the vendor/src symlink normaliser, moved off Python (#99).
 #
 # BUILT BY NIX, NOT BY BUCK2, and that is a hard constraint rather than a preference: this tool
 # prepares the tree buck2 is then run on, so building it with buck2 would be circular. Same

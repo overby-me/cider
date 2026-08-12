@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/thread_special_ports.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/thread_special_ports.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/proc.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/proc.h

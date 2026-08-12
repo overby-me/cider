@@ -3,7 +3,7 @@
 #
 # This is rot that keeps coming back, because a script is renamed in one commit and its name
 # lives in prose written months earlier. It has now happened four times: gen-submodule-manifest
-# was cited by a script that outlived it, buck-src.sh by 51 files, buck-bash-check.sh by 8, and
+# was cited by a script that outlived it, vendor/src.sh by 51 files, buck-bash-check.sh by 8, and
 # buck-launchd-check.sh by PLAN itself. Each time the reference points at nothing and the reader
 # has to guess whether the tool moved or was deleted on purpose.
 #
@@ -20,7 +20,7 @@
 
 def say [msg: string] { print -e $msg }
 
-# Where a script name is likely to be written down. buck-src/ is excluded on purpose: its 49
+# Where a script name is likely to be written down. vendor/src/ is excluded on purpose: its 49
 # per-pin BUCK files are generated from one template, so a stale name there is one fix, and
 # including them makes every run walk 49 files to say the same thing four dozen times.
 const DEFAULT_GLOBS = [
@@ -35,8 +35,8 @@ const DEFAULT_GLOBS = [
     # buck-appkit-check, buck-rust-vendor and buck-setup were renamed to .nu and
     # seven such references kept pointing at the .sh.
     "buck/**/*"
-    "buck-rust/BUCK"
-    "buck-rust/.gitignore"
+    "vendor/rust/BUCK"
+    "vendor/rust/.gitignore"
     "tests/**/*"
     "src/**/BUCK"
     "src/**/*.py"
@@ -62,7 +62,7 @@ def main [--scan: string = ""] {
         $files
         | each {|f|
             let text = (try { open --raw $f | decode utf-8 } catch { "" })
-            # The boundary matters: buck-src/openssl_certificates/scripts/generate-ca-bundle.py
+            # The boundary matters: vendor/src/openssl_certificates/scripts/generate-ca-bundle.py
             # is a path inside a PIN, not a reference to this repo's scripts/, and matching the
             # tail of it reported a missing script that was never supposed to be here. So the
             # match has to start at a line start or after something that cannot be a path
@@ -72,7 +72,7 @@ def main [--scan: string = ""] {
             | get ref
             | uniq
             # A BUCK file names its script RELATIVE TO ITS PACKAGE: ciderd's
-            # BUCK points at pins/ciderd/scripts/generate-rpc-wrappers.py
+            # BUCK points at vendor/pins/ciderd/scripts/generate-rpc-wrappers.py
             # by its package-relative name, which is correct and resolves to a real
             # file. Resolve both ways before calling it missing. (Spelled here as a
             # full path on purpose: a bare one would make this comment its own hit.)

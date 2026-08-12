@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libtrace/include/os/log.h
+../../../../../../../../../../vendor/pins/libtrace/include/os/log.h

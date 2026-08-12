@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/machine/smp.h
+../../../../../../../../../../vendor/pins/xnu/bsd/machine/smp.h

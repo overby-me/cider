@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/cctools/include/mach-o/nlist.h
+../../../../../../../../../../vendor/pins/cctools/include/mach-o/nlist.h

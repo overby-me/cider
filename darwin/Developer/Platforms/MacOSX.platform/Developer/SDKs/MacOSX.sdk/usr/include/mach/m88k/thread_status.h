@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/cctools/include/mach/m88k/thread_status.h
+../../../../../../../../../../../vendor/pins/cctools/include/mach/m88k/thread_status.h

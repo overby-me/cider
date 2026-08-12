@@ -1,1 +1,1 @@
-../../../../../../../../../pins/xnu/EXTERNAL_HEADERS/ptrauth.h
+../../../../../../../../../vendor/pins/xnu/EXTERNAL_HEADERS/ptrauth.h

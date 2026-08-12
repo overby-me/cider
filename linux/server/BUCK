@@ -18,7 +18,7 @@ load("//buck/generated:xnu_sys_flags.bzl", "XNU_SYS_DEFINES", "XNU_SYS_FLAGS")
 cc_lib_dir(
     name = "xnu_sys_lib",
     deps = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
     ],
     visibility = ["PUBLIC"],
@@ -802,29 +802,29 @@ bindgen_gen(
         # mig FIRST: mach/task.h exists as both a MIG output and a hand-written XNU header,
         # and semaphore_create/semaphore_destroy are declared only in the generated one.
         # (XNU's kern/sync_sema.h declares just semaphore_destroy_all.)
-        "//pins/ciderd/xnu-sys:mig_mach_task",
+        "//vendor/pins/ciderd/xnu-sys:mig_mach_task",
         # kern/policy_internal.h includes mach/resource_notify.h, which is MIG output, so the
         # stubs.c half of the wrapper does not parse without it.
-        "//pins/ciderd/xnu-sys:mig_mach_resource_notify",
+        "//vendor/pins/ciderd/xnu-sys:mig_mach_resource_notify",
         # task.c includes mach/mach_port.h, also MIG output.
-        "//pins/ciderd/xnu-sys:mig_mach_mach_port",
+        "//vendor/pins/ciderd/xnu-sys:mig_mach_mach_port",
         # thread.c includes mach/thread_act.h, also MIG output.
-        "//pins/ciderd/xnu-sys:mig_mach_thread_act",
-        "//pins/ciderd/xnu-sys:dt_include",
-        "//pins/ciderd/xnu-sys:dt_internal_include",
-        "//pins/ciderd/xnu-sys:dt_defines",
-        "//pins/ciderd/xnu-sys:xnu_osfmk",
-        "//pins/ciderd/xnu-sys:xnu_bsd",
-        "//pins/ciderd/xnu-sys:xnu_libkern",
-        "//pins/ciderd/xnu-sys:xnu_osfmk_libsa",
-        "//pins/ciderd/xnu-sys:xnu_pexpert",
-        "//pins/ciderd/xnu-sys:xnu_iokit",
-        "//pins/ciderd/xnu-sys:xnu_external_headers",
-        "//pins/ciderd/xnu-sys:xnu_root",
+        "//vendor/pins/ciderd/xnu-sys:mig_mach_thread_act",
+        "//vendor/pins/ciderd/xnu-sys:dt_include",
+        "//vendor/pins/ciderd/xnu-sys:dt_internal_include",
+        "//vendor/pins/ciderd/xnu-sys:dt_defines",
+        "//vendor/pins/ciderd/xnu-sys:xnu_osfmk",
+        "//vendor/pins/ciderd/xnu-sys:xnu_bsd",
+        "//vendor/pins/ciderd/xnu-sys:xnu_libkern",
+        "//vendor/pins/ciderd/xnu-sys:xnu_osfmk_libsa",
+        "//vendor/pins/ciderd/xnu-sys:xnu_pexpert",
+        "//vendor/pins/ciderd/xnu-sys:xnu_iokit",
+        "//vendor/pins/ciderd/xnu-sys:xnu_external_headers",
+        "//vendor/pins/ciderd/xnu-sys:xnu_root",
         "//darwin/libsimple:libsimple_headers",
-        "//pins/ciderd:dserver_headers",
+        "//vendor/pins/ciderd:dserver_headers",
         # xnu-sys.h uses DSERVER_XNU_SYS_DECLS, from the RPC wrapper generator.
-        "//pins/ciderd:dserver_rpc",
+        "//vendor/pins/ciderd:dserver_rpc",
         "//linux/startup:rtsig_header",
     ],
 )
@@ -834,7 +834,7 @@ bindgen_gen(
 # which is the whole point of not having cargo in the graph.
 cc_library(
     name = "dserver_fast_context",
-    srcs = ["//pins/ciderd:src_fast_context.c"],
+    srcs = ["//vendor/pins/ciderd:src_fast_context.c"],
     compiler_flags = ["-DDSERVER_FAST_CONTEXT=1"],
     lib_name = "dserver_fast_context",
     visibility = ["PUBLIC"],
@@ -854,7 +854,7 @@ rust_library(
     crate_root = "src/lib.rs",
     srcs = glob(["src/**/*.rs"]),
     out_dir = ":xnu_sys",
-    deps = ["//buck-rust:libc"],
+    deps = ["//vendor/rust:libc"],
     visibility = ["PUBLIC"],
 )
 
@@ -876,10 +876,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -902,10 +902,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -927,10 +927,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -956,10 +956,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -984,10 +984,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1012,10 +1012,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1037,10 +1037,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1066,10 +1066,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1088,10 +1088,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1110,10 +1110,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1132,10 +1132,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1154,10 +1154,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1176,10 +1176,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1198,10 +1198,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1220,10 +1220,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1242,10 +1242,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1264,10 +1264,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1286,10 +1286,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1308,10 +1308,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1330,10 +1330,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1352,10 +1352,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1374,10 +1374,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1396,10 +1396,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1418,10 +1418,10 @@ rust_binary(
     out_dir = ":xnu_sys",
     deps = [
         ":cider",
-        "//buck-rust:libc",
+        "//vendor/rust:libc",
     ],
     link_archives = [
-        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys",
         "//darwin/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/Libinfo/rpc.subproj/svc_auth.h
+../../../../../../../../../../vendor/pins/Libinfo/rpc.subproj/svc_auth.h

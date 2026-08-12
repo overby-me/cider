@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/protosw.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/protosw.h

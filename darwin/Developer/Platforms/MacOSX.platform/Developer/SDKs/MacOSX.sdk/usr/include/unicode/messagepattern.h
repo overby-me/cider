@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/messagepattern.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/messagepattern.h

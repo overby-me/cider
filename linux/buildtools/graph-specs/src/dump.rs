@@ -203,7 +203,7 @@ fn strs(v: &[String]) -> Value {
 
 /// {target label: pin} for the pins that can safely become ONE derivation each.
 ///
-/// buck-src is 59 percent of the actions and changes only when a submodule pin is bumped, so one
+/// vendor/src is 59 percent of the actions and changes only when a submodule pin is bumped, so one
 /// derivation per target there buys nothing and costs a staging pass per target. Merging a pin's
 /// targets is the fix -- but CONTRACTING A DAG CAN CREATE CYCLES, and here it does: 42 of 157
 /// pins land in one strongly connected component covering the system cone, which are mutually
@@ -223,7 +223,7 @@ fn coarse_pin_map(ran: &[Action]) -> BTreeMap<String, String> {
     }
 
     // A target already inside a per-pin package names its pin in the PACKAGE PATH. Do not look
-    // at source roots there: buck-src/python keeps its sources under Python-2.7.16/, which
+    // at source roots there: vendor/src/python keeps its sources under Python-2.7.16/, which
     // would file that target under a Python-2.7.16 pin instead of python.
     let mut first_root: HashMap<&str, String> = HashMap::new();
     for a in ran {
@@ -236,11 +236,11 @@ fn coarse_pin_map(ran: &[Action]) -> BTreeMap<String, String> {
     }
 
     let pin_of = |label: &str| -> Option<String> {
-        if !label.starts_with("root//buck-src") {
+        if !label.starts_with("root//vendor/src") {
             return None;
         }
         let pkg = label.split(':').next().unwrap_or(label);
-        let pkg = &pkg["root//buck-src".len()..];
+        let pkg = &pkg["root//vendor/src".len()..];
         if !pkg.is_empty() {
             return Some(pkg.trim_start_matches('/').split('/').next().unwrap_or("").to_string());
         }
@@ -1101,7 +1101,7 @@ fn main() {
                 .collect(),
         ),
     );
-    // {target label: pin} for the buck-src pins that may be merged into one derivation each.
+    // {target label: pin} for the vendor/src pins that may be merged into one derivation each.
     // Only pins in NO dependency cycle appear; see coarse_pin_map.
     graph.insert("coarsePinOf".into(), map_of_strings(&coarse));
     graph.insert("kinds".into(), map_of_strings(&kinds));

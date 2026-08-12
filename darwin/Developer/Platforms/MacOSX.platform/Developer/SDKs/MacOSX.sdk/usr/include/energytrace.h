@@ -1,1 +1,1 @@
-../../../../../../../../../pins/energytrace/include/energytrace.h
+../../../../../../../../../vendor/pins/energytrace/include/energytrace.h

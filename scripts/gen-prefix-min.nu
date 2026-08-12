@@ -25,16 +25,16 @@
 const EXCLUDE_PKGS = [
     "//darwin/frameworks"
     "//darwin/private-frameworks"
-    "//buck-src/python"
-    "//buck-src/python_modules"
-    "//buck-src/pyobjc"
-    "//buck-src/perl"
-    "//buck-src/ruby"
+    "//vendor/src/python"
+    "//vendor/src/python_modules"
+    "//vendor/src/pyobjc"
+    "//vendor/src/perl"
+    "//vendor/src/ruby"
     # zsh's 35 loadable modules. Removing the zsh BINARY by label left these installed at
     # usr/lib/zsh/5.7.1/zsh/*.so, orphaned: nothing can load them. This is also the omission
     # docs/changelog.md recorded from the start, that the prose claimed the scripting languages were
-    # excluded while the list omitted //buck-src/zsh. Closed at the package level.
-    "//buck-src/zsh"
+    # excluded while the list omitted //vendor/src/zsh. Closed at the package level.
+    "//vendor/src/zsh"
 ]
 
 const EXCLUDE_LABELS = [
@@ -43,45 +43,45 @@ const EXCLUDE_LABELS = [
     "//darwin/xcselect:swift_shim"
     "//darwin/xcselect:swiftc_shim"
 
-    "//buck-src:jsc"
+    "//vendor/src:jsc"
 
     # Userland tools nix can FETCH once it runs. The prefix exists to get nix up; anything
     # nix could install afterwards is being paid for twice, once here and once in the store.
     # None of these participates in booting the container or in running bash.
     #
     # Editors, pagers, shells other than bash, terminal multiplexers.
-    "//buck-src:vim"
-    "//buck-src:nano"
-    "//buck-src:less"
-    "//buck-src:tcsh"
-    "//buck-src:zsh"
-    "//buck-src:ash"
-    "//buck-src/screen:screen"
+    "//vendor/src:vim"
+    "//vendor/src:nano"
+    "//vendor/src:less"
+    "//vendor/src:tcsh"
+    "//vendor/src:zsh"
+    "//vendor/src:ash"
+    "//vendor/src/screen:screen"
     # Archivers and compressors.
-    "//buck-src:gnutar"
-    "//buck-src:zip"
-    "//buck-src:unzip"
-    "//buck-src:unzipsfx"
-    "//buck-src:xz"
-    "//buck-src:pax"
+    "//vendor/src:gnutar"
+    "//vendor/src:zip"
+    "//vendor/src:unzip"
+    "//vendor/src:unzipsfx"
+    "//vendor/src:xz"
+    "//vendor/src:pax"
     # Network clients and daemons.
-    "//buck-src:sshd"
-    "//buck-src:rsync"
-    "//buck-src:netstat"
-    "//buck-src:cupsd"
+    "//vendor/src:sshd"
+    "//vendor/src:rsync"
+    "//vendor/src:netstat"
+    "//vendor/src:cupsd"
     # Misc userland.
-    "//buck-src:top"
-    "//buck-src:mail"
-    "//buck-src:patch"
-    "//buck-src/file:file"
-    "//buck-src:otool"
-    "//buck-src:hdiutil"
-    "//buck-src:installer"
-    "//buck-src/groff:eqn"
-    "//buck-src:cal"
-    "//buck-src:ncal"
-    "//buck-src:latency"
-    "//buck-src:sc_usage"
+    "//vendor/src:top"
+    "//vendor/src:mail"
+    "//vendor/src:patch"
+    "//vendor/src/file:file"
+    "//vendor/src:otool"
+    "//vendor/src:hdiutil"
+    "//vendor/src:installer"
+    "//vendor/src/groff:eqn"
+    "//vendor/src:cal"
+    "//vendor/src:ncal"
+    "//vendor/src:latency"
+    "//vendor/src:sc_usage"
 
     # The GUI cone, reached through three small tools. pbcopy, pbpaste and open are the ONLY
     # prefix entries that reach AppKit or CoreImage (checked by walking every entry's cone),
@@ -102,17 +102,17 @@ const EXCLUDE_LABELS = [
     # 2,320 actions for versions nothing in this prefix links. nix carries its own openssl in
     # its store closure, so it needs none of them; the system curl needs crypto44/ssl46/tls18,
     # which stay.
-    "//buck-src:crypto098_dylib"
-    "//buck-src:ssl098_dylib"
-    "//buck-src:crypto35_dylib"
-    "//buck-src:ssl35_dylib"
-    "//buck-src:tls6_dylib"
-    "//buck-src:crypto41_dylib"
-    "//buck-src:ssl43_dylib"
-    "//buck-src:tls15_dylib"
-    "//buck-src:crypto42_dylib"
-    "//buck-src:ssl44_dylib"
-    "//buck-src:tls16_dylib"
+    "//vendor/src:crypto098_dylib"
+    "//vendor/src:ssl098_dylib"
+    "//vendor/src:crypto35_dylib"
+    "//vendor/src:ssl35_dylib"
+    "//vendor/src:tls6_dylib"
+    "//vendor/src:crypto41_dylib"
+    "//vendor/src:ssl43_dylib"
+    "//vendor/src:tls15_dylib"
+    "//vendor/src:crypto42_dylib"
+    "//vendor/src:ssl44_dylib"
+    "//vendor/src:tls16_dylib"
 
     # The security DAEMONS and the security CLI. Together about 1,390 actions: secd alone is
     # 738 exclusive and additionally pulls CloudKit 257 and AppleAccount 235, and with
@@ -135,58 +135,58 @@ const EXCLUDE_LABELS = [
     #
     # If nix-in-guest is ever pointed at this prefix and turns out to need Security, the fix is
     # the Security DYLIB, which is a different and much smaller thing than these daemons.
-    "//buck-src:secd"
-    "//buck-src:securityd_exe"
-    "//buck-src:trustd"
-    "//buck-src:securitytool_macos"
+    "//vendor/src:secd"
+    "//vendor/src:securityd_exe"
+    "//vendor/src:trustd"
+    "//vendor/src:securitytool_macos"
 
     # The OpenSSH suite, and with it openbsd_compat (82 actions, reached by nothing else).
-    "//buck-src:ssh"
-    "//buck-src:scp"
-    "//buck-src:sftp"
-    "//buck-src:sftp-server"
-    "//buck-src:ssh-add"
-    "//buck-src:ssh-agent"
-    "//buck-src:ssh-keygen"
-    "//buck-src:ssh-keyscan"
-    "//buck-src:ssh-keysign"
-    "//buck-src:ssh-pkcs11-helper"
-    "//buck-src:sshd-keygen-wrapper"
+    "//vendor/src:ssh"
+    "//vendor/src:scp"
+    "//vendor/src:sftp"
+    "//vendor/src:sftp-server"
+    "//vendor/src:ssh-add"
+    "//vendor/src:ssh-agent"
+    "//vendor/src:ssh-keygen"
+    "//vendor/src:ssh-keyscan"
+    "//vendor/src:ssh-keysign"
+    "//vendor/src:ssh-pkcs11-helper"
+    "//vendor/src:sshd-keygen-wrapper"
 
     # curl, openssl and the LAST libcrypto. Keeping crypto44 was justified earlier by "curl
     # needs it", which was the wrong question: the bootstrap does no network I/O, so CURL is
     # not needed either, and the whole chain goes. crypto44_obj alone is 543 actions, the
     # single largest item left in the prefix, plus curl_obj 135.
-    "//buck-src:curlexe"
-    "//buck-src:curl_dylib"
-    "//buck-src:openssl"
-    "//buck-src:crypto44_dylib"
-    "//buck-src:ssl46_dylib"
-    "//buck-src:tls18_dylib"
+    "//vendor/src:curlexe"
+    "//vendor/src:curl_dylib"
+    "//vendor/src:openssl"
+    "//vendor/src:crypto44_dylib"
+    "//vendor/src:ssl46_dylib"
+    "//vendor/src:tls18_dylib"
 
     # The Berkeley DB command line tools: 225 actions of berkeley_db_obj reached by these
     # twelve and nothing else.
-    "//buck-src:db_archive"
-    "//buck-src:db_checkpoint"
-    "//buck-src:db_codegen"
-    "//buck-src:db_deadlock"
-    "//buck-src:db_dump"
-    "//buck-src:db_hotbackup"
-    "//buck-src:db_load"
-    "//buck-src:db_printlog"
-    "//buck-src:db_recover"
-    "//buck-src:db_stat"
-    "//buck-src:db_upgrade"
-    "//buck-src:db_verify"
+    "//vendor/src:db_archive"
+    "//vendor/src:db_checkpoint"
+    "//vendor/src:db_codegen"
+    "//vendor/src:db_deadlock"
+    "//vendor/src:db_dump"
+    "//vendor/src:db_hotbackup"
+    "//vendor/src:db_load"
+    "//vendor/src:db_printlog"
+    "//vendor/src:db_recover"
+    "//vendor/src:db_stat"
+    "//vendor/src:db_upgrade"
+    "//vendor/src:db_verify"
 
     # The BIND DNS diagnostic tools: bind9_dns_obj 84 and bind9_isc_obj 82 are reached by
     # these six and nothing else. Resolution itself is libnetwork/libc, not these.
-    "//buck-src:dig"
-    "//buck-src:host"
-    "//buck-src:nslookup"
-    "//buck-src:nsupdate"
-    "//buck-src:delv"
-    "//buck-src:ddns-confgen"
+    "//vendor/src:dig"
+    "//vendor/src:host"
+    "//vendor/src:nslookup"
+    "//vendor/src:nsupdate"
+    "//vendor/src:delv"
+    "//vendor/src:ddns-confgen"
 
     # libarchive's tools (archive_obj 115) and the Apache Portable Runtime (apr_obj 82).
     # I flagged these as a residual risk on the grounds that the nix installer might shell out
@@ -196,44 +196,44 @@ const EXCLUDE_LABELS = [
     # then runs `install --no-daemon` over plain files. That installer copies $self/store into
     # /nix/store with `cp -RPp` and loads the DB from .reginfo; there is no archive left to
     # unpack guest-side. No tar is needed in the guest.
-    "//buck-src:bsdtar"
-    "//buck-src:cpio"
+    "//vendor/src:bsdtar"
+    "//vendor/src:cpio"
     # and libarchive itself, which after those two is installed for its own sake
     # with nothing left consuming it.
-    "//buck-src:archive_dylib"
-    "//buck-src:apr_dylib"
-    "//buck-src:aprutil_dylib"
+    "//vendor/src:archive_dylib"
+    "//vendor/src:apr_dylib"
+    "//vendor/src:aprutil_dylib"
 
     # The ncurses ADD-ON libraries. libform, libmenu and libpanel are the form, menu and
     # panel toolkits; their consumers were vim, less, top and screen, all removed. ncurses
     # itself stays, since 60-odd entries still reach it.
-    "//buck-src:form_dylib"
-    "//buck-src:menu_dylib"
-    "//buck-src:panel_dylib"
+    "//vendor/src:form_dylib"
+    "//vendor/src:menu_dylib"
+    "//vendor/src:panel_dylib"
 
     # launchd plists whose Program no longer exists, orphaned by the removals above. launchd
     # would try to spawn each of these at boot and fail. THE SMOKE TEST CANNOT CATCH THIS: it
     # runs with DARLING_NO_LAUNCHD=1, so the job graph is never exercised. Found by reading
     # each plist Program/ProgramArguments and checking it against the install destinations.
-    "//buck-src:security_OSX_sec_ipc_com.apple.secd.plist"
-    "//buck-src:security_securityd_etc_com.apple.securityd.plist"
-    "//buck-src:security_trust_trustd_macOS_com.apple.trustd.plist"
-    "//buck-src:security_trust_trustd_macOS_com.apple.trustd.agent.plist"
-    "//buck-src:openssh_com.openssh.ssh-agent.plist"
-    "//buck-src:openssh_com.openssh.sshd.plist"
-    "//buck-src:cups_cups_scheduler_org.cups.cupsd.plist"
+    "//vendor/src:security_OSX_sec_ipc_com.apple.secd.plist"
+    "//vendor/src:security_securityd_etc_com.apple.securityd.plist"
+    "//vendor/src:security_trust_trustd_macOS_com.apple.trustd.plist"
+    "//vendor/src:security_trust_trustd_macOS_com.apple.trustd.agent.plist"
+    "//vendor/src:openssh_com.openssh.ssh-agent.plist"
+    "//vendor/src:openssh_com.openssh.sshd.plist"
+    "//vendor/src:cups_cups_scheduler_org.cups.cupsd.plist"
     # and cups-lpd, whose Program lives under the usr/libexec/cups tree that
     # EXCLUDE_DEST now drops. Caught by buck-prefix-consistency.nu, not by hand.
-    "//buck-src:cups_cups_scheduler_org.cups.cups-lpd.plist"
+    "//vendor/src:cups_cups_scheduler_org.cups.cups-lpd.plist"
 ]
 
 const EXCLUDE_SRC = [
     "darwin/frameworks/"
     "darwin/private-frameworks/"
-    "buck-src/python"
-    "buck-src/pyobjc/"
-    "buck-src/perl/"
-    "buck-src/ruby/"
+    "vendor/src/python"
+    "vendor/src/pyobjc/"
+    "vendor/src/perl/"
+    "vendor/src/ruby/"
 ]
 
 const EXCLUDE_DEST = [

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/uuid/uuid.h
+../../../../../../../../../../vendor/pins/xnu/bsd/uuid/uuid.h

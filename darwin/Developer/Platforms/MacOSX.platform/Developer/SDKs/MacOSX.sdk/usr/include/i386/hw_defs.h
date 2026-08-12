@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/hw_defs.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/hw_defs.h

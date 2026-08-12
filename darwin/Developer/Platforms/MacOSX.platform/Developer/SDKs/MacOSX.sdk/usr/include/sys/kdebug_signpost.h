@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/kdebug_signpost.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/kdebug_signpost.h

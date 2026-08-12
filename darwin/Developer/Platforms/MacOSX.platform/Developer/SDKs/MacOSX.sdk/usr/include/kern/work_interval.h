@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/work_interval.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/work_interval.h

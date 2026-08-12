@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/uidna.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/uidna.h

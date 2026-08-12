@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/cctools/include/mach-o/getsect.h
+../../../../../../../../../../vendor/pins/cctools/include/mach-o/getsect.h

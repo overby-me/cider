@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/helper/SCHelper_client.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/helper/SCHelper_client.h

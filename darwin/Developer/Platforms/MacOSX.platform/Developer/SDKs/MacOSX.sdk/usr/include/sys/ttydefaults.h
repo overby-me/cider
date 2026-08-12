@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/ttydefaults.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/ttydefaults.h

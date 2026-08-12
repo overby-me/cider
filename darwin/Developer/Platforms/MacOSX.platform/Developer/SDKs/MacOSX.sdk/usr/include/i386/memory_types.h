@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/memory_types.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/memory_types.h

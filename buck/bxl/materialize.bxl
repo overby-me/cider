@@ -15,7 +15,7 @@
 # CcLibInfo carries the include dirs, and ensuring those materializes exactly the trees the
 # recorded commands will point -I at, without running a single compile.
 #
-#   buck2 bxl //buck/bxl/materialize.bxl:main -- --targets //buck-src:system_blocks_final
+#   buck2 bxl //buck/bxl/materialize.bxl:main -- --targets //vendor/src:system_blocks_final
 
 load("//buck/rules:cc.bzl", "CcLibInfo")
 load("//buck/rules:inproc.bzl", "InProcInfo")

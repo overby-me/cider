@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/startup.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/startup.h

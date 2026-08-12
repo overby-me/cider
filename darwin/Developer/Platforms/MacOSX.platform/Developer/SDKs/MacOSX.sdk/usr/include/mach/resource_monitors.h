@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/resource_monitors.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/resource_monitors.h

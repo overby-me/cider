@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/osfmk/mach/machine/_structs.h
+../../../../../../../../../../../vendor/pins/xnu/osfmk/mach/machine/_structs.h

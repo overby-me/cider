@@ -1,4 +1,4 @@
-# Pins that have their own package, buck-src/<pin>/BUCK.
+# Pins that have their own package, vendor/src/<pin>/BUCK.
 # THIS FILE IS THE SWITCH: the SDK maps name a listed pin's headers by
 # label instead of by path, and gen-buck-from-ninja.py writes a listed
 # pin's blocks into its own package. cider-split-pins keeps it.

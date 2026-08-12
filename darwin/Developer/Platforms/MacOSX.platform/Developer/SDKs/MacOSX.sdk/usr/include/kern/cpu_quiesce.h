@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/cpu_quiesce.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/cpu_quiesce.h

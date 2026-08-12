@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/include/signal.h
+../../../../../../../../../vendor/pins/libc/include/signal.h

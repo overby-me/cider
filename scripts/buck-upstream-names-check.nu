@@ -57,7 +57,7 @@ const IGNORE = ["darling" "Darling" "DARLING" "darlinghq" "darling." "Darling." 
                 "darlingC"]
 
 # Every manifest entry whose directory exists on disk, wherever it sits. A PIN MATERIALIZED
-# INSIDE OURS IS STILL UPSTREAM: pins/ciderd/xnu-sys/xnu lands inside the tree this file treats
+# INSIDE OURS IS STILL UPSTREAM: vendor/pins/ciderd/xnu-sys/xnu lands inside the tree this file treats
 # as ours, and counting it as ours put two Apple names on a rename list.
 def materialized-pins [] {
   let manifest = "nix/submodules.json"
@@ -128,7 +128,7 @@ def main [--refresh, --ours-root: string = ""] {
   if not $cached {
     # THE PIN SCAN. One find and one grep -o over about 100k files: a per-file open in nushell
     # is the whole runtime at this scale, which is the lesson every other port here paid for.
-    let pin_files = (file-list ["buck-src"])
+    let pin_files = (file-list ["vendor/src"])
     let listfile = (mktemp -t --suffix .txt)
     ($pin_files | append (file-list $pins)) | str join "\n" | save -f $listfile
     let hits = (^bash -c $"tr '\\n' '\\0' < ($listfile) | xargs -0 grep -h -o -E '($TOKEN_PAT)' || true" | complete)

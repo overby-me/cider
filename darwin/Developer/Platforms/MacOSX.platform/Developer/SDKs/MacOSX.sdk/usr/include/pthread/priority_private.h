@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/pthread/priority_private.h
+../../../../../../../../../../vendor/pins/xnu/bsd/pthread/priority_private.h

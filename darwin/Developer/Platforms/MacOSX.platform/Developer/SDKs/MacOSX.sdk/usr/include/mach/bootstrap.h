@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/bootstrap.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/bootstrap.h

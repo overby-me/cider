@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/CaptiveNetwork.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/CaptiveNetwork.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/net/if_gif.h
+../../../../../../../../../../vendor/pins/xnu/bsd/net/if_gif.h

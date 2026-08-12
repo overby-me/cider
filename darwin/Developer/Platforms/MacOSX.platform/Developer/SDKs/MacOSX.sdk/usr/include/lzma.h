@@ -1,1 +1,1 @@
-../../../../../../../../../pins/liblzma/src/liblzma/api/lzma.h
+../../../../../../../../../vendor/pins/liblzma/src/liblzma/api/lzma.h

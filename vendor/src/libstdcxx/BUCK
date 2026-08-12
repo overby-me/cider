@@ -1,0 +1,177 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+
+# Targets over the libstdcxx pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: stdcxx
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) stdcxx   -- review before committing.
+# cmake target: stdcxx  ->  stdcxx
+# 65 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "stdcxx_inc_libstdcxx_include_c_4_2_1",
+    headers = glob([
+        "include/c++/4.2.1/backward/**/*",
+        "include/c++/4.2.1/**/*",
+    ]),
+    root = "include/c++/4.2.1",
+    include_subdirs = [
+        "backward",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "stdcxx_obj",
+    srcs = [
+        "src/allocator-inst.cc",
+        "src/atomicity.cc",
+        "src/basic_file.cc",
+        "src/bitmap_allocator.cc",
+        "src/c++locale.cc",
+        "src/codecvt.cc",
+        "src/codecvt_members.cc",
+        "src/collate_members.cc",
+        "src/compatibility-ldbl.cc",
+        "src/compatibility.cc",
+        "src/complex_io.cc",
+        "src/ctype.cc",
+        "src/ctype_members.cc",
+        "src/debug.cc",
+        "src/debug_list.cc",
+        "src/del_op.cc",
+        "src/del_opnt.cc",
+        "src/del_opv.cc",
+        "src/del_opvnt.cc",
+        "src/eh_exception.cc",
+        "src/eh_terminate.cc",
+        "src/ext-inst.cc",
+        "src/fstream-inst.cc",
+        "src/functexcept.cc",
+        "src/globals_io.cc",
+        "src/ios-inst.cc",
+        "src/ios.cc",
+        "src/ios_failure.cc",
+        "src/ios_init.cc",
+        "src/ios_locale.cc",
+        "src/iostream-inst.cc",
+        "src/istream-inst.cc",
+        "src/istream.cc",
+        "src/limits.cc",
+        "src/list.cc",
+        "src/locale-inst.cc",
+        "src/locale.cc",
+        "src/locale_facets.cc",
+        "src/locale_init.cc",
+        "src/localename.cc",
+        "src/messages_members.cc",
+        "src/misc-inst.cc",
+        "src/monetary_members.cc",
+        "src/mt_allocator.cc",
+        "src/new_handler.cc",
+        "src/new_op.cc",
+        "src/new_opnt.cc",
+        "src/new_opv.cc",
+        "src/new_opvnt.cc",
+        "src/numeric_members.cc",
+        "src/ostream-inst.cc",
+        "src/pool_allocator.cc",
+        "src/sstream-inst.cc",
+        "src/stdexcept.cc",
+        "src/streambuf-inst.cc",
+        "src/streambuf.cc",
+        "src/string-inst.cc",
+        "src/strstream.cc",
+        "src/time_members.cc",
+        "src/tinfo.cc",
+        "src/tree.cc",
+        "src/valarray-inst.cc",
+        "src/wlocale-inst.cc",
+        "src/wstring-inst.cc",
+    ],
+    compiler_flags = [
+        "-DBUILDING_LIBSTDCXX",
+        "-D_LIBCPPABI_VERSION=1",
+        "-Dstdcxx_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-nostdinc++",
+        "-w",
+        "-std=c++14",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":stdcxx_inc_libstdcxx_include_c_4_2_1",
+        "//darwin:sdk_env_nocxx",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "stdcxx_obj2",
+    srcs = [
+        "src/concept-inst.cc",
+    ],
+    compiler_flags = [
+        "-DBUILDING_LIBSTDCXX",
+        "-D_LIBCPPABI_VERSION=1",
+        "-Dstdcxx_EXPORTS",
+        "-D_GLIBCXX_CONCEPT_CHECKS",
+        "-fPIC",
+        "-nostdinc",
+        "-nostdinc++",
+        "-w",
+        "-std=c++14",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":stdcxx_inc_libstdcxx_include_c_4_2_1",
+        "//darwin:sdk_env_nocxx",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: stdcxx
+
+# BEGIN generated: stdcxx dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs stdcxx   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/libstdcxx/libstdc++.6.dylib = stdcxx_dylib
+
+darwin_dylib(
+    name = "stdcxx_dylib",
+    dylib_name = "libstdc++.6.dylib",
+    install_name = "/usr/lib/libstdc++.6.dylib",
+    compatibility_version = "7.0.0",
+    current_version = "104.1.0",
+    objs = [
+        # stdcxx
+        ":stdcxx_obj",
+        ":stdcxx_obj2",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    reexport = [
+        "//vendor/src:cxxabi_dylib",
+    ],
+    link_flag_files = {
+        "-Wl,-force_symbols_not_weak_list": "exports/notweak.exp",
+        "-Wl,-force_symbols_weak_list": "exports/weak.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: stdcxx dylibs

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach_debug/vm_info.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach_debug/vm_info.h

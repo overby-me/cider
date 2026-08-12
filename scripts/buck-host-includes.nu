@@ -164,7 +164,7 @@ def main [--list] {
   # Only targets the port actually BUILDS. A reference target with no cc_objects block here is
   # out of scope, and demanding a dep for it would make this check unpassable.
   #
-  # THE FILE LIST COMES FROM find, WITH -type l, because buck-src is a MIRROR of real
+  # THE FILE LIST COMES FROM find, WITH -type l, because vendor/src is a MIRROR of real
   # directories and per-file SYMLINKS: a bare -type f drops 56 of the 125 BUCK files.
   let bucks = (^find . "(" -path ./buck-out -o -path ./.jj -o -path ./.git -o -path ./.direnv ")"
     -prune -o -name BUCK "(" -type f -o -type l ")" -print | lines)

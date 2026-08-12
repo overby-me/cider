@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/tsc.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/tsc.h

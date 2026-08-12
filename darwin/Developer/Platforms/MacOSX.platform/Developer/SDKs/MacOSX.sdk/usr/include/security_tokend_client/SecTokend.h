@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/SecurityTokend/lib/SecTokend.h
+../../../../../../../../../../vendor/pins/SecurityTokend/lib/SecTokend.h

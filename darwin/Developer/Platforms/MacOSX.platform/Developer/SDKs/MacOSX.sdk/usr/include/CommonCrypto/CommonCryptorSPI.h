@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/commoncrypto/include/Private/CommonCryptorSPI.h
+../../../../../../../../../../vendor/pins/commoncrypto/include/Private/CommonCryptorSPI.h

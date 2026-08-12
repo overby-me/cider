@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libsyscall/os/tsd.h
+../../../../../../../../../../vendor/pins/xnu/libsyscall/os/tsd.h

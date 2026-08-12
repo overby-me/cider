@@ -29,7 +29,7 @@ cc_objects(
     toolchain = "toolchains//:native_cc",
     deps = [
         "//darwin/include:cider_config",
-        "//buck-src:cctools_port_include",
+        "//vendor/src:cctools_port_include",
     ],
     visibility = ["PUBLIC"],
 )
@@ -70,7 +70,7 @@ cc_objects(
     toolchain = "toolchains//:native_cc",
     deps = [
         "//darwin/include:cider_config",
-        "//buck-src:cctools_port_include",
+        "//vendor/src:cctools_port_include",
     ],
     visibility = ["PUBLIC"],
 )
@@ -117,13 +117,13 @@ cc_binary(
 rust_binary(
     name = "getuuid",
     crate_root = "getuuid.rs",
-    deps = ["//buck-rust:libc"],
+    deps = ["//vendor/rust:libc"],
     visibility = ["PUBLIC"],
 )
 
 rust_binary(
     name = "elfdep",
     crate_root = "elfdep.rs",
-    deps = ["//buck-rust:libc"],
+    deps = ["//vendor/rust:libc"],
     visibility = ["PUBLIC"],
 )

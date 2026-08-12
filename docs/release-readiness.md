@@ -332,7 +332,7 @@ reading rather than counting. Budget for that separately.
 Asked for 2026-08-12. The project has **1,833 tracked directories**, and **1,646 are under
 `darwin/`**: `darwin/Developer` alone is 761 directories, 2,806 files and 1,982 headers, and it is
 load-bearing (`buck/generated/sdk_headers.bzl`, `sdk_framework_darwin_Developer.bzl`, `darwin/BUCK`
-and `buck-src/BUCK` all name it). `darwin/frameworks` is 86 components and `private-frameworks`
+and `vendor/src/BUCK` all name it). `darwin/frameworks` is 86 components and `private-frameworks`
 56. That is the macOS surface Cider implements, so the count there is the product, not clutter.
 
 **DONE.** Deleted `tools/` (22 files, all verified unreferenced by path), `.vscode/`, `outputs/`,
@@ -342,24 +342,24 @@ empty directories (`build/`, `plan/`, and one named `<ciderd`) and a stray `.dfx
 `etc/` became `darwin/etc/`, which needed a `SOURCE_RENAMES` entry in the install generator and
 was verified by regeneration rather than by inspection.
 
-**REJECTED: `patches/` into `pins/`.** `pins/` is not a container, it is a NAMESPACE OF PIN NAMES,
+**REJECTED: `patches/` into `vendor/pins/`.** `vendor/pins/` is not a container, it is a NAMESPACE OF PIN NAMES,
 and two places enumerate it: `nix/lib/ciderBuck2Lower.nix:1326` does
 `builtins.readDir (projectSrc + "/pins")` and symlinks every entry as a pin, and
 `scripts/buck-escape-roots-check.nu:24` computes "a readDir of pins minus the pin names" and
-reports what is left. A `pins/patches/` would appear to both as a pin called `patches`. Moving it
+reports what is left. A `vendor/pins/patches/` would appear to both as a pin called `patches`. Moving it
 to `nix/` instead would fit the applier in `nix/lib/cider-src.nix` but mischaracterise it, since
 `scripts/buck-src.nu` applies patches too and is not Nix. It stays at the top level.
 
-**NOT DONE, AND THE REASON IS VERIFICATION RATHER THAN EFFORT: `buck-src` + `buck-rust` + `pins`
+**NOT DONE, AND THE REASON IS VERIFICATION RATHER THAN EFFORT: `vendor/src` + `vendor/rust` + `pins`
 into one `vendor/`.** Measured cost:
 
-    buck-src   14,424 occurrences in 173 files   (11,818 of them under buck/)
-    buck-rust      94 occurrences in  31 files
-    pins/         418 occurrences in  48 files
+    vendor/src   14,424 occurrences in 173 files   (11,818 of them under buck/)
+    vendor/rust      94 occurrences in  31 files
+    vendor/pins/         418 occurrences in  48 files
 
-Most of that is inside GENERATED files (`buck-src/BUCK` is 63,424 lines, `buck/prefix/BUCK` 4,336)
+Most of that is inside GENERATED files (`vendor/src/BUCK` is 63,424 lines, `buck/prefix/BUCK` 4,336)
 and the generators hardcode the prefix: `installgen.rs:840` and `:845` build labels as
-`//buck-src/{pin}:` and `//buck-src:`. So the honest form of this change is to update the
+`//vendor/src/{pin}:` and `//vendor/src:`. So the honest form of this change is to update the
 generators, the materialization scripts, `.gitignore` and `.buckconfig`, then REGENERATE, which is
 tractable and mechanical.
 
@@ -468,7 +468,7 @@ against `/root/.cache/nix`, which is not the file that was measured.
 
 `nix build .#cider-buck2-prefix` now dies in evaluation, before any building:
 
-    error: attribute '"root//buck-src:pin-bootstrap_cmds"' missing
+    error: attribute '"root//vendor/src:pin-bootstrap_cmds"' missing
     at nix/lib/ciderBuck2Lower.nix:1483:46
       builderScript = builderScriptWith (d: "${drvs.${d}}");
 
@@ -480,7 +480,7 @@ introduced by it, and that question is the first step rather than a guess.
 ### RESOLVED 2026-08-12, and it hid a second failure behind it
 
 **The eval failure was a disagreement about pin grouping.** `cider-graph-specs` writes the coarse
-synthetic `root//buck-src:pin-<name>` labels unconditionally, while the lowering defaulted
+synthetic `root//vendor/src:pin-<name>` labels unconditionally, while the lowering defaulted
 `coarsePins = false` and so keyed its derivations by the fine per-pin labels. The two halves
 therefore named different things and a dependency pointed at nothing. Fixed by making
 `coarsePins = true` the default, with a guard that throws and cites the generator lines rather
@@ -489,23 +489,23 @@ cause. The full prefix evaluates again: EXIT 0 in 27 seconds.
 
 **Behind it was a staging failure that only the full prefix could reach**, 412 identical copies of
 
-    ln: failed to create symbolic link 'pins/ciderd/xnu-sys/xnu': Permission denied
+    ln: failed to create symbolic link 'vendor/pins/ciderd/xnu-sys/xnu': Permission denied
 
-cascading into 340 `Cannot build` errors. `pins/ciderd/xnu-sys/xnu` is the one pin that lives
-inside another `pins/` entry, and `.gitignore` excludes it from the source precisely so that it
-arrives from its own store path. The staging linked every top-level `pins/` entry straight into
+cascading into 340 `Cannot build` errors. `vendor/pins/ciderd/xnu-sys/xnu` is the one pin that lives
+inside another `vendor/pins/` entry, and `.gitignore` excludes it from the source precisely so that it
+arrives from its own store path. The staging linked every top-level `vendor/pins/` entry straight into
 the store, so planting the nested pin underneath one of those links was a write into `/nix/store`.
 `prefix-min` never builds the targets that want that pin, which is why it stayed green through
 all of it.
 
-Fixed as a general rule rather than a case for `ciderd`: a top-level `pins/` entry that CONTAINS a
+Fixed as a general rule rather than a case for `ciderd`: a top-level `vendor/pins/` entry that CONTAINS a
 wanted pin is mirrored with `cp -Rs`, real directories and a symlink per file, and made writable.
 This is the third time this repo has learned that a subtree cannot be staged as a directory
 symlink when something must be planted inside it, after the relative-escape rule and the `src/`
 staging, so the test is written on the wanted-pin set and not on a name.
 
 Verified on the smallest artifact that exercises it, then on the real thing:
-`root//pins/ciderd/xnu-sys:ciderd_xnu_sys` builds EXIT 0 with every `mig_` generator under it,
+`root//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys` builds EXIT 0 with every `mig_` generator under it,
 and the full prefix run that follows passes 75,000 log lines with zero staging failures.
 
 ## Upstreaming to buck2, prepared and not filed

@@ -69,7 +69,7 @@ fn group_of(label: &str, coarse_pin_of: &Map<String, Value>, coarse_pins: bool) 
         return label.to_string();
     }
     match coarse_pin_of.get(label).and_then(|v| v.as_str()) {
-        Some(pin) => format!("root//buck-src:pin-{pin}"),
+        Some(pin) => format!("root//vendor/src:pin-{pin}"),
         None => label.to_string(),
     }
 }

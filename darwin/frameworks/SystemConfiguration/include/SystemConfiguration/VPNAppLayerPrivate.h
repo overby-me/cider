@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/VPNAppLayerPrivate.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/VPNAppLayerPrivate.h

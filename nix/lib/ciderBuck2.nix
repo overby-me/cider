@@ -14,7 +14,7 @@
   pkgs,
   overby,
   # The project root. The default is this repo: BUCK files reference the materialized
-  # pins under buck-src/, so a pure copy of the working tree is what the port builds
+  # pins under vendor/src/, so a pure copy of the working tree is what the port builds
   # from today (phase 3 step 2 is what makes that hermetic).
   src ? ../..,
 }: let

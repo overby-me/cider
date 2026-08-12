@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libplatform/include/libkern/OSAtomicQueue.h
+../../../../../../../../../../vendor/pins/libplatform/include/libkern/OSAtomicQueue.h

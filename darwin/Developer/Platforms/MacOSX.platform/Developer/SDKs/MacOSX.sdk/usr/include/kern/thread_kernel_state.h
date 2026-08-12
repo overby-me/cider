@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/thread_kernel_state.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/thread_kernel_state.h

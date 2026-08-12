@@ -1,1 +1,1 @@
-../../../../../../../../../pins/ncurses/darling/include/eti.h
+../../../../../../../../../vendor/pins/ncurses/darling/include/eti.h

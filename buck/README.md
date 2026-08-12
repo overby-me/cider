@@ -11,7 +11,7 @@ Quick start (inside `nix develop`, which provides `buck2` + `watchman`):
 
 ```console
 scripts/buck-setup.nu        # pinned sources + the absolute ld64 path
-buck2 build //pins/ciderd/xnu-sys:ciderd_xnu_sys
+buck2 build //vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys
 scripts/buck-test.nu         # regression test for everything ported so far
 ```
 
@@ -32,7 +32,7 @@ into those trees.
 | `buck/rules/files.bzl` | `export_file` |
 | `buck/generated/` | header maps derived from the SDK symlink farm |
 | `tests/buck2/firstpass` | the two-mutually-dependent-dylibs fixture |
-| `buck-src/` | pinned upstream trees, materialized (gitignored) + the BUCK file over them |
+| `vendor/src/` | pinned upstream trees, materialized (gitignored) + the BUCK file over them |
 
 ## The two ideas that matter
 
@@ -116,4 +116,4 @@ ninja.)
   (#82), so the file is hand-maintained now and the generator is in git history.
   Hand-authored BUCK is for the code we iterate on.
 - New pinned upstream tree to compile? Add it to `scripts/buck-src.nu` and give
-  it targets in `buck-src/BUCK`.
+  it targets in `vendor/src/BUCK`.

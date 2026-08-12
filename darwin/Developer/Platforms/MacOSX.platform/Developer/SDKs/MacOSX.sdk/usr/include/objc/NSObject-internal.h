@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/objc4/runtime/NSObject-internal.h
+../../../../../../../../../../vendor/pins/objc4/runtime/NSObject-internal.h

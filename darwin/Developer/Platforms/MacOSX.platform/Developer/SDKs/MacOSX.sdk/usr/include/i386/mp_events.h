@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/mp_events.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/mp_events.h

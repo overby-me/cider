@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libtelnet/misc-proto.h
+../../../../../../../../../../vendor/pins/libtelnet/misc-proto.h

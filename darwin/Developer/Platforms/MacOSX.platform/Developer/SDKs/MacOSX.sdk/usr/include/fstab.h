@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/include/fstab.h
+../../../../../../../../../vendor/pins/libc/include/fstab.h

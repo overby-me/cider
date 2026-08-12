@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/pexpert/pexpert/i386/protos.h
+../../../../../../../../../../../vendor/pins/xnu/pexpert/pexpert/i386/protos.h

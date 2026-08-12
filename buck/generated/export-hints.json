@@ -1,5 +1,5 @@
 {
-  "buck-src": {
+  "vendor/src": {
     "BerkeleyDB_AppleExtras_db_archive.1": "BerkeleyDB/AppleExtras/db_archive.1",
     "BerkeleyDB_AppleExtras_db_checkpoint.1": "BerkeleyDB/AppleExtras/db_checkpoint.1",
     "BerkeleyDB_AppleExtras_db_deadlock.1": "BerkeleyDB/AppleExtras/db_deadlock.1",
@@ -1152,7 +1152,7 @@
     "zip_zip_zip30_man_zipnote.1": "zip/zip/zip30/man/zipnote.1",
     "zip_zip_zip30_man_zipsplit.1": "zip/zip/zip30/man/zipsplit.1"
   },
-  "buck-src/Libinfo": {
+  "vendor/src/Libinfo": {
     "dns.subproj_herror.c": "dns.subproj/herror.c",
     "dns.subproj_res_comp.c": "dns.subproj/res_comp.c",
     "dns.subproj_res_query.c": "dns.subproj/res_query.c",
@@ -1219,13 +1219,13 @@
     "util.subproj_hton.c": "util.subproj/hton.c",
     "util.subproj_rcmd.c": "util.subproj/rcmd.c"
   },
-  "buck-src/OpenDirectory": {
+  "vendor/src/OpenDirectory": {
     "memberd-21.1_memberd.defs": "memberd-21.1/memberd.defs"
   },
-  "buck-src/bash": {
+  "vendor/src/bash": {
     "bash-3.2_parse.y": "bash-3.2/parse.y"
   },
-  "buck-src/corefoundation": {
+  "vendor/src/corefoundation": {
     "CFApplicationPreferences.c": "CFApplicationPreferences.c",
     "CFArray.c": "CFArray.c",
     "CFAttributedString.c": "CFAttributedString.c",
@@ -1359,7 +1359,7 @@
     "macros.h": "macros.h",
     "plconvert.c": "plconvert.c"
   },
-  "buck-src/libcxx": {
+  "vendor/src/libcxx": {
     "src_algorithm.cpp": "src/algorithm.cpp",
     "src_any.cpp": "src/any.cpp",
     "src_atomic.cpp": "src/atomic.cpp",
@@ -1404,7 +1404,7 @@
     "src_vector.cpp": "src/vector.cpp",
     "src_verbose_abort_std.cpp": "src/verbose_abort_std.cpp"
   },
-  "buck-src/libdispatch": {
+  "vendor/src/libdispatch": {
     "resolver_resolver.c": "resolver/resolver.c",
     "src_allocator.c": "src/allocator.c",
     "src_apply.c": "src/apply.c",
@@ -1439,15 +1439,15 @@
     "src_voucher.c": "src/voucher.c",
     "src_workgroup.c": "src/workgroup.c"
   },
-  "buck-src/libnotify": {
+  "vendor/src/libnotify": {
     "notify_ipc.defs": "notify_ipc.defs",
     "notifyd_notify.defs": "notifyd/notify.defs",
     "notifyd_notify_ipc.defs": "notifyd/notify_ipc.defs"
   },
-  "buck-src/syslog": {
+  "vendor/src/syslog": {
     "aslcommon_asl_ipc.defs": "aslcommon/asl_ipc.defs"
   },
-  "buck-src/xnu": {
+  "vendor/src/xnu": {
     "bsd_sys_fileport.h": "bsd/sys/fileport.h",
     "cider_src_libsystem_kernel_emulation_include_linux_premigration_resources_dserver-rpc-defs.h": "cider/src/libsystem_kernel/emulation/include/linux_premigration/resources/dserver-rpc-defs.h",
     "cider_src_libsystem_kernel_emulation_src_other_signal_exc.defs": "cider/src/libsystem_kernel/emulation/src/other/signal/exc.defs",

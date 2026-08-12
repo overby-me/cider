@@ -24,7 +24,7 @@
   pkgs,
   lowered,
   # A small cone by default. The point is the arrangement, not the size.
-  label ? "root//buck-src:unwind_static",
+  label ? "root//vendor/src:unwind_static",
 }: let
   inherit (pkgs) lib;
 

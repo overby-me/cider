@@ -1,1 +1,1 @@
-../../../../../../../../../pins/zlib/zlib/zconf.h
+../../../../../../../../../vendor/pins/zlib/zlib/zconf.h

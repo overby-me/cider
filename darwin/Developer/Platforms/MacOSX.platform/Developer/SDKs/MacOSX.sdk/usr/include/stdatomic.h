@@ -1,1 +1,1 @@
-../../../../../../../../../pins/xnu/EXTERNAL_HEADERS/stdatomic.h
+../../../../../../../../../vendor/pins/xnu/EXTERNAL_HEADERS/stdatomic.h

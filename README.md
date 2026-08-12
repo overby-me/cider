@@ -107,15 +107,18 @@ Where things live:
 darwin/     the guest side: frameworks, dylibs and tools that run INSIDE the container
 linux/      the host side: the ciderd daemon, the launcher, the Mach-O loader, build tools
 buck/       our Buck2 rules, toolchains and the prefix definition
-buck-src/   upstream C sources, materialized from pins rather than committed
-buck-rust/  vendored Rust crates, materialized the same way
-pins/       vendored upstream components that are committed on purpose, each with VENDORED.md
+vendor/     everything that is not ours, in three parts:
+              src/   upstream C sources, materialized from pins rather than committed
+              rust/  vendored Rust crates, materialized the same way
+              pins/  upstream components committed on purpose, each with VENDORED.md
 nix/        the Nix side: the flake library, the graph and lowering, the NixOS module
 scripts/    42 checks and the developer loop, in nushell
 ```
 
-`buck-src/` and `buck-rust/` hold about 260,000 and 3,000 files respectively and are almost
-entirely gitignored; only their generated `BUCK` files are committed.
+`vendor/src/` and `vendor/rust/` hold about 260,000 and 3,000 files respectively and are almost
+entirely gitignored; only their generated `BUCK` files are committed. Only 4 of the 148 pins are
+materialized on a working checkout: `scripts/buck-src.nu` fetches what the port currently needs,
+not the whole 3.8 GB.
 
 ### Building without Nix, which is how you should iterate
 

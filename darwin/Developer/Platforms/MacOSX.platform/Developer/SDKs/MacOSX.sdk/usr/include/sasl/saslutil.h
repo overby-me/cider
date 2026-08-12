@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/passwordserver_sasl/cyrus_sasl/include/saslutil.h
+../../../../../../../../../../vendor/pins/passwordserver_sasl/cyrus_sasl/include/saslutil.h

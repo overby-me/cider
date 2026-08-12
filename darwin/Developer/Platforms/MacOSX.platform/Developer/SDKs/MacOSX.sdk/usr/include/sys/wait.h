@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/wait.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/wait.h

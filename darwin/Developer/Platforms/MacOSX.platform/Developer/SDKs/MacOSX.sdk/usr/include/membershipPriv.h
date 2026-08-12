@@ -1,1 +1,1 @@
-../../../../../../../../../pins/Libinfo/membership.subproj/membershipPriv.h
+../../../../../../../../../vendor/pins/Libinfo/membership.subproj/membershipPriv.h

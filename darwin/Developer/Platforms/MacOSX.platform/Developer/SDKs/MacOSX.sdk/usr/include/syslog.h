@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/include/syslog.h
+../../../../../../../../../vendor/pins/libc/include/syslog.h

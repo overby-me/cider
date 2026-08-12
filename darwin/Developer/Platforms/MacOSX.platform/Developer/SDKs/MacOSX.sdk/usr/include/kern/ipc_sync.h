@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/ipc_sync.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/ipc_sync.h

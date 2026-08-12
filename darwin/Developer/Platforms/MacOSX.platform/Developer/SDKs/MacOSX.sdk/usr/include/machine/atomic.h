@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libc/fbsdcompat/machine/atomic.h
+../../../../../../../../../../vendor/pins/libc/fbsdcompat/machine/atomic.h

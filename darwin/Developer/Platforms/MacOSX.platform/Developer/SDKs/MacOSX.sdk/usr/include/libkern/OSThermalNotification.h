@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libc/include/libkern/OSThermalNotification.h
+../../../../../../../../../../vendor/pins/libc/include/libkern/OSThermalNotification.h

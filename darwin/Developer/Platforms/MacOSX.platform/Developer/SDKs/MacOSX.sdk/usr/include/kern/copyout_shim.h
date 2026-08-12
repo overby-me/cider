@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/copyout_shim.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/copyout_shim.h

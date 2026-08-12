@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/SCDynamicStorePrivate.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/SCDynamicStorePrivate.h

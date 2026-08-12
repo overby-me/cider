@@ -1,1 +1,1 @@
-../../../../../../../../../pins/xnu/libsyscall/wrappers/spawn/spawn.h
+../../../../../../../../../vendor/pins/xnu/libsyscall/wrappers/spawn/spawn.h

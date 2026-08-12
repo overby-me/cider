@@ -7,7 +7,7 @@ load("//buck/rules:install.bzl", "prefix_tree")
 prefix_tree(
     name = "bash_only",
     entries = {
-        "libexec/cider/bin/bash": "//buck-src:bash",
+        "libexec/cider/bin/bash": "//vendor/src:bash",
     },
     visibility = ["PUBLIC"],
 )

@@ -252,8 +252,8 @@ darwin_dylib(
         ":system_m_obj2",
     ],
     siblings = [
-        "//buck-src/libc:system_c_firstpass",
-        "//buck-src:system_dyld_firstpass",
+        "//vendor/src/libc:system_c_firstpass",
+        "//vendor/src:system_dyld_firstpass",
     ],
     link_flag_files = {
         "-Wl,-alias_list": "Exports/libmathCommonIntel.alias",

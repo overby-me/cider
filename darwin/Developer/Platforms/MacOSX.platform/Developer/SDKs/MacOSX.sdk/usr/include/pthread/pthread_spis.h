@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libpthread/include/pthread/pthread_spis.h
+../../../../../../../../../../vendor/pins/libpthread/include/pthread/pthread_spis.h

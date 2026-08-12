@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/libxpc/include/xpc/private/mach_send.h
+../../../../../../../../../../../vendor/pins/libxpc/include/xpc/private/mach_send.h

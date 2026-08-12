@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/memory_object_types.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/memory_object_types.h

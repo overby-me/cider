@@ -1,1 +1,1 @@
-../../../../../../../../../pins/xnu/libsyscall/wrappers/gethostuuid_private.h
+../../../../../../../../../vendor/pins/xnu/libsyscall/wrappers/gethostuuid_private.h

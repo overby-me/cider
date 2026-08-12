@@ -1,0 +1,77 @@
+load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the libcxx pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: cxx_obj dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs cxx_obj   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_dylib(
+    name = "cxx_dylib",
+    dylib_name = "libc++.1.dylib",
+    install_name = "/usr/lib/libc++.1.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # cxx_obj
+        "//vendor/src:cxx_obj",
+        "//vendor/src:cxx_obj2",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    # A REEXPORT, not an ordinary dependency. The reference passes
+    # -Wl,-reexport_library for libc++abi, and with it demoted to a plain sibling dyld
+    # aborts the guest at startup: "initializer in image (libc++.1.dylib) that does not
+    # link with libSystem.dylib", which really means an initializer ran before
+    # libSystem's. Hand-written here because regenerating this block loses the three
+    # symbol-list flags below, which the generator cannot place in a split pin
+    # (the generator/tree fixpoint debt in plan/buck2-port.md).
+    reexport = [
+        "//vendor/src:cxxabi_dylib",
+    ],
+    link_flag_files = {
+        "-Wl,-force_symbols_not_weak_list": "lib/notweak.exp",
+        "-Wl,-force_symbols_weak_list": "lib/weak.exp",
+        "-Wl,-unexported_symbols_list": "lib/libc++unexp.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: cxx_obj dylibs
+
+# The C++ standard library headers. The reference build puts this first on every
+# Darwin compile's include path. Globbed WITHOUT an extension filter: libcxx's
+# headers are mostly extensionless (__config, vector, string), and staging only
+# *.h leaves a partial tree whose stddef.h wrapper cannot find __config.
+cc_header_root(
+    name = "libcxx_include",
+    headers = glob(["include/**/*"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "cxxabi_inc_libcxx",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_libcxx.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

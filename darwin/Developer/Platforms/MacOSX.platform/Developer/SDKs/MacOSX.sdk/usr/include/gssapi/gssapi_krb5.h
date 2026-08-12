@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/MITKerberosShim/mit-include/gssapi/gssapi_krb5.h
+../../../../../../../../../../vendor/pins/MITKerberosShim/mit-include/gssapi/gssapi_krb5.h

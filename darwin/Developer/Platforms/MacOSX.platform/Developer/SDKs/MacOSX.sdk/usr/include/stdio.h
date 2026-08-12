@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/include/stdio.h
+../../../../../../../../../vendor/pins/libc/include/stdio.h

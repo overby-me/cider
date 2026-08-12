@@ -2,7 +2,7 @@
 # deleted by #99).
 #
 # It re-points the two kinds of symlink buck2 refuses (a "." component, a target that leaves the
-# cell) at the same file inside buck-src, and expands a symlinked DIRECTORY into a real one of
+# cell) at the same file inside vendor/src, and expands a symlinked DIRECTORY into a real one of
 # per-file links, because buck2's globs do not descend into the former. See the crate header for
 # the three failure modes each case was found through.
 #

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/mpsc_queue.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/mpsc_queue.h

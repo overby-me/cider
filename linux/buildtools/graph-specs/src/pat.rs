@@ -188,7 +188,7 @@ mod tests {
 
         assert_eq!(sanitise("root//pkg:name (cfg) (c_compile src/a.c)"), "root_pkg_name_cfg_c_compile_src_a.c_");
         assert_eq!(
-            compile_root("root//buck-src/python:x (cfg) (c_compile Python-2.7.16/foo.c)"),
+            compile_root("root//vendor/src/python:x (cfg) (c_compile Python-2.7.16/foo.c)"),
             Some("Python-2.7.16".to_string())
         );
         assert_eq!(compile_root("root//x:y (cfg) (cxx_compile a/b.cpp)"), Some("a".to_string()));

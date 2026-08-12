@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/cctools/include/architecture/m88k/fp_regs.h
+../../../../../../../../../../../vendor/pins/cctools/include/architecture/m88k/fp_regs.h

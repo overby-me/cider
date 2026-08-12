@@ -60,9 +60,9 @@ darwin_dylib(
         ":system_quarantine_obj",
     ],
     siblings = [
-        "//buck-src/libc:system_c_final",
-        "//buck-src:system_dyld_final",
-        "//buck-src:system_malloc_final",
+        "//vendor/src/libc:system_c_final",
+        "//vendor/src:system_dyld_final",
+        "//vendor/src:system_malloc_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],

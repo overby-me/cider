@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libkern/firehose/chunk_private.h
+../../../../../../../../../../vendor/pins/xnu/libkern/firehose/chunk_private.h

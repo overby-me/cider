@@ -9,8 +9,8 @@
 //!     cider/src/notify.defs -> ../../../../../darwin/.../usr/include/mach/notify.defs,
 //!     which reaches back into the repo's SDK symlink farm.
 //!
-//! Both are rewritten to point at the same file INSIDE buck-src: the SDK farm's own links end
-//! in pins/<pin>/..., which is exactly buck-src/<pin>/....
+//! Both are rewritten to point at the same file INSIDE vendor/src: the SDK farm's own links end
+//! in vendor/pins/<pin>/..., which is exactly vendor/src/<pin>/....
 //!
 //! A third case has nothing to do with targets: buck2's globs do not descend into a symlinked
 //! DIRECTORY, so a header behind one is invisible to the package that needs it. Those are
@@ -36,27 +36,27 @@ use pypath::{abspath, dirname, join2, normpath, relpath};
 
 /// Where upstream pins live in this repo. Named once so the join below cannot drift from the
 /// rename table, which is the drift that broke #87 stage 2's first rung.
-const PIN_ROOT: &str = "pins";
+const PIN_ROOT: &str = "vendor/pins";
 
 /// WE RENAMED FIRST-PARTY DIRECTORIES; UPSTREAM DID NOT, and a pin links into the layout
-/// upstream has. 2,078 links under buck-src/security/darling/submodules/xnu name
-/// pins/darlingserver/duct-tape/xnu, which is where that tree lives in Darling and has not
+/// upstream has. 2,078 links under vendor/src/security/darling/submodules/xnu name
+/// vendor/pins/darlingserver/duct-tape/xnu, which is where that tree lives in Darling and has not
 /// existed here since the Cider rename and the duct-tape to xnu-sys move.
 ///
 /// THIS CLASS IS INVISIBLE TO EVERY CONTENT SWEEP, and that is the whole lesson: a symlink
 /// TARGET is not file content, so grep does not read it and no rename script that rewrites
 /// files can reach it. It surfaced only as a buck2 package load failure four minutes into the
 /// endpoint, naming a path that appears nowhere in the tree:
-///     File not found: root//buck-src/darlingserver/duct-tape/xnu
+///     File not found: root//vendor/src/darlingserver/duct-tape/xnu
 /// Longest prefix first, so the duct-tape entry wins over the plain one.
 ///
 /// THE ROOT MOVED TOO, AND THAT IS A SEPARATE ENTRY. #87 stage 2 emptied src/ into darwin/,
-/// linux/ and pins/, so a link written before it names src/external/<pin> for what is now
-/// pins/<pin>. All 2,077 of those had an existing pins/ counterpart when it was measured, 0
+/// linux/ and vendor/pins/, so a link written before it names src/external/<pin> for what is now
+/// vendor/pins/<pin>. All 2,077 of those had an existing vendor/pins/ counterpart when it was measured, 0
 /// missing, so that entry is a re-rooting rather than a guess about where the tree went.
 const FIRST_PARTY_RENAMES: &[(&str, &str)] = &[
-    ("pins/darlingserver/duct-tape", "pins/ciderd/xnu-sys"),
-    ("pins/darlingserver", "pins/ciderd"),
+    ("vendor/pins/darlingserver/duct-tape", "vendor/pins/ciderd/xnu-sys"),
+    ("vendor/pins/darlingserver", "vendor/pins/ciderd"),
     ("src/external", PIN_ROOT),
 ];
 
@@ -111,7 +111,7 @@ fn read_link(p: &str) -> Option<String> {
     match t.to_str() {
         Some(s) => Some(s.to_string()),
         None => {
-            eprintln!("buck-src: non-UTF-8 symlink target, left alone: {p}");
+            eprintln!("vendor/src: non-UTF-8 symlink target, left alone: {p}");
             None
         }
     }
@@ -129,7 +129,7 @@ impl Ctx {
         // argument they silently never matched, and the in-tree cases fell through to the
         // escape handling.
         let repo = abspath(repo, cwd);
-        let buck_src = join2(&repo, "buck-src");
+        let buck_src = join2(&repo, "vendor/src");
         Ctx { repo, buck_src, cwd: cwd.to_string() }
     }
 
@@ -149,22 +149,22 @@ impl Ctx {
             if lexists(&resolved) {
                 return None; // already inside the tree and resolving
             }
-            // Inside buck-src but DANGLING: the link names a sibling pin that is not
+            // Inside vendor/src but DANGLING: the link names a sibling pin that is not
             // materialized here because it lives in the repo proper. security's
             // darling/submodules/xnu points at ciderd/xnu-sys/xnu that way, and ciderd is at
-            // pins/ciderd, not a pin. A dangling link is not merely unused -- a glob that
+            // vendor/pins/ciderd, not a pin. A dangling link is not merely unused -- a glob that
             // picks it up fails the whole package load. And the name it uses is UPSTREAM's,
             // so the candidate goes through the rename table too. In the Nix graph derivation
-            // these links resolve INSIDE buck-src rather than to pins, which is why fixing
+            // these links resolve INSIDE vendor/src rather than to pins, which is why fixing
             // only the other branch left the endpoint failing with the re-pointed count still
             // at 103.
             let rel = &resolved[self.buck_src.len() + 1..];
             // PIN_ROOT, not the two literals this used to join. It said join("src", "external",
-            // rel), and #87 stage 2 moved the pin root to pins/. Because the path was ASSEMBLED
+            // rel), and #87 stage 2 moved the pin root to vendor/pins/. Because the path was ASSEMBLED
             // FROM SEPARATE ARGUMENTS rather than written out, no textual sweep could see it:
-            // the rename table moved to pins/ and this went on building src/external/..., so
+            // the rename table moved to vendor/pins/ and this went on building src/external/..., so
             // the security link stayed dangling and the graph died with "File not found:
-            // root//buck-src/darlingserver/duct-tape/xnu".
+            // root//vendor/src/darlingserver/duct-tape/xnu".
             let cand = join2(&self.repo, &rename_first_party(&join2(PIN_ROOT, rel)));
             if lexists(&cand) {
                 return Some(relpath(&cand, dirname(link), &self.cwd));
@@ -193,7 +193,7 @@ impl Ctx {
         }
 
         // Follow the chain TEXTUALLY: the repo's SDK farm is itself symlinks into
-        // pins/<pin>, which is what buck-src holds a copy of.
+        // vendor/pins/<pin>, which is what vendor/src holds a copy of.
         let mut seen: Vec<String> = Vec::new();
         let mut cur = resolved;
         while is_link(&cur) && !seen.contains(&cur) {
@@ -202,7 +202,7 @@ impl Ctx {
             cur = normpath(&join2(dirname(&cur), &t));
         }
         let rel = relpath(&cur, &self.repo, &self.cwd);
-        // A renamed first-party tree is in the REPO, not in buck-src, so it resolves here
+        // A renamed first-party tree is in the REPO, not in vendor/src, so it resolves here
         // rather than through the pin copy below.
         let renamed = rename_first_party(&rel);
         if renamed != rel {
@@ -212,7 +212,7 @@ impl Ctx {
             }
             return None;
         }
-        let rest = rel.strip_prefix("pins/")?;
+        let rest = rel.strip_prefix("vendor/pins/")?;
         let inside = join2(&self.buck_src, rest);
         // exists, NOT lexists: a pin copy whose own link dangles is no use as a destination.
         if !exists(&inside) {
@@ -239,7 +239,7 @@ fn split_entries(dir: &str) -> (Vec<String>, Vec<String>) {
         let name = match ent.file_name().to_str() {
             Some(n) => n.to_string(),
             None => {
-                eprintln!("buck-src: non-UTF-8 name, left alone: {dir}");
+                eprintln!("vendor/src: non-UTF-8 name, left alone: {dir}");
                 continue;
             }
         };
@@ -339,7 +339,7 @@ fn expand_dir_links(root_of_walk: &str, root: &str, changed: &mut usize) {
         // turned 13 directories at 5 levels into 1147 at 266 before ENAMETOOLONG stopped it.
         // The swallowed error below then reported expanding nothing while having wrecked the
         // tree; buck2 crawls what is left and `aquery` dies with "File name too long". That is
-        // what broke the Nix endpoint while the host, whose buck-src still held the plain
+        // what broke the Nix endpoint while the host, whose vendor/src still held the plain
         // symlink, kept building.
         let here = match fs::canonicalize(root_of_walk).ok().and_then(|t| t.to_str().map(String::from)) {
             Some(d) => join2(&d, &name),
@@ -348,7 +348,7 @@ fn expand_dir_links(root_of_walk: &str, root: &str, changed: &mut usize) {
         if here == target || here.starts_with(&format!("{target}/")) {
             let shown = read_link(&link).unwrap_or_default();
             println!(
-                "buck-src: left cyclic dir link alone: {} -> {}",
+                "vendor/src: left cyclic dir link alone: {} -> {}",
                 relpath(&link, root, cwd()),
                 shown
             );
@@ -425,7 +425,7 @@ fn main() {
         expand_dir_links(root, root, &mut expanded);
     }
     if expanded > 0 {
-        println!("buck-src: expanded {expanded} symlinked director(ies) into per-file links");
+        println!("vendor/src: expanded {expanded} symlinked director(ies) into per-file links");
     }
     if fixed > 0 || skipped > 0 {
         let tail = if skipped > 0 {
@@ -433,6 +433,6 @@ fn main() {
         } else {
             String::new()
         };
-        println!("buck-src: re-pointed {fixed} symlink(s) into the tree{tail}");
+        println!("vendor/src: re-pointed {fixed} symlink(s) into the tree{tail}");
     }
 }

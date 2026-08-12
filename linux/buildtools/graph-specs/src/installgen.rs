@@ -18,7 +18,7 @@
 //!   THE REAL IMPLEMENTATION WINS a destination collision. The reference installs both cocotron
 //!     AppKit and its dev STUB to one path, and shipping the stub takes NSApplication down.
 //!   THE FROZEN REFERENCE PREDATES TWO RENAMES. It says src/external/<pin> where the tree says
-//!     pins/<pin>, and libexec/darling where the tree says libexec/cider. Both are mapped at the
+//!     vendor/pins/<pin>, and libexec/darling where the tree says libexec/cider. Both are mapped at the
 //!     parse, by SEGMENT rather than by substring, or 2,425 entries read as unmapped.
 //!
 //! Usage:
@@ -40,9 +40,9 @@ const INSTALL_PREFIX: &str = "/usr/local";
 /// Artifacts the reference GENERATES with a custom command rather than linking, so no registry
 /// knows them.
 const GENERATED: &[(&str, &str)] = &[
-    ("icudt66l.dat", "//buck-src/icu:icudt66l_dat"),
-    ("python-config", "//buck-src/python:python_config"),
-    ("xattr-0.6.4-2.7", "//buck-src/python_modules:easyinstall_xattr_2.7"),
+    ("icudt66l.dat", "//vendor/src/icu:icudt66l_dat"),
+    ("python-config", "//vendor/src/python:python_config"),
+    ("xattr-0.6.4-2.7", "//vendor/src/python_modules:easyinstall_xattr_2.7"),
 ];
 
 /// What the reference does NOT install, but a runnable prefix needs.
@@ -52,18 +52,18 @@ const EXTRA: &[(&str, &str)] = &[
     ("libexec/cider/usr/libexec/cider/mldr", "//darwin/loader:mldr"),
     (
         "libexec/cider/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_sqlite3.so",
-        "//buck-src/python:py27__sqlite_dylib",
+        "//vendor/src/python:py27__sqlite_dylib",
     ),
     (
         "libexec/cider/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_curses.so",
-        "//buck-src/python:py27__curses_dylib",
+        "//vendor/src/python:py27__curses_dylib",
     ),
 ];
 
 /// install(DIRECTORY) entries whose source is a BUILD output, with the hand-written target.
 const EXTRA_DIRS: &[(&str, &str)] = &[(
     "libexec/cider/System/Library/Security/Certificates.bundle",
-    "//buck-src:certificates_bundle",
+    "//vendor/src:certificates_bundle",
 )];
 
 /// Destinations deliberately left out, counted apart from UNMAPPED so that number can reach zero.
@@ -241,7 +241,7 @@ fn build_rel(path: &str) -> Option<&str> {
 
 /// A reference source path, moved to where #87 put it. DERIVED FROM THE TREE: if src/<rest> is
 /// gone and one of darwin/<rest> or linux/<rest> is there, that is where it went. An
-/// UNMATERIALIZED PIN is absent from disk too, so a src/external path whose pins/ candidate is
+/// UNMATERIALIZED PIN is absent from disk too, so a src/external path whose vendor/pins/ candidate is
 /// not there returns UNCHANGED: absence means not materialized, not moved.
 fn moved_path(repo: &str, rel: &str) -> String {
     for (k, v) in SOURCE_RENAMES {
@@ -257,7 +257,7 @@ fn moved_path(repo: &str, rel: &str) -> String {
     }
     let rest = &rel["src/".len()..];
     if let Some(after) = rest.strip_prefix("external/") {
-        let cand = format!("pins/{after}");
+        let cand = format!("vendor/pins/{after}");
         return if lexists(&format!("{repo}/{cand}")) { cand } else { rel.to_string() };
     }
     for dest in ["darwin", "linux"] {
@@ -268,10 +268,10 @@ fn moved_path(repo: &str, rel: &str) -> String {
     rel.to_string()
 }
 
-/// (pin, path within the pin) for a pins/<pin>/... source path, in BOTH spellings.
+/// (pin, path within the pin) for a vendor/pins/<pin>/... source path, in BOTH spellings.
 fn pin_of(rel: &str) -> (Option<String>, Option<String>) {
     let p = normpath(rel);
-    for prefix in ["pins/", "src/external/"] {
+    for prefix in ["vendor/pins/", "src/external/"] {
         if let Some(rest) = p.strip_prefix(prefix) {
             if let Some(slash) = rest.find('/') {
                 if slash > 0 && slash + 1 < rest.len() {
@@ -843,15 +843,15 @@ fn target_for(path: &str, t: &Tables, kind: &str) -> Option<String> {
 fn file_label(repo: &str, rel: &str) -> (Option<String>, Option<String>) {
     let (pin, within) = pin_of(rel);
     if let (Some(pin), Some(within)) = (&pin, &within) {
-        if is_dir(&format!("{repo}/buck-src/{pin}")) {
-            if is_file(&format!("{repo}/buck-src/{pin}/BUCK")) {
-                return (Some(format!("//buck-src/{pin}:{}", flatten(within))), None);
+        if is_dir(&format!("{repo}/vendor/src/{pin}")) {
+            if is_file(&format!("{repo}/vendor/src/{pin}/BUCK")) {
+                return (Some(format!("//vendor/src/{pin}:{}", flatten(within))), None);
             }
-            // An unsplit pin lives in the buck-src mega-package, and since buck-src cannot be
+            // An unsplit pin lives in the vendor/src mega-package, and since vendor/src cannot be
             // walked to resolve a name the path is recorded as a HINT instead.
             return (
-                Some(format!("//buck-src:{}", flatten(&format!("{pin}/{within}")))),
-                Some("buck-src".to_string()),
+                Some(format!("//vendor/src:{}", flatten(&format!("{pin}/{within}")))),
+                Some("vendor/src".to_string()),
             );
         }
     }
@@ -889,7 +889,7 @@ fn dir_target(repo: &str, rel: &str, excludes: &[String]) -> Result<Option<(Stri
         (Some(p), Some(w)) => (p, w),
         _ => return Ok(None),
     };
-    if !is_dir(&format!("{repo}/buck-src/{pin}")) {
+    if !is_dir(&format!("{repo}/vendor/src/{pin}")) {
         return Ok(None);
     }
     // cmake reaches out of a source directory with .. (libc installs its sibling assets).
@@ -897,12 +897,12 @@ fn dir_target(repo: &str, rel: &str, excludes: &[String]) -> Result<Option<(Stri
     if within.starts_with("..") {
         return Ok(None);
     }
-    // An UNSPLIT pin directories go in the buck-src mega-package. Writing a BUCK into the pin
+    // An UNSPLIT pin directories go in the vendor/src mega-package. Writing a BUCK into the pin
     // would make it a package, and every generated block naming one of its files stops seeing it.
-    let (pkg, within) = if is_file(&format!("{repo}/buck-src/{pin}/BUCK")) {
-        (format!("buck-src/{pin}"), within)
+    let (pkg, within) = if is_file(&format!("{repo}/vendor/src/{pin}/BUCK")) {
+        (format!("vendor/src/{pin}"), within)
     } else {
-        ("buck-src".to_string(), format!("{pin}/{within}"))
+        ("vendor/src".to_string(), format!("{pin}/{within}"))
     };
     let mut name = String::from("prefix_");
     for c in within.chars() {
@@ -1139,17 +1139,17 @@ fn main() -> ExitCode {
                         sources.insert(full, label.clone());
                     }
                     match needs_export.as_deref() {
-                        Some("buck-src") => {
-                            // EITHER SPELLING, and NOT through moved_path: buck-src mirrors each
+                        Some("vendor/src") => {
+                            // EITHER SPELLING, and NOT through moved_path: vendor/src mirrors each
                             // upstream tree under its bare name, and moved_path answers from DISK
                             // where an unmaterialised pin is absent.
                             let hint = rel
                                 .strip_prefix("src/external/")
                                 .map(|s| s.to_string())
                                 .unwrap_or_else(|| {
-                                    rel.strip_prefix("pins/").unwrap_or(&rel).to_string()
+                                    rel.strip_prefix("vendor/pins/").unwrap_or(&rel).to_string()
                                 });
-                            hints.entry("buck-src".to_string()).or_default().insert(name, hint);
+                            hints.entry("vendor/src".to_string()).or_default().insert(name, hint);
                         }
                         Some(pkg) => {
                             // THE MOVED PATH: relpath against the NEW package with the OLD path

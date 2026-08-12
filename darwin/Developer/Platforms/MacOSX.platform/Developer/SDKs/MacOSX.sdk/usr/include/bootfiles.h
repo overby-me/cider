@@ -1,1 +1,1 @@
-../../../../../../../../../pins/IOKitUser/kext.subproj/bootfiles.h
+../../../../../../../../../vendor/pins/IOKitUser/kext.subproj/bootfiles.h

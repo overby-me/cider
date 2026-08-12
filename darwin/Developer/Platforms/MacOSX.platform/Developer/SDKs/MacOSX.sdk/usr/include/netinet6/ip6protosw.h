@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/netinet6/ip6protosw.h
+../../../../../../../../../../vendor/pins/xnu/bsd/netinet6/ip6protosw.h

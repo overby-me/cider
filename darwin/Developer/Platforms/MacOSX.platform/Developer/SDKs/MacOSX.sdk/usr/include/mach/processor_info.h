@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/processor_info.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/processor_info.h

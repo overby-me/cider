@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/osfmk/mach/machine/exception.h
+../../../../../../../../../../../vendor/pins/xnu/osfmk/mach/machine/exception.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/commoncrypto/include/Private/CommonDigestSPI.h
+../../../../../../../../../../vendor/pins/commoncrypto/include/Private/CommonDigestSPI.h

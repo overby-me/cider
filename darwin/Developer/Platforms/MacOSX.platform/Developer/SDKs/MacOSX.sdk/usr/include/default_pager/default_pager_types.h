@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/default_pager/default_pager_types.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/default_pager/default_pager_types.h

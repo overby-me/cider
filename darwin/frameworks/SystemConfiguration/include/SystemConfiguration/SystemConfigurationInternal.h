@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/SystemConfigurationInternal.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/SystemConfigurationInternal.h

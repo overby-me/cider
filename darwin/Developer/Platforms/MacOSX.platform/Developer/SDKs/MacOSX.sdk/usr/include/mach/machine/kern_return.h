@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/osfmk/mach/machine/kern_return.h
+../../../../../../../../../../../vendor/pins/xnu/osfmk/mach/machine/kern_return.h

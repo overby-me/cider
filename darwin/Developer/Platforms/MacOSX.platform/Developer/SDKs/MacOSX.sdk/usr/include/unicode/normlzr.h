@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/normlzr.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/normlzr.h

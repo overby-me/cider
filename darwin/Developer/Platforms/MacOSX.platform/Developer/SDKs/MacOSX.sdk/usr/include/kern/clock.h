@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/clock.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/clock.h

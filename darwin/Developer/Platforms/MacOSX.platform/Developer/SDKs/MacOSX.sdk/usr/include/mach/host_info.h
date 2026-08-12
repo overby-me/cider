@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/host_info.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/host_info.h

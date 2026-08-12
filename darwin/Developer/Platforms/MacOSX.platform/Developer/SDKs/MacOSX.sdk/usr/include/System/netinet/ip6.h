@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/bsd/netinet/ip6.h
+../../../../../../../../../../../vendor/pins/xnu/bsd/netinet/ip6.h

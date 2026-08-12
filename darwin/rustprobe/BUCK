@@ -20,15 +20,15 @@ darwin_binary(
     objs = [
         # crt1 FIRST: it is what references _main, and the archive after it is what defines
         # _main. An archive is loaded lazily, so the reference has to come first.
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
         ":rustprobe_lib",
     ],
     dylibs = [
-        "//buck-src:system_final",
+        "//vendor/src:system_final",
     ],
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )

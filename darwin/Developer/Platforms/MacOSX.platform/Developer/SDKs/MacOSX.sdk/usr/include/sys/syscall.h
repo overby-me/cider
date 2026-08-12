@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/gen/syscall.h
+../../../../../../../../../../vendor/pins/xnu/gen/syscall.h

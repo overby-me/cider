@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/thread.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/thread.h

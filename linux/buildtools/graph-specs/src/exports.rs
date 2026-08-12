@@ -2,15 +2,15 @@
 //!
 //! THE RUST REWRITE of the python buck-exports (#98). A file attribute has to be a source of the
 //! package that DECLARES it, so once a pin is its own package, everything outside it, a header
-//! map in buck-src/BUCK or a force-included header in another pin compile, has to reach its files
+//! map in vendor/src/BUCK or a force-included header in another pin compile, has to reach its files
 //! through a label backed by an export_file. This is the one place that keeps those in sync: it
-//! scans every BUCK file and every generated .bzl for //buck-src/<pin>:<name> labels, resolves
+//! scans every BUCK file and every generated .bzl for //vendor/src/<pin>:<name> labels, resolves
 //! each name back to the file it flattens from, and writes the pin export list.
 //!
 //! The list is a DICT in buck/generated/exports_<pin>.bzl, one line per file, with the pin BUCK
 //! declaring them in a comprehension. One export_file block per file would be five lines each,
 //! 30k lines across the tree, and the biggest pins would land back over the Nix evaluator budget
-//! that splitting buck-src was meant to get under.
+//! that splitting vendor/src was meant to get under.
 //!
 //! IT IS RUST because the answer is a JOIN: a flattened-name index over a materialized pin, which
 //! can be tens of thousands of files, against every label anything in the tree names. The
@@ -72,13 +72,13 @@ fn is_label_char(c: u8) -> bool {
     c.is_ascii_alphanumeric() || c == b'_' || c == b'.' || c == b'+' || c == b'-'
 }
 
-/// //(buck-src(?:/[A-Za-z0-9_.+-]+)?):([A-Za-z0-9_.+-]+)
+/// //(vendor/src(?:/[A-Za-z0-9_.+-]+)?):([A-Za-z0-9_.+-]+)
 fn labels_in(text: &str, out: &mut Vec<(String, String)>) {
     let b = text.as_bytes();
     let mut i = 0;
-    while let Some(at) = text[i..].find("//buck-src") {
+    while let Some(at) = text[i..].find("//vendor/src") {
         let start = i + at;
-        let after = start + "//buck-src".len();
+        let after = start + "//vendor/src".len();
         i = start + 1;
         // The optional segment is greedy, so it is tried first and only then dropped.
         let mut cand: Vec<usize> = Vec::new();
@@ -159,7 +159,7 @@ fn scan_labels(root: &str) -> BTreeMap<String, BTreeSet<String>> {
 
 /// {flattened name: pin-relative path} for every file in the pin.
 fn pin_index(root: &str, pin: &str) -> (HashMap<String, String>, usize) {
-    let pin_root = format!("{root}/buck-src/{pin}");
+    let pin_root = format!("{root}/vendor/src/{pin}");
     let mut index: HashMap<String, String> = HashMap::new();
     let mut clash: HashSet<String> = HashSet::new();
     let real_root = fs::canonicalize(&pin_root)
@@ -262,9 +262,9 @@ fn target_names(buck_path: &str) -> BTreeSet<String> {
     out
 }
 
-/// buck-src/xnu becomes exports_xnu; buck-src itself becomes exports_buck_src.
+/// vendor/src/xnu becomes exports_xnu; vendor/src itself becomes exports_buck_src.
 fn bzl_name(pkg: &str) -> String {
-    match pkg.strip_prefix("buck-src/") {
+    match pkg.strip_prefix("vendor/src/") {
         Some(tail) => format!("exports_{tail}"),
         None => "exports_buck_src".to_string(),
     }
@@ -331,7 +331,7 @@ fn main() -> ExitCode {
         })
         .unwrap_or_default();
 
-    // {package: {label name: path in package}} recorded by whoever created the label: buck-src
+    // {package: {label name: path in package}} recorded by whoever created the label: vendor/src
     // itself cannot be indexed by walking it.
     let hints_text = fs::read_to_string(format!("{root}/buck/generated/export-hints.json"));
     let hints: HashMap<String, HashMap<String, String>> = match hints_text {
@@ -346,11 +346,11 @@ fn main() -> ExitCode {
 
     let mut packages: BTreeSet<String> = wanted.keys().cloned().collect();
     for p in &pins {
-        packages.insert(format!("buck-src/{p}"));
+        packages.insert(format!("vendor/src/{p}"));
     }
 
     for pkg in &packages {
-        let pin = pkg.strip_prefix("buck-src/").map(|s| s.to_string());
+        let pin = pkg.strip_prefix("vendor/src/").map(|s| s.to_string());
         let mut names: BTreeSet<String> = wanted.get(pkg).cloned().unwrap_or_default();
         let buck = format!("{root}/{pkg}/BUCK");
         if let Some(p) = &pin {
@@ -378,7 +378,7 @@ fn main() -> ExitCode {
             index = idx;
             index.extend(hint_over);
         } else {
-            // buck-src itself cannot be walked, so its index is the hints and "does not resolve"
+            // vendor/src itself cannot be walked, so its index is the hints and "does not resolve"
             // says nothing. For that one package the name has to LOOK like a file to be treated
             // as one, and a name the install generator recorded a HINT for is known to be one.
             names = names

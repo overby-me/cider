@@ -26,12 +26,12 @@ const SKIP_DIRS = ["buck-out", ".git", ".jj", ".direnv", "build"]
 # on the real buck/rules and they agree on all 25.
 const RULE_DEF = '^[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=[[:space:]]*rule\('
 
-# Only the loads this script manages. A BUCK file may load other things, buck-src/BUCK loads the
+# Only the loads this script manages. A BUCK file may load other things, vendor/src/BUCK loads the
 # generated SDK header maps, and dropping those breaks it.
 const STRIP_LOAD = '(?m)^load\("//buck/rules:[^)]*\)\n'
 
 # NUSHELL =~ WITH A \b IN THE PATTERN IS UNSOUND ON A BIG HAYSTACK, and this script is where it
-# was caught. On buck-src/BUCK, 2,068,911 bytes after the loads are stripped:
+# was caught. On vendor/src/BUCK, 2,068,911 bytes after the loads are stripped:
 #     $body =~ 'cc_library'            false   (correct, the name is not in the file)
 #     $body =~ '\bcc_library\s*\('     TRUE    (wrong, and it is the same haystack)
 # The literal is fine and the bounded pattern is not, so it FAILS OPEN: the first version of

@@ -32,7 +32,7 @@ CcToolchainInfo = provider(
         # WHY IT MATTERS: as a path, ld64 is an external nix derivation whose src is the
         # ENTIRE assembled project, so it rebuilds on every first-party edit, about 15 of the
         # 17.5 minutes such an edit costs. As a target its sources are under
-        # buck-src/cctools-port, a PIN, which does not move when a first-party file changes.
+        # vendor/src/cctools-port, a PIN, which does not move when a first-party file changes.
         # The lowering needs nothing new for this: migcom is the same shape already, a host
         # tool built by this graph that appears in the INPUTS of all 110 actions running it.
         "ld_artifact",

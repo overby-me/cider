@@ -27,7 +27,7 @@ ignore = .jj, .git, .direnv, .claude, buck-out, build, result, result-*, __pycac
 #    (which point into the nix store, where a mode-000 dir inside a built prefix
 #    makes it fail with EACCES) and refuses to start.
 #  - `fs_hash_crawler` honors the ignore list and works, but re-hashes the tree on
-#    every command: once buck-src held ~107 MB of materialized pins (which are
+#    every command: once vendor/src held ~107 MB of materialized pins (which are
 #    real build inputs and so cannot be ignored), the no-op floor went from ~1.0 s
 #    to ~2.9 s.
 #

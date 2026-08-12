@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/include/struct.h
+../../../../../../../../../vendor/pins/libc/include/struct.h

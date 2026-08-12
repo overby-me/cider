@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/libxpc/include/xpc/private/plist.h
+../../../../../../../../../../../vendor/pins/libxpc/include/xpc/private/plist.h

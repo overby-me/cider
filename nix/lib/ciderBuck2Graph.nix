@@ -20,11 +20,11 @@
   # the pins arrive from the nix-assembled tree instead, which is what makes this pure.
   src ? ../..,
   # The assembled pin tree (`nix build .#cider-src`), and which of its subtrees to
-  # materialize under buck-src/. Only what the targets actually load is needed, and
+  # materialize under vendor/src/. Only what the targets actually load is needed, and
   # copying all 147 costs 3.8 GB.
   ciderSrc ? null,
   pins ? [],
-  # Every pinned tree. Loading buck-src/BUCK COERCES the SDK maps, 3,591 source paths
+  # Every pinned tree. Loading vendor/src/BUCK COERCES the SDK maps, 3,591 source paths
   # across 70 pins, so any target in that package needs all of them present -- there is no
   # partial version of it. The list comes from the manifest rather than from reading the
   # assembled tree, which would be a second import-from-derivation.
@@ -41,7 +41,7 @@
   # them and none of them has an opinion about it.
   darwinRust ? pkgs.callPackage ../darwinRust.nix { },
   # Feed the dump a SKELETON instead of the project (#56): every C family file outside
-  # buck-src, buck-rust and pins emptied, keeping the name and dropping the bytes,
+  # vendor/src, vendor/rust and pins emptied, keeping the name and dropping the bytes,
   # except the five that feed a generator this derivation runs. OFF BY DEFAULT and an
   # EXPERIMENT until the resulting graph is shown equivalent to the one the project produces;
   # see packages.cider-buck2-graph-skeleton and cider-graph-equiv (nix build .#specs-tool).
@@ -90,7 +90,7 @@
   manifest = builtins.fromJSON (builtins.readFile ../submodules.json);
   wantedPins =
     if allPins
-    then map (e: e.path) (builtins.filter (e: lib.hasPrefix "pins/" e.path) manifest)
+    then map (e: e.path) (builtins.filter (e: lib.hasPrefix "vendor/pins/" e.path) manifest)
     else pins;
   # The project as Nix sees it, filtered to what the build can possibly read. BOTH
   # derivations take it whole: the graph dump and the source closure.
@@ -132,7 +132,7 @@
           # The generators and the check suite. buck2 never opens one: the only path
           # starting with scripts/ in any BUCK file is ciderd's
           # scripts/generate-rpc-wrappers.py, which is relative to ITS package and resolves
-          # to pins/ciderd/scripts/, not here. THIS DERIVATION NOW RUNS NO SCRIPT FROM
+          # to vendor/pins/ciderd/scripts/, not here. THIS DERIVATION NOW RUNS NO SCRIPT FROM
           # scripts/ AT ALL: since #99 the dump and the normaliser are nix-built binaries from
           # linux/buildtools/, and each reaches the builder through the store path of its tool,
           # so editing one still rebuilds the graph, which is correct because it changes the
@@ -156,7 +156,7 @@
     };
 
   # THE SKELETON (#56), used only when `skeleton` is set. The same tree with every C family
-  # file emptied except those under buck-src, buck-rust and pins and the five that
+  # file emptied except those under vendor/src, vendor/rust and pins and the five that
   # feed a generator this dump RUNS. linux/buildtools/skeleton holds the rules and
   # cider-codegen-closure is what computed the five.
   #
@@ -195,7 +195,7 @@
       --keep ${../../scripts/buck-codegen-keep.txt}
   '';
 
-  # The tree BOTH passes work on: the pins materialised under buck-src, the vendored Rust
+  # The tree BOTH passes work on: the pins materialised under vendor/src, the vendored Rust
   # crates, and the symlink normalisation buck2 refuses to load without. Shared rather than
   # duplicated, because the graph and the source closure both need it and the two drifting
   # apart would show up as a missing header a long way from here.
@@ -209,27 +209,27 @@
       # the daemon path. Copied rather than symlinked, because buck2 reads them as package
       # files and a glob across a link into the store either misses them or drags the
       # closure in.
-      mkdir -p buck-rust
+      mkdir -p vendor/rust
       for c in ${rustVendor}/*/; do
         name=$(basename "$c")
-        mkdir -p "buck-rust/$name"
-        cp -a --reflink=auto "$c"/. "buck-rust/$name/"
+        mkdir -p "vendor/rust/$name"
+        cp -a --reflink=auto "$c"/. "vendor/rust/$name/"
       done
-      chmod -R u+w buck-rust
-      echo "buck-rust: $(ls buck-rust | wc -l) crate(s)"
+      chmod -R u+w vendor/rust
+      echo "vendor/rust: $(ls vendor/rust | wc -l) crate(s)"
 
       # The same normalisation scripts/buck-src.nu applies on the daemon path: the upstream
       # trees contain symlinks with a "." component and ones whose relative target leaves
       # the cell, and buck2 refuses both. Without it the analysis dies on libnotify's
-      # notify.defs, whose link was written for pins/<pin> and reaches one level
-      # above the root from buck-src/<pin>.
+      # notify.defs, whose link was written for vendor/pins/<pin> and reaches one level
+      # above the root from vendor/src/<pin>.
       #
       # AFTER every pin, not per pin: the rewrite follows the SDK farm's own links to find
-      # what the escaping link means, and those point into pins/<pin>, which only
+      # what the escaping link means, and those point into vendor/pins/<pin>, which only
       # exists once the pin loop has made all of them.
       # --repo: the script runs from the store here, so it cannot find the project by
       # looking above itself, and the rewrite that needs it would quietly do nothing.
-      ${normaliseTool}/bin/cider-src-normalise --repo "$PWD" buck-src/*
+      ${normaliseTool}/bin/cider-src-normalise --repo "$PWD" vendor/src/*
   '';
 
   # PER PIN STORES, NOT THE ASSEMBLED TREE, and this is what stops a source edit rebuilding
@@ -245,7 +245,7 @@
   # NOT THE SAME SITUATION as the per-pin experiment that failed earlier, and the difference
   # is the reason this can work. That one had the LOWERING SYMLINK a pin into place, where 21
   # relative links escape their own pin and dangle once the root moves. Here the CONTENTS are
-  # copied into buck-src/<name>/, the same destination as before, so every relative link
+  # copied into vendor/src/<name>/, the same destination as before, so every relative link
   # resolves exactly as it does today and cider-src-normalise still runs over the assembled
   # result afterwards.
   #
@@ -260,32 +260,32 @@
   materializePins = pkgs.writeShellScript "materialize-pins" (
   lib.concatMapStrings (p: let
         name = builtins.baseNameOf p;
-        # THE buck-src INDIRECTION ONLY WORKS FOR A PIN DIRECTLY UNDER pins, and it
+        # THE vendor/src INDIRECTION ONLY WORKS FOR A PIN DIRECTLY UNDER pins, and it
         # makes THREE assumptions that all break for a nested one:
-        #   the destination buck-src/<name> is keyed on the BASENAME, which is not unique;
+        #   the destination vendor/src/<name> is keyed on the BASENAME, which is not unique;
         #   the back link USED TO hardcode ../../, the depth of the old root, and is now
         #     derived from p below, which is what makes it survive #87 stage 2;
         #   and both together silently CLOBBER an existing pin of the same basename.
         # Measured 2026-08-10, and the paths here are the ones of that day rather than
         # today's: adding src/external/ciderd/xnu-sys/xnu, whose basename is  (NO-PIN-REWRITE)
-        # also xnu, landed it on top of src/external/xnu in buck-src/xnu and the  (NO-PIN-REWRITE)
+        # also xnu, landed it on top of src/external/xnu in vendor/src/xnu and the  (NO-PIN-REWRITE)
         # endpoint died at BXL materialisation with "File not found:
-        # root//src/external/ciderd/buck-src/xnu, included in buck-src/BUCK".  (NO-PIN-REWRITE)
+        # root//src/external/ciderd/vendor/src/xnu, included in vendor/src/BUCK".  (NO-PIN-REWRITE)
         # A nested pin is therefore materialised IN PLACE at its own path instead, which is
         # what cider-src.nix overlayOne already does for every pin. The 147 that do live
         # directly under pins keep the indirection unchanged, byte for byte.
         parts = lib.splitString "/" p;
         # DIRECTLY UNDER THE PIN ROOT, derived rather than hardcoded. This read
         # `length == 3 && parts0 == "src" && parts1 == "external"`, and #87 stage 2 moved the
-        # root to pins/. Writing `length == 2` would have reseated the same landmine one
+        # root to vendor/pins/. Writing `length == 2` would have reseated the same landmine one
         # rename later, so both this and the back link below come from pinRoot.
-        pinRoot = "pins";
+        pinRoot = "vendor/pins";
         rootParts = lib.splitString "/" pinRoot;
         underPinRoot =
           builtins.length parts == builtins.length rootParts + 1
           && lib.take (builtins.length rootParts) parts == rootParts;
         # AND THE BACK LINK, which used to be a literal ../../ because that was the depth of
-        # pins/<name>. Under pins/<name> it is one level, and a wrong back link does
+        # vendor/pins/<name>. Under vendor/pins/<name> it is one level, and a wrong back link does
         # not fail here: it makes the SDK symlink farm dangle and the error surfaces far away,
         # exactly as the comment above describes. One "../" per component of p, minus the
         # component that is the pin itself.
@@ -300,25 +300,25 @@
         cp -a --reflink=auto ${pinSrc p}/. ${p}/
         chmod -R u+w ${p}
       '' else ''
-        echo "materializing buck-src/${name}"
-        # CONTENTS, not the directory: buck-src/<pin>/BUCK is committed since the per-pin
+        echo "materializing vendor/src/${name}"
+        # CONTENTS, not the directory: vendor/src/<pin>/BUCK is committed since the per-pin
         # split, so the destination already exists and `cp -a src dest` would nest the
-        # whole tree one level down as buck-src/<pin>/<pin>.
-        mkdir -p buck-src/${name}
-        cp -a --reflink=auto ${pinSrc p}/. buck-src/${name}/
-        chmod -R u+w buck-src/${name}
+        # whole tree one level down as vendor/src/<pin>/<pin>.
+        mkdir -p vendor/src/${name}
+        cp -a --reflink=auto ${pinSrc p}/. vendor/src/${name}/
+        chmod -R u+w vendor/src/${name}
         # And where the SDK expects it. Darling's SDK is a farm of ~1,900 committed
-        # symlinks into pins/<pin>, and this flake is built WITHOUT git submodules,
+        # symlinks into vendor/pins/<pin>, and this flake is built WITHOUT git submodules,
         # so in the source those all dangle: the staged headers come out empty and the
         # failure lands somewhere far away (libc's vsprintf.c, on a __va_list that no
         # longer has a typedef). One relative symlink per pin makes the farm resolve, and
         # points at the copy that is already there rather than a second one.
         mkdir -p ${builtins.dirOf p}
         rmdir ${p} 2>/dev/null || true
-        ln -sfn ${backLink}buck-src/${name} ${p}
+        ln -sfn ${backLink}vendor/src/${name} ${p}
       '') wantedPins
   );
-  # The vendored Rust crates, which buck-rust/BUCK globs and which are gitignored like the
+  # The vendored Rust crates, which vendor/rust/BUCK globs and which are gitignored like the
   # pins: without them the analysis fails on the first crate it loads, since a source
   # attribute has to name a file that exists.
   rustVendor = import ./rust-vendor.nix {inherit pkgs;};

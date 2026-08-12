@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/pal_native.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/pal_native.h

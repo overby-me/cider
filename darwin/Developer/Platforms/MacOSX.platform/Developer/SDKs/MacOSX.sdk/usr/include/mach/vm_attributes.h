@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/vm_attributes.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/vm_attributes.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/cctools-port/cctools/include/mach-o/arch.h
+../../../../../../../../../../vendor/pins/cctools-port/cctools/include/mach-o/arch.h

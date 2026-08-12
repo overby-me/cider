@@ -10,8 +10,8 @@
 #
 #   dependency resolution  ->  the Cargo.lock is already resolved; nix/devShell.nix unpacks
 #                              every locked crate into $DARLING_RUST_VENDOR and
-#                              scripts/buck-rust-vendor.nu materializes it into buck-rust/,
-#                              exactly as buck-src/ holds the pinned C sources
+#                              scripts/buck-rust-vendor.nu materializes it into vendor/rust/,
+#                              exactly as vendor/src/ holds the pinned C sources
 #   feature flags          ->  the `features` attribute, which becomes --cfg feature="x"
 #   build.rs               ->  the `env` attribute for the `cargo:rustc-env=` lines, and the
 #                              port's own cc rules for anything a build script compiles
@@ -293,7 +293,7 @@ bindgen_gen = rule(
 # worse rather than better (14, because the allocator shims join them). `--crate-type staticlib`
 # bundles std into the archive: of the 191 symbols the archive cannot satisfy, ZERO are
 # Rust-mangled. They are libSystem C symbols -- malloc, pthread_*, __NSGetArgv, dispatch_* --
-# which is exactly the set every C guest binary already gets from //buck-src:system_final.
+# which is exactly the set every C guest binary already gets from //vendor/src:system_final.
 #
 # SO THERE IS NO -syslibroot AND NO BUILT PREFIX HERE, which is what route A needed. The archive
 # goes into darwin_binary's `objs`, and dylibs arrive the way they always do, as

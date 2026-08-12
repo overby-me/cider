@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/errno.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/errno.h

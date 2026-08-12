@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/osfmk/mach/i386/vm_types.h
+../../../../../../../../../../../vendor/pins/xnu/osfmk/mach/i386/vm_types.h

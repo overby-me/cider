@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libkern/libkern/section_keywords.h
+../../../../../../../../../../vendor/pins/xnu/libkern/libkern/section_keywords.h

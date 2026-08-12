@@ -3,7 +3,7 @@ load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root")
 # cider-coredump: turns a Linux core dump of a Darling process into a Mach-O core the
 # Darwin tools can read. A HOST program, so it builds with the native toolchain, but it
 # parses Mach-O and therefore needs a narrow slice of Darwin headers -- see
-# //buck-src:mldr_include and //linux/startup:mldr_shim_headers for why that slice is
+# //vendor/src:mldr_include and //linux/startup:mldr_shim_headers for why that slice is
 # curated rather than "the SDK".
 cc_header_root(
     name = "coredump_headers",
@@ -39,7 +39,7 @@ cc_binary(
         "//darwin/include:cider_config",
         ":coredump_headers",
         "//linux/startup:mldr_shim_headers",
-        "//buck-src:mldr_include",
+        "//vendor/src:mldr_include",
     ],
     visibility = ["PUBLIC"],
 )

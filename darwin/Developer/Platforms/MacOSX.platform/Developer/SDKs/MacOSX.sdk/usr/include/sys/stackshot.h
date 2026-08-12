@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/stackshot.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/stackshot.h

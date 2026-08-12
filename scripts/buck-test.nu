@@ -268,7 +268,7 @@ def main [flag?: string] {
     }
 
     # The pinned upstream trees the port compiles (migcom, the SDK header roots).
-    if (not (test_d "buck-src/bootstrap_cmds")) or (not (test_d "buck-src/xnu")) {
+    if (not (test_d "vendor/src/bootstrap_cmds")) or (not (test_d "vendor/src/xnu")) {
         say "materializing pinned sources (scripts/buck-src.nu) ..."
         do { ^./scripts/buck-src.nu } | ignore
     }
@@ -280,7 +280,7 @@ def main [flag?: string] {
     # regression that failed all 1,798 lowered targets and was visible only 90 minutes into a
     # build. On 2026-08-10 the identical thing happened again for a different reason: a change
     # to the pin staging lines shipped with `rm -f` against a directory and a
-    # buck-src/<basename> collision, and BOTH were plainly readable in the generated script,
+    # vendor/src/<basename> collision, and BOTH were plainly readable in the generated script,
     # yet they were found by two endpoint runs costing about three hours between them.
     #
     # A correct check nobody calls is worth nothing, so it is called here.
@@ -462,32 +462,32 @@ def main [flag?: string] {
     let targets = [
         //darwin/libsimple:libsimple_ciderd
         //darwin/libsimple:libsimple_cider
-        //buck-src:migcom
+        //vendor/src:migcom
         //linux/startup:rtsig_header
-        //pins/ciderd:dserver_rpc
-        //pins/ciderd/xnu-sys:ciderd_xnu_sys
-        //pins/ciderd/tools:dserverdbg
+        //vendor/pins/ciderd:dserver_rpc
+        //vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys
+        //vendor/pins/ciderd/tools:dserverdbg
         //linux/server:xnu_sys_lib
         //darwin/libsimple:libsimple_cider_dylib
         //tests/buck2/firstpass:a
         //tests/buck2/firstpass:b
         //tests/buck2/firstpass:umbrella
-        //buck-src:system_blocks_firstpass
-        //buck-src:keymgr_firstpass
-        //buck-src:system_malloc_firstpass
-        //buck-src:system_pthread_firstpass
-        //buck-src/libc:system_c_firstpass
-        //buck-src/xnu:system_kernel_firstpass
-        //buck-src:system_blocks_final
-        //buck-src/xnu:system_kernel_final
-        //buck-src/libplatform:platform_firstpass
-        //buck-src:compiler_rt_firstpass
-        //buck-src:system_dyld_firstpass
-        //buck-src:system_asl_firstpass
-        //buck-src:system_coretls_firstpass
-        //buck-src:asl_ipc_mig
+        //vendor/src:system_blocks_firstpass
+        //vendor/src:keymgr_firstpass
+        //vendor/src:system_malloc_firstpass
+        //vendor/src:system_pthread_firstpass
+        //vendor/src/libc:system_c_firstpass
+        //vendor/src/xnu:system_kernel_firstpass
+        //vendor/src:system_blocks_final
+        //vendor/src/xnu:system_kernel_final
+        //vendor/src/libplatform:platform_firstpass
+        //vendor/src:compiler_rt_firstpass
+        //vendor/src:system_dyld_firstpass
+        //vendor/src:system_asl_firstpass
+        //vendor/src:system_coretls_firstpass
+        //vendor/src:asl_ipc_mig
         //darwin/duct:system_duct_firstpass
-        //pins/libtrace:system_trace_firstpass
+        //vendor/pins/libtrace:system_trace_firstpass
         //darwin/libsystem_coreservices:system_coreservices_firstpass
     ]
     if $verbose {
@@ -544,7 +544,7 @@ def main [flag?: string] {
     }
 
     say "== migcom (the MIG toolchain) =="
-    let migcom = (out_of //buck-src:migcom)
+    let migcom = (out_of //vendor/src:migcom)
     if (is_exec $migcom) { ok "migcom is executable" } else { bad "migcom missing" }
     let ver = (lines_of (cap2 [$migcom -version]) | get 0? | default "")
     if $ver == "1.0" { ok $"migcom -version = ($ver)" } else { bad $"migcom -version = '($ver)', expected 1.0" }
@@ -566,7 +566,7 @@ def main [flag?: string] {
     }
 
     say "== xnu-sys =="
-    let dt = (out_of //pins/ciderd/xnu-sys:ciderd_xnu_sys)
+    let dt = (out_of //vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys)
     if (test_f $dt) { ok "archive exists" } else { bad "archive missing" }
     let members = (count_lines_cmd [ar t $dt])
     # WAS 93 (66 hand-written + 26 MIG-generated + pthread/kern_synch.c) BEFORE #71. That port
@@ -594,7 +594,7 @@ def main [flag?: string] {
     }
 
     say "== dserverdbg (generated RPC source + a forced -include) =="
-    let dbg = (out_of //pins/ciderd/tools:dserverdbg)
+    let dbg = (out_of //vendor/pins/ciderd/tools:dserverdbg)
     if (is_exec $dbg) { ok "dserverdbg is executable" } else { bad "dserverdbg missing" }
     # It refuses to run without setuid, which is exactly the message we expect: the
     # binary links and its RPC surface initialized enough to reach that check.
@@ -645,7 +645,7 @@ def main [flag?: string] {
     }
 
     say "== libsystem_blocks: the first real libSystem sublibrary =="
-    let blocks = (out_of //buck-src:system_blocks_firstpass)
+    let blocks = (out_of //vendor/src:system_blocks_firstpass)
     let bid = (macho_id $blocks)
     if $bid == "/usr/lib/system/libsystem_blocks.dylib" { ok $"install_name is ($bid)" } else { bad $"install_name is '($bid)'" }
     let blocks_syms = (extern_syms $blocks)
@@ -663,16 +663,16 @@ def main [flag?: string] {
     # target:install_name, from the reference build's -dylib_file map. Every one is
     # checked for being a Mach-O dylib carrying the right install_name.
     let pairs = [
-        "//buck-src:system_blocks_firstpass:/usr/lib/system/libsystem_blocks.dylib"
-        "//buck-src:keymgr_firstpass:/usr/lib/system/libkeymgr.dylib"
-        "//buck-src:system_malloc_firstpass:/usr/lib/system/libsystem_malloc.dylib"
-        "//buck-src:system_pthread_firstpass:/usr/lib/system/libsystem_pthread.dylib"
-        "//buck-src:system_asl_firstpass:/usr/lib/system/libsystem_asl.dylib"
-        "//buck-src/libc:system_c_firstpass:/usr/lib/system/libsystem_c.dylib"
-        "//buck-src/xnu:system_kernel_firstpass:/usr/lib/system/libsystem_kernel.dylib"
-        "//buck-src:system_coretls_firstpass:/usr/lib/system/libsystem_coretls.dylib"
+        "//vendor/src:system_blocks_firstpass:/usr/lib/system/libsystem_blocks.dylib"
+        "//vendor/src:keymgr_firstpass:/usr/lib/system/libkeymgr.dylib"
+        "//vendor/src:system_malloc_firstpass:/usr/lib/system/libsystem_malloc.dylib"
+        "//vendor/src:system_pthread_firstpass:/usr/lib/system/libsystem_pthread.dylib"
+        "//vendor/src:system_asl_firstpass:/usr/lib/system/libsystem_asl.dylib"
+        "//vendor/src/libc:system_c_firstpass:/usr/lib/system/libsystem_c.dylib"
+        "//vendor/src/xnu:system_kernel_firstpass:/usr/lib/system/libsystem_kernel.dylib"
+        "//vendor/src:system_coretls_firstpass:/usr/lib/system/libsystem_coretls.dylib"
         "//darwin/duct:system_duct_firstpass:/usr/lib/system/libsystem_duct.dylib"
-        "//pins/libtrace:system_trace_firstpass:/usr/lib/system/libsystem_trace.dylib"
+        "//vendor/pins/libtrace:system_trace_firstpass:/usr/lib/system/libsystem_trace.dylib"
         "//darwin/libsystem_coreservices:system_coreservices_firstpass:/usr/lib/system/libsystem_coreservices.dylib"
     ]
     for pair in $pairs {
@@ -696,7 +696,7 @@ def main [flag?: string] {
     # assembly. _pthread_create comes from one group and __pthread_list_lock from
     # another, so this also guards against a dylib that names only some groups (which
     # links, but leaves symbols undefined).
-    let pth = (out_of //buck-src:system_pthread_firstpass)
+    let pth = (out_of //vendor/src:system_pthread_firstpass)
     let pth_syms = (defined_syms $pth)
     for sym in [_pthread_create __pthread_list_lock] {
         if (has $pth_syms $sym) { ok $"libsystem_pthread defines ($sym)" } else { bad $"libsystem_pthread is missing ($sym)" }
@@ -705,7 +705,7 @@ def main [flag?: string] {
     # libsystem_c is the big one: 641 objects from 43 cmake object libraries, each of
     # which can be several flag groups. Spot-check that the C library is really in
     # there rather than an empty shell that happened to link.
-    let libc_dylib = (out_of //buck-src/libc:system_c_firstpass)
+    let libc_dylib = (out_of //vendor/src/libc:system_c_firstpass)
     let libc_syms = (extern_syms $libc_dylib)
     let libc_count = (wc_l ($libc_syms | str join "\n"))
     if $libc_count >= 1300 { ok $"libsystem_c exports ($libc_count) symbols" } else { bad $"libsystem_c exports only ($libc_count) symbols" }
@@ -715,11 +715,11 @@ def main [flag?: string] {
 
     # asl's sources include <asl_ipc.h>, which MIG generates -- the same include that
     # stalls nix-ninja's full-graph build.
-    let aslmig = (out_of //buck-src:asl_ipc_mig)
+    let aslmig = (out_of //vendor/src:asl_ipc_mig)
     if (test_f $"($aslmig)/asl_ipc.h") { ok "guest MIG generated asl_ipc.h" } else { bad "asl_ipc.h was not generated" }
 
     say "== libsystem_kernel: the syscall boundary =="
-    let krn = (out_of //buck-src/xnu:system_kernel_firstpass)
+    let krn = (out_of //vendor/src/xnu:system_kernel_firstpass)
     let krn_syms = (extern_syms $krn)
     let kn = (wc_l ($krn_syms | str join "\n"))
     if $kn >= 1300 { ok $"libsystem_kernel exports ($kn) symbols" } else { bad $"libsystem_kernel exports only ($kn) symbols" }
@@ -744,7 +744,7 @@ def main [flag?: string] {
     # libsystem_blocks linked against its four siblings' FIRSTPASS dylibs, the way
     # cmake's add_circular does. What proves the mechanism is not that it links, but
     # WHAT it recorded: the siblings' install_names, and nothing left undefined.
-    let fin = (out_of //buck-src:system_blocks_final)
+    let fin = (out_of //vendor/src:system_blocks_final)
     let fid = (macho_id $fin)
     if $fid == "/usr/lib/system/libsystem_blocks.dylib" { ok $"final pass install_name is ($fid)" } else { bad $"final pass install_name is '($fid)'" }
     let floads = (load_dylibs $fin)
@@ -772,7 +772,7 @@ def main [flag?: string] {
         ok "final pass is flat-namespace, as the reference links it"
     }
     # The kernel's final pass IS two-level, and there nothing may be left unbound.
-    let kfin = (out_of //buck-src/xnu:system_kernel_final)
+    let kfin = (out_of //vendor/src/xnu:system_kernel_final)
     if ((cap [llvm-objdump --macho --private-headers $kfin]) | str contains "TWOLEVEL") {
         ok "the kernel's final pass is two-level"
     } else {
@@ -782,7 +782,7 @@ def main [flag?: string] {
     if $unbound == 0 { ok "the kernel's final pass leaves nothing unbound" } else { bad $"the kernel's final pass leaves ($unbound) symbols unbound" }
 
     say "== the kernel's FINAL pass (the syscall boundary) =="
-    let kf = (out_of //buck-src/xnu:system_kernel_final)
+    let kf = (out_of //vendor/src/xnu:system_kernel_final)
     let kfid = (macho_id $kf)
     if $kfid == "/usr/lib/system/libsystem_kernel.dylib" { ok $"install_name is ($kfid)" } else { bad $"install_name is '($kfid)'" }
     let kloads = (load_dylibs $kf)
@@ -809,7 +809,7 @@ def main [flag?: string] {
     # Nothing is expected to fail any more: the layer outside the circular cluster
     # (libc++, libc++abi, libsystem_dnssd, libsystem_configuration, libquarantine,
     # libremovefile, libcopyfile, libsystem_networkextension) is ported too.
-    let dylib_pkgs = "//buck-src/... + //darwin/duct: + //darwin/libm: + //darwin/libcache: + //darwin/sandbox: + //darwin/launchd: + //pins/libtrace: + //darwin/libsystem_coreservices: + //darwin/lib: + //darwin/quarantine: + //darwin/networkextension:"
+    let dylib_pkgs = "//vendor/src/... + //darwin/duct: + //darwin/libm: + //darwin/libcache: + //darwin/sandbox: + //darwin/launchd: + //vendor/pins/libtrace: + //darwin/libsystem_coreservices: + //darwin/lib: + //darwin/quarantine: + //darwin/networkextension:"
     # By RULE KIND, not by name: check_dylib is an EXECUTABLE whose name ends in _dylib,
     # and a name match swept it in here.
     let all_dylibs = (cap [buck2 uquery $"kind\('darwin_dylib', ($dylib_pkgs)\)"] | split row --regex '\s+' | where {|t| $t != "" })
@@ -867,13 +867,13 @@ def main [flag?: string] {
     say "== libSystem's umbrella records its members =="
     # The umbrella reexports each member, so its LC_REEXPORT_DYLIB entries are the
     # check that the cluster is wired together rather than merely built.
-    let su = (out_of //buck-src:system_final)
+    let su = (out_of //vendor/src:system_final)
     let reex = (lines_of (cap [llvm-objdump --macho --private-headers $su]) | where {|l| $l | str contains "LC_REEXPORT_DYLIB" } | length)
     if $reex >= 33 { ok $"libSystem reexports ($reex) dylibs" } else { bad $"libSystem reexports only ($reex) dylibs" }
     # The Objective-C runtime is the deepest consumer of that umbrella: it links only
     # against libSystem.B.dylib plus libc++/libc++abi, so its message dispatch entry
     # point being defined means the reexport chain actually resolves.
-    let oc = (out_of //buck-src/objc4:objc_final)
+    let oc = (out_of //vendor/src/objc4:objc_final)
     if (has (extern_syms $oc) "_objc_msgSend") {
         ok "libobjc defines _objc_msgSend"
     } else {
@@ -887,7 +887,7 @@ def main [flag?: string] {
     # will not have to resolve anything that is missing.
     #
     # Discovered from the graph, like the dylibs: every executable target that exists.
-    let exe_pkgs = "//buck-src/... + //darwin/shellspawn: + //darwin/vchroot: + //darwin/launchd:"
+    let exe_pkgs = "//vendor/src/... + //darwin/shellspawn: + //darwin/vchroot: + //darwin/launchd:"
     # dyld is a DYLINKER, not an EXECUTE image, and has its own checks below.
     let exe_skip = ["dyld"]
     let all_exes = (cap [buck2 uquery $"kind\('darwin_binary', ($exe_pkgs)\)"] | split row --regex '\s+' | where {|t| $t != "" })
@@ -911,7 +911,7 @@ def main [flag?: string] {
     # MIG servers, and which generated stub each protocol contributes is not guessable --
     # launchd compiles jobServer.c but job_forwardUser.c, from two protocols that both
     # declare job_t.
-    for t in [//darwin/launchd:launchd //buck-src:notifyd] {
+    for t in [//darwin/launchd:launchd //vendor/src:notifyd] {
         let hdr = (macho_hdr (out_of $t))
         if ($hdr | str contains "EXECUTE") and ($hdr | str contains "NOUNDEFS") {
             ok $"($t | split row ':' | last) links with nothing undefined"
@@ -928,9 +928,9 @@ def main [flag?: string] {
     # reference aliases _OBJC_CLASS_$___NSCFConstantString to
     # ___CFConstantStringClassReference on the link line.
     let specs = [
-        "//buck-src/corefoundation:CoreFoundation_dylib=/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
+        "//vendor/src/corefoundation:CoreFoundation_dylib=/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
         "//darwin/frameworks:DirectoryService_dylib=/System/Library/Frameworks/DirectoryService.framework/Versions/A/DirectoryService"
-        "//buck-src:icucore_dylib=/usr/lib/libicucore.A.dylib"
+        "//vendor/src:icucore_dylib=/usr/lib/libicucore.A.dylib"
     ]
     for spec in $specs {
         let t = ($spec | split row "=" | first)
@@ -942,7 +942,7 @@ def main [flag?: string] {
             bad $"($t | split row ':' | last) id is '($id)', want ($want)"
         }
     }
-    let cf_syms = (defined_syms (out_of //buck-src/corefoundation:CoreFoundation_dylib) | uniq | sort)
+    let cf_syms = (defined_syms (out_of //vendor/src/corefoundation:CoreFoundation_dylib) | uniq | sort)
     if (has $cf_syms "___CFConstantStringClassReference") {
         ok "CoreFoundation defines ___CFConstantStringClassReference (the -Wl,-alias took)"
     } else {
@@ -950,7 +950,7 @@ def main [flag?: string] {
     }
     # cctools' tools are the ones that prove the static archive path: they link
     # liblibstuff.a, and strings without libstuff would silently be a stub.
-    let st_syms = (defined_syms (out_of //buck-src:strip) | uniq | sort)
+    let st_syms = (defined_syms (out_of //vendor/src:strip) | uniq | sort)
     if (has $st_syms "_main") { ok "strip defines _main" } else { bad "strip has no _main" }
 
     say "== the STATIC tier, and dyld =="
@@ -959,13 +959,13 @@ def main [flag?: string] {
     # objects (an empty one links fine and silently drops symbols).
     mut n_ar = 0
     let static_targets = [
-        //buck-src:compiler_rt_static64 //buck-src:corecrypto_static
-        //buck-src:cxx_static //buck-src:cxxabi_static //buck-src:keymgr_static
-        //buck-src:libc_static //buck-src:libc_static64 //buck-src:macho_static
-        //buck-src:platform_static64 //buck-src:pthread_static
-        //buck-src:system_blocks_static //darwin/duct:system_duct_static
-        //buck-src:system_kernel_static64 //darwin/libm:system_m_static
-        //pins/libtrace:system_trace_static //buck-src:unwind_static
+        //vendor/src:compiler_rt_static64 //vendor/src:corecrypto_static
+        //vendor/src:cxx_static //vendor/src:cxxabi_static //vendor/src:keymgr_static
+        //vendor/src:libc_static //vendor/src:libc_static64 //vendor/src:macho_static
+        //vendor/src:platform_static64 //vendor/src:pthread_static
+        //vendor/src:system_blocks_static //darwin/duct:system_duct_static
+        //vendor/src:system_kernel_static64 //darwin/libm:system_m_static
+        //vendor/pins/libtrace:system_trace_static //vendor/src:unwind_static
     ]
     for t in $static_targets {
         let f = (out_of $t)
@@ -979,7 +979,7 @@ def main [flag?: string] {
     if $n_ar == 16 { ok $"($n_ar) static archives hold objects" } else { bad $"only ($n_ar) of 16 static archives hold objects" }
     # The kernel archive needs the generated rpc.c in a flag group of its own, exactly as
     # the dylib tier does; without it dyld comes out undefined against dserver_rpc_*.
-    let ka = (out_of //buck-src:system_kernel_static64)
+    let ka = (out_of //vendor/src:system_kernel_static64)
     let ka_syms = (defined_syms $ka | uniq | sort)
     if (has $ka_syms "_dserver_rpc_tid_for_thread") {
         ok "the static kernel defines _dserver_rpc_tid_for_thread"
@@ -987,7 +987,7 @@ def main [flag?: string] {
         bad "the static kernel is missing the generated rpc.c"
     }
 
-    let dy = (out_of //buck-src/dyld:dyld)
+    let dy = (out_of //vendor/src/dyld:dyld)
     let dhdr = (macho_hdr $dy)
     if ($dhdr | str contains "DYLINKER") and ($dhdr | str contains "NOUNDEFS") {
         ok "dyld is a Mach-O DYLINKER with nothing undefined"
@@ -1107,17 +1107,17 @@ def main [flag?: string] {
     # single block of install entries left, landed together because they only ever build
     # together. libdtrace also carries the committed lex/yacc output (gen/libdtrace), so a
     # build here proves those staged as sources rather than being regenerated.
-    for t in [//buck-src:ctf //buck-src:elf //buck-src:dwarf] {
+    for t in [//vendor/src:ctf //vendor/src:elf //vendor/src:dwarf] {
         let a = (out_of $t)
         if (test_s $a) { ok $"built ($t | split row ':' | last) archive" } else { bad $"($t) did not build" }
     }
-    let dtl = (out_of //buck-src:libdtrace_dylib)
+    let dtl = (out_of //vendor/src:libdtrace_dylib)
     if ((cap [file -bL $dtl]) | str contains "Mach-O 64-bit x86_64 dynamically linked shared library") {
         ok "libdtrace.dylib is a Mach-O x86_64 dylib"
     } else {
         bad "libdtrace.dylib is not a Mach-O x86_64 dylib"
     }
-    for t in [//buck-src:dtrace //buck-src:lockstat //buck-src:plockstat //buck-src:usdtheadergen] {
+    for t in [//vendor/src:dtrace //vendor/src:lockstat //vendor/src:plockstat //vendor/src:usdtheadergen] {
         let b = (out_of $t)
         if ((cap [file -bL $b]) | str contains "Mach-O 64-bit x86_64 executable") {
             ok $"built ($t | split row ':' | last)"
@@ -1290,8 +1290,8 @@ def main [flag?: string] {
     let lver = (cap2 [(out_of //linux/launcher:cider) --version])
     if ($lver | str contains "Rust launcher") { ok "cider --version runs" } else { bad "cider --version failed" }
 
-    say "== buck-src normalisation (what the Nix endpoint materialises) =="
-    # The host builds from buck-src as it stands; the Nix endpoint re-runs
+    say "== vendor/src normalisation (what the Nix endpoint materialises) =="
+    # The host builds from vendor/src as it stands; the Nix endpoint re-runs
     # cider-src-normalise over its own copy first. So a bug in that script is invisible on
     # the host and fatal in Nix, which is exactly what happened: expand_dir_links() followed
     # JavaScriptCore's DerivedSources/JavaScriptCore/JavaScriptCore -> ../.. into the tree it
@@ -1299,9 +1299,9 @@ def main [flag?: string] {
     # ENAMETOOLONG in `except OSError` and reported expanding nothing. buck2 then crawled the
     # wreckage and aquery died with "File name too long".
     #
-    # Tested on a COPY: buck-src holds materialized pins and this must never write to them.
+    # Tested on a COPY: vendor/src holds materialized pins and this must never write to them.
     let norm_t = (mktemp -d)
-    do { ^cp -a buck-src/JavaScriptCore/DerivedSources $"($norm_t)/" } | ignore
+    do { ^cp -a vendor/src/JavaScriptCore/DerivedSources $"($norm_t)/" } | ignore
     ^chmod -R u+w $norm_t
     let before = (wc_l (cap [find $norm_t -type d]))
     # THE BINARY, not an imported function: since #99 the normaliser is Rust
@@ -1326,7 +1326,7 @@ def main [flag?: string] {
 
     # The other half of that script, and the half that cost a gate run. Upstream pins link
     # into UPSTREAM's layout: the security pin ships 2,078 links naming
-    # pins/darlingserver/duct-tape/xnu, which is where that tree lives in Darling and
+    # vendor/pins/darlingserver/duct-tape/xnu, which is where that tree lives in Darling and
     # has not existed here since the Cider rename. A symlink TARGET is not file content, so no
     # grep and no rename sweep can see it; it showed up only as a buck2 package load failure
     # naming a path that is nowhere in the tree. Assert the translation BOTH ways: a renamed
@@ -1347,11 +1347,11 @@ def main [flag?: string] {
 
     # And nothing in the materialized tree may still NAME a renamed first-party path. This is
     # the check the grep-based sweeps could never do.
-    let stale = (^bash -c "find buck-src -type l -printf '%l\\n' 2>/dev/null | grep -cE 'darlingserver|duct-tape' || true" | str trim)
+    let stale = (^bash -c "find vendor/src -type l -printf '%l\\n' 2>/dev/null | grep -cE 'darlingserver|duct-tape' || true" | str trim)
     if $stale == "0" {
-        ok "no symlink target under buck-src names a pre-rename first-party path"
+        ok "no symlink target under vendor/src names a pre-rename first-party path"
     } else {
-        bad $"($stale) symlink targets under buck-src still name darlingserver or duct-tape"
+        bad $"($stale) symlink targets under vendor/src still name darlingserver or duct-tape"
     }
 
     # THE SAME TABLE LIVES IN TWO PLACES, and that is what let the ninth rename break through.
@@ -1361,13 +1361,13 @@ def main [flag?: string] {
     # failed its lexists test and skipped the carry IN SILENCE. That cost a full endpoint run
     # to find. The tables must stay identical or the same class of bug returns quietly.
     # THE PATTERN CARRIES THE PIN ROOT, so #87 stage 2 had to move it here too. It was
-    # anchored on the literal src/external (NO-PIN-REWRITE), and after the move both tables say pins/, so the
+    # anchored on the literal src/external (NO-PIN-REWRITE), and after the move both tables say vendor/pins/, so the
     # pattern would have matched NOTHING IN BOTH FILES and the comparison would have been ""
     # against "". The guard below catches that rather than passing vacuously, but the message
     # it prints blames cider-src-normalise, which would have sent the next reader to the
     # wrong file entirely.
-    let norm = (^bash -c "grep -oE '\\(\"pins/[a-z/.-]+\", *\"pins/[a-z/.-]+\"\\)' linux/buildtools/src-normalise/src/main.rs | tr -d ' \"()' | sort" | str trim)
-    let lower = (^bash -c "grep -oE '\\(\"pins/[a-z/.-]+\", *\"pins/[a-z/.-]+\"\\)' nix/lib/ciderBuck2Lower.nix | tr -d ' \"()' | sort" | str trim)
+    let norm = (^bash -c "grep -oE '\\(\"vendor/pins/[a-z/.-]+\", *\"vendor/pins/[a-z/.-]+\"\\)' linux/buildtools/src-normalise/src/main.rs | tr -d ' \"()' | sort" | str trim)
+    let lower = (^bash -c "grep -oE '\\(\"vendor/pins/[a-z/.-]+\", *\"vendor/pins/[a-z/.-]+\"\\)' nix/lib/ciderBuck2Lower.nix | tr -d ' \"()' | sort" | str trim)
     let n_entries = ($norm | lines | length)
     if $norm == "" {
         bad "could not read FIRST_PARTY_RENAMES out of cider-src-normalise"

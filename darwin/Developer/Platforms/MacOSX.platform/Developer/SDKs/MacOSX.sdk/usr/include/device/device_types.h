@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/device/device_types.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/device/device_types.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/kpc.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/kpc.h

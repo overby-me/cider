@@ -3,7 +3,7 @@
 # Every escape root must resolve to a real tree, because a missing one is dropped IN SILENCE.
 #
 # WHY THIS EXISTS, and it is one specific day of lost work. #83 de-vendored
-# pins/ciderd/xnu-sys/xnu: the tree left the repo and became a pin. escapeSrc in
+# vendor/pins/ciderd/xnu-sys/xnu: the tree left the repo and became a pin. escapeSrc in
 # nix/lib/ciderBuck2Lower.nix read every escape root out of srcRaw behind a pathExists guard,
 # so the guard simply went false and the carry stopped happening. No warning, no eval error,
 # nothing in any diff. The security pin ships
@@ -28,7 +28,7 @@
 #
 # THE HONEST TEST FOR "IS IT IN THE REPO" IS jj file list, NOT a path existence test.
 # scripts/buck-src.nu materializes pins at their manifest paths, so the de-vendored tree is
-# sitting on disk at pins/ciderd/xnu-sys/xnu right now with 2,077 files in it. `path exists`
+# sitting on disk at vendor/pins/ciderd/xnu-sys/xnu right now with 2,077 files in it. `path exists`
 # says yes and means nothing: srcRaw under a flake build is a store copy of TRACKED files, which
 # is why the guard went false in the first place. Ask jj, which reports 0 tracked files there.
 #
@@ -44,7 +44,7 @@
 #   ciderBuck2Lower :1004 per-label group filter  elements come from the same readDir, so they
 #                                                 exist by construction. The one exception is
 #                                                 deliberate: groupSplit.shared still names
-#                                                 pins/ciderd/xnu-sys/xnu, which is a pin
+#                                                 vendor/pins/ciderd/xnu-sys/xnu, which is a pin
 #                                                 now, so this guard drops it and the PIN route
 #                                                 supplies it instead. That dead table entry is a
 #                                                 known deferred cleanup, not a defect.
@@ -53,7 +53,7 @@
 #                                                 this would still pass. The counts printed below
 #                                                 are the tell, and the scenario needs the whole
 #                                                 pin tree to disappear, which is not quiet.
-#   ciderBuck2Lower :1111 :1130  buck-rust, buck-src   not checked, and they do not need it:
+#   ciderBuck2Lower :1111 :1130  vendor/rust, vendor/src   not checked, and they do not need it:
 #                                                 those stage every pin, so losing them fails
 #                                                 immediately and everywhere rather than silently.
 #   cider-src :184 :211   patch application       covered by buck-pin-patches-check.nu.
@@ -69,7 +69,7 @@
 # splits on lines. Verified to produce the same output on the real tree; it is strictly more
 # correct, and a path with a space under a PIN would have made the python wrong.
 
-const PIN_ROOT = "pins"
+const PIN_ROOT = "vendor/pins"
 
 def tracked-files [repo: string] {
   let out = (do -i { ^jj -R $repo file list } | complete)
@@ -107,7 +107,7 @@ def literal-roots [lowering: string] {
 # bug that prompted all this.
 #
 # Worth being exact about, since a check credited with catching something it cannot is worse than
-# no check. At the moment the build broke, pins/ciderd/xnu-sys/xnu was already a manifest entry
+# no check. At the moment the build broke, vendor/pins/ciderd/xnu-sys/xnu was already a manifest entry
 # WITH a hash, so the loop would have printed PIN STORE and exited 0. The defect was not an
 # unresolvable root; it was that escapeSrc never consulted the pin, reading only srcRaw behind a
 # pathExists guard.
@@ -138,7 +138,7 @@ def main [
   # pinPaths is keyed by manifest path and only entries with a hash get a store, which is what
   # the `or null` fallback in escapeSrc actually looks up.
   let pin_stores = ($manifest | where {|e| ($e | get -o hash) != null } | get path)
-  let pin_names = ($manifest | where {|e| $e.path | str starts-with "pins/" } | get path | each {|p| $p | path basename })
+  let pin_names = ($manifest | where {|e| $e.path | str starts-with "vendor/pins/" } | get path | each {|p| $p | path basename })
 
   # THE INDEX IS DERIVED, because it is a path DEPTH and #87 stage 2 changed it. This read
   # component 2, the position of <name> under the old src/external/<name>. A textual sweep can

@@ -94,7 +94,7 @@
           inherit pkgs;
           overby = inputs.overby;
         }).buildTarget
-          { target = "//pins/ciderd/xnu-sys:ciderd_xnu_sys"; };
+          { target = "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys"; };
 
       # A mid-size probe for the Nix-lowered path: darwin/duct's static archive is 8
       # sources in a 165-line BUCK file, between libsimple (80 lines) and xnu-sys
@@ -111,7 +111,7 @@
 
       # Two probes for where the Nix-lowered path runs out of road. Both are
       # trivial targets; what differs is the FILE the interpreter has to read:
-      # darwin/BUCK loads the generated SDK maps (4178 entries), buck-src/BUCK is
+      # darwin/BUCK loads the generated SDK maps (4178 entries), vendor/src/BUCK is
       # 32k lines. If a trivial target in a big file overflows, the wall is parsing,
       # not the target -- which is how the interpreter's recursive loops were found.
       #
@@ -133,7 +133,7 @@
           inherit pkgs;
           overby = inputs.overby;
         }).buildTarget
-          { target = "//buck-src:mig.sh"; };
+          { target = "//vendor/src:mig.sh"; };
 
       # The port's action graph, dumped by real buck2 in a pure derivation, for the
       # "graph then lower" endpoint (plan/buck2-port.md phase 3). One opt-in IFD: this
@@ -197,13 +197,13 @@
       #            daemon failed with 83 rustc errors on an unresolved crate::bindings. The
       #            codegen closure was rooted only at staged farms and never saw it.
       #   3. 431s  with the closure widened to every generator CATEGORY, a long list of
-      #            buck-src _xtrace_mig_obj compiles plus dyld, compiler_rt_final and
+      #            vendor/src _xtrace_mig_obj compiles plus dyld, compiler_rt_final and
       #            system_dyld_final fail.
       #   4. 539s  THE ACTUAL CAUSE, once the dump stopped truncating buck2 stderr to the last
       #            1500 characters. Inside the BXL step buck2 prints
       #              Waiting on //linux/server:xnu_sys_bindings -- action (bindgen ...)
       #              Waiting on //linux/hosttools:cider-coredump -- action (cxx_compile ...)
-      #              Action failed: //buck-src:libtrustd_obj (c_compile TrustURLSessionCache.m)
+      #              Action failed: //vendor/src:libtrustd_obj (c_compile TrustURLSessionCache.m)
       #            on Foundation/NSAppleEventDescriptor.h "expected a type".
       #
       # SO THE DUMP COMPILES, and that is the blocker rather than the keep list. Widening the
@@ -270,7 +270,7 @@
         }).final;
 
       # The same endpoint on a target that needs the PINS: migcom is the MIG compiler
-      # the port's every codegen edge runs, and it lives in buck-src -- so loading its
+      # the port's every codegen edge runs, and it lives in vendor/src -- so loading its
       # package coerces the SDK maps and all 147 pinned trees have to be there.
       #
       #   systemd-run --user --scope -p MemoryMax=8G nix build .#cider-buck2-migcom
@@ -289,7 +289,7 @@
             graph = import ./nix/lib/ciderBuck2Graph.nix {
               inherit pkgs ciderSrc;
               allPins = true;
-              targets = [ "//buck-src:migcom" ];
+              targets = [ "//vendor/src:migcom" ];
             };
           }
         ).final;
@@ -314,7 +314,7 @@
             graph = import ./nix/lib/ciderBuck2Graph.nix {
               inherit pkgs ciderSrc;
               allPins = true;
-              targets = [ "//buck-src:system_blocks_final" ];
+              targets = [ "//vendor/src:system_blocks_final" ];
             };
           }
         ).final;
@@ -448,13 +448,13 @@
             baseSrc = ./.;
           };
         in
-        # Nested at pins/<pin> because that is where they are staged, so the farm reads
+        # Nested at vendor/pins/<pin> because that is where they are staged, so the farm reads
         # like the tree it stands in for. It does NOT fix the escaping links, and the attempt
         # to make it do so is worth recording because it eliminates a whole approach.
         #
         # A LINK FARM CAN NEVER REPAIR A RELATIVE ESCAPE. 14 of the 21 links that reach out of
         # a pin point at a SIBLING pin three levels up, and laying the farm out at
-        # pins/<pin> puts that sibling exactly where the ../../../ says. It still
+        # vendor/pins/<pin> puts that sibling exactly where the ../../../ says. It still
         # dangles, because the kernel resolves .. against the REAL parent directory once it has
         # crossed the farm symlink, not against the path you typed. Measured:
         #   readlink -f <farm>/src/external/IOKitUser/darling/submodules/xnu
@@ -497,7 +497,7 @@
             # the 17.5 minutes such an edit cost.
             allPins = true;
             # COARSE PINS ON (#67), and THIS endpoint is the one it was verified against.
-            # buck-src is 59 percent of the graph and nobody edits a file in it: a pin moves
+            # vendor/src is 59 percent of the graph and nobody edits a file in it: a pin moves
             # as a whole new upstream release or not at all, so one derivation per target
             # there buys nothing and costs a staging pass each.
             #
@@ -578,7 +578,7 @@
               # uses, which ld_target supersedes.
               allPins = true;
               # THE SKELETON (#56), and this is what stops a C edit rebuilding the graph.
-              # The dump gets a tree whose C family is emptied outside buck-src, buck-rust and
+              # The dump gets a tree whose C family is emptied outside vendor/src, vendor/rust and
               # pins, keeping the 119 files that feed a generator
               # (scripts/buck-codegen-keep.txt). Editing a .c changes no file NAME, so that
               # tree is byte identical, the dump does not rerun, and about 10 minutes leaves
@@ -669,7 +669,7 @@
         (import ./nix/lib/cider-dyn-cone.nix {
           inherit pkgs;
           lowered = pkgs.cider-buck2-prefix-min;
-          label = "root//buck-src:unwind_static";
+          label = "root//vendor/src:unwind_static";
         })
         .check;
 
@@ -776,7 +776,7 @@
         (import ./nix/lib/cider-dyn-gen.nix {
           inherit pkgs;
           lowered = pkgs.cider-buck2-prefix-min;
-          label = "root//buck-src/xnu:libsyscall_dynamic_obj";
+          label = "root//vendor/src/xnu:libsyscall_dynamic_obj";
         })
         .check;
 
@@ -784,7 +784,7 @@
         (import ./nix/lib/cider-dyn-cone.nix {
           inherit pkgs;
           lowered = pkgs.cider-buck2-prefix-min;
-          label = "root//buck-src:unwind_static";
+          label = "root//vendor/src:unwind_static";
           viaSpecDir = true;
         })
         .check;
@@ -793,7 +793,7 @@
         (import ./nix/lib/cider-dyn-one.nix {
           inherit pkgs;
           lowered = pkgs.cider-buck2-prefix-min;
-          label = "root//buck-src:Security_final";
+          label = "root//vendor/src:Security_final";
         })
         .check;
 
@@ -802,7 +802,7 @@
       # it. This one is the xnu pin package, which reaches ACROSS into first-party header
       # roots, and that is exactly the edge a path move breaks: gate11 failed with 118 errors
       # and all 44 were that shape, base.h/memory.h/string.h not found, from 44 stale
-      # src/xtrace/include strings, 19 of them in buck-src/xnu/BUCK itself.
+      # src/xtrace/include strings, 19 of them in vendor/src/xnu/BUCK itself.
       #
       #   nix build .#cider-buck2-xnu-one --no-link -L
       #
@@ -816,11 +816,11 @@
       # read 24.3 GB without starting a builder when it was stopped. Add an attribute here
       # instead; flake.nix is outside projectSrc, so doing so invalidates nothing.
       packages.cider-buck2-xnu-one =
-        pkgs: pkgs.cider-buck2-prefix-min.named."root//buck-src/xnu:system_kernel_firstpass";
+        pkgs: pkgs.cider-buck2-prefix-min.named."root//vendor/src/xnu:system_kernel_firstpass";
 
 
-      # The same endpoint with each buck-src PIN lowered as one derivation instead of one
-      # per target (#53). buck-src is 58.9 percent of the actions and only moves when a
+      # The same endpoint with each vendor/src PIN lowered as one derivation instead of one
+      # per target (#53). vendor/src is 58.9 percent of the actions and only moves when a
       # submodule pin is bumped, so per-target granularity there buys nothing and costs a
       # staging pass per target, which is what limits a full rebuild.
       #
@@ -1071,7 +1071,7 @@
       # derivations, which `nix flake check` would force. Build it directly with:
       #   nix build '.?submodules=1' \
       #     --expr '(import ./nix/lib/ciderNinja.nix { pkgs = <nixpkgs>; overby = <overby>; }).buildTarget
-      #             { target = "pins/xnu/darling/src/libsystem_kernel/libsystem_kernel.dylib"; }'
+      #             { target = "vendor/pins/xnu/darling/src/libsystem_kernel/libsystem_kernel.dylib"; }'
 
       # ── Flake Templates ──────────────────────────────────────────────
       #

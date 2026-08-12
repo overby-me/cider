@@ -1,15 +1,15 @@
 #!/usr/bin/env nu
 
-# DOES THE buck-src NORMALISER STILL DO ALL SIX THINGS? (#99)
+# DOES THE vendor/src NORMALISER STILL DO ALL SIX THINGS? (#99)
 #
 # It is the tool that makes the materialized pins crawlable by buck2, and every one of its rules
 # exists because a rule that was missing broke a build in a way nothing else could see:
 #
 #   a "." component            buck2 refuses the link outright
 #   a target leaving the cell  buck2 refuses that too, and it is how the SDK farm links look
-#   dangling inside buck-src   recovered through FIRST_PARTY_RENAMES, which is where the
+#   dangling inside vendor/src   recovered through FIRST_PARTY_RENAMES, which is where the
 #                              security pin's 2,077 links naming the pre-Cider layout go
-#   src/external re-rooting    #87 moved the pin root to pins/
+#   src/external re-rooting    #87 moved the pin root to vendor/pins/
 #   a symlinked DIRECTORY      buck2's globs do not descend into one, so a header behind it is
 #                              invisible, and expanding it is what makes it visible
 #   a CYCLIC directory link    JavaScriptCore has exactly one, and expanding it made 1147
@@ -21,7 +21,7 @@
 # through BEHAVIOUR instead, on a repo built here for the purpose. That is strictly better
 # evidence: a function returning the right string is not the same as a tree coming out right.
 #
-# SELF CONTAINED. It builds its own pins/ and darwin/ so it does not depend on which pins happen
+# SELF CONTAINED. It builds its own vendor/pins/ and darwin/ so it does not depend on which pins happen
 # to be materialized on this machine, which is what made the earlier by-hand version fragile.
 #
 #   scripts/buck-src-normalise-check.nu
@@ -36,12 +36,12 @@ const EXPECT = [
     ["p1/dot.h" "include/real.h"]
     # absolute: left alone
     ["p1/abs.h" "/etc/hostname"]
-    # already resolving inside buck-src: left alone
+    # already resolving inside vendor/src: left alone
     ["p1/ok.h" "real2.h"]
-    # dangling inside buck-src, recovered through the rename table
-    ["p1/rename.h" "../../pins/ciderd/xnu-sys/xnu/osfmk/mach/host.h"]
-    # written for the pre-#87 root: src/external/<pin> is pins/<pin> now
-    ["p1/oldroot.h" "../../pins/somepin/include/real.h"]
+    # dangling inside vendor/src, recovered through the rename table
+    ["p1/rename.h" "../../vendor/pins/ciderd/xnu-sys/xnu/osfmk/mach/host.h"]
+    # written for the pre-#87 root: src/external/<pin> is vendor/pins/<pin> now
+    ["p1/oldroot.h" "../../vendor/pins/somepin/include/real.h"]
     # escapes the repo, recovered through the SDK farm, landed in the pin COPY
     ["p1/escape.h" "../somepin/include/real.h"]
     # escapes to a path that exists only under darwin/, then through the farm link there
@@ -69,37 +69,37 @@ def write_file [path: string] {
 
 def build_repo [repo: string] {
     # First-party trees, in the shape #87 stage 2 left them.
-    write_file $"($repo)/pins/ciderd/xnu-sys/xnu/osfmk/mach/host.h"
-    write_file $"($repo)/pins/somepin/include/real.h"
-    # The SDK farm: a link under darwin/ pointing into pins/, which is what makes an escaping
+    write_file $"($repo)/vendor/pins/ciderd/xnu-sys/xnu/osfmk/mach/host.h"
+    write_file $"($repo)/vendor/pins/somepin/include/real.h"
+    # The SDK farm: a link under darwin/ pointing into vendor/pins/, which is what makes an escaping
     # link recoverable at all.
     mkdir $"($repo)/darwin/sdk-farm"
-    ^ln -s "../../pins/somepin/include/real.h" $"($repo)/darwin/sdk-farm/link.h"
+    ^ln -s "../../vendor/pins/somepin/include/real.h" $"($repo)/darwin/sdk-farm/link.h"
     mkdir $"($repo)/darwin/Developer/SDK/usr/include"
-    ^ln -s "../../../../../pins/somepin/include/real.h" $"($repo)/darwin/Developer/SDK/usr/include/notify.defs"
+    ^ln -s "../../../../../vendor/pins/somepin/include/real.h" $"($repo)/darwin/Developer/SDK/usr/include/notify.defs"
 
     # The pin copies buck2 actually crawls.
-    write_file $"($repo)/buck-src/somepin/include/real.h"
-    write_file $"($repo)/buck-src/p1/include/real.h"
-    write_file $"($repo)/buck-src/p1/real2.h"
-    write_file $"($repo)/buck-src/shared/a.h"
-    "# a package definition, which must NOT be mirrored\n" | save -f $"($repo)/buck-src/shared/BUCK"
-    write_file $"($repo)/buck-src/shared/sub/b.h"
+    write_file $"($repo)/vendor/src/somepin/include/real.h"
+    write_file $"($repo)/vendor/src/p1/include/real.h"
+    write_file $"($repo)/vendor/src/p1/real2.h"
+    write_file $"($repo)/vendor/src/shared/a.h"
+    "# a package definition, which must NOT be mirrored\n" | save -f $"($repo)/vendor/src/shared/BUCK"
+    write_file $"($repo)/vendor/src/shared/sub/b.h"
 
-    ^ln -s "include/./real.h" $"($repo)/buck-src/p1/dot.h"
-    ^ln -s "/etc/hostname" $"($repo)/buck-src/p1/abs.h"
-    ^ln -s "real2.h" $"($repo)/buck-src/p1/ok.h"
-    ^ln -s "../darlingserver/duct-tape/xnu/osfmk/mach/host.h" $"($repo)/buck-src/p1/rename.h"
-    ^ln -s "../../src/external/somepin/include/real.h" $"($repo)/buck-src/p1/oldroot.h"
-    ^ln -s "../../../darwin/sdk-farm/link.h" $"($repo)/buck-src/p1/escape.h"
-    ^ln -s "../../../Developer/SDK/usr/include/notify.defs" $"($repo)/buck-src/p1/farm.defs"
-    ^ln -s "../shared" $"($repo)/buck-src/p1/dirlink"
-    ^ln -s ".." $"($repo)/buck-src/p1/cycle"
+    ^ln -s "include/./real.h" $"($repo)/vendor/src/p1/dot.h"
+    ^ln -s "/etc/hostname" $"($repo)/vendor/src/p1/abs.h"
+    ^ln -s "real2.h" $"($repo)/vendor/src/p1/ok.h"
+    ^ln -s "../darlingserver/duct-tape/xnu/osfmk/mach/host.h" $"($repo)/vendor/src/p1/rename.h"
+    ^ln -s "../../src/external/somepin/include/real.h" $"($repo)/vendor/src/p1/oldroot.h"
+    ^ln -s "../../../darwin/sdk-farm/link.h" $"($repo)/vendor/src/p1/escape.h"
+    ^ln -s "../../../Developer/SDK/usr/include/notify.defs" $"($repo)/vendor/src/p1/farm.defs"
+    ^ln -s "../shared" $"($repo)/vendor/src/p1/dirlink"
+    ^ln -s ".." $"($repo)/vendor/src/p1/cycle"
 }
 
 def main [] {
     cd ($env.CURRENT_FILE | path dirname | path join "..")
-    say "== buck-src normalisation: every rule, through the binary =="
+    say "== vendor/src normalisation: every rule, through the binary =="
 
     let found = (which cider-src-normalise)
     if ($found | is-empty) {
@@ -114,7 +114,7 @@ def main [] {
     # CONTROL FIRST, because a set of expectations that passes on an unnormalised tree is worth
     # nothing. Every rewriting rule must be UNSATISFIED before the tool runs.
     let before = ($EXPECT | each {|e|
-        let p = $"($repo)/buck-src/($e.0)"
+        let p = $"($repo)/vendor/src/($e.0)"
         let got = (link_target $p)
         { name: $e.0, want: $e.1, got: $got }
     })
@@ -130,7 +130,7 @@ def main [] {
     }
     ok $"control: the 7 rewriting expectations are all unmet before the run"
 
-    let roots = (ls $"($repo)/buck-src" | get name)
+    let roots = (ls $"($repo)/vendor/src" | get name)
     let r = (do -i { ^$tool --repo $repo ...$roots } | complete)
     if $r.exit_code != 0 {
         bad $"the normaliser exited ($r.exit_code)"
@@ -142,7 +142,7 @@ def main [] {
 
     mut fails = 0
     for e in $EXPECT {
-        let p = $"($repo)/buck-src/($e.0)"
+        let p = $"($repo)/vendor/src/($e.0)"
         let exists = (($p | path type) != null)
         if $e.1 == "" {
             if $exists {
@@ -163,7 +163,7 @@ def main [] {
         }
     }
     # The expanded link must be a REAL directory now, not a link.
-    if ($"($repo)/buck-src/p1/dirlink" | path type) != "dir" {
+    if ($"($repo)/vendor/src/p1/dirlink" | path type) != "dir" {
         bad "p1/dirlink is not a real directory"
         $fails += 1
     }

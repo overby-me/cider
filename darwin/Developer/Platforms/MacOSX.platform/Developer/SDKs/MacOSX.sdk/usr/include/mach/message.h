@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/message.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/message.h

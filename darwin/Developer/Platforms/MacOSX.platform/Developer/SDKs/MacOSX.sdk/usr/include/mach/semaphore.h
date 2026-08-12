@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/semaphore.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/semaphore.h

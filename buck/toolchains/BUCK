@@ -82,7 +82,7 @@ cc_toolchain(
     # the rule declares it. So _darwin_link has to hand the script back and darwin_dylib and
     # darwin_binary have to put it in InProcInfo.artifacts.
     #
-    ld_target = "root//buck-src:x86_64-apple-darwin20-ld",
+    ld_target = "root//vendor/src:x86_64-apple-darwin20-ld",
     #
     # STILL OFF. BOTH placements of the driver script fail the DUMP, for different reasons, and
     # that is the whole remaining problem:

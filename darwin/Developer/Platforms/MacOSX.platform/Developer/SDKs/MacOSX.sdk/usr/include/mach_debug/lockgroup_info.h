@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach_debug/lockgroup_info.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach_debug/lockgroup_info.h

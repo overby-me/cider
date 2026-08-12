@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/netinet6/mld6.h
+../../../../../../../../../../vendor/pins/xnu/bsd/netinet6/mld6.h

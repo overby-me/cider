@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/sched_param.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/sched_param.h

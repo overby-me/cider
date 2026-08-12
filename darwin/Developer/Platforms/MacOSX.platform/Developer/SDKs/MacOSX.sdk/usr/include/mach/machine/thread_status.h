@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/osfmk/mach/machine/thread_status.h
+../../../../../../../../../../../vendor/pins/xnu/osfmk/mach/machine/thread_status.h

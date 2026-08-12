@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/panic_hooks.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/panic_hooks.h

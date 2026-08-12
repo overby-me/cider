@@ -1,1 +1,1 @@
-../../../../../../../../../pins/Libinfo/lookup.subproj/netdb.h
+../../../../../../../../../vendor/pins/Libinfo/lookup.subproj/netdb.h

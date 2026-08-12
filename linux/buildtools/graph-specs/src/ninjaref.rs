@@ -451,7 +451,7 @@ pub fn upwards_of(
 /// Archives the port declares by hand, whose artifact name no rule spells out.
 const ARCHIVE_ALIASES: &[(&str, &str)] = &[
     ("liblibsimple_cider.a", "//darwin/libsimple:libsimple_cider"),
-    ("libciderd_xnu_sys.a", "//pins/ciderd/xnu-sys:ciderd_xnu_sys"),
+    ("libciderd_xnu_sys.a", "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys"),
     ("liblibsimple_ciderd.a", "//darwin/libsimple:libsimple_ciderd"),
 ];
 

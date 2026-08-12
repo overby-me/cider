@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/i18n/unicode/stsearch.h
+../../../../../../../../../../vendor/pins/icu/icuSources/i18n/unicode/stsearch.h

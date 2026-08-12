@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/Libinfo/nis.subproj/yp_prot.h
+../../../../../../../../../../vendor/pins/Libinfo/nis.subproj/yp_prot.h

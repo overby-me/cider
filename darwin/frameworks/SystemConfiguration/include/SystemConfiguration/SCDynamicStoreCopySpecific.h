@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/SCDynamicStoreCopySpecific.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/SCDynamicStoreCopySpecific.h

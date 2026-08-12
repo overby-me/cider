@@ -3,8 +3,8 @@
 # A first-party path quoted in a build file must resolve to something that exists.
 #
 # WHY THIS EXISTS. #87 moved 52 directories out of src/ into darwin/ and linux/, and 44 literal
-# "src/xtrace/include" strings did not move with them, in buck-src/BUCK (23), buck-src/xnu/BUCK
-# (19), buck-src/syslog/BUCK (1) and buck-src/OpenDirectory/BUCK (1). Nothing complained. buck2
+# "src/xtrace/include" strings did not move with them, in vendor/src/BUCK (23), vendor/src/xnu/BUCK
+# (19), vendor/src/syslog/BUCK (1) and vendor/src/OpenDirectory/BUCK (1). Nothing complained. buck2
 # takes a missing include dir as an empty one, so the targets loaded, the graph built, the
 # lowering staged, and gate11 died an hour later with 118 errors that named base.h, memory.h and
 # string.h rather than the path that was wrong. 44 stale strings, 44 failing MIG stubs.
@@ -30,9 +30,9 @@
 #
 #   buck/generated/exports_*.bzl   93 hits, every one pin-root-relative (libcxx's src/any.cpp and
 #                                  friends). Class 2, owned by buck-pin-paths-check.nu.
-#   pins/**                        a pin that has not been materialized is absent from disk, so
+#   vendor/pins/**                        a pin that has not been materialized is absent from disk, so
 #                                  its own BUCK file cannot resolve its own sources.
-#   out_base = "..."               a mig_gen OUTPUT base, not an input. buck-src/BUCK declares
+#   out_base = "..."               a mig_gen OUTPUT base, not an input. vendor/src/BUCK declares
 #                                  out_base = "src/firehose" for libdispatch's firehose
 #                                  protocols; nothing of that name exists or should.
 #
@@ -54,12 +54,12 @@
 # literals and the out_base attributes are all single-line, so the two are equivalent. Cost on
 # this repo: 194 build files, 205,024 lines, about 2s against python's 0.8s.
 
-const SKIP_DIRS = [".jj" ".git" "buck-out" "target" "outputs" "build" "__pycache__" "buck-rust"]
+const SKIP_DIRS = [".jj" ".git" "buck-out" "target" "outputs" "build" "__pycache__" "vendor/rust"]
 const LITERAL = '"(?<q>(?:src|darwin|linux)/[\w./+-]+)"'
 const OUTPUT_ATTR = '\bout_base\s*=\s*"[^"]*"'
 
 # NAME THE THREE PATTERNS AND PASS --exclude. Both halves of that are load bearing and both were
-# measured on this repo, which carries buck-src and the pins:
+# measured on this repo, which carries vendor/src and the pins:
 #
 #   `glob "**/*"` then filtering by extension does NOT FINISH IN TWO MINUTES, because the filter
 #   is applied to results and the result set is the whole tree.
@@ -80,7 +80,7 @@ def build-files [repo: string] {
 
 # False for the two path spaces this rule cannot judge. See the header.
 def in-scope [rel: string] {
-  if ($rel | str starts-with "pins/") { return false }
+  if ($rel | str starts-with "vendor/pins/") { return false }
   ($rel =~ 'buck/generated/exports_.*\.bzl$') == false
 }
 

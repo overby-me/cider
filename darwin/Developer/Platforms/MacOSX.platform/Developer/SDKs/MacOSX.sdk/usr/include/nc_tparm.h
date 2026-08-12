@@ -1,1 +1,1 @@
-../../../../../../../../../pins/ncurses/darling/include/nc_tparm.h
+../../../../../../../../../vendor/pins/ncurses/darling/include/nc_tparm.h

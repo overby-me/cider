@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/stdio.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/stdio.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libtelnet/encrypt.h
+../../../../../../../../../../vendor/pins/libtelnet/encrypt.h

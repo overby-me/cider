@@ -16,6 +16,6 @@ rust_binary(
         "CIDER_GIT_COMMIT": "unknown",
         "CIDER_INSTALL_PREFIX": read_root_config("cider", "install_prefix", "/usr/local"),
     },
-    deps = ["//buck-rust:libc"],
+    deps = ["//vendor/rust:libc"],
     visibility = ["PUBLIC"],
 )

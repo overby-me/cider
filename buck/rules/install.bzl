@@ -226,7 +226,7 @@ prefix_tree = rule(
 # Ten of them, 4,600 files.
 #
 # It is a separate rule, and it lives in the PIN's package rather than in buck/prefix,
-# because a glob cannot cross a package boundary -- buck-src/<pin> owns its files, so only a
+# because a glob cannot cross a package boundary -- vendor/src/<pin> owns its files, so only a
 # target there can name them. The prefix then maps the resulting directory into place, which
 # also keeps buck/prefix/BUCK a list of destinations instead of 4,600 literal paths.
 def _prefix_dir_impl(ctx):

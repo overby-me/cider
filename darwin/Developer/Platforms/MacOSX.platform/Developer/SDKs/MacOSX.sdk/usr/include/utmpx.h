@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/include/NetBSD/utmpx.h
+../../../../../../../../../vendor/pins/libc/include/NetBSD/utmpx.h

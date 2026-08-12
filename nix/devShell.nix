@@ -16,7 +16,7 @@ in {
     # endpoint would use, so the toolchain is pinned from day 1 even while we
     # iterate outside a derivation. watchman is buck2's file watcher here: the
     # default `notify` backend cannot start in this tree (it walks the result-*
-    # store symlinks) and fs_hash_crawler re-hashes buck-src on every command.
+    # store symlinks) and fs_hash_crawler re-hashes vendor/src on every command.
     buck2
     watchman
     # The port's scripting is moving from bash to nushell (task #40), so the checks now run
@@ -81,7 +81,7 @@ in {
     # ── The port's own nix-built tools ──────────────────────────
     # cider-src-normalise, which scripts/buck-src.nu invokes once per pin. DECLARED HERE for
     # the same reason nushell is: since #99 it is a binary rather than a script in the tree,
-    # so nothing would find it by path, and the local buck-src would silently keep the
+    # so nothing would find it by path, and the local vendor/src would silently keep the
     # symlinks buck2 refuses to load.
     #
     # src = ../. copies ONLY linux/buildtools/src-normalise into the store, because the
@@ -115,7 +115,7 @@ in {
   # rewrites the DEFINITION of snprintf into __builtin___snprintf_chk and fails to parse.
   # Measured 2026-08-10: with the wrapper's default NIX_HARDENING_ENABLE, clang -dM -E
   # reports _FORTIFY_SOURCE 2 even when -D_FORTIFY_SOURCE=0 is on the command line,
-  # //buck-src/libc:libc-stdio_obj does not compile, and 227 of the 659 dylib targets
+  # //vendor/src/libc:libc-stdio_obj does not compile, and 227 of the 659 dylib targets
   # produce no output at all. The Nix endpoint stayed green throughout because its
   # derivations disable hardening, which is exactly how the gap hid.
   hardeningDisable = ["all"];

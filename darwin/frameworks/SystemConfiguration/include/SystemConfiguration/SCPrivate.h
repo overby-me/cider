@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/SCPrivate.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/SCPrivate.h

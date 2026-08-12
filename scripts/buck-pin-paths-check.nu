@@ -2,13 +2,13 @@
 
 # Every path we record INTO an upstream pin must exist on disk.
 #
-# buck-src/<pin> is an upstream darlinghq repo, and 43 of those pins carry their
+# vendor/src/<pin> is an upstream darlinghq repo, and 43 of those pins carry their
 # own darling/ subdirectory (plus cfnetwork/darling-framework and the darling-dmg
 # pin itself). We name paths inside them from four places, all of them generated
 # or hand-maintained tables of plain strings:
 #
 #     buck/generated/exports_<pin>.bzl    {export target: pin-relative path}
-#     buck/generated/sdk_headers.bzl      {SDK header: buck-src-relative path}
+#     buck/generated/sdk_headers.bzl      {SDK header: vendor/src-relative path}
 #     buck/generated/sdk_framework*.bzl   same, per framework
 #     nix/submodules.json                 the pin fetch manifest
 #
@@ -31,7 +31,7 @@
 # links in darwin/Developer, which are dangling BY DESIGN here and resolve in the build, and
 # report a couple of thousand false failures.
 
-const PIN_ROOT = "buck-src"
+const PIN_ROOT = "vendor/src"
 
 # {"key": "value"} on one line is what every one of these tables emits.
 const PAIR = '":\s*"(?<v>[^"]+)"'
@@ -40,16 +40,16 @@ const KEYVAL = '"(?<k>[^"]+)":\s*"(?<v>[^"]+)"'
 # Each sdk map is rooted somewhere different; the file name is the only thing
 # that says where, so the root belongs beside the name rather than guessed.
 const SDK_MAPS = [
-  ["sdk_headers.bzl" "buck-src"]
-  ["sdk_framework_buck_src.bzl" "buck-src"]
-  ["sdk_framework_private_buck_src.bzl" "buck-src"]
+  ["sdk_headers.bzl" "vendor/src"]
+  ["sdk_framework_buck_src.bzl" "vendor/src"]
+  ["sdk_framework_private_buck_src.bzl" "vendor/src"]
   ["sdk_framework_darwin_Developer.bzl" "darwin/Developer"]
 ]
 
 const SDK_NAMESPACES = ["cider" "darling"]
 
 # exports_<pin>.bzl values are relative to the pin, exports_buck_src.bzl
-# to buck-src itself: that file is the //buck-src root package, not a pin.
+# to vendor/src itself: that file is the //vendor/src root package, not a pin.
 def exports-srcs [gen: string] {
   ls -a $gen | where type == file | get name | each {|p| $p | path basename } | sort
     | each {|name|
@@ -126,7 +126,7 @@ def first-party-includes [repo: string, gen: string] {
   let inc = ('#\s*include\s*<(?<p>(?:' + ($SDK_NAMESPACES | str join "|") + ')/[^>]+)>')
   $files
     | where {|rel| ($rel | str ends-with ".c") or ($rel | str ends-with ".h") or ($rel | str ends-with ".m") or ($rel | str ends-with ".mm") or ($rel | str ends-with ".cpp") }
-    | where {|rel| not (($rel | str starts-with "buck-src/") or ($rel | str starts-with "patches/")) }
+    | where {|rel| not (($rel | str starts-with "vendor/src/") or ($rel | str starts-with "patches/")) }
     | each {|rel|
         let p = ($repo | path join $rel)
         let text = (try { open --raw $p | decode utf-8 } catch { null })
@@ -143,7 +143,7 @@ def first-party-includes [repo: string, gen: string] {
 }
 
 # The manifest keys a pin by its pins path; the last component is
-# the buck-src directory the pin is checked out as.
+# the vendor/src directory the pin is checked out as.
 def submodule-paths [repo: string] {
   (open --raw ($repo | path join "nix" "submodules.json") | from json)
     | each {|e| { origin: "nix/submodules.json", path: $"($PIN_ROOT)/($e.path | split row '/' | last)" } }
@@ -183,7 +183,7 @@ def main [] {
     if ($missing | length) > 40 { print $"  ... and (($missing | length) - 40) more" }
     print "\nFAIL: a reference names a directory inside a pin that is not there."
     print "Pins are upstream and keep their darling/ subdirectories; only our own"
-    print "code is Cider. Check any recent rename against buck-src/<pin>/."
+    print "code is Cider. Check any recent rename against vendor/src/<pin>/."
     exit 1
   }
 

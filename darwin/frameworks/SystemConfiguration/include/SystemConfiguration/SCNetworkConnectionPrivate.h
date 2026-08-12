@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/SCNetworkConnectionPrivate.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/SCNetworkConnectionPrivate.h

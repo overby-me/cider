@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/Libinfo/nis.subproj/ypclnt.h
+../../../../../../../../../../vendor/pins/Libinfo/nis.subproj/ypclnt.h

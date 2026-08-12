@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libplatform/include/os/lock.h
+../../../../../../../../../../vendor/pins/libplatform/include/os/lock.h

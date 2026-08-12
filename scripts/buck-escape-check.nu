@@ -75,7 +75,7 @@
 # earlier version of this file guessed at it (frameworks three deep, everything else two) and
 # reported 2,490 escapes across 8 groups where the real rule gives 2,306 across 15. Same
 # conclusion, wrong numbers, and the numbers were quoted in a commit message.
-const UNGROUPED = ["buck-src/" "pins/" "buck-rust/"]
+const UNGROUPED = ["vendor/src/" "vendor/pins/" "vendor/rust/"]
 const SKIP_NAMES = [".git" ".jj"]
 
 def group-of [rel: string] {
@@ -116,8 +116,8 @@ def escapes [tree: string, roots: list<string>, kind: string, arg: any] {
         let rel = (rel-to $tree $r.name)
         # normpath STRIPS A TRAILING SLASH and `path expand --no-symlink` DOES NOT. Exactly one
         # of the 2,270 group findings has a target written with one, darwin/softlinking/
-        # submodules/WTF -> ../../../pins/WTF/, and without this trim it lands as pins/WTF/
-        # rather than pins/WTF. It changed no verdict here because both spellings fall outside
+        # submodules/WTF -> ../../../vendor/pins/WTF/, and without this trim it lands as vendor/pins/WTF/
+        # rather than vendor/pins/WTF. It changed no verdict here because both spellings fall outside
         # every group, but it would change a BOUNDARY the moment the trailing component mattered,
         # and it is the kind of difference a six-line sample would never have shown.
         let raw = (($r.name | path dirname) | path join $r.target | path expand --no-symlink)
@@ -199,7 +199,7 @@ def main [
 
   if $mode == "pins" {
     let manifest = (open --raw ($repo | path join "nix" "submodules.json") | from json)
-    let pins = ($manifest | get path | where {|p| $p | str starts-with "pins/" })
+    let pins = ($manifest | get path | where {|p| $p | str starts-with "vendor/pins/" })
     let r = (escapes $tree $pins "pins" $pins)
     let found = ($r.found | where {|f| $f.b != "<outside any pin>" })
     dump-if $dump $found

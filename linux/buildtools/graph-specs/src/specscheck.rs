@@ -167,7 +167,7 @@ fn group_of(identity: &str, coarse: &Map<String, Value>) -> Result<String, Strin
         None => return Err(format!("FAIL: unparseable action identity: {}", py_quote(identity))),
     };
     match coarse.get(label).and_then(|v| v.as_str()) {
-        Some(pin) => Ok(format!("root//buck-src:pin-{pin}")),
+        Some(pin) => Ok(format!("root//vendor/src:pin-{pin}")),
         None => Ok(label.to_string()),
     }
 }
@@ -550,7 +550,7 @@ fn check_deps(
             }
             for t in strs(a, "input_targets") {
                 let tg = match coarse.get(&t).and_then(|v| v.as_str()) {
-                    Some(pin) => format!("root//buck-src:pin-{pin}"),
+                    Some(pin) => format!("root//vendor/src:pin-{pin}"),
                     None => t.clone(),
                 };
                 // A declared target with no actions has no derivation to depend on; what it owns

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/platform.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/platform.h

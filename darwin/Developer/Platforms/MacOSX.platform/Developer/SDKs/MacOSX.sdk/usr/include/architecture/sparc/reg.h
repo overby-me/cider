@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/cctools/include/architecture/sparc/reg.h
+../../../../../../../../../../../vendor/pins/cctools/include/architecture/sparc/reg.h

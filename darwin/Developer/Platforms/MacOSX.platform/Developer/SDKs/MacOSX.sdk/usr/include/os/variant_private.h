@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libc/os/variant_private.h
+../../../../../../../../../../vendor/pins/libc/os/variant_private.h

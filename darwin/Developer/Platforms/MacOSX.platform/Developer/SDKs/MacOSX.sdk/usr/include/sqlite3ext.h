@@ -1,1 +1,1 @@
-../../../../../../../../../pins/sqlite/include/sqlite3ext.h
+../../../../../../../../../vendor/pins/sqlite/include/sqlite3ext.h

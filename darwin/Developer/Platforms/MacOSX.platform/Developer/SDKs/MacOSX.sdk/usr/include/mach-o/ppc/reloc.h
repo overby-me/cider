@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/cctools/include/mach-o/ppc/reloc.h
+../../../../../../../../../../../vendor/pins/cctools/include/mach-o/ppc/reloc.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/extmod_statistics.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/extmod_statistics.h

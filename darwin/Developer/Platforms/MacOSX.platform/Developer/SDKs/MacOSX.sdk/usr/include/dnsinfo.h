@@ -1,1 +1,1 @@
-../../../../../../../../../pins/configd/dnsinfo/dnsinfo.h
+../../../../../../../../../vendor/pins/configd/dnsinfo/dnsinfo.h

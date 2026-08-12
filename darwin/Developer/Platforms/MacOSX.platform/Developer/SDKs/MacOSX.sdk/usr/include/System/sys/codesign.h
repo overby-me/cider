@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/bsd/sys/codesign.h
+../../../../../../../../../../../vendor/pins/xnu/bsd/sys/codesign.h

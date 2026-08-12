@@ -8,7 +8,7 @@
 //!
 //! The minimal prefix is defined by SUBTRACTION: gen-prefix-min.nu takes the full prefix and
 //! removes what is on an exclusion list, so anything expensive is included BY DEFAULT and has to
-//! be noticed one entry at a time. That is how //buck-src:jsc survived, one line pulling 1,082
+//! be noticed one entry at a time. That is how //vendor/src:jsc survived, one line pulling 1,082
 //! compiles of JavaScriptCore into a prefix whose stated job is to boot, run bash and run nix.
 //!
 //! TWO THINGS THIS MEASURES CAREFULLY, because the obvious versions of both are useless:
@@ -55,8 +55,8 @@ const MIN_COVERAGE: f64 = 0.50;
 
 /// Entries allowed to be expensive, because they ARE the goal.
 const EXEMPT: &[&str] = &[
-    "root//buck-src/dyld:dyld",
-    "root//buck-src:bash",
+    "root//vendor/src/dyld:dyld",
+    "root//vendor/src:bash",
     "root//linux/server:ciderd",
 ];
 

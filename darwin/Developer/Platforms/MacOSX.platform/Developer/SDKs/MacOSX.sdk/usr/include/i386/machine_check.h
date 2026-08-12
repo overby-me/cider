@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/machine_check.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/machine_check.h

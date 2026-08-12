@@ -53,7 +53,7 @@ const GLUED: &[&str] = &["-I", "-F", "-L", "-iquote"];
 
 // The four project trees worth reporting an argv token against when it names one and is not
 // there on disk.
-const PROJECT_TOPS: &[&str] = &["buck-src", "pins", "darwin", "buck-rust"];
+const PROJECT_TOPS: &[&str] = &["vendor/src", "vendor/pins", "darwin", "vendor/rust"];
 
 fn target_of(identity: &str) -> &str {
     identity.split(" (").next().unwrap_or(identity)

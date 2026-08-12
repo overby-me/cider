@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/coalition.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/coalition.h

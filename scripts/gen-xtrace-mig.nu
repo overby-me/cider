@@ -20,8 +20,8 @@
 # PORTED FROM PYTHON (#98). THE GATE IS --dry-run, BYTE IDENTICAL: 31 wired stubs and 11
 # unmatched, in the same order, naming the same targets. The WRITE path is transcribed and NOT
 # gated, for a reason worth stating rather than hiding: running it does not reproduce the
-# committed files. The python itself rewrites 84 lines and removes 69 across buck-src/BUCK,
-# darwin/launchd/BUCK, pins/ciderd/xnu-sys/BUCK and extra-deps.json, so the committed generated
+# committed files. The python itself rewrites 84 lines and removes 69 across vendor/src/BUCK,
+# darwin/launchd/BUCK, vendor/pins/ciderd/xnu-sys/BUCK and extra-deps.json, so the committed generated
 # blocks have drifted from what this produces, and comparing two implementations of the write
 # would compare them against a moving target. That drift is recorded in docs/monorepo-port.md
 # and is a decision for whoever regenerates those files.
@@ -157,7 +157,7 @@ def main [--dry-run] {
     let stem = ($src | path basename)
     # `src` is the full generated path; the instance is the mig target whose out_base plus the
     # relative stem lands exactly there.
-    let rel = ($src | str replace --regex '^pins/' "")
+    let rel = ($src | str replace --regex '^vendor/pins/' "")
     let want_stem = ($stem | str replace --regex 'XtraceMig\.c$' "")
     # ONE LINE PER CONDITION, JOINED BY A HELPER, because `and` may not START a continuation
     # line: nushell reads it as a command name and says "Command `and` not found".
@@ -174,8 +174,8 @@ def main [--dry-run] {
     # $outdir/<stem><suffix>, and the stem keeps the protocol's own subdirectory. out_base is
     # PACKAGE-relative, so the generated path has to be made package-relative first.
     let pkg = ($t.path | path dirname)
-    let pkg_rel = (if $pkg == "buck-src" {
-      $src | str replace --regex '^pins/' ""
+    let pkg_rel = (if $pkg == "vendor/src" {
+      $src | str replace --regex '^vendor/pins/' ""
     } else {
       $src | str replace --regex $"^($pkg)/" ""
     })

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/normalizer2.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/normalizer2.h

@@ -43,12 +43,12 @@ def say [msg: string] { print -e $msg }
 # Every target the reference gives an absolute host -I and that the port builds. Kept in
 # step with scripts/buck-host-includes.nu, which is what proves the list is complete.
 const TARGETS = [
-    "//buck-src:iokitd_obj"
-    "//buck-src:Onyx2D_obj"
-    "//buck-src:CoreText_obj"
-    "//buck-src:hdiutil_obj"
-    "//buck-src:X11_backend_obj"
-    "//buck-src:X11_cgbackend_obj"
+    "//vendor/src:iokitd_obj"
+    "//vendor/src:Onyx2D_obj"
+    "//vendor/src:CoreText_obj"
+    "//vendor/src:hdiutil_obj"
+    "//vendor/src:X11_backend_obj"
+    "//vendor/src:X11_cgbackend_obj"
     "//darwin/frameworks:OpenGL_obj"
     "//darwin/frameworks:fseventsd_obj"
     "//darwin/CoreAudio:CoreAudio_obj"

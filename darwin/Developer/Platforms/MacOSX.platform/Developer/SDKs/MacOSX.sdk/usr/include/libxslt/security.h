@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libxslt/libxslt/libxslt/security.h
+../../../../../../../../../../vendor/pins/libxslt/libxslt/libxslt/security.h

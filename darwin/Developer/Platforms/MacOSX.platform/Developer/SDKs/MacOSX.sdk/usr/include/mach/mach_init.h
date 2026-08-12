@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libsyscall/mach/mach/mach_init.h
+../../../../../../../../../../vendor/pins/xnu/libsyscall/mach/mach/mach_init.h

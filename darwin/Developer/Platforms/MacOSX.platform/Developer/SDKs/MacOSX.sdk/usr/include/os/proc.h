@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libsyscall/os/proc.h
+../../../../../../../../../../vendor/pins/xnu/libsyscall/os/proc.h

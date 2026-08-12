@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/mpqueue.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/mpqueue.h

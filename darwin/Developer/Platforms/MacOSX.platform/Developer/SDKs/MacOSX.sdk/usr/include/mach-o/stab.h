@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/cctools/include/mach-o/stab.h
+../../../../../../../../../../vendor/pins/cctools/include/mach-o/stab.h

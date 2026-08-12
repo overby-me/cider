@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libpthread/private/pthread/dependency_private.h
+../../../../../../../../../../vendor/pins/libpthread/private/pthread/dependency_private.h

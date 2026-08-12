@@ -17,20 +17,20 @@
 # trusting the process that produced it.
 #
 # THE CHECK: for every manifest entry with a hash, work out where it materializes, and if that
-# directory exists require a .buck-src-rev stamp equal to the manifest rev. A tree that is not
+# directory exists require a .vendor/src-rev stamp equal to the manifest rev. A tree that is not
 # materialized at all is fine and is reported separately, because most of the 148 pins are only
 # materialized on demand.
 #
 # THE DESTINATION RULE IS COPIED FROM buck-src.nu AND IS NOT A DETAIL. A pin directly under
-# pins goes to buck-src/<basename>; anything deeper materializes IN PLACE at its own
-# path. Basenames are not unique, pins/xnu and pins/ciderd/xnu-sys/xnu both end
-# in xnu, and collapsing them into buck-src/xnu is a collision that has already broken this
+# pins goes to vendor/src/<basename>; anything deeper materializes IN PLACE at its own
+# path. Basenames are not unique, vendor/pins/xnu and vendor/pins/ciderd/xnu-sys/xnu both end
+# in xnu, and collapsing them into vendor/src/xnu is a collision that has already broken this
 # project once through materializePins.
 #
 # A MISSING STAMP IS REPORTED, NOT FAILED, AND THAT DISTINCTION WAS LEARNED IMMEDIATELY. The
 # first version of this treated an unstamped tree as a defect. Run against the real repo it
 # reported 143 of 148 materialized pins as problems, because every one of them was placed by an
-# older --all that wrote only .buck-src-assembled. That is not 143 defects, it is the ordinary
+# older --all that wrote only .vendor/src-assembled. That is not 143 defects, it is the ordinary
 # state of this tree, and a check that fails on the ordinary state gets ignored or silenced.
 #
 # Worse, it made the negative control worthless: a planted stale rev DID make it exit 1, but so
@@ -55,10 +55,10 @@
 #   path untouched and only appears in the failure text, which is the text nobody diffs: the
 #   real run was byte identical and only the planted stale-rev control exposed it.
 
-const PIN_ROOT = "pins"
+const PIN_ROOT = "vendor/pins"
 
 # The test is DIRECTLY UNDER THE PIN ROOT, which is not the same thing as a fixed depth. It read
-# `== 3` while the root was src/external, and writing `== 2` for pins/ would just reseat the same
+# `== 3` while the root was src/external, and writing `== 2` for vendor/pins/ would just reseat the same
 # landmine one rename later. Expressed against the root, it survives the next move without anyone
 # having to remember this comment.
 def directly-under-pin-root [path: string] {
@@ -69,7 +69,7 @@ def directly-under-pin-root [path: string] {
 # disagree, this check is measuring a directory nothing writes.
 def dest-for [root: string, path: string] {
   if (directly-under-pin-root $path) {
-    $root | path join "buck-src" ($path | path basename)
+    $root | path join "vendor/src" ($path | path basename)
   } else {
     $root | path join $path
   }
@@ -86,9 +86,9 @@ def main [
   # NO TWO PINS MAY MATERIALIZE TO THE SAME PLACE. This is the invariant the whole
   # directly-under-the-pin-root rule exists to protect, and until #87 stage 2 nothing
   # asserted it: the collision was found once by an endpoint build dying at BXL
-  # materialisation, an hour in, with "File not found: root//.../buck-src/xnu".
-  # pins/xnu and pins/ciderd/xnu-sys/xnu share the basename xnu, so getting the depth
-  # test wrong collapses them onto buck-src/xnu and one silently overwrites the other.
+  # materialisation, an hour in, with "File not found: root//.../vendor/src/xnu".
+  # vendor/pins/xnu and vendor/pins/ciderd/xnu-sys/xnu share the basename xnu, so getting the depth
+  # test wrong collapses them onto vendor/src/xnu and one silently overwrites the other.
   # It costs a table to say so here instead.
   let placed = ($entries | each {|e| { path: $e.path, dest: (dest-for $root $e.path) } })
   mut owners = {}
@@ -116,7 +116,7 @@ def main [
     # `path exists` is true for a FILE too; the python asks isdir, so test the type.
     if (($dest | path exists) == false) or (($dest | path type) != "dir") { continue }
     $materialized = $materialized + 1
-    let stamp = ($dest | path join ".buck-src-rev")
+    let stamp = ($dest | path join ".vendor/src-rev")
     if (not ($stamp | path exists)) {
       $unstamped = $unstamped + 1
       continue
@@ -130,7 +130,7 @@ def main [
 
   print $"manifest entries with a hash: ($entries | length); materialized on disk: ($materialized); stale: ($stale); unstamped: ($unstamped)"
   if $unstamped > 0 {
-    print $"note: ($unstamped) materialized trees carry no .buck-src-rev, so their revision cannot be established from disk. They were placed by an --all that predates the stamp. Not a failure, and one scripts/buck-src.nu --all stamps them all. Only a stamp that CONTRADICTS the manifest fails below."
+    print $"note: ($unstamped) materialized trees carry no .vendor/src-rev, so their revision cannot be established from disk. They were placed by an --all that predates the stamp. Not a failure, and one scripts/buck-src.nu --all stamps them all. Only a stamp that CONTRADICTS the manifest fails below."
   }
 
   if ($problems | is-empty) {

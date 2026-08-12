@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/resourcevar.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/resourcevar.h

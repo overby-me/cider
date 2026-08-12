@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/vm_inherit.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/vm_inherit.h

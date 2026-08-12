@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/cpu_data.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/cpu_data.h

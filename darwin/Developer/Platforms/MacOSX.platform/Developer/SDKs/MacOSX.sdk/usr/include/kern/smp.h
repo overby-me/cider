@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/smp.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/smp.h

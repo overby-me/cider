@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/dtrace_glue.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/dtrace_glue.h

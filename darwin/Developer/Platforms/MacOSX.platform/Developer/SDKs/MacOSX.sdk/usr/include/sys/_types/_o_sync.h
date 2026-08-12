@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/bsd/sys/_types/_o_sync.h
+../../../../../../../../../../../vendor/pins/xnu/bsd/sys/_types/_o_sync.h

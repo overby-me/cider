@@ -103,7 +103,7 @@ const ADVERTISING_FILES = ["docs/changelog.md" "README.md" "flake.nix"]
 const READING_DIRS = ["src" "darwin" "linux" "scripts" "nix" "tests" "buck" "tools" "etc"]
 
 const SKIP_DIRS = [".jj" ".git" "buck-out" "target" "__pycache__" "node_modules"
-                   "result" "outputs" "build" "buck-rust" "buck-src"]
+                   "result" "outputs" "build" "vendor/rust" "vendor/src"]
 
 const ADVERTISE = [
   '\b(?<n>(?:CIDER|CIDERD|DARLING|DARLINGSERVER|XTRACE)_[A-Z0-9_]+)\s*='

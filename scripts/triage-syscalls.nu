@@ -49,7 +49,7 @@
 # See: docs/changelog.md (Task 1.7)
 
 # Known syscall number to name mapping (macOS/XNU BSD syscalls)
-# Source: pins/xnu/bsd/kern/syscalls.master
+# Source: vendor/pins/xnu/bsd/kern/syscalls.master
 # This covers the most commonly-seen unimplemented syscalls.
 def syscall_names [] {
     {

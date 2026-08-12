@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/sfi.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/sfi.h

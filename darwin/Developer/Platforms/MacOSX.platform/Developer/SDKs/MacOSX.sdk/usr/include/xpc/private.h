@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libxpc/include/xpc/private.h
+../../../../../../../../../../vendor/pins/libxpc/include/xpc/private.h

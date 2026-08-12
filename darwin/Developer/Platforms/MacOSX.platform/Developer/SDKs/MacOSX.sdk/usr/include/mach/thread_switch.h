@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/thread_switch.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/thread_switch.h

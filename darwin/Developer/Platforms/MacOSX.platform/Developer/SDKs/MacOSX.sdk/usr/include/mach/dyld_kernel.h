@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/dyld_kernel.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/dyld_kernel.h

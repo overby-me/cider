@@ -1,1 +1,1 @@
-../../../../../../../../../pins/OpenLDAP/OpenLDAP/include/ldap_schema.h
+../../../../../../../../../vendor/pins/OpenLDAP/OpenLDAP/include/ldap_schema.h

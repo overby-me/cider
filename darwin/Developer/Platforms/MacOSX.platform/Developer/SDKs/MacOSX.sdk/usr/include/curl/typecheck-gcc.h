@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/curl/curl/include/curl/typecheck-gcc.h
+../../../../../../../../../../vendor/pins/curl/curl/include/curl/typecheck-gcc.h

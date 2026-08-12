@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/bsm/audit_record.h
+../../../../../../../../../../vendor/pins/xnu/bsd/bsm/audit_record.h

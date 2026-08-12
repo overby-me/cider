@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/netinet/if_ether.h
+../../../../../../../../../../vendor/pins/xnu/bsd/netinet/if_ether.h

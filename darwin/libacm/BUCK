@@ -58,7 +58,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         ":acm_inc_src_libacm_include",
     ],
     visibility = ["PUBLIC"],

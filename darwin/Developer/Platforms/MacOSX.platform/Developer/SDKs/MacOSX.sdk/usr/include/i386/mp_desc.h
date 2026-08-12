@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/mp_desc.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/mp_desc.h

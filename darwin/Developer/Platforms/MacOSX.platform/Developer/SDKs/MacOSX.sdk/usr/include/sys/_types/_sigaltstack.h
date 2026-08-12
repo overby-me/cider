@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/bsd/sys/_types/_sigaltstack.h
+../../../../../../../../../../../vendor/pins/xnu/bsd/sys/_types/_sigaltstack.h

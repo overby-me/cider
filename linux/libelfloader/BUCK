@@ -16,7 +16,7 @@ load("//buck/rules:rust.bzl", "rust_binary")
 rust_binary(
     name = "wrapgen",
     crate_root = "wrapgen/wrapgen.rs",
-    deps = ["//buck-rust:libc"],
+    deps = ["//vendor/rust:libc"],
     visibility = ["PUBLIC"],
 )
 

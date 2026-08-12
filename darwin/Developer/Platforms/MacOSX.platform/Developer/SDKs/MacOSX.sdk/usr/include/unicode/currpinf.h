@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/i18n/unicode/currpinf.h
+../../../../../../../../../../vendor/pins/icu/icuSources/i18n/unicode/currpinf.h

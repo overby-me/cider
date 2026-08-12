@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/kmod.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/kmod.h

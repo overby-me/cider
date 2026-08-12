@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/syscall_sw.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/syscall_sw.h

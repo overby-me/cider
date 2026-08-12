@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/disk.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/disk.h

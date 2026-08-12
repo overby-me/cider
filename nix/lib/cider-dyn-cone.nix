@@ -24,7 +24,7 @@
   # SMALL AND REAL by default: proc-macro2 is one action over a cone of exactly one other
   # group, two actions in total. The smallest case that is not the empty cone cider-dyn-one
   # already covers.
-  label ? "root//buck-rust:proc-macro2",
+  label ? "root//vendor/rust:proc-macro2",
   # Reach the same cone through specDir mode instead of `actions` mode.
   #
   # THIS IS THE ARRANGEMENT THAT SCALES, and the only one that does. `actions` mode serialises

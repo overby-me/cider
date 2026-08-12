@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-# #87 STAGE 2: MOVE src/external TO pins/, REWRITING ONLY WHAT IS GENUINELY A REFERENCE.
+# #87 STAGE 2: MOVE src/external TO vendor/pins/, REWRITING ONLY WHAT IS GENUINELY A REFERENCE.
 #
 # DRY RUN IS THE DEFAULT AND --apply IS PARSED EXPLICITLY. An earlier script in this repo
 # treated an unrecognised --dry-run as consent and wrote 98 files, so unknown arguments are a
@@ -9,12 +9,12 @@
 # THE RULE IS LABEL-FIRST, NOT PATH-FIRST, and that is the whole point of this file.
 #
 # A blanket rewrite of the string src/external corrupts far more than it fixes. Measured on
-# this tree: buck-src/ alone carries 1,854 mentions and only 172 of them are ours. Rewriting
+# this tree: vendor/src/ alone carries 1,854 mentions and only 172 of them are ours. Rewriting
 # the frozen lines would break nothing at build time and would silently stop coverage finding
 # its reference paths, which is the expensive kind of failure. So this rewrites four specific
 # things and reports everything it declines to touch:
 #
-#   1. LABELS          //src/external/<x>  ->  //pins/<x>          (also root//src/external/...)
+#   1. LABELS          //src/external/<x>  ->  //vendor/pins/<x>          (also root//src/external/...)
 #   2. MANIFEST        the "path" field of nix/submodules.json, handled as JSON, not as text
 #   3. LIVE PATHS      a quoted or bare src/external/<x> in .nix, .py, .nu, .sh, .rs, .json
 #                      and .gitignore, EXCLUDING the frozen and historical lines below
@@ -154,7 +154,7 @@ def main [--apply, --dry-run (-n)] {
     let is_build = (($rel | path basename) == "BUCK" or $ext == ".bzl")
     if not ($is_build or ($ext in $REWRITE_EXT)) { continue }
     # ONLY THE MATCHING LINES ARE REWRITTEN, and that is what makes this finish. Walking every
-    # line of every candidate means walking buck-src/BUCK, 175,450 lines of which 1,854 mention
+    # line of every candidate means walking vendor/src/BUCK, 175,450 lines of which 1,854 mention
     # the string; python pays that too, at a hundredth of the per-line cost, and nushell simply
     # does not come back. grep -n gives the line numbers, the rewrite runs on those, and the
     # file is only rebuilt when --apply has something to write.

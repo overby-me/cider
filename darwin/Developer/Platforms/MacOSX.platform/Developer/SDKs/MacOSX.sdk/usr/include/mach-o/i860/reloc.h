@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/cctools/include/mach-o/i860/reloc.h
+../../../../../../../../../../../vendor/pins/cctools/include/mach-o/i860/reloc.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/exception_types.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/exception_types.h

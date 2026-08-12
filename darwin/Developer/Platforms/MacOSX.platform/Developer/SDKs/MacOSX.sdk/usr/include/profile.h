@@ -1,1 +1,1 @@
-../../../../../../../../../pins/MITKerberosShim/mit-include/profile.h
+../../../../../../../../../vendor/pins/MITKerberosShim/mit-include/profile.h

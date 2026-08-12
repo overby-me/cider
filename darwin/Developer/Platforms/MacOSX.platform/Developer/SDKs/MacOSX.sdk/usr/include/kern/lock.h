@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/lock.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/lock.h

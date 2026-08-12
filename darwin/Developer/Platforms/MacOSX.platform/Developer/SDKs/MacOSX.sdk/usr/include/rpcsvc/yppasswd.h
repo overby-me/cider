@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/librpcsvc/gen/yppasswd.h
+../../../../../../../../../../vendor/pins/librpcsvc/gen/yppasswd.h

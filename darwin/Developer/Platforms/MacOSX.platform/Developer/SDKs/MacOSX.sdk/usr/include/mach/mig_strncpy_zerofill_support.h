@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/mig_strncpy_zerofill_support.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/mig_strncpy_zerofill_support.h

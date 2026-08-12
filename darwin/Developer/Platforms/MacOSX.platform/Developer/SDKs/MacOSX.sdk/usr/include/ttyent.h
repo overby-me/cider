@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/include/ttyent.h
+../../../../../../../../../vendor/pins/libc/include/ttyent.h

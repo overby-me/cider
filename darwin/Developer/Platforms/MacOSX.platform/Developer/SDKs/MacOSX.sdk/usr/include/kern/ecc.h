@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/ecc.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/ecc.h

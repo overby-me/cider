@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libplatform/private/os/crashlog_private.h
+../../../../../../../../../../vendor/pins/libplatform/private/os/crashlog_private.h

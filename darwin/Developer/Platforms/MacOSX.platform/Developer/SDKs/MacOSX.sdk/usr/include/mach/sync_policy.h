@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/sync_policy.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/sync_policy.h

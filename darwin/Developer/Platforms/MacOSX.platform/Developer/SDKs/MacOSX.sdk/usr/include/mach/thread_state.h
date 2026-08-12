@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libsyscall/mach/mach/thread_state.h
+../../../../../../../../../../vendor/pins/xnu/libsyscall/mach/mach/thread_state.h

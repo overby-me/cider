@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/stringtriebuilder.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/stringtriebuilder.h

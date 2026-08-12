@@ -17,7 +17,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
     ],
     visibility = ["PUBLIC"],
 )
@@ -34,16 +34,16 @@ darwin_binary(
         # sw_vers
         ":sw_vers_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -81,15 +81,15 @@ darwin_binary(
         # codesign
         ":codesign_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:system_final",
+        "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -127,15 +127,15 @@ darwin_binary(
         # dsmemberutil
         ":dsmemberutil_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:system_final",
+        "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -173,15 +173,15 @@ darwin_binary(
         # softwareupdate
         ":softwareupdate_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:system_final",
+        "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -219,15 +219,15 @@ darwin_binary(
         # spctl
         ":spctl_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:system_final",
+        "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -265,15 +265,15 @@ darwin_binary(
         # sudo
         ":sudo_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:system_final",
+        "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -295,12 +295,12 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_AppKit",
-        "//buck-src:fw_CFNetwork",
-        "//buck-src:fw_CoreFoundation",
-        "//buck-src:fw_CoreGraphics",
-        "//buck-src:fw_Foundation",
-        "//buck-src:fw_Security",
+        "//vendor/src:fw_AppKit",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_Security",
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
@@ -324,18 +324,18 @@ darwin_binary(
         # open
         ":open_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:system_final",
-        "//buck-src:AppKit_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src:AppKit_dylib",
         "//darwin/frameworks:CoreServices_dylib",
-        "//buck-src:Foundation_dylib",
+        "//vendor/src:Foundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )

@@ -29,7 +29,7 @@ def main [--all] {
     # [cider] ld and ld64_dir, but that flake attribute went away when ld64 became a buck2
     # target, so the script died here with "does not provide attribute cider-ld64" and could
     # not regenerate .buckconfig.local at all. buck/toolchains/BUCK sets
-    # ld_target = root//buck-src:x86_64-apple-darwin20-ld, and darwin.bzl selects it with an
+    # ld_target = root//vendor/src:x86_64-apple-darwin20-ld, and darwin.bzl selects it with an
     # absolute -fuse-ld from the generated driver, which is the only thing that picks the
     # linker. Verified 2026-08-10 by deleting both keys and rebuilding: ruby_zlib_dylib
     # still BUILD SUCCEEDED at the same 4,704 commands, so they were vestigial.
@@ -49,7 +49,7 @@ def main [--all] {
     #   1. add-hardening.sh appends -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 AFTER the argv, so
     #      the -D_FORTIFY_SOURCE=0 the port passes loses. libc secure/_stdio.h then turns
     #      snprintf into a macro over __builtin___snprintf_chk, which rewrites libc OWN
-    #      DEFINITION of snprintf, and //buck-src/libc:libc-stdio_obj does not parse.
+    #      DEFINITION of snprintf, and //vendor/src/libc:libc-stdio_obj does not parse.
     #   2. bin/clang re-sources the binutils add-flags whenever the bintools sentinel is
     #      unset, which is true here and false inside a derivation, so every link gets
     #      -Wl,-dynamic-linker=<glibc ld.so> and ld64 dies with "unknown option".
@@ -244,5 +244,5 @@ file_watcher = fs_hash_crawler
     open .buckconfig.local | lines | each {|l| print $"  ($l)" }
 
     print ""
-    print "ready: buck2 build //pins/ciderd/xnu-sys:ciderd_xnu_sys"
+    print "ready: buck2 build //vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys"
 }

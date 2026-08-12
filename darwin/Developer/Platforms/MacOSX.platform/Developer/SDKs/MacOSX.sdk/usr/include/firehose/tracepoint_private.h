@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libkern/firehose/tracepoint_private.h
+../../../../../../../../../../vendor/pins/xnu/libkern/firehose/tracepoint_private.h

@@ -15,7 +15,7 @@
 #   which makes it a CONTEXT line of a unified diff. Rewriting a context line stops the patch
 #   applying.
 #
-#   pins/ and buck-src/ are excluded for their CONTENT, because those are the 148 vendored
+#   vendor/pins/ and vendor/src/ are excluded for their CONTENT, because those are the 148 vendored
 #   upstreams and a pin tree is where a careless rewrite does the most damage. But a BUCK or
 #   .bzl file is OURS wherever it sits, and excluding those trees wholesale was wrong: the first
 #   run left 56 labels dangling in four tracked build files of ours that name first-party
@@ -63,12 +63,12 @@ const TO_DARWIN = [
   "tools" "unxip" "vchroot" "xcselect" "xtrace"
 ]
 
-const SKIP_DIRS = [".jj" ".git" "buck-out" "buck-src" "buck-rust" "target" "outputs"
+const SKIP_DIRS = [".jj" ".git" "buck-out" "vendor/src" "vendor/rust" "target" "outputs"
   "build" "__pycache__" "result" "result-ld64" "result-graph-ref"
   "result-ducttape-ref" "node_modules" ".direnv"]
 
 # Excluded from REWRITING, for the reasons in the header. Not excluded from moving.
-const SKIP_REL_PREFIX = ["patches/" "pins/"]
+const SKIP_REL_PREFIX = ["patches/" "vendor/pins/"]
 
 const MAX_BYTES = 4000000
 
@@ -178,9 +178,9 @@ def main [
     mut n = $lab.n
     mut new = $lab.text
     # A BARE path is ours only where the path space is the repo, and never inside a pin tree or
-    # buck-src, where it is relative to the pin instead. Build files are the exception: a label
+    # vendor/src, where it is relative to the pin instead. Build files are the exception: a label
     # in one is ours wherever it sits, and it was handled above.
-    if not ($skipped_tree or ($rel | str starts-with "buck-src/") or (is-build-file $base)) {
+    if not ($skipped_tree or ($rel | str starts-with "vendor/src/") or (is-build-file $base)) {
       let bare = (count-and-rewrite-bare $new $alts $dest)
       $n = $n + $bare.n
       $new = $bare.text
@@ -297,7 +297,7 @@ def count-and-rewrite [text: string, prefix: string, replacement: string, alts: 
 
 # A BARE src/<name>, which is ours only outside a pin. python spells the left boundary
 # (?<![\w.\-/]), so the character before src/ may not be a word character, dot, dash or slash;
-# the slash is the important one, since buck-src/ ends in src/ and rewriting that would produce
+# the slash is the important one, since vendor/src/ ends in src/ and rewriting that would produce
 # buck-darwin/<name> for any pin sharing a name with a moving directory.
 def count-and-rewrite-bare [text: string, alts: list<string>, dest: string] {
   mut out = ""

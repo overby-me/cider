@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/notify.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/notify.h

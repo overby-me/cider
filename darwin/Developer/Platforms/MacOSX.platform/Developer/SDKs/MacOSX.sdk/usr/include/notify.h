@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libnotify/notify.h
+../../../../../../../../../vendor/pins/libnotify/notify.h

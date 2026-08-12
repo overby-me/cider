@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/helper/helper_types.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/helper/helper_types.h

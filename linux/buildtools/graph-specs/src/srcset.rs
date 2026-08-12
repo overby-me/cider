@@ -330,11 +330,11 @@ fn scan_quoted_includes(data: &[u8]) -> Vec<String> {
 
 // ---------------------------------------------------------------- grouping
 
-/// buck-src, pins and buck-rust are deliberately ungrouped, each for its own reason: the first
+/// vendor/src, pins and vendor/rust are deliberately ungrouped, each for its own reason: the first
 /// two are pins staged wholesale by revision and a group there would collide with those
-/// symlinks, and buck-rust is gitignored and comes from the vendor derivation, so a
+/// symlinks, and vendor/rust is gitignored and comes from the vendor derivation, so a
 /// builtins.path at one would fail with "not tracked by Git".
-pub const UNGROUPED: &[&str] = &["buck-src/", "pins/", "buck-rust/"];
+pub const UNGROUPED: &[&str] = &["vendor/src/", "vendor/pins/", "vendor/rust/"];
 
 pub fn group_of(p: &str) -> Option<String> {
     if UNGROUPED.iter().any(|u| p.starts_with(u)) {

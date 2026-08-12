@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/SecurityTokend/lib/transit.h
+../../../../../../../../../../vendor/pins/SecurityTokend/lib/transit.h

@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/include/sgtty.h
+../../../../../../../../../vendor/pins/libc/include/sgtty.h

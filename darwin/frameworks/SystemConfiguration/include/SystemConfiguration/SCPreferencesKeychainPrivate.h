@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/SCPreferencesKeychainPrivate.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/SCPreferencesKeychainPrivate.h

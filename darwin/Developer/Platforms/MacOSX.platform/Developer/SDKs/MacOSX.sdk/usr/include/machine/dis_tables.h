@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/machine/dis_tables.h
+../../../../../../../../../../vendor/pins/xnu/bsd/machine/dis_tables.h

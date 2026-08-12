@@ -32,7 +32,7 @@
 
 def main [
   --endpoint: string = ".#cider-buck2-prefix-min"
-  --label: string = "root//buck-src:asl_ipc_mig"
+  --label: string = "root//vendor/src:asl_ipc_mig"
 ] {
   print "== does migcom honour SOURCE_DATE_EPOCH? (#95) =="
 

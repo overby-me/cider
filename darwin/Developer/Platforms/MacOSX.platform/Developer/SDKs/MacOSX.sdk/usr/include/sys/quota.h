@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/quota.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/quota.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/pal_hibernate.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/pal_hibernate.h

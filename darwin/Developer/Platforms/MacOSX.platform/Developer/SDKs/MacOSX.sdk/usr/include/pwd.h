@@ -1,1 +1,1 @@
-../../../../../../../../../pins/Libinfo/lookup.subproj/pwd.h
+../../../../../../../../../vendor/pins/Libinfo/lookup.subproj/pwd.h

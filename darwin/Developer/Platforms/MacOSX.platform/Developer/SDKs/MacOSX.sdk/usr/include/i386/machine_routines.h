@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/machine_routines.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/machine_routines.h

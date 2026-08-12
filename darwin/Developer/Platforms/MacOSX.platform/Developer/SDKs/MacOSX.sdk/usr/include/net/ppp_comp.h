@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/net/ppp_comp.h
+../../../../../../../../../../vendor/pins/xnu/bsd/net/ppp_comp.h

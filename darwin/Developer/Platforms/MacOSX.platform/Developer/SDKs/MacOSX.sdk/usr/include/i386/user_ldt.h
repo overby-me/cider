@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/user_ldt.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/user_ldt.h

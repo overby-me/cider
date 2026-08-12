@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/bytestrie.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/bytestrie.h

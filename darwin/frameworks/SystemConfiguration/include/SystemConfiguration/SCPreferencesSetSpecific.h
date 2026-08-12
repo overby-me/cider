@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/SCPreferencesSetSpecific.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/SCPreferencesSetSpecific.h

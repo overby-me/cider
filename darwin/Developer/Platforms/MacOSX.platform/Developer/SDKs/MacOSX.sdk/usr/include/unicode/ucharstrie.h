@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/ucharstrie.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/ucharstrie.h

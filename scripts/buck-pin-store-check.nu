@@ -75,7 +75,7 @@ def main [--src: string = "", --pins: string = "", --only: string = ""] {
     say $"pin farm:  ($farm)"
     say $"assembled: ($tree)"
 
-    # The farm names entries by sanitised path, so pins/libdispatch is
+    # The farm names entries by sanitised path, so vendor/pins/libdispatch is
     # src-external-libdispatch. Turning that back into a path is what the compare needs.
     let entries = (ls $farm
         | get name
@@ -90,9 +90,9 @@ def main [--src: string = "", --pins: string = "", --only: string = ""] {
     mut bad = []
     mut checked = 0
     for e in $entries {
-        # src-external-X -> pins/X. Only the first two segments are directories in
+        # src-external-X -> vendor/pins/X. Only the first two segments are directories in
         # every entry the manifest carries, so rebuilding the path is unambiguous.
-        let rel = ($e | str replace 'src-external-' 'pins/')
+        let rel = ($e | str replace 'src-external-' 'vendor/pins/')
         let theirs = ($tree | path join $rel)
         # RESOLVED, because a linkFarm entry is a symlink into the store and `nix hash path`
         # hashes the symlink itself, not what it points at. Without this every pin came back

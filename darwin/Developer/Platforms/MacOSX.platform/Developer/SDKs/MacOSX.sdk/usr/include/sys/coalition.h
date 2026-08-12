@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/coalition.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/coalition.h

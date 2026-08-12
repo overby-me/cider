@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/MITKerberosShim/mit-include/gssapi/gssapi_generic.h
+../../../../../../../../../../vendor/pins/MITKerberosShim/mit-include/gssapi/gssapi_generic.h

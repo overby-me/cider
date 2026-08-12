@@ -54,15 +54,15 @@ const OUT_OF_SCOPE_TABLE = [["name" "why"];
   ["x86_64-apple-darwin20-ld" "Darling's ld64 and cctools come from Nix (nix/lib/cider-ld64.nix, the ld64 input to ciderBuck2Graph); the port CONSUMES them through [cider] ld and ld64_dir rather than building them"]
   ["x86_64-apple-darwin20-ar" "same as x86_64-apple-darwin20-ld: supplied by the Nix-built cctools"]
   ["x86_64-apple-darwin20-ranlib" "same as x86_64-apple-darwin20-ld: supplied by the Nix-built cctools"]
-  ["pins/cctools-port/cctools/misc/lipo" "the second lipo: only cctools' copy is installed, and cctools-port's is a build-time tool supplied by the Nix-built cctools like ld, ar and ranlib"]
+  ["vendor/pins/cctools-port/cctools/misc/lipo" "the second lipo: only cctools' copy is installed, and cctools-port's is a build-time tool supplied by the Nix-built cctools like ld, ar and ranlib"]
   ["libsystem_kernel_static32.a" "the i386 slice: its libsyscall_32 compiles the -i386-User.c mig stubs, and this port targets x86_64 only"]]
 const OUT_OF_SCOPE = ["libdarlingserver_duct_tape.a" "x86_64-apple-darwin20-ld"
   "x86_64-apple-darwin20-ar" "x86_64-apple-darwin20-ranlib"
-  "pins/cctools-port/cctools/misc/lipo" "libsystem_kernel_static32.a"]
+  "vendor/pins/cctools-port/cctools/misc/lipo" "libsystem_kernel_static32.a"]
 
 const ARCHIVE_ALIASES = [["artifact" "label"];
   ["liblibsimple_cider.a" "//darwin/libsimple:libsimple_cider"]
-  ["libciderd_xnu_sys.a" "//pins/ciderd/xnu-sys:ciderd_xnu_sys"]
+  ["libciderd_xnu_sys.a" "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys"]
   ["liblibsimple_ciderd.a" "//darwin/libsimple:libsimple_ciderd"]]
 
 # Parse build.ninja into rows of {outs, rule, inputs, link_flags}.
@@ -121,7 +121,7 @@ def buck-files [] {
 # and not a gap. Same class as the install manifests, which said "is in no package" 2,182 times.
 def tree-path [p: string] {
   if ($p | str starts-with "src/external/") {
-    $"pins/($p | str substring 13..)"
+    $"vendor/pins/($p | str substring 13..)"
   } else { $p }
 }
 

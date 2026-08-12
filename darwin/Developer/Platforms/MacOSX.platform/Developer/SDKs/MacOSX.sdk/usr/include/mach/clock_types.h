@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/clock_types.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/clock_types.h

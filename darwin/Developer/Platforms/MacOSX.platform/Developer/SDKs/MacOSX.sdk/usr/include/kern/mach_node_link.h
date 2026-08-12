@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/mach_node_link.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/mach_node_link.h

@@ -36,8 +36,8 @@ const GEN = "buck/generated"
 # Which .bzl belongs to which package, and whether it is the private surface (those targets are
 # named fwp_* rather than fw_*).
 const SOURCES = [["file" "pkg" "prefix"];
-  ["sdk_framework_buck_src.bzl" "buck-src" "fw_"]
-  ["sdk_framework_private_buck_src.bzl" "buck-src" "fwp_"]
+  ["sdk_framework_buck_src.bzl" "vendor/src" "fw_"]
+  ["sdk_framework_private_buck_src.bzl" "vendor/src" "fwp_"]
   ["sdk_framework_darwin_frameworks.bzl" "darwin/frameworks" "fw_"]
   ["sdk_framework_private_darwin_private_frameworks.bzl" "darwin/private-frameworks" "fwp_"]
   ["sdk_framework_darwin_Developer.bzl" "darwin/Developer" "fw_"]
@@ -88,7 +88,7 @@ def load-maps [] {
 # Whether a framework's headers actually resolve in this working copy.
 #
 # The repo SDK and Developer trees are symlinks into the submodules, which are not checked out
-# (the pins under buck-src are what the port compiles against). A header_map full of dangling
+# (the pins under vendor/src are what the port compiles against). A header_map full of dangling
 # links does not even coerce, so such an entry is not a usable dep: naming it fails analysis
 # for every consumer.
 #
@@ -163,7 +163,7 @@ def main [--json, ...seeds: string] {
       $unavailable = ($unavailable | append $fw)
       continue
     }
-    let pinned = ($entries | where {|e| $e.pkg == "buck-src" and (not ($e.label | str ends-with $"fwp_($fw)")) })
+    let pinned = ($entries | where {|e| $e.pkg == "vendor/src" and (not ($e.label | str ends-with $"fwp_($fw)")) })
     let pick = (if ($pinned | is-not-empty) { $pinned | first } else { $entries | first })
     $labels = ($labels | append $pick.label)
   }

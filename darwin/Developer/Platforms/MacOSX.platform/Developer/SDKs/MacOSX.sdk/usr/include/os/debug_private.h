@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libc/os/debug_private.h
+../../../../../../../../../../vendor/pins/libc/os/debug_private.h

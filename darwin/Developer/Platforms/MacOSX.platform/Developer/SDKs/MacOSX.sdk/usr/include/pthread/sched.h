@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libpthread/include/pthread/sched.h
+../../../../../../../../../../vendor/pins/libpthread/include/pthread/sched.h

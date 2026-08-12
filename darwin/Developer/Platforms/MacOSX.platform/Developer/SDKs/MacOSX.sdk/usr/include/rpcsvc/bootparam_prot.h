@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/librpcsvc/gen/bootparam_prot.h
+../../../../../../../../../../vendor/pins/librpcsvc/gen/bootparam_prot.h

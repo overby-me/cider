@@ -13,8 +13,8 @@ rust_binary(
     crate_root = "src/main.rs",
     srcs = glob(["src/**/*.rs"]),
     deps = [
-        "//buck-rust:goblin",
-        "//buck-rust:libc",
+        "//vendor/rust:goblin",
+        "//vendor/rust:libc",
     ],
     visibility = ["PUBLIC"],
 )

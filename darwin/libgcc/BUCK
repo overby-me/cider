@@ -41,7 +41,7 @@ darwin_dylib(
         ":gcc_s_obj",
     ],
     siblings = [
-        "//buck-src:compiler_rt_final",
+        "//vendor/src:compiler_rt_final",
     ],
     linker_flags = [
         "-Wl,-sub_library,libcompiler_rt",

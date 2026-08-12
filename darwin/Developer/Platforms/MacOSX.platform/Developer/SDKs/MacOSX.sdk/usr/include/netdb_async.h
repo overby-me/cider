@@ -1,1 +1,1 @@
-../../../../../../../../../pins/Libinfo/lookup.subproj/netdb_async.h
+../../../../../../../../../vendor/pins/Libinfo/lookup.subproj/netdb_async.h

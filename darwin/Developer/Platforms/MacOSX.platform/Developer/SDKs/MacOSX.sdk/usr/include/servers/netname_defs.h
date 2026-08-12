@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libsyscall/mach/servers/netname_defs.h
+../../../../../../../../../../vendor/pins/xnu/libsyscall/mach/servers/netname_defs.h

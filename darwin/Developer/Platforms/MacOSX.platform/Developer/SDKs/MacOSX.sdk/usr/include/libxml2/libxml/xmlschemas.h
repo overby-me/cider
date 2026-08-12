@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/libxml2/libxml2/include/libxml/xmlschemas.h
+../../../../../../../../../../../vendor/pins/libxml2/libxml2/include/libxml/xmlschemas.h

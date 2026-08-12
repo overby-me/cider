@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/cctools/include/mach/sparc/thread_status.h
+../../../../../../../../../../../vendor/pins/cctools/include/mach/sparc/thread_status.h

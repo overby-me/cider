@@ -62,7 +62,7 @@ darwin_dylib(
         ":pmenergy_obj",
     ],
     siblings = [
-        "//buck-src:system_final",
+        "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],
@@ -114,7 +114,7 @@ darwin_dylib(
         ":pmsample_obj",
     ],
     siblings = [
-        "//buck-src:system_final",
+        "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],

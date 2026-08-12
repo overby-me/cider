@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/icu/icuSources/common/unicode/locdspnm.h
+../../../../../../../../../../vendor/pins/icu/icuSources/common/unicode/locdspnm.h

@@ -71,8 +71,8 @@ const BUILD_TREES: &[&str] = &["buck/"];
 /// file". Emptying the whole tree looked right, since analysis reads no source, but the graph
 /// derivation also MATERIALISES the in-process artifacts, and a staged farm of GENERATED
 /// headers can only be materialised by running the generator. Measured: with everything
-/// emptied, buck2 fails on root//pins/ciderd:dserver_rpc, root//buck-src:mig_parser and
-/// root//buck-src:shell_cmds_find_getdate, which are the rpc wrapper script, a mig .defs and a
+/// emptied, buck2 fails on root//vendor/pins/ciderd:dserver_rpc, root//vendor/src:mig_parser and
+/// root//vendor/src:shell_cmds_find_getdate, which are the rpc wrapper script, a mig .defs and a
 /// yacc grammar.
 ///
 /// So only the C family is emptied. That is the bulk of the tree and it is what people edit, it
@@ -88,7 +88,7 @@ const EMPTIABLE: &[&str] = &[
 /// all: the pins are materialised from ciderSrc, the crates from the vendor derivation, and
 /// pins is where the pins are planted. Emptying them in a hand run makes the run
 /// unrepresentative of the build.
-const NEVER_EMPTY: &[&str] = &["buck-src/", "buck-rust/", "pins/"];
+const NEVER_EMPTY: &[&str] = &["vendor/src/", "vendor/rust/", "vendor/pins/"];
 
 /// THE FIVE FILES THE PREFIX LIST ABOVE DOES NOT COVER, and the reason the skeleton was
 /// reverted rather than fixed the first time. These are C family and outside pins, so they were

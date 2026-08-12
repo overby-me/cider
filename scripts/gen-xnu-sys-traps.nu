@@ -43,7 +43,7 @@
 # is worth nothing.
 
 const OUT = "linux/server/src/xnu/traps_generated.rs"
-const HEADER_GLOB = "buck-out/v2/art/root/*/pins/ciderd/__dserver_rpc__/*gen_include/ciderd/rpc.internal.h"
+const HEADER_GLOB = "buck-out/v2/art/root/*/vendor/pins/ciderd/__dserver_rpc__/*gen_include/ciderd/rpc.internal.h"
 
 # C scalar types the RPC generator emits, mapped to what bindgen calls them in Rust.
 # A type NOT in this table is an error rather than a guess: silently mapping an unknown type is
@@ -70,7 +70,7 @@ def die [msg: string] {
 def header-path [] {
   let hits = (glob $HEADER_GLOB)
   if ($hits | is-empty) {
-    die "rpc.internal.h not built; run: buck2 build //pins/ciderd:dserver_rpc"
+    die "rpc.internal.h not built; run: buck2 build //vendor/pins/ciderd:dserver_rpc"
   }
   $hits | first
 }

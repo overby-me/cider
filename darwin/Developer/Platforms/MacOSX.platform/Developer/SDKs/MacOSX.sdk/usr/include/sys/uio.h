@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/uio.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/uio.h

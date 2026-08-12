@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/stab.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/stab.h

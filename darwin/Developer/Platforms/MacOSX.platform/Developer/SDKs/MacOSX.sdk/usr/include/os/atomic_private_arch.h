@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libkern/os/atomic_private_arch.h
+../../../../../../../../../../vendor/pins/xnu/libkern/os/atomic_private_arch.h

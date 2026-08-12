@@ -1,13 +1,13 @@
 #!/usr/bin/env nu
-# Materialize nix-pinned upstream sources into buck-src/ for the Buck2 port.
+# Materialize nix-pinned upstream sources into vendor/src/ for the Buck2 port.
 #
 # Most of Darling's source is already in this repo, but a few trees are nix pins
 # (nix/submodules.json) with no working copy: `nix build` assembles them into the store, which
 # a direct `buck2 build` cannot see (buck2 needs its sources inside the project root, and a
 # symlink into the store would make it crawl the closure).
 #
-# So this fetches the SAME pinned revision + hash nix uses, and copies it into buck-src/<name>/
-# (gitignored). The BUCK file that builds these trees is buck-src/BUCK, which is committed: a
+# So this fetches the SAME pinned revision + hash nix uses, and copies it into vendor/src/<name>/
+# (gitignored). The BUCK file that builds these trees is vendor/src/BUCK, which is committed: a
 # buck2 package owns its subdirectories, so one checked-in BUCK file can define targets over all
 # materialized trees without putting a BUCK file inside any of them.
 #
@@ -18,7 +18,7 @@
 # -- with them absent, 1909 of those links dangle.
 #
 # Converted from bash (task #40). Tested against the bash version in an isolated tree -- a
-# scratch root holding only scripts/, nix/submodules.json and the flake, so buck-src/ there is
+# scratch root holding only scripts/, nix/submodules.json and the flake, so vendor/src/ there is
 # empty and the copying paths run for real without touching this repo's 3.8 GB of pins. Both
 # versions were driven over: a cold fetch of a small pin, the same pin again (the rev-stamp
 # skip), FORCE=1 over it, a path with no manifest entry, a scratch patches/<name>/*.patch to
@@ -36,41 +36,41 @@
 #    tree reaches these through ~1900 relative symlinks that only resolve in the nix-assembled
 #    tree, so the Buck2 port declares the header roots it needs directly from the source trees
 #    instead.
-const DEFAULT_PATHS = ["pins/bootstrap_cmds" "pins/xnu"]
+const DEFAULT_PATHS = ["vendor/pins/bootstrap_cmds" "vendor/pins/xnu"]
 
 # THE PIN ROOT, in one place, because the rule below is DIRECTLY UNDER THE PIN ROOT and not
-# a fixed depth. It read `== 3` while the root was src/external (NO-PIN-REWRITE); writing `== 2` for pins/
+# a fixed depth. It read `== 3` while the root was src/external (NO-PIN-REWRITE); writing `== 2` for vendor/pins/
 # would reseat the same landmine for whoever renames it next. Both copies of the test below
 # derive from this, so they cannot drift apart the way the rename tables once did.
-const PIN_ROOT_DEPTH = 1   # "pins" is one component
+const PIN_ROOT_DEPTH = 2   # "vendor/pins" is two components
 
 def say [msg: string] { print -e $msg }
 
 def main [--all, ...paths: string] {
     let repo_root = ($env.FILE_PWD | path join ".." | path expand)
     let manifest = ($repo_root | path join "nix/submodules.json")
-    let dest_root = ($repo_root | path join "buck-src")
+    let dest_root = ($repo_root | path join "vendor/src")
     let force = ($env.FORCE? | default "" | is-not-empty)
     let entries = (open --raw $manifest | from json)
 
     mkdir $dest_root
 
     if $all {
-        print "buck-src: realizing the assembled tree (nix build .#cider-src) ..."
+        print "vendor/src: realizing the assembled tree (nix build .#cider-src) ..."
         let assembled = (^nix build $"($repo_root)#cider-src" --no-link --print-out-paths
             | str trim | lines | last)
-        print $"buck-src: assembled at ($assembled)"
+        print $"vendor/src: assembled at ($assembled)"
 
         let all_entries = ($entries | where {|e| ($e.hash? | default "") | is-not-empty })
-        print $"buck-src: copying ($all_entries | length) pinned trees ..."
+        print $"vendor/src: copying ($all_entries | length) pinned trees ..."
         for e in $all_entries {
             let sub = $e.path
             let name = ($sub | path basename)
-            # A NESTED PIN GOES TO ITS OWN PATH, never buck-src/<basename>. Basenames are NOT
-            # unique: pins/ciderd/xnu-sys/xnu ends in xnu just like pins/xnu,
-            # so both would land in buck-src/xnu and copy over each other. The same collision
+            # A NESTED PIN GOES TO ITS OWN PATH, never vendor/src/<basename>. Basenames are NOT
+            # unique: vendor/pins/ciderd/xnu-sys/xnu ends in xnu just like vendor/pins/xnu,
+            # so both would land in vendor/src/xnu and copy over each other. The same collision
             # broke the Nix endpoint through ciderBuck2Graph.nix materializePins, and the fix
-            # here matches: only a pin directly under pins takes the buck-src route.
+            # here matches: only a pin directly under pins takes the vendor/src route.
             let dest = (if (($sub | split row "/" | length) == ($PIN_ROOT_DEPTH + 1)) {
                 $dest_root | path join $name
             } else {
@@ -78,10 +78,10 @@ def main [--all, ...paths: string] {
             })
             let src = ($assembled | path join $sub)
             if ($src | path type) != "dir" {
-                print $"buck-src: WARNING ($sub) missing from the assembled tree"
+                print $"vendor/src: WARNING ($sub) missing from the assembled tree"
                 continue
             }
-            let stamp = ($dest | path join ".buck-src-assembled")
+            let stamp = ($dest | path join ".vendor/src-assembled")
             let stamped = (($stamp | path exists) and ((open --raw $stamp | str trim) == $assembled))
             if (not $force) and $stamped {
                 continue
@@ -103,10 +103,10 @@ def main [--all, ...paths: string] {
             # this tree is at the revision the manifest now asks for. Writing only the
             # assembled-tree path here is what let a bumped pin keep a stale tree: the marker
             # existed, so the per-path branch skipped, and the tree stayed on the old rev.
-            $"($e.rev)\n" | save -f ($dest | path join ".buck-src-rev")
+            $"($e.rev)\n" | save -f ($dest | path join ".vendor/src-rev")
         }
         let size = (^du -sh $dest_root | split row "\t" | first)
-        print $"buck-src: done \(($size))"
+        print $"vendor/src: done \(($size))"
         exit 0
     }
 
@@ -132,15 +132,15 @@ def main [--all, ...paths: string] {
             exit 1
         }
 
-        let stamp = ($dest | path join ".buck-src-rev")
+        let stamp = ($dest | path join ".vendor/src-rev")
         let stamped = (($stamp | path exists) and ((open --raw $stamp | str trim) == $e.rev))
         if (not $force) and $stamped {
-            print $"buck-src: ($name) already at ($e.rev)"
+            print $"vendor/src: ($name) already at ($e.rev)"
             continue
         }
         # THERE USED TO BE A SECOND SKIP HERE AND IT REPORTED SUCCESS ABOUT A STALE TREE.
         #
-        # It honoured .buck-src-assembled on PRESENCE ALONE, with no comparison, on the
+        # It honoured .vendor/src-assembled on PRESENCE ALONE, with no comparison, on the
         # reasoning that --all had put the tree there "at the same pinned rev". That holds
         # exactly until a rev changes, and then the marker is a permanent skip: the tree stays
         # on the OLD revision while this prints that it is already materialized.
@@ -155,7 +155,7 @@ def main [--all, ...paths: string] {
         # left by an older --all has no rev stamp and is simply re-fetched once, which is the
         # safe direction: correctness over one avoidable fetch.
 
-        print $"buck-src: fetching ($e.owner)/($e.repo) @ ($e.rev)"
+        print $"vendor/src: fetching ($e.owner)/($e.repo) @ ($e.rev)"
         # getFlake for the pinned nixpkgs, and --impure because that reads a path outside the
         # store. The same fetchFromGitHub arguments nix/lib/cider-src.nix uses, so the fetch
         # is a store hit whenever the nix side has already been built.
@@ -172,9 +172,9 @@ def main [--all, ...paths: string] {
             | str trim | lines | last)
 
         # The port's OWN files inside a pin directory, which the upstream tree knows nothing
-        # about and which this function would otherwise destroy: buck-src/<pin>/BUCK is
+        # about and which this function would otherwise destroy: vendor/src/<pin>/BUCK is
         # committed and generated by the port, while the pin contents are not tracked at all.
-        # Losing it costs a build cycle and reports as `package root//buck-src/<pin>: does not
+        # Losing it costs a build cycle and reports as `package root//vendor/src/<pin>: does not
         # exist, missing BUCK file`, which reads like a buck2 problem rather than this one.
         let keep = (if ($dest | path exists) {
             glob $"($dest)/**/{BUCK,BUCK.v2,extra-deps.json}" --no-dir
@@ -192,7 +192,7 @@ def main [--all, ...paths: string] {
             $k.body | save -f -r $target
         }
         if ($keep | is-not-empty) {
-            print $"buck-src:   kept ($keep | length) port-owned file\(s) \(BUCK, extra-deps.json)"
+            print $"vendor/src:   kept ($keep | length) port-owned file\(s) \(BUCK, extra-deps.json)"
         }
 
         # Same patch application as nix/lib/cider-src.nix: patches/<name>/*.patch with
@@ -207,14 +207,14 @@ def main [--all, ...paths: string] {
         let patch_dir = ($repo_root | path join "patches" ($e.patches? | default $name))
         if ($patch_dir | path type) == "dir" {
             for p in (glob $"($patch_dir)/*.patch" | sort) {
-                print $"buck-src:   patch ($name): ($p | path basename)"
+                print $"vendor/src:   patch ($name): ($p | path basename)"
                 # stdout dropped, stderr left alone: a rejected hunk has to be visible.
                 open --raw $p | ^patch -p1 -d $dest --force | ignore
             }
         }
 
         # buck2 refuses symlinks with a "." component or a target that leaves the cell, and the
-        # upstream trees contain both; re-point them at the same file inside buck-src. See
+        # upstream trees contain both; re-point them at the same file inside vendor/src. See
         # linux/buildtools/src-normalise for the two cases.
         #
         # ON PATH, NOT A PATH IN THE TREE, since #99 made this a nix-built binary: it comes
@@ -223,6 +223,6 @@ def main [--all, ...paths: string] {
         ^cider-src-normalise --repo $repo_root $dest
 
         $"($e.rev)\n" | save -f $stamp
-        print $"buck-src: ($name) -> ($dest)"
+        print $"vendor/src: ($name) -> ($dest)"
     }
 }

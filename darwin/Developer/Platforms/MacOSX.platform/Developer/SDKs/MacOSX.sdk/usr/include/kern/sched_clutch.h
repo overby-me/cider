@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/sched_clutch.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/sched_clutch.h

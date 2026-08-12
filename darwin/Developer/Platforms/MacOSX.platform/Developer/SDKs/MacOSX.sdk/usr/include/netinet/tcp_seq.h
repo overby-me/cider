@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/netinet/tcp_seq.h
+../../../../../../../../../../vendor/pins/xnu/bsd/netinet/tcp_seq.h

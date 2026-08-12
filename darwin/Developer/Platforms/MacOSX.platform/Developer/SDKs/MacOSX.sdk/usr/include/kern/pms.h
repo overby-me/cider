@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/pms.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/pms.h

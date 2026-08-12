@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/task_inspect.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/task_inspect.h

@@ -1,0 +1,356 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the libplatform pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: platform_obj
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) platform_obj   -- review before committing.
+# cmake target: platform_obj  ->  src/external/libplatform/platform_obj
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/libplatform/os/resolver
+
+cc_header_root(
+    name = "platform_inc_internal",
+    headers = glob(["internal/*.h", "internal/**/*.h"]),
+    root = "internal",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "platform_inc_private",
+    headers = glob(["private/*.h", "private/**/*.h"]),
+    root = "private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "platform_inc_include",
+    headers = glob(["include/*.h", "include/**/*.h"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "platform_obj",
+    srcs = [
+        "src/atomics/common/MKGetTimeBaseInfo.c",
+        "src/atomics/init.c",
+        "src/cachecontrol/generic/cache.c",
+        "src/force_libplatform_to_build.c",
+        "src/init.c",
+        "src/os/alloc_once.c",
+        "src/os/atomic.c",
+        "src/os/lock.c",
+        "src/os/semaphore.c",
+        "src/setjmp/generic/setjmperr.c",
+        "src/setjmp/generic/sigaction.c",
+        "src/setjmp/generic/sigtramp.c",
+        "src/simple/asl.c",
+        "src/simple/getenv.c",
+        "src/simple/string_io.c",
+        "src/string/generic/bzero.c",
+        "src/string/generic/ffsll.c",
+        "src/string/generic/flsll.c",
+        "src/string/generic/memccpy.c",
+        "src/string/generic/memchr.c",
+        "src/string/generic/memcmp.c",
+        "src/string/generic/memmove.c",
+        "src/string/generic/memset_pattern.c",
+        "src/string/generic/strchr.c",
+        "src/string/generic/strcmp.c",
+        "src/string/generic/strcpy.c",
+        "src/string/generic/strlcat.c",
+        "src/string/generic/strlcpy.c",
+        "src/string/generic/strlen.c",
+        "src/string/generic/strncmp.c",
+        "src/string/generic/strncpy.c",
+        "src/string/generic/strnlen.c",
+        "src/string/generic/strstr.c",
+        "src/ucontext/generic/getmcontext.c",
+        "src/ucontext/generic/makecontext.c",
+        "src/ucontext/generic/setcontext.c",
+        "src/ucontext/generic/swapcontext.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":platform_inc_internal",
+        ":platform_inc_private",
+        ":platform_inc_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: platform_obj
+
+# BEGIN generated: platform dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs platform   -- review before committing.
+# Links 3 cmake object library/ies, 3 flag groups in total.
+
+darwin_dylib(
+    name = "platform_firstpass",
+    dylib_name = "libplatform_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_platform.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # platform_32bit
+        ":platform_32bit_obj",
+        # platform_64bit
+        ":platform_64bit_obj",
+        # platform_obj
+        ":platform_obj",
+    ],
+    linker_flags = [
+        "-Wl,-no_arch_warnings",
+        "-Wl,-bind_at_load",
+    ],
+    link_flag_files = {
+        "-Wl,-alias_list": "xcodeconfig/libplatform.aliases",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "platform_final",
+    dylib_name = "libsystem_platform.dylib",
+    install_name = "/usr/lib/system/libsystem_platform.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # platform_32bit
+        ":platform_32bit_obj",
+        # platform_64bit
+        ":platform_64bit_obj",
+        # platform_obj
+        ":platform_obj",
+    ],
+    siblings = [
+        "//vendor/src/xnu:system_kernel_firstpass",
+        "//vendor/src:compiler_rt_firstpass",
+        "//vendor/src/libc:system_c_firstpass",
+        "//vendor/src:system_dyld_firstpass",
+    ],
+    linker_flags = [
+        "-Wl,-no_arch_warnings",
+        "-Wl,-bind_at_load",
+    ],
+    link_flag_files = {
+        "-Wl,-alias_list": "xcodeconfig/libplatform.aliases",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: platform dylibs
+
+# BEGIN generated: platform_64bit
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) platform_64bit   -- review before committing.
+# cmake target: platform_64bit  ->  src/external/libplatform/platform_64bit
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/libplatform/os/resolver
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "platform_64bit_inc_libplatform",
+    headers = glob([
+        "internal/*.h",
+        "internal/**/*.h",
+        "private/*.h",
+        "private/**/*.h",
+        "include/*.h",
+        "include/**/*.h",
+    ]),
+    root = "",
+    include_subdirs = [
+        "internal",
+        "private",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "platform_64bit_obj",
+    srcs = [
+        "src/atomics/x86_64/OSAtomic.S",
+        "src/atomics/x86_64/pfz.S",
+        "src/cachecontrol/x86_64/cache.S",
+        "src/setjmp/x86_64/_setjmp.S",
+        "src/setjmp/x86_64/_sigtramp.S",
+        "src/setjmp/x86_64/setjmp.S",
+        "src/ucontext/x86_64/_ctx_start.S",
+        "src/ucontext/x86_64/_setcontext.S",
+        "src/ucontext/x86_64/getcontext.S",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":platform_64bit_inc_libplatform",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: platform_64bit
+
+# BEGIN generated: platform_32bit
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) platform_32bit   -- review before committing.
+# cmake target: platform_32bit  ->  src/external/libplatform/platform_32bit
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/libplatform/os/resolver
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "platform_32bit_inc_libplatform",
+    headers = glob([
+        "internal/*.h",
+        "internal/**/*.h",
+        "private/*.h",
+        "private/**/*.h",
+        "include/*.h",
+        "include/**/*.h",
+    ]),
+    root = "",
+    include_subdirs = [
+        "internal",
+        "private",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "platform_32bit_obj",
+    srcs = [
+        "empty.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":platform_32bit_inc_libplatform",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: platform_32bit
+
+# BEGIN generated: platform_static64
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) platform_static64   -- review before committing.
+# cmake target: platform_static64  ->  src/external/libplatform/libplatform_static64.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/libplatform/os/resolver
+
+cc_header_root(
+    name = "platform_static64_inc_libplatform_internal",
+    headers = glob(["internal/*.h", "internal/**/*.h"]),
+    root = "internal",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "platform_static64_inc_libplatform_private",
+    headers = glob(["private/*.h", "private/**/*.h"]),
+    root = "private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "platform_static64_inc_libplatform_include",
+    headers = glob(["include/*.h", "include/**/*.h"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "platform_static64_obj",
+    srcs = [
+        "src/atomics/common/MKGetTimeBaseInfo.c",
+        "src/atomics/init.c",
+        "src/cachecontrol/generic/cache.c",
+        "src/force_libplatform_to_build.c",
+        "src/init.c",
+        "src/os/alloc_once.c",
+        "src/os/atomic.c",
+        "src/os/lock.c",
+        "src/os/semaphore.c",
+        "src/setjmp/generic/setjmperr.c",
+        "src/setjmp/generic/sigaction.c",
+        "src/setjmp/generic/sigtramp.c",
+        "src/simple/asl.c",
+        "src/simple/getenv.c",
+        "src/simple/string_io.c",
+        "src/string/generic/bzero.c",
+        "src/string/generic/ffsll.c",
+        "src/string/generic/flsll.c",
+        "src/string/generic/memccpy.c",
+        "src/string/generic/memchr.c",
+        "src/string/generic/memcmp.c",
+        "src/string/generic/memmove.c",
+        "src/string/generic/memset_pattern.c",
+        "src/string/generic/strchr.c",
+        "src/string/generic/strcmp.c",
+        "src/string/generic/strcpy.c",
+        "src/string/generic/strlcat.c",
+        "src/string/generic/strlcpy.c",
+        "src/string/generic/strlen.c",
+        "src/string/generic/strncmp.c",
+        "src/string/generic/strncpy.c",
+        "src/string/generic/strnlen.c",
+        "src/string/generic/strstr.c",
+        "src/ucontext/generic/getmcontext.c",
+        "src/ucontext/generic/makecontext.c",
+        "src/ucontext/generic/setcontext.c",
+        "src/ucontext/generic/swapcontext.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_STATIC",
+        "-fvisibility=hidden",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":platform_static64_inc_libplatform_internal",
+        ":platform_static64_inc_libplatform_private",
+        ":platform_static64_inc_libplatform_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: platform_static64
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_libplatform.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

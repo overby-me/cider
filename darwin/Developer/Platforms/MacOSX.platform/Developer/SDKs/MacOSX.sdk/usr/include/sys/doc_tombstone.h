@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/doc_tombstone.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/doc_tombstone.h

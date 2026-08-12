@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/ndr.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/ndr.h

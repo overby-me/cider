@@ -1,1 +1,1 @@
-../../../../../../../../../pins/ncurses/darling/include/panel.h
+../../../../../../../../../vendor/pins/ncurses/darling/include/panel.h

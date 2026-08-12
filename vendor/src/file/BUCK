@@ -1,0 +1,162 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects", "cc_static_lib")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+prefix_dir(
+    name = "prefix_file_magic_Magdir",
+    srcs = glob(
+        ["file/magic/Magdir/**"],
+        exclude = [],
+    ),
+    strip = "file/magic/Magdir",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_file.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports
+
+# BEGIN generated: magic
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) magic   -- review before committing.
+# cmake target: magic  ->  src/external/file/file/libmagic.a
+
+cc_header_root(
+    name = "magic_inc_file",
+    headers = glob(["**/*"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "magic_obj",
+    srcs = [
+        "file/src/apprentice.c",
+        "file/src/apptype.c",
+        "file/src/ascmagic.c",
+        "file/src/buffer.c",
+        "file/src/cdf.c",
+        "file/src/cdf_time.c",
+        "file/src/compress.c",
+        "file/src/der.c",
+        "file/src/encoding.c",
+        "file/src/fsmagic.c",
+        "file/src/funcs.c",
+        "file/src/is_csv.c",
+        "file/src/is_json.c",
+        "file/src/is_tar.c",
+        "file/src/magic.c",
+        "file/src/print.c",
+        "file/src/readcdf.c",
+        "file/src/readelf.c",
+        "file/src/readmacho.c",
+        "file/src/softmagic.c",
+    ],
+    compiler_flags = [
+        "-DBUILTIN_MACHO",
+        "-DHAVE_CONFIG_H",
+        "-DMAGIC=\"/usr/share/file/magic\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Wno-non-literal-null-conversion",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":magic_inc_file",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: magic
+
+# BEGIN generated: magic archive
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --archives magic   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "magic",
+    lib_name = "libmagic.a",
+    objs = [
+        # magic
+        ":magic_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: magic archive
+
+# BEGIN generated: file
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) file   -- review before committing.
+# cmake target: file  ->  src/external/file/file/file
+
+cc_header_root(
+    name = "file_inc_file",
+    headers = glob(["**/*"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "file_obj",
+    srcs = [
+        "file/src/file.c",
+    ],
+    compiler_flags = [
+        "-DBUILTIN_MACHO",
+        "-DHAVE_CONFIG_H",
+        "-DMAGIC=\"/usr/share/file/magic\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Wno-non-literal-null-conversion",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":file_inc_file",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: file
+
+# BEGIN generated: file binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries file   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "file",
+    objs = [
+        # file
+        ":file_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:bz2_dylib",
+        "//vendor/src:z_dylib",
+        "//vendor/src:lzma_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//vendor/src/file:magic",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: file binary

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/arcade.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/arcade.h

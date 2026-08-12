@@ -69,7 +69,7 @@ _ELF_LIB_DIRS = read_root_config("cider", "elf_lib_dirs", "")
         dylib_name = "lib" + _n + ".dylib",
         install_name = "/usr/lib/native/lib" + _n + ".dylib",
         objs = [":" + _n + "_obj"],
-        siblings = ["//buck-src:system_final"],
+        siblings = ["//vendor/src:system_final"],
         toolchain = "toolchains//:darwin_cc",
         deps = ["//darwin:sdk_env"],
         visibility = ["PUBLIC"],
@@ -129,7 +129,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/CoreAudio:fw_CoreAudio",
         "//linux/native:host_headers",
@@ -155,10 +155,10 @@ darwin_dylib(
         ":CoreAudio_obj",
     ],
     siblings = [
-        "//buck-src/libcxx:cxx_dylib",
+        "//vendor/src/libcxx:cxx_dylib",
         "//darwin/CoreAudio:pulse_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -230,7 +230,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
         "//linux/native:host_headers",
@@ -257,16 +257,16 @@ darwin_dylib(
         ":AudioToolbox_obj",
     ],
     siblings = [
-        "//buck-src/objc4:objc_final",
+        "//vendor/src/objc4:objc_final",
         "//darwin/CoreAudio:avformat_dylib",
         "//darwin/CoreAudio:swresample_dylib",
         "//darwin/CoreAudio:avcodec_dylib",
         "//darwin/CoreAudio:avutil_dylib",
-        "//buck-src/libcxx:cxx_dylib",
-        "//buck-src:system_final",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
         "//darwin/CoreAudio:CoreAudio_dylib",
         "//darwin/frameworks:CoreServices_dylib",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -426,7 +426,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
@@ -461,11 +461,11 @@ darwin_dylib(
         ":CoreAudioComponent_obj",
     ],
     siblings = [
-        "//buck-src/libcxx:cxx_dylib",
-        "//buck-src:system_final",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
         "//darwin/CoreAudio:AudioToolbox_dylib",
         "//darwin/CoreAudio:CoreAudio_dylib",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     linker_flags = [
         "-Wl,-bundle",
@@ -533,7 +533,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
@@ -570,10 +570,10 @@ darwin_dylib(
     ],
     siblings = [
         "//darwin/CoreAudio:avformat_dylib",
-        "//buck-src/libcxx:cxx_dylib",
-        "//buck-src:system_final",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
         "//darwin/CoreAudio:AudioToolbox_dylib",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     linker_flags = [
         "-Wl,-bundle",
@@ -639,7 +639,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
@@ -671,11 +671,11 @@ darwin_binary(
         # afconvert
         ":afconvert_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src/libcxx:cxx_dylib",
-        "//buck-src:system_final",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
         "//darwin/CoreAudio:AudioToolbox_dylib",
         "//darwin/frameworks:CoreServices_dylib",
         "//darwin/CoreAudio:CoreAudio_dylib",
@@ -683,7 +683,7 @@ darwin_binary(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -765,7 +765,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
@@ -836,7 +836,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
         "//darwin/CoreAudio:fw_AudioToolbox",
@@ -864,11 +864,11 @@ darwin_binary(
         # afinfo
         ":afinfo_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src/libcxx:cxx_dylib",
-        "//buck-src:system_final",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
         "//darwin/CoreAudio:AudioToolbox_dylib",
         "//darwin/frameworks:CoreServices_dylib",
         "//darwin/CoreAudio:CoreAudio_dylib",
@@ -876,7 +876,7 @@ darwin_binary(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -934,7 +934,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
         "//darwin/CoreAudio:fw_AudioToolbox",
@@ -963,11 +963,11 @@ darwin_binary(
         # afplay
         ":afplay_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src/libcxx:cxx_dylib",
-        "//buck-src:system_final",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
         "//darwin/CoreAudio:AudioToolbox_dylib",
         "//darwin/frameworks:CoreServices_dylib",
         "//darwin/CoreAudio:CoreAudio_dylib",
@@ -975,7 +975,7 @@ darwin_binary(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1033,7 +1033,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
@@ -1066,11 +1066,11 @@ darwin_binary(
         # afrecord
         ":afrecord_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src/libcxx:cxx_dylib",
-        "//buck-src:system_final",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
         "//darwin/CoreAudio:AudioToolbox_dylib",
         "//darwin/frameworks:CoreServices_dylib",
         "//darwin/CoreAudio:CoreAudio_dylib",
@@ -1078,7 +1078,7 @@ darwin_binary(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )

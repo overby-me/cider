@@ -76,7 +76,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:dispatchmig_protocol",
+        "//vendor/src:dispatchmig_protocol",
         ":launchmig_job",
         ":launchmig_helper",
         ":launch_inc_src_launchd_src",
@@ -102,8 +102,8 @@ mig_gen(
     sheader_suffix = "Server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["jobXtraceMig.c"],
-    mig_sh = "//buck-src:mig.sh",
-    migcom = "//buck-src:migcom",
+    mig_sh = "//vendor/src:mig.sh",
+    migcom = "//vendor/src:migcom",
     deps = [
         "//darwin:sdk_env",
     ],
@@ -122,8 +122,8 @@ mig_gen(
     sheader_suffix = "Server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["helperXtraceMig.c"],
-    mig_sh = "//buck-src:mig.sh",
-    migcom = "//buck-src:migcom",
+    mig_sh = "//vendor/src:mig.sh",
+    migcom = "//vendor/src:migcom",
     deps = [
         "//darwin:sdk_env",
     ],
@@ -160,14 +160,14 @@ darwin_dylib(
         ":launch_obj",
     ],
     siblings = [
-        "//buck-src:system_pthread_final",
-        "//buck-src:system_malloc_final",
-        "//buck-src/libplatform:platform_final",
-        "//buck-src/libdispatch:libdispatch_shared_final",
-        "//buck-src:compiler_rt_final",
-        "//buck-src/libc:system_c_firstpass",
-        "//buck-src/xnu:system_kernel_firstpass",
-        "//buck-src:system_dyld_firstpass",
+        "//vendor/src:system_pthread_final",
+        "//vendor/src:system_malloc_final",
+        "//vendor/src/libplatform:platform_final",
+        "//vendor/src/libdispatch:libdispatch_shared_final",
+        "//vendor/src:compiler_rt_final",
+        "//vendor/src/libc:system_c_firstpass",
+        "//vendor/src/xnu:system_kernel_firstpass",
+        "//vendor/src:system_dyld_firstpass",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],
@@ -247,11 +247,11 @@ darwin_binary(
         # launchproxy
         ":launchproxy_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:system_final",
-        "//buck-src/libxpc:xpc_final",
+        "//vendor/src:system_final",
+        "//vendor/src/libxpc:xpc_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -316,20 +316,20 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         "//darwin/frameworks:fw_AE",
-        "//buck-src:fw_CFNetwork",
+        "//vendor/src:fw_CFNetwork",
         "//darwin/frameworks:fw_CarbonCore",
-        "//buck-src:fw_CoreFoundation",
-        "//buck-src:fw_CoreGraphics",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
         "//darwin/frameworks:fw_CoreServices",
         "//darwin/frameworks:fw_FSEvents",
-        "//buck-src:fw_Foundation",
-        "//buck-src:fw_IOKit",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_IOKit",
         "//darwin/frameworks:fw_LaunchServices",
         "//darwin/frameworks:fw_LocalAuthentication",
-        "//buck-src:fw_Onyx2D",
+        "//vendor/src:fw_Onyx2D",
         "//darwin/frameworks:fw_OpenGL",
         "//darwin/frameworks:fw_SearchKit",
-        "//buck-src:fw_Security",
+        "//vendor/src:fw_Security",
         ":launchctl_inc_src_launchd",
         ":launchctl_inc_src_launchd_support",
     ],
@@ -404,8 +404,8 @@ cc_objects(
         ":launchdmig_job_reply",
         ":launchdmig_job",
         ":launchdmig_helper",
-        "//buck-src:launchdmig_notify",
-        "//buck-src:launchdmig_mach_exc",
+        "//vendor/src:launchdmig_notify",
+        "//vendor/src:launchdmig_mach_exc",
         ":launchd_inc_src_launchd",
     ],
     gen_srcs = [
@@ -414,8 +414,8 @@ cc_objects(
         ":launchdmig_job_reply",
         ":launchdmig_job",
         ":launchdmig_helper",
-        "//buck-src:launchdmig_notify",
-        "//buck-src:launchdmig_mach_exc",
+        "//vendor/src:launchdmig_notify",
+        "//vendor/src:launchdmig_mach_exc",
     ],
     visibility = ["PUBLIC"],
 )
@@ -437,8 +437,8 @@ mig_gen(
         "internalUser.c",
     ],
     xtrace_srcs = ["internalXtraceMig.c"],
-    mig_sh = "//buck-src:mig.sh",
-    migcom = "//buck-src:migcom",
+    mig_sh = "//vendor/src:mig.sh",
+    migcom = "//vendor/src:migcom",
     deps = [
         "//darwin:sdk_env",
     ],
@@ -458,8 +458,8 @@ mig_gen(
         "job_forwardUser.c",
     ],
     xtrace_srcs = ["job_forwardXtraceMig.c"],
-    mig_sh = "//buck-src:mig.sh",
-    migcom = "//buck-src:migcom",
+    mig_sh = "//vendor/src:mig.sh",
+    migcom = "//vendor/src:migcom",
     deps = [
         "//darwin:sdk_env",
     ],
@@ -479,8 +479,8 @@ mig_gen(
         "job_replyUser.c",
     ],
     xtrace_srcs = ["job_replyXtraceMig.c"],
-    mig_sh = "//buck-src:mig.sh",
-    migcom = "//buck-src:migcom",
+    mig_sh = "//vendor/src:mig.sh",
+    migcom = "//vendor/src:migcom",
     deps = [
         "//darwin:sdk_env",
     ],
@@ -500,8 +500,8 @@ mig_gen(
     compile_srcs = [
         "jobServer.c",
     ],
-    mig_sh = "//buck-src:mig.sh",
-    migcom = "//buck-src:migcom",
+    mig_sh = "//vendor/src:mig.sh",
+    migcom = "//vendor/src:migcom",
     deps = [
         "//darwin:sdk_env",
     ],
@@ -520,8 +520,8 @@ mig_gen(
     compile_srcs = [
         "helperUser.c",
     ],
-    mig_sh = "//buck-src:mig.sh",
-    migcom = "//buck-src:migcom",
+    mig_sh = "//vendor/src:mig.sh",
+    migcom = "//vendor/src:migcom",
     deps = [
         "//darwin:sdk_env",
     ],
@@ -542,13 +542,13 @@ darwin_binary(
         # launchctl
         ":launchctl_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src/libxpc:xpc_final",
-        "//buck-src:edit_dylib",
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src/libxpc:xpc_final",
+        "//vendor/src:edit_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -571,11 +571,11 @@ darwin_binary(
         # launchd
         ":launchd_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:bsm.0_dylib",
-        "//buck-src:system_final",
+        "//vendor/src:bsm.0_dylib",
+        "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [

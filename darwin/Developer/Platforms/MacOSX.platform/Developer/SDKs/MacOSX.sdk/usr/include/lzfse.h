@@ -1,1 +1,1 @@
-../../../../../../../../../pins/lzfse/include/lzfse.h
+../../../../../../../../../vendor/pins/lzfse/include/lzfse.h

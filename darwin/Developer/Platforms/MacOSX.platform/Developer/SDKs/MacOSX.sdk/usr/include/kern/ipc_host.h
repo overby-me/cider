@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/ipc_host.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/ipc_host.h

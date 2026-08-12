@@ -31,7 +31,7 @@
 # filter to RESULTS. The five source roots are named explicitly for that reason, and --exclude
 # is passed as well, since it PRUNES the walk rather than filtering it.
 
-const SOURCE_ROOTS = ["src" "buck-src" "darwin" "linux" "buck"]
+const SOURCE_ROOTS = ["src" "vendor/src" "darwin" "linux" "buck"]
 const GLOB_EXCLUDE = ["**/buck-out/**" "**/.jj/**" "**/.git/**"]
 
 # `^\s+NAME = \{(.*?)^\s+\},` with re.M | re.S. Nushell needs both inline flags, (?ms), and the
@@ -51,13 +51,13 @@ def installed-destinations [text: string] {
 #
 # DERIVED FROM THE LABEL, not globbed, because globbing one directory silently skipped the
 # most important plist in the prefix: shellspawn is `//darwin/shellspawn:...`, so a glob rooted
-# at buck-src/ never found it, and shellspawn is what `cider shell` uses to spawn the guest
+# at vendor/src/ never found it, and shellspawn is what `cider shell` uses to spawn the guest
 # shell. A check that quietly cannot see its most important case is worse than no check.
 #
 # Three forms, in order:
 #   //darwin/shellspawn:me.overby.cider.shellspawn.plist -> darwin/shellspawn/org.cider....plist
-#   //buck-src:security_OSX_sec_ipc_com.apple.secd.plist -> the name's underscores are path
-#       separators: buck-src/security/OSX/sec/ipc/com.apple.secd.plist
+#   //vendor/src:security_OSX_sec_ipc_com.apple.secd.plist -> the name's underscores are path
+#       separators: vendor/src/security/OSX/sec/ipc/com.apple.secd.plist
 #   anything else -> a glob over the SOURCE ROOTS only, as a last resort
 def plist-source [repo: string, label: string] {
   let stripped = ($label | str trim --left --char "/")

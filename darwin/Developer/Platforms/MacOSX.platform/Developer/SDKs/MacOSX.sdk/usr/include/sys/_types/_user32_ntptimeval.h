@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/bsd/sys/_types/_user32_ntptimeval.h
+../../../../../../../../../../../vendor/pins/xnu/bsd/sys/_types/_user32_ntptimeval.h

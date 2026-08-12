@@ -57,7 +57,7 @@ darwin_dylib(
         ":DiagnosticMessagesClient_obj",
     ],
     siblings = [
-        "//buck-src:system_final",
+        "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],

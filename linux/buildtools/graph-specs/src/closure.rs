@@ -53,7 +53,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::process::ExitCode;
 
-/// The two the revert was about must be IN; two ordinary buck-src sources must be OUT. A closure
+/// The two the revert was about must be IN; two ordinary vendor/src sources must be OUT. A closure
 /// that cannot fail this is not measuring anything.
 ///
 /// linux/server/wrapper.h is here because it ESCAPED the first version of this closure and cost
@@ -64,7 +64,7 @@ const MUST_BE_REAL: &[&str] = &[
     "linux/libelfloader/wrapgen/wrapgen.cpp",
     "linux/server/wrapper.h",
 ];
-const MUST_NOT_BE: &[&str] = &["buck-src/adv_cmds/finger/finger.c", "buck-src/vim/vim/src/main.c"];
+const MUST_NOT_BE: &[&str] = &["vendor/src/adv_cmds/finger/finger.c", "vendor/src/vim/vim/src/main.c"];
 
 /// EVERY CATEGORY THAT RUNS SOMETHING AND FEEDS SOMETHING ELSE. Taken from the port own rules
 /// rather than guessed, and it is the complement of the four that only consume: c_compile,

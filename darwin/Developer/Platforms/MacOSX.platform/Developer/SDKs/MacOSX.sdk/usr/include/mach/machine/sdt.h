@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/osfmk/mach/machine/sdt.h
+../../../../../../../../../../../vendor/pins/xnu/osfmk/mach/machine/sdt.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libsyscall/mach/mach/sync.h
+../../../../../../../../../../vendor/pins/xnu/libsyscall/mach/mach/sync.h

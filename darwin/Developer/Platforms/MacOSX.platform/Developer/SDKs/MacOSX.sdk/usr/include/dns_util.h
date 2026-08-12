@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libresolv/darling/include/dns_util.h
+../../../../../../../../../vendor/pins/libresolv/darling/include/dns_util.h

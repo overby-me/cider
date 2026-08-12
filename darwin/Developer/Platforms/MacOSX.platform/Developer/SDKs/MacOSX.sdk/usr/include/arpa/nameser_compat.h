@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libc/include/arpa/nameser_compat.h
+../../../../../../../../../../vendor/pins/libc/include/arpa/nameser_compat.h

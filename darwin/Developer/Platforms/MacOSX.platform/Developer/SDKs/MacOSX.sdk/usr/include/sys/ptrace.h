@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/ptrace.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/ptrace.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/i386/atomic.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/i386/atomic.h

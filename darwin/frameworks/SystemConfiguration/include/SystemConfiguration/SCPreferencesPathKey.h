@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/SCPreferencesPathKey.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/SCPreferencesPathKey.h

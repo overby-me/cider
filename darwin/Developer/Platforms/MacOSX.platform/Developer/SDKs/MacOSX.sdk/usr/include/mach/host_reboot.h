@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/host_reboot.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/host_reboot.h

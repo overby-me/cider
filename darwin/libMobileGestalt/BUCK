@@ -35,7 +35,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
         "//darwin/libMobileGestalt:mobilegestalt_include",
         "//darwin/libMobileGestalt:sdk_src_libMobileGestalt_headers",
     ],
@@ -59,9 +59,9 @@ darwin_dylib(
         ":MobileGestalt_obj",
     ],
     siblings = [
-        "//buck-src/objc4:objc_final",
-        "//buck-src:system_final",
-        "//buck-src:Foundation_dylib",
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+        "//vendor/src:Foundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],

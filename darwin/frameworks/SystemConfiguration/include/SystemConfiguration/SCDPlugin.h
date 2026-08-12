@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/SCDPlugin.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/SCDPlugin.h

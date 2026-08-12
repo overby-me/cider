@@ -19,7 +19,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreFoundation",
     ],
     visibility = ["PUBLIC"],
 )
@@ -43,16 +43,16 @@ darwin_binary(
         # PlistBuddy
         ":PlistBuddy_obj",
         # crt1.10.6
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )
@@ -88,17 +88,17 @@ darwin_binary(
     objs = [
         # crt1 FIRST: it references _main, and an archive member is only pulled in to resolve a
         # reference that already exists.
-        "//buck-src/csu:crt1.10.6_obj2",
+        "//vendor/src/csu:crt1.10.6_obj2",
         ":PlistBuddy_rs_lib",
     ],
     dylibs = [
-        "//buck-src:system_final",
-        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//buck-src:crt1.10.6",
+        "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
 )

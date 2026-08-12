@@ -29,7 +29,7 @@ Makefile
 # #87 stage 2 moved them to a NEW path, where the rule does apply, and seven committed
 # Makefiles under libpthread_workqueue-0.8.2 silently stopped being tracked: 153 tracked files
 # went in and 146 came out. Caught by counting, not by any failure.
-!pins/**/Makefile
+!vendor/pins/**/Makefile
 CMakeFiles
 cmake_install.cmake
 CMakeCache.txt
@@ -119,7 +119,7 @@ __pycache__/
 # materializePins in nix/lib/ciderBuck2Graph.nix inside the Nix graph derivation. The pin
 # carries the whole of XNU rather than the 1,974 file subset that used to be committed here,
 # and patches/xnu-sys-xnu holds the delta that made the vendored copy differ from upstream.
-/pins/ciderd/xnu-sys/xnu/
+/vendor/pins/ciderd/xnu-sys/xnu/
 
 # The cargo build directory of the graph-specs tool (#99). NOT a blanket `target/` rule: 83
 # TRACKED paths in this repo contain a /target/ component, all of them upstream, and a blanket

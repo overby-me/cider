@@ -83,13 +83,13 @@ let
         "CONTRIBUTORS.md"
         ".git"
         ".jj"
-        # Buck2 port scratch (plan/buck2-port.md): `buck-src` holds pinned
+        # Buck2 port scratch (plan/buck2-port.md): `vendor/src` holds pinned
         # upstream trees materialized for a direct `buck2 build` (the same pins
         # this file fetches, so they are redundant here), and `buck-out` is
         # buck2's output tree. Both are gitignored, machine-local, and hundreds
         # of MB -- without this they would land in the store and rehash
         # cider-src (and therefore every cider build) on every buck2 run.
-        "buck-src"
+        "vendor/src"
         "buck-out"
         # The Buck2 port's own definitions and tooling, which the cmake/ninja build
         # never reads: the rules and toolchains under buck/, the generators and the
@@ -124,7 +124,7 @@ let
     # fetchSubmodules recurses and resolves the nested repos' relative URLs
     # against the parent (../cider-X.git -> github.com/darlinghq/darling-X).
     # A pin whose content is in git LFS cannot come from an archive tarball either: GitHub
-    # serves the 132-byte POINTER files, not the objects. pins/swift is the one, and
+    # serves the 132-byte POINTER files, not the objects. vendor/pins/swift is the one, and
     # its 44 runtime dylibs were installed into the prefix as those pointers -- text where a
     # Mach-O belongs, which is why all 44 fail to load and nothing else in the sweep does.
     if e.lfs or false
@@ -175,7 +175,7 @@ let
   # argument. Nothing failed where the mistake was, because the graph derivation's normaliser
   # repaired the link in passing; rung 1 and rung 2 were both green and exactly ONE lowered
   # target of 4,563 died an hour later on "cannot read file
-  # buck-src/libnotify/notifyd/notify.defs".
+  # vendor/src/libnotify/notifyd/notify.defs".
   repointSdkLinks = pinPath: findArgs: let
     pinDepth = builtins.length (lib.splitString "/" pinPath);
   in ''
@@ -216,7 +216,7 @@ let
     base = baseNameOf e.path;
     # THE PATCH DIRECTORY IS KEYED BY BASENAME, WHICH IS NOT UNIQUE. Two pins can share a
     # basename and would then silently share a patch set: de-vendoring the duct-tape XNU
-    # subset puts a second xnu at pins/ciderd/xnu-sys/xnu, whose basename is also
+    # subset puts a second xnu at vendor/pins/ciderd/xnu-sys/xnu, whose basename is also
     # "xnu", so it would have patches/xnu applied to it -- and those are the GUEST SYSCALL
     # patches for the OTHER xnu, which touch darling/src/libsystem_kernel/emulation only.
     # An entry can therefore name its own directory. Defaulting to the basename keeps every
@@ -274,7 +274,7 @@ pkgs.runCommand "cider-src"
       unpinnedPaths = map (e: e.path) unpinned;
       pinnedCount = builtins.length pinned;
       totalCount = builtins.length entries;
-      # {"pins/libdispatch" = <store path>; ...}, so a consumer can name ONE pin
+      # {"vendor/pins/libdispatch" = <store path>; ...}, so a consumer can name ONE pin
       # instead of the assembled tree. See pinStore above for why that matters.
       pinPaths = lib.listToAttrs (map (e: lib.nameValuePair e.path (pinStore e)) pinned);
     };
@@ -308,12 +308,12 @@ pkgs.runCommand "cider-src"
     # only because the pin root was TWO components: libnotify's
     # darling/src/notify.defs ships ../../../../../Developer/..., and five ups from
     # src/external/libnotify/darling/src landed exactly on the repo root. Under a
-    # ONE-component pins/ root the same five ups overshoot by one, the link resolves to
+    # ONE-component vendor/pins/ root the same five ups overshoot by one, the link resolves to
     # ../darwin/... outside the tree, and it dangles.
     #
     # Nothing failed where the mistake was: the graph derivation's normaliser repaired it
     # in passing, so rung 1 and rung 2 were both green and ONE lowered target out of 4,563
-    # died an hour later with "cannot read file buck-src/libnotify/notifyd/notify.defs".
+    # died an hour later with "cannot read file vendor/src/libnotify/notifyd/notify.defs".
     #
     # These targets are ROOT-RELATIVE by construction (that is what the leading ../ run
     # means here), so the honest fix is to say where the file actually is and let realpath

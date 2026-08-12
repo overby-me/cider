@@ -1,1 +1,1 @@
-../../../../../../../../../pins/Libinfo/lookup.subproj/grp.h
+../../../../../../../../../vendor/pins/Libinfo/lookup.subproj/grp.h

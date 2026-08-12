@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libxslt/libxslt/libxslt/pattern.h
+../../../../../../../../../../vendor/pins/libxslt/libxslt/libxslt/pattern.h

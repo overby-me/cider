@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/SCDynamicStoreCopyDHCPInfo.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/SCDynamicStoreCopyDHCPInfo.h

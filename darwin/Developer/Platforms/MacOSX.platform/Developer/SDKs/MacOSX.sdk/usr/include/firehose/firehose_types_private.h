@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/libkern/firehose/firehose_types_private.h
+../../../../../../../../../../vendor/pins/xnu/libkern/firehose/firehose_types_private.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/bsd/sys/_types/_user32_timespec.h
+../../../../../../../../../../../vendor/pins/xnu/bsd/sys/_types/_user32_timespec.h

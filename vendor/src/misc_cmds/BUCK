@@ -1,0 +1,367 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+prefix_dir(
+    name = "prefix_calendar_calendars",
+    srcs = glob(
+        ["calendar/calendars/**"],
+        exclude = [],
+    ),
+    strip = "calendar/calendars",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_misc_cmds.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports
+
+# BEGIN generated: cal
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) cal   -- review before committing.
+# cmake target: cal  ->  src/external/misc_cmds/cal
+
+cc_header_root(
+    name = "cal_inc_misc_cmds_ncal",
+    headers = glob(["ncal/*.h", "ncal/**/*.h", "ncal/*.c"]),
+    root = "ncal",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cal_obj",
+    srcs = [
+        "gen/ncal_vers.c",
+        "ncal/calendar.c",
+        "ncal/easter.c",
+        "ncal/ncal.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":cal_inc_misc_cmds_ncal",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cal
+
+# BEGIN generated: cal binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries cal   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "cal",
+    objs = [
+        # cal
+        ":cal_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cal binary
+
+# BEGIN generated: calendar
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) calendar   -- review before committing.
+# cmake target: calendar  ->  src/external/misc_cmds/calendar
+
+cc_header_root(
+    name = "calendar_inc_misc_cmds_calendar",
+    headers = glob(["calendar/*.h", "calendar/**/*.h", "calendar/*.c"]),
+    root = "calendar",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "calendar_obj",
+    srcs = [
+        "calendar/calendar.c",
+        "calendar/day.c",
+        "calendar/io.c",
+        "calendar/ostern.c",
+        "calendar/paskha.c",
+        "gen/calendar_vers.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":calendar_inc_misc_cmds_calendar",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: calendar
+
+# BEGIN generated: calendar binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries calendar   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "calendar",
+    objs = [
+        # calendar
+        ":calendar_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: calendar binary
+
+# BEGIN generated: leave
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) leave   -- review before committing.
+# cmake target: leave  ->  src/external/misc_cmds/leave
+
+cc_objects(
+    name = "leave_obj",
+    srcs = [
+        "gen/leave_vers.c",
+        "leave/leave.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-Du_int=unsigned int",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: leave
+
+# BEGIN generated: leave binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries leave   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "leave",
+    objs = [
+        # leave
+        ":leave_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: leave binary
+
+# BEGIN generated: ncal
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) ncal   -- review before committing.
+# cmake target: ncal  ->  src/external/misc_cmds/ncal
+
+cc_header_root(
+    name = "ncal_inc_misc_cmds_ncal",
+    headers = glob(["ncal/*.h", "ncal/**/*.h", "ncal/*.c"]),
+    root = "ncal",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ncal_obj",
+    srcs = [
+        "gen/ncal_vers.c",
+        "ncal/calendar.c",
+        "ncal/easter.c",
+        "ncal/ncal.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":ncal_inc_misc_cmds_ncal",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ncal
+
+# BEGIN generated: ncal binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries ncal   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "ncal",
+    objs = [
+        # ncal
+        ":ncal_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ncal binary
+
+# BEGIN generated: tsort
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) tsort   -- review before committing.
+# cmake target: tsort  ->  src/external/misc_cmds/tsort
+
+cc_objects(
+    name = "tsort_obj",
+    srcs = [
+        "gen/tsort_vers.c",
+        "tsort/tsort.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tsort
+
+# BEGIN generated: tsort binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries tsort   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "tsort",
+    objs = [
+        # tsort
+        ":tsort_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tsort binary
+
+# BEGIN generated: units
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) units   -- review before committing.
+# cmake target: units  ->  src/external/misc_cmds/units
+
+cc_header_root(
+    name = "units_inc_misc_cmds_units",
+    headers = glob(["units/**/*"]),
+    root = "units",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "units_obj",
+    srcs = [
+        "gen/units_vers.c",
+        "units/units.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":units_inc_misc_cmds_units",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: units
+
+# BEGIN generated: units binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries units   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "units",
+    objs = [
+        # units
+        ":units_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: units binary

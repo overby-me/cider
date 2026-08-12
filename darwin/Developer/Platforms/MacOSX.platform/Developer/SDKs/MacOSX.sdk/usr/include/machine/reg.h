@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/machine/reg.h
+../../../../../../../../../../vendor/pins/xnu/bsd/machine/reg.h

@@ -39,7 +39,7 @@
 //!   was what made a baseline possible.
 //!
 //!   AND ONCE REPAIRED IT FAILS, correctly: 11 targets do not match the generator, three of
-//!   them printed, and the largest is root//buck-rust:libc missing 386 files. The partition
+//!   them printed, and the largest is root//vendor/rust:libc missing 386 files. The partition
 //!   this file recomputes no longer describes the real pass. That is the check working, and it
 //!   is reported rather than fixed, because deciding which side is wrong is a separate job.
 //!

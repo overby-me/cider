@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/osfmk/mach/i386/thread_state.h
+../../../../../../../../../../../vendor/pins/xnu/osfmk/mach/i386/thread_state.h

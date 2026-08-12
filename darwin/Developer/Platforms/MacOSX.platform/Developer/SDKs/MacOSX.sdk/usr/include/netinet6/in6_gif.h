@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/netinet6/in6_gif.h
+../../../../../../../../../../vendor/pins/xnu/bsd/netinet6/in6_gif.h

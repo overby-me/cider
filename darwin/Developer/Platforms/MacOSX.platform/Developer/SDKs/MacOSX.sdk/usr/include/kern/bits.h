@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/bits.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/bits.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libc/libdarwin/h/dirstat.h
+../../../../../../../../../../vendor/pins/libc/libdarwin/h/dirstat.h

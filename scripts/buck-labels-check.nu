@@ -8,12 +8,12 @@
 # something that is not there, which nothing checks until buck2 is asked to build
 # it, an hour into a run.
 #
-# WHAT IT CATCHES, and the reason it exists. buck-src/BUCK and buck-src/<pin>/BUCK
+# WHAT IT CATCHES, and the reason it exists. vendor/src/BUCK and vendor/src/<pin>/BUCK
 # are OURS, generated from the reference build, even though they sit next to
-# upstream code. The Cider rename skipped the whole buck-src tree, correctly for
+# upstream code. The Cider rename skipped the whole vendor/src tree, correctly for
 # the pin paths inside it and WRONGLY for its 170 references back to first-party
-# packages. They kept naming //pins/darlingserver after that package
-# became //pins/ciderd. buck2 reported the first one only, as an analysis
+# packages. They kept naming //vendor/pins/darlingserver after that package
+# became //vendor/pins/ciderd. buck2 reported the first one only, as an analysis
 # error four minutes into the endpoint:
 #
 #     Unknown target `darling_config` from package `root//darwin/include`
@@ -44,7 +44,7 @@
 # not claim to check what it cannot see.
 #
 # Verified both ways. Against the tree as the rename left it: 205 occurrences of
-# //pins/darlingserver, 10 of //darwin/include:darling_config and 5 of
+# //vendor/pins/darlingserver, 10 of //darwin/include:darling_config and 5 of
 # //darwin/libsimple:libsimple_darling. Clean now, except two labels ignored by name
 # below.
 #
@@ -55,7 +55,7 @@
 #
 #   PARSE THE WHOLE FILE, NOT LINE BY LINE. A load() spans lines, so the python uses re.S and the
 #   nushell needs the (?s) inline flag. It is also much faster: one parse over the 63k-line
-#   buck-src/BUCK finds all 5,725 labels in 8ms, where per-line regex over a corpus that size
+#   vendor/src/BUCK finds all 5,725 labels in 8ms, where per-line regex over a corpus that size
 #   does not finish. The earlier finding that nushell regex is slow was about the number of
 #   INVOCATIONS, not about regex.
 #
@@ -64,7 +64,7 @@
 #   different order, which a byte comparison catches and a human reading the output would not.
 #   Sorting ascending on (-count, first-seen index) is the faithful equivalent.
 
-const IGNORE_PREFIXES = ["buck-src/libcxx/utils/google-benchmark/"]
+const IGNORE_PREFIXES = ["vendor/src/libcxx/utils/google-benchmark/"]
 const SKIP_DIRS = [".jj" ".git" "buck-out"]
 
 const LABEL = '"//(?<pkg>[A-Za-z0-9_./+-]*):(?<name>[A-Za-z0-9_.+-]+)"'
@@ -72,7 +72,7 @@ const LABEL = '"//(?<pkg>[A-Za-z0-9_./+-]*):(?<name>[A-Za-z0-9_.+-]+)"'
 # read_root_config(SECTION, key, default) reads .buckconfig.local, which both
 # nix/lib/ciderBuck2Graph.nix and scripts/buck-setup.nu write under [cider].
 # A section that does not match returns the DEFAULT, silently: the one
-# read_root_config("darling", "elf_lib_dirs", "") left in buck-src/BUCK gave
+# read_root_config("darling", "elf_lib_dirs", "") left in vendor/src/BUCK gave
 # wrapgen an empty search path and it failed with
 #   Cannot load libfuse.so: cannot open shared object file
 # four minutes into the endpoint. No label and no path is involved, so nothing
@@ -111,7 +111,7 @@ def main [] {
       let is_dir = (($m.pkg | is-not-empty) and ($pkg_dir | path exists) and (($pkg_dir | path type) == "dir"))
       if not $is_dir {
         $hits = ($hits | append { key: $"no such package  //($m.pkg):($m.name)", file: $rel })
-      } else if (not ($m.pkg | str starts-with "buck-src")) and ($m.name | str contains "darling") {
+      } else if (not ($m.pkg | str starts-with "vendor/src")) and ($m.name | str contains "darling") {
         $hits = ($hits | append { key: $"first-party target still named darling  //($m.pkg):($m.name)", file: $rel })
       }
     }
@@ -163,8 +163,8 @@ def main [] {
     print $"  ($s.n | fill -a right -w 5)  ($s.key)   in ($s.files | length) file\(s\): ($s.files | first 3 | str join ', ')"
   }
   print "\nFAIL: a label names something that is not there."
-  print "If a first-party package or target was renamed, buck-src/BUCK and"
-  print "buck-src/<pin>/BUCK reference it too; those are generated files of ours,"
-  print "not upstream code, and the Cider sweep skipped the whole buck-src tree."
+  print "If a first-party package or target was renamed, vendor/src/BUCK and"
+  print "vendor/src/<pin>/BUCK reference it too; those are generated files of ours,"
+  print "not upstream code, and the Cider sweep skipped the whole vendor/src tree."
   exit 1
 }

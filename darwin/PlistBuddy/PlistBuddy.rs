@@ -68,7 +68,7 @@ mod cf {
     //! 49 CF functions, which is what the measurement found the program calls. This is deliberately
     //! not a CoreFoundation crate: CF is a C API, the port needs the functions it calls, and a crate
     //! that modelled all of CF would be a far larger thing to get wrong. There is no vendored
-    //! core-foundation crate in buck-rust and none is wanted here.
+    //! core-foundation crate in vendor/rust and none is wanted here.
     //!
     //! EVERY OUTPUT GOES THROUGH C printf, puts AND fwrite. That is not laziness, it is the cheapest
     //! way to keep byte parity: C prints a double with %f as six decimal places where Rust would

@@ -1,1 +1,1 @@
-../../../../../../../../../../../pins/xnu/libkern/libkern/prelink.h
+../../../../../../../../../../../vendor/pins/xnu/libkern/libkern/prelink.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/kern/sched_prim.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/kern/sched_prim.h

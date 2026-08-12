@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/imageboot.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/imageboot.h

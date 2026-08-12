@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/netinet6/scope6_var.h
+../../../../../../../../../../vendor/pins/xnu/bsd/netinet6/scope6_var.h

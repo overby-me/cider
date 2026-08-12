@@ -1,1 +1,1 @@
-../../../../../../../../../pins/libc/include/fts.h
+../../../../../../../../../vendor/pins/libc/include/fts.h

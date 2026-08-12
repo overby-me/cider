@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/bsd/sys/namei.h
+../../../../../../../../../../vendor/pins/xnu/bsd/sys/namei.h

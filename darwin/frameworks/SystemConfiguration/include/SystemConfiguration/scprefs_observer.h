@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/scprefs_observer.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/scprefs_observer.h

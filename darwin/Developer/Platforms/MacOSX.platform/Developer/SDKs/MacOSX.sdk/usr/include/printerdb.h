@@ -1,1 +1,1 @@
-../../../../../../../../../pins/Libinfo/lookup.subproj/printerdb.h
+../../../../../../../../../vendor/pins/Libinfo/lookup.subproj/printerdb.h

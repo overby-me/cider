@@ -1,1 +1,1 @@
-../../../../../pins/configd/SystemConfiguration.fproj/VPNTunnelPrivate.h
+../../../../../vendor/pins/configd/SystemConfiguration.fproj/VPNTunnelPrivate.h

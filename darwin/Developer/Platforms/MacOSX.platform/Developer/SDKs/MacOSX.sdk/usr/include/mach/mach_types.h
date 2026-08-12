@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/xnu/osfmk/mach/mach_types.h
+../../../../../../../../../../vendor/pins/xnu/osfmk/mach/mach_types.h

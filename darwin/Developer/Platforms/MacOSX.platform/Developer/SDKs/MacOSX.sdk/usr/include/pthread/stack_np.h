@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libpthread/include/pthread/stack_np.h
+../../../../../../../../../../vendor/pins/libpthread/include/pthread/stack_np.h

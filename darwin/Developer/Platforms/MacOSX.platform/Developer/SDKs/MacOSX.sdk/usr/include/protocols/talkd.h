@@ -1,1 +1,1 @@
-../../../../../../../../../../pins/libc/include/protocols/talkd.h
+../../../../../../../../../../vendor/pins/libc/include/protocols/talkd.h
