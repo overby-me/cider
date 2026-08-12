@@ -1363,9 +1363,38 @@
     # stale name is inert rather than protective. Found 2026-08-12 by evaluating the default
     # output, which nothing else does.
     mkdir -p pins
-    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
-        ln -s ${lib.escapeShellArg "${projectSrc}/pins/${name}"} ${lib.escapeShellArg "pins/${name}"}
-      '') (builtins.readDir (projectSrc + "/pins")))}
+    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: let
+        # A PIN CAN LIVE INSIDE ANOTHER pins/ ENTRY, and then that entry cannot be a symlink.
+        #
+        # pinStageLines plants each pin at its own path, and one of them is nested:
+        # pins/ciderd/xnu-sys/xnu, which .gitignore excludes from the source precisely so it
+        # arrives from its own store path. If pins/ciderd is staged as a symlink INTO the store,
+        # planting anything underneath it is a write into /nix/store, and the build dies with
+        #   ln: failed to create symbolic link 'pins/ciderd/xnu-sys/xnu': Permission denied
+        # That is 412 identical failures and 340 cascading "Cannot build" errors on the full
+        # prefix, from one line.
+        #
+        # THE RULE THIS REPO HAS NOW LEARNED THREE TIMES: never stage a subtree as a directory
+        # symlink when something has to be planted inside it. Mirror it with REAL directories and
+        # per-file links instead. It is the same lesson as the relative-escape rule and as the
+        # src/ staging comment above; this is the third instance, so the test is general rather
+        # than a special case for ciderd.
+        hasNested = lib.any (q: lib.hasPrefix ("pins/" + name + "/") q) wantedPins;
+      in
+        if hasNested
+        then ''
+          # cp -Rs gives real directories and a symlink per file, which is exactly the shape
+          # needed: the tree is writable where a pin must be planted, and no file is copied.
+          # The store's own mode is r-xr-xr-x, so the mirrored directories need u+w or the
+          # plant fails one line later for the same reason in a different disguise.
+          mkdir -p ${lib.escapeShellArg "pins/${name}"}
+          cp -Rs ${lib.escapeShellArg "${projectSrc}/pins/${name}/."} ${lib.escapeShellArg "pins/${name}/"}
+          chmod -R u+w ${lib.escapeShellArg "pins/${name}"}
+        ''
+        else ''
+          ln -s ${lib.escapeShellArg "${projectSrc}/pins/${name}"} ${lib.escapeShellArg "pins/${name}"}
+        '')
+      (builtins.readDir (projectSrc + "/pins")))}
     ${lib.optionalString (builtins.pathExists (projectSrc + "/buck-src")) ''
       mkdir -p buck-src
       ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
