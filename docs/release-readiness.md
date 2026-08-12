@@ -137,8 +137,35 @@ only prints on derivation events, over 75 seconds. At four queries a minute the 
 moved whatever the answer was. The observable could not respond to the intervention, so the test
 proved nothing. The substituter finding stands on its own control, above.
 
-**WHAT B0 IS NOT:** not a deadlock, not zombies, not CPU starvation, not the disk. It is a
-throughput problem in substituter querying that presents as a hang.
+**WHAT B0 IS NOT:** not a deadlock, not zombies, not the disk. It is a throughput problem in
+substituter querying that presents as a hang.
+
+### B0 CONCLUDED 2026-08-12 20:52: the build completes
+
+With substituters disabled and the two bugs below fixed:
+
+    nix build .#cider-buck2-prefix-min --no-link --print-out-paths --option substituters ""
+    EXIT=0
+    /nix/store/51nlpdb0xl04kxhxhkrmr3h3ywv0nvjl-buck2-cider_prefix_min-out
+
+A full end-to-end run took 7 minutes 22 seconds with ZERO errors, and produced a 125 MB prefix at
+`cider_prefix_min__prefix`. A confirming re-run returned exit 0 in 19 seconds against the cache.
+So this is one full build plus a confirming realisation, not three from scratch, and it is stated
+that way on purpose.
+
+**WHY THE QUERIES ARE SLOW IS STILL NOT EXPLAINED, and that matters for how much this generalises.**
+The caches answer in under a second and IPv6 is not the problem: curl over both protocols to
+cache.nixos.org and zed.cachix.org returns HTTP 200 in 0.05 to 0.08 s, and the box has a working
+default IPv6 route. So four healthy caches, two healthy protocols, and nix still manages four
+lookups a minute. Candidates not yet tested: connection reuse and the http-connections limit, the
+narinfo disk cache, and contention from the machine being saturated at the time.
+
+**THIS MAY BE MACHINE-LOCAL RATHER THAN A CIDER DEFECT, which is exactly what CI settles.** The
+substituter list is in this developer's nix.conf, not in the repo, and nothing Cider ships can fix
+a user's cache configuration. A clean CI machine running the documented command is the measurement
+that decides whether B0 generalises, and that is now wired up (B1). Until it has run, the honest
+statement for a release is: the build completes, and a slow substituter set can make it look like
+it has hung, with no output to say so.
 
 ### What the stall was HIDING: the two guest Rust tools do not build in the endpoint
 
