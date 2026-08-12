@@ -191,7 +191,7 @@ Of the 46 non-generator checks: 13 load another module and are blocked on their 
 of the 33 that do not,
 
     23 self-contained, NO frozen reference    6,416 lines   port in any order
-     3 self-contained, READ result-graph-ref    751 lines   buck-host-includes,
+     3 self-contained, READ result-graph-ref    751 lines   buck-host-includes (DONE, #98),
                                                             buck-lower-srcdeps,
                                                             buck-move-src-subdir
 

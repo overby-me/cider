@@ -1293,7 +1293,7 @@ def main [flag?: string] {
     # them through NIX_CFLAGS_COMPILE. Nothing here noticed until the Nix graph derivation,
     # which pins clang-unwrapped and unsets NIX_CFLAGS on purpose, stopped at
     # "X11/Xlib.h file not found". This asserts the port keeps naming them itself.
-    let hi = (cap_rc [./scripts/buck-host-includes.py])
+    let hi = (cap_rc [./scripts/buck-host-includes.nu])
     if $hi.rc == 0 {
         ok (last_line_no_ok $hi.out)
     } else {
@@ -1308,7 +1308,7 @@ def main [flag?: string] {
     # initializer for versions.h, and the Nix build died on a ValueError from the configure
     # script while the host, which never round-trips through the rendering, was fine.
     # configure_file passes its values in a file now; this catches the next one for free.
-    let ar = (cap_rc [./scripts/buck-argv-roundtrip-check.py --static])
+    let ar = (cap_rc [./scripts/buck-argv-roundtrip-check.nu --static])
     if $ar.rc == 0 {
         ok (last_line_no_ok $ar.out)
     } else {

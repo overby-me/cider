@@ -46,7 +46,7 @@ minutes, and did exactly that for #87 stage 2.
 **RUN THE NIX-FREE SET FIRST. Nine checks, 27 seconds together, and several have each saved
 an hour.** `buck-escape-roots-check.nu`, `buck-pin-patches-check.nu`, `buck-pin-rev-check.nu`,
 `buck-env-names-check.nu`, `buck-first-party-paths-check.nu`, `buck-labels-check.nu`,
-`buck-pin-paths-check.nu`, `buck-host-includes.py`, `buck-coverage.py`.
+`buck-pin-paths-check.nu`, `buck-host-includes.nu`, `buck-coverage.nu`.
 
 **COUNT `^building`, NEVER the "these N derivations will be built" list.** The list overstates
 the real work by nearly five times: gate12 listed 4,336 derivations and 895 builders actually
@@ -62,7 +62,7 @@ is stale; the cascade was cut from 1,558 builders to 44.
 buck2 is the only build. The reference `result-graph-ref/build.ninja` can never be regenerated,
 so the generators that read it are provenance, not tools. **A rename cannot reach a frozen
 artifact, so every READER of one must accept BOTH names.** That has now bitten three times:
-`SRC_STORE_RE` in `gen-buck-from-ninja.py`, `PROJECT_MARKER` in `buck-host-includes.py` (which
+`SRC_STORE_RE` in `gen-buck-from-ninja.py`, `PROJECT_MARKERS` in `buck-host-includes.nu` (which
 made 98.7 percent of its population noise and kept it red for days), and `SRC_STORE_RE` again
 in `gen-mig-from-ninja.py` (all 124 mig edges). When a check is permanently red and someone
 offers to freeze its threshold, suspect the POPULATION first.
@@ -114,7 +114,7 @@ reference still names the old one; deliberately not mapped away, since that woul
 divergence.
 
 The host-header failure is **FIXED** (ec35926e), and it was never 1,275 defects nor a threshold
-worth freezing. `PROJECT_MARKER` in `buck-host-includes.py` had been renamed to
+worth freezing. `PROJECT_MARKERS` in `buck-host-includes.nu` had been renamed to
 `cider-cmake-src`, but the reference `build.ninja` is a frozen cmake-era artifact that says
 `darling-cmake-src` 455,547 times and the cider name zero times. The marker matched nothing, so
 the project's own `-I` flags all counted as host includes: 98.7 percent of the population was
