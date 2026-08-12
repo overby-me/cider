@@ -347,11 +347,42 @@ nushell to unblock them would put nushell on the nix build path, which is the op
 decision the split records. So the order is: **#99 first, then those three, then
 `buck-names-check` last and re-scoped.**
 
-## #99
+## #99 step 0: every build-path script is behind a CONTENT-ADDRESSED output
 
 Not started, and now measured: 2,831 lines, listed above. It converges with #92 (reading the
-buck2 graph through buck2's own crates instead of parsing rendered output), and because it
-changes graph derivation inputs it lands behind the full-graph diff.
+buck2 graph through buck2's own crates instead of parsing rendered output).
+
+**The sequencing warning in the task can be avoided, and that changes how this should land.** The
+task says removing Python from the build path changes the graph derivation inputs so every
+lowered derivation moves, and budgets an hour-class full-graph diff for it. Read the nix and each
+of those scripts turns out to run inside a derivation whose output is content addressed:
+
+| script | derivation | `__contentAddressed` |
+|---|---|---|
+| `buck-skeleton.py` | `skeletonSrc`, `ciderBuck2Graph.nix:164` | yes |
+| `buck2-graph-dump.py` | `graph`, `:313` | yes |
+| `buck-graph-to-specs.py` | `specsDrv`, `:516` | yes |
+| `buck2-graph-sources.py` | `sourcesDrv`, `:533` | yes |
+| `dyn-actions-spec-fixup.py` | the emitted action, `dyn-actions.nix:283` | yes |
+| `buck-src-normalise.py` | none of its own: it is inlined into `assembleProject`, a shell FRAGMENT the `graph` and `sourcesDrv` derivations both embed | inherits theirs |
+
+CA early cutoff is real here and already relied on, which is the whole argument of #67 (flip
+coarsePins only after verifying the coarse prefix is byte identical). So a Rust rewrite whose
+output is BYTE IDENTICAL makes its derivation re-run once and stop there: the output hash does
+not move, so nothing downstream does either. The invalidation the task budgets for is a
+consequence of changing the OUTPUT, not of changing the language.
+
+**So the landing rule for #99 is: one CA boundary at a time, byte-identical output, verified by
+building the derivation and diffing its tree against the Python one.** The full-graph diff stays
+as the gate for the first piece that genuinely cannot be byte-identical, not for every piece.
+
+**Start with `buck-skeleton.py`.** 237 lines, the smallest of the seven, it has its OWN CA
+derivation rather than sharing one, and its contract is a tree in and a reduced tree out, so
+"build both and diff" is the complete test with no graph involved.
+
+`buck-src-normalise.py` should NOT be first despite being small: it has no derivation of its own,
+so editing it changes a shell fragment embedded in two derivations and re-runs both, and its
+effect is a mutation of a tree inside them rather than a standalone output to diff.
 
 Nothing has been written into the monorepo yet. Which checkout and which bookmark to land on is a
 user call, and four checkouts of the same remote is exactly the situation where guessing is wrong.
