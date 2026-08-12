@@ -111,6 +111,13 @@ path = "src/exports.rs"
 name = "cider-sdk-header-roots"
 path = "src/sdkroots.rs"
 
+# THE FOURTEENTH BINARY, the Rust rewrite of scripts/gen-mig-from-ninja.py (#98). A FROZEN
+# generator that reads the reference build.ninja, and it shares src/pyshlex.rs with the specs
+# check because both have to tokenise a shell command the way python shlex does.
+[[bin]]
+name = "cider-mig-from-ninja"
+path = "src/migninja.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

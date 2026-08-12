@@ -25,7 +25,7 @@ surface turns out to be 7 percent of it rather than all of it.
 | script | lines | input | executed by | verdict |
 |---|---|---|---|---|
 | `gen-buck-from-ninja.py` | 2,508 | `result-graph-ref/build.ninja` | imported as a LIBRARY by 6 scripts | **split**: 182 live, 2,326 archive |
-| `gen-mig-from-ninja.py` | 259 | `result-graph-ref/build.ninja` | nothing | **archive** |
+| `cider-mig-from-ninja` | 259 | `result-graph-ref/build.ninja` | nothing | **archive** |
 | `gen-xtrace-mig.py` | 158 | loads `gen-buck-from-ninja` | nothing | **PORTED**, now `gen-xtrace-mig.nu`, and it carries the two helpers it used (#98) |
 | `gen-install-from-manifests.py` | 859 | `result-graph-ref/install-manifests` | `buck-test.nu:1072` (subprocess) | **port**, frozen input but a live check |
 | `gen-sdk-header-roots.py` | 505 | `pins/`, `buck-src/` | `buck-split-pins.py:481` (subprocess) | **PORTED**, now `cider-sdk-header-roots` (#98) |
@@ -44,7 +44,7 @@ a call, and counting it as one makes every generator look live.
 
 The test that works is to count only real execution sites: a `python3 <path>` in a `.nu` or `.nix`,
 a `subprocess.run` on the path, or an `importlib.util.spec_from_file_location`. Under that test
-`gen-mig-from-ninja.py` and `gen-xtrace-mig.py` drop to zero and the two `--repo-roots` generators
+`cider-mig-from-ninja` and `gen-xtrace-mig.py` drop to zero and the two `--repo-roots` generators
 stay live.
 
 ### The big one is 7 percent live, not 100 percent dead
@@ -73,7 +73,7 @@ consumed only by things that are themselves archive-or-tool candidates**, so not
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **8 files, 6,043 lines** as of 2026-08-12, down from 54 files at
+The whole `scripts/` python is **7 files, 5,784 lines** as of 2026-08-12, down from 54 files at
 the start of this campaign and from the 29 the table above was measured on.
 
 **THE LIVE SURFACE OF `gen-buck-from-ninja.py` IS RUST NOW**, in

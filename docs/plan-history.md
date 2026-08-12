@@ -96,7 +96,7 @@ with it; the `overby` input STAYS, because `ciderBuck2.nix` uses its `buildBuck2
 
 **THE ONE-WAY DOOR, stated plainly:** FIVE generators are now unrunnable and marked FROZEN in
 place rather than deleted. Four read a reference `build.ninja` that nothing can regenerate
-(`gen-buck-from-ninja.py`, `gen-mig-from-ninja.py`, `buck-host-includes.py`, `buck-port.py`) and
+(`gen-buck-from-ninja.py`, `cider-mig-from-ninja`, `buck-host-includes.py`, `buck-port.py`) and
 stop working entirely once a store GC collects `result-graph-ref`; `gen-xnu-sys-buck.py` reads
 `xnu-sys/CMakeLists.txt` and so cannot run at all. Everything they produced is committed.
 
@@ -1138,7 +1138,7 @@ Re-derive before trusting: `scripts/buck-coverage.nu --missing` and
 3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference
    supplies it before assuming this is portable).
 4. **Make the generators re-runnable** before the reference graph goes away.
-   gen-mig-from-ninja.py is the worst case: buck-split-pins.py has since rewritten its
+   cider-mig-from-ninja is the worst case: buck-split-pins.py has since rewritten its
    committed blocks' `defs` to labels and changed `out_base`, so regenerating would clobber
    them and the last fix had to be spliced in by hand.
 5. The other four host tools (bsdln, elfdep, getuuid, wrapgen). Not install entries and not
