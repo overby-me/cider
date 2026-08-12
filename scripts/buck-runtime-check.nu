@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Run every runtime check, in the one way that actually works.
 #
-# There are ten of these now and buck-test.nu runs none of them: it is almost entirely
+# There are eleven of these now and buck-test.nu runs none of them: it is almost entirely
 # static, asking whether an artifact links and exports the right symbols. The checks here
 # are the ones that RUN things, and they are what found an empty AppKit, a null
 # ec_thread_get_stack, a missing 0x prefix and a python module installed under a name
@@ -25,7 +25,7 @@
 # summary table and the final verdict. The containers belong to the checks it calls.
 #
 # Usage:
-#   scripts/buck-runtime-check.nu              # the nine fast checks
+#   scripts/buck-runtime-check.nu              # the eleven fast checks
 #   scripts/buck-runtime-check.nu --with-nix   # plus buck-nix-bash-check, which is slow
 #   scripts/buck-runtime-check.nu <name>...    # just these, by bare name
 
@@ -49,6 +49,11 @@ const CHECKS = [
     # terminal or redirects. That gap hid a stack smash in the guest getpeername for months,
     # and it looked like a hang rather than a crash from every harness that hit it.
     buck-socket-stdin-check
+    # @rpath expansion in the guest, which is the one thing here that needs an artifact this
+    # repo cannot build: two Mach-O probes from the OFFICIAL rustc. Without them it exits 3 and
+    # SAYS SO, which is why it can sit in the default list without ever passing blind. LAST,
+    # because it boots the container three times: once for the claim and twice for its controls.
+    buck-rpath-check
 ]
 # Builds bash with Nix INSIDE Darling. It is the campaign's keystone milestone and it takes
 # far longer than everything else here put together, so it is opt-in.

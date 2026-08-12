@@ -16,7 +16,11 @@
 # It had NO test, which is the gap this closes: the same class as #77 (psynch) and #80 (kqchan),
 # where a ported piece nothing exercises is a piece nobody will notice breaking.
 #
-#   scripts/buck-rpath-check.nu --binary <probe> --lib <dylib> --art <prefix artifact>
+#   scripts/buck-rpath-check.nu [--binary <probe>] [--lib <dylib>] [--art <prefix artifact>]
+#
+# With no arguments it builds the prefix the way the other runtime checks do and looks for the
+# probes under $CIDER_RPATH_PROBE_DIR, or /tmp/cider-rpath-probes-<uid>. Without them it exits
+# 3, a KNOWN partial state, and says so; it never passes without running anything.
 #
 # THREE RUNS, and the second and third are what make the first worth anything:
 #
@@ -61,6 +65,14 @@
 # limit, killing leftovers by /proc/N/exe, cp -a and never cp -aL, GNU rm for the mode 000
 # workdir), and a second copy of them here would be a second place to get them wrong.
 
+# Where the two probes live when nothing names them. NOT in the repo: they are Mach-O
+# artifacts of an out-of-tree toolchain, and committing binaries whose provenance is a 442 MB
+# download is exactly what #76 spent a night undoing. Absent, this check SKIPS VISIBLY with
+# exit 3, which scripts/buck-runtime-check.nu treats as a known partial state rather than a
+# pass: a check that quietly returns 0 with no probe is the blind pass this project keeps
+# finding in other people's harnesses.
+const PROBE_ENV = "CIDER_RPATH_PROBE_DIR"
+
 const LIB_INSTALL_NAME = "@rpath/libciderrpath.dylib"
 const RPATH = "@loader_path/../lib"
 const MARKER = "CIDER_RPATH_OK 424242"
@@ -99,18 +111,47 @@ def run-phase [runner: string, args: list<string>] {
 def main [
     --binary: string = ""     # the Mach-O probe that loads the dylib only through @rpath
     --lib: string = ""        # libciderrpath.dylib, install name @rpath/libciderrpath.dylib
-    --art: string = ""        # a prebuilt prefix artifact directory
+    --art: string = ""        # a prebuilt prefix artifact directory; built here if empty
     --scratch: string = ""
 ] {
     cd ($env.CURRENT_FILE | path dirname | path join "..")
-    for pair in [[what, path]; ["--binary", $binary] ["--lib", $lib] ["--art", $art]] {
-        if ($pair.path | is-empty) or not ($pair.path | path exists) {
-            say $"($pair.what) is required and must exist, got [($pair.path)]"
-            say "usage: buck-rpath-check.nu --binary <probe> --lib <dylib> --art <prefix artifact>"
-            exit 2
+
+    let probedir = ($env | get -o $PROBE_ENV | default $"/tmp/cider-rpath-probes-(^id -u | str trim)")
+    let binary = (if ($binary | is-empty) { $"($probedir)/bin/cider-rpath-probe" } else { $binary })
+    let lib = (if ($lib | is-empty) { $"($probedir)/lib/libciderrpath.dylib" } else { $lib })
+    for pair in [[what, path]; ["the probe", $binary] ["the dylib", $lib]] {
+        if not ($pair.path | path exists) {
+            say $"SKIP: ($pair.what) is not at ($pair.path)"
+            say $"      Build both with the two rustc commands in the header of this file, put"
+            say $"      them there, or point ($PROBE_ENV) at the directory holding bin/ and lib/."
+            say "      Exiting 3, a KNOWN partial state, so nothing reports this as verified."
+            exit 3
         }
     }
     if not (check-load-commands $binary) { exit 2 }
+
+    # THE PREFIX, the same way every other runtime check gets it. STDERR TO A FILE: on a cold
+    # prefix buck2 emits gigabytes of progress, and `| complete` buffering that is the 17.3 GB
+    # the suite was once killed at.
+    mut art = $art
+    if ($art | is-empty) {
+        if (which buck2 | is-empty) {
+            say "missing buck2 -- run inside `nix develop`, or pass --art"
+            exit 2
+        }
+        say "== building the prefix =="
+        let errf = (($env.TMPDIR? | default "/tmp") + "/cider-prefix-build.err")
+        let b = (^buck2 build //buck/prefix:cider_prefix --show-output err> $errf | complete)
+        $art = ($b.stdout | lines | last | default "" | split row " " | get 1? | default "")
+        if ($art | path type) != "dir" {
+            say $"the prefix did not build, see ($errf)"
+            exit 1
+        }
+    }
+    if ($art | path type) != "dir" {
+        say $"--art is not a directory: ($art)"
+        exit 2
+    }
 
     let runner = ($env.CURRENT_FILE | path dirname | path join "buck-darwin-rust-run.nu")
     let common = [--binary $binary --art $art --marker $MARKER]
