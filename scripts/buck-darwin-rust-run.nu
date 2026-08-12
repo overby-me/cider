@@ -31,6 +31,10 @@ def main [
     --art: string = ""                    # a prebuilt prefix artifact dir; built if empty
     --scratch: string = ""
     --marker: string = "CIDER_RUST_OK"    # what the binary is expected to print
+    --lib: string = ""                    # a dylib to stage beside it, for the @rpath check
+    --libdest: string = "lib"             # where in the GUEST root that dylib lands
+    --setenv: string = ""                 # one NAME=VALUE handed to the guest process
+    --expect-fail: string = ""            # invert: require the run to FAIL naming this
 ] {
     if ($binary | is-empty) or not ($binary | path exists) {
         say $"no such binary: ($binary)"
@@ -42,6 +46,18 @@ def main [
         exit 2
     }
     say $"binary: ($ftype)"
+    if ($lib | is-not-empty) {
+        if not ($lib | path exists) {
+            say $"no such dylib: ($lib)"
+            exit 2
+        }
+        let ltype = (do -i { ^file -b $lib } | str trim)
+        if not ($ltype | str contains "Mach-O 64-bit x86_64 dynamically linked shared library") {
+            say $"--lib is not a Darwin dylib, this check would prove nothing: ($ltype)"
+            exit 2
+        }
+        say $"dylib: ($ltype)"
+    }
 
     mut art = $art
     # `| default` DOES NOT FILL AN EMPTY STRING, only a null, and getting this wrong here is
@@ -92,19 +108,65 @@ def main [
     ^cp $binary $guestbin
     ^chmod +x $guestbin
 
+    # THE DYLIB GOES IN BY GUEST-RELATIVE PATH, because that is the whole question an @rpath
+    # probe asks: @loader_path/../lib resolves against the executable's directory IN THE GUEST
+    # NAMESPACE, so libdest is named relative to the guest root and never to the host.
+    if ($lib | is-not-empty) {
+        let dest = $"($rt)/libexec/cider/($libdest)"
+        mkdir $dest
+        ^cp $lib $"($dest)/($lib | path basename)"
+        say $"staged ($lib | path basename) at guest /($libdest)"
+    }
+
     say "booting the container and running it"
     let log = (mktemp --tmpdir buck-darwin-rust-run.XXXXXX)
-    with-env {
+    # ONE EXTRA VARIABLE, BY NAME AND VALUE, and it is not a convenience: setting
+    # DYLD_LIBRARY_PATH is what ISOLATED the @rpath gap in the first place, because it makes a
+    # binary load whose LC_RPATH was silently dropped. A control that can turn the failure back
+    # into a success proves the run is testing rpath expansion and not the dylib.
+    let base = {
         DPREFIX: $prefix_dir
         CIDER_NO_LAUNCHD: "1"
         DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
         DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
-    } {
+    }
+    # NOT `let env`: env is a RESERVED WORD in nushell and the parse error says only
+    # "`env` used as variable name", which does not name the line.
+    let guest_env = (if ($setenv | is-empty) { $base } else {
+        let ix = ($setenv | str index-of "=")
+        if $ix < 1 {
+            say $"--setenv wants NAME=VALUE, got [($setenv)]"
+            exit 2
+        }
+        let name = ($setenv | str substring 0..<$ix)
+        let from = ($ix + 1)
+        say $"guest env: ($name)=($setenv | str substring $from..)"
+        $base | insert $name ($setenv | str substring $from..)
+    })
+    with-env $guest_env {
         do -i { ^timeout 180 $"($rt)/bin/cider" shell /bin/cider-rust-probe out+err> $log }
     }
     let out = (open --raw $log | str trim --right --char "\n")
     rm -f $log
     print $out
+
+    # INVERTED MODE, for a control run. A check that cannot fail is worth nothing, and the way
+    # to show this one can is to remove what it depends on and require the SPECIFIC failure
+    # back: the loader naming the dylib it could not resolve.
+    if ($expect_fail | is-not-empty) {
+        if ($out | str contains $marker) {
+            say $"FAIL: the control RAN and printed ($marker), so the thing it removed did not"
+            say "      matter and the check above proves nothing."
+            exit 1
+        }
+        if ($out | str contains $expect_fail) {
+            say $"PASS: the control failed exactly as required, naming [($expect_fail)]"
+            exit 0
+        }
+        say $"FAIL: the control did not print the marker, but it did not name [($expect_fail)]"
+        say "      either, so it failed for some OTHER reason and controls nothing."
+        exit 1
+    }
 
     if ($out | str contains $marker) {
         say $"PASS: a Rust binary built for Darwin RAN inside cider and printed ($marker)"

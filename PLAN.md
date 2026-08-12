@@ -128,6 +128,15 @@ it returns 2 now. That is not hypothetical, `result-graph-stock` beside it is al
 all-component numbers. `scripts/buck-runtime-check.nu` runs the eleven runtime checks in
 one command.
 
+**Two guest checks stand outside that command, because each needs an artifact the suite cannot
+make on its own.** `scripts/buck-darwin-rust-run.nu` runs a Mach-O Rust binary in the guest
+(#96 route A), and `scripts/buck-rpath-check.nu` proves dyld still expands `@rpath` there. Both
+take a prebuilt prefix artifact with `--art`; the rpath one also takes the two probes, whose
+four-line sources and exact rustc commands are recorded in its header. It runs THREE times and
+the last two are the point: move the dylib off the rpath and the run must fail NAMING
+`@rpath/libciderrpath.dylib`, then set `DYLD_LIBRARY_PATH` and the same layout must pass again,
+which is what separates an rpath-expansion failure from an unloadable dylib.
+
 ### What 100 percent does NOT mean
 
 - **32-bit is not built and will not be.** `libsyscall_32` and the 74 i386 mig edges. A
