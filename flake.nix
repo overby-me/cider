@@ -1014,6 +1014,15 @@
           src = ./.;
         };
 
+      # The Rust rewrite of nix/lib/dyn-actions-spec-fixup.py, task #99. It runs inside the
+      # producer derivations the dynamic-derivation bridge emits.
+      #   nix build .#spec-fixup
+      packages.spec-fixup =
+        pkgs:
+        pkgs.callPackage ./nix/spec-fixup.nix {
+          src = ./.;
+        };
+
       # The Rust rewrite of scripts/buck-src-normalise.py, task #99. Built by nix for the same
       # reason as the other two: it prepares the tree buck2 crawls, so buck2 cannot build it.
       #   nix build .#src-normalise

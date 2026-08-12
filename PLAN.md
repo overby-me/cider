@@ -711,6 +711,13 @@ file is a queue.
 
 ### #97 to #99: porting buck2 into the overby.me monorepo, which takes no Python
 
+**#99 IS DONE as of 2026-08-12.** All 2,244 lines of build-path Python are Rust: the graph dump,
+the spec lowering, the source closure, the skeletoniser, the buck-src normaliser and the
+dynamic-derivation spec fixup. Each flip was verified by rebuilding the content addressed
+artifact it feeds and comparing STORE PATHS, which for a CA output is a byte comparison: the
+graph, the specs, the sources and the skeleton all came out identical. Nothing on the build path
+is interpreted now except the buck2 rules' own python, which is upstream's.
+
 **See `docs/monorepo-port.md`**, which carries the measurements. The headline from #97: the eight
 `gen-*.py` scripts are 5,338 lines, and the premise that the whole class is dead-end reference
 reading is WRONG FOR HALF OF IT. Four are live generators over live inputs, and the biggest file

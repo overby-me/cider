@@ -1,0 +1,25 @@
+# cider-spec-fixup: the dynamic-derivation spec fixup, moved off Python (#99).
+#
+# BUILT BY NIX, NOT BY BUCK2, like the other #99 tools. This one runs inside a PRODUCER
+# derivation, between the spec being written and `nix derivation add` reading it, so it has to
+# exist as a store path the producer can name.
+#
+# serde_json with preserve_order, so the keys this adds land at the END of their object exactly
+# as python's dict.setdefault put them. Nothing downstream depends on that (the consumer is a
+# parser), but keeping the shape makes a spec diffable against the python's output while the
+# port is being checked.
+[package]
+name = "cider-spec-fixup"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "cider-spec-fixup"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[profile.release]
+opt-level = 2

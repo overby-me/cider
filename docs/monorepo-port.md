@@ -542,12 +542,46 @@ carries its own copy now, which is the honest shape: that check compares against
 ACTUALLY RAN, so it is checking the rule against reality rather than against another
 implementation of the same split.
 
-### What is left of #99, 222 lines
+### Seventh piece: `dyn-actions-spec-fixup.py` to `cider-spec-fixup`
 
-     222  nix/lib/dyn-actions-spec-fixup.py
+The last one, 222 lines, and its own crate: it shares nothing with the graph tools and runs
+somewhere none of them do, inside a PRODUCER derivation between the spec being written and
+`nix derivation add` reading it.
 
-Small, but it runs inside the dynamic-derivation mechanism (#91, #93), so its verification is a
-different shape: not a store path to diff but an emitted drv set to compare.
+**This is the one place a python-compatible JSON writer is NOT needed, and saying why matters
+more than the code.** Its output is read by a PARSER, and the artifact that has to stay identical
+is the emitted derivation, which Nix canonicalises. `graph.json` is the opposite case: read at
+evaluation, its bytes the identity of every derivation lowered from it. So this writes
+serde_json's compact form, and the proof is the producer's own content addressed output rather
+than a byte comparison of the spec.
+
+Two patterns, both checked against python's `re`: the `depVar` mangling (`[^A-Za-z0-9]` with NO
+`+`, so it is one underscore PER CHARACTER, not per run) and the store path scanner, whose name
+class `[A-Za-z0-9+._?=-]` excludes the slash on purpose, because `srcs` names a store OBJECT and
+`/nix/store/xxx-foo/bar` is the object `xxx-foo`.
+
+**`pkgs.python3` leaves the producer's PATH**, because the fixup was the only thing using it
+there.
+
+**Verified by `scripts/buck-dyndrv-check.nu`**, which is exactly the harness this piece deserves:
+fourteen properties over eleven fixtures, and the fixtures map onto the fixup's branches one for
+one (`inferSrcs` asserted in BOTH directions, `extraEnv` present at build time and ABSENT from
+the spec, the minimal-spec branch, a 146,317 byte argument that has to be spilled to the store, a
+spec dir with no `deps.json`). Run before the flip with the python and after it with the Rust.
+
+### #99 is done: 2,244 lines off the build path
+
+     752  buck2-graph-dump.py            -> cider-graph-dump
+     506  buck2-graph-sources.py         -> cider-graph-sources
+     489  buck-graph-to-specs.py         -> cider-graph-specs
+     295  buck-skeleton.py               -> cider-skeleton
+     275  buck-src-normalise.py          -> cider-src-normalise
+     222  dyn-actions-spec-fixup.py      -> cider-spec-fixup
+     ...  buck_lowering.py               -> folded into cider-graph-specs
+
+Nothing on the build path is interpreted any more except the buck2 RULES' own python, which is
+upstream's business and reaches the build through `nativeBuildInputs` rather than through this
+port.
 
 Nothing has been written into the monorepo yet. Which checkout and which bookmark to land on is a
 user call, and four checkouts of the same remote is exactly the situation where guessing is wrong.

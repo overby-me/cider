@@ -268,6 +268,11 @@
     then extraEnv
     else (_: extraEnv);
 
+  # RUST, NOT PYTHON, since #99, and the reason python3 has left the producer's PATH: the fixup
+  # was the only thing using it there. Built by nix rather than by buck2, like every other tool
+  # in linux/buildtools.
+  specFixup = pkgs.callPackage ../spec-fixup.nix { src = ../..; };
+
   producerOf = n:
     derivation ({
         inherit system;
@@ -276,11 +281,11 @@
         args = [
           "-c"
           ''
-            export PATH=${pkgs.nix}/bin:${pkgs.coreutils}/bin:${pkgs.python3}/bin:$PATH
+            export PATH=${pkgs.nix}/bin:${pkgs.coreutils}/bin:$PATH
             ${writeSpec n}
             # Store-dir-relative srcs, and the dependency injection, both of which can only
             # happen HERE. See nix/lib/dyn-actions-spec-fixup.py for why.
-            python3 ${./dyn-actions-spec-fixup.py} spec.json || exit 1
+            ${specFixup}/bin/cider-spec-fixup spec.json || exit 1
             emitted=$(nix --extra-experimental-features \
               "nix-command ca-derivations dynamic-derivations" derivation add < spec.json) \
               || { echo "dyn-actions: derivation add failed for ${n}" >&2; exit 1; }
