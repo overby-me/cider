@@ -12,7 +12,7 @@
 //!     C initializer carrying the separator and the Nix lowering replayed a different command
 //!     than buck2 ran. The flags that carry commas (-Wl,-alias_list,<file>) never carry
 //!     comma-space, and configure_file now passes its values in a file, so nothing in the tree
-//!     carries it. scripts/buck-argv-roundtrip-check.py holds both halves of that. See unjoin.
+//!     carries it. scripts/buck-argv-roundtrip-check.nu holds both halves of that. See unjoin.
 //!   * `log what-ran --format json` -- the same commands, but only for actions that actually
 //!     RAN. Kept as the checker, not as the source: using it as the source is what forced the
 //!     graph derivation to compile everything before it could learn anything.
