@@ -217,9 +217,37 @@ every action in the frontier through it, which is on the order of a million look
 that is hours. **A nushell record is not a hash map**, and no amount of grep reduction changes
 that, because the join is over data the check itself computes rather than over lines in a file.
 
-So those two belong in the RUST crate that already parses this exact file
-(`linux/buildtools/graph-specs`), not in nushell. That is the same split #99 drew: graph data to
-Rust, text checks to nushell. It is the last open piece of #98, and it is #99 shaped.
+That rules out nushell. It does NOT follow that they belong in the Rust crate, and checking who
+runs them says they belong nowhere: **neither is invoked by anything.** Not by `buck-test.nu`,
+not by a nix file, not by another script. Enumerated over the whole tree rather than grepped:
+
+| names it | what that reference is |
+| --- | --- |
+| `docs/monorepo-port.md`, `docs/plan-history.md` | this analysis, and history |
+| `nix/lib/ciderBuck2Graph.nix` | a COMMENT citing the numbers it produced |
+| `linux/buildtools/skeleton/src/main.rs` | a COMMENT on where `NEVER_EMPTY_FILES` came from |
+| `scripts/buck-codegen-keep.txt` | its GENERATED OUTPUT, committed, 132 lines |
+| `scripts/buck2-graph-sources.py` | the dead generator it imports `read_trees` from |
+
+So `buck-codegen-closure.py` is a **generator of a committed artifact**, exactly the class #97
+archives, and `buck-declaration-gap.py` is a one-shot analysis whose output nothing consumes.
+The keep list it produced IS live: `linux/buildtools/skeleton` reads
+`scripts/buck-codegen-keep.txt` and carries five more paths in `NEVER_EMPTY_FILES`, and emptying
+any of them fails SILENTLY, which is the whole reason the file exists.
+
+**AND ITS REGENERATION RECIPE IS ALREADY BROKEN,** which is the finding that matters here. The
+header of `buck-codegen-keep.txt` says to regenerate with
+`--sources <target-sources.json>`, and the sources derivation stopped writing any such file when
+#63 replaced per-target file lists with a label to subset index plus per-subset files. Passing
+today's `target-subsets.json` would not error: its values are STRINGS, so
+`every.update(files)` would union the CHARACTERS of a path and print a percentage. A regeneration
+path that silently produces nonsense is worse than one that is missing, and this one guards a
+list whose failure mode is a quietly wrong graph.
+
+**Decision needed, not a port:** either teach the closure tool the current sources format and keep
+it as the generator of the keep list, or freeze the keep list and archive the tool with the rest
+of the frozen generators. Neither is a #98 nushell port, and doing it as a Rust binary would be
+building the wrong thing carefully.
 
 ### The one performance rule, measured three ways
 
