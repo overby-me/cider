@@ -215,6 +215,11 @@ def check_shell_scripts [] {
         with-watchdog.sh         # wraps a command in a stall watchdog, exec'd from bash
         gnix-hello.sh            # runs INSIDE the guest
         gnix-build.sh            # runs INSIDE the guest
+        # The two guest parity gates (#102). Bash rather than nushell on purpose: they are a
+        # VERIFIED harness, six .sh files already lived here, and rewriting 250 working lines
+        # for consistency would risk the property that makes them worth keeping.
+        buck-xcrun-parity.sh
+        buck-plistbuddy-parity.sh
     ] | sort
     let found = (ls scripts/*.sh | get name | each {|n| $n | path basename } | sort)
     if $found == $allowed {

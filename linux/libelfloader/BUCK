@@ -26,6 +26,10 @@ rust_binary(
 #
 # A single translation unit against host headers only (elf.h, link.h, dlfcn.h), linked with the
 # C++ driver and -ldl, exactly as the reference does.
+# buck-registry: src/libelfloader/wrapgen/wrapgen = wrapgen_c
+#
+# Same reason as PlistBuddy_c: #76 gave the canonical name to the Rust rewrite, and the artifact
+# the REFERENCE build produced comes from wrapgen.cpp, which is this target.
 cc_binary(
     name = "wrapgen_c",
     srcs = ["wrapgen/wrapgen.cpp"],
