@@ -118,6 +118,13 @@ path = "src/tbddiff.rs"
 name = "cider-install-from-manifests"
 path = "src/installgen.rs"
 
+# THE LAST BINARY, the Rust rewrite of scripts/buck-split-pins.py (#98), which was the last python
+# in scripts/. It works on the buck2 tree rather than on the cmake reference, which is why it is
+# ported and not deleted the way the frozen generators were.
+[[bin]]
+name = "cider-split-pins"
+path = "src/splitpins.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

@@ -5,9 +5,24 @@ or Rust, or does not move at all. This file records which, and why, with the mea
 produced each answer so it can be re-run when it goes stale.
 
     54 python scripts, 16,719 lines          (python3, os.listdir + line count over scripts/)
+     0 python scripts,      0 lines          (the same measurement, 2026-08-12)
 
-Three tasks split the work: **#97** decides what is not ported at all, **#98** ports the checks to
-nushell, **#99** ports the build-path graph code to Rust.
+**IT IS DONE.** `scripts/` holds no python at all. Three tasks split the work: **#97** decides what
+is not ported at all, **#98** ports the checks to nushell, **#99** ports the build-path graph code
+to Rust. The ending was not the one #97 planned, and the user is the reason: asked why a tool that
+the buck2 build does not use was being ported at all, the answer was that there is no good reason,
+so the frozen generators were DELETED rather than rewritten. The split of the 54:
+
+| outcome | files | lines | what they were |
+| --- | ---: | ---: | --- |
+| ported to **nushell** | 21 | ~6,400 | checks and tree tools whose hot loop pushes into grep |
+| ported to **Rust** | 16 | ~5,300 | anything joining data it computes itself: graph.json readers, the specs and prefix checks, the pin tooling, the install generator |
+| **deleted** | 17 | ~5,000 | the cmake-era generators and their drivers: their input is the frozen `build.ninja` or a CMakeLists that no longer exists, so they could only reproduce what is already committed |
+
+Every port was gated byte for byte against the python it replaced, on real inputs, in every mode,
+with a control that makes the comparison able to fail. Where byte identity was impossible the
+commit says exactly why: a missing-file traceback nobody should reproduce, an Apple SDK that is
+not realised in this store, or python block-buffering its own stdout when redirected.
 
 ## #97: the generators. HALF the class is dead, and it is NOT the half the task assumed
 
@@ -28,7 +43,7 @@ surface turns out to be 7 percent of it rather than all of it.
 | `mig-from-ninja (deleted)` | 259 | `result-graph-ref/build.ninja` | nothing | **archive** |
 | `gen-xtrace-mig.py` | 158 | loads `gen-buck-from-ninja` | nothing | **PORTED**, now `gen-xtrace-mig.nu`, and it carries the two helpers it used (#98) |
 | `cider-install-from-manifests` | 859 | `result-graph-ref/install-manifests` | `buck-test.nu:1072` (subprocess) | **port**, frozen input but a live check |
-| `gen-sdk-header-roots.py` | 505 | `pins/`, `buck-src/` | `buck-split-pins.py:481` (subprocess) | **PORTED**, now `cider-sdk-header-roots` (#98) |
+| `gen-sdk-header-roots.py` | 505 | `pins/`, `buck-src/` | `cider-split-pins` (subprocess) | **PORTED**, now `cider-sdk-header-roots` (#98) |
 | `gen-xnu-sys-buck.py` | 457 | `pins/ciderd/xnu-sys/CMakeLists.txt` | by hand; scraped by `xnu-sys-portability.py` | **DELETED** (#98): its input went with cmake, so it could not run at all |
 | `gen-prefix-min.py` | 425 | `buck/prefix/BUCK` | by hand, regenerates `buck/prefix-min/BUCK` | **PORTED**, now `gen-prefix-min.nu` (#98) |
 | `gen-xnu-sys-traps.py` | 167 | `pins/ciderd/xnu-sys` | `xnu-sys-runtime-check.nu:175 --check` | **PORTED**, now `gen-xnu-sys-traps.nu` (#98) |
@@ -73,8 +88,8 @@ consumed only by things that are themselves archive-or-tool candidates**, so not
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **3 files, 3,398 lines** as of 2026-08-12, down from 54 files at
-the start of this campaign and from the 29 the table above was measured on.
+The whole `scripts/` python is **ZERO files** as of 2026-08-12, down from 54 at the start of
+this campaign and from the 29 the table above was measured on.
 
 **THE LIVE SURFACE OF `gen-buck-from-ninja (deleted)` IS RUST NOW**, in
 `linux/buildtools/graph-specs/src/ninjaref.rs`: `read_edges` over the frozen 131 MB
@@ -486,7 +501,7 @@ mention is not a call. The answer is smaller than the file count suggests:
 | `buck-specs-check.py` | `buck-specs-check.nu` | **CUT**, ported to **Rust** (#98) |
 
 Everything else is either invoked by hand or imported only by another python file:
-`buck-split-pins` RUNS `cider-exports`, `buck-fix-loads` and `gen-sdk-header-roots` as
+`cider-split-pins` RUNS `cider-exports`, `buck-fix-loads` and `cider-sdk-header-roots` as
 subprocesses rather than importing them, so they are not a cluster and each moves on its own;
 `buck-port` imports `gen-buck-from-ninja`; the two dead graph tools
 pull in `buck2-graph-sources`. **So the monorepo needs python for exactly ONE more edge**, and it
