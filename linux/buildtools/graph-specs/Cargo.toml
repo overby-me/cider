@@ -118,6 +118,13 @@ path = "src/sdkroots.rs"
 name = "cider-mig-from-ninja"
 path = "src/migninja.rs"
 
+# THE FIFTEENTH BINARY, the Rust rewrite of scripts/tbd-diff.py (#98). The real Apple SDK is not
+# realised in this store, so it is gated on a FIXTURE SDK that exercises every branch of the two
+# .tbd parsers rather than on the real one.
+[[bin]]
+name = "cider-tbd-diff"
+path = "src/tbddiff.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

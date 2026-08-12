@@ -73,7 +73,7 @@ consumed only by things that are themselves archive-or-tool candidates**, so not
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **7 files, 5,784 lines** as of 2026-08-12, down from 54 files at
+The whole `scripts/` python is **6 files, 5,435 lines** as of 2026-08-12, down from 54 files at
 the start of this campaign and from the 29 the table above was measured on.
 
 **THE LIVE SURFACE OF `gen-buck-from-ninja.py` IS RUST NOW**, in
