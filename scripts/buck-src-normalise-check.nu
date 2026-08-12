@@ -39,9 +39,9 @@ const EXPECT = [
     # already resolving inside vendor/src: left alone
     ["p1/ok.h" "real2.h"]
     # dangling inside vendor/src, recovered through the rename table
-    ["p1/rename.h" "../../vendor/pins/ciderd/xnu-sys/xnu/osfmk/mach/host.h"]
+    ["p1/rename.h" "../../pins/ciderd/xnu-sys/xnu/osfmk/mach/host.h"]
     # written for the pre-#87 root: src/external/<pin> is vendor/pins/<pin> now
-    ["p1/oldroot.h" "../../vendor/pins/somepin/include/real.h"]
+    ["p1/oldroot.h" "../../pins/somepin/include/real.h"]
     # escapes the repo, recovered through the SDK farm, landed in the pin COPY
     ["p1/escape.h" "../somepin/include/real.h"]
     # escapes to a path that exists only under darwin/, then through the farm link there
@@ -90,9 +90,9 @@ def build_repo [repo: string] {
     ^ln -s "/etc/hostname" $"($repo)/vendor/src/p1/abs.h"
     ^ln -s "real2.h" $"($repo)/vendor/src/p1/ok.h"
     ^ln -s "../darlingserver/duct-tape/xnu/osfmk/mach/host.h" $"($repo)/vendor/src/p1/rename.h"
-    ^ln -s "../../src/external/somepin/include/real.h" $"($repo)/vendor/src/p1/oldroot.h"
-    ^ln -s "../../../darwin/sdk-farm/link.h" $"($repo)/vendor/src/p1/escape.h"
-    ^ln -s "../../../Developer/SDK/usr/include/notify.defs" $"($repo)/vendor/src/p1/farm.defs"
+    ^ln -s "../../../src/external/somepin/include/real.h" $"($repo)/vendor/src/p1/oldroot.h"
+    ^ln -s "../../../../darwin/sdk-farm/link.h" $"($repo)/vendor/src/p1/escape.h"
+    ^ln -s "../../../../Developer/SDK/usr/include/notify.defs" $"($repo)/vendor/src/p1/farm.defs"
     ^ln -s "../shared" $"($repo)/vendor/src/p1/dirlink"
     ^ln -s ".." $"($repo)/vendor/src/p1/cycle"
 }
