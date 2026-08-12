@@ -519,21 +519,25 @@
   #
   # See #92 for why reading buck2 through its own crates would beat parsing its rendered
   # output, which is what the identity regex in the generator has to do today.
+  # RUST, NOT PYTHON, since #99. ONE BINARY where there were two files: python needed
+  # buck_lowering.py as an importable module shared with three checks, and a binary has no
+  # import, so those checks read the JSON it already writes. That also removes the staging dance
+  # this used to need, where both files had to be copied into one directory because a nix path
+  # interpolation puts each in the store under its OWN hash and `from buck_lowering import`
+  # found nothing.
+  #
+  # Landed only after the two implementations were run over the REAL 147 MB graph, 1,474 groups
+  # and 8,704 actions, and produced 2,955 files that diff -rq reports no difference between,
+  # with equal NAR hashes; and after this derivation was built both ways to the SAME content
+  # addressed store path. It is also 2.2s against 6.0s.
+  specsTool = pkgs.callPackage ../graph-specs.nix { inherit src; };
+
   specsDrv = pkgs.runCommand "cider-buck2-graph-specs" {
     __contentAddressed = true;
     outputHashMode = "recursive";
     outputHashAlgo = "sha256";
-    nativeBuildInputs = [pkgs.python3];
   } ''
-    # BOTH FILES, and the module has to sit BESIDE the script. A nix path interpolation copies
-    # ONE file into the store under its own hash, so the generator's `from buck_lowering import`
-    # found nothing there and the build died with ModuleNotFoundError. Staging them into a
-    # directory here is what puts them in the same place, and PYTHONPATH is what makes that
-    # place importable.
-    mkdir -p gen
-    cp ${../../scripts/buck-graph-to-specs.py} gen/buck-graph-to-specs.py
-    cp ${../../scripts/buck_lowering.py} gen/buck_lowering.py
-    PYTHONPATH=gen python3 gen/buck-graph-to-specs.py ${graph}/graph.json "$out"
+    ${specsTool}/bin/cider-graph-specs ${graph}/graph.json "$out"
   '';
 
   sourcesDrv = pkgs.stdenv.mkDerivation {

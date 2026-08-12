@@ -972,6 +972,15 @@
           targets = [ "//darwin/libsimple:libsimple_ciderd" ];
         }).specsDrv;
 
+      # The Rust rewrite of buck_lowering.py and buck-graph-to-specs.py, task #99. Built by nix
+      # rather than by buck2: it runs inside the graph derivation, so buck2 would be circular.
+      #   nix build .#specs-tool
+      packages.specs-tool =
+        pkgs:
+        pkgs.callPackage ./nix/graph-specs.nix {
+          src = ./.;
+        };
+
       # The Rust rewrite of scripts/buck-skeleton.py, task #99. Built by nix rather than by
       # buck2 on purpose: it produces the tree buck2 is run on, so buck2 building it would be
       # circular.

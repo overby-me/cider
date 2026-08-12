@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+# OFF THE BUILD PATH SINCE #99. nix/lib/ciderBuck2Graph.nix runs linux/buildtools/graph-specs, a
+# Rust binary, and no derivation reads this file any more. It is kept ONLY because three checks
+# still IMPORT it: buck-needs-check.py, buck-script-check.py and buck-names-check.py. Those are
+# #98 work that was blocked on #99 and now is not.
+#
+# THAT IS A DRIFT RISK AND IT IS NAMED RATHER THAN LEFT: two implementations of the same lowering
+# now exist, and a change to one that is not made to the other would leave the checks verifying
+# the wrong thing while every build used the other. The resolution is not to keep them in step,
+# it is to delete this: the Rust already writes needs.json, full.json and scripts.json, which is
+# the same data those three checks reconstruct by importing, so they should read the generated
+# JSON instead. Until then, ANY EDIT HERE MUST BE MADE IN linux/buildtools/graph-specs TOO, and
+# the comparison that proves they agree is the one in that crate header.
 """The lowering, in python: what a group NEEDS, and the script that builds it.
 
 #66 is moving both out of the Nix evaluator and into the graph derivation, where they are
