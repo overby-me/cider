@@ -1040,7 +1040,7 @@ def main [flag?: string] {
     # 177 are consumed by a build edge and 2 are installed. The 227 that remain are MIG SIDE
     # OUTPUTS -- one mig run emits user, server, header and xtrace, and a target compiles one
     # or two -- which the REFERENCE does not read either. Asserted so the number cannot grow.
-    let unc = (awk_field (cap [./scripts/buck-codegen-coverage.py]) '^  unconsumed' 2)
+    let unc = (awk_field (cap [nu ./scripts/buck-codegen-coverage.nu]) '^  unconsumed' 2)
     if (num_or $unc 999) <= 227 {
         ok $"codegen: ($unc) generated outputs unconsumed \(ceiling 227, all mig side outputs\)"
     } else {

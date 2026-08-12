@@ -134,7 +134,7 @@ one command.
   deliberate scope reduction: the long-term target here is aarch64.
 - **cctools ld/ar/ranlib come from Nix** rather than being built.
 - **The link-edge metric counts link edges.** Generated files are measured separately by
-  `scripts/buck-codegen-coverage.py`: 227 outputs are unconsumed and all are mig side
+  `scripts/buck-codegen-coverage.nu`: 227 outputs are unconsumed and all are mig side
   outputs the reference does not read either.
 - **Build parity is not runtime parity.** buck-test is almost entirely static. What runs is
   the ten runtime checks plus `scripts/buck-loadall-check.nu`, which dlopens the prefix:

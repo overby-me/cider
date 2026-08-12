@@ -27,7 +27,7 @@ surface turns out to be 7 percent of it rather than all of it.
 | `gen-buck-from-ninja.py` | 2,508 | `result-graph-ref/build.ninja` | imported as a LIBRARY by 6 scripts | **split**: 182 live, 2,326 archive |
 | `gen-mig-from-ninja.py` | 259 | `result-graph-ref/build.ninja` | nothing | **archive** |
 | `gen-xtrace-mig.py` | 158 | loads `gen-buck-from-ninja` | nothing | **archive** |
-| `gen-install-from-manifests.py` | 859 | `result-graph-ref/install-manifests` | `buck-test.nu:1072`, `buck-codegen-coverage.py` | **port**, frozen input but a live check |
+| `gen-install-from-manifests.py` | 859 | `result-graph-ref/install-manifests` | `buck-test.nu:1072` (subprocess) | **port**, frozen input but a live check |
 | `gen-sdk-header-roots.py` | 505 | `pins/`, `buck-src/` | `buck-split-pins.py:481` (subprocess) | **port** |
 | `gen-xnu-sys-buck.py` | 457 | `pins/ciderd/xnu-sys/CMakeLists.txt` | by hand; scraped by `xnu-sys-portability.py` | **port** |
 | `gen-prefix-min.py` | 425 | `buck/prefix/BUCK` | by hand, regenerates `buck/prefix-min/BUCK` | **port** |
@@ -61,6 +61,13 @@ never run again, because the graph it reads cannot be regenerated.
 So the move is to lift those 8 functions into a small reference-reader module and archive the
 emitter, rather than to port or to drop the file whole. Dropping it whole broke `buck-coverage`,
 `buck-codegen-coverage.py`, `buck-fix-link-model.py` and the `UNMAPPED` gate in `buck-test.nu`.
+
+UPDATE, #98: `buck-codegen-coverage` is nushell now and IMPORTS NOTHING. It needed one path
+constant from `gen-buck-from-ninja` and `read_entries` plus `build_rel` from
+`gen-install-from-manifests`, and it carries those itself, the way `buck-coverage.nu` carries its
+180 lines of the reference library. So `gen-install-from-manifests.py` has NO importer left: the
+only live consumer is the `UNMAPPED` gate, which runs it as a SUBPROCESS and reads its output,
+and that is a boundary a rewrite can keep.
 
 The alias matters when re-running this: the importers bind the module to `gen` in some files and to
 `g` in others (`buck-coverage` and `gen-xtrace-mig.py` used `g`), so a scan for `gen\.` alone
