@@ -197,6 +197,29 @@ of the 33 that do not,
 
 Those three stream the **131 MB, 362,663-line** `build.ninja`, which is precisely the shape
 nushell is worst at, and they die at the next store GC by their own admission. They go last.
+`buck-host-includes` is done and shows how: push BOTH the line selection AND the token split
+into grep, so 26,198 long lines become 652 tokens before nushell sees any of it.
+
+### A HARD LIMIT, MEASURED: a hash join does not go to nushell
+
+`buck-codegen-closure.py` and `buck-declaration-gap.py` are the two checks that read the dumped
+`graph.json` rather than the reference. They are not more of the same, and the reason is a
+measurement rather than a preference:
+
+| operation | nushell | note |
+| --- | --- | --- |
+| parse the 147 MB `graph.json` | **1.17 s** | fine, and better than expected |
+| build a 12,001 key record with `upsert` | **6.5 s** | the O(n^2) accumulator again |
+| 100,001 lookups into that record | **51.8 s** | 518 us each, so the lookup is LINEAR |
+
+`codegen_targets` builds a producer map over every action output and then chases the argv of
+every action in the frontier through it, which is on the order of a million lookups. At 518 us
+that is hours. **A nushell record is not a hash map**, and no amount of grep reduction changes
+that, because the join is over data the check itself computes rather than over lines in a file.
+
+So those two belong in the RUST crate that already parses this exact file
+(`linux/buildtools/graph-specs`), not in nushell. That is the same split #99 drew: graph data to
+Rust, text checks to nushell. It is the last open piece of #98, and it is #99 shaped.
 
 ### The one performance rule, measured three ways
 
