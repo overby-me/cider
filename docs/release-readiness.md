@@ -184,3 +184,47 @@ is a `.section` directive rather than instructions. The deep porting cost people
 **The honest unknown.** Nothing here says what the GUEST side costs: duct-tape, mldr and the
 syscall layer all assume x86_64 register layout, and that was not measured today because it needs
 reading rather than counting. Budget for that separately.
+
+---
+
+## Directory consolidation: what was done, and what was measured and rejected
+
+Asked for 2026-08-12. The project has **1,833 tracked directories**, and **1,646 are under
+`darwin/`**: `darwin/Developer` alone is 761 directories, 2,806 files and 1,982 headers, and it is
+load-bearing (`buck/generated/sdk_headers.bzl`, `sdk_framework_darwin_Developer.bzl`, `darwin/BUCK`
+and `buck-src/BUCK` all name it). `darwin/frameworks` is 86 components and `private-frameworks`
+56. That is the macOS surface Cider implements, so the count there is the product, not clutter.
+
+**DONE.** Deleted `tools/` (22 files, all verified unreferenced by path), `.vscode/`, `outputs/`,
+`misc/` (one logo, zero references, moved to `docs/`), `plan/` (retired into `docs/`), `.gdbinit`
+(broken: it imports `gdb_maloader` from a `tools/` that does not exist), `CONTRIBUTORS.md`, three
+empty directories (`build/`, `plan/`, and one named `<ciderd`) and a stray `.dfx-boot.log`.
+`etc/` became `darwin/etc/`, which needed a `SOURCE_RENAMES` entry in the install generator and
+was verified by regeneration rather than by inspection.
+
+**REJECTED: `patches/` into `pins/`.** `pins/` is not a container, it is a NAMESPACE OF PIN NAMES,
+and two places enumerate it: `nix/lib/ciderBuck2Lower.nix:1326` does
+`builtins.readDir (projectSrc + "/pins")` and symlinks every entry as a pin, and
+`scripts/buck-escape-roots-check.nu:24` computes "a readDir of pins minus the pin names" and
+reports what is left. A `pins/patches/` would appear to both as a pin called `patches`. Moving it
+to `nix/` instead would fit the applier in `nix/lib/cider-src.nix` but mischaracterise it, since
+`scripts/buck-src.nu` applies patches too and is not Nix. It stays at the top level.
+
+**NOT DONE, AND THE REASON IS VERIFICATION RATHER THAN EFFORT: `buck-src` + `buck-rust` + `pins`
+into one `vendor/`.** Measured cost:
+
+    buck-src   14,424 occurrences in 173 files   (11,818 of them under buck/)
+    buck-rust      94 occurrences in  31 files
+    pins/         418 occurrences in  48 files
+
+Most of that is inside GENERATED files (`buck-src/BUCK` is 63,424 lines, `buck/prefix/BUCK` 4,336)
+and the generators hardcode the prefix: `installgen.rs:840` and `:845` build labels as
+`//buck-src/{pin}:` and `//buck-src:`. So the honest form of this change is to update the
+generators, the materialization scripts, `.gitignore` and `.buckconfig`, then REGENERATE, which is
+tractable and mechanical.
+
+**What stops it today is that it cannot be proven.** A rename of this size is exactly the kind
+that fails somewhere only a full build reaches, and the full build is blocker B0: it wedged. CI,
+which would be the other way to prove it, has never run. Doing it now would mean making 14,424
+edits and hoping. Sequence it after B0 has a clean-machine reproduction and CI is green, and the
+same change becomes routine.
