@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Is every file the reference GENERATES accounted for by the port?
 
-buck-coverage.py counts LINK edges. The reference also has thousands of CUSTOM_COMMAND
+buck-coverage.nu counts LINK edges. The reference also has thousands of CUSTOM_COMMAND
 edges -- mig, bison, flex, configure_file, script generators -- and the worry recorded
 against them was that a generated file which nothing compiles could be silently absent,
 with no check anywhere that would notice.

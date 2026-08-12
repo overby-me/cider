@@ -127,7 +127,7 @@ EXTRA_DIRS = {
 # UNMAPPED so "what is missing" stays a number that can reach zero.
 OUT_OF_SCOPE = {
     "libexec/cider/usr/lib/libstdc++.6.dylib":
-        "libstdc++ is not ported (scripts/buck-coverage.py OUT_OF_SCOPE: GCC 4.2.1's "
+        "libstdc++ is not ported (scripts/buck-coverage.nu OUT_OF_SCOPE: GCC 4.2.1's "
         "vendored headers do not compile against this SDK), and nothing links it",
     # Two links the REFERENCE build leaves dangling, so the port has nothing to point them
     # at. buck-src/file_cmds/CMakeLists.txt:96 says

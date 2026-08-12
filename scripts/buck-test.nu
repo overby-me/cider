@@ -982,19 +982,19 @@ def main [flag?: string] {
     if (has $dy_syms "__dyld_start") { ok "dyld defines __dyld_start" } else { bad "dyld has no __dyld_start" }
 
     say "== coverage against the reference graph =="
-    # Measured, not estimated: scripts/buck-coverage.py counts every LINK EDGE in the
+    # Measured, not estimated: scripts/buck-coverage.nu counts every LINK EDGE in the
     # reference build.ninja and reports which have a buck2 target. Asserting a floor here
     # means a regression that drops targets cannot pass unnoticed.
-    # RUN IT ONCE. This used to invoke buck-coverage.py THREE times: twice right here, purely
+    # RUN IT ONCE. This used to invoke buck-coverage THREE times: twice right here, purely
     # to read field 2 and field 4 of the SAME "^total" line, and a third time below for
     # "^by-name". Two of the three were recomputing an answer already in hand.
     #
     # THE SAVING IS ABOUT 10 SECONDS, NOT MINUTES, and the first version of this comment said
     # minutes because I had confused this script with buck-upstream-names-check. MEASURED on
-    # an idle box: buck-coverage.py is 6 s, 5 s, 4 s across three runs, while the upstream-names
+    # an idle box: buck-coverage was 6 s, 5 s, 4 s across three runs in python and is about a
     # check runs for over 110 s. Worth doing, and worth not overselling: if the suite is ever
     # actually slow, this is not where the time is.
-    let covout = (cap [./scripts/buck-coverage.py])
+    let covout = (cap [nu ./scripts/buck-coverage.nu])
     let cov = (awk_field $covout '^total' 2)
     let tot = (awk_field $covout '^total' 4)
     # The floor tracks the real number. It sat at 208 long after coverage passed 800, which

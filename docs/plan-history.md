@@ -1094,7 +1094,7 @@ Kept because the measurements in it are real and were expensive to take. Nothing
 a live instruction.
 ### Near-term queue (stage 1, cli)
 
-Re-derive before trusting: `scripts/buck-coverage.py --missing` and
+Re-derive before trusting: `scripts/buck-coverage.nu --missing` and
 `scripts/gen-install-from-manifests.py`.
 
 1. **The `all` component.** Sized and started; see "Stage 3" above.

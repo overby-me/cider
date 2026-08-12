@@ -59,11 +59,11 @@ functions, 182 lines** of the 2,508. The other ~2,326 lines are ninja-to-BUCK em
 never run again, because the graph it reads cannot be regenerated.
 
 So the move is to lift those 8 functions into a small reference-reader module and archive the
-emitter, rather than to port or to drop the file whole. Dropping it whole breaks `buck-coverage.py`,
+emitter, rather than to port or to drop the file whole. Dropping it whole broke `buck-coverage`,
 `buck-codegen-coverage.py`, `buck-fix-link-model.py` and the `UNMAPPED` gate in `buck-test.nu`.
 
 The alias matters when re-running this: the importers bind the module to `gen` in some files and to
-`g` in others (`buck-coverage.py` and `gen-xtrace-mig.py` use `g`), so a scan for `gen\.` alone
+`g` in others (`buck-coverage` and `gen-xtrace-mig.py` used `g`), so a scan for `gen\.` alone
 reports zero symbols for two of the six and makes the live surface look smaller than it is.
 
 ### Two traps for whoever does the move
