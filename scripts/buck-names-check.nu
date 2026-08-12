@@ -99,19 +99,26 @@ def run-comparison [specs: string, from_nix: record, controls: bool] {
   }
   if ($missing | is-not-empty) { $rc = 1 }
 
-  # THE PYTHON COPY THAT IS LEFT. buck-specs-check.py re-derives the spec name independently
-  # and is the next pilot; while it is still python it is still a copy that has to agree, so it
-  # is asked THROUGH the interpreter rather than quietly dropped from the comparison.
+  # THE INDEPENDENT RE-DERIVATION, which is cider-specs-check. It spells the spec name out again
+  # rather than importing the generator, so it is a copy that has to agree, and it is asked
+  # DIRECTLY rather than quietly dropped from the comparison. It used to be python and was
+  # reached by importing the module; a binary cannot be imported, so it grew --safe-names for
+  # exactly this question.
+  let t = (do -i { ^nix build ".#specs-tool" --no-link --print-out-paths } | complete)
+  if $t.exit_code != 0 {
+    print "  FAILED to build cider-specs-check"
+    print -e ($t.stderr | lines | last 5 | str join "\n")
+    $rc = 1
+  }
   let labels_file = (mktemp -t --suffix .json)
   $labels | to json | save -f $labels_file
-  let pysrc = 'import importlib.util, json, sys
-s = importlib.util.spec_from_file_location("spc", "scripts/buck-specs-check.py")
-m = importlib.util.module_from_spec(s); s.loader.exec_module(m)
-print(json.dumps([m.safe_name(l) for l in json.load(open(sys.argv[1]))]))'
-  let spc = (do -i { ^python3 -c $pysrc $labels_file } | complete)
+  let spc = (if $t.exit_code == 0 {
+    let tool = ($t.stdout | lines | where {|l| $l != "" } | first)
+    do -i { ^($tool | path join "bin" "cider-specs-check") --safe-names $labels_file } | complete
+  } else { { exit_code: 1, stdout: "", stderr: "" } })
   rm -f $labels_file
   if $spc.exit_code != 0 {
-    print "  FAILED to ask buck-specs-check.py for its copy"
+    print "  FAILED to ask cider-specs-check for its copy"
     print -e ($spc.stderr | lines | last 5 | str join "\n")
     $rc = 1
   }
@@ -119,7 +126,7 @@ print(json.dumps([m.safe_name(l) for l in json.load(open(sys.argv[1]))]))'
   let spc_bad = ($labels | enumerate | where {|it|
     ($spc_names | get -o $it.index) != ($from_nix | get $it.item).s })
   let tag_spc = (if ($spc_bad | is-not-empty) { "DIFFERS" } else { "agrees " })
-  print $"  ($tag_spc) buck-specs-check.py safe_name: ($spc_bad | length)"
+  print $"  ($tag_spc) cider-specs-check safe_name: ($spc_bad | length)"
   if ($spc_bad | is-not-empty) { $rc = 1 }
 
   mut bad = {}

@@ -73,6 +73,15 @@ path = "src/srcdeps.rs"
 name = "cider-prefix-cost"
 path = "src/prefixcost.rs"
 
+# THE NINTH BINARY, the Rust rewrite of scripts/buck-specs-check.py (#98). Its own header argued
+# it could not leave python, and that argument was about NUSHELL: the verdict rests on tokenising
+# 59 MB of script text, which a nushell character loop does at about 25 KB/s. None of it applies
+# to Rust. It shares sha256 with the dump for --dump-canon, and DELIBERATELY shares nothing else:
+# a check that calls the generator cannot fail.
+[[bin]]
+name = "cider-specs-check"
+path = "src/specscheck.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

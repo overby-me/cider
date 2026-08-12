@@ -9,8 +9,8 @@
 # _drain before it runs -- and a disagreement is silent: the endpoint would build a perfectly
 # valid script that runs the wrong commands.
 #
-# This finds the two store paths and hands them to scripts/buck-specs-check.py, which
-# re-derives the answer from graph.json rather than asking the generator what it thinks.
+# This finds the two store paths and hands them to cider-specs-check, which re-derives the
+# answer from graph.json rather than asking the generator what it thinks.
 #
 # IT BUILDS THE GRAPH IF IT IS NOT BUILT, which is why it is a separate check rather than
 # part of scripts/buck-test.nu: that suite is about the buck2 side and never touches the Nix
@@ -20,12 +20,13 @@
 #   scripts/buck-specs-check.nu --endpoint .#other    # against another graph
 #   scripts/buck-specs-check.nu --controls            # and prove the check can fail
 #
-# THIS ONE KEEPS ITS PYTHON CORE, ALONE AMONG THE FOUR PILOTS, and the reason is measured rather
-# than a preference: the check compares shell WORDS, so it stands or falls on tokenising 59 MB
-# of script text, and a character loop in nushell runs at about 25 KB/s and gets EIGHT TIMES
-# WORSE per byte at 4.9 MB than at 6.5 KB. The numbers and the alternative that was rejected are
-# in the head of scripts/buck-specs-check.py, together with the --dump-canon gate that would
-# prove a future attempt.
+# THE CORE IS RUST, NOT NUSHELL, and the reason is the measurement that used to keep it in
+# python: the check compares shell WORDS, so it stands or falls on tokenising 59 MB of script
+# text, and a character loop in nushell runs at about 25 KB/s and gets EIGHT TIMES WORSE per byte
+# at 4.9 MB than at 6.5 KB. That argument is about nushell and says nothing about Rust, where the
+# same character loop is the natural way to write it. The numbers, the rejected regex tokeniser
+# and the --dump-canon gate that proved the port are in the head of
+# linux/buildtools/graph-specs/src/specscheck.rs.
 
 def main [
   --endpoint: string = ".#cider-buck2-graph-min"
@@ -55,6 +56,23 @@ def main [
   }
   let specs = ($s.stdout | split row "\n" | where {|l| $l != "" } | first)
 
+  # THE CHECK ITSELF IS A BINARY of the same crate the generator is, built by nix rather than by
+  # buck2 for the reason the crate header gives: it runs inside the graph derivation, so buck2
+  # building it would be circular. Building it here is seconds once the crate is in the store.
+  let t = (^nix build ".#specs-tool" --no-link --print-out-paths | complete)
+  if $t.exit_code != 0 {
+    print "FAIL: could not build cider-specs-check"
+    print $t.stderr
+    exit 1
+  }
+  let tool = ($t.stdout | split row "\n" | where {|l| $l != "" } | first)
+  let check = ($tool | path join "bin" "cider-specs-check")
+
+  # The repo root the way the python took it from __file__: the checker reads
+  # nix/lib/ciderBuck2Lower.nix to compare the two spellings of the name mapping, and a binary
+  # in the store cannot find that from its own path.
+  $env.CIDER_REPO = ($env.FILE_PWD | path dirname)
+
   print $"graph: ($graph)"
   print $"specs: ($specs)"
 
@@ -64,14 +82,14 @@ def main [
     let tmp = (mktemp -d)
     ^cp -r $"($specs)/." $tmp
     ^chmod -R u+w $tmp
-    let r = (^python3 ./scripts/buck-specs-check.py $"($graph)/graph.json" $tmp --controls | complete)
+    let r = (^$check $"($graph)/graph.json" $tmp --controls | complete)
     print $r.stdout
     if ($r.stderr | is-not-empty) { print -e $r.stderr }
     ^rm -rf $tmp
     exit $r.exit_code
   }
 
-  let r = (^python3 ./scripts/buck-specs-check.py $"($graph)/graph.json" $specs | complete)
+  let r = (^$check $"($graph)/graph.json" $specs | complete)
   print $r.stdout
   if ($r.stderr | is-not-empty) { print -e $r.stderr }
   exit $r.exit_code

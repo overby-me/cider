@@ -73,7 +73,7 @@ consumed only by things that are themselves archive-or-tool candidates**, so not
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **14 files, 7,785 lines** as of 2026-08-12, down from 54 files at
+The whole `scripts/` python is **13 files, 7,205 lines** as of 2026-08-12, down from 54 files at
 the start of this campaign and from the 29 the table above was measured on.
 
 `buck-prefix-cost` is the second one to go to **Rust rather than nushell** on shape rather than
@@ -474,16 +474,17 @@ mention is not a call. The answer is smaller than the file count suggests:
 | --- | --- | --- |
 | `gen-xnu-sys-traps.py --check` | `xnu-sys-runtime-check.nu:175` | **CUT**, ported to `.nu` (#98) |
 | `gen-install-from-manifests.py` | the `UNMAPPED` gate in `buck-test.nu` | open, 972 lines |
-| `buck-specs-check.py` | `buck-specs-check.nu` | KEPT on purpose, measured shut |
+| `buck-specs-check.py` | `buck-specs-check.nu` | **CUT**, ported to **Rust** (#98) |
 
 Everything else is either invoked by hand or imported only by another python file:
 `buck-split-pins` pulls in `buck-exports`, `buck-fix-loads` and `gen-sdk-header-roots`;
 `regen-dylibs` pulls in `buck-fix-loads` and `gen-buck-from-ninja`; the two dead graph tools
-pull in `buck2-graph-sources`. **So the monorepo needs python for exactly two more edges**, and
-neither is a check that has to run there: one is a generator gate over the frozen reference, the
-other is deliberately frozen with its measurement in the header.
+pull in `buck2-graph-sources`. **So the monorepo needs python for exactly ONE more edge**, and it
+is not a check: it is a generator gate over the frozen reference. `buck-specs-check` was the other
+one and it is Rust now, which is what its measured "stays python" note was always about: the
+measurement said NUSHELL cannot tokenise 59 MB of script text, and said nothing about Rust.
 
-That reframes what is left of #97 and #98. It is not 11,350 lines of work. It is two decisions.
+That reframes what is left of #97 and #98. It is not 11,350 lines of work. It is one decision.
 
 **And the bigger of the two is NOT a nushell port, measured rather than assumed.**
 `gen-install-from-manifests.py` is 972 lines that make 1,289 `target_for` calls, each scanning
@@ -776,8 +777,9 @@ verifies it against `target_sources`, so pointing it at an artifact means giving
 ### #98 continued: six more checks, and the one measurement that outranks them
 
 `buck-needs-check`, `buck-script-check` and `buck-names-check` are the three pilots the user
-named that could move; `buck-specs-check` is the fourth and stays python for a measured reason
-(shell tokenisation, see its header). Beyond the pilots, `buck-include-closure-check`,
+named that could move to nushell; `buck-specs-check` is the fourth, and its measured reason not to
+(shell tokenisation, see its header) was a reason not to be NUSHELL. It is Rust now,
+`cider-specs-check`, gated on the sha256 of all 1,474 canonical scripts. Beyond the pilots, `buck-include-closure-check`,
 `buck-argv-roundtrip-check`, `buck-upstream-names-check` and `buck-coverage` are nushell too.
 Every one is byte identical to the python it replaced, in every mode, and every one has a
 control that FIRES identically on both sides.
