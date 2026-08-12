@@ -1,3 +1,5 @@
+<img src="docs/cider.svg" alt="" width="88" align="right">
+
 # Cider
 
 **Cider Isn't Darwin Emulation, Really.**
