@@ -1,5 +1,6 @@
 load("//buck/rules:cc.bzl", "cc_lib_dir", "cc_library")
 load("//buck/rules:rust.bzl", "bindgen_gen", "rust_binary", "rust_library")
+
 # xnu-sys's own defines and warning flags, generated alongside its BUCK file. bindgen has
 # to parse the XNU headers with the IDENTICAL set for the ported glue (#71); they do not
 # parse without it, since osfmk/kern/priority_queue.h uses blocks and needs -fblocks.
