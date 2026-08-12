@@ -2,81 +2,125 @@
 
 **Cider Isn't Darwin Emulation, Really.**
 
-Cider is a runtime environment for macOS applications. It is a fork of
-[Darling](https://github.com/darlinghq/darling), whose copyright and history it keeps.
+Cider is a runtime environment for macOS applications on Linux. It runs Mach-O binaries directly
+on the Linux kernel through its own dyld, libSystem and kernel-emulation layer. There is no
+virtual machine and no Apple kernel.
 
-Please note that most GUI applications will not run at the moment.
+Cider is a fork of [Darling](https://github.com/darlinghq/darling) and is licensed under the
+GPL, version 3 or later. See [LICENSE](LICENSE).
 
-## Download
+## Status
 
-Cider is developed at [tangled.org/overby.me/cider](https://tangled.org/overby.me/cider).
+**Early. Command line software works; most GUI applications do not.**
 
-Prebuilt packages are not published yet. Build it from source, see below.
+What follows is what an automated check in this repository actually exercises, not a wish list.
+Each one boots a container and runs a real program:
 
-## Build Instructions
+| Works | Checked by |
+|---|---|
+| A shell: `cider shell` and bash inside it | `scripts/buck-bash-check.nu` |
+| Booting through launchd | `scripts/buck-launchd-check.nu` |
+| Nix, running inside the container | `scripts/buck-nix-bash-check.nu` |
+| JavaScriptCore running a script | `scripts/buck-jsc-check.nu` |
+| libdispatch, Security, CoreAudio, scripting bridges | `buck-{dispatch,security,audio,scripting}-check.nu` |
+| A trivial AppKit window under X11 | `scripts/buck-appkit-check.nu` |
 
-Cider builds with Nix and buck2:
+Anything not in that table is unverified here. In particular Cider has **not** been shown to
+install `.pkg` files, mount Xcode disk images, or run Xcode or its toolchain. Darling documents
+those; this fork does not currently test them, so it does not claim them.
 
-````
-nix build .#cider-buck2-prefix-min
-````
+## Build
 
-The upstream Darling build instructions at
-[docs.darlinghq.org](https://docs.darlinghq.org/build-instructions.html) describe the
-cmake build, which Cider no longer has.
-
-### Prefixes
-
-Cider has support for DPREFIXes, which are very similar to WINEPREFIXes. They are virtual “chroot” environments with an macOS-like filesystem structure, where you can install software safely. The default DPREFIX location is `~/.cider`, but this can be changed by exporting an identically named environment variable. A prefix is automatically created and initialized on first use.
-
-Please note that we use `overlayfs` for creating prefixes, and so we cannot support putting prefix on a filesystem like NFS or eCryptfs. In particular, the default prefix location won't work if you have an encrypted home directory.
-
-### Hello world
-
-Let's start with a Hello world:
-
-````
-$ cider shell echo Hello world
-Hello world
-````
-
-Congratulations, you have printed Hello world through Cider's OS X system call emulation and runtime libraries.
-
-### Installing software
-
-You can install `.pkg` packages with the installer tool available inside shell. It is a somewhat limited cousin of OS X's installer:
-
-````
-$ cider shell
-Cider [~]$ installer -pkg mc-4.8.7-0.pkg -target /
-````
-
-The Midnight Commander package from the above example is [available for download](https://darling-misc.s3.eu-central-1.amazonaws.com/mc-4.8.7-0.pkg).
-
-You can uninstall and list packages with the `uninstaller` command.
-
-### Working with DMG images
-
-DMG images can be attached and detached from inside `cider shell` with `hdiutil`. This is how you can install Xcode along with its toolchain and SDKs (note that Xcode itself doesn't run yet):
-
-````
-Cider [~]$ hdiutil attach Xcode_7.2.dmg
-/Volumes/Xcode_7.2
-Cider [~]$ cp -r /Volumes/Xcode_7.2/Xcode.app /Applications
-Cider [~]$ export SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk
-Cider [~]$ echo 'void main() { puts("Hello world"); }' > helloworld.c
-Cider [~]$ /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang helloworld.c -o helloworld
-Cider [~]$ ./helloworld
-Hello world
-````
-
-Congratulations, you have just compiled and run your own Hello world application with Apple's toolchain.
-
-### Working with XIP archives
-
-Xcode is now distributed in `.xip` files. These can be installed using `unxip`:
+Cider builds with [Nix](https://nixos.org) and [Buck2](https://buck2.build). Nix is the only
+supported packaging: there is no distribution package, and no tarball.
 
 ```
-cd /Applications
-unxip Xcode_11.3.xip
+nix build .#cider
 ```
+
+That is the full build and it is large. On a machine that cannot finish it, the minimal build
+drops the GUI frameworks, the private frameworks and the scripting languages, which is about 42
+percent of the work, and still boots, runs a shell and runs Nix:
+
+```
+nix build .#cider-min
+```
+
+Everything else in `flake.nix` is internal: the graph, the lowering, the prefixes and the
+`cider-buck2-*` attributes are stages of the build rather than things to install.
+
+## Install and run
+
+On NixOS, through the module:
+
+```nix
+{
+  inputs.cider.url = "git+https://tangled.org/overby.me/cider";
+  # ...
+  programs.cider.enable = true;
+}
+```
+
+Otherwise install the package and use the entry point it provides:
+
+```
+nix profile install .#cider
+cider-buck2 shell echo Hello world
+```
+
+**Use `cider-buck2`, not `cider`.** The package ships both. `bin/cider` is the raw launcher and
+needs two environment variables that a moved prefix cannot bake in; `bin/cider-buck2` sets them
+and then execs it. This is a known wart, recorded below.
+
+## Prefixes
+
+Cider has DPREFIXes, which are close to WINEPREFIXes: virtual chroot-like environments with a
+macOS-shaped filesystem, where software can be installed safely. The default is `~/.cider`,
+changed by exporting `DPREFIX`. A prefix is created and initialized on first use.
+
+Prefixes use `overlayfs`, so a prefix cannot live on NFS or eCryptfs. The default location will
+not work with an encrypted home directory.
+
+## Known issues
+
+**The container sometimes fails to start.** Measured at roughly one start in sixty, with two
+signatures: a `SIGFPE` at startup, and
+
+```
+[mldr] start-stack mmap at 0x7fffff600000 failed
+```
+
+Both kill the process before the program inside it runs. Re-running usually succeeds. The cause
+is not yet known.
+
+**`bin/cider` on its own does not work.** See "Install and run" above.
+
+**A full build can be very large.** Use `.#cider-min` on a constrained machine.
+
+## Development
+
+Where things live:
+
+```
+darwin/     the guest side: frameworks, dylibs and tools that run INSIDE the container
+linux/      the host side: the ciderd daemon, the launcher, the Mach-O loader, build tools
+buck/       our Buck2 rules, toolchains and the prefix definition
+buck-src/   upstream C sources, materialized from pins rather than committed
+buck-rust/  vendored Rust crates, materialized the same way
+pins/       vendored upstream components that are committed on purpose, each with VENDORED.md
+nix/        the Nix side: the flake library, the graph and lowering, the NixOS module
+scripts/    42 checks and the developer loop, in nushell
+```
+
+`buck-src/` and `buck-rust/` hold about 260,000 and 3,000 files respectively and are almost
+entirely gitignored; only their generated `BUCK` files are committed.
+
+Run the checks with:
+
+```
+scripts/buck-test.nu
+```
+
+[PLAN.md](PLAN.md) is the working record: what is being done, what was measured, and what was
+tried and rejected. [docs/release-readiness.md](docs/release-readiness.md) is what stands between
+this and a first release.

@@ -69,39 +69,38 @@ a stranger that the documented command finishes, which is the thing a release is
 buys: CI is a clean machine that runs the documented command every time.
 
 
-**B1. Reconnect CI to reality.** Point it at the branch the work is on (or land the work on main),
+**B1. DONE 2026-08-12 (4f7e30082b64). Reconnect CI to reality.** Point it at the branch the work is on (or land the work on main),
 and name attributes that exist. It should at minimum evaluate every advertised output and build
 the one a user is told to build. Both breaks above are exactly what that would have caught.
 
-**B2. Decide and signpost what the product IS.** `flake.nix` exposes **51** package attributes.
+**B2. DONE 2026-08-12 (4dfbeeaf7d33). Decide and signpost what the product IS.** `flake.nix` exposes **51** package attributes.
 Almost all are development probes: `cider-buck2-dyn-gen-scale`, `cider-buck2-blocks`,
 `cider-buck2-probe-bigfile`, `cider-buck2-graph-min-skeleton`. A newcomer cannot tell which one is
 Cider. `packages.default` is `cider-buck2`. The README tells people to build
 `.#cider-buck2-prefix-min`, which is the MINIMAL prefix, not the product. Pick the user-facing
 name, make `default` be it, and mark the rest internal.
 
-**B3. The README promises Darling's features, not Cider's measured ones.** It is largely inherited
+**B3. DONE 2026-08-12. The README promised Darling's features, not Cider's measured ones.** It is largely inherited
 prose and it currently claims `installer -pkg`, `hdiutil attach` of an Xcode DMG, `unxip`, and
 compiling with Apple's clang inside the prefix. Those are Darling's claims. **None of them is
 covered by any check in this repo**, and the runtime checks that do exist cover bash, AppKit under
 X11, JSC, dispatch, security, scripting, launchd and audio. Either verify each claim or remove it.
 Shipping a README that overstates is worse than shipping a short one.
 
-**B4. There is no version, no CHANGELOG and no tag.** `ls CHANGELOG* VERSION*` returns nothing and
+**B4. PARTLY DONE 2026-08-12: VERSION and CHANGELOG.md added, no tag yet.** `ls CHANGELOG* VERSION*` returns nothing and
 flake.nix carries no version string. A release needs a number, a dated summary of what works, and
 an explicit statement of what does not.
 
-**B5. State the licence position in the README, not just in the file.** `LICENSE` is GPL and the
-README says Cider "is a fork of Darling, whose copyright and history it keeps", which is right, but
-a release should say plainly: GPL, derived from Darling, Apple trademarks are Apple's, and no Apple
-code is redistributed. Compare `#101`, where dockur/macos was measured pushing exactly this
-question onto its users.
+**B5. State the licence position in the README, not just in the file.** DONE 2026-08-12: the
+README now says plainly that Cider is a fork of Darling licensed GPL v3 or later, and points at
+LICENSE. Compare `#101`, where dockur/macos was measured pushing exactly this question onto its
+users.
 
 ---
 
 ## Should fix, not blocking
 
-**S1. `tools/` is a museum.** Four items with no live caller:
+**S1. DONE 2026-08-12 (040911576041), and the user widened it to .vscode, outputs/, plan/, .gdbinit and CONTRIBUTORS.md. `tools/` was a museum.** Four items with no live caller:
 
     tools/generate-xcode-stubs.py    24 KB, python3, upstream Darling
     tools/cider-stub-gen            10 KB, python3, renamed by #84 so it LOOKS first-party,
@@ -119,7 +118,7 @@ attempts against either binary, and two `[mldr] start-stack mmap at 0x7fffff6000
 killing the process before its program ran. A user will hit this and report it as "cider is
 flaky", so it needs either a fix or a known-issues entry with that exact string in it.
 
-**S3. Say how to actually RUN it.** The README shows `cider shell echo Hello world` but the build
+**S3. DONE 2026-08-12. Say how to actually RUN it.** The README shows `cider shell echo Hello world` but the build
 instruction produces a prefix. There is a NixOS module (`programs.cider`, in `nix/nixosModule.nix`)
 and it is not mentioned. Add the install path: module, `nix profile install`, or a wrapper.
 
