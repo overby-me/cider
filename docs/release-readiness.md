@@ -353,3 +353,50 @@ that fails somewhere only a full build reaches, and the full build is blocker B0
 which would be the other way to prove it, has never run. Doing it now would mean making 14,424
 edits and hoping. Sequence it after B0 has a clean-machine reproduction and CI is green, and the
 same change becomes routine.
+
+---
+
+## Item 5, why the substituter queries are slow: three explanations killed, one left
+
+Investigated 2026-08-12 at the user's request. No answer yet, but the field is much narrower and
+the eliminations are each backed by a measurement rather than an argument.
+
+**RATE LIMITING: REFUTED.** A sample build-trace URL returns a plain `404` in 0.13 s from
+Cloudflare with no `429`, no `Retry-After` and no rate-limit headers of any kind.
+
+**IPv6: REFUTED.** curl over BOTH protocols to cache.nixos.org and zed.cachix.org returns HTTP 200
+in 0.05 to 0.08 s, and the box has a working default IPv6 route. This mattered enough to test
+because the repo already records tangled.org timing out over IPv6.
+
+**CPU STARVATION: REFUTED, properly this time.** An A-B-A with 24 CPU hogs against a live query
+stream: **144 queries per 30 s, then 139 under load, then 146 after.** No effect. The earlier
+"ruling out" of starvation was invalid because it watched the build log, which only prints on
+derivation events and could not have responded within the window; this one watches the query
+count, which can.
+
+**QUERYING AT SCALE IS FAST HERE.** A `--dry-run` of nixpkgs#texliveFull enumerated **5,271 paths
+to fetch** in under three minutes, and Cider's own build-trace lookups run at about 5 per SECOND.
+So nothing about this machine makes nix queries slow in general.
+
+**WHAT IS LEFT** is that the slow case was narinfo lookups DURING a Cider build, at 4 to 5 per
+minute, while everything else measured is 60 to 3,600 times faster. Two candidates remain
+untested: something specific to substituting CONTENT-ADDRESSED outputs, which is what Cider's
+lowered derivations are (#55), and the narinfo disk cache, which was 40 KB, i.e. empty, so every
+lookup was a network miss and a fresh insert.
+
+**WHY IT IS NOT SETTLED: each attempt costs 15 minutes and my own commits invalidate the graph.**
+Reaching the query phase needs the graph derivation, which takes 11 minutes 20 seconds to rebuild,
+and any commit touching a non-excluded path forces that rebuild. Two attempts were spent this way.
+
+## A NEW failure found while chasing item 5: the FULL prefix does not evaluate
+
+`nix build .#cider-buck2-prefix` now dies in evaluation, before any building:
+
+    error: attribute '"root//buck-src:pin-bootstrap_cmds"' missing
+    at nix/lib/ciderBuck2Lower.nix:1483:46
+      builderScript = builderScriptWith (d: "${drvs.${d}}");
+
+A lowered derivation names a dependency for which no lowered derivation exists. `.#cider-buck2-
+prefix-min` is unaffected and completes, which is what was verified for B0; the full prefix was
+NOT re-verified today, so this went unseen. It is unknown whether it predates today's work or was
+introduced by it, and that question is the first step rather than a guess.
