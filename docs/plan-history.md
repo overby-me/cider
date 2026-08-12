@@ -96,7 +96,7 @@ with it; the `overby` input STAYS, because `ciderBuck2.nix` uses its `buildBuck2
 
 **THE ONE-WAY DOOR, stated plainly:** FIVE generators are now unrunnable and marked FROZEN in
 place rather than deleted. Four read a reference `build.ninja` that nothing can regenerate
-(`gen-buck-from-ninja (deleted)`, `mig-from-ninja (deleted)`, `buck-host-includes.py`, `buck-port.py`) and
+(`gen-buck-from-ninja.py`, `gen-mig-from-ninja.py`, `buck-host-includes.py`, `buck-port.py`) and
 stop working entirely once a store GC collects `result-graph-ref`; `gen-xnu-sys-buck.py` reads
 `xnu-sys/CMakeLists.txt` and so cannot run at all. Everything they produced is committed.
 
@@ -1126,7 +1126,7 @@ Re-derive before trusting: `scripts/buck-coverage.nu --missing` and
 
    Beware NAME COLLISIONS when driving the generator by cmake target name across the wider
    graph. `X11` is both the linux/native wrap_elf stub and CoreGraphics' X11 backend in
-   darwin/frameworks, and `gen-buck-from-ninja (deleted) --dylibs X11` silently picks the latter.
+   darwin/frameworks, and `gen-buck-from-ninja.py --dylibs X11` silently picks the latter.
    cli was small enough that names were unique; stock is not.
 
 2. **The 9 genuinely unported in-scope cli edges**: bsdln, elfdep, getuuid (host tools),
@@ -1138,7 +1138,7 @@ Re-derive before trusting: `scripts/buck-coverage.nu --missing` and
 3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference
    supplies it before assuming this is portable).
 4. **Make the generators re-runnable** before the reference graph goes away.
-   mig-from-ninja (deleted) is the worst case: buck-split-pins.py has since rewritten its
+   gen-mig-from-ninja.py is the worst case: buck-split-pins.py has since rewritten its
    committed blocks' `defs` to labels and changed `out_base`, so regenerating would clobber
    them and the last fix had to be spliced in by hand.
 5. The other four host tools (bsdln, elfdep, getuuid, wrapgen). Not install entries and not
@@ -1528,7 +1528,7 @@ has been true six times running, each time a check freshly written.
   THE MECHANICAL ROUTE beats hand-written globs: the reference `build.ninja` carries depfiles
   on **26,198 of 40,014 edges**, so one cmake build with its `.d` files kept states every
   header each object really read, angle-bracket includes included.
-  `gen-buck-from-ninja (deleted)` already generates these targets from that same ninja.
+  `gen-buck-from-ninja.py` already generates these targets from that same ninja.
 - **#65: the recorded ld64 blocker is WRONG, established by reading and costing no build.**
   `linux/buildtools/BUCK` says the compile dies in cctools' own `mach/machine.h` on
   `<mach/machine/vm_types.h>` and asks for `cctools/include/foreign` on the include path. Four
@@ -1644,7 +1644,7 @@ has been true six times running, each time a check freshly written.
   case rather than writing it from memory.
 - **A whole-tree glob over a vendored pin dies on one dangling symlink**, failing the whole
   package with an error naming a subtree unrelated to what you built. Check with
-  `find buck-src/<pin> -xtype l`; fix in `GLOB_EXCLUDE` in gen-buck-from-ninja (deleted).
+  `find buck-src/<pin> -xtype l`; fix in `GLOB_EXCLUDE` in gen-buck-from-ninja.py.
 - **MIG runs the C preprocessor over the .defs**, so its -D flags decide which routines
   EXIST. A mysteriously absent symbol from a MIG-generated library is a mig_flags question
   first.
