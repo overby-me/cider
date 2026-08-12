@@ -1048,6 +1048,55 @@ contents API reports for the upstream path. Identical means unmodified, full sto
 differs, reverse the known local transformation and hash again: if that reproduces the upstream
 blob, the delta is fully explained and nothing is hiding in it.
 
+### #102 - GUEST Rust: buck2 can build Mach-O Rust binaries now
+
+The user asked for this on 2026-08-12 after #76 left xcrun and PlistBuddy described as blocked.
+That description was too strong: #96 route A had ALREADY cross-compiled a full std Rust program
+and run it in cider. What was missing was never the ability, it was the plumbing, and this entry
+is what closed it.
+
+**THE DESIGN TURNED ON THE CRATE TYPE, and it was measured rather than argued.**
+
+    --emit=obj             a std hello leaves 11 Rust symbols undefined
+    --emit=obj -C lto=fat  WORSE, 14, because the allocator shims join them
+    --crate-type staticlib of the 191 symbols the archive cannot satisfy, ZERO are Rust-mangled
+
+The 191 are libSystem C symbols, malloc and pthread_ and __NSGetArgv and dispatch_, which is
+exactly what //buck-src:system_final already gives every C guest binary. So the archive drops
+into darwin_binary as an ordinary `objs` entry and NOTHING about the link path changes: no
+-syslibroot, no dependency on a built prefix, and dylibs arrive as
+-Wl,-dylib_file,<install_name>:<artifact> the way they always do.
+
+**THE ENTRY POINT IS C.** A staticlib has no main, so a guest Rust tool exports
+`#[unsafe(no_mangle)] pub extern "C" fn main(argc, argv)` and crt1.10.6 finds it. Rust lang_start
+does NOT run: no stack-overflow guard message, no std-installed cleanup. std itself works, and
+darwin/rustprobe is written to prove it rather than assume it, because on macOS args come from
+_NSGetArgv rather than an init hook: the probe asserts std::env::args matches the argc crt1 was
+given, and prints through std::io.
+
+    cider-rust-probe argc=1 env_args=1
+    PASS: a Rust binary built for Darwin RAN inside cider
+
+**THE TOOLCHAIN IS PINNED, nix/darwinRust.nix.** nixpkgs cannot supply it and the refusal is not
+about Rust: asking the pinned rev for a linux-to-darwin cross set dies at
+x86_64-apple-darwin-cctools-1010.6, because Apple SDK pieces cannot be redistributed to non-Apple
+hosts. Rust's own prebuilt darwin std can be, so this fetches the official rustc AND the official
+rust-std with checksums. Both halves must come from the same release: crate metadata matching is
+a STRING COMPARE, and the nixpkgs rustc appends "built from a source tarball" to an otherwise
+identical 1.95.0/59807616e, which is E0514. Re-measured 2026-08-12, it still reproduces. Two
+tarballs, not three: a sysroot holding ONLY the darwin target produces the same 17,694,176 byte
+archive, so the host std would be 40 MB of nothing.
+
+**WHAT IS DONE AND WHAT IS NOT.** xcrun is ported and gated inside the container, five cases
+identical in stdout, stderr and rc, reaching both branches (as xcrun the tool is NULLed; as cc it
+is passed through). PlistBuddy is NOT started and is a different size of job: 1,277 lines with
+193 CoreFoundation call sites, so it needs CF bindings before it needs a port.
+
+**A TRAP WORTH KEEPING, because it cost a red gate that looked like a broken port.** xcrun passes
+getprogname() STRAIGHT THROUGH as the tool to invoke, so staging the two binaries as xcrun_c and
+xcrun_rs made all five cases differ: one asked for a tool called xcrun_c, the other for xcrun_rs.
+THE NAME IS AN INPUT to this program. Stage each under the real name in its own directory.
+
 ### #92 - read the graph through buck2 structured data, not its rendered output
 
 Written 2026-08-12 for the same reason as #76: the task was open with no entry describing it.
