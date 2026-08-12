@@ -14,7 +14,7 @@ IN PLACE. The skeleton was tried and REVERTED; nix/lib/ciderBuck2Graph.nix passe
 above it says why: this derivation does not only analyse, it also runs first-party generators
 it builds itself, and an emptied rtsig.c compiles, links, runs and writes an EMPTY header, so
 the graph comes out quietly wrong. A mechanism whose failure mode is silence is worse than
-the cost it removes. scripts/buck-skeleton.py is kept because the idea is sound for the
+the cost it removes. the skeletoniser (linux/buildtools/skeleton) is kept because the idea is sound for the
 ANALYSIS half, but it needs the codegen input closure first.
 
 So editing a .c DOES rerun both derivations. What is true, and is the part worth keeping, is

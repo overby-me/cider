@@ -692,7 +692,7 @@ def main(argv: list[str]) -> int:
     # WHICH PROJECT FILES EACH TARGET READS IS NOT COMPUTED HERE ANY MORE. It is the only
     # answer that depends on source file CONTENTS, because a quoted include is found by
     # parsing #include "..." out of the file, and this dump runs against a SKELETON
-    # (scripts/buck-skeleton.py) WHEN THE CALLER ASKS FOR ONE, which the minimal endpoint now
+    # (linux/buildtools/skeleton) WHEN THE CALLER ASKS FOR ONE, which the minimal endpoint now
     # does, so that editing a .c cannot rerun it. It was NOT true when this comment first
     # claimed it, and the same false claim had to be corrected in two other places. That pass
     # lives in
