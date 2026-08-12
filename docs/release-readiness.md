@@ -350,24 +350,42 @@ reports what is left. A `vendor/pins/patches/` would appear to both as a pin cal
 to `nix/` instead would fit the applier in `nix/lib/cider-src.nix` but mischaracterise it, since
 `scripts/buck-src.nu` applies patches too and is not Nix. It stays at the top level.
 
-**NOT DONE, AND THE REASON IS VERIFICATION RATHER THAN EFFORT: `vendor/src` + `vendor/rust` + `pins`
-into one `vendor/`.** Measured cost:
+**DONE 2026-08-13: `buck-src` + `buck-rust` + `pins` are now `vendor/src`, `vendor/rust` and
+`vendor/pins`.** One top-level directory where there were three. This entry used to say NOT DONE,
+and the reason it gave was verification rather than effort: a rename of this size fails somewhere
+only a full build reaches, and the full build was blocker B0. B0 was answered and a full endpoint
+build went green the same night, so the change became provable and was made.
 
-    vendor/src   14,424 occurrences in 173 files   (11,818 of them under buck/)
-    vendor/rust      94 occurrences in  31 files
-    vendor/pins/         418 occurrences in  48 files
+It was 20,625 lines across 247 tracked files, driven from the TRACKED FILE LIST rather than a
+filesystem walk, which matters in both directions: skipping `buck-src/` to avoid its 260,000
+materialized files also skips the tracked 63,424-line `buck-src/BUCK` that holds 3,774 of the
+references, and not skipping it rewrites materialized upstream source.
 
-Most of that is inside GENERATED files (`vendor/src/BUCK` is 63,424 lines, `buck/prefix/BUCK` 4,336)
-and the generators hardcode the prefix: `installgen.rs:840` and `:845` build labels as
-`//vendor/src/{pin}:` and `//vendor/src:`. So the honest form of this change is to update the
-generators, the materialization scripts, `.gitignore` and `.buckconfig`, then REGENERATE, which is
-tractable and mechanical.
+**WHAT A TEXT SUBSTITUTION CANNOT SEE, and all three bit.** This is the part worth keeping:
 
-**What stops it today is that it cannot be proven.** A rename of this size is exactly the kind
-that fails somewhere only a full build reaches, and the full build is blocker B0: it wedged. CI,
-which would be the other way to prove it, has never run. Doing it now would mean making 14,424
-edits and hoping. Sequence it after B0 has a clean-machine reproduction and CI is green, and the
-same change becomes routine.
+    FILENAMES that contain the token. scripts/buck-src.nu became scripts/vendor/src.nu in 71
+      files. The moved thing is a directory; a script whose name shares the characters is not it.
+    BARE CONSTANTS with no trailing slash. The sweep was anchored on `pins/` so that identifiers
+      like wantedPins survived, and that anchor hid twelve declarations: pinRoot, PIN_ROOT in
+      three tools, a PROJECT_TOPS entry, PIN_ROOT_DEPTH, two readDir paths and the staging
+      exclusion list. THIS is the one that broke the build: with pinRoot still "pins" every pin
+      failed the directly-under-the-root test and the vendor/src indirection was never created.
+    SYMLINK TARGETS. 4,031 of them. Opening a link follows it, so a content rewrite edits what
+      it points AT and never the link itself. The repointing pass has to run to a FIXPOINT; one
+      sweep left 2,077 behind.
+
+**AND TWO FALSE ALARMS, each of which looked exactly like a real break.** 2,077 links INSIDE the
+moved trees needed no change at all, because five levels up from `vendor/src/x` is `vendor/`, so
+`pins/y` already meant `vendor/pins/y`; a detector that compares strings instead of resolving them
+calls those broken. And the suite reported `ioclasscount` and `zprint` as not Mach-O when both
+build fine: the buck2 daemon had stale state, because **watchman does not descend into symlinks**
+and this move repointed 4,031 of them. Kill the daemon after a change like that.
+
+**VERIFIED:** `buck2 targets //...` resolves 10,853 targets EXIT 0; `nix eval` of the full prefix
+drvPath is EXIT 0, which rebuilds the graph and so exercises pin materialization, the BXL pass and
+every label; `scripts/buck-src-normalise-check.nu` passes all 11 expectations with its control
+still firing. A full prefix build against the moved tree was started at 01:24 and is the last
+outstanding check.
 
 ---
 
