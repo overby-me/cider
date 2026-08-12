@@ -29,7 +29,7 @@ surface turns out to be 7 percent of it rather than all of it.
 | `gen-xtrace-mig.py` | 158 | loads `gen-buck-from-ninja` | nothing | **PORTED**, now `gen-xtrace-mig.nu`, and it carries the two helpers it used (#98) |
 | `gen-install-from-manifests.py` | 859 | `result-graph-ref/install-manifests` | `buck-test.nu:1072` (subprocess) | **port**, frozen input but a live check |
 | `gen-sdk-header-roots.py` | 505 | `pins/`, `buck-src/` | `buck-split-pins.py:481` (subprocess) | **PORTED**, now `cider-sdk-header-roots` (#98) |
-| `gen-xnu-sys-buck.py` | 457 | `pins/ciderd/xnu-sys/CMakeLists.txt` | by hand; scraped by `xnu-sys-portability.py` | **port** |
+| `gen-xnu-sys-buck.py` | 457 | `pins/ciderd/xnu-sys/CMakeLists.txt` | by hand; scraped by `xnu-sys-portability.py` | **DELETED** (#98): its input went with cmake, so it could not run at all |
 | `gen-prefix-min.py` | 425 | `buck/prefix/BUCK` | by hand, regenerates `buck/prefix-min/BUCK` | **PORTED**, now `gen-prefix-min.nu` (#98) |
 | `gen-xnu-sys-traps.py` | 167 | `pins/ciderd/xnu-sys` | `xnu-sys-runtime-check.nu:175 --check` | **PORTED**, now `gen-xnu-sys-traps.nu` (#98) |
 
@@ -73,7 +73,7 @@ consumed only by things that are themselves archive-or-tool candidates**, so not
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **6 files, 5,435 lines** as of 2026-08-12, down from 54 files at
+The whole `scripts/` python is **4 files, 4,370 lines** as of 2026-08-12, down from 54 files at
 the start of this campaign and from the 29 the table above was measured on.
 
 **THE LIVE SURFACE OF `gen-buck-from-ninja.py` IS RUST NOW**, in
@@ -119,7 +119,7 @@ live checks in the port column. Whatever the monorepo does with the archive, the
 has to be carried as content rather than as a store link, or those checks become permanently red
 for an infrastructure reason.
 
-**`xnu-sys-portability.py` does not execute `gen-xnu-sys-buck.py`, it regex-scrapes it.** It reads
+**BOTH ARE DELETED (#98).** The coupling below is why they went together. `xnu-sys-portability.py` did not execute `gen-xnu-sys-buck.py`, it regex-scraped it: it read
 `PORTED_TO_RUST = [...]` straight out of the source text, deliberately, so there is only one copy
 of that list. Rewriting the generator in nushell moves that list out of Python syntax and silently
 breaks the scrape, which then reports files as unported that are already Rust. The list needs a

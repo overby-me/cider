@@ -7,7 +7,7 @@
 //! C -- uses them for its reader/death waiters.
 //!
 //! WHY THIS FILE WENT FIRST. It was picked by measurement, not by feel:
-//! `scripts/xnu-sys-portability.py` ranks the sixteen glue files by what Rust genuinely
+//! `xnu-sys-portability` (deleted, see git history) ranks the sixteen glue files by what Rust genuinely
 //! cannot express, and this one is 60 lines with a single macro (`panic`) and no C variadic
 //! definitions. It still exercises every part of the seam that the remaining files need:
 //! it exports the C ABI, it is called FROM C (kqchan.c), it calls INTO XNU, it dereferences

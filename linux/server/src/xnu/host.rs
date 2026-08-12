@@ -6,7 +6,7 @@
 //! that is what `sysctl`, `sw_vers` and the Nix installer end up going through.
 //!
 //! WHY THIS FILE WAS PICKED, and it was picked by measurement rather than by feel.
-//! `scripts/xnu-sys-portability.py` ranks the sixteen glue files, and after it was taught
+//! `xnu-sys-portability` (deleted, see git history) ranks the sixteen glue files, and after it was taught
 //! that `xnu_sys_stub`, `xnu_sys_stub_safe` and `xnu_sys_stub_unsafe` are already Rust, this one has
 //! exactly ONE unresolved blocker left: `panic`, which `semaphore.rs` already calls as an
 //! extern variadic and which gate3 validated. At 245 lines and 12 exports it is also the

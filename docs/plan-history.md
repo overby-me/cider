@@ -285,7 +285,7 @@ flag was wrong.
    in `pthread/kern_synch.c` 2,805 and `kern_support.c` 1,020, which sit outside that dir).
    `thread.c` 2,072, `task.c` 1,766 and `memory.c` 1,554 are 63% of it.
 
-   **THE ORDERING ABOVE WAS WRONG, and `scripts/xnu-sys-portability.py` now measures it**
+   **THE ORDERING ABOVE WAS WRONG, and `xnu-sys-portability` (deleted #98) now measures it**
    instead of arguing it. Only two things are hard blockers: a C VARIADIC DEFINITION (stable
    Rust cannot write `extern "C" fn(...)`) and a MACRO CALL (bindgen binds no macros).
    * `misc.c` was named a first candidate. It ranked **last of sixteen** because it DEFINES
