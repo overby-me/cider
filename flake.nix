@@ -1001,6 +1001,15 @@
           src = ./.;
         };
 
+      # The Rust rewrite of scripts/buck-src-normalise.py, task #99. Built by nix for the same
+      # reason as the other two: it prepares the tree buck2 crawls, so buck2 cannot build it.
+      #   nix build .#src-normalise
+      packages.src-normalise =
+        pkgs:
+        pkgs.callPackage ./nix/src-normalise.nix {
+          src = ./.;
+        };
+
       # The Rust guest Mach-O loader (linux/startup/mldr rewrite), task #65.
       #   nix build .#loader
       packages.loader =

@@ -123,10 +123,12 @@
           # The generators and the check suite. buck2 never opens one: the only path
           # starting with scripts/ in any BUCK file is ciderd's
           # scripts/generate-rpc-wrappers.py, which is relative to ITS package and resolves
-          # to pins/ciderd/scripts/, not here. The two scripts this
-          # derivation does run, buck2-graph-dump.py and buck-src-normalise.py, arrive as
-          # their own store paths through Nix path interpolation, so editing either still
-          # rebuilds the graph, which is correct because both change its output.
+          # to pins/ciderd/scripts/, not here. The one script this
+          # derivation still runs, buck2-graph-dump.py, arrives as its own store path through
+          # Nix path interpolation, so editing it still rebuilds the graph, which is correct
+          # because it changes the output. The normaliser used to be the second one; since #99
+          # it is a nix-built binary from linux/buildtools/src-normalise, and that reaches this
+          # derivation the same way, through the store path of the tool.
           #
           # Without this, adding a check script rebuilds the whole graph derivation, 40
           # minutes, for a file nothing in the build reads. nix/lib/ciderBuck2Lower.nix
@@ -167,6 +169,14 @@
   # entries, equal NAR hashes, and this derivation was built both ways to the SAME content
   # addressed store path. It is also 15.0s against 32.7s, which is on the critical path.
   skeletonTool = pkgs.callPackage ../skeleton.nix { inherit src; };
+
+  # RUST, NOT PYTHON, since #99, and built by nix for the same circularity reason as the
+  # skeletoniser: this one prepares the very tree buck2 crawls. Landed only after the two
+  # implementations were run against four real pin stores holding every case the tool has (a "."
+  # component, a link escaping the cell, the pre-rename first-party layout, the JavaScriptCore
+  # cyclic dir link) and produced the same 101 re-pointed links, the same 17 expanded
+  # directories, byte identical stdout and a tree diff -rq --no-dereference reports NOTHING on.
+  normaliseTool = pkgs.callPackage ../src-normalise.nix { inherit src; };
 
   skeletonSrc = pkgs.runCommand "cider-buck2-skeleton" {
     __contentAddressed = true;
@@ -211,7 +221,7 @@
       # exists once the pin loop has made all of them.
       # --repo: the script runs from the store here, so it cannot find the project by
       # looking above itself, and the rewrite that needs it would quietly do nothing.
-      python3 ${../../scripts/buck-src-normalise.py} --repo "$PWD" buck-src/*
+      ${normaliseTool}/bin/cider-src-normalise --repo "$PWD" buck-src/*
   '';
 
   # PER PIN STORES, NOT THE ASSEMBLED TREE, and this is what stops a source edit rebuilding
@@ -228,7 +238,7 @@
   # is the reason this can work. That one had the LOWERING SYMLINK a pin into place, where 21
   # relative links escape their own pin and dangle once the root moves. Here the CONTENTS are
   # copied into buck-src/<name>/, the same destination as before, so every relative link
-  # resolves exactly as it does today and buck-src-normalise.py still runs over the assembled
+  # resolves exactly as it does today and cider-src-normalise still runs over the assembled
   # result afterwards.
   #
   # A missing pin store THROWS rather than falling back to ciderSrc: a silent fallback would
@@ -547,10 +557,10 @@
     outputHashMode = "recursive";
     outputHashAlgo = "sha256";
     nativeBuildInputs = [
-      # STILL PYTHON3, even though the sources generator is Rust now: assembleProject runs
-      # scripts/buck-src-normalise.py, and dropping this made the build die with exit 127 in
-      # patchPhase. That script is the next #99 piece and this line goes with it, not before.
-      pkgs.python3
+      # NO PYTHON3 ANY MORE. It was here for the one python assembleProject still ran,
+      # buck-src-normalise.py, and dropping it before that piece was ported killed the build
+      # with exit 127 in patchPhase. Both moved to Rust in the same #99 step, so this
+      # derivation now runs two nix-built binaries and coreutils, and nothing interpreted.
       pkgs.coreutils
       pkgs.findutils
       pkgs.gnused

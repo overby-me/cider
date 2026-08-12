@@ -215,8 +215,12 @@ def main [--all, ...paths: string] {
 
         # buck2 refuses symlinks with a "." component or a target that leaves the cell, and the
         # upstream trees contain both; re-point them at the same file inside buck-src. See
-        # scripts/buck-src-normalise.py for the two cases.
-        ^$"($repo_root)/scripts/buck-src-normalise.py" $dest
+        # linux/buildtools/src-normalise for the two cases.
+        #
+        # ON PATH, NOT A PATH IN THE TREE, since #99 made this a nix-built binary: it comes
+        # from the devShell, which declares it for exactly this call. --repo is explicit
+        # because the binary lives in the store and cannot find the project above itself.
+        ^cider-src-normalise --repo $repo_root $dest
 
         $"($e.rev)\n" | save -f $stamp
         print $"buck-src: ($name) -> ($dest)"

@@ -78,6 +78,17 @@ in {
     # so the port consumes it the way it already consumes clang and ld64.
     rust-bindgen
 
+    # ── The port's own nix-built tools ──────────────────────────
+    # cider-src-normalise, which scripts/buck-src.nu invokes once per pin. DECLARED HERE for
+    # the same reason nushell is: since #99 it is a binary rather than a script in the tree,
+    # so nothing would find it by path, and the local buck-src would silently keep the
+    # symlinks buck2 refuses to load.
+    #
+    # src = ../. copies ONLY linux/buildtools/src-normalise into the store, because the
+    # derivation appends that subpath, so an edit anywhere else in the project does not
+    # rebuild the dev shell.
+    (pkgs.callPackage ./src-normalise.nix { src = ../.; })
+
     # ── Debugging & analysis ────────────────────────────────────
     gdb
     strace
