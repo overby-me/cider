@@ -1198,6 +1198,73 @@ C dereference NULL: getWord returns NULL, nothing checks it, and parseType hands
 The port prints the message once and abandons the command, and the gate ASSERTS that difference
 rather than skipping the case.
 
+### #101 - dockur/macos: read it, and NOTHING transfers. Here is why, with the lines
+
+The user asked 2026-08-12 whether github.com/dockur/macos holds anything useful. Read at commit
+state of 2026-08-11 (master, MIT, 21.4k stars, "MacOS inside a Docker container"). The answer is
+a clear negative, and a negative is worth writing down because it saves the next person the hour.
+
+**THE EXECUTION MODELS ARE OPPOSITES, and that is not a detail, it is the whole result.** That
+project VIRTUALISES: `Dockerfile:22` is `COPY --from=qemux/qemu:7.45 / /`, it needs `/dev/kvm`
+and `/dev/net/tun` (`readme.md:57`), and it boots a REAL Apple kernel under OpenCore on emulated
+hardware. Cider TRANSLATES: no Apple kernel, no VM, no virtio, Mach-O binaries running directly
+on the Linux kernel through our own dyld, libSystem and duct-tape. Nearly everything in that
+repository exists to service a hypervisor boundary that Cider does not have.
+
+**1. HOW IT GETS APPLE BITS: live, per request, and impossible to pin.** This was the most
+promising angle and it is the one that fails hardest. `src/install.sh` talks to Apple's internet
+recovery service directly:
+
+    install.sh:87-89   GETs https://osrecovery.apple.com/ with -A "InternetRecovery/1.0" purely
+                       to scrape a session cookie out of the verbose headers
+    install.sh:101-110 POSTs board id, serial and two random 64 character nonces to
+                       osrecovery.apple.com/InstallationPayload/RecoveryImage
+    install.sh:137-139 the reply carries a CDN URL plus an EXPIRING asset token
+    install.sh:153-156 fetches from oscdn.apple.com with Cookie: AssetToken=...
+
+**AND THE ONLY VERIFICATION IS A LENGTH MATCH.** `install.sh:152` HEADs the CDN for a size and
+`install.sh:60` errors when the downloaded byte count differs. There is no checksum and no
+signature anywhere in the file; the remaining checks are that the result is a valid disk image
+and that it exposes boot.efi (`install.sh:243`). That is a sensible best effort for something
+that cannot be hashed, and it is the opposite of what we need. Our fetches are content addressed:
+nix/darwinRust.nix pins two tarballs by sha256 and the build fails if a byte moves. NOTHING TO
+TAKE HERE.
+
+**2. THE LEGAL POSTURE IS THE STRONGEST REASON THIS CANNOT BE BORROWED, and they state it
+themselves.** `readme.md:333`: "by installing Apple's macOS, you must accept their end-user
+license agreement, which does not permit installation on non-official hardware. So only run this
+container on hardware sold by Apple, as any other use will be a violation of their terms and
+conditions." Repeated at `readme.md:344`. Their model pushes the EULA onto the user and ships no
+Apple code themselves. Cider never installs macOS at all, which is precisely why the translation
+approach exists, so we neither inherit that constraint nor may we adopt their acquisition path
+for SDKs or frameworks. The project also ships `macserial` (`Dockerfile:16`, from OpenCorePkg) to
+generate Apple serial numbers, which is a direction we have no reason to go.
+
+**3. NETWORKING, SHARING AND DISPLAY ARE NOT EVEN IN THIS REPOSITORY.** The readme advertises
+"NAT, user-mode, macvlan, and macvtap networking" (`readme.md:26`) and a browser view on port
+8006, but `src/boot.sh` contains no netdev, no 9p, no samba and no display option: grep finds only
+OVMF paths and one `virtio-blk-pci` for the boot disk (`boot.sh:531`). All of it is inherited from
+the qemux/qemu base image. Those layers exist BECAUSE there is a guest kernel to bridge to. A
+Cider process shares the host filesystem and network directly through our syscall translation, so
+there is no equivalent seam to borrow.
+
+**4. THEY DO NOT VERIFY A BOOT AT ALL.** This was the angle I expected to yield something, since
+proving a boot worked is a problem we share. `.github/workflows/test.yml` calls `check.yml`, and
+that job is shellcheck plus a hadolint Dockerfile lint plus a JSON and YAML validator. There is no
+runtime job, no boot test, nothing that starts the container. Cider is well ahead here: we boot
+the container and run real programs in scripts/buck-bash-check.nu, buck-appkit-check.nu,
+buck-jsc-check.nu, and since #102 the two guest parity gates.
+
+**THE ONE THING WORTH CREDITING, and we already do it.** Third party fetches are pinned by full
+commit sha rather than by branch: `Dockerfile:27` is
+`VERSION_OSX_KVM="326053dd61f49375d5dfb28ee715d38b04b5cd8e"` for raw.githubusercontent content,
+which makes that content effectively addressed by hash. Our nix inputs and submodule pins already
+work this way, so it is agreement rather than a lesson.
+
+**CONCLUSION: do not vendor from it, do not depend on it, and do not start anything off the back
+of it.** The only lasting value is this entry, so nobody re-reads the repository hoping the SDK
+acquisition problem was solved over there. It was not; it was made someone else's problem.
+
 ### #92 - read the graph through buck2 structured data, not its rendered output
 
 Written 2026-08-12 for the same reason as #76: the task was open with no entry describing it.
