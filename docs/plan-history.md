@@ -577,7 +577,8 @@ the bootstrap does no network I/O at all -- the HOST fetches and extracts the in
 copies it in, and the guest runs `bash -x install --no-daemon` then local eval/store commands.
 So TLS, trust and keychain are off the bootstrap path.
 
-`scripts/buck-prefix-cost.py` is what finds these. Two modes, because there are two questions:
+`cider-prefix-cost` (then the python buck-prefix-cost) is what finds these. Two modes, because
+there are two questions:
 `--top` ranks entries by EXCLUSIVE cost (which single line is safe to delete) and
 `--expensive` ranks TARGETS with their pullers (what is costly and who asks for it). The
 second is not derivable from the first: AppKit and CoreImage were 752 actions pulled by four

@@ -65,6 +65,14 @@ path = "src/declgap.rs"
 name = "cider-lower-srcdeps"
 path = "src/srcdeps.rs"
 
+# THE EIGHTH BINARY, the Rust rewrite of scripts/buck-prefix-cost.py (#98). Same crate for the
+# same reason as the others: it reads graph.json and follows the same two conventions, that an
+# action identity is <label> (<cfg>) (<action>) and that input_targets is the target level edge
+# set. Its own crate would mean a second lock file and a second nix package for one file.
+[[bin]]
+name = "cider-prefix-cost"
+path = "src/prefixcost.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

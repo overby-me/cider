@@ -73,8 +73,19 @@ consumed only by things that are themselves archive-or-tool candidates**, so not
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **15 files, 8,146 lines** as of 2026-08-12, down from 54 files at
+The whole `scripts/` python is **14 files, 7,785 lines** as of 2026-08-12, down from 54 files at
 the start of this campaign and from the 29 the table above was measured on.
+
+`buck-prefix-cost` is the second one to go to **Rust rather than nushell** on shape rather than
+on clock: it is a reachability closure over the action graph held as bitmasks, then a join
+between those masks and a per-target action count. The clock says the python was already fast
+(0.82 s warm against 0.40 s for `cider-prefix-cost` on the 147 MB graph), so the reason to port
+it is the standing one, that `scripts/` ends with zero `.py`, and the reason it is not nushell is
+that a record is not a hash map. Gated byte for byte, **stdout and stderr and exit code**, in
+eleven modes: the ranking, `--top`, `--check` passing, `--check --budget 5` failing at 104
+lines, `--expensive`, the directory form of `--graph`, a missing graph, a missing prefix, the
+store candidate listing when `--graph` is absent, and the two coverage-floor refusals (a tiny
+graph, and the full prefix against the minimal graph).
 
 So the move is to lift those 8 functions into a small reference-reader module and archive the
 emitter, rather than to port or to drop the file whole. Dropping it whole broke `buck-coverage`,
