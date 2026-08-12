@@ -2,7 +2,7 @@
 """Check the rendered per-group action scripts against the graph they came from.
 
 WHY THIS EXISTS. #66 moved the lowering's action rendering out of the evaluator and into
-scripts/buck-graph-to-specs.py. That leaves the SAME rule written in two places -- how an
+cider-graph-specs. That leaves the SAME rule written in two places -- how an
 action identity becomes a group, how an argv element is escaped, when an action must _drain
 first -- and a disagreement between them is silent in the worst way. The endpoint would build
 a perfectly valid script that runs the wrong commands, or groups two targets into one
@@ -179,7 +179,7 @@ _SCRIPTS_CACHE: dict = {}
 def all_scripts(specdir: str) -> dict:
     """scripts.json, read once. It is one file rather than one .sh per group because the
     evaluator reads it, and 1,474 separate reads out of a deferred derivation output cost
-    19.6 s against 1.5 s for this. See buck-graph-to-specs.py."""
+    19.6 s against 1.5 s for this. See cider-graph-specs."""
     if specdir not in _SCRIPTS_CACHE:
         with open(os.path.join(specdir, "scripts.json")) as f:
             _SCRIPTS_CACHE[specdir] = json.load(f)

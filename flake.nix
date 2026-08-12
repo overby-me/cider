@@ -665,7 +665,7 @@
       # the one every fixture above stops short of. cider-dyn-cone-specdir proves the SHAPE
       # works, but its spec dir comes from mkSpecDir, which serialises every spec in the
       # EVALUATOR: exactly the cost being removed. This reads the dyn/ directory that
-      # scripts/buck-graph-to-specs.py wrote inside the graph derivation, so nothing about
+      # cider-graph-specs wrote inside the graph derivation, so nothing about
       # these derivations is computed at evaluation time.
       #
       #   nix build .#cider-buck2-dyn-gen --no-link -L

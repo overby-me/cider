@@ -2,7 +2,7 @@
 """Does the recorded argv match what buck2 actually ran?
 
 The Nix endpoint replays argvs recovered from aquery, which renders an action's command by
-joining it with ", ". scripts/buck2-graph-dump.py splits that back apart, and that is sound
+joining it with ", ". cider-graph-dump splits that back apart, and that is sound
 only while no argument contains the separator. It is an assumption, and it has been wrong:
 perl's versions.h passed the C initializer ` "5.18", "5.28",` as one argument, it came back
 as two, and the lowering died on a ValueError from the configure script -- while the host,

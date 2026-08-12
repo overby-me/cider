@@ -152,7 +152,7 @@
       inherit (a) name;
       builder = a.builder;
       args = a.args;
-      # NO deps HANDLING HERE. They are injected by dyn-actions-spec-fixup.py when the producer
+      # NO deps HANDLING HERE. They are injected by cider-spec-fixup when the producer
       # runs, in BOTH modes, because in specDir mode this function is never called: the spec is
       # a file the producer copies without anyone parsing it. Doing deps in two places would be
       # two implementations of one rule, and they would drift.
@@ -194,7 +194,7 @@
         # threading outputOf strings through itself. That is what makes specDir mode usable for
         # a DAG, where the spec is a static file nobody parses.
         #
-        # deps are appended by dyn-actions-spec-fixup.py rather than here, precisely BECAUSE
+        # deps are appended by cider-spec-fixup rather than here, precisely BECAUSE
         # specDir mode never calls this function.
         srcs = a.inputSrcs or [];
       };
@@ -284,7 +284,7 @@
             export PATH=${pkgs.nix}/bin:${pkgs.coreutils}/bin:$PATH
             ${writeSpec n}
             # Store-dir-relative srcs, and the dependency injection, both of which can only
-            # happen HERE. See nix/lib/dyn-actions-spec-fixup.py for why.
+            # happen HERE. See cider-spec-fixup for why.
             ${specFixup}/bin/cider-spec-fixup spec.json || exit 1
             emitted=$(nix --extra-experimental-features \
               "nix-command ca-derivations dynamic-derivations" derivation add < spec.json) \

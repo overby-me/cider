@@ -130,7 +130,7 @@
   inherit (pkgs) lib;
 
   # The graph is portable, so the store paths an argv needs are named rather than baked in
-  # (see scripts/buck2-graph-dump.py). Filling them back in is the consumer's job, from
+  # (see cider-graph-dump). Filling them back in is the consumer's job, from
   # ITS own inputs -- which is what lets one graph serve any machine.
   placeholders =
     {
@@ -164,7 +164,7 @@
   # THE ARGV ESCAPE CACHE LIVED HERE and is gone with #66. It memoised
   # `escapeShellArg (fill x)` over the 208,515 argv entries, of which 5,193 were distinct,
   # and an eval profile still put 12 percent of the evaluation on that one map. Escaping now
-  # happens once, inside the graph derivation, in scripts/buck-graph-to-specs.py -- so the
+  # happens once, inside the graph derivation, in cider-graph-specs -- so the
   # cache has nothing left to memoise and neither does the map it was hiding.
   #
   # `fill` goes with it. The placeholders are no longer substituted into the text at all;
@@ -218,7 +218,7 @@
     precomputedNeeds.${specName label}
     or (throw "buck2 lower: no precomputed needs for ${label} (looked for ${specName label} in ${graph.specs}/needs.json). Rebuild the graph derivation; scripts/buck-needs-check.nu compares this against needsOf.");
 
-  # MIRRORS dep_var IN scripts/buck_lowering.py, composed after specName. That one maps every
+  # MIRRORS dep_var IN cider-graph-specs, composed after specName. That one maps every
   # NON-ALPHANUMERIC character to an underscore, and specName has already restricted the
   # alphabet to [A-Za-z0-9_.-], so only the dot and the dash are left to map. Getting this
   # wrong does not fail: the variable simply never matches, and the emitted script copies from
@@ -233,7 +233,7 @@
       placeholders)
     + "\n";
 
-  # #66. THESE TWO MUST MATCH scripts/buck-graph-to-specs.py EXACTLY, and they are the only
+  # #66. THESE TWO MUST MATCH cider-graph-specs EXACTLY, and they are the only
   # coupling between this file and the generator, so they are stated together here rather
   # than being spread out. A mismatch is silent in the worst way: specName picks the wrong
   # file and the target runs another target's actions.
@@ -490,7 +490,7 @@
     # which resolves to pins/darlingserver/duct-tape/xnu. Nothing is there any more,
     # so the lexists test below failed, the carry was skipped IN SILENCE, the link stayed
     # dangling and security_codesigning_obj could not find security/mac.h. The same table
-    # buck-src-normalise.py uses, longest prefix first.
+    # cider-src-normalise uses, longest prefix first.
     #
     # The DESTINATION keeps the name the dangling link actually points at; only the SOURCE
     # is translated. Rewriting the destination would leave the link dangling all the same.
@@ -567,7 +567,7 @@
   # copyfile, corecrypto, corefoundation), mutually dependent at target level even though the
   # target graph itself is acyclic. Merging those is not suboptimal, it is invalid, and in Nix
   # it surfaces as a bare infinite recursion from the dependency staging line. coarse_pin_map
-  # in scripts/buck2-graph-dump.py runs Tarjan over the contracted graph and offers only the
+  # in cider-graph-dump runs Tarjan over the contracted graph and offers only the
   # 114 pins that are in no cycle, JavaScriptCore among them.
   #
   # Regrouping is SAFE only because g.actions is globally topological, and that is measured
@@ -1373,7 +1373,7 @@
     # just for the sibling it actually needs. For the shape this targets, many compiles and
     # then one archive or link, that costs nothing.
     #
-    # buck-graph-to-specs.py emits _spawn or _drain per action from exactly that rule.
+    # cider-graph-specs emits _spawn or _drain per action from exactly that rule.
     # Verified against a re-derivation of it over all 1,474 groups: 0 scripts with a
     # misplaced _drain, and a control that deletes one _drain is caught.
     # THE TOOLS, hoisted out of the attrset so passthru can name them too: a Nix attrset is
@@ -1391,7 +1391,7 @@
     # #66. READ AND SUBSTITUTED, NOT ASSEMBLED. This used to be seventy lines of Nix building
     # the whole builder script per group at evaluation time: the staging call, a copy plus a
     # chmod per dependency, a restore per staged tree, the concurrency harness, the action
-    # sequence and a copy per output. scripts/buck_lowering.py renders all of that inside the
+    # sequence and a copy per output. cider-graph-specs renders all of that inside the
     # graph derivation now, which already runs, once, instead of on every `nix build`.
     #
     # FIVE THINGS THE GENERATOR CANNOT NAME, and they are exactly the consumer-owned ones:
@@ -1430,7 +1430,7 @@
     builderScriptWith = depPathOf: let
       raw =
         fullScripts.${specName label}
-        or (throw "buck2 lower: no rendered builder script for ${label} (looked for ${specName label} in ${graph.specs}/full.json). The lowering and scripts/buck-graph-to-specs.py disagree about grouping or naming; scripts/buck-script-check.nu compares the two.");
+        or (throw "buck2 lower: no rendered builder script for ${label} (looked for ${specName label} in ${graph.specs}/full.json). The lowering and cider-graph-specs disagree about grouping or naming; scripts/buck-script-check.nu compares the two.");
 
       # The same list, in the same order, that the renderer numbered its references by: only
       # the staged entries that actually have links emit a script.
@@ -1458,7 +1458,7 @@
         // byDep;
       resolve = v:
         values.${v}
-        or (throw "buck2 lower: ${label}'s builder template names ${v}, which this consumer does not supply. The lowering and scripts/buck_lowering.py disagree about the variable set.");
+        or (throw "buck2 lower: ${label}'s builder template names ${v}, which this consumer does not supply. The lowering and cider-graph-specs disagree about the variable set.");
     in
       lib.concatStrings (lib.imap0 (i: p:
         if lib.mod i 2 == 0
@@ -1514,7 +1514,7 @@
         inherit label outs;
         deps = needs.fromTargets;
         # THE OTHER HALF OF needsOf, exposed for the same reason `deps` is: #66 is porting
-        # needsOf into scripts/buck-graph-to-specs.py, and the only honest way to check a port
+        # needsOf into cider-graph-specs, and the only honest way to check a port
         # of it is to dump BOTH answers for all 1,474 labels and require them to agree.
         # Comparing fromTargets alone would leave the farms untested, and they are the half
         # that fails late and quietly. scripts/buck-needs-check.nu does the comparison.
@@ -1522,7 +1522,7 @@
 
         # THE DEFINITION, NOT THE FILE, and this attribute exists precisely so the check does
         # not become circular. `deps` and `stagedNeeds` above now come from needs.json, which
-        # scripts/buck_lowering.py wrote, so comparing THOSE against the python would compare
+        # cider-graph-specs wrote, so comparing THOSE against the python would compare
         # the python against itself and pass no matter what either believed. needsOf is still
         # the definition; this calls it, and scripts/buck-needs-check.nu reads this one.
         #

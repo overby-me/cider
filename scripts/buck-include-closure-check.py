@@ -4,7 +4,7 @@
 The narrowed per-target source set (narrowSources) is built from what buck2 DECLARES, and
 a quoted include resolves against the including file's own directory, which buck2 never
 declares. Miss one and the narrowed build dies late with "file not found", 90 minutes in.
-scripts/buck2-graph-dump.py closes that by taking the closure of quoted includes; this
+cider-graph-dump closes that by taking the closure of quoted includes; this
 checks the closure actually holds, in ten seconds, against a built graph.
 
 The comment at projectSrc in the lowering used to claim only DEPFILES could answer this.
@@ -122,7 +122,7 @@ def main(argv: list) -> int:
         print(f"  {a}\n      needs {b}")
     print("")
     print("The dump should close these; see coarse target_sources and _quoted_includes in")
-    print("scripts/buck2-graph-dump.py, and task #44.")
+    print("cider-graph-dump, and task #44.")
     return 1
 
 

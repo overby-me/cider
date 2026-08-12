@@ -426,8 +426,8 @@ assumption.
   `scripts/buck-dyndrv-check.nu`. `scripts/buck-bridge-generality-check.nu` ENFORCES that the
   reusable half references nothing outside itself, which is the requirement rather than a
   nicety. Usage, constraints and the limits a real consumer found: `docs/dyn-actions-bridge.md`.
-- **B, the adapter.** `scripts/buck_lowering.py` renders the builder script and
-  `buck-graph-to-specs.py` writes it plus `needs.json` and a `dyn/` spec dir inside the graph
+- **B, the adapter.** `cider-graph-specs` renders the builder script and
+  `cider-graph-specs` writes it plus `needs.json` and a `dyn/` spec dir inside the graph
   derivation. The lowering no longer assembles a script; it reads the template.
 - **STILL OPEN, and it is the user's call.** Making the adapter standalone means emitting the
   toolchain list, the staging script and the staged tree scripts. Measured sizes: 1 toolchain
@@ -1013,7 +1013,7 @@ blob, the delta is fully explained and nothing is hiding in it.
 Written 2026-08-12 for the same reason as #76: the task was open with no entry describing it.
 
 **THE DEFECT CLASS, and it is not hypothetical.** `buck2 aquery` renders an action command by
-joining the argv with `", "`, and `scripts/buck2-graph-dump.py` splits it back apart. That is
+joining the argv with `", "`, and `cider-graph-dump` splits it back apart. That is
 sound only while no argument contains the separator, which is an ASSUMPTION, and it has been
 wrong: perl's `versions.h` passed the C initializer `"5.18", "5.28",` as ONE argument, it came
 back as TWO, and the lowering died on a ValueError out of the configure script. The host, which

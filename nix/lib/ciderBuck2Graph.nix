@@ -343,7 +343,7 @@
     # THE #66 SPECS WERE A THIRD OUTPUT HERE and are now their own derivation, specsDrv
     # below, for a reason worth stating: an output of THIS derivation can only be produced by
     # RUNNING this derivation, which is an eighteen minute buck2 build. That made every tweak
-    # to scripts/buck-graph-to-specs.py cost eighteen minutes to see, for a script that runs
+    # to cider-graph-specs cost eighteen minutes to see, for a script that runs
     # in under two seconds and reads nothing but graph.json. Split out, a generator change
     # re-runs the python alone.
     outputs = ["out" "data"];
@@ -534,7 +534,7 @@
   # See #92 for why reading buck2 through its own crates would beat parsing its rendered
   # output, which is what the identity regex in the generator has to do today.
   # RUST, NOT PYTHON, since #99. ONE BINARY where there were two files: python needed
-  # buck_lowering.py as an importable module shared with three checks, and a binary has no
+  # cider-graph-specs as an importable module shared with three checks, and a binary has no
   # import, so those checks read the JSON it already writes. That also removes the staging dance
   # this used to need, where both files had to be copied into one directory because a nix path
   # interpolation puts each in the store under its OWN hash and `from buck_lowering import`

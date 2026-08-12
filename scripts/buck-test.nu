@@ -1201,7 +1201,7 @@ def main [flag?: string] {
 
     say "== buck-src normalisation (what the Nix endpoint materialises) =="
     # The host builds from buck-src as it stands; the Nix endpoint re-runs
-    # buck-src-normalise.py over its own copy first. So a bug in that script is invisible on
+    # cider-src-normalise over its own copy first. So a bug in that script is invisible on
     # the host and fatal in Nix, which is exactly what happened: expand_dir_links() followed
     # JavaScriptCore's DerivedSources/JavaScriptCore/JavaScriptCore -> ../.. into the tree it
     # was creating, made 1147 directories 266 levels deep out of 13, swallowed the resulting
@@ -1213,11 +1213,11 @@ def main [flag?: string] {
     do { ^cp -a buck-src/JavaScriptCore/DerivedSources $"($norm_t)/" } | ignore
     ^chmod -R u+w $norm_t
     let before = (wc_l (cap [find $norm_t -type d]))
-    do { ^python3 -c '
-import importlib.util, sys
-s = importlib.util.spec_from_file_location("n", "scripts/buck-src-normalise.py")
-m = importlib.util.module_from_spec(s); s.loader.exec_module(m)
-m.expand_dir_links(sys.argv[1])' $norm_t } | ignore
+    # THE BINARY, not an imported function: since #99 the normaliser is Rust
+    # (linux/buildtools/src-normalise) and there is nothing to import. It walks the root it is
+    # given, so pointing it at the copy runs the expansion pass over exactly what the python
+    # call used to.
+    do { ^cider-src-normalise --repo $norm_t $norm_t } | ignore
     let after = (wc_l (cap [find $norm_t -type d]))
     let deep = (lines_of (cap [find $norm_t -type d -printf '%d\n']) | each {|d| $d | into int } | sort | last)
     if $before == $after {
@@ -1240,29 +1240,18 @@ m.expand_dir_links(sys.argv[1])' $norm_t } | ignore
     # grep and no rename sweep can see it; it showed up only as a buck2 package load failure
     # naming a path that is nowhere in the tree. Assert the translation BOTH ways: a renamed
     # path moves and resolves, an unrelated one is left exactly alone.
-    let ren = (cap [python3 -c '
-import importlib.util, os
-s = importlib.util.spec_from_file_location("n", "scripts/buck-src-normalise.py")
-m = importlib.util.module_from_spec(s); s.loader.exec_module(m)
-print(m.rename_first_party("pins/darlingserver/duct-tape/xnu/APPLE_LICENSE"))
-print(m.rename_first_party("pins/libdispatch/src/queue.c"))
-'])
-    let rl = (lines_of $ren)
-    let moved = ($rl | get 0)
-    let same = ($rl | get 1)
-    if $moved == "pins/ciderd/xnu-sys/xnu/APPLE_LICENSE" {
-        if (($moved | path exists)) {
-            ok "rename_first_party retargets the upstream xnu path and it resolves"
-        } else {
-            bad $"rename_first_party produced ($moved), which does not exist"
-        }
+    # THROUGH BEHAVIOUR, not through the function. The rename table used to be checked by
+    # importing rename_first_party and calling it on two paths; the normaliser is Rust now, so
+    # scripts/buck-src-normalise-check.nu builds a repo holding one link of every kind the tool
+    # has to handle and asserts the exact target of each afterwards. Eleven expectations,
+    # including the two this used to make, and it carries its own control.
+    let nrm = (do -i { ^nu ./scripts/buck-src-normalise-check.nu } | complete)
+    if $nrm.exit_code == 0 {
+        ok "every normaliser rule holds on a purpose-built repo (11 expectations, with a control)"
     } else {
-        bad $"rename_first_party gave ($moved)"
-    }
-    if $same == "pins/libdispatch/src/queue.c" {
-        ok "rename_first_party leaves an unrelated pin path alone"
-    } else {
-        bad $"rename_first_party rewrote an unrelated path to ($same)"
+        bad "the normaliser rules do not all hold"
+        print -e ($nrm.stdout | lines | last 8 | str join "\n")
+        print -e ($nrm.stderr | lines | last 8 | str join "\n")
     }
 
     # And nothing in the materialized tree may still NAME a renamed first-party path. This is
@@ -1275,7 +1264,7 @@ print(m.rename_first_party("pins/libdispatch/src/queue.c"))
     }
 
     # THE SAME TABLE LIVES IN TWO PLACES, and that is what let the ninth rename break through.
-    # buck-src-normalise.py translates pin symlinks, but it runs only in ciderBuck2Graph.nix;
+    # cider-src-normalise translates pin symlinks, but it runs only in ciderBuck2Graph.nix;
     # the lowering stages pins a second time in pinsTree and resolves escapes there. pinsTree
     # had no table at all, so it resolved the security escape against the pre-rename path,
     # failed its lexists test and skipped the carry IN SILENCE. That cost a full endpoint run
@@ -1284,17 +1273,17 @@ print(m.rename_first_party("pins/libdispatch/src/queue.c"))
     # anchored on the literal src/external (NO-PIN-REWRITE), and after the move both tables say pins/, so the
     # pattern would have matched NOTHING IN BOTH FILES and the comparison would have been ""
     # against "". The guard below catches that rather than passing vacuously, but the message
-    # it prints blames buck-src-normalise.py, which would have sent the next reader to the
+    # it prints blames cider-src-normalise, which would have sent the next reader to the
     # wrong file entirely.
-    let norm = (^bash -c "grep -oE '\\(\"pins/[a-z/.-]+\", *\"pins/[a-z/.-]+\"\\)' scripts/buck-src-normalise.py | tr -d ' \"()' | sort" | str trim)
+    let norm = (^bash -c "grep -oE '\\(\"pins/[a-z/.-]+\", *\"pins/[a-z/.-]+\"\\)' linux/buildtools/src-normalise/src/main.rs | tr -d ' \"()' | sort" | str trim)
     let lower = (^bash -c "grep -oE '\\(\"pins/[a-z/.-]+\", *\"pins/[a-z/.-]+\"\\)' nix/lib/ciderBuck2Lower.nix | tr -d ' \"()' | sort" | str trim)
     let n_entries = ($norm | lines | length)
     if $norm == "" {
-        bad "could not read FIRST_PARTY_RENAMES out of buck-src-normalise.py"
+        bad "could not read FIRST_PARTY_RENAMES out of cider-src-normalise"
     } else if $norm == $lower {
         ok $"the rename table is identical in the normaliser and the lowering, ($n_entries) entries"
     } else {
-        bad "rename tables DIFFER between buck-src-normalise.py and ciderBuck2Lower.nix"
+        bad "rename tables DIFFER between cider-src-normalise and ciderBuck2Lower.nix"
     }
 
     say "== host headers (the ones that live outside the build graph) =="

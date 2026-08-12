@@ -15,7 +15,7 @@
 #
 # HOW IT IS SOLVED, and the shape a generator must copy: the edges live in a deps.json beside
 # the specs, the bridge turns each into an env entry on the PRODUCER whose value is the
-# dependency's outputOf placeholder, and dyn-actions-spec-fixup.py writes it into the spec as
+# dependency's outputOf placeholder, and cider-spec-fixup writes it into the spec as
 # both a source and a DYN_DEP_<name> env entry once Nix has substituted the real path.
 #
 # A GENERATOR THAT FORGETS deps.json GETS A SET, NOT A DAG, silently: every action still emits
