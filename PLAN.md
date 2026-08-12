@@ -938,7 +938,18 @@ fails the suite instead of waiting for someone to remember the script exists.
 
 **WHAT IS ACTUALLY LEFT, and it is smaller than the task title suggests:**
 
-    bsdln       GONE. Zero files match anywhere in the tree, pins included.
+    bsdln       NOT GONE, and NOT ours to rewrite. This entry said "GONE, zero files match
+                anywhere in the tree" and that was false: linux/bsdln/{BUCK,ln.c} is right
+                there, //linux/bsdln:bsdln builds, and linux/bsdln/BUCK already records the
+                decision. ln.c is Copyright 1987, 1993, 1994 The Regents of the University of
+                California, so it is FreeBSD ln with a small local delta, not Darling-origin
+                code. The intended treatment is DE-VENDORING (pin the upstream source, compile
+                it with -include bsd/string.h), not a Rust rewrite that would throw away the
+                upstream history.
+                HOW THE FALSE CLAIM SURVIVED, because the shape recurs: the search matched
+                FILE NAMES only. Nothing is called bsdln.c; the directory is called bsdln. Same
+                family as the buck-src lesson, where a search was structurally unable to see
+                what it was asked about, so it returned a confident zero.
     wrapgen     DONE 2026-08-12. linux/libelfloader/wrapgen/wrapgen.rs is the build tool now
                 and the C++ is kept beside it as wrapgen_c. Provenance was the last blocker and
                 it is resolved; the record of how is below because the method is reusable.
@@ -1026,9 +1037,9 @@ already owns two of the awkward prerequisites, a Mach-O linker (ld64, buck2-buil
 the Darwin SDK. Nobody has costed the rest. Do not start either tool expecting to finish it, but
 do not repeat the claim that the toolchain cannot exist.
 
-So the honest shape of #76 is: THREE DONE with a byte-parity harness the suite now runs, one gone
-(bsdln: zero files anywhere in the tree, pins included), and two blocked on a missing toolchain. Nothing is left
-that is merely waiting to be picked up.
+So the honest shape of #76 is: THREE DONE with a byte-parity harness the suite now runs, one that
+was never in scope (bsdln is upstream BSD and wants de-vendoring instead), and two blocked on a
+missing toolchain. Nothing is left that is merely waiting to be picked up.
 
 **THE METHOD IS REUSABLE, and it is cheaper than reading history.** When provenance is in doubt
 for a file that carries no header, do not argue from style or from a squashed log. Compute the
