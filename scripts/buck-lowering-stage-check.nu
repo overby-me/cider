@@ -100,6 +100,10 @@ def main [
     #    is already a real directory the removal failed and the ln that followed created the
     #    link INSIDE it. It has to be rm -rf. Every other check here passed while this was
     #    broken, which is why it is here: they assert the shape of the tree, not the pin lines.
+    # PER LINE, AND THAT MATTERS FOR THE LOOKAHEAD. Measured 2026-08-12: nushell stops
+    # honouring a lookaround somewhere between 400,000 and 1,000,000 characters, and a pattern
+    # that cannot match then returns TRUE. These are single lines of a staging script, so this
+    # is far below the threshold; do not lift it onto the whole script text.
     let bad_rm = ($lines | where {|l| $l =~ '^rm -f (?!-)' })
     # 4. pins has to be a REAL directory, in both shapes, because planting a pin
     #    inside a store path is a permission error.
