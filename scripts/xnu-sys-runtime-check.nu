@@ -168,11 +168,11 @@ def link_check [] {
 }
 
 # The 29 trap wrappers in traps_generated.rs are emitted from the RPC table by
-# scripts/gen-xnu-sys-traps.py and CHECKED IN, so they can go stale if that table moves. The C
+# scripts/gen-xnu-sys-traps.nu and CHECKED IN, so they can go stale if that table moves. The C
 # they replace could not: it was a macro expanded at compile time. This restores that property.
 def traps_check [] {
     say "traps_generated.rs -- still matches the RPC table it was generated from"
-    let r = (do -i { ^python3 scripts/gen-xnu-sys-traps.py --check } | complete)
+    let r = (do -i { ^nu scripts/gen-xnu-sys-traps.nu --check } | complete)
     if $r.exit_code != 0 {
         say "  FAIL: the generated trap wrappers are stale"
         say ($r.stderr | lines | last 3 | str join "\n")

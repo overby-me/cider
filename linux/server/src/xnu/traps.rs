@@ -3,7 +3,7 @@
 //! Six trivial wrappers the C writes out by hand, each calling an XNU trap with a NULL args
 //! pointer because the trap takes none. The OTHER twenty-nine wrappers in that file come from
 //! `DSERVER_XNU_SYS_DEFS`, a generated macro, and are in [`crate::xnu::traps_generated`], emitted from
-//! the same table by `scripts/gen-xnu-sys-traps.py`.
+//! the same table by `scripts/gen-xnu-sys-traps.nu`.
 //!
 //! NOT `traps.rs`: `linux/server/src/traps.rs` already exists and is the DAEMON side, which
 //! DECLARES these symbols and calls them from handlers. This module is what defines them, so

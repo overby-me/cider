@@ -31,7 +31,7 @@ surface turns out to be 7 percent of it rather than all of it.
 | `gen-sdk-header-roots.py` | 505 | `pins/`, `buck-src/` | `buck-split-pins.py:481` (subprocess) | **port** |
 | `gen-xnu-sys-buck.py` | 457 | `pins/ciderd/xnu-sys/CMakeLists.txt` | by hand; scraped by `xnu-sys-portability.py` | **port** |
 | `gen-prefix-min.py` | 425 | `buck/prefix/BUCK` | by hand, regenerates `buck/prefix-min/BUCK` | **port** |
-| `gen-xnu-sys-traps.py` | 167 | `pins/ciderd/xnu-sys` | `xnu-sys-runtime-check.nu:175 --check` | **port** |
+| `gen-xnu-sys-traps.py` | 167 | `pins/ciderd/xnu-sys` | `xnu-sys-runtime-check.nu:175 --check` | **PORTED**, now `gen-xnu-sys-traps.nu` (#98) |
 
 **Archive: 2,743 lines. Port: 2,595 lines.** Roughly half, not all.
 
@@ -422,6 +422,27 @@ checked by reading the line rather than trusted from the grep.
 nushell to unblock them would put nushell on the nix build path, which is the opposite of the
 decision the split records. So the order is: **#99 first, then those three, then
 `buck-names-check` last and re-scoped.**
+
+### The python that is still EXECUTED is exactly three files, and one of them is now two
+
+Measured over 291 candidate files (`.nu`, `.py`, `.nix`, `.sh`, `.bzl`, `BUCK`), asking who
+runs or imports each of the 29 remaining python scripts. Docs and plans were excluded, since a
+mention is not a call. The answer is smaller than the file count suggests:
+
+| edge | consumer | status |
+| --- | --- | --- |
+| `gen-xnu-sys-traps.py --check` | `xnu-sys-runtime-check.nu:175` | **CUT**, ported to `.nu` (#98) |
+| `gen-install-from-manifests.py` | the `UNMAPPED` gate in `buck-test.nu` | open, 972 lines |
+| `buck-specs-check.py` | `buck-specs-check.nu` | KEPT on purpose, measured shut |
+
+Everything else is either invoked by hand or imported only by another python file:
+`buck-split-pins` pulls in `buck-exports`, `buck-fix-loads` and `gen-sdk-header-roots`;
+`regen-dylibs` pulls in `buck-fix-loads` and `gen-buck-from-ninja`; the two dead graph tools
+pull in `buck2-graph-sources`. **So the monorepo needs python for exactly two more edges**, and
+neither is a check that has to run there: one is a generator gate over the frozen reference, the
+other is deliberately frozen with its measurement in the header.
+
+That reframes what is left of #97 and #98. It is not 11,350 lines of work. It is two decisions.
 
 ## #99 step 0: every build-path script is behind a CONTENT-ADDRESSED output
 

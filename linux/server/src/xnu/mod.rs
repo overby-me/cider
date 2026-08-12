@@ -85,5 +85,5 @@ pub mod task;
 pub mod psynch;
 
 // xnu-sys/src/traps.c: six hand-written trap wrappers (#71, tenth file), plus the 29 that
-// DSERVER_XNU_SYS_DEFS generates, emitted by scripts/gen-xnu-sys-traps.py.
+// DSERVER_XNU_SYS_DEFS generates, emitted by scripts/gen-xnu-sys-traps.nu.
 pub mod traps;
