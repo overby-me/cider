@@ -438,12 +438,36 @@ them. Both now carry a banner naming the drift risk and the resolution: delete t
 those three read the generated `needs.json` / `full.json` / `scripts.json`. That is #98 work
 which was blocked on #99 and now is not.
 
-### What is left of #99, 1,755 lines
+### The fourth piece is landed too
+
+`buck2-graph-sources.py` (506) is the **second binary of the same crate**, not a new one, so
+`src/pyjson.rs` is shared rather than copied. Verified on the real graph, its matching
+`graph-data` tables and the real working tree: every printed number equal, 717 files, `diff -rq
+--no-dereference` reports nothing, NAR hashes equal, 8.2s against 24.8s. Then the flip:
+`sourcesDrv` path identical, `.drv` paths different. **Three build-path derivations have now
+moved with zero downstream cost.**
+
+**The JSON mode differs between the two tools and that is not cosmetic.** The sources generator
+writes `sort_keys=True` and a trailing newline; the spec generator writes insertion order and no
+newline. Both are the Python default for the call each makes, and swapping them is a silent hash
+change rather than an error.
+
+**One mistake the build caught.** Dropping `pkgs.python3` from `sourcesDrv` looked obviously right
+once its generator was Rust, and it died with exit 127 in `patchPhase`: `assembleProject` also
+runs `buck-src-normalise.py`, a different #99 piece that is still Python. Restored with a comment
+saying the line goes when that piece does.
+
+### What is left of #99, 1,249 lines
 
      752  buck2-graph-dump.py
-     506  buck2-graph-sources.py
      275  buck-src-normalise.py
      222  nix/lib/dyn-actions-spec-fixup.py
+
+**`buck-src-normalise.py` is verifiable after all**, which supersedes the earlier note that it has
+no derivation of its own. It is inlined into `assembleProject`, which `sourcesDrv` and `graph`
+both embed, so flipping it and rebuilding `.#graph-sources` against
+`nfp5fvf3rmn1n4wij32klx21vj7mv97n` is an end-to-end proof. It is also the smallest piece left and
+the one holding `pkgs.python3` in that derivation.
 
 `buck-src-normalise.py` should NOT be next despite being small: it has no derivation of its own,
 so editing it changes a shell fragment embedded in two derivations and re-runs both, and its
