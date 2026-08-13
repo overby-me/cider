@@ -1,0 +1,64 @@
+diff -u --recursive a/CFBase.c b/CFBase.c
+--- a/CFBase.c	2026-08-13 18:55:22.688990915 +0200
++++ b/CFBase.c	2026-08-13 18:55:22.704441996 +0200
+@@ -877,6 +877,27 @@
+ 
+ // void __HALT(void);
+ 
++/*
++ * Who called HALT, by name. The address alone is useless without the process's mappings, and by
++ * the time anyone looks at a core the mapping is a research project; dladdr answers it in the
++ * process that is about to die, which is the only moment the question is cheap.
++ */
++CF_PRIVATE void __CFHaltReport(const char *file, int line, const char *func, void *caller) {
++    Dl_info info;
++    if (caller != NULL && dladdr(caller, &info) != 0 && info.dli_fname != NULL) {
++        const char *base = strrchr(info.dli_fname, '/');
++        fprintf(stderr, "CoreFoundation HALT at %s:%d in %s, called from %s+%p in %s\n",
++                file, line, func,
++                info.dli_sname ? info.dli_sname : "?",
++                (void *)((char *)caller - (char *)(info.dli_saddr ? info.dli_saddr : caller)),
++                base ? base + 1 : info.dli_fname);
++    } else {
++        fprintf(stderr, "CoreFoundation HALT at %s:%d in %s, called from %p\n",
++                file, line, func, caller);
++    }
++    fflush(stderr);
++}
++
+ /* Keep this assembly at the bottom of the source file! */
+ 
+ 
+diff -u --recursive a/include/CoreFoundation/CFInternal.h b/include/CoreFoundation/CFInternal.h
+--- a/include/CoreFoundation/CFInternal.h	2026-08-13 18:53:22.060486673 +0200
++++ b/include/CoreFoundation/CFInternal.h	2026-08-13 18:55:22.703426524 +0200
+@@ -141,11 +141,27 @@
+ #endif
+ 
+ 
++/*
++ * SAY WHERE, BEFORE TRAPPING. HALT is CoreFoundation's fatal path, used in dozens of places, and
++ * as written it executes int3 and nothing else: the process dies of SIGTRAP with si_code
++ * SI_KERNEL and si_addr NULL, and every one of those sites looks identical from outside.
++ *
++ * That cost real time. LibreOffice died as "Fatal exception: Signal 5" with an empty stack, and
++ * neither a core nor a signal trace could name the site: a core is written after the handler has
++ * unwound, and int3 leaves no argument behind.
++ *
++ * One line of stderr turns that into a file and a line, and it costs nothing on any path that
++ * does not already intend to kill the process.
++ */
++CF_PRIVATE void __CFHaltReport(const char *file, int line, const char *func, void *caller);
++#define CIDER_HALT_REPORT() \
++    __CFHaltReport(__FILE__, __LINE__, __func__, __builtin_return_address(0))
++
+ #if defined(__GNUC__)
+     #if defined(__i386__) || defined(__x86_64__)
+-        #define HALT do {asm __volatile__("int3"); kill(getpid(), 9); __builtin_unreachable(); } while (0)
++        #define HALT do {CIDER_HALT_REPORT(); asm __volatile__("int3"); kill(getpid(), 9); __builtin_unreachable(); } while (0)
+     #else
+-        #define HALT do {__builtin_debugtrap(); kill(getpid(), 9); __builtin_unreachable(); } while (0)
++        #define HALT do {CIDER_HALT_REPORT(); __builtin_debugtrap(); kill(getpid(), 9); __builtin_unreachable(); } while (0)
+     #endif
+ #elif defined(_MSC_VER)
+     #define HALT do { DebugBreak(); abort(); __builtin_unreachable(); } while (0)
