@@ -74,6 +74,22 @@ unsafe extern "C" {
     pub fn msg_send_i64_ret(receiver: Object, sel: Sel) -> i64;
     #[link_name = "objc_msgSend"]
     pub fn msg_send_i64(receiver: Object, sel: Sel, value: i64) -> Object;
+    /// O2Surface's designated initialiser, seven arguments of it. Spelled out for the same reason
+    /// as the rest: the symbol is variadic and only the declaration makes the call correct.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_surface_init(
+        receiver: Object,
+        sel: Sel,
+        bytes: *mut std::ffi::c_void,
+        width: usize,
+        height: usize,
+        bits_per_component: usize,
+        bytes_per_row: usize,
+        color_space: *mut std::ffi::c_void,
+        bitmap_info: u32,
+    ) -> Object;
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_obj_bool(receiver: Object, sel: Sel, obj: Object, flag: ObjcBool) -> Object;
 }
 
 /// AppKit geometry: two doubles of origin, two of size. repr(C) so the struct is passed the way

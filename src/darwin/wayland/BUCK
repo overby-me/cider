@@ -203,6 +203,9 @@ darwin_dylib(
         # fontconfig, for the font methods this backend implements itself rather than inheriting.
         "//src/linux/native:fontconfig_dylib",
         "//vendor/src:AppKit_dylib",
+        # Onyx2D IS CoreGraphics here: the CoreGraphics dylib in the prefix is a re-export shim
+        # whose symbols are all undefined, so the drawing context comes from this one.
+        "//vendor/src:Onyx2D_dylib",
         "//vendor/src:Foundation_dylib",
         "//vendor/src/corefoundation:CoreFoundation_dylib",
         "//vendor/src/objc4:objc_final",

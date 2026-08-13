@@ -50,6 +50,12 @@ pub struct WindowState {
     pub buffer: *mut wl::WlBuffer,
     pub buffer_w: i32,
     pub buffer_h: i32,
+    /// The shm pages, mapped. AppKit DRAWS DIRECTLY INTO THESE: the O2Surface is built over this
+    /// pointer, so there is no copy between what was drawn and what the compositor reads.
+    pub pixels: *mut u8,
+    pub map_len: usize,
+    /// The O2Context, retained. AppKit asks for it repeatedly and expects the same one back.
+    pub context: Object,
 }
 
 impl WindowState {
@@ -71,6 +77,9 @@ impl WindowState {
             buffer: std::ptr::null_mut(),
             buffer_w: 0,
             buffer_h: 0,
+            pixels: std::ptr::null_mut(),
+            map_len: 0,
+            context: std::ptr::null_mut(),
         }
     }
 }
@@ -154,84 +163,212 @@ fn create_surface(st: &mut WindowState) -> bool {
     true
 }
 
-/// Put pixels on the surface. A flat colour until the O2Context rung, but a REAL buffer: the
-/// compositor mmaps the descriptor, so this is the same path a drawn window will take.
-fn present(st: &mut WindowState) {
-    use std::io::{Seek, SeekFrom, Write};
+/// mmap and friends, declared rather than pulled in: the guest libSystem has them and the whole
+/// need is one mapping per window. Darwin's own values, since this is Darwin ABI code.
+unsafe extern "C" {
+    fn mmap(addr: *mut c_void, len: usize, prot: c_int, flags: c_int, fd: c_int, offset: i64) -> *mut c_void;
+    fn munmap(addr: *mut c_void, len: usize) -> c_int;
+    fn ftruncate(fd: c_int, len: i64) -> c_int;
+}
+
+const PROT_READ: c_int = 0x01;
+const PROT_WRITE: c_int = 0x02;
+const MAP_SHARED: c_int = 0x0001;
+
+/// Onyx2D, which is where CoreGraphics actually lives: the CoreGraphics dylib in the prefix is a
+/// re-export shim whose symbols are all undefined, and O2Surface and O2Context_builtin_FT are
+/// classes in Onyx2D.framework. Only the colour space constructor is a plain function.
+unsafe extern "C" {
+    fn O2ColorSpaceCreateDeviceRGB() -> *mut c_void;
+    fn O2ColorSpaceRelease(cs: *mut c_void);
+}
+
+/// kO2ImageAlphaPremultipliedFirst is the third member of its enum, so 2, and
+/// kO2BitmapByteOrder32Little is 0x2000. Together they describe little-endian ARGB, which is
+/// BYTE FOR BYTE the same layout as Wayland's XRGB8888: B, G, R, then a byte Wayland ignores and
+/// Onyx2D treats as alpha. That equality is what makes the mapping shareable with no conversion.
+const BITMAP_INFO: u32 = 2 | 0x2000;
+
+/// Make sure the window has shm pages of the right size, mapped, with a wl_buffer over them.
+///
+/// Returns false if anything failed, with a reason in the log. Every caller treats false as "there
+/// is nothing to draw on", which is survivable, rather than raising.
+fn ensure_backing(st: &mut WindowState) -> bool {
     use std::os::unix::io::AsRawFd;
 
-    if st.surface.is_null() || !st.configured {
-        return;
-    }
-    let shm = session::shm();
-    if shm.is_null() {
-        return;
-    }
     let w = (st.frame.size.width as i32).max(1);
     let h = (st.frame.size.height as i32).max(1);
+    if !st.pixels.is_null() && st.buffer_w == w && st.buffer_h == h {
+        return true;
+    }
+    release_backing(st);
+
+    let shm = session::shm();
+    if shm.is_null() {
+        return false;
+    }
     let stride = w * 4;
-    let size = (stride * h) as usize;
+    let size = (stride as usize) * (h as usize);
 
     // A PLAIN FILE, not shm_open: the compositor receives the DESCRIPTOR and mmaps that, so where
-    // the file lives never travels with it, and the guest needs no working /dev/shm.
-    if st.backing.is_none() || st.buffer_w != w || st.buffer_h != h {
-        let path = format!("/tmp/cider-window-{}-{}.shm", std::process::id(), st.number);
-        let Ok(file) = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(&path)
-        else {
-            println!("cider-wayland-window present=FAILED reason=no-backing-file");
-            return;
-        };
-        let _ = std::fs::remove_file(&path);
-        st.backing = Some(file);
-        st.buffer = std::ptr::null_mut();
-        st.buffer_w = w;
-        st.buffer_h = h;
-    }
-    let Some(file) = st.backing.as_mut() else { return };
-    let pixel = 0xffu32 << 24 | 0xeeu32 << 16 | 0xeeu32 << 8 | 0xeeu32;
-    let row: Vec<u8> = std::iter::repeat(pixel.to_ne_bytes()).take(w as usize).flatten().collect();
-    if file.seek(SeekFrom::Start(0)).is_err() {
-        return;
-    }
-    for _ in 0..h {
-        if file.write_all(&row).is_err() {
-            return;
-        }
-    }
-    let _ = file.flush();
+    // the file lives never travels with it and the guest needs no working /dev/shm.
+    let path = format!("/tmp/cider-window-{}-{}.shm", std::process::id(), st.number);
+    let Ok(file) = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&path)
+    else {
+        println!("cider-wayland-window backing=FAILED reason=no-file");
+        return false;
+    };
+    // Unlinked immediately: the descriptor keeps it alive and nothing is left behind.
+    let _ = std::fs::remove_file(&path);
     let fd = file.as_raw_fd();
+    if unsafe { ftruncate(fd, size as i64) } != 0 {
+        println!("cider-wayland-window backing=FAILED reason=ftruncate");
+        return false;
+    }
+    let map = unsafe {
+        mmap(std::ptr::null_mut(), size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)
+    };
+    if map.is_null() || map as isize == -1 {
+        println!("cider-wayland-window backing=FAILED reason=mmap");
+        return false;
+    }
+    // Opaque light grey, so an undrawn window is visibly a window rather than whatever the pages
+    // happened to contain. The high byte is what Wayland ignores and Onyx2D reads as alpha.
+    unsafe {
+        let words = std::slice::from_raw_parts_mut(map as *mut u32, size / 4);
+        words.fill(0xffee_eeee);
+    }
 
     unsafe {
-        if st.buffer.is_null() {
-            let pool = wl::cider_wl_shm_create_pool(shm, fd, size as i32);
-            if pool.is_null() {
-                println!("cider-wayland-window present=FAILED reason=no-pool");
-                return;
-            }
-            let format = wl::cider_wl_shm_format_xrgb8888();
-            st.buffer = wl::cider_wl_shm_pool_create_buffer(pool, 0, w, h, stride, format);
-            // The pool may be destroyed as soon as the buffer exists: the buffer holds its own
-            // reference to the mapping, which is what makes resizing a matter of a new pool rather
-            // than a torn down surface.
-            wl::cider_wl_shm_pool_destroy(pool);
-            if st.buffer.is_null() {
-                println!("cider-wayland-window present=FAILED reason=no-buffer");
-                return;
-            }
+        let pool = wl::cider_wl_shm_create_pool(shm, fd, size as i32);
+        if pool.is_null() {
+            println!("cider-wayland-window backing=FAILED reason=no-pool");
+            munmap(map, size);
+            return false;
         }
+        let format = wl::cider_wl_shm_format_xrgb8888();
+        st.buffer = wl::cider_wl_shm_pool_create_buffer(pool, 0, w, h, stride, format);
+        // The pool may go as soon as the buffer exists: the buffer holds its own reference to the
+        // mapping, which is what makes a resize a new pool rather than a torn down surface.
+        wl::cider_wl_shm_pool_destroy(pool);
+        if st.buffer.is_null() {
+            println!("cider-wayland-window backing=FAILED reason=no-buffer");
+            munmap(map, size);
+            return false;
+        }
+    }
+    st.backing = Some(file);
+    st.pixels = map as *mut u8;
+    st.map_len = size;
+    st.buffer_w = w;
+    st.buffer_h = h;
+    true
+}
+
+/// Drop the mapping, the buffer and the context together, because all three describe one size.
+fn release_backing(st: &mut WindowState) {
+    if !st.context.is_null() {
+        unsafe {
+            objc::msg_send0(st.context, objc::sel_registerName(cstr!("release")));
+        }
+        st.context = std::ptr::null_mut();
+    }
+    if !st.pixels.is_null() {
+        unsafe { munmap(st.pixels as *mut c_void, st.map_len) };
+        st.pixels = std::ptr::null_mut();
+        st.map_len = 0;
+    }
+    st.buffer = std::ptr::null_mut();
+    st.backing = None;
+    st.buffer_w = 0;
+    st.buffer_h = 0;
+}
+
+/// Hand the mapped pages to the compositor.
+///
+/// Whatever AppKit has drawn is already in those pages, so this is attach, damage and commit and
+/// nothing else. That is the point of mapping rather than copying.
+fn present(st: &mut WindowState) {
+    if st.surface.is_null() || !st.configured || !ensure_backing(st) {
+        return;
+    }
+    unsafe {
         wl::cider_wl_surface_attach(st.surface, st.buffer, 0, 0);
-        wl::cider_wl_surface_damage(st.surface, 0, 0, w, h);
+        wl::cider_wl_surface_damage(st.surface, 0, 0, st.buffer_w, st.buffer_h);
         wl::cider_wl_surface_commit(st.surface);
     }
     session::flush();
     if !st.mapped {
         st.mapped = true;
-        println!("cider-wayland-window mapped=yes number={} size={w}x{h}", st.number);
+        println!(
+            "cider-wayland-window mapped=yes number={} size={}x{}",
+            st.number, st.buffer_w, st.buffer_h
+        );
+    }
+}
+
+/// The drawing context, built over the shm pages.
+///
+/// THIS IS THE X11 PATH WITH ONE CHANGE. X11Window passes NULL for the bytes and lets O2Surface
+/// allocate, then copies the result to the server with XPutImage. Here the bytes are the mapping
+/// the compositor already reads, so the copy does not exist: AppKit draws and the pixels are
+/// already where they need to be.
+fn cg_context_for(st: &mut WindowState) -> Object {
+    if !st.context.is_null() {
+        return st.context;
+    }
+    if !ensure_backing(st) {
+        return std::ptr::null_mut();
+    }
+    unsafe {
+        let surface_cls = objc::objc_getClass(cstr!("O2Surface"));
+        let context_cls = objc::objc_getClass(cstr!("O2Context_builtin_FT"));
+        if surface_cls.is_null() || context_cls.is_null() {
+            println!("cider-wayland-window context=FAILED reason=no-Onyx2D-classes");
+            return std::ptr::null_mut();
+        }
+        let color_space = O2ColorSpaceCreateDeviceRGB();
+        let alloc = objc::sel_registerName(cstr!("alloc"));
+        let init_surface = objc::sel_registerName(cstr!(
+            "initWithBytes:width:height:bitsPerComponent:bytesPerRow:colorSpace:bitmapInfo:"
+        ));
+        let surface = objc::msg_send_surface_init(
+            objc::msg_send0(surface_cls, alloc),
+            init_surface,
+            st.pixels as *mut c_void,
+            st.buffer_w as usize,
+            st.buffer_h as usize,
+            8,
+            (st.buffer_w * 4) as usize,
+            color_space,
+            BITMAP_INFO,
+        );
+        O2ColorSpaceRelease(color_space);
+        if surface.is_null() {
+            println!("cider-wayland-window context=FAILED reason=no-surface-object");
+            return std::ptr::null_mut();
+        }
+        let init_context = objc::sel_registerName(cstr!("initWithSurface:flipped:"));
+        st.context = objc::msg_send_obj_bool(
+            objc::msg_send0(context_cls, alloc),
+            init_context,
+            surface,
+            objc::NO,
+        );
+        if st.context.is_null() {
+            println!("cider-wayland-window context=FAILED reason=no-context-object");
+        } else {
+            println!(
+                "cider-wayland-window context=ok number={} size={}x{}",
+                st.number, st.buffer_w, st.buffer_h
+            );
+        }
+        st.context
     }
 }
 
@@ -287,6 +424,7 @@ extern "C" fn invalidate(this: Object, _cmd: Sel) {
     if let Some(st) = unsafe { state(this) } {
         st.delegate = std::ptr::null_mut();
         st.mapped = false;
+        release_backing(st);
         unsafe {
             if !st.surface.is_null() {
                 wl::cider_wl_surface_attach(st.surface, std::ptr::null_mut(), 0, 0);
@@ -307,6 +445,13 @@ extern "C" fn sync_delegate_properties(this: Object, _cmd: Sel) {
 
 extern "C" fn cgl_context(_this: Object, _cmd: Sel) -> *mut c_void {
     std::ptr::null_mut()
+}
+
+extern "C" fn cg_context(this: Object, _cmd: Sel) -> Object {
+    match unsafe { state(this) } {
+        Some(st) => cg_context_for(st),
+        None => std::ptr::null_mut(),
+    }
 }
 
 extern "C" fn style_mask(this: Object, _cmd: Sel) -> usize {
@@ -351,9 +496,18 @@ extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
     let resized = frame.size.width != st.frame.size.width || frame.size.height != st.frame.size.height;
     st.frame = frame;
     if resized {
-        st.buffer = std::ptr::null_mut();
-        st.backing = None;
+        // THE CONTEXT DESCRIBES A SIZE, so it cannot outlive one. AppKit is told rather than left
+        // holding a context over a mapping that no longer exists, which is the same contract
+        // X11Window has through -invalidateContextWithNewSize:.
+        release_backing(st);
+        let delegate = st.delegate;
         present(st);
+        if !delegate.is_null() {
+            unsafe {
+                let sel = objc::sel_registerName(cstr!("platformWindowDidInvalidateCGContext:"));
+                objc::msg_send_obj(delegate, sel, this);
+            }
+        }
     }
 }
 
@@ -480,6 +634,7 @@ pub unsafe fn register() -> objc::Class {
         objc::MethodDef { sel: cstr!("invalidate"), types: cstr!("v@:"), imp: invalidate as *const c_void },
         objc::MethodDef { sel: cstr!("syncDelegateProperties"), types: cstr!("v@:"), imp: sync_delegate_properties as *const c_void },
         objc::MethodDef { sel: cstr!("cglContext"), types: cstr!("^v@:"), imp: cgl_context as *const c_void },
+        objc::MethodDef { sel: cstr!("cgContext"), types: cstr!("@@:"), imp: cg_context as *const c_void },
         objc::MethodDef { sel: cstr!("styleMask"), types: cstr!("Q@:"), imp: style_mask as *const c_void },
         objc::MethodDef { sel: cstr!("setStyleMask:"), types: cstr!("v@:Q"), imp: set_style_mask as *const c_void },
         objc::MethodDef { sel: cstr!("setLevel:"), types: cstr!("v@:i"), imp: set_level as *const c_void },
