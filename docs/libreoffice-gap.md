@@ -224,6 +224,35 @@ CFDictionaries of attributes, which is close to what they are on macOS and cheap
 CFRuntime class. The font data itself can come from fontconfig, which this fork already uses for
 the AppKit font methods and which answered 380 families there.
 
+## THE COREFOUNDATION PIN HASH: DO NOT UPDATE IT, tested 2026-08-13
+
+`buck-src.nu` cannot re-materialize `vendor/pins/corefoundation`: the recorded hash no longer
+matches what the fetcher produces. The obvious response is to record the new hash. **That would
+silently delete a submodule.**
+
+Tested rather than assumed: the tree was snapshotted, the hash set to the value the fetcher
+reported, the pin re-materialized, and the result diffed against the snapshot. The new tree is
+missing the ENTIRE `submodules/swift-corelibs-foundation` directory, all 22 entries of it.
+
+The cause is visible in `.gitmodules`:
+
+    [submodule "submodules/swift-corelibs-foundation"]
+        url = ../darling-swift-corelibs-foundation.git
+
+**The URL is RELATIVE**, so it resolves against however the parent was cloned, and the fetcher is
+no longer resolving it. The target repository is alive (`darlinghq/darling-swift-corelibs-foundation`
+answers 200), so nothing upstream disappeared; the fetch is what changed.
+
+So the hash is correct and the FETCH is broken. Recording the new hash would bless a deficient
+tree, which is exactly the failure mode a pinned hash exists to prevent.
+
+**The three CoreFoundation patches are therefore applied to the working tree by hand.** They are
+committed under `vendor/patches/corefoundation/` and apply cleanly with `patch -p1`, but a fresh
+checkout will not have them until this is settled. Fixing it properly means pinning the submodule
+explicitly instead of relying on relative-URL resolution, which is a change to the pin manifest
+and has its own blast radius (entries are never inert, and pins collide by basename), so it is
+left for a decision rather than taken here.
+
 ## What this says about the shape of the remaining work
 
 None of this is Wayland. The display backend is not what stands between this fork and a real
