@@ -25,7 +25,18 @@
 
       systems = [ "x86_64-linux" ];
 
-      pname = "cider";
+      # NOT "cider", AND THE REASON IS A NAME COLLISION IN NIXPKGS. flakelight resolves
+      # pkgs.${pname}, and nixpkgs already has a package called `cider`, an unrelated Apple Music
+      # client, which is marked BROKEN. That made `nix develop` fail outright with
+      #   error: Refusing to evaluate package cider-1.6.3 ... because it has broken
+      # which is the command the README gives developers as the way in. The trace names no file
+      # of ours, which is what made it hard to find; changing this one string fixes it, and
+      # renaming packages.cider does NOT, so it is pname specifically.
+      #
+      # NOTHING USER FACING CHANGES: the product is still `nix build .#cider`, the package is
+      # still named cider (nix/buck2-package.nix passes name), and this string is only what
+      # flakelight uses for its own defaults.
+      pname = "cider-nix";
 
       # Disable builtin formatters — the repo has 100+ submodules with
       # broken symlinks when not checked out, which causes the formatting
