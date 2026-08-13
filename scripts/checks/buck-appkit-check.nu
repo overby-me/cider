@@ -1,8 +1,8 @@
 #!/usr/bin/env nu
-# Run an AppKit program inside the buck2-built Darling, against a real X server.
+# Run an AppKit program inside the buck2-built Cider, against a real Wayland compositor.
 #
 # The GUI cone -- AppKit, cocotron, CoreGraphics, Onyx2D and the sixteen src/linux/native stubs
-# that forward to the host's X11, cairo and OpenGL -- is the largest part of the port that
+# that forward to the host's Wayland, cairo and OpenGL -- is the largest part of the port that
 # links cleanly, exports the right symbols and has never executed an instruction. This runs
 # tests/buck2/gui/appkit_probe.m, which brings NSApplication up, opens an NSWindow and
 # pumps one event, printing at each step so a first run says how far it got rather than
@@ -17,9 +17,17 @@
 # gen-install-from-manifests.py now reports every such collision and keeps the real
 # implementation.
 #
-# It supplies its OWN Xvfb rather than borrowing $DISPLAY: a probe that draws on the
-# developer's desktop is a probe nobody runs twice, and a headless server makes the check
-# usable from CI. Xephyr is fine too if you want to watch it.
+# WAYLAND, NOT X11, since 2026-08-13. This gate ran against Xvfb through the cocotron X11
+# backend, which is being removed; it now supplies its own headless weston and sets
+# CIDER_WAYLAND_BACKEND, so what it exercises is NSDisplayWayland and CGWindowWayland.
+#
+# --renderer=pixman IS NOT OPTIONAL. weston headless defaults to a no-op renderer that composites
+# nothing, and against it a perfectly correct client reports pixels that never arrive. That cost
+# an afternoon once and it is the reason this flag is written out rather than left to a default.
+#
+# It supplies its OWN compositor rather than borrowing $WAYLAND_DISPLAY: a probe that draws on the
+# developer's desktop is a probe nobody runs twice, and a headless compositor makes the check
+# usable from CI.
 #
 # Usage:  scripts/checks/buck-appkit-check.nu [<scratch dir>]
 #
@@ -59,8 +67,8 @@ def main [scratch?: string] {
         say "missing buck2 -- run inside `nix develop`"
         exit 2
     }
-    if (which Xvfb | is-empty) {
-        say "missing Xvfb -- the GUI cone needs an X server to talk to"
+    if (which weston | is-empty) {
+        say "missing weston -- the GUI cone needs a compositor to talk to"
         exit 2
     }
 
@@ -95,25 +103,34 @@ def main [scratch?: string] {
     ^cp $bin $"($rt)/libexec/cider/usr/bin/appkit_probe"
     ^chmod +x $"($rt)/libexec/cider/usr/bin/appkit_probe"
 
-    # A display number nobody else is on. :0 and the developer's own session are left alone.
-    # random int rather than bash RANDOM, and the range is the same.
-    let disp = $":(90 + (random int 0..7))"
-    say $"== starting Xvfb on ($disp) =="
+    # A SHALLOW SOCKET PATH, and it is not a preference: a unix socket path caps near 108 bytes,
+    # and the first compositor prototype put its runtime dir under the session scratchpad and died
+    # with "failed to add socket: File name too long".
+    let xdg = $"($root)/wl"
+    let sock = "cider-wl"
+    ^rm -rf $xdg
+    mkdir $xdg
+    ^chmod 700 $xdg
+
+    say "== starting weston, headless =="
     # job spawn, because nushell has no & : the job is killed at the end rather than by a trap.
     # One line: a redirection cannot start a continuation line, unlike a flag. On its own line
     # nushell reports "redirecting nothing".
-    let xvfb = (job spawn { do -i { ^Xvfb $disp -screen 0 1024x768x24 -nolisten tcp out+err> /dev/null } })
-    let sock = $"/tmp/.X11-unix/X($disp | str substring 1..)"
-    # Xvfb takes a moment to create the socket, and connecting before it exists looks exactly
-    # like "cannot open display", which is the failure this probe is trying to distinguish.
-    mut up = false
-    for _ in 1..50 {
-        if ($sock | path exists) { $up = true; break }
+    let weston = (job spawn {
+        with-env {XDG_RUNTIME_DIR: $xdg} {
+            do -i { ^weston --backend=headless --renderer=pixman --socket=cider-wl --width=1024 --height=768 out+err> $"($root)/weston.log" }
+        }
+    })
+    # The socket appears a moment after the process does, and connecting before it exists looks
+    # exactly like "no compositor", which is the failure this probe is trying to distinguish.
+    mut waited = 0
+    while (not ($"($xdg)/($sock)" | path exists)) and $waited < 50 {
         sleep 100ms
+        $waited = $waited + 1
     }
-    if not $up {
-        say $"Xvfb did not come up on ($disp)"
-        do -i { job kill $xvfb }
+    if not ($"($xdg)/($sock)" | path exists) {
+        say "weston never created its socket"
+        do -i { job kill $weston }
         exit 1
     }
 
@@ -132,7 +149,7 @@ def main [scratch?: string] {
     )
     if ($elf_dirs | is-empty) {
         say "no cider.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.nu"
-        do -i { job kill $xvfb }
+        do -i { job kill $weston }
         exit 2
     }
 
@@ -145,21 +162,47 @@ def main [scratch?: string] {
         DARLING_NO_LAUNCHD: "1"
         DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
         DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
-        DISPLAY: $disp
+        XDG_RUNTIME_DIR: $xdg
+        WAYLAND_DISPLAY: $sock
+        # WITHOUT THIS THE BACKEND DECLINES. NSDisplayWayland -init returns nil unless it is set,
+        # so that a prefix carrying the bundle behaves exactly as before until asked.
+        CIDER_WAYLAND_BACKEND: "1"
     } {
         do -i { ^timeout 180 $"($rt)/bin/cider" shell /usr/bin/appkit_probe out+err> $log }
     }
     let out = (open --raw $log | str trim --right --char "\n")
     rm -f $log
-    do -i { job kill $xvfb }
+    do -i { job kill $weston }
     print $out
 
+    # THE WAYLAND MARKERS ARE CHECKED SEPARATELY from the AppKit ones, because the probe can
+    # succeed against a backend that is not this one: X11 printed APPKIT_PROBE_OK too. These say
+    # the window was a real xdg_toplevel with a context over shm pages, which is what distinguishes
+    # a pass from a pass by the wrong route.
+    mut wl_gaps = 0
+    for m in [
+        ["cider-wayland-appkit init=ok" "the Wayland display backend was selected and connected"]
+        ["cider-wayland-window create=ok" "an xdg_toplevel was created and configured for the NSWindow"]
+        ["cider-wayland-window context=ok" "an O2Context was built over the shm mapping"]
+        ["cider-wayland-window mapped=yes" "the buffer was attached and committed"]
+    ] {
+        if ($out | str contains ($m | get 0)) {
+            say $"  ok: ($m | get 1)"
+        } else {
+            say $"  MISSING: ($m | get 1)"
+            $wl_gaps = $wl_gaps + 1
+        }
+    }
+
     # Graded, because the interesting outcomes are the partial ones: reaching NSApplication
-    # proves the cone loads and the X connection opened, and reaching the window proves
-    # cocotron's backend built a real drawable.
-    if ($out | str contains "APPKIT_PROBE_OK") {
-        say "PASS: AppKit brought up an app, opened a window and pumped the run loop"
+    # proves the cone loads and the compositor connection opened, and reaching the window proves
+    # the backend built a real surface.
+    if ($out | str contains "APPKIT_PROBE_OK") and $wl_gaps == 0 {
+        say "PASS: AppKit brought up an app, opened a Wayland window, drew into it and pumped the run loop"
         exit 0
+    } else if ($out | str contains "APPKIT_PROBE_OK") {
+        say $"PARTIAL: the probe passed but ($wl_gaps) Wayland marker\(s) were missing, so it did not go through this backend"
+        exit 3
     } else if ($out | str contains "APPKIT_PROBE ordered-front") {
         say "PARTIAL: the window was created and ordered front, but the event pump did not finish"
         exit 3
