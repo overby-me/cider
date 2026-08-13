@@ -71,6 +71,18 @@ struct xdg_toplevel *cider_xdg_surface_get_toplevel(struct xdg_surface *surface)
 	return xdg_surface_get_toplevel(surface);
 }
 
+struct wl_output *cider_wl_registry_bind_output(struct wl_registry *registry, uint32_t name,
+                                                uint32_t version)
+{
+	return wl_registry_bind(registry, name, &wl_output_interface, version);
+}
+
+int cider_wl_output_add_listener(struct wl_output *output,
+                                 const struct wl_output_listener *listener, void *data)
+{
+	return wl_output_add_listener(output, listener, data);
+}
+
 int cider_xdg_toplevel_add_listener(struct xdg_toplevel *toplevel,
                                     const struct xdg_toplevel_listener *listener, void *data)
 {

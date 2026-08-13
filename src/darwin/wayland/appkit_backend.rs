@@ -98,10 +98,9 @@ extern "C" fn display_new_window(_this: Object, _cmd: Sel, delegate: Object) -> 
 
 /// -screens, the first abstract method AppKit demands.
 ///
-/// PROVISIONAL GEOMETRY, and it is marked as such rather than quietly wrong: the compositor knows
-/// the real size and wl_output reports it, but that needs a listener and this rung is about
-/// getting past the abstract method. A wrong size here shows up as a window of the wrong size,
-/// which is visible; a missing method shows up as a terminated process, which is not progress.
+/// THE SIZE COMES FROM wl_output NOW, and the log line says which source it used. The constant
+/// remains as a fallback because wl_output is optional: a compositor can advertise none and still
+/// open windows, and in that case the answer really is a guess and says so.
 extern "C" fn display_screens(_this: Object, _cmd: Sel) -> Object {
     unsafe {
         let screen_cls = objc::objc_getClass(cstr!("NSScreen"));
@@ -110,7 +109,13 @@ extern "C" fn display_screens(_this: Object, _cmd: Sel) -> Object {
             println!("cider-wayland-appkit screens=FAILED reason=no-NSScreen-or-NSArray");
             return std::ptr::null_mut();
         }
-        let frame = NsRect::new(0.0, 0.0, 1024.0, 768.0);
+        // The compositor's own answer where there is one. The fallback stays because wl_output is
+        // optional and a window can be opened without it.
+        let (width, height, source) = match session::output_size() {
+            Some((w, h)) => (w, h, "wl_output"),
+            None => (1024.0, 768.0, "provisional"),
+        };
+        let frame = NsRect::new(0.0, 0.0, width, height);
         let alloc = objc::sel_registerName(cstr!("alloc"));
         let init2 = objc::sel_registerName(cstr!("initWithFrame:visibleFrame:"));
         let screen = objc::msg_send0(screen_cls, alloc);
@@ -122,7 +127,10 @@ extern "C" fn display_screens(_this: Object, _cmd: Sel) -> Object {
         let with_objs = objc::sel_registerName(cstr!("arrayWithObjects:count:"));
         let one = [screen];
         let array = objc::msg_send_ptr_len(array_cls, with_objs, one.as_ptr(), 1);
-        println!("cider-wayland-appkit screens=1 frame=1024x768 provisional=yes");
+        println!(
+            "cider-wayland-appkit screens=1 frame={}x{} source={source}",
+            width as i32, height as i32
+        );
         array
     }
 }

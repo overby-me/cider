@@ -23,6 +23,7 @@ pub enum XdgToplevel {}
 pub enum WlShmPool {}
 pub enum WlBuffer {}
 pub enum WlCallback {}
+pub enum WlOutput {}
 
 /// libwayland's intrusive list head: two pointers, and wl_list_init makes both point at it.
 #[repr(C)]
@@ -65,6 +66,8 @@ unsafe extern "C" {
     pub fn cider_xdg_surface_get_toplevel(s: *mut XdgSurface) -> *mut XdgToplevel;
     pub fn cider_xdg_toplevel_set_title(t: *mut XdgToplevel, title: *const c_char);
     pub fn cider_xdg_toplevel_add_listener(t: *mut XdgToplevel, l: *const XdgToplevelListener, data: *mut c_void) -> c_int;
+    pub fn cider_wl_registry_bind_output(r: *mut WlRegistry, name: u32, version: u32) -> *mut WlOutput;
+    pub fn cider_wl_output_add_listener(o: *mut WlOutput, l: *const WlOutputListener, data: *mut c_void) -> c_int;
 
     /// THE NON-BLOCKING PUMP. roundtrip is the wrong shape for an event loop: it waits for the
     /// server to answer a sync, so an application that pumps per iteration would block on every
@@ -149,7 +152,13 @@ impl Globals {
                 self.bound.xdg_version = version.min(1);
             }
             "wl_seat" => self.seat = true,
-            "wl_output" => self.output = true,
+            "wl_output" => {
+                self.output = true;
+                self.bound.output_name = name;
+                // Version 2 is where wl_output.done arrives, which is what says a burst of
+                // properties is complete. Below that the values are used as they come.
+                self.bound.output_version = version.min(2);
+            }
             _ => {}
         }
     }
@@ -184,6 +193,8 @@ pub struct Bound {
     pub shm_version: u32,
     pub xdg_name: u32,
     pub xdg_version: u32,
+    pub output_name: u32,
+    pub output_version: u32,
 }
 
 /// One callback: the compositor has finished with the buffer. That event is the only honest
@@ -220,3 +231,39 @@ pub struct XdgToplevelListener {
     pub wm_capabilities:
         extern "C" fn(data: *mut c_void, toplevel: *mut XdgToplevel, capabilities: *mut c_void),
 }
+
+/// SIX MEMBERS, for the same reason the toplevel listener has four: libwayland indexes this with
+/// the event opcode. name and description are version 4 and this binds version 2, so they cannot
+/// fire, and declaring them settles it rather than leaving a shorter struct to be read past.
+#[repr(C)]
+pub struct WlOutputListener {
+    pub geometry: extern "C" fn(
+        data: *mut c_void,
+        output: *mut WlOutput,
+        x: i32,
+        y: i32,
+        physical_width: i32,
+        physical_height: i32,
+        subpixel: i32,
+        make: *const c_char,
+        model: *const c_char,
+        transform: i32,
+    ),
+    pub mode: extern "C" fn(
+        data: *mut c_void,
+        output: *mut WlOutput,
+        flags: u32,
+        width: i32,
+        height: i32,
+        refresh: i32,
+    ),
+    pub done: extern "C" fn(data: *mut c_void, output: *mut WlOutput),
+    pub scale: extern "C" fn(data: *mut c_void, output: *mut WlOutput, factor: i32),
+    pub name: extern "C" fn(data: *mut c_void, output: *mut WlOutput, name: *const c_char),
+    pub description: extern "C" fn(data: *mut c_void, output: *mut WlOutput, description: *const c_char),
+}
+
+/// wl_output.mode flags. Only "current" matters: a compositor lists every mode it supports and
+/// exactly one of them is the one in use, so taking the last mode seen would pick an arbitrary
+/// resolution the screen is not actually running at.
+pub const WL_OUTPUT_MODE_CURRENT: u32 = 0x1;

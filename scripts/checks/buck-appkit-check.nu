@@ -118,7 +118,7 @@ def main [scratch?: string] {
     # nushell reports "redirecting nothing".
     let weston = (job spawn {
         with-env {XDG_RUNTIME_DIR: $xdg} {
-            do -i { ^weston --backend=headless --renderer=pixman --socket=cider-wl --width=1024 --height=768 out+err> $"($root)/weston.log" }
+            do -i { ^weston --backend=headless --renderer=pixman --socket=cider-wl --width=1280 --height=800 out+err> $"($root)/weston.log" }
         }
     })
     # The socket appears a moment after the process does, and connecting before it exists looks
@@ -175,6 +175,11 @@ def main [scratch?: string] {
     do -i { job kill $weston }
     print $out
 
+    # A SIZE THE FALLBACK CANNOT PRODUCE. The backend falls back to 1024x768 when wl_output says
+    # nothing, so a compositor at 1024x768 cannot tell the two apart: the right answer and the
+    # guess are the same number. weston is started at 1280x800 for exactly this reason, and the
+    # assertion is on the number rather than on the source= label the backend prints about itself.
+    #
     # THE WAYLAND MARKERS ARE CHECKED SEPARATELY from the AppKit ones, because the probe can
     # succeed against a backend that is not this one: X11 printed APPKIT_PROBE_OK too. These say
     # the window was a real xdg_toplevel with a context over shm pages, which is what distinguishes
@@ -190,6 +195,7 @@ def main [scratch?: string] {
         # window. This counts pixels that differ from the fill the backend wrote, in the same
         # mapping the compositor reads.
         ["cider-wayland-window pixels=drawn" "AppKit drawing reached the pages the compositor maps"]
+        ["screens=1 frame=1280x800 source=wl_output" "the screen size came from wl_output, not the built-in fallback"]
     ] {
         if ($out | str contains ($m | get 0)) {
             say $"  ok: ($m | get 1)"
