@@ -381,11 +381,22 @@ calls those broken. And the suite reported `ioclasscount` and `zprint` as not Ma
 build fine: the buck2 daemon had stale state, because **watchman does not descend into symlinks**
 and this move repointed 4,031 of them. Kill the daemon after a change like that.
 
-**VERIFIED:** `buck2 targets //...` resolves 10,853 targets EXIT 0; `nix eval` of the full prefix
-drvPath is EXIT 0, which rebuilds the graph and so exercises pin materialization, the BXL pass and
-every label; `scripts/buck-src-normalise-check.nu` passes all 11 expectations with its control
-still firing. A full prefix build against the moved tree was started at 01:24 and is the last
-outstanding check.
+**VERIFIED, ALL FOUR:**
+
+    buck2 targets //...                    10,853 targets, EXIT 0, no errors
+    nix eval of the full prefix drvPath    EXIT 0. Rebuilds the graph, so it exercises pin
+                                           materialization, the BXL pass and every label
+    nix build .#cider-buck2-prefix         EXIT 0. 7,296 derivations, zero errors, zero
+                                           staging failures, substituters off
+    scripts/buck-test.nu                   166 passed, 0 failed, with CIDER_GUEST_PARITY=1
+
+**ONE TRAP TO KNOW BEFORE RUNNING THAT SUITE.** It failed twice on the moved tree for reasons
+that were not the tree. `cider-src-normalise` comes from the dev shell, and a stale direnv cache
+kept serving the binary built BEFORE the move, which still had the old pin root compiled in; its
+own log gives it away by saying `buck-src:` where current sources say `vendor/src:`. And the
+buck2 daemon reported two binaries as not Mach-O until it was restarted, because watchman does
+not descend into symlinks and the move repointed 4,031 of them. Both are environment, not code,
+and both cost an hour.
 
 ---
 
