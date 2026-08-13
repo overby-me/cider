@@ -307,3 +307,48 @@ So on the AppKit side, AVAILABILITY IS EXPRESSED BY RETURNING nil FROM init. The
 
 This is also a defect to fix independently: either Versions/C should be Current, or the backends
 should install under Versions/A/Resources. Until then the CoreGraphics X11 backend is dead code.
+
+## What is ACTUALLY left, measured rather than estimated
+
+The earlier figure of 7,378 lines counted both X11 backends whole. Splitting them by what the
+work really is gives a much better number, and one decision worth taking deliberately.
+
+    X11Display.m        1545   of which 869 touch X11 and 486 do not
+    X11KeySymToUCS.m    1663   a keysym to Unicode TABLE
+    X11Window.m          730   the CGWindow subclass
+    X11Pasteboard.m      342
+    X11Cursor.m          123
+    X11SubWindow.m        57
+
+**THE 1,663 LINE TABLE DOES NOT GET PORTED AT ALL.** It maps X keysyms to Unicode by hand;
+xkbcommon returns UTF-8 directly, so the Wayland equivalent is closer to fifty lines than to
+sixteen hundred. That single fact removes more than a third of the apparent work.
+
+**31 OF THE 49 METHODS IN X11Display DO NOT TOUCH X11.** They are fontconfig enumeration,
+pasteboard, system colours, cursors and the dragging manager: display-agnostic code that happens
+to live in the X11 class. 486 lines of it.
+
+So the genuinely new work is roughly:
+
+    869   the display: connect, screens from wl_output, keyboard layout from xkbcommon
+    730   the window: xdg_toplevel and wl_shm, whose machinery is already proven by the probe
+    342   pasteboard, which is wl_data_device rather than X selections
+    123   cursor, which is wl_cursor
+     57   subsurfaces
+    ----
+   2121   lines of Rust, plus about a hundred for xkbcommon
+
+### THE DECISION: what to do with the 486 display-agnostic lines
+
+  A. PATCH COCOTRON to move them from X11Display into NSDisplay, the abstract base. Every backend
+     then inherits fonts, pasteboard, colours and cursors, and the Wayland backend implements only
+     the windowing methods. It is the smallest total change and it makes deleting X11 clean. The
+     cost is a patch to a vendored pin, which this repo deliberately avoids for FEATURES, though
+     this is a refactor rather than a feature.
+
+  B. REIMPLEMENT THEM IN RUST, which means fontconfig FFI, pasteboard and colour tables in the new
+     backend. No pin is touched and the backend is self-contained, at the price of writing 486
+     lines that already exist and work.
+
+  C. KEEP THE X11 BACKEND INSTALLED for those services only. Cheapest now, but it contradicts
+     Wayland-only and leaves the X libraries in the bridge.

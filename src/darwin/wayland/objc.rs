@@ -46,6 +46,49 @@ unsafe extern "C" {
     /// ordinary way to reach objc_msgSendSuper from Rust: the ABI for the no-extra-argument case
     /// is the same and a variadic declaration would be harder to call correctly.
     pub fn objc_msgSendSuper(sup: *mut ObjcSuper, sel: Sel) -> Object;
+
+    /// objc_msgSend IS DECLARED ONCE PER SIGNATURE, deliberately. It is a variadic symbol whose
+    /// real ABI is that of the method being called, so the only safe way to reach it from Rust is
+    /// a declaration that spells out the exact argument types of each call site. Aliasing them
+    /// with #[link_name] gives distinct Rust signatures over the same symbol.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send0(receiver: Object, sel: Sel) -> Object;
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_rect2(receiver: Object, sel: Sel, a: NsRect, b: NsRect) -> Object;
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_ptr_len(receiver: Object, sel: Sel, objs: *const Object, count: usize) -> Object;
+}
+
+/// AppKit geometry: two doubles of origin, two of size. repr(C) so the struct is passed the way
+/// the method expects rather than the way Rust would prefer.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct NsPoint {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct NsSize {
+    pub width: f64,
+    pub height: f64,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct NsRect {
+    pub origin: NsPoint,
+    pub size: NsSize,
+}
+
+impl NsRect {
+    pub fn new(x: f64, y: f64, width: f64, height: f64) -> Self {
+        NsRect {
+            origin: NsPoint { x, y },
+            size: NsSize { width, height },
+        }
+    }
 }
 
 /// The receiver plus the class to start the lookup from, which is what makes a super call a super
