@@ -6,10 +6,16 @@ load("//buck/rules:files.bzl", "export_file")
 # XtraceMig stubs include <xtrace/xtrace-mig-types.h>, and that header reaches back out
 # with #include "../../base.h" -- which only resolves if the staged copy has the same
 # shape, so the tree is staged from the package root with -I pointing at include/.
+# THE FARM ROOT IS AN -I ON PURPOSE, and it is the Nix endpoint that needs it. The staged tree
+# has base.h at its root and the mig types header under include/xtrace/, which reaches back with
+# #include "../../base.h". Under a plain buck2 build the farm root exists on disk either way, so
+# one -I was enough. The endpoint is different: cider-graph-dump records a staged tree PER -I
+# PATH, so with only include/ on the path the farm root was never captured and base.h did not
+# exist in the sandbox. Naming "." puts the root on the path, which makes the dump record it.
 cc_header_root(
     name = "xtrace_headers",
     headers = glob(["*.h", "include/xtrace/*.h"]),
-    include_subdirs = ["include"],
+    include_subdirs = ["include", "."],
     visibility = ["PUBLIC"],
 )
 
