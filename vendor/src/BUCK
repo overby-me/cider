@@ -56945,6 +56945,10 @@ darwin_dylib(
     ],
     siblings = [
         "//src/linux/native:FreeType_dylib",
+        # fontconfig, because font ENUMERATION needs to know which files exist and nothing else
+        # here does. The AppKit font methods already answer from the same source.
+        "//src/linux/native:fontconfig_dylib",
+
         "//vendor/src/objc4:objc_final",
         "//vendor/src:system_final",
         "//vendor/src:CoreGraphics_dylib",
