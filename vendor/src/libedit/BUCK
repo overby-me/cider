@@ -78,7 +78,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":edit_inc_libedit_src",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":edit_inc_libedit_local",
         ":edit_inc_libedit",
     ],
@@ -94,7 +94,7 @@ darwin_dylib(
         ":edit_obj",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: edit

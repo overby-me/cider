@@ -41,7 +41,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:notifymig_notify_ipc",
         ":system_notify_inc_libnotify",
     ],
@@ -83,7 +83,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":notifyutil_inc_libnotify",
     ],
     visibility = ["PUBLIC"],
@@ -130,7 +130,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:notifymig_notifyd_notify_ipc",
         "//vendor/src:notifydmig_notify",
         ":notifyd_inc_libnotify",

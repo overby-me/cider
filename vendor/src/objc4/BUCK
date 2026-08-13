@@ -90,7 +90,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":objc_inc_objc4_runtime",
     ],
     visibility = ["PUBLIC"],
@@ -121,7 +121,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":objc_inc_objc4_runtime",
     ],
     visibility = ["PUBLIC"],
@@ -146,7 +146,7 @@ darwin_dylib(
         ":objc_obj2",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 
@@ -166,7 +166,7 @@ darwin_dylib(
         "//vendor/src:system_dyld_firstpass",
         "//vendor/src:system_blocks_firstpass",
         "//vendor/src:unwind_firstpass",
-        "//darwin/libm:system_m_firstpass",
+        "//src/darwin/libm:system_m_firstpass",
         "//vendor/src:macho_firstpass",
         "//vendor/src/libplatform:platform_firstpass",
         "//vendor/src/xnu:system_kernel_firstpass",
@@ -187,7 +187,7 @@ darwin_dylib(
         "-Wl,-unexported_symbols_list": "unexported_symbols",
     },
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: objc dylibs
@@ -228,7 +228,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":objc-trampolines_inc_objc4_runtime",
     ],
     visibility = ["PUBLIC"],
@@ -262,7 +262,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":objc-trampolines_inc_objc4_runtime",
     ],
     visibility = ["PUBLIC"],

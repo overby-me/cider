@@ -206,7 +206,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_CoreFoundation",
         "//vendor/src:fw_Security",
         ":Ruby_inc_ruby_gen",
@@ -245,7 +245,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -344,7 +344,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_encdb_inc_ruby_gen",
         ":ruby_encdb_inc_ruby_ruby",
     ],
@@ -379,7 +379,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -478,7 +478,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_big5_inc_ruby_gen",
         ":ruby_big5_inc_ruby_ruby",
     ],
@@ -513,7 +513,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -612,7 +612,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_cp949_inc_ruby_gen",
         ":ruby_cp949_inc_ruby_ruby",
     ],
@@ -647,7 +647,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -746,7 +746,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_emacs_mule_inc_ruby_gen",
         ":ruby_emacs_mule_inc_ruby_ruby",
     ],
@@ -781,7 +781,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -880,7 +880,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_euc_jp_inc_ruby_gen",
         ":ruby_euc_jp_inc_ruby_ruby",
     ],
@@ -915,7 +915,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1014,7 +1014,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_euc_kr_inc_ruby_gen",
         ":ruby_euc_kr_inc_ruby_ruby",
     ],
@@ -1049,7 +1049,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1148,7 +1148,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_euc_tw_inc_ruby_gen",
         ":ruby_euc_tw_inc_ruby_ruby",
     ],
@@ -1183,7 +1183,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1282,7 +1282,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_gb2312_inc_ruby_gen",
         ":ruby_gb2312_inc_ruby_ruby",
     ],
@@ -1317,7 +1317,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1416,7 +1416,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_gb18030_inc_ruby_gen",
         ":ruby_gb18030_inc_ruby_ruby",
     ],
@@ -1451,7 +1451,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1550,7 +1550,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_gbk_inc_ruby_gen",
         ":ruby_gbk_inc_ruby_ruby",
     ],
@@ -1585,7 +1585,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1684,7 +1684,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_1_inc_ruby_gen",
         ":ruby_iso_8859_1_inc_ruby_ruby",
     ],
@@ -1719,7 +1719,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1818,7 +1818,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_2_inc_ruby_gen",
         ":ruby_iso_8859_2_inc_ruby_ruby",
     ],
@@ -1853,7 +1853,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1952,7 +1952,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_3_inc_ruby_gen",
         ":ruby_iso_8859_3_inc_ruby_ruby",
     ],
@@ -1987,7 +1987,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2086,7 +2086,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_4_inc_ruby_gen",
         ":ruby_iso_8859_4_inc_ruby_ruby",
     ],
@@ -2121,7 +2121,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2220,7 +2220,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_5_inc_ruby_gen",
         ":ruby_iso_8859_5_inc_ruby_ruby",
     ],
@@ -2255,7 +2255,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2354,7 +2354,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_6_inc_ruby_gen",
         ":ruby_iso_8859_6_inc_ruby_ruby",
     ],
@@ -2389,7 +2389,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2488,7 +2488,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_7_inc_ruby_gen",
         ":ruby_iso_8859_7_inc_ruby_ruby",
     ],
@@ -2523,7 +2523,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2622,7 +2622,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_8_inc_ruby_gen",
         ":ruby_iso_8859_8_inc_ruby_ruby",
     ],
@@ -2657,7 +2657,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2756,7 +2756,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_9_inc_ruby_gen",
         ":ruby_iso_8859_9_inc_ruby_ruby",
     ],
@@ -2791,7 +2791,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2890,7 +2890,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_10_inc_ruby_gen",
         ":ruby_iso_8859_10_inc_ruby_ruby",
     ],
@@ -2925,7 +2925,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3024,7 +3024,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_11_inc_ruby_gen",
         ":ruby_iso_8859_11_inc_ruby_ruby",
     ],
@@ -3059,7 +3059,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3158,7 +3158,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_13_inc_ruby_gen",
         ":ruby_iso_8859_13_inc_ruby_ruby",
     ],
@@ -3193,7 +3193,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3292,7 +3292,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_14_inc_ruby_gen",
         ":ruby_iso_8859_14_inc_ruby_ruby",
     ],
@@ -3327,7 +3327,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3426,7 +3426,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_15_inc_ruby_gen",
         ":ruby_iso_8859_15_inc_ruby_ruby",
     ],
@@ -3461,7 +3461,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3560,7 +3560,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso_8859_16_inc_ruby_gen",
         ":ruby_iso_8859_16_inc_ruby_ruby",
     ],
@@ -3595,7 +3595,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3694,7 +3694,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_koi8_r_inc_ruby_gen",
         ":ruby_koi8_r_inc_ruby_ruby",
     ],
@@ -3729,7 +3729,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3828,7 +3828,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_koi8_u_inc_ruby_gen",
         ":ruby_koi8_u_inc_ruby_ruby",
     ],
@@ -3863,7 +3863,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3962,7 +3962,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_shift_jis_inc_ruby_gen",
         ":ruby_shift_jis_inc_ruby_ruby",
     ],
@@ -3997,7 +3997,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4096,7 +4096,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_utf_16be_inc_ruby_gen",
         ":ruby_utf_16be_inc_ruby_ruby",
     ],
@@ -4131,7 +4131,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4230,7 +4230,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_utf_16le_inc_ruby_gen",
         ":ruby_utf_16le_inc_ruby_ruby",
     ],
@@ -4265,7 +4265,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4364,7 +4364,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_utf_32be_inc_ruby_gen",
         ":ruby_utf_32be_inc_ruby_ruby",
     ],
@@ -4399,7 +4399,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4498,7 +4498,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_utf_32le_inc_ruby_gen",
         ":ruby_utf_32le_inc_ruby_ruby",
     ],
@@ -4533,7 +4533,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4632,7 +4632,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_windows_31j_inc_ruby_gen",
         ":ruby_windows_31j_inc_ruby_ruby",
     ],
@@ -4667,7 +4667,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4766,7 +4766,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_windows_1251_inc_ruby_gen",
         ":ruby_windows_1251_inc_ruby_ruby",
     ],
@@ -4801,7 +4801,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4902,7 +4902,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_transdb_inc_ruby_gen",
         ":ruby_transdb_inc_ruby_ruby",
     ],
@@ -4937,7 +4937,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5038,7 +5038,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_big5-trans_inc_ruby_gen",
         ":ruby_big5-trans_inc_ruby_ruby",
     ],
@@ -5073,7 +5073,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5174,7 +5174,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_chinese_inc_ruby_gen",
         ":ruby_chinese_inc_ruby_ruby",
     ],
@@ -5209,7 +5209,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5310,7 +5310,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_emoji_inc_ruby_gen",
         ":ruby_emoji_inc_ruby_ruby",
     ],
@@ -5345,7 +5345,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5446,7 +5446,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_emoji_iso2022_kddi_inc_ruby_gen",
         ":ruby_emoji_iso2022_kddi_inc_ruby_ruby",
     ],
@@ -5481,7 +5481,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5582,7 +5582,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_emoji_sjis_docomo_inc_ruby_gen",
         ":ruby_emoji_sjis_docomo_inc_ruby_ruby",
     ],
@@ -5617,7 +5617,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5718,7 +5718,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_emoji_sjis_kddi_inc_ruby_gen",
         ":ruby_emoji_sjis_kddi_inc_ruby_ruby",
     ],
@@ -5753,7 +5753,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5854,7 +5854,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_emoji_sjis_softbank_inc_ruby_gen",
         ":ruby_emoji_sjis_softbank_inc_ruby_ruby",
     ],
@@ -5889,7 +5889,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5990,7 +5990,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_escape_inc_ruby_gen",
         ":ruby_escape_inc_ruby_ruby",
     ],
@@ -6025,7 +6025,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6126,7 +6126,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_gb18030-trans_inc_ruby_gen",
         ":ruby_gb18030-trans_inc_ruby_ruby",
     ],
@@ -6161,7 +6161,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6262,7 +6262,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_gbk-trans_inc_ruby_gen",
         ":ruby_gbk-trans_inc_ruby_ruby",
     ],
@@ -6297,7 +6297,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6398,7 +6398,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_iso2022_inc_ruby_gen",
         ":ruby_iso2022_inc_ruby_ruby",
     ],
@@ -6433,7 +6433,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6534,7 +6534,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_japanese_inc_ruby_gen",
         ":ruby_japanese_inc_ruby_ruby",
     ],
@@ -6569,7 +6569,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6670,7 +6670,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_japanese_euc_inc_ruby_gen",
         ":ruby_japanese_euc_inc_ruby_ruby",
     ],
@@ -6705,7 +6705,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6806,7 +6806,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_japanese_sjis_inc_ruby_gen",
         ":ruby_japanese_sjis_inc_ruby_ruby",
     ],
@@ -6841,7 +6841,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6942,7 +6942,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_korean_inc_ruby_gen",
         ":ruby_korean_inc_ruby_ruby",
     ],
@@ -6977,7 +6977,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7078,7 +7078,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_single_byte_inc_ruby_gen",
         ":ruby_single_byte_inc_ruby_ruby",
     ],
@@ -7113,7 +7113,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7214,7 +7214,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_utf8_mac_inc_ruby_gen",
         ":ruby_utf8_mac_inc_ruby_ruby",
     ],
@@ -7249,7 +7249,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7350,7 +7350,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_utf_16_32_inc_ruby_gen",
         ":ruby_utf_16_32_inc_ruby_ruby",
     ],
@@ -7385,7 +7385,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7481,7 +7481,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_bigdecimal_inc_ruby_gen",
         ":ruby_bigdecimal_inc_ruby_ruby",
     ],
@@ -7516,7 +7516,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7614,7 +7614,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_util_inc_ruby_gen",
         ":ruby_util_inc_ruby_ruby",
     ],
@@ -7649,7 +7649,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7745,7 +7745,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_continuation_inc_ruby_gen",
         ":ruby_continuation_inc_ruby_ruby",
     ],
@@ -7780,7 +7780,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7876,7 +7876,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_coverage_inc_ruby_gen",
         ":ruby_coverage_inc_ruby_ruby",
     ],
@@ -7911,7 +7911,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8010,7 +8010,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_date_core_inc_ruby_gen",
         ":ruby_date_core_inc_ruby_ruby",
     ],
@@ -8045,7 +8045,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8141,7 +8141,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_dbm_inc_ruby_gen",
         ":ruby_dbm_inc_ruby_ruby",
     ],
@@ -8176,7 +8176,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8272,7 +8272,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_digest_inc_ruby_gen",
         ":ruby_digest_inc_ruby_ruby",
     ],
@@ -8307,7 +8307,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8403,7 +8403,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_bubblebabble_inc_ruby_gen",
         ":ruby_bubblebabble_inc_ruby_ruby",
     ],
@@ -8438,7 +8438,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8538,7 +8538,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_md5_inc_ruby_gen",
         ":ruby_md5_inc_ruby_ruby",
     ],
@@ -8575,7 +8575,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8675,7 +8675,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_rmd160_inc_ruby_gen",
         ":ruby_rmd160_inc_ruby_ruby",
     ],
@@ -8712,7 +8712,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8812,7 +8812,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_sha1_inc_ruby_gen",
         ":ruby_sha1_inc_ruby_ruby",
     ],
@@ -8849,7 +8849,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8949,7 +8949,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_sha2_inc_ruby_gen",
         ":ruby_sha2_inc_ruby_ruby",
     ],
@@ -8986,7 +8986,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9082,7 +9082,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_etc_inc_ruby_gen",
         ":ruby_etc_inc_ruby_ruby",
     ],
@@ -9117,7 +9117,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9213,7 +9213,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_fcntl_inc_ruby_gen",
         ":ruby_fcntl_inc_ruby_ruby",
     ],
@@ -9248,7 +9248,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9344,7 +9344,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_fiber_inc_ruby_gen",
         ":ruby_fiber_inc_ruby_ruby",
     ],
@@ -9379,7 +9379,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9480,7 +9480,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_fiddle_inc_ruby_gen",
         ":ruby_fiddle_inc_ruby_ruby",
     ],
@@ -9517,7 +9517,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9613,7 +9613,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_console_inc_ruby_gen",
         ":ruby_console_inc_ruby_ruby",
     ],
@@ -9648,7 +9648,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9744,7 +9744,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_nonblock_inc_ruby_gen",
         ":ruby_nonblock_inc_ruby_ruby",
     ],
@@ -9779,7 +9779,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9875,7 +9875,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_wait_inc_ruby_gen",
         ":ruby_wait_inc_ruby_ruby",
     ],
@@ -9910,7 +9910,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -10006,7 +10006,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_generator_inc_ruby_gen",
         ":ruby_generator_inc_ruby_ruby",
     ],
@@ -10041,7 +10041,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -10137,7 +10137,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_parser_inc_ruby_gen",
         ":ruby_parser_inc_ruby_ruby",
     ],
@@ -10172,7 +10172,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -10268,7 +10268,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_nkf_inc_ruby_gen",
         ":ruby_nkf_inc_ruby_ruby",
     ],
@@ -10303,7 +10303,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -10401,7 +10401,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_objspace_inc_ruby_gen",
         ":ruby_objspace_inc_ruby_ruby",
     ],
@@ -10436,7 +10436,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -10563,7 +10563,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_openssl_inc_ruby_gen",
         ":ruby_openssl_inc_ruby_ruby",
     ],
@@ -10600,7 +10600,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -10696,7 +10696,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_pathname_inc_ruby_gen",
         ":ruby_pathname_inc_ruby_ruby",
     ],
@@ -10731,7 +10731,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -10843,7 +10843,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_psych_inc_ruby_gen",
         ":ruby_psych_inc_ruby_ruby",
     ],
@@ -10878,7 +10878,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -10974,7 +10974,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_pty_inc_ruby_gen",
         ":ruby_pty_inc_ruby_ruby",
     ],
@@ -11009,7 +11009,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -11105,7 +11105,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_cparse_inc_ruby_gen",
         ":ruby_cparse_inc_ruby_ruby",
     ],
@@ -11140,7 +11140,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -11237,7 +11237,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_sizeof_inc_ruby_gen",
         ":ruby_sizeof_inc_ruby_ruby",
     ],
@@ -11272,7 +11272,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -11368,7 +11368,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_readline_inc_ruby_gen",
         ":ruby_readline_inc_ruby_ruby",
     ],
@@ -11404,7 +11404,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -11500,7 +11500,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_ripper_inc_ruby_gen",
         ":ruby_ripper_inc_ruby_ruby",
     ],
@@ -11535,7 +11535,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -11632,7 +11632,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_sdbm_inc_ruby_gen",
         ":ruby_sdbm_inc_ruby_ruby",
     ],
@@ -11667,7 +11667,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -11777,7 +11777,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_socket_inc_ruby_gen",
         ":ruby_socket_inc_ruby_ruby",
     ],
@@ -11812,7 +11812,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -11908,7 +11908,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_stringio_inc_ruby_gen",
         ":ruby_stringio_inc_ruby_ruby",
     ],
@@ -11943,7 +11943,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -12039,7 +12039,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_strscan_inc_ruby_gen",
         ":ruby_strscan_inc_ruby_ruby",
     ],
@@ -12074,7 +12074,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -12170,7 +12170,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_syslog_inc_ruby_gen",
         ":ruby_syslog_inc_ruby_ruby",
     ],
@@ -12205,7 +12205,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -12301,8 +12301,8 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
-        "//linux/native:host_headers",
+        "//src/darwin:sdk_env",
+        "//src/linux/native:host_headers",
         ":ruby_zlib_inc_ruby_gen",
         ":ruby_zlib_inc_ruby_ruby",
     ],
@@ -12338,7 +12338,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -12427,7 +12427,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ruby_inc_ruby_gen",
         ":ruby_inc_ruby_ruby",
     ],
@@ -12458,7 +12458,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],

@@ -34,7 +34,7 @@ set -euo pipefail
 DARLING="${CIDER:-${DARLING:-cider}}"
 # Keep the prefix path short: the shellspawn Unix socket lives at
 # <prefix>/var/run/… and must fit sockaddr_un.sun_path (~108 chars).
-PREFIX="${DPREFIX:-/tmp/dh}"
+PREFIX="${CIDERPREFIX:-/tmp/dh}"
 RETRIES="${RETRIES:-1}"  # boot is reliable under the Rust daemon (#44); set RETRIES>1 to re-enable the old busy-spin retry
 
 while [ $# -gt 0 ]; do
@@ -62,7 +62,7 @@ for i in $(seq 1 "$RETRIES"); do
 	pkill -9 -x ciderd 2>/dev/null || true
 	pkill -9 -x mldr 2>/dev/null || true
 	sleep 1
-	out=$(DPREFIX="$PREFIX" timeout 150 "$DARLING" shell \
+	out=$(CIDERPREFIX="$PREFIX" timeout 150 "$DARLING" shell \
 		sh -c "echo $marker; exec \"$guestbin\" \"\$@\"" _ "$@" 2>&1) || true
 	if printf '%s\n' "$out" | grep -q "$marker"; then
 		# Strip the marker and Darling's non-fatal boot noise.

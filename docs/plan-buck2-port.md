@@ -128,7 +128,7 @@ correlation written up as a cause, and it is now disproved.** Two host tests, se
     (base64 --wrap 0; echo)` with stdin closed.
 
 What the fd tables show instead, from a working host run: the persistent shellspawn INIT has
-fd 1/2 on `ciderd.log` -- by design, `linux/launcher/src/main.rs:490` redirects the
+fd 1/2 on `ciderd.log` -- by design, `src/linux/launcher/src/main.rs:490` redirects the
 daemon's stdio there so a one-shot command does not pin the caller's stdout open forever --
 while the guest running the actual command gets the CALLER's fds passed to it. So
 `/ciderd.log` is what the init legitimately reports, and the VM log line is most
@@ -186,10 +186,10 @@ common is that the host build passes throughout.
 
 Three checks now hold the line, all verified to fail when the invariant is broken:
 `scripts/buck-host-includes.nu` (in `buck-test.nu`) requires every target the reference gives
-a host `-I` to declare `//linux/native:host_headers`; `scripts/buck-nix-includes-check.nu`
+a host `-I` to declare `//src/linux/native:host_headers`; `scripts/checks/buck-nix-includes-check.nu`
 (standalone) compiles those targets with clang-unwrapped and ONLY the dirs the Nix derivation
 declares, which is the divergence that hid two of the four; and
-`scripts/buck-lowering-stage-check.nu` reads the generated staging script, which is how a
+`scripts/checks/buck-lowering-stage-check.nu` reads the generated staging script, which is how a
 staging bug becomes a five second answer rather than a 90 minute one.
 
 **The lesson worth keeping**: each of these cost about an hour to find in a Nix build and

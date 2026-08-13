@@ -270,7 +270,7 @@
 
   # RUST, NOT PYTHON, since #99, and the reason python3 has left the producer's PATH: the fixup
   # was the only thing using it there. Built by nix rather than by buck2, like every other tool
-  # in linux/buildtools.
+  # in src/linux/buildtools.
   specFixup = pkgs.callPackage ./dyn-actions-spec-fixup.nix { };
 
   producerOf = n:

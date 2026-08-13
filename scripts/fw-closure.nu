@@ -38,10 +38,10 @@ const GEN = "buck/generated"
 const SOURCES = [["file" "pkg" "prefix"];
   ["sdk_framework_buck_src.bzl" "vendor/src" "fw_"]
   ["sdk_framework_private_buck_src.bzl" "vendor/src" "fwp_"]
-  ["sdk_framework_darwin_frameworks.bzl" "darwin/frameworks" "fw_"]
-  ["sdk_framework_private_darwin_private_frameworks.bzl" "darwin/private-frameworks" "fwp_"]
-  ["sdk_framework_darwin_Developer.bzl" "darwin/Developer" "fw_"]
-  ["sdk_framework_src_CoreAudio.bzl" "darwin/CoreAudio" "fw_"]]
+  ["sdk_framework_darwin_frameworks.bzl" "src/darwin/frameworks" "fw_"]
+  ["sdk_framework_private_darwin_private_frameworks.bzl" "src/darwin/private-frameworks" "fwp_"]
+  ["sdk_framework_darwin_Developer.bzl" "src/darwin/Developer" "fw_"]
+  ["sdk_framework_src_CoreAudio.bzl" "src/darwin/CoreAudio" "fw_"]]
 
 def say-err [msg: string] { print -e $msg }
 

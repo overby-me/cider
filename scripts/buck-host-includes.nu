@@ -16,7 +16,7 @@
 #
 # That is the class of bug this checks for, statically and in a second, rather than waiting an
 # hour for a Nix build to fail. For every reference compile carrying an absolute host -I, the
-# port's target must depend on //linux/native:host_headers, which exports -I for each entry of
+# port's target must depend on //src/linux/native:host_headers, which exports -I for each entry of
 # cider.host_include_dirs.
 #
 # Usage:
@@ -41,7 +41,7 @@
 # -I and runs to whitespace. `parse --regex` per line recompiles per call, which cost
 # buck-codegen-coverage 6.5 seconds before it was measured.
 
-const HOST_HEADERS = "//linux/native:host_headers"
+const HOST_HEADERS = "//src/linux/native:host_headers"
 const GRAPH = "result-graph-ref/build.ninja"
 const EXTRA_DEPS = "buck/generated/extra-deps.json"
 

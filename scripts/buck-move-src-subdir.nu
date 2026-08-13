@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 
-# MOVE A GROUP OF src/ SUBDIRECTORIES TO darwin/ OR linux/, AND REPOINT EVERY REFERENCE TO THEM.
+# MOVE A GROUP OF src/ SUBDIRECTORIES TO src/darwin/ OR src/linux/, AND REPOINT EVERY REFERENCE TO THEM.
 # Task #87 stage 1.
 #
 # SAFE BY DEFAULT. This prints what it would do and changes nothing unless --apply is passed.

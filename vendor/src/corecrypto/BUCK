@@ -87,7 +87,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":corecrypto_inc_corecrypto_include",
     ],
     visibility = ["PUBLIC"],
@@ -110,7 +110,7 @@ darwin_dylib(
         ":corecrypto_obj",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 
@@ -139,7 +139,7 @@ darwin_dylib(
         "-Wl,-exported_symbols_list": "scripts/exported-symbols.exp",
     },
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: corecrypto dylibs

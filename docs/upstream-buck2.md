@@ -97,7 +97,7 @@ discovery are unimplemented upstream anyway. It covers the consumer path this re
 Measured first-hand on 2026-08-12 against buck2 unstable-2026-04-15, the nixpkgs binary this repo
 builds with, using one command:
 
-    buck2 aquery --output-all-attributes --json 'deps(//darwin/libsimple:libsimple_ciderd)'
+    buck2 aquery --output-all-attributes --json 'deps(//src/darwin/libsimple:libsimple_ciderd)'
 
 These are recorded because they explain why the integration is shaped the way it is, not as a
 plan to file anything.
@@ -105,13 +105,13 @@ plan to file anything.
 **`cmd` comes back as a JSON string, not an array.** The argv is joined with `", "` inside
 brackets, which is a debug rendering of a list:
 
-    "cmd": "[clang, -DLIBSIMPLE_LINUX=1, -Ibuck-out/v2/art/root/.../libsimple_ciderd__include, -c, darwin/libsimple/src/lock.c, -o, buck-out/...]"
+    "cmd": "[clang, -DLIBSIMPLE_LINUX=1, -Ibuck-out/v2/art/root/.../libsimple_ciderd__include, -c, src/darwin/libsimple/src/lock.c, -o, buck-out/...]"
 
 Asking for JSON therefore buys nothing over the plain output, and splitting it back apart is
 sound only while no argument contains the separator. One did: perl's `versions.h` passed the C
 initializer `"5.18", "5.28",` as ONE argument and it came back as TWO. The signature of the class
 is that **buck2 itself built it correctly the whole time**; only a consumer that round-trips
-through the rendering ever saw a different command. `scripts/buck-argv-roundtrip-check.nu` guards
+through the rendering ever saw a different command. `scripts/checks/buck-argv-roundtrip-check.nu` guards
 both halves of that assumption, and one half needs no build.
 
 **No action states its inputs or outputs.** On this release the fields are not empty, they are

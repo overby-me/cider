@@ -145,7 +145,7 @@ int main(int argc, const char **argv) {
 	fflush(stdout);
 
 	// AudioFile first, and it is EXPECTED to report unimpErr: every entry point in
-	// darwin/CoreAudio/AudioToolbox/AudioFile.cpp is literally `return unimpErr`, so Darling
+	// src/darwin/CoreAudio/AudioToolbox/AudioFile.cpp is literally `return unimpErr`, so Darling
 	// has no decode path at this layer at all. Reported rather than skipped, because the
 	// day someone implements it this is the line that changes.
 	int stubbed = 0;

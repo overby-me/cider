@@ -20,7 +20,7 @@
 {
   pkgs,
   graph,
-  # The project, for the SOURCE paths an argv names (darwin/libsimple/src/lock.c and such).
+  # The project, for the SOURCE paths an argv names (src/darwin/libsimple/src/lock.c and such).
   # FILTERED, the same way the graph derivation filters its own source. Unfiltered, every
   # lowered target took the whole project as an input, so editing a line of plan/ or of the
   # Nix that CONSUMES this graph invalidated all 259 derivations and rebuilt the port. For an
@@ -210,7 +210,7 @@
   # portable: the same full.json serves any consumer, and this one fills it from its own inputs.
   #
   # PROVEN BYTE FOR BYTE BEFORE THIS SWITCHED OVER, which is why it can be trusted at all:
-  # scripts/buck-script-check.nu hashes the substituted text against the builderScript this
+  # scripts/checks/buck-script-check.nu hashes the substituted text against the builderScript this
   # file used to assemble, for every label, and reads full.json out of the STORE rather than
   # re-rendering it. 1,474 of 1,474 identical, with three controls firing.
   fullScripts = builtins.fromJSON (
@@ -218,7 +218,7 @@
   );
 
   # #66. WHAT EACH GROUP NEEDS, ALSO PRECOMPUTED. needsOf is still below, because it is the
-  # definition this file is checked against and scripts/buck-needs-check.nu compares the two,
+  # definition this file is checked against and scripts/checks/buck-needs-check.nu compares the two,
   # but the BUILD PATH reads this instead: it was 3.3 s of a 12 s evaluation, the largest
   # single chunk, and it is a function of the graph alone.
   #
@@ -232,7 +232,7 @@
 
   needsFor = label:
     precomputedNeeds.${specName label}
-    or (throw "buck2 lower: no precomputed needs for ${label} (looked for ${specName label} in ${graph.specs}/needs.json). Rebuild the graph derivation; scripts/buck-needs-check.nu compares this against needsOf.");
+    or (throw "buck2 lower: no precomputed needs for ${label} (looked for ${specName label} in ${graph.specs}/needs.json). Rebuild the graph derivation; scripts/checks/buck-needs-check.nu compares this against needsOf.");
 
   # MIRRORS dep_var IN cider-graph-specs, composed after specName. That one maps every
   # NON-ALPHANUMERIC character to an underscore, and specName has already restricted the
@@ -290,7 +290,7 @@
   # the pins kept the shared path alive.
   #
   # The per-pin stores are byte identical to what the assembled tree holds, by NAR hash for
-  # all 147, and scripts/buck-pin-store-check.nu is that check. The fallback is kept for a
+  # all 147, and scripts/checks/buck-pin-store-check.nu is that check. The fallback is kept for a
   # caller that passes a ciderSrc without the attribute.
   # THROUGH A FARM, not 147 paths per script, and that distinction is measured. Naming each
   # pin store directly gives every staging script 147 inputs, and with source groups there is
@@ -360,7 +360,7 @@
   #      farm out as <farm>/<pin> rather than by sanitised name fixes every one of these,
   #      because the number of ../ from the link up to pins is preserved.
   #    7 leave pins entirely: 6 from bootstrap_cmds and libnotify into
-  #      darwin/Developer/Platforms/.../usr/include, and security -> ciderd/xnu-sys/
+  #      src/darwin/Developer/Platforms/.../usr/include, and security -> ciderd/xnu-sys/
   #      xnu, which is first-party vendored and not a pin at all. Those need rewriting to an
   #      absolute store path, the same treatment #54 needs for group escapes.
   #
@@ -370,7 +370,7 @@
   # PER PIN, NOT OUT OF THE ASSEMBLED TREE. This was "${ciderSrc}/${p}", and ciderSrc is
   # the whole project, so every staging script that named a pin embedded a path that moves on
   # ANY tracked edit. That is the last shared input in the grouped staging: with sourceGroups
-  # on and the groups mirrored, editing one .m in darwin/frameworks still rebuilt
+  # on and the groups mirrored, editing one .m in src/darwin/frameworks still rebuilt
   # buck2-stage-project-grouped and the target, 6 builders, because of this expression and
   # nothing else. The groups themselves were already unaffected.
   #
@@ -389,7 +389,7 @@
   # check could not fail. It regressed the DEFAULT endpoint too, since stageProject uses this
   # as well, and that endpoint had built green with a matching prefix hash before.
   #
-  # scripts/buck-pin-store-check.nu compares the stores by NAR HASH and passes, which is the
+  # scripts/checks/buck-pin-store-check.nu compares the stores by NAR HASH and passes, which is the
   # trap buck-escape-check.nu already documents: a NAR hash records a symlink TARGET as a
   # STRING, so two identical strings that resolve to different places look identical.
   # ALL PINS IN ONE MIRRORED TREE (#74), which is the only shape that works here.
@@ -397,7 +397,7 @@
   # A per-pin store cannot be planted as a directory symlink, because a pin's own relative link
   # can point at a SIBLING pin: vendor/pins/IOKitUser/darling/submodules/xnu is a link to
   # ../../../xnu/, and once a traversal crosses the plant link the kernel resolves that against
-  # the STORE, where there is no sibling. scripts/buck-escape-check.nu documents exactly this
+  # the STORE, where there is no sibling. scripts/checks/buck-escape-check.nu documents exactly this
   # case, and pointing pinPath at the per-pin stores broke the DEFAULT endpoint on
   # SecItemShimOSX_obj because stageProject uses pinPath too.
   #
@@ -415,7 +415,7 @@
   # moved. One shared moving input traded for another.
   #
   # The pins are frozen; only the escape destinations dragged the project back in, and they are
-  # few. darwin/Developer/Platforms is the SDK, and the rest are the non-pin pins
+  # few. src/darwin/Developer/Platforms is the SDK, and the rest are the non-pin pins
   # directories. Given their own paths, pinsTree moves only when the SDK or those directories do.
   # THE NARROWING APPLIES HERE AND ONLY HERE (#79). nonPinExternal has two consumers and they
   # want different things. This one is the set of escape DESTINATIONS copied into pinsTree, so
@@ -427,7 +427,7 @@
   # xnu-sys/xnu; the other 2 are internal to xnu-sys/pthread, which is in neither tree, so
   # nothing dangles.
   escapeRoots =
-    ["darwin/Developer/Platforms"] ++ map (r: escapeNarrow.${r} or r) nonPinExternal;
+    ["src/darwin/Developer/Platforms"] ++ map (r: escapeNarrow.${r} or r) nonPinExternal;
 
   # AN ESCAPE ROOT CAN BE A PIN NOW, AND THE pathExists GUARD BELOW HID THAT IN SILENCE.
   #
@@ -490,7 +490,7 @@
     # directory link to it dangles. Measured before this pass: 17 dangling against 6 in the
     # assembled tree, and all 11 extra were one class, links leaving pins altogether.
     # Eight are bootstrap_cmds/darling/include/{mach,machine,libkern,i386,sys/...} reaching into
-    # darwin/Developer/Platforms, and one is security/darling/submodules/xnu pointing at
+    # src/darwin/Developer/Platforms, and one is security/darling/submodules/xnu pointing at
     # vendor/pins/ciderd, which is a NON-PIN external and so is in no pin store.
     #
     # Resolved rather than listed, so a new escape is carried instead of failing a build weeks
@@ -839,7 +839,7 @@
   # passthru.tools for every label gives exactly ONE distinct 33-package set across all 1,474.
   #
   # Same shape as #94, where the staging derivation was computed 1,474 times for 65 distinct
-  # results. The value is unchanged, so scripts/buck-lowering-invariance-check.nu must report
+  # results. The value is unchanged, so scripts/checks/buck-lowering-invariance-check.nu must report
   # zero moved fingerprints, and that is the check this hoist is verified by.
   targetTools =
     [
@@ -893,9 +893,9 @@
   # splits the part that people actually edit so a target only depends on the groups it reads.
   #
   # MEASURED, which is what makes the split worth it: of 27,591 actions, 16,255 are pinned
-  # upstream code, and NOT ONE of them reads darwin/frameworks. The 1,326 pin targets that
-  # touch first-party files at all read only the SDK headers under darwin/Developer plus
-  # about ten stable compatibility headers -- darwin/basic-headers, darwin/sandbox,
+  # upstream code, and NOT ONE of them reads src/darwin/frameworks. The 1,326 pin targets that
+  # touch first-party files at all read only the SDK headers under src/darwin/Developer plus
+  # about ten stable compatibility headers -- src/darwin/basic-headers, src/darwin/sandbox,
   # src/libsysmon. So editing a framework should leave every pin target cached, and today it
   # rebuilds all of them.
   #
@@ -905,7 +905,7 @@
   # where the pins are PLANTED, so a group there (vendor/pins/ciderd is 1,720 files)
   # would fight the same symlink.
   #
-  # Three components, not two: darwin/frameworks alone is 17,223 files, so two would leave
+  # Three components, not two: src/darwin/frameworks alone is 17,223 files, so two would leave
   # every framework in one blob. Three gives 208 groups with none nested inside another,
   # plus 68 shallow files that belong to no group and travel individually.
   # WHICH GROUPS a target reads, precomputed. This used to read target-sources.json and work
@@ -959,21 +959,21 @@
   membersOf = lib.groupBy groupOfLabel (builtins.attrNames targetGroups);
 
   # THE SDK CANNOT BE DISCOVERED FROM AN ARGV, so it is a rule rather than a finding.
-  # //darwin:sdk_env contributes the include flags, and a dep contributes them at ANALYSIS
-  # time: the recorded compile for root//linux/server:dserver_fast_context is six tokens,
+  # //src/darwin:sdk_env contributes the include flags, and a dep contributes them at ANALYSIS
+  # time: the recorded compile for root//src/linux/server:dserver_fast_context is six tokens,
   # `clang -DDSERVER_FAST_CONTEXT=1 -c <src> -o <obj>`, with no -I and an empty env. So the
   # closure cannot see the SDK for such a target, and 1,265 of 2,339 targets list the SDK group
   # only because their generated argv happens to name it explicitly.
   #
   # Measured: with the coarse-pin union fixed, the endpoint went 90 root failures to 9, and
   # every one of the 9 was this, 10 os/log_private.h and 1 IOKit/IOReturn.h, both SDK headers
-  # under darwin/Developer/Platforms.
+  # under src/darwin/Developer/Platforms.
   #
   # Given to every target that COMPILES anything rather than to all of them, since a link or a
   # rust crate has no use for it. Cheap: the group is 44 files, 2,633 symlinks and 11 MB, and
   # it is a frozen vendored tree, so the coupling it adds costs a rebuild only when someone
   # edits the SDK itself.
-  sdkGroup = "darwin/Developer/Platforms";
+  sdkGroup = "src/darwin/Developer/Platforms";
 
   # AND THE FOUR pins DIRECTORIES THAT ARE NOT PINS. The SDK is nothing but links out
   # of itself, and some of them land here:
@@ -996,7 +996,7 @@
   # to something. Taking a whole directory is therefore free ONLY while that directory is
   # frozen, and one of these is not: vendor/pins/ciderd is where xnu-sys lives, which
   # is edited every increment. gate10 measured the cost of that: a change confined to
-  # linux/server and xnu-sys rebuilt 706 GUEST framework objects (AddressBook, AppleAccount,
+  # src/linux/server and xnu-sys rebuilt 706 GUEST framework objects (AddressBook, AppleAccount,
   # ApplicationServices ...), none of which use xnu-sys. nix-diff named the chain exactly:
   # buck2-AddressBook_obj -> buck2-stage-project -> cider-pins-tree -> cider-pin-escape-roots,
   # whose buildCommand copies cider-escape-src-external-ciderd.
@@ -1048,7 +1048,7 @@
   # NOW MEASURED, on .#cider-buck2-one, counting builders that RAN:
   #   baseline                    3 buck2 builders
   #   no-op                       0            <- the control can fail, so the test means something
-  #   one xnu-sys/src edit      6, and root//darwin/libsimple:libsimple_ciderd RECOMPILED
+  #   one xnu-sys/src edit      6, and root//src/darwin/libsimple:libsimple_ciderd RECOMPILED
   #                               src/lock.c, which has no business rebuilding for a xnu-sys edit
   # nix-diff named the single cause in buck2-stage-project-grouped, and it was neither the graph
   # nor the sources output, both of which were byte identical:
@@ -1078,7 +1078,7 @@
   # the only supplier. The way through is that the two consumers want different sets: EVERY
   # target needs the headers and the generator scripts, but only ciderd OWN targets need
   # xnu-sys/src. Checked before splitting: xnu-sys/src is 20 .c files and NO headers, and
-  # nothing outside ciderd references the path except two comments in linux/server. So
+  # nothing outside ciderd references the path except two comments in src/linux/server. So
   # every other target was staging 20 C files it cannot use and paying the whole endpoint for a
   # xnu-sys edit.
   #
@@ -1199,12 +1199,12 @@
       # directory is real and inside our own tree. Two steps, and the second one is not
       # optional:
       #   cp -Rsf --no-preserve=all is the fast bulk pass, C rather than shell, and it is why
-      #            this is not a per-file loop over 17,223 files for darwin/frameworks alone.
+      #            this is not a per-file loop over 17,223 files for src/darwin/frameworks alone.
       #            --no-preserve=all IS LOAD BEARING AND WAS NOT THERE FIRST. With -a (or any
       #            preserve at all) cp applies the source mode to the symlink it just created,
       #            and chmod FOLLOWS a symlink, so it walks back through the link and changes
       #            THE SOURCE. Caught because a scratch test left three tracked files at 755:
-      #            darwin/basic-headers/MacTypes.h and two CoreServices headers, all of them
+      #            src/darwin/basic-headers/MacTypes.h and two CoreServices headers, all of them
       #            targets of links. Against a group store the same call would try to chmod
       #            inside /nix/store. Measured: -a, -Rs and -rs all move a link target 644 to
       #            755; only --no-preserve=all leaves it alone.
@@ -1306,7 +1306,7 @@
   # same probe re-run on 2026-08-09 shows the compiles no longer cascade either:
   #
   #   nix build .#cider-buck2-one          baseline, 3 buck2 derivations ran
-  #   edit linux/startup/rtsig.c, rebuild      ZERO buck2 derivations ran
+  #   edit src/linux/startup/rtsig.c, rebuild      ZERO buck2 derivations ran
   #   output path both times                 kq3fjmpkyv7scgfdwvqfg1dg1v5dynqc, byte identical
   #
   # SMALLER PROBE THAN THE 323 ONE, and the difference matters when comparing the numbers. That
@@ -1352,7 +1352,7 @@
     # is a permission error.
     #
     # THERE WAS A src/ LOOP HERE AND IT WAS DEAD SINCE #87 STAGE 2, which emptied src/ into
-    # darwin/ and linux/. builtins.readDir on a directory that does not exist is not a no-op,
+    # src/darwin/ and src/linux/. builtins.readDir on a directory that does not exist is not a no-op,
     # it is an EVAL ERROR, so the flake default died with
     #   opening directory '/nix/store/...-cider-buck2-lower-project/src': No such file
     # This is the second instance of exactly the class the comment above warns about, where a
@@ -1402,7 +1402,7 @@
 
   # THE SCRIPT A LOWERED TARGET ACTUALLY RUNS, which is not always stageProject. Line 1215
   # picks between the two on sourceGroups, and every endpoint that gets gated has it ON, so
-  # exposing only stageProject let scripts/buck-lowering-stage-check.nu inspect a script the
+  # exposing only stageProject let scripts/checks/buck-lowering-stage-check.nu inspect a script the
   # gated endpoint never executes. Measured 2026-08-10: the green run built 65
   # buck2-stage-project-grouped derivations and zero buck2-stage-project ones.
   #
@@ -1502,7 +1502,7 @@
     builderScriptWith = depPathOf: let
       raw =
         fullScripts.${specName label}
-        or (throw "buck2 lower: no rendered builder script for ${label} (looked for ${specName label} in ${graph.specs}/full.json). The lowering and cider-graph-specs disagree about grouping or naming; scripts/buck-script-check.nu compares the two.");
+        or (throw "buck2 lower: no rendered builder script for ${label} (looked for ${specName label} in ${graph.specs}/full.json). The lowering and cider-graph-specs disagree about grouping or naming; scripts/checks/buck-script-check.nu compares the two.");
 
       # The same list, in the same order, that the renderer numbered its references by: only
       # the staged entries that actually have links emit a script.
@@ -1557,7 +1557,7 @@
       #
       #   baseline                     3 buck2 derivations ran
       #                                stage-project-grouped, libsimple_ciderd, and -out
-      #   after editing linux/startup/rtsig.c
+      #   after editing src/linux/startup/rtsig.c
       #                                ZERO buck2 derivations ran
       #   output path, both runs       kq3fjmpkyv7scgfdwvqfg1dg1v5dynqc, byte identical
       #
@@ -1589,14 +1589,14 @@
         # needsOf into cider-graph-specs, and the only honest way to check a port
         # of it is to dump BOTH answers for all 1,474 labels and require them to agree.
         # Comparing fromTargets alone would leave the farms untested, and they are the half
-        # that fails late and quietly. scripts/buck-needs-check.nu does the comparison.
+        # that fails late and quietly. scripts/checks/buck-needs-check.nu does the comparison.
         stagedNeeds = needs.fromStaged;
 
         # THE DEFINITION, NOT THE FILE, and this attribute exists precisely so the check does
         # not become circular. `deps` and `stagedNeeds` above now come from needs.json, which
         # cider-graph-specs wrote, so comparing THOSE against the python would compare
         # the python against itself and pass no matter what either believed. needsOf is still
-        # the definition; this calls it, and scripts/buck-needs-check.nu reads this one.
+        # the definition; this calls it, and scripts/checks/buck-needs-check.nu reads this one.
         #
         # It costs nothing unless asked: passthru is lazy and nixpkgs strips it before building.
         definitionNeeds = needsOf label;
@@ -1678,7 +1678,7 @@ in
   inherit drvs named g pinsTree;
 
   # The staging script on its own, so it can be checked without building anything that uses
-  # it. scripts/buck-lowering-stage-check.nu reads it: a one-word regression here (src falling
+  # it. scripts/checks/buck-lowering-stage-check.nu reads it: a one-word regression here (src falling
   # out of the top-level exclusion list) failed all 1798 lowered targets and was only visible
   # 90 minutes into a build.
   inherit stageProject stageProjectUsed;
@@ -1692,7 +1692,7 @@ in
   # already several: the generator's safe_name, buck_lowering's, buck-specs-check's, this one,
   # and dep_var in two places. A mismatch between any pair is silent in the worst way, since a
   # wrong name simply does not match and the variable expands to empty.
-  # scripts/buck-names-check.nu compares them all on the real 1,474 labels.
+  # scripts/checks/buck-names-check.nu compares them all on the real 1,474 labels.
   inherit specName depVar;
 
   # WHAT A CONSUMER NEEDS PER GROUP, WITHOUT FORCING THE LOWERED DERIVATION FOR IT.

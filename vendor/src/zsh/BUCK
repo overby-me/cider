@@ -96,7 +96,7 @@ cc_objects(
     deps = [
         ":zsh_inc_zsh_zsh_Src",
         ":zsh_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -196,7 +196,7 @@ cc_objects(
     deps = [
         ":zmod_zutil_inc_zsh_zsh_Src",
         ":zmod_zutil_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -227,7 +227,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_zutil dylibs
@@ -295,7 +295,7 @@ cc_objects(
     deps = [
         ":zmod_complist_inc_zsh_zsh_Src",
         ":zmod_complist_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -326,7 +326,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_complist dylibs
@@ -398,7 +398,7 @@ cc_objects(
     deps = [
         ":zmod_attr_inc_zsh_zsh_Src",
         ":zmod_attr_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -429,7 +429,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_attr dylibs
@@ -501,7 +501,7 @@ cc_objects(
     deps = [
         ":zmod_cap_inc_zsh_zsh_Src",
         ":zmod_cap_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -532,7 +532,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_cap dylibs
@@ -604,7 +604,7 @@ cc_objects(
     deps = [
         ":zmod_clone_inc_zsh_zsh_Src",
         ":zmod_clone_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -635,7 +635,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_clone dylibs
@@ -703,7 +703,7 @@ cc_objects(
     deps = [
         ":zmod_compctl_inc_zsh_zsh_Src",
         ":zmod_compctl_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -734,7 +734,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_compctl dylibs
@@ -805,7 +805,7 @@ cc_objects(
     deps = [
         ":zmod_complete_inc_zsh_zsh_Src",
         ":zmod_complete_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -836,7 +836,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_complete dylibs
@@ -908,7 +908,7 @@ cc_objects(
     deps = [
         ":zmod_curses_inc_zsh_zsh_Src",
         ":zmod_curses_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -939,7 +939,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_curses dylibs
@@ -1011,7 +1011,7 @@ cc_objects(
     deps = [
         ":zmod_datetime_inc_zsh_zsh_Src",
         ":zmod_datetime_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1043,7 +1043,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_datetime dylibs
@@ -1111,7 +1111,7 @@ cc_objects(
     deps = [
         ":zmod_deltochar_inc_zsh_zsh_Src",
         ":zmod_deltochar_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1142,7 +1142,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_deltochar dylibs
@@ -1214,7 +1214,7 @@ cc_objects(
     deps = [
         ":zmod_example_inc_zsh_zsh_Src",
         ":zmod_example_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1245,7 +1245,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_example dylibs
@@ -1317,7 +1317,7 @@ cc_objects(
     deps = [
         ":zmod_files_inc_zsh_zsh_Src",
         ":zmod_files_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1348,7 +1348,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_files dylibs
@@ -1420,7 +1420,7 @@ cc_objects(
     deps = [
         ":zmod_langinfo_inc_zsh_zsh_Src",
         ":zmod_langinfo_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1451,7 +1451,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_langinfo dylibs
@@ -1523,7 +1523,7 @@ cc_objects(
     deps = [
         ":zmod_mapfile_inc_zsh_zsh_Src",
         ":zmod_mapfile_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1554,7 +1554,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_mapfile dylibs
@@ -1626,7 +1626,7 @@ cc_objects(
     deps = [
         ":zmod_mathfunc_inc_zsh_zsh_Src",
         ":zmod_mathfunc_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1657,7 +1657,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_mathfunc dylibs
@@ -1729,7 +1729,7 @@ cc_objects(
     deps = [
         ":zmod_nearcolor_inc_zsh_zsh_Src",
         ":zmod_nearcolor_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1760,7 +1760,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_nearcolor dylibs
@@ -1832,7 +1832,7 @@ cc_objects(
     deps = [
         ":zmod_newuser_inc_zsh_zsh_Src",
         ":zmod_newuser_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1863,7 +1863,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_newuser dylibs
@@ -1935,7 +1935,7 @@ cc_objects(
     deps = [
         ":zmod_param_private_inc_zsh_zsh_Src",
         ":zmod_param_private_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1966,7 +1966,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_param_private dylibs
@@ -2038,7 +2038,7 @@ cc_objects(
     deps = [
         ":zmod_parameter_inc_zsh_zsh_Src",
         ":zmod_parameter_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2069,7 +2069,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_parameter dylibs
@@ -2141,7 +2141,7 @@ cc_objects(
     deps = [
         ":zmod_regex_inc_zsh_zsh_Src",
         ":zmod_regex_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2172,7 +2172,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_regex dylibs
@@ -2247,7 +2247,7 @@ cc_objects(
     deps = [
         ":zmod_rlimits_inc_zsh_zsh_Src",
         ":zmod_rlimits_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":zmod_rlimits_inc_zsh_zsh_Src_Builtins",
     ],
     visibility = ["PUBLIC"],
@@ -2279,7 +2279,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_rlimits dylibs
@@ -2354,7 +2354,7 @@ cc_objects(
     deps = [
         ":zmod_sched_inc_zsh_zsh_Src",
         ":zmod_sched_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":zmod_sched_inc_zsh_zsh_Src_Builtins",
     ],
     visibility = ["PUBLIC"],
@@ -2386,7 +2386,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_sched dylibs
@@ -2458,7 +2458,7 @@ cc_objects(
     deps = [
         ":zmod_socket_inc_zsh_zsh_Src",
         ":zmod_socket_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2489,7 +2489,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_socket dylibs
@@ -2561,7 +2561,7 @@ cc_objects(
     deps = [
         ":zmod_stat_inc_zsh_zsh_Src",
         ":zmod_stat_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2592,7 +2592,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_stat dylibs
@@ -2665,7 +2665,7 @@ cc_objects(
     deps = [
         ":zmod_system_inc_zsh_zsh_Src",
         ":zmod_system_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2696,7 +2696,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_system dylibs
@@ -2768,7 +2768,7 @@ cc_objects(
     deps = [
         ":zmod_tcp_inc_zsh_zsh_Src",
         ":zmod_tcp_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2799,7 +2799,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_tcp dylibs
@@ -2871,7 +2871,7 @@ cc_objects(
     deps = [
         ":zmod_termcap_inc_zsh_zsh_Src",
         ":zmod_termcap_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2902,7 +2902,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_termcap dylibs
@@ -2974,7 +2974,7 @@ cc_objects(
     deps = [
         ":zmod_terminfo_inc_zsh_zsh_Src",
         ":zmod_terminfo_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3005,7 +3005,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_terminfo dylibs
@@ -3077,7 +3077,7 @@ cc_objects(
     deps = [
         ":zmod_zftp_inc_zsh_zsh_Src",
         ":zmod_zftp_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3108,7 +3108,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_zftp dylibs
@@ -3189,7 +3189,7 @@ cc_objects(
     deps = [
         ":zmod_zle_inc_zsh_zsh_Src",
         ":zmod_zle_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3220,7 +3220,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_zle dylibs
@@ -3288,7 +3288,7 @@ cc_objects(
     deps = [
         ":zmod_zleparameter_inc_zsh_zsh_Src",
         ":zmod_zleparameter_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3319,7 +3319,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_zleparameter dylibs
@@ -3391,7 +3391,7 @@ cc_objects(
     deps = [
         ":zmod_zprof_inc_zsh_zsh_Src",
         ":zmod_zprof_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3422,7 +3422,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_zprof dylibs
@@ -3494,7 +3494,7 @@ cc_objects(
     deps = [
         ":zmod_zpty_inc_zsh_zsh_Src",
         ":zmod_zpty_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3525,7 +3525,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_zpty dylibs
@@ -3597,7 +3597,7 @@ cc_objects(
     deps = [
         ":zmod_zselect_inc_zsh_zsh_Src",
         ":zmod_zselect_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3628,7 +3628,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_zselect dylibs
@@ -3696,7 +3696,7 @@ cc_objects(
     deps = [
         ":zmod_computil_inc_zsh_zsh_Src",
         ":zmod_computil_inc_zsh_gen",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3727,7 +3727,7 @@ darwin_dylib(
         "-Wl,-undefined,suppress",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: zmod_computil dylibs

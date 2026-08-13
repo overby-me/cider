@@ -115,7 +115,7 @@ let
   # wrappedLibs does not carry them. The reference gives every one of them an absolute -I:
   # xorgproto is where X11/X.h lives, libXrender and libXdmcp arrive through libX11's own
   # headers, zlib through ruby's zlib module, and linuxHeaders is not a library at all --
-  # fseventsd bridges to Linux fanotify, whose header reaches for linux/types.h.
+  # fseventsd bridges to Linux fanotify, whose header reaches for src/linux/types.h.
   #
   # ONE list, because the two consumers drifted and it cost a build each time. The graph
   # derivation needs them for the -I it writes into .buckconfig.local; the LOWERING needs

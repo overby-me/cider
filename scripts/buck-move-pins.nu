@@ -21,8 +21,8 @@
 #   4. nothing else
 #
 # NEVER TOUCHED:
-#   untracked files          materialized pins (.gitignore:115) and linux/server/target
-#                            (linux/server/.gitignore:1). Asking the repo what it tracks
+#   untracked files          materialized pins (.gitignore:115) and src/linux/server/target
+#                            (src/linux/server/.gitignore:1). Asking the repo what it tracks
 #                            excludes these by construction. A filesystem walk reported 945
 #                            references where the repo holds 545, because one generated file,
 #                            xnu/gen/bsdsyscalls/stubs.list, holds 430 of them by itself.
@@ -54,7 +54,7 @@ const MANIFEST = "nix/submodules.json"
 # destroy the explanation of what the sweep does.
 const SELF = "scripts/buck-move-pins.nu"
 const SKIP_FILES = ["docs/changelog.md" "nix/submodules.json" "scripts/buck-move-pins.nu"]
-const SKIP_REL_PREFIX = ["linux/server/target/"]
+const SKIP_REL_PREFIX = ["src/linux/server/target/"]
 
 # Lines that mention the string but must keep the old spelling.
 #

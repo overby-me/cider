@@ -1,1 +1,0 @@
-../../../../../../../../../vendor/pins/libc/locale/FreeBSD/lmonetary.h

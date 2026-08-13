@@ -111,7 +111,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":stdcxx_inc_libstdcxx_include_c_4_2_1",
-        "//darwin:sdk_env_nocxx",
+        "//src/darwin:sdk_env_nocxx",
     ],
     visibility = ["PUBLIC"],
 )
@@ -135,7 +135,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":stdcxx_inc_libstdcxx_include_c_4_2_1",
-        "//darwin:sdk_env_nocxx",
+        "//src/darwin:sdk_env_nocxx",
     ],
     visibility = ["PUBLIC"],
 )
@@ -170,7 +170,7 @@ darwin_dylib(
     },
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )

@@ -51,8 +51,8 @@ const NEUTRAL_TOPS = [
 # filters drop, which is exactly why they need naming.
 #
 # TWO SCRIPTS USED TO BE LISTED HERE, buck2-graph-dump.py and buck-src-normalise.py, and both
-# are gone rather than renamed. #99 made them nix-built binaries under linux/buildtools/, and
-# linux/ is not a neutral top, so their crates already classify as staged. Naming a crate
+# are gone rather than renamed. #99 made them nix-built binaries under src/linux/buildtools/, and
+# src/linux/ is not a neutral top, so their crates already classify as staged. Naming a crate
 # directory here would be inert anyway: the match is on the whole path, and an edit names a
 # file inside the crate.
 const OWN_INPUTS = [

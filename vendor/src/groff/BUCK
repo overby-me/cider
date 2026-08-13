@@ -99,7 +99,7 @@ cc_objects(
     deps = [
         ":libgroff_inc_groff_gen_src_include",
         ":libgroff_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -135,7 +135,7 @@ cc_objects(
     deps = [
         ":libgroff_inc_groff_gen_src_include",
         ":libgroff_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -202,7 +202,7 @@ cc_objects(
     deps = [
         ":groff_driver_inc_groff_gen_src_include",
         ":groff_driver_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -255,7 +255,7 @@ cc_objects(
     deps = [
         ":groff_bib_inc_groff_gen_src_include",
         ":groff_bib_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -284,7 +284,7 @@ cc_objects(
     deps = [
         ":groff_bib_inc_groff_gen_src_include",
         ":groff_bib_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -333,7 +333,7 @@ cc_objects(
     deps = [
         ":addftinfo_inc_groff_gen_src_include",
         ":addftinfo_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -358,7 +358,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],
@@ -421,7 +421,7 @@ cc_objects(
     deps = [
         ":eqn_inc_groff_gen_src_include",
         ":eqn_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -446,7 +446,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],
@@ -498,7 +498,7 @@ cc_objects(
     deps = [
         ":grn_inc_groff_gen_src_include",
         ":grn_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -523,7 +523,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],
@@ -572,7 +572,7 @@ cc_objects(
     deps = [
         ":grodvi_inc_groff_gen_src_include",
         ":grodvi_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -597,7 +597,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
         "//vendor/src/groff:driver",
     ],
@@ -649,7 +649,7 @@ cc_objects(
     deps = [
         ":groff_inc_groff_gen_src_include",
         ":groff_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -678,7 +678,7 @@ cc_objects(
     deps = [
         ":groff_inc_groff_gen_src_include",
         ":groff_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -704,7 +704,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],
@@ -753,7 +753,7 @@ cc_objects(
     deps = [
         ":grolbp_inc_groff_gen_src_include",
         ":grolbp_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -778,7 +778,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
         "//vendor/src/groff:driver",
     ],
@@ -828,7 +828,7 @@ cc_objects(
     deps = [
         ":grolj4_inc_groff_gen_src_include",
         ":grolj4_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -853,7 +853,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
         "//vendor/src/groff:driver",
     ],
@@ -904,7 +904,7 @@ cc_objects(
     deps = [
         ":grops_inc_groff_gen_src_include",
         ":grops_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -929,7 +929,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
         "//vendor/src/groff:driver",
     ],
@@ -979,7 +979,7 @@ cc_objects(
     deps = [
         ":grotty_inc_groff_gen_src_include",
         ":grotty_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1004,7 +1004,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
         "//vendor/src/groff:driver",
     ],
@@ -1055,7 +1055,7 @@ cc_objects(
     deps = [
         ":hpftodit_inc_groff_gen_src_include",
         ":hpftodit_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1080,7 +1080,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],
@@ -1131,7 +1131,7 @@ cc_objects(
     deps = [
         ":indxbib_inc_groff_gen_src_include",
         ":indxbib_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1160,7 +1160,7 @@ cc_objects(
     deps = [
         ":indxbib_inc_groff_gen_src_include",
         ":indxbib_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1186,7 +1186,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
         "//vendor/src/groff:bib",
     ],
@@ -1236,7 +1236,7 @@ cc_objects(
     deps = [
         ":lkbib_inc_groff_gen_src_include",
         ":lkbib_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1261,7 +1261,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
         "//vendor/src/groff:bib",
     ],
@@ -1311,7 +1311,7 @@ cc_objects(
     deps = [
         ":lookbib_inc_groff_gen_src_include",
         ":lookbib_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1336,7 +1336,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
         "//vendor/src/groff:bib",
     ],
@@ -1387,7 +1387,7 @@ cc_objects(
     deps = [
         ":pfbtops_inc_groff_gen_src_include",
         ":pfbtops_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1412,7 +1412,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],
@@ -1467,7 +1467,7 @@ cc_objects(
     deps = [
         ":pic_inc_groff_gen_src_include",
         ":pic_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1492,7 +1492,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],
@@ -1545,7 +1545,7 @@ cc_objects(
     deps = [
         ":refer_inc_groff_gen_src_include",
         ":refer_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1570,7 +1570,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
         "//vendor/src/groff:bib",
     ],
@@ -1620,7 +1620,7 @@ cc_objects(
     deps = [
         ":soelim_inc_groff_gen_src_include",
         ":soelim_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1645,7 +1645,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],
@@ -1695,7 +1695,7 @@ cc_objects(
     deps = [
         ":tbl_inc_groff_gen_src_include",
         ":tbl_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1720,7 +1720,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],
@@ -1769,7 +1769,7 @@ cc_objects(
     deps = [
         ":tfmtodit_inc_groff_gen_src_include",
         ":tfmtodit_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1794,7 +1794,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],
@@ -1851,7 +1851,7 @@ cc_objects(
     deps = [
         ":troff_inc_groff_gen_src_include",
         ":troff_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1876,7 +1876,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],
@@ -1928,7 +1928,7 @@ cc_objects(
     deps = [
         ":post-grohtml_inc_groff_gen_src_include",
         ":post-grohtml_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1953,7 +1953,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
         "//vendor/src/groff:driver",
     ],
@@ -2004,7 +2004,7 @@ cc_objects(
     deps = [
         ":pre-grohtml_inc_groff_gen_src_include",
         ":pre-grohtml_inc_groff_groff_src_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2029,7 +2029,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/groff:libgroff",
     ],
     visibility = ["PUBLIC"],

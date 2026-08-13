@@ -517,7 +517,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":icucore_inc_icu_icuSources_common",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":icucore_inc_icu_icuSources_i18n",
     ],
     visibility = ["PUBLIC"],
@@ -532,7 +532,7 @@ darwin_dylib(
         ":icucore_obj",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: icucore

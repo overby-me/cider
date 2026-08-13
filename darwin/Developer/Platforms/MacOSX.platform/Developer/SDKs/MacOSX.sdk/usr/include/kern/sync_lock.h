@@ -1,1 +1,0 @@
-../../../../../../../../../../vendor/pins/xnu/osfmk/kern/sync_lock.h

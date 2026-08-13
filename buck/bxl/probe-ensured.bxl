@@ -5,7 +5,7 @@
 # output is its object file. Its comment says so and that part of its code is right. Yet the
 # dump demonstrably runs compiles: with a skeleton source tree buck2 reports
 #
-#   Waiting on //linux/hosttools:cider-coredump -- action (cxx_compile src/coredump/main.cpp)
+#   Waiting on //src/linux/hosttools:cider-coredump -- action (cxx_compile src/coredump/main.cpp)
 #   Action failed: //vendor/src:libtrustd_obj (c_compile .../TrustURLSessionCache.m)
 #
 # This computes the SAME wanted set and prints who owns it, instead of ensuring it. Nothing is
@@ -17,7 +17,7 @@
 #
 #   ensured artifacts: 65206 from include_dirs, 28 from InProcInfo
 #   owners that look like a compile or link: exactly ONE, and it is not one:
-#     include_dirs 1 root//linux/hosttools:coredump_headers
+#     include_dirs 1 root//src/linux/hosttools:coredump_headers
 #   the 28 InProcInfo artifacts belong to the rust crates, ciderd, cider, mldr and
 #   the prefix itself, which is staging rather than object code.
 #

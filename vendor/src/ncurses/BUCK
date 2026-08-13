@@ -213,7 +213,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ncurses_inc_ncurses_ncurses_include",
         ":ncurses_inc_ncurses_ncurses_ncurses",
         ":ncurses_inc_ncurses_gen",
@@ -230,7 +230,7 @@ darwin_dylib(
         ":ncurses_obj",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: ncurses
@@ -282,7 +282,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":clear_inc_ncurses_ncurses_include",
         ":clear_inc_ncurses_ncurses_ncurses",
         ":clear_inc_ncurses_gen",
@@ -339,7 +339,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":nc_dump_entry_inc_ncurses_ncurses_include",
         ":nc_dump_entry_inc_ncurses_ncurses_ncurses",
         ":nc_dump_entry_inc_ncurses_gen",
@@ -396,7 +396,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":infocmp_inc_ncurses_ncurses_include",
         ":infocmp_inc_ncurses_ncurses_ncurses",
         ":infocmp_inc_ncurses_gen",
@@ -453,7 +453,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":tic_inc_ncurses_ncurses_include",
         ":tic_inc_ncurses_ncurses_ncurses",
         ":tic_inc_ncurses_gen",
@@ -510,7 +510,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":toe_inc_ncurses_ncurses_include",
         ":toe_inc_ncurses_ncurses_ncurses",
         ":toe_inc_ncurses_gen",
@@ -567,7 +567,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":tput_inc_ncurses_ncurses_include",
         ":tput_inc_ncurses_ncurses_ncurses",
         ":tput_inc_ncurses_gen",
@@ -624,7 +624,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":tset_inc_ncurses_ncurses_include",
         ":tset_inc_ncurses_ncurses_ncurses",
         ":tset_inc_ncurses_gen",
@@ -728,7 +728,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":form_inc_ncurses_ncurses_include",
         ":form_inc_ncurses_ncurses_ncurses",
         ":form_inc_ncurses_gen",
@@ -813,7 +813,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":menu_inc_ncurses_ncurses_include",
         ":menu_inc_ncurses_ncurses_ncurses",
         ":menu_inc_ncurses_gen",
@@ -879,7 +879,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":panel_inc_ncurses_ncurses_include",
         ":panel_inc_ncurses_ncurses_ncurses",
         ":panel_inc_ncurses_gen",

@@ -80,7 +80,7 @@
           inherit pkgs;
           overby = inputs.overby;
         }).buildTarget
-          { target = "//darwin/libsimple:libsimple_ciderd"; };
+          { target = "//src/darwin/libsimple:libsimple_ciderd"; };
 
       # The host tier through the same Nix-lowered path: ciderd's xnu-sys
       # archive (real XNU osfmk/bsd sources plus mig codegen, and the artifact the
@@ -96,7 +96,7 @@
         }).buildTarget
           { target = "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys"; };
 
-      # A mid-size probe for the Nix-lowered path: darwin/duct's static archive is 8
+      # A mid-size probe for the Nix-lowered path: src/darwin/duct's static archive is 8
       # sources in a 165-line BUCK file, between libsimple (80 lines) and xnu-sys
       # (1044). Which of size or feature-set the interpreter runs out of road on is
       # what this answers:
@@ -107,11 +107,11 @@
           inherit pkgs;
           overby = inputs.overby;
         }).buildTarget
-          { target = "//darwin/duct:system_duct_static"; };
+          { target = "//src/darwin/duct:system_duct_static"; };
 
       # Two probes for where the Nix-lowered path runs out of road. Both are
       # trivial targets; what differs is the FILE the interpreter has to read:
-      # darwin/BUCK loads the generated SDK maps (4178 entries), vendor/src/BUCK is
+      # src/darwin/BUCK loads the generated SDK maps (4178 entries), vendor/src/BUCK is
       # 32k lines. If a trivial target in a big file overflows, the wall is parsing,
       # not the target -- which is how the interpreter's recursive loops were found.
       #
@@ -125,7 +125,7 @@
           inherit pkgs;
           overby = inputs.overby;
         }).buildTarget
-          { target = "//darwin:sdk_env"; };
+          { target = "//src/darwin:sdk_env"; };
 
       packages.cider-buck2-probe-bigfile =
         pkgs:
@@ -145,7 +145,7 @@
         pkgs:
         import ./nix/lib/ciderBuck2Graph.nix {
           inherit pkgs;
-          targets = [ "//darwin/libsimple:libsimple_ciderd" ];
+          targets = [ "//src/darwin/libsimple:libsimple_ciderd" ];
         };
 
       # THE REAL GRAPH, and the reason this is a separate attribute: the one above is a
@@ -193,7 +193,7 @@
       # THIS DOES NOT BUILD YET, and it is kept because each failure has been worth more than
       # it cost. Three runs so far, each finding a different missing input:
       #   1. 8s    the skeleton itself died, os.stat following a dangling SDK symlink.
-      #   2. 374s  bindgen got an emptied linux/server/wrapper.h, wrote nothing, and the
+      #   2. 374s  bindgen got an emptied src/linux/server/wrapper.h, wrote nothing, and the
       #            daemon failed with 83 rustc errors on an unresolved crate::bindings. The
       #            codegen closure was rooted only at staged farms and never saw it.
       #   3. 431s  with the closure widened to every generator CATEGORY, a long list of
@@ -201,8 +201,8 @@
       #            system_dyld_final fail.
       #   4. 539s  THE ACTUAL CAUSE, once the dump stopped truncating buck2 stderr to the last
       #            1500 characters. Inside the BXL step buck2 prints
-      #              Waiting on //linux/server:xnu_sys_bindings -- action (bindgen ...)
-      #              Waiting on //linux/hosttools:cider-coredump -- action (cxx_compile ...)
+      #              Waiting on //src/linux/server:xnu_sys_bindings -- action (bindgen ...)
+      #              Waiting on //src/linux/hosttools:cider-coredump -- action (cxx_compile ...)
       #              Action failed: //vendor/src:libtrustd_obj (c_compile TrustURLSessionCache.m)
       #            on Foundation/NSAppleEventDescriptor.h "expected a type".
       #
@@ -265,7 +265,7 @@
           inherit pkgs;
           graph = import ./nix/lib/ciderBuck2Graph.nix {
             inherit pkgs;
-            targets = [ "//darwin/libsimple:libsimple_ciderd" ];
+            targets = [ "//src/darwin/libsimple:libsimple_ciderd" ];
           };
         }).final;
 
@@ -345,7 +345,7 @@
       #   systemd-run --user --scope -p MemoryMax=8G nix build .#cider-buck2-all-graph
       # The PREFIX, lowered: a Darling install built entirely through the Nix endpoint,
       # one derivation per buck2 target. This is the bash milestone on the Nix side --
-      # the same tree scripts/buck-bash-check.nu boots, but assembled from store paths.
+      # the same tree scripts/checks/buck-bash-check.nu boots, but assembled from store paths.
       #
       #   nix build .#cider-buck2-prefix
       packages.cider-buck2-prefix =
@@ -368,7 +368,7 @@
             # hostHeaderLibs as well as wrappedLibs, and for the same reason one step over:
             # a compile's argv carries -I into xorgproto, zlib, linux-headers and the rest
             # as plain text, so those store paths are equally invisible to Nix. Declaring
-            # only the ELF set is what left fseventsd_obj failing on linux/types.h in the
+            # only the ELF set is what left fseventsd_obj failing on src/linux/types.h in the
             # lowering after the graph stage had been fixed.
             #
             # Only here: the libsimple, migcom and blocks endpoints below lower graphs with
@@ -387,7 +387,7 @@
         in
         # `//` rather than overrideAttrs or passthru: this must not touch the derivation. The
         # extra attribute only gives `nix build .#cider-buck2-prefix.stageProject` something
-        # to resolve, so scripts/buck-lowering-stage-check.nu can read the staging script in
+        # to resolve, so scripts/checks/buck-lowering-stage-check.nu can read the staging script in
         # seconds instead of discovering a staging bug 90 minutes into a build.
         # `named` as well as stageProject, so packages.cider-buck2-all can link-farm THESE
         # derivations instead of lowering the graph a second time with different arguments.
@@ -403,7 +403,7 @@
       # a graph this store may not hold; this pairs it with buck2-targets-min.nix, which reuses
       # the graph the minimal endpoint already built, so ONE target can be tried in minutes.
       #
-      #   nix build .#cider-buck2-prefix-min-grouped.named.\"root//darwin/libsimple:libsimple_ciderd\"
+      #   nix build .#cider-buck2-prefix-min-grouped.named.\"root//src/darwin/libsimple:libsimple_ciderd\"
       packages.cider-buck2-prefix-min-grouped =
         pkgs:
         let
@@ -439,7 +439,7 @@
       # script, every one of them a cider-src path.
       #
       #   nix build .#cider-pin-stores
-      #   scripts/buck-pin-store-check.nu
+      #   scripts/checks/buck-pin-store-check.nu
       packages.cider-pin-stores =
         pkgs:
         let
@@ -465,7 +465,7 @@
         # So every one of the 21 needs rewriting to an absolute path, or the pins have to live
         # in one real tree, which is the assembled cider-src they came from.
         #
-        # Check with: scripts/buck-escape-check.nu resolve <this farm>
+        # Check with: scripts/checks/buck-escape-check.nu resolve <this farm>
         pkgs.linkFarm "cider-pin-stores" (
           pkgs.lib.mapAttrsToList (path: drv: {
             name = path;
@@ -537,7 +537,7 @@
             # hostHeaderLibs as well as wrappedLibs, and for the same reason one step over:
             # a compile's argv carries -I into xorgproto, zlib, linux-headers and the rest
             # as plain text, so those store paths are equally invisible to Nix. Declaring
-            # only the ELF set is what left fseventsd_obj failing on linux/types.h in the
+            # only the ELF set is what left fseventsd_obj failing on src/linux/types.h in the
             # lowering after the graph stage had been fixed.
             #
             # Only here: the libsimple, migcom and blocks endpoints below lower graphs with
@@ -553,17 +553,17 @@
             # 1,194 targets on missing headers, the first being CoreServices/MacTypes.h.
             #
             # The cause is not the group LIST. Accounts_obj does stage
-            # darwin/frameworks/CoreServices. It is that a group is staged as ONE SYMLINK to
+            # src/darwin/frameworks/CoreServices. It is that a group is staged as ONE SYMLINK to
             # its own store path, while 2,306 of the 2,970 symlinks in this tree are relative
-            # and cross a group boundary. darwin/frameworks/CoreServices/include/CoreServices/
+            # and cross a group boundary. src/darwin/frameworks/CoreServices/include/CoreServices/
             # MacTypes.h is itself a link to ../../../../basic-headers/MacTypes.h: under one
             # shared projectSrc that resolves inside the same store path, and under groups it
             # resolves inside the CoreServices store path and dangles.
             #
             # The escapes are concentrated, which is what makes a fix tractable:
-            # darwin/Developer/Platforms 2,189, darwin/frameworks/SystemConfiguration 52,
-            # darwin/opendirectory_internal/include 24, linux/startup/mldr 16, darwin/libm/include 7,
-            # and ten groups with three or fewer. Run scripts/buck-escape-check.nu groups.
+            # src/darwin/Developer/Platforms 2,189, src/darwin/frameworks/SystemConfiguration 52,
+            # src/darwin/opendirectory_internal/include 24, src/linux/startup/mldr 16, src/darwin/libm/include 7,
+            # and ten groups with three or fewer. Run scripts/checks/buck-escape-check.nu groups.
             #
             # 1,989 of them land in the PINS, so the pins have to become self contained first:
             # they are not, 21 links reach out of their own pin, and rewriting group escapes at
@@ -598,7 +598,7 @@
         in
         # `//` rather than overrideAttrs or passthru: this must not touch the derivation. The
         # extra attribute only gives `nix build .#cider-buck2-prefix.stageProject` something
-        # to resolve, so scripts/buck-lowering-stage-check.nu can read the staging script in
+        # to resolve, so scripts/checks/buck-lowering-stage-check.nu can read the staging script in
         # seconds instead of discovering a staging bug 90 minutes into a build.
         # `named` as well as stageProject, so packages.cider-buck2-all can link-farm THESE
         # derivations instead of lowering the graph a second time with different arguments.
@@ -619,9 +619,9 @@
       # derivations that .#cider-buck2-prefix-min builds.
       #
       #   nix build .#cider-buck2-one --no-link -L
-      #   scripts/buck-quick-check.nu
+      #   scripts/checks/buck-quick-check.nu
       packages.cider-buck2-one =
-        pkgs: pkgs.cider-buck2-prefix-min.named."root//darwin/libsimple:libsimple_ciderd";
+        pkgs: pkgs.cider-buck2-prefix-min.named."root//src/darwin/libsimple:libsimple_ciderd";
 
       # #66, THE ADAPTER'S FIRST REAL CONSUMER TEST: the same group, taken through
       # nix/lib/dyn-actions.nix as an EMITTED derivation, with its output diffed against the
@@ -726,7 +726,7 @@
         (import ./nix/lib/cider-dyn-gen.nix {
           inherit pkgs;
           lowered = pkgs.cider-buck2-prefix-min;
-          label = "root//darwin/libsimple:libsimple_ciderd";
+          label = "root//src/darwin/libsimple:libsimple_ciderd";
         })
         .oneProbe;
 
@@ -750,7 +750,7 @@
         (import ./nix/lib/cider-dyn-gen.nix {
           inherit pkgs;
           lowered = pkgs.cider-buck2-prefix-min;
-          label = "root//linux/server:ciderd";
+          label = "root//src/linux/server:ciderd";
         })
         .check;
 
@@ -836,9 +836,9 @@
       # A SEPARATE ATTRIBUTE so cider-buck2-prefix stays byte-comparable. The test that
       # matters is not that this builds, it is that an unrelated edit does NOT rebuild:
       #   nix build .#cider-buck2-prefix-grouped   (once)
-      #   touch a file under darwin/frameworks/Quartz, which no pin target reads
+      #   touch a file under src/darwin/frameworks/Quartz, which no pin target reads
       #   nix build .#cider-buck2-prefix-grouped   (a pin target must NOT rerun)
-      #   touch darwin/basic-headers, which 1,326 pin targets do read
+      #   touch src/darwin/basic-headers, which 1,326 pin targets do read
       #   nix build .#cider-buck2-prefix-grouped   (they MUST rerun)
       packages.cider-buck2-prefix-grouped =
         pkgs:
@@ -963,7 +963,7 @@
           baseSrc = ./.;
         };
 
-      # The Rust launcher (linux/startup/cider.c rewrite), task #64.
+      # The Rust launcher (src/linux/startup/cider.c rewrite), task #64.
       #   nix build .#launcher
       packages.launcher =
         pkgs:
@@ -978,7 +978,7 @@
         pkgs:
         (import ./nix/lib/ciderBuck2Graph.nix {
           inherit pkgs;
-          targets = [ "//darwin/libsimple:libsimple_ciderd" ];
+          targets = [ "//src/darwin/libsimple:libsimple_ciderd" ];
         }).skeletonSrc;
 
       # The graph derivation itself, so a change to the DUMP can be verified by comparing store
@@ -991,7 +991,7 @@
         # attached), so there is nothing to select here.
         import ./nix/lib/ciderBuck2Graph.nix {
           inherit pkgs;
-          targets = [ "//darwin/libsimple:libsimple_ciderd" ];
+          targets = [ "//src/darwin/libsimple:libsimple_ciderd" ];
         };
 
       # Just the per-group spec files, so a change to the spec generator can be verified by
@@ -1001,7 +1001,7 @@
         pkgs:
         (import ./nix/lib/ciderBuck2Graph.nix {
           inherit pkgs;
-          targets = [ "//darwin/libsimple:libsimple_ciderd" ];
+          targets = [ "//src/darwin/libsimple:libsimple_ciderd" ];
         }).specsDrv;
 
       # Just the source closure, so a change to cider-graph-sources can be verified by
@@ -1011,7 +1011,7 @@
         pkgs:
         (import ./nix/lib/ciderBuck2Graph.nix {
           inherit pkgs;
-          targets = [ "//darwin/libsimple:libsimple_ciderd" ];
+          targets = [ "//src/darwin/libsimple:libsimple_ciderd" ];
         }).sourcesDrv;
 
       # The Rust rewrite of buck_lowering.py and buck-graph-to-specs.py, task #99. Built by nix
@@ -1029,7 +1029,7 @@
           src = ./.;
         };
 
-      # The Rust rewrite of linux/buildtools/skeleton, task #99. Built by nix rather than by
+      # The Rust rewrite of src/linux/buildtools/skeleton, task #99. Built by nix rather than by
       # buck2 on purpose: it produces the tree buck2 is run on, so buck2 building it would be
       # circular.
       #   nix build .#skeleton
@@ -1046,7 +1046,7 @@
         pkgs:
         pkgs.callPackage ./nix/lib/dyn-actions-spec-fixup.nix { };
 
-      # The Rust rewrite of linux/buildtools/src-normalise, task #99. Built by nix for the same
+      # The Rust rewrite of src/linux/buildtools/src-normalise, task #99. Built by nix for the same
       # reason as the other two: it prepares the tree buck2 crawls, so buck2 cannot build it.
       #   nix build .#src-normalise
       packages.src-normalise =
@@ -1055,7 +1055,7 @@
           src = ./.;
         };
 
-      # The Rust guest Mach-O loader (linux/startup/mldr rewrite), task #65.
+      # The Rust guest Mach-O loader (src/linux/startup/mldr rewrite), task #65.
       #   nix build .#loader
       packages.loader =
         pkgs:
@@ -1142,7 +1142,7 @@
                     inherit pkgs;
                     graph = import ./nix/lib/ciderBuck2Graph.nix {
                       inherit pkgs;
-                      targets = [ "//darwin/libsimple:libsimple_ciderd" ];
+                      targets = [ "//src/darwin/libsimple:libsimple_ciderd" ];
                     };
                   }).final
                 }/liblibsimple_ciderd.a

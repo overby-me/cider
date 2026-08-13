@@ -1,0 +1,132 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:codegen.bzl", "elf_wrapper")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+
+# The sixteen HOST libraries the gui component reaches through libelfloader.
+#
+# cmake writes these as sixteen wrap_elf() calls (src/linux/native/CMakeLists.txt). Each one
+# generates a Mach-O stub whose every export forwards to the real ELF library on the host,
+# so a Darwin program under Darling can call X11, cairo or OpenGL without any of them being
+# ported. See buck/rules/codegen.bzl for what elf_wrapper does and why its output depends on
+# a file outside the build graph.
+#
+# Written as a table rather than sixteen generated blocks for two reasons. They are
+# genuinely uniform, differing only in name, SONAME and (for GL and GLU) install directory.
+# And the cmake target names COLLIDE: `X11` here is the wrap_elf stub, while `X11` in
+# src/frameworks is CoreGraphics' X11 backend, a completely different library that happens
+# to share the name -- so driving the generator by target name picks the wrong one.
+#
+# (cmake target, host SONAME, install directory)
+_NATIVE = [
+    ("FreeType", "libfreetype.so", "/usr/lib/native"),
+    ("jpeg", "libjpeg.so", "/usr/lib/native"),
+    ("png", "libpng.so", "/usr/lib/native"),
+    ("tiff", "libtiff.so", "/usr/lib/native"),
+    ("gif", "libgif.so", "/usr/lib/native"),
+    ("EGL", "libEGL.so", "/usr/lib/native"),
+    ("fontconfig", "libfontconfig.so", "/usr/lib/native"),
+    ("X11", "libX11.so", "/usr/lib/native"),
+    ("Xext", "libXext.so", "/usr/lib/native"),
+    ("XRandR", "libXrandr.so", "/usr/lib/native"),
+    ("Xcursor", "libXcursor.so", "/usr/lib/native"),
+    ("xkbfile", "libxkbfile.so", "/usr/lib/native"),
+    ("cairo", "libcairo.so", "/usr/lib/native"),
+    ("dbus", "libdbus-1.so", "/usr/lib/native"),
+    # OpenGL's two live inside the framework rather than in /usr/lib/native, which is the
+    # third argument to wrap_elf().
+    ("GL", "libGL.so", "/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries"),
+    ("GLU", "libGLU.so", "/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries"),
+]
+
+# What this package produces, for the registry in gen-buck-from-ninja (deleted). That
+# registry is a text scan for a literal `name = ... dylib_name = ...` pair, and the three
+# comprehensions below write neither, so without these lines all sixteen read as UNPORTED
+# in scripts/buck-coverage.py -- which is how they sat in the missing list while being
+# built and checked by scripts/buck-test.nu. The list mirrors _NATIVE, and buck-test.nu
+# fails if the two ever disagree.
+#
+# buck-registry: libFreeType.dylib = FreeType_dylib
+# buck-registry: libjpeg.dylib = jpeg_dylib
+# buck-registry: libpng.dylib = png_dylib
+# buck-registry: libtiff.dylib = tiff_dylib
+# buck-registry: libgif.dylib = gif_dylib
+# buck-registry: libEGL.dylib = EGL_dylib
+# buck-registry: libfontconfig.dylib = fontconfig_dylib
+# buck-registry: libX11.dylib = X11_dylib
+# buck-registry: libXext.dylib = Xext_dylib
+# buck-registry: libXRandR.dylib = XRandR_dylib
+# buck-registry: libXcursor.dylib = Xcursor_dylib
+# buck-registry: libxkbfile.dylib = xkbfile_dylib
+# buck-registry: libcairo.dylib = cairo_dylib
+# buck-registry: libdbus.dylib = dbus_dylib
+# buck-registry: libGL.dylib = GL_dylib
+# buck-registry: libGLU.dylib = GLU_dylib
+
+# The directories the SONAMEs are dlopen()ed from, written by scripts/buck-setup.nu from
+# pkg-config. Empty means the stubs cannot generate, which the setup script warns about.
+_ELF_LIB_DIRS = read_root_config("cider", "elf_lib_dirs", "")
+
+[
+    elf_wrapper(
+        name = _n + "_wrap",
+        soname = _so,
+        name_base = _n,
+        wrapgen = "//src/linux/libelfloader:wrapgen",
+        lib_dirs = _ELF_LIB_DIRS,
+        deps = ["//src/darwin:sdk_env"],
+        visibility = ["PUBLIC"],
+    )
+    for _n, _so, _dir in _NATIVE
+]
+
+[
+    cc_objects(
+        name = _n + "_obj",
+        srcs = [],
+        gen_srcs = [":" + _n + "_wrap"],
+        compiler_flags = [
+            "-DDARLING",
+            "-fPIC",
+            "-nostdinc",
+        ],
+        toolchain = "toolchains//:darwin_cc",
+        deps = [
+            "//src/darwin:sdk_env",
+            # elfcalls.h: the ABI every generated stub forwards through.
+            "//src/linux/startup:mldr_elfcalls",
+        ],
+        visibility = ["PUBLIC"],
+    )
+    for _n, _so, _dir in _NATIVE
+]
+
+[
+    darwin_dylib(
+        name = _n + "_dylib",
+        dylib_name = "lib" + _n + ".dylib",
+        install_name = _dir + "/lib" + _n + ".dylib",
+        objs = [":" + _n + "_obj"],
+        siblings = ["//vendor/src:system_final"],
+        toolchain = "toolchains//:darwin_cc",
+        deps = ["//src/darwin:sdk_env"],
+        visibility = ["PUBLIC"],
+    )
+    for _n, _so, _dir in _NATIVE
+]
+
+# HOST headers, for the one target that compiles against a host library's REAL headers
+# instead of a wrapgen stub. DBusKit includes <dbus/dbus.h>, and the dev shell's own
+# -isystem does not reach it: dbus puts its headers in a versioned subdirectory
+# (include/dbus-1.0) and splits dbus-arch-deps.h into a different nix output, so the two
+# dirs come from pkg-config, which is what the reference cmake asks as well.
+#
+# The paths are absolute and NOT declared inputs, exactly like elf_lib_dirs above them --
+# the same compromise, for the same reason: these are host artifacts outside the build
+# graph. scripts/buck-setup.nu writes them into .buckconfig.local.
+_HOST_INCLUDE_DIRS = [_d for _d in read_root_config("cider", "host_include_dirs", "").split(":") if _d]
+
+cc_header_root(
+    name = "host_headers",
+    exported_flags = ["-I" + _d for _d in _HOST_INCLUDE_DIRS],
+    visibility = ["PUBLIC"],
+)

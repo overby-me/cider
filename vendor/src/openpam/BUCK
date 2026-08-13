@@ -112,7 +112,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam.2_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -136,7 +136,7 @@ darwin_dylib(
         "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam.2 dylibs
@@ -183,7 +183,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_deny_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -207,7 +207,7 @@ darwin_dylib(
         "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_deny dylibs
@@ -254,7 +254,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam.1_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -278,7 +278,7 @@ darwin_dylib(
         "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam.1 dylibs
@@ -332,7 +332,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_akm_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_CoreFoundation",
         ":pam_akm_inc_openpam_darling_submodules_pam_modules_common",
     ],
@@ -360,7 +360,7 @@ darwin_dylib(
         "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_akm dylibs
@@ -414,7 +414,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_env_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pam_env_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -440,7 +440,7 @@ darwin_dylib(
         "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_env dylibs
@@ -494,7 +494,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_group_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pam_group_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -520,7 +520,7 @@ darwin_dylib(
         "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_group dylibs
@@ -575,13 +575,13 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_krb5_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_CoreFoundation",
         "//vendor/src:fw_DirectoryService",
         "//vendor/src:fwp_Heimdal",
-        "//darwin/frameworks:fw_CFOpenDirectory",
-        "//darwin/frameworks:fw_OpenDirectory",
-        "//darwin/private-frameworks:fw_ServerInformation",
+        "//src/darwin/frameworks:fw_CFOpenDirectory",
+        "//src/darwin/frameworks:fw_OpenDirectory",
+        "//src/darwin/private-frameworks:fw_ServerInformation",
         ":pam_krb5_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -637,7 +637,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_launchd_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pam_launchd_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -666,7 +666,7 @@ darwin_dylib(
         "//vendor/src:Security_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_launchd dylibs
@@ -720,9 +720,9 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_localauthentication_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_CoreFoundation",
-        "//darwin/frameworks:fw_LocalAuthentication",
+        "//src/darwin/frameworks:fw_LocalAuthentication",
         ":pam_localauthentication_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -750,11 +750,11 @@ darwin_dylib(
         "//vendor/src:system_final",
         "//vendor/src/corefoundation:CoreFoundation_dylib",
         "//vendor/src:Security_final",
-        "//darwin/frameworks:LocalAuthentication_dylib",
+        "//src/darwin/frameworks:LocalAuthentication_dylib",
         "//vendor/src:Foundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_localauthentication dylibs
@@ -809,13 +809,13 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_mount_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_CoreFoundation",
         "//vendor/src:fw_DirectoryService",
-        "//darwin/frameworks:fw_CFOpenDirectory",
-        "//darwin/frameworks:fw_NetFS",
-        "//darwin/frameworks:fw_OpenDirectory",
-        "//darwin/private-frameworks:fw_ServerInformation",
+        "//src/darwin/frameworks:fw_CFOpenDirectory",
+        "//src/darwin/frameworks:fw_NetFS",
+        "//src/darwin/frameworks:fw_OpenDirectory",
+        "//src/darwin/private-frameworks:fw_ServerInformation",
         ":pam_mount_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -871,7 +871,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_nologin_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pam_nologin_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -897,7 +897,7 @@ darwin_dylib(
         "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_nologin dylibs
@@ -952,13 +952,13 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_ntlm_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_CoreFoundation",
         "//vendor/src:fw_DirectoryService",
         "//vendor/src:fw_GSS",
-        "//darwin/frameworks:fw_CFOpenDirectory",
-        "//darwin/frameworks:fw_OpenDirectory",
-        "//darwin/private-frameworks:fw_ServerInformation",
+        "//src/darwin/frameworks:fw_CFOpenDirectory",
+        "//src/darwin/frameworks:fw_OpenDirectory",
+        "//src/darwin/private-frameworks:fw_ServerInformation",
         ":pam_ntlm_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -1015,20 +1015,20 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_opendirectory_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_CFNetwork",
         "//vendor/src:fw_CoreFoundation",
         "//vendor/src:fw_CoreGraphics",
         "//vendor/src:fw_DirectoryService",
         "//vendor/src:fw_Foundation",
         "//vendor/src:fw_Security",
-        "//darwin/frameworks:fw_AE",
-        "//darwin/frameworks:fw_CFOpenDirectory",
-        "//darwin/frameworks:fw_CarbonCore",
-        "//darwin/frameworks:fw_CoreServices",
-        "//darwin/frameworks:fw_OpenDirectory",
-        "//darwin/private-frameworks:fw_ConfigurationProfiles",
-        "//darwin/private-frameworks:fw_ServerInformation",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CFOpenDirectory",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_OpenDirectory",
+        "//src/darwin/private-frameworks:fw_ConfigurationProfiles",
+        "//src/darwin/private-frameworks:fw_ServerInformation",
         ":pam_opendirectory_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -1077,7 +1077,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_permit_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1101,7 +1101,7 @@ darwin_dylib(
         "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_permit dylibs
@@ -1155,7 +1155,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_rootok_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pam_rootok_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -1181,7 +1181,7 @@ darwin_dylib(
         "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_rootok dylibs
@@ -1235,7 +1235,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_sacl_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pam_sacl_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -1261,7 +1261,7 @@ darwin_dylib(
         "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_sacl dylibs
@@ -1315,7 +1315,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_self_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pam_self_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -1341,7 +1341,7 @@ darwin_dylib(
         "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_self dylibs
@@ -1399,13 +1399,13 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_smartcard_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_CoreFoundation",
         "//vendor/src:fw_DirectoryService",
         "//vendor/src:fw_Security",
-        "//darwin/frameworks:fw_CFOpenDirectory",
-        "//darwin/frameworks:fw_OpenDirectory",
-        "//darwin/private-frameworks:fw_ServerInformation",
+        "//src/darwin/frameworks:fw_CFOpenDirectory",
+        "//src/darwin/frameworks:fw_OpenDirectory",
+        "//src/darwin/private-frameworks:fw_ServerInformation",
         ":pam_smartcard_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -1461,12 +1461,12 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_tid_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_CoreFoundation",
         "//vendor/src:fw_Security",
-        "//darwin/frameworks:fw_CFOpenDirectory",
-        "//darwin/frameworks:fw_LocalAuthentication",
-        "//darwin/frameworks:fw_OpenDirectory",
+        "//src/darwin/frameworks:fw_CFOpenDirectory",
+        "//src/darwin/frameworks:fw_LocalAuthentication",
+        "//src/darwin/frameworks:fw_OpenDirectory",
         ":pam_tid_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -1493,14 +1493,14 @@ darwin_dylib(
     siblings = [
         "//vendor/src/openpam:pam.2_dylib",
         "//vendor/src:system_final",
-        "//darwin/frameworks:LocalAuthentication_dylib",
-        "//darwin/frameworks:DirectoryService_dylib",
+        "//src/darwin/frameworks:LocalAuthentication_dylib",
+        "//src/darwin/frameworks:DirectoryService_dylib",
         "//vendor/src:Security_final",
         "//vendor/src/corefoundation:CoreFoundation_dylib",
         "//vendor/src:Foundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_tid dylibs
@@ -1554,7 +1554,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":pam_uwtmp_inc_openpam_openpam",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pam_uwtmp_inc_openpam_darling_submodules_pam_modules_common",
     ],
     visibility = ["PUBLIC"],
@@ -1580,7 +1580,7 @@ darwin_dylib(
         "//vendor/src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: pam_uwtmp dylibs
@@ -1601,15 +1601,15 @@ darwin_dylib(
     ],
     siblings = [
         "//vendor/src/openpam:pam.2_dylib",
-        "//darwin/libsandbox:sandbox_not_system_dylib",
+        "//src/darwin/libsandbox:sandbox_not_system_dylib",
         "//vendor/src:system_final",
-        "//darwin/frameworks:OpenDirectory_dylib",
-        "//darwin/frameworks:NetFS_dylib",
+        "//src/darwin/frameworks:OpenDirectory_dylib",
+        "//src/darwin/frameworks:NetFS_dylib",
         "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1632,13 +1632,13 @@ darwin_dylib(
     siblings = [
         "//vendor/src/openpam:pam.2_dylib",
         "//vendor/src:system_final",
-        "//darwin/frameworks:OpenDirectory_dylib",
+        "//src/darwin/frameworks:OpenDirectory_dylib",
         "//vendor/src:Heimdal_dylib",
         "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1661,13 +1661,13 @@ darwin_dylib(
     siblings = [
         "//vendor/src/openpam:pam.2_dylib",
         "//vendor/src:system_final",
-        "//darwin/frameworks:OpenDirectory_dylib",
+        "//src/darwin/frameworks:OpenDirectory_dylib",
         "//vendor/src:GSS_dylib",
         "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1691,13 +1691,13 @@ darwin_dylib(
         "//vendor/src/openpam:pam.2_dylib",
         "//vendor/src/objc4:objc_final",
         "//vendor/src:system_final",
-        "//darwin/frameworks:OpenDirectory_dylib",
-        "//darwin/private-frameworks:ConfigurationProfiles_dylib",
+        "//src/darwin/frameworks:OpenDirectory_dylib",
+        "//src/darwin/private-frameworks:ConfigurationProfiles_dylib",
         "//vendor/src:Foundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1722,15 +1722,15 @@ darwin_dylib(
     siblings = [
         "//vendor/src/openpam:pam.2_dylib",
         "//vendor/src:system_final",
-        "//darwin/frameworks:DirectoryService_dylib",
+        "//src/darwin/frameworks:DirectoryService_dylib",
         "//vendor/src:Security_final",
-        "//darwin/frameworks:OpenDirectory_dylib",
-        "//darwin/frameworks:CryptoTokenKit_dylib",
+        "//src/darwin/frameworks:OpenDirectory_dylib",
+        "//src/darwin/frameworks:CryptoTokenKit_dylib",
         "//vendor/src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )

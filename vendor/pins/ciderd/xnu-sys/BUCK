@@ -107,10 +107,10 @@ cc_header_root(
         ":xnu_root",
         ":dt_internal_include",
         ":dt_include",
-        "//darwin/libsimple:libsimple_headers",
+        "//src/darwin/libsimple:libsimple_headers",
         "//vendor/pins/ciderd:dserver_headers",
         "//vendor/pins/ciderd:dserver_rpc",
-        "//linux/startup:rtsig_header",
+        "//src/linux/startup:rtsig_header",
     ],
     visibility = ["PUBLIC"],
 )
@@ -944,7 +944,7 @@ cc_static_lib(
     exported_headers = glob(["include/**/*.h"]),
     include_root = "include",
     deps = [
-        "//darwin/libsimple:libsimple_ciderd",
+        "//src/darwin/libsimple:libsimple_ciderd",
     ],
     linker_flags = [
         "-lpthread",

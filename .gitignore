@@ -42,7 +42,7 @@ tests/*
 !tests/syscall/
 !tests/dirserv/
 !tests/cider-smoke.nix
-# The VM-side twin of scripts/buck-bash-check.nu: the bash milestone for the buck2 port.
+# The VM-side twin of scripts/checks/buck-bash-check.nu: the bash milestone for the buck2 port.
 !tests/cider-buck2-smoke.nix
 !tests/cider-builder.nix
 !tests/nix-in-cider.nix
@@ -51,8 +51,11 @@ tests/*
 !tests/buck2/
 !tests/buck2/**
 
-# The suggested build folder
-build
+# The suggested build folder. ANCHORED TO THE ROOT, and that is not cosmetic: a bare `build`
+# matches a directory of that name at ANY depth, so it silently swallowed scripts/build/ the
+# moment the scripts were split, making five tracked scripts untracked. cmake is gone (#82), so
+# this now guards only against someone recreating the old root build dir by hand.
+/build
 # ...but not the vendored nix-ninja (its lowering + rust-ninja both have build/ subdirs).
 !nix/lib/nix-ninja/
 !nix/lib/nix-ninja/**
@@ -124,9 +127,9 @@ __pycache__/
 # The cargo build directory of the graph-specs tool (#99). NOT a blanket `target/` rule: 83
 # TRACKED paths in this repo contain a /target/ component, all of them upstream, and a blanket
 # rule would quietly untrack every one of them.
-/linux/buildtools/graph-specs/target/
-/linux/buildtools/skeleton/target/
-/linux/buildtools/src-normalise/target/
+/src/linux/buildtools/graph-specs/target/
+/src/linux/buildtools/skeleton/target/
+/src/linux/buildtools/src-normalise/target/
 /nix/lib/dyn-actions-spec-fixup/target/
 
 # Editor state. .vscode/launch.json was TRACKED until the release prep; the build already

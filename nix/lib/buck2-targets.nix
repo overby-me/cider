@@ -3,15 +3,15 @@
 # (scripts/buck-test.nu): the set already known to build, spanning host tier, guest
 # tier, MIG codegen and the firstpass/final link pair.
 [
-  "//darwin/libsimple:libsimple_ciderd"
-  "//darwin/libsimple:libsimple_cider"
+  "//src/darwin/libsimple:libsimple_ciderd"
+  "//src/darwin/libsimple:libsimple_cider"
   "//vendor/src:migcom"
-  "//linux/startup:rtsig_header"
+  "//src/linux/startup:rtsig_header"
   "//vendor/pins/ciderd:dserver_rpc"
   "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys"
   "//vendor/pins/ciderd/tools:dserverdbg"
-  "//linux/server:xnu_sys_lib"
-  "//darwin/libsimple:libsimple_cider_dylib"
+  "//src/linux/server:xnu_sys_lib"
+  "//src/darwin/libsimple:libsimple_cider_dylib"
   "//tests/buck2/firstpass:a"
   "//tests/buck2/firstpass:b"
   "//tests/buck2/firstpass:umbrella"
@@ -29,9 +29,9 @@
   "//vendor/src:system_asl_firstpass"
   "//vendor/src:system_coretls_firstpass"
   "//vendor/src:asl_ipc_mig"
-  "//darwin/duct:system_duct_firstpass"
+  "//src/darwin/duct:system_duct_firstpass"
   "//vendor/pins/libtrace:system_trace_firstpass"
-  "//darwin/libsystem_coreservices:system_coreservices_firstpass"
+  "//src/darwin/libsystem_coreservices:system_coreservices_firstpass"
   # The PREFIX: what a Darling install actually is, and the target the bash milestone
   # runs from. It pulls in every dylib, executable and data file the layout installs, so
   # it is also by far the widest thing this endpoint is asked to lower.

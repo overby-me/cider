@@ -72,7 +72,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_malloc_inc_include_malloc",
         ":system_malloc_inc_private",
         ":system_malloc_inc_include",
@@ -97,7 +97,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_malloc_inc_include_malloc",
         ":system_malloc_inc_private",
         ":system_malloc_inc_include",

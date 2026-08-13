@@ -43,21 +43,21 @@ let
     set -euo pipefail
     export PATH="${lib.makeBinPath [ cfg.package pkgs.coreutils pkgs.openssh ]}:$PATH"
 
-    DPREFIX="${cfg.prefixPath}"
-    export DPREFIX
+    CIDERPREFIX="${cfg.prefixPath}"
+    export CIDERPREFIX
 
-    echo "[cider-builder] Initialising prefix at $DPREFIX ..."
+    echo "[cider-builder] Initialising prefix at $CIDERPREFIX ..."
 
     # First run creates the prefix (may take a while)
-    cider --prefix "$DPREFIX" shell true
+    cider --prefix "$CIDERPREFIX" shell true
 
     # ── SSH setup ────────────────────────────────────────────────────
     # Generate host keys inside the prefix if missing
-    cider --prefix "$DPREFIX" shell \
+    cider --prefix "$CIDERPREFIX" shell \
       bash -c 'test -f /etc/ssh/ssh_host_ed25519_key || ssh-keygen -A'
 
     # Write a minimal sshd_config
-    cider --prefix "$DPREFIX" shell bash -c 'cat > /etc/ssh/sshd_config << EOF
+    cider --prefix "$CIDERPREFIX" shell bash -c 'cat > /etc/ssh/sshd_config << EOF
 Port ${toString cfg.port}
 ListenAddress 127.0.0.1
 PermitRootLogin yes
@@ -73,16 +73,16 @@ EOF
 '
 
     # Install the public key
-    cider --prefix "$DPREFIX" shell mkdir -p /var/root/.ssh
+    cider --prefix "$CIDERPREFIX" shell mkdir -p /var/root/.ssh
     cat "${cfg.sshKeyPath}.pub" | \
-      cider --prefix "$DPREFIX" shell tee /var/root/.ssh/authorized_keys > /dev/null
-    cider --prefix "$DPREFIX" shell chmod 700 /var/root/.ssh
-    cider --prefix "$DPREFIX" shell chmod 600 /var/root/.ssh/authorized_keys
+      cider --prefix "$CIDERPREFIX" shell tee /var/root/.ssh/authorized_keys > /dev/null
+    cider --prefix "$CIDERPREFIX" shell chmod 700 /var/root/.ssh
+    cider --prefix "$CIDERPREFIX" shell chmod 600 /var/root/.ssh/authorized_keys
 
     # ── Nix configuration ────────────────────────────────────────────
-    cider --prefix "$DPREFIX" shell mkdir -p /etc/nix
+    cider --prefix "$CIDERPREFIX" shell mkdir -p /etc/nix
 
-    cider --prefix "$DPREFIX" shell bash -c 'cat > /etc/nix/nix.conf << EOF
+    cider --prefix "$CIDERPREFIX" shell bash -c 'cat > /etc/nix/nix.conf << EOF
 # Managed by NixOS cider-builder module — do not edit
 build-users-group =
 sandbox = false
@@ -98,7 +98,7 @@ EOF
       # prefix, so /Volumes/SystemRoot/nix is the host's /nix.
       # We symlink /nix -> /Volumes/SystemRoot/nix to share the store
       # and avoid expensive SSH-based copying.
-      cider --prefix "$DPREFIX" shell bash -c '
+      cider --prefix "$CIDERPREFIX" shell bash -c '
         if [ ! -L /nix ] && [ ! -d /nix/store ]; then
           rm -rf /nix 2>/dev/null || true
           ln -sf /Volumes/SystemRoot/nix /nix
@@ -116,23 +116,23 @@ EOF
     # ── Directory Services stubs (for multi-user Nix if needed) ──────
     # Verify the stubs are installed (they ship with our Darling package)
     for tool in dseditgroup sysadminctl dscl; do
-      if ! cider --prefix "$DPREFIX" shell test -x "/usr/sbin/$tool"; then
+      if ! cider --prefix "$CIDERPREFIX" shell test -x "/usr/sbin/$tool"; then
         echo "[cider-builder] WARNING: /usr/sbin/$tool not found in prefix"
       fi
     done
 
     # Verify sandbox-exec stub
-    if ! cider --prefix "$DPREFIX" shell test -x /usr/bin/sandbox-exec; then
+    if ! cider --prefix "$CIDERPREFIX" shell test -x /usr/bin/sandbox-exec; then
       echo "[cider-builder] WARNING: /usr/bin/sandbox-exec not found in prefix"
     fi
 
     # ── Ensure /var/empty exists (home dir for build users) ──────────
-    cider --prefix "$DPREFIX" shell mkdir -p /var/empty
-    cider --prefix "$DPREFIX" shell chmod 555 /var/empty
+    cider --prefix "$CIDERPREFIX" shell mkdir -p /var/empty
+    cider --prefix "$CIDERPREFIX" shell chmod 555 /var/empty
 
     # ── sshd privilege-separation directory ───────────────────────────
-    cider --prefix "$DPREFIX" shell mkdir -p /var/empty/sshd
-    cider --prefix "$DPREFIX" shell chmod 755 /var/empty/sshd
+    cider --prefix "$CIDERPREFIX" shell mkdir -p /var/empty/sshd
+    cider --prefix "$CIDERPREFIX" shell chmod 755 /var/empty/sshd
 
     echo "[cider-builder] Prefix initialisation complete."
   '';
@@ -325,7 +325,7 @@ in
       path = [ cfg.package pkgs.coreutils pkgs.openssh pkgs.curl ];
 
       environment = {
-        DPREFIX = cfg.prefixPath;
+        CIDERPREFIX = cfg.prefixPath;
         HOME = "/root";
       };
 
@@ -339,10 +339,10 @@ in
           "+${pkgs.writeShellScript "cider-builder-install-nix" ''
             set -euo pipefail
             export PATH="${lib.makeBinPath [ cfg.package pkgs.coreutils pkgs.curl pkgs.gnutar pkgs.xz ]}:$PATH"
-            export DPREFIX="${cfg.prefixPath}"
+            export CIDERPREFIX="${cfg.prefixPath}"
 
             # Skip if Nix is already installed
-            if cider --prefix "$DPREFIX" shell test -x /nix/var/nix/profiles/default/bin/nix 2>/dev/null; then
+            if cider --prefix "$CIDERPREFIX" shell test -x /nix/var/nix/profiles/default/bin/nix 2>/dev/null; then
               echo "[cider-builder] Nix is already installed, skipping."
               exit 0
             fi
@@ -372,13 +372,13 @@ in
             sed -i 's/INSTALL_MODE=daemon/INSTALL_MODE=no-daemon/g' "$installer_dir/install"
 
             # Copy into the Darling prefix
-            prefix_tmp="$DPREFIX/private/tmp/nix-installer"
+            prefix_tmp="$CIDERPREFIX/private/tmp/nix-installer"
             mkdir -p "$prefix_tmp"
             cp -a "$installer_dir/"* "$prefix_tmp/"
             chmod +x "$prefix_tmp/install"
 
             echo "[cider-builder] Running Nix installer inside Darling ..."
-            cider --prefix "$DPREFIX" shell env \
+            cider --prefix "$CIDERPREFIX" shell env \
               NIX_INSTALLER_NO_MODIFY_PROFILE=0 \
               bash /tmp/nix-installer/install --no-daemon
 

@@ -20,7 +20,7 @@
 #   ./scripts/run-tests.nu [OPTIONS]
 #
 # Options:
-#   --prefix <path>       Darling prefix path (default: ~/.cider or $DPREFIX)
+#   --prefix <path>       Darling prefix path (default: ~/.cider or $CIDERPREFIX)
 #   --suite <name>        Run only the named suite (repeatable)
 #   --keep                Keep compiled test binaries in the prefix after running
 #   --verbose             Show full test output even on success
@@ -61,7 +61,7 @@ def colours [] {
 }
 
 def main [
-    --prefix: string = ""    # Darling prefix (default: ~/.cider or $DPREFIX)
+    --prefix: string = ""    # Darling prefix (default: ~/.cider or $CIDERPREFIX)
     # COMMA-SEPARATED, because nushell has no repeatable flag: the bash version took
     # --suite a --suite b, this takes --suite a,b. Everything else about it is the same.
     --suite: string = ""
@@ -73,7 +73,7 @@ def main [
     let cider_prefix = if ($prefix | is-not-empty) {
         $prefix
     } else {
-        ($env | get -o DPREFIX | default ($env.HOME | path join ".cider"))
+        ($env | get -o CIDERPREFIX | default ($env.HOME | path join ".cider"))
     }
     let selected = ($suite | split row "," | each {|x| $x | str trim } | where {|x| $x != "" })
 

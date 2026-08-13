@@ -1,0 +1,1 @@
+../../../../../../../../../../vendor/pins/configd/nwi/network_information.h

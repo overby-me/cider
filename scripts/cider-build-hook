@@ -47,7 +47,7 @@ set -euo pipefail
 DARLING="${CIDER_BUILD_HOOK_CIDER:-${DARLING_BUILD_HOOK_DARLING:-cider}}"
 
 # Darling prefix (default: whatever cider uses, usually ~/.cider)
-DPREFIX="${CIDER_BUILD_HOOK_PREFIX:-${DARLING_BUILD_HOOK_PREFIX:-${DPREFIX:-}}}"
+CIDERPREFIX="${CIDER_BUILD_HOOK_PREFIX:-${DARLING_BUILD_HOOK_PREFIX:-${CIDERPREFIX:-}}}"
 
 # Nix profile to source inside Darling
 NIX_PROFILE="${CIDER_BUILD_HOOK_NIX_PROFILE:-${DARLING_BUILD_HOOK_NIX_PROFILE:-/Users/root/.nix-profile/etc/profile.d/nix.sh}}"
@@ -79,8 +79,8 @@ die() {
 # Run a command inside the Darling prefix with Nix on PATH
 cider_run() {
     local prefix_args=()
-    if [[ -n "$DPREFIX" ]]; then
-        prefix_args=(--prefix "$DPREFIX")
+    if [[ -n "$CIDERPREFIX" ]]; then
+        prefix_args=(--prefix "$CIDERPREFIX")
     fi
 
     "$DARLING" "${prefix_args[@]}" shell bash -lc "
@@ -256,7 +256,7 @@ Environment variables:
   CIDER_BUILD_HOOK_MAX_JOBS     Max concurrent jobs (default: 4)
   CIDER_BUILD_HOOK_VERBOSE      Verbosity level (0=quiet, 1=debug)
   (every one of these still honours its DARLING_ spelling)
-  DPREFIX                       Fallback for Darling prefix path
+  CIDERPREFIX                       Fallback for Darling prefix path
 
 When invoked by Nix as a build hook (no arguments), the script reads the
 Nix build hook protocol from file descriptors and dispatches builds to

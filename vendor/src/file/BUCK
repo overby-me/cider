@@ -76,7 +76,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":magic_inc_file",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -127,7 +127,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":file_inc_file",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -154,7 +154,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/file:magic",
     ],
     visibility = ["PUBLIC"],

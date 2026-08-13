@@ -1,0 +1,1103 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:codegen.bzl", "elf_wrapper")
+load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# The five HOST libraries the audio stack reaches through libelfloader: ffmpeg's four and
+# pulseaudio. Same shape as src/linux/native's sixteen -- see the long comment there for what
+# elf_wrapper does and why its output depends on a file outside the build graph. cmake
+# writes these as wrap_elf() calls in src/CoreAudio/CMakeLists.txt, all with the default
+# destination, so all five install into /usr/lib/native.
+#
+# (cmake target, host SONAME)
+_AUDIO = [
+    ("swresample", "libswresample.so"),
+    ("avcodec", "libavcodec.so"),
+    ("avformat", "libavformat.so"),
+    ("avutil", "libavutil.so"),
+    ("pulse", "libpulse.so"),
+]
+
+# What this package produces, for the registry in gen-buck-from-ninja (deleted): it is a
+# text scan for a literal name/dylib_name pair and the comprehensions below write neither.
+# Same reason src/linux/native carries these; buck-test.nu fails if the list and _AUDIO disagree.
+#
+# buck-registry: libswresample.dylib = swresample_dylib
+# buck-registry: libavcodec.dylib = avcodec_dylib
+# buck-registry: libavformat.dylib = avformat_dylib
+# buck-registry: libavutil.dylib = avutil_dylib
+# buck-registry: libpulse.dylib = pulse_dylib
+
+_ELF_LIB_DIRS = read_root_config("cider", "elf_lib_dirs", "")
+
+[
+    elf_wrapper(
+        name = _n + "_wrap",
+        soname = _so,
+        name_base = _n,
+        wrapgen = "//src/linux/libelfloader:wrapgen",
+        lib_dirs = _ELF_LIB_DIRS,
+        deps = ["//src/darwin:sdk_env"],
+        visibility = ["PUBLIC"],
+    )
+    for _n, _so in _AUDIO
+]
+
+[
+    cc_objects(
+        name = _n + "_obj",
+        srcs = [],
+        gen_srcs = [":" + _n + "_wrap"],
+        compiler_flags = [
+            "-DDARLING",
+            "-fPIC",
+            "-nostdinc",
+        ],
+        toolchain = "toolchains//:darwin_cc",
+        deps = [
+            "//src/darwin:sdk_env",
+            "//src/linux/startup:mldr_elfcalls",
+        ],
+        visibility = ["PUBLIC"],
+    )
+    for _n, _so in _AUDIO
+]
+
+[
+    darwin_dylib(
+        name = _n + "_dylib",
+        dylib_name = "lib" + _n + ".dylib",
+        install_name = "/usr/lib/native/lib" + _n + ".dylib",
+        objs = [":" + _n + "_obj"],
+        siblings = ["//vendor/src:system_final"],
+        toolchain = "toolchains//:darwin_cc",
+        deps = ["//src/darwin:sdk_env"],
+        visibility = ["PUBLIC"],
+    )
+    for _n, _so in _AUDIO
+]
+
+# BEGIN generated: framework roots
+# One header root per framework, so a target declares the frameworks it includes
+# instead of getting the whole surface. The reference build just puts
+# src/darwin/framework-include on every Darwin compile's path; being explicit here is
+# what stops a target compiling against a framework it never declared.
+load("//buck/generated:sdk_framework_src_CoreAudio.bzl", FRAMEWORKS = "FRAMEWORKS")
+
+[
+    cc_header_root(
+        name = "fw_" + _name,
+        header_map = _map,
+        visibility = ["PUBLIC"],
+    )
+    for _name, _map in FRAMEWORKS.items()
+]
+# END generated: framework roots
+
+# BEGIN generated: CoreAudio
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) CoreAudio   -- review before committing.
+# cmake target: CoreAudio  ->  src/CoreAudio/CoreAudio/CoreAudio
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
+#   nix/store/wsbp9xyhb14jabawm1nmglpv87758zav-ffmpeg-8.1.2-dev/include
+#   src/CoreAudio/CoreAudio
+
+cc_objects(
+    name = "CoreAudio_obj",
+    srcs = [
+        "CoreAudio/AudioHardware.cpp",
+        "CoreAudio/AudioHardwareImpl.cpp",
+        "CoreAudio/AudioHardwareStream.cpp",
+        "CoreAudio/HostTime.mm",
+        "CoreAudio/pulse/AudioHardwareImplPA.cpp",
+        "CoreAudio/pulse/AudioHardwareImplPAInput.cpp",
+        "CoreAudio/pulse/AudioHardwareImplPAOutput.cpp",
+        "CoreAudio/pulse/AudioHardwareStreamPA.cpp",
+        "CoreAudio/pulse/AudioHardwareStreamPAInput.cpp",
+        "CoreAudio/pulse/AudioHardwareStreamPAOutput.cpp",
+        "CoreAudio/pulse/PADispatchMainLoop.cpp",
+    ],
+    compiler_flags = [
+        "-DCoreAudio_EXPORTS",
+        "-DENABLE_PULSEAUDIO",
+        "-DHAVE_AV_FRAME_ALLOC=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/CoreAudio:fw_CoreAudio",
+        "//src/linux/native:host_headers",
+        "//src/linux/startup:mldr_elfcalls",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreAudio
+
+# BEGIN generated: CoreAudio dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs CoreAudio   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/CoreAudio/CoreAudio/CoreAudio = CoreAudio_dylib
+
+darwin_dylib(
+    name = "CoreAudio_dylib",
+    dylib_name = "CoreAudio",
+    install_name = "/System/Library/Frameworks/CoreAudio.framework/Versions/A/CoreAudio",
+    compatibility_version = "1.0.0",
+    objs = [
+        # CoreAudio
+        ":CoreAudio_obj",
+    ],
+    siblings = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//src/darwin/CoreAudio:pulse_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreAudio dylibs
+
+# BEGIN generated: AudioToolbox
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) AudioToolbox   -- review before committing.
+# cmake target: AudioToolbox  ->  src/CoreAudio/AudioToolbox/AudioToolbox
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
+#   nix/store/wsbp9xyhb14jabawm1nmglpv87758zav-ffmpeg-8.1.2-dev/include
+#   src/CoreAudio/AudioToolbox
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "AudioToolbox_inc_src_CoreAudio_include",
+    headers = glob([
+        "include/*.h",
+        "include/**/*.h",
+        "include/*.c",
+        "include/AudioToolbox/*.h",
+        "include/AudioToolbox/**/*.h",
+        "include/AudioToolbox/*.c",
+    ]),
+    root = "include",
+    include_subdirs = [
+        ".",
+        "AudioToolbox",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "AudioToolbox_obj",
+    srcs = [
+        "AudioToolbox/AUComponent.cpp",
+        "AudioToolbox/AUGraph.cpp",
+        "AudioToolbox/AudioComponent.mm",
+        "AudioToolbox/AudioComponentManager.mm",
+        "AudioToolbox/AudioConverter.cpp",
+        "AudioToolbox/AudioConverterImpl.cpp",
+        "AudioToolbox/AudioFile.cpp",
+        "AudioToolbox/AudioFileComponent.cpp",
+        "AudioToolbox/AudioFileFormatManager.cpp",
+        "AudioToolbox/AudioFormat.cpp",
+        "AudioToolbox/AudioHardwareService.cpp",
+        "AudioToolbox/AudioQueue.cpp",
+        "AudioToolbox/AudioQueueBase.cpp",
+        "AudioToolbox/AudioQueueOutput.cpp",
+        "AudioToolbox/AudioToolbox.cpp",
+        "AudioToolbox/ExtendedAudioFile.cpp",
+        "AudioToolbox/MusicDevice.cpp",
+    ],
+    compiler_flags = [
+        "-DAudioToolbox_EXPORTS",
+        "-DENABLE_PULSEAUDIO",
+        "-DHAVE_AV_FRAME_ALLOC=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/linux/native:host_headers",
+        "//src/linux/startup:mldr_elfcalls",
+        ":AudioToolbox_inc_src_CoreAudio_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AudioToolbox
+
+# BEGIN generated: AudioToolbox dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs AudioToolbox   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/CoreAudio/AudioToolbox/AudioToolbox = AudioToolbox_dylib
+
+darwin_dylib(
+    name = "AudioToolbox_dylib",
+    dylib_name = "AudioToolbox",
+    install_name = "/System/Library/Frameworks/AudioToolbox.framework/Versions/A/AudioToolbox",
+    compatibility_version = "1.0.0",
+    objs = [
+        # AudioToolbox
+        ":AudioToolbox_obj",
+    ],
+    siblings = [
+        "//vendor/src/objc4:objc_final",
+        "//src/darwin/CoreAudio:avformat_dylib",
+        "//src/darwin/CoreAudio:swresample_dylib",
+        "//src/darwin/CoreAudio:avcodec_dylib",
+        "//src/darwin/CoreAudio:avutil_dylib",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+        "//src/darwin/CoreAudio:CoreAudio_dylib",
+        "//src/darwin/frameworks:CoreServices_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AudioToolbox dylibs
+
+# BEGIN generated: AudioUnit
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) AudioUnit   -- review before committing.
+# cmake target: AudioUnit  ->  src/CoreAudio/AudioToolbox/AudioUnit
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
+#   nix/store/wsbp9xyhb14jabawm1nmglpv87758zav-ffmpeg-8.1.2-dev/include
+#   src/CoreAudio/AudioToolbox
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "AudioUnit_inc_src_CoreAudio_include",
+    headers = glob([
+        "include/*.h",
+        "include/**/*.h",
+        "include/*.c",
+        "include/AudioToolbox/*.h",
+        "include/AudioToolbox/**/*.h",
+        "include/AudioToolbox/*.c",
+    ]),
+    root = "include",
+    include_subdirs = [
+        ".",
+        "AudioToolbox",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "AudioUnit_obj",
+    srcs = [
+        "AudioToolbox/empty.c",
+    ],
+    compiler_flags = [
+        "-DAudioUnit_EXPORTS",
+        "-DENABLE_PULSEAUDIO",
+        "-DHAVE_AV_FRAME_ALLOC=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//src/linux/native:host_headers",
+        "//src/linux/startup:mldr_elfcalls",
+        ":AudioUnit_inc_src_CoreAudio_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AudioUnit
+
+# BEGIN generated: AudioUnit dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs AudioUnit   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/CoreAudio/AudioToolbox/AudioUnit = AudioUnit_dylib
+
+darwin_dylib(
+    name = "AudioUnit_dylib",
+    dylib_name = "AudioUnit",
+    install_name = "/System/Library/Frameworks/AudioUnit.framework/Versions/A/AudioUnit",
+    compatibility_version = "1.0.0",
+    objs = [
+        # AudioUnit
+        ":AudioUnit_obj",
+    ],
+    reexport = [
+        "//src/darwin/CoreAudio:AudioToolbox_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AudioUnit dylibs
+
+# BEGIN generated: CoreAudioComponent
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) CoreAudioComponent   -- review before committing.
+# cmake target: CoreAudioComponent  ->  CoreAudioComponent
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
+#   nix/store/wsbp9xyhb14jabawm1nmglpv87758zav-ffmpeg-8.1.2-dev/include
+#   src/CoreAudio/CoreAudioComponent
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "CoreAudioComponent_inc_UtilityClasses_CoreAudio_AudioUnits_AUPublic",
+    headers = glob([
+        "CoreAudioUtilityClasses/CoreAudio/AudioUnits/AUPublic/AUBase/*.h",
+        "CoreAudioUtilityClasses/CoreAudio/AudioUnits/AUPublic/AUBase/**/*.h",
+        "CoreAudioUtilityClasses/CoreAudio/AudioUnits/AUPublic/AUBase/*.c",
+        "CoreAudioUtilityClasses/CoreAudio/AudioUnits/AUPublic/Utility/*.h",
+        "CoreAudioUtilityClasses/CoreAudio/AudioUnits/AUPublic/Utility/**/*.h",
+        "CoreAudioUtilityClasses/CoreAudio/AudioUnits/AUPublic/Utility/*.c",
+    ]),
+    root = "CoreAudioUtilityClasses/CoreAudio/AudioUnits/AUPublic",
+    include_subdirs = [
+        "AUBase",
+        "Utility",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "CoreAudioComponent_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    headers = glob(["CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/**/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.c"]),
+    root = "CoreAudioUtilityClasses/CoreAudio/PublicUtility",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "CoreAudioComponent_obj",
+    srcs = [
+        "CoreAudioComponent/AUHAL.cpp",
+        "CoreAudioComponent/AUPublic/AUBase/AUBase.cpp",
+        "CoreAudioComponent/AUPublic/AUBase/AUDispatch.cpp",
+        "CoreAudioComponent/AUPublic/AUBase/AUInputElement.cpp",
+        "CoreAudioComponent/AUPublic/AUBase/AUOutputElement.cpp",
+        "CoreAudioComponent/AUPublic/AUBase/AUPlugInDispatch.cpp",
+        "CoreAudioComponent/AUPublic/AUBase/AUScopeElement.cpp",
+        "CoreAudioComponent/AUPublic/AUBase/ComponentBase.cpp",
+        "CoreAudioComponent/AUPublic/Utility/AUBuffer.cpp",
+        "CoreAudioComponent/DefaultOutputAU.cpp",
+        "CoreAudioComponent/PublicUtility/CAAudioChannelLayout.cpp",
+        "CoreAudioComponent/PublicUtility/CAAudioChannelLayoutObject.cpp",
+        "CoreAudioComponent/PublicUtility/CABufferList.cpp",
+        "CoreAudioComponent/PublicUtility/CADebugger.cpp",
+        "CoreAudioComponent/PublicUtility/CAHostTimeBase.cpp",
+        "CoreAudioComponent/PublicUtility/CAStreamBasicDescription.cpp",
+        "CoreAudioComponent/PublicUtility/CAVectorUnit.cpp",
+        "CoreAudioComponent/SystemOutputAU.cpp",
+    ],
+    compiler_flags = [
+        "-DCA_BASIC_AU_FEATURES=1",
+        "-DCoreAudioComponent_EXPORTS",
+        "-DENABLE_PULSEAUDIO",
+        "-DHAVE_AV_FRAME_ALLOC=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fvisibility=hidden",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/CoreAudio:fw_AudioToolbox",
+        "//src/darwin/CoreAudio:fw_AudioUnit",
+        "//src/darwin/CoreAudio:fw_CoreAudio",
+        "//src/linux/native:host_headers",
+        "//src/linux/startup:mldr_elfcalls",
+        ":CoreAudioComponent_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+        ":CoreAudioComponent_inc_UtilityClasses_CoreAudio_AudioUnits_AUPublic",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreAudioComponent
+
+# BEGIN generated: CoreAudioComponent dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs CoreAudioComponent   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/CoreAudio/CoreAudioComponent/CoreAudio = CoreAudioComponent_dylib
+
+darwin_dylib(
+    name = "CoreAudioComponent_dylib",
+    dylib_name = "CoreAudio",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # CoreAudioComponent
+        ":CoreAudioComponent_obj",
+    ],
+    siblings = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+        "//src/darwin/CoreAudio:AudioToolbox_dylib",
+        "//src/darwin/CoreAudio:CoreAudio_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreAudioComponent dylibs
+
+# BEGIN generated: AFAVFormatComponent
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) AFAVFormatComponent   -- review before committing.
+# cmake target: AFAVFormatComponent  ->  AFAVFormatComponent
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
+#   nix/store/wsbp9xyhb14jabawm1nmglpv87758zav-ffmpeg-8.1.2-dev/include
+#   src/CoreAudio/AFAVFormatComponent
+
+cc_header_root(
+    name = "AFAVFormatComponent_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    headers = glob(["CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/**/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.c"]),
+    root = "CoreAudioUtilityClasses/CoreAudio/PublicUtility",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "AFAVFormatComponent_inc_AudioUtilityClasses_CoreAudio_AudioFile_AFPublic",
+    headers = glob(["CoreAudioUtilityClasses/CoreAudio/AudioFile/AFPublic/*.h", "CoreAudioUtilityClasses/CoreAudio/AudioFile/AFPublic/**/*.h", "CoreAudioUtilityClasses/CoreAudio/AudioFile/AFPublic/*.c"]),
+    root = "CoreAudioUtilityClasses/CoreAudio/AudioFile/AFPublic",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "AFAVFormatComponent_inc_lityClasses_CoreAudio_AudioUnits_AUPublic_AUBase",
+    headers = glob(["CoreAudioUtilityClasses/CoreAudio/AudioUnits/AUPublic/AUBase/*.h", "CoreAudioUtilityClasses/CoreAudio/AudioUnits/AUPublic/AUBase/**/*.h", "CoreAudioUtilityClasses/CoreAudio/AudioUnits/AUPublic/AUBase/*.c"]),
+    root = "CoreAudioUtilityClasses/CoreAudio/AudioUnits/AUPublic/AUBase",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "AFAVFormatComponent_obj",
+    srcs = [
+        "AFAVFormatComponent/AFPublic/AudioFileComponentBase.cpp",
+        "AFAVFormatComponent/AFPublic/AudioFileFormat.cpp",
+        "AFAVFormatComponent/AFPublic/AudioFileObject.cpp",
+        "AFAVFormatComponent/AFPublic/CompressedPacketTable.cpp",
+        "AFAVFormatComponent/AFPublic/DataSource.cpp",
+        "AFAVFormatComponent/AUPublic/AUBase/ComponentBase.cpp",
+        "AFAVFormatComponent/AudioFileFormatGeneric.cpp",
+        "AFAVFormatComponent/AudioFileMP3.cpp",
+        "AFAVFormatComponent/AudioFileWAV.cpp",
+        "AFAVFormatComponent/PublicUtility/CACFDictionary.cpp",
+    ],
+    compiler_flags = [
+        "-DAFAVFormatComponent_EXPORTS",
+        "-DENABLE_PULSEAUDIO",
+        "-DHAVE_AV_FRAME_ALLOC=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fvisibility=hidden",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/CoreAudio:fw_AudioToolbox",
+        "//src/darwin/CoreAudio:fw_AudioUnit",
+        "//src/darwin/CoreAudio:fw_CoreAudio",
+        "//src/linux/native:host_headers",
+        "//src/linux/startup:mldr_elfcalls",
+        ":AFAVFormatComponent_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+        ":AFAVFormatComponent_inc_AudioUtilityClasses_CoreAudio_AudioFile_AFPublic",
+        ":AFAVFormatComponent_inc_lityClasses_CoreAudio_AudioUnits_AUPublic_AUBase",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AFAVFormatComponent
+
+# BEGIN generated: AFAVFormatComponent dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs AFAVFormatComponent   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/CoreAudio/AFAVFormatComponent/AFAVFormat = AFAVFormatComponent_dylib
+
+darwin_dylib(
+    name = "AFAVFormatComponent_dylib",
+    dylib_name = "AFAVFormat",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # AFAVFormatComponent
+        ":AFAVFormatComponent_obj",
+    ],
+    siblings = [
+        "//src/darwin/CoreAudio:avformat_dylib",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+        "//src/darwin/CoreAudio:AudioToolbox_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AFAVFormatComponent dylibs
+
+# BEGIN generated: afconvert
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) afconvert   -- review before committing.
+# cmake target: afconvert  ->  src/CoreAudio/AudioFileTools/afconvert
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
+#   nix/store/wsbp9xyhb14jabawm1nmglpv87758zav-ffmpeg-8.1.2-dev/include
+#   src/CoreAudio/AudioFileTools
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "afconvert_inc_src_CoreAudio_AudioFileTools",
+    headers = glob([
+        "AudioFileTools/PublicUtility/*.h",
+        "AudioFileTools/PublicUtility/**/*.h",
+        "AudioFileTools/PublicUtility/*.c",
+        "AudioFileTools/Utility/*.h",
+        "AudioFileTools/Utility/**/*.h",
+        "AudioFileTools/Utility/*.c",
+    ]),
+    root = "AudioFileTools",
+    include_subdirs = [
+        "PublicUtility",
+        "Utility",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "afconvert_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    headers = glob(["CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/**/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.c"]),
+    root = "CoreAudioUtilityClasses/CoreAudio/PublicUtility",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "afconvert_obj",
+    srcs = [
+        "AudioFileTools/afconvert.cpp",
+        "AudioFileTools/afconvert_main.cpp",
+    ],
+    compiler_flags = [
+        "-DENABLE_PULSEAUDIO",
+        "-DHAVE_AV_FRAME_ALLOC=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03=0",
+        "-U__DARWIN_UNIX03",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/CoreAudio:fw_AudioToolbox",
+        "//src/darwin/CoreAudio:fw_CoreAudio",
+        "//src/linux/native:host_headers",
+        "//src/linux/startup:mldr_elfcalls",
+        ":afconvert_inc_src_CoreAudio_AudioFileTools",
+        ":afconvert_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: afconvert
+
+# BEGIN generated: afconvert binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries afconvert   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# buck-registry: src/CoreAudio/AudioFileTools/afconvert = afconvert
+
+darwin_binary(
+    name = "afconvert",
+    objs = [
+        # AudioFileTools_util
+        ":AudioFileTools_util_obj",
+        # afconvert
+        ":afconvert_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+        "//src/darwin/CoreAudio:AudioToolbox_dylib",
+        "//src/darwin/frameworks:CoreServices_dylib",
+        "//src/darwin/CoreAudio:CoreAudio_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: afconvert binary
+
+# BEGIN generated: AudioFileTools_util
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) AudioFileTools_util   -- review before committing.
+# cmake target: AudioFileTools_util  ->  src/CoreAudio/AudioFileTools/AudioFileTools_util
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
+#   nix/store/wsbp9xyhb14jabawm1nmglpv87758zav-ffmpeg-8.1.2-dev/include
+#   src/CoreAudio/AudioFileTools
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "AudioFileTools_util_inc_src_CoreAudio_AudioFileTools",
+    headers = glob([
+        "AudioFileTools/PublicUtility/*.h",
+        "AudioFileTools/PublicUtility/**/*.h",
+        "AudioFileTools/PublicUtility/*.c",
+        "AudioFileTools/Utility/*.h",
+        "AudioFileTools/Utility/**/*.h",
+        "AudioFileTools/Utility/*.c",
+    ]),
+    root = "AudioFileTools",
+    include_subdirs = [
+        "PublicUtility",
+        "Utility",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "AudioFileTools_util_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    headers = glob(["CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/**/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.c"]),
+    root = "CoreAudioUtilityClasses/CoreAudio/PublicUtility",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "AudioFileTools_util_obj",
+    srcs = [
+        "AudioFileTools/PublicUtility/CAAudioFilePlayer.cpp",
+        "AudioFileTools/PublicUtility/CAAudioFileRecorder.cpp",
+        "AudioFileTools/PublicUtility/CAAudioFileStreamer.cpp",
+        "AudioFileTools/PublicUtility/CABufferQueue.cpp",
+        "AudioFileTools/PublicUtility/CAChannelMapper.cpp",
+        "AudioFileTools/PublicUtility/CAChannelMappingPlayer.cpp",
+        "AudioFileTools/PublicUtility/CAGuard.cpp",
+        "AudioFileTools/PublicUtility/CAPThread.cpp",
+        "AudioFileTools/Utility/AFToolsCommon.cpp",
+        "AudioFileTools/Utility/CAAudioFileConverter.cpp",
+        "AudioFileTools/Utility/CAChannelLayouts.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/AUOutputBL.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAAUProcessor.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAAudioChannelLayout.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAAudioChannelLayoutObject.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAAudioFileFormats.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAAudioUnit.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CABufferList.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAComponent.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAComponentDescription.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAFilePathUtils.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAHostTimeBase.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAMutex.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAStreamBasicDescription.cpp",
+        "CoreAudioUtilityClasses/CoreAudio/PublicUtility/CAXException.cpp",
+    ],
+    compiler_flags = [
+        "-DENABLE_PULSEAUDIO",
+        "-DHAVE_AV_FRAME_ALLOC=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03=0",
+        "-U__DARWIN_UNIX03",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/CoreAudio:fw_AudioToolbox",
+        "//src/darwin/CoreAudio:fw_AudioUnit",
+        "//src/darwin/CoreAudio:fw_CoreAudio",
+        "//src/linux/native:host_headers",
+        "//src/linux/startup:mldr_elfcalls",
+        ":AudioFileTools_util_inc_src_CoreAudio_AudioFileTools",
+        ":AudioFileTools_util_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AudioFileTools_util
+
+# BEGIN generated: afinfo
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) afinfo   -- review before committing.
+# cmake target: afinfo  ->  src/CoreAudio/AudioFileTools/afinfo
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
+#   nix/store/wsbp9xyhb14jabawm1nmglpv87758zav-ffmpeg-8.1.2-dev/include
+#   src/CoreAudio/AudioFileTools
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "afinfo_inc_src_CoreAudio_AudioFileTools",
+    headers = glob([
+        "AudioFileTools/PublicUtility/*.h",
+        "AudioFileTools/PublicUtility/**/*.h",
+        "AudioFileTools/PublicUtility/*.c",
+        "AudioFileTools/Utility/*.h",
+        "AudioFileTools/Utility/**/*.h",
+        "AudioFileTools/Utility/*.c",
+    ]),
+    root = "AudioFileTools",
+    include_subdirs = [
+        "PublicUtility",
+        "Utility",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "afinfo_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    headers = glob(["CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/**/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.c"]),
+    root = "CoreAudioUtilityClasses/CoreAudio/PublicUtility",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "afinfo_obj",
+    srcs = [
+        "AudioFileTools/afinfo.cpp",
+    ],
+    compiler_flags = [
+        "-DENABLE_PULSEAUDIO",
+        "-DHAVE_AV_FRAME_ALLOC=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03=0",
+        "-U__DARWIN_UNIX03",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/CoreAudio:fw_AudioToolbox",
+        "//src/darwin/CoreAudio:fw_CoreAudio",
+        "//src/linux/native:host_headers",
+        "//src/linux/startup:mldr_elfcalls",
+        ":afinfo_inc_src_CoreAudio_AudioFileTools",
+        ":afinfo_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: afinfo
+
+# BEGIN generated: afinfo binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries afinfo   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# buck-registry: src/CoreAudio/AudioFileTools/afinfo = afinfo
+
+darwin_binary(
+    name = "afinfo",
+    objs = [
+        # AudioFileTools_util
+        ":AudioFileTools_util_obj",
+        # afinfo
+        ":afinfo_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+        "//src/darwin/CoreAudio:AudioToolbox_dylib",
+        "//src/darwin/frameworks:CoreServices_dylib",
+        "//src/darwin/CoreAudio:CoreAudio_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: afinfo binary
+
+# BEGIN generated: afplay
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) afplay   -- review before committing.
+# cmake target: afplay  ->  src/CoreAudio/AudioFileTools/afplay
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
+#   nix/store/wsbp9xyhb14jabawm1nmglpv87758zav-ffmpeg-8.1.2-dev/include
+#   src/CoreAudio/AudioFileTools
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "afplay_inc_src_CoreAudio_AudioFileTools",
+    headers = glob([
+        "AudioFileTools/PublicUtility/*.h",
+        "AudioFileTools/PublicUtility/**/*.h",
+        "AudioFileTools/PublicUtility/*.c",
+        "AudioFileTools/Utility/*.h",
+        "AudioFileTools/Utility/**/*.h",
+        "AudioFileTools/Utility/*.c",
+    ]),
+    root = "AudioFileTools",
+    include_subdirs = [
+        "PublicUtility",
+        "Utility",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "afplay_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    headers = glob(["CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/**/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.c"]),
+    root = "CoreAudioUtilityClasses/CoreAudio/PublicUtility",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "afplay_obj",
+    srcs = [
+        "AudioFileTools/afplay.cpp",
+    ],
+    compiler_flags = [
+        "-DENABLE_PULSEAUDIO",
+        "-DHAVE_AV_FRAME_ALLOC=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03=0",
+        "-U__DARWIN_UNIX03",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/CoreAudio:fw_AudioToolbox",
+        "//src/darwin/CoreAudio:fw_AudioUnit",
+        "//src/darwin/CoreAudio:fw_CoreAudio",
+        "//src/linux/native:host_headers",
+        "//src/linux/startup:mldr_elfcalls",
+        ":afplay_inc_src_CoreAudio_AudioFileTools",
+        ":afplay_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: afplay
+
+# BEGIN generated: afplay binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries afplay   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# buck-registry: src/CoreAudio/AudioFileTools/afplay = afplay
+
+darwin_binary(
+    name = "afplay",
+    objs = [
+        # AudioFileTools_util
+        ":AudioFileTools_util_obj",
+        # afplay
+        ":afplay_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+        "//src/darwin/CoreAudio:AudioToolbox_dylib",
+        "//src/darwin/frameworks:CoreServices_dylib",
+        "//src/darwin/CoreAudio:CoreAudio_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: afplay binary
+
+# BEGIN generated: afrecord
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) afrecord   -- review before committing.
+# cmake target: afrecord  ->  src/CoreAudio/AudioFileTools/afrecord
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
+#   nix/store/wsbp9xyhb14jabawm1nmglpv87758zav-ffmpeg-8.1.2-dev/include
+#   src/CoreAudio/AudioFileTools
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "afrecord_inc_src_CoreAudio_AudioFileTools",
+    headers = glob([
+        "AudioFileTools/PublicUtility/*.h",
+        "AudioFileTools/PublicUtility/**/*.h",
+        "AudioFileTools/PublicUtility/*.c",
+        "AudioFileTools/Utility/*.h",
+        "AudioFileTools/Utility/**/*.h",
+        "AudioFileTools/Utility/*.c",
+    ]),
+    root = "AudioFileTools",
+    include_subdirs = [
+        "PublicUtility",
+        "Utility",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "afrecord_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    headers = glob(["CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/**/*.h", "CoreAudioUtilityClasses/CoreAudio/PublicUtility/*.c"]),
+    root = "CoreAudioUtilityClasses/CoreAudio/PublicUtility",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "afrecord_obj",
+    srcs = [
+        "AudioFileTools/afrecord.cpp",
+    ],
+    compiler_flags = [
+        "-DENABLE_PULSEAUDIO",
+        "-DHAVE_AV_FRAME_ALLOC=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03=0",
+        "-U__DARWIN_UNIX03",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/CoreAudio:fw_AudioToolbox",
+        "//src/darwin/CoreAudio:fw_AudioUnit",
+        "//src/darwin/CoreAudio:fw_CoreAudio",
+        "//src/linux/native:host_headers",
+        "//src/linux/startup:mldr_elfcalls",
+        ":afrecord_inc_src_CoreAudio_AudioFileTools",
+        ":afrecord_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: afrecord
+
+# BEGIN generated: afrecord binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries afrecord   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# buck-registry: src/CoreAudio/AudioFileTools/afrecord = afrecord
+
+darwin_binary(
+    name = "afrecord",
+    objs = [
+        # AudioFileTools_util
+        ":AudioFileTools_util_obj",
+        # afrecord
+        ":afrecord_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+        "//src/darwin/CoreAudio:AudioToolbox_dylib",
+        "//src/darwin/frameworks:CoreServices_dylib",
+        "//src/darwin/CoreAudio:CoreAudio_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: afrecord binary
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+export_file(
+    name = "CoreAudioComponent_CoreAudio.rsrc",
+    src = "CoreAudioComponent/CoreAudio.rsrc",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "CoreAudioComponent_Info.plist",
+    src = "CoreAudioComponent/Info.plist",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports

@@ -26,8 +26,8 @@ rustPlatform.buildRustPackage {
   pname = "cider-graph-specs";
   version = "0.0.0";
 
-  src = src + "/linux/buildtools/graph-specs";
-  cargoLock.lockFile = src + "/linux/buildtools/graph-specs/Cargo.lock";
+  src = src + "/src/linux/buildtools/graph-specs";
+  cargoLock.lockFile = src + "/src/linux/buildtools/graph-specs/Cargo.lock";
 
   # ON SINCE THE DUMP LANDED HERE. The crate had no tests when it was two binaries and its
   # evidence was the byte comparison recorded in the crate header (2,955 output files identical

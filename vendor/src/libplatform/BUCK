@@ -86,7 +86,7 @@ cc_objects(
         ":platform_inc_internal",
         ":platform_inc_private",
         ":platform_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -119,7 +119,7 @@ darwin_dylib(
         "-Wl,-alias_list": "xcodeconfig/libplatform.aliases",
     },
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 
@@ -150,7 +150,7 @@ darwin_dylib(
         "-Wl,-alias_list": "xcodeconfig/libplatform.aliases",
     },
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: platform dylibs
@@ -203,7 +203,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":platform_64bit_inc_libplatform",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -251,7 +251,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":platform_32bit_inc_libplatform",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -338,7 +338,7 @@ cc_objects(
         ":platform_static64_inc_libplatform_internal",
         ":platform_static64_inc_libplatform_private",
         ":platform_static64_inc_libplatform_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )

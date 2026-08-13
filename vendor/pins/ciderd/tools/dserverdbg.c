@@ -64,7 +64,7 @@ static char* default_prefix_path(uid_t original_uid) {
 };
 
 static char* get_prefix_path(uid_t original_uid) {
-	char* env = getenv("DPREFIX");
+	char* env = getenv("CIDERPREFIX");
 
 	if (env) {
 		return strdup(env);

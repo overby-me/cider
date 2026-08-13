@@ -129,7 +129,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libperl5.18_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -164,7 +164,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libperl5.18_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -193,7 +193,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -280,7 +280,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libperl5.28_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -315,7 +315,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libperl5.28_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -344,7 +344,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -391,7 +391,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_arybase_arybase_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -426,7 +426,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -473,7 +473,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_attributes_attributes_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -508,7 +508,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -555,7 +555,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_B_B_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -590,7 +590,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -638,7 +638,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Compress_Raw_Bzip2_Bzip2_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -675,7 +675,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -725,7 +725,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Compress_Raw_Zlib_Zlib_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -762,7 +762,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -809,7 +809,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Cwd_Cwd_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -844,7 +844,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -891,7 +891,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Data_Dumper_Dumper_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -926,7 +926,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -977,7 +977,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_DB_File_DB_File_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -1012,7 +1012,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1059,7 +1059,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Devel_Peek_Peek_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -1094,7 +1094,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1143,7 +1143,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Devel_PPPort_PPPort_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -1178,7 +1178,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1226,7 +1226,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Digest_MD5_MD5_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -1261,7 +1261,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1309,7 +1309,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Digest_SHA_SHA_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -1344,7 +1344,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1405,7 +1405,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Encode_Encode_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -1440,7 +1440,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1500,7 +1500,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Encode_Byte_Byte_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -1535,7 +1535,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1600,7 +1600,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Encode_CN_CN_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -1635,7 +1635,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1695,7 +1695,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Encode_EBCDIC_EBCDIC_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -1730,7 +1730,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1795,7 +1795,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Encode_JP_JP_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -1830,7 +1830,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1894,7 +1894,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Encode_KR_KR_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -1929,7 +1929,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1989,7 +1989,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Encode_Symbol_Symbol_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2024,7 +2024,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2087,7 +2087,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Encode_TW_TW_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2122,7 +2122,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2181,7 +2181,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Encode_Unicode_Unicode_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2216,7 +2216,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2263,7 +2263,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Fcntl_Fcntl_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2298,7 +2298,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2345,7 +2345,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_File_DosGlob_DosGlob_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2380,7 +2380,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2428,7 +2428,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_File_Glob_Glob_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2463,7 +2463,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2510,7 +2510,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Filter_Util_Call_Call_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2545,7 +2545,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2593,7 +2593,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Hash_Util_Util_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2628,7 +2628,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2675,7 +2675,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Hash_Util_FieldHash_FieldHash_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2710,7 +2710,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2757,7 +2757,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_I18N_Langinfo_Langinfo_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2792,7 +2792,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2840,7 +2840,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_IO_IO_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2875,7 +2875,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2922,7 +2922,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_IPC_SysV_SysV_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -2957,7 +2957,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3005,7 +3005,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_List_Util_Util_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3040,7 +3040,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3087,7 +3087,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Math_BigInt_FastCalc_FastCalc_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3122,7 +3122,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3169,7 +3169,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_MIME_Base64_Base64_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3204,7 +3204,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3251,7 +3251,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_mro_mro_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3286,7 +3286,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3333,7 +3333,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_NDBM_File_NDBM_File_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3368,7 +3368,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3415,7 +3415,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Opcode_Opcode_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3450,7 +3450,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3497,7 +3497,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_PerlIO_encoding_encoding_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3532,7 +3532,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3579,7 +3579,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_PerlIO_mmap_mmap_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3614,7 +3614,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3661,7 +3661,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_PerlIO_scalar_scalar_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3696,7 +3696,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3743,7 +3743,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_PerlIO_via_via_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3778,7 +3778,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3825,7 +3825,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_POSIX_POSIX_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3860,7 +3860,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3912,7 +3912,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_re_re_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -3947,7 +3947,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -3994,7 +3994,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_SDBM_File_SDBM_File_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4029,7 +4029,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/perl:perl5.18_libsdbm",
     ],
     visibility = ["PUBLIC"],
@@ -4077,7 +4077,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Socket_Socket_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4112,7 +4112,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4161,7 +4161,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Storable_Storable_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4196,17 +4196,17 @@ darwin_dylib(
     },
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/python:Python_dylib",
-        "//darwin/frameworks:HIServices_dylib",
-        "//darwin/frameworks:ApplicationServices_dylib",
+        "//src/darwin/frameworks:HIServices_dylib",
+        "//src/darwin/frameworks:ApplicationServices_dylib",
         "//vendor/src:CoreGraphics_dylib",
         "//vendor/src:CoreText_dylib",
-        "//darwin/frameworks:ImageIO_dylib",
-        "//darwin/frameworks:CoreVideo_dylib",
+        "//src/darwin/frameworks:ImageIO_dylib",
+        "//src/darwin/frameworks:CoreVideo_dylib",
         "//vendor/src:CoreData_dylib",
         "//vendor/src:QuartzCore_dylib",
-        "//darwin/frameworks:OpenGL_dylib",
+        "//src/darwin/frameworks:OpenGL_dylib",
         "//vendor/src:Onyx2D_dylib",
     ],
     visibility = ["PUBLIC"],
@@ -4254,7 +4254,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Sys_Hostname_Hostname_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4289,7 +4289,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4336,7 +4336,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Sys_Syslog_Syslog_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4371,7 +4371,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4418,7 +4418,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Text_Soundex_Soundex_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4453,7 +4453,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4500,7 +4500,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_threads_threads_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4535,7 +4535,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4582,7 +4582,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_threads_shared_shared_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4617,7 +4617,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4664,7 +4664,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Tie_Hash_NamedCapture_NamedCapture_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4699,7 +4699,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4752,7 +4752,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Time_HiRes_HiRes_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4787,7 +4787,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4834,7 +4834,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Time_Piece_Piece_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4869,7 +4869,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4916,7 +4916,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Unicode_Collate_Collate_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -4951,7 +4951,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4998,7 +4998,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_Unicode_Normalize_Normalize_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5033,7 +5033,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5080,7 +5080,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_arybase_arybase_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5115,7 +5115,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5162,7 +5162,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_attributes_attributes_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5197,7 +5197,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5244,7 +5244,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_B_B_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5279,7 +5279,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5327,7 +5327,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Compress_Raw_Bzip2_Bzip2_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5364,7 +5364,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5414,7 +5414,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Compress_Raw_Zlib_Zlib_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5451,7 +5451,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5500,7 +5500,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Cwd_Cwd_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5535,7 +5535,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5582,7 +5582,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Data_Dumper_Dumper_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5617,7 +5617,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5668,7 +5668,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_DB_File_DB_File_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5703,7 +5703,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5750,7 +5750,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Devel_Peek_Peek_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5785,7 +5785,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5834,7 +5834,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Devel_PPPort_PPPort_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5869,7 +5869,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5917,7 +5917,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Digest_MD5_MD5_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -5952,7 +5952,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -5999,7 +5999,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Digest_SHA_SHA_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -6034,7 +6034,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6094,7 +6094,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Encode_Byte_Byte_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -6129,7 +6129,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6190,7 +6190,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Encode_Encode_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -6225,7 +6225,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6290,7 +6290,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Encode_CN_CN_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -6325,7 +6325,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6385,7 +6385,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Encode_EBCDIC_EBCDIC_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -6420,7 +6420,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6486,7 +6486,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Encode_JP_JP_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -6521,7 +6521,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6585,7 +6585,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Encode_KR_KR_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -6620,7 +6620,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6680,7 +6680,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Encode_Symbol_Symbol_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -6715,7 +6715,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6778,7 +6778,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Encode_TW_TW_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -6813,7 +6813,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6872,7 +6872,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Encode_Unicode_Unicode_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -6907,7 +6907,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -6954,7 +6954,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Fcntl_Fcntl_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -6989,7 +6989,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7036,7 +7036,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_File_DosGlob_DosGlob_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7071,7 +7071,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7119,7 +7119,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_File_Glob_Glob_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7154,7 +7154,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7201,7 +7201,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Filter_Util_Call_Call_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7236,7 +7236,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7283,7 +7283,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Hash_Util_FieldHash_FieldHash_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7318,7 +7318,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7366,7 +7366,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Hash_Util_Util_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7401,7 +7401,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7448,7 +7448,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_I18N_Langinfo_Langinfo_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7483,7 +7483,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7531,7 +7531,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_IO_IO_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7566,7 +7566,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7613,7 +7613,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_IPC_SysV_SysV_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7648,7 +7648,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7696,7 +7696,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_List_Util_Util_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7731,7 +7731,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7778,7 +7778,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Math_BigInt_FastCalc_FastCalc_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7813,7 +7813,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7860,7 +7860,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_MIME_Base64_Base64_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7895,7 +7895,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -7942,7 +7942,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_mro_mro_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -7977,7 +7977,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8024,7 +8024,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_NDBM_File_NDBM_File_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8059,7 +8059,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8106,7 +8106,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Opcode_Opcode_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8141,7 +8141,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8188,7 +8188,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_PerlIO_encoding_encoding_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8223,7 +8223,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8270,7 +8270,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_PerlIO_mmap_mmap_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8305,7 +8305,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8352,7 +8352,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_PerlIO_scalar_scalar_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8387,7 +8387,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8434,7 +8434,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_PerlIO_via_via_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8469,7 +8469,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8516,7 +8516,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_POSIX_POSIX_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8551,7 +8551,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8603,7 +8603,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_re_re_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8638,7 +8638,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8689,7 +8689,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_SDBM_File_SDBM_File_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8724,7 +8724,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8771,7 +8771,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Socket_Socket_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8806,7 +8806,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8853,7 +8853,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Storable_Storable_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8888,7 +8888,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -8935,7 +8935,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Sys_Hostname_Hostname_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -8970,7 +8970,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9017,7 +9017,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Sys_Syslog_Syslog_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -9052,7 +9052,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9099,7 +9099,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_threads_threads_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -9134,7 +9134,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9181,7 +9181,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_threads_shared_shared_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -9216,7 +9216,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9263,7 +9263,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Tie_Hash_NamedCapture_NamedCapture_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -9298,7 +9298,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9358,7 +9358,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Time_HiRes_HiRes_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -9393,7 +9393,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9440,7 +9440,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Time_Piece_Piece_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -9475,7 +9475,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9522,7 +9522,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Unicode_Collate_Collate_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -9557,7 +9557,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9604,7 +9604,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_Unicode_Normalize_Normalize_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -9639,7 +9639,7 @@ darwin_dylib(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -9688,7 +9688,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_libsdbm_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -9742,7 +9742,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_CoreFoundation",
         "//vendor/src/perl:perl_versions_h",
     ],
@@ -9769,7 +9769,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
@@ -9814,7 +9814,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.18_inc_perl_5_18_perl",
     ],
     visibility = ["PUBLIC"],
@@ -9840,7 +9840,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
@@ -9885,7 +9885,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":perl5.28_inc_perl_5_28_perl",
     ],
     visibility = ["PUBLIC"],
@@ -9911,7 +9911,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],
@@ -9936,7 +9936,7 @@ cc_objects(
         "-DMACOSX",
         "-DNDEBUG",
         "-DPLATFORM=\"darwin\"",
-        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-CIDERPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
         "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
         "-DSUFFIX=\"\"",
         "-DVERSION=\"2.7\"",
@@ -9951,7 +9951,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src/python:python_versions_h",
         "//vendor/src:fw_CoreFoundation",
         "//vendor/src/python:Python_inc_python_2_7_Python_2_7_16",
@@ -9980,7 +9980,7 @@ darwin_binary(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:crt1.10.6",
     ],
     visibility = ["PUBLIC"],

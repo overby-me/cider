@@ -20,8 +20,8 @@ rustPlatform.buildRustPackage {
   pname = "cider-src-normalise";
   version = "0.0.0";
 
-  src = src + "/linux/buildtools/src-normalise";
-  cargoLock.lockFile = src + "/linux/buildtools/src-normalise/Cargo.lock";
+  src = src + "/src/linux/buildtools/src-normalise";
+  cargoLock.lockFile = src + "/src/linux/buildtools/src-normalise/Cargo.lock";
 
   # ON, unlike the other two #99 tools, because this crate HAS tests and they are the reason to
   # trust it: pypath reimplements four os.path functions Rust's std does not have, and every

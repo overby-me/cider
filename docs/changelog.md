@@ -84,12 +84,12 @@ reference was missing, so a store GC would have turned the repair into a permane
 it returns 2 now. That is not hypothetical, `result-graph-stock` beside it is already collected.
 
 `result-graph-ref` points at the **all** graph and buck-test's thresholds are
-all-component numbers. `scripts/buck-runtime-check.nu` runs the eleven runtime checks in
+all-component numbers. `scripts/checks/buck-runtime-check.nu` runs the eleven runtime checks in
 one command.
 
 **Two guest checks stand outside that command, because each needs an artifact the suite cannot
 make on its own.** `scripts/buck-darwin-rust-run.nu` runs a Mach-O Rust binary in the guest
-(#96 route A), and `scripts/buck-rpath-check.nu` proves dyld still expands `@rpath` there. Both
+(#96 route A), and `scripts/checks/buck-rpath-check.nu` proves dyld still expands `@rpath` there. Both
 take a prebuilt prefix artifact with `--art`; the rpath one also takes the two probes, whose
 four-line sources and exact rustc commands are recorded in its header. It runs THREE times and
 the last two are the point: move the dylib off the rpath and the run must fail NAMING
@@ -106,7 +106,7 @@ which is what separates an rpath-expansion failure from an unloadable dylib.
   `scripts/buck-codegen-coverage.nu`: 227 outputs are unconsumed and all are mig side
   outputs the reference does not read either.
 - **Build parity is not runtime parity.** buck-test is almost entirely static. What runs is
-  the ten runtime checks plus `scripts/buck-loadall-check.nu`, which dlopens the prefix:
+  the ten runtime checks plus `scripts/checks/buck-loadall-check.nu`, which dlopens the prefix:
   292 of 336 installed dylibs and framework binaries load in the guest, and the 44 that do
   not are the Swift LFS pointers (#39), which are not libraries. Past dlopen is unmeasured.
 
@@ -140,9 +140,9 @@ repo-relative and CURRENT: an include dir, a `root =`, a src. Must move. (2) pin
 `# cmake target: X ->` line. Must not. (4) cmake BINARY-DIR, everything under `# TODO these
 include dirs are GENERATED (codegen output):`. Must not. The existence test separates 1 from 2
 and is self-validating (rewrite only when `src/<rest>` is gone and exactly one of
-`darwin/<rest>`/`linux/<rest>` exists), but it CANNOT see 4, because cmake mirrors the source
+`src/darwin/<rest>`/`src/linux/<rest>` exists), but it CANNOT see 4, because cmake mirrors the source
 layout into its binary dir: `src/CoreAudio/CoreAudio` is generated while
-`darwin/CoreAudio/CoreAudio` is real, so both exist. Key class 4 on the comment block, not the
+`src/darwin/CoreAudio/CoreAudio` is real, so both exist. Key class 4 on the comment block, not the
 path. For classes 3 and 4 the generator is the arbiter: run `gen-buck-from-ninja.py <target>`
 and read what it emits rather than reasoning about it.
 
@@ -175,7 +175,7 @@ as a REAL directory so the pins can be planted in it, so the loop that
 symlinks every other top-level entry into the store must skip `src`. That exclusion was
 rewritten to a Nix BINDING name, which matches no directory, and all 1798 lowered targets then
 failed with "Permission denied" 90 minutes into a build.
-`scripts/buck-lowering-stage-check.nu` reads the generated staging script in seconds instead.
+`scripts/checks/buck-lowering-stage-check.nu` reads the generated staging script in seconds instead.
 
 
 ### The meta-lesson: re-test a recorded diagnosis before acting on it
@@ -217,9 +217,9 @@ keeps what is still true and useful, not the story of arriving at it.
 ## Status (2026-07)
 
 Done:
-- **Rust rewrite complete and default.** Host daemon (`linux/server`, crate `cider`, bin
-  `ciderd`), launcher (`linux/launcher`, bin `cider`), guest loader
-  (`darwin/loader`, bin `mldr`). The C++ daemon and C launcher/loader are deleted.
+- **Rust rewrite complete and default.** Host daemon (`src/linux/server`, crate `cider`, bin
+  `ciderd`), launcher (`src/linux/launcher`, bin `cider`), guest loader
+  (`src/darwin/loader`, bin `mldr`). The C++ daemon and C launcher/loader are deleted.
 - **Boots to Darwin; M1 achieved.** Guest nix 2.34.8 builds and runs `hello` (and `pv`)
   from source under rootless Darling, launchd-free. `nix eval builtins.currentSystem` →
   `"x86_64-darwin"`.
@@ -238,8 +238,8 @@ tracks below.
 
 ## Architecture
 
-- **Top-level layout (#87, both stages):** three top-level trees and no more. `darwin/` is
-  guest side, `linux/` is host side, `pins/` is the 148 vendored upstreams. **`src/` no
+- **Top-level layout (#87, both stages):** three top-level trees and no more. `src/darwin/` is
+  guest side, `src/linux/` is host side, `pins/` is the 148 vendored upstreams. **`src/` no
   longer exists.** First-party code is classified by BUCK RULE KIND, not by name:
   `darwin_dylib` and `darwin_binary` are guest, `cc_binary` and `rust_binary` are host.
   `stageProject` now excludes `pins` rather than `src`, so pins are still planted into a real
@@ -256,10 +256,10 @@ tracks below.
 - **Call chain (the debugging map):** Darwin binary → Darwin libc → `libsystem_kernel`
   BSD-trap stub → daemon translates to Linux → kernel. Syscalls are implemented only to the
   depth Nix needs, not for general macOS compat.
-- **launcher** (`linux/launcher`, libc-only, builds offline): rootless userns re-exec,
+- **launcher** (`src/linux/launcher`, libc-only, builds offline): rootless userns re-exec,
   prefix bootstrap, spawns the daemon as container init, shellspawn client, teardown. Owns
   NO mounts/vchroot (the daemon does).
-- **daemon** (`linux/server`): single-threaded epoll loop + a **stackful microthread
+- **daemon** (`src/linux/server`): single-threaded epoll loop + a **stackful microthread
   scheduler** (`sched.rs`) — not async, because xnu-sys suspends microthreads
   synchronously from inside C stacks; single-worker is correct (xnu-sys locks are
   cooperative). RPC codec (`rpc_wire.rs`) is generated from the calls list, 162/162
@@ -267,11 +267,11 @@ tracks below.
   for `process_vm_readv` because the guest is in its own PID namespace).
 - **xnu-sys** (`pins/ciderd/xnu-sys/`, still C): kernel-emulation glue
   that compiles the vendored XNU (osfmk/bsd). Linked into the daemon crate by
-  `linux/server/build.rs`: bindgen generates the 36-field `xnu_sys_hooks_t` from source
+  `src/linux/server/build.rs`: bindgen generates the 36-field `xnu_sys_hooks_t` from source
   headers; static libs (`libciderd_xnu_sys.a`, `liblibsimple_ciderd.a`)
   come via the `XNU_SYS_LIB` env var. The Rust/C seam is the frozen `xnu_sys_*` API +
   `xnu_sys_hooks` vtable — Rust above, C+XNU below.
-- **mldr loader** (`darwin/loader`, libc + goblin): guest Mach-O loader — segment mmap/slide,
+- **mldr loader** (`src/darwin/loader`, libc + goblin): guest Mach-O loader — segment mmap/slide,
   commpage, the elfcalls vtable (ELF↔Mach-O), start stack, daemon checkin, jump to dyld.
 - **Container model:** an overlayfs prefix (`~/.cider`, macOS FS hierarchy) entered
   **rootless** via unprivileged user namespaces (needs
@@ -329,7 +329,7 @@ What follows is only what is still OPEN.
 
 ### M1 tail (Phase C.3–C.4b) [ARCH-FREE]
 - Drive the official `pkgs.hello` **derivation** through guest nix (not hand-run
-  configure/make). `scripts/build-pkg-bypass.nu <attr>` generalizes to any nixpkgs
+  configure/make). `scripts/build/build-pkg-bypass.nu <attr>` generalizes to any nixpkgs
   x86_64-darwin attr. Widen to no-substitute deps.
 - **C.4b** gdb-on-timeout stall capture (timeout + on-timeout stack of the guest process +
   daemon), filed to the Stall notes below. (The old `config.status` here-doc pipe hang was
@@ -480,8 +480,8 @@ concrete failure justifies it:
   silently dropped what only a human had put there.** 2026-08-10: a regenerate lost a whole
   `[buck2]` section (watchman then refused to start at nice 12, and every buck2 command died)
   and FOUR include dirs (`expat`, `systemd-minimal-libs`, `linux-headers`, `libxdmcp`), which
-  took `//darwin/frameworks:fseventsd_obj` out with
-  `linux/fanotify.h: 'linux/types.h' file not found`. None of them came from the script.
+  took `//src/darwin/frameworks:fseventsd_obj` out with
+  `src/linux/fanotify.h: 'src/linux/types.h' file not found`. None of them came from the script.
   Fixed at the source rather than by hand: the `[buck2]` section is emitted, and the four
   packages are declared in `nix/devShell.nix` so the `-isystem` harvest finds them.
   THE HABIT THAT WOULD HAVE CAUGHT IT: after regenerating a generated file, DIFF IT AGAINST
@@ -653,7 +653,7 @@ mappings, so an anonymous stack absent from it proves NOTHING; use the PT_LOAD p
 And `readelf -l` splits each program header over TWO lines, so a naive regex reports zero PT_LOAD
 for a core that has 186.
 
-**FIXED, AND ROUTE A IS COMPLETE.** `darwin/loader/src/stack.rs` allocated the guest start stack
+**FIXED, AND ROUTE A IS COMPLETE.** `src/darwin/loader/src/stack.rs` allocated the guest start stack
 as `min(16 pages, RLIMIT_STACK)`, inherited from upstream `mldr.c:828-839`. 16 pages is 64 KB;
 macOS gives the main thread 8 MB. Rust std had consumed 63,744 of 65,536 bytes before dyld's
 first lazy bind, so the 2,696-byte XSAVE buffer ran off the bottom. Now 8 MB, still floored by
@@ -701,7 +701,7 @@ nearest-symbol-below lookup recovers every frame, and `objdump` at the exact off
 faulting instruction instead of leaving a choice of three dereferences.
 
 **ROOT CAUSE: our `queue_enter_threads` stored the address of the link FIELD where XNU's
-`queue_enter` stores the ELEMENT pointer.** `linux/server/src/xnu/thread.rs`. XNU element queues
+`queue_enter` stores the ELEMENT pointer.** `src/linux/server/src/xnu/thread.rs`. XNU element queues
 put the `thread_t` itself in `head->next` and in each `task_threads.next`, because `queue_iterate`
 casts the stored `queue_entry_t` straight to `thread_t`. Our two helpers agreed with each OTHER,
 so the list looked consistent and nothing in Rust ever noticed; the C reader did not agree, read
@@ -753,7 +753,7 @@ resolve that one string. Two earlier suspects died on the way: `allowAtPaths` (d
 returns `0x3F` and `ALLOW_AT_PATH` is bit 0, so at-paths ARE allowed, and bit 1 being set is also
 why `DYLD_LIBRARY_PATH` worked), and env vars not reaching dyld (`DYLD_PRINT_LIBRARIES` prints).
 
-**FIX in `darwin/loader/src/main.rs`**: the root prefix derivation moved out of the dylinker
+**FIX in `src/darwin/loader/src/main.rs`**: the root prefix derivation moved out of the dylinker
 branch, where it already existed for locating dyld, and `executable_path=` is now the host path
 with that root stripped. Deliberately conservative: it rewrites only when the host path really is
 under the root and the remainder is still absolute, so the first process (whose root is libexec,
@@ -797,7 +797,7 @@ into darwin_binary as an ordinary `objs` entry and NOTHING about the link path c
 **THE ENTRY POINT IS C.** A staticlib has no main, so a guest Rust tool exports
 `#[unsafe(no_mangle)] pub extern "C" fn main(argc, argv)` and crt1.10.6 finds it. Rust lang_start
 does NOT run: no stack-overflow guard message, no std-installed cleanup. std itself works, and
-darwin/rustprobe is written to prove it rather than assume it, because on macOS args come from
+src/darwin/rustprobe is written to prove it rather than assume it, because on macOS args come from
 _NSGetArgv rather than an init hook: the probe asserts std::env::args matches the argc crt1 was
 given, and prints through std::io.
 
@@ -828,7 +828,7 @@ THE NAME IS AN INPUT to this program. Stage each under the real name in its own 
 ### #102b - PlistBuddy: the measurement that had to come before the port
 
 Written 2026-08-12 because the task said "PlistBuddy needs CF bindings before it needs a port",
-and that framing was MINE and it was wrong. The numbers, all from darwin/PlistBuddy/PlistBuddy.c:
+and that framing was MINE and it was wrong. The numbers, all from src/darwin/PlistBuddy/PlistBuddy.c:
 
     1,278 lines, 1,070 non-comment      24 top-level functions
     49 DISTINCT CoreFoundation functions in 139 call sites
@@ -914,7 +914,7 @@ re-run AGAINST THE RENAMED TARGETS, because a rename that swapped the wrong pair
 build.
 
 **THE GATES LIVE IN scripts/ NOW** (buck-xcrun-parity.sh, buck-plistbuddy-parity.sh) and run from
-the suite ONLY when darwin/xcselect or darwin/PlistBuddy is modified in the working copy, or when
+the suite ONLY when src/darwin/xcselect or src/darwin/PlistBuddy is modified in the working copy, or when
 CIDER_GUEST_PARITY is set. Each boots the container and materializes a 600 MB prefix, and the
 container faults about once per 61 cases, so running them every time buys a slow suite and an
 occasional meaningless red; but these are the INSTALLED binaries now, so a regression ships. The
@@ -981,7 +981,7 @@ there is no equivalent seam to borrow.
 proving a boot worked is a problem we share. `.github/workflows/test.yml` calls `check.yml`, and
 that job is shellcheck plus a hadolint Dockerfile lint plus a JSON and YAML validator. There is no
 runtime job, no boot test, nothing that starts the container. Cider is well ahead here: we boot
-the container and run real programs in scripts/buck-bash-check.nu, buck-appkit-check.nu,
+the container and run real programs in scripts/checks/buck-bash-check.nu, buck-appkit-check.nu,
 buck-jsc-check.nu, and since #102 the two guest parity gates.
 
 **THE ONE THING WORTH CREDITING, and we already do it.** Third party fetches are pinned by full
@@ -1022,8 +1022,8 @@ live.
 invalidates every group that stages the project". Measured on the endpoint, it invalidates
 **zero** groups.
 
-**THE MEASUREMENT.** `scripts/buck-quick-check.nu --attr .#cider-buck2-prefix-min --probe
-darwin/frameworks/AVFoundation/constants.m`, which builds the endpoint, appends a nonce comment
+**THE MEASUREMENT.** `scripts/checks/buck-quick-check.nu --attr .#cider-buck2-prefix-min --probe
+src/darwin/frameworks/AVFoundation/constants.m`, which builds the endpoint, appends a nonce comment
 to one first-party source, rebuilds, counts builders that RAN, and reverts:
 
     counter self test           ran=1, so the counter can report non-zero
@@ -1039,7 +1039,7 @@ to one first-party source, rebuilds, counts builders that RAN, and reverts:
 rebuilding proves the edit REACHED `projectSrc`. Without that, ran=2 would be indistinguishable
 from a probe that measured nothing, and the file was checked against the source filter
 beforehand for the same reason: `nix/lib/cider-src.nix` excludes only top-level names plus every
-file called `BUCK`, and `darwin/` is kept.
+file called `BUCK`, and `src/darwin/` is kept.
 
 **WHAT THE TWO REMAINING BUILDERS ARE.** Not a cascade: `projectSrc` is an input to the graph
 derivation, so when a source changes it must be re-derived. Two derivations and a re-resolution
@@ -1071,7 +1071,7 @@ cutoff for everything downstream of a mig group. Found by #66's full-graph compa
 
 Fixed by `patches/bootstrap_cmds/0001-migcom-honour-source-date-epoch.patch`. A freshly built
 mig group now reads `stub generated Tue Jan  1 00:00:00 1980`. Guarded by
-`scripts/buck-mig-epoch-check.nu`, which builds ONE mig group instead of the whole graph and is
+`scripts/checks/buck-mig-epoch-check.nu`, which builds ONE mig group instead of the whole graph and is
 in `buck-test.nu`.
 
 Full detail, including the copy I got wrong first: docs/plan-history.md, "#95 in detail".
@@ -1145,7 +1145,7 @@ is a vendoring project. None of that is worth paying to remove a guarded assumpt
 Written 2026-08-12 because the task was open in the harness with NO PLAN entry, so the next
 increment would have rediscovered all of the below. Read off the tree, not from memory.
 
-**TWO OF THEM ARE ALREADY PORTED, and well.** `linux/buildtools/BUCK` gives the CANONICAL names
+**TWO OF THEM ARE ALREADY PORTED, and well.** `src/linux/buildtools/BUCK` gives the CANONICAL names
 `getuuid` and `elfdep` to `rust_binary` targets over `getuuid.rs` and `elfdep.rs`; the C survives
 as `getuuid_c` and `elfdep_c` deliberately, because `scripts/buck-hosttools-parity.nu` diffs the
 two on the same inputs and that comparison is only re-runnable while both exist. Provenance was
@@ -1170,8 +1170,8 @@ fails the suite instead of waiting for someone to remember the script exists.
 **WHAT IS ACTUALLY LEFT, and it is smaller than the task title suggests:**
 
     bsdln       NOT GONE, and NOT ours to rewrite. This entry said "GONE, zero files match
-                anywhere in the tree" and that was false: linux/bsdln/{BUCK,ln.c} is right
-                there, //linux/bsdln:bsdln builds, and linux/bsdln/BUCK already records the
+                anywhere in the tree" and that was false: src/linux/bsdln/{BUCK,ln.c} is right
+                there, //src/linux/bsdln:bsdln builds, and src/linux/bsdln/BUCK already records the
                 decision. ln.c is Copyright 1987, 1993, 1994 The Regents of the University of
                 California, so it is FreeBSD ln with a small local delta, not Darling-origin
                 code. The intended treatment is DE-VENDORING (pin the upstream source, compile
@@ -1181,7 +1181,7 @@ fails the suite instead of waiting for someone to remember the script exists.
                 FILE NAMES only. Nothing is called bsdln.c; the directory is called bsdln. Same
                 family as the buck-src lesson, where a search was structurally unable to see
                 what it was asked about, so it returned a confident zero.
-    wrapgen     DONE 2026-08-12. linux/libelfloader/wrapgen/wrapgen.rs is the build tool now
+    wrapgen     DONE 2026-08-12. src/linux/libelfloader/wrapgen/wrapgen.rs is the build tool now
                 and the C++ is kept beside it as wrapgen_c. Provenance was the last blocker and
                 it is resolved; the record of how is below because the method is reusable.
                 THE PROBLEM WAS that all four files carry no copyright, no licence and no
@@ -1211,10 +1211,10 @@ fails the suite instead of waiting for someone to remember the script exists.
                 is exactly why porting them was cheap and why a byte-parity harness over a
                 handful of inputs was sufficient proof. wrapgen is LOAD-BEARING:
 
-                  linux/libelfloader/BUCK:15     the target //linux/libelfloader:wrapgen
+                  src/linux/libelfloader/BUCK:15     the target //src/linux/libelfloader:wrapgen
                   buck/rules/codegen.bzl:558     the elf_wrapper rule RUNS it at build time
-                  darwin/CoreAudio/BUCK:38       consumer
-                  linux/native/BUCK:74           consumer
+                  src/darwin/CoreAudio/BUCK:38       consumer
+                  src/linux/native/BUCK:74           consumer
                   buck-src/BUCK:49080            consumer, the generated one
 
                 It writes the Mach-O stub that lets a Darwin program call into a HOST ELF
@@ -1223,7 +1223,7 @@ fails the suite instead of waiting for someone to remember the script exists.
                 library any consumer feeds it, not merely behave the same on a few probes.
 
                 SO THE GATE WAS THE WHOLE CORPUS: all 22 libraries the three consumers name,
-                16 from linux/native, 5 from darwin/CoreAudio and fuse from buck-src, compared
+                16 from src/linux/native, 5 from src/darwin/CoreAudio and fuse from buck-src, compared
                 in the .c, the vars .h, stdout, stderr and exit code. Byte identical in every
                 one, from 3,615 bytes of C for swresample to 538,088 for GL, with 8 of the 22
                 exercising the vars-header path. Five error paths too (no arguments, an
@@ -1238,11 +1238,11 @@ fails the suite instead of waiting for someone to remember the script exists.
                 THE ONE DELIBERATE DIFFERENCE, as in getuuid and elfdep: the C++ mmaps and casts
                 structures straight out of the mapping, so a lying offset reads past the end.
                 The Rust reads the file and parses at CHECKED offsets.
-    xcrun       darwin/clt/xcrun.c, darwin/xcselect/xcrun.c, darwin/xcselect/xcrun-shim.c
-    PlistBuddy  darwin/PlistBuddy/PlistBuddy.c
+    xcrun       src/darwin/clt/xcrun.c, src/darwin/xcselect/xcrun.c, src/darwin/xcselect/xcrun-shim.c
+    PlistBuddy  src/darwin/PlistBuddy/PlistBuddy.c
 
 **xcrun AND PlistBuddy ARE BLOCKED, and the reason is narrower than this entry first said.**
-Both live under `darwin/`, so they are Mach-O GUEST binaries. Two separate gaps, measured
+Both live under `src/darwin/`, so they are Mach-O GUEST binaries. Two separate gaps, measured
 2026-08-12:
 
     buck/rules/rust.bzl        zero occurrences of --target, so the rule cannot ask for a
@@ -1302,7 +1302,7 @@ implementation that agrees is a test; deleting it converts a working check into 
 assumption.
 
 - **A, the bridge.** `nix/lib/dyn-actions.nix`, fourteen properties over eleven fixtures via
-  `scripts/buck-dyndrv-check.nu`. `scripts/buck-bridge-generality-check.nu` ENFORCES that the
+  `scripts/checks/buck-dyndrv-check.nu`. `scripts/checks/buck-bridge-generality-check.nu` ENFORCES that the
   reusable half references nothing outside itself, which is the requirement rather than a
   nicety. Usage, constraints and the limits a real consumer found: `docs/dyn-actions-bridge.md`.
 - **B, the adapter.** `cider-graph-specs` renders the builder script and

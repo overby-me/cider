@@ -88,7 +88,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":info-rpc_inc_Libinfo",
     ],
     visibility = ["PUBLIC"],
@@ -138,7 +138,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":darling-resolver_inc_Libinfo",
     ],
     visibility = ["PUBLIC"],

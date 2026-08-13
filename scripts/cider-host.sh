@@ -2,7 +2,7 @@
 # cider-host.sh - run Darling on the host via a setuid-root copy.
 #
 # This Darling build requires euid 0 (it creates mount/PID namespaces and does
-# mounts); rootless user namespaces are disabled in linux/startup/cider.c. On a
+# mounts); rootless user namespaces are disabled in src/linux/startup/cider.c. On a
 # non-NixOS host without the programs.cider module, the supported way to run
 # it is a setuid-root copy of the cider binary. The binary bakes an absolute
 # INSTALL_PREFIX, so a setuid copy anywhere still execs the correct
@@ -18,7 +18,7 @@
 #                        (DARLING_OUT is still honoured)
 #   CIDER_C2_SETUID      setuid copy location (default /opt/cider-c2/cider)
 #                        (DARLING_C2_SETUID is still honoured)
-#   DPREFIX              prefix location (default ~/.cider-c2)
+#   CIDERPREFIX              prefix location (default ~/.cider-c2)
 #
 # Usage: scripts/cider-host.sh <cider args...>
 #        scripts/cider-host.sh --refresh-cmd   # just print the sudo command
@@ -34,7 +34,7 @@
 set -uo pipefail
 
 SETUID=${CIDER_C2_SETUID:-${DARLING_C2_SETUID:-/opt/cider-c2/cider}}
-export DPREFIX=${DPREFIX:-$HOME/.cider-c2}
+export CIDERPREFIX=${CIDERPREFIX:-$HOME/.cider-c2}
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 

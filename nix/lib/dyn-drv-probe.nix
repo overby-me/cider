@@ -46,7 +46,7 @@
 #
 # Usage:
 #   nix build --impure --expr '(import ./nix/lib/dyn-drv-probe.nix { pkgs = import <nixpkgs> {}; }).consumer'
-# and see scripts/buck-dyndrv-check.nu, which asserts all three properties.
+# and see scripts/checks/buck-dyndrv-check.nu, which asserts all three properties.
 {
   pkgs,
   # Changes the PRODUCER's input WITHOUT changing the derivation it emits. That is the whole

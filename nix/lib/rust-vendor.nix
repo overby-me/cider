@@ -13,9 +13,9 @@
 {pkgs}:
 pkgs.runCommand "cider-rust-vendor" {} ''
   mkdir -p $out
-  for d in ${pkgs.rustPlatform.importCargoLock {lockFile = ../../linux/server/Cargo.lock;}} \
-           ${pkgs.rustPlatform.importCargoLock {lockFile = ../../linux/launcher/Cargo.lock;}} \
-           ${pkgs.rustPlatform.importCargoLock {lockFile = ../../darwin/loader/Cargo.lock;}}; do
+  for d in ${pkgs.rustPlatform.importCargoLock {lockFile = ../../src/linux/server/Cargo.lock;}} \
+           ${pkgs.rustPlatform.importCargoLock {lockFile = ../../src/linux/launcher/Cargo.lock;}} \
+           ${pkgs.rustPlatform.importCargoLock {lockFile = ../../src/darwin/loader/Cargo.lock;}}; do
     for c in "$d"/*/; do
       ln -sfn "$c" "$out/$(basename "$c")"
     done

@@ -69,7 +69,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_pthread_inc_src",
         ":system_pthread_inc_src_resolver",
         ":system_pthread_inc_private",
@@ -108,7 +108,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_pthread_inc_src",
         ":system_pthread_inc_src_resolver",
         ":system_pthread_inc_private",
@@ -136,7 +136,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_pthread_inc_src",
         ":system_pthread_inc_src_resolver",
         ":system_pthread_inc_private",
@@ -174,7 +174,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_pthread_inc_src",
         ":system_pthread_inc_src_resolver",
         ":system_pthread_inc_private",
@@ -211,7 +211,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_pthread_inc_src",
         ":system_pthread_inc_src_resolver",
         ":system_pthread_inc_private",
@@ -245,7 +245,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_pthread_inc_src",
         ":system_pthread_inc_src_resolver",
         ":system_pthread_inc_private",
@@ -286,7 +286,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_pthread_inc_src",
         ":system_pthread_inc_src_resolver",
         ":system_pthread_inc_private",
@@ -360,7 +360,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pthread_static_inc_libpthread_src",
         ":pthread_static_inc_libpthread_src_resolver",
         ":pthread_static_inc_libpthread_private",
@@ -401,7 +401,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pthread_static_inc_libpthread_src",
         ":pthread_static_inc_libpthread_src_resolver",
         ":pthread_static_inc_libpthread_private",
@@ -431,7 +431,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pthread_static_inc_libpthread_src",
         ":pthread_static_inc_libpthread_src_resolver",
         ":pthread_static_inc_libpthread_private",
@@ -471,7 +471,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pthread_static_inc_libpthread_src",
         ":pthread_static_inc_libpthread_src_resolver",
         ":pthread_static_inc_libpthread_private",
@@ -510,7 +510,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pthread_static_inc_libpthread_src",
         ":pthread_static_inc_libpthread_src_resolver",
         ":pthread_static_inc_libpthread_private",
@@ -546,7 +546,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pthread_static_inc_libpthread_src",
         ":pthread_static_inc_libpthread_src_resolver",
         ":pthread_static_inc_libpthread_private",
@@ -589,7 +589,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":pthread_static_inc_libpthread_src",
         ":pthread_static_inc_libpthread_src_resolver",
         ":pthread_static_inc_libpthread_private",

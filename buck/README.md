@@ -79,7 +79,7 @@ ninja.)
 
 `cc_lib_dir(name, deps)`
 : Collect a dep graph's archives into one directory, which is the shape
-  `XNU_SYS_LIB` wants (see `//linux/server:xnu_sys_lib`).
+  `XNU_SYS_LIB` wants (see `//src/linux/server:xnu_sys_lib`).
 
 `mig_gen(name, defs, out_base, *_suffix, compile_srcs, mig_sh, migcom, deps)`
 : Run one MIG definition. Invokes Darling's own `mig.sh` (through `bash`: its

@@ -24,7 +24,7 @@
 #   ./scripts/verify-nix.nu [OPTIONS]
 #
 # Options:
-#   --prefix <path>       Darling prefix path (default: ~/.cider or $DPREFIX)
+#   --prefix <path>       Darling prefix path (default: ~/.cider or $CIDERPREFIX)
 #   --online              Include checks that require network access (curl, cache)
 #   --verbose             Show command output even on success
 #   --json                Output results as JSON (for CI consumption)
@@ -117,7 +117,7 @@ def json_detail [detail: string] {
 }
 
 def main [
-    --prefix: string = ""   # Darling prefix (default: ~/.cider or $DPREFIX)
+    --prefix: string = ""   # Darling prefix (default: ~/.cider or $CIDERPREFIX)
     --online                # include network-dependent checks
     --verbose (-v)          # show command output even on success
     --json                  # output results as JSON
@@ -126,7 +126,7 @@ def main [
     let cider_prefix = if ($prefix | is-not-empty) {
         $prefix
     } else {
-        ($env | get -o DPREFIX | default ($env.HOME | path join ".cider"))
+        ($env | get -o CIDERPREFIX | default ($env.HOME | path join ".cider"))
     }
     let conf = $"($cider_prefix)/etc/nix/nix.conf"
     # A literal, like the bash version: an escaped quote cannot appear inside a nushell

@@ -20,8 +20,8 @@ rustPlatform.buildRustPackage {
   pname = "cider-skeleton";
   version = "0.0.0";
 
-  src = src + "/linux/buildtools/skeleton";
-  cargoLock.lockFile = src + "/linux/buildtools/skeleton/Cargo.lock";
+  src = src + "/src/linux/buildtools/skeleton";
+  cargoLock.lockFile = src + "/src/linux/buildtools/skeleton/Cargo.lock";
 
   # std only, no dependencies, and a single [[bin]] with no tests.
   doCheck = false;

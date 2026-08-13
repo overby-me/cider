@@ -1,1 +1,0 @@
-../../../../../../../../../../vendor/pins/curl/curl/include/curl/curl.h

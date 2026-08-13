@@ -22,7 +22,7 @@ darwin_dylib(
     firstpass = True,
     install_name = "/usr/lib/libSystem.B.dylib",
     linker_flags = ["-Wl,-bind_at_load"],
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
 )
 
 darwin_dylib(
@@ -35,7 +35,7 @@ darwin_dylib(
     # this tier is building. Darling does the same where it has to
     # (src/duct/src/CMakeLists.txt sets -Wl,-bind_at_load for the same reason).
     linker_flags = ["-Wl,-bind_at_load"],
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
 )
 
 darwin_dylib(
@@ -48,7 +48,7 @@ darwin_dylib(
     # this tier is building. Darling does the same where it has to
     # (src/duct/src/CMakeLists.txt sets -Wl,-bind_at_load for the same reason).
     linker_flags = ["-Wl,-bind_at_load"],
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
 )
 
 # The final pass: each links the OTHER's firstpass, so both resolve fully.
@@ -65,7 +65,7 @@ darwin_dylib(
     # this tier is building. Darling does the same where it has to
     # (src/duct/src/CMakeLists.txt sets -Wl,-bind_at_load for the same reason).
     linker_flags = ["-Wl,-bind_at_load"],
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
 )
 
 darwin_dylib(
@@ -81,7 +81,7 @@ darwin_dylib(
     # this tier is building. Darling does the same where it has to
     # (src/duct/src/CMakeLists.txt sets -Wl,-bind_at_load for the same reason).
     linker_flags = ["-Wl,-bind_at_load"],
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
 )
 
 # Phase 1.2's second half: an umbrella that reexports its members' symbols as its
@@ -99,5 +99,5 @@ darwin_dylib(
     # this tier is building. Darling does the same where it has to
     # (src/duct/src/CMakeLists.txt sets -Wl,-bind_at_load for the same reason).
     linker_flags = ["-Wl,-bind_at_load"],
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
 )

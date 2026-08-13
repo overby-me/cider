@@ -1,7 +1,7 @@
 # Rust, driven by rustc directly.
 #
-# Three of Darling's components are Rust now: the ciderd daemon (linux/server), the
-# launcher (linux/launcher, the `cider` binary) and the Mach-O loader (darwin/loader,
+# Three of Darling's components are Rust now: the ciderd daemon (src/linux/server), the
+# launcher (src/linux/launcher, the `cider` binary) and the Mach-O loader (src/darwin/loader,
 # mldr). Nix builds them with buildRustPackage today; this is the buck2 side, and it does
 # what the rest of this port does with cmake -- read what the reference build actually runs,
 # and run that, rather than shelling out to the other build system.
@@ -52,7 +52,7 @@ def _closure(ctx):
 #
 # buck2 hands out project-relative paths, and `include!(concat!(env!("OUT_DIR"), ...))`
 # resolves a relative path against the FILE doing the include -- so the daemon's lib.rs went
-# looking for the bindings under linux/server/src/buck-out/... Cargo always passes an
+# looking for the bindings under src/linux/server/src/buck-out/... Cargo always passes an
 # absolute OUT_DIR, which is why the crate never had to care.
 _RUSTC_RUNNER = """set -euo pipefail
 # The compile-time environment travels in the ARGV, not in the action's env dict. Nothing

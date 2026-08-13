@@ -70,7 +70,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":libressl_2_8_3_libcompat_inc_libressl_2_8_3_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -109,7 +109,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":libressl_2_8_3_libcompat_inc_libressl_2_8_3_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -188,7 +188,7 @@ cc_objects(
     deps = [
         ":tls18_inc_libressl_2_8_3_include",
         ":tls18_inc_libressl_2_8_3_include_compat",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":tls18_inc_libressl_2_8_3_tls",
     ],
     visibility = ["PUBLIC"],
@@ -836,7 +836,7 @@ cc_objects(
     deps = [
         ":crypto44_inc_libressl_2_8_3_include",
         ":crypto44_inc_libressl_2_8_3_include_compat",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":crypto44_inc_libressl_2_8_3_crypto",
         ":crypto44_inc_libressl_2_8_3_crypto_asn1",
         ":crypto44_inc_libressl_2_8_3_crypto_bn",
@@ -909,7 +909,7 @@ cc_objects(
     deps = [
         ":crypto44_64_inc_libressl_2_8_3_include",
         ":crypto44_64_inc_libressl_2_8_3_include_compat",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":crypto44_64_inc_libressl_2_8_3_crypto",
     ],
     visibility = ["PUBLIC"],
@@ -1016,7 +1016,7 @@ cc_objects(
     deps = [
         ":ssl46_inc_libressl_2_8_3_include",
         ":ssl46_inc_libressl_2_8_3_include_compat",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":ssl46_inc_libressl_2_8_3_ssl",
     ],
     visibility = ["PUBLIC"],
@@ -1132,7 +1132,7 @@ cc_objects(
     deps = [
         ":openssl_inc_libressl_2_8_3_include",
         ":openssl_inc_libressl_2_8_3_include_compat",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":openssl_inc_libressl_2_8_3_apps_openssl",
     ],
     visibility = ["PUBLIC"],

@@ -34,7 +34,7 @@
   lowered,
   # Small, real, and dependency-free. Overridable so the same fixture can be pointed at a
   # harder group once this one holds.
-  label ? "root//darwin/libsimple:libsimple_ciderd",
+  label ? "root//src/darwin/libsimple:libsimple_ciderd",
 }: let
   inherit (pkgs) lib;
 

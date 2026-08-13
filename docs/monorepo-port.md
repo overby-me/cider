@@ -100,7 +100,7 @@ The whole `scripts/` python is **ZERO files** as of 2026-08-12, down from 54 at 
 this campaign and from the 29 the table above was measured on.
 
 **THE LIVE SURFACE OF `gen-buck-from-ninja.py` IS RUST NOW**, in
-`linux/buildtools/graph-specs/src/ninjaref.rs`: `read_edges` over the frozen 131 MB
+`src/linux/buildtools/graph-specs/src/ninjaref.rs`: `read_edges` over the frozen 131 MB
 `build.ninja`, the firstpass and final registries scanned out of every committed BUCK file, and
 `upwards_of`. That is the 182 lines the six importers actually read, in one place, so each
 importer can move on its own instead of waiting on a 2,508-line file. `buck-fix-link-model` is
@@ -171,14 +171,14 @@ README should say exactly that rather than leaving a reader to wonder why `.py` 
 
 ### The real Python surface is 17,334 lines, not 16,719
 
-Counting only first-party trees (`scripts/`, `nix/`, `buck/`, `tests/`, `darwin/`, `linux/`, and
+Counting only first-party trees (`scripts/`, `nix/`, `buck/`, `tests/`, `src/darwin/`, `src/linux/`, and
 the root), and not the vendored CPython under `buck-src/`:
 
     59 files, 17,334 lines
       scripts/          54 files  16,719
       nix/lib/           2 files     383     dyn-actions-spec-fixup.py, component-dag.py
       tests/src/bin/     1 file      129
-      darwin/            2 files     103
+      src/darwin/            2 files     103
 
 The 615 lines outside `scripts/` are the ones nobody counted, and `nix/lib` is the part that
 matters most: those two files are **product code that nix executes during a build**, not checks.
@@ -194,8 +194,8 @@ that no longer exists.
 
 **WHAT IS LEFT ANYWHERE IN THE TREE IS UPSTREAM OR GUEST CONTENT, not port tooling**, measured
 rather than assumed: `tests/src/bin/runtests.py` is upstream's guest test runner,
-`darwin/xcselect/clt_install.py` is installed INTO the prefix and runs under the guest python,
-`darwin/libm/man3/FIXDATES.py` is upstream libm's man page dater, `tools/generate-xcode-stubs.py` (deleted in the release prep, see below)
+`src/darwin/xcselect/clt_install.py` is installed INTO the prefix and runs under the guest python,
+`src/darwin/libm/man3/FIXDATES.py` is upstream libm's man page dater, `tools/generate-xcode-stubs.py` (deleted in the release prep, see below)
 arrived with upstream (its first commit is "Add a script to generate minimal stubs for some
 frameworks needed by Xcode"), and `buck-rust/` is the vendored crate tree. None of them is
 something this port runs.
@@ -269,7 +269,7 @@ census column that says "guarded" only means the string `--dry-run` occurs in th
 not say which way the default falls. Read the argv handling of a WRITER before running it.
 
 **And its output has drifted from what is committed.** That one accidental run changed 84 lines
-and removed 69 across `buck-src/BUCK`, `darwin/launchd/BUCK`, `pins/ciderd/xnu-sys/BUCK` and
+and removed 69 across `buck-src/BUCK`, `src/darwin/launchd/BUCK`, `pins/ciderd/xnu-sys/BUCK` and
 `buck/generated/extra-deps.json`. It is the same shape as the `prefix-min` drift: a generator
 whose committed output no longer matches what it produces. Both are now known; neither has been
 acted on, because regenerating build files is a decision and not a tidy-up.
@@ -290,7 +290,7 @@ shape nushell is worst at, and they die at the next store GC by their own admiss
 `buck-host-includes` shows how they were done: push BOTH the line selection AND the token split
 into grep, so 26,198 long lines become 652 tokens before nushell sees any of it.
 `buck-lower-srcdeps` is the odd one out and went to **Rust**, as `cider-lower-srcdeps`, the
-seventh binary of `linux/buildtools/graph-specs`: it reads the 147 MB `graph.json` rather than
+seventh binary of `src/linux/buildtools/graph-specs`: it reads the 147 MB `graph.json` rather than
 the ninja file, and its hot loop is a hash join between staged-tree link maps and action inputs.
 Gated byte for byte against the python in nine modes on the real graph, including the
 16,838-line `--list`, both no-such-target paths and the usage path. The one mode that is not
@@ -322,13 +322,13 @@ not by a nix file, not by another script. Enumerated over the whole tree rather 
 | --- | --- |
 | `docs/monorepo-port.md`, `docs/plan-history.md` | this analysis, and history |
 | `nix/lib/ciderBuck2Graph.nix` | a COMMENT citing the numbers it produced |
-| `linux/buildtools/skeleton/src/main.rs` | a COMMENT on where `NEVER_EMPTY_FILES` came from |
+| `src/linux/buildtools/skeleton/src/main.rs` | a COMMENT on where `NEVER_EMPTY_FILES` came from |
 | `scripts/buck-codegen-keep.txt` | its GENERATED OUTPUT, committed, 132 lines |
 | the python buck2-graph-sources | the dead generator it imports `read_trees` from |
 
 So `buck-codegen-closure` is a **generator of a committed artifact**, exactly the class #97
 archives, and `buck-declaration-gap.py` is a one-shot analysis whose output nothing consumes. **Both are Rust now (#98), and porting the second one found that it had been UNRUNNABLE:** it called `target_sources` with four arguments after the generator grew a fifth, so every invocation died with a TypeError. Repaired for the baseline, it FAILS: 11 targets do not match the generator, the largest missing 386 files.
-The keep list it produced IS live: `linux/buildtools/skeleton` reads
+The keep list it produced IS live: `src/linux/buildtools/skeleton` reads
 `scripts/buck-codegen-keep.txt` and carries five more paths in `NEVER_EMPTY_FILES`, and emptying
 any of them fails SILENTLY, which is the whole reason the file exists.
 
@@ -373,7 +373,7 @@ So: parse whole files, and prefilter before any per-item regex.
 ### Walking a tree for SYMLINKS, and the one check that is not byte-comparable
 
 `buck-escape-check` is the next port and its reconnaissance is done, so it is recorded here rather
-than re-derived. Three ways to find the 2,930 symlinks under `darwin/` and `linux/` were measured
+than re-derived. Three ways to find the 2,930 symlinks under `src/darwin/` and `src/linux/` were measured
 against Python's 131ms:
 
     stack walk, one `ls -la` per directory        18.8s   1,841 directory listings
@@ -577,7 +577,7 @@ as the gate for the first piece that genuinely cannot be byte-identical, not for
 
 ### The first piece is LANDED, and the rule held
 
-`buck-skeleton.py` is gone. `linux/buildtools/skeleton` is 295 lines of dependency-free Rust,
+`buck-skeleton.py` is gone. `src/linux/buildtools/skeleton` is 295 lines of dependency-free Rust,
 built by `nix/skeleton.nix` through `rustPlatform.buildRustPackage`, and
 `nix/lib/ciderBuck2Graph.nix` runs it instead of `python3`.
 
@@ -603,7 +603,7 @@ out, so removing the file did not even change the skeletoniser's input.
 ### The second and third pieces are landed too
 
 `buck_lowering.py` (298) and `buck-graph-to-specs.py` (541) are now ONE Rust binary,
-`linux/buildtools/graph-specs`, 946 lines. They were two files because python needed a shared
+`src/linux/buildtools/graph-specs`, 946 lines. They were two files because python needed a shared
 importable module; a binary has no import, so the three checks that imported it read the JSON it
 already writes instead.
 
@@ -656,7 +656,7 @@ once its generator was Rust, and it died with exit 127 in `patchPhase`: `assembl
 runs `buck-src-normalise.py`, a different #99 piece that is still Python. Restored with a comment
 saying the line goes when that piece does.
 
-### Fifth piece: `buck-src-normalise.py` to `linux/buildtools/src-normalise`
+### Fifth piece: `buck-src-normalise.py` to `src/linux/buildtools/src-normalise`
 
 **Everything this tool decides is LEXICAL, and that is the whole difficulty of the port.** It
 reasons about links that do NOT resolve: dangling inside `buck-src`, escaping the cell, naming a
@@ -680,7 +680,7 @@ symlinked directories, left the one cycle alone with a byte-identical message, a
 *Branch coverage.* Those pins do not reach the rename table, because the 2,077 links that need it
 live in a nested submodule the pin store does not carry. A synthetic repo covers what they miss
 with **11 expectations naming the exact target of every link**: `FIRST_PARTY_RENAMES`, the pre-#87
-`src/external` re-rooting, the SDK farm chain, the `darwin/` fallback, the `BUCK` skip inside an
+`src/external` re-rooting, the SDK farm chain, the `src/darwin/` fallback, the `BUCK` skip inside an
 expanded directory, and the three cases that must be left alone. Both implementations pass all 11
 and produce identical trees. **The control is what makes that mean anything**: the same
 expectations fail 9 of 12 on a tree nothing has normalised.
@@ -697,7 +697,7 @@ would go with this piece. That derivation runs two nix-built binaries and coreut
 interpreted.
 
 `scripts/buck-src.nu` calls the binary from the devShell, which declares it for that call.
-`buck-endpoint-stale.nu` LOSES its entry rather than gaining a renamed one: `linux/` is not a
+`buck-endpoint-stale.nu` LOSES its entry rather than gaining a renamed one: `src/linux/` is not a
 neutral top, so the crate already classifies as staged, and the match is on a whole path, so an
 entry naming the crate directory would never have fired on an edit to a file inside it.
 
@@ -762,7 +762,7 @@ class `[A-Za-z0-9+._?=-]` excludes the slash on purpose, because `srcs` names a 
 **`pkgs.python3` leaves the producer's PATH**, because the fixup was the only thing using it
 there.
 
-**Verified by `scripts/buck-dyndrv-check.nu`**, which is exactly the harness this piece deserves:
+**Verified by `scripts/checks/buck-dyndrv-check.nu`**, which is exactly the harness this piece deserves:
 fourteen properties over eleven fixtures, and the fixtures map onto the fixup's branches one for
 one (`inferSrcs` asserted in BOTH directions, `extraEnv` present at build time and ABSENT from
 the spec, the minimal-spec branch, a 146,317 byte argument that has to be spilled to the store, a
@@ -877,7 +877,7 @@ same class: **a deletion is not done until nothing LOADS the file, and a new fil
 break a property that has nothing to do with its contents.**
 
 * Three LIVE sites in `buck-test.nu` still loaded the deleted normaliser (two `importlib` loads,
-  one grep of `FIRST_PARTY_RENAMES`). They became `scripts/buck-src-normalise-check.nu`, which
+  one grep of `FIRST_PARTY_RENAMES`). They became `scripts/checks/buck-src-normalise-check.nu`, which
   builds a repo holding one link of every kind, runs the binary and asserts the exact target of
   each afterwards: eleven expectations, with an EXACT control (seven must be unmet beforehand,
   the other four being leave-alone cases met by construction, so a floor would have hidden a

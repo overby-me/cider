@@ -1,1 +1,0 @@
-../../../../../vendor/pins/configd/SystemConfiguration.fproj/SCSchemaDefinitions.h

@@ -20,7 +20,7 @@
 #   CIDER_NIX            Path to the cider-nix wrapper (default: auto-detect)
 #                        (DARLING_NIX is still honoured)
 #   DARLING              Path to the cider binary (default: cider)
-#   DPREFIX              Darling prefix path (default: auto)
+#   CIDERPREFIX              Darling prefix path (default: auto)
 #   NIX_SYSTEM           Target system (default: x86_64-darwin)
 #   COMPAT_NIXPKGS       Nixpkgs expression (default: <nixpkgs>)
 #   COMPAT_TIMEOUT       Per-package build timeout in seconds (default: 300)
@@ -153,8 +153,8 @@ nix_in_cider() {
         "$cider_nix" "$@"
     else
         local prefix_args=()
-        if [[ -n "${DPREFIX:-}" ]]; then
-            prefix_args=(--prefix "$DPREFIX")
+        if [[ -n "${CIDERPREFIX:-}" ]]; then
+            prefix_args=(--prefix "$CIDERPREFIX")
         fi
         "$DARLING" "${prefix_args[@]}" shell bash -lc '
             for p in \
@@ -379,7 +379,7 @@ Environment:
   CIDER_NIX            Path to cider-nix wrapper (auto-detected)
                        (DARLING_NIX is still honoured)
   DARLING              Path to cider binary (default: cider)
-  DPREFIX              Darling prefix path (default: auto)
+  CIDERPREFIX              Darling prefix path (default: auto)
   NIX_SYSTEM           Target system (default: x86_64-darwin)
   COMPAT_NIXPKGS       Nixpkgs expression (default: <nixpkgs>)
   COMPAT_TIMEOUT       Per-package timeout (default: 300)

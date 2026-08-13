@@ -125,7 +125,7 @@ def main [
     # binary load whose LC_RPATH was silently dropped. A control that can turn the failure back
     # into a success proves the run is testing rpath expansion and not the dylib.
     let base = {
-        DPREFIX: $prefix_dir
+        CIDERPREFIX: $prefix_dir
         CIDER_NO_LAUNCHD: "1"
         DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
         DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"

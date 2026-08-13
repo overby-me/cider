@@ -14,7 +14,7 @@
 # --all copies out of the nix-ASSEMBLED tree (`nix build .#cider-src`) rather than fetching
 # 147 pins one at a time: one derivation, and its patches and symlink fixups are already
 # applied. It is what the guest tier needs, because a Darwin compile's include path is the SDK
-# tree (darwin/Developer/.../MacOSX.sdk/usr/include), ~1900 committed symlinks into these trees
+# tree (src/darwin/Developer/.../MacOSX.sdk/usr/include), ~1900 committed symlinks into these trees
 # -- with them absent, 1909 of those links dangle.
 #
 # Converted from bash (task #40). Tested against the bash version in an isolated tree -- a
@@ -146,7 +146,7 @@ def main [--all, ...paths: string] {
         # on the OLD revision while this prints that it is already materialized.
         #
         # It cost a real verification. After bumping configd, the bisect build
-        # //darwin/frameworks:SystemConfiguration_dylib would have compiled the PREVIOUS
+        # //src/darwin/frameworks:SystemConfiguration_dylib would have compiled the PREVIOUS
         # revision and passed, which is a green build proving nothing. Caught only by probing
         # for a file the new rev adds, darling/include/SystemConfiguration/CaptiveNetwork.h.
         #
@@ -215,7 +215,7 @@ def main [--all, ...paths: string] {
 
         # buck2 refuses symlinks with a "." component or a target that leaves the cell, and the
         # upstream trees contain both; re-point them at the same file inside vendor/src. See
-        # linux/buildtools/src-normalise for the two cases.
+        # src/linux/buildtools/src-normalise for the two cases.
         #
         # ON PATH, NOT A PATH IN THE TREE, since #99 made this a nix-built binary: it comes
         # from the devShell, which declares it for exactly this call. --repo is explicit

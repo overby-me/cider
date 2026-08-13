@@ -32,8 +32,8 @@
   # Darling's own ld64, which the link rules invoke by absolute path.
   ld64 ? null,
   # THE GUEST RUST TOOLCHAIN (#102), and it is REQUIRED rather than optional because the
-  # prefix installs Rust guest binaries now: //darwin/xcselect:xcrun and
-  # //darwin/PlistBuddy:PlistBuddy are darwin_rust_staticlib targets, and that rule fails at
+  # prefix installs Rust guest binaries now: //src/darwin/xcselect:xcrun and
+  # //src/darwin/PlistBuddy:PlistBuddy are darwin_rust_staticlib targets, and that rule fails at
   # ANALYSIS time when the toolchain is unconfigured. Without this, `buck2 aquery` over the
   # whole graph dies on cider_prefix and every graph output with it.
   #
@@ -71,7 +71,7 @@
   # wrappedLibs is the ELF set; hostHeaderLibs is the include-only set beside it, and both
   # live in ciderBuildInputs so this and the LOWERING cannot drift apart. They did drift
   # once, and it cost a build: the include-only packages were added here and not to the
-  # lowering's extraTools, so fseventsd_obj went on failing on linux/types.h in the lowering
+  # lowering's extraTools, so fseventsd_obj went on failing on src/linux/types.h in the lowering
   # after the graph stage had stopped failing on it.
   hostIncludeLibs = di.wrappedLibs ++ di.hostHeaderLibs;
 
@@ -100,7 +100,7 @@
   # projectSrc` below, and the same false claim survived in the sources pass
   # until it was corrected. It matters because it understates the cost of a source edit by an
   # entire graph build, about 18m34s, which is the number the scheduling decisions here get
-  # made against. linux/buildtools/skeleton is now five files short of correct rather than
+  # made against. src/linux/buildtools/skeleton is now five files short of correct rather than
   # conceptually wrong (#56), but adopting it is still an open change.
   projectSrc = builtins.path {
       name = "cider-buck2-project";
@@ -134,7 +134,7 @@
           # scripts/generate-rpc-wrappers.py, which is relative to ITS package and resolves
           # to vendor/pins/ciderd/scripts/, not here. THIS DERIVATION NOW RUNS NO SCRIPT FROM
           # scripts/ AT ALL: since #99 the dump and the normaliser are nix-built binaries from
-          # linux/buildtools/, and each reaches the builder through the store path of its tool,
+          # src/linux/buildtools/, and each reaches the builder through the store path of its tool,
           # so editing one still rebuilds the graph, which is correct because it changes the
           # output. python3 is still in nativeBuildInputs, but for the buck2 RULES.
           #
@@ -157,7 +157,7 @@
 
   # THE SKELETON (#56), used only when `skeleton` is set. The same tree with every C family
   # file emptied except those under vendor/src, vendor/rust and pins and the five that
-  # feed a generator this dump RUNS. linux/buildtools/skeleton holds the rules and
+  # feed a generator this dump RUNS. src/linux/buildtools/skeleton holds the rules and
   # cider-codegen-closure is what computed the five.
   #
   # CONTENT ADDRESSED, and that is the whole mechanism rather than a detail: editing a .c
@@ -236,7 +236,7 @@
   # the graph. This script used to copy from ${ciderSrc}/<pin>, and ciderSrc is the WHOLE
   # assembled project, first party included. So editing one .m moved ciderSrc, moved this
   # script, and moved the graph derivation. MEASURED before the change, on
-  # darwin/frameworks/Accounts/src/ACAccount.m: 8 builders in 32 minutes, cider-buck2-graph
+  # src/darwin/frameworks/Accounts/src/ACAccount.m: 8 builders in 32 minutes, cider-buck2-graph
   # among them, and the skeleton (#56) could not prevent it because the skeleton only closes
   # the `src` input. This was the other one.
   #
@@ -368,7 +368,7 @@
     # emptied was tried and REVERTED, and the reason is worth keeping: this derivation does
     # not only analyse. It materialises the in-process artifacts, and a staged farm of
     # GENERATED headers is produced by running a generator, which is a host tool this
-    # derivation BUILDS from first-party C -- linux/startup:rtsig and linux/libelfloader:wrapgen
+    # derivation BUILDS from first-party C -- src/linux/startup:rtsig and src/linux/libelfloader:wrapgen
     # among them.
     #
     # An emptied rtsig.c does not fail to compile. It compiles cleanly, links, runs, and

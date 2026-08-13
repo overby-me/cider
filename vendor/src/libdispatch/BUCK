@@ -29,7 +29,7 @@ darwin_dylib(
         "-Wl,-order_file": "xcodeconfig/libdispatch.order",
     },
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 
@@ -51,7 +51,7 @@ darwin_dylib(
         "//vendor/src:system_blocks_firstpass",
         "//vendor/src:system_pthread_firstpass",
         "//vendor/src:system_dyld_firstpass",
-        "//darwin/duct:system_duct_firstpass",
+        "//src/darwin/duct:system_duct_firstpass",
         "//vendor/src:unwind_firstpass",
         "//vendor/src/libplatform:platform_firstpass",
         "//vendor/src:compiler_rt_firstpass",
@@ -64,7 +64,7 @@ darwin_dylib(
         "-Wl,-order_file": "xcodeconfig/libdispatch.order",
     },
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: libdispatch_shared dylibs

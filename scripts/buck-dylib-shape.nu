@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Is every file the prefix installs as a .dylib actually a Mach-O?
 #
-# Found by scripts/buck-loadall-check.nu, which dlopens what the prefix ships: 44 of the 227
+# Found by scripts/checks/buck-loadall-check.nu, which dlopens what the prefix ships: 44 of the 227
 # dylibs would not load, and all 44 turned out to be 131-byte GIT LFS POINTERS --
 #
 #   version https://git-lfs.github.com/spec/v1

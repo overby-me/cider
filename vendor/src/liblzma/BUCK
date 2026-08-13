@@ -185,7 +185,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":lzma_inc_liblzma",
         ":lzma_inc_liblzma_src_liblzma_api",
         ":lzma_inc_liblzma_src_liblzma_check",
@@ -209,7 +209,7 @@ darwin_dylib(
         ":lzma_obj",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: lzma
@@ -323,7 +323,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":xz_inc_liblzma",
         ":xz_inc_liblzma_src_liblzma_api",
         ":xz_inc_liblzma_src_liblzma_check",

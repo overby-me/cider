@@ -1,0 +1,128 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# xtrace's public headers, staged with the package structure INTACT: the per-protocol
+# XtraceMig stubs include <xtrace/xtrace-mig-types.h>, and that header reaches back out
+# with #include "../../base.h" -- which only resolves if the staged copy has the same
+# shape, so the tree is staged from the package root with -I pointing at include/.
+cc_header_root(
+    name = "xtrace_headers",
+    headers = glob(["*.h", "include/xtrace/*.h"]),
+    include_subdirs = ["include"],
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+export_file(
+    name = "xtrace",
+    src = "xtrace",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports
+
+# BEGIN generated: xtracelib
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) xtracelib   -- review before committing.
+# cmake target: xtracelib  ->  xtracelib
+# 10 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "xtracelib_inc_src_xtrace",
+    headers = glob([
+        "include/*.h",
+        "include/**/*.h",
+        "include/*.c",
+        "**/*",
+    ]),
+    root = "src/darwin/xtrace",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "xtracelib_obj",
+    srcs = [
+        "bsd_trace.cpp",
+        "lock.cpp",
+        "mach_trace.cpp",
+        "memory.cpp",
+        "mig_trace.cpp",
+        "posix_spawn_args.cpp",
+        "string.cpp",
+        "tls.cpp",
+        "xtracelib.cpp",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dxtracelib_EXPORTS",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-std=c++11",
+        "-fPIC",
+        "-nostdinc",
+        "-fvisibility=hidden",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":xtracelib_inc_src_xtrace",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "xtracelib_obj2",
+    srcs = [
+        "trampoline.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dxtracelib_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fvisibility=hidden",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":xtracelib_inc_src_xtrace",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: xtracelib
+
+# BEGIN generated: xtracelib dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs xtracelib   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_dylib(
+    name = "xtracelib_dylib",
+    dylib_name = "libxtrace.dylib",
+    install_name = "/usr/lib/cider/libxtrace.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # xtracelib
+        ":xtracelib_obj",
+        ":xtracelib_obj2",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: xtracelib dylibs

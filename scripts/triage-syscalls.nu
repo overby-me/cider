@@ -10,7 +10,7 @@
 #   ./scripts/triage-syscalls.nu [OPTIONS]
 #
 # Options:
-#   --prefix <path>       Darling prefix (default: ~/.cider or $DPREFIX)
+#   --prefix <path>       Darling prefix (default: ~/.cider or $CIDERPREFIX)
 #   --output <file>       Write results to file (default: stdout)
 #   --strace              Also run strace on ciderd (requires root)
 #   --xtrace              Insert libxtrace into the guest for detailed Darwin tracing
@@ -140,10 +140,10 @@ def dsh_bash [ctx: record, logfile: string, cmd: string] {
 # This used to set a variable named DARLING_XTRACE, which NOTHING has ever read: not the
 # loader, not the server, not xtrace itself, not upstream. The flag was inert, so a triage run
 # made with --xtrace produced no trace and looked like a syscall that was never reached.
-# scripts/buck-env-names-check.nu exists to stop that recurring, and it treats the name written
+# scripts/checks/buck-env-names-check.nu exists to stop that recurring, and it treats the name written
 # as an ASSIGNMENT as the advertisement, which is why this comment names it in prose instead.
 #
-# The tracer is a constructor library. darwin/xtrace/xtracelib.cpp declares xtrace_setup with
+# The tracer is a constructor library. src/darwin/xtrace/xtracelib.cpp declares xtrace_setup with
 # __attribute__((constructor)), so it starts tracing as soon as it is LOADED, and the only
 # thing that loads it is dyld insertion. Nothing in the tree wires that up automatically,
 # which is why it has to be done here explicitly.
@@ -358,7 +358,7 @@ def categorize [msg: string] {
 }
 
 def main [
-    --prefix: string = ""       # Darling prefix (default: ~/.cider or $DPREFIX)
+    --prefix: string = ""       # Darling prefix (default: ~/.cider or $CIDERPREFIX)
     --output: string = ""       # write results to file (default: stdout)
     --strace                    # also run strace on ciderd (requires root)
     --xtrace                    # insert libxtrace into the guest for detailed Darwin tracing
@@ -369,7 +369,7 @@ def main [
     let cider_prefix = if ($prefix | is-not-empty) {
         $prefix
     } else {
-        ($env | get -o DPREFIX | default ($env.HOME | path join ".cider"))
+        ($env | get -o CIDERPREFIX | default ($env.HOME | path join ".cider"))
     }
 
     # ── Setup ───────────────────────────────────────────────────────────────

@@ -61,9 +61,9 @@ const OUT_OF_SCOPE = ["libdarlingserver_duct_tape.a" "x86_64-apple-darwin20-ld"
   "vendor/pins/cctools-port/cctools/misc/lipo" "libsystem_kernel_static32.a"]
 
 const ARCHIVE_ALIASES = [["artifact" "label"];
-  ["liblibsimple_cider.a" "//darwin/libsimple:libsimple_cider"]
+  ["liblibsimple_cider.a" "//src/darwin/libsimple:libsimple_cider"]
   ["libciderd_xnu_sys.a" "//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys"]
-  ["liblibsimple_ciderd.a" "//darwin/libsimple:libsimple_ciderd"]]
+  ["liblibsimple_ciderd.a" "//src/darwin/libsimple:libsimple_ciderd"]]
 
 # Parse build.ninja into rows of {outs, rule, inputs, link_flags}.
 #

@@ -48,7 +48,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":bsm.0_inc_bsm_openbsm",
     ],
     visibility = ["PUBLIC"],
@@ -63,7 +63,7 @@ darwin_dylib(
         ":bsm.0_obj",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: bsm.0

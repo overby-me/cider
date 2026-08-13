@@ -33,7 +33,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_blocks_inc_libclosure",
     ],
     visibility = ["PUBLIC"],
@@ -50,7 +50,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_blocks_inc_libclosure",
     ],
     visibility = ["PUBLIC"],
@@ -87,7 +87,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_blocks_static_inc_libclosure",
     ],
     visibility = ["PUBLIC"],
@@ -107,7 +107,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_blocks_static_inc_libclosure",
     ],
     visibility = ["PUBLIC"],

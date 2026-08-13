@@ -8,7 +8,7 @@
 #
 # This asserts what IS ported, in the same harness: the container comes up and /bin/bash
 # runs inside it. Bash builtins only, since there is no userland at this scope. It is the
-# VM-side twin of scripts/buck-bash-check.nu.
+# VM-side twin of scripts/checks/buck-bash-check.nu.
 #
 # EVERY cider invocation here closes stdin. That is not tidiness: the launcher waits on
 # the caller's stdin, the driver's control channel never closes it, and the driver in turn
@@ -61,7 +61,7 @@ in
           # the daemon's control socket lives inside it and a Unix socket path is capped at
           # 108 bytes.
           status, out = machine.execute(
-              "DPREFIX=/tmp/dp DARLING_NO_LAUNCHD=1 "
+              "CIDERPREFIX=/tmp/dp DARLING_NO_LAUNCHD=1 "
               "cider-buck2 shell /bin/bash -c "
               "'echo BUCK2_BASH_OK $BASH_VERSION $MACHTYPE' < /dev/null",
               timeout=300,
@@ -90,7 +90,7 @@ in
               # guest, and they differ exactly here:
               #
               #   the persistent shellspawn INIT has fd 1/2 on ciderd.log, by design --
-              #   linux/launcher/src/main.rs redirects the daemon's stdio there so a one-shot
+              #   src/linux/launcher/src/main.rs redirects the daemon's stdio there so a one-shot
               #   command does not pin the caller's stdout open forever;
               #   the guest running the COMMAND has the caller's own fds, passed to it.
               #
@@ -122,12 +122,12 @@ in
 
       with machine.nested("exit codes propagate out of the container"):
           # The same environment as above, deliberately. This subtest used to set neither
-          # DPREFIX nor DARLING_NO_LAUNCHD, so it booted a second prefix through LAUNCHD
+          # CIDERPREFIX nor DARLING_NO_LAUNCHD, so it booted a second prefix through LAUNCHD
           # and returned 1 for a command that exits 0. Arms with an explicit prefix and
           # no-launchd give rc 0 for exit 0 and print for echo, and the default prefix
           # behaves the same, so neither the prefix nor propagation was at fault. The
           # launchd path in a VM is its own question and belongs in its own test.
-          env = "DPREFIX=/tmp/dp DARLING_NO_LAUNCHD=1 "
+          env = "CIDERPREFIX=/tmp/dp DARLING_NO_LAUNCHD=1 "
           machine.succeed(env + "cider-buck2 shell /bin/bash -c 'exit 0' < /dev/null")
           machine.fail(env + "cider-buck2 shell /bin/bash -c 'exit 1' < /dev/null")
     '';

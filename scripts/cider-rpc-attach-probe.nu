@@ -14,7 +14,7 @@
 # arithmetic over a canned strace -c table, including the case where the table has no identity
 # rows at all. Output identical.
 #
-#   DARLING=./result/bin/cider STRACE=$(command -v strace) DPREFIX=$HOME/.dbash \
+#   DARLING=./result/bin/cider STRACE=$(command -v strace) CIDERPREFIX=$HOME/.dbash \
 #     N=200 scripts/cider-rpc-attach-probe.nu
 
 def main [
@@ -28,7 +28,7 @@ def main [
 ] {
     let cider = ($env | get -o DARLING | default "cider")
     let strace = ($env | get -o STRACE | default "strace")
-    let prefix = ($env | get -o DPREFIX | default ($env.HOME | path join ".dperf"))
+    let prefix = ($env | get -o CIDERPREFIX | default ($env.HOME | path join ".dperf"))
     let n = (($env | get -o N | default "200") | into int)
     let workload = ($env | get -o WORKLOAD | default "uname >/dev/null 2>&1")
     mkdir $out
@@ -41,7 +41,7 @@ def main [
     # nushell has no background ampersand.
     let loop_sh = $"echo LOOP_START; i=0; while [ $i -lt ($n) ]; do ($workload); i=$\(\($i+1)); done; echo LOOP_DONE"
     let loop_out = $"($out)/loop.out"
-    let job = (job spawn { with-env {DPREFIX: $prefix} { do -i { ^$cider shell sh -c $loop_sh out+err> $loop_out } } })
+    let job = (job spawn { with-env {CIDERPREFIX: $prefix} { do -i { ^$cider shell sh -c $loop_sh out+err> $loop_out } } })
 
     # Bounded busy-wait for the daemon to appear, then attach and count. SIGINT (not KILL) so
     # strace flushes its -c summary on detach.

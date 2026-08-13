@@ -6,10 +6,20 @@
 # build bakes in and this port deliberately does not: a prefix with an absolute path
 # compiled into it is not a prefix that can be moved.
 #
-# So this adds ONE file: bin/cider-buck2, which sets them and execs the real launcher.
-# Not makeWrapper, and not a wrapper over bin/cider itself: the launcher re-execs
-# /proc/self/exe to enter its user namespace, and with a shell wrapper in that position
-# /proc/self/exe is the shell, not the launcher.
+# So this adds ONE file, and the USER FACING NAME IS `cider`, which is the whole point of
+# doing it this way round. The real launcher is renamed to bin/cider-launcher and a small
+# script takes its place at bin/cider, sets the two variables and execs it.
+#
+# THE OBVIOUS ARRANGEMENT DOES NOT WORK, which is why this one exists. The launcher re-execs
+# /proc/self/exe to enter its user namespace, so a shell wrapper cannot sit at the path the
+# launcher runs from: /proc/self/exe would be the shell. Renaming the launcher instead keeps
+# that re-exec pointing at a real binary, because after the exec the running process IS the
+# launcher, wherever it lives. Nothing in src/linux/launcher or src/linux/server hardcodes bin/cider
+# (checked: both read /proc/self/exe), so the rename is invisible to the runtime.
+#
+# THE PREFIX TREE IS NOT TOUCHED. //buck/prefix still installs the launcher as bin/cider, and
+# scripts/checks/* run against THAT tree with the variables set themselves. The rename lives
+# here, in the packaging, where the moved-prefix problem lives.
 {
   pkgs,
   # A prefix_tree output -- nix build .#cider-buck2-prefix, then
@@ -24,21 +34,23 @@
 pkgs.runCommand name {
   meta = {
     description = "Cider, built by the buck2 port (system component scope)";
-    mainProgram = "cider-buck2";
+    mainProgram = "cider";
   };
 } ''
   mkdir -p "$out"
   cp -a ${prefix}/. "$out"/
   chmod -R u+w "$out"
 
-  cat > "$out/bin/cider-buck2" <<EOF
+  mv "$out/bin/cider" "$out/bin/cider-launcher"
+
+  cat > "$out/bin/cider" <<EOF
   #!${pkgs.runtimeShell}
-  # The daemon takes both from the environment (linux/server/src/container.rs), and the
+  # The daemon takes both from the environment (src/linux/server/src/container.rs), and the
   # launcher passes its environment through to it.
   export DSERVER_LIBEXEC_PATH="$out/libexec/cider"
   export DSERVER_MLDR_PATH="$out/libexec/cider/usr/libexec/cider/mldr"
-  exec "$out/bin/cider" "\$@"
+  exec "$out/bin/cider-launcher" "\$@"
   EOF
-  sed -i 's/^  //' "$out/bin/cider-buck2"
-  chmod +x "$out/bin/cider-buck2"
+  sed -i 's/^  //' "$out/bin/cider"
+  chmod +x "$out/bin/cider"
 ''

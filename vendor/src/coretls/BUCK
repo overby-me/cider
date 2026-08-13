@@ -64,7 +64,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_Security",
         "//vendor/src:fw_CoreFoundation",
         ":system_coretls_inc_lib",
@@ -102,7 +102,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":coretls_inc_coretls_lib",
     ],
     visibility = ["PUBLIC"],
@@ -149,7 +149,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:fw_CoreFoundation",
         "//vendor/src:fw_Security",
         ":coretls_cfhelpers_inc_coretls_lib",
@@ -175,7 +175,7 @@ darwin_dylib(
         ":coretls_cfhelpers_obj",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 
@@ -196,7 +196,7 @@ darwin_dylib(
         "//vendor/src:Security_firstpass",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: coretls_cfhelpers_obj dylibs

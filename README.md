@@ -20,12 +20,12 @@ Each one boots a container and runs a real program:
 
 | Works | Checked by |
 |---|---|
-| A shell: `cider shell` and bash inside it | `scripts/buck-bash-check.nu` |
-| Booting through launchd | `scripts/buck-launchd-check.nu` |
-| Nix, running inside the container | `scripts/buck-nix-bash-check.nu` |
-| JavaScriptCore running a script | `scripts/buck-jsc-check.nu` |
+| A shell: `cider shell` and bash inside it | `scripts/checks/buck-bash-check.nu` |
+| Booting through launchd | `scripts/checks/buck-launchd-check.nu` |
+| Nix, running inside the container | `scripts/checks/buck-nix-bash-check.nu` |
+| JavaScriptCore running a script | `scripts/checks/buck-jsc-check.nu` |
 | libdispatch, Security, CoreAudio, scripting bridges | `buck-{dispatch,security,audio,scripting}-check.nu` |
-| A trivial AppKit window under X11 | `scripts/buck-appkit-check.nu` |
+| A trivial AppKit window under X11 | `scripts/checks/buck-appkit-check.nu` |
 
 Anything not in that table is unverified here. In particular Cider has **not** been shown to
 install `.pkg` files, mount Xcode disk images, or run Xcode or its toolchain. Darling documents
@@ -67,18 +67,14 @@ Otherwise install the package and use the entry point it provides:
 
 ```
 nix profile install .#cider
-cider-buck2 shell echo Hello world
+cider shell echo Hello world
 ```
-
-**Use `cider-buck2`, not `cider`.** The package ships both. `bin/cider` is the raw launcher and
-needs two environment variables that a moved prefix cannot bake in; `bin/cider-buck2` sets them
-and then execs it. This is a known wart, recorded below.
 
 ## Prefixes
 
-Cider has DPREFIXes, which are close to WINEPREFIXes: virtual chroot-like environments with a
+Cider has CIDERPREFIXes, which are close to WINEPREFIXes: virtual chroot-like environments with a
 macOS-shaped filesystem, where software can be installed safely. The default is `~/.cider`,
-changed by exporting `DPREFIX`. A prefix is created and initialized on first use.
+changed by exporting `CIDERPREFIX`. A prefix is created and initialized on first use.
 
 Prefixes use `overlayfs`, so a prefix cannot live on NFS or eCryptfs. The default location will
 not work with an encrypted home directory.
@@ -95,8 +91,6 @@ signatures: a `SIGFPE` at startup, and
 Both kill the process before the program inside it runs. Re-running usually succeeds. The cause
 is not yet known.
 
-**`bin/cider` on its own does not work.** See "Install and run" above.
-
 **A full build can be very large.** Use `.#cider-min` on a constrained machine.
 
 ## Development
@@ -104,15 +98,19 @@ is not yet known.
 Where things live:
 
 ```
-darwin/     the guest side: frameworks, dylibs and tools that run INSIDE the container
-linux/      the host side: the ciderd daemon, the launcher, the Mach-O loader, build tools
+src/darwin/     the guest side: frameworks, dylibs and tools that run INSIDE the container
+src/linux/      the host side: the ciderd daemon, the launcher, the Mach-O loader, build tools
 buck/       our Buck2 rules, toolchains and the prefix definition
 vendor/     everything that is not ours, in three parts:
               src/   upstream C sources, materialized from pins rather than committed
               rust/  vendored Rust crates, materialized the same way
               pins/  upstream components committed on purpose, each with VENDORED.md
 nix/        the Nix side: the flake library, the graph and lowering, the NixOS module
-scripts/    42 checks and the developer loop, in nushell
+scripts/    the developer loop, in nushell, split three ways:
+              checks/  41 checks, the ones buck-test.nu and buck-runtime-check.nu run
+              gen/     3 generators
+              build/   5 build drivers
+            the 42 that stay flat are tools, plus the 8 shell scripts that have to be bash
 ```
 
 `vendor/src/` and `vendor/rust/` hold about 260,000 and 3,000 files respectively and are almost

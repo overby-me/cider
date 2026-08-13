@@ -5,7 +5,7 @@
 #
 # xnu-sys's compile environment, in a loadable file so that everything which
 # has to parse these headers uses the identical set: the BUCK file next to this
-# one, and linux/server's bindgen run for the glue that is Rust now (#71).
+# one, and src/linux/server's bindgen run for the glue that is Rust now (#71).
 # -fblocks in particular is load bearing -- osfmk/kern/priority_queue.h uses
 # blocks, so the headers do not parse at all without it.
 

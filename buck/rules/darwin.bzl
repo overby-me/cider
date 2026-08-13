@@ -96,7 +96,7 @@ def _darwin_link(ctx, tc, out, objects, extra_flags, link_libs, dylib_files):
         # path, which is what selects the linker.
         #
         # DO NOT ADD -B<dir> BACK. It looks harmless and it breaks the DUMP: a -B argument is
-        # a DIRECTORY, and linux/buildtools/graph-specs/src/dump.rs runs `buck2 audit output` over every
+        # a DIRECTORY, and src/linux/buildtools/graph-specs/src/dump.rs runs `buck2 audit output` over every
         # buck-out path in an argv to learn which action produced it. A directory is not an
         # output, so audit fails the whole dump with "Malformed buck-out path ... No output
         # artifacts found" naming that directory. Measured: the buck2 build was green and the

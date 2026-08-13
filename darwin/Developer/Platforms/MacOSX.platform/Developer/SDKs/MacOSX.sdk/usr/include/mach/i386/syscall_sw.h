@@ -1,1 +1,0 @@
-../../../../../../../../../../../vendor/pins/xnu/osfmk/mach/i386/syscall_sw.h

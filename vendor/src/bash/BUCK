@@ -78,7 +78,7 @@ cc_objects(
         ":bash_glob_inc_bash_bash_3_2_include",
         ":bash_glob_inc_bash_bash_3_2",
         ":bash_glob_inc_bash",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -171,7 +171,7 @@ cc_objects(
         ":bash_intl_inc_bash_bash_3_2_include",
         ":bash_intl_inc_bash_bash_3_2",
         ":bash_intl_inc_bash",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -277,7 +277,7 @@ cc_objects(
         ":bash_readline_inc_bash_bash_3_2_include",
         ":bash_readline_inc_bash_bash_3_2",
         ":bash_readline_inc_bash",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -383,7 +383,7 @@ cc_objects(
         ":bash_sh_inc_bash_bash_3_2_include",
         ":bash_sh_inc_bash_bash_3_2",
         ":bash_sh_inc_bash",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -547,7 +547,7 @@ cc_objects(
         ":bash_inc_bash_bash_3_2_include",
         ":bash_inc_bash_bash_3_2",
         ":bash_inc_bash",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:bash_parser",
     ],
     gen_srcs = [

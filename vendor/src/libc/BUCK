@@ -131,7 +131,7 @@ cc_objects(
     deps = [
         ":libc-compat_inc_generated_private_include",
         ":libc-compat_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-compat_inc_fbsdcompat",
         ":libc-compat_inc_darwin",
         ":libc-compat_inc_generated_derived",
@@ -187,7 +187,7 @@ cc_objects(
     deps = [
         ":libc-compat_inc_generated_private_include",
         ":libc-compat_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-compat_inc_fbsdcompat",
         ":libc-compat_inc_darwin",
         ":libc-compat_inc_generated_derived",
@@ -243,7 +243,7 @@ cc_objects(
     deps = [
         ":libc-compat_inc_generated_private_include",
         ":libc-compat_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-compat_inc_fbsdcompat",
         ":libc-compat_inc_darwin",
         ":libc-compat_inc_generated_derived",
@@ -299,7 +299,7 @@ cc_objects(
     deps = [
         ":libc-compat_inc_generated_private_include",
         ":libc-compat_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-compat_inc_fbsdcompat",
         ":libc-compat_inc_darwin",
         ":libc-compat_inc_generated_derived",
@@ -355,7 +355,7 @@ cc_objects(
     deps = [
         ":libc-compat_inc_generated_private_include",
         ":libc-compat_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-compat_inc_fbsdcompat",
         ":libc-compat_inc_darwin",
         ":libc-compat_inc_generated_derived",
@@ -496,7 +496,7 @@ cc_objects(
     deps = [
         ":libc-compat_cancelable_inc_generated_private_include",
         ":libc-compat_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-compat_cancelable_inc_fbsdcompat",
         ":libc-compat_cancelable_inc_darwin",
         ":libc-compat_cancelable_inc_generated_derived",
@@ -556,7 +556,7 @@ cc_objects(
     deps = [
         ":libc-compat_cancelable_inc_generated_private_include",
         ":libc-compat_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-compat_cancelable_inc_fbsdcompat",
         ":libc-compat_cancelable_inc_darwin",
         ":libc-compat_cancelable_inc_generated_derived",
@@ -682,7 +682,7 @@ cc_objects(
     deps = [
         ":libc-compat_legacy_inc_generated_private_include",
         ":libc-compat_legacy_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-compat_legacy_inc_fbsdcompat",
         ":libc-compat_legacy_inc_darwin",
         ":libc-compat_legacy_inc_generated_derived",
@@ -813,7 +813,7 @@ cc_objects(
     deps = [
         ":libc-darwin_inc_generated_private_include",
         ":libc-darwin_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-darwin_inc_fbsdcompat",
         ":libc-darwin_inc_darwin",
         ":libc-darwin_inc_generated_derived",
@@ -971,7 +971,7 @@ cc_objects(
     deps = [
         ":libc-db_inc_generated_private_include",
         ":libc-db_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-db_inc_fbsdcompat",
         ":libc-db_inc_darwin",
         ":libc-db_inc_generated_derived",
@@ -1104,7 +1104,7 @@ cc_objects(
     deps = [
         ":libc-emulated_inc_generated_private_include",
         ":libc-emulated_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-emulated_inc_fbsdcompat",
         ":libc-emulated_inc_darwin",
         ":libc-emulated_inc_generated_derived",
@@ -1259,7 +1259,7 @@ cc_objects(
     deps = [
         ":libc-gdtoa_inc_generated_private_include",
         ":libc-gdtoa_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gdtoa_inc_fbsdcompat",
         ":libc-gdtoa_inc_darwin",
         ":libc-gdtoa_inc_generated_derived",
@@ -1416,7 +1416,7 @@ cc_objects(
     deps = [
         ":libc-gdtoa_dyld_inc_generated_private_include",
         ":libc-gdtoa_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gdtoa_dyld_inc_fbsdcompat",
         ":libc-gdtoa_dyld_inc_darwin",
         ":libc-gdtoa_dyld_inc_generated_derived",
@@ -1543,7 +1543,7 @@ cc_objects(
     deps = [
         ":libc-gdtoa_legacy_inc_generated_private_include",
         ":libc-gdtoa_legacy_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gdtoa_legacy_inc_fbsdcompat",
         ":libc-gdtoa_legacy_inc_darwin",
         ":libc-gdtoa_legacy_inc_generated_derived",
@@ -1758,7 +1758,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -1818,7 +1818,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -1880,7 +1880,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -1940,7 +1940,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2000,7 +2000,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2060,7 +2060,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2120,7 +2120,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2180,7 +2180,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2243,7 +2243,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2303,7 +2303,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2366,7 +2366,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2427,7 +2427,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2489,7 +2489,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2551,7 +2551,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2611,7 +2611,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2671,7 +2671,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2734,7 +2734,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2794,7 +2794,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2854,7 +2854,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2914,7 +2914,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2974,7 +2974,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3034,7 +3034,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3094,7 +3094,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3154,7 +3154,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3214,7 +3214,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3358,7 +3358,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -3421,7 +3421,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -3484,7 +3484,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -3547,7 +3547,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -3610,7 +3610,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -3673,7 +3673,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -3736,7 +3736,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -3799,7 +3799,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -3948,7 +3948,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4015,7 +4015,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4083,7 +4083,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4149,7 +4149,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4217,7 +4217,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4282,7 +4282,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4347,7 +4347,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4412,7 +4412,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4557,7 +4557,7 @@ cc_objects(
     deps = [
         ":libc-gen_extsn_inc_generated_private_include",
         ":libc-gen_extsn_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_extsn_inc_fbsdcompat",
         ":libc-gen_extsn_inc_darwin",
         ":libc-gen_extsn_inc_generated_derived",
@@ -4683,7 +4683,7 @@ cc_objects(
     deps = [
         ":libc-gen_legacy_inc_generated_private_include",
         ":libc-gen_legacy_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_legacy_inc_fbsdcompat",
         ":libc-gen_legacy_inc_darwin",
         ":libc-gen_legacy_inc_generated_derived",
@@ -4823,7 +4823,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -4888,7 +4888,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -4956,7 +4956,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5022,7 +5022,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5089,7 +5089,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5156,7 +5156,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5224,7 +5224,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5367,7 +5367,7 @@ cc_objects(
     deps = [
         ":libc-gen_pre1050_inc_generated_private_include",
         ":libc-gen_pre1050_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gen_pre1050_inc_fbsdcompat",
         ":libc-gen_pre1050_inc_darwin",
         ":libc-gen_pre1050_inc_generated_derived",
@@ -5494,7 +5494,7 @@ cc_objects(
     deps = [
         ":libc-gmon_inc_generated_private_include",
         ":libc-gmon_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-gmon_inc_fbsdcompat",
         ":libc-gmon_inc_darwin",
         ":libc-gmon_inc_generated_derived",
@@ -5613,7 +5613,7 @@ cc_objects(
     deps = [
         ":libc-hwplat_dyld_inc_generated_private_include",
         ":libc-hwplat_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-hwplat_dyld_inc_fbsdcompat",
         ":libc-hwplat_dyld_inc_darwin",
         ":libc-hwplat_dyld_inc_generated_derived",
@@ -5739,7 +5739,7 @@ cc_objects(
     deps = [
         ":libc-i386_inc_libc_generated_private_include",
         ":libc-i386_inc_libc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-i386_inc_libc_fbsdcompat",
         ":libc-i386_inc_libc_darwin",
         ":libc-i386_inc_libc_generated_derived",
@@ -5930,7 +5930,7 @@ cc_objects(
     deps = [
         ":libc-locale_inc_generated_private_include",
         ":libc-locale_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-locale_inc_fbsdcompat",
         ":libc-locale_inc_darwin",
         ":libc-locale_inc_generated_derived",
@@ -5985,7 +5985,7 @@ cc_objects(
     deps = [
         ":libc-locale_inc_generated_private_include",
         ":libc-locale_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-locale_inc_fbsdcompat",
         ":libc-locale_inc_darwin",
         ":libc-locale_inc_generated_derived",
@@ -6111,7 +6111,7 @@ cc_objects(
     deps = [
         ":libc-locale_legacy_inc_generated_private_include",
         ":libc-locale_legacy_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-locale_legacy_inc_fbsdcompat",
         ":libc-locale_legacy_inc_darwin",
         ":libc-locale_legacy_inc_generated_derived",
@@ -6258,7 +6258,7 @@ cc_objects(
     deps = [
         ":libc-net_inc_generated_private_include",
         ":libc-net_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-net_inc_fbsdcompat",
         ":libc-net_inc_darwin",
         ":libc-net_inc_generated_derived",
@@ -6392,7 +6392,7 @@ cc_objects(
     deps = [
         ":libc-net_cancelable_inc_generated_private_include",
         ":libc-net_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-net_cancelable_inc_fbsdcompat",
         ":libc-net_cancelable_inc_darwin",
         ":libc-net_cancelable_inc_generated_derived",
@@ -6518,7 +6518,7 @@ cc_objects(
     deps = [
         ":libc-net_legacy_inc_generated_private_include",
         ":libc-net_legacy_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-net_legacy_inc_fbsdcompat",
         ":libc-net_legacy_inc_darwin",
         ":libc-net_legacy_inc_generated_derived",
@@ -6651,7 +6651,7 @@ cc_objects(
     deps = [
         ":libc-nls_inc_generated_private_include",
         ":libc-nls_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-nls_inc_fbsdcompat",
         ":libc-nls_inc_darwin",
         ":libc-nls_inc_generated_derived",
@@ -6786,7 +6786,7 @@ cc_objects(
     deps = [
         ":libc-os_inc_generated_private_include",
         ":libc-os_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-os_inc_fbsdcompat",
         ":libc-os_inc_darwin",
         ":libc-os_inc_generated_derived",
@@ -6918,7 +6918,7 @@ cc_objects(
     deps = [
         ":libc-posix1e_inc_generated_private_include",
         ":libc-posix1e_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-posix1e_inc_fbsdcompat",
         ":libc-posix1e_inc_darwin",
         ":libc-posix1e_inc_generated_derived",
@@ -7073,7 +7073,7 @@ cc_objects(
     deps = [
         ":libc-regex_inc_generated_private_include",
         ":libc-regex_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-regex_inc_fbsdcompat",
         ":libc-regex_inc_darwin",
         ":libc-regex_inc_generated_derived",
@@ -7138,7 +7138,7 @@ cc_objects(
     deps = [
         ":libc-regex_inc_generated_private_include",
         ":libc-regex_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-regex_inc_fbsdcompat",
         ":libc-regex_inc_darwin",
         ":libc-regex_inc_generated_derived",
@@ -7266,7 +7266,7 @@ cc_objects(
     deps = [
         ":libc-regex_legacy_inc_generated_private_include",
         ":libc-regex_legacy_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-regex_legacy_inc_fbsdcompat",
         ":libc-regex_legacy_inc_darwin",
         ":libc-regex_legacy_inc_generated_derived",
@@ -7426,7 +7426,7 @@ cc_objects(
     deps = [
         ":libc-secure_inc_generated_private_include",
         ":libc-secure_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-secure_inc_fbsdcompat",
         ":libc-secure_inc_darwin",
         ":libc-secure_inc_generated_derived",
@@ -7696,7 +7696,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -7764,7 +7764,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -7832,7 +7832,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -7900,7 +7900,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -7968,7 +7968,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -8036,7 +8036,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -8104,7 +8104,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -8283,7 +8283,7 @@ cc_objects(
     deps = [
         ":libc-stdio_extsn_inc_generated_private_include",
         ":libc-stdio_extsn_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdio_extsn_inc_fbsdcompat",
         ":libc-stdio_extsn_inc_darwin",
         ":libc-stdio_extsn_inc_generated_derived",
@@ -8353,7 +8353,7 @@ cc_objects(
     deps = [
         ":libc-stdio_extsn_inc_generated_private_include",
         ":libc-stdio_extsn_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdio_extsn_inc_fbsdcompat",
         ":libc-stdio_extsn_inc_darwin",
         ":libc-stdio_extsn_inc_generated_derived",
@@ -8483,7 +8483,7 @@ cc_objects(
     deps = [
         ":libc-stdio_legacy_inc_generated_private_include",
         ":libc-stdio_legacy_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdio_legacy_inc_fbsdcompat",
         ":libc-stdio_legacy_inc_darwin",
         ":libc-stdio_legacy_inc_generated_derived",
@@ -8670,7 +8670,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -8728,7 +8728,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -8786,7 +8786,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -8844,7 +8844,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -8902,7 +8902,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -8960,7 +8960,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -9019,7 +9019,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -9077,7 +9077,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -9216,7 +9216,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_cancelable_inc_generated_private_include",
         ":libc-stdlib_cancelable_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_cancelable_inc_fbsdcompat",
         ":libc-stdlib_cancelable_inc_darwin",
         ":libc-stdlib_cancelable_inc_generated_derived",
@@ -9360,7 +9360,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_dyld_inc_generated_private_include",
         ":libc-stdlib_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_dyld_inc_fbsdcompat",
         ":libc-stdlib_dyld_inc_darwin",
         ":libc-stdlib_dyld_inc_generated_derived",
@@ -9422,7 +9422,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_dyld_inc_generated_private_include",
         ":libc-stdlib_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_dyld_inc_fbsdcompat",
         ":libc-stdlib_dyld_inc_darwin",
         ":libc-stdlib_dyld_inc_generated_derived",
@@ -9561,7 +9561,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_extsn_inc_generated_private_include",
         ":libc-stdlib_extsn_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_extsn_inc_fbsdcompat",
         ":libc-stdlib_extsn_inc_darwin",
         ":libc-stdlib_extsn_inc_generated_derived",
@@ -9687,7 +9687,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_legacy_inc_generated_private_include",
         ":libc-stdlib_legacy_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdlib_legacy_inc_fbsdcompat",
         ":libc-stdlib_legacy_inc_darwin",
         ":libc-stdlib_legacy_inc_generated_derived",
@@ -9825,7 +9825,7 @@ cc_objects(
     deps = [
         ":libc-stdtime_inc_generated_private_include",
         ":libc-stdtime_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdtime_inc_fbsdcompat",
         ":libc-stdtime_inc_darwin",
         ":libc-stdtime_inc_generated_derived",
@@ -9885,7 +9885,7 @@ cc_objects(
     deps = [
         ":libc-stdtime_inc_generated_private_include",
         ":libc-stdtime_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdtime_inc_fbsdcompat",
         ":libc-stdtime_inc_darwin",
         ":libc-stdtime_inc_generated_derived",
@@ -9946,7 +9946,7 @@ cc_objects(
     deps = [
         ":libc-stdtime_inc_generated_private_include",
         ":libc-stdtime_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdtime_inc_fbsdcompat",
         ":libc-stdtime_inc_darwin",
         ":libc-stdtime_inc_generated_derived",
@@ -10007,7 +10007,7 @@ cc_objects(
     deps = [
         ":libc-stdtime_inc_generated_private_include",
         ":libc-stdtime_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdtime_inc_fbsdcompat",
         ":libc-stdtime_inc_darwin",
         ":libc-stdtime_inc_generated_derived",
@@ -10133,7 +10133,7 @@ cc_objects(
     deps = [
         ":libc-stdtime_legacy_inc_generated_private_include",
         ":libc-stdtime_legacy_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-stdtime_legacy_inc_fbsdcompat",
         ":libc-stdtime_legacy_inc_darwin",
         ":libc-stdtime_legacy_inc_generated_derived",
@@ -10320,7 +10320,7 @@ cc_objects(
     deps = [
         ":libc-string_inc_generated_private_include",
         ":libc-string_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-string_inc_fbsdcompat",
         ":libc-string_inc_darwin",
         ":libc-string_inc_generated_derived",
@@ -10379,7 +10379,7 @@ cc_objects(
     deps = [
         ":libc-string_inc_generated_private_include",
         ":libc-string_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-string_inc_fbsdcompat",
         ":libc-string_inc_darwin",
         ":libc-string_inc_generated_derived",
@@ -10523,7 +10523,7 @@ cc_objects(
     deps = [
         ":libc-string_dyld_inc_generated_private_include",
         ":libc-string_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-string_dyld_inc_fbsdcompat",
         ":libc-string_dyld_inc_darwin",
         ":libc-string_dyld_inc_generated_derived",
@@ -10586,7 +10586,7 @@ cc_objects(
     deps = [
         ":libc-string_dyld_inc_generated_private_include",
         ":libc-string_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-string_dyld_inc_fbsdcompat",
         ":libc-string_dyld_inc_darwin",
         ":libc-string_dyld_inc_generated_derived",
@@ -10712,7 +10712,7 @@ cc_objects(
     deps = [
         ":libc-string_legacy_inc_generated_private_include",
         ":libc-string_legacy_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-string_legacy_inc_fbsdcompat",
         ":libc-string_legacy_inc_darwin",
         ":libc-string_legacy_inc_generated_derived",
@@ -10855,7 +10855,7 @@ cc_objects(
     deps = [
         ":libc-sys_inc_generated_private_include",
         ":libc-sys_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-sys_inc_fbsdcompat",
         ":libc-sys_inc_darwin",
         ":libc-sys_inc_generated_derived",
@@ -10910,7 +10910,7 @@ cc_objects(
     deps = [
         ":libc-sys_inc_generated_private_include",
         ":libc-sys_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-sys_inc_fbsdcompat",
         ":libc-sys_inc_darwin",
         ":libc-sys_inc_generated_derived",
@@ -10969,7 +10969,7 @@ cc_objects(
     deps = [
         ":libc-sys_inc_generated_private_include",
         ":libc-sys_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-sys_inc_fbsdcompat",
         ":libc-sys_inc_darwin",
         ":libc-sys_inc_generated_derived",
@@ -11028,7 +11028,7 @@ cc_objects(
     deps = [
         ":libc-sys_inc_generated_private_include",
         ":libc-sys_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-sys_inc_fbsdcompat",
         ":libc-sys_inc_darwin",
         ":libc-sys_inc_generated_derived",
@@ -11087,7 +11087,7 @@ cc_objects(
     deps = [
         ":libc-sys_inc_generated_private_include",
         ":libc-sys_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-sys_inc_fbsdcompat",
         ":libc-sys_inc_darwin",
         ":libc-sys_inc_generated_derived",
@@ -11220,7 +11220,7 @@ cc_objects(
     deps = [
         ":libc-sys_dyld_inc_generated_private_include",
         ":libc-sys_dyld_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-sys_dyld_inc_fbsdcompat",
         ":libc-sys_dyld_inc_darwin",
         ":libc-sys_dyld_inc_generated_derived",
@@ -11352,7 +11352,7 @@ cc_objects(
     deps = [
         ":libc-sys_noinode64_inc_generated_private_include",
         ":libc-sys_noinode64_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-sys_noinode64_inc_fbsdcompat",
         ":libc-sys_noinode64_inc_darwin",
         ":libc-sys_noinode64_inc_generated_derived",
@@ -11486,7 +11486,7 @@ cc_objects(
     deps = [
         ":libc-util_inc_generated_private_include",
         ":libc-util_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-util_inc_fbsdcompat",
         ":libc-util_inc_darwin",
         ":libc-util_inc_generated_derived",
@@ -11629,7 +11629,7 @@ cc_objects(
     deps = [
         ":libc-uuid_inc_generated_private_include",
         ":libc-uuid_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-uuid_inc_fbsdcompat",
         ":libc-uuid_inc_darwin",
         ":libc-uuid_inc_generated_derived",
@@ -11748,7 +11748,7 @@ cc_objects(
     deps = [
         ":libc-x86_64_inc_generated_private_include",
         ":libc-x86_64_inc_include",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":libc-x86_64_inc_fbsdcompat",
         ":libc-x86_64_inc_darwin",
         ":libc-x86_64_inc_generated_derived",
@@ -11897,7 +11897,7 @@ cc_objects(
     deps = [
         ":system_darwin_inc_libc_generated",
         ":system_darwin_inc_libc",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_darwin_inc_libc_locale_FreeBSD",
         ":system_darwin_inc_libc_include_NetBSD",
         ":system_darwin_inc_libc_stdtime_FreeBSD",
@@ -12084,7 +12084,7 @@ darwin_dylib(
         "-Wl,-alias_list": "xcodescripts/alias.list",
     },
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 
@@ -12256,14 +12256,14 @@ darwin_dylib(
         "//vendor/src:system_malloc_firstpass",
         "//vendor/src:system_pthread_firstpass",
         "//vendor/src:system_blocks_firstpass",
-        "//darwin/libm:system_m_firstpass",
+        "//src/darwin/libm:system_m_firstpass",
         "//vendor/src/libplatform:platform_firstpass",
-        "//darwin/launchd:launch_firstpass",
+        "//src/darwin/launchd:launch_firstpass",
         "//vendor/src:system_notify_firstpass",
         "//vendor/src/libdispatch:libdispatch_shared_firstpass",
         "//vendor/src:system_info_firstpass",
         "//vendor/src:macho_firstpass",
-        "//darwin/duct:system_duct_firstpass",
+        "//src/darwin/duct:system_duct_firstpass",
         "//vendor/src:system_asl_firstpass",
         "//vendor/src/libxpc:xpc_firstpass",
         "//vendor/src/corecrypto:corecrypto_firstpass",
@@ -12276,7 +12276,7 @@ darwin_dylib(
         "-Wl,-alias_list": "xcodescripts/alias.list",
     },
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: system_c dylibs

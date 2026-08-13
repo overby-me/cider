@@ -38,7 +38,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":removefile_inc_removefile",
     ],
     visibility = ["PUBLIC"],
@@ -53,7 +53,7 @@ darwin_dylib(
         ":removefile_obj",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: removefile

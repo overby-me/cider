@@ -58,7 +58,7 @@ for n in xcrun cc; do
   cp "$RBIN" "$G/bin/gater/$n"; chmod +x "$G/bin/gater/$n"
 done
 
-export DPREFIX=$PREFIX
+export CIDERPREFIX=$PREFIX
 export CIDER_NO_LAUNCHD=1
 export DSERVER_LIBEXEC_PATH=$G
 export DSERVER_MLDR_PATH=$G/usr/libexec/cider/mldr

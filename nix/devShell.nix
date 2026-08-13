@@ -56,8 +56,8 @@ in {
     # DECLARED HERE SO scripts/buck-setup.nu CAN REGENERATE WITHOUT THEM BEING LOST.
     # All four were hand written into .buckconfig.local, a file whose first line says
     # GENERATED, so regenerating it on 2026-08-10 silently dropped every one and
-    # //darwin/frameworks:fseventsd_obj stopped compiling with
-    # "linux/fanotify.h: 'linux/types.h' file not found". buck-setup.nu harvests the dev
+    # //src/darwin/frameworks:fseventsd_obj stopped compiling with
+    # "src/linux/fanotify.h: 'src/linux/types.h' file not found". buck-setup.nu harvests the dev
     # shell's own -isystem list, so declaring them here is what puts them back and keeps
     # them there. pkg-config alone is not enough: it knows nothing about xdmcp, which is
     # why the script warns about that one by name.
@@ -84,7 +84,7 @@ in {
     # so nothing would find it by path, and the local vendor/src would silently keep the
     # symlinks buck2 refuses to load.
     #
-    # src = ../. copies ONLY linux/buildtools/src-normalise into the store, because the
+    # src = ../. copies ONLY src/linux/buildtools/src-normalise into the store, because the
     # derivation appends that subpath, so an edit anywhere else in the project does not
     # rebuild the dev shell.
     (pkgs.callPackage ./src-normalise.nix { src = ../.; })

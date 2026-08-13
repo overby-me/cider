@@ -64,7 +64,7 @@ def main [
     let cider_prefix = if ($prefix | is-not-empty) {
         $prefix
     } else {
-        ($env | get -o DPREFIX | default ($env.HOME | path join ".cider"))
+        ($env | get -o CIDERPREFIX | default ($env.HOME | path join ".cider"))
     }
     let url_base = "https://releases.nixos.org/nix"
 

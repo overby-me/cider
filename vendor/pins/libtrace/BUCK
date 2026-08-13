@@ -55,7 +55,7 @@ cc_objects(
         ":system_trace_inc1",
         "//vendor/src:fw_Foundation",
         "//vendor/src:fw_CoreFoundation",
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
     ],
 )
 # END generated: system_trace_obj
@@ -77,7 +77,7 @@ darwin_dylib(
         ":system_trace_obj",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 
@@ -95,7 +95,7 @@ darwin_dylib(
         "//vendor/src/libc:system_c_firstpass",
         "//vendor/src:system_malloc_firstpass",
         "//vendor/src:system_asl_firstpass",
-        "//darwin/duct:system_duct_firstpass",
+        "//src/darwin/duct:system_duct_firstpass",
         "//vendor/src/libdispatch:libdispatch_shared_firstpass",
         "//vendor/src:system_dyld_firstpass",
         "//vendor/src:system_blocks_firstpass",
@@ -105,7 +105,7 @@ darwin_dylib(
         "//vendor/src/objc4:objc_firstpass",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: system_trace dylibs

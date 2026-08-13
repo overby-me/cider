@@ -43,7 +43,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:asl_ipc_mig",
         ":system_asl_inc_syslog_libsystem_asl_tproj_include",
     ],
@@ -78,7 +78,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":aslcommon_inc_syslog_libsystem_asl_tproj_include",
     ],
     visibility = ["PUBLIC"],
@@ -119,7 +119,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:asl_ipc_mig",
         ":syslog_inc_syslog_libsystem_asl_tproj_include",
         ":syslog_inc_syslog_aslcommon",
@@ -163,7 +163,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:asl_ipc_mig",
         ":aslmanager_inc_syslog_libsystem_asl_tproj_include",
         ":aslmanager_inc_syslog_aslcommon",
@@ -213,7 +213,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         "//vendor/src:asl_ipc_mig",
         "//vendor/src:asl_ipc_server_mig",
         ":syslogd_inc_syslog_libsystem_asl_tproj_include",
@@ -254,8 +254,8 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
-        "//darwin/xtrace:xtrace_headers",
+        "//src/darwin:sdk_env",
+        "//src/darwin/xtrace:xtrace_headers",
         ":asl_ipc_xtrace_mig_inc_syslog_libsystem_asl_tproj_include",
     ],
     gen_srcs = [

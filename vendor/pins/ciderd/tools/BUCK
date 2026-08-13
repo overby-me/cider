@@ -15,7 +15,7 @@ cc_library(
     prefix_headers = ["dserverdbg-rpc-defs.h"],
     deps = [
         "//vendor/pins/ciderd:dserver_headers",
-        "//linux/startup:rtsig_header",
+        "//src/linux/startup:rtsig_header",
     ],
 )
 

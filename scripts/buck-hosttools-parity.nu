@@ -97,14 +97,14 @@ def main [--buck-out: string = ""] {
   let notmacho = "/tmp/buck-hosttools-parity-notmacho.bin"
   "not a mach-o at all\n" | save -f $notmacho
 
-  let dylib = ($b | path join "darwin/libsimple/__libsimple_cider_dylib__/libsimple_cider.dylib")
-  let elfobj = ($b | path join "linux/startup/__rtsig__/__objs/rtsig.c.o")
+  let dylib = ($b | path join "src/darwin/libsimple/__libsimple_cider_dylib__/libsimple_cider.dylib")
+  let elfobj = ($b | path join "src/linux/startup/__rtsig__/__objs/rtsig.c.o")
 
   let pairs = [
-    { name: "getuuid", c: ($b | path join "linux/buildtools/__getuuid_c__/getuuid_c"),
-      r: ($b | path join "linux/buildtools/__getuuid__/getuuid") }
-    { name: "elfdep", c: ($b | path join "linux/buildtools/__elfdep_c__/elfdep_c"),
-      r: ($b | path join "linux/buildtools/__elfdep__/elfdep") }
+    { name: "getuuid", c: ($b | path join "src/linux/buildtools/__getuuid_c__/getuuid_c"),
+      r: ($b | path join "src/linux/buildtools/__getuuid__/getuuid") }
+    { name: "elfdep", c: ($b | path join "src/linux/buildtools/__elfdep_c__/elfdep_c"),
+      r: ($b | path join "src/linux/buildtools/__elfdep__/elfdep") }
   ]
   let cases = [
     { label: "no args", args: [] }
@@ -114,14 +114,14 @@ def main [--buck-out: string = ""] {
     { label: "elf object", args: [$elfobj] }
   ]
 
-  let wg_c = ($b | path join "linux/libelfloader/__wrapgen_c__/wrapgen_c")
-  let wg_r = ($b | path join "linux/libelfloader/__wrapgen__/wrapgen")
+  let wg_c = ($b | path join "src/linux/libelfloader/__wrapgen_c__/wrapgen_c")
+  let wg_r = ($b | path join "src/linux/libelfloader/__wrapgen__/wrapgen")
 
   let missing = ([...($pairs | each {|p| [$p.c, $p.r] } | flatten), $wg_c, $wg_r]
     | where {|f| not ($f | path exists) })
   if not ($missing | is-empty) {
     print "MISSING, build these first:"
-    print "  buck2 build //linux/buildtools:{getuuid,getuuid_c,elfdep,elfdep_c} //linux/libelfloader:{wrapgen,wrapgen_c}"
+    print "  buck2 build //src/linux/buildtools:{getuuid,getuuid_c,elfdep,elfdep_c} //src/linux/libelfloader:{wrapgen,wrapgen_c}"
     for m in $missing { print $"   ($m)" }
     exit 2
   }

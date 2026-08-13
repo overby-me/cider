@@ -39,7 +39,7 @@ that moves it. What it hid: `escapeSrc` read every escape root out of `srcRaw` b
 carry was dropped IN SILENCE, leaving the security pin link to `duct-tape/xnu` dangling until
 `security_codesigning_obj` died on a missing `security/mac.h` an hour into a later gate. Fixed
 in `d51dfbc7` by falling back to the pin store, and now proven by that same target building
-green. `scripts/buck-escape-roots-check.nu` guards the class, and the suite calls it.
+green. `scripts/checks/buck-escape-roots-check.nu` guards the class, and the suite calls it.
 
 The general rule, since this will recur: **moving a tree from the repo into a pin changes its
 CATEGORY, and every `pathExists` guard that named it silently stops contributing.** Note that
@@ -51,7 +51,7 @@ script has no `set -e`, and both faults succeed at the shell level: `ln -sfn X d
 `dir/X`, and a failed `rm -f` is never looked at. So the tree is wrong and the script still
 exits 0, and it surfaces later as an unrelated compile error. Even libsimple stages the pin
 (3 of its 8 staging scripts in the store do, and 2 carry the duplicate alias); it just
-compiles nothing that reads the tree that went wrong. `scripts/buck-lowering-stage-check.nu`
+compiles nothing that reads the tree that went wrong. `scripts/checks/buck-lowering-stage-check.nu`
 READS the script, which is the only thing that works, and it now reads the one the gated
 endpoint actually runs.
 
@@ -69,7 +69,7 @@ fault with two endpoint runs. In cost order:
 
 | rung | command | measured 2026-08-10 |
 | --- | --- | --- |
-| 1 | `scripts/buck-lowering-stage-check.nu` | **7 s** warm, 329 s on a cold graph |
+| 1 | `scripts/checks/buck-lowering-stage-check.nu` | **7 s** warm, 329 s on a cold graph |
 | 2 | `nix build .#cider-buck2-one` | **18 s**, 3 builders |
 | 3 | `nix build .#cider-buck2-prefix-min` | **hours** (1,185 builders, but see the #83 note: that run reused the graph) |
 
@@ -101,8 +101,8 @@ stop working entirely once a store GC collects `result-graph-ref`; `gen-xnu-sys-
 `xnu-sys/CMakeLists.txt` and so cannot run at all. Everything they produced is committed.
 
 **RUN THESE TWO BEFORE ANY LONG BUILD. One second together, and each already saved an hour.**
-`scripts/buck-pin-paths-check.nu` resolves all 8,332 paths we record INTO a pin;
-`scripts/buck-labels-check.nu` resolves all 24,944 labels, `load()` files and symbols, and
+`scripts/checks/buck-pin-paths-check.nu` resolves all 8,332 paths we record INTO a pin;
+`scripts/checks/buck-labels-check.nu` resolves all 24,944 labels, `load()` files and symbols, and
 config sections. Both verified BOTH ways against real damage.
 
 They exist because the Cider rename broke eight things no compiler could see, five of which
@@ -146,7 +146,7 @@ fix and this tree with it.
 Two limits worth stating. The label check does NOT verify target existence generally: 105
 distinct targets are synthesised by `elf_wrapper` as `<n>_wrap` and `<n>_dylib` from lists local
 to a BUCK file, so reporting them would be noise. And the pin check tests `lexists`, because
-`darwin/Developer` is written for the STAGED layout and 2,002 of its 2,636 links dangle in a
+`src/darwin/Developer` is written for the STAGED layout and 2,002 of its 2,636 links dangle in a
 checkout by design.
 
 **NORMALISATION HAPPENS IN THE GRAPH DERIVATION AND NOWHERE ELSE, AND THAT IS A REAL GAP.**
@@ -169,7 +169,7 @@ beside the pin, and a pin store is self-contained: normalising at fetch cannot s
 because per-pin stores are incomplete. But the assembled tree carries the dangling link too,
 since normalisation runs only in `ciderBuck2Graph.nix`. The comment listing the 21 links that
 escape a pin store already spells ours out: seven leave `pins` entirely, six into
-`darwin/Developer`, and **`security -> ciderd/xnu-sys/xnu`, which is first-party vendored and
+`src/darwin/Developer`, and **`security -> ciderd/xnu-sys/xnu`, which is first-party vendored and
 not a pin at all**, needing rewriting to an absolute store path, the same treatment #54 needs
 for group escapes. So the fix is to normalise when `pinsTree` is built, not at fetch, and it is
 the already-identified work rather than something new. Latent for as long as a warm store satisfied those targets; the rename forced a
@@ -180,12 +180,12 @@ tree; the older 115 s figure predates the Rust demos being restored). **It is IN
 the nix endpoint**, because it builds through buck2 in the dev shell, and it stayed green
 through every one of the endpoint failures above. Use it as the fast signal that the
 first-party code is coherent; an endpoint failure on its own says nothing about the daemon.
-`scripts/xnu-sys-runtime-check.nu` covers the
+`scripts/checks/xnu-sys-runtime-check.nu` covers the
 six ported xnu-sys files plus the 17 proofs that `checks.server` used to run: Mach ports,
 `mach_msg`, blocking receive, the guest-memory hooks, the generated RPC dispatch, per-guest
 routing, persistent threads and four daemon capstones. Those 17 were orphaned by the cmake
 removal, because cargo built them through `nix/server.nix` and they had no buck2 target; they
-have one now. Run this after ANY xnu-sys or linux/server change.
+have one now. Run this after ANY xnu-sys or src/linux/server change.
 
 **THE BUCK2 REGRESSION SUITE RUNS AGAIN: `scripts/buck-test.nu`, 149 passed, 0 failed, 905 s.**
 It was previously unfinishable, because two sections spawned one buck2 client PER TARGET (568
@@ -207,7 +207,7 @@ that RAN, each probe with its own restore control that came back 0 onto the iden
 | --- | --- | --- |
 | none (control) | **0** | 16 s |
 | `libaccessibility/src/Accessibility.m`, a leaf | **7** | 165 s |
-| `linux/startup/rtsig.c`, a header generator | **570** | 19 min |
+| `src/linux/startup/rtsig.c`, a header generator | **570** | 19 min |
 | `xnu-sys/src/*.c` BEFORE | **1,558** | 61 min |
 | `xnu-sys/src/*.c` AFTER | **44** | 2.5 min |
 
@@ -225,7 +225,7 @@ because each costs a full rebuild. Measured 2026-08-09 with a control either sid
 | run | builders | time | prefix output |
 | --- | --- | --- | --- |
 | none (control) | **0** | 18 s | `6fx01v8p...` |
-| one leaf BUCK edit (`darwin/libaccessibility/BUCK`) | **3** | 7.5 min | `6fx01v8p...` UNCHANGED |
+| one leaf BUCK edit (`src/darwin/libaccessibility/BUCK`) | **3** | 7.5 min | `6fx01v8p...` UNCHANGED |
 | restore | **0** | 1 s | `6fx01v8p...` |
 
 The 3 are the graph pipeline itself, skeleton then graph then sources. Nothing downstream moves,
@@ -371,7 +371,7 @@ flag was wrong.
    `libciderd_xnu_sys.a`, and `task_xnu.c.o`, `memory_xnu.c.o` and `thread_xnu.c.o`
    remain, which is the boundary the task set. (`host.c.o` in that archive is XNU
    `osfmk/kern/host.c`, not xnu-sys's; `host_info` is undefined there.) ciderd links
-   and `scripts/xnu-sys-runtime-check.nu` passes.
+   and `scripts/checks/xnu-sys-runtime-check.nu` passes.
 
    **THE THREE BIG FILES WERE SPLIT along the XNU boundary they already marked**, rather than
    translating lifted kernel code:
@@ -393,7 +393,7 @@ flag was wrong.
 
    **Reopening beat shimming for the big three types, and the recorded REFUSALS were reversed on
    evidence:** `task` at +21 structs and 91 KB for 12 fields, `thread` at +13 and 58 KB for 18,
-   and the `vm_.*` blanket removed for +3 and 1,780 B. `linux/server/src/layout.rs` is what made
+   and the `vm_.*` blanket removed for +3 and 1,780 B. `src/linux/server/src/layout.rs` is what made
    that safe: it asserts sizes and container offsets against the C compiler at BUILD time, and a
    perturbed expectation fails the build.
 
@@ -429,7 +429,7 @@ flag was wrong.
    91,372 B, close to the original figure.
 
    **The reason to hesitate was that reopening might lay the fields out differently from C, and
-   that is now measured rather than feared.** `linux/server/src/layout.rs` asserts Rust against
+   that is now measured rather than feared.** `src/linux/server/src/layout.rs` asserts Rust against
    the C compiler at BUILD time (sizes and container offsets for task and thread; `wrapper.h`
    supplies the C answers as enumerators). It holds both with `task` opaque and with it
    reopened: 1616 bytes, `xnu_task` at offset 112 either way. Perturbing an expected size by 8
@@ -448,23 +448,23 @@ flag was wrong.
 
    | subsystem | lines | origin | verdict |
    |---|---|---|---|
-   | `darwin/CoreAudio` | 73,619 | **MIXED, mostly Apple** | 233 of 316 files are Apple: `CoreAudioUtilityClasses` (195) is Apple's published sample library, `AudioFileTools` (38) is Apple's. Darling's own is ~83 files, the component and toolbox glue plus the ffmpeg bridge |
-   | `darwin/libm` | 61,868 | Apple Libm, containing Sun 1993 fdlibm | NO, upstream |
-   | `darwin/launchd` | 26,842 | **Apple** | NO, bundled upstream |
-   | `darwin/OpenDirectoryOld` | 7,354 | Apple-era | NO |
-   | `darwin/xtrace` | 4,391 | Darling | syscall tracer, guest-side |
-   | `linux/hosttools` + `linux/buildtools` | 1,509 | Darling | **BEST FIRST TARGET**, see below |
-   | `linux/libelfloader` | 864 | Darling | mldr is already Rust and consumes this |
-   | `darwin/xcselect` | 679 | Darling | |
-   | `darwin/shellspawn` | 634 | Darling | load-bearing: it is what `cider shell` uses, and it is in the minimal prefix |
-   | `darwin/libsimple` | 562 | Darling | the lock and log layer xnu-sys sits on; the Rust daemon ALREADY links it as a C archive |
+   | `src/darwin/CoreAudio` | 73,619 | **MIXED, mostly Apple** | 233 of 316 files are Apple: `CoreAudioUtilityClasses` (195) is Apple's published sample library, `AudioFileTools` (38) is Apple's. Darling's own is ~83 files, the component and toolbox glue plus the ffmpeg bridge |
+   | `src/darwin/libm` | 61,868 | Apple Libm, containing Sun 1993 fdlibm | NO, upstream |
+   | `src/darwin/launchd` | 26,842 | **Apple** | NO, bundled upstream |
+   | `src/darwin/OpenDirectoryOld` | 7,354 | Apple-era | NO |
+   | `src/darwin/xtrace` | 4,391 | Darling | syscall tracer, guest-side |
+   | `src/linux/hosttools` + `src/linux/buildtools` | 1,509 | Darling | **BEST FIRST TARGET**, see below |
+   | `src/linux/libelfloader` | 864 | Darling | mldr is already Rust and consumes this |
+   | `src/darwin/xcselect` | 679 | Darling | |
+   | `src/darwin/shellspawn` | 634 | Darling | load-bearing: it is what `cider shell` uses, and it is in the minimal prefix |
+   | `src/darwin/libsimple` | 562 | Darling | the lock and log layer xnu-sys sits on; the Rust daemon ALREADY links it as a C archive |
 
    **THERE ARE NO SUBMODULES IN THIS REPO.** No `.gitmodules`, and `git ls-files` tracks
    `pins/...` directly, so EVERYTHING is plain vendored content. "Bundled" is therefore
    not a decision anyone made about `libm` in particular; it is how the whole tree works. The
    distinction that matters for porting is ORIGIN, not how the content arrived.
 
-   **TWO EXCLUSIONS THAT ARE NOT ABOUT EFFORT.** The 10,104 `.m` files under `darwin/` are
+   **TWO EXCLUSIONS THAT ARE NOT ABOUT EFFORT.** The 10,104 `.m` files under `src/darwin/` are
    reimplementations of Apple's ObjC frameworks and have to stay ObjC, since they implement ObjC
    runtime APIs. And Apple-origin bundled code (`launchd`, `libm`) should NOT be ported at all:
    it is upstream code this project tracks rather than owns, and rewriting it forfeits the
@@ -478,7 +478,7 @@ flag was wrong.
    everywhere except the daemon. A first port outside xnu-sys should buy experience without
    buying that failure mode.
 
-   `darwin/libsimple` is the other one worth naming, for a different reason: the Rust daemon
+   `src/darwin/libsimple` is the other one worth naming, for a different reason: the Rust daemon
    already links it, so porting it would remove a C archive from that link entirely. It stays
    C-ABI either way, since the still-C glue calls it too.
 
@@ -491,8 +491,8 @@ flag was wrong.
    bearing), and a C ARCHIVE RESOLVES against a Rust rlib, which is the direction the port needs
    since `kqchan.c` stays C and calls `xnu_sys_semaphore_up`.
 
-   **The runtime check for a port is `scripts/xnu-sys-runtime-check.nu`, about a minute**,
-   not the hour-long minimal-prefix gate. It builds `//linux/server:scheduler_demo` and blocks
+   **The runtime check for a port is `scripts/checks/xnu-sys-runtime-check.nu`, about a minute**,
+   not the hour-long minimal-prefix gate. It builds `//src/linux/server:scheduler_demo` and blocks
    a microthread on a xnu-sys semaphore, so `xnu_sys_semaphore_create`, `down_simple` and `up`
    all run for real, down through XNU and back out through the suspend/resume hooks. It asserts
    on the OUTPUT (`SCHED_DEMO_OK`), never the exit code: breaking `down_simple` to report every
@@ -502,7 +502,7 @@ flag was wrong.
    **`semaphore.c` IS PORTED** (60 lines, one macro, and it exercises the whole seam). Proof it
    is not vacuous: in `libciderd_xnu_sys.a` the four `xnu_sys_semaphore_*` are `U` and
    `semaphore.o` is gone; in the linked daemon they are `T`. Types and the `xnu_task` offset come
-   from bindgen, not transcription: `linux/server/wrapper.h` binds the internal structs, and
+   from bindgen, not transcription: `src/linux/server/wrapper.h` binds the internal structs, and
    `flags.bzl` (generated) keeps the buck2 and cargo include sets identical.
 
    Keep the existing `xnu_sys_*` symbol names so the Rust daemon links unchanged.
@@ -751,7 +751,7 @@ reusable half may mention pins, the SDK farm, cider staging or this repo's layou
   `builtins.placeholder "out"` is a constant of the OUTPUT NAME, so every emitted action must
   name its output something else or the producer rejects its own drv as a self-reference.
   `NIX_REMOTE=daemon` breaks recursive-nix, which supplies its own socket.
-  `scripts/buck-dyndrv-check.nu` asserts **six** properties over four fixtures
+  `scripts/checks/buck-dyndrv-check.nu` asserts **six** properties over four fixtures
   (`dyn-drv-probe`, `dyn-actions-toy`, `-dep-probe`, `-specdir-toy`, `-dag-toy`). Two of the
   six were FALSE when first checked and neither had a fixture, so neither could have been
   noticed: the DAG edge (`inputSrcs` went to `nix derivation add` as a full store path, which
@@ -766,7 +766,7 @@ reusable half may mention pins, the SDK farm, cider staging or this repo's layou
 - **B. THE ADAPTER, done.** `buck-graph-to-specs.py` groups the actions the way the
   lowering does and renders each group's command sequence, inside the graph derivation.
   `ciderBuck2Lower.nix` reads the result; `escArgCache`, `escArg`, `fill`, `ownOutputs` and
-  `readsSibling` are gone from it. Checked by `scripts/buck-specs-check.nu`, which
+  `readsSibling` are gone from it. Checked by `scripts/checks/buck-specs-check.nu`, which
   re-derives the answer from graph.json instead of asking the generator, with four negative
   controls that must fire.
 - **WHAT IT WAS WORTH, measured old against new on the same tree and graph:** 15.1s → 14.5s,
@@ -987,7 +987,7 @@ and an over-long `-c` argument spills to one and becomes `. <path>`. Only a `-c`
 rewritten, because only there is the argument known to BE a shell script. THIS COULD NOT HAVE
 BEEN FOUND ON TOYS: every other fixture script is a few kilobytes.
 
-**GENERALITY IS ENFORCED NOW, NOT ASSERTED.** `scripts/buck-bridge-generality-check.nu` requires
+**GENERALITY IS ENFORCED NOW, NOT ASSERTED.** `scripts/checks/buck-bridge-generality-check.nu` requires
 every path a reusable file names to resolve inside the reusable set, which is the condition for
 copying that set into another repo. 13 files, 0 references leaving. The comments saying "nothing
 cider-shaped in here" were never a check.
@@ -1051,7 +1051,7 @@ pins/bootstrap_cmds` reports applying it, and a freshly built mig group now read
 
 which is `SOURCE_DATE_EPOCH` 315532800. Before, it read the wall clock.
 
-GUARDED SO IT NEVER COSTS AN HOUR AGAIN. `scripts/buck-mig-epoch-check.nu` builds ONE mig group
+GUARDED SO IT NEVER COSTS AN HOUR AGAIN. `scripts/checks/buck-mig-epoch-check.nu` builds ONE mig group
 and reads one line, and is in `buck-test.nu`. Its control runs FIRST and is the half that
 matters: it asserts the `stub generated` line EXISTS before asserting what it says, because a
 migcom that stopped emitting the line, or a renamed output, would otherwise make the date
@@ -1113,9 +1113,9 @@ Re-derive before trusting: `scripts/buck-coverage.nu --missing` and
      the coverage metric was taught to see them.
 
    Start with the GUI framework dylibs: they are 362 of the 497 missing edges, and
-   everything else in stock sits downstream of them. The 16 linux/native ELF wrappers are
+   everything else in stock sits downstream of them. The 16 src/linux/native ELF wrappers are
    already done, see below; the rest are Darling's own framework implementations under
-   darwin/frameworks (101) and darwin/private-frameworks (45), plus 314 in pins which is
+   src/darwin/frameworks (101) and src/darwin/private-frameworks (45), plus 314 in pins which is
    mostly python, ruby, perl and their extension modules.
 
    Stage 2 is effectively complete: 1354 of 1359 stock link edges. The five that remain
@@ -1125,15 +1125,15 @@ Re-derive before trusting: `scripts/buck-coverage.nu --missing` and
    guest-nix milestone run rather than skipped.
 
    Beware NAME COLLISIONS when driving the generator by cmake target name across the wider
-   graph. `X11` is both the linux/native wrap_elf stub and CoreGraphics' X11 backend in
-   darwin/frameworks, and `gen-buck-from-ninja.py --dylibs X11` silently picks the latter.
+   graph. `X11` is both the src/linux/native wrap_elf stub and CoreGraphics' X11 backend in
+   src/darwin/frameworks, and `gen-buck-from-ninja.py --dylibs X11` silently picks the latter.
    cli was small enough that names were unique; stock is not.
 
 2. **The 9 genuinely unported in-scope cli edges**: bsdln, elfdep, getuuid (host tools),
    csparser.bundle, lzfse, ping, vifs, libbind9_isccc.a, libopendirectory_internal.a. None
    is installed by the cli component, which is why UNMAPPED is 0 without them.
 
-2. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
+2. **launchservicesd** (src/darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
    launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z).
 3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference
    supplies it before assuming this is portable).
@@ -1164,7 +1164,7 @@ has been true six times running, each time a check freshly written.
   output once with `complete`, then test it.
 - **What invalidates the Nix endpoint** (measured from two graph derivations, not
   assumed): the graph takes the staged project as one store path, and that path holds
-  the BUILD tree only -- `buck/ src/ darwin/ linux/ tests/ etc/ misc/ patches/
+  the BUILD tree only -- `buck/ src/ src/darwin/ src/linux/ tests/ etc/ misc/ patches/
   templates/ tools/ buck-src/ buck-rust/` plus the root dotfiles. (`cmake/` was in this
   list until #82 removed cmake; it no longer exists.) `scripts/`, `nix/`,
   `docs/`, `plan/`, `changelog.md` and `flake.nix` are NOT in it, with three exceptions that
@@ -1201,7 +1201,7 @@ has been true six times running, each time a check freshly written.
 - **THE NIX ENDPOINT BUILDS A WORKING DARLING, END TO END, FOR THE FIRST TIME.** 8,472
   derivations, zero builder failures. The prefix is 622 MB and 34,126 files with
   `bin/cider`, `bin/ciderd` and `bin/cider-coredump`, and
-  `scripts/buck-bash-check.nu --prefix result/cider_prefix__prefix` PASSES: the container
+  `scripts/checks/buck-bash-check.nu --prefix result/cider_prefix__prefix` PASSES: the container
   boots and prints `BUCK2_BASH_OK 3.2.57(1)-release x86_64-apple-darwin19`, which is the
   Darwin bash and not the host's 5.x. Wall time: 29m41s for the graph, then about four
   hours for the lowering, most of it two avoidable problems (#48, #52).
@@ -1221,7 +1221,7 @@ has been true six times running, each time a check freshly written.
 - **THE ROOT INVALIDATION CAUSE IS THE GRAPH DERIVATION ITSELF (#56), and #50, #53, #54 and
   #55 are all downstream of it.** `ciderBuck2Graph.nix` takes the project as ONE
   `builtins.path` that excludes only plan, docs, nix, scripts and a few dotfiles, so
-  `darwin/`, `pins/`, `linux/` and `buck-src/` are all in it. Edit one C file and the graph
+  `src/darwin/`, `pins/`, `src/linux/` and `buck-src/` are all in it. Edit one C file and the graph
   rebuilds (30-47 min of buck2 analysis), its drv moves, and every lowered derivation moves
   with it, because each binds to the graph's DERIVATION rather than to its output. No amount
   of per-target or per-group granularity can matter beneath that. The comment on that filter
@@ -1251,7 +1251,7 @@ has been true six times running, each time a check freshly written.
   I FIRST REPORTED FIVE, and that was too narrow: I scanned only includes spelled `../`
   and missed the subdirectory form, which is the same problem (`libcxxabi` reaching for
   `include/atomic_support.h` and `demangle/ItaniumDemangle.h`, `fseventsd.m` for
-  `linux/fanotify.h`). The closure in the dump always covered both; only the count was
+  `src/linux/fanotify.h`). The closure in the dump always covered both; only the count was
   wrong. `buck-include-closure-check` now measures it properly and is verified
   both ways: 25 against a pre-closure graph, 0 after.
   The narrowing that matters: of 64,903 C-family files, 734 have a quoted `../` include and
@@ -1289,8 +1289,8 @@ has been true six times running, each time a check freshly written.
   every available way of getting there.
   **Splitting the source into per-subtree stores cannot work for this tree.** A group is staged
   as one symlink to its own store path, and **2,306 of the 2,970 symlinks under `darwin`, `src`
-  and `linux` are relative and cross a group boundary** (15 groups; `darwin/Developer/Platforms`
-  2,189, `frameworks/SystemConfiguration` 52, `darwin/opendirectory_internal/include` 24). The
+  and `linux` are relative and cross a group boundary** (15 groups; `src/darwin/Developer/Platforms`
+  2,189, `frameworks/SystemConfiguration` 52, `src/darwin/opendirectory_internal/include` 24). The
   endpoint failed 1,194 targets on `CoreServices/MacTypes.h`, which is itself a link to
   `../../../../basic-headers/MacTypes.h`. Two fixes were tried and both fail:
   1. A LINK FARM CANNOT REPAIR A RELATIVE ESCAPE. The kernel resolves `..` against the REAL
@@ -1311,7 +1311,7 @@ has been true six times running, each time a check freshly written.
   One root so the web resolves, one shared input so the daemon does not blow up (147 distinct
   paths per staging script is what took it to 4.9 GB and stalled it), and an output addressed
   by the subset so an unchanged target collapses to the same path.
-  `scripts/buck-escape-check.nu` is what measures all of this: `groups`, `pins --root
+  `scripts/checks/buck-escape-check.nu` is what measures all of this: `groups`, `pins --root
   <assembled>`, `resolve <dir>`, and it refuses to pass when it walked no symlinks.
   **THE LAYOUT THAT SUBSET DERIVATION HAS TO REPRODUCE IS NOW KNOWN, and it is cheaper than a
   copy: REAL DIRECTORIES PLUS ONE SYMLINK PER FILE.** What broke the link farm was that a GROUP
@@ -1329,11 +1329,11 @@ has been true six times running, each time a check freshly written.
   point at `src/external/...`, which this partial stage deliberately did not plant, because
   pins arrive from the `wantedPins` section rather than from a group.
   **AND THE SDK INVERTS THE WHOLE IDEA FOR A COMPILING TARGET, measured.** Every darwin compile
-  needs `darwin/Developer/Platforms`, and that tree is a HUB: 2,633 symlinks reaching TWELVE
-  roots (1,898 `src/external`, 444 `darwin/Developer`, 118 `darwin/frameworks`, 57
-  `darwin/private-frameworks`, 34 `build/src`, 23 `darwin/basic-headers`, then `darwin/launchd`,
-  `darwin/libm`, `darwin/sandbox`, `darwin/CoreAudio`, `darwin/libacm`,
-  `darwin/libDiagnosticMessagesClient`). Counted as GROUPS:
+  needs `src/darwin/Developer/Platforms`, and that tree is a HUB: 2,633 symlinks reaching TWELVE
+  roots (1,898 `src/external`, 444 `src/darwin/Developer`, 118 `src/darwin/frameworks`, 57
+  `src/darwin/private-frameworks`, 34 `build/src`, 23 `src/darwin/basic-headers`, then `src/darwin/launchd`,
+  `src/darwin/libm`, `src/darwin/sandbox`, `src/darwin/CoreAudio`, `src/darwin/libacm`,
+  `src/darwin/libDiagnosticMessagesClient`). Counted as GROUPS:
 
   | | |
   |---|---|
@@ -1405,13 +1405,13 @@ has been true six times running, each time a check freshly written.
   was that link. In the assembled tree it resolves (23 entries); planted as
   `ln -s <pinStore> src/external/IOKitUser` the kernel takes `../../../xnu` against the STORE,
   so it dangles. THE SAME MECHANISM as the group-directory link that failed 1,194 targets on
-  `MacTypes.h`. `scripts/buck-escape-check.nu` documents this exact case, naming this exact
+  `MacTypes.h`. `scripts/checks/buck-escape-check.nu` documents this exact case, naming this exact
   file, and I walked into it anyway.
   **So the fix is the session's own result applied to pins: ONE CA `pinsTree` holding all 147
   pins MIRRORED (real directories, one link per file) at their `pins/<name>` paths.**
   Self contained, so a sibling escape resolves inside it; input is the frozen pins, so it moves
   only on a pin bump, which is the cascade cut per-pin `pinPath` was reaching for.
-  `scripts/buck-pin-store-check.nu` passes throughout, because it compares by NAR HASH and a NAR
+  `scripts/checks/buck-pin-store-check.nu` passes throughout, because it compares by NAR HASH and a NAR
   hash records a symlink TARGET as a STRING. `buck-escape-check.py` documents that exact trap,
   for this exact class of bug, and the pin check still uses the method it warns against.
 
@@ -1447,13 +1447,13 @@ has been true six times running, each time a check freshly written.
 - **#64: ld64 is content addressed, and narrowing its source is NOT possible as scoped.** The
   rebuild no longer propagates (its outputs from a clean tree and from an edited one are bit
   identical), but it still costs 26 to 28 minutes on any first-party edit. The plan was to drop
-  `darwin/frameworks` and `darwin/private-frameworks` on the premise that the linker compiles
+  `src/darwin/frameworks` and `src/darwin/private-frameworks` on the premise that the linker compiles
   nothing in them. **That premise is false**, and two fast experiments show it:
   deleting the trees fails at cmake GENERATE, not on dangling SDK symlinks but on
   `add_dependencies(QuartzCore CoreVideo)` in `src/external/cocotron` reaching a target defined
-  under `darwin/frameworks`; and blanking only the implementation files gets past configure and
+  under `src/darwin/frameworks`; and blanking only the implementation files gets past configure and
   then fails at LINK, because CFNetwork needs `_SCNetworkReachabilitySetCallback` and friends
-  that `darwin/frameworks/SystemConfiguration` defines.
+  that `src/darwin/frameworks/SystemConfiguration` defines.
   One measurement explains both: **this ld64 derivation compiles across 369 distinct
   directories**. It is most of Darling, not a cctools build, which is also why it takes half an
   hour. Reducing it means changing WHAT it depends on in cmake, not which files reach the
@@ -1472,14 +1472,14 @@ has been true six times running, each time a check freshly written.
   | **the four names `buildFlags` passed** | 3,515 | **3,114** | **197** |
 
   `cctools-port/cctools/misc` defines NO `install_name_tool` and NO `nmedit`, only `lipo`, so
-  ninja resolved those bare names to the GUEST tools under `darwin/xcselect`. That is where libc
+  ninja resolved those bare names to the GUEST tools under `src/darwin/xcselect`. That is where libc
   (635 compiles), icu (446), xnu (415), compiler-rt (139), corefoundation (127) and Libinfo
   (106) came from, and it is the 369 directories.
   **AND THE RESULT WAS DISCARDED**, which is what made the fix safe rather than a trade-off:
   `installPhase` looked for them under `cctools-port/cctools/misc`, where those targets never
   wrote, so its `find` failed and the `note: not built` branch fired. Checked three ways that
   nothing consumed them: the lowering never names them, no action's argv invokes them, and the
-  only actions mentioning them BUILD them (precisely the `darwin/xcselect` shims ninja resolved to).
+  only actions mentioning them BUILD them (precisely the `src/darwin/xcselect` shims ninja resolved to).
   VERIFIED: dropping the two names reproduces
   `sha256-tHH+BndVNL2V8g9iM7++iD/aGY3Pz5AirmcwEqJSblc=` exactly and collapses onto an EXISTING
   store path, so no consumer moves. The oracle was confirmed live first: three separate ld64
@@ -1492,7 +1492,7 @@ has been true six times running, each time a check freshly written.
 - **DONE (#68): one command, one evaluation, and a counter that self-tests.**
   `.#cider-buck2-one` is the endpoint's OWN derivation for `libsimple_ciderd`,
   reached through `cider-buck2-prefix-min` rather than lowered again, so it is the same drv
-  the endpoint builds (both evaluate to `jahgjqzjq…`). `scripts/buck-quick-check.nu` builds it
+  the endpoint builds (both evaluate to `jahgjqzjq…`). `scripts/checks/buck-quick-check.nu` builds it
   and counts builders that RAN, with a probe mode that edits, rebuilds, counts and reverts by
   stripping its own marker, so an interrupted run leaves something the next one can clean up.
   IT PROVES ITS COUNTER FIRST, by building a derivation carrying a fresh nonce that must
@@ -1530,12 +1530,12 @@ has been true six times running, each time a check freshly written.
   header each object really read, angle-bracket includes included.
   `gen-buck-from-ninja.py` already generates these targets from that same ninja.
 - **#65: the recorded ld64 blocker is WRONG, established by reading and costing no build.**
-  `linux/buildtools/BUCK` says the compile dies in cctools' own `mach/machine.h` on
+  `src/linux/buildtools/BUCK` says the compile dies in cctools' own `mach/machine.h` on
   `<mach/machine/vm_types.h>` and asks for `cctools/include/foreign` on the include path. Four
   facts say otherwise. `mach-o/loader.h` guards ALL its mach includes behind `#ifdef __APPLE__`
   and typedefs `cpu_type_t`, `cpu_subtype_t` and `vm_prot_t` itself in the `#else`, so a host
   compile never reaches `machine.h`, which is why the reference needs nothing, and its real
-  `getuuid.c.o` command carries only `darwin/include`, `linux/buildtools/include` and
+  `getuuid.c.o` command carries only `src/darwin/include`, `src/linux/buildtools/include` and
   `cctools/include`. `cctools/include/mach/machine.h` has NO `#include` lines, so it cannot be
   the file failing, while `foreign/mach/machine.h` includes `<mach/machine/vm_types.h>` at line
   64. `cc_header_root` stages by a plain prefix strip and `cctools_port_include` sets no
@@ -1543,7 +1543,7 @@ has been true six times running, each time a check freshly written.
   `vm_prot.h`, so a compile with `__APPLE__` defined would die on that first.
   **THEN MEASURED, and the compile the comment says fails SUCCEEDS.** Run clang directly, no
   buck2 and no Nix, against the same include root the BUCK targets already name:
-  `clang -DDARLING -Ibuck-src/cctools-port/cctools/include -c linux/buildtools/getuuid.c` exits
+  `clang -DDARLING -Ibuck-src/cctools-port/cctools/include -c src/linux/buildtools/getuuid.c` exits
   0, and so does `elfdep.c`. Verified it can fail: drop that one `-I` and it dies on
   `mach-o/loader.h` not found. `-H` says the headers opened are cctools' own `mach-o/loader.h`
   and `fat.h` and that **`mach/machine.h` is never opened at all**, and the host clang defines
@@ -1607,8 +1607,8 @@ has been true six times running, each time a check freshly written.
   buck2 normally gives, a declared header farm per target, and the 85x was the dump
   FLATTENING those farms per consumer, recomputable from data already in the same file.
   Depfiles would have been a ninja-shaped answer to a buck2 question. Three source-tree
-  include roots remain as rule bugs worth fixing on their own: `darwin/xtrace/include`
-  (44 uses), `darwin/launchd/src`, `buck-src/security/OSX/libsecurityd/mig`.
+  include roots remain as rule bugs worth fixing on their own: `src/darwin/xtrace/include`
+  (44 uses), `src/darwin/launchd/src`, `buck-src/security/OSX/libsecurityd/mig`.
 - **IFD is not the problem. The 1.62 GB payload is. Do not bet on an experimental feature
   before fixing the representation.** recursive-nix works here, verified end to end: an
   inner derivation built from inside a build, INNER_OK read back out of the store. The
@@ -1686,7 +1686,7 @@ has been true six times running, each time a check freshly written.
 Guest-nix milestone against a buck2 prefix: materialize it to an `rt` dir, then
 `DSERVER_LIBEXEC_PATH=$rt/libexec/cider
 DSERVER_MLDR_PATH=$rt/libexec/cider/usr/libexec/cider/mldr bash
-scripts/build-hello-bypass.nu --mono $rt --prefix /tmp/cider-hello-m1-buck2`. Expect
+scripts/build/build-hello-bypass.nu --mono $rt --prefix /tmp/cider-hello-m1-buck2`. Expect
 `build_rc=0` and "Hello, world!".
 
 ---
@@ -1750,7 +1750,7 @@ reusable half may mention pins, the SDK farm, cider staging or this repo's layou
 Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
 
 - **A, the bridge, DONE and GENERAL.** `nix/lib/dyn-actions.nix` plus nine fixtures beside it.
-  `scripts/buck-dyndrv-check.nu` asserts **ten** properties and PASSES. Three are properties of
+  `scripts/checks/buck-dyndrv-check.nu` asserts **ten** properties and PASSES. Three are properties of
   Nix; the rest are of the bridge, and several were false when first checked (the DAG edge, the
   whole of `specDir` mode, specDir-plus-a-DAG). None had a fixture, so none could have been
   noticed. `extraEnv` is asked **per action**, which is the case a consumer actually has; and
@@ -1766,9 +1766,9 @@ Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
   ~13 s, against the lowering's own 10.6 s.
 - **THE LOWERING NO LONGER ASSEMBLES A SCRIPT.** It reads the template and supplies five
   consumer values. All 1,474 labels unchanged, endpoint drvPath identical, rung 2 zero
-  builders. Verified byte for byte by `scripts/buck-script-check.nu`, which reads the
+  builders. Verified byte for byte by `scripts/checks/buck-script-check.nu`, which reads the
   generator's own `full.json` out of the store rather than re-rendering, and by
-  `scripts/buck-needs-check.nu`, which reads `passthru.definitionNeeds` rather than `deps` so
+  `scripts/checks/buck-needs-check.nu`, which reads `passthru.definitionNeeds` rather than `deps` so
   it cannot compare the python against itself.
 - **THREE FAILURES WORTH THE SPACE, all one shape: a green result over a broken build.** A run
   that passed with `find`/`sed` missing (nativeBuildInputs is only what the lowering ADDS to
@@ -1776,7 +1776,7 @@ Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
   and `makeBinPath` follows neither hooks nor propagation; and the specDir check reporting OK
   while its diff never ran, because both modes produced a **byte-identical check derivation**.
   Look for the artifact, never the exit code.
-- **THE INVARIANCE CHECK IS A TOOL,** `scripts/buck-lowering-invariance-check.nu`. It
+- **THE INVARIANCE CHECK IS A TOOL,** `scripts/checks/buck-lowering-invariance-check.nu`. It
   fingerprints every label's `builderScript` and `stageScript` against a saved baseline, which
   is the check a green ladder cannot replace: rung 2 builds ONE target, so a change that moves
   every *other* derivation is invisible to it.
@@ -1856,7 +1856,7 @@ back small the work here is to correct this entry, not to implement anything.
 and they differ by sixty times, because they answer different questions:
 
     5 builders, 97 s      buck-quick-check.nu header, on
-                          darwin/frameworks/AVFoundation/constants.m
+                          src/darwin/frameworks/AVFoundation/constants.m
     323 compiles and      ciderBuck2Lower.nix, one first-party source edited on the minimal
     still climbing        ENDPOINT, with 0 of 4,159 stage-trees and 1 stage-project
 
@@ -1865,8 +1865,8 @@ target, so it counts only what that target pulls. The cascade this task is about
 one. **So the probe must be run with `--attr .#cider-buck2-prefix-min`,** or it will report a
 handful of builders and read as "caching is fine" while measuring something else entirely.
 
-THE PROBE EDITS A FIRST-PARTY SOURCE, so it must not run while a build is in flight: `darwin/`
-and `linux/` are on the not-safe list precisely because jj auto-snapshots and what nix builds is
+THE PROBE EDITS A FIRST-PARTY SOURCE, so it must not run while a build is in flight: `src/darwin/`
+and `src/linux/` are on the not-safe list precisely because jj auto-snapshots and what nix builds is
 the working copy. And if a probe is interrupted it leaves its marker line behind, which the next
 build would snapshot; `--revert-only` strips it by tag rather than by whole line, so it recovers
 even after a kill.
@@ -1880,8 +1880,8 @@ false zero. If the number is genuinely small at endpoint scale, record it and st
 THE FIX, if the number justifies it: narrow the staged source per staging KEY. The lowering
 already partitions 1,474 groups into 94 staging scripts, so give each key a `projectSrc`
 filtered to the source groups it actually stages. Cheaper variant: split `projectSrc` by
-top-level directory only, five or six sets, far less risk, and already enough to stop a `linux/`
-edit invalidating every `darwin/` group.
+top-level directory only, five or six sets, far less risk, and already enough to stop a `src/linux/`
+edit invalidating every `src/darwin/` group.
 
 THE DANGER IS DOCUMENTED AND HAS BITTEN. #44 is exactly this failure: per-target source
 narrowing DROPPED real compile inputs, and it does not fail at evaluation, it fails as a missing

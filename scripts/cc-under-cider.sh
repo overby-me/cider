@@ -28,7 +28,7 @@
 set -euo pipefail
 
 DARLING="${CIDER:-${DARLING:-cider}}"
-PREFIX="${DPREFIX:-/tmp/dc}"
+PREFIX="${CIDERPREFIX:-/tmp/dc}"
 RETRIES="${RETRIES:-1}"  # boot is reliable under the Rust daemon (#44); set RETRIES>1 to re-enable the old busy-spin retry
 BT="${BOOTSTRAP_TOOLS:-/nix/store/v6wk45fap70cgcw88x4ilzkiwzhwq6r0-bootstrap-tools}"
 SDK_ROOT="${APPLE_SDK:-/nix/store/dfd1kijwi4r02dk8ridqwmx1vzfg7dik-apple-sdk-14.4}"
@@ -53,7 +53,7 @@ for i in $(seq 1 "$RETRIES"); do
 	pkill -9 -x ciderd 2>/dev/null || true
 	pkill -9 -x mldr 2>/dev/null || true
 	sleep 1
-	out=$(DPREFIX="$PREFIX" timeout 150 "$DARLING" shell sh -c "$inner" 2>&1) || true
+	out=$(CIDERPREFIX="$PREFIX" timeout 150 "$DARLING" shell sh -c "$inner" 2>&1) || true
 	if printf '%s\n' "$out" | grep -q "$marker"; then
 		printf '%s\n' "$out" | sed "0,/$marker/d" \
 			| grep -avE 'Cannot chown|failed to increase FD rlimit|semaphore_timedwait failed|dserver_rpc|mach_msg_overwrite'

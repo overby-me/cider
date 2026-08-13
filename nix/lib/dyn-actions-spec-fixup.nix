@@ -7,10 +7,10 @@
 #
 # BUILT BY NIX RATHER THAN BY BUCK2, like the other #99 tools.
 #
-# IT LIVES IN nix/lib, NOT IN linux/buildtools WITH THE OTHER #99 TOOLS, and the reason is a
-# checked property rather than taste: scripts/buck-bridge-generality-check.nu requires every path
+# IT LIVES IN nix/lib, NOT IN src/linux/buildtools WITH THE OTHER #99 TOOLS, and the reason is a
+# checked property rather than taste: scripts/checks/buck-bridge-generality-check.nu requires every path
 # a reusable bridge file names to land INSIDE the reusable set, which is what makes the set
-# copyable into another project. Building this from linux/buildtools put two references outside
+# copyable into another project. Building this from src/linux/buildtools put two references outside
 # it (../spec-fixup.nix and ../..) and the check failed, correctly. The crate sits beside this
 # file as dyn-actions-spec-fixup/, so the whole bridge is still one directory.
 #

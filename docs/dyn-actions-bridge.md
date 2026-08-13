@@ -8,7 +8,7 @@ It is buck2-SHAPED, in that an action is a command line with declared inputs and
 tree, which is what `buck2 log what-ran` gives you. It is not buck2-BOUND: anything that can
 produce that list can use it. This repo is its first consumer, not its target, and nothing in
 the reusable half references anything outside itself. That is enforced rather than asserted, by
-`scripts/buck-bridge-generality-check.nu`.
+`scripts/checks/buck-bridge-generality-check.nu`.
 
 ## What you need on the nix side
 
@@ -154,7 +154,7 @@ builders into a full-graph build.
 
 ## Checking it
 
-`scripts/buck-dyndrv-check.nu` covers FOURTEEN properties over ELEVEN fixtures and is controlled
+`scripts/checks/buck-dyndrv-check.nu` covers FOURTEEN properties over ELEVEN fixtures and is controlled
 both ways. THIRTEEN are asserted; the remaining one, that a substituted output resolves, is
 reported as a NOTE because it is not automated, and its by-hand sequence is in the runner header.
 

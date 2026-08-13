@@ -64,16 +64,16 @@ This is the thing to internalise before trying to pull anything across.
 
 ## Directory mapping
 
-### Moved wholesale into `darwin/` (guest-side)
+### Moved wholesale into `src/darwin/` (guest-side)
 
 | upstream | here | files |
 |---|---|---|
-| `basic-headers/` | `darwin/basic-headers/` | 10 |
-| `Developer/` | `darwin/Developer/` | 2,818 |
-| `framework-include/` | `darwin/framework-include/` | 141 |
-| `framework-private-include/` | `darwin/framework-private-include/` | 59 |
-| `src/frameworks/` | `darwin/frameworks/` | 17,462 -> 17,464 |
-| `src/private-frameworks/` | `darwin/private-frameworks/` | 4,850 -> 4,851 |
+| `basic-headers/` | `src/darwin/basic-headers/` | 10 |
+| `Developer/` | `src/darwin/Developer/` | 2,818 |
+| `framework-include/` | `src/darwin/framework-include/` | 141 |
+| `framework-private-include/` | `src/darwin/framework-private-include/` | 59 |
+| `src/frameworks/` | `src/darwin/frameworks/` | 17,462 -> 17,464 |
+| `src/private-frameworks/` | `src/darwin/private-frameworks/` | 4,850 -> 4,851 |
 
 The framework trees moved essentially file-for-file (the small surplus is added `BUCK`
 files), so an upstream diff there needs only its paths rewritten.
@@ -88,9 +88,9 @@ directly.**
 
 | upstream | here | note |
 |---|---|---|
-| `linux/startup/mldr/` | `darwin/loader/` | the Mach-O loader, rewritten (`mldr-rs`) |
-| `linux/startup/cider.c` | `linux/launcher/` | the `cider` binary, rewritten |
-| `vendor/pins/ciderd` (was a submodule) | `linux/server/` | the DAEMON rewritten in Rust; no longer a submodule. Its `xnu-sys/` (2,164 files) stays in `vendor/pins/ciderd/` and is still built unchanged |
+| `src/linux/startup/mldr/` | `src/darwin/loader/` | the Mach-O loader, rewritten (`mldr-rs`) |
+| `src/linux/startup/cider.c` | `src/linux/launcher/` | the `cider` binary, rewritten |
+| `vendor/pins/ciderd` (was a submodule) | `src/linux/server/` | the DAEMON rewritten in Rust; no longer a submodule. Its `xnu-sys/` (2,164 files) stays in `vendor/pins/ciderd/` and is still built unchanged |
 
 An upstream fix to any of these must be **re-implemented**, not cherry-picked. Read the
 upstream change for its *intent* and apply that intent to the Rust.
@@ -102,7 +102,7 @@ upstream change for its *intent* and apply that intent to the Rust.
 
 ### Here only (no upstream counterpart)
 
-- `darwin/dirserv/`, `darwin/sandbox-exec/` -- first-party additions
+- `src/darwin/dirserv/`, `src/darwin/sandbox-exec/` -- first-party additions
 - `buck/`, `vendor/src/`, `vendor/rust/` -- the buck2 build (the point of this fork)
 - `nix/`, `flake.nix`, `flake.lock` -- the Nix endpoints
 - `scripts/`, `docs/`, `plan/`, `changelog.md`, `templates/`, `tools/`, `patches/`
@@ -119,8 +119,8 @@ upstream change for its *intent* and apply that intent to the Rust.
    `buck/generated/` are GENERATED -- regenerate rather than edit
    (`cider-install-from-manifests`).
 4. Verify with the port's own checks rather than by inspection: `scripts/buck-test.nu`,
-   `scripts/buck-bash-check.nu`, and for anything on the guest path
-   `scripts/buck-runtime-check.nu`.
+   `scripts/checks/buck-bash-check.nu`, and for anything on the guest path
+   `scripts/checks/buck-runtime-check.nu`.
 
 ## Triage of the 36 commits behind (2026-08-05)
 

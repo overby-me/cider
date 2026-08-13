@@ -33,7 +33,7 @@ let
   # whole cider-src derivation (and thus every cider build). nix/ holds the
   # build graph's Nix expressions -- evaluated, never read by the C build; the pin
   # manifest reaches this function via the `manifest` arg, not baseSrc -- and
-  # docs/flake are not read by the build either. src/ darwin/ cmake/ CMakeLists.txt
+  # docs/flake are not read by the build either. src/ src/darwin/ cmake/ CMakeLists.txt
   # etc. are kept. This is a build-iteration speedup, orthogonal to per-component
   # input isolation (#26/#78).
   baseSrcClean = builtins.path {
@@ -45,8 +45,8 @@ let
         rel = lib.removePrefix (toString baseSrc + "/") (toString path);
         base = baseNameOf rel;
       in
-      # The port's BUCK files live INSIDE this tree -- darwin/frameworks/BUCK,
-      # darwin/CoreAudio/BUCK and 56 others -- because darwin/ and src/ are what cmake needs,
+      # The port's BUCK files live INSIDE this tree -- src/darwin/frameworks/BUCK,
+      # src/darwin/CoreAudio/BUCK and 56 others -- because src/darwin/ and src/ are what cmake needs,
       # so the top-level exclusions below cannot reach them. cmake never opens one.
       #
       # Left in, editing any of them rehashes this tree, and everything derived from it moves.
@@ -158,12 +158,12 @@ let
   # A DELIBERATE COPY of the loop at the bottom of the assembled tree, not a shared binding,
   # and the reason is measured: factoring the two into one fragment changes the assembled
   # builder text by whitespace alone, which moves cider-src, which rebuilds ld64 and then
-  # the graph. An hour of machine time for a tidier let block. scripts/buck-pin-store-check.nu
+  # the graph. An hour of machine time for a tidier let block. scripts/checks/buck-pin-store-check.nu
   # is what keeps the two honest instead, by diffing a real pin store against the real
   # assembled tree, which a shared string could not have proven anyway.
   # THE ../ COUNT IS COMPUTED FROM THE PIN'S DESTINATION DEPTH, not preserved from upstream.
   #
-  # This used to sed `darwin/` into the target and leave the leading ../ run alone. That was
+  # This used to sed `src/darwin/` into the target and leave the leading ../ run alone. That was
   # right only while the pin root was TWO components: libnotify ships
   # darling/src/notify.defs -> ../../../../../Developer/..., and five ups from
   # src/external/libnotify/darling/src landed exactly on the repo root. #87 stage 2 made the
@@ -182,7 +182,7 @@ let
     find ${findArgs} | while read -r l; do
       t=$(readlink "$l") || continue
       case "$t" in
-        *darwin/Developer/Platforms/*) : ;;
+        *src/darwin/Developer/Platforms/*) : ;;
         *Developer/Platforms/MacOSX.platform*)
           tail=''${t#"''${t%%[!./]*}"}          # drop the leading ../ and ./ run
           rel=''${l#"$out/"}
@@ -193,10 +193,10 @@ let
           fi
           up=""; i=0
           while [ "$i" -lt "$n" ]; do up="../$up"; i=$((i+1)); done
-          # darwin/ IS the point of the rewrite (task #68 moved the SDK there); the ../ count
+          # src/darwin/ IS the point of the rewrite (task #68 moved the SDK there); the ../ count
           # is only how you reach it. Dropping it while fixing the count produced a link with
           # the right depth and the wrong destination, which the first artifact check caught.
-          rm -f "$l"; ln -s "''${up}darwin/$tail" "$l" ;;
+          rm -f "$l"; ln -s "''${up}src/darwin/$tail" "$l" ;;
       esac
     done
   '';
@@ -210,7 +210,7 @@ let
   # move at all.
   #
   # Same three steps the assembled tree applies, in the same order, so the result is the same
-  # bytes: fetch, patch, repoint. scripts/buck-pin-store-check.nu diffs one against the
+  # bytes: fetch, patch, repoint. scripts/checks/buck-pin-store-check.nu diffs one against the
   # assembled tree rather than trusting that sentence.
   pinStore = e: let
     base = baseNameOf e.path;
@@ -290,21 +290,21 @@ pkgs.runCommand "cider-src"
     echo "assembling cider-src: ${toString (builtins.length pinned)}/${toString (builtins.length entries)} submodules pinned"
     ${lib.concatMapStringsSep "\n" overlayOne pinned}
 
-    # task #68: the guest SDK tree moved to darwin/Developer, but several pinned
+    # task #68: the guest SDK tree moved to src/darwin/Developer, but several pinned
     # submodules (e.g. bootstrap_cmds/darling/include/{mach,machine,i386,...}) carry
     # relative symlinks into the OLD superproject Developer/ SDK path, which the
     # working-tree move can't reach (pins are fetched here, not committed). Re-point
-    # any such symlink into `Developer/Platforms/MacOSX.platform` -> `darwin/Developer/...`.
+    # any such symlink into `Developer/Platforms/MacOSX.platform` -> `src/darwin/Developer/...`.
     #
     # PRUNE $out/darwin: the working-tree move already recomputed every committed
-    # symlink there. The darwin/-internal indexes (framework-include/*, ...) point at
-    # `../Developer/...`, which resolves WITHIN darwin/ (framework-include and Developer
-    # moved together); blindly inserting `darwin/` turns them into `../darwin/Developer`
-    # = darwin/darwin/... and dangles them -- this silently broke all 141 framework-include
-    # links (and thus <CoreFoundation/...> et al.). Only the fetched pins outside darwin/
+    # symlink there. The src/darwin/-internal indexes (framework-include/*, ...) point at
+    # `../Developer/...`, which resolves WITHIN src/darwin/ (framework-include and Developer
+    # moved together); blindly inserting `src/darwin/` turns them into `../darwin/Developer`
+    # = src/darwin/darwin/... and dangles them -- this silently broke all 141 framework-include
+    # links (and thus <CoreFoundation/...> et al.). Only the fetched pins outside src/darwin/
     # carry stale root-relative Developer/ targets that actually need the rewrite.
     # THE ../ COUNT IS RECOMPUTED, NOT PRESERVED, and #87 stage 2 is why. This used to
-    # sed `darwin/` into the target and leave the leading ../ run alone, which was right
+    # sed `src/darwin/` into the target and leave the leading ../ run alone, which was right
     # only because the pin root was TWO components: libnotify's
     # darling/src/notify.defs ships ../../../../../Developer/..., and five ups from
     # src/external/libnotify/darling/src landed exactly on the repo root. Under a
@@ -322,7 +322,7 @@ pkgs.runCommand "cider-src"
     find "$out" -path "$out/darwin" -prune -o -type l -print | while read -r l; do
       t=$(readlink "$l") || continue
       case "$t" in
-        *darwin/Developer/Platforms/*) : ;;
+        *src/darwin/Developer/Platforms/*) : ;;
         */Developer/Platforms/MacOSX.platform*)
           tail=''${t#"''${t%%[!./]*}"}          # drop the leading ../ and ./ run
           nt=$(realpath -m --relative-to="$(dirname "$l")" "$out/darwin/$tail")

@@ -36,7 +36,7 @@ def bad [msg: string] { print $"  FAIL ($msg)"; "bad\n" | save -a $env.BT_TALLY 
 # stdout only, never failing: the bash version wrote 2>/dev/null and || true on
 # essentially all of these, because an objdump over a missing path must not take
 # the whole suite down mid-section.
-# THE PORTED CHECKS ARE BINARIES now, of linux/buildtools/graph-specs, so the suite has to find
+# THE PORTED CHECKS ARE BINARIES now, of src/linux/buildtools/graph-specs, so the suite has to find
 # one. ONE nix build, and it is an EVAL plus a store lookup rather than the graph derivation this
 # suite deliberately stays away from: .#specs-tool is a small callPackage over one crate.
 def cider_tool [name: string] {
@@ -275,7 +275,7 @@ def main [flag?: string] {
 
     # THE LOWERING STAGING SCRIPT, CHECKED BEFORE ANYTHING EXPENSIVE RUNS.
     #
-    # scripts/buck-lowering-stage-check.nu has existed for a while and NOTHING invoked it,
+    # scripts/checks/buck-lowering-stage-check.nu has existed for a while and NOTHING invoked it,
     # which is the whole problem it was written to solve. Its own header records a one word
     # regression that failed all 1,798 lowered targets and was visible only 90 minutes into a
     # build. On 2026-08-10 the identical thing happened again for a different reason: a change
@@ -296,7 +296,7 @@ def main [flag?: string] {
     # with "SQLite database is busy", so a skip here is expected in that case and is not a
     # defect.
     say "== the lowering staging script (cheap, before the expensive checks) =="
-    let stage = (do -i { ^./scripts/buck-lowering-stage-check.nu } | complete)
+    let stage = (do -i { ^./scripts/checks/buck-lowering-stage-check.nu } | complete)
     if $stage.exit_code == 0 {
         ok "the lowering still stages a project tree the pins can be planted into"
     } else {
@@ -315,7 +315,7 @@ def main [flag?: string] {
     # Unlike the stage check this touches NO nix at all, only jj and two file parses, so it
     # cannot hit the busy eval cache and has no reason to be skipped during a build.
     say "== the escape roots (no nix, so this one always runs) =="
-    let escroots = (do -i { ^nu ./scripts/buck-escape-roots-check.nu } | complete)
+    let escroots = (do -i { ^nu ./scripts/checks/buck-escape-roots-check.nu } | complete)
     if $escroots.exit_code == 0 {
         ok "every escape root resolves and the pin fallback is intact"
     } else {
@@ -334,7 +334,7 @@ def main [flag?: string] {
     #
     # It reads files and nothing else, so it cannot hit the busy eval cache during a build.
     say "== can the bridge still be lifted out of this repo? (no nix) =="
-    let gener = (do -i { ^nu ./scripts/buck-bridge-generality-check.nu --controls } | complete)
+    let gener = (do -i { ^nu ./scripts/checks/buck-bridge-generality-check.nu --controls } | complete)
     if $gener.exit_code == 0 {
         ok "the reusable half references nothing outside itself"
     } else {
@@ -351,7 +351,7 @@ def main [flag?: string] {
     # a plausible, wrong result. That is how the bridge once shipped a clean build that
     # produced nothing.
     say "== the label to spec-name to shell-variable mappings =="
-    let names = (do -i { ^./scripts/buck-names-check.nu } | complete)
+    let names = (do -i { ^./scripts/checks/buck-names-check.nu } | complete)
     if $names.exit_code == 0 {
         ok "every implementation of both name mappings agrees on every label"
     } else {
@@ -368,7 +368,7 @@ def main [flag?: string] {
     # group, so it belongs in the fast loop. It touches nix, so it reports and continues like
     # the staging check rather than failing the suite on a slow graph.
     say "== migcom and SOURCE_DATE_EPOCH (#95) =="
-    let migep = (do -i { ^./scripts/buck-mig-epoch-check.nu } | complete)
+    let migep = (do -i { ^./scripts/checks/buck-mig-epoch-check.nu } | complete)
     if $migep.exit_code == 0 {
         ok "migcom stamps the epoch, so the mig groups stay reproducible"
     } else {
@@ -384,7 +384,7 @@ def main [flag?: string] {
     # both called xnu, and the guest syscall patches would land on the duct-tape kernel subset
     # without the explicit override the manifest now carries.
     say "== the pin patch wiring (no nix either) =="
-    let pinpatch = (do -i { ^nu ./scripts/buck-pin-patches-check.nu } | complete)
+    let pinpatch = (do -i { ^nu ./scripts/checks/buck-pin-patches-check.nu } | complete)
     if $pinpatch.exit_code == 0 {
         ok "every patch set reaches exactly the pin it was written for"
     } else {
@@ -397,7 +397,7 @@ def main [flag?: string] {
     # still the PREVIOUS revision, which would have made a bisect build compile the old code
     # and pass. The fix lives in that same script, so this checks the RESULT instead.
     say "== the materialized pin revisions (no nix either) =="
-    let pinrev = (do -i { ^nu ./scripts/buck-pin-rev-check.nu } | complete)
+    let pinrev = (do -i { ^nu ./scripts/checks/buck-pin-rev-check.nu } | complete)
     if $pinrev.exit_code == 0 {
         ok "no materialized pin contradicts the manifest"
     } else {
@@ -411,7 +411,7 @@ def main [flag?: string] {
     # syscall investigation at the wrong thing. This is the mirror of the upstream-names check:
     # that one catches a name we orphan, this one a name we never implemented.
     say "== the environment variables we advertise (no nix either) =="
-    let envnames = (do -i { ^nu ./scripts/buck-env-names-check.nu } | complete)
+    let envnames = (do -i { ^nu ./scripts/checks/buck-env-names-check.nu } | complete)
     if $envnames.exit_code == 0 {
         ok "every advertised environment variable is read by something"
     } else {
@@ -424,7 +424,7 @@ def main [flag?: string] {
     # strings behind in pin BUCK files and gate11 died an HOUR later with 118 errors that all
     # named base.h, memory.h and string.h, none of them naming the path that was wrong.
     say "== the first-party paths we quote in build files (no nix either) =="
-    let fpaths = (do -i { ^nu ./scripts/buck-first-party-paths-check.nu } | complete)
+    let fpaths = (do -i { ^nu ./scripts/checks/buck-first-party-paths-check.nu } | complete)
     if $fpaths.exit_code == 0 {
         ok "every quoted first-party path resolves"
     } else {
@@ -443,14 +443,14 @@ def main [flag?: string] {
     # labels, load() symbols and read_root_config sections, and pin paths resolves 8,333 paths
     # recorded into pins across the exports tables, the three sdk maps and the fetch manifest.
     say "== the labels and the pin paths (no nix either, about a second each) =="
-    let labels = (do -i { ^nu ./scripts/buck-labels-check.nu } | complete)
+    let labels = (do -i { ^nu ./scripts/checks/buck-labels-check.nu } | complete)
     if $labels.exit_code == 0 {
         ok "every label resolves and every config section is cider"
     } else {
         bad $"label check FAILED, exit ($labels.exit_code), see the output below"
         say (indent7 ($labels.stdout + $labels.stderr | str substring 0..2000))
     }
-    let pinpaths = (do -i { ^nu ./scripts/buck-pin-paths-check.nu } | complete)
+    let pinpaths = (do -i { ^nu ./scripts/checks/buck-pin-paths-check.nu } | complete)
     if $pinpaths.exit_code == 0 {
         ok "every path we record into a pin resolves"
     } else {
@@ -460,15 +460,15 @@ def main [flag?: string] {
 
     say "== building ported targets =="
     let targets = [
-        //darwin/libsimple:libsimple_ciderd
-        //darwin/libsimple:libsimple_cider
+        //src/darwin/libsimple:libsimple_ciderd
+        //src/darwin/libsimple:libsimple_cider
         //vendor/src:migcom
-        //linux/startup:rtsig_header
+        //src/linux/startup:rtsig_header
         //vendor/pins/ciderd:dserver_rpc
         //vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys
         //vendor/pins/ciderd/tools:dserverdbg
-        //linux/server:xnu_sys_lib
-        //darwin/libsimple:libsimple_cider_dylib
+        //src/linux/server:xnu_sys_lib
+        //src/darwin/libsimple:libsimple_cider_dylib
         //tests/buck2/firstpass:a
         //tests/buck2/firstpass:b
         //tests/buck2/firstpass:umbrella
@@ -486,9 +486,9 @@ def main [flag?: string] {
         //vendor/src:system_asl_firstpass
         //vendor/src:system_coretls_firstpass
         //vendor/src:asl_ipc_mig
-        //darwin/duct:system_duct_firstpass
+        //src/darwin/duct:system_duct_firstpass
         //vendor/pins/libtrace:system_trace_firstpass
-        //darwin/libsystem_coreservices:system_coreservices_firstpass
+        //src/darwin/libsystem_coreservices:system_coreservices_firstpass
     ]
     if $verbose {
         ^buck2 build ...$targets
@@ -518,13 +518,13 @@ def main [flag?: string] {
     "ok\n" | save -a $env.BT_TALLY
 
     say "== libsimple =="
-    let lib = (out_of //darwin/libsimple:libsimple_ciderd)
+    let lib = (out_of //src/darwin/libsimple:libsimple_ciderd)
     if (test_f $lib) { ok "archive exists" } else { bad "archive missing" }
     let syms = (field (cap [nm --defined-only $lib]) 3 | where {|s| $s | str starts-with "libsimple_" } | length)
     if $syms >= 13 { ok $"exports ($syms) libsimple_* symbols" } else { bad $"expected >= 13 libsimple_* symbols, got ($syms)" }
 
     say "== libsimple, GUEST build (Darwin/Mach-O cross toolchain) =="
-    let dlib = (out_of //darwin/libsimple:libsimple_cider)
+    let dlib = (out_of //src/darwin/libsimple:libsimple_cider)
     if (test_f $dlib) { ok "archive exists" } else { bad "archive missing" }
     let obj_kind = (do {
         cd ($dlib | path dirname)
@@ -550,7 +550,7 @@ def main [flag?: string] {
     if $ver == "1.0" { ok $"migcom -version = ($ver)" } else { bad $"migcom -version = '($ver)', expected 1.0" }
 
     say "== codegen =="
-    let rtsig = (out_of //linux/startup:rtsig_header)
+    let rtsig = (out_of //src/linux/startup:rtsig_header)
     if (grep_q $rtsig "LINUX_SIGRTMIN") { ok "rtsig.h defines LINUX_SIGRTMIN" } else { bad "rtsig.h missing LINUX_SIGRTMIN" }
     # dserver_rpc has three default outputs, and --show-output prints no path for
     # multi-output targets, so look for the generated files themselves.
@@ -570,7 +570,7 @@ def main [flag?: string] {
     if (test_f $dt) { ok "archive exists" } else { bad "archive missing" }
     let members = (count_lines_cmd [ar t $dt])
     # WAS 93 (66 hand-written + 26 MIG-generated + pthread/kern_synch.c) BEFORE #71. That port
-    # moved 16 glue .c to Rust under linux/server/src/xnu, so the C archive is smaller now and
+    # moved 16 glue .c to Rust under src/linux/server/src/xnu, so the C archive is smaller now and
     # the 16 files were later deleted. This number is the post-#71 archive.
     if $members == 81 { ok "81 members" } else { bad $"expected 81 members, got ($members)" }
     # Collect the symbol list ONCE. Note: `nm ... | grep -q` under `set -o pipefail`
@@ -580,9 +580,9 @@ def main [flag?: string] {
     # Floor lowered from 2700 with #71 for the same reason as the member count.
     if $sym_count >= 2100 { ok $"defines ($sym_count) symbols" } else { bad $"expected >= 2100 symbols, got ($sym_count)" }
     # xnu_sys_init and xnu_sys_init_in_thread are NOT here any more: #71 made them Rust, they live
-    # at linux/server/src/xnu/init.rs. Asserting them against the C archive asserted something
+    # at src/linux/server/src/xnu/init.rs. Asserting them against the C archive asserted something
     # false. What covers them now is the ciderd LINK plus the demos, both in
-    # scripts/xnu-sys-runtime-check.nu, which is a 40 second gate.
+    # scripts/checks/xnu-sys-runtime-check.nu, which is a 40 second gate.
     for sym in [ipc_kmsg_send mig_init thread_call_initialize] {
         if (has $dt_syms $sym) { ok $"defines ($sym)" } else { bad $"missing ($sym)" }
     }
@@ -606,7 +606,7 @@ def main [flag?: string] {
     }
 
     say "== Mach-O dylib: install_name (phase 1.2) =="
-    let dyl = (out_of //darwin/libsimple:libsimple_cider_dylib)
+    let dyl = (out_of //src/darwin/libsimple:libsimple_cider_dylib)
     let kind = (cap [file -b $dyl])
     if ($kind | str contains "Mach-O 64-bit x86_64 dynamically linked shared library") {
         ok "is a Mach-O dylib"
@@ -671,9 +671,9 @@ def main [flag?: string] {
         "//vendor/src/libc:system_c_firstpass:/usr/lib/system/libsystem_c.dylib"
         "//vendor/src/xnu:system_kernel_firstpass:/usr/lib/system/libsystem_kernel.dylib"
         "//vendor/src:system_coretls_firstpass:/usr/lib/system/libsystem_coretls.dylib"
-        "//darwin/duct:system_duct_firstpass:/usr/lib/system/libsystem_duct.dylib"
+        "//src/darwin/duct:system_duct_firstpass:/usr/lib/system/libsystem_duct.dylib"
         "//vendor/pins/libtrace:system_trace_firstpass:/usr/lib/system/libsystem_trace.dylib"
-        "//darwin/libsystem_coreservices:system_coreservices_firstpass:/usr/lib/system/libsystem_coreservices.dylib"
+        "//src/darwin/libsystem_coreservices:system_coreservices_firstpass:/usr/lib/system/libsystem_coreservices.dylib"
     ]
     for pair in $pairs {
         let f = ($pair | split row ":")
@@ -809,7 +809,7 @@ def main [flag?: string] {
     # Nothing is expected to fail any more: the layer outside the circular cluster
     # (libc++, libc++abi, libsystem_dnssd, libsystem_configuration, libquarantine,
     # libremovefile, libcopyfile, libsystem_networkextension) is ported too.
-    let dylib_pkgs = "//vendor/src/... + //darwin/duct: + //darwin/libm: + //darwin/libcache: + //darwin/sandbox: + //darwin/launchd: + //vendor/pins/libtrace: + //darwin/libsystem_coreservices: + //darwin/lib: + //darwin/quarantine: + //darwin/networkextension:"
+    let dylib_pkgs = "//vendor/src/... + //src/darwin/duct: + //src/darwin/libm: + //src/darwin/libcache: + //src/darwin/sandbox: + //src/darwin/launchd: + //vendor/pins/libtrace: + //src/darwin/libsystem_coreservices: + //src/darwin/lib: + //src/darwin/quarantine: + //src/darwin/networkextension:"
     # By RULE KIND, not by name: check_dylib is an EXECUTABLE whose name ends in _dylib,
     # and a name match swept it in here.
     let all_dylibs = (cap [buck2 uquery $"kind\('darwin_dylib', ($dylib_pkgs)\)"] | split row --regex '\s+' | where {|t| $t != "" })
@@ -887,7 +887,7 @@ def main [flag?: string] {
     # will not have to resolve anything that is missing.
     #
     # Discovered from the graph, like the dylibs: every executable target that exists.
-    let exe_pkgs = "//vendor/src/... + //darwin/shellspawn: + //darwin/vchroot: + //darwin/launchd:"
+    let exe_pkgs = "//vendor/src/... + //src/darwin/shellspawn: + //src/darwin/vchroot: + //src/darwin/launchd:"
     # dyld is a DYLINKER, not an EXECUTE image, and has its own checks below.
     let exe_skip = ["dyld"]
     let all_exes = (cap [buck2 uquery $"kind\('darwin_binary', ($exe_pkgs)\)"] | split row --regex '\s+' | where {|t| $t != "" })
@@ -911,7 +911,7 @@ def main [flag?: string] {
     # MIG servers, and which generated stub each protocol contributes is not guessable --
     # launchd compiles jobServer.c but job_forwardUser.c, from two protocols that both
     # declare job_t.
-    for t in [//darwin/launchd:launchd //vendor/src:notifyd] {
+    for t in [//src/darwin/launchd:launchd //vendor/src:notifyd] {
         let hdr = (macho_hdr (out_of $t))
         if ($hdr | str contains "EXECUTE") and ($hdr | str contains "NOUNDEFS") {
             ok $"($t | split row ':' | last) links with nothing undefined"
@@ -929,7 +929,7 @@ def main [flag?: string] {
     # ___CFConstantStringClassReference on the link line.
     let specs = [
         "//vendor/src/corefoundation:CoreFoundation_dylib=/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation"
-        "//darwin/frameworks:DirectoryService_dylib=/System/Library/Frameworks/DirectoryService.framework/Versions/A/DirectoryService"
+        "//src/darwin/frameworks:DirectoryService_dylib=/System/Library/Frameworks/DirectoryService.framework/Versions/A/DirectoryService"
         "//vendor/src:icucore_dylib=/usr/lib/libicucore.A.dylib"
     ]
     for spec in $specs {
@@ -963,8 +963,8 @@ def main [flag?: string] {
         //vendor/src:cxx_static //vendor/src:cxxabi_static //vendor/src:keymgr_static
         //vendor/src:libc_static //vendor/src:libc_static64 //vendor/src:macho_static
         //vendor/src:platform_static64 //vendor/src:pthread_static
-        //vendor/src:system_blocks_static //darwin/duct:system_duct_static
-        //vendor/src:system_kernel_static64 //darwin/libm:system_m_static
+        //vendor/src:system_blocks_static //src/darwin/duct:system_duct_static
+        //vendor/src:system_kernel_static64 //src/darwin/libm:system_m_static
         //vendor/pins/libtrace:system_trace_static //vendor/src:unwind_static
     ]
     for t in $static_targets {
@@ -1025,7 +1025,7 @@ def main [flag?: string] {
     # libstdc++ the last one to fall.
     #
     # The reference moved stock -> all once `all` reached 100 percent and the prefix followed
-    # it, which is what let scripts/buck-jsc-check.nu stop hand-staging JavaScriptCore.
+    # it, which is what let scripts/checks/buck-jsc-check.nu stop hand-staging JavaScriptCore.
     #
     # The denominator jumped from 1359 when the metric started keying edges by reference PATH
     # rather than by artifact basename. A name does not identify a library -- perl builds two
@@ -1097,7 +1097,7 @@ def main [flag?: string] {
     }
 
     say "== XNU_SYS_LIB staging =="
-    let dir = (out_of //linux/server:xnu_sys_lib)
+    let dir = (out_of //src/linux/server:xnu_sys_lib)
     for a in [libciderd_xnu_sys.a liblibsimple_ciderd.a] {
         if (test_f $"($dir)/($a)") { ok $"staged ($a)" } else { bad $"missing ($a) in XNU_SYS_LIB dir" }
     }
@@ -1126,16 +1126,16 @@ def main [flag?: string] {
         }
     }
 
-    say "== the linux/native ELF wrappers (stage 2, gui) =="
+    say "== the src/linux/native ELF wrappers (stage 2, gui) =="
     # Sixteen Mach-O stubs that forward to HOST libraries through libelfloader, one per
-    # wrap_elf() in linux/native. They belong to the gui component, so they are NOT in the cli
+    # wrap_elf() in src/linux/native. They belong to the gui component, so they are NOT in the cli
     # graph this suite otherwise measures; they are checked here because they build today and a
     # break would otherwise go unnoticed until the stock switch.
     #
     # The export count is the real assertion. An elf_wrapper whose dlopen failed would still
     # produce a valid, EMPTY dylib, so a stub with no exports is the failure mode to catch.
     for n in [X11 cairo GL FreeType gif] {
-        let w = (out_of $"//linux/native:($n)_dylib")
+        let w = (out_of $"//src/linux/native:($n)_dylib")
         if not ((cap [file -bL $w]) | str contains "Mach-O 64-bit x86_64 dynamically linked shared library") {
             bad $"lib($n).dylib is not a Mach-O dylib"
             continue
@@ -1148,11 +1148,11 @@ def main [flag?: string] {
         }
     }
 
-    say "== the darwin/CoreAudio ELF wrappers (stage 2, ffmpeg + pulseaudio) =="
-    # The same shape as linux/native's, five of them, which AudioToolbox links to decode and
+    say "== the src/darwin/CoreAudio ELF wrappers (stage 2, ffmpeg + pulseaudio) =="
+    # The same shape as src/linux/native's, five of them, which AudioToolbox links to decode and
     # play. Same assertion for the same reason: a failed dlopen yields a valid EMPTY dylib.
     for n in [avcodec avutil pulse] {
-        let w = (out_of $"//darwin/CoreAudio:($n)_dylib")
+        let w = (out_of $"//src/darwin/CoreAudio:($n)_dylib")
         if not ((cap [file -bL $w]) | str contains "Mach-O 64-bit x86_64 dynamically linked shared library") {
             bad $"lib($n).dylib is not a Mach-O dylib"
             continue
@@ -1170,15 +1170,15 @@ def main [flag?: string] {
     # for a literal name/dylib_name pair. Duplicated data drifts, so assert each pragma list
     # and its table still agree. Without this they silently return to reading as unported the
     # moment someone adds one more.
-    check_wrap_table linux/native/BUCK _NATIVE 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*", "[^"]*"),$/\1/p'
-    check_wrap_table darwin/CoreAudio/BUCK _AUDIO 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*"),$/\1/p'
+    check_wrap_table src/linux/native/BUCK _NATIVE 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*", "[^"]*"),$/\1/p'
+    check_wrap_table src/darwin/CoreAudio/BUCK _AUDIO 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*"),$/\1/p'
 
     say "== wrapgen (the host-ELF bridge generator) =="
     # The second host tool (task #8): elf_wrapper() in buck/rules/codegen.bzl runs it over a HOST
     # library's dynamic symbol table and emits a Mach-O stub whose every export forwards through
     # libelfloader. Running it is the assertion -- it prints its three-argument usage and exits 0
     # with no arguments.
-    let wg = (out_of //linux/libelfloader:wrapgen)
+    let wg = (out_of //src/linux/libelfloader:wrapgen)
     if ((cap [file -bL $wg]) | str contains "ELF 64-bit") { ok "wrapgen is a host ELF binary" } else { bad "wrapgen is not a host ELF binary" }
     let wgusage = (cap2 [$wg])
     if ($wgusage | str starts-with "Usage:") and ($wgusage | str contains "<library-name> <output-file> <var-access-header>") {
@@ -1198,10 +1198,10 @@ def main [flag?: string] {
     # the script exit 2 on the first missing path. Exit 2 is still handled: it means the build
     # did not produce something, which is a failure here, not a skip.
     out_map [
-        //linux/libelfloader:wrapgen //linux/libelfloader:wrapgen_c
-        //linux/buildtools:getuuid //linux/buildtools:getuuid_c
-        //linux/buildtools:elfdep //linux/buildtools:elfdep_c
-        //darwin/libsimple:libsimple_cider_dylib //linux/startup:rtsig
+        //src/linux/libelfloader:wrapgen //src/linux/libelfloader:wrapgen_c
+        //src/linux/buildtools:getuuid //src/linux/buildtools:getuuid_c
+        //src/linux/buildtools:elfdep //src/linux/buildtools:elfdep_c
+        //src/darwin/libsimple:libsimple_cider_dylib //src/linux/startup:rtsig
     ] | ignore
     let par = (do -i { ^nu ./scripts/buck-hosttools-parity.nu } | complete)
     let parlast = (lines_of ($par.stdout | str replace -r '\n+$' '') | last | default "")
@@ -1223,7 +1223,7 @@ def main [flag?: string] {
     # THE SKIP IS NOT SILENT. It prints what it looked at and how to force a run, because a check
     # that quietly does nothing is the failure mode this suite already found once, in the
     # host-tool parity check that had existed since #98 with nothing invoking it.
-    let guest_paths = ["darwin/xcselect/" "darwin/PlistBuddy/"]
+    let guest_paths = ["src/darwin/xcselect/" "src/darwin/PlistBuddy/"]
     let touched = (do -i { ^jj status --no-pager } | complete | get stdout | lines
         | where {|l| ($l | str starts-with "M ") or ($l | str starts-with "A ") or ($l | str starts-with "D ") }
         | where {|l| $guest_paths | any {|g| $l | str contains $g } })
@@ -1241,8 +1241,8 @@ def main [flag?: string] {
             for t in $touched { say $"       ($t)" }
         }
         out_map [
-            //darwin/xcselect:xcrun //darwin/xcselect:xcrun_c
-            //darwin/PlistBuddy:PlistBuddy //darwin/PlistBuddy:PlistBuddy_c
+            //src/darwin/xcselect:xcrun //src/darwin/xcselect:xcrun_c
+            //src/darwin/PlistBuddy:PlistBuddy //src/darwin/PlistBuddy:PlistBuddy_c
             //buck/prefix:cider_prefix
         ] | ignore
         for g in [
@@ -1266,7 +1266,7 @@ def main [flag?: string] {
     # <mach-o/loader.h> without pulling in the SDK headers that would collide with glibc's.
     # Running it is the assertion that the slice produced a real program -- it prints usage and
     # exits 0 with no arguments.
-    let cdump = (out_of //linux/hosttools:cider-coredump)
+    let cdump = (out_of //src/linux/hosttools:cider-coredump)
     if ((cap [file -bL $cdump]) | str contains "ELF 64-bit") { ok "cider-coredump is a host ELF binary" } else { bad "cider-coredump is not a host ELF binary" }
     let usage = (cap2 [$cdump])
     if ($usage | str starts-with "Usage:") { ok "cider-coredump runs and prints usage" } else { bad "cider-coredump did not print usage" }
@@ -1275,19 +1275,19 @@ def main [flag?: string] {
     # All three of Darling's Rust crates, built by rustc under buck2: the launcher, the guest
     # loader and the daemon. The daemon is the one that proves the seam -- it links the
     # buck2-built xnu-sys and libsimple archives and the bindgen-generated hooks vtable.
-    for t in [//linux/launcher:cider //darwin/loader:mldr //linux/server:ciderd] {
+    for t in [//src/linux/launcher:cider //src/darwin/loader:mldr //src/linux/server:ciderd] {
         let b = (out_of $t)
         if (is_exec $b) { ok $"built ($t | split row ':' | last)" } else { bad $"($t) did not build" }
     }
     # It refuses to run outside a container, which is exactly the message we want: reaching it
     # means the binary linked and got as far as its own startup check.
-    let dmsg = (cap2 [(out_of //linux/server:ciderd)])
+    let dmsg = (cap2 [(out_of //src/linux/server:ciderd)])
     if ($dmsg | str contains "not meant to be started manually") {
         ok "ciderd links and reaches its startup check"
     } else {
         bad "ciderd did not reach its startup check"
     }
-    let lver = (cap2 [(out_of //linux/launcher:cider) --version])
+    let lver = (cap2 [(out_of //src/linux/launcher:cider) --version])
     if ($lver | str contains "Rust launcher") { ok "cider --version runs" } else { bad "cider --version failed" }
 
     say "== vendor/src normalisation (what the Nix endpoint materialises) =="
@@ -1305,7 +1305,7 @@ def main [flag?: string] {
     ^chmod -R u+w $norm_t
     let before = (wc_l (cap [find $norm_t -type d]))
     # THE BINARY, not an imported function: since #99 the normaliser is Rust
-    # (linux/buildtools/src-normalise) and there is nothing to import. It walks the root it is
+    # (src/linux/buildtools/src-normalise) and there is nothing to import. It walks the root it is
     # given, so pointing it at the copy runs the expansion pass over exactly what the python
     # call used to.
     do { ^cider-src-normalise --repo $norm_t $norm_t } | ignore
@@ -1333,10 +1333,10 @@ def main [flag?: string] {
     # path moves and resolves, an unrelated one is left exactly alone.
     # THROUGH BEHAVIOUR, not through the function. The rename table used to be checked by
     # importing rename_first_party and calling it on two paths; the normaliser is Rust now, so
-    # scripts/buck-src-normalise-check.nu builds a repo holding one link of every kind the tool
+    # scripts/checks/buck-src-normalise-check.nu builds a repo holding one link of every kind the tool
     # has to handle and asserts the exact target of each afterwards. Eleven expectations,
     # including the two this used to make, and it carries its own control.
-    let nrm = (do -i { ^nu ./scripts/buck-src-normalise-check.nu } | complete)
+    let nrm = (do -i { ^nu ./scripts/checks/buck-src-normalise-check.nu } | complete)
     if $nrm.exit_code == 0 {
         ok "every normaliser rule holds on a purpose-built repo (11 expectations, with a control)"
     } else {
@@ -1366,7 +1366,7 @@ def main [flag?: string] {
     # against "". The guard below catches that rather than passing vacuously, but the message
     # it prints blames cider-src-normalise, which would have sent the next reader to the
     # wrong file entirely.
-    let norm = (^bash -c "grep -oE '\\(\"vendor/pins/[a-z/.-]+\", *\"vendor/pins/[a-z/.-]+\"\\)' linux/buildtools/src-normalise/src/main.rs | tr -d ' \"()' | sort" | str trim)
+    let norm = (^bash -c "grep -oE '\\(\"vendor/pins/[a-z/.-]+\", *\"vendor/pins/[a-z/.-]+\"\\)' src/linux/buildtools/src-normalise/src/main.rs | tr -d ' \"()' | sort" | str trim)
     let lower = (^bash -c "grep -oE '\\(\"vendor/pins/[a-z/.-]+\", *\"vendor/pins/[a-z/.-]+\"\\)' nix/lib/ciderBuck2Lower.nix | tr -d ' \"()' | sort" | str trim)
     let n_entries = ($norm | lines | length)
     if $norm == "" {
@@ -1399,7 +1399,7 @@ def main [flag?: string] {
     # initializer for versions.h, and the Nix build died on a ValueError from the configure
     # script while the host, which never round-trips through the rendering, was fine.
     # configure_file passes its values in a file now; this catches the next one for free.
-    let ar = (cap_rc [./scripts/buck-argv-roundtrip-check.nu --static])
+    let ar = (cap_rc [./scripts/checks/buck-argv-roundtrip-check.nu --static])
     if $ar.rc == 0 {
         ok (last_line_no_ok $ar.out)
     } else {
@@ -1413,7 +1413,7 @@ def main [flag?: string] {
     # Written-down script names rot every time one is renamed, and the reader cannot
     # tell whether the tool moved or was retired. Static and about a second over 518
     # files, so it belongs in the suite rather than in someone's memory.
-    let sr = (cap_rc [./scripts/buck-script-refs-check.nu])
+    let sr = (cap_rc [./scripts/checks/buck-script-refs-check.nu])
     if $sr.rc == 0 {
         ok (last_line_no_ok $sr.out)
     } else {
@@ -1458,7 +1458,7 @@ def main [flag?: string] {
         bad "Certificates.bundle EVRoots.plist has no roots"
     }
 
-    # Is every .dylib actually a library? scripts/buck-loadall-check.nu found 44 that would not
+    # Is every .dylib actually a library? scripts/checks/buck-loadall-check.nu found 44 that would not
     # dlopen, and they are 131-byte git LFS pointers: the Swift runtime binaries live in LFS and
     # the checkout never fetched them, so the port installs the pointer under the library's name.
     # Nothing links against them, so no build-time check could see it. Free here because the

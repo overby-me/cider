@@ -1,1 +1,0 @@
-../../../../../../../../../vendor/pins/libresolv/darling/include/resolv.h

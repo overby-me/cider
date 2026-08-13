@@ -1,0 +1,34 @@
+load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:rust.bzl", "darwin_rust_staticlib")
+
+# The first Rust program the build system makes for the GUEST (#102). It exists to be RUN:
+#
+#   scripts/buck-darwin-rust-run.nu --binary <this> --art <a built prefix> \
+#     --marker "cider-rust-probe argc="
+#
+# A build that succeeds proves the link, and the link was never the doubtful part. What the run
+# proves is that std works without Rust's lang_start: env_args must equal argc, which means
+# std::env::args found _NSGetArgv, format! reached the allocator, and println! reached stdout.
+darwin_rust_staticlib(
+    name = "rustprobe_lib",
+    crate_root = "probe.rs",
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "cider-rust-probe",
+    objs = [
+        # crt1 FIRST: it is what references _main, and the archive after it is what defines
+        # _main. An archive is loaded lazily, so the reference has to come first.
+        "//vendor/src/csu:crt1.10.6_obj2",
+        ":rustprobe_lib",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

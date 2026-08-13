@@ -1,12 +1,12 @@
 // The smallest AppKit program that proves something.
 //
-// The GUI cone -- AppKit, cocotron, CoreGraphics and the sixteen linux/native wrappers that
+// The GUI cone -- AppKit, cocotron, CoreGraphics and the sixteen src/linux/native wrappers that
 // bridge to the host's X11, cairo and OpenGL -- links cleanly and exports the right
 // symbols, and had never executed an instruction. Everything here is deliberately
 // step-by-step and prints as it goes, because the useful outcome of a first run is not
 // "it worked" but "it got exactly this far".
 //
-// Run it with scripts/buck-appkit-check.nu, which supplies an X server.
+// Run it with scripts/checks/buck-appkit-check.nu, which supplies an X server.
 
 #import <AppKit/AppKit.h>
 #import <stdio.h>

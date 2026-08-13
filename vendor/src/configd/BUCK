@@ -57,7 +57,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        "//darwin:sdk_env",
+        "//src/darwin:sdk_env",
         ":system_configuration_inc_configd",
         ":system_configuration_inc_configd_Plugins_IPMonitor",
     ],
@@ -73,7 +73,7 @@ darwin_dylib(
         ":system_configuration_obj",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
 # END generated: system_configuration

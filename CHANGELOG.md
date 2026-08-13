@@ -37,5 +37,5 @@ what stands in the way, measured rather than estimated.
 ### Known issues
 
 - The container fails to start roughly once in sixty attempts.
-- `bin/cider` requires environment that `bin/cider-buck2` sets; use the latter.
+- `cider` is the command. The package renames the raw launcher to `bin/cider-launcher` and puts a small script at `bin/cider` that supplies the two paths a moved prefix cannot bake in.
 - Most GUI applications do not run.

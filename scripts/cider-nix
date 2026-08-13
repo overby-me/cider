@@ -22,7 +22,7 @@
 #   --help            Show this help message
 #
 # Environment:
-#   DPREFIX           Override the default Darling prefix (~/.cider)
+#   CIDERPREFIX           Override the default Darling prefix (~/.cider)
 #   CIDER_NIX_VERBOSE Set to 1 for debug output (DARLING_NIX_VERBOSE still honoured)
 #
 # See: docs/changelog.md (Task 3.4)
@@ -31,9 +31,9 @@ set -euo pipefail
 
 # ── Defaults ────────────────────────────────────────────────────────────────
 
-# CIDER_PREFIX is script local: it is seeded from DPREFIX and set by --prefix, and nothing
+# CIDER_PREFIX is script local: it is seeded from CIDERPREFIX and set by --prefix, and nothing
 # ever reads a variable of this name out of the environment, so there is no fallback to keep.
-CIDER_PREFIX="${DPREFIX:-}"
+CIDER_PREFIX="${CIDERPREFIX:-}"
 # CIDER_NIX_VERBOSE is the opposite: a real environment knob, so DARLING_ still works.
 VERBOSE="${CIDER_NIX_VERBOSE:-${DARLING_NIX_VERBOSE:-0}}"
 
@@ -61,7 +61,7 @@ Options:
   --help            Show this help message
 
 Environment:
-  DPREFIX                Override the default Darling prefix
+  CIDERPREFIX                Override the default Darling prefix
   CIDER_NIX_VERBOSE      Set to 1 for debug output
                          (DARLING_NIX_VERBOSE is still honoured)
 

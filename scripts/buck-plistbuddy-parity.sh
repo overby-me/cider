@@ -4,7 +4,7 @@
 #
 # THE WRITTEN PLIST IS COMPARED, AND IT IS IN THE OVERLAY, NOT WHERE THE SEED WAS WRITTEN.
 #
-# The guest root is a union: DSERVER_LIBEXEC_PATH is the read-only base and DPREFIX is the
+# The guest root is a union: DSERVER_LIBEXEC_PATH is the read-only base and CIDERPREFIX is the
 # writable layer. Reads come from the base, writes land in the prefix. The first version of this
 # gate compared the base and concluded that PlistBuddy could not save at all under cider, which
 # was FALSE and would have been a fabricated project bug: the files were sitting in $PREFIX,
@@ -106,7 +106,7 @@ write_seed () {
 PLIST
 }
 
-export DPREFIX=$PREFIX
+export CIDERPREFIX=$PREFIX
 export CIDER_NO_LAUNCHD=1
 export DSERVER_LIBEXEC_PATH=$G
 export DSERVER_MLDR_PATH=$G/usr/libexec/cider/mldr
