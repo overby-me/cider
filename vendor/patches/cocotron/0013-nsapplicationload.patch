@@ -1,0 +1,37 @@
+diff -u --recursive a/AppKit/include/AppKit/NSApplication.h b/AppKit/include/AppKit/NSApplication.h
+--- a/AppKit/include/AppKit/NSApplication.h	2026-08-13 21:46:02.037068540 +0200
++++ b/AppKit/include/AppKit/NSApplication.h	2026-08-13 21:46:02.066192874 +0200
+@@ -393,6 +393,7 @@
+ 
+ @end
+ 
++APPKIT_EXPORT BOOL NSApplicationLoad(void);
+ APPKIT_EXPORT int NSApplicationMain(int argc, const char *argv[]);
+ 
+ APPKIT_EXPORT void NSUpdateDynamicServices(void);
+diff -u --recursive a/AppKit/NSApplication.m b/AppKit/NSApplication.m
+--- a/AppKit/NSApplication.m	2026-08-13 21:46:02.035068531 +0200
++++ b/AppKit/NSApplication.m	2026-08-13 21:46:02.065818029 +0200
+@@ -1623,6 +1623,22 @@
+ 
+ @end
+ 
++/*
++ * Bring Cocoa up from code that did not start as a Cocoa application.
++ *
++ * It exists for Carbon and for anything else with its own main(), and LibreOffice is the second
++ * kind: it calls this before touching AppKit. A MISSING LAZY SYMBOL IS NOT A DEGRADED FEATURE, it
++ * is an abort at first call, so the absence of this four line function ended the process with
++ * "Symbol not found: _NSApplicationLoad" and nothing else.
++ *
++ * +sharedApplication is the whole of it: it creates the instance if there is none and returns the
++ * existing one otherwise, which is exactly the documented contract of returning YES once Cocoa is
++ * initialised.
++ */
++BOOL NSApplicationLoad(void) {
++    return [NSApplication sharedApplication] != nil;
++}
++
+ int NSApplicationMain(int argc, const char *argv[]) {
+ #ifndef DARLING
+     __NSInitializeProcess(argc, argv);

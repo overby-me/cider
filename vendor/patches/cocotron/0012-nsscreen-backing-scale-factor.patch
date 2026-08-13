@@ -1,0 +1,36 @@
+diff -u --recursive a/AppKit/include/AppKit/NSScreen.h b/AppKit/include/AppKit/NSScreen.h
+--- a/AppKit/include/AppKit/NSScreen.h	2026-08-13 21:33:42.692061192 +0200
++++ b/AppKit/include/AppKit/NSScreen.h	2026-08-13 21:33:55.132874084 +0200
+@@ -46,6 +46,7 @@
+ - (NSRect) visibleFrame;
+ 
+ - (CGFloat) userSpaceScaleFactor;
++- (CGFloat) backingScaleFactor;
+ 
+ @end
+ 
+diff -u --recursive a/AppKit/NSScreen.m b/AppKit/NSScreen.m
+--- a/AppKit/NSScreen.m	2026-08-13 21:33:42.690061185 +0200
++++ b/AppKit/NSScreen.m	2026-08-13 21:33:55.132689083 +0200
+@@ -68,6 +68,21 @@
+     return 1.0;
+ }
+ 
++/*
++ * The pixel-to-point ratio, 10.7 and later, and the replacement for -userSpaceScaleFactor above.
++ * Its absence is not a missing feature but a TERMINATED PROCESS: an unrecognised selector raises,
++ * and applications call this on ordinary layout paths without expecting it to fail. LibreOffice
++ * dies here on startup.
++ *
++ * ONE, because that is what this screen is. The Wayland display backend already divides the
++ * wl_output mode by the output scale before it reports a frame, so the rectangle above is in
++ * points and the ratio between the two is exactly 1. Reporting the output scale here as well
++ * would apply it twice.
++ */
++- (CGFloat) backingScaleFactor {
++    return 1.0;
++}
++
+ - (id) description {
+     return [NSString stringWithFormat: @"< %@ - frame %@, visible %@ >",
+                                        [super description],
