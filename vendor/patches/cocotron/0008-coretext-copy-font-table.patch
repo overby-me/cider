@@ -1,0 +1,93 @@
+diff -u --recursive a/CoreText/CTFont.m b/CoreText/CTFont.m
+--- a/CoreText/CTFont.m	2026-08-13 20:30:43.770828051 +0200
++++ b/CoreText/CTFont.m	2026-08-13 20:30:43.824617062 +0200
+@@ -450,8 +450,9 @@
+ 
+ CFDataRef CTFontCopyTable(CTFontRef font, CTFontTableTag table, CTFontTableOptions options)
+ {
+-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+-    return nil;
++    /* The options ask for tables to be excluded from the copy, and there is nothing here that
++     * would exclude one. */
++    return [font copyFontTable: (uint32_t) table];
+ }
+ 
+ CFTypeID CTFontGetTypeID(void)
+diff -u --recursive a/CoreText/include/CoreText/KTFont.h b/CoreText/include/CoreText/KTFont.h
+--- a/CoreText/include/CoreText/KTFont.h	2026-08-13 20:30:43.772828062 +0200
++++ b/CoreText/include/CoreText/KTFont.h	2026-08-13 20:30:43.814717146 +0200
+@@ -35,6 +35,11 @@
+             language: (NSString *) language;
+ 
+ - (CFStringRef) copyName;
++
++/* One raw sfnt table, or NULL. Overridden where there is a real face to read it from; the base
++ * answers NULL because a font backend that cannot produce tables must say so rather than hand
++ * back an empty CFData, which a caller would parse as a valid but empty table. */
++- (CFDataRef) copyFontTable: (uint32_t) tag;
+ - (CGFloat) pointSize;
+ - (CGFloat) fontSize;
+ 
+diff -u --recursive a/CoreText/KTFont_FT.m b/CoreText/KTFont_FT.m
+--- a/CoreText/KTFont_FT.m	2026-08-13 20:30:43.767828034 +0200
++++ b/CoreText/KTFont_FT.m	2026-08-13 20:30:43.815151864 +0200
+@@ -20,6 +20,7 @@
+ 
+ #import <CoreText/KTFont_FT.h>
+ #import <Onyx2D/O2Font_freetype.h>
++#import FT_TRUETYPE_TABLES_H
+ 
+ @implementation KTFont (KTFont_FT)
+ + (id) allocWithZone: (NSZone *) zone {
+@@ -55,6 +56,37 @@
+     return self;
+ }
+ 
++/*
++ * A raw sfnt table straight out of FreeType.
++ *
++ * LibreOffice asks for these constantly (140 calls before this existed) to read cmap, OS/2, head
++ * and the layout tables: it does its own shaping and needs the bytes, not an interpretation. The
++ * two call form is FreeType's own: once with a NULL buffer to learn the length, once to fill it.
++ *
++ * A face with no sfnt tables at all, which is what a bitmap or Type 1 font is, answers with an
++ * error and this returns NULL. That is the truthful answer and the caller has to handle it
++ * anyway, since the same is true on a Mac.
++ */
++- (CFDataRef) copyFontTable: (uint32_t) tag {
++    O2Font_freetype *o2Font = (O2Font_freetype *) _font;
++    FT_Face face = [o2Font face];
++    if (face == NULL) return NULL;
++
++    FT_ULong length = 0;
++    if (FT_Load_Sfnt_Table(face, (FT_ULong) tag, 0, NULL, &length) != 0 || length == 0) {
++        return NULL;
++    }
++    CFMutableDataRef data = CFDataCreateMutable(kCFAllocatorDefault, (CFIndex) length);
++    if (data == NULL) return NULL;
++    CFDataSetLength(data, (CFIndex) length);
++    if (FT_Load_Sfnt_Table(face, (FT_ULong) tag, 0,
++                           (FT_Byte *) CFDataGetMutableBytePtr(data), &length) != 0) {
++        CFRelease(data);
++        return NULL;
++    }
++    return data;
++}
++
+ - (void) getGlyphs: (CGGlyph *) glyphs
+         forCharacters: (const unichar *) characters
+                length: (NSUInteger) length
+diff -u --recursive a/CoreText/KTFont.m b/CoreText/KTFont.m
+--- a/CoreText/KTFont.m	2026-08-13 20:30:43.762828006 +0200
++++ b/CoreText/KTFont.m	2026-08-13 20:30:43.814968278 +0200
+@@ -42,6 +42,10 @@
+     [super dealloc];
+ }
+ 
++- (CFDataRef) copyFontTable: (uint32_t) tag {
++    return NULL;
++}
++
+ - (CFStringRef) copyName {
+     return CGFontCopyFullName(_font);
+ }
