@@ -1,20 +1,19 @@
 load("//buck/rules:files.bzl", "export_file")
 
-# etc/ holds one file, and it is installed into the prefix
-# (libexec/cider/private/etc/resolv.conf). A source attribute has to name a file of the
-# package that DECLARES it, and until now nothing declared this one -- so buck/prefix could
-# not reach it and the generator reported it as belonging to no package. This package exists
-# so the prefix can name it by label like everything else it installs; the export itself is
-# generated below.
-
-# BEGIN generated: prefix exports
-# GENERATED from the reference build's install entries by
-# cider-install-from-manifests -- review before committing.
+# The user and group databases, which this prefix did not have at all.
+#
+# They live here rather than in the files pin because they are CIDER configuration, not an Apple
+# file: the home directory in master.passwd is the one this container actually uses. See the
+# comment at the top of each file for why /etc/passwd alone was not enough.
 
 export_file(
-    name = "resolv.conf",
-    src = "resolv.conf",
+    name = "master_passwd",
+    src = "master.passwd",
     visibility = ["PUBLIC"],
 )
 
-# END generated: prefix exports
+export_file(
+    name = "group",
+    src = "group",
+    visibility = ["PUBLIC"],
+)

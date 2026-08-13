@@ -1336,6 +1336,11 @@ prefix_tree(
         "libexec/cider/System/Library/Security/Certificates.bundle": "//vendor/src:certificates_bundle",
         "libexec/cider/System/Library/User Template": "//vendor/src/usertemplate:prefix_Non_localized",
         "libexec/cider/private": "//vendor/src/files:prefix_private",
+        # THE USER DATABASE, which this prefix did not have. Libinfo's file module opens
+        # /etc/master.passwd and nothing else when the effective uid is 0, which every guest here
+        # is, so getpwuid answered NULL for everyone. See src/darwin/etc/master.passwd.
+        "libexec/cider/private/etc/master.passwd": "//src/darwin/etc:master_passwd",
+        "libexec/cider/private/etc/group": "//src/darwin/etc:group",
         "libexec/cider/private/etc/pam.d": "//vendor/src/openpam:prefix_pam_d",
         "libexec/cider/private/etc/periodic/daily": "//vendor/src/crontabs:prefix_files_daily",
         "libexec/cider/private/etc/periodic/monthly": "//vendor/src/crontabs:prefix_files_monthly",

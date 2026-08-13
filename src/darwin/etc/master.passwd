@@ -1,0 +1,20 @@
+# The user database, in the format Darwin reads it.
+#
+# THIS FILE IS NOT INTERCHANGEABLE WITH /etc/passwd. Libinfo's file module picks its source by
+# effective uid: at euid 0 it opens /etc/master.passwd and NOTHING ELSE, and returns NULL if that
+# open fails. A guest here runs as root, so with no master.passwd every getpwuid answered NULL no
+# matter what /etc/passwd contained.
+#
+# The cost of that was three layers away from anything about users: LibreOffice resolves
+# UserInstallation=$SYSUSERCONFIG/LibreOffice/4 through osl_getConfigDir, which is built on the
+# passwd entry rather than on $HOME, so with no entry there was no configuration directory and
+# bootstrap failed as "Unspecified Application Error".
+#
+# Ten colon separated fields, which is what distinguishes this format from /etc/passwd's seven:
+#   name:password:uid:gid:class:change:expire:gecos:home:shell
+#
+# The home directory matches the container's HOME rather than the /var/root a real Mac uses,
+# because that is where this prefix actually puts it and a passwd entry that disagrees with the
+# filesystem is worse than none.
+root:*:0:0::0:0:System Administrator:/Users/root:/bin/sh
+nobody:*:-2:-2::0:0:Unprivileged User:/var/empty:/usr/bin/false
