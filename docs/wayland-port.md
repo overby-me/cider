@@ -208,3 +208,61 @@ So the backend is:
 
 That keeps the vendored crate set at libc, and it matches how the repo already treats generated
 code and host libraries rather than inventing a second mechanism.
+
+## Step D has started, and here is the surface a backend has to implement
+
+Read off the Cocotron headers rather than guessed, so the Rust side has a checklist:
+
+    CGSConnection   12   initWithConnectionID, dealloc, windowForId, newWindow, destroyWindow,
+                         mouseLocation, setMode:forScreen:, createScreens, createKeyboardLayout,
+                         +isAvailable, _windowInvalidated, nativeDisplay
+    CGSWindow       13   initWithRegion, dealloc, surfaceForId, orderWindow:relativeTo:, moveTo:,
+                         setRegion:, getRect:, setProperty:value:, getProperty:value:, invalidate,
+                         nativeWindow, createSurface, _surfaceInvalidated:
+    CGSSurface       4   initWithWindow:, setBounds:, nativeWindow, invalidate
+
+29 methods. The X11 backend implements them in 2,442 lines of Objective-C.
+
+**THE FIRST RUNG IS SELECTION, NOT WINDOWS.** src/darwin/wayland/backend.rs registers
+CGSConnectionWayland with one class method, +isAvailable, and prints a marker either way. That is
+enough for _CGSLoadBackend to choose it on a Wayland session, and it is checkable on its own:
+either the marker appears in the probe log or the bundle was never loaded, which is the first
+question a failing run asks. Windows come next, against a gate that already exists.
+
+**THREE THINGS THE RUST SIDE NEEDS AND HAS.** The ObjC runtime by hand, six extern declarations
+in objc.rs, because vendor/rust carries neither objc2 nor its family and adding one would be a
+vendoring exercise to get what a handful of externs give. The type ENCODINGS spelled out beside
+each method, since class_addMethod does not validate them and a mismatch corrupts arguments at
+the first call rather than failing at registration. And a C constructor in backend_init.c, in its
+own file because shim.c is shared with the probe, which has no backend in it and would not link.
+
+## RUNG ZERO IS GREEN: a guest binary reached a compositor, 2026-08-13
+
+    ok   weston is up on /tmp/cider-wayland-1000/wl/cider-wl
+    ok   control: wayland-info sees 21 globals on the same socket
+    ok   the guest connected to the compositor
+    ok   wl_compositor, wl_shm and xdg_wm_base are all bound
+
+The probe reports `globals=21 compositor=true shm=true xdg_wm_base=true output=true`, which is
+everything a window needs. `wl_seat` is absent because weston headless advertises none, which is
+a fact about the test compositor rather than about the guest.
+
+**THE FOUR CONDITIONS, and each one fails in a way that looks exactly like the others.** They are
+in the check now so nobody has to rediscover them:
+
+    LD_LIBRARY_PATH must carry elf_lib_dirs     or the stub cannot dlopen the real .so and the
+                                                guest prints nothing at all
+    the socket must live OUTSIDE the prefix     the container mounts a fresh tmpfs over /tmp, so
+                                                PREFIX/tmp/wl is invisible from inside
+    the daemon carries the environment          libwayland is HOST code in the guest process and
+                                                reads ciderd's environment, not the guest's
+    the container does NOT chroot               a guest process has root=/ and sees the host
+                                                filesystem at /Volumes/SystemRoot, while host
+                                                code in the same process uses host paths
+
+That last one is the reason the first three attempts each failed differently: there are two path
+spaces in one process, and which one applies depends on which side of the bridge is calling.
+
+**THE PROBE ASKS "does the bridge work" FIRST**, with `wl_list_init`, which writes two pointers
+into a struct the guest owns. That is an observable effect rather than an inference, and until it
+holds every other result is noise.

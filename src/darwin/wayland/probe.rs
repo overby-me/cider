@@ -35,7 +35,7 @@ extern "C" fn on_global(
     // same pointer; `interface` is a NUL terminated string owned by the connection.
     let globals = unsafe { &mut *(data as *mut Globals) };
     let name = unsafe { CStr::from_ptr(interface) };
-    globals.note(&name.to_string_lossy());
+    globals.note(&name.to_string_lossy(), _name, _version);
 }
 
 extern "C" fn on_global_remove(_data: *mut c_void, _registry: *mut WlRegistry, _name: u32) {}
@@ -158,6 +158,89 @@ pub extern "C" fn main(_argc: c_int, _argv: *const *const c_char) -> c_int {
 
     let ok = globals.can_open_a_window();
     println!("cider-wayland-probe can_open_a_window={ok}");
+
+    // ACTUALLY OPEN ONE. Binding, a surface, an xdg_toplevel and a round trip is the exact
+    // machinery CGSWindow and CGSSurface will need, so proving it here means the backend is
+    // wiring known-good pieces rather than debugging two things at once.
+    if ok {
+        let configured = open_a_window(display, registry, &globals);
+        println!("cider-wayland-probe window={}", if configured { "configured" } else { "FAILED" });
+        if !configured {
+            unsafe { wl::wl_display_disconnect(display) };
+            return 1;
+        }
+    }
     unsafe { wl::wl_display_disconnect(display) };
     if ok { 0 } else { 1 }
+}
+
+/// The compositor acknowledges a surface by CONFIGURING it, and a client that does not ack the
+/// serial is never mapped. That handshake is the whole test: it means the protocol objects were
+/// created, the ids were valid and the round trip completed.
+static mut CONFIGURED: bool = false;
+
+extern "C" fn on_xdg_configure(_data: *mut c_void, surface: *mut wl::XdgSurface, serial: u32) {
+    unsafe {
+        wl::cider_xdg_surface_ack_configure(surface, serial);
+        CONFIGURED = true;
+    }
+}
+
+extern "C" fn on_ping(_data: *mut c_void, base: *mut wl::XdgWmBase, serial: u32) {
+    // A client that never pongs is treated as hung, and the symptom is a window that never
+    // appears rather than an error.
+    unsafe { wl::cider_xdg_wm_base_pong(base, serial) };
+}
+
+fn open_a_window(
+    display: *mut wl::WlDisplay,
+    registry: *mut wl::WlRegistry,
+    globals: &wl::Globals,
+) -> bool {
+    unsafe {
+        let compositor = wl::cider_wl_registry_bind_compositor(
+            registry,
+            globals.bound.compositor_name,
+            globals.bound.compositor_version,
+        );
+        let base = wl::cider_wl_registry_bind_xdg_wm_base(
+            registry,
+            globals.bound.xdg_name,
+            globals.bound.xdg_version,
+        );
+        if compositor.is_null() || base.is_null() {
+            println!("cider-wayland-probe bind=FAILED");
+            return false;
+        }
+        let ping = wl::XdgWmBaseListener { ping: on_ping };
+        wl::cider_xdg_wm_base_add_listener(base, &ping, std::ptr::null_mut());
+
+        let surface = wl::cider_wl_compositor_create_surface(compositor);
+        if surface.is_null() {
+            println!("cider-wayland-probe surface=FAILED");
+            return false;
+        }
+        let xdg = wl::cider_xdg_wm_base_get_xdg_surface(base, surface);
+        let toplevel = wl::cider_xdg_surface_get_toplevel(xdg);
+        if xdg.is_null() || toplevel.is_null() {
+            println!("cider-wayland-probe toplevel=FAILED");
+            return false;
+        }
+        let title = std::ffi::CString::new("cider wayland probe").unwrap_or_default();
+        wl::cider_xdg_toplevel_set_title(toplevel, title.as_ptr());
+
+        let listener = wl::XdgSurfaceListener { configure: on_xdg_configure };
+        wl::cider_xdg_surface_add_listener(xdg, &listener, std::ptr::null_mut());
+
+        // COMMIT FIRST, WITHOUT A BUFFER. That is the protocol: an empty commit asks the
+        // compositor for a configure, and only then may pixels be attached.
+        wl::cider_wl_surface_commit(surface);
+        for _ in 0..5 {
+            wl::wl_display_roundtrip(display);
+            if CONFIGURED {
+                break;
+            }
+        }
+        CONFIGURED
+    }
 }

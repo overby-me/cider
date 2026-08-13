@@ -14,6 +14,12 @@ use std::os::raw::{c_char, c_int, c_void};
 pub enum WlDisplay {}
 pub enum WlRegistry {}
 pub enum WlInterface {}
+pub enum WlCompositor {}
+pub enum WlShm {}
+pub enum WlSurface {}
+pub enum XdgWmBase {}
+pub enum XdgSurface {}
+pub enum XdgToplevel {}
 
 /// libwayland's intrusive list head: two pointers, and wl_list_init makes both point at it.
 #[repr(C)]
@@ -46,6 +52,20 @@ unsafe extern "C" {
     ) -> c_int;
     pub fn cider_wl_compositor_interface() -> *const WlInterface;
     pub fn cider_xdg_wm_base_interface() -> *const WlInterface;
+
+    // Surface and window, all of it inline upstream and therefore living in shim.c here.
+    pub fn cider_wl_registry_bind_compositor(r: *mut WlRegistry, name: u32, version: u32) -> *mut WlCompositor;
+    pub fn cider_wl_registry_bind_shm(r: *mut WlRegistry, name: u32, version: u32) -> *mut WlShm;
+    pub fn cider_wl_registry_bind_xdg_wm_base(r: *mut WlRegistry, name: u32, version: u32) -> *mut XdgWmBase;
+    pub fn cider_wl_compositor_create_surface(c: *mut WlCompositor) -> *mut WlSurface;
+    pub fn cider_xdg_wm_base_get_xdg_surface(b: *mut XdgWmBase, s: *mut WlSurface) -> *mut XdgSurface;
+    pub fn cider_xdg_surface_get_toplevel(s: *mut XdgSurface) -> *mut XdgToplevel;
+    pub fn cider_xdg_toplevel_set_title(t: *mut XdgToplevel, title: *const c_char);
+    pub fn cider_xdg_surface_ack_configure(s: *mut XdgSurface, serial: u32);
+    pub fn cider_wl_surface_commit(s: *mut WlSurface);
+    pub fn cider_xdg_surface_add_listener(s: *mut XdgSurface, l: *const XdgSurfaceListener, data: *mut c_void) -> c_int;
+    pub fn cider_xdg_wm_base_pong(b: *mut XdgWmBase, serial: u32);
+    pub fn cider_xdg_wm_base_add_listener(b: *mut XdgWmBase, l: *const XdgWmBaseListener, data: *mut c_void) -> c_int;
 }
 
 /// The layout libwayland expects: two function pointers, in this order. It is passed by pointer
@@ -67,6 +87,7 @@ pub struct RegistryListener {
 /// failure should say which one is missing rather than "it did not work".
 #[derive(Default)]
 pub struct Globals {
+    pub bound: Bound,
     pub total: u32,
     pub compositor: bool,
     pub shm: bool,
@@ -76,12 +97,27 @@ pub struct Globals {
 }
 
 impl Globals {
-    pub fn note(&mut self, interface: &str) {
+    /// The registry hands out a NAME and a VERSION per global, and both are needed later: binding
+    /// takes the name, and asking for a version the compositor does not have is a protocol error
+    /// that kills the connection rather than returning null.
+    pub fn note(&mut self, interface: &str, name: u32, version: u32) {
         self.total += 1;
         match interface {
-            "wl_compositor" => self.compositor = true,
-            "wl_shm" => self.shm = true,
-            "xdg_wm_base" => self.xdg_wm_base = true,
+            "wl_compositor" => {
+                self.compositor = true;
+                self.bound.compositor_name = name;
+                self.bound.compositor_version = version.min(4);
+            }
+            "wl_shm" => {
+                self.shm = true;
+                self.bound.shm_name = name;
+                self.bound.shm_version = version.min(1);
+            }
+            "xdg_wm_base" => {
+                self.xdg_wm_base = true;
+                self.bound.xdg_name = name;
+                self.bound.xdg_version = version.min(1);
+            }
             "wl_seat" => self.seat = true,
             "wl_output" => self.output = true,
             _ => {}
@@ -93,4 +129,29 @@ impl Globals {
     pub fn can_open_a_window(&self) -> bool {
         self.compositor && self.shm && self.xdg_wm_base
     }
+}
+
+/// One callback: the compositor says "this configuration is yours now", and the client must
+/// acknowledge the serial before its surface is considered ready.
+#[repr(C)]
+pub struct XdgSurfaceListener {
+    pub configure: extern "C" fn(data: *mut c_void, surface: *mut XdgSurface, serial: u32),
+}
+
+/// THE PING MATTERS. A client that never pongs is treated as hung, and the symptom is a window
+/// that simply never appears rather than an error anyone can see.
+#[repr(C)]
+pub struct XdgWmBaseListener {
+    pub ping: extern "C" fn(data: *mut c_void, base: *mut XdgWmBase, serial: u32),
+}
+
+/// What the registry sweep kept, so a second pass can bind without re-reading the names.
+#[derive(Default)]
+pub struct Bound {
+    pub compositor_name: u32,
+    pub compositor_version: u32,
+    pub shm_name: u32,
+    pub shm_version: u32,
+    pub xdg_name: u32,
+    pub xdg_version: u32,
 }

@@ -181,6 +181,15 @@ def main [scratch?: string] {
         bad "the globals a window needs were not all found"
         $failed = $failed + 1
     }
+    # THE HANDSHAKE, not just the objects. A compositor CONFIGURES a surface and the client acks
+    # the serial; a client that never gets there is never mapped, so this is the assertion that
+    # says a window really exists rather than that some ids were allocated.
+    if ($out | str contains "window=configured") {
+        ok "the compositor configured an xdg_toplevel and the ack completed"
+    } else {
+        bad "no xdg_surface configure arrived, so the surface was never mapped"
+        $failed = $failed + 1
+    }
 
     print -e ""
     print -e ($out | lines | where {|l| $l =~ 'cider-wayland-probe' } | str join "\n")

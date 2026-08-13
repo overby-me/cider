@@ -38,3 +38,61 @@ const struct wl_interface *cider_wl_shm_interface(void) { return &wl_shm_interfa
 const struct wl_interface *cider_wl_seat_interface(void) { return &wl_seat_interface; }
 const struct wl_interface *cider_wl_output_interface(void) { return &wl_output_interface; }
 const struct wl_interface *cider_xdg_wm_base_interface(void) { return &xdg_wm_base_interface; }
+
+// ---------------------------------------------------------------------------------------------
+// SURFACE AND WINDOW, the inline layer again. Everything below expands to wl_proxy_marshal_flags
+// at the call site upstream, so none of it is a symbol the forwarding stub could carry.
+
+struct wl_compositor *cider_wl_registry_bind_compositor(struct wl_registry *registry, uint32_t name,
+                                                        uint32_t version) {
+	return wl_registry_bind(registry, name, &wl_compositor_interface, version);
+}
+
+struct wl_shm *cider_wl_registry_bind_shm(struct wl_registry *registry, uint32_t name,
+                                          uint32_t version) {
+	return wl_registry_bind(registry, name, &wl_shm_interface, version);
+}
+
+struct xdg_wm_base *cider_wl_registry_bind_xdg_wm_base(struct wl_registry *registry, uint32_t name,
+                                                       uint32_t version) {
+	return wl_registry_bind(registry, name, &xdg_wm_base_interface, version);
+}
+
+struct wl_surface *cider_wl_compositor_create_surface(struct wl_compositor *compositor) {
+	return wl_compositor_create_surface(compositor);
+}
+
+struct xdg_surface *cider_xdg_wm_base_get_xdg_surface(struct xdg_wm_base *base,
+                                                      struct wl_surface *surface) {
+	return xdg_wm_base_get_xdg_surface(base, surface);
+}
+
+struct xdg_toplevel *cider_xdg_surface_get_toplevel(struct xdg_surface *surface) {
+	return xdg_surface_get_toplevel(surface);
+}
+
+void cider_xdg_toplevel_set_title(struct xdg_toplevel *toplevel, const char *title) {
+	xdg_toplevel_set_title(toplevel, title);
+}
+
+void cider_xdg_surface_ack_configure(struct xdg_surface *surface, uint32_t serial) {
+	xdg_surface_ack_configure(surface, serial);
+}
+
+void cider_wl_surface_commit(struct wl_surface *surface) { wl_surface_commit(surface); }
+
+int cider_xdg_surface_add_listener(struct xdg_surface *surface,
+                                   const struct xdg_surface_listener *listener, void *data) {
+	return xdg_surface_add_listener(surface, listener, data);
+}
+
+// THE COMPOSITOR PINGS AND EXPECTS A PONG. Ignoring it makes weston consider the client
+// unresponsive, which shows up as a window that never appears rather than as an error.
+void cider_xdg_wm_base_pong(struct xdg_wm_base *base, uint32_t serial) {
+	xdg_wm_base_pong(base, serial);
+}
+
+int cider_xdg_wm_base_add_listener(struct xdg_wm_base *base,
+                                   const struct xdg_wm_base_listener *listener, void *data) {
+	return xdg_wm_base_add_listener(base, listener, data);
+}
