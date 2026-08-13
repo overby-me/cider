@@ -34,6 +34,13 @@ pub struct FcFontSet {
 
 unsafe extern "C" {
     fn FcInit() -> c_int;
+    fn FcPatternAddString(p: *mut FcPattern, object: *const c_char, s: *const c_char) -> c_int;
+    fn FcNameParse(name: *const c_char) -> *mut FcPattern;
+    fn FcNameUnparse(p: *mut FcPattern) -> *mut c_char;
+    fn FcStrFree(s: *mut c_char);
+    fn FcConfigSubstitute(config: *mut FcConfig, p: *mut FcPattern, kind: c_int) -> c_int;
+    fn FcDefaultSubstitute(p: *mut FcPattern);
+    fn FcFontMatch(config: *mut FcConfig, p: *mut FcPattern, result: *mut c_int) -> *mut FcPattern;
     fn FcPatternCreate() -> *mut FcPattern;
     fn FcPatternDestroy(p: *mut FcPattern);
     fn FcPatternGetString(p: *mut FcPattern, object: *const c_char, n: c_int, s: *mut *mut c_char) -> c_int;
@@ -94,25 +101,170 @@ pub fn all_family_names() -> objc::Object {
     }
 }
 
-/// The typefaces within one family.
+// fontconfig's own numbers, from fontconfig.h. Named rather than inlined because the comparisons
+// below read as nonsense otherwise: 87 and 113 mean nothing, semicondensed and semiexpanded do.
+const FC_MATCH_PATTERN: c_int = 0;
+const FC_SLANT_ITALIC: c_int = 100;
+const FC_SLANT_OBLIQUE: c_int = 110;
+const FC_WIDTH_SEMICONDENSED: c_int = 87;
+const FC_WIDTH_SEMIEXPANDED: c_int = 113;
+const FC_WEIGHT_LIGHT: c_int = 50;
+const FC_WEIGHT_SEMIBOLD: c_int = 180;
+
+// NSFontManager.h, checked against the header rather than remembered.
+const NS_ITALIC_FONT_MASK: u64 = 0x0000_0001;
+const NS_BOLD_FONT_MASK: u64 = 0x0000_0002;
+const NS_UNBOLD_FONT_MASK: u64 = 0x0000_0004;
+const NS_NARROW_FONT_MASK: u64 = 0x0000_0010;
+const NS_EXPANDED_FONT_MASK: u64 = 0x0000_0020;
+const NS_UNITALIC_FONT_MASK: u64 = 0x0100_0000;
+
+/// Ask fontconfig what it would actually use for a family name, which is how a request for a font
+/// nobody has still produces a font. Returns None only if fontconfig has nothing at all.
 ///
-/// EMPTY IS A LEGITIMATE ANSWER for now, and it is announced rather than faked: AppKit uses this
-/// to populate a family with its styles, and returning an empty array means a family with no
-/// styles rather than a crash. Filling it needs NSFontTypeface, which is the next font-side piece.
-pub fn typefaces_for_family(_family: objc::Object) -> objc::Object {
+/// # Safety
+/// `name` is a NUL terminated family name.
+unsafe fn substitute_family(name: *const c_char) -> Option<*mut FcPattern> {
     unsafe {
-        let array_cls = objc::objc_getClass(cstr!("NSArray"));
-        if array_cls.is_null() {
-            return std::ptr::null_mut();
+        let pat = FcNameParse(name);
+        if pat.is_null() {
+            return None;
         }
-        let sel_array = objc::sel_registerName(cstr!("array"));
-        objc::msg_send0(array_cls, sel_array)
+        FcConfigSubstitute(std::ptr::null_mut(), pat, FC_MATCH_PATTERN);
+        FcDefaultSubstitute(pat);
+        let mut result: c_int = 0;
+        let matched = FcFontMatch(std::ptr::null_mut(), pat, &mut result);
+        FcPatternDestroy(pat);
+        if matched.is_null() { None } else { Some(matched) }
     }
 }
 
-/// Unused today, kept because FcPatternGetInteger is exactly what the typeface work needs next
-/// (slant and weight) and removing the declaration would only mean writing it again.
-#[allow(dead_code)]
+/// The typefaces within one family, as NSFontTypeface objects.
+///
+/// This is the X11 implementation, which is pure fontconfig and touches no X call, WITH ONE BUG
+/// FIXED. It passes FcPatternGetInteger a default VALUE where the parameter is an INDEX:
+/// FcPatternGetInteger(p, FC_WIDTH, FC_WIDTH_NORMAL, &width) asks for element 100 of the width
+/// list, which does not exist, so the call fails and width is read UNINITIALISED off the stack.
+/// The same applies to weight. Only slant works there, and by accident: FC_SLANT_ROMAN is 0, which
+/// happens to be the right index. Every element here is asked for at index 0, which is what was
+/// meant, so bold and condensed faces are classified rather than left to whatever was on the stack.
+pub fn typefaces_for_family(family: objc::Object) -> objc::Object {
+    unsafe {
+        FcInit();
+        let array_cls = objc::objc_getClass(cstr!("NSMutableArray"));
+        let str_cls = objc::objc_getClass(cstr!("NSString"));
+        let face_cls = objc::objc_getClass(cstr!("NSFontTypeface"));
+        if array_cls.is_null() || str_cls.is_null() || face_cls.is_null() {
+            return std::ptr::null_mut();
+        }
+        let out = objc::msg_send0(array_cls, objc::sel_registerName(cstr!("array")));
+        if family.is_null() {
+            return out;
+        }
+        let sel_utf8 = objc::sel_registerName(cstr!("UTF8String"));
+        let raw = objc::msg_send0(family, sel_utf8) as *const c_char;
+        if raw.is_null() {
+            return out;
+        }
+        let Some(substituted) = substitute_family(raw) else {
+            return out;
+        };
+        // The substituted pattern is only wanted for its family name; the listing is done with a
+        // fresh pattern, exactly as the X11 version does.
+        let mut family_name: *mut c_char = std::ptr::null_mut();
+        let have_name = FcPatternGetString(substituted, cstr!("family"), 0, &mut family_name)
+            == FC_RESULT_MATCH
+            && !family_name.is_null();
+        if !have_name {
+            FcPatternDestroy(substituted);
+            return out;
+        }
+
+        let pat = FcPatternCreate();
+        FcPatternAddString(pat, cstr!("family"), family_name);
+        FcPatternDestroy(substituted);
+        let props = FcObjectSetBuild(
+            cstr!("family"),
+            cstr!("style"),
+            cstr!("slant"),
+            cstr!("width"),
+            cstr!("weight"),
+            std::ptr::null::<c_char>(),
+        );
+        let set = FcFontList(std::ptr::null_mut(), pat, props);
+
+        let string_with = objc::sel_registerName(cstr!("stringWithUTF8String:"));
+        let alloc = objc::sel_registerName(cstr!("alloc"));
+        let init_face = objc::sel_registerName(cstr!("initWithName:traitName:traits:"));
+        let add = objc::sel_registerName(cstr!("addObject:"));
+        let release = objc::sel_registerName(cstr!("release"));
+        let mut count = 0;
+        if !set.is_null() {
+            let set_ref = &*set;
+            for i in 0..set_ref.nfont {
+                let p = *set_ref.fonts.offset(i as isize);
+                let mut style: *mut c_char = std::ptr::null_mut();
+                if FcPatternGetString(p, cstr!("style"), 0, &mut style) != FC_RESULT_MATCH
+                    || style.is_null()
+                {
+                    continue;
+                }
+                let trait_name = objc::msg_send_cstr(str_cls, string_with, style);
+                // FcNameUnparse gives the full pattern text, which is what Onyx2D later parses
+                // back to find the file. It is fontconfig's own round trip, not a display name.
+                let unparsed = FcNameUnparse(p);
+                if unparsed.is_null() {
+                    continue;
+                }
+                let name = objc::msg_send_cstr(str_cls, string_with, unparsed);
+                FcStrFree(unparsed);
+
+                let slant = pattern_integer(p, cstr!("slant")).unwrap_or(0);
+                let width = pattern_integer(p, cstr!("width")).unwrap_or(100);
+                let weight = pattern_integer(p, cstr!("weight")).unwrap_or(80);
+                let mut traits = if slant == FC_SLANT_ITALIC || slant == FC_SLANT_OBLIQUE {
+                    NS_ITALIC_FONT_MASK
+                } else {
+                    NS_UNITALIC_FONT_MASK
+                };
+                if weight <= FC_WEIGHT_LIGHT {
+                    traits |= NS_UNBOLD_FONT_MASK;
+                } else if weight >= FC_WEIGHT_SEMIBOLD {
+                    traits |= NS_BOLD_FONT_MASK;
+                }
+                if width <= FC_WIDTH_SEMICONDENSED {
+                    traits |= NS_NARROW_FONT_MASK;
+                } else if width >= FC_WIDTH_SEMIEXPANDED {
+                    traits |= NS_EXPANDED_FONT_MASK;
+                }
+
+                let face = objc::msg_send_face_init(
+                    objc::msg_send0(face_cls, alloc),
+                    init_face,
+                    name,
+                    trait_name,
+                    traits,
+                );
+                if !face.is_null() {
+                    objc::msg_send_obj(out, add, face);
+                    // The array retains it, so the reference from alloc is ours to drop. Without
+                    // this every family listing leaks one object per face.
+                    objc::msg_send0(face, release);
+                    count += 1;
+                }
+            }
+            FcFontSetDestroy(set);
+        }
+        FcObjectSetDestroy(props);
+        FcPatternDestroy(pat);
+        if count == 0 {
+            println!("cider-wayland-appkit typefaces=none family=unmatched");
+        }
+        out
+    }
+}
+
+/// One integer property at index 0, which is the index that was meant everywhere it is used.
 pub unsafe fn pattern_integer(pat: *mut FcPattern, key: *const c_char) -> Option<c_int> {
     let mut v: c_int = 0;
     if unsafe { FcPatternGetInteger(pat, key, 0, &mut v) } == FC_RESULT_MATCH {

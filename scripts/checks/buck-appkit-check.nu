@@ -199,6 +199,20 @@ def main [scratch?: string] {
         }
     }
 
+    # TEXT, asserted by counting colours rather than by trusting "text=drawn". A string that
+    # raises no exception and rasterises nothing prints exactly the same line. A flat fill over a
+    # cleared window has TWO distinct values in it; antialiased glyphs have dozens, so anything
+    # above two means something was rendered that a rectangle cannot explain.
+    let colours = (
+        $out | parse --regex 'colours=(?<n>\d+)' | get n? | get 0? | default "0" | into int
+    )
+    if $colours > 2 {
+        say $"  ok: ($colours) distinct colours in the window, so glyphs rasterised"
+    } else {
+        say $"  MISSING: only ($colours) distinct colours, so nothing beyond flat fills was drawn"
+        $wl_gaps = $wl_gaps + 1
+    }
+
     # Graded, because the interesting outcomes are the partial ones: reaching NSApplication
     # proves the cone loads and the compositor connection opened, and reaching the window proves
     # the backend built a real surface.

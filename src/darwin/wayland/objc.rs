@@ -90,6 +90,9 @@ unsafe extern "C" {
     ) -> Object;
     #[link_name = "objc_msgSend"]
     pub fn msg_send_obj_bool(receiver: Object, sel: Sel, obj: Object, flag: ObjcBool) -> Object;
+    /// -[NSFontTypeface initWithName:traitName:traits:], where the mask is an NSUInteger.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_face_init(receiver: Object, sel: Sel, name: Object, trait_name: Object, traits: u64) -> Object;
 }
 
 /// AppKit geometry: two doubles of origin, two of size. repr(C) so the struct is passed the way

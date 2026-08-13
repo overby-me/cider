@@ -341,11 +341,32 @@ fn report_pixels(st: &mut WindowState) {
     }
     st.reported_drawn = true;
     let centre = words[total / 2 + (st.buffer_w as usize) / 2];
+    // DISTINCT COLOURS, not just a changed count, because the changed count cannot see text: black
+    // glyphs on a coloured fill differ from the clear value either way, so the count is identical
+    // whether the string rasterised or not. A flat fill has two values in it and antialiased
+    // glyphs have dozens, which is a measure that needs to know nothing about the application.
+    let mut seen = [0u32; DISTINCT_CAP];
+    let mut distinct = 0usize;
+    for &w in words {
+        if seen[..distinct].contains(&w) {
+            continue;
+        }
+        seen[distinct] = w;
+        distinct += 1;
+        if distinct == DISTINCT_CAP {
+            break;
+        }
+    }
+    let capped = if distinct == DISTINCT_CAP { "+" } else { "" };
     println!(
-        "cider-wayland-window pixels=drawn number={} changed={drawn}/{total} centre={centre:08x}",
+        "cider-wayland-window pixels=drawn number={} changed={drawn}/{total} colours={distinct}{capped} centre={centre:08x}",
         st.number
     );
 }
+
+/// Enough distinct values to tell flat fills from rasterised glyphs, and small enough that the
+/// linear scan over it stays cheap. Stopping at the cap is reported rather than hidden.
+const DISTINCT_CAP: usize = 64;
 
 /// The drawing context, built over the shm pages.
 ///

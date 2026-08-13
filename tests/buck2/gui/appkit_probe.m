@@ -24,6 +24,28 @@
 	printf("APPKIT_PROBE drew rect=%dx%d\n",
 		(int) [self bounds].size.width, (int) [self bounds].size.height);
 	fflush(stdout);
+
+	// TEXT IS THE WHOLE FONT PATH IN ONE CALL: the display backend is asked for the family
+	// list and the typefaces within a family, NSFont picks one, and Onyx2D rasterises glyphs
+	// through FreeType into the same pages the compositor reads. A document application does
+	// nothing else all day, so this is the rung that matters after a filled rectangle.
+	@try {
+		NSFont *font = [NSFont systemFontOfSize: 18];
+		printf("APPKIT_PROBE font=%s\n", font ? [[font fontName] UTF8String] : "nil");
+		fflush(stdout);
+		if (font != nil) {
+			NSDictionary *attrs = [NSDictionary
+				dictionaryWithObjectsAndKeys: font, NSFontAttributeName,
+				[NSColor blackColor], NSForegroundColorAttributeName, nil];
+			[@"Cider on Wayland" drawAtPoint: NSMakePoint(12, 80) withAttributes: attrs];
+			printf("APPKIT_PROBE text=drawn\n");
+			fflush(stdout);
+		}
+	} @catch (NSException *e) {
+		printf("APPKIT_PROBE text=FAILED name=%s reason=%s\n",
+			[[e name] UTF8String], [[e reason] UTF8String]);
+		fflush(stdout);
+	}
 }
 @end
 
