@@ -1,0 +1,156 @@
+diff -u --recursive a/CoreText/CTFont.m b/CoreText/CTFont.m
+--- a/CoreText/CTFont.m	2026-08-14 00:03:05.464351663 +0200
++++ b/CoreText/CTFont.m	2026-08-14 00:04:24.945950252 +0200
+@@ -21,6 +21,9 @@
+ #import <CoreText/CoreText.h>
+ #import <CoreText/KTFont.h>
+ 
++/* Defined in constants.c and declared in no header, the same as in CTFontCollection.m. */
++extern const CFStringRef kCTFontSymbolicTrait;
++
+ const CFStringRef kCTFontCopyrightNameKey = CFSTR("CTFontCopyrightName");
+ const CFStringRef kCTFontFamilyNameKey = CFSTR("CTFontFamilyName");
+ const CFStringRef kCTFontSubFamilyNameKey = CFSTR("CTFontSubFamilyName");
+@@ -141,8 +144,21 @@
+                                          const CGAffineTransform *matrix,
+                                          CTFontDescriptorRef attributes)
+ {
+-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+-    return nil;
++    /* The same font at another size, or another font named by the descriptor. Size 0 means
++     * "keep the current one", which is the documented convention and is why it is not simply
++     * passed through. */
++    if (font == NULL) return NULL;
++    if (size <= 0.0) size = CTFontGetSize(font);
++    CFStringRef family = NULL;
++    if (attributes != NULL) {
++        family = CTFontDescriptorCopyAttribute(attributes, kCTFontFamilyNameAttribute);
++    }
++    if (family == NULL) {
++        family = CTFontCopyFamilyName(font);
++    }
++    CTFontRef result = _CiderFontCreateForFamily(family, size);
++    if (family != NULL) CFRelease(family);
++    return result;
+ }
+ 
+ CTFontRef CTFontCreateCopyWithSymbolicTraits(CTFontRef font, CGFloat size,
+@@ -189,8 +205,33 @@
+ 
+ CTFontDescriptorRef CTFontCopyFontDescriptor(CTFontRef font)
+ {
+-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+-    return nil;
++    /* A descriptor is the attribute dictionary, the same shape CTFontCollection builds, so
++     * describing a font is filling one in from what the font already knows. */
++    if (font == NULL) return NULL;
++    CFStringRef family = CTFontCopyFamilyName(font);
++    if (family == NULL) return NULL;
++    CFMutableDictionaryRef attributes = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
++            &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
++    if (attributes == NULL) {
++        CFRelease(family);
++        return NULL;
++    }
++    CFDictionarySetValue(attributes, kCTFontFamilyNameAttribute, family);
++    CFRelease(family);
++
++    int symbolic = (int) [font symbolicTraits];
++    CFMutableDictionaryRef traits = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
++            &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
++    if (traits != NULL) {
++        CFNumberRef n = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &symbolic);
++        if (n != NULL) {
++            CFDictionarySetValue(traits, kCTFontSymbolicTrait, n);
++            CFRelease(n);
++        }
++        CFDictionarySetValue(attributes, kCTFontTraitsAttribute, traits);
++        CFRelease(traits);
++    }
++    return (CTFontDescriptorRef) attributes;
+ }
+ 
+ CFTypeRef CTFontCopyAttribute(CTFontRef font, CFStringRef attribute)
+@@ -211,8 +252,10 @@
+ 
+ CTFontSymbolicTraits CTFontGetSymbolicTraits(CTFontRef font)
+ {
+-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+-    return kCTFontTraitItalic;
++    /* It answered kCTFontTraitItalic for EVERY font, which is worse than answering nothing: a
++     * caller picking a face from this got an italic one every time. */
++    if (font == NULL) return 0;
++    return (CTFontSymbolicTraits) [font symbolicTraits];
+ }
+ 
+ CFDictionaryRef CTFontCopyTraits(CTFontRef font)
+@@ -235,8 +278,10 @@
+ 
+ CFStringRef CTFontCopyFamilyName(CTFontRef font)
+ {
+-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+-    return nil;
++    /* -copyName is the KTFont accessor and follows the same Copy convention, so this is a
++     * rename rather than a reimplementation. */
++    if (font == NULL) return NULL;
++    return [font copyName];
+ }
+ 
+ CFStringRef CTFontCopyFullName(CTFontRef self) {
+diff -u --recursive a/CoreText/include/CoreText/KTFont.h b/CoreText/include/CoreText/KTFont.h
+--- a/CoreText/include/CoreText/KTFont.h	2026-08-14 00:03:05.465942423 +0200
++++ b/CoreText/include/CoreText/KTFont.h	2026-08-14 00:03:05.487347859 +0200
+@@ -81,6 +81,9 @@
+                 forGlyphs: (const CGGlyph *) glyphs
+                     count: (NSUInteger) count;
+ 
++/* The style bits this face actually has. Zero from the base class, real from the FreeType one. */
++- (uint32_t) symbolicTraits;
++
+ - (void) drawGlyphs: (const CGGlyph *) glyphs
+           positions: (const CGPoint *) positions
+               count: (NSUInteger) count
+diff -u --recursive a/CoreText/KTFont_FT.m b/CoreText/KTFont_FT.m
+--- a/CoreText/KTFont_FT.m	2026-08-14 00:03:05.461750333 +0200
++++ b/CoreText/KTFont_FT.m	2026-08-14 00:03:05.487743075 +0200
+@@ -67,6 +67,26 @@
+  * error and this returns NULL. That is the truthful answer and the caller has to handle it
+  * anyway, since the same is true on a Mac.
+  */
++/*
++ * The style bits, read off the face.
++ *
++ * CTFontGetSymbolicTraits returned kCTFontTraitItalic unconditionally, which is not a missing
++ * answer but a WRONG one: every font in the system reported itself italic, and a caller choosing
++ * a face from that gets the wrong one every time. FreeType has already parsed these.
++ */
++- (uint32_t) symbolicTraits {
++    O2Font_freetype *o2Font = (O2Font_freetype *) _font;
++    FT_Face face = [o2Font face];
++    if (face == NULL) {
++        return 0;
++    }
++    uint32_t traits = 0;
++    if (face->style_flags & FT_STYLE_FLAG_ITALIC) traits |= (1u << 0);
++    if (face->style_flags & FT_STYLE_FLAG_BOLD) traits |= (1u << 1);
++    if (FT_IS_FIXED_WIDTH(face)) traits |= (1u << 10);
++    return traits;
++}
++
+ - (CFDataRef) copyFontTable: (uint32_t) tag {
+     O2Font_freetype *o2Font = (O2Font_freetype *) _font;
+     FT_Face face = [o2Font face];
+diff -u --recursive a/CoreText/KTFont.m b/CoreText/KTFont.m
+--- a/CoreText/KTFont.m	2026-08-14 00:03:05.459437163 +0200
++++ b/CoreText/KTFont.m	2026-08-14 00:03:05.487547065 +0200
+@@ -99,6 +99,10 @@
+     }
+ }
+ 
++- (uint32_t) symbolicTraits {
++    return 0;
++}
++
+ - (CFDataRef) copyFontTable: (uint32_t) tag {
+     return NULL;
+ }
