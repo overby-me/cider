@@ -274,6 +274,33 @@ child, and the parent exiting 0 tells us nothing about what the child did.
 is worth remembering why: an attribute that answers NULL reads as UNUSABLE rather than as
 unknown, so leaving one out of a descriptor rejects the font rather than leaving it undecided.
 
+## A TRAP WORTH KNOWING: STALE IPC PIPES MAKE IT EXIT 0 DOING NOTHING
+
+LibreOffice keeps a single-instance socket at `<prefix>/private/tmp/OSL_PIPE_SingleOfficeIPC_*`.
+A second instance that finds one hands its request to the office that owns it and quits. **If
+that office was killed, the request goes nowhere, and the second instance exits 0 with no error
+and no output.** Every killed run leaves one behind, so this compounds: three had accumulated
+here.
+
+That is exactly the symptom that looked like a broken document pipeline for several runs -
+`--convert-to` returning 0 and producing no file. Clear them before every run:
+
+    rm -f "$PREFIX/private/tmp/OSL_PIPE_"*
+
+With them cleared the behaviour changes completely: LibreOffice does real work instead of exiting
+immediately.
+
+## THE CURRENT WALL IS A SPIN, not an error
+
+With a clean pipe and a clean profile, `--convert-to pdf` runs for many minutes in state **R**,
+burning about 1.2 cores, and eventually reports "Unspecified Application Error". A spinning
+process is a different problem from a failing one and needs a different tool: a core taken after
+the fact shows every thread parked, because by then the loop has been left.
+
+**SIGABRT does not work for sampling it** - LibreOffice installs a handler and catches it. The way
+to catch this is to attach while it spins and read the thread PCs, then resolve them with
+`scripts/core-guest-stack.py`, whose `--threads` mode exists for exactly this shape of question.
+
 ## What this says about the shape of the remaining work
 
 None of this is Wayland. The display backend is not what stands between this fork and a real
