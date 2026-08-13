@@ -9,9 +9,13 @@ load("//buck/rules:rust.bzl", "darwin_rust_staticlib")
 # A build that succeeds proves the link, and the link was never the doubtful part. What the run
 # proves is that std works without Rust's lang_start: env_args must equal argc, which means
 # std::env::args found _NSGetArgv, format! reached the allocator, and println! reached stdout.
+# TWO FILES, WHICH IS THE POINT. srcs is what makes a direct buck2 build rebuild when the module
+# changes; the endpoint needs srcset.rs to stage the crate directory, which it now does for this
+# rule's category as well as for the host one.
 darwin_rust_staticlib(
     name = "rustprobe_lib",
     crate_root = "probe.rs",
+    srcs = ["report.rs"],
     visibility = ["PUBLIC"],
 )
 

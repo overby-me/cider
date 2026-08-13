@@ -30,6 +30,12 @@ _NATIVE = [
     ("XRandR", "libXrandr.so", "/usr/lib/native"),
     ("Xcursor", "libXcursor.so", "/usr/lib/native"),
     ("xkbfile", "libxkbfile.so", "/usr/lib/native"),
+    # WAYLAND (#112). The GUI backend that replaces X11 reaches the compositor through these
+    # exactly the way the X11 backend reaches the X server: a generated Mach-O stub per library
+    # that forwards through libelfloader, so nothing has to be ported.
+    ("wayland-client", "libwayland-client.so", "/usr/lib/native"),
+    ("wayland-cursor", "libwayland-cursor.so", "/usr/lib/native"),
+    ("xkbcommon", "libxkbcommon.so", "/usr/lib/native"),
     ("cairo", "libcairo.so", "/usr/lib/native"),
     ("dbus", "libdbus-1.so", "/usr/lib/native"),
     # OpenGL's two live inside the framework rather than in /usr/lib/native, which is the
@@ -57,6 +63,9 @@ _NATIVE = [
 # buck-registry: libXRandR.dylib = XRandR_dylib
 # buck-registry: libXcursor.dylib = Xcursor_dylib
 # buck-registry: libxkbfile.dylib = xkbfile_dylib
+# buck-registry: libwayland-client.dylib = wayland-client_dylib
+# buck-registry: libwayland-cursor.dylib = wayland-cursor_dylib
+# buck-registry: libxkbcommon.dylib = xkbcommon_dylib
 # buck-registry: libcairo.dylib = cairo_dylib
 # buck-registry: libdbus.dylib = dbus_dylib
 # buck-registry: libGL.dylib = GL_dylib

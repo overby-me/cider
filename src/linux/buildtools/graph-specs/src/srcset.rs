@@ -463,7 +463,14 @@ pub fn target_sources(
         // "file not found for module `xnu`" after 1,462 green builders.
         for &i in acts {
             let ident = actions[i].get("identity").and_then(|v| v.as_str()).unwrap_or("");
-            if !ident.contains("(rustc ") {
+            // BOTH RUST CATEGORIES, and the second one is why guest crates were single file.
+            // The host rule runs its action as category `rustc`; the guest rule
+            // (darwin_rust_staticlib in buck/rules/rust.bzl) runs its own, so a guest crate
+            // matched nothing here and got its crate ROOT staged and no `mod` files. That file
+            // records the consequence as "a guest crate is ONE FILE until the endpoint can be
+            // taught about hidden inputs" -- this is that lesson, and it is the same directory
+            // rule the host has always had.
+            if !ident.contains("(rustc ") && !ident.contains("(darwin_rust_staticlib ") {
                 continue;
             }
             for tok in strs(&actions[i], "argv") {

@@ -23,6 +23,11 @@
   libXrandr,
   libXcursor,
   libxkbfile,
+  # WAYLAND, for the GUI backend that replaces X11 (task #112). wrapgen dlopens the real .so at
+  # BUILD time to read its dynamic symbol table, so these have to be present in the build inputs
+  # and not only at runtime.
+  wayland,
+  libxkbcommon,
   cairo,
   libglvnd,
   fontconfig,
@@ -101,6 +106,8 @@ let
     libXrandr
     libXcursor
     libxkbfile
+    wayland
+    libxkbcommon
     cairo
     libglvnd
     fontconfig
