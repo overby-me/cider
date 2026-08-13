@@ -178,6 +178,7 @@ darwin_rust_staticlib(
     name = "wayland_appkit_lib",
     crate_root = "appkit_backend.rs",
     srcs = [
+        "colors.rs",
         "fonts.rs",
         "objc.rs",
         "wl.rs",

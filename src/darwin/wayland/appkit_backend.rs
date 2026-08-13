@@ -15,6 +15,7 @@
 // program rather than only the new path. The variable comes out when the methods go in.
 use std::os::raw::c_void;
 
+mod colors;
 mod fonts;
 mod objc;
 mod wl;
@@ -95,6 +96,15 @@ extern "C" fn display_typefaces(_this: Object, _cmd: Sel, family: Object) -> Obj
     fonts::typefaces_for_family(family)
 }
 
+extern "C" fn display_color_with_name(_this: Object, _cmd: Sel, name: Object) -> Object {
+    colors::color_with_name(name)
+}
+
+/// AppKit hands the display a colour to remember under a name. Nothing needs remembering yet: the
+/// table is static, so this accepts and ignores rather than raising, which is what an override
+/// with no state should do.
+extern "C" fn display_add_system_color(_this: Object, _cmd: Sel, _color: Object, _name: Object) {}
+
 /// The window border geometry pair.
 ///
 /// A WAYLAND CLIENT HAS NO SERVER SIDE BORDER: xdg-shell gives the client a surface and the
@@ -152,6 +162,16 @@ pub extern "C" fn cider_wayland_appkit_register() {
                 sel: cstr!("fontTypefacesForFamilyName:"),
                 types: cstr!("@@:@"),
                 imp: display_typefaces as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("colorWithName:"),
+                types: cstr!("@@:@"),
+                imp: display_color_with_name as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("_addSystemColor:forName:"),
+                types: cstr!("v@:@@"),
+                imp: display_add_system_color as *const c_void,
             },
         ])
     };
