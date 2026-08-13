@@ -113,3 +113,98 @@ backend is written rather than after.
 The Cocotron pin stays: it is where AppKit and CoreGraphics themselves come from, so only the
 two `X11.backend` subdirectories stop being built. They remain on disk as the reference the
 Wayland classes are written against, which is what the user asked for.
+
+## The app ladder, and the north star
+
+The user's goal, 2026-08-13: once Wayland works at all, keep raising the bar with more demanding
+applications until a real office suite runs. OnlyOffice was the first suggestion and was changed
+to LibreOffice when it turned out `nixpkgs#onlyoffice-desktopeditors` is an ELF Linux Qt build
+whose `meta.platforms` contains no darwin at all.
+
+**`nixpkgs#libreoffice-bin` IS a macOS build, and it is a better target than OnlyOffice for this
+port specifically:**
+
+    meta.platforms          [ "x86_64-darwin" "aarch64-darwin" ]
+    version                 25.2.1
+    src                     LibreOffice_25.2.1_MacOS_x86-64.dmg, from documentfoundation.org
+
+It is not Qt on macOS. LibreOffice carries its own VCL backend per platform and the macOS one is
+Cocoa, so it exercises **exactly the AppKit and CoreGraphics path this fork implements** rather
+than a toolkit that would have to be ported first. That makes it a north star that measures the
+right thing.
+
+**ONE PLANNING FACT FELL OUT OF LOOKING IT UP, and it belongs in the aarch64 discussion rather
+than here: nixpkgs warns that 26.05 is the LAST release to support x86_64-darwin.** The test
+corpus for a 64-bit Intel guest therefore has a shelf life, which is an argument for the aarch64
+release that is already the next one.
+
+The rungs, in the order they get hard, each one a check that can fail for a nameable reason:
+
+    1. appkit_probe.m, which exists: NSApplication up, one NSWindow, one event pumped
+    2. the same, but DRAWING: a filled rect, then text, so the surface path is exercised
+       rather than just window creation
+    3. input: a synthetic key and pointer event round trip, which is where xkbcommon lands
+    4. resize, multiple windows, and a second screen from wl_output
+    5. a real Cocoa application built with the guest toolchain
+    6. LibreOffice from the dmg above
+
+Rungs 1 to 4 are all verifiable with a headless compositor and a screenshot, which is why the
+compositor comes first.
+
+## Phase B is done: the headless compositor works, measured 2026-08-13
+
+Proven before any backend code, which is the whole point of doing it first:
+
+    weston 15.0.1 --backend=headless --socket=cider-wl --width=1024 --height=768
+    wayland-info                     connects, 21 globals, headless output 1024x768
+    weston-flower                    ran to the timeout and the compositor logged a surface
+
+The globals a backend needs are all present:
+
+    wl_compositor   version 5      wl_shm      version 2
+    xdg_wm_base     version 5      wl_output   version 4
+
+**TWO THINGS THE PROTOTYPE TAUGHT, both of which would have cost an hour later.**
+
+`XDG_RUNTIME_DIR` must be SHORT. The first attempt put the socket in the session scratchpad and
+weston died with `failed to add socket: File name too long`: a unix socket path caps around 108
+bytes and the scratchpad path alone is longer. The check should use `/tmp/cider-wl-$(id -u)`.
+
+**THERE IS NO `wl_seat`.** Headless weston with no input devices advertises 21 globals and a seat
+is not one of them, so rung 3, the key and pointer round trip, cannot be done against this
+configuration as it stands. That is a problem for the INPUT rung only; windows and pixels are
+unaffected. Options to settle when rung 3 arrives: a wlroots compositor instead (`cage` or `sway`
+with the headless backend, which synthesizes a seat), or weston with a virtual input device.
+Worth knowing now rather than discovering it with a backend already written.
+
+**AND THE CONTROL IS THE POINT.** `weston-flower` is a known-good client on the same socket. When
+our backend fails, running it says whether the compositor or the backend is at fault, which is
+the ambiguity this repo has been bitten by repeatedly.
+
+## How a RUST backend actually gets built here, decided from the constraints
+
+The user chose Rust. A Cocotron backend is an Objective-C class hierarchy, so the shape is not
+obvious, and three facts of this build system decide it:
+
+  ONLY libc AND bitflags ARE VENDORED. vendor/rust has 53 crates and neither objc2 nor
+    wayland-client is among them, so anything else means vendoring a crate family.
+  build.rs DOES NOT RUN under buck2. That is already recorded in buck/rules/rust.bzl, and it
+    rules out wayland-protocols and wayland-sys, whose whole job is code generation at build time.
+  A GUEST CRATE IS ONE FILE today, because the endpoint stages the crate root and nothing else.
+    That is the first thing to fix, and it is one line: srcset.rs already takes the whole
+    directory for any action whose identity contains "(rustc ", which is why HOST crates can be
+    multi-file, and the guest rule's category is darwin_rust_staticlib.
+
+So the backend is:
+
+    protocol           wayland-scanner (a host tool, like wrapgen and MIG already are) emits the
+                       xdg-shell C glue in a codegen rule, compiled as C
+    wayland client     hand-written extern "C" declarations against libwayland-client, which is
+                       already how this fork reaches every host library
+    objc classes       hand-written extern "C" against the objc runtime:
+                       objc_allocateClassPair, class_addMethod, objc_msgSend, and one
+                       +load-equivalent entry point that registers CGSConnectionWayland
+    the rest           ordinary Rust
+
+That keeps the vendored crate set at libc, and it matches how the repo already treats generated
+code and host libraries rather than inventing a second mechanism.
