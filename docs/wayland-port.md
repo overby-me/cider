@@ -151,6 +151,17 @@ The rungs, in the order they get hard, each one a check that can fail for a name
 Rungs 1 to 4 are all verifiable with a headless compositor and a screenshot, which is why the
 compositor comes first.
 
+**STATUS 2026-08-13.** Rungs 1, 2 and 5 are green and gated by scripts/checks/buck-appkit-check.nu,
+which runs on weston now rather than Xvfb. Rung 4 is half done: the screen size comes from
+wl_output and the gate proves it by running weston at a size the fallback cannot produce. Rung 3,
+input, is still blocked on headless weston advertising no wl_seat.
+
+Rung 6 turned out NOT to be gated on the display at all. LibreOffice loads, initialises, and
+brings this backend up underneath itself; what stopped it was a chain of framework gaps that
+`--headless` reproduces exactly, with no window and no compositor. See docs/libreoffice-gap.md.
+The lesson worth keeping: **a control that removes the display and reproduces the failure is what
+told us the display was not the problem**, and it cost one run.
+
 ## Phase B is done: the headless compositor works, measured 2026-08-13
 
 Proven before any backend code, which is the whole point of doing it first:

@@ -253,6 +253,27 @@ explicitly instead of relying on relative-URL resolution, which is a change to t
 and has its own blast radius (entries are never inert, and pins collide by basename), so it is
 left for a decision rather than taken here.
 
+## WHERE IT STANDS AFTER THE CORETEXT WORK, 2026-08-13 evening
+
+    soffice --version                          version, exit 0
+    soffice --headless --terminate_after_init  completes, no error
+    font enumeration                           1560 descriptors, twice per run
+    font creation                              works; no "no O2Font" failures reported
+    font tables                                CTFontCopyTable answers from FreeType
+    soffice --headless --convert-to pdf        exit 0, and NO OUTPUT FILE
+
+The conversion no longer errors and no longer hangs; it runs to completion and produces nothing,
+printing none of the `convert ... -> ... using filter` line LibreOffice normally emits. The guest
+can read the input (checked from a shell inside the container), so the file is not the problem.
+
+**Two processes register the backend and both enumerate the font list**, so soffice is spawning
+its second instance as it does on a Mac. That is the thread to pull next: the work happens in the
+child, and the parent exiting 0 tells us nothing about what the child did.
+
+`kCTFontFormatAttribute` was the difference between an empty font list and a working one, and it
+is worth remembering why: an attribute that answers NULL reads as UNUSABLE rather than as
+unknown, so leaving one out of a descriptor rejects the font rather than leaving it undecided.
+
 ## What this says about the shape of the remaining work
 
 None of this is Wayland. The display backend is not what stands between this fork and a real
