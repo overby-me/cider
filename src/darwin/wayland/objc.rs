@@ -39,6 +39,21 @@ unsafe extern "C" {
     pub fn sel_registerName(name: *const c_char) -> Sel;
     pub fn object_getClass(obj: Object) -> Class;
     pub fn class_getSuperclass(cls: Class) -> Class;
+
+    /// CALLING super. An override that does not chain to its superclass skips whatever the base
+    /// set up, and for an -init that is usually fatal later rather than here. Declared with the
+    /// exact signature of a zero-argument message rather than as a variadic, which is the
+    /// ordinary way to reach objc_msgSendSuper from Rust: the ABI for the no-extra-argument case
+    /// is the same and a variadic declaration would be harder to call correctly.
+    pub fn objc_msgSendSuper(sup: *mut ObjcSuper, sel: Sel) -> Object;
+}
+
+/// The receiver plus the class to start the lookup from, which is what makes a super call a super
+/// call. Layout is fixed by the runtime.
+#[repr(C)]
+pub struct ObjcSuper {
+    pub receiver: Object,
+    pub super_class: Class,
 }
 
 /// A NUL terminated literal, since every runtime call takes a C string and Rust literals are not.

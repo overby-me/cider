@@ -162,3 +162,51 @@ export_file(
     src = "Info.plist",
     visibility = ["PUBLIC"],
 )
+
+# ---------------------------------------------------------------------------------------------
+# THE APPKIT BACKEND, which is the one AppKit actually loads. See docs/wayland-port.md for why the
+# CoreGraphics mechanism is dead in this prefix.
+cc_objects(
+    name = "appkit_init_obj",
+    srcs = ["appkit_init.c"],
+    deps = ["//src/darwin:sdk_env"],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+
+darwin_rust_staticlib(
+    name = "wayland_appkit_lib",
+    crate_root = "appkit_backend.rs",
+    srcs = [
+        "objc.rs",
+        "wl.rs",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "wayland_appkit_dylib",
+    dylib_name = "Wayland",
+    install_name = "/System/Library/Frameworks/AppKit.framework/Resources/Backends/Wayland.backend/Contents/MacOS/Wayland",
+    objs = [
+        ":wayland_appkit_lib",
+        ":wayland_glue_obj",
+        ":appkit_init_obj",
+    ],
+    siblings = [
+        "//src/linux/native:wayland-client_dylib",
+        "//vendor/src:AppKit_dylib",
+        "//vendor/src:Foundation_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+    ],
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "wayland_appkit_plist",
+    src = "Info-appkit.plist",
+    visibility = ["PUBLIC"],
+)

@@ -53,6 +53,8 @@ prefix_tree(
         "libexec/cider/System/Library/Frameworks/Accounts.framework/Versions/A/Accounts": "//src/darwin/frameworks:Accounts_dylib",
         "libexec/cider/System/Library/Frameworks/AddressBook.framework/Versions/A/AddressBook": "//src/darwin/frameworks:AddressBook_dylib",
         "libexec/cider/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit": "//vendor/src:AppKit_dylib",
+        "libexec/cider/System/Library/Frameworks/AppKit.framework/Versions/C/Resources/Backends/Wayland.backend/Contents/MacOS/Wayland": "//src/darwin/wayland:wayland_appkit_dylib",
+        "libexec/cider/System/Library/Frameworks/AppKit.framework/Versions/C/Resources/Backends/Wayland.backend/Contents/Info.plist": "//src/darwin/wayland:wayland_appkit_plist",
         "libexec/cider/System/Library/Frameworks/AppKit.framework/Versions/C/Resources/Backends/X11.backend/Contents/MacOS/X11": "//vendor/src:X11_backend_dylib",
         "libexec/cider/System/Library/Frameworks/ApplicationServices.framework/Versions/A/ApplicationServices": "//src/darwin/frameworks:ApplicationServices_dylib",
         "libexec/cider/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/ATS.framework/Versions/A/ATS": "//src/darwin/frameworks:ATS_dylib",
