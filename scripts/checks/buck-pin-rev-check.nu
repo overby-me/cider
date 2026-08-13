@@ -17,7 +17,7 @@
 # trusting the process that produced it.
 #
 # THE CHECK: for every manifest entry with a hash, work out where it materializes, and if that
-# directory exists require a .vendor/src-rev stamp equal to the manifest rev. A tree that is not
+# directory exists require a .buck-src-rev stamp equal to the manifest rev. A tree that is not
 # materialized at all is fine and is reported separately, because most of the 148 pins are only
 # materialized on demand.
 #
@@ -30,7 +30,7 @@
 # A MISSING STAMP IS REPORTED, NOT FAILED, AND THAT DISTINCTION WAS LEARNED IMMEDIATELY. The
 # first version of this treated an unstamped tree as a defect. Run against the real repo it
 # reported 143 of 148 materialized pins as problems, because every one of them was placed by an
-# older --all that wrote only .vendor/src-assembled. That is not 143 defects, it is the ordinary
+# older --all that wrote only .buck-src-assembled. That is not 143 defects, it is the ordinary
 # state of this tree, and a check that fails on the ordinary state gets ignored or silenced.
 #
 # Worse, it made the negative control worthless: a planted stale rev DID make it exit 1, but so
@@ -116,7 +116,7 @@ def main [
     # `path exists` is true for a FILE too; the python asks isdir, so test the type.
     if (($dest | path exists) == false) or (($dest | path type) != "dir") { continue }
     $materialized = $materialized + 1
-    let stamp = ($dest | path join ".vendor/src-rev")
+    let stamp = ($dest | path join ".buck-src-rev")
     if (not ($stamp | path exists)) {
       $unstamped = $unstamped + 1
       continue
@@ -130,7 +130,7 @@ def main [
 
   print $"manifest entries with a hash: ($entries | length); materialized on disk: ($materialized); stale: ($stale); unstamped: ($unstamped)"
   if $unstamped > 0 {
-    print $"note: ($unstamped) materialized trees carry no .vendor/src-rev, so their revision cannot be established from disk. They were placed by an --all that predates the stamp. Not a failure, and one scripts/buck-src.nu --all stamps them all. Only a stamp that CONTRADICTS the manifest fails below."
+    print $"note: ($unstamped) materialized trees carry no .buck-src-rev, so their revision cannot be established from disk. They were placed by an --all that predates the stamp. Not a failure, and one scripts/buck-src.nu --all stamps them all. Only a stamp that CONTRADICTS the manifest fails below."
   }
 
   if ($problems | is-empty) {

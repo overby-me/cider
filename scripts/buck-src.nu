@@ -81,7 +81,7 @@ def main [--all, ...paths: string] {
                 print $"vendor/src: WARNING ($sub) missing from the assembled tree"
                 continue
             }
-            let stamp = ($dest | path join ".vendor/src-assembled")
+            let stamp = ($dest | path join ".buck-src-assembled")
             let stamped = (($stamp | path exists) and ((open --raw $stamp | str trim) == $assembled))
             if (not $force) and $stamped {
                 continue
@@ -103,7 +103,7 @@ def main [--all, ...paths: string] {
             # this tree is at the revision the manifest now asks for. Writing only the
             # assembled-tree path here is what let a bumped pin keep a stale tree: the marker
             # existed, so the per-path branch skipped, and the tree stayed on the old rev.
-            $"($e.rev)\n" | save -f ($dest | path join ".vendor/src-rev")
+            $"($e.rev)\n" | save -f ($dest | path join ".buck-src-rev")
         }
         let size = (^du -sh $dest_root | split row "\t" | first)
         print $"vendor/src: done \(($size))"
@@ -132,7 +132,7 @@ def main [--all, ...paths: string] {
             exit 1
         }
 
-        let stamp = ($dest | path join ".vendor/src-rev")
+        let stamp = ($dest | path join ".buck-src-rev")
         let stamped = (($stamp | path exists) and ((open --raw $stamp | str trim) == $e.rev))
         if (not $force) and $stamped {
             print $"vendor/src: ($name) already at ($e.rev)"
@@ -140,7 +140,7 @@ def main [--all, ...paths: string] {
         }
         # THERE USED TO BE A SECOND SKIP HERE AND IT REPORTED SUCCESS ABOUT A STALE TREE.
         #
-        # It honoured .vendor/src-assembled on PRESENCE ALONE, with no comparison, on the
+        # It honoured .buck-src-assembled on PRESENCE ALONE, with no comparison, on the
         # reasoning that --all had put the tree there "at the same pinned rev". That holds
         # exactly until a rev changes, and then the marker is a permanent skip: the tree stays
         # on the OLD revision while this prints that it is already materialized.
