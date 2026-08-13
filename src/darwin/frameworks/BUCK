@@ -3392,6 +3392,10 @@ darwin_dylib(
 cc_objects(
     name = "AddressBook_obj",
     srcs = [
+        # The C API, which this framework did not have: Darling's AddressBook is ObjC class stubs
+        # and the C entry points were absent entirely. See the file for why the constants matter
+        # more than the functions.
+        "AddressBook/capi.c",
         "AddressBook/src/ABAPIAdapter.m",
         "AddressBook/src/ABAbstractGroupEntriesFactory.m",
         "AddressBook/src/ABAbstractGroupListAction.m",
