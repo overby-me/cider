@@ -143,12 +143,26 @@ extern "C" fn on_toplevel_configure(
     }
     st.frame.size.width = width as f64;
     st.frame.size.height = height as f64;
-    release_backing(st);
+    /*
+     * DO NOT FREE THE BACKING HERE. It was released on the spot, and the O2Context that AppKit
+     * is holding goes with it: the next thing to draw did so through a context whose surface had
+     * been unmapped underneath it. Headless weston never resizes a surface and reached three
+     * windows; a tiling compositor resizes the splash immediately and killed the process there.
+     *
+     * ensure_backing already rebuilds when the size no longer matches, and it runs at PRESENT
+     * time, when nothing is mid-draw. Marking it is enough.
+     */
     st.reported_drawn = false;
     println!("cider-wayland-window configured number={} size={width}x{height}", st.number);
-    // AppKit is TOLD, rather than left with a frame the compositor has already overruled. This is
-    // the one direction Wayland does drive: the client asks for nothing and is informed.
-    if !st.delegate.is_null() {
+    // TELLING APPKIT IS GATED, and off by default, because it is not safe unprompted. A
+    // compositor may configure a surface at any moment, including while the application is still
+    // building the window; a tiling one resizes the splash immediately. Delivering
+    // platformWindow:frameChanged:didSize: there re-enters AppKit from a Wayland callback, and
+    // LibreOffice died on a real compositor while surviving on a headless one that never resizes.
+    //
+    // The size is recorded either way, so -frame answers correctly and the next present picks up
+    // the new dimensions. What is skipped is only the unsolicited callback.
+    if !st.delegate.is_null() && std::env::var_os("CIDER_WAYLAND_NOTIFY_RESIZE").is_some() {
         unsafe {
             let sel = objc::sel_registerName(cstr!("platformWindow:frameChanged:didSize:"));
             objc::msg_send_frame_changed(st.delegate, sel, st.owner, st.frame, objc::YES);
