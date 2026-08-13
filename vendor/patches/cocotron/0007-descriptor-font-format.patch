@@ -1,0 +1,44 @@
+diff -u --recursive a/CoreText/CTFontCollection.m b/CoreText/CTFontCollection.m
+--- a/CoreText/CTFontCollection.m	2026-08-13 20:14:53.251282364 +0200
++++ b/CoreText/CTFontCollection.m	2026-08-13 20:14:53.288479625 +0200
+@@ -3,6 +3,8 @@
+ #import <CoreText/CTFontTraits.h>
+ #import <fontconfig/fontconfig.h>
+ #import <stdint.h>
++#import <string.h>
++#import <strings.h>
+ 
+ /*
+  * THE TRAIT KEYS ARE DEFINED AND NEVER DECLARED. constants.c exports all four, and no header in
+@@ -124,6 +126,31 @@
+     }
+ 
+     CFDictionarySetValue(attributes, kCTFontEnabledAttribute, kCFBooleanTrue);
++
++    /*
++     * THE FORMAT IS A FILTER, not decoration. A consumer that enumerates fonts decides what it
++     * can use from this: LibreOffice imports kCTFontFormatAttribute and skips what it cannot
++     * rasterise, and an attribute that answers NULL reads as unusable. Leaving it out therefore
++     * does not mean "unknown", it means every font is rejected and the list comes out empty.
++     *
++     * CTFontFormat: 1 OpenType PostScript, 2 OpenType TrueType, 3 TrueType, 4 PostScript,
++     * 5 bitmap. The file extension is the only evidence available without opening the file, and
++     * it is the same evidence fontconfig used to index it.
++     */
++    int format = 2; /* OpenType TrueType, the common case and the safe default */
++    if (file != NULL) {
++        const char *dot = strrchr((const char *)file, '.');
++        if (dot != NULL) {
++            if (strcasecmp(dot, ".pfb") == 0 || strcasecmp(dot, ".pfa") == 0) format = 4;
++            else if (strcasecmp(dot, ".pcf") == 0 || strcasecmp(dot, ".bdf") == 0) format = 5;
++            else if (strcasecmp(dot, ".otf") == 0) format = 1;
++        }
++    }
++    CFNumberRef formatNumber = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &format);
++    if (formatNumber != NULL) {
++        CFDictionarySetValue(attributes, kCTFontFormatAttribute, formatNumber);
++        CFRelease(formatNumber);
++    }
+     return attributes;
+ }
+ 
