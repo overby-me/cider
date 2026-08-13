@@ -99,6 +99,33 @@ use here, and QuickLook is thumbnail generation.
 
 **libSystem, 1.** `_memset_pattern16` is a BSD extension, four lines to write.
 
+## PROGRESS, 2026-08-13: soffice now gets PAST dyld
+
+Two of the eleven load-blocking symbols were the whole of the first two walls, and filling them
+moved the failure each time in the order this document predicted, which is the evidence that the
+static list is load bearing rather than descriptive.
+
+    kCTFontVariationAxesAttribute, kCTFontCollectionRemoveDuplicatesOption
+        vendor/patches/cocotron/0001-...  the first patch against that pin
+    the four kAB* constants, plus the twelve AB* functions
+        src/darwin/frameworks/AddressBook/capi.c, a framework that had NO C API at all
+
+**`soffice --version` now resolves every symbol it binds at load and starts executing.** The
+next failure is a different kind entirely:
+
+    semaphore_timedwait failed (internally): -111
+    *** dserver_rpc_interrupt_enter failed with code -111 ***
+
+That is an RPC to a `ciderd` that is not answering, and it is NOT a framework gap. The control
+matters: `appkit_probe` runs in the same prefix, in the same container, immediately before and
+after, so the daemon works and something in LibreOffice's startup specifically provokes this.
+111 is ECONNREFUSED. A -111 has been traced once before, in task #44, to a silent SIGSEGV in the
+daemon rather than to a timeout, which is the first thing to rule out here.
+
+The remaining eight eager symbols (one AppKit subrole, the Metal class, the two QuickLook
+classes and their metaclass) were never reached, because dyld stopped before them. They are
+still owed, and now they are not what blocks.
+
 ## What this says about the shape of the remaining work
 
 None of this is Wayland. The display backend is not what stands between this fork and a real
