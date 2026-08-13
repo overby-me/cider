@@ -277,3 +277,33 @@ releases one, and a client waiting for the release waits forever with nothing in
 The checks pass `--renderer=pixman` so the compositor actually composites in software. Worth
 knowing generally: a headless compositor that "runs fine" can still be doing nothing at all, and
 that will look exactly like a client bug.
+
+## THE CoreGraphics BACKEND MECHANISM IS DEAD IN THIS PREFIX, INCLUDING X11's
+
+Found while checking why a correctly built Wayland.backend was never loaded. The layout is:
+
+    CoreGraphics.framework/Versions/A/CoreGraphics                       the binary
+    CoreGraphics.framework/Versions/C/Resources/Backends/X11.backend     the backends
+    CoreGraphics.framework/Versions/Current -> A
+
+`_CGSLoadBackend` asks `[NSBundle bundleForClass:]` for its Resources, which resolves through
+`Current`, which is `A`, which has no `Resources` at all. So `pathsForResourcesOfType:@"backend"`
+returns an empty list and **no CoreGraphics backend has ever been loaded in a prefix built here**.
+
+A `DYLD_PRINT_LIBRARIES` trace of the AppKit probe confirms it. The only backend bundle loaded in
+the whole run is
+
+    AppKit.framework/Resources/Backends/X11.backend/Contents/MacOS/X11
+
+**SO THE LIVE PLUG-IN POINT IS AppKit's NSDisplay, not CoreGraphics' CGSConnection.** That is
+where the Wayland work goes. The mechanism is the same shape, with one difference that matters:
+
+    CoreGraphics   sorts by NSPriority, then asks the principal class +isAvailable
+    AppKit         sorts by NSPriority, then just does [[principalClass alloc] init] and takes
+                   the first that returns non-nil
+
+So on the AppKit side, AVAILABILITY IS EXPRESSED BY RETURNING nil FROM init. There is no
++isAvailable to implement.
+
+This is also a defect to fix independently: either Versions/C should be Current, or the backends
+should install under Versions/A/Resources. Until then the CoreGraphics X11 backend is dead code.

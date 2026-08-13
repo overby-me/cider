@@ -1,4 +1,5 @@
 load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:codegen.bzl", "wayland_protocol")
 load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:rust.bzl", "darwin_rust_staticlib")
@@ -137,14 +138,27 @@ darwin_dylib(
         ":wayland_glue_obj",
         ":backend_init_obj",
     ],
+    # THE SAME SIBLINGS THE X11 BACKEND HAS, minus the X libraries: a backend bundle is loaded
+    # into a process that already has CoreGraphics, Foundation, CoreFoundation and the ObjC
+    # runtime, and it must link against those rather than carry copies.
     siblings = [
         "//src/linux/native:wayland-client_dylib",
-        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:CoreGraphics_dylib",
+        "//vendor/src:Foundation_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
         "//vendor/src/objc4:objc_final",
         "//vendor/src:system_final",
     ],
     deps = [
         "//src/darwin:sdk_env",
     ],
+    visibility = ["PUBLIC"],
+)
+
+# The bundle's Info.plist, which is what carries NSPrincipalClass and NSPriority. CoreGraphics
+# reads those two keys and nothing else about us.
+export_file(
+    name = "wayland_backend_plist",
+    src = "Info.plist",
     visibility = ["PUBLIC"],
 )
