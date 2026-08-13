@@ -1,0 +1,81 @@
+diff -u --recursive a/CoreText/CTFont.m b/CoreText/CTFont.m
+--- a/CoreText/CTFont.m	2026-08-13 20:45:25.439734918 +0200
++++ b/CoreText/CTFont.m	2026-08-13 20:45:25.456717165 +0200
+@@ -444,8 +444,7 @@
+ 
+ CFArrayRef CTFontCopyAvailableTables(CTFontRef font, CTFontTableOptions options)
+ {
+-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+-    return nil;
++    return [font copyAvailableFontTables];
+ }
+ 
+ CFDataRef CTFontCopyTable(CTFontRef font, CTFontTableTag table, CTFontTableOptions options)
+diff -u --recursive a/CoreText/include/CoreText/KTFont.h b/CoreText/include/CoreText/KTFont.h
+--- a/CoreText/include/CoreText/KTFont.h	2026-08-13 20:45:25.441734935 +0200
++++ b/CoreText/include/CoreText/KTFont.h	2026-08-13 20:45:25.456032537 +0200
+@@ -40,6 +40,10 @@
+  * answers NULL because a font backend that cannot produce tables must say so rather than hand
+  * back an empty CFData, which a caller would parse as a valid but empty table. */
+ - (CFDataRef) copyFontTable: (uint32_t) tag;
++
++/* Which sfnt tables this font has, as an array of raw tags. See the implementation for why the
++ * values are not CFNumbers. */
++- (CFArrayRef) copyAvailableFontTables;
+ - (CGFloat) pointSize;
+ - (CGFloat) fontSize;
+ 
+diff -u --recursive a/CoreText/KTFont_FT.m b/CoreText/KTFont_FT.m
+--- a/CoreText/KTFont_FT.m	2026-08-13 20:45:25.437734902 +0200
++++ b/CoreText/KTFont_FT.m	2026-08-13 20:45:25.456471371 +0200
+@@ -87,6 +87,36 @@
+     return data;
+ }
+ 
++/*
++ * The list of sfnt tables in this face.
++ *
++ * THE VALUES ARE RAW TAGS CAST TO POINTERS, NOT CFNumbers, and that is not a shortcut: it is what
++ * the API does on a Mac, where the documented way to read the result is
++ * (CTFontTableTag)(uintptr_t)CFArrayGetValueAtIndex(tags, i). The array is therefore created with
++ * NULL callbacks, since retaining an integer would crash immediately. Returning CFNumbers instead
++ * would look tidier and break every correct caller.
++ *
++ * FreeType enumerates the same way in two calls: a NULL tag pointer asks for the COUNT, then each
++ * index is asked for its tag. LibreOffice called this 782 times in one run and got nil each time.
++ */
++- (CFArrayRef) copyAvailableFontTables {
++    O2Font_freetype *o2Font = (O2Font_freetype *) _font;
++    FT_Face face = [o2Font face];
++    if (face == NULL) return NULL;
++
++    FT_ULong count = 0;
++    if (FT_Sfnt_Table_Info(face, 0, NULL, &count) != 0 || count == 0) return NULL;
++
++    CFMutableArrayRef tables = CFArrayCreateMutable(kCFAllocatorDefault, (CFIndex) count, NULL);
++    if (tables == NULL) return NULL;
++    for (FT_ULong i = 0; i < count; i++) {
++        FT_ULong tag = 0, length = 0;
++        if (FT_Sfnt_Table_Info(face, (FT_UInt) i, &tag, &length) != 0) continue;
++        CFArrayAppendValue(tables, (const void *)(uintptr_t) tag);
++    }
++    return tables;
++}
++
+ - (void) getGlyphs: (CGGlyph *) glyphs
+         forCharacters: (const unichar *) characters
+                length: (NSUInteger) length
+diff -u --recursive a/CoreText/KTFont.m b/CoreText/KTFont.m
+--- a/CoreText/KTFont.m	2026-08-13 20:45:25.435734885 +0200
++++ b/CoreText/KTFont.m	2026-08-13 20:45:25.456305572 +0200
+@@ -46,6 +46,10 @@
+     return NULL;
+ }
+ 
++- (CFArrayRef) copyAvailableFontTables {
++    return NULL;
++}
++
+ - (CFStringRef) copyName {
+     return CGFontCopyFullName(_font);
+ }
