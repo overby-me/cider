@@ -126,7 +126,7 @@ def first-party-includes [repo: string, gen: string] {
   let inc = ('#\s*include\s*<(?<p>(?:' + ($SDK_NAMESPACES | str join "|") + ')/[^>]+)>')
   $files
     | where {|rel| ($rel | str ends-with ".c") or ($rel | str ends-with ".h") or ($rel | str ends-with ".m") or ($rel | str ends-with ".mm") or ($rel | str ends-with ".cpp") }
-    | where {|rel| not (($rel | str starts-with "vendor/src/") or ($rel | str starts-with "patches/")) }
+    | where {|rel| not (($rel | str starts-with "vendor/src/") or ($rel | str starts-with "vendor/patches/")) }
     | each {|rel|
         let p = ($repo | path join $rel)
         let text = (try { open --raw $p | decode utf-8 } catch { null })

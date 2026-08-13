@@ -24,7 +24,7 @@
   manifest ? ../submodules.json,
   # patches/<basename-of-submodule-path>/*.patch, applied with `patch -p1` under
   # the submodule dir, the way the retired init-submodules checkout script did.
-  patchesDir ? ../../patches,
+  patchesDir ? ../../vendor/patches,
 }:
 let
   inherit (pkgs) lib;

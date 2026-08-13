@@ -102,14 +102,10 @@
           # warns, at the src/ staging, that a name for something that no longer exists is
           # inert rather than protective, and that is exactly how a class of bug hides.
           "README.md"
-          "VERSION"
           "CHANGELOG.md"
           "LICENSE"
-          ".vscode"
           ".claude"
           ".tangled"
-          ".gdbinit"
-          ".dfx-boot.log"
           ".git"
           ".jj"
           ".direnv"

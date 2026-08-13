@@ -68,7 +68,7 @@ const SKIP_DIRS = [".jj" ".git" "buck-out" "vendor/src" "vendor/rust" "target" "
   "result-ducttape-ref" "node_modules" ".direnv"]
 
 # Excluded from REWRITING, for the reasons in the header. Not excluded from moving.
-const SKIP_REL_PREFIX = ["patches/" "vendor/pins/"]
+const SKIP_REL_PREFIX = ["vendor/patches/" "vendor/pins/"]
 
 const MAX_BYTES = 4000000
 

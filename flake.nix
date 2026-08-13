@@ -1080,7 +1080,7 @@
       #
       # See: docs/darwin-builder.md, docs/changelog.md (Task 7.7)
       templates.cider-builder = {
-        path = ./templates/cider-builder;
+        path = ./nix/templates/cider-builder;
         description = "NixOS configuration with a Darling-based x86_64-darwin remote builder";
       };
 

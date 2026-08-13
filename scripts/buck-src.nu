@@ -204,7 +204,7 @@ def main [--all, ...paths: string] {
         # handed patches/xnu, which is the GUEST SYSCALL set belonging to the other one. This
         # has to agree with cider-src.nix or the local tree and the Nix tree get different
         # patches applied to the same submodule.
-        let patch_dir = ($repo_root | path join "patches" ($e.patches? | default $name))
+        let patch_dir = ($repo_root | path join "vendor" "patches" ($e.patches? | default $name))
         if ($patch_dir | path type) == "dir" {
             for p in (glob $"($patch_dir)/*.patch" | sort) {
                 print $"vendor/src:   patch ($name): ($p | path basename)"

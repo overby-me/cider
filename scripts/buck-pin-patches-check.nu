@@ -61,7 +61,7 @@ def main [
 ] {
   let root = ($env.FILE_PWD | path dirname)
   let manifest = (if ($manifest | is-empty) { $root | path join "nix" "submodules.json" } else { $manifest })
-  let patches = (if ($patches | is-empty) { $root | path join "patches" } else { $patches })
+  let patches = (if ($patches | is-empty) { $root | path join "vendor" "patches" } else { $patches })
 
   let entries = (open --raw $manifest | from json)
   let dirs = (ls -a $patches | where type == dir | get name | each {|p| $p | path basename } | sort)
@@ -77,13 +77,13 @@ def main [
 
   for r in $rows {
     if ($r.want != null) and (not ($r.want in $dirs)) {
-      $problems = ($problems | append $"($r.path) asks for patches/($r.want), which does not exist, so it is silently the RAW upstream fetch with no local delta at all")
+      $problems = ($problems | append $"($r.path) asks for vendor/patches/($r.want), which does not exist, so it is silently the RAW upstream fetch with no local delta at all")
     }
   }
 
   for d in ($dirs | where {|d| not ($d in ($mapped | columns)) }) {
     let n = (ls -a ($patches | path join $d) | length)
-    $problems = ($problems | append $"patches/($d) \(($n) patches\) is an ORPHAN: no manifest entry names it and no pin basename matches it, so it has never been applied to anything")
+    $problems = ($problems | append $"vendor/patches/($d) \(($n) patches\) is an ORPHAN: no manifest entry names it and no pin basename matches it, so it has never been applied to anything")
   }
 
   for g in ($rows | group-by base | transpose base rows | sort-by base) {
