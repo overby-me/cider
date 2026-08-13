@@ -1,6 +1,6 @@
 load("//buck/rules:cc.bzl", "cc_objects")
 load("//buck/rules:codegen.bzl", "wayland_protocol")
-load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:rust.bzl", "darwin_rust_staticlib")
 
 # THE WAYLAND GUI BACKEND (#112). CoreGraphics loads *.backend bundles at runtime and takes the
@@ -95,6 +95,56 @@ darwin_binary(
     deps = [
         "//src/darwin:sdk_env",
         "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# THE BACKEND BUNDLE'S CODE. Same glue as the probe plus the load-time constructor, which lives
+# in its own file because shim.c is shared with the probe and the probe has no backend in it.
+cc_objects(
+    name = "backend_init_obj",
+    srcs = ["backend_init.c"],
+    deps = [
+        "//src/darwin:sdk_env",
+        "//src/linux/native:host_headers",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+
+# FOUR FILES, which the endpoint only learned to stage on 2026-08-13. backend.rs is the crate
+# root; objc.rs is the runtime glue that makes an ObjC class hierarchy out of Rust functions;
+# wl.rs is the client FFI.
+darwin_rust_staticlib(
+    name = "wayland_backend_lib",
+    crate_root = "backend.rs",
+    srcs = [
+        "objc.rs",
+        "wl.rs",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# THE BUNDLE BINARY. It installs as
+#   CoreGraphics.framework/Versions/C/Resources/Backends/Wayland.backend/Contents/MacOS/Wayland
+# next to the X11 one, and _CGSLoadBackend picks between them by NSPriority and isAvailable.
+darwin_dylib(
+    name = "wayland_cgbackend_dylib",
+    dylib_name = "Wayland",
+    install_name = "/System/Library/Frameworks/CoreGraphics.framework/Versions/C/Resources/Backends/Wayland.backend/Contents/MacOS/Wayland",
+    objs = [
+        ":wayland_backend_lib",
+        ":wayland_glue_obj",
+        ":backend_init_obj",
+    ],
+    siblings = [
+        "//src/linux/native:wayland-client_dylib",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+    ],
+    deps = [
+        "//src/darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )

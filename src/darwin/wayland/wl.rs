@@ -15,11 +15,27 @@ pub enum WlDisplay {}
 pub enum WlRegistry {}
 pub enum WlInterface {}
 
+/// libwayland's intrusive list head: two pointers, and wl_list_init makes both point at it.
+#[repr(C)]
+pub struct WlList {
+    pub prev: *mut WlList,
+    pub next: *mut WlList,
+}
+
 unsafe extern "C" {
     // Real symbols in libwayland-client, verified present in the generated stub with llvm-nm.
     pub fn wl_display_connect(name: *const c_char) -> *mut WlDisplay;
     pub fn wl_display_disconnect(display: *mut WlDisplay);
+    /// TAKES AN ALREADY CONNECTED FD, which is the interesting alternative: the GUEST can create
+    /// and connect a unix socket with its own emulated syscalls, and this hands the result to
+    /// libwayland. It is also the answer to whether a guest fd is a real host fd, which the
+    /// backend needs to know regardless.
+    pub fn wl_display_connect_to_fd(fd: c_int) -> *mut WlDisplay;
     pub fn wl_display_roundtrip(display: *mut WlDisplay) -> c_int;
+    /// THE BRIDGE TEST. It writes prev and next to point at the list itself, which is an effect
+    /// this side can verify without a compositor, a socket or an environment. If this does not
+    /// happen, the forwarding stub never reached libwayland and everything else is noise.
+    pub fn wl_list_init(list: *mut WlList);
 
     // shim.c, because these are static inline upstream and cannot cross the bridge.
     pub fn cider_wl_display_get_registry(display: *mut WlDisplay) -> *mut WlRegistry;

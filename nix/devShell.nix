@@ -41,6 +41,15 @@ in {
     libXrandr
     libXcursor
     libxkbfile
+    # The Wayland side of the GUI backend (#112), same reason as libxkbfile: buck-setup.nu has to
+    # find the real .so directory for wrapgen to read.
+    wayland
+    libxkbcommon
+    # THE WAYLAND GATE'S COMPOSITOR AND ITS CONTROL, the counterpart of the X server the AppKit
+    # check needs. weston runs headless so a probe never draws on the developer's session, and
+    # wayland-info is the control that says whether a failure is the compositor or the guest.
+    weston
+    wayland-utils
     cairo
     libglvnd
     fontconfig

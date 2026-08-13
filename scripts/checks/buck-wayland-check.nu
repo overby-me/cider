@@ -122,9 +122,40 @@ def main [scratch?: string] {
     }
     ok $"control: wayland-info sees ($control_globals) globals on the same socket"
 
+    # THE HOST LIBRARY PATH, without which the forwarding stub cannot dlopen the real
+    # libwayland-client.so and every call returns nothing. buck-appkit-check.nu does the same for
+    # the X libraries; leaving it out was why the first run of this check failed with the control
+    # green and the guest silent.
+    let elf_dirs = (
+        open --raw .buckconfig.local | lines
+        | where {|l| $l =~ '^elf_lib_dirs *= *' }
+        | each {|l| $l | str replace --regex '^elf_lib_dirs *= *' '' }
+        | get 0? | default ""
+    )
+    if ($elf_dirs | is-empty) {
+        bad "no elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.nu"
+        do -i { job kill $weston }
+        exit 2
+    }
+    let ld = (if (($env.LD_LIBRARY_PATH? | default "") | is-empty) { $elf_dirs } else { $"($elf_dirs):($env.LD_LIBRARY_PATH)" })
+
+    # A LEFTOVER DAEMON CARRIES A STALE ENVIRONMENT, and that is not a detail: the host side of
+    # the process reads ITS environment, not the guest's, so a ciderd started before
+    # WAYLAND_DISPLAY existed makes wl_display_connect fail with nothing to see. Kill only real
+    # ciderd processes for THIS prefix, matched on /proc/N/exe rather than on a name.
+    for p in (ls /proc | get name | where {|n| ($n | path basename) =~ '^[0-9]+$' }) {
+        let pid = ($p | path basename)
+        let comm = (do -i { open --raw $"($p)/comm" | str trim } | default "")
+        if $comm == "ciderd" {
+            let args = (do -i { open --raw $"($p)/cmdline" } | default "" | str replace --all (char nul) " ")
+            if ($args | str contains $root) { do -i { ^kill $pid } }
+        }
+    }
+
     say "== running the probe INSIDE cider =="
     let log = $"($root)/probe.log"
     with-env {
+        LD_LIBRARY_PATH: $ld
         CIDERPREFIX: $"($root)/prefix"
         DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
         DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"

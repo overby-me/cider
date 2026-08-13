@@ -42,12 +42,85 @@ extern "C" fn on_global_remove(_data: *mut c_void, _registry: *mut WlRegistry, _
 
 #[unsafe(no_mangle)]
 pub extern "C" fn main(_argc: c_int, _argv: *const *const c_char) -> c_int {
-    let display = unsafe { wl::wl_display_connect(std::ptr::null()) };
-    if display.is_null() {
-        println!("cider-wayland-probe connect=FAILED");
-        return 1;
+    // WHAT THE GUEST ACTUALLY SEES, printed before anything is attempted. The first run failed
+    // with connect=FAILED and no way to tell whether the variables were missing, the path was
+    // wrong, or the socket was unreachable, which is three guesses too many.
+    for key in ["WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "CIDER_WAYLAND_SOCKET"] {
+        match std::env::var(key) {
+            Ok(v) => println!("cider-wayland-probe env {key}={v}"),
+            Err(_) => println!("cider-wayland-probe env {key}=<unset>"),
+        }
     }
-    println!("cider-wayland-probe connect=ok");
+
+    // DOES THE BRIDGE WORK AT ALL? Asked before connect, because a failed connect has many
+    // causes and "the stub never reached libwayland" is the one that makes every other answer
+    // meaningless. wl_list_init writes two pointers into a struct owned here.
+    let mut list = wl::WlList { prev: std::ptr::null_mut(), next: std::ptr::null_mut() };
+    unsafe { wl::wl_list_init(&mut list) };
+    let self_ptr = &mut list as *mut wl::WlList;
+    println!(
+        "cider-wayland-probe bridge={}",
+        if list.prev == self_ptr && list.next == self_ptr { "ok" } else { "FAILED" }
+    );
+
+    let mut display = unsafe { wl::wl_display_connect(std::ptr::null()) };
+    if display.is_null() {
+        println!("cider-wayland-probe connect(default)=FAILED");
+        // AN ABSOLUTE PATH BYPASSES THE ENVIRONMENT ENTIRELY. libwayland treats a display name
+        // beginning with / as the socket path itself, so this says whether the failure is the
+        // variables not arriving or the socket not being reachable, which are different bugs.
+        if let Ok(sock) = std::env::var("CIDER_WAYLAND_SOCKET") {
+            let c = std::ffi::CString::new(sock.clone()).unwrap_or_default();
+            display = unsafe { wl::wl_display_connect(c.as_ptr()) };
+            if display.is_null() {
+                // ERRNO IS THE WHOLE ANSWER HERE. ENOENT means the path is wrong from inside the
+                // container, EACCES means it is there and we may not open it, ECONNREFUSED means
+                // nothing is listening, and ENOSYS or EPERM would mean the emulation layer did
+                // not let the call through at all. Guessing between those cost several runs.
+                let e = std::io::Error::last_os_error();
+                println!(
+                    "cider-wayland-probe connect(absolute)=FAILED path={sock} errno={} msg={}",
+                    e.raw_os_error().unwrap_or(-1),
+                    e
+                );
+                // FALL THROUGH to the guest-socket attempt: the three attempts test three
+                // different claims, and the later ones are the informative ones.
+            }
+            if !display.is_null() {
+                println!("cider-wayland-probe connect(absolute)=ok path={sock}");
+            }
+        }
+        // THIRD ATTEMPT, and it tests a different claim: let the GUEST open the socket with its
+        // own syscalls and hand the descriptor over. libwayland then never touches a path or the
+        // environment. If this works and the others do not, the failure is in the host side of
+        // the process seeing a different filesystem or environment than the guest, which is
+        // exactly the split this container has.
+        if display.is_null() {
+            if let Ok(guest_path) = std::env::var("CIDER_WAYLAND_SOCKET_GUEST") {
+                match std::os::unix::net::UnixStream::connect(&guest_path) {
+                    Ok(stream) => {
+                        use std::os::unix::io::IntoRawFd;
+                        let fd = stream.into_raw_fd();
+                        println!("cider-wayland-probe guest-socket=ok fd={fd} path={guest_path}");
+                        display = unsafe { wl::wl_display_connect_to_fd(fd) };
+                        if display.is_null() {
+                            println!("cider-wayland-probe connect(fd)=FAILED");
+                            return 1;
+                        }
+                        println!("cider-wayland-probe connect(fd)=ok");
+                    }
+                    Err(e) => {
+                        println!("cider-wayland-probe guest-socket=FAILED path={guest_path} err={e}");
+                        return 1;
+                    }
+                }
+            } else {
+                return 1;
+            }
+        }
+    } else {
+        println!("cider-wayland-probe connect=ok");
+    }
 
     let mut globals = Globals::default();
     let listener = RegistryListener {
