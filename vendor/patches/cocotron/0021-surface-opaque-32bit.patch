@@ -1,0 +1,50 @@
+diff -u --recursive a/Onyx2D/O2Surface.m b/Onyx2D/O2Surface.m
+--- a/Onyx2D/O2Surface.m	2026-08-13 23:56:38.908004443 +0200
++++ b/Onyx2D/O2Surface.m	2026-08-13 23:56:38.936742986 +0200
+@@ -457,10 +457,44 @@
+                 case kO2ImageAlphaFirst:
+                     break;
+ 
+-                case kO2ImageAlphaNoneSkipLast:
++                /*
++                 * THE OPAQUE 32-BIT FORMATS, which are what a window backing store actually is:
++                 * three colour bytes and one byte nobody reads. LibreOffice asks for
++                 * NoneSkipFirst little-endian (bitmapInfo 0x2006) for every frame it draws, fell
++                 * through to the error below, and got a surface with the DEFAULT writer, which
++                 * is a silent wrong result rather than a failure.
++                 *
++                 * The byte layout is identical to the premultiplied cases above: SkipFirst is
++                 * B, G, R and a byte to ignore, exactly where PremultipliedFirst puts B, G, R, A.
++                 * So the same writer is correct, and what it puts in the fourth byte does not
++                 * matter to anything that reads one of these. Our own Wayland buffer is the same
++                 * shape: XRGB8888, where the compositor ignores that byte.
++                 */
++                case kO2ImageAlphaNoneSkipFirst:
++                    switch (bitmapInfo & kO2BitmapByteOrderMask) {
++                    case kO2BitmapByteOrderDefault:
++                    case kO2BitmapByteOrder16Little:
++                    case kO2BitmapByteOrder32Little:
++                        self->_writeargb8u = O2SurfaceWrite_argb8u_to_BGRA8888;
++                        return YES;
++                    }
+                     break;
+ 
+-                case kO2ImageAlphaNoneSkipFirst:
++                case kO2ImageAlphaNoneSkipLast:
++                    switch (bitmapInfo & kO2BitmapByteOrderMask) {
++                    case kO2BitmapByteOrderDefault:
++                    case kO2BitmapByteOrder16Little:
++                    case kO2BitmapByteOrder32Little:
++                        self->_writeargb32f = O2SurfaceWrite_argb32f_to_ABGR8888;
++                        self->_writeargb8u = O2SurfaceWrite_argb8u_to_ABGR8888;
++                        return YES;
++
++                    case kO2BitmapByteOrder16Big:
++                    case kO2BitmapByteOrder32Big:
++                        self->_writeargb32f = O2SurfaceWrite_argb32f_to_argb8u;
++                        self->_writeargb8u = O2SurfaceWrite_argb8u_to_argb8u;
++                        return YES;
++                    }
+                     break;
+                 }
+             } else if ([colorSpace type] == kO2ColorSpaceModelCMYK) {
