@@ -16,6 +16,8 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import <Foundation/Foundation.h>
 #import <stdio.h>
+#import <pwd.h>
+#import <unistd.h>
 
 static void report(const char *what, CFTypeRef value)
 {
@@ -49,6 +51,47 @@ int main(int argc, const char **argv)
 {
 	printf("PREFS_PROBE start\n");
 	fflush(stdout);
+
+	// THE PASSWD DATABASE, which is what LibreOffice bootstrap turns out to need. It resolves
+	// $SYSUSERCONFIG through osl_getConfigDir, and that is built on the user's home directory
+	// from the passwd entry rather than from HOME. No entry means no config directory, and the
+	// symptom is a bootstrap failure reported as "Unspecified Application Error" with no
+	// mention of users anywhere.
+	uid_t uid = getuid();
+	struct passwd *pw = getpwuid(uid);
+	printf("PREFS_PROBE getpwuid uid=%u result=%s dir=%s name=%s\n", (unsigned) uid,
+		pw ? "ok" : "NULL", (pw && pw->pw_dir) ? pw->pw_dir : "-",
+		(pw && pw->pw_name) ? pw->pw_name : "-");
+	fflush(stdout);
+
+	// LIBREOFFICE HAS FOUNDATION UP BEFORE IT ASKS, and that is the difference between this
+	// probe and that process: +[NSUserDefaults standardUserDefaults] REGISTERS AppleLanguages
+	// and AppleLocale from NSLocale on first use. Without this line the lookups below answer
+	// NULL and the interesting path is never taken.
+	@autoreleasepool {
+		NSArray *preferred = [NSLocale preferredLanguages];
+		printf("PREFS_PROBE preferredLanguages count=%ld first=%s\n",
+			(long) [preferred count],
+			[preferred count] ? [[preferred objectAtIndex: 0] UTF8String] : "-");
+		fflush(stdout);
+		// WHAT NSUserDefaults REGISTERS AppleLocale FROM. If this is nil, AppleLocale is never
+		// set, and LibreOffice's macOS configuration backend has no Locale to report.
+		NSLocale *sys = [NSLocale systemLocale];
+		NSString *lang = [sys languageCode];
+		printf("PREFS_PROBE systemLocale=%p identifier=%s languageCode=%s\n", sys,
+			[[sys localeIdentifier] UTF8String] ?: "-",
+			lang ? [lang UTF8String] : "NIL");
+		fflush(stdout);
+		NSLocale *cur = [NSLocale currentLocale];
+		printf("PREFS_PROBE currentLocale identifier=%s languageCode=%s\n",
+			[[cur localeIdentifier] UTF8String] ?: "-",
+			[cur languageCode] ? [[cur languageCode] UTF8String] : "NIL");
+		fflush(stdout);
+
+		[NSUserDefaults standardUserDefaults];
+		printf("PREFS_PROBE defaults=up\n");
+		fflush(stdout);
+	}
 
 	// The exact call ImplGetLocale makes.
 	CFTypeRef locale = CFPreferencesCopyAppValue(CFSTR("AppleLocale"),

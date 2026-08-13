@@ -126,6 +126,77 @@ The remaining eight eager symbols (one AppKit subrole, the Metal class, the two 
 classes and their metaclass) were never reached, because dyld stopped before them. They are
 still owed, and now they are not what blocks.
 
+## THE THREE WALLS AFTER DYLD, 2026-08-13, and none of them was a missing symbol
+
+**1. The daemon died of a divide by zero.** `soffice --version` reached `clock_get_time` on the
+calendar clock, and `ciderd` was killed by SIGFPE in `scale_delta`. `xnu_sys_init` called
+`clock_init` (XNU calls that once per processor) but never `clock_config` (once at boot), and
+`clock_config` is what sets `ticks_per_sec`. It stayed zero, and the calendar path divides by it
+twice. The guest then reported `semaphore_timedwait failed (internally): -111`, which reads as a
+timeout and is really ECONNREFUSED to a dead daemon.
+
+**LibreOffice 25.2.1.2 now prints its version and exits 0.**
+
+**2. A missing accessibility string stopped the GUI.** With a compositor, VCL printed
+`no suitable windowing system found, exiting.` The macOS build loads exactly one plugin,
+`libvclplug_osxlo.dylib`, and that dlopen failed silently because
+`_NSAccessibilityTabButtonSubrole` is bound EAGERLY. Adding the constant made the plugin load,
+and **the Wayland backend came up under LibreOffice**: `register=ok class=NSDisplayWayland`,
+`init=ok display=connected globals=21`.
+
+**3. An empty language list, read past the end.** LibreOffice then died on
+`+[__NSCFArray _getCString:maxLength:encoding:]`. The chain:
+
+    [NSUserDefaults standardUserDefaults] registers AppleLanguages = [NSLocale preferredLanguages]
+    +[NSLocale preferredLanguages] -> CFLocaleCopyPreferredLanguages()
+    CFLocaleCopyPreferredLanguages builds its result ONLY from an existing AppleLanguages
+      preference, and there is none, so it returns an EMPTY array
+    LibreOffice checks CFGetTypeID(value) == CFArrayGetTypeID(), which passes, then reads
+      element 0 WITHOUT CHECKING THE COUNT
+    the read goes past the end and yields the array itself, which is handed to
+      CFLocaleCreateCanonicalLocaleIdentifierFromString and then to CFStringGetCString
+
+On a real Mac that list is never empty, so callers are written as if index 0 exists. The fix is
+in `CFLocaleCopyPreferredLanguages`: never return an empty array, and derive the fallback from
+LANG/LC_ALL/LC_MESSAGES, which is where every other program on this system reads the user's
+language from.
+
+**What made this findable at all** was `scripts/core-guest-stack.py`. A guest process is `mldr`
+with Mach-O images mapped into it, so systemd-coredump and gdb print `n/a` for every frame; the
+NT_FILE note has the mappings, under guest paths that need a `--root` to resolve.
+
+**And a probe was worth more than the application.** `tests/buck2/gui/prefs_probe.m` exonerated
+CFPreferences, the canonicaliser, and toll-free bridging in three runs, which is what moved the
+search to where the bug actually was.
+
+## WHERE IT STANDS AFTER THE LOCALE AND CARBON WORK
+
+`soffice --version` runs and exits 0. With a compositor, the Wayland backend comes up under
+LibreOffice and answers for the screen:
+
+    cider-wayland-appkit register=ok class=NSDisplayWayland
+    cider-wayland-appkit init=ok display=connected globals=21
+    cider-wayland-appkit screens=1 frame=1280x800 source=wl_output
+
+**The next wall is not the display.** `--headless --convert-to` fails identically, which is the
+control that settles it: no window, no compositor, same error.
+
+**`getpwuid(0)` RETURNS NULL IN THE GUEST**, and that is a general gap rather than a LibreOffice
+one. LibreOffice resolves `$SYSUSERCONFIG` (`UserInstallation=$SYSUSERCONFIG/LibreOffice/4` in
+`bootstraprc`) through `osl_getConfigDir`, which is built on the passwd entry rather than on
+`$HOME`. With no entry there is no config directory and bootstrap fails as "Unspecified
+Application Error", which mentions neither users nor directories.
+
+Symlinking `/etc/passwd` to the host's, the way the prefix already does for `nsswitch.conf`,
+`localtime` and `machine-id`, makes the FILE readable in the guest but does NOT fix `getpwuid`:
+Libinfo reaches it through `si_search_file()` and something between there and the parser still
+answers nothing. That is the next thing to take apart, and it is worth it beyond LibreOffice,
+since anything asking who the user is hits it.
+
+Past that point, with `-env:UserInstallation=file:///Users/root/.lo4` supplying the profile
+directly, LibreOffice creates its profile, registers fonts, and then dies on SIGTRAP. That is
+the frontier.
+
 ## What this says about the shape of the remaining work
 
 None of this is Wayland. The display backend is not what stands between this fork and a real
