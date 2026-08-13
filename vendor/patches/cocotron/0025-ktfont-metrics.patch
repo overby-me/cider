@@ -1,0 +1,104 @@
+diff -u --recursive a/CoreText/KTFont_FT.m b/CoreText/KTFont_FT.m
+--- a/CoreText/KTFont_FT.m	2026-08-14 00:45:55.787007496 +0200
++++ b/CoreText/KTFont_FT.m	2026-08-14 00:45:55.813005160 +0200
+@@ -98,6 +98,100 @@
+                       (CGFloat) (face->bbox.yMax - face->bbox.yMin) * scale);
+ }
+ 
++/*
++ * THE WHOLE METRIC FAMILY, not one per run.
++ *
++ * All eight are declared by KTFont and implemented by nobody, so the base class raises for each
++ * in turn. Text layout asks for them one after another, so discovering them singly costs a build
++ * and a container run each to learn a name the header already lists. This is the same lesson as
++ * the NSDisplay batch and the accessibility preferences.
++ *
++ * Everything scales by size over units per em, and UNITS PER EM CAN BE ZERO for a bitmap face,
++ * so the divisor is checked once here rather than in eight places.
++ */
++- (CGFloat) _unitScale {
++    O2Font_freetype *o2Font = (O2Font_freetype *) _font;
++    FT_Face face = [o2Font face];
++    if (face == NULL || face->units_per_EM == 0) {
++        return 0.0;
++    }
++    return _size / (CGFloat) face->units_per_EM;
++}
++
++- (FT_Face) _face {
++    O2Font_freetype *o2Font = (O2Font_freetype *) _font;
++    return [o2Font face];
++}
++
++- (CGFloat) ascender {
++    FT_Face face = [self _face];
++    return (face == NULL) ? 0.0 : (CGFloat) face->ascender * [self _unitScale];
++}
++
++/* NEGATIVE, as FreeType and Cocoa both report it: the distance BELOW the baseline. */
++- (CGFloat) descender {
++    FT_Face face = [self _face];
++    return (face == NULL) ? 0.0 : (CGFloat) face->descender * [self _unitScale];
++}
++
++/* The gap BETWEEN lines, which is the line height minus what the glyphs themselves occupy.
++ * face->height is the full line advance, so the subtraction is what makes this leading rather
++ * than line height. */
++- (CGFloat) leading {
++    FT_Face face = [self _face];
++    if (face == NULL) return 0.0;
++    CGFloat gap = (CGFloat) (face->height - (face->ascender - face->descender));
++    return gap * [self _unitScale];
++}
++
++- (CGFloat) underlineThickness {
++    FT_Face face = [self _face];
++    return (face == NULL) ? 0.0 : (CGFloat) face->underline_thickness * [self _unitScale];
++}
++
++- (CGFloat) underlinePosition {
++    FT_Face face = [self _face];
++    return (face == NULL) ? 0.0 : (CGFloat) face->underline_position * [self _unitScale];
++}
++
++/*
++ * From the post table, where it is a 16.16 fixed point number. A face with no post table is not
++ * italic by omission, it is simply undeclared, and 0 is what Cocoa reports for upright text.
++ */
++- (CGFloat) italicAngle {
++    FT_Face face = [self _face];
++    if (face == NULL) return 0.0;
++    TT_Postscript *post = (TT_Postscript *) FT_Get_Sfnt_Table(face, FT_SFNT_POST);
++    if (post == NULL) return 0.0;
++    return (CGFloat) post->italicAngle / 65536.0;
++}
++
++/*
++ * x height and cap height live in OS/2, and only from version 2 of that table. WHERE THEY ARE
++ * ABSENT THIS APPROXIMATES rather than answering zero: a zero x height makes a layout engine
++ * divide by nothing or centre text on the baseline, and the conventional ratios are far closer
++ * to right than that. The approximation is marked here so it is not mistaken for measurement.
++ */
++- (CGFloat) xHeight {
++    FT_Face face = [self _face];
++    if (face == NULL) return 0.0;
++    TT_OS2 *os2 = (TT_OS2 *) FT_Get_Sfnt_Table(face, FT_SFNT_OS2);
++    if (os2 != NULL && os2->version >= 2 && os2->sxHeight != 0) {
++        return (CGFloat) os2->sxHeight * [self _unitScale];
++    }
++    return [self ascender] * 0.5;
++}
++
++- (CGFloat) capHeight {
++    FT_Face face = [self _face];
++    if (face == NULL) return 0.0;
++    TT_OS2 *os2 = (TT_OS2 *) FT_Get_Sfnt_Table(face, FT_SFNT_OS2);
++    if (os2 != NULL && os2->version >= 2 && os2->sCapHeight != 0) {
++        return (CGFloat) os2->sCapHeight * [self _unitScale];
++    }
++    return [self ascender] * 0.7;
++}
++
+ - (uint32_t) symbolicTraits {
+     O2Font_freetype *o2Font = (O2Font_freetype *) _font;
+     FT_Face face = [o2Font face];

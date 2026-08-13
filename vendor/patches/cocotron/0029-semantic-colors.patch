@@ -1,0 +1,68 @@
+diff -u --recursive a/AppKit/include/AppKit/NSColor.h b/AppKit/include/AppKit/NSColor.h
+--- a/AppKit/include/AppKit/NSColor.h	2026-08-14 01:03:45.744217230 +0200
++++ b/AppKit/include/AppKit/NSColor.h	2026-08-14 01:04:29.791087838 +0200
+@@ -36,6 +36,14 @@
+     NSImage *_pattern;
+ }
+ 
++@property(class, strong, readonly) NSColor *underPageBackgroundColor;
++@property(class, strong, readonly) NSColor *controlAccentColor;
++@property(class, strong, readonly) NSColor *separatorColor;
++@property(class, strong, readonly) NSColor *secondaryLabelColor;
++@property(class, strong, readonly) NSColor *tertiaryLabelColor;
++@property(class, strong, readonly) NSColor *quaternaryLabelColor;
++@property(class, strong, readonly) NSColor *placeholderTextColor;
++@property(class, strong, readonly) NSColor *systemGrayColor;
+ @property(class, strong, readonly) NSColor *labelColor;
+ 
+ @property(class, strong, readonly) NSColor *textColor;
+diff -u --recursive a/AppKit/NSColor.subproj/NSColor.m b/AppKit/NSColor.subproj/NSColor.m
+--- a/AppKit/NSColor.subproj/NSColor.m	2026-08-14 01:03:45.740779095 +0200
++++ b/AppKit/NSColor.subproj/NSColor.m	2026-08-14 01:03:45.764101363 +0200
+@@ -456,6 +456,46 @@
+                                colorName: @"menuItemTextColor"];
+ }
+ 
++/*
++ * THE MODERN SEMANTIC COLOURS, added as a family rather than one per crash.
++ *
++ * Every one of these routes through the same catalogue lookup as labelColor below, so the
++ * display backend answers them and the values live in ONE table rather than being spelled out
++ * here. An application asks for whichever of these its version of the toolkit knows about, and a
++ * missing one is an unrecognised selector, which RAISES rather than degrading.
++ */
+++ (NSColor *) underPageBackgroundColor {
++    return [NSColor colorWithCatalogName: @"System" colorName: @"underPageBackgroundColor"];
++}
++
+++ (NSColor *) controlAccentColor {
++    return [NSColor colorWithCatalogName: @"System" colorName: @"controlAccentColor"];
++}
++
+++ (NSColor *) separatorColor {
++    return [NSColor colorWithCatalogName: @"System" colorName: @"separatorColor"];
++}
++
+++ (NSColor *) secondaryLabelColor {
++    return [NSColor colorWithCatalogName: @"System" colorName: @"secondaryLabelColor"];
++}
++
+++ (NSColor *) tertiaryLabelColor {
++    return [NSColor colorWithCatalogName: @"System" colorName: @"tertiaryLabelColor"];
++}
++
+++ (NSColor *) quaternaryLabelColor {
++    return [NSColor colorWithCatalogName: @"System" colorName: @"quaternaryLabelColor"];
++}
++
+++ (NSColor *) placeholderTextColor {
++    return [NSColor colorWithCatalogName: @"System" colorName: @"placeholderTextColor"];
++}
++
+++ (NSColor *) systemGrayColor {
++    return [NSColor colorWithCatalogName: @"System" colorName: @"systemGrayColor"];
++}
++
+ + (NSColor *) labelColor {
+     return [NSColor colorWithCatalogName: @"System" colorName: @"labelColor"];
+ }

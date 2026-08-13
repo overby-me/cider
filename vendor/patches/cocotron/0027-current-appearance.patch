@@ -1,0 +1,51 @@
+diff -u --recursive a/AppKit/include/AppKit/NSAppearance.h b/AppKit/include/AppKit/NSAppearance.h
+--- a/AppKit/include/AppKit/NSAppearance.h	2026-08-14 00:52:52.443703008 +0200
++++ b/AppKit/include/AppKit/NSAppearance.h	2026-08-14 00:52:52.472495862 +0200
+@@ -39,6 +39,9 @@
+ 
+ @interface NSAppearance : NSObject <NSSecureCoding>
+ 
+++ (void) setCurrentAppearance: (NSAppearance *) appearance;
+++ (NSAppearance *) currentAppearance;
++
+ + (NSAppearance *) appearanceNamed: (NSAppearanceName) name;
+ 
+ @end
+diff -u --recursive a/AppKit/NSAppearance.m b/AppKit/NSAppearance.m
+--- a/AppKit/NSAppearance.m	2026-08-14 00:52:52.442011613 +0200
++++ b/AppKit/NSAppearance.m	2026-08-14 00:52:52.464056993 +0200
+@@ -51,6 +51,34 @@
+  * is no state behind them here, so handing back the same object per name is both cheaper and
+  * more correct than a fresh one each call.
+  */
++/*
++ * The appearance drawing code should consult, set around a drawing block by the caller.
++ *
++ * A PLAIN GLOBAL, not a stack, and not thread local. AppKit drawing here happens on one thread,
++ * and a setter that pushed and popped would need a matching pop that this API does not have:
++ * the caller sets it and sets it back, which is what the class method pair is for.
++ *
++ * Retained, because the caller is entitled to release its own reference afterwards.
++ */
++static NSAppearance *_ciderCurrentAppearance = nil;
++
+++ (void) setCurrentAppearance: (NSAppearance *) appearance {
++    if (_ciderCurrentAppearance != appearance) {
++        [appearance retain];
++        [_ciderCurrentAppearance release];
++        _ciderCurrentAppearance = appearance;
++    }
++}
++
+++ (NSAppearance *) currentAppearance {
++    if (_ciderCurrentAppearance != nil) {
++        return _ciderCurrentAppearance;
++    }
++    /* Never nil: a caller asking what to draw with cannot act on "nothing", and Aqua is the one
++     * look this platform has. */
++    return [self appearanceNamed: NSAppearanceNameAqua];
++}
++
+ + (NSAppearance *) appearanceNamed: (NSAppearanceName) name {
+     static NSMutableDictionary *byName = nil;
+     if (byName == nil) {

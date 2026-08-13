@@ -54,6 +54,18 @@ fn recipe_for(name: &str) -> Option<Recipe> {
         "unemphasizedSelectedTextColor" => Recipe::ClassMethod("blackColor"),
         "selectedContentBackgroundColor" => Recipe::ClassMethod("blueColor"),
         "unemphasizedSelectedContentBackgroundColor" => Recipe::ClassMethod("lightGrayColor"),
+        // The modern semantic names, added with the AppKit class methods that ask for them.
+        // Greys rather than named class methods where Cocoa has no equivalent constructor: the
+        // point of these is a LEGIBLE HIERARCHY, primary text darker than secondary and so on,
+        // and grey levels express that directly.
+        "underPageBackgroundColor" => Recipe::Grey(0.85),
+        "controlAccentColor" => Recipe::ClassMethod("blueColor"),
+        "separatorColor" => Recipe::Grey(0.8),
+        "secondaryLabelColor" => Recipe::Grey(0.4),
+        "tertiaryLabelColor" => Recipe::Grey(0.55),
+        "quaternaryLabelColor" => Recipe::Grey(0.7),
+        "placeholderTextColor" => Recipe::Grey(0.6),
+        "systemGrayColor" => Recipe::Grey(0.5),
         _ => return None,
     })
 }
