@@ -46,6 +46,35 @@ const PIN_ROOT_DEPTH = 2   # "vendor/pins" is two components
 
 def say [msg: string] { print -e $msg }
 
+# Where a pin's tree belongs on disk.
+#
+# THREE CASES, and the third is the one that was missing.
+#
+#   vendor/pins/<name>            -> vendor/src/<name>.  The ordinary pin.
+#   vendor/pins/ciderd/.../xnu    -> stays where it is.  A NESTED PIN GOES TO ITS OWN PATH,
+#     never vendor/src/<basename>: basenames are NOT unique, and vendor/pins/ciderd/xnu-sys/xnu
+#     ends in xnu just like vendor/pins/xnu, so both would land in vendor/src/xnu and copy over
+#     each other. The same collision broke the Nix endpoint through ciderBuck2Graph materializePins.
+#   vendor/pins/<pin>/<rest>      -> vendor/src/<pin>/<rest>.  A nested pin whose PARENT IS
+#     ITSELF A PIN has to follow that parent, because vendor/pins/<pin> does not exist as a
+#     directory: the parent was relocated to vendor/src. Staying in place means copying into a
+#     path with no parent, which fails with "cannot create directory: No such file or directory"
+#     and is exactly what corefoundation/submodules/swift-corelibs-foundation hit.
+def pin_dest [sub: string, dest_root: string, repo_root: string, entries: list] {
+    let parts = ($sub | split row "/")
+    if ($parts | length) == ($PIN_ROOT_DEPTH + 1) {
+        return ($dest_root | path join ($sub | path basename))
+    }
+    let head = ($parts | first ($PIN_ROOT_DEPTH + 1) | str join "/")
+    let head_is_pin = (($entries | where path == $head | length) > 0)
+    if $head_is_pin {
+        let relative = ($parts | skip $PIN_ROOT_DEPTH | str join "/")
+        $dest_root | path join $relative
+    } else {
+        $repo_root | path join $sub
+    }
+}
+
 def main [--all, ...paths: string] {
     let repo_root = ($env.FILE_PWD | path join ".." | path expand)
     let manifest = ($repo_root | path join "nix/submodules.json")
@@ -71,11 +100,7 @@ def main [--all, ...paths: string] {
             # so both would land in vendor/src/xnu and copy over each other. The same collision
             # broke the Nix endpoint through ciderBuck2Graph.nix materializePins, and the fix
             # here matches: only a pin directly under pins takes the vendor/src route.
-            let dest = (if (($sub | split row "/" | length) == ($PIN_ROOT_DEPTH + 1)) {
-                $dest_root | path join $name
-            } else {
-                $repo_root | path join $sub
-            })
+            let dest = (pin_dest $sub $dest_root $repo_root $entries)
             let src = ($assembled | path join $sub)
             if ($src | path type) != "dir" {
                 print $"vendor/src: WARNING ($sub) missing from the assembled tree"
@@ -115,11 +140,7 @@ def main [--all, ...paths: string] {
     for sub in $wanted {
         let name = ($sub | path basename)
         # Same nested-pin rule as the --all branch above.
-        let dest = (if (($sub | split row "/" | length) == ($PIN_ROOT_DEPTH + 1)) {
-            $dest_root | path join $name
-        } else {
-            $repo_root | path join $sub
-        })
+        let dest = (pin_dest $sub $dest_root $repo_root $entries)
 
         let hits = ($entries | where path == $sub)
         if ($hits | is-empty) {
