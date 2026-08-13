@@ -133,6 +133,24 @@ int main(int argc, const char **argv) {
 										 dequeue:YES];
 		printf("APPKIT_PROBE pumped event=%s\n", ev ? "one" : "none");
 		fflush(stdout);
+
+		// A LOOP, BECAUSE ONE PASS PROVES NOTHING ABOUT BLOCKING. The backend services the
+		// Wayland connection from this method, and the wrong pump there (a roundtrip, or a
+		// read that waits) costs a whole iteration each time. An application spends its life
+		// here, so the cost per idle pass is the number that matters, not whether it returns.
+		NSDate *began = [NSDate date];
+		int passes = 0;
+		for (int i = 0; i < 200; i++) {
+			[app nextEventMatchingMask:NSAnyEventMask
+							 untilDate:[NSDate distantPast]
+								inMode:NSDefaultRunLoopMode
+							   dequeue:YES];
+			passes++;
+		}
+		double ms = -[began timeIntervalSinceNow] * 1000.0;
+		printf("APPKIT_PROBE pump passes=%d elapsed_ms=%.1f per_pass_ms=%.3f\n",
+			passes, ms, ms / passes);
+		fflush(stdout);
 	}
 
 	printf("APPKIT_PROBE_OK\n");
