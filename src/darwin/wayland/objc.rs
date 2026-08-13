@@ -57,6 +57,10 @@ unsafe extern "C" {
     pub fn msg_send_rect2(receiver: Object, sel: Sel, a: NsRect, b: NsRect) -> Object;
     #[link_name = "objc_msgSend"]
     pub fn msg_send_ptr_len(receiver: Object, sel: Sel, objs: *const Object, count: usize) -> Object;
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_cstr(receiver: Object, sel: Sel, s: *const c_char) -> Object;
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_obj(receiver: Object, sel: Sel, obj: Object) -> Object;
 }
 
 /// AppKit geometry: two doubles of origin, two of size. repr(C) so the struct is passed the way

@@ -15,6 +15,7 @@
 // program rather than only the new path. The variable comes out when the methods go in.
 use std::os::raw::c_void;
 
+mod fonts;
 mod objc;
 mod wl;
 
@@ -85,6 +86,15 @@ extern "C" fn display_screens(_this: Object, _cmd: Sel) -> Object {
     }
 }
 
+/// -allFontFamilyNames, which AppKit asks for before any window exists.
+extern "C" fn display_all_font_family_names(_this: Object, _cmd: Sel) -> Object {
+    fonts::all_family_names()
+}
+
+extern "C" fn display_typefaces(_this: Object, _cmd: Sel, family: Object) -> Object {
+    fonts::typefaces_for_family(family)
+}
+
 /// The window border geometry pair.
 ///
 /// A WAYLAND CLIENT HAS NO SERVER SIDE BORDER: xdg-shell gives the client a surface and the
@@ -132,6 +142,16 @@ pub extern "C" fn cider_wayland_appkit_register() {
                 sel: cstr!("outsetRect:forNativeWindowBorderWithStyle:"),
                 types: cstr!("{CGRect={CGPoint=dd}{CGSize=dd}}@:{CGRect={CGPoint=dd}{CGSize=dd}}L"),
                 imp: display_outset_rect as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("allFontFamilyNames"),
+                types: cstr!("@@:"),
+                imp: display_all_font_family_names as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("fontTypefacesForFamilyName:"),
+                types: cstr!("@@:@"),
+                imp: display_typefaces as *const c_void,
             },
         ])
     };

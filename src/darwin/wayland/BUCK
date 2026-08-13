@@ -178,6 +178,7 @@ darwin_rust_staticlib(
     name = "wayland_appkit_lib",
     crate_root = "appkit_backend.rs",
     srcs = [
+        "fonts.rs",
         "objc.rs",
         "wl.rs",
     ],
@@ -195,6 +196,8 @@ darwin_dylib(
     ],
     siblings = [
         "//src/linux/native:wayland-client_dylib",
+        # fontconfig, for the font methods this backend implements itself rather than inheriting.
+        "//src/linux/native:fontconfig_dylib",
         "//vendor/src:AppKit_dylib",
         "//vendor/src:Foundation_dylib",
         "//vendor/src/corefoundation:CoreFoundation_dylib",
