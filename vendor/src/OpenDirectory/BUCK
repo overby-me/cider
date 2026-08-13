@@ -121,7 +121,7 @@ cc_objects(
         "-includestdio.h",
         "-includeobjc/objc.h",
         "-I",
-        "darwin/xtrace/include",
+        "src/darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",

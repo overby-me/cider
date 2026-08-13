@@ -9936,7 +9936,7 @@ cc_objects(
         "-DMACOSX",
         "-DNDEBUG",
         "-DPLATFORM=\"darwin\"",
-        "-CIDERPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
         "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
         "-DSUFFIX=\"\"",
         "-DVERSION=\"2.7\"",
