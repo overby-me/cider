@@ -197,6 +197,33 @@ Past that point, with `-env:UserInstallation=file:///Users/root/.lo4` supplying 
 directly, LibreOffice creates its profile, registers fonts, and then dies on SIGTRAP. That is
 the frontier.
 
+## THE REMAINING WORK IS CORETEXT, measured 2026-08-13
+
+Everything above is fixed. Bootstrap completes with no override, the profile is created at the
+real `$SYSUSERCONFIG` path, thirteen fonts are registered, and the failure moves into font
+enumeration. `libvclplug_osxlo.dylib` needs 17 `CTFont*` functions:
+
+    real     CTFontGetGlyphsForCharacters  CTFontGetBoundingRectsForGlyphs
+             CTFontCreatePathForGlyph      CTFontGetSize
+    stub     CTFontCollectionCreateFromAvailableFonts
+             CTFontCollectionCreateMatchingFontDescriptors
+             CTFontDescriptorCopyAttribute   CTFontCreateWithFontDescriptor
+             CTFontCopyFontDescriptor        CTFontDrawGlyphs
+             CTFontCopyTable                 CTFontCopyAvailableTables
+             CTFontCopyVariation             CTFontCopyVariationAxes
+             CTFontCreateForString           CTFontManagerRegisterFontsForURL
+    missing  CTFontDescriptorCopyLocalizedAttribute
+
+**THE METRICS LAYER IS ALREADY REAL, which is the good news in that table.** Glyph lookup,
+bounding rects and outlines work; what is missing is ENUMERATION (collection and descriptor),
+font creation from a descriptor, and `CTFontDrawGlyphs`. LibreOffice on macOS renders all of its
+text through CoreText, so it needs those before it can show a document.
+
+That is a self-contained project with a real design choice in it: descriptors can be plain
+CFDictionaries of attributes, which is close to what they are on macOS and cheap, or a proper
+CFRuntime class. The font data itself can come from fontconfig, which this fork already uses for
+the AppKit font methods and which answered 380 families there.
+
 ## What this says about the shape of the remaining work
 
 None of this is Wayland. The display backend is not what stands between this fork and a real
