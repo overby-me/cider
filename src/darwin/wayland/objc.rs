@@ -97,6 +97,13 @@ unsafe extern "C" {
     /// AppKit. The rect goes by value, so the declaration has to say so.
     #[link_name = "objc_msgSend"]
     pub fn msg_send_frame_changed(receiver: Object, sel: Sel, window: Object, frame: NsRect, did_size: ObjcBool);
+    /// A STRUCT LARGER THAN 16 BYTES COMES BACK THROUGH objc_msgSend_stret ON x86-64, not
+    /// objc_msgSend. NSRect is 32 bytes, so calling -frame through the ordinary entry point would
+    /// read the return value from the wrong place and produce a rectangle made of whatever was in
+    /// the registers. Rust's own sret lowering puts the hidden pointer first, which is exactly
+    /// what this symbol expects.
+    #[link_name = "objc_msgSend_stret"]
+    pub fn msg_send_rect_ret(receiver: Object, sel: Sel) -> NsRect;
     /// The four-argument super call for -nextEventMatchingMask:untilDate:inMode:dequeue:.
     #[link_name = "objc_msgSendSuper"]
     pub fn msg_send_super_event(sup: *mut ObjcSuper, sel: Sel, mask: u64, until: Object, mode: Object, dequeue: ObjcBool) -> Object;

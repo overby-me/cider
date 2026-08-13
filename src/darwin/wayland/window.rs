@@ -520,6 +520,22 @@ extern "C" fn init_with_delegate(this: Object, _cmd: Sel, delegate: Object) -> O
     let mut st = Box::new(WindowState::new());
     st.delegate = delegate;
     st.owner = this;
+    // THE DELEGATE ALREADY KNOWS ITS GEOMETRY. NSWindow sets its frame in
+    // -initWithContentRect:... which runs BEFORE the platform window exists, so the initial
+    // -setFrame: never arrives here and a window that does not ask keeps whatever default this
+    // file invented. The widget probe showed exactly that: a 480x360 application drawing into a
+    // 512x384 buffer. X11Window reads the same three properties in its own initWithDelegate:.
+    if !delegate.is_null() {
+        unsafe {
+            let frame = objc::msg_send_rect_ret(delegate, objc::sel_registerName(cstr!("frame")));
+            if frame.size.width >= 1.0 && frame.size.height >= 1.0 {
+                st.frame = frame;
+            }
+            st.level = objc::msg_send_i64_ret(delegate, objc::sel_registerName(cstr!("level"))) as c_int;
+            st.style_mask =
+                objc::msg_send_usize_ret(delegate, objc::sel_registerName(cstr!("styleMask")));
+        }
+    }
     let raw = Box::into_raw(st);
     unsafe {
         let slot = (this as *mut u8).offset(off) as *mut *mut WindowState;
