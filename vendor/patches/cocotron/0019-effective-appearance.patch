@@ -1,0 +1,76 @@
+diff -u --recursive a/AppKit/include/AppKit/NSView.h b/AppKit/include/AppKit/NSView.h
+--- a/AppKit/include/AppKit/NSView.h	2026-08-13 23:34:37.175058591 +0200
++++ b/AppKit/include/AppKit/NSView.h	2026-08-13 23:34:37.215084810 +0200
+@@ -460,6 +460,7 @@
+ - (void) _setWindow: (NSWindow *) window;
+ - (void) _collectTrackingAreasForWindowInto: (NSMutableArray *) collector;
+ 
++- (NSAppearance *) effectiveAppearance;
+ @end
+ 
+ @interface NSObject (NSView_toolTipOwner)
+diff -u --recursive a/AppKit/NSAppearance.m b/AppKit/NSAppearance.m
+--- a/AppKit/NSAppearance.m	2026-08-13 23:34:37.169617257 +0200
++++ b/AppKit/NSAppearance.m	2026-08-13 23:34:37.207050544 +0200
+@@ -42,9 +42,29 @@
+ 
+ @implementation NSAppearance
+ 
++/*
++ * WORSE THAN A STUB, as written: it returned [NSAppearance alloc], an object that was never
++ * initialised. Anything that used it was reading uninitialised memory, and the STUB print made it
++ * look deliberate.
++ *
++ * One instance per name, kept forever. Appearances are compared by identity in places and there
++ * is no state behind them here, so handing back the same object per name is both cheaper and
++ * more correct than a fresh one each call.
++ */
+ + (NSAppearance *) appearanceNamed: (NSAppearanceName) name {
+-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+-    return [NSAppearance alloc];
++    static NSMutableDictionary *byName = nil;
++    if (byName == nil) {
++        byName = [[NSMutableDictionary alloc] init];
++    }
++    NSAppearance *existing = (name != nil) ? [byName objectForKey: name] : nil;
++    if (existing != nil) {
++        return existing;
++    }
++    NSAppearance *appearance = [[NSAppearance alloc] init];
++    if (name != nil && appearance != nil) {
++        [byName setObject: appearance forKey: name];
++    }
++    return appearance;
+ }
+ 
+ - (void) encodeWithCoder: (NSCoder *) aCoder {
+diff -u --recursive a/AppKit/NSView.m b/AppKit/NSView.m
+--- a/AppKit/NSView.m	2026-08-13 23:34:37.171721934 +0200
++++ b/AppKit/NSView.m	2026-08-13 23:34:37.214656307 +0200
+@@ -74,6 +74,26 @@
+ @synthesize translatesAutoresizingMaskIntoConstraints = _translatesAutoresizingMaskIntoConstraints;
+ @synthesize appearance = _appearance;
+ 
++/*
++ * The appearance actually in force, 10.14 and later: this view's own if it has one, otherwise
++ * the one it inherits. LibreOffice asks every frame view for it, and an unrecognised selector
++ * RAISES, which it then caught and reported as its own generic startup error.
++ *
++ * INHERITANCE IS THE WHOLE POINT of this accessor as opposed to -appearance: a view with no
++ * appearance of its own is not appearance-less, it uses its ancestor's. Aqua is the end of the
++ * chain because this platform has one look and no dark mode setting to read.
++ */
++- (NSAppearance *) effectiveAppearance {
++    if (_appearance != nil) {
++        return _appearance;
++    }
++    NSView *parent = [self superview];
++    if (parent != nil) {
++        return [parent effectiveAppearance];
++    }
++    return [NSAppearance appearanceNamed: NSAppearanceNameAqua];
++}
++
+ static BOOL NSViewLayersEnabled = YES;
+ static BOOL NSShowAllViews = NO;
+ 

@@ -1,0 +1,33 @@
+diff -u --recursive a/AppKit/include/AppKit/NSGraphicsContext.h b/AppKit/include/AppKit/NSGraphicsContext.h
+--- a/AppKit/include/AppKit/NSGraphicsContext.h	2026-08-13 23:25:58.485199490 +0200
++++ b/AppKit/include/AppKit/NSGraphicsContext.h	2026-08-13 23:25:58.654123902 +0200
+@@ -72,6 +72,7 @@
+ + (BOOL) currentContextDrawingToScreen;
+ 
+ - (CGContextRef) graphicsPort;
++- (CGContextRef) CGContext;
+ - (NSMutableArray *) focusStack;
+ 
+ - (BOOL) isDrawingToScreen;
+diff -u --recursive a/AppKit/NSGraphicsContext.m b/AppKit/NSGraphicsContext.m
+--- a/AppKit/NSGraphicsContext.m	2026-08-13 23:25:58.480199461 +0200
++++ b/AppKit/NSGraphicsContext.m	2026-08-13 23:25:58.653615586 +0200
+@@ -207,6 +207,18 @@
+     return _graphicsPort;
+ }
+ 
++/*
++ * The 10.10 name for the same thing. -graphicsPort above is the original spelling and everything
++ * written since calls this one instead; LibreOffice does, and an unrecognised selector RAISES, so
++ * its absence was a caught exception and a GUI that died in six lines of log.
++ *
++ * It is the SAME context, not a copy: both hand back the ivar without retaining, which is what
++ * the caller expects from an accessor that does not say Copy or Create.
++ */
++- (CGContextRef) CGContext {
++    return _graphicsPort;
++}
++
+ - (NSMutableArray *) focusStack {
+     return _focusStack;
+ }
