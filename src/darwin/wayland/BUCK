@@ -179,6 +179,7 @@ darwin_rust_staticlib(
     crate_root = "appkit_backend.rs",
     srcs = [
         "colors.rs",
+        "display.rs",
         "fonts.rs",
         "objc.rs",
         "session.rs",

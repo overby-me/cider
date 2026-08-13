@@ -65,6 +65,15 @@ unsafe extern "C" {
     pub fn msg_send_obj(receiver: Object, sel: Sel, obj: Object) -> Object;
     #[link_name = "objc_msgSend"]
     pub fn msg_send_f64_2(receiver: Object, sel: Sel, a: f64, b: f64) -> Object;
+    /// Counting and indexing an NSArray, which is the whole of what walking one needs.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_usize_ret(receiver: Object, sel: Sel) -> usize;
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_usize(receiver: Object, sel: Sel, index: usize) -> Object;
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_i64_ret(receiver: Object, sel: Sel) -> i64;
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_i64(receiver: Object, sel: Sel, value: i64) -> Object;
 }
 
 /// AppKit geometry: two doubles of origin, two of size. repr(C) so the struct is passed the way

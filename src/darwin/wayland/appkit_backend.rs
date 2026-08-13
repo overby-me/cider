@@ -16,6 +16,7 @@
 use std::os::raw::c_void;
 
 mod colors;
+mod display;
 mod fonts;
 mod objc;
 mod session;
@@ -141,8 +142,9 @@ extern "C" fn display_outset_rect(_this: Object, _cmd: Sel, frame: NsRect, _styl
 /// as the bundle loads.
 #[unsafe(no_mangle)]
 pub extern "C" fn cider_wayland_appkit_register() {
-    let cls: Class = unsafe {
-        objc::register_subclass(cstr!("NSDisplayWayland"), cstr!("NSDisplay"), &[
+    // The methods that needed a file of their own, plus display.rs, which holds the 18 whose
+    // answer is a constant, a nil or a walk of AppKit's own state.
+    let mut methods = vec![
             objc::MethodDef {
                 sel: cstr!("init"),
                 // "@@:" is: returns id, takes self and _cmd.
@@ -197,7 +199,10 @@ pub extern "C" fn cider_wayland_appkit_register() {
                 types: cstr!("v@:@@"),
                 imp: display_add_system_color as *const c_void,
             },
-        ])
+    ];
+    methods.extend(display::methods());
+    let cls: Class = unsafe {
+        objc::register_subclass(cstr!("NSDisplayWayland"), cstr!("NSDisplay"), &methods)
     };
     if cls.is_null() {
         println!("cider-wayland-appkit register=FAILED reason=no-NSDisplay-superclass");
