@@ -36,6 +36,9 @@ pub struct WindowState {
     pub xdg: *mut wl::XdgSurface,
     pub toplevel: *mut wl::XdgToplevel,
     pub delegate: Object,
+    /// The ObjC instance this state belongs to. A listener is handed the Rust state and the
+    /// delegate expects the CGWindow, so one of the two has to point at the other.
+    pub owner: Object,
     pub frame: NsRect,
     pub configured: bool,
     pub mapped: bool,
@@ -68,6 +71,7 @@ impl WindowState {
             xdg: std::ptr::null_mut(),
             toplevel: std::ptr::null_mut(),
             delegate: std::ptr::null_mut(),
+            owner: std::ptr::null_mut(),
             frame: NsRect::new(0.0, 0.0, 512.0, 384.0),
             configured: false,
             mapped: false,
@@ -119,6 +123,63 @@ extern "C" fn on_configure(data: *mut c_void, surface: *mut wl::XdgSurface, seri
 /// libwayland requires: it keeps the pointer, it does not copy the struct.
 static XDG_LISTENER: wl::XdgSurfaceListener = wl::XdgSurfaceListener { configure: on_configure };
 
+/// The compositor's opinion about the window's size and state.
+///
+/// ZERO MEANS THE CLIENT DECIDES, which is the protocol and not a missing value: a compositor that
+/// has no opinion sends 0x0, and treating that as a resize to nothing would collapse the window.
+extern "C" fn on_toplevel_configure(
+    data: *mut c_void,
+    _toplevel: *mut wl::XdgToplevel,
+    width: i32,
+    height: i32,
+    _states: *mut c_void,
+) {
+    if width <= 0 || height <= 0 {
+        return;
+    }
+    let Some(st) = (unsafe { (data as *mut WindowState).as_mut() }) else { return };
+    if st.frame.size.width as i32 == width && st.frame.size.height as i32 == height {
+        return;
+    }
+    st.frame.size.width = width as f64;
+    st.frame.size.height = height as f64;
+    release_backing(st);
+    st.reported_drawn = false;
+    println!("cider-wayland-window configured number={} size={width}x{height}", st.number);
+    // AppKit is TOLD, rather than left with a frame the compositor has already overruled. This is
+    // the one direction Wayland does drive: the client asks for nothing and is informed.
+    if !st.delegate.is_null() {
+        unsafe {
+            let sel = objc::sel_registerName(cstr!("platformWindow:frameChanged:didSize:"));
+            objc::msg_send_frame_changed(st.delegate, sel, st.owner, st.frame, objc::YES);
+        }
+    }
+}
+
+/// The compositor is asking the window to close, which is a REQUEST and not an order: AppKit
+/// decides, exactly as it does for a close button, and may refuse.
+extern "C" fn on_toplevel_close(data: *mut c_void, _toplevel: *mut wl::XdgToplevel) {
+    let Some(st) = (unsafe { (data as *mut WindowState).as_mut() }) else { return };
+    println!("cider-wayland-window close-requested number={}", st.number);
+    if !st.delegate.is_null() {
+        unsafe {
+            let sel = objc::sel_registerName(cstr!("platformWindowWillClose:"));
+            objc::msg_send_obj(st.delegate, sel, st.owner);
+        }
+    }
+}
+
+extern "C" fn on_configure_bounds(_d: *mut c_void, _t: *mut wl::XdgToplevel, _w: i32, _h: i32) {}
+
+extern "C" fn on_wm_capabilities(_d: *mut c_void, _t: *mut wl::XdgToplevel, _c: *mut c_void) {}
+
+static TOPLEVEL_LISTENER: wl::XdgToplevelListener = wl::XdgToplevelListener {
+    configure: on_toplevel_configure,
+    close: on_toplevel_close,
+    configure_bounds: on_configure_bounds,
+    wm_capabilities: on_wm_capabilities,
+};
+
 /// Create the surface, the xdg_surface and the toplevel, then complete the configure handshake.
 ///
 /// AN EMPTY COMMIT COMES FIRST. That is the protocol: committing with no buffer asks the
@@ -147,6 +208,11 @@ fn create_surface(st: &mut WindowState) -> bool {
             return false;
         }
         wl::cider_xdg_surface_add_listener(st.xdg, &XDG_LISTENER, st as *mut WindowState as *mut c_void);
+        wl::cider_xdg_toplevel_add_listener(
+            st.toplevel,
+            &TOPLEVEL_LISTENER,
+            st as *mut WindowState as *mut c_void,
+        );
         wl::cider_wl_surface_commit(st.surface);
         for _ in 0..20 {
             session::roundtrip();
@@ -453,6 +519,7 @@ extern "C" fn init_with_delegate(this: Object, _cmd: Sel, delegate: Object) -> O
     }
     let mut st = Box::new(WindowState::new());
     st.delegate = delegate;
+    st.owner = this;
     let raw = Box::into_raw(st);
     unsafe {
         let slot = (this as *mut u8).offset(off) as *mut *mut WindowState;

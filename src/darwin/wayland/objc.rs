@@ -93,6 +93,13 @@ unsafe extern "C" {
     /// -[NSFontTypeface initWithName:traitName:traits:], where the mask is an NSUInteger.
     #[link_name = "objc_msgSend"]
     pub fn msg_send_face_init(receiver: Object, sel: Sel, name: Object, trait_name: Object, traits: u64) -> Object;
+    /// -platformWindow:frameChanged:didSize:, which is how a compositor-driven resize reaches
+    /// AppKit. The rect goes by value, so the declaration has to say so.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_frame_changed(receiver: Object, sel: Sel, window: Object, frame: NsRect, did_size: ObjcBool);
+    /// The four-argument super call for -nextEventMatchingMask:untilDate:inMode:dequeue:.
+    #[link_name = "objc_msgSendSuper"]
+    pub fn msg_send_super_event(sup: *mut ObjcSuper, sel: Sel, mask: u64, until: Object, mode: Object, dequeue: ObjcBool) -> Object;
 }
 
 /// AppKit geometry: two doubles of origin, two of size. repr(C) so the struct is passed the way

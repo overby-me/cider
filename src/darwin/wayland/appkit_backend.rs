@@ -62,6 +62,31 @@ extern "C" fn display_init(this: Object, _cmd: Sel) -> Object {
     this
 }
 
+/// -nextEventMatchingMask:untilDate:inMode:dequeue:, which is where an application spends its
+/// life.
+///
+/// THE OVERRIDE EXISTS TO SERVICE THE CONNECTION, not to produce events. NSDisplay's own
+/// implementation manages the queue perfectly well and is chained to; what it cannot do is read
+/// the Wayland socket, and a client that never reads it never learns it was resized, never sees a
+/// close request, and never answers a ping. A compositor treats an unanswered ping as a hung
+/// application, so the symptom of skipping this is a window that stops responding rather than an
+/// error anyone can see. This is the same shape as the X11 backend, which calls
+/// -processPendingEvents here for the same reason.
+extern "C" fn display_next_event(
+    this: Object,
+    _cmd: Sel,
+    mask: u64,
+    until: Object,
+    mode: Object,
+    dequeue: objc::ObjcBool,
+) -> Object {
+    session::pump();
+    let super_class = unsafe { objc::class_getSuperclass(objc::object_getClass(this)) };
+    let mut sup = ObjcSuper { receiver: this, super_class };
+    let sel = unsafe { objc::sel_registerName(cstr!("nextEventMatchingMask:untilDate:inMode:dequeue:")) };
+    unsafe { objc::msg_send_super_event(&mut sup, sel, mask, until, mode, dequeue) }
+}
+
 /// -newWindowWithDelegate:, the method that makes this a window system at all.
 ///
 /// AppKit owns the returned window: the name begins with new, so the caller has the reference and
@@ -178,6 +203,11 @@ pub extern "C" fn cider_wayland_appkit_register() {
                 sel: cstr!("fontTypefacesForFamilyName:"),
                 types: cstr!("@@:@"),
                 imp: display_typefaces as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("nextEventMatchingMask:untilDate:inMode:dequeue:"),
+                types: cstr!("@@:Q@@c"),
+                imp: display_next_event as *const c_void,
             },
             objc::MethodDef {
                 sel: cstr!("newWindowWithDelegate:"),

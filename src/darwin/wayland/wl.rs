@@ -64,6 +64,16 @@ unsafe extern "C" {
     pub fn cider_xdg_wm_base_get_xdg_surface(b: *mut XdgWmBase, s: *mut WlSurface) -> *mut XdgSurface;
     pub fn cider_xdg_surface_get_toplevel(s: *mut XdgSurface) -> *mut XdgToplevel;
     pub fn cider_xdg_toplevel_set_title(t: *mut XdgToplevel, title: *const c_char);
+    pub fn cider_xdg_toplevel_add_listener(t: *mut XdgToplevel, l: *const XdgToplevelListener, data: *mut c_void) -> c_int;
+
+    /// THE NON-BLOCKING PUMP. roundtrip is the wrong shape for an event loop: it waits for the
+    /// server to answer a sync, so an application that pumps per iteration would block on every
+    /// idle pass. prepare_read, read_events and dispatch_pending are the sequence libwayland
+    /// documents for a client that has its own loop.
+    pub fn wl_display_dispatch_pending(display: *mut WlDisplay) -> c_int;
+    pub fn wl_display_prepare_read(display: *mut WlDisplay) -> c_int;
+    pub fn wl_display_read_events(display: *mut WlDisplay) -> c_int;
+    pub fn wl_display_cancel_read(display: *mut WlDisplay);
     pub fn cider_xdg_surface_ack_configure(s: *mut XdgSurface, serial: u32);
     pub fn cider_wl_surface_commit(s: *mut WlSurface);
     pub fn cider_xdg_surface_add_listener(s: *mut XdgSurface, l: *const XdgSurfaceListener, data: *mut c_void) -> c_int;
@@ -188,4 +198,25 @@ pub struct WlBufferListener {
 #[repr(C)]
 pub struct WlCallbackListener {
     pub done: extern "C" fn(data: *mut c_void, callback: *mut WlCallback, time: u32),
+}
+
+/// FOUR MEMBERS, NOT TWO, and the last two are why. libwayland dispatches an event by INDEXING
+/// this struct with the opcode, so a struct shorter than the interface's event list calls whatever
+/// follows it in memory. configure_bounds and wm_capabilities only arrive at versions 4 and 5 and
+/// this binds version 1, so they cannot fire today; declaring them costs two pointers and removes
+/// the question entirely.
+#[repr(C)]
+pub struct XdgToplevelListener {
+    pub configure: extern "C" fn(
+        data: *mut c_void,
+        toplevel: *mut XdgToplevel,
+        width: i32,
+        height: i32,
+        states: *mut c_void,
+    ),
+    pub close: extern "C" fn(data: *mut c_void, toplevel: *mut XdgToplevel),
+    pub configure_bounds:
+        extern "C" fn(data: *mut c_void, toplevel: *mut XdgToplevel, width: i32, height: i32),
+    pub wm_capabilities:
+        extern "C" fn(data: *mut c_void, toplevel: *mut XdgToplevel, capabilities: *mut c_void),
 }

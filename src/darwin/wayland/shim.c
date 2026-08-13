@@ -71,6 +71,12 @@ struct xdg_toplevel *cider_xdg_surface_get_toplevel(struct xdg_surface *surface)
 	return xdg_surface_get_toplevel(surface);
 }
 
+int cider_xdg_toplevel_add_listener(struct xdg_toplevel *toplevel,
+                                    const struct xdg_toplevel_listener *listener, void *data)
+{
+	return xdg_toplevel_add_listener(toplevel, listener, data);
+}
+
 void cider_xdg_toplevel_set_title(struct xdg_toplevel *toplevel, const char *title) {
 	xdg_toplevel_set_title(toplevel, title);
 }

@@ -158,6 +158,39 @@ pub fn flush() {
     }
 }
 
+/// Service the connection WITHOUT WAITING, which is what an event loop needs.
+///
+/// roundtrip is the wrong shape here: it waits for the server to answer a sync, so an application
+/// that pumps once per loop iteration would block on every idle pass. This is the sequence
+/// libwayland documents for a client with its own loop: drain what is already decoded, flush what
+/// is queued, then read whatever has arrived.
+///
+/// THE SOCKET IS NON-BLOCKING, which is what makes the read safe to do without polling first. That
+/// matters more here than in an ordinary client: the descriptor belongs to the HOST libwayland,
+/// reached through the forwarding stub, so a guest poll on it would be asking the emulated kernel
+/// about a descriptor it has never seen.
+pub fn pump() {
+    let d = display();
+    if d.is_null() {
+        return;
+    }
+    unsafe {
+        // prepare_read fails while anything is already decoded, so drain first. The loop is
+        // libwayland's own idiom, not a retry.
+        while wl::wl_display_prepare_read(d) != 0 {
+            if wl::wl_display_dispatch_pending(d) < 0 {
+                return;
+            }
+        }
+        wl::wl_display_flush(d);
+        if wl::wl_display_read_events(d) < 0 {
+            wl::wl_display_cancel_read(d);
+            return;
+        }
+        wl::wl_display_dispatch_pending(d);
+    }
+}
+
 /// Flush and wait for the server to catch up. Used where the next step depends on an event that
 /// has already been asked for, which is the only honest way to wait in this protocol.
 pub fn roundtrip() {
