@@ -334,6 +334,49 @@ mkdir -p "$(dirname "$out")"
 exec "$@" "$out"
 '''
 
+# WAYLAND PROTOCOL CODEGEN (#112). The GUI backend talks xdg-shell, which is an EXTENSION: the
+# core wl_ interfaces are exported by libwayland-client itself, but an extension exists only as
+# XML plus whatever wayland-scanner makes of it. So this is the same shape as bison_gen and
+# mig_gen, one tool over one input producing a .c and a .h.
+#
+# BOTH THE SCANNER AND THE XML COME FROM THE CONFIG, not from the tree, for the same reason the
+# compiler does: they are nixpkgs store paths that scripts/buck-setup.nu resolves per machine.
+# `private-code` rather than `code`, because the generated symbols are internal to this backend
+# and must not be exported from the dylib.
+_WAYLAND_SCANNER = read_root_config("cider", "wayland_scanner", "")
+_WAYLAND_PROTOCOLS = read_root_config("cider", "wayland_protocols", "")
+
+def _wayland_protocol_impl(ctx):
+    if not _WAYLAND_SCANNER or not _WAYLAND_PROTOCOLS:
+        fail("wayland_protocol needs [cider] wayland_scanner and wayland_protocols in " +
+             ".buckconfig.local: run scripts/buck-setup.nu")
+    xml = _WAYLAND_PROTOCOLS + "/" + ctx.attrs.protocol
+    out_c = ctx.actions.declare_output(ctx.attrs.out_c)
+    out_h = ctx.actions.declare_output(ctx.attrs.out_h)
+    ctx.actions.run(
+        cmd_args([_WAYLAND_SCANNER, "private-code", xml, out_c.as_output()]),
+        category = "wayland_scanner",
+        identifier = ctx.attrs.out_c,
+    )
+    ctx.actions.run(
+        cmd_args([_WAYLAND_SCANNER, "client-header", xml, out_h.as_output()]),
+        category = "wayland_scanner_header",
+        identifier = ctx.attrs.out_h,
+    )
+    return _codegen_providers(ctx, [out_c, out_h], [out_c], [out_h])
+
+wayland_protocol = rule(
+    impl = _wayland_protocol_impl,
+    attrs = {
+        "header_root": attrs.string(default = ""),
+        "out_c": attrs.string(),
+        "out_h": attrs.string(),
+        # Relative to the wayland-protocols share directory, e.g.
+        # stable/xdg-shell/xdg-shell.xml
+        "protocol": attrs.string(),
+    },
+)
+
 def _host_gen_impl(ctx):
     runner = ctx.actions.write(ctx.label.name + "__run.sh", _HOST_GEN_RUNNER, is_executable = True)
     out = ctx.actions.declare_output(ctx.attrs.out)
