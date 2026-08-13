@@ -11,6 +11,22 @@
 #import <AppKit/AppKit.h>
 #import <stdio.h>
 
+// A view that PAINTS SOMETHING NOTHING ELSE WOULD, so "did it render" is answerable by looking
+// at the pixels rather than by trusting that a context was constructed. The colour is deliberately
+// not a grey, a black or a white: those are what an uninitialised or cleared buffer looks like.
+@interface CiderProbeView : NSView
+@end
+
+@implementation CiderProbeView
+- (void) drawRect: (NSRect) dirty {
+	[[NSColor colorWithCalibratedRed: 1.0 green: 0.0 blue: 0.5 alpha: 1.0] set];
+	NSRectFill([self bounds]);
+	printf("APPKIT_PROBE drew rect=%dx%d\n",
+		(int) [self bounds].size.width, (int) [self bounds].size.height);
+	fflush(stdout);
+}
+@end
+
 int main(int argc, const char **argv) {
 	printf("APPKIT_PROBE start\n");
 	fflush(stdout);
@@ -66,8 +82,23 @@ int main(int argc, const char **argv) {
 		fflush(stdout);
 
 		[win setTitle:@"cider buck2 probe"];
+
+		// A CONTENT VIEW, so there is something to draw. Without one the window is created and
+		// mapped and the buffer stays exactly as the backend cleared it, which proves the surface
+		// exists but says nothing about whether drawing reaches it.
+		CiderProbeView *view = [[CiderProbeView alloc] initWithFrame: frame];
+		[win setContentView: view];
+
 		[win makeKeyAndOrderFront:nil];
 		printf("APPKIT_PROBE ordered-front\n");
+		fflush(stdout);
+
+		// FORCE THE DRAW rather than waiting for the run loop to decide. displayIfNeeded would
+		// depend on whether anything marked the view dirty; -display always goes through
+		// -drawRect:, which is the path being tested.
+		[view display];
+		[win flushWindow];
+		printf("APPKIT_PROBE displayed\n");
 		fflush(stdout);
 
 		// One pass of the event loop with no wait, so the probe exercises the run loop

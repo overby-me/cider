@@ -56,6 +56,9 @@ pub struct WindowState {
     pub map_len: usize,
     /// The O2Context, retained. AppKit asks for it repeatedly and expects the same one back.
     pub context: Object,
+    /// Whether the drawn-pixel count has been printed. Once is enough: it answers a question about
+    /// whether drawing works at all, not one about every frame.
+    pub reported_drawn: bool,
 }
 
 impl WindowState {
@@ -80,6 +83,7 @@ impl WindowState {
             pixels: std::ptr::null_mut(),
             map_len: 0,
             context: std::ptr::null_mut(),
+            reported_drawn: false,
         }
     }
 }
@@ -189,6 +193,11 @@ unsafe extern "C" {
 /// Onyx2D treats as alpha. That equality is what makes the mapping shareable with no conversion.
 const BITMAP_INFO: u32 = 2 | 0x2000;
 
+/// What a fresh window is cleared to: opaque light grey, so an undrawn window is visibly a window
+/// rather than whatever the pages happened to contain. It is also the value the drawn-pixel count
+/// measures against, which is why it is a constant rather than a literal in one place.
+const CLEAR_PIXEL: u32 = 0xffee_eeee;
+
 /// Make sure the window has shm pages of the right size, mapped, with a wl_buffer over them.
 ///
 /// Returns false if anything failed, with a reason in the log. Every caller treats false as "there
@@ -237,11 +246,9 @@ fn ensure_backing(st: &mut WindowState) -> bool {
         println!("cider-wayland-window backing=FAILED reason=mmap");
         return false;
     }
-    // Opaque light grey, so an undrawn window is visibly a window rather than whatever the pages
-    // happened to contain. The high byte is what Wayland ignores and Onyx2D reads as alpha.
     unsafe {
         let words = std::slice::from_raw_parts_mut(map as *mut u32, size / 4);
-        words.fill(0xffee_eeee);
+        words.fill(CLEAR_PIXEL);
     }
 
     unsafe {
@@ -310,6 +317,34 @@ fn present(st: &mut WindowState) {
             st.number, st.buffer_w, st.buffer_h
         );
     }
+    report_pixels(st);
+}
+
+/// Say whether anything was actually DRAWN into the pages, once.
+///
+/// A context that constructs is not a context that renders, and the two failures look identical
+/// from outside: both produce a window. Counting the pixels that differ from the fill this backend
+/// wrote is the cheapest honest distinction, and it reads the same memory the compositor maps, so
+/// there is nothing between the measurement and the truth.
+fn report_pixels(st: &mut WindowState) {
+    if st.pixels.is_null() || st.reported_drawn {
+        return;
+    }
+    let total = st.map_len / 4;
+    if total == 0 {
+        return;
+    }
+    let words = unsafe { std::slice::from_raw_parts(st.pixels as *const u32, total) };
+    let drawn = words.iter().filter(|&&w| w != CLEAR_PIXEL).count();
+    if drawn == 0 {
+        return;
+    }
+    st.reported_drawn = true;
+    let centre = words[total / 2 + (st.buffer_w as usize) / 2];
+    println!(
+        "cider-wayland-window pixels=drawn number={} changed={drawn}/{total} centre={centre:08x}",
+        st.number
+    );
 }
 
 /// The drawing context, built over the shm pages.
@@ -500,6 +535,7 @@ extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
         // holding a context over a mapping that no longer exists, which is the same contract
         // X11Window has through -invalidateContextWithNewSize:.
         release_backing(st);
+        st.reported_drawn = false;
         let delegate = st.delegate;
         present(st);
         if !delegate.is_null() {

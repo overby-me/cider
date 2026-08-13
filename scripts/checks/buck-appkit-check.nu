@@ -185,6 +185,11 @@ def main [scratch?: string] {
         ["cider-wayland-window create=ok" "an xdg_toplevel was created and configured for the NSWindow"]
         ["cider-wayland-window context=ok" "an O2Context was built over the shm mapping"]
         ["cider-wayland-window mapped=yes" "the buffer was attached and committed"]
+        # THE ONE THAT SAYS DRAWING WORKS. Everything above is satisfied by a window that renders
+        # nothing: a context that constructs is not a context that renders, and both produce a
+        # window. This counts pixels that differ from the fill the backend wrote, in the same
+        # mapping the compositor reads.
+        ["cider-wayland-window pixels=drawn" "AppKit drawing reached the pages the compositor maps"]
     ] {
         if ($out | str contains ($m | get 0)) {
             say $"  ok: ($m | get 1)"
