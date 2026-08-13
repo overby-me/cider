@@ -1,0 +1,24 @@
+diff -u --recursive a/osfmk/kern/clock.c b/osfmk/kern/clock.c
+--- a/osfmk/kern/clock.c	2026-08-13 16:31:43.737248078 +0200
++++ b/osfmk/kern/clock.c	2026-08-13 16:31:43.752605635 +0200
+@@ -359,7 +359,20 @@
+ {
+ 	clock_oldconfig();
+ 
++#ifndef __DARLING__
+ 	ntp_init();
++#else
++	/*
++	 * kern_ntptime.c is not in this tree, so ntp_init has no definition to link against and
++	 * calling clock_config at all was impossible. That is why it was never called, and why
++	 * ticks_per_sec stayed ZERO for the life of the daemon: every calendar clock read divided
++	 * by it and took the daemon out with SIGFPE, FPE_INTDIV.
++	 *
++	 * Skipping it is correct rather than merely convenient. ntp_init only sets up the NTP
++	 * adjustment state, and with no adjustment the scale factors reduce to the unadjusted
++	 * case, which is what a guest with no time daemon should see anyway.
++	 */
++#endif
+ 
+ 	nanoseconds_to_absolutetime((uint64_t)NSEC_PER_SEC, &ticks_per_sec);
+ }

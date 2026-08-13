@@ -75,6 +75,7 @@ extern "C" {
     fn host_notify_init();
     fn user_data_attr_manager_init();
     fn waitq_bootstrap();
+    fn clock_config();
     fn clock_init();
     fn turnstiles_init();
     fn host_statistics_init();
@@ -229,6 +230,18 @@ pub unsafe extern "C" fn xnu_sys_init(hooks: *const xnu_sys_hooks_t) {
 
     log_debug("waitq_bootstrap");
     waitq_bootstrap();
+
+    // CLOCK_CONFIG BEFORE CLOCK_INIT, which is XNU's own order: config is called once at boot
+    // and init once per processor. Only init was called here, and config is the one that sets
+    // ticks_per_sec.
+    //
+    // THE COST OF SKIPPING IT WAS A DEAD DAEMON. ticks_per_sec stayed zero, and every calendar
+    // clock read divides by it: get_scaled_time does scale /= ticks_per_sec and scale_delta does
+    // delta / ticks_per_sec. The daemon died of SIGFPE, FPE_INTDIV, inside
+    // mach_msg_overwrite_trap, and the guest then saw ECONNREFUSED on its next RPC, which is a
+    // symptom two layers away from the cause.
+    log_debug("clock_config");
+    clock_config();
 
     log_debug("clock_init");
     clock_init();
