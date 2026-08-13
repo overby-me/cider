@@ -1,0 +1,100 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:codegen.bzl", "wayland_protocol")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:rust.bzl", "darwin_rust_staticlib")
+
+# THE WAYLAND GUI BACKEND (#112). CoreGraphics loads *.backend bundles at runtime and takes the
+# first whose principal class answers isAvailable, which is how Cocotron's X11.backend plugs in
+# today. This package is the Wayland one, and it is FIRST PARTY: Cocotron is dead upstream, so a
+# feature-sized patch to a pin would be the wrong place for it.
+#
+# The core wl_ interfaces are exported by libwayland-client itself, which reaches this process as
+# a Mach-O forwarding stub (//src/linux/native:wayland-client_dylib). Only EXTENSIONS have to be
+# generated, and xdg-shell is the one that makes a surface into a window.
+wayland_protocol(
+    name = "xdg_shell_protocol",
+    out_c = "xdg-shell-protocol.c",
+    out_h = "xdg-shell-client-protocol.h",
+    protocol = "stable/xdg-shell/xdg-shell.xml",
+    visibility = ["PUBLIC"],
+)
+
+# THE CORE PROTOCOL, GENERATED LOCALLY, and the reason is measured rather than stylistic. The
+# forwarding stub for libwayland-client exports its FUNCTIONS (wl_display_connect,
+# wl_proxy_marshal_flags, wl_proxy_add_listener) and none of its DATA: wl_registry_interface and
+# wl_compositor_interface come back 0 from llvm-nm. Every protocol call needs one of those
+# interface structs, so they are generated from the same XML upstream uses. See
+# nix/wayland-core-protocol.nix for where the XML comes from, since nixpkgs ships it nowhere.
+wayland_protocol(
+    name = "core_protocol",
+    core = True,
+    out_c = "wayland-protocol.c",
+    out_h = "wayland-client-protocol.h",
+    protocol = "wayland.xml",
+    visibility = ["PUBLIC"],
+)
+
+# The inline layer and the generated interfaces, compiled as guest C. shim.c says why it has to
+# exist: a forwarding stub carries real symbols, and libwayland's per-object calls are static
+# inline while its wl_interface objects are data.
+cc_objects(
+    name = "wayland_glue_obj",
+    srcs = ["shim.c"],
+    # GENERATED .c FILES COME THROUGH gen_srcs, not srcs: a codegen target's default outputs are
+    # the .c AND the .h, so listing it in srcs asks the compiler to build the header as a
+    # translation unit. gen_srcs takes GeneratedSourcesInfo, which is only the sources.
+    gen_srcs = [
+        ":core_protocol",
+        ":xdg_shell_protocol",
+    ],
+    compiler_flags = [
+        "-Wno-unused-parameter",
+    ],
+    # THE GUEST TOOLCHAIN. Without this the objects are built for the host and the link says
+    # "ignoring file ... building for macOS-x86_64", which reads like an architecture problem and
+    # is really a toolchain one.
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        # BOTH in srcs and in deps, and that is not redundant: srcs takes the generated .c
+        # through GeneratedSourcesInfo, deps takes the generated .h through the include root the
+        # codegen rule stages. A consumer that lists only srcs cannot find the header.
+        ":core_protocol",
+        ":xdg_shell_protocol",
+        "//src/darwin:sdk_env",
+        "//src/linux/native:host_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# THREE FILES, which is only possible since the endpoint learned to stage a guest crate's
+# directory. probe.rs is the crate root, wl.rs is the FFI, and both would vanish from the Nix
+# build if that regressed.
+darwin_rust_staticlib(
+    name = "wayland_probe_lib",
+    crate_root = "probe.rs",
+    srcs = ["wl.rs"],
+    visibility = ["PUBLIC"],
+)
+
+# THE PROBE, and it is not the backend. It proves at RUNTIME that a Mach-O binary under Cider can
+# reach the host compositor: connect, sweep the registry, name what is there. Run it against the
+# headless weston the checks use, or against a real session.
+darwin_binary(
+    name = "cider-wayland-probe",
+    objs = [
+        # crt1 FIRST, for the same reason as every other guest binary here: it is what references
+        # _main and the archive that defines it is loaded lazily.
+        "//vendor/src/csu:crt1.10.6_obj2",
+        ":wayland_probe_lib",
+        ":wayland_glue_obj",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//src/linux/native:wayland-client_dylib",
+    ],
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

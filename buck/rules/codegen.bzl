@@ -345,12 +345,19 @@ exec "$@" "$out"
 # and must not be exported from the dylib.
 _WAYLAND_SCANNER = read_root_config("cider", "wayland_scanner", "")
 _WAYLAND_PROTOCOLS = read_root_config("cider", "wayland_protocols", "")
+_WAYLAND_CORE = read_root_config("cider", "wayland_core_protocol", "")
 
 def _wayland_protocol_impl(ctx):
     if not _WAYLAND_SCANNER or not _WAYLAND_PROTOCOLS:
         fail("wayland_protocol needs [cider] wayland_scanner and wayland_protocols in " +
              ".buckconfig.local: run scripts/buck-setup.nu")
-    xml = _WAYLAND_PROTOCOLS + "/" + ctx.attrs.protocol
+    # CORE OR EXTENSION. The extensions live in the wayland-protocols share directory; the core
+    # XML is extracted from the wayland source by nix/wayland-core-protocol.nix, because no
+    # installed output carries it.
+    root = _WAYLAND_CORE if ctx.attrs.core else _WAYLAND_PROTOCOLS
+    if not root:
+        fail("wayland_protocol: no XML root in .buckconfig.local, run scripts/buck-setup.nu")
+    xml = root + "/" + ctx.attrs.protocol
     out_c = ctx.actions.declare_output(ctx.attrs.out_c)
     out_h = ctx.actions.declare_output(ctx.attrs.out_h)
     ctx.actions.run(
@@ -368,6 +375,8 @@ def _wayland_protocol_impl(ctx):
 wayland_protocol = rule(
     impl = _wayland_protocol_impl,
     attrs = {
+        # The core protocol comes from a different root than the extensions.
+        "core": attrs.bool(default = False),
         "header_root": attrs.string(default = ""),
         "out_c": attrs.string(),
         "out_h": attrs.string(),

@@ -226,6 +226,11 @@ def main [--all] {
         | complete | get stdout | str trim | lines | last)
     let wl_protocols = (do -i { ^nix build "nixpkgs#wayland-protocols" --no-link --print-out-paths }
         | complete | get stdout | str trim | lines | last)
+    # THE CORE PROTOCOL IS OURS TO SUPPLY, and nix/wayland-core-protocol.nix says why: a
+    # forwarding stub carries functions, not the wl_ interface DATA every protocol call needs,
+    # and nixpkgs ships that XML in no output of wayland.
+    let wl_core = (do -i { ^nix build ".#wayland-core-protocol" --no-link --print-out-paths }
+        | complete | get stdout | str trim | lines | last)
     let wayland_conf = (if ($wl_scanner | is-empty) or ($wl_protocols | is-empty) {
         print "  wayland: NOT resolved, the backend targets will not configure"
         ""
@@ -233,6 +238,7 @@ def main [--all] {
         print $"  wayland-scanner: ($wl_scanner)"
         $"wayland_scanner = ($wl_scanner)/bin/wayland-scanner
 wayland_protocols = ($wl_protocols)/share/wayland-protocols
+wayland_core_protocol = ($wl_core)
 "
     })
 

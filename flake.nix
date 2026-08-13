@@ -1032,6 +1032,13 @@
       # library, so a Mach-O Rust binary stops depending on a directory somebody unpacked in
       # /tmp. scripts/buck-setup.nu writes its store path into .buckconfig.local.
       #   nix build .#darwin-rust
+      # The core Wayland protocol XML, which nixpkgs ships in no output. See the file for why a
+      # forwarding stub cannot supply the wl_*_interface DATA symbols and the interfaces have to
+      # be generated locally instead.
+      #
+      #   nix build .#wayland-core-protocol
+      packages.wayland-core-protocol = pkgs: import ./nix/wayland-core-protocol.nix { inherit pkgs; };
+
       packages.darwin-rust = pkgs: pkgs.callPackage ./nix/darwinRust.nix { };
 
       packages.specs-tool =
