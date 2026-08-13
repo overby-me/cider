@@ -1,0 +1,52 @@
+diff -u --recursive a/CoreText/CTFontCollection.m b/CoreText/CTFontCollection.m
+--- a/CoreText/CTFontCollection.m	2026-08-13 15:57:18.774920903 +0200
++++ b/CoreText/CTFontCollection.m	2026-08-13 15:57:31.651344752 +0200
+@@ -1,5 +1,10 @@
+ #import <CoreText/CTFontCollection.h>
+ 
++// The only collection OPTION anything here asks for. Same reason as the variation axes key: it
++// is a data symbol, so it is bound at load and a missing one is a process that never starts.
++const CFStringRef kCTFontCollectionRemoveDuplicatesOption =
++        CFSTR("NSCTFontCollectionRemoveDuplicatesOption");
++
+ CTFontCollectionRef CTFontCollectionCreateFromAvailableFonts(CFDictionaryRef options)
+ {
+     printf("STUB %s\n", __PRETTY_FUNCTION__);
+diff -u --recursive a/CoreText/CTFontDescriptor.m b/CoreText/CTFontDescriptor.m
+--- a/CoreText/CTFontDescriptor.m	2026-08-13 15:57:18.772920890 +0200
++++ b/CoreText/CTFontDescriptor.m	2026-08-13 15:57:31.651230803 +0200
+@@ -9,6 +9,11 @@
+ const CFStringRef kCTFontStyleNameAttribute = CFSTR("NSFontFaceAttribute");
+ const CFStringRef kCTFontTraitsAttribute = CFSTR("NSCTFontTraitsAttribute");
+ const CFStringRef kCTFontVariationAttribute = CFSTR("NSCTFontVariationAttribute");
++// The AXES of a variable font, as opposed to kCTFontVariationAttribute, which is a chosen
++// setting. LibreOffice binds this EAGERLY through libskialo, so its absence is not a missing
++// feature but a process that will not start: a two level namespace binary resolves data symbols
++// at load, and dyld aborts on the first one it cannot find.
++const CFStringRef kCTFontVariationAxesAttribute = CFSTR("NSCTFontVariationAxesAttribute");
+ const CFStringRef kCTFontSizeAttribute = CFSTR("NSFontSizeAttribute");
+ const CFStringRef kCTFontMatrixAttribute = CFSTR("NSCTFontMatrixAttribute");
+ const CFStringRef kCTFontCascadeListAttribute = CFSTR("NSCTFontCascadeListAttribute");
+diff -u --recursive a/CoreText/include/CoreText/CTFontCollection.h b/CoreText/include/CoreText/CTFontCollection.h
+--- a/CoreText/include/CoreText/CTFontCollection.h	2026-08-13 15:57:18.779920936 +0200
++++ b/CoreText/include/CoreText/CTFontCollection.h	2026-08-13 15:57:31.651385813 +0200
+@@ -3,6 +3,8 @@
+ 
+ typedef struct __CTFontCollection* CTFontCollectionRef;
+ 
++CORETEXT_EXPORT const CFStringRef kCTFontCollectionRemoveDuplicatesOption;
++
+ CORETEXT_EXPORT CTFontCollectionRef CTFontCollectionCreateFromAvailableFonts(CFDictionaryRef options);
+ CORETEXT_EXPORT CFArrayRef CTFontCollectionCreateMatchingFontDescriptors(CTFontCollectionRef collection);
+ CORETEXT_EXPORT CTFontCollectionRef CTFontCollectionCreateWithFontDescriptors(CFArrayRef queryDescriptors, CFDictionaryRef options);
+diff -u --recursive a/CoreText/include/CoreText/CTFontDescriptor.h b/CoreText/include/CoreText/CTFontDescriptor.h
+--- a/CoreText/include/CoreText/CTFontDescriptor.h	2026-08-13 15:57:18.776920916 +0200
++++ b/CoreText/include/CoreText/CTFontDescriptor.h	2026-08-13 15:57:31.651302414 +0200
+@@ -9,6 +9,7 @@
+ CORETEXT_EXPORT const CFStringRef kCTFontStyleNameAttribute;
+ CORETEXT_EXPORT const CFStringRef kCTFontTraitsAttribute;
+ CORETEXT_EXPORT const CFStringRef kCTFontVariationAttribute;
++CORETEXT_EXPORT const CFStringRef kCTFontVariationAxesAttribute;
+ CORETEXT_EXPORT const CFStringRef kCTFontSizeAttribute;
+ CORETEXT_EXPORT const CFStringRef kCTFontMatrixAttribute;
+ CORETEXT_EXPORT const CFStringRef kCTFontCascadeListAttribute;
