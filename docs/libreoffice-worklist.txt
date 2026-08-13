@@ -1,0 +1,165 @@
+
+== STUBBED C FUNCTIONS THE APPLICATION IMPORTS: 24
+     CGContextShowGlyphsAtPositions   [vendor/src/cocotron/CoreGraphics/CGContext.m]
+     CGDisplayScreenSize   [vendor/src/cocotron/CoreGraphics/CGDirectDisplay.m]
+     CGFontCreateWithDataProvider   [vendor/src/cocotron/CoreGraphics/CGFont.m]
+     CGImageSourceCreateWithDataProvider   [src/darwin/frameworks/ImageIO/src/CGImageSource.m]
+     CTFontCopyAttribute   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontCopyCharacterSet   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontCopyFamilyName   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontCopyFontDescriptor   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontCopyGraphicsFont   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontCopyLocalizedName   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontCopyPostScriptName   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontCopyVariation   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontCopyVariationAxes   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontCreateCopyWithAttributes   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontCreateCopyWithSymbolicTraits   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontDescriptorCreateWithAttributes   [vendor/src/cocotron/CoreText/stubs.c]
+     CTFontDrawGlyphs   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontGetBoundingRectsForGlyphs   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontGetSymbolicTraits   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontGetUnitsPerEm   [vendor/src/cocotron/CoreText/CTFont.m]
+     CTFontManagerCopyAvailableFontFamilyNames   [vendor/src/cocotron/CoreText/CTFontManager.m]
+     CTFontManagerRegisterFontsForURL   [vendor/src/cocotron/CoreText/CTFontManager.m]
+     NSAccessibilityUnignoredChildren   [vendor/src/cocotron/AppKit/NSAccessibility.m]
+     NSSetFocusRingStyle   [vendor/src/cocotron/AppKit/NSGraphics.m]
+
+== STUBBED METHODS WHOSE SELECTOR THE APPLICATION USES: 74
+     CGColor   [vendor/src/cocotron/AppKit/NSColor.subproj/NSColor.m]
+     acceptsFirstMouse:   [vendor/src/cocotron/AppKit/NSView.m]
+     activateIgnoringOtherApps:   [vendor/src/cocotron/AppKit/NSApplication.m]
+     appearanceNamed:   [vendor/src/cocotron/AppKit/NSAppearance.m]
+     bitmapImageRepForCachingDisplayInRect:   [vendor/src/cocotron/AppKit/NSView.m]
+     cacheDisplayInRect:toBitmapImageRep:   [vendor/src/cocotron/AppKit/NSView.m]
+     cellSize   [vendor/src/cocotron/AppKit/NSTextAttachmentCell.m]
+     changeCount   [vendor/src/cocotron/AppKit/NSPasteboard.m]
+     characterIndexForPoint:   [vendor/src/cocotron/AppKit/NSTextView.subproj/NSTextView.m]
+     colorUsingColorSpaceName:device:   [vendor/src/cocotron/AppKit/NSColor.subproj/NSColor.m]
+     currentContext   [vendor/src/cocotron/AppKit/NSAnimation/NSAnimationContext.m]
+     dataForType:   [vendor/src/cocotron/AppKit/NSPasteboard.m]
+     declareTypes:owner:   [vendor/src/cocotron/AppKit/NSPasteboard.m]
+     displayRectIgnoringOpacity:inContext:   [vendor/src/cocotron/AppKit/NSView.m]
+     dragImage:at:offset:event:pasteboard:source:slideBack:   [vendor/src/cocotron/AppKit/NSDraggingManager.m]
+     drawStatusBarBackgroundInRect:withHighlight:   [vendor/src/cocotron/AppKit/NSStatusItem.m]
+     drawWithFrame:inView:   [vendor/src/cocotron/AppKit/NSTextAttachmentCell.m]
+     drawableSize   [vendor/src/cocotron/QuartzCore/CAMetalLayer.mm]
+     duration   [vendor/src/cocotron/AppKit/NSAnimation/NSAnimationContext.m]
+     font   [vendor/src/cocotron/AppKit/NSText.m]
+     framebufferOnly   [vendor/src/cocotron/QuartzCore/CAMetalLayer.mm]
+     getRed:green:blue:alpha:   [vendor/src/cocotron/AppKit/NSColor.subproj/NSColor.m]
+     hideOtherApplications:   [vendor/src/cocotron/AppKit/NSApplication.m]
+     highlightWithLevel:   [vendor/src/cocotron/AppKit/NSColor.subproj/NSColor_catalog.m]
+     isEnabled   [vendor/src/cocotron/AppKit/NSFontManager.m]
+     isOpaque   [vendor/src/cocotron/AppKit/NSSplitView.m]
+     isValid   [vendor/src/cocotron/AppKit/NSImage.m]
+     maxSize   [vendor/src/cocotron/AppKit/NSText.m]
+     menu   [vendor/src/cocotron/AppKit/NSResponder.m]
+     minSize   [vendor/src/cocotron/AppKit/NSText.m]
+     mouseEntered:   [vendor/src/cocotron/AppKit/NSButtonCell.m]
+     mouseExited:   [vendor/src/cocotron/AppKit/NSButtonCell.m]
+     mouseLocation   [vendor/src/cocotron/AppKit/NSDisplay.m]
+     name   [vendor/src/cocotron/AppKit/NSPasteboard.m]
+     nextDrawable   [vendor/src/cocotron/QuartzCore/CAMetalLayer.mm]
+     objectEnumerator   [vendor/src/cocotron/CoreData/NSManagedObjectMutableSet.m]
+     pasteboardWithName:   [vendor/src/cocotron/AppKit/NSDisplay.m]
+     pause   [vendor/src/cocotron/AppKit/NSSound.m]
+     pixelFormat   [vendor/src/cocotron/QuartzCore/CAMetalLayer.mm]
+     play   [vendor/src/cocotron/AppKit/NSSound.m]
+     reset   [vendor/src/cocotron/CoreData/NSManagedObjectContext.m]
+     screens   [vendor/src/cocotron/AppKit/NSDisplay.m]
+     selectedRange   [vendor/src/cocotron/AppKit/NSText.m]
+     sendEvent:   [vendor/src/cocotron/AppKit/NSWindow.m]
+     setAccessoryView:   [vendor/src/cocotron/AppKit/NSColorPanel.m]
+     setAllowsOtherFileTypes:   [vendor/src/cocotron/AppKit/NSSavePanel.subproj/NSSavePanel.m]
+     setBackgroundColor:   [vendor/src/cocotron/AppKit/NSText.m]
+     setCanCreateDirectories:   [vendor/src/cocotron/AppKit/NSSavePanel.subproj/NSSavePanel.m]
+     setColorspace:   [vendor/src/cocotron/QuartzCore/CAMetalLayer.mm]
+     setData:forType:   [vendor/src/cocotron/AppKit/NSPasteboard.m]
+     setDelegate:   [vendor/src/cocotron/AppKit/NSText.m]
+     setDepthLimit:   [vendor/src/cocotron/AppKit/NSWindow.m]
+     setDevice:   [vendor/src/cocotron/QuartzCore/CAMetalLayer.mm]
+     setDisplaySyncEnabled:   [vendor/src/cocotron/QuartzCore/CAMetalLayer.mm]
+     setDrawableSize:   [vendor/src/cocotron/QuartzCore/CAMetalLayer.mm]
+     setDrawsBackground:   [vendor/src/cocotron/AppKit/NSText.m]
+     setEditable:   [vendor/src/cocotron/AppKit/NSText.m]
+     setFont:   [vendor/src/cocotron/AppKit/NSText.m]
+     setImage:   [vendor/src/cocotron/AppKit/NSBrowserCell.m]
+     setMaxSize:   [vendor/src/cocotron/AppKit/NSText.m]
+     setMenu:   [vendor/src/cocotron/AppKit/NSResponder.m]
+     setMinSize:   [vendor/src/cocotron/AppKit/NSText.m]
+     setName:   [vendor/src/cocotron/AppKit/NSSound.m]
+     setPixelFormat:   [vendor/src/cocotron/QuartzCore/CAMetalLayer.mm]
+     setSelectable:   [vendor/src/cocotron/AppKit/NSText.m]
+     sizeToFit   [vendor/src/cocotron/AppKit/NSBox.m]
+     stop   [vendor/src/cocotron/AppKit/NSSound.m]
+     string   [vendor/src/cocotron/AppKit/NSText.m]
+     textColor   [vendor/src/cocotron/AppKit/NSText.m]
+     type   [vendor/src/cocotron/CoreData/NSPersistentStore.m]
+     types   [vendor/src/cocotron/AppKit/NSPasteboard.m]
+     unhideAllApplications:   [vendor/src/cocotron/AppKit/NSApplication.m]
+     userInfo   [vendor/src/cocotron/CoreData/NSPropertyDescription.m]
+     windowNumbersWithOptions:   [vendor/src/cocotron/AppKit/NSWindow.m]
+
+== SELECTORS THE APPLICATION USES THAT NOTHING HERE DEFINES: 486  (heuristic, includes the application's own)
+     absoluteString
+     accessibilityActionDescription:
+     accessibilityActionNames
+     accessibilityApplicationFocusedUIElement
+     accessibilityAttributeNames
+     accessibilityAttributeValue:
+     accessibilityAttributeValue:forParameter:
+     accessibilityAttributedStringForRange:
+     accessibilityChildren
+     accessibilityChildrenInNavigationOrder
+     accessibilityColumns
+     accessibilityContents
+     accessibilityFocusedUIElement
+     accessibilityFrame
+     accessibilityFrameForRange:
+     accessibilityHelp
+     accessibilityHitTest:
+     accessibilityHorizontalScrollBar
+     accessibilityIdentifier
+     accessibilityIsAttributeSettable:
+     accessibilityIsIgnored
+     accessibilityLabel
+     accessibilityLineForIndex:
+     accessibilityMaxValue
+     accessibilityMinValue
+     accessibilityNotifiesWhenDestroyed
+     accessibilityNumberOfCharacters
+     accessibilityOrientation
+     accessibilityParameterizedAttributeNames
+     accessibilityParent
+     accessibilityPerformAction:
+     accessibilityPerformDecrement
+     accessibilityPerformIncrement
+     accessibilityPerformPick
+     accessibilityPerformPress
+     accessibilityPerformShowMenu
+     accessibilityRTFForRange:
+     accessibilityRangeForIndex:
+     accessibilityRangeForLine:
+     accessibilityRangeForPosition:
+     accessibilityRole
+     accessibilityRoleDescription
+     accessibilityRows
+     accessibilitySelectedChildren
+     accessibilitySelectedText
+     accessibilitySelectedTextRange
+     accessibilityServesAsTitleForUIElements
+     accessibilitySetOverrideValue:forAttribute:
+     accessibilitySetValue:forAttribute:
+     accessibilitySharedCharacterRange
+     accessibilitySharedTextUIElements
+     accessibilityStringForRange:
+     accessibilityStyleRangeForIndex:
+     accessibilitySubrole
+     accessibilityTabs
+     accessibilityTitle
+     accessibilityTitleUIElement
+     accessibilityTopLevelUIElement
+     accessibilityValue
+     accessibilityVerticalScrollBar
+     ... and 426 more
