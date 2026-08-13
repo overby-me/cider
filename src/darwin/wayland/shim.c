@@ -96,3 +96,52 @@ int cider_xdg_wm_base_add_listener(struct xdg_wm_base *base,
                                    const struct xdg_wm_base_listener *listener, void *data) {
 	return xdg_wm_base_add_listener(base, listener, data);
 }
+
+// ---------------------------------------------------------------------------------------------
+// PIXELS. wl_shm hands the compositor a file descriptor and it mmaps the same pages the client
+// wrote, which is how a CGSSurface will present a bitmap. All of this is inline upstream too.
+
+struct wl_shm_pool *cider_wl_shm_create_pool(struct wl_shm *shm, int32_t fd, int32_t size) {
+	return wl_shm_create_pool(shm, fd, size);
+}
+
+struct wl_buffer *cider_wl_shm_pool_create_buffer(struct wl_shm_pool *pool, int32_t offset,
+                                                  int32_t width, int32_t height, int32_t stride,
+                                                  uint32_t format) {
+	return wl_shm_pool_create_buffer(pool, offset, width, height, stride, format);
+}
+
+void cider_wl_shm_pool_destroy(struct wl_shm_pool *pool) { wl_shm_pool_destroy(pool); }
+
+void cider_wl_surface_attach(struct wl_surface *surface, struct wl_buffer *buffer, int32_t x,
+                             int32_t y) {
+	wl_surface_attach(surface, buffer, x, y);
+}
+
+void cider_wl_surface_damage(struct wl_surface *surface, int32_t x, int32_t y, int32_t width,
+                             int32_t height) {
+	wl_surface_damage(surface, x, y, width, height);
+}
+
+// THE RELEASE EVENT IS THE PROOF. A compositor releases a buffer once it has finished reading it,
+// so a release means our pixels were actually consumed rather than merely offered.
+int cider_wl_buffer_add_listener(struct wl_buffer *buffer, const struct wl_buffer_listener *listener,
+                                 void *data) {
+	return wl_buffer_add_listener(buffer, listener, data);
+}
+
+// WL_SHM_FORMAT_XRGB8888 is guaranteed by the protocol, unlike most formats, so the probe uses it
+// rather than asking which are supported.
+uint32_t cider_wl_shm_format_xrgb8888(void) { return WL_SHM_FORMAT_XRGB8888; }
+
+// A FRAME CALLBACK FIRES WHEN THE COMPOSITOR HAS PRESENTED, which is a different claim from a
+// buffer release: release is about buffer LIFETIME and can be deferred, while a frame callback is
+// the compositor saying it drew. Asking for both means a failure says which half is missing.
+struct wl_callback *cider_wl_surface_frame(struct wl_surface *surface) {
+	return wl_surface_frame(surface);
+}
+
+int cider_wl_callback_add_listener(struct wl_callback *callback,
+                                   const struct wl_callback_listener *listener, void *data) {
+	return wl_callback_add_listener(callback, listener, data);
+}

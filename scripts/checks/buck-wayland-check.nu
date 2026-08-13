@@ -93,7 +93,7 @@ def main [scratch?: string] {
     say "== starting weston, headless =="
     let weston = (job spawn {
         with-env {XDG_RUNTIME_DIR: $xdg} {
-            do -i { ^weston --backend=headless --socket=cider-wl --width=1024 --height=768 out+err> $"($root)/weston.log" }
+            do -i { ^weston --backend=headless --renderer=pixman --socket=cider-wl --width=1024 --height=768 out+err> $"($root)/weston.log" }
         }
     })
     # The socket appears a moment after the process does, and connecting before it exists looks
@@ -188,6 +188,15 @@ def main [scratch?: string] {
         ok "the compositor configured an xdg_toplevel and the ack completed"
     } else {
         bad "no xdg_surface configure arrived, so the surface was never mapped"
+        $failed = $failed + 1
+    }
+    # PIXELS, asserted on the FRAME CALLBACK rather than the buffer release. A compositor may
+    # legitimately hold a buffer after drawing with it, so demanding a release asks for more than
+    # the protocol promises; a frame callback is the compositor saying it drew.
+    if ($out | str contains "pixels=presented") {
+        ok "a wl_shm buffer was attached and the compositor presented it"
+    } else {
+        bad "the surface was never presented, so no pixels reached the compositor"
         $failed = $failed + 1
     }
 

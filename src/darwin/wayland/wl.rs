@@ -20,6 +20,9 @@ pub enum WlSurface {}
 pub enum XdgWmBase {}
 pub enum XdgSurface {}
 pub enum XdgToplevel {}
+pub enum WlShmPool {}
+pub enum WlBuffer {}
+pub enum WlCallback {}
 
 /// libwayland's intrusive list head: two pointers, and wl_list_init makes both point at it.
 #[repr(C)]
@@ -66,6 +69,23 @@ unsafe extern "C" {
     pub fn cider_xdg_surface_add_listener(s: *mut XdgSurface, l: *const XdgSurfaceListener, data: *mut c_void) -> c_int;
     pub fn cider_xdg_wm_base_pong(b: *mut XdgWmBase, serial: u32);
     pub fn cider_xdg_wm_base_add_listener(b: *mut XdgWmBase, l: *const XdgWmBaseListener, data: *mut c_void) -> c_int;
+
+    // Pixels.
+    pub fn cider_wl_shm_create_pool(shm: *mut WlShm, fd: c_int, size: i32) -> *mut WlShmPool;
+    pub fn cider_wl_shm_pool_create_buffer(pool: *mut WlShmPool, offset: i32, width: i32, height: i32, stride: i32, format: u32) -> *mut WlBuffer;
+    pub fn cider_wl_shm_pool_destroy(pool: *mut WlShmPool);
+    pub fn cider_wl_surface_attach(s: *mut WlSurface, b: *mut WlBuffer, x: i32, y: i32);
+    pub fn cider_wl_surface_damage(s: *mut WlSurface, x: i32, y: i32, w: i32, h: i32);
+    pub fn cider_wl_buffer_add_listener(b: *mut WlBuffer, l: *const WlBufferListener, data: *mut c_void) -> c_int;
+    pub fn cider_wl_shm_format_xrgb8888() -> u32;
+
+    /// Nonzero once the connection has failed. A protocol error kills the connection silently
+    /// from the client's point of view, so without asking, a missing event and a dead socket look
+    /// the same.
+    pub fn wl_display_get_error(display: *mut WlDisplay) -> c_int;
+    pub fn wl_display_flush(display: *mut WlDisplay) -> c_int;
+    pub fn cider_wl_surface_frame(s: *mut WlSurface) -> *mut WlCallback;
+    pub fn cider_wl_callback_add_listener(c: *mut WlCallback, l: *const WlCallbackListener, data: *mut c_void) -> c_int;
 }
 
 /// The layout libwayland expects: two function pointers, in this order. It is passed by pointer
@@ -154,4 +174,18 @@ pub struct Bound {
     pub shm_version: u32,
     pub xdg_name: u32,
     pub xdg_version: u32,
+}
+
+/// One callback: the compositor has finished with the buffer. That event is the only honest
+/// evidence from the client side that the pixels were CONSUMED and not merely handed over.
+#[repr(C)]
+pub struct WlBufferListener {
+    pub release: extern "C" fn(data: *mut c_void, buffer: *mut WlBuffer),
+}
+
+/// The compositor calls this once it has PRESENTED the surface. Independent of buffer lifetime,
+/// so it distinguishes "never drawn" from "drawn but the buffer is still held".
+#[repr(C)]
+pub struct WlCallbackListener {
+    pub done: extern "C" fn(data: *mut c_void, callback: *mut WlCallback, time: u32),
 }

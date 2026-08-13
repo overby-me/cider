@@ -241,6 +241,147 @@ fn open_a_window(
                 break;
             }
         }
-        CONFIGURED
+        if !CONFIGURED {
+            return false;
+        }
+
+        // NOW THE PIXELS, which is the part a CGSSurface exists to do.
+        let shm = wl::cider_wl_registry_bind_shm(registry, globals.bound.shm_name, globals.bound.shm_version);
+        if shm.is_null() {
+            println!("cider-wayland-probe shm-bind=FAILED");
+            return false;
+        }
+        match present_a_buffer(display, shm, surface) {
+            Ok(()) => true,
+            Err(why) => {
+                println!("cider-wayland-probe pixels=FAILED {why}");
+                false
+            }
+        }
     }
+}
+
+static mut RELEASED: bool = false;
+static mut PRESENTED: bool = false;
+
+extern "C" fn on_buffer_release(_data: *mut c_void, _buffer: *mut wl::WlBuffer) {
+    unsafe { RELEASED = true };
+}
+
+extern "C" fn on_frame_done(_data: *mut c_void, _cb: *mut wl::WlCallback, _time: u32) {
+    unsafe { PRESENTED = true };
+}
+
+/// Fill a buffer, attach it, and wait for the compositor to RELEASE it.
+///
+/// The release is the assertion. Attaching proves nothing on its own: the client can hand over a
+/// buffer the compositor never reads. A release event means it finished with those pages, so the
+/// pixels crossed the socket, the fd survived the trip and the mapping was valid on both sides.
+///
+/// # Safety
+/// Called with a configured surface and a bound wl_shm.
+unsafe fn present_a_buffer(
+    display: *mut wl::WlDisplay,
+    shm: *mut wl::WlShm,
+    surface: *mut wl::WlSurface,
+) -> Result<(), String> {
+    use std::io::{Seek, SeekFrom, Write};
+    use std::os::unix::io::AsRawFd;
+
+    const W: i32 = 64;
+    const H: i32 = 64;
+    let stride = W * 4;
+    let size = (stride * H) as usize;
+
+    // A PLAIN FILE, not shm_open. The compositor receives the DESCRIPTOR over the socket and mmaps
+    // that, so the file only has to be mmap-able and the right size; where it lives does not
+    // travel with it. This also sidesteps the question of whether the guest has a working
+    // /dev/shm, which it does not need to have.
+    let mut file = tempfile_in_guest()?;
+    let pixel = 0xffu32 << 24 | 0x30u32 << 16 | 0x60u32 << 8 | 0x90u32; // opaque, a flat colour
+    let row: Vec<u8> = std::iter::repeat(pixel.to_ne_bytes()).take(W as usize).flatten().collect();
+    for _ in 0..H {
+        file.write_all(&row).map_err(|e| format!("write {e}"))?;
+    }
+    file.flush().map_err(|e| format!("flush {e}"))?;
+    file.seek(SeekFrom::Start(0)).map_err(|e| format!("seek {e}"))?;
+
+    let pool = unsafe { wl::cider_wl_shm_create_pool(shm, file.as_raw_fd(), size as i32) };
+    if pool.is_null() {
+        return Err("create_pool returned null".into());
+    }
+    let format = unsafe { wl::cider_wl_shm_format_xrgb8888() };
+    let buffer = unsafe { wl::cider_wl_shm_pool_create_buffer(pool, 0, W, H, stride, format) };
+    if buffer.is_null() {
+        return Err("create_buffer returned null".into());
+    }
+    let listener = wl::WlBufferListener { release: on_buffer_release };
+    unsafe {
+        wl::cider_wl_buffer_add_listener(buffer, &listener, std::ptr::null_mut());
+        // ASK FOR A FRAME TOO, before the commit that carries the buffer: the callback is
+        // delivered when the compositor has PRESENTED, which separates "never drawn" from
+        // "drawn, buffer still held".
+        let frame = wl::cider_wl_surface_frame(surface);
+        let frame_listener = wl::WlCallbackListener { done: on_frame_done };
+        if !frame.is_null() {
+            wl::cider_wl_callback_add_listener(frame, &frame_listener, std::ptr::null_mut());
+        }
+        wl::cider_wl_surface_attach(surface, buffer, 0, 0);
+        wl::cider_wl_surface_damage(surface, 0, 0, W, H);
+        wl::cider_wl_surface_commit(surface);
+        wl::wl_display_flush(display);
+        // A ROUNDTRIP IS NOT A FRAME, and a headless compositor is SLOW to start repainting.
+        // Measured on weston 15 with the pixman renderer: the first frame callback after a
+        // surface is mapped took well over two seconds, so a 2 second budget reported "never
+        // presented" for a surface that was in the scene graph the whole time. Ten seconds.
+        for _ in 0..200 {
+            wl::wl_display_roundtrip(display);
+            if RELEASED && PRESENTED {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        wl::cider_wl_shm_pool_destroy(pool);
+        // ASK THE CONNECTION WHETHER IT IS STILL ALIVE. A protocol error is invisible from
+        // here otherwise: events simply stop arriving, which looks exactly like a compositor
+        // that has not got round to compositing yet.
+        println!("cider-wayland-probe display_error={}", wl::wl_display_get_error(display));
+        // HOLD THE SURFACE OPEN when asked, so a scene-graph dump has something to look at.
+        // Without it the probe exits in about two seconds and every inspection races it.
+        if let Ok(secs) = std::env::var("CIDER_WAYLAND_HOLD") {
+            if let Ok(n) = secs.parse::<u64>() {
+                println!("cider-wayland-probe holding={n}s");
+                for _ in 0..(n * 10) {
+                    wl::wl_display_roundtrip(display);
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                }
+            }
+        }
+        println!("cider-wayland-probe presented={PRESENTED} released={RELEASED}");
+        // PRESENTED IS THE ASSERTION, not the release. A compositor may legitimately hold a
+        // buffer after drawing with it, so demanding a release asks for more than the protocol
+        // promises; a frame callback is the compositor stating it drew.
+        if PRESENTED {
+            println!("cider-wayland-probe pixels=presented size={W}x{H}");
+            Ok(())
+        } else {
+            Err("no frame callback arrived, so the surface was never presented".into())
+        }
+    }
+}
+
+/// A file the guest can create and mmap. /tmp inside the container is a tmpfs, which is exactly
+/// what this wants.
+fn tempfile_in_guest() -> Result<std::fs::File, String> {
+    let path = format!("/tmp/cider-wayland-probe-{}.shm", std::process::id());
+    let file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&path)
+        .map_err(|e| format!("open {path}: {e}"))?;
+    // Unlinked immediately: the descriptor keeps it alive and nothing is left behind.
+    let _ = std::fs::remove_file(&path);
+    Ok(file)
 }

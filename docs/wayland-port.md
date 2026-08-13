@@ -266,3 +266,14 @@ spaces in one process, and which one applies depends on which side of the bridge
 **THE PROBE ASKS "does the bridge work" FIRST**, with `wl_list_init`, which writes two pointers
 into a struct the guest owns. That is an observable effect rather than an inference, and until it
 holds every other result is noise.
+
+## The headless compositor needs a RENDERER, and its default is a no-op
+
+Measured while chasing a buffer that was attached and never released: weston's headless backend
+selects the **no-op renderer** by default, and prints it as `no-op renderer SHM seed: 0` among a
+page of capability lines nobody reads. A no-op renderer never reads a client buffer, so it never
+releases one, and a client waiting for the release waits forever with nothing in any log.
+
+The checks pass `--renderer=pixman` so the compositor actually composites in software. Worth
+knowing generally: a headless compositor that "runs fine" can still be doing nothing at all, and
+that will look exactly like a client bug.
