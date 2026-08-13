@@ -31,6 +31,114 @@ static void initme(void) {
 }
 
 
+/*
+ * HIToolbox: hot keys, theme metrics and theme drawing.
+ *
+ * NO HEADER IN THIS TREE DECLARES ANY OF THESE, so they are declared here. C linkage is by name,
+ * and every parameter below is a pointer or a 32-bit integer, so the declarations agree with the
+ * real ABI even though the real types (EventHotKeyID, HIRect, HIThemeMenuDrawInfo) do not exist
+ * here. EventHotKeyID is two UInt32 passed by value, which is one integer register, which is what
+ * an unsigned long long is.
+ *
+ * THEY RETURN AN ERROR RATHER THAN SUCCESS, and that is the useful part. A caller that checks
+ * takes its own fallback path, which for theme drawing means an application draws its widgets
+ * itself instead of getting an empty rectangle from us. Claiming success and doing nothing would
+ * produce a window with invisible controls, which is far harder to diagnose than a fallback.
+ *
+ * LibreOffice reaches RegisterEventHotKey from libAppleRemotelo.dylib during startup, which is
+ * how these were found: the missing symbol aborted the process at first call.
+ */
+enum { cider_unimpErr = -4 };
+
+OSStatus RegisterEventHotKey(UInt32 inHotKeyCode, UInt32 inHotKeyModifiers,
+                             unsigned long long inHotKeyID, void *inTarget,
+                             UInt32 inOptions, void **outRef)
+{
+    if (verbose) puts("STUB: RegisterEventHotKey called");
+    if (outRef) *outRef = NULL;
+    return cider_unimpErr;
+}
+
+OSStatus UnregisterEventHotKey(void *inHotKey)
+{
+    if (verbose) puts("STUB: UnregisterEventHotKey called");
+    return cider_unimpErr;
+}
+
+/*
+ * The metric is zeroed as well as reported failed: a caller that ignores the status still reads a
+ * defined value rather than whatever was on its stack.
+ */
+OSStatus GetThemeMetric(UInt32 inMetric, int *outMetric)
+{
+    if (verbose) puts("STUB: GetThemeMetric called");
+    if (outMetric) *outMetric = 0;
+    return cider_unimpErr;
+}
+
+OSStatus HIThemeDrawFrame(const void *inRect, const void *inDrawInfo, void *inContext,
+                          UInt32 inOrientation)
+{
+    if (verbose) puts("STUB: HIThemeDrawFrame called");
+    return cider_unimpErr;
+}
+
+OSStatus HIThemeDrawMenuBackground(const void *inMenuRect, const void *inMenuDrawInfo,
+                                   void *inContext, UInt32 inOrientation)
+{
+    if (verbose) puts("STUB: HIThemeDrawMenuBackground called");
+    return cider_unimpErr;
+}
+
+OSStatus HIThemeDrawMenuItem(const void *inMenuRect, const void *inItemRect,
+                             const void *inDrawInfo, void *inContext, UInt32 inOrientation,
+                             void *outItemRect)
+{
+    if (verbose) puts("STUB: HIThemeDrawMenuItem called");
+    return cider_unimpErr;
+}
+
+OSStatus HIThemeDrawTextBox(const void *inString, const void *inBounds, void *inTextInfo,
+                            void *inContext, UInt32 inOrientation)
+{
+    if (verbose) puts("STUB: HIThemeDrawTextBox called");
+    return cider_unimpErr;
+}
+
+/*
+ * Secure event input is about keystrokes not reaching other processes while a password field has
+ * focus. There is one process here and no window server to ask, so reporting success is true
+ * rather than optimistic: nothing else can be listening.
+ */
+OSStatus EnableSecureEventInput(void)
+{
+    if (verbose) puts("STUB: EnableSecureEventInput called");
+    return 0;
+}
+
+OSStatus DisableSecureEventInput(void)
+{
+    if (verbose) puts("STUB: DisableSecureEventInput called");
+    return 0;
+}
+
+/*
+ * ZERO IS THE CORRECT ANSWER, not a placeholder: no buttons are down and no modifiers are held
+ * when there is no seat, which is exactly what the Wayland display backend reports for the same
+ * question.
+ */
+UInt32 GetCurrentEventButtonState(void)
+{
+    if (verbose) puts("STUB: GetCurrentEventButtonState called");
+    return 0;
+}
+
+UInt32 GetCurrentEventKeyModifiers(void)
+{
+    if (verbose) puts("STUB: GetCurrentEventKeyModifiers called");
+    return 0;
+}
+
 // These stubs should prob be moved elsewhere
 
 OSErr ActivateTSMDocument(TSMDocumentID a)

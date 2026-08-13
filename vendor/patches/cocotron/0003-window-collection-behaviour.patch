@@ -1,0 +1,29 @@
+diff -u --recursive a/AppKit/NSWindow.m b/AppKit/NSWindow.m
+--- a/AppKit/NSWindow.m	2026-08-13 17:30:59.568491906 +0200
++++ b/AppKit/NSWindow.m	2026-08-13 17:31:12.997842220 +0200
+@@ -1254,7 +1254,14 @@
+ }
+ 
+ - (void) setCollectionBehavior: (NSWindowCollectionBehavior) behavior {
+-    NSUnimplementedMethod();
++    // A HINT TO THE WINDOW MANAGER, and there is nothing here to hint to: the collection
++    // behaviour controls Spaces, full screen and cycling, all of which belong to a compositor
++    // that decides them itself under Wayland and to nothing at all under a bare X server.
++    //
++    // It was NSUnimplementedMethod, which logs on every call. LibreOffice sets it on every frame
++    // it creates, so the log filled with a message about a request that has no meaning here.
++    // Accepting and ignoring is the same behaviour with none of the noise, and it matches
++    // -setCanBecomeVisibleWithoutLogin: two methods above, which already does exactly this.
+ }
+ 
+ - (void) setLevel: (NSInteger) value {
+@@ -1539,7 +1546,8 @@
+ }
+ 
+ - (NSWindowCollectionBehavior) collectionBehavior {
+-    NSUnimplementedMethod();
++    // NSWindowCollectionBehaviorDefault, which is 0, and is the truthful answer rather than a
++    // placeholder: no special behaviour is in effect because none can be.
+     return 0;
+ }
+ 
