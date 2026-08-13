@@ -1,0 +1,545 @@
+// CGWindowWayland: the class -newWindowWithDelegate: hands back.
+//
+// AppKit's NSWindow keeps a _platformWindow and sends it 16 distinct selectors (counted across
+// AppKit/*.m). CGWindow declares 40, of which the rest are reached from elsewhere or not at all in
+// the paths this rung exercises. Every one of the 40 is defined here rather than only the 16,
+// BECAUSE A MISSING ONE IS A TERMINATED PROCESS: CGWindow's defaults raise, so an override that
+// does nothing is strictly better than no override, and it is visible in the log rather than fatal.
+//
+// The window IS an xdg_toplevel with a wl_shm buffer, which the wayland probe already proved end
+// to end: configure handshake, then pixels the compositor reports presenting. Nothing new is being
+// tried here; the same sequence is being driven by AppKit instead of by a main().
+//
+// PIXELS ARE A FLAT COLOUR FOR NOW, written through the file rather than a mapping. Real drawing
+// needs the surface handed to an O2Context, which is the next rung; a window that shows the wrong
+// contents is visible and debuggable, a window that never maps is not.
+use std::os::raw::{c_char, c_int, c_void};
+use std::sync::atomic::{AtomicI64, AtomicIsize, Ordering};
+
+use crate::cstr;
+use crate::objc::{self, NsPoint, NsRect, Object, ObjcBool, Sel, NO, YES};
+use crate::session;
+use crate::wl;
+
+/// Byte offset of the state pointer inside an instance, learned at registration. -1 until then,
+/// which is the only value that can mean "not registered" for an offset.
+static STATE_OFFSET: AtomicIsize = AtomicIsize::new(-1);
+
+/// Window numbers must be unique and nonzero: AppKit uses them as identity, and 0 reads as "no
+/// window" in several of its own comparisons.
+static NEXT_WINDOW_NUMBER: AtomicI64 = AtomicI64::new(1);
+
+/// Everything one window owns. Boxed and pointed to by the instance's single ivar, so the ObjC
+/// object stays one word wider than CGWindow and all the real state has a Rust type.
+pub struct WindowState {
+    pub surface: *mut wl::WlSurface,
+    pub xdg: *mut wl::XdgSurface,
+    pub toplevel: *mut wl::XdgToplevel,
+    pub delegate: Object,
+    pub frame: NsRect,
+    pub configured: bool,
+    pub mapped: bool,
+    pub style_mask: usize,
+    pub level: c_int,
+    pub miniaturized: bool,
+    /// Nesting count, not a flag: AppKit disables and enables around nested drawing, and treating
+    /// it as a boolean re-enables one level too early.
+    pub flush_disabled: i32,
+    pub number: i64,
+    pub backing: Option<std::fs::File>,
+    pub buffer: *mut wl::WlBuffer,
+    pub buffer_w: i32,
+    pub buffer_h: i32,
+}
+
+impl WindowState {
+    fn new() -> Self {
+        WindowState {
+            surface: std::ptr::null_mut(),
+            xdg: std::ptr::null_mut(),
+            toplevel: std::ptr::null_mut(),
+            delegate: std::ptr::null_mut(),
+            frame: NsRect::new(0.0, 0.0, 512.0, 384.0),
+            configured: false,
+            mapped: false,
+            style_mask: 0,
+            level: 0,
+            miniaturized: false,
+            flush_disabled: 0,
+            number: NEXT_WINDOW_NUMBER.fetch_add(1, Ordering::Relaxed),
+            backing: None,
+            buffer: std::ptr::null_mut(),
+            buffer_w: 0,
+            buffer_h: 0,
+        }
+    }
+}
+
+/// The state pointer for an instance, or None before -initWithDelegate: has run.
+///
+/// # Safety
+/// `this` must be an instance of the registered class.
+unsafe fn state<'a>(this: Object) -> Option<&'a mut WindowState> {
+    let off = STATE_OFFSET.load(Ordering::Acquire);
+    if this.is_null() || off < 0 {
+        return None;
+    }
+    unsafe {
+        let slot = (this as *mut u8).offset(off) as *mut *mut WindowState;
+        (*slot).as_mut()
+    }
+}
+
+/// The compositor has offered a configuration. Acknowledging is not optional: until the serial is
+/// acked the surface is not considered configured, and any buffer attached before that is a
+/// protocol error rather than a picture.
+extern "C" fn on_configure(data: *mut c_void, surface: *mut wl::XdgSurface, serial: u32) {
+    unsafe {
+        wl::cider_xdg_surface_ack_configure(surface, serial);
+        if let Some(st) = (data as *mut WindowState).as_mut() {
+            st.configured = true;
+        }
+    }
+}
+
+/// Fn pointers are Sync, so the listener can be a static and outlive every call, which is what
+/// libwayland requires: it keeps the pointer, it does not copy the struct.
+static XDG_LISTENER: wl::XdgSurfaceListener = wl::XdgSurfaceListener { configure: on_configure };
+
+/// Create the surface, the xdg_surface and the toplevel, then complete the configure handshake.
+///
+/// AN EMPTY COMMIT COMES FIRST. That is the protocol: committing with no buffer asks the
+/// compositor for a configure, and only after acking it may pixels be attached.
+fn create_surface(st: &mut WindowState) -> bool {
+    let compositor = session::compositor();
+    let base = session::wm_base();
+    if compositor.is_null() || base.is_null() {
+        println!("cider-wayland-window create=FAILED reason=no-session");
+        return false;
+    }
+    unsafe {
+        st.surface = wl::cider_wl_compositor_create_surface(compositor);
+        if st.surface.is_null() {
+            println!("cider-wayland-window create=FAILED reason=no-surface");
+            return false;
+        }
+        st.xdg = wl::cider_xdg_wm_base_get_xdg_surface(base, st.surface);
+        if st.xdg.is_null() {
+            println!("cider-wayland-window create=FAILED reason=no-xdg-surface");
+            return false;
+        }
+        st.toplevel = wl::cider_xdg_surface_get_toplevel(st.xdg);
+        if st.toplevel.is_null() {
+            println!("cider-wayland-window create=FAILED reason=no-toplevel");
+            return false;
+        }
+        wl::cider_xdg_surface_add_listener(st.xdg, &XDG_LISTENER, st as *mut WindowState as *mut c_void);
+        wl::cider_wl_surface_commit(st.surface);
+        for _ in 0..20 {
+            session::roundtrip();
+            if st.configured {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(25));
+        }
+        if !st.configured {
+            println!("cider-wayland-window create=FAILED reason=never-configured");
+            return false;
+        }
+    }
+    println!(
+        "cider-wayland-window create=ok number={} size={}x{}",
+        st.number, st.frame.size.width as i32, st.frame.size.height as i32
+    );
+    true
+}
+
+/// Put pixels on the surface. A flat colour until the O2Context rung, but a REAL buffer: the
+/// compositor mmaps the descriptor, so this is the same path a drawn window will take.
+fn present(st: &mut WindowState) {
+    use std::io::{Seek, SeekFrom, Write};
+    use std::os::unix::io::AsRawFd;
+
+    if st.surface.is_null() || !st.configured {
+        return;
+    }
+    let shm = session::shm();
+    if shm.is_null() {
+        return;
+    }
+    let w = (st.frame.size.width as i32).max(1);
+    let h = (st.frame.size.height as i32).max(1);
+    let stride = w * 4;
+    let size = (stride * h) as usize;
+
+    // A PLAIN FILE, not shm_open: the compositor receives the DESCRIPTOR and mmaps that, so where
+    // the file lives never travels with it, and the guest needs no working /dev/shm.
+    if st.backing.is_none() || st.buffer_w != w || st.buffer_h != h {
+        let path = format!("/tmp/cider-window-{}-{}.shm", std::process::id(), st.number);
+        let Ok(file) = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&path)
+        else {
+            println!("cider-wayland-window present=FAILED reason=no-backing-file");
+            return;
+        };
+        let _ = std::fs::remove_file(&path);
+        st.backing = Some(file);
+        st.buffer = std::ptr::null_mut();
+        st.buffer_w = w;
+        st.buffer_h = h;
+    }
+    let Some(file) = st.backing.as_mut() else { return };
+    let pixel = 0xffu32 << 24 | 0xeeu32 << 16 | 0xeeu32 << 8 | 0xeeu32;
+    let row: Vec<u8> = std::iter::repeat(pixel.to_ne_bytes()).take(w as usize).flatten().collect();
+    if file.seek(SeekFrom::Start(0)).is_err() {
+        return;
+    }
+    for _ in 0..h {
+        if file.write_all(&row).is_err() {
+            return;
+        }
+    }
+    let _ = file.flush();
+    let fd = file.as_raw_fd();
+
+    unsafe {
+        if st.buffer.is_null() {
+            let pool = wl::cider_wl_shm_create_pool(shm, fd, size as i32);
+            if pool.is_null() {
+                println!("cider-wayland-window present=FAILED reason=no-pool");
+                return;
+            }
+            let format = wl::cider_wl_shm_format_xrgb8888();
+            st.buffer = wl::cider_wl_shm_pool_create_buffer(pool, 0, w, h, stride, format);
+            // The pool may be destroyed as soon as the buffer exists: the buffer holds its own
+            // reference to the mapping, which is what makes resizing a matter of a new pool rather
+            // than a torn down surface.
+            wl::cider_wl_shm_pool_destroy(pool);
+            if st.buffer.is_null() {
+                println!("cider-wayland-window present=FAILED reason=no-buffer");
+                return;
+            }
+        }
+        wl::cider_wl_surface_attach(st.surface, st.buffer, 0, 0);
+        wl::cider_wl_surface_damage(st.surface, 0, 0, w, h);
+        wl::cider_wl_surface_commit(st.surface);
+    }
+    session::flush();
+    if !st.mapped {
+        st.mapped = true;
+        println!("cider-wayland-window mapped=yes number={} size={w}x{h}", st.number);
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The methods. Encodings are spelled out next to each one and checked against CGWindow.h; an
+// encoding that disagrees with the signature does not fail at registration, it corrupts arguments
+// at the first call.
+// ---------------------------------------------------------------------------------------------
+
+// CGRect and CGPoint as the runtime spells them; NSRect is CGRect on this platform. Written as
+// LITERALS rather than built with format!, so the pointer handed to class_addMethod points at
+// static memory. Whether the runtime copies a type string is a detail of the runtime, and a
+// dangling one would corrupt arguments rather than fail.
+
+extern "C" fn init_with_delegate(this: Object, _cmd: Sel, delegate: Object) -> Object {
+    let super_class = unsafe { objc::class_getSuperclass(objc::object_getClass(this)) };
+    let mut sup = objc::ObjcSuper { receiver: this, super_class };
+    let sel_init = unsafe { objc::sel_registerName(cstr!("init")) };
+    let this = unsafe { objc::objc_msgSendSuper(&mut sup, sel_init) };
+    if this.is_null() {
+        return std::ptr::null_mut();
+    }
+    let off = STATE_OFFSET.load(Ordering::Acquire);
+    if off < 0 {
+        return std::ptr::null_mut();
+    }
+    let mut st = Box::new(WindowState::new());
+    st.delegate = delegate;
+    let raw = Box::into_raw(st);
+    unsafe {
+        let slot = (this as *mut u8).offset(off) as *mut *mut WindowState;
+        *slot = raw;
+        if !create_surface(&mut *raw) {
+            // The surface is what the window IS. Without it every later call would fail one at a
+            // time, so failing here lets AppKit see a nil window instead.
+            drop(Box::from_raw(raw));
+            *slot = std::ptr::null_mut();
+            return std::ptr::null_mut();
+        }
+    }
+    this
+}
+
+extern "C" fn set_delegate(this: Object, _cmd: Sel, delegate: Object) {
+    if let Some(st) = unsafe { state(this) } {
+        st.delegate = delegate;
+    }
+}
+
+/// Tear the surface down. AppKit sends this on close and then releases, so anything left here is
+/// leaked for the life of the process.
+extern "C" fn invalidate(this: Object, _cmd: Sel) {
+    if let Some(st) = unsafe { state(this) } {
+        st.delegate = std::ptr::null_mut();
+        st.mapped = false;
+        unsafe {
+            if !st.surface.is_null() {
+                wl::cider_wl_surface_attach(st.surface, std::ptr::null_mut(), 0, 0);
+                wl::cider_wl_surface_commit(st.surface);
+            }
+        }
+        session::flush();
+    }
+}
+
+/// AppKit pushing the delegate's properties down after a batch of changes. Everything it would set
+/// is already applied by the individual setters, so this is where the pixels go out.
+extern "C" fn sync_delegate_properties(this: Object, _cmd: Sel) {
+    if let Some(st) = unsafe { state(this) } {
+        present(st);
+    }
+}
+
+extern "C" fn cgl_context(_this: Object, _cmd: Sel) -> *mut c_void {
+    std::ptr::null_mut()
+}
+
+extern "C" fn style_mask(this: Object, _cmd: Sel) -> usize {
+    unsafe { state(this) }.map(|st| st.style_mask).unwrap_or(0)
+}
+
+extern "C" fn set_style_mask(this: Object, _cmd: Sel, mask: usize) {
+    if let Some(st) = unsafe { state(this) } {
+        st.style_mask = mask;
+    }
+}
+
+/// Stored, not applied. xdg_shell has no notion of a stacking level: a compositor decides ordering
+/// and a client that wants to be on top asks through a protocol this surface does not use. Keeping
+/// the value means -level answers honestly if anything asks.
+extern "C" fn set_level(this: Object, _cmd: Sel, level: c_int) {
+    if let Some(st) = unsafe { state(this) } {
+        st.level = level;
+    }
+}
+
+extern "C" fn set_title(this: Object, _cmd: Sel, title: Object) {
+    let Some(st) = (unsafe { state(this) }) else { return };
+    if st.toplevel.is_null() || title.is_null() {
+        return;
+    }
+    unsafe {
+        let sel_utf8 = objc::sel_registerName(cstr!("UTF8String"));
+        let raw = objc::msg_send0(title, sel_utf8) as *const c_char;
+        if !raw.is_null() {
+            wl::cider_xdg_toplevel_set_title(st.toplevel, raw);
+            session::flush();
+        }
+    }
+}
+
+/// THE COMPOSITOR PLACES THE WINDOW, so only the size is acted on. Wayland gives a client no way
+/// to position its own toplevel, by design; the origin is remembered because AppKit reads it back
+/// and comparing against a value it never wrote would look like the window moved on its own.
+extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
+    let Some(st) = (unsafe { state(this) }) else { return };
+    let resized = frame.size.width != st.frame.size.width || frame.size.height != st.frame.size.height;
+    st.frame = frame;
+    if resized {
+        st.buffer = std::ptr::null_mut();
+        st.backing = None;
+        present(st);
+    }
+}
+
+extern "C" fn set_opaque(_this: Object, _cmd: Sel, _value: ObjcBool) {}
+
+/// Per-window alpha needs a subsurface or a compositor extension; XRGB8888 has no alpha channel by
+/// definition, so this is recorded as unsupported rather than silently ignored.
+extern "C" fn set_alpha_value(_this: Object, _cmd: Sel, _value: f64) {}
+
+/// SHADOWS ARE THE COMPOSITOR'S BUSINESS in Wayland, not the client's. There is nothing to do and
+/// nothing missing.
+extern "C" fn set_has_shadow(_this: Object, _cmd: Sel, _value: ObjcBool) {}
+
+extern "C" fn rect_noop(_this: Object, _cmd: Sel, _frame: NsRect) {}
+
+extern "C" fn show_window_without_activation(this: Object, _cmd: Sel) {
+    if let Some(st) = unsafe { state(this) } {
+        present(st);
+    }
+}
+
+/// Unmap by attaching a null buffer, which is how a Wayland client hides a surface: there is no
+/// hide request, an unmapped surface is one with no content.
+extern "C" fn hide_window(this: Object, _cmd: Sel) {
+    if let Some(st) = unsafe { state(this) } {
+        unsafe {
+            if !st.surface.is_null() {
+                wl::cider_wl_surface_attach(st.surface, std::ptr::null_mut(), 0, 0);
+                wl::cider_wl_surface_commit(st.surface);
+            }
+        }
+        st.mapped = false;
+        session::flush();
+    }
+}
+
+extern "C" fn window_number(this: Object, _cmd: Sel) -> i64 {
+    unsafe { state(this) }.map(|st| st.number).unwrap_or(0)
+}
+
+/// Stacking is the compositor's, as with -setLevel:.
+extern "C" fn place_window(_this: Object, _cmd: Sel, _other: i64) {}
+
+/// A CLIENT CANNOT FOCUS ITSELF in Wayland. The compositor grants focus; xdg_activation exists for
+/// the request but needs a token from an existing focused surface, which an app being launched has
+/// not got. Presenting is the honest approximation: a mapped surface is one the compositor can
+/// choose to focus.
+extern "C" fn make_key(this: Object, _cmd: Sel) {
+    if let Some(st) = unsafe { state(this) } {
+        present(st);
+    }
+}
+
+extern "C" fn noop(_this: Object, _cmd: Sel) {}
+
+extern "C" fn miniaturize(this: Object, _cmd: Sel) {
+    if let Some(st) = unsafe { state(this) } {
+        st.miniaturized = true;
+    }
+}
+
+extern "C" fn deminiaturize(this: Object, _cmd: Sel) {
+    if let Some(st) = unsafe { state(this) } {
+        st.miniaturized = false;
+        present(st);
+    }
+}
+
+extern "C" fn is_miniaturized(this: Object, _cmd: Sel) -> ObjcBool {
+    match unsafe { state(this) } {
+        Some(st) if st.miniaturized => YES,
+        _ => NO,
+    }
+}
+
+extern "C" fn disable_flush_window(this: Object, _cmd: Sel) {
+    if let Some(st) = unsafe { state(this) } {
+        st.flush_disabled += 1;
+    }
+}
+
+extern "C" fn enable_flush_window(this: Object, _cmd: Sel) {
+    if let Some(st) = unsafe { state(this) } {
+        st.flush_disabled = (st.flush_disabled - 1).max(0);
+    }
+}
+
+extern "C" fn flush_buffer(this: Object, _cmd: Sel) {
+    if let Some(st) = unsafe { state(this) } {
+        if st.flush_disabled == 0 {
+            present(st);
+        }
+    }
+}
+
+/// NO POINTER WITHOUT A SEAT. weston headless advertises none, and asking a compositor where the
+/// pointer is has no equivalent request in any case: position arrives through motion events. The
+/// origin is the value AppKit reads as "nothing to report".
+extern "C" fn mouse_location(_this: Object, _cmd: Sel) -> NsPoint {
+    NsPoint { x: 0.0, y: 0.0 }
+}
+
+extern "C" fn send_event(_this: Object, _cmd: Sel, _event: *mut c_void) {}
+
+extern "C" fn object_noop(_this: Object, _cmd: Sel, _obj: Object) {}
+
+extern "C" fn cgl_noop(_this: Object, _cmd: Sel, _ctx: *mut c_void) {}
+
+/// Subwindows are a real xdg_shell concept (wl_subsurface), and this returns nil until one is
+/// needed. AppKit uses subwindows for sheets and drawers, neither of which is on the path to a
+/// document window, and a nil here is a missing sheet rather than a dead process.
+extern "C" fn create_sub_window(_this: Object, _cmd: Sel, _frame: NsRect) -> Object {
+    std::ptr::null_mut()
+}
+
+/// Build the class. Returns null if CGWindow is missing, which means CoreGraphics is not loaded.
+///
+/// # Safety
+/// Called once, from the bundle's initialiser.
+pub unsafe fn register() -> objc::Class {
+    let methods = [
+        objc::MethodDef { sel: cstr!("initWithDelegate:"), types: cstr!("@@:@"), imp: init_with_delegate as *const c_void },
+        objc::MethodDef { sel: cstr!("setDelegate:"), types: cstr!("v@:@"), imp: set_delegate as *const c_void },
+        objc::MethodDef { sel: cstr!("invalidate"), types: cstr!("v@:"), imp: invalidate as *const c_void },
+        objc::MethodDef { sel: cstr!("syncDelegateProperties"), types: cstr!("v@:"), imp: sync_delegate_properties as *const c_void },
+        objc::MethodDef { sel: cstr!("cglContext"), types: cstr!("^v@:"), imp: cgl_context as *const c_void },
+        objc::MethodDef { sel: cstr!("styleMask"), types: cstr!("Q@:"), imp: style_mask as *const c_void },
+        objc::MethodDef { sel: cstr!("setStyleMask:"), types: cstr!("v@:Q"), imp: set_style_mask as *const c_void },
+        objc::MethodDef { sel: cstr!("setLevel:"), types: cstr!("v@:i"), imp: set_level as *const c_void },
+        objc::MethodDef { sel: cstr!("setTitle:"), types: cstr!("v@:@"), imp: set_title as *const c_void },
+        objc::MethodDef { sel: cstr!("setFrame:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: set_frame as *const c_void },
+        objc::MethodDef { sel: cstr!("setOpaque:"), types: cstr!("v@:c"), imp: set_opaque as *const c_void },
+        objc::MethodDef { sel: cstr!("setAlphaValue:"), types: cstr!("v@:d"), imp: set_alpha_value as *const c_void },
+        objc::MethodDef { sel: cstr!("setHasShadow:"), types: cstr!("v@:c"), imp: set_has_shadow as *const c_void },
+        objc::MethodDef { sel: cstr!("sheetOrderFrontFromFrame:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: rect_noop as *const c_void },
+        objc::MethodDef { sel: cstr!("sheetOrderOutToFrame:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: rect_noop as *const c_void },
+        objc::MethodDef { sel: cstr!("showWindowForAppActivation:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: rect_noop as *const c_void },
+        objc::MethodDef { sel: cstr!("hideWindowForAppDeactivation:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: rect_noop as *const c_void },
+        objc::MethodDef { sel: cstr!("hideWindow"), types: cstr!("v@:"), imp: hide_window as *const c_void },
+        objc::MethodDef { sel: cstr!("showWindowWithoutActivation"), types: cstr!("v@:"), imp: show_window_without_activation as *const c_void },
+        objc::MethodDef { sel: cstr!("windowNumber"), types: cstr!("q@:"), imp: window_number as *const c_void },
+        objc::MethodDef { sel: cstr!("placeAboveWindow:"), types: cstr!("v@:q"), imp: place_window as *const c_void },
+        objc::MethodDef { sel: cstr!("placeBelowWindow:"), types: cstr!("v@:q"), imp: place_window as *const c_void },
+        objc::MethodDef { sel: cstr!("makeKey"), types: cstr!("v@:"), imp: make_key as *const c_void },
+        objc::MethodDef { sel: cstr!("makeMain"), types: cstr!("v@:"), imp: noop as *const c_void },
+        objc::MethodDef { sel: cstr!("captureEvents"), types: cstr!("v@:"), imp: noop as *const c_void },
+        objc::MethodDef { sel: cstr!("miniaturize"), types: cstr!("v@:"), imp: miniaturize as *const c_void },
+        objc::MethodDef { sel: cstr!("deminiaturize"), types: cstr!("v@:"), imp: deminiaturize as *const c_void },
+        objc::MethodDef { sel: cstr!("isMiniaturized"), types: cstr!("c@:"), imp: is_miniaturized as *const c_void },
+        objc::MethodDef { sel: cstr!("disableFlushWindow"), types: cstr!("v@:"), imp: disable_flush_window as *const c_void },
+        objc::MethodDef { sel: cstr!("enableFlushWindow"), types: cstr!("v@:"), imp: enable_flush_window as *const c_void },
+        objc::MethodDef { sel: cstr!("flushBuffer"), types: cstr!("v@:"), imp: flush_buffer as *const c_void },
+        objc::MethodDef { sel: cstr!("mouseLocationOutsideOfEventStream"), types: cstr!("{CGPoint=dd}@:"), imp: mouse_location as *const c_void },
+        objc::MethodDef { sel: cstr!("sendEvent:"), types: cstr!("v@:^v"), imp: send_event as *const c_void },
+        objc::MethodDef { sel: cstr!("addEntriesToDeviceDictionary:"), types: cstr!("v@:@"), imp: object_noop as *const c_void },
+        objc::MethodDef { sel: cstr!("flashWindow"), types: cstr!("v@:"), imp: noop as *const c_void },
+        objc::MethodDef { sel: cstr!("addCGLContext:"), types: cstr!("v@:^v"), imp: cgl_noop as *const c_void },
+        objc::MethodDef { sel: cstr!("removeCGLContext:"), types: cstr!("v@:^v"), imp: cgl_noop as *const c_void },
+        objc::MethodDef { sel: cstr!("flushCGLContext:"), types: cstr!("v@:^v"), imp: cgl_noop as *const c_void },
+        objc::MethodDef { sel: cstr!("createSubWindowWithFrame:"), types: cstr!("@@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: create_sub_window as *const c_void },
+    ];
+    let (cls, offset) = unsafe {
+        objc::register_subclass_with_state(
+            cstr!("CGWindowWayland"),
+            cstr!("CGWindow"),
+            &methods,
+            cstr!("_ciderWindowState"),
+        )
+    };
+    if !cls.is_null() {
+        STATE_OFFSET.store(offset, Ordering::Release);
+    }
+    cls
+}
+
+/// -newWindowWithDelegate: in one place, so the display and the panel variant share it.
+pub fn new_window(delegate: Object) -> Object {
+    unsafe {
+        let cls = objc::objc_getClass(cstr!("CGWindowWayland"));
+        if cls.is_null() {
+            println!("cider-wayland-window new=FAILED reason=class-not-registered");
+            return std::ptr::null_mut();
+        }
+        let alloc = objc::sel_registerName(cstr!("alloc"));
+        let init = objc::sel_registerName(cstr!("initWithDelegate:"));
+        let obj = objc::msg_send0(cls, alloc);
+        objc::msg_send_obj(obj, init, delegate)
+    }
+}

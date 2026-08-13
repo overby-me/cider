@@ -39,6 +39,8 @@ unsafe extern "C" {
     pub fn sel_registerName(name: *const c_char) -> Sel;
     pub fn object_getClass(obj: Object) -> Class;
     pub fn class_getSuperclass(cls: Class) -> Class;
+    pub fn class_getInstanceVariable(cls: Class, name: *const c_char) -> *mut c_void;
+    pub fn ivar_getOffset(ivar: *mut c_void) -> isize;
 
     /// CALLING super. An override that does not chain to its superclass skips whatever the base
     /// set up, and for an -init that is usually fatal later rather than here. Declared with the
@@ -158,3 +160,50 @@ pub const NO: ObjcBool = 0;
 pub type CgError = c_int;
 pub const K_CG_ERROR_SUCCESS: CgError = 0;
 pub const K_CG_ERROR_FAILURE: CgError = 1000;
+
+/// Register a subclass that carries one pointer of Rust state, and report where that pointer
+/// lives.
+///
+/// ONE IVAR, NOT SEVERAL. Every field a window needs has a Rust type, so the object only has to
+/// hold a Box pointer; adding the fields individually would mean an encoding and an offset lookup
+/// each, to describe memory the ObjC side never reads.
+///
+/// class_addIvar MUST COME BEFORE objc_registerClassPair and is rejected afterwards, which is why
+/// this cannot be layered on top of register_subclass.
+///
+/// # Safety
+/// Every MethodDef's `imp` must match its `types`, and the returned offset is only valid for
+/// instances of the returned class.
+pub unsafe fn register_subclass_with_state(
+    name: *const c_char,
+    superclass_name: *const c_char,
+    methods: &[MethodDef],
+    state_ivar: *const c_char,
+) -> (Class, isize) {
+    let superclass = unsafe { objc_getClass(superclass_name) };
+    if superclass.is_null() {
+        return (std::ptr::null_mut(), -1);
+    }
+    let mut cls = unsafe { objc_allocateClassPair(superclass, name, 0) };
+    if cls.is_null() {
+        // Already registered: a second load of the same bundle. Its ivar is already in place, so
+        // the offset is still the answer.
+        cls = unsafe { objc_getClass(name) };
+    } else {
+        // Pointer sized, pointer aligned: log2(8) is 3, which is what the runtime wants rather
+        // than the alignment itself.
+        unsafe {
+            class_addIvar(cls, state_ivar, std::mem::size_of::<*mut c_void>(), 3, cstr!("^v"));
+        }
+        for m in methods {
+            let sel = unsafe { sel_registerName(m.sel) };
+            unsafe { class_addMethod(cls, sel, m.imp, m.types) };
+        }
+        unsafe { objc_registerClassPair(cls) };
+    }
+    let ivar = unsafe { class_getInstanceVariable(cls, state_ivar) };
+    if ivar.is_null() {
+        return (cls, -1);
+    }
+    (cls, unsafe { ivar_getOffset(ivar) })
+}

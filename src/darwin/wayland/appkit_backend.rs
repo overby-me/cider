@@ -18,7 +18,9 @@ use std::os::raw::c_void;
 mod colors;
 mod fonts;
 mod objc;
+mod session;
 mod wl;
+mod window;
 
 use objc::{Class, NsRect, ObjcSuper, Object, Sel};
 
@@ -44,16 +46,28 @@ extern "C" fn display_init(this: Object, _cmd: Sel) -> Object {
     }
 
     // A COMPOSITOR HAS TO ANSWER, and this is the honest place to find out: returning self and
-    // failing later would make every window operation fail instead of letting X11 take over.
-    let display = unsafe { wl::wl_display_connect(std::ptr::null()) };
-    if display.is_null() {
-        println!("cider-wayland-appkit init=declined reason=no-compositor");
+    // failing later would make every window operation fail instead of declining the backend.
+    // connect() also binds the globals a window needs, so a compositor that answers but offers no
+    // xdg_wm_base is refused here rather than at the first window.
+    if !session::connect() {
         return std::ptr::null_mut();
     }
-    println!("cider-wayland-appkit init=ok display=connected");
-    // Kept open deliberately: the connection IS the backend's state, and there is nowhere else to
-    // put it until the class grows an ivar.
+    // The window class needs CGWindow, which is loaded by now: this bundle is an AppKit backend,
+    // so CoreGraphics came in before it.
+    if unsafe { window::register() }.is_null() {
+        println!("cider-wayland-appkit init=declined reason=no-CGWindow");
+        return std::ptr::null_mut();
+    }
     this
+}
+
+/// -newWindowWithDelegate:, the method that makes this a window system at all.
+///
+/// AppKit owns the returned window: the name begins with new, so the caller has the reference and
+/// releases it. Returning nil is survivable and says so in the log; AppKit reports a window it
+/// could not create rather than dying inside one.
+extern "C" fn display_new_window(_this: Object, _cmd: Sel, delegate: Object) -> Object {
+    window::new_window(delegate)
 }
 
 /// -screens, the first abstract method AppKit demands.
@@ -162,6 +176,16 @@ pub extern "C" fn cider_wayland_appkit_register() {
                 sel: cstr!("fontTypefacesForFamilyName:"),
                 types: cstr!("@@:@"),
                 imp: display_typefaces as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("newWindowWithDelegate:"),
+                types: cstr!("@@:@"),
+                imp: display_new_window as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("newPanelWithDelegate:"),
+                types: cstr!("@@:@"),
+                imp: display_new_window as *const c_void,
             },
             objc::MethodDef {
                 sel: cstr!("colorWithName:"),

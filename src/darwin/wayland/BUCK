@@ -181,7 +181,9 @@ darwin_rust_staticlib(
         "colors.rs",
         "fonts.rs",
         "objc.rs",
+        "session.rs",
         "wl.rs",
+        "window.rs",
     ],
     visibility = ["PUBLIC"],
 )
