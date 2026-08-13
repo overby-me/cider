@@ -1,0 +1,41 @@
+diff -u --recursive a/CFLocale.c b/CFLocale.c
+--- a/CFLocale.c	2026-08-13 17:44:38.152644431 +0200
++++ b/CFLocale.c	2026-08-13 17:44:38.176486876 +0200
+@@ -310,6 +310,37 @@
+ #if 0 // DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_WINDOWS || DEPLOYMENT_TARGET_LINUX
+         name = (CFStringRef)CFPreferencesCopyAppValue(CFSTR("AppleLocale"), kCFPreferencesCurrentApplication);
+ #endif
++        /*
++         * THE ENVIRONMENT, because nothing else here knows. The preference lookup above is
++         * disabled upstream for performance, and on a real Mac that costs nothing: the system
++         * always has AppleLocale set. Nothing sets it here, so the identifier fell through to
++         * FALLBACK_LOCALE_NAME, which is CFSTR("") on this deployment target. An EMPTY locale
++         * identifier is the root locale: -languageCode is nil, and +[NSUserDefaults
++         * standardUserDefaults] then registers AppleLocale as nil, so it is never registered at
++         * all.
++         *
++         * That is what LibreOffice's macOS configuration backend reads for its Locale property,
++         * and a configuration backend that answers nothing is a bootstrap failure two layers
++         * later: WrappedTargetRuntimeException, reported as "Unspecified Application Error".
++         *
++         * LANG is where every other program on this system reads the same thing from, and the
++         * identifier form wanted here keeps the underscore that LANG already uses.
++         */
++        const char *env = getenv("LANG");
++        if (!env || !*env) env = getenv("LC_ALL");
++        if (!env || !*env) env = getenv("LC_MESSAGES");
++        if (env && *env && strcmp(env, "C") != 0 && strcmp(env, "POSIX") != 0) {
++            char buf[64];
++            size_t i = 0;
++            for (; i + 1 < sizeof(buf) && env[i] && env[i] != '.' && env[i] != '@'; i++) {
++                buf[i] = env[i];
++            }
++            buf[i] = '\0';
++            if (i > 0) {
++                name = CFStringCreateWithCString(kCFAllocatorSystemDefault, buf,
++                                                 kCFStringEncodingUTF8);
++            }
++        }
+     } else {
+         CFRetain(name);
+     }
