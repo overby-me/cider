@@ -17,3 +17,16 @@ export_file(
     src = "group",
     visibility = ["PUBLIC"],
 )
+
+# THE RESOLVER CONFIGURATION, which both prefixes install and no rule exported.
+#
+# buck/prefix/BUCK and buck/prefix-min/BUCK have referenced //src/darwin/etc:resolv.conf since the
+# file was added, and the target did not exist, so every graph query over either prefix failed with
+# "Unknown target resolv.conf" and took the whole nix endpoint down with it. The file was there the
+# whole time; only the three lines that export it were missing.
+
+export_file(
+    name = "resolv.conf",
+    src = "resolv.conf",
+    visibility = ["PUBLIC"],
+)

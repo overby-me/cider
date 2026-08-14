@@ -1544,3 +1544,25 @@ would have been gone, and the only trace of a day of work would have been the co
 
 Each one was checked by reverse applying it against the tree: if it does not come back off cleanly
 it does not describe what is actually there.
+
+## The patch series did not apply, and nobody would have known, 2026-08-14 night
+
+Capturing today fixes as patches is not the same as those patches WORKING. Applying the whole series
+to a freshly fetched pin is the only check that means anything, and it found two things:
+
+    0034-surface-noneskipfirst-big-endian FAILED at hunk 1. It had been generated against a tree
+    that already had other changes in it, earlier in this session, and nothing since then had
+    materialised the pin, so the endpoint build had been broken ever since and no run noticed.
+
+    //src/darwin/etc:resolv.conf did not exist. Both buck/prefix/BUCK and buck/prefix-min/BUCK have
+    referenced it since the file was added, so every graph query over either prefix died with
+    "Unknown target" and took the nix endpoint with it. The file was there; the three lines that
+    export it were not.
+
+0034 is regenerated from the pristine pin and now carries the alpha-first byte order fix as well, so
+0045 is gone. The whole series applies: 49 of 49 cocotron, 11 of 11 xnu, and the result is
+byte-identical to the tree that produced every screenshot above.
+
+THE LESSON, which is the same one as always: a patch that reverse-applies to the tree you are running
+proves only that it describes that tree. Apply the series to the ORIGINAL, and diff the result
+against what you tested.
