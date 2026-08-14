@@ -1,0 +1,145 @@
+--- a/CoreGraphics/CGAffineTransform.m
++++ b/CoreGraphics/CGAffineTransform.m
+@@ -99,7 +99,33 @@
+     return CGAffineTransformConcat(translate, xform);
+ }
+ 
++/*
++ * THE RECTANGLE THROUGH THE TRANSFORM, which returned the rectangle UNCHANGED.
++ *
++ * It is not a rare call: 322 of them in one LibreOffice startup, each one a place where something
++ * computed where to draw and was handed back coordinates in the wrong space. A stub that returns
++ * its input is the worst kind here, because every caller gets a plausible rectangle and nothing
++ * reports an error.
++ *
++ * The transform of a rectangle is the BOUNDING BOX of its four transformed corners, which is what
++ * Core Graphics documents: under a rotation the corners are no longer axis aligned, and the answer
++ * is the smallest rectangle that contains them.
++ */
+ CGRect CGRectApplyAffineTransform(CGRect rect, CGAffineTransform t) {
+-    printf("CGRectApplyAffineTransform STUB\n");
+-    return rect;
++    const CGPoint corners[4] = {
++        CGPointApplyAffineTransform(CGPointMake(CGRectGetMinX(rect), CGRectGetMinY(rect)), t),
++        CGPointApplyAffineTransform(CGPointMake(CGRectGetMaxX(rect), CGRectGetMinY(rect)), t),
++        CGPointApplyAffineTransform(CGPointMake(CGRectGetMinX(rect), CGRectGetMaxY(rect)), t),
++        CGPointApplyAffineTransform(CGPointMake(CGRectGetMaxX(rect), CGRectGetMaxY(rect)), t),
++    };
++    CGFloat minX = corners[0].x, maxX = corners[0].x;
++    CGFloat minY = corners[0].y, maxY = corners[0].y;
++
++    for (int i = 1; i < 4; i++) {
++        if (corners[i].x < minX) minX = corners[i].x;
++        if (corners[i].x > maxX) maxX = corners[i].x;
++        if (corners[i].y < minY) minY = corners[i].y;
++        if (corners[i].y > maxY) maxY = corners[i].y;
++    }
++    return CGRectMake(minX, minY, maxX - minX, maxY - minY);
+ }
+--- a/Onyx2D/O2Context.m
++++ b/Onyx2D/O2Context.m
+@@ -23,6 +23,7 @@
+ #import <Onyx2D/O2ClipPhase.h>
+ #import <Onyx2D/O2Color.h>
+ #import <Onyx2D/O2ColorSpace.h>
++#import <Onyx2D/O2ClipState.h>
+ #import <Onyx2D/O2Context.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -538,11 +539,69 @@
+     return O2GStateUserSpaceTransform(O2ContextCurrentGState(self));
+ }
+ 
++/*
++ * THE CLIP BOUNDING BOX, WHICH USED TO BE ZERO FOR EVERY CONTEXT.
++ *
++ * -[O2GraphicsState clipBoundingBox] is O2UnimplementedMethod, so this answered an EMPTY rectangle
++ * always, and an empty clip is a perfectly good reason for a caller to draw nothing at all. It is
++ * not a niche accessor: an application asks what region it has to paint before deciding what to
++ * paint, and LibreOffice imports it.
++ *
++ * The answer is in USER space, which is what Core Graphics documents. With no clip set it is the
++ * whole surface; with one it is the clip rectangle the state is holding. Both are device space to
++ * begin with, so both come back through the inverse of the device transform.
++ *
++ * The gstate cannot answer this alone, which is why the implementation lives here: it has no idea
++ * how big the surface is, and "the whole surface" is the answer in the common case.
++ */
+ O2Rect O2ContextGetClipBoundingBox(O2ContextRef self) {
+     if (self == nil)
+         return O2RectZero;
+ 
+-    return [O2ContextCurrentGState(self) clipBoundingBox];
++    O2GState *gState = O2ContextCurrentGState(self);
++
++    if (gState == nil)
++        return O2RectZero;
++
++    O2ClipState *clipState = O2GStateClipState(gState);
++    O2Rect deviceRect;
++
++    if (clipState != nil && O2ClipStateGetType(clipState) != O2ClipStateTypeNone) {
++        deviceRect = O2ClipStateIntegralRect(clipState);
++    } else if ([self respondsToSelector: @selector(size)]) {
++        O2Size size = [(id) self size];
++
++        deviceRect = O2RectMake(0, 0, size.width, size.height);
++    } else {
++        return O2RectZero;
++    }
++
++    if (deviceRect.size.width <= 0 || deviceRect.size.height <= 0) {
++        return O2RectZero;
++    }
++    /* The bounding box of the transformed corners, which is what a transformed rectangle means
++     * once a rotation is allowed. */
++    const O2AffineTransform toUser = O2AffineTransformInvert(gState->_deviceSpaceTransform);
++    const O2Point corners[4] = {
++        O2PointApplyAffineTransform(O2PointMake(O2RectGetMinX(deviceRect),
++                                                O2RectGetMinY(deviceRect)), toUser),
++        O2PointApplyAffineTransform(O2PointMake(O2RectGetMaxX(deviceRect),
++                                                O2RectGetMinY(deviceRect)), toUser),
++        O2PointApplyAffineTransform(O2PointMake(O2RectGetMinX(deviceRect),
++                                                O2RectGetMaxY(deviceRect)), toUser),
++        O2PointApplyAffineTransform(O2PointMake(O2RectGetMaxX(deviceRect),
++                                                O2RectGetMaxY(deviceRect)), toUser),
++    };
++    O2Float minX = corners[0].x, maxX = corners[0].x;
++    O2Float minY = corners[0].y, maxY = corners[0].y;
++
++    for (int i = 1; i < 4; i++) {
++        if (corners[i].x < minX) minX = corners[i].x;
++        if (corners[i].x > maxX) maxX = corners[i].x;
++        if (corners[i].y < minY) minY = corners[i].y;
++        if (corners[i].y > maxY) maxY = corners[i].y;
++    }
++    return O2RectMake(minX, minY, maxX - minX, maxY - minY);
+ }
+ 
+ O2AffineTransform O2ContextGetTextMatrix(O2ContextRef self) {
+--- a/Onyx2D/O2ClipState.m
++++ b/Onyx2D/O2ClipState.m
+@@ -37,6 +37,23 @@
+     self->_phases = nil;
+ }
+ 
++/*
++ * THE CLIP RECTANGLE, declared in the header since the beginning and never defined.
++ *
++ * O2ContextGetClipBoundingBox needs it: with a clip set, the bounding box IS this rectangle, and
++ * without one it is the whole surface. Nothing referenced it before, which is why the missing
++ * definition never broke a link.
++ */
++O2Rect O2ClipStateIntegralRect(O2ClipState *self) {
++    if (self == nil) {
++        return O2RectZero;
++    }
++    if (self->_type == O2ClipStateTypeNone) {
++        return O2RectZero;
++    }
++    return self->_rect;
++}
++
+ O2Path *O2ClipStateOnePath(O2ClipState *self) {
+     return self->_path;
+ }

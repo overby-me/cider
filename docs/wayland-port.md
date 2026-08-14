@@ -2271,3 +2271,37 @@ dialog is something no macOS dialog has ever had.
 
 STILL WRONG in that picture: the buttons are text with no bezel, the same as the print alert. That
 is LibreOffice drawing its own controls, and the cell traces show it never asks AppKit to draw them.
+
+## Two graphics bugs found while chasing the missing dropdown, neither of which was it
+
+The user reported that Set Paragraph Style, Font Name and Font Size have no dropdown button. Chasing
+it turned up two real faults in the graphics layer. Both are fixed. NEITHER fixed the dropdown, and
+saying so is the point of this entry.
+
+CGRectApplyAffineTransform RETURNED ITS INPUT. A stub, printing a line and handing back the
+untransformed rectangle, called 322 TIMES in a single LibreOffice startup: every one of those is a
+place where something computed where to draw and got coordinates in the wrong space. It transforms
+the four corners and answers their bounding box now, which is what the documentation says and what a
+rotation requires.
+
+THE CLIP BOUNDING BOX WAS ALWAYS EMPTY. -[O2GraphicsState clipBoundingBox] is O2UnimplementedMethod,
+so CGContextGetClipBoundingBox answered a zero rectangle for every context, and an empty clip is a
+perfectly good reason for a caller to draw nothing at all. It now answers in user space: the clip
+rectangle when one is set, the whole surface when none is, both through the inverse device
+transform. O2ClipStateIntegralRect had been declared in the header since the beginning and never
+defined, which is why nothing had ever noticed.
+
+    layer_probe before   clip=0,0,0x0
+    layer_probe after    clip=0,0,20x20
+
+AND THE LAYER PATH IS FINE, which is worth recording because a first version of that probe said it
+was broken. tests/buck2/gui/layer_probe.m drives the path LibreOffice uses for native controls: a
+bitmap context, a CGLayer made from it, a fill into the layer, the layer blitted back. It reported
+EMPTY, and the reason was the PROBE: Core Graphics puts the origin at the BOTTOM LEFT, so a rect at
+(0,0) lands in the last rows of the buffer and the pixel it was reading near the top was always
+going to be zero. Scanning the whole buffer shows 100 painted pixels starting at row 10, for the
+layer, for the point form, for an image made from a context and for one made from raw bytes.
+
+WHAT IS STILL TRUE: with SAL_NO_NWF=1, which turns off LibreOffice own native widget path, the
+dropdowns and the dialog button bezels APPEAR. With it on they do not. So the application takes that
+path, and the path produces nothing on this stack for reasons not yet found.
