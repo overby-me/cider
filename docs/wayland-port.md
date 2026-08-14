@@ -1307,3 +1307,54 @@ was always there. The allocator, asked to check itself (MallocCheckHeapEach), ab
 under _dispatch_source_invoke -> _dispatch_dispose, and the other face of the same damage is an
 os_unfair_lock taken recursively, which is what a corrupted lock word looks like. The lock identity
 was checked and cleared: thread ports are unique, thirteen of thirteen.
+
+## THE CHROME IS THE RIGHT COLOUR. Four bugs, one chain, 2026-08-14 evening
+
+docs/wayland-chrome-correct.png. Light grey toolbars, a slightly darker margin around the page, a
+status bar whose text is readable, a white page. Sampled: toolbar 237,237,237, margin 217,217,217,
+status bar 237,237,237, page 255,255,255, menu bar 229,229,229.
+
+### How LibreOffice actually reads a system colour, which is the thing to know
+
+It does not ask the colour for its components. From vcl/osx/salframe.cxx, getNSBoxBackgroundColor:
+
+    CGContextRef ctx = CGBitmapContextCreate(&aPixel, 1, 1, 8, 32, rgb,
+        kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Big);
+    NSGraphicsContext* gc = [NSGraphicsContext graphicsContextWithCGContext: ctx flipped: NO];
+    NSBox* pBox = [[NSBox alloc] initWithFrame: rect];
+    [pBox setBoxType: NSBoxCustom];
+    [pBox setFillColor: pSysColor];
+    [pBox setBorderType: NSNoBorder];
+    [pBox displayRectIgnoringOpacity: rect inContext: gc];
+    return Color(aPixel.r, aPixel.g, aPixel.b);
+
+aPixel is a LOCAL, and nothing initialises it. So every background colour in the application is
+whatever that one pixel ends up holding, and if the box does not draw, it is whatever the stack
+held. The whole mystery of the chrome, a flat colour that changed every run and later a stable
+black, is that sentence. Reproducing this exact sequence in the probe is what settled it, after ten
+other explanations had been eliminated one at a time.
+
+### The four bugs in the way, each of which alone was enough
+
+1. A WINDOWLESS VIEW DREW NOTHING. -displayRectIgnoringOpacity:inContext: went through the ordinary
+   display path, which needs -lockFocus, which needs a window. LibreOffice box has none. It draws
+   itself and its subviews into the given context directly now.
+
+2. NSBox DEFAULTED TO TRANSPARENT. -initWithFrame: set _isTransparent = YES and -drawRect: returns
+   immediately for a transparent box. The AppKit default is NO. So a box created in code drew
+   nothing, ever.
+
+3. THE BOX HAD NOWHERE TO PUT ITS FILL COLOUR. -setFillColor: stores into a dictionary that was
+   only created when decoding a nib, so for a box built in code the setter was a silent no-op and
+   -fillColor answered nil. -drawRect: then set NO colour before filling and painted with whatever
+   was left in the context, which was the groove colour.
+
+4. ALPHA FIRST WAS WRITTEN LAST. kCGBitmapByteOrder32Big with an alpha-first layout means the bytes
+   are A, R, G, B; the writer put them R, G, B, A. Every channel one place to the left: a colour of
+   0.2, 0.4, 0.8 came back as 0.4, 0.8, 1.0.
+
+### Still wrong
+
+The menu bar shows Application and File and not the rest of the menus. That is the next rendering
+question. The application still dies at about twenty seconds, and that is NOT this backend: the X11
+backend reaches the same point and dies the same way.

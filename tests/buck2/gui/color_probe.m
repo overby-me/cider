@@ -239,6 +239,80 @@ int main(int argc, const char **argv)
 		CGColorSpaceRelease(space);
 	}
 
+
+	/*
+	 * THE SEQUENCE LIBREOFFICE USES TO READ A SYSTEM COLOUR, copied from vcl/osx/salframe.cxx
+	 * getNSBoxBackgroundColor. It does not ask the colour for its components at all: it renders an
+	 * NSBox filled with that colour into a ONE PIXEL bitmap and reads the pixel back.
+	 *
+	 * Every background in the application comes from this: window, workspace, control. If the box
+	 * does not draw, the pixel keeps whatever the stack held, which is a colour that changes between
+	 * runs, or zero, which is black. Both have been on screen.
+	 */
+	@autoreleasepool {
+		struct { unsigned char a, r, g, b; } aPixel;
+		aPixel.a = 0xAB; aPixel.r = 0xAB; aPixel.g = 0xAB; aPixel.b = 0xAB;
+
+		CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+		CGContextRef onePixel = CGBitmapContextCreate(&aPixel, 1, 1, 8, 32, space,
+			(uint32_t) kCGImageAlphaNoneSkipFirst | (uint32_t) kCGBitmapByteOrder32Big);
+		printf("COLOR_PROBE box context=%s\n", onePixel ? "ok" : "NULL  <-- cannot draw at all");
+		fflush(stdout);
+
+		if (onePixel != NULL) {
+			NSGraphicsContext *gc = [NSGraphicsContext graphicsContextWithCGContext: onePixel
+																		   flipped: NO];
+			printf("COLOR_PROBE box graphicsContext=%s\n", gc ? "ok" : "NIL");
+			fflush(stdout);
+
+			NSRect rect = NSMakeRect(0, 0, 1, 1);
+			NSBox *box = [[NSBox alloc] initWithFrame: rect];
+			[box setBoxType: NSBoxCustom];
+			[box setFillColor: [NSColor colorWithDeviceRed: 0.2 green: 0.4 blue: 0.8 alpha: 1.0]];
+			[box setBorderType: NSNoBorder];
+			printf("COLOR_PROBE box type=%ld transparent=%d fill=%s border=%ld\n",
+				(long) [box boxType], (int) [box isTransparent],
+				[box fillColor] ? [[[box fillColor] description] UTF8String] : "NIL",
+				(long) [box borderType]);
+			fflush(stdout);
+			[box displayRectIgnoringOpacity: rect inContext: gc];
+			[box release];
+
+			printf("COLOR_PROBE box pixel=%d,%d,%d expected=51,102,204%s\n", aPixel.r, aPixel.g,
+				aPixel.b, (aPixel.r == 0xAB) ? "   <-- UNTOUCHED, the box drew nothing" : "");
+			fflush(stdout);
+
+			/* WHICH HALF IS BROKEN: the dispatch into the view, or the drawing itself. Calling
+			 * drawRect directly with the context current skips everything in between. */
+			aPixel.r = aPixel.g = aPixel.b = 0xCD;
+			NSBox *direct = [[NSBox alloc] initWithFrame: rect];
+			[direct setBoxType: NSBoxCustom];
+			[direct setFillColor: [NSColor colorWithDeviceRed: 0.2 green: 0.4 blue: 0.8
+														alpha: 1.0]];
+			[direct setBorderType: NSNoBorder];
+			NSGraphicsContext *saved = [NSGraphicsContext currentContext];
+			[NSGraphicsContext setCurrentContext: gc];
+			[direct drawRect: rect];
+			[NSGraphicsContext setCurrentContext: saved];
+			[direct release];
+			printf("COLOR_PROBE box direct-drawRect pixel=%d,%d,%d%s\n", aPixel.r, aPixel.g,
+				aPixel.b, (aPixel.r == 0xCD) ? "   <-- drawRect itself paints nothing" : "");
+			fflush(stdout);
+
+			/* And the simplest possible drawing, to separate NSBox from the fill machinery. */
+			aPixel.r = aPixel.g = aPixel.b = 0xEF;
+			[NSGraphicsContext setCurrentContext: gc];
+			[[NSColor colorWithDeviceRed: 0.2 green: 0.4 blue: 0.8 alpha: 1.0] set];
+			NSRectFill(rect);
+			[NSGraphicsContext setCurrentContext: saved];
+			printf("COLOR_PROBE box NSRectFill pixel=%d,%d,%d%s\n", aPixel.r, aPixel.g, aPixel.b,
+				(aPixel.r == 0xEF) ? "   <-- NSRectFill paints nothing" : "");
+			fflush(stdout);
+			CGContextRelease(onePixel);
+		}
+		CGColorSpaceRelease(space);
+	}
+
 	printf("COLOR_PROBE_OK\n");
 	fflush(stdout);
 	return 0;
