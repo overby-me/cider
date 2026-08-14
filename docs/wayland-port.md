@@ -2159,3 +2159,22 @@ wakes them. Combined with the dispatch probe -- 240,000 blocks for 232 KB -- wha
 LibreOffice allocating in its own periodic work and not giving it back.
 
 The autorelease pool earlier IS ours and was real: 19 MB/s to 7. What is left is not.
+
+## Application activation may only undo what deactivation did
+
+-showWindowForAppActivation: showed EVERY window it was sent to. An application has windows that
+were never ordered front, so bringing the application forward could put a window on screen that had
+never been visible. It now restores only the windows THIS backend hid when the application was
+deactivated, which is what activation means; the flag is per window and set at hide time.
+
+A surface with nothing in it is also no longer mapped, which is Wayland own rule: a client is not
+obliged to attach a buffer and a surface without one is unmapped by definition. The first attach now
+waits for the application to draw something, and once a window has been mapped the check is skipped,
+because a window that later clears itself is still a window.
+
+NEITHER FIXED THE WINDOW THIS WAS AIMED AT, and that is worth writing down rather than quietly
+leaving. LibreOffice keeps a borderless 648x200 window called VCL ImplGetDefaultWindow, created at
+1396,620 on a real session, and it is the FIRST thing on screen: a blank rectangle before the
+document appears. It survives both rules because the application does draw into it and does order it
+front. What it does NOT survive on Apple systems is being seen, so the next thing to find is which
+call makes it visible here.

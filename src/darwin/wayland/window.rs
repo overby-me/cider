@@ -110,6 +110,9 @@ pub struct WindowState {
     /// Whether AppKit has actually SHOWN this window. A Mach-O application creates windows long
     /// before it shows them, and one that was never ordered front must not appear.
     pub visible: bool,
+    /// Whether THIS backend hid the window because the application was deactivated, which is the
+    /// only thing application activation is allowed to undo.
+    pub hidden_by_deactivation: bool,
 }
 
 impl WindowState {
@@ -148,6 +151,7 @@ impl WindowState {
             redraw_until: None,
             last_forced_display: None,
             visible: false,
+            hidden_by_deactivation: false,
         }
     }
 }
@@ -761,9 +765,9 @@ fn create_surface(st: &mut WindowState) -> bool {
         }
     }
     println!(
-        "cider-wayland-window create=ok number={} size={}x{} level={} style={:#x}",
-        st.number, st.frame.size.width as i32, st.frame.size.height as i32, st.level,
-        st.style_mask
+        "cider-wayland-window create=ok number={} size={}x{} at={},{} level={} style={:#x}",
+        st.number, st.frame.size.width as i32, st.frame.size.height as i32,
+        st.frame.origin.x as i32, st.frame.origin.y as i32, st.level, st.style_mask
     );
     true
 }
@@ -942,6 +946,27 @@ fn present(st: &mut WindowState) {
     }
     if st.surface.is_null() || !st.configured || !ensure_backing(st) {
         return;
+    }
+    /*
+     * AND A SURFACE WITH NOTHING IN IT IS NOT MAPPED, which is Wayland own rule and happens to be
+     * the answer to a window the user should never see.
+     *
+     * LibreOffice keeps a borderless 648x200 window it calls VCL ImplGetDefaultWindow and never
+     * draws into. On Apple systems it is out of the way; here it was ordered front like any other
+     * window, so the FIRST thing to appear on the user desktop was a blank grey rectangle, and on a
+     * tiling compositor it took a share of the screen for the whole session.
+     *
+     * A client is not obliged to attach a buffer, and a surface without one is unmapped by
+     * definition. So the first attach waits for the application to draw SOMETHING. Once a window has
+     * been mapped this check is skipped, because a window that later clears itself completely is
+     * still a window.
+     */
+    if !st.mapped && !st.pixels.is_null() && st.map_len >= 4 {
+        let total = st.map_len / 4;
+        let words = unsafe { std::slice::from_raw_parts(st.pixels as *const u32, total) };
+        if words.iter().all(|&w| w == CLEAR_PIXEL) {
+            return;
+        }
     }
     unsafe {
         wl::cider_wl_surface_attach(st.surface, st.buffer, 0, 0);
@@ -1606,10 +1631,23 @@ extern "C" fn show_window_without_activation(this: Object, _cmd: Sel) {
     }
 }
 
-/// The other half of showing, which AppKit uses when the whole application comes forward. It was a
-/// no-op, so a window shown only this way stayed invisible.
+/*
+ * THE OTHER HALF OF SHOWING, which AppKit uses when the whole application comes forward -- and it
+ * may only undo what deactivation did.
+ *
+ * It used to show EVERY window it was sent to, and an application has windows that were never
+ * ordered front: LibreOffice keeps one called VCL ImplGetDefaultWindow, 648x200 and empty, which on
+ * Apple systems is parked where nobody sees it. Wayland has no offscreen -- the compositor places
+ * windows -- so showing it put a blank window on the user desktop, and on a tiling compositor it
+ * took a share of the screen. It only appeared when the application was ACTIVATED, which is why a
+ * headless run never showed it and a real session always did.
+ */
 extern "C" fn show_window_for_app_activation(this: Object, _cmd: Sel, _frame: NsRect) {
     if let Some(st) = unsafe { state(this) } {
+        if !st.hidden_by_deactivation {
+            return;
+        }
+        st.hidden_by_deactivation = false;
         st.visible = true;
         st.needs_full_display = true;
         present(st);
@@ -1617,7 +1655,13 @@ extern "C" fn show_window_for_app_activation(this: Object, _cmd: Sel, _frame: Ns
 }
 
 extern "C" fn hide_window_for_app_deactivation(this: Object, _cmd: Sel, _frame: NsRect) {
+    let was_visible = unsafe { state(this) }.map(|st| st.visible).unwrap_or(false);
     hide_window(this, _cmd);
+    if was_visible {
+        if let Some(st) = unsafe { state(this) } {
+            st.hidden_by_deactivation = true;
+        }
+    }
 }
 
 /// Unmap by attaching a null buffer, which is how a Wayland client hides a surface: there is no
