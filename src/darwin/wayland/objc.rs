@@ -38,6 +38,8 @@ unsafe extern "C" {
     pub fn object_getIndexedIvars(obj: Object) -> *mut c_void;
     pub fn sel_registerName(name: *const c_char) -> Sel;
     pub fn object_getClass(obj: Object) -> Class;
+    /// The class NAME, for traces that have to say WHICH view a rectangle belongs to.
+    pub fn class_getName(cls: Class) -> *const c_char;
     pub fn class_getSuperclass(cls: Class) -> Class;
     pub fn class_getInstanceVariable(cls: Class, name: *const c_char) -> *mut c_void;
     pub fn ivar_getOffset(ivar: *mut c_void) -> isize;

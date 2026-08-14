@@ -321,6 +321,36 @@ pub fn deliver_pending_configures() {
                     st.number, has_delegate, width, height, f.size.width, f.size.height,
                     cf.size.width, cf.size.height, cf.origin.x, cf.origin.y
                 );
+                /*
+                 * AND WHERE THE WINDOW PUT ITS SUBVIEWS. A content view of the right size can still
+                 * hold a button laid out below its own bottom edge, and that is invisible in every
+                 * number above: the dialog just comes out cut off. One level is enough to see it,
+                 * and the class name says which view is which without guessing from the rect.
+                 */
+                if !cv.is_null() {
+                    let subviews = objc::msg_send0(cv, objc::sel_registerName(cstr!("subviews")));
+                    if !subviews.is_null() {
+                        let count = objc::msg_send_usize_ret(
+                            subviews, objc::sel_registerName(cstr!("count")));
+                        let at_index = objc::sel_registerName(cstr!("objectAtIndex:"));
+                        let frame_sel = objc::sel_registerName(cstr!("frame"));
+                        for i in 0..count.min(12) {
+                            let v = objc::msg_send_usize(subviews, at_index, i);
+                            if v.is_null() {
+                                continue;
+                            }
+                            let vf = objc::msg_send_rect_ret(v, frame_sel);
+                            let cls = objc::object_getClass(v);
+                            let name = objc::class_getName(cls);
+                            let name = std::ffi::CStr::from_ptr(name).to_string_lossy();
+                            println!(
+                                "cider-wayland-subview number={} {} frame={}x{}+{}+{} bottom={}",
+                                st.number, name, vf.size.width, vf.size.height,
+                                vf.origin.x, vf.origin.y, vf.origin.y + vf.size.height
+                            );
+                        }
+                    }
+                }
             }
         }
         /*

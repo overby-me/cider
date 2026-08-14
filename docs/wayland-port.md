@@ -1791,17 +1791,20 @@ sense: the application caught every one and reported nothing.
 The A and B for 3 is exact: the same script and the same click on the same panel wrote no file with
 the row version and wrote the document with the name field version, one run apart.
 
-STILL WRONG in the panel: its buttons are clipped by about half. What it is NOT, measured with
-CIDER_WAYLAND_TRACE_GEOMETRY and CIDER_WAYLAND_TRACE_RESIZE rather than guessed:
+CORRECTION, and it is my own error: THE PANEL BUTTONS ARE NOT CLIPPED. I said they were in the
+commit above, from looking at a downscaled crop whose bottom edge fell near them. A pixel column
+through the Cancel button says otherwise, in the application own buffer and in the compositor
+screenshot, identically:
 
-    cider-wayland-geometry number=19 surface=628x684 frame=628x684 content=628x684+0+0
+    1333 EDEDED   panel background under the list
+    1347 C7C7C7   button TOP border
+    1348 FFFFFF   button interior
+    1356 373737   the glyphs
+    1368 C7C7C7   button BOTTOM border
+    1369 EDEDED   background again, twenty rows of it before the surface ends at 1388
 
-The panel's surface, its NSWindow frame and its content view are the SAME size, and no
--setFrame: ever asks for a bigger one (the only setFrame calls in a whole run are 162x34 popups). So
-it is not a buffer larger than the configured size being cropped by the tiling compositor, which was
-the obvious theory and the wrong one, and it is not the menu inset either: the document window
-reports content 16 shorter than its frame because it HAS the menu bar, and the panel reports no
-inset at all, correctly.
+The layout agrees: the content view is 845x1388 and the buttons are 96x32 at y=12, twelve points
+above the bottom, with the file list above them at 807x1325+18+55. Nothing is cut.
 
-That leaves the panel's own subview layout inside a content view that is the right size. Next place
-to look is the nib's autoresizing, not our geometry.
+DO NOT JUDGE A RENDERING FROM A SCALED CROP. Two claims in this file came from that and both were
+wrong, this one and the drag selection one. Crop at full resolution, or read the pixels.
