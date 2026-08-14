@@ -1700,3 +1700,23 @@ verified correct, which is worth listing because each was a candidate:
 
 So the events are right and the application does not act on them. The next step is VCL side: what
 starts a text selection in a Writer edit window, and what it requires that a caret move does not.
+
+## Keyboard selection works, which narrows the mouse one considerably
+
+docs/wayland-shift-selects.png: ten Shift and Left presses after typing, and the last ten characters
+are highlighted. So VCL selection machinery is fine, its Writer edit window extends a selection
+happily, and the drawing of a selection is fine too.
+
+That leaves the mouse path specifically. What is known:
+
+    a single click moves the caret, so MouseButtonDown reaches the edit window with usable
+      coordinates
+    the drag arrives as NSLeftMouseDragged with the button held and a click count of 1
+    a double click arrives with a click count of 2
+    the coordinates the application computes from [NSEvent mouseLocation] are correct throughout
+    nothing raises
+
+and neither a drag nor a double click selects anything. The difference between a caret move and a
+selection on the VCL side is TRACKING: MouseButtonDown starts it, mouse moves are delivered to the
+tracking window as TrackingEvents rather than as plain moves, and MouseButtonUp ends it. That is
+where to look next, and it is the only part of this that has not been instrumented.
