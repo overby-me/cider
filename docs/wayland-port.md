@@ -2305,3 +2305,44 @@ layer, for the point form, for an image made from a context and for one made fro
 WHAT IS STILL TRUE: with SAL_NO_NWF=1, which turns off LibreOffice own native widget path, the
 dropdowns and the dialog button bezels APPEAR. With it on they do not. So the application takes that
 path, and the path produces nothing on this stack for reasons not yet found.
+
+## THE MISSING DROPDOWN, FOUND: a combo box cell drew itself the size of the whole window
+
+The user reported that Set Paragraph Style, Font Name and Font Size have no dropdown button. They
+have one now, and the cause was not in the graphics layer at all.
+
+    - (NSSize) cellSize {
+        NSSize size = [_controlView frame].size;    /* the WHOLE VIEW */
+        size.width -= 3.0;
+        size.height -= 2.0;
+        return size;
+    }
+
+and both draw methods opened with frame.size = [self cellSize], throwing away the rectangle the
+caller had asked for. That works when a cell owns its view, one NSComboBox per combo box, which is
+every cocotron application. LibreOffice draws MANY controls with ONE cell into ONE shared
+SalFrameView that covers the window, so the cell asked the view how big it was and got the window:
+
+    CIDER_COMBO asked=249x20+0+0  cellSize=1021x638  button=20x20+229+0   Set Paragraph Style
+    CIDER_COMBO asked=176x20+0+0  cellSize=1021x638  button=20x20+156+0   Font Name
+    CIDER_COMBO asked=78x20+0+0   cellSize=1021x638  button=20x20+58+0    Font Size
+
+Before the fix the button rect was 638x638 at x=383, computed from a 1021 wide frame, so it landed
+entirely outside the small offscreen context LibreOffice had handed over. Nothing was clipped, badly
+drawn or mis-coloured: the whole native control was painted off the edge of its own bitmap. The fix
+is one line in each method, deleted: draw in the rect the caller gave.
+
+HOW THE INSTRUMENT LIED FIRST, which is the reusable part. The cell trace lived on
+-[NSCell drawWithFrame:inView:] and reported ZERO cell draws in a run that drew thirty three of
+them, because NSTextFieldCell and NSButtonCell override that method and neither calls super. A
+trace on a base class sees only the classes that do not override it, and its silence looks exactly
+like a code path that is never taken. What broke the deadlock was tracing the CONSTRUCTORS instead:
+NSCell initTextCell and initImageCell are the funnel every cell passes through, and they showed
+LibreOffice creating one NSComboBoxCell, one NSPopUpButtonCell, four NSButtonCells and thirty two
+NSTextFieldCells. A path that creates cells and never draws them is a different bug from one that
+is never entered, and only the constructor trace could tell them apart.
+
+STILL OPEN in the same area: three NSButtonCell draws arrive with view=nil, and every bezel in
+cocotron goes through [controlView graphicsStyle], which is a category on NSView. A message to nil
+returns nil, so those buttons get no bezel at all. That is the alert button with a label and no
+box, and it is the next thing to fix.

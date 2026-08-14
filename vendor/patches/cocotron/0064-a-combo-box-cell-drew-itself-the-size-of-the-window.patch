@@ -1,0 +1,142 @@
+--- a/AppKit/NSCell.m
++++ b/AppKit/NSCell.m
+@@ -367,6 +367,14 @@
+ }
+ 
+ - initTextCell: (NSString *) string {
++    /* WHICH CELL CLASSES AN APPLICATION EVEN MAKES. A control that comes out empty has two very
++     * different causes and one of them is invisible from the drawing side: a cell that was never
++     * created, or was created as nil, draws nothing and raises nothing, because a message to nil
++     * is silent. Naming every cell at birth separates that from a cell that draws and produces
++     * no pixels. */
++    if (getenv("CIDER_TRACE_CELLS") != NULL) {
++        NSLog(@"CIDER_CELL_NEW %s initTextCell", object_getClassName(self));
++    }
+     _focusRingType = [[self class] defaultFocusRingType];
+     _state = NSControlStateValueOff;
+     _font = [[NSFont userFontOfSize: 0] retain];
+@@ -386,6 +394,9 @@
+ }
+ 
+ - initImageCell: (NSImage *) image {
++    if (getenv("CIDER_TRACE_CELLS") != NULL) {
++        NSLog(@"CIDER_CELL_NEW %s initImageCell", object_getClassName(self));
++    }
+     _focusRingType = [[self class] defaultFocusRingType];
+     _state = NSControlStateValueOff;
+     _font = nil;
+--- a/AppKit/NSComboBoxCell.m
++++ b/AppKit/NSComboBoxCell.m
+@@ -17,6 +17,8 @@
+ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ 
++#include <objc/runtime.h>
++
+ #import <AppKit/NSButtonCell.h>
+ #import <AppKit/NSComboBoxCell.h>
+ #import <AppKit/NSComboBoxWindow.h>
+@@ -366,13 +368,33 @@
+     return rect;
+ }
+ 
++/*
++ * DRAW IN THE RECT THE CALLER GAVE, which is what AppKit does and what this class used not to do.
++ *
++ * Both of these began with frame.size = [self cellSize], and cellSize here is not an intrinsic
++ * size at all: it is [_controlView frame].size minus three by two. That works only when the cell
++ * owns its view, one NSComboBox per combo box. An application that draws MANY controls with ONE
++ * cell into ONE shared view -- which is how LibreOffice renders its toolbar -- got the size of the
++ * WHOLE WINDOW instead: asked for a field of about 200 by 22, the cell drew itself 1021 by 638 and
++ * put its button at x=383 width 638, entirely outside the small context it had been handed. That
++ * is why the dropdown button was missing, and why the missing thing was the entire native control
++ * rather than just the arrow.
++ */
+ - (void) drawInteriorWithFrame: (NSRect) frame inView: (NSView *) controlView {
+-    frame.size = [self cellSize];
+     [super drawInteriorWithFrame: frame inView: controlView];
+ }
+ 
+ - (void) drawWithFrame: (NSRect) frame inView: (NSView *) controlView {
+-    frame.size = [self cellSize];
++    if (getenv("CIDER_TRACE_CELLS") != NULL) {
++        NSRect button = [self buttonRectForBounds: frame];
++
++        NSLog(@"CIDER_COMBO asked=%gx%g+%g+%g cellSize=%gx%g button=%gx%g+%g+%g view=%s",
++              frame.size.width, frame.size.height, frame.origin.x, frame.origin.y,
++              [self cellSize].width, [self cellSize].height, button.size.width,
++              button.size.height, button.origin.x, button.origin.y,
++              (controlView != nil) ? object_getClassName(controlView) : "nil");
++    }
++
+     [super drawWithFrame: frame inView: controlView];
+ 
+     [[controlView graphicsStyle]
+--- a/AppKit/NSGraphicsContext.m
++++ b/AppKit/NSGraphicsContext.m
+@@ -125,8 +125,19 @@
+ + (NSGraphicsContext *) graphicsContextWithCGContext: (CGContextRef) context
+                                              flipped: (BOOL) flipped
+ {
+-    return [[[self alloc] initWithGraphicsPort: context
+-                                       flipped: flipped] autorelease];
++    NSGraphicsContext *result = [[[self alloc] initWithGraphicsPort: context
++                                                            flipped: flipped] autorelease];
++
++    /* THE STEP BEFORE A CELL DRAWS. An application that renders AppKit controls into its own
++     * Core Graphics context wraps that context here first, so this firing means the native control
++     * path was entered even if nothing downstream draws, and its silence means the path was never
++     * taken at all. Those are opposite bugs and nothing else separates them. */
++    if (getenv("CIDER_TRACE_CELLS") != NULL) {
++        NSLog(@"CIDER_CELL_CTX cgcontext=%p flipped=%d result=%p", (void *) context, (int) flipped,
++              (void *) result);
++    }
++
++    return result;
+ }
+ 
+ static NSMutableArray *_contextStack() {
+--- a/AppKit/NSTextFieldCell.m
++++ b/AppKit/NSTextFieldCell.m
+@@ -18,6 +18,8 @@
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ 
+ #import "NSCoder+AppKit.h"
++#include <objc/runtime.h>
++
+ #import <AppKit/NSApplication.h>
+ #import <AppKit/NSAttributedString.h>
+ #import <AppKit/NSColor.h>
+@@ -389,6 +391,15 @@
+ - (void) drawWithFrame: (NSRect) frame inView: (NSView *) control {
+     NSRect backRect = [self drawingRectForBounds: frame];
+ 
++    /* THIS OVERRIDE DOES NOT CALL SUPER, so the trace on NSCell never sees a text field, a combo
++     * box or anything else below them. A trace put only on the base class reported ZERO cell draws
++     * in a run that drew thirty two of them, which reads exactly like a path that is never taken. */
++    if (getenv("CIDER_TRACE_CELLS") != NULL) {
++        NSLog(@"CIDER_CELL %s frame=%gx%g+%g+%g view=%s", object_getClassName(self),
++              frame.size.width, frame.size.height, frame.origin.x, frame.origin.y,
++              (control != nil) ? object_getClassName(control) : "nil");
++    }
++
+     _controlView = control;
+ 
+     if ([self isBezeled]) {
+--- a/AppKit/NSButtonCell.m
++++ b/AppKit/NSButtonCell.m
+@@ -1513,6 +1513,14 @@
+ }
+ 
+ - (void) drawWithFrame: (NSRect) frame inView: (NSView *) control {
++    /* Same reason as NSTextFieldCell: this override does not call super either. */
++    if (getenv("CIDER_TRACE_CELLS") != NULL) {
++        NSLog(@"CIDER_CELL %s frame=%gx%g+%g+%g view=%s transparent=%d",
++              object_getClassName(self), frame.size.width, frame.size.height, frame.origin.x,
++              frame.origin.y, (control != nil) ? object_getClassName(control) : "nil",
++              (int) [self isTransparent]);
++    }
++
+     _controlView = control;
+ 
+     if ([self isTransparent])
