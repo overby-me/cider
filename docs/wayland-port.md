@@ -2138,3 +2138,24 @@ does, printing its own resident size as it goes.
 232 KB across a quarter of a million blocks, about one byte each, and flat from round five onwards.
 So the continuation machinery gives back what it takes, and the 7 MB/s an idle LibreOffice grows is
 what ITS blocks do rather than the queue that runs them.
+
+## The waker woke the application sixty two times a second for nothing, and the leak is not ours
+
+The waker thread polls the Wayland socket with a sixteen millisecond timeout and then woke the main
+run loop WHETHER OR NOT anything had arrived. That is a full pass of the application event loop
+sixty two times a second, forever, with the application idle: measured at 65 passes a second.
+
+It wakes on a readable socket now, which is the point of the thread, and otherwise ticks four times
+a second so a deferred repaint and a caret blink still happen without an event to carry them.
+
+    pump passes while idle    65 a second before, 12 after
+    first document window     2.53 s, unchanged
+    interaction               drag selection still highlights exactly the span, no raises
+
+AND IT SETTLES THE LEAK, by not changing it. Memory still grows about 7 MB/s with the pump running
+five times less often, so the residual leak is not per pass and has nothing to do with the event
+loop: it is per unit of TIME, from the application own timers, which fire whether or not anything
+wakes them. Combined with the dispatch probe -- 240,000 blocks for 232 KB -- what remains is
+LibreOffice allocating in its own periodic work and not giving it back.
+
+The autorelease pool earlier IS ours and was real: 19 MB/s to 7. What is left is not.

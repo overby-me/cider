@@ -417,16 +417,29 @@ pub fn start_waker() {
     std::thread::Builder::new()
         .name("cider-wayland-waker".to_string())
         .spawn(move || {
+            // A WAKE IS NOT FREE, and this used to send one every sixteen milliseconds whether or
+            // not anything had arrived. That is a full pass of the application event loop sixty two
+            // times a second forever: measured at 65 passes a second with the application sitting
+            // completely idle, and with about 100 KB not given back per pass, which is most of the
+            // idle leak this file was not suspected of.
+            //
+            // Waking when the socket is READABLE is the point of this thread and stays. The idle
+            // tick stays too, because a deferred repaint and a caret blink still have to happen
+            // without an event to carry them, but at four a second rather than sixty two.
+            const IDLE_TICK: std::time::Duration = std::time::Duration::from_millis(250);
+            let mut last_idle_wake = std::time::Instant::now();
             loop {
                 let mut fds = PollFd { fd, events: POLLIN, revents: 0 };
-                // The timeout IS the idle tick. Long enough that an idle application is not spun,
-                // short enough that a caret blink and a deferred repaint still happen.
                 let ready = unsafe { poll(&mut fds as *mut PollFd, 1, 16) };
-                unsafe { cider_wayland_wake_main() };
                 if ready > 0 {
+                    unsafe { cider_wayland_wake_main() };
                     // The socket stays readable until the main thread reads it, so waking in a tight
                     // loop would burn a core. This is the smallest pause that cannot outrun a frame.
                     std::thread::sleep(std::time::Duration::from_millis(4));
+                    last_idle_wake = std::time::Instant::now();
+                } else if last_idle_wake.elapsed() >= IDLE_TICK {
+                    unsafe { cider_wayland_wake_main() };
+                    last_idle_wake = std::time::Instant::now();
                 }
             }
         })
