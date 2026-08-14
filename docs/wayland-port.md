@@ -543,3 +543,29 @@ that is still not right, and it still shows the signature of an uninitialised re
 the regions share a BLUE byte exactly while red and green differ, and the values change between
 runs. It is no longer the clear colour and no longer a blank window; it is a fill with a wrong
 colour, which is a different and smaller problem than the one this fixes.
+
+## Correction: Onyx2D DOES write those pixels, and how the wrong answer was reached
+
+An earlier entry here recorded that the bad chrome pixels are not written by Onyx2D, traced in the
+writer functions themselves. THAT CONCLUSION WAS WRONG, and the way it was wrong is worth more than
+the claim was.
+
+The trace selected spans of at least 64 pixels, on the reasoning that a large flat area of chrome
+is a wide fill. ONYX2D EMITS SPANS OF EIGHT PIXELS. Every filtered version of that trace therefore
+matched nothing, in runs where the page was plainly being painted white, and each empty result was
+read as evidence about LibreOffice rather than about the filter. Removing the filter entirely
+printed writes immediately:
+
+    CIDER_O2_WRITE x=1 y=6 len=8 rgba=251,251,251,254
+
+AN INSTRUMENT THAT CANNOT FIRE PROVES NOTHING. The check that would have caught this is the one
+that was finally run: remove every filter and confirm the trace fires at all, before believing a
+silence.
+
+### What is actually known about the chrome strips
+
+LibreOffice creates bitmap contexts of 1040x38, 1040x51 and 1040x86 with CALLER OWNED data, which
+are toolbar and status bar sized, and it imports CGBitmapContextGetData, CGBitmapContextGetBytesPerRow
+and memcpy. So it draws into its own buffers and copies them into the window itself. Those
+allocations were also missed at first, by a trace that printed the first twenty bitmap contexts and
+was filled by 1x1 and 16x16 icon scratch buffers before a frame sized one appeared.
