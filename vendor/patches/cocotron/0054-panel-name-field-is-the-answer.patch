@@ -1,0 +1,73 @@
+--- a/AppKit/NSSavePanel.subproj/NSSavePanel.m
++++ b/AppKit/NSSavePanel.subproj/NSSavePanel.m
+@@ -18,6 +18,8 @@
+ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ 
++#include <stdlib.h>
++
+ #import <AppKit/NSApplication.h>
+ #import <AppKit/NSDisplay.h>
+ #import <AppKit/NSRaise.h>
+@@ -79,6 +81,9 @@
+ }
+ 
+ - (void) _setFilename: (NSString *) filename {
++    if (getenv("CIDER_TRACE_PANEL") != NULL) {
++        NSLog(@"CIDER_PANEL setFilename=%@", filename);
++    }
+     @synchronized(self) {
+         if (filename != _filename) {
+             [_filename release];
+@@ -102,9 +107,23 @@
+     return ret;
+ }
+ 
++/*
++ * WHAT IS IN THE FIELD, not what was put there.
++ *
++ * An application sets this before showing the panel and READS IT BACK afterwards to learn what the
++ * user chose; LibreOffice names its PDF export that way and never asks the panel for a filename at
++ * all. Returning the stored property would mean the user could type whatever they liked and always
++ * get the name the application suggested, which is what happened.
++ */
+ - (NSString *) nameFieldStringValue {
+-    id ret = [_nameFieldStringValue copy];
+-    return ret;
++    if (_nameField != nil) {
++        NSString *typed = [_nameField stringValue];
++
++        if ([typed length] > 0) {
++            return [[typed copy] autorelease];
++        }
++    }
++    return [[_nameFieldStringValue copy] autorelease];
+ }
+ 
+ - (void) setNameFieldStringValue: (NSString *) value {
+@@ -245,6 +264,15 @@
+ 
+     [self _setFilename: path];
+ 
++    /* WHAT THE PANEL ANSWERED, which is otherwise unobservable: a save that produces no file looks
++     * exactly the same whether the panel returned the wrong path, an empty one, or the right one
++     * and the application declined to write it. Set CIDER_TRACE_PANEL to tell those apart. */
++    if (getenv("CIDER_TRACE_PANEL") != NULL) {
++        NSLog(@"CIDER_PANEL ok filename=%@ nameField=%@ property=%@ directory=%@", path,
++              (_nameField != nil) ? [_nameField stringValue] : @"(none)", _nameFieldStringValue,
++              _directory);
++    }
++
+     [NSApp stopModalWithCode: NSOKButton];
+ }
+ 
+@@ -280,6 +308,9 @@
+         res = [NSApp runModalForWindow: self];
+         [self close];
+     }
++    if (getenv("CIDER_TRACE_PANEL") != NULL) {
++        NSLog(@"CIDER_PANEL runModal returned=%ld filename=%@", (long) res, [self filename]);
++    }
+     return res;
+ }
+ 

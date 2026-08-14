@@ -1908,3 +1908,26 @@ paste, so the run above did four pipe transfers where one was needed. The answer
 without a new offer, so it is cached against the offer and cleared when one arrives. Same run after:
 ONE transfer, both directions unchanged. The empty answer is cached too, or a clipboard holding
 something we cannot read would be asked for again on every keystroke that enables a Paste item.
+
+## Export as PDF works, and the name you type is the name you get
+
+Click the PDF button on the toolbar and LibreOffice exports DIRECTLY: no options dialog, straight to
+the file picker (docs/wayland-pdf-export-panel.png). Type a name, click Save, and
+/Users/root/Documents/cider-export.pdf is a PDF document, version 1.7, 1 page.
+
+TWO THINGS THIS TOOK, and the first is a lesson about instruments.
+
+A trace in -_selectFile: and even in -_setFilename: never printed once, through four runs that each
+produced a PDF. The AppKit being loaded was the traced one, checked by strings, and there is only
+one in the tree. The conclusion is that LibreOffice never asks the panel for a filename at all: it
+sets nameFieldStringValue before showing the panel and READS IT BACK afterwards, and joins the name
+to the directory itself. The trace was not broken; the assumption about who names the file was.
+
+So -nameFieldStringValue now answers with what is IN the field rather than what was put there. Before
+that, a user could type whatever they liked into the Save As field and always get the name the
+application had suggested -- every export landed on Untitled 1, with no extension, because that is
+what LibreOffice proposed. The typed name now wins, extension and all.
+
+STILL TRUE AND WORTH KNOWING: the file the application writes has no extension unless one is typed,
+because nothing here applies the panels allowed file types. That is the next small thing in this
+area.
