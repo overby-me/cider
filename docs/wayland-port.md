@@ -472,3 +472,42 @@ The exception tracer prints lines beginning "cider: RAISE" and "cider: UNRECOGNI
 anything else finds nothing and reads as "no exceptions were raised". The first click anywhere in
 LibreOffice had been dying on -[NSEvent_mouse copyWithZone:] the whole time it was reported as
 silent.
+
+## The chrome is not mis-coloured, it is UNPAINTED, 2026-08-14
+
+Setting CLEAR_PIXEL to pure green and looking at the result answers in one image what a dozen
+measurements could not. See docs/wayland-clear-colour-diagnostic.png.
+
+GREEN, meaning the clear colour showing through and nothing painted over it:
+  the status bar background, the sidebar background, the toolbar background between the icons,
+  the ruler background, and a VERTICAL BAND straight through the middle of the page.
+
+PAINTED CORRECTLY: the page itself, every toolbar icon, all text, the menu bar, the window frame.
+
+So this was never a palette problem. The regions that look wrong are the ones nothing ever fills,
+and their colour changes between runs because it is whatever the buffer happened to hold, not
+because a colour is being computed wrongly.
+
+### What that rules out, each by measurement rather than argument
+
+  NOT the colour table. Every system colour given a unique loud value puts none of them on screen.
+  NOT the conversion. colorUsingColorSpaceName:device: and getRed:green:blue:alpha: are clean for
+    every colour LibreOffice reads, tested directly in tests/buck2/gui/color_probe.m.
+  NOT Onyx2D. Traced in the writer functions themselves, which is where every write to a window
+    buffer must pass. Neither the BGRA writer nor the argb8u writer produces a wide non-grey span.
+  NOT a format, stride or alpha bug between us and the compositor. The buffer dump and the
+    screenshot agree exactly.
+  NOT CGLayer, which is never created, and NOT a large bitmap context: every one LibreOffice makes
+    is 1x1 or 16x16.
+
+### The pattern worth following next
+
+The unpainted regions are exactly the places a macOS application draws NATIVE WIDGET backgrounds:
+toolbar, status bar, sidebar, ruler. Content that LibreOffice draws itself, the page and the text
+and the icons, is correct. The four HITheme entry points it imports are stubs that draw nothing,
+and they are NEVER CALLED, so the question is what LibreOffice does instead when it believes the
+platform will draw a control background.
+
+A NOTE ON THE STATUS BAR MEASUREMENT. It reads 8,245,41 against a clear of 0,255,0, so it is not
+strictly untouched: something paints it with a nearly transparent wash. Close to the clear colour
+is not the same as equal to it, and the difference is a real clue rather than noise.
