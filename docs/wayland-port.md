@@ -600,3 +600,26 @@ Every empty result from this instrument before today was an artefact, and each c
 
 THE RULE. Run the instrument with NO filter first and confirm it fires, then add one selector at a
 time. An instrument that cannot fire proves nothing, and its silence reads exactly like a result.
+
+### The negative result is now solid, and here is the instrument to use next
+
+Three INDEPENDENT filters, each chosen to avoid the assumption the last one made, all agree that
+Onyx2D never writes a window sized surface:
+
+  by surface width   -- assumes O2ImageGetWidth answers correctly for a window surface
+  by span length     -- fails on its own, since Onyx2D emits spans of eight
+  by ROW NUMBER      -- assumes nothing at all: a row above 200 can only exist on a tall surface
+
+The third found nothing either, in a run whose window ended up holding a complete interface. And
+O2SurfaceWriteSpan_largb32f_PRE, the float entry point, is NEVER CALLED ONCE in a whole run, so the
+8 bit path is the only one in use and it has now been ruled out three ways.
+
+So the window pixels are written by something that is not the Onyx2D rasteriser, not
+CGBitmapContextGetData, not CGLayer, and not any other reference to the pixel bytes in Onyx2D,
+which are all reads.
+
+NEXT INSTRUMENT, and it cannot lie: after clearing the backing, mprotect the shm mapping PROT_READ
+and install a SIGSEGV handler. The first write faults, the handler prints the faulting instruction
+pointer and restores PROT_READ|PROT_WRITE, and scripts/core-guest-stack.py resolves that address to
+a symbol. A watchpoint answers who writes the memory without needing to guess which layer to
+instrument, which is what every attempt so far has had to guess.
