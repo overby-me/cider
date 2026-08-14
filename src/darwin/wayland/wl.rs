@@ -151,7 +151,14 @@ impl Globals {
                 self.bound.xdg_name = name;
                 self.bound.xdg_version = version.min(1);
             }
-            "wl_seat" => self.seat = true,
+            "wl_seat" => {
+                self.seat = true;
+                self.bound.seat_name = name;
+                // Version 5 brings the pointer frame event, which every modern compositor sends.
+                // Binding lower does not avoid it: the INTERFACE still declares it, so the
+                // listener has to carry it either way.
+                self.bound.seat_version = version.min(5);
+            }
             "wl_output" => {
                 self.output = true;
                 self.bound.output_name = name;
@@ -195,6 +202,8 @@ pub struct Bound {
     pub xdg_version: u32,
     pub output_name: u32,
     pub output_version: u32,
+    pub seat_name: u32,
+    pub seat_version: u32,
 }
 
 /// One callback: the compositor has finished with the buffer. That event is the only honest
@@ -267,3 +276,106 @@ pub struct WlOutputListener {
 /// exactly one of them is the one in use, so taking the last mode seen would pick an arbitrary
 /// resolution the screen is not actually running at.
 pub const WL_OUTPUT_MODE_CURRENT: u32 = 0x1;
+
+// -------------------------------------------------------------------------------------------
+// INPUT: the seat, and the pointer and keyboard it hands out.
+
+/// Opaque proxies, same as the rest.
+pub enum WlSeat {}
+pub enum WlPointer {}
+pub enum WlKeyboard {}
+
+unsafe extern "C" {
+    pub fn cider_wl_registry_bind_seat(r: *mut WlRegistry, name: u32, version: u32) -> *mut WlSeat;
+    pub fn cider_wl_seat_add_listener(s: *mut WlSeat, l: *const WlSeatListener, data: *mut c_void) -> c_int;
+    pub fn cider_wl_seat_get_pointer(s: *mut WlSeat) -> *mut WlPointer;
+    pub fn cider_wl_seat_get_keyboard(s: *mut WlSeat) -> *mut WlKeyboard;
+    pub fn cider_wl_pointer_add_listener(p: *mut WlPointer, l: *const WlPointerListener, data: *mut c_void) -> c_int;
+    pub fn cider_wl_keyboard_add_listener(k: *mut WlKeyboard, l: *const WlKeyboardListener, data: *mut c_void) -> c_int;
+    pub fn cider_wl_pointer_release(p: *mut WlPointer);
+    pub fn cider_wl_keyboard_release(k: *mut WlKeyboard);
+    pub fn cider_wl_seat_capability_pointer() -> u32;
+    pub fn cider_wl_seat_capability_keyboard() -> u32;
+    pub fn cider_wl_pointer_button_state_pressed() -> u32;
+    pub fn cider_wl_keyboard_key_state_pressed() -> u32;
+    pub fn cider_wl_keyboard_keymap_format_xkb_v1() -> u32;
+    /// wl_fixed_t is 24.8 FIXED POINT. Casting it to an integer loses the fraction and still
+    /// produces a plausible coordinate, which is the kind of wrong that survives review.
+    pub fn cider_wl_fixed_to_double(f: i32) -> f64;
+}
+
+#[repr(C)]
+pub struct WlSeatListener {
+    pub capabilities: extern "C" fn(data: *mut c_void, seat: *mut WlSeat, capabilities: u32),
+    pub name: extern "C" fn(data: *mut c_void, seat: *mut WlSeat, name: *const c_char),
+}
+
+/// EVERY EVENT THE INTERFACE DECLARES, not every event this client cares about.
+///
+/// libwayland dispatches by INDEXING this struct with the event opcode, so a struct shorter than
+/// the interface is read past the end the first time a compositor sends a later event. wl_pointer
+/// has eleven; a client that binds version 1 and declares five is one axis event away from calling
+/// whatever follows the struct in memory.
+#[repr(C)]
+pub struct WlPointerListener {
+    pub enter: extern "C" fn(
+        data: *mut c_void,
+        pointer: *mut WlPointer,
+        serial: u32,
+        surface: *mut WlSurface,
+        surface_x: i32,
+        surface_y: i32,
+    ),
+    pub leave: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, serial: u32, surface: *mut WlSurface),
+    pub motion: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, surface_x: i32, surface_y: i32),
+    pub button: extern "C" fn(
+        data: *mut c_void,
+        pointer: *mut WlPointer,
+        serial: u32,
+        time: u32,
+        button: u32,
+        state: u32,
+    ),
+    pub axis: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, axis: u32, value: i32),
+    pub frame: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer),
+    pub axis_source: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, axis_source: u32),
+    pub axis_stop: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, axis: u32),
+    pub axis_discrete: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, axis: u32, discrete: i32),
+    pub axis_value120: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, axis: u32, value120: i32),
+    pub axis_relative_direction:
+        extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, axis: u32, direction: u32),
+}
+
+#[repr(C)]
+pub struct WlKeyboardListener {
+    /// THE KEYMAP ARRIVES AS A FILE DESCRIPTOR, not as a name. The compositor decides the layout
+    /// and hands over an xkb keymap to mmap; a client that assumes a layout gets the wrong
+    /// characters for every non-US keyboard and looks correct on the developer's machine.
+    pub keymap: extern "C" fn(data: *mut c_void, keyboard: *mut WlKeyboard, format: u32, fd: i32, size: u32),
+    pub enter: extern "C" fn(
+        data: *mut c_void,
+        keyboard: *mut WlKeyboard,
+        serial: u32,
+        surface: *mut WlSurface,
+        keys: *mut c_void,
+    ),
+    pub leave: extern "C" fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, surface: *mut WlSurface),
+    pub key: extern "C" fn(
+        data: *mut c_void,
+        keyboard: *mut WlKeyboard,
+        serial: u32,
+        time: u32,
+        key: u32,
+        state: u32,
+    ),
+    pub modifiers: extern "C" fn(
+        data: *mut c_void,
+        keyboard: *mut WlKeyboard,
+        serial: u32,
+        mods_depressed: u32,
+        mods_latched: u32,
+        mods_locked: u32,
+        group: u32,
+    ),
+    pub repeat_info: extern "C" fn(data: *mut c_void, keyboard: *mut WlKeyboard, rate: i32, delay: i32),
+}

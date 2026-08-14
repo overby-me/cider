@@ -163,3 +163,59 @@ int cider_wl_callback_add_listener(struct wl_callback *callback,
                                    const struct wl_callback_listener *listener, void *data) {
 	return wl_callback_add_listener(callback, listener, data);
 }
+
+// ---------------------------------------------------------------------------------------------
+// INPUT. A seat carries the pointer and the keyboard, and neither is a global of its own: they are
+// obtained from the seat AFTER it reports its capabilities, because a compositor that has no mouse
+// attached will refuse wl_seat.get_pointer. weston headless is exactly that compositor, which is
+// why this has to be driven by the capabilities event rather than requested up front.
+struct wl_seat *cider_wl_registry_bind_seat(struct wl_registry *registry, uint32_t name,
+                                            uint32_t version) {
+	return wl_registry_bind(registry, name, &wl_seat_interface, version);
+}
+
+int cider_wl_seat_add_listener(struct wl_seat *seat, const struct wl_seat_listener *listener,
+                               void *data) {
+	return wl_seat_add_listener(seat, listener, data);
+}
+
+struct wl_pointer *cider_wl_seat_get_pointer(struct wl_seat *seat) {
+	return wl_seat_get_pointer(seat);
+}
+
+struct wl_keyboard *cider_wl_seat_get_keyboard(struct wl_seat *seat) {
+	return wl_seat_get_keyboard(seat);
+}
+
+int cider_wl_pointer_add_listener(struct wl_pointer *pointer,
+                                  const struct wl_pointer_listener *listener, void *data) {
+	return wl_pointer_add_listener(pointer, listener, data);
+}
+
+int cider_wl_keyboard_add_listener(struct wl_keyboard *keyboard,
+                                   const struct wl_keyboard_listener *listener, void *data) {
+	return wl_keyboard_add_listener(keyboard, listener, data);
+}
+
+// The seat capability bits, exposed as functions for the same reason the shm format is: they are
+// enum constants in a header the Rust side does not read.
+uint32_t cider_wl_seat_capability_pointer(void) { return WL_SEAT_CAPABILITY_POINTER; }
+uint32_t cider_wl_seat_capability_keyboard(void) { return WL_SEAT_CAPABILITY_KEYBOARD; }
+uint32_t cider_wl_pointer_button_state_pressed(void) { return WL_POINTER_BUTTON_STATE_PRESSED; }
+uint32_t cider_wl_keyboard_key_state_pressed(void) { return WL_KEYBOARD_KEY_STATE_PRESSED; }
+uint32_t cider_wl_keyboard_keymap_format_xkb_v1(void) {
+	return WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1;
+}
+
+// wl_fixed_t is 24.8 FIXED POINT, not a float and not an integer of pixels. Converting it by cast
+// loses the fraction and, worse, looks like it works: a pointer lands within a pixel of where it
+// should and only fine positioning is wrong.
+double cider_wl_fixed_to_double(int32_t f) { return wl_fixed_to_double(f); }
+
+// RELEASING IS PART OF THE PROTOCOL, not cleanup. wl_seat.capabilities is sent again whenever a
+// device appears or disappears, and a client that keeps its wl_pointer after the capability is
+// withdrawn holds a proxy the compositor will never send to again. The visible symptom is an
+// application that stops responding to the mouse after a device is unplugged and never recovers,
+// because the client never asks for a new pointer.
+void cider_wl_pointer_release(struct wl_pointer *pointer) { wl_pointer_release(pointer); }
+void cider_wl_keyboard_release(struct wl_keyboard *keyboard) { wl_keyboard_release(keyboard); }

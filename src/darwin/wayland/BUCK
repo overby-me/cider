@@ -180,13 +180,20 @@ cc_objects(
 # to say what @implementation says directly.
 cc_objects(
     name = "wayland_pasteboard_obj",
-    srcs = ["WaylandPasteboard.m"],
+    srcs = [
+        "WaylandEvents.m",
+        "WaylandPasteboard.m",
+    ],
     compiler_flags = [
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-fPIC",
     ],
     deps = [
         "//src/darwin:sdk_env",
+        # The whole surface AppKit's HEADERS reach, not what the probe calls.
+        # Taken from xpc_obj, the widest AppKit consumer the port already builds,
+        # because chasing this cascade one #include at a time is what
+        # buck-port.py exists to automate and this target is hand-written.
         "//vendor/src:fw_AppKit",
         "//vendor/src:fw_CFNetwork",
         "//vendor/src:fw_CoreData",
@@ -194,7 +201,10 @@ cc_objects(
         "//vendor/src:fw_CoreGraphics",
         "//vendor/src:fw_CoreText",
         "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_IOKit",
+        "//vendor/src:fw_Metal",
         "//vendor/src:fw_Onyx2D",
+        "//vendor/src:fw_QuartzCore",
         "//vendor/src:fw_Security",
         "//src/darwin/frameworks:fw_AE",
         "//src/darwin/frameworks:fw_ATS",
@@ -202,20 +212,22 @@ cc_objects(
         "//src/darwin/frameworks:fw_CarbonCore",
         "//src/darwin/frameworks:fw_ColorSync",
         "//src/darwin/frameworks:fw_ColorSyncLegacy",
+        "//src/darwin/frameworks:fw_CoreImage",
         "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_CoreVideo",
         "//src/darwin/frameworks:fw_FSEvents",
         "//src/darwin/frameworks:fw_HIServices",
+        "//src/darwin/frameworks:fw_HIToolbox",
+        "//src/darwin/frameworks:fw_IOSurface",
         "//src/darwin/frameworks:fw_ImageIO",
         "//src/darwin/frameworks:fw_LangAnalysis",
         "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_LocalAuthentication",
         "//src/darwin/frameworks:fw_OpenGL",
         "//src/darwin/frameworks:fw_PrintCore",
         "//src/darwin/frameworks:fw_QD",
         "//src/darwin/frameworks:fw_SearchKit",
         "//src/darwin/frameworks:fw_SpeechSynthesis",
-        "//src/linux/native:host_headers",
-        "//vendor/src/icu:icucore_inc_icu_icuSources_i18n",
-        "//vendor/src/icu:icucore_inc_icu_icuSources_common",
     ],
     toolchain = "toolchains//:darwin_cc",
     visibility = ["PUBLIC"],
@@ -227,6 +239,7 @@ darwin_rust_staticlib(
     srcs = [
         "colors.rs",
         "display.rs",
+        "input.rs",
         "fonts.rs",
         "objc.rs",
         "session.rs",
@@ -248,6 +261,9 @@ darwin_dylib(
     ],
     siblings = [
         "//src/linux/native:wayland-client_dylib",
+        # xkbcommon, for the KEYMAP. A compositor sends the layout rather than naming it, so
+        # turning a key into a character needs the library that parses that keymap.
+        "//src/linux/native:xkbcommon_dylib",
         # fontconfig, for the font methods this backend implements itself rather than inheriting.
         "//src/linux/native:fontconfig_dylib",
         "//vendor/src:AppKit_dylib",

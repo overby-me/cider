@@ -56,6 +56,22 @@ extern "C" fn on_ping(_data: *mut c_void, base: *mut wl::XdgWmBase, serial: u32)
     unsafe { wl::cider_xdg_wm_base_pong(base, serial) };
 }
 
+/// LIBWAYLAND KEEPS THE POINTER, IT DOES NOT COPY THE STRUCT, so a listener has to outlive every
+/// event it will ever receive. Both of these used to be locals inside connect(), which is a
+/// dangling pointer the moment that function returns.
+///
+/// It survived because of WHICH compositor the checks ran against. weston headless never sends
+/// xdg_wm_base.ping, so the dangling ping listener was never dereferenced and everything looked
+/// correct; sway pings as soon as a surface exists, and the process jumped into reused stack memory
+/// and vanished with no output, no exception and exit code 1. A crash with nothing to read is the
+/// expensive kind, and it was one compositor away the whole time.
+static PING_LISTENER: wl::XdgWmBaseListener = wl::XdgWmBaseListener { ping: on_ping };
+
+static REGISTRY_LISTENER: wl::RegistryListener = wl::RegistryListener {
+    global: on_global,
+    global_remove: on_global_remove,
+};
+
 /// The screen the compositor reports, in logical pixels. Zero until wl_output has answered, which
 /// is what "provisional" meant in the -screens log line.
 static OUTPUT_WIDTH: AtomicI32 = AtomicI32::new(0);
@@ -156,11 +172,7 @@ pub fn connect() -> bool {
             return false;
         }
         SWEEP = Some(wl::Globals::default());
-        let listener = wl::RegistryListener {
-            global: on_global,
-            global_remove: on_global_remove,
-        };
-        wl::cider_wl_registry_add_listener(registry, &listener, std::ptr::null_mut());
+        wl::cider_wl_registry_add_listener(registry, &REGISTRY_LISTENER, std::ptr::null_mut());
         // One roundtrip delivers the whole advertisement: the compositor sends every global it has
         // as soon as the registry is created, so this is a complete list rather than a sample.
         wl::wl_display_roundtrip(display);
@@ -195,8 +207,28 @@ pub fn connect() -> bool {
             wl::wl_display_disconnect(display);
             return false;
         }
-        let ping = wl::XdgWmBaseListener { ping: on_ping };
-        wl::cider_xdg_wm_base_add_listener(base, &ping, std::ptr::null_mut());
+        wl::cider_xdg_wm_base_add_listener(base, &PING_LISTENER, std::ptr::null_mut());
+
+        // THE SEAT, which is where input comes from. A compositor without one is not an error:
+        // weston headless advertises no seat, and a window that cannot be clicked is still a
+        // window. The capabilities event decides what is actually attached.
+        if globals.seat && std::env::var_os("CIDER_WAYLAND_NO_SEAT").is_none() {
+            let seat = wl::cider_wl_registry_bind_seat(
+                registry,
+                globals.bound.seat_name,
+                globals.bound.seat_version,
+            );
+            if seat.is_null() {
+                println!("cider-wayland-input seat=bind-failed");
+            } else {
+                crate::input::attach_seat(seat);
+                // A roundtrip so the capabilities event is processed before anything asks whether
+                // there is a pointer.
+                wl::wl_display_roundtrip(display);
+            }
+        } else {
+            println!("cider-wayland-input seat=absent reason=not-advertised");
+        }
 
         // THE SCREEN SIZE COMES FROM THE COMPOSITOR, not from a constant. wl_output is optional
         // for opening a window, so a compositor without one is not an error; it only means

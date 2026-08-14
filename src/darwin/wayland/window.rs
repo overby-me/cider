@@ -640,8 +640,47 @@ extern "C" fn init_with_delegate(this: Object, _cmd: Sel, delegate: Object) -> O
             *slot = std::ptr::null_mut();
             return std::ptr::null_mut();
         }
+        register_window(raw);
     }
     this
+}
+
+/// Every live window, so a wl_surface arriving on an input event can be turned back into the
+/// AppKit objects that own it.
+///
+/// AN INPUT EVENT NAMES A SURFACE AND NOTHING ELSE. The protocol identifies the destination of a
+/// click by wl_surface pointer, and AppKit needs the window delegate and the window number, so
+/// something has to hold the correspondence. A list rather than a map because the count is the
+/// number of windows an application has open, which is tens, and a linear scan of tens of pointers
+/// per event is not worth a hash.
+static WINDOWS: std::sync::Mutex<Vec<usize>> = std::sync::Mutex::new(Vec::new());
+
+fn register_window(st: *mut WindowState) {
+    if let Ok(mut list) = WINDOWS.lock() {
+        list.push(st as usize);
+    }
+}
+
+fn unregister_window(st: *mut WindowState) {
+    if let Ok(mut list) = WINDOWS.lock() {
+        list.retain(|&p| p != st as usize);
+    }
+}
+
+/// The window a surface belongs to: its delegate, its owner and its height.
+///
+/// The HEIGHT comes back because Wayland puts the origin at the TOP left and AppKit puts it at the
+/// bottom left, so every coordinate has to be flipped and the flip needs the window height. Doing
+/// it at the call site would mean each caller reaching into the state for it.
+pub fn window_for_surface(surface: *mut wl::WlSurface) -> Option<(Object, Object, f64, i64)> {
+    let list = WINDOWS.lock().ok()?;
+    for &p in list.iter() {
+        let st = unsafe { (p as *mut WindowState).as_ref() }?;
+        if st.surface == surface {
+            return Some((st.owner, st.delegate, st.frame.size.height, st.number));
+        }
+    }
+    None
 }
 
 extern "C" fn set_delegate(this: Object, _cmd: Sel, delegate: Object) {
@@ -654,6 +693,10 @@ extern "C" fn set_delegate(this: Object, _cmd: Sel, delegate: Object) {
 /// leaked for the life of the process.
 extern "C" fn invalidate(this: Object, _cmd: Sel) {
     if let Some(st) = unsafe { state(this) } {
+        // OUT OF THE INPUT REGISTRY FIRST. A surface that is about to lose its buffer can still be
+        // named by an event already in the compositor queue, and answering that with a window
+        // whose delegate has just been cleared is worse than not answering at all.
+        unregister_window(st as *mut WindowState);
         st.delegate = std::ptr::null_mut();
         st.mapped = false;
         release_backing(st);

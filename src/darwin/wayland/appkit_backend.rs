@@ -18,6 +18,7 @@ use std::os::raw::c_void;
 mod colors;
 mod display;
 mod fonts;
+mod input;
 mod objc;
 mod session;
 mod wl;
