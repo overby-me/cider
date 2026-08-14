@@ -69,6 +69,12 @@ unsafe extern "C" {
     pub fn cider_xdg_toplevel_set_title(t: *mut XdgToplevel, title: *const c_char);
     pub fn cider_xdg_toplevel_set_app_id(t: *mut XdgToplevel, app_id: *const c_char);
     pub fn cider_xdg_toplevel_set_parent(t: *mut XdgToplevel, parent: *mut XdgToplevel);
+    /// The requests a title bar needs: a client asks the compositor to move or restack it, and the
+    /// ask carries the serial of the input event that caused it.
+    pub fn cider_xdg_toplevel_move(t: *mut XdgToplevel, seat: *mut WlSeat, serial: u32);
+    pub fn cider_xdg_toplevel_set_minimized(t: *mut XdgToplevel);
+    pub fn cider_xdg_toplevel_set_maximized(t: *mut XdgToplevel);
+    pub fn cider_xdg_toplevel_unset_maximized(t: *mut XdgToplevel);
     pub fn cider_xdg_toplevel_add_listener(t: *mut XdgToplevel, l: *const XdgToplevelListener, data: *mut c_void) -> c_int;
     pub fn cider_wl_registry_bind_output(r: *mut WlRegistry, name: u32, version: u32) -> *mut WlOutput;
     pub fn cider_wl_output_add_listener(o: *mut WlOutput, l: *const WlOutputListener, data: *mut c_void) -> c_int;

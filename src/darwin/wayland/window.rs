@@ -113,6 +113,8 @@ pub struct WindowState {
     /// Whether THIS backend hid the window because the application was deactivated, which is the
     /// only thing application activation is allowed to undo.
     pub hidden_by_deactivation: bool,
+    /// Whether the window is maximised, so the zoom button can toggle rather than only set.
+    pub maximized: bool,
 }
 
 impl WindowState {
@@ -152,6 +154,7 @@ impl WindowState {
             last_forced_display: None,
             visible: false,
             hidden_by_deactivation: false,
+            maximized: false,
         }
     }
 }
@@ -731,10 +734,21 @@ fn create_surface(st: &mut WindowState) -> bool {
                     cls,
                 ) != objc::NO
         };
-        let titled = st.style_mask & 0x1 != 0 && st.popup.is_null() && !is_panel;
+        /*
+         * AND A TITLED WINDOW THAT CANNOT BE RESIZED IS A DIALOG, which catches the ones an
+         * application builds itself rather than through NSPanel.
+         *
+         * LibreOffice asks to save on close with a window of its own: style 0x3, titled and
+         * closable and NOT resizable, 419x165. A document window is 0xf. On Apple systems that
+         * window is a modal dialog over the document; here it was a second tile beside it. A window
+         * that cannot be resized is not a document, and that is exactly the distinction macOS draws.
+         */
+        let resizable = st.style_mask & 0x8 != 0;
+        let dialog = st.style_mask & 0x1 != 0 && !resizable;
+        let titled = st.style_mask & 0x1 != 0 && st.popup.is_null() && !is_panel && !dialog;
         println!(
-            "cider-wayland-window role number={} style={:#x} panel={} titled={} delegate={}",
-            st.number, st.style_mask, is_panel, titled, !st.delegate.is_null()
+            "cider-wayland-window role number={} style={:#x} panel={} dialog={} titled={} delegate={}",
+            st.number, st.style_mask, is_panel, dialog, titled, !st.delegate.is_null()
         );
         if titled {
             LAST_TITLED_TOPLEVEL.store(st.toplevel as usize, Ordering::Release);
@@ -1611,6 +1625,52 @@ extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
     }
 }
 
+/*
+ * THE THREE THINGS A TITLE BAR ASKS THE COMPOSITOR FOR.
+ *
+ * A Wayland client cannot move, minimise or maximise itself: it asks, and the ask carries the
+ * SERIAL of the input event that caused it, which is how a compositor knows the user did it and not
+ * a background process. input.rs records the serial of every key and button press for exactly this.
+ *
+ * They are methods on the platform window because that is what NSThemeFrame can reach: it has the
+ * NSWindow, and -[NSWindow platformWindow] is this object.
+ */
+extern "C" fn cider_begin_interactive_move(this: Object, _cmd: Sel) {
+    let Some(st) = (unsafe { state(this) }) else { return };
+    let seat = crate::input::seat();
+    let serial = crate::input::last_serial();
+    if st.toplevel.is_null() || seat.is_null() || serial == 0 {
+        return;
+    }
+    unsafe { wl::cider_xdg_toplevel_move(st.toplevel, seat, serial) };
+    session::flush();
+}
+
+extern "C" fn cider_set_minimized(this: Object, _cmd: Sel) {
+    let Some(st) = (unsafe { state(this) }) else { return };
+    if st.toplevel.is_null() {
+        return;
+    }
+    unsafe { wl::cider_xdg_toplevel_set_minimized(st.toplevel) };
+    session::flush();
+}
+
+extern "C" fn cider_toggle_maximized(this: Object, _cmd: Sel) {
+    let Some(st) = (unsafe { state(this) }) else { return };
+    if st.toplevel.is_null() {
+        return;
+    }
+    unsafe {
+        if st.maximized {
+            wl::cider_xdg_toplevel_unset_maximized(st.toplevel);
+        } else {
+            wl::cider_xdg_toplevel_set_maximized(st.toplevel);
+        }
+    }
+    st.maximized = !st.maximized;
+    session::flush();
+}
+
 extern "C" fn set_opaque(_this: Object, _cmd: Sel, _value: ObjcBool) {}
 
 /// Per-window alpha needs a subsurface or a compositor extension; XRGB8888 has no alpha channel by
@@ -1808,6 +1868,9 @@ pub unsafe fn register() -> objc::Class {
         objc::MethodDef { sel: cstr!("setLevel:"), types: cstr!("v@:i"), imp: set_level as *const c_void },
         objc::MethodDef { sel: cstr!("setTitle:"), types: cstr!("v@:@"), imp: set_title as *const c_void },
         objc::MethodDef { sel: cstr!("setFrame:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: set_frame as *const c_void },
+        objc::MethodDef { sel: cstr!("ciderBeginInteractiveMove"), types: cstr!("v@:"), imp: cider_begin_interactive_move as *const c_void },
+        objc::MethodDef { sel: cstr!("ciderSetMinimized"), types: cstr!("v@:"), imp: cider_set_minimized as *const c_void },
+        objc::MethodDef { sel: cstr!("ciderToggleMaximized"), types: cstr!("v@:"), imp: cider_toggle_maximized as *const c_void },
         objc::MethodDef { sel: cstr!("setOpaque:"), types: cstr!("v@:c"), imp: set_opaque as *const c_void },
         objc::MethodDef { sel: cstr!("setAlphaValue:"), types: cstr!("v@:d"), imp: set_alpha_value as *const c_void },
         objc::MethodDef { sel: cstr!("setHasShadow:"), types: cstr!("v@:c"), imp: set_has_shadow as *const c_void },

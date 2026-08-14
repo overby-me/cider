@@ -206,10 +206,19 @@ fn tracing() -> bool {
 }
 
 /// Attach to a seat. Called once, from the registry sweep.
+/// The seat itself, kept because a window management request needs it: xdg_toplevel.move and its
+/// relatives take the seat and the serial of the event that asked for them.
+static SEAT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+pub fn seat() -> *mut wl::WlSeat {
+    SEAT.load(std::sync::atomic::Ordering::Acquire) as *mut wl::WlSeat
+}
+
 pub fn attach_seat(seat: *mut wl::WlSeat) {
     if seat.is_null() {
         return;
     }
+    SEAT.store(seat as usize, std::sync::atomic::Ordering::Release);
     unsafe {
         wl::cider_wl_seat_add_listener(seat, &SEAT_LISTENER, std::ptr::null_mut());
     }

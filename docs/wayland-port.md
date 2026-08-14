@@ -2247,3 +2247,27 @@ out, each by measurement rather than argument:
 So the application draws those fields itself and simply does not put the button there under this
 stack. The next move is LibreOffice own logging around its native widget path rather than more
 guessing from the outside.
+
+## The title bar works, dialogs float over their document, and a dialog has no menu bar
+
+docs/wayland-dialog-macos.png: clicking the red light asks LibreOffice to close, it puts up Save
+Document with its own title bar and coloured lights, and that dialog is CENTRED over a full size
+document window at its natural 419x165 rather than tiled beside it.
+
+THE LIGHTS DO SOMETHING NOW. Red is -performClose:, which is why the picture exists at all. Yellow
+and green ask the compositor, because a Wayland client cannot minimise or maximise itself:
+xdg_toplevel.set_minimized and set_maximized, sent with the SERIAL of the click, which is how a
+compositor tells a user action from a background process. Dragging anywhere else in the bar is
+xdg_toplevel.move for the same reason: a client that moved its own surface would be fighting
+whatever the compositor thinks the position is. The requests live on the platform window and
+NSThemeFrame sends them by name, so cocotron needs to know nothing about this backend.
+
+A DIALOG IS A TITLED WINDOW THAT CANNOT BE RESIZED, and that one distinction fixed two things. The
+Save Document window is style 0x3, titled and closable and not resizable, against 0xf for a
+document. So it is parented like an NSPanel, which is what makes a compositor float it, and
++[NSWindow hasMainMenuForStyleMask:] no longer gives it a menu bar: cocotron draws the menu inside
+each titled window because it has no screen menu, and a full File-through-Help bar inside a 419x165
+dialog is something no macOS dialog has ever had.
+
+STILL WRONG in that picture: the buttons are text with no bezel, the same as the print alert. That
+is LibreOffice drawing its own controls, and the cell traces show it never asks AppKit to draw them.

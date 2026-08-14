@@ -358,3 +358,22 @@ int cider_wl_data_offer_add_listener(struct wl_data_offer *offer,
                                      const struct wl_data_offer_listener *listener, void *data) {
 	return wl_data_offer_add_listener(offer, listener, data);
 }
+
+// THE WINDOW MANAGEMENT REQUESTS A TITLE BAR NEEDS. A client cannot move or minimise itself on
+// Wayland: it ASKS the compositor, and the ask carries the serial of the input event that caused it
+// so a background client cannot grab the pointer.
+void cider_xdg_toplevel_move(struct xdg_toplevel *toplevel, struct wl_seat *seat, uint32_t serial) {
+	xdg_toplevel_move(toplevel, seat, serial);
+}
+
+void cider_xdg_toplevel_set_minimized(struct xdg_toplevel *toplevel) {
+	xdg_toplevel_set_minimized(toplevel);
+}
+
+void cider_xdg_toplevel_set_maximized(struct xdg_toplevel *toplevel) {
+	xdg_toplevel_set_maximized(toplevel);
+}
+
+void cider_xdg_toplevel_unset_maximized(struct xdg_toplevel *toplevel) {
+	xdg_toplevel_unset_maximized(toplevel);
+}
