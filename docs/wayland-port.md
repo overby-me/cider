@@ -1763,3 +1763,34 @@ Both directions are checked, and the second one is the one that matters:
 
 The second is a control that FIRES: if the decline had stopped working, the line would be missing and
 X11 would never be reached on a machine without Wayland.
+
+## Saving a document works, and it took three missing methods
+
+docs/wayland-save-panel.png is the panel Command S opens: a file list of the guest root, Cancel and
+Save. The proof is not the picture though, it is the file: type a sentence, Command S, click Save,
+and /Users/root/Documents/Untitled 1 is an OpenDocument Text whose content.xml contains
+"Drag across this sentence with the mouse please".
+
+THREE SEPARATE BUGS, each of which stopped the save on its own, and each invisible in the ordinary
+sense: the application caught every one and reported nothing.
+
+1. -[NSSavePanel setCanSelectHiddenExtension:] did not exist. An application configures the panel
+   before showing it, so this killed the process outright: the whole dialog was built and then the
+   configure step raised. Unspecified Application Error, no panel.
+
+2. -[NSImage lockFocusFlipped:] did not exist. This one is subtler: the raise happened INSIDE the
+   save path, LibreOffice caught it, and the panel simply never appeared. The keystroke traced
+   perfectly to the application every time. This is what made the panel look flaky.
+
+3. -[NSSavePanel _selectFile:] took the filename from the SELECTED ROW, which cannot be right for a
+   save: the file does not exist yet, so nothing is selected, and the panel returned OK with an
+   empty name. Clicking Save closed the panel and saved nothing. It uses the name field the
+   application already sets, joined to the directory. NSOpenPanel keeps the row behaviour, in its
+   own override, because opening really is the row.
+
+The A and B for 3 is exact: the same script and the same click on the same panel wrote no file with
+the row version and wrote the document with the name field version, one run apart.
+
+STILL WRONG in the panel: its buttons are clipped by about half. The panel maps at 500x400 and the
+compositor tiles it to the full height, and something in the layout is a title bar taller than the
+surface. The document window does not do this. Not chased yet.

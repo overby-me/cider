@@ -291,12 +291,37 @@ pub fn deliver_pending_configures() {
             "cider-wayland-window resized number={} size={width}x{height}",
             st.number
         );
-        if st.delegate.is_null() {
-            continue;
+        let has_delegate = !st.delegate.is_null();
+        if has_delegate {
+            unsafe {
+                let sel = objc::sel_registerName(cstr!("platformWindow:frameChanged:didSize:"));
+                objc::msg_send_frame_changed(st.delegate, sel, st.owner, st.frame, objc::YES);
+            }
         }
-        unsafe {
-            let sel = objc::sel_registerName(cstr!("platformWindow:frameChanged:didSize:"));
-            objc::msg_send_frame_changed(st.delegate, sel, st.owner, st.frame, objc::YES);
+        /*
+         * WHAT THE APPLICATION MADE OF THE SIZE WE JUST GAVE IT. A window whose content view ends up
+         * taller than the surface draws its bottom row of controls off the end of the buffer, which
+         * looks like a clipped dialog and not like a geometry bug, so the two rects are worth having
+         * side by side rather than inferred from a screenshot.
+         */
+        if has_delegate && std::env::var_os("CIDER_WAYLAND_TRACE_GEOMETRY").is_some() {
+            // THE DELEGATE IS THE NSWindow. st.owner is our own platform window, which answers the
+            // sixteen selectors AppKit sends a backend window and NOT -contentView; asking it
+            // raises inside our own code and the application reports Unspecified Application Error.
+            unsafe {
+                let f = objc::msg_send_rect_ret(st.delegate, objc::sel_registerName(cstr!("frame")));
+                let cv = objc::msg_send0(st.delegate, objc::sel_registerName(cstr!("contentView")));
+                let cf = if cv.is_null() {
+                    objc::NsRect::new(0.0, 0.0, 0.0, 0.0)
+                } else {
+                    objc::msg_send_rect_ret(cv, objc::sel_registerName(cstr!("frame")))
+                };
+                println!(
+                    "cider-wayland-geometry number={} delegate={} surface={}x{} frame={}x{} content={}x{}+{}+{}",
+                    st.number, has_delegate, width, height, f.size.width, f.size.height,
+                    cf.size.width, cf.size.height, cf.origin.x, cf.origin.y
+                );
+            }
         }
         /*
          * AND REDRAW THE WHOLE THING. A frame change makes the application lay out again, and it
@@ -308,7 +333,9 @@ pub fn deliver_pending_configures() {
          * is resized once during startup and the rest of the bar was laid out into a strip nobody
          * repainted. One click on the bar brought all of it back.
          */
-        st.needs_full_display = true;
+        if has_delegate {
+            st.needs_full_display = true;
+        }
     }
 }
 
