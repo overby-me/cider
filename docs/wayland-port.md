@@ -754,3 +754,33 @@ WHAT THAT LEAVES is LibreOffice deciding a wrong colour internally and painting 
 code. The remaining lead is the one thing that IS observably ours: the loud palette experiment
 proves it reads controlColor for that region, so the value it derives from controlColor is where to
 look, and that derivation happens in VCL rather than in anything this port implements.
+
+## The keyboard chain is verified correct up to LibreOffice own text input
+
+Every link measured, not inferred:
+
+    compositor key event                cider-wayland-input key=1 pressed=true window=2 text=h
+    NSEvent built and posted            CIDER_POSTKEY built=yes type=10 windowNumber=2
+    handed to the application           cider-wayland-appkit delivered-event type=10
+    window is key and announced         CIDER_BECOMEKEY window=2 early=0 delegate=SalFrameWindow responds=1
+    first responder is the view         CIDER_FOCUS firstResponder=SalFrameView
+    the view asks for text              CIDER_INTERPRET responder=SalFrameView insertText=0 insertTextRange=1
+    the text is delivered to it         CIDER_INSERT responder=SalFrameView len=1   (five times, for hello)
+
+So the characters arrive inside LibreOffice OWN -insertText:replacementRange:, one per keystroke,
+and nothing appears in the document.
+
+THE EARLY RETURN IN becomeKeyWindow WAS CHECKED rather than assumed, because it would have skipped
+the focus notification entirely: early=0, the notification is posted, and the delegate responds to
+windowDidBecomeKey:. That was the last plausible gap on this side.
+
+The same probe, in the same run, types hello into an NSTextField AND into a view that implements
+only insertText:replacementRange:, which is the exact shape LibreOffice view has. So the mechanism
+works; what does not work is inside VCL.
+
+### Both remaining defects now sit past the same boundary
+
+The chrome colour is inside an image LibreOffice renders itself, with no coloured fill ever reaching
+CoreGraphics. The keystrokes are delivered into its own text input method and discarded. Both are
+now characterised precisely, both are outside this port, and going further into either needs
+LibreOffice debug symbols or a reproducer smaller than an office suite.
