@@ -1,0 +1,67 @@
+--- a/AppKit/include/AppKit/NSEvent.h
++++ b/AppKit/include/AppKit/NSEvent.h
+@@ -307,6 +307,16 @@
+ @property(readonly) NSInteger buttonNumber;
+ - (NSInteger) buttonNumber;
+ 
++
++/* The scroll event properties an application reads before it will look at a wheel event at all.
++ * See the implementation for why None and NO are the right answers for a real wheel. */
++- (NSUInteger) phase;
++- (NSUInteger) momentumPhase;
++- (BOOL) hasPreciseScrollingDeltas;
++- (CGFloat) scrollingDeltaX;
++- (CGFloat) scrollingDeltaY;
++- (BOOL) isDirectionInvertedFromDevice;
++
+ @end
+ 
+ APPKIT_EXPORT NSEventMask NSEventMaskFromType(NSEventType type);
+--- a/AppKit/NSEvent.subproj/NSEvent.m
++++ b/AppKit/NSEvent.subproj/NSEvent.m
+@@ -376,6 +376,45 @@
+     NSUnimplementedMethod();
+ }
+ 
++
++/*
++ * THE SCROLL EVENT PROPERTIES, which decide whether a wheel event is looked at at all.
++ *
++ * LibreOffice classifies every scroll with isMouseScrollWheelEvent, and that reads -phase and
++ * -momentumPhase before anything else: a wheel is the case where both are None and a trackpad
++ * gesture is the case where they are not. Neither selector existed here, so the first thing the
++ * application did with a scroll was raise an unrecognized selector, and its own handler swallowed
++ * the exception. Eight scroll events reached -[SalFrameView scrollWheel:] and the document did not
++ * move, with nothing in the log but the raise itself.
++ *
++ * None is the honest answer for a real wheel, which is what this backend delivers: Wayland
++ * wl_pointer.axis carries no phase, and the discrete and value120 variants say notch, not gesture.
++ * The precise deltas are the trackpad path and are reported as absent for the same reason.
++ */
++- (NSUInteger) phase {
++    return 0; // NSEventPhaseNone
++}
++
++- (NSUInteger) momentumPhase {
++    return 0; // NSEventPhaseNone
++}
++
++- (BOOL) hasPreciseScrollingDeltas {
++    return NO;
++}
++
++- (CGFloat) scrollingDeltaX {
++    return [self deltaX];
++}
++
++- (CGFloat) scrollingDeltaY {
++    return [self deltaY];
++}
++
++- (BOOL) isDirectionInvertedFromDevice {
++    return NO;
++}
++
+ @end
+ 
+ NSEventMask NSEventMaskFromType(NSEventType type) {
