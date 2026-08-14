@@ -85,10 +85,26 @@ pub struct WindowState {
     pub flushes: u64,
     /// A size the compositor asked for, not yet given to AppKit. Applied by the main loop.
     pub pending_size: Option<(i32, i32)>,
+    /// THE SIZE THE COMPOSITOR HAS ALREADY DECIDED, once it has decided one. A compositor with no
+    /// opinion sends 0x0 and never sets this, and then the application sizes its own windows as it
+    /// likes. A tiling one sets it for every toplevel, and then it is binding.
+    pub configured_size: Option<(i32, i32)>,
+    /// Whether the one-row NUDGE has been spent on this window. See the repeat block: an
+    /// application that ignores a resize to the size it already has needs to be told a DIFFERENT
+    /// one before it will lay out again.
+    pub nudged: bool,
     /// The popup role, when this window is a menu or a tooltip rather than a document window.
     pub popup: *mut wl::XdgPopup,
     /// Whether AppKit still has to be told to draw the whole of this window.
     pub needs_full_display: bool,
+    /// KEEP REDRAWING FOR A MOMENT AFTER A RESIZE. One forced display is not enough: the
+    /// application relays out its own widgets on ITS main queue, so a display issued the instant
+    /// the size changes paints the OLD layout and the new area is never covered. Measured: a
+    /// freshly opened document window painted its original 656 rows into an 1388 tall surface and
+    /// left the rest black, while the run before it painted the same window in full. Until this
+    /// instant passes, every pump marks the window dirty and displays it again.
+    pub redraw_until: Option<std::time::Instant>,
+    pub last_forced_display: Option<std::time::Instant>,
     /// Whether AppKit has actually SHOWN this window. A Mach-O application creates windows long
     /// before it shows them, and one that was never ordered front must not appear.
     pub visible: bool,
@@ -122,8 +138,12 @@ impl WindowState {
             presents: 0,
             flushes: 0,
             pending_size: None,
+            configured_size: None,
+            nudged: false,
             popup: std::ptr::null_mut(),
             needs_full_display: true,
+            redraw_until: None,
+            last_forced_display: None,
             visible: false,
         }
     }
@@ -232,8 +252,65 @@ pub fn deliver_pending_configures() {
          * -display draws immediately, and calling it from inside a compositor callback re-enters
          * AppKit at a moment of its choosing rather than ours.
          */
-        if st.needs_full_display && !st.delegate.is_null() && st.mapped {
+        let now = std::time::Instant::now();
+        // REPEAT UNTIL IT IS ACTUALLY PAINTED, not for a fixed number of tries. The application
+        // may be inside its own modal loop when the compositor resizes it -- which is exactly what
+        // happens to a document window opened from a file dialog -- and a notification delivered
+        // then changes nothing. So the condition to stop is the bottom of the window being painted,
+        // with a deadline so a window that is legitimately dark at the bottom cannot spin forever.
+        let repeat_due = match (st.redraw_until, st.last_forced_display) {
+            (Some(until), last) if now < until => {
+                last.is_none_or(|prev| now.duration_since(prev).as_millis() >= 150)
+                    && bottom_row_is_clear(st)
+            }
+            _ => false,
+        };
+        if (st.needs_full_display || repeat_due) && !st.delegate.is_null() && st.mapped {
             st.needs_full_display = false;
+            st.last_forced_display = Some(now);
+            /*
+             * AND SAY THE SIZE AGAIN, because the first time nobody may have been listening.
+             *
+             * NSWindow turns this into NSWindowDidResizeNotification, and an application learns its
+             * new size from that: LibreOffice recomputes its frame geometry there and lays its
+             * widgets out again. A window that is resized THE INSTANT IT MAPS -- which is what a
+             * tiling compositor does to every new window -- can be handed that notification before
+             * the application has finished wiring the window up, and then nothing ever tells it
+             * again.
+             *
+             * Measured: a freshly opened document laid its widgets out for the 656 rows it was
+             * created with and left the rest of an 1388 tall surface black, with its status bar
+             * stranded in the middle of the window, while the FIRST document window in the same run
+             * relaid out correctly because its resize came seconds after it was set up.
+             *
+             * Repeating a configure is ordinary on Wayland and the size is unchanged, so an
+             * application that already knows does nothing with it.
+             */
+            if repeat_due {
+                /*
+                 * AND THE FIRST ONE IS A ROW SHORT, deliberately.
+                 *
+                 * Measured: repeating the SAME size changes nothing, a hundred times over six
+                 * seconds, but a real compositor resize to a DIFFERENT size makes the window lay
+                 * out correctly at once -- docs/wayland-open-two-documents.png is the before and
+                 * the after. So the application ignores a resize to the size it believes it
+                 * already has, and the only thing that reaches it is a change.
+                 *
+                 * One row, once, then the true size on the next pass a sixth of a second later.
+                 * This is what dragging a window edge by one pixel would send, and it is the whole
+                 * difference between a document window laid out for the size it was CREATED with
+                 * and one laid out for the size it actually has.
+                 */
+                let mut frame = st.frame;
+                if !st.nudged {
+                    st.nudged = true;
+                    frame.size.height = (frame.size.height - 1.0).max(1.0);
+                }
+                unsafe {
+                    let sel = objc::sel_registerName(cstr!("platformWindow:frameChanged:didSize:"));
+                    objc::msg_send_frame_changed(st.delegate, sel, st.owner, frame, objc::YES);
+                }
+            }
             let delegate = st.delegate;
             let number = st.number;
             unsafe {
@@ -280,6 +357,7 @@ pub fn deliver_pending_configures() {
         }
         st.frame.size.width = width as f64;
         st.frame.size.height = height as f64;
+        st.configured_size = Some((width, height));
         // The drawn report is reset so the new size is measured rather than reported from the
         // previous buffer.
         st.reported_drawn = false;
@@ -327,6 +405,28 @@ pub fn deliver_pending_configures() {
                  * number above: the dialog just comes out cut off. One level is enough to see it,
                  * and the class name says which view is which without guessing from the rect.
                  */
+                /*
+                 * WHO IS LISTENING. NSWindow turns a frame change into
+                 * NSWindowDidResizeNotification, and an application that lays itself out from that
+                 * notification hears nothing if the window has no delegate YET -- which is the
+                 * suspect for a window resized the instant it maps.
+                 */
+                let wd = objc::msg_send0(st.delegate, objc::sel_registerName(cstr!("delegate")));
+                let responds = if wd.is_null() {
+                    objc::NO
+                } else {
+                    objc::msg_send_sel_bool(
+                        wd,
+                        objc::sel_registerName(cstr!("respondsToSelector:")),
+                        objc::sel_registerName(cstr!("windowDidResize:")),
+                    )
+                };
+                println!(
+                    "cider-wayland-listener number={} delegate={} windowDidResize={}",
+                    st.number,
+                    if wd.is_null() { "nil" } else { "set" },
+                    responds != objc::NO
+                );
                 if !cv.is_null() {
                     let subviews = objc::msg_send0(cv, objc::sel_registerName(cstr!("subviews")));
                     if !subviews.is_null() {
@@ -365,6 +465,9 @@ pub fn deliver_pending_configures() {
          */
         if has_delegate {
             st.needs_full_display = true;
+            st.redraw_until =
+                Some(std::time::Instant::now() + std::time::Duration::from_secs(6));
+            st.last_forced_display = None;
         }
     }
 }
@@ -903,6 +1006,26 @@ fn dump_buffer(st: &mut WindowState) {
 /// from outside: both produce a window. Counting the pixels that differ from the fill this backend
 /// wrote is the cheapest honest distinction, and it reads the same memory the compositor maps, so
 /// there is nothing between the measurement and the truth.
+/// Whether the LAST ROW of the buffer is still the clear value, which means the application has not
+/// painted the bottom of its own window.
+///
+/// This is the acknowledgement a resize otherwise has none of. Telling an application its new size
+/// is not the same as the application acting on it, and the gap between the two is exactly the bug
+/// this answers: a window whose widgets are still laid out for the size it was created with paints
+/// the top of the surface and leaves the rest cleared.
+fn bottom_row_is_clear(st: &WindowState) -> bool {
+    if st.pixels.is_null() || st.buffer_w <= 0 || st.buffer_h <= 0 {
+        return false;
+    }
+    let width = st.buffer_w as usize;
+    let total = st.map_len / 4;
+    if total < width {
+        return false;
+    }
+    let words = unsafe { std::slice::from_raw_parts(st.pixels as *const u32, total) };
+    words[total - width..].iter().all(|&w| w == CLEAR_PIXEL)
+}
+
 fn report_pixels(st: &mut WindowState) {
     if st.pixels.is_null() || st.reported_drawn {
         return;
@@ -1307,6 +1430,45 @@ extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
             st.number, frame.size.width, frame.size.height,
             st.frame.size.width, st.frame.size.height
         );
+    }
+    /*
+     * THE COMPOSITOR SIZE WINS, when there is one.
+     *
+     * An application sizes its windows to what it wants; a Wayland client has to use the size it
+     * was configured with, and a tiling compositor configures every toplevel. LibreOffice opens a
+     * document window at its preferred 1024x656 AFTER the compositor has tiled it to 628x684, and
+     * obeying that meant committing a 1024x656 buffer into a 628x684 surface: the compositor shows
+     * the part it has and BLACK for the rest, which is the black bottom half of a freshly opened
+     * document in docs/wayland-open-two-documents.png.
+     *
+     * Measured, one line, which is why the trace above exists:
+     *     cider-wayland-setframe number=46 asked=1024x656 current=628x684
+     *
+     * The application is told the real size again rather than silently overruled, so its own layout
+     * follows the window instead of drifting from it. A popup sizes itself and keeps that right,
+     * and a compositor that never configures anything -- weston headless -- leaves this untouched.
+     */
+    if st.popup.is_null() {
+        if let Some((cw, ch)) = st.configured_size {
+            if frame.size.width as i32 != cw || frame.size.height as i32 != ch {
+                st.frame.origin = frame.origin;
+                st.frame.size.width = cw as f64;
+                st.frame.size.height = ch as f64;
+                st.needs_full_display = true;
+                st.redraw_until =
+                    Some(std::time::Instant::now() + std::time::Duration::from_secs(6));
+                st.last_forced_display = None;
+                st.nudged = false;
+                if !st.delegate.is_null() {
+                    unsafe {
+                        let sel =
+                            objc::sel_registerName(cstr!("platformWindow:frameChanged:didSize:"));
+                        objc::msg_send_frame_changed(st.delegate, sel, st.owner, st.frame, objc::YES);
+                    }
+                }
+                return;
+            }
+        }
     }
     st.frame = frame;
     if resized {

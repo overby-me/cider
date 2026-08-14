@@ -1848,7 +1848,29 @@ The signals together are exact: borderless AND parented is a tooltip; borderless
 parent stays a toplevel, which is what a splash screen wants; the scrollbar helpers the old comment
 worried about are never mapped at all.
 
-STILL WRONG: the newly opened window sometimes paints only its original 656 rows and leaves the rest
-of the tile black, although the resize reached it -- the geometry trace shows surface 845x1388 and
-content 845x1372 for that window. The run before it painted the same window fully. So it is a race
-between the first draw and the configure, not a missing notification.
+THE FRESHLY OPENED WINDOW WAS WRONG IN TWO WAYS, and both are fixed. docs/wayland-open-two-documents
+.png now shows both documents laid out to their tiles, status bar at the bottom of each.
+
+FIRST, THE BUFFER. One traced line explains the black half of that window:
+
+    cider-wayland-setframe number=46 asked=1024x656 current=628x684
+
+LibreOffice sizes a new document window to its preferred 1024x656 AFTER the compositor has tiled it
+to 628x684, and this backend obeyed, committing a 1024x656 buffer into a 628x684 surface. A
+compositor shows the part it has and black for the rest. A Wayland client does not get to pick: once
+a compositor has configured a toplevel, that size is binding, so the configured size now wins and the
+application is told the real size rather than silently overruled. A compositor with no opinion sends
+0x0, never sets a configured size, and nothing changes for it -- weston headless behaves exactly as
+before, and a popup still sizes itself.
+
+SECOND, THE LAYOUT, and the shape of this one is worth keeping. Repeating the SAME size changed
+nothing, a hundred times over six seconds. Forcing a real compositor resize to a DIFFERENT size laid
+the window out correctly at once. So the application ignores a resize to the size it believes it
+already has, and the only thing that reaches it is a change. The first frame change after an override
+is therefore delivered ONE ROW SHORT, once, with the true size a sixth of a second later: exactly
+what dragging a window edge by a pixel would send.
+
+The repeat stops on evidence rather than a guess: while the bottom row of the buffer is still the
+clear value the application has not painted the bottom of its own window, so it keeps being told,
+and once that row is painted it stops. A deadline bounds it for a window that is legitimately dark
+down there.

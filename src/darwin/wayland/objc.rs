@@ -72,6 +72,10 @@ unsafe extern "C" {
     pub fn msg_send_usize_ret(receiver: Object, sel: Sel) -> usize;
     #[link_name = "objc_msgSend"]
     pub fn msg_send_usize(receiver: Object, sel: Sel, index: usize) -> Object;
+    /// -respondsToSelector:, for a trace that has to say whether anyone is LISTENING before
+    /// concluding that a notification was ignored.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_sel_bool(receiver: Object, sel: Sel, arg: Sel) -> ObjcBool;
     #[link_name = "objc_msgSend"]
     pub fn msg_send_i64_ret(receiver: Object, sel: Sel) -> i64;
     #[link_name = "objc_msgSend"]
