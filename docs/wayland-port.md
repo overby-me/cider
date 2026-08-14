@@ -1915,19 +1915,25 @@ Click the PDF button on the toolbar and LibreOffice exports DIRECTLY: no options
 the file picker (docs/wayland-pdf-export-panel.png). Type a name, click Save, and
 /Users/root/Documents/cider-export.pdf is a PDF document, version 1.7, 1 page.
 
-TWO THINGS THIS TOOK, and the first is a lesson about instruments.
+THE TYPED NAME IS THE NAME, and it now carries the extension the panel was told to require:
+typing cider-noext into a PDF export produces cider-noext.pdf, and the same panel saving a document
+produces cider-typed-name.odt, both verified with file(1).
 
-A trace in -_selectFile: and even in -_setFilename: never printed once, through four runs that each
-produced a PDF. The AppKit being loaded was the traced one, checked by strings, and there is only
-one in the tree. The conclusion is that LibreOffice never asks the panel for a filename at all: it
-sets nameFieldStringValue before showing the panel and READS IT BACK afterwards, and joins the name
-to the directory itself. The trace was not broken; the assumption about who names the file was.
+A CORRECTION TO THE COMMIT THAT ADDED THIS. It said LibreOffice never asks the panel for a filename,
+because a trace in -_selectFile: and one in -_setFilename: printed nothing across four runs that
+each produced a PDF. That conclusion was wrong and so was the reasoning: the instrument was never
+validated. Probes at the ENTRY of every panel method print this, in order:
 
-So -nameFieldStringValue now answers with what is IN the field rather than what was put there. Before
-that, a user could type whatever they liked into the Save As field and always get the name the
-application had suggested -- every export landed on Untitled 1, with no extension, because that is
-what LibreOffice proposed. The typed name now wins, extension and all.
+    +savePanel / runModal enter / _ensureNameField / _selectFile
+    setFilename=/Users/root/Documents/cider-noext
+    ok filename=... nameField=cider-noext property=Untitled 1 directory=/Users/root/Documents
+    runModal returned=1 required= allowed=( pdf )
 
-STILL TRUE AND WORTH KNOWING: the file the application writes has no extension unless one is typed,
-because nothing here applies the panels allowed file types. That is the next small thing in this
-area.
+So the panel IS asked, it does return the path, and the application writes exactly there. The two
+earlier traces were in a build that did not reach the run: same source, same command, and the
+artifact that ran was the previous one. VALIDATE AN INSTRUMENT BEFORE CONCLUDING FROM ITS SILENCE.
+
+The extension needed one more thing after that. -_selectFile: read the text field DIRECTLY, so the
+extension applied by -nameFieldStringValue was computed and thrown away. It reads the accessor now.
+allowed=( pdf ) in the trace above is what supplies the extension; a name typed WITH one is left
+alone, or a save dialog ends up writing report.pdf.pdf.
