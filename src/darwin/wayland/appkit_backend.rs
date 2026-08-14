@@ -95,7 +95,10 @@ extern "C" fn display_next_event(
         static CALLS: AtomicU64 = AtomicU64::new(0);
         let n = CALLS.fetch_add(1, Ordering::Relaxed) + 1;
         if n <= 3 || n % 500 == 0 {
-            println!("cider-wayland-appkit nextevent calls={n}");
+            // THE MASK IS THE INTERESTING PART. NSDisplay does not merely skip a queued event that
+            // does not match it, it DISCARDS it, so an application asking with a narrow mask
+            // silently destroys every event of any other type that arrived in the meantime.
+            println!("cider-wayland-appkit nextevent calls={n} mask={mask:#x}");
         }
     }
     let super_class = unsafe { objc::class_getSuperclass(objc::object_getClass(this)) };
@@ -111,6 +114,16 @@ extern "C" fn display_next_event(
         let n = RETURNS.fetch_add(1, Ordering::Relaxed) + 1;
         if n <= 3 || n % 500 == 0 {
             println!("cider-wayland-appkit nextevent returned={n}");
+        }
+    }
+    // WHAT IS HANDED BACK TO THE APPLICATION, which is the last point this backend can observe.
+    // Anything after this belongs to the application: LibreOffice SUBCLASSES NSApplication and
+    // overrides -sendEvent:, so a trace inside Cocotron proves nothing about whether the event was
+    // received. Type 100 is the idle event NSDisplay manufactures and is not worth printing.
+    if !ev.is_null() && std::env::var_os("CIDER_TRACE_KEYS").is_some() {
+        let t = unsafe { objc::msg_send_i64_ret(ev, objc::sel_registerName(cstr!("type"))) };
+        if t != 100 {
+            println!("cider-wayland-appkit delivered-event type={t}");
         }
     }
     ev

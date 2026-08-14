@@ -440,3 +440,35 @@ connect() built its xdg_wm_base and registry listeners as LOCALS. libwayland kee
 does not copy the struct, so both dangled the moment connect() returned. weston never sends
 xdg_wm_base.ping, so this was invisible; sway pings as soon as a surface exists and the client
 jumped into reused stack memory, exiting with code 1 and no output at all.
+
+## Typing works in an AppKit application, and not yet in LibreOffice, 2026-08-14
+
+    INPUT_PROBE typed=hello
+    INPUT_PROBE field-contains=hello
+    INPUT_PROBE VERDICT mouse=WORKS keyboard=WORKS
+
+A real NSTextField received the keystrokes and CONTAINS the text. That is the whole chain:
+compositor key event, xkb keymap, NSEvent, key window, first responder, interpretKeyEvents:,
+insertText:, and a control that changed. Receiving an event and inserting a character are
+different claims and only the second is what typing means.
+
+### LibreOffice receives the same events and does nothing with them
+
+Traced at the last point this backend can observe, which is what -nextEventMatchingMask: hands
+back: 10 NSKeyDown, 10 NSKeyUp, a mouse down and up, and 24 flags-changed events, all delivered.
+A screenshot before the click and one after the typing differ by ZERO PIXELS.
+
+So the input path is not the gap. Something inside LibreOffice does not act on events it is given,
+and that is where the next work is.
+
+WATCH OUT FOR THIS WHEN TRACING IT. LibreOffice SUBCLASSES NSApplication as VCL_NSApplication and
+overrides -sendEvent:, so a trace inside Cocotron NSApplication proves NOTHING about whether the
+application received an event. Two hours went into a trace that could not fire. Trace at the
+backend boundary instead, where CIDER_TRACE_KEYS now prints every event handed to the application.
+
+### The other lesson, which cost more than it should have
+
+The exception tracer prints lines beginning "cider: RAISE" and "cider: UNRECOGNIZED". Grepping for
+anything else finds nothing and reads as "no exceptions were raised". The first click anywhere in
+LibreOffice had been dying on -[NSEvent_mouse copyWithZone:] the whole time it was reported as
+silent.

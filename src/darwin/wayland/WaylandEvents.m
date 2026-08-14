@@ -15,6 +15,7 @@
  */
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
+#import <stdlib.h>
 
 /* NSEvent_mouse declares the button number setter privately, and the X11 backend uses it for the
  * same reason: NSEvent has no public way to say WHICH button an other-mouse event was. */
@@ -86,6 +87,11 @@ void cider_wayland_post_key(int isDown, unsigned long modifiers, long windowNumb
 					   charactersIgnoringModifiers: bare
 										 isARepeat: isRepeat ? YES : NO
 										   keyCode: (unsigned short) keyCode];
+		if (getenv("CIDER_TRACE_KEYS") != NULL) {
+			NSLog(@"CIDER_POSTKEY built=%s type=%d windowNumber=%ld display=%p",
+				event ? "yes" : "NIL", isDown ? 10 : 11, windowNumber,
+				[NSDisplay currentDisplay]);
+		}
 		if (event != nil) {
 			[[NSDisplay currentDisplay] postEvent: event atStart: NO];
 		}

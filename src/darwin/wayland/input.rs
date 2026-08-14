@@ -484,13 +484,24 @@ extern "C" fn on_keyboard_enter(
         let Ok(mut st) = INPUT.lock() else { return };
         st.keyboard_focus = surface;
     }
-    if tracing() {
-        println!("cider-wayland-input keyboard=enter");
-    }
     // ACTIVATION, not just focus bookkeeping. AppKit sends text to the first responder of the KEY
     // window, and nothing here made a window key, so keystrokes were delivered and discarded.
-    if let Some((owner, delegate, _height, _number)) = window::window_for_surface(surface) {
-        unsafe { cider_wayland_set_keyboard_focus(delegate, owner) };
+    //
+    // WHICH window is activated is printed because it is not the same question as which window the
+    // keys are addressed to: the compositor decides focus, and a key event that names one window
+    // while another is key goes to a first responder that is not there.
+    match window::window_for_surface(surface) {
+        Some((owner, delegate, _height, number)) => {
+            if tracing() {
+                println!("cider-wayland-input keyboard=enter activating=window{number}");
+            }
+            unsafe { cider_wayland_set_keyboard_focus(delegate, owner) };
+        }
+        None => {
+            if tracing() {
+                println!("cider-wayland-input keyboard=enter activating=NONE-no-window-for-surface");
+            }
+        }
     }
 }
 

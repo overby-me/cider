@@ -69,6 +69,21 @@ int main(int argc, const char **argv)
 		printf("INPUT_PROBE window=%p number=%ld\n", window, (long) [window windowNumber]);
 		fflush(stdout);
 
+		/*
+		 * A REAL TEXT FIELD, because receiving a key event and INSERTING A CHARACTER are different
+		 * claims and only the second is what anyone means by typing working. LibreOffice receives
+		 * every keystroke this backend sends and shows nothing, and there are two possible reasons:
+		 * AppKit text input does not work here, or LibreOffice does something else with the key.
+		 * A field that either contains the characters or does not tells those apart without
+		 * needing to understand LibreOffice at all.
+		 */
+		NSTextField *field = [[NSTextField alloc] initWithFrame: NSMakeRect(20, 380, 400, 30)];
+		[[window contentView] addSubview: field];
+		[window makeFirstResponder: field];
+		printf("INPUT_PROBE field=%p firstResponder=%s\n", field,
+			[window firstResponder] == field ? "field" : "other");
+		fflush(stdout);
+
 		// COUNTS, not just a log. A run that receives one stray event and a run that receives a
 		// working stream both print lines; only the totals at the end distinguish them, and the
 		// totals are what a harness can check.
@@ -147,6 +162,8 @@ int main(int argc, const char **argv)
 		printf("INPUT_PROBE totals mouseDown=%d mouseUp=%d moved=%d keyDown=%d keyUp=%d flags=%d\n",
 			mouseDowns, mouseUps, moves, keyDowns, keyUps, flags);
 		printf("INPUT_PROBE typed=%s\n", [typed UTF8String] ?: "");
+		fflush(stdout);
+		printf("INPUT_PROBE field-contains=%s\n", [[field stringValue] UTF8String] ?: "");
 		fflush(stdout);
 
 		// The verdict, so a harness does not have to interpret counts. Mouse and keyboard are
