@@ -2346,3 +2346,35 @@ STILL OPEN in the same area: three NSButtonCell draws arrive with view=nil, and 
 cocotron goes through [controlView graphicsStyle], which is a category on NSView. A message to nil
 returns nil, so those buttons get no bezel at all. That is the alert button with a label and no
 box, and it is the next thing to fix.
+
+## A CELL CAN DRAW WITHOUT A VIEW, and until now it could not
+
+graphicsStyle is a CATEGORY ON NSVIEW. Every bezel, arrow, check mark and slider knob in cocotron
+is drawn through it, and a cell reaches it with [controlView graphicsStyle]. A message to nil
+returns nil, so the moment an application draws a cell with inView:nil the whole chain goes silent:
+no drawing, no error, no exception. AppKit draws into the CURRENT CONTEXT and needs no view for
+any of it, and LibreOffice relies on that, so its check boxes had no box.
+
+NSGraphicsStyleForView(view) is that same style with a nil view allowed, and nineteen cell call
+sites use it instead. A nil view costs nothing: the only thing the style ever reads out of one is
+the window background colour of a progress indicator.
+
+THAT WAS NOT ENOUGH ON ITS OWN, and the second half is the interesting one. The check box still did
+not appear, because the SIZE came from the same dead chain:
+
+    imageSize = [[[self controlView] graphicsStyle] sizeOfButtonImage: image ...];
+
+nil style, zero size, and a 9.75 by 9.75 image blitted into a rectangle of 0 by 0.
+
+    CIDER_BUTTON_IMAGE image=NSSwitch size=9.75x9.75 rect=0x0+2+7     before
+    CIDER_BUTTON_IMAGE image=NSSwitch size=9.75x9.75 rect=9.75x9.75+2+2  after
+
+The image had been found, loaded and handed to a blit that had nowhere to put it. Note the shape of
+the mistake: the first fix was correct and the symptom did not move, which reads exactly like a
+wrong diagnosis. Tracing the rect rather than re-reasoning about it is what showed the second one.
+docs/wayland-checkbox-and-dropdowns.png has both, the Match Case box and the three toolbar arrows.
+
+AND ONE MORE LOST EDIT, found by the same whole-pin diff that found the wheel fix: NSView.m carried
+CIDER_NO_VIEW_CACHE, the A and B switch from the memory hunt, only in the materialised tree. It is
+in this patch too. The rule stands and keeps earning: diff the built pin against the live tree
+before every commit that touches vendor.

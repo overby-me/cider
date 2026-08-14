@@ -1,0 +1,275 @@
+--- a/AppKit/NSGraphicsStyle.h
++++ b/AppKit/NSGraphicsStyle.h
+@@ -199,3 +199,14 @@
+ @interface NSView (NSGraphicsStyle)
+ - (NSGraphicsStyle *) graphicsStyle;
+ @end
++
++/*
++ * THE STYLE WHEN THERE IS NO VIEW, which is the only way a cell can get one.
++ *
++ * graphicsStyle is a category on NSView, so a cell asking [controlView graphicsStyle] gets nil the
++ * moment it is drawn without a view, and every bezel, arrow and check mark after that is a message
++ * to nil: silent, no drawing, no error. AppKit draws into the CURRENT CONTEXT and does not need a
++ * view for any of it, and applications rely on that -- LibreOffice draws its check boxes with
++ * inView:nil, which is why they had no box. Cells call this instead.
++ */
++NSGraphicsStyle *NSGraphicsStyleForView(NSView *view);
+--- a/AppKit/NSInterfacePart/NSGraphicsStyle.h
++++ b/AppKit/NSInterfacePart/NSGraphicsStyle.h
+@@ -199,3 +199,14 @@
+ @interface NSView (NSGraphicsStyle)
+ - (NSGraphicsStyle *) graphicsStyle;
+ @end
++
++/*
++ * THE STYLE WHEN THERE IS NO VIEW, which is the only way a cell can get one.
++ *
++ * graphicsStyle is a category on NSView, so a cell asking [controlView graphicsStyle] gets nil the
++ * moment it is drawn without a view, and every bezel, arrow and check mark after that is a message
++ * to nil: silent, no drawing, no error. AppKit draws into the CURRENT CONTEXT and does not need a
++ * view for any of it, and applications rely on that -- LibreOffice draws its check boxes with
++ * inView:nil, which is why they had no box. Cells call this instead.
++ */
++NSGraphicsStyle *NSGraphicsStyleForView(NSView *view);
+--- a/AppKit/NSInterfacePart/NSGraphicsStyle.m
++++ b/AppKit/NSInterfacePart/NSGraphicsStyle.m
+@@ -942,3 +942,9 @@
+ }
+ 
+ @end
++
++/* See the comment on the declaration: a nil view is legal here and costs nothing, because the only
++ * thing the style ever reads out of one is the window background colour of a progress indicator. */
++NSGraphicsStyle *NSGraphicsStyleForView(NSView *view) {
++    return [[[NSGraphicsStyle alloc] initWithView: view] autorelease];
++}
+--- a/AppKit/NSButtonCell.m
++++ b/AppKit/NSButtonCell.m
+@@ -876,10 +876,10 @@
+     if (image != nil) {
+         BOOL enabled = [self isEnabled] ? YES : ![self imageDimsWhenDisabled];
+         BOOL mixed = [self state] == NSMixedState;
+-        imageSize =
+-                [[[self controlView] graphicsStyle] sizeOfButtonImage: image
+-                                                              enabled: enabled
+-                                                                mixed: mixed];
++        imageSize = [NSGraphicsStyleForView([self controlView])
++                sizeOfButtonImage: image
++                          enabled: enabled
++                            mixed: mixed];
+     }
+     return NSMakeRect(rect.origin.x, rect.origin.y, imageSize.width,
+                       imageSize.height);
+@@ -1165,19 +1165,19 @@
+ 
+     default:
+         if (![self isBordered]) {
+-            [[_controlView graphicsStyle]
++            [NSGraphicsStyleForView(_controlView)
+                     drawUnborderedButtonInRect: frame
+                                      defaulted: defaulted];
+         } else {
+             if (([self highlightsBy] & NSPushInCellMask) &&
+                 [self isHighlighted])
+-                [[_controlView graphicsStyle]
++                [NSGraphicsStyleForView(_controlView)
+                         drawPushButtonPressedInRect: frame];
+             else if ([self isVisuallyHighlighted])
+-                [[_controlView graphicsStyle]
++                [NSGraphicsStyleForView(_controlView)
+                         drawPushButtonHighlightedInRect: frame];
+             else
+-                [[_controlView graphicsStyle]
++                [NSGraphicsStyleForView(_controlView)
+                         drawPushButtonNormalInRect: frame
+                                          defaulted: defaulted];
+         }
+@@ -1193,13 +1193,24 @@
+     BOOL mixed = ([self state] == NSMixedState) ? YES : NO;
+ 
+     CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
++
++    /* THE CHECK MARK AND THE RADIO DOT ARE IMAGES, not bezels, so an empty check box is an image
++     * that did not draw rather than a border that did not draw. Rect, image and its size separate
++     * a missing resource from a rect with no area from a blit that does nothing. */
++    if (getenv("CIDER_TRACE_PANEL") != NULL) {
++        NSLog(@"CIDER_BUTTON_IMAGE image=%@ size=%gx%g rect=%gx%g+%g+%g ctx=%p reps=%lu",
++              [image name], [image size].width, [image size].height, rect.size.width,
++              rect.size.height, rect.origin.x, rect.origin.y, (void *) ctx,
++              (unsigned long) [[image representations] count]);
++    }
++
+     CGContextSaveGState(ctx);
+     CGContextTranslateCTM(ctx, rect.origin.x, rect.origin.y);
+     if ([controlView isFlipped]) {
+         CGContextTranslateCTM(ctx, 0, rect.size.height);
+         CGContextScaleCTM(ctx, 1, -1);
+     }
+-    [[controlView graphicsStyle]
++    [NSGraphicsStyleForView(controlView)
+             drawButtonImage: image
+                      inRect: NSMakeRect(0, 0, rect.size.width, rect.size.height)
+                     enabled: enabled
+@@ -1459,7 +1470,7 @@
+     if (image == nil)
+         imageSize = NSMakeSize(0, 0);
+     else if (_controlView)
+-        imageSize = [[_controlView graphicsStyle] sizeOfButtonImage: image
++        imageSize = [NSGraphicsStyleForView(_controlView) sizeOfButtonImage: image
+                                                             enabled: enabled
+                                                               mixed: mixed];
+     else
+--- a/AppKit/NSComboBoxCell.m
++++ b/AppKit/NSComboBoxCell.m
+@@ -397,7 +397,7 @@
+ 
+     [super drawWithFrame: frame inView: controlView];
+ 
+-    [[controlView graphicsStyle]
++    [NSGraphicsStyleForView(controlView)
+             drawComboBoxButtonInRect: [self buttonRectForBounds: frame]
+                              enabled: _buttonEnabled
+                             bordered: _isButtonBordered
+--- a/AppKit/NSDatePickerCell.m
++++ b/AppKit/NSDatePickerCell.m
+@@ -447,14 +447,14 @@
+ 
+     [self drawInteriorWithFrame: frame inView: view];
+ 
+-    [[_controlView graphicsStyle]
++    [NSGraphicsStyleForView(_controlView)
+             drawStepperButtonInRect:
+                     [self _upArrowFrameForStepperFrame: stepper]
+                            clipRect: stepper
+                             enabled: [self isEnabled]
+                         highlighted: _isUpHighlighted
+                           upNotDown: YES];
+-    [[_controlView graphicsStyle]
++    [NSGraphicsStyleForView(_controlView)
+             drawStepperButtonInRect:
+                     [self _downArrowFrameForStepperFrame: stepper]
+                            clipRect: stepper
+--- a/AppKit/NSPopUpButtonCell.m
++++ b/AppKit/NSPopUpButtonCell.m
+@@ -409,7 +409,7 @@
+             return;
+ 
+         NSRect arrowFrame = [self _arrowRectForRect: frame];
+-        [[controlView graphicsStyle] drawButtonImage: arrowImage
++        [NSGraphicsStyleForView(controlView) drawButtonImage: arrowImage
+                                               inRect: arrowFrame
+                                              enabled: YES
+                                                mixed: YES];
+--- a/AppKit/NSSliderCell.m
++++ b/AppKit/NSSliderCell.m
+@@ -312,7 +312,7 @@
+ }
+ 
+ - (void) drawBarInside: (NSRect) frame flipped: (BOOL) isFlipped {
+-    [[_controlView graphicsStyle]
++    [NSGraphicsStyleForView(_controlView)
+             drawSliderTrackInRect: frame
+                          vertical: [self isVertical]
+                      hasTickMarks: (_numberOfTickMarks > 0) ? YES : NO];
+@@ -341,7 +341,7 @@
+     double percent = (value - _minValue) / (_maxValue - _minValue);
+     NSRect sliderRect = [self _sliderRect];
+     NSRect knobRect;
+-    NSSize knobSize = [[_controlView graphicsStyle]
++    NSSize knobSize = [NSGraphicsStyleForView(_controlView)
+             sliderKnobSizeForControlSize: [self controlSize]];
+ 
+     if ([self isVertical]) {
+@@ -374,7 +374,7 @@
+ }
+ 
+ - (void) drawKnob: (NSRect) rect {
+-    [[_controlView graphicsStyle]
++    [NSGraphicsStyleForView(_controlView)
+             drawSliderKnobInRect: rect
+                         vertical: [self isVertical]
+                      highlighted: [self isHighlighted]
+@@ -383,7 +383,7 @@
+ }
+ 
+ - (void) drawTickMarks {
+-    NSGraphicsStyle *style = [_controlView graphicsStyle];
++    NSGraphicsStyle *style = NSGraphicsStyleForView(_controlView);
+     int i;
+ 
+     for (i = 0; i < _numberOfTickMarks; i++)
+--- a/AppKit/NSStepperCell.m
++++ b/AppKit/NSStepperCell.m
+@@ -197,13 +197,13 @@
+     BOOL drawDottedRect = NO;
+ 
+     _controlView = controlView;
+-    [[_controlView graphicsStyle]
++    [NSGraphicsStyleForView(_controlView)
+             drawStepperButtonInRect: [self _upArrowFrameForFrame: frame]
+                            clipRect: frame
+                             enabled: [self isEnabled]
+                         highlighted: _isUpHighlighted
+                           upNotDown: YES];
+-    [[_controlView graphicsStyle]
++    [NSGraphicsStyleForView(_controlView)
+             drawStepperButtonInRect: [self _downArrowFrameForFrame: frame]
+                            clipRect: frame
+                             enabled: [self isEnabled]
+--- a/AppKit/NSTableHeaderCell.m
++++ b/AppKit/NSTableHeaderCell.m
+@@ -44,7 +44,7 @@
+ 
+ - (void) drawWithFrame: (NSRect) cellFrame inView: (NSView *) controlView {
+     _controlView = controlView;
+-    [[controlView graphicsStyle]
++    [NSGraphicsStyleForView(controlView)
+             drawTableViewHeaderInRect: cellFrame
+                           highlighted: [self isHighlighted]];
+     [[self attributedStringValue]
+--- a/AppKit/NSTextFieldCell.m
++++ b/AppKit/NSTextFieldCell.m
+@@ -406,7 +406,7 @@
+         switch ([self bezelStyle]) {
+         default:
+         case NSTextFieldSquareBezel:
+-            [[control graphicsStyle] drawTextFieldBorderInRect: frame
++            [NSGraphicsStyleForView(control) drawTextFieldBorderInRect: frame
+                                                 bezeledNotLine: YES];
+             backRect = NSInsetRect(backRect, -1, -1);
+             break;
+@@ -432,7 +432,7 @@
+ 
+     } else {
+         if ([self isBordered]) {
+-            [[control graphicsStyle] drawTextFieldBorderInRect: frame
++            [NSGraphicsStyleForView(control) drawTextFieldBorderInRect: frame
+                                                 bezeledNotLine: NO];
+             backRect = NSInsetRect(backRect, -1, -1);
+         }
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -37,6 +37,8 @@
+ #import <AppKit/NSRaise.h>
+ #import <AppKit/NSScrollView.h>
+ #import <AppKit/NSTrackingArea.h>
++#include <stdlib.h>
++
+ #import <AppKit/NSView.h>
+ #import <AppKit/NSViewBackingLayer.h>
+ #import <AppKit/NSWindow-Private.h>
+@@ -781,6 +783,13 @@
+  * answer nil rather than building a rep nothing can use.
+  */
+ - (NSBitmapImageRep *) bitmapImageRepForCachingDisplayInRect: (NSRect) rect {
++    /* An A and B switch, because "does this allocation matter" is a question about a five minute
++     * run and not about one call: set CIDER_NO_VIEW_CACHE to answer nil the way this did before it
++     * was implemented, and compare the memory curve. */
++    if (getenv("CIDER_NO_VIEW_CACHE") != NULL) {
++        return nil;
++    }
++
+     NSInteger width = (NSInteger) ceil(rect.size.width);
+     NSInteger height = (NSInteger) ceil(rect.size.height);
+ 
