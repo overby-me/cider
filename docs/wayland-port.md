@@ -1440,3 +1440,30 @@ and release timer sources in a loop, with no CoreFoundation at all.
 Getting from a word processor that dies in twenty seconds to a forty line program that dies in ten
 is most of the work here. The stack histogram is what named it: dumping the whole live stack and
 counting return addresses by frequency, rather than reading the top frame.
+
+## ALL THREE CRITERIA, ONE RUN, ON THE FINAL BUILD, 2026-08-14 night
+
+scratchpad/run-lo-final.sh drives one 120 second session and takes a picture at each step. No crash
+line in the log, and the application is still running at the end.
+
+    1 RENDERS      docs/wayland-final-typed.png     light grey toolbars, correct icons, ruler,
+                                                    white page, readable status bar
+    2 INTERACTIVE  docs/wayland-final-typed.png     Hello from Wayland is in the document and the
+                                                    status bar says 3 words, 18 characters
+                   docs/wayland-final-menu.png      the File menu opens on a click with every item,
+                                                    shortcuts and greyed entries correct
+    3 RESIZABLE    docs/wayland-final-resized.png   760x620 after the compositor resized the output,
+                                                    toolbars collapsed to the overflow chevron, the
+                                                    ruler ends at 11, the status bar drops fields
+
+### What is still wrong, and it is not nothing
+
+ESCAPE DOES NOT DISMISS A MENU. The key arrives, is translated correctly (keysym 0xff1b, Carbon 53,
+characters 0x1b) and is handed to the application, and the log shows it delivered as an NSKeyDown.
+It never reaches -[SalFrameView keyDown:], while the letters before and after it do. So it is lost
+between AppKit delivering the event and the application view receiving it. The visible consequence
+in the run above is that the typing meant for the document navigated the open menu instead.
+
+A REGION CAN HOLD A STALE FRAME. In the second picture the menu bar shows Application and File and
+nothing else; in the third, taken after a click forced a repaint, the rest of the bar is there. The
+content is drawn correctly when it is drawn, but nothing repaints that strip on its own.
