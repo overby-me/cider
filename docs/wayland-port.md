@@ -2178,3 +2178,28 @@ leaving. LibreOffice keeps a borderless 648x200 window called VCL ImplGetDefault
 document appears. It survives both rules because the application does draw into it and does order it
 front. What it does NOT survive on Apple systems is being seen, so the next thing to find is which
 call makes it visible here.
+
+## The whole interface was in DejaVu Sans, which is why it did not look like macOS
+
+THE GOAL CHANGED, 2026-08-15, on the user instruction: LibreOffice should look EXACTLY as it does on
+macOS, styling included, and be functional, and then be fast. The three original criteria are a floor
+to keep, not the finish line. See scratchpad/STATUS.md, which now opens with this.
+
+First measurement under the new goal, with a trace added for it (CIDER_TRACE_FONTS):
+
+    CIDER_FONT pattern=San Francisco file=.../dejavu-fonts-2.37/.../DejaVuSans.ttf
+
+AppKit asks for San Francisco, applications ask for Helvetica Neue and Lucida Grande, and none of
+them exist here: they are Apple fonts and cannot be shipped. Fontconfig never fails, it SUBSTITUTES,
+and its answer for an unknown sans family on this system is DejaVu Sans, a wide face with a large
+eye that reads as anything except macOS. Every menu, every dialog and every label was in it.
+
+Those names now resolve through a family list -- Helvetica first in case a real one is installed,
+then TeX Gyre Heros, which is a Helvetica clone, then Liberation Sans -- and only the family part of
+the pattern is rewritten, so a requested style, weight or size survives:
+
+    CIDER_FONT pattern=Helvetica,TeX Gyre Heros,Liberation Sans,sans-serif asked=San Francisco
+               file=.../gyre-fonts-2.501/.../texgyreheros-regular.otf
+
+docs/wayland-ui-font-helvetica.png is the menu bar in it. Compare with
+docs/wayland-menubar-app-name.png, which is the same bar in DejaVu.

@@ -1,0 +1,88 @@
+--- a/Onyx2D/O2Font_freetype.m
++++ b/Onyx2D/O2Font_freetype.m
+@@ -1,5 +1,6 @@
+ #import <Onyx2D/O2Font_freetype.h>
+ #include <pthread.h>
++#include <stdlib.h>
+ #ifdef FREETYPE_PRESENT
+ #import <Onyx2D/O2Encoding.h>
+ 
+@@ -65,6 +66,40 @@
+     return fontConfig;
+ }
+ 
++/*
++ * THE APPLE USER INTERFACE FONTS, WHICH ARE NOT HERE AND MUST NOT BECOME DEJAVU.
++ *
++ * AppKit asks for San Francisco, and applications ask for Helvetica Neue and Lucida Grande. None of
++ * them can be shipped: they are Apple fonts. Fontconfig never fails, it SUBSTITUTES, and its answer
++ * for an unknown sans family on this system is DejaVu Sans -- a wide, large eyed face that is the
++ * single most obvious reason the interface does not look like macOS. Measured, not guessed:
++ *
++ *     CIDER_FONT pattern=San Francisco file=.../dejavu-fonts-2.37/.../DejaVuSans.ttf
++ *
++ * TeX Gyre Heros is a Helvetica clone and is the closest thing available, with Liberation Sans
++ * (Arial metrics) behind it and Helvetica itself in front in case a real one is installed. The list
++ * is a fontconfig family list, so the first one present wins and the styles still resolve: a
++ * request for :style=Bold picks the bold face of whichever family answered.
++ */
++static NSString *_CiderPreferredFamilies(NSString *family)
++{
++    static NSDictionary *map = nil;
++
++    if (map == nil) {
++        map = [[NSDictionary alloc]
++                initWithObjectsAndKeys:
++                        @"Helvetica,TeX Gyre Heros,Liberation Sans,sans-serif", @"san francisco",
++                        @"Helvetica,TeX Gyre Heros,Liberation Sans,sans-serif", @".applesystemuifont",
++                        @"Helvetica,TeX Gyre Heros,Liberation Sans,sans-serif", @"sf pro",
++                        @"Helvetica,TeX Gyre Heros,Liberation Sans,sans-serif", @"sf pro text",
++                        @"Helvetica,TeX Gyre Heros,Liberation Sans,sans-serif", @"sf pro display",
++                        @"Helvetica,TeX Gyre Heros,Liberation Sans,sans-serif", @"helvetica neue",
++                        @"Helvetica,TeX Gyre Heros,Liberation Sans,sans-serif", @"lucida grande",
++                        nil];
++    }
++    return [map objectForKey: [family lowercaseString]];
++}
++
+ + (NSString *) filenameForPattern: (NSString *) pattern {
+     /*
+      * MEMOISED, because this is a pure function of the pattern and the shared configuration, and it
+@@ -94,7 +129,21 @@
+ 
+     FcConfig *config = O2FontSharedFontConfig();
+ 
+-    FcPattern *pat = FcNameParse((unsigned char *) [pattern UTF8String]);
++    /* The family is everything before the first colon in a fontconfig pattern. Only that part is
++     * rewritten, so a style, a weight or a size the caller asked for survives untouched. */
++    NSString *resolved = pattern;
++    NSRange colon = [pattern rangeOfString: @":"];
++    NSString *family = (colon.location == NSNotFound) ? pattern
++                                                      : [pattern substringToIndex: colon.location];
++    NSString *preferred = _CiderPreferredFamilies(family);
++
++    if (preferred != nil) {
++        resolved = (colon.location == NSNotFound)
++                ? preferred
++                : [preferred stringByAppendingString: [pattern substringFromIndex: colon.location]];
++    }
++
++    FcPattern *pat = FcNameParse((unsigned char *) [resolved UTF8String]);
+     FcConfigSubstitute(config, pat, FcMatchPattern);
+     FcDefaultSubstitute(pat);
+ 
+@@ -113,6 +162,14 @@
+         res = [NSString stringWithUTF8String: (char *) filename];
+     }
+ 
++    /* WHICH FILE A NAME ACTUALLY BECAME. A user interface that looks foreign usually resolved its
++     * font to something else entirely, and nothing here said so: the match always succeeds, because
++     * fontconfig substitutes rather than failing. Set CIDER_TRACE_FONTS to see every distinct
++     * answer once. */
++    if (getenv("CIDER_TRACE_FONTS") != NULL) {
++        NSLog(@"CIDER_FONT pattern=%@ asked=%@ file=%@", resolved, pattern, res);
++    }
++
+     FcPatternDestroy(match);
+ 
+     pthread_mutex_lock(&cacheLock);
