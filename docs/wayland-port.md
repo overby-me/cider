@@ -1566,3 +1566,19 @@ byte-identical to the tree that produced every screenshot above.
 THE LESSON, which is the same one as always: a patch that reverse-applies to the tree you are running
 proves only that it describes that tree. Apply the series to the ORIGINAL, and diff the result
 against what you tested.
+
+## Keyboard shortcuts work, and the two character strings are not the same string
+
+docs/wayland-command-a-selects.png: type into the document, press Command and A, and the status bar
+says Selected: 4 words, 18 characters with the text highlighted. That is a modified shortcut going
+all the way through, which nothing had tested before.
+
+Control and A found a real bug on the way. -characters is what a key produced WITH the modifiers
+applied and -charactersIgnoringModifiers is what it would have produced without them, and this
+backend sent the same string for both. xkbcommon applies the control transformation, so Control and
+A arrived as U+0001 in BOTH, no binding for control plus a was ever found, and the application
+inserted the control character into the document: the selection was replaced by an invisible
+character and the word count went to 1.
+
+The bare string comes from the keysym now, which carries no modifier transformation. After: Control
+and A leaves the text alone and keeps the selection.

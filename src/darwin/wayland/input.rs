@@ -105,6 +105,14 @@ unsafe extern "C" {
         latched_layout: u32,
         locked_layout: u32,
     ) -> u32;
+    /// The text a KEYSYM stands for, with no modifier transformation applied.
+    ///
+    /// This is what -charactersIgnoringModifiers has to answer, and it is not the same string as
+    /// the one the state produces: xkbcommon applies the control transformation to the state text,
+    /// so Control and A give U+0001 there and the letter a here. AppKit key bindings are written
+    /// against the SECOND one, which is why control shortcuts did nothing.
+    fn xkb_keysym_to_utf8(keysym: u32, buffer: *mut c_char, size: usize) -> i32;
+
     fn xkb_state_key_get_utf8(
         state: *mut XkbState,
         key: u32,
@@ -605,13 +613,39 @@ extern "C" fn on_keyboard_key(
 
     let mut chars = text.unwrap_or_default();
     chars.push(0);
+    /*
+     * THE TWO STRINGS ARE NOT THE SAME STRING.
+     *
+     * -characters is what the key produced WITH the modifiers applied, and -charactersIgnoringModifiers
+     * is what it would have produced without them. AppKit key equivalents and key bindings are
+     * matched against the second, so sending the first for both means every control and command
+     * shortcut is looked up under a character nobody wrote a binding for.
+     *
+     * Measured: Control and A arrived as U+0001 in both, the binding for control plus a was never
+     * found, and the application inserted the control character into the document instead of
+     * selecting anything.
+     */
+    let mut bare = {
+        let mut buffer = [0u8; 64];
+        let n = unsafe {
+            xkb_keysym_to_utf8(keysym, buffer.as_mut_ptr() as *mut c_char, buffer.len())
+        };
+        if n > 1 {
+            buffer[..(n as usize - 1)].to_vec()
+        } else {
+            chars.clone()
+        }
+    };
+    if bare.last() != Some(&0) {
+        bare.push(0);
+    }
     unsafe {
         cider_wayland_post_key(
             if pressed { 1 } else { 0 },
             modifiers,
             number,
             chars.as_ptr() as *const c_char,
-            chars.as_ptr() as *const c_char,
+            bare.as_ptr() as *const c_char,
             if repeat { 1 } else { 0 },
             // THE CARBON VIRTUAL KEY CODE, not the evdev one. An application reads the key code
             // and applies its own layout; handing it the raw number means it looks up an unrelated
