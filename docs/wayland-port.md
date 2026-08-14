@@ -1990,3 +1990,35 @@ returning NULL -- with the wrong signature, taking void -- so an application cou
 font by anything except a family name. A descriptor in this port IS the attribute dictionary, which
 CTFontCollection builds per face and CTFontDescriptorCopyAttribute reads straight out of, so
 creating one from attributes is a copy. LibreOffice calls it 53 times in a single run.
+
+## Command P: the dialog opens and renders, and dismissing it still ends in a crash
+
+docs/wayland-print-alert.png is what Command P produces: the red alert icon, "No default printer
+found.", "Please choose a printer and try again." and an OK. That is CORRECT -- there is no printer
+and no spooler in this container -- and the dialog draws.
+
+THREE REAL GAPS WERE FIXED GETTING THERE, each one a crash of its own:
+
+    +[NSPrinter printerNames]        did not exist, and the class forwards INSTANCE messages only,
+                                     so a class message landed nowhere and raised
+    +[NSPrintInfo defaultPrinter]    did not exist either
+    -[NSPrintInfo setPrinter: nil]   raised "Cannot set nil objects nor nil keys", because the
+                                     setters passed nil straight into a dictionary. nil removes the
+                                     key now, which is what an absent attribute means anyway
+
+The selectors were found statically, by intersecting the strings of libvclplug_osxlo with the API,
+rather than one crash per round trip.
+
+IT STILL DIES, and the honest statement is that this path is NOT fixed. Dismissing the alert now
+reaches "index (0) beyond array bounds (0)" inside LibreOffice: its macOS backend indexes element
+zero of a printer list without checking whether one exists. Handing it ONE invented printer was
+tried and does not help -- the same exception arrives from somewhere else -- and inventing a printer
+this system cannot print to is a lie the next layer would trip over anyway. Printing needs a spooler
+in the container, which is a different piece of work.
+
+WHAT THE BUTTON TRACE FOUND ALONG THE WAY. CIDER_TRACE_PANEL now also prints every NSButtonCell
+bezel draw with its class, window, bezel style, border and frame. The alert OK button turned out not
+to be drawn by AppKit at all: the draws that happen while it is on screen have class=nil and
+window=(null), which is LibreOffice rendering its own controls into its own context with a cell and
+no view, one of them 93 points wide and ZERO high. That is why the OK has no bezel and only its
+label shows. The button is still clickable, which is how the crash above was reached at all.

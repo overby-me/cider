@@ -1,0 +1,204 @@
+--- a/AppKit/NSPrinter.m
++++ b/AppKit/NSPrinter.m
+@@ -18,9 +18,61 @@
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ 
+ #import <AppKit/NSPrinter.h>
++#import <Foundation/Foundation.h>
+ 
+ @implementation NSPrinter
+ 
++/*
++ * ENOUGH OF NSPrinter TO SAY THERE ARE NO PRINTERS, which is the truth in this container and was
++ * not something this class could express.
++ *
++ * The forwarding below covers INSTANCE messages only; a class message lands nowhere, so
++ * +printerNames raised and killed the process. LibreOffice sends it the moment its print dialog is
++ * dismissed -- and the dialog it shows first is the one saying no default printer was found, so the
++ * only way out of that dialog was a crash.
++ *
++ * Empty answers rather than clever ones. There is no CUPS in the container and nothing here can
++ * print; an application that asks and is told nothing is available behaves correctly, and one that
++ * is handed an invented printer would fail later and further from the cause. The selectors are the
++ * ones libvclplug_osxlo actually sends, found by intersecting its strings with this API.
++ */
+++ (NSArray *) printerNames {
++    return [NSArray array];
++}
++
+++ (NSArray *) printerTypes {
++    return [NSArray array];
++}
++
+++ (NSPrinter *) printerWithName: (NSString *) name {
++    return nil;
++}
++
+++ (NSPrinter *) printerWithType: (NSString *) type {
++    return nil;
++}
++
++- (NSString *) name {
++    return @"";
++}
++
++- (NSString *) type {
++    return @"";
++}
++
++- (NSDictionary *) deviceDescription {
++    return [NSDictionary dictionary];
++}
++
++- (NSSize) pageSizeForPaper: (NSString *) paper {
++    return NSZeroSize;
++}
++
++/* NSPrinterTableNotFound, spelled as the number because this header does not define the enum. */
++- (NSInteger) statusForTable: (NSString *) table {
++    return 1;
++}
++
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+--- a/AppKit/include/AppKit/NSPrinter.h
++++ b/AppKit/include/AppKit/NSPrinter.h
+@@ -17,9 +17,23 @@
+ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ 
++#import <Foundation/NSGeometry.h>
+ #import <Foundation/NSObject.h>
+ 
+ @interface NSPrinter : NSObject {
+ }
+ 
++/* The part an application actually asks for. Empty answers: there are no printers here, and saying
++ * so is what lets a print dialog close instead of raising. */
+++ (NSArray *) printerNames;
+++ (NSArray *) printerTypes;
+++ (NSPrinter *) printerWithName: (NSString *) name;
+++ (NSPrinter *) printerWithType: (NSString *) type;
++
++- (NSString *) name;
++- (NSString *) type;
++- (NSDictionary *) deviceDescription;
++- (NSSize) pageSizeForPaper: (NSString *) paper;
++- (NSInteger) statusForTable: (NSString *) table;
++
+ @end
+--- a/AppKit/NSPrintInfo.m
++++ b/AppKit/NSPrintInfo.m
+@@ -60,6 +60,20 @@
+ 
+ @implementation NSPrintInfo
+ 
++/*
++ * THE DEFAULT PRINTER, which is nil here and has to be SAYABLE.
++ *
++ * There are no printers in this container, and this class method did not exist at all, so an
++ * application asking the obvious question got an unrecognized selector instead of an answer.
++ * LibreOffice asks it immediately after its no-default-printer dialog is dismissed, so the dialog
++ * telling the user there is no printer could only be closed by killing the process.
++ *
++ * nil is the honest answer and the documented one for a machine with no printers.
++ */
+++ (NSPrinter *) defaultPrinter {
++    return nil;
++}
++
+ + (NSPrintInfo *) sharedPrintInfo {
+     return NSThreadSharedInstance(@"NSPrintInfo");
+ }
+@@ -184,16 +198,37 @@
+     return result;
+ }
+ 
++/*
++ * NIL REMOVES THE KEY, it does not raise.
++ *
++ * A dictionary refuses a nil value, and these setters handed one straight through, so
++ * [info setPrinter: [NSPrintInfo defaultPrinter]] on a machine with NO printers threw
++ * "Cannot set nil objects nor nil keys" and killed the application. That is exactly what LibreOffice
++ * does when its print dialog opens, and nil is a perfectly ordinary answer here: there is no
++ * printer. An attribute that is absent reads back as nil, which is the same thing the caller meant.
++ */
+ - (void) setPrinter: (NSPrinter *) printer {
+-    [_attributes setObject: printer forKey: NSPrintPrinter];
++    if (printer == nil) {
++        [_attributes removeObjectForKey: NSPrintPrinter];
++    } else {
++        [_attributes setObject: printer forKey: NSPrintPrinter];
++    }
+ }
+ 
+ - (void) setJobDisposition: (NSString *) value {
+-    [_attributes setObject: value forKey: NSPrintJobDisposition];
++    if (value == nil) {
++        [_attributes removeObjectForKey: NSPrintJobDisposition];
++    } else {
++        [_attributes setObject: value forKey: NSPrintJobDisposition];
++    }
+ }
+ 
+ - (void) setPaperName: (NSString *) value {
+-    [_attributes setObject: value forKey: NSPrintPaperName];
++    if (value == nil) {
++        [_attributes removeObjectForKey: NSPrintPaperName];
++    } else {
++        [_attributes setObject: value forKey: NSPrintPaperName];
++    }
+ }
+ 
+ - (void) setPaperSize: (NSSize) value {
+--- a/AppKit/include/AppKit/NSPrintInfo.h
++++ b/AppKit/include/AppKit/NSPrintInfo.h
+@@ -79,10 +79,16 @@
+ 
+ APPKIT_EXPORT NSString *const NSPrintSavePath;
+ 
++@class NSPrinter;
++
+ @interface NSPrintInfo : NSObject <NSCopying> {
+     NSMutableDictionary *_attributes;
+ }
+ 
++
++/* nil when there are no printers, which is the case here. */
+++ (NSPrinter *) defaultPrinter;
++
+ + (NSPrintInfo *) sharedPrintInfo;
+ 
+ - initWithDictionary: (NSDictionary *) dictionary;
+--- a/AppKit/NSButtonCell.m
++++ b/AppKit/NSButtonCell.m
+@@ -19,6 +19,9 @@
+ 
+ #import <AppKit/NSApplication.h>
+ #import <AppKit/NSAttributedString.h>
++#include <objc/runtime.h>
++#include <stdlib.h>
++
+ #import <AppKit/NSButtonCell.h>
+ #import <AppKit/NSButtonImageSource.h>
+ #import <AppKit/NSColor.h>
+@@ -1077,6 +1080,18 @@
+ - (void) drawBezelWithFrame: (NSRect) frame inView: (NSView *) controlView {
+     BOOL defaulted = ([[controlView window] defaultButtonCell] == self);
+ 
++    /* WHICH BEZEL, AND WHETHER ONE IS DRAWN AT ALL. A button with no visible frame is either
++     * unbordered, or has a bezel style nothing draws, and those two look identical on screen. */
++    if (getenv("CIDER_TRACE_PANEL") != NULL) {
++        NSLog(@"CIDER_BUTTON title=%@ attr=%@ class=%s window=%@ bezel=%d bordered=%d "
++               "defaulted=%d frame=%gx%g+%g+%g view=%gx%g",
++              [self title], [[self attributedTitle] string],
++              object_getClassName(controlView), [[controlView window] title],
++              (int) _bezelStyle, (int) [self isBordered], (int) defaulted,
++              frame.size.width, frame.size.height, frame.origin.x, frame.origin.y,
++              [controlView frame].size.width, [controlView frame].size.height);
++    }
++
+     NSRect adjustment =
+             [self getControlSizeAdjustment: [controlView isFlipped]];
+     frame.size.width -= adjustment.size.width;
