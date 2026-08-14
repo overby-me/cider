@@ -1,0 +1,37 @@
+diff -u --recursive a/AppKit/NSView.m b/AppKit/NSView.m
+--- a/AppKit/NSView.m	2026-08-14 05:21:41.084012417 +0200
++++ b/AppKit/NSView.m	2026-08-14 05:21:41.037604050 +0200
+@@ -2518,10 +2518,32 @@
+     }
+ }
+ 
++/*
++ * Draw this view into a GIVEN context rather than into the window.
++ *
++ * DOING NOTHING HERE IS NOT A MISSING FEATURE, IT IS GARBAGE ON SCREEN. The caller has a
++ * destination it expects this view to fill, and when nothing fills it the destination keeps
++ * whatever its memory held: a region painted in a colour that changes between runs, which reads as
++ * a palette bug and is not one. LibreOffice reaches this through NSBox, which draws the background
++ * of grouped areas.
++ *
++ * MAKE THE CONTEXT CURRENT AND REUSE THE ORDINARY PATH. Drawing the view here by hand meant
++ * calling -drawRect: without a locked focus and walking the subviews without the state the real
++ * path sets up, and that ended the process rather than fixing the pixels. The existing
++ * implementation already handles focus, clipping and subviews correctly.
++ */
+ - (void) displayRectIgnoringOpacity: (NSRect) rect
+                           inContext: (NSGraphicsContext *) context
+ {
+-    NSUnimplementedMethod();
++    if (context == nil) {
++        [self displayRectIgnoringOpacity: rect];
++        return;
++    }
++
++    NSGraphicsContext *saved = [NSGraphicsContext currentContext];
++    [NSGraphicsContext setCurrentContext: context];
++    [self displayRectIgnoringOpacity: rect];
++    [NSGraphicsContext setCurrentContext: saved];
+ }
+ 
+ - (void) drawRect: (NSRect) rect {

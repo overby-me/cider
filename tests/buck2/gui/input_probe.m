@@ -32,6 +32,48 @@ static const char *nameForType(NSEventType type)
 	}
 }
 
+/*
+ * A view that implements ONLY the modern text input entry point, which is what LibreOffice does.
+ *
+ * The NSTextField test above proves the OLD path: a field editor implements -insertText: and that
+ * works. It says nothing about -insertText:replacementRange:, which is the only one an
+ * NSTextInputClient implements, and which is the path LibreOffice actually needs. Testing the one
+ * that already worked and reporting typing as fixed is exactly the mistake worth avoiding.
+ */
+@interface CiderTextClientView : NSView {
+@public
+	NSMutableString *received;
+}
+@end
+
+@implementation CiderTextClientView
+
+- (BOOL) acceptsFirstResponder {
+	return YES;
+}
+
+/*
+ * THE CLIENT CALLS interpretKeyEvents:, which is the part that makes this realistic. AppKit does
+ * not turn keys into text on its own: -keyDown: on a plain view does nothing, and a client that
+ * wants text asks for it. LibreOffice SalFrameView does exactly this, so a probe whose view lacks
+ * it is testing a case that does not occur.
+ */
+- (void) keyDown: (NSEvent *) event {
+	[self interpretKeyEvents: [NSArray arrayWithObject: event]];
+}
+
+- (void) insertText: (id) text replacementRange: (NSRange) range {
+	if (received == nil) {
+		received = [[NSMutableString alloc] init];
+	}
+	if ([text isKindOfClass: [NSAttributedString class]]) {
+		text = [(NSAttributedString *) text string];
+	}
+	[received appendString: (NSString *) text];
+}
+
+@end
+
 int main(int argc, const char **argv)
 {
 	int seconds = (argc > 1) ? atoi(argv[1]) : 60;
@@ -77,11 +119,18 @@ int main(int argc, const char **argv)
 		 * A field that either contains the characters or does not tells those apart without
 		 * needing to understand LibreOffice at all.
 		 */
+		CiderTextClientView *client =
+			[[CiderTextClientView alloc] initWithFrame: NSMakeRect(20, 200, 400, 100)];
+		[[window contentView] addSubview: client];
+
 		NSTextField *field = [[NSTextField alloc] initWithFrame: NSMakeRect(20, 380, 400, 30)];
 		[[window contentView] addSubview: field];
-		[window makeFirstResponder: field];
-		printf("INPUT_PROBE field=%p firstResponder=%s\n", field,
-			[window firstResponder] == field ? "field" : "other");
+		// THE MODERN CLIENT IS MADE FIRST RESPONDER, not the field: the field path is already
+		// proven and this is the one LibreOffice needs.
+		[window makeFirstResponder: client];
+		printf("INPUT_PROBE firstResponder=%s\n",
+			[window firstResponder] == client ? "modern-client"
+				: ([window firstResponder] == field ? "field" : "other"));
 		fflush(stdout);
 
 		// COUNTS, not just a log. A run that receives one stray event and a run that receives a
@@ -164,6 +213,9 @@ int main(int argc, const char **argv)
 		printf("INPUT_PROBE typed=%s\n", [typed UTF8String] ?: "");
 		fflush(stdout);
 		printf("INPUT_PROBE field-contains=%s\n", [[field stringValue] UTF8String] ?: "");
+		fflush(stdout);
+		printf("INPUT_PROBE modern-client-received=%s\n",
+			client->received ? [client->received UTF8String] : "");
 		fflush(stdout);
 
 		// The verdict, so a harness does not have to interpret counts. Mouse and keyboard are
