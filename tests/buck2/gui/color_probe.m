@@ -75,6 +75,35 @@ int main(int argc, const char **argv)
 														alpha: 1.0]);
 	}
 
+	/*
+	 * DARK MODE, which decides the whole palette before any individual colour matters. LibreOffice
+	 * paints its chrome a dark slate here while every colour this backend hands out is light, and
+	 * an application that believes it is in dark mode does exactly that: it stops using the light
+	 * values and computes its own dark ones.
+	 *
+	 * Both of the things it can read are printed, because they are different questions: the user
+	 * default is what macOS applications traditionally test, and the effective appearance is the
+	 * modern one.
+	 */
+	@autoreleasepool {
+		NSString *style = [[NSUserDefaults standardUserDefaults]
+			stringForKey: @"AppleInterfaceStyle"];
+		printf("COLOR_PROBE AppleInterfaceStyle=%s class=%s\n",
+			style ? [style UTF8String] : "(nil)",
+			style ? class_getName([style class]) : "-");
+		fflush(stdout);
+
+		NSApplication *app = [NSApplication sharedApplication];
+		NSAppearance *effective = nil;
+		if ([app respondsToSelector: @selector(effectiveAppearance)]) {
+			effective = [app effectiveAppearance];
+		}
+		printf("COLOR_PROBE effectiveAppearance=%s name=%s\n", effective ? "yes" : "(nil)",
+			(effective && [effective respondsToSelector: @selector(name)])
+				? [[effective name] UTF8String] : "-");
+		fflush(stdout);
+	}
+
 	printf("COLOR_PROBE_OK\n");
 	fflush(stdout);
 	return 0;

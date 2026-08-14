@@ -657,3 +657,36 @@ because the site is known rather than guessed.
 
 A WATCHPOINT NEEDS NO HYPOTHESIS, and that is the lesson worth keeping. Every previous instrument
 required choosing a layer first, and each wrong choice produced a silence that read like a result.
+
+## The drawing stack paints faithfully; the colour is chosen wrong upstream
+
+Read at the site the watchpoint named, O2RasterizeWriteCoverageSpan8888_Copy, immediately before
+the blend:
+
+    CIDER_COV y=201 x=0 chunk=1024 coverage=256 src=52,79,95,255 dst=237,237,237,255 direct=1
+
+and the screen at that region: srgb(52,79,95). IDENTICAL. Full coverage, full window width, and the
+destination underneath was the correct light grey that something painted first.
+
+So Onyx2D reproduces exactly the colour it is handed, and the wrong colour is chosen before it gets
+there. That closes the question the last several rounds were really asking.
+
+### It does come from the colour table, correcting an earlier entry again
+
+With the table temporarily set to loud values, the paint span at those rows carried src=255,0,0,
+which is controlColor. An earlier entry here recorded that none of the loud colours reach the
+screen; that was measured before the visibility, first responder and appearance fixes, and it is
+now wrong. LibreOffice does use controlColor for the region around the page.
+
+What is NOT yet explained: in an ordinary run controlColor is grey 0.93, so that region should be
+grey, and instead it is a colour that changes between runs. The region is painted MORE THAN ONCE,
+grey first and then something else over it, so the paint that wins is a later one whose source has
+not been identified.
+
+### Ruled out this round, each by measurement
+
+  DARK MODE. AppleInterfaceStyle is nil and effectiveAppearance is NSAppearanceNameAqua, so an
+    application asking either question is told light.
+  THE COLOUR SPACE OF THE GREYS. Building them with colorWithDeviceRed rather than
+    colorWithCalibratedWhite changes nothing on screen, so that change was reverted rather than
+    kept on a hunch.
