@@ -16,6 +16,8 @@
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
 #import <stdlib.h>
+#import <objc/runtime.h>
+#import "carbon_keys.h"
 
 /* NSEvent_mouse declares the button number setter privately, and the X11 backend uses it for the
  * same reason: NSEvent has no public way to say WHICH button an other-mouse event was. */
@@ -149,4 +151,31 @@ void cider_wayland_set_keyboard_focus(id delegate, id platformWindow)
 		[delegate respondsToSelector: @selector(platformWindowActivated:displayIfNeeded:)]) {
 		[delegate platformWindowActivated: platformWindow displayIfNeeded: YES];
 	}
+	/*
+	 * DID IT ACTUALLY BECOME KEY. Activation only makes a window key if it says it can, and a
+	 * window that cannot never gets a first responder, so every keystroke sent to it is delivered
+	 * and dropped with nothing to show for it. Both facts are read back rather than assumed
+	 * because the failing case looks exactly like the working one from outside.
+	 */
+	if (getenv("CIDER_TRACE_KEYS") != NULL && delegate != nil) {
+		NSLog(@"CIDER_FOCUS window=%ld class=%s canBecomeKey=%d isKey=%d firstResponder=%s",
+			(long) [delegate windowNumber], class_getName([delegate class]),
+			(int) [delegate canBecomeKeyWindow], (int) [delegate isKeyWindow],
+			[delegate firstResponder] ? class_getName([[delegate firstResponder] class]) : "nil");
+	}
+}
+
+/*
+ * The Carbon virtual key code for an evdev keycode, or 0 if there is no equivalent.
+ *
+ * Applications map keys through the virtual key code and their own layout, so this is not a
+ * convenience: it is the difference between a keystroke that means something and one that means
+ * whatever Carbon key shares its number.
+ */
+int cider_wayland_carbon_keycode(unsigned int evdevKeycode)
+{
+	if (evdevKeycode >= 256) {
+		return 0;
+	}
+	return cider_evdev_to_carbon[evdevKeycode];
 }

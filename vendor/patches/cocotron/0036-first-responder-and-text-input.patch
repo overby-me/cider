@@ -1,0 +1,243 @@
+diff -u --recursive a/AppKit/include/AppKit/NSTextInput.h b/AppKit/include/AppKit/NSTextInput.h
+--- a/AppKit/include/AppKit/NSTextInput.h	2026-08-14 04:57:45.790137297 +0200
++++ b/AppKit/include/AppKit/NSTextInput.h	2026-08-14 04:57:45.740535772 +0200
+@@ -23,7 +23,33 @@
+ 
+ APPKIT_EXPORT NSString *const NSTextInputContextKeyboardSelectionDidChangeNotification;
+ 
+-@interface NSTextInputContext : NSObject
++@class NSEvent;
++
++/*
++ * The text input context, which is how a modern Cocoa application receives TEXT rather than keys.
++ *
++ * An application that implements NSTextInputClient does not read characters out of the key event
++ * itself: it expects the input context to interpret the event and call -insertText:replacementRange:
++ * on it. LibreOffice is one of those, and with an EMPTY context class its view was the first
++ * responder, received every key event, and inserted nothing.
++ */
++@interface NSTextInputContext : NSObject {
++    id _client;
++}
++
+++ (NSTextInputContext *) currentInputContext;
++
++- (instancetype) initWithClient: (id) client;
++- (id) client;
++
++- (void) activate;
++- (void) deactivate;
++
++/* YES if the event was consumed as text. */
++- (BOOL) handleEvent: (NSEvent *) event;
++
++- (void) discardMarkedText;
++- (void) invalidateCharacterCoordinates;
+ 
+ @end
+ 
+diff -u --recursive a/AppKit/NSResponder.m b/AppKit/NSResponder.m
+--- a/AppKit/NSResponder.m	2026-08-14 04:57:45.789076661 +0200
++++ b/AppKit/NSResponder.m	2026-08-14 04:57:45.739535768 +0200
+@@ -108,7 +108,8 @@
+                 [self doCommandBySelector: NSSelectorFromString([selectorNames
+                                                    objectAtIndex: j])];
+             }
+-        } else if ([self respondsToSelector: @selector(insertText:)]) {
++        } else if ([self respondsToSelector: @selector(insertText:)] ||
++                   [self respondsToSelector: @selector(insertText:replacementRange:)]) {
+             string = [event characters];
+ 
+             if ([string length] >
+@@ -132,7 +133,22 @@
+                     buffer[j] = check;
+                 }
+                 string = [NSString stringWithCharacters: buffer length: length];
+-                [self insertText: string];
++                /*
++                 * THE MODERN CLIENT SPELLS IT WITH A RANGE. NSTextInputClient replaced
++                 * -insertText: with -insertText:replacementRange: and current applications
++                 * implement only the second, so a responder chain that knows about the first alone
++                 * finds nothing to call and the keystroke is silently dropped.
++                 *
++                 * LibreOffice is exactly that case: its view implements
++                 * insertText:replacementRange: and not insertText:, so it received every key event
++                 * and inserted no characters, with nothing anywhere reporting a problem.
++                 */
++                if ([self respondsToSelector: @selector(insertText:)]) {
++                    [self insertText: string];
++                } else {
++                    [(id) self insertText: string
++                       replacementRange: NSMakeRange(NSNotFound, 0)];
++                }
+             }
+         }
+     }
+diff -u --recursive a/AppKit/NSTextInput.m b/AppKit/NSTextInput.m
+--- a/AppKit/NSTextInput.m	2026-08-14 04:57:45.789884251 +0200
++++ b/AppKit/NSTextInput.m	2026-08-14 04:57:45.739535768 +0200
+@@ -1,4 +1,5 @@
+ #include <AppKit/NSTextInput.h>
++#import <AppKit/NSEvent.h>
+ #include <AppKit/NSTextInput_Internal.h>
+ 
+ NSString *const NSTextInputContextKeyboardSelectionDidChangeNotification = @"NSTextInputContextKeyboardSelectionDidChangeNotification";
+@@ -7,4 +8,97 @@
+ 
+ @implementation NSTextInputContext
+ 
++/*
++ * The active context, which is what +currentInputContext answers.
++ *
++ * A file static rather than a lookup through the responder chain, because activation is explicit:
++ * a view that wants text activates its context when it becomes first responder, and the last one
++ * to do so is the current one. That is the same rule Cocoa uses and it does not need a key window
++ * to be correct.
++ */
++static NSTextInputContext *_ciderCurrentInputContext = nil;
++
+++ (NSTextInputContext *) currentInputContext {
++    return _ciderCurrentInputContext;
++}
++
++- (instancetype) initWithClient: (id) client {
++    self = [super init];
++    if (self == nil) {
++        return nil;
++    }
++    _client = client;
++    return self;
++}
++
++- (id) client {
++    return _client;
++}
++
++- (void) activate {
++    _ciderCurrentInputContext = self;
++}
++
++- (void) deactivate {
++    if (_ciderCurrentInputContext == self) {
++        _ciderCurrentInputContext = nil;
++    }
++}
++
++/*
++ * Turn a key event into text for the client.
++ *
++ * WHAT IS FILTERED AND WHY. Control characters and the function key range are COMMANDS, not text:
++ * inserting them puts a box or a stray glyph into the document for every arrow key press. Return
++ * and tab are left in because applications expect them as text and handle them themselves.
++ *
++ * No marked text handling yet, so dead keys and input methods that compose over several keystrokes
++ * are not supported. That is a real gap and it is a separate piece of work; plain typing does not
++ * go through it.
++ */
++- (BOOL) handleEvent: (NSEvent *) event {
++    if (event == nil || [event type] != NSKeyDown) {
++        return NO;
++    }
++    NSString *characters = [event characters];
++    if ([characters length] == 0) {
++        return NO;
++    }
++
++    NSMutableString *text = [NSMutableString stringWithCapacity: [characters length]];
++    NSUInteger i, length = [characters length];
++    for (i = 0; i < length; i++) {
++        unichar c = [characters characterAtIndex: i];
++        if (c >= NSUpArrowFunctionKey && c <= NSModeSwitchFunctionKey) {
++            continue;
++        }
++        if (c < ' ' && c != '\r' && c != '\n' && c != '\t') {
++            continue;
++        }
++        [text appendFormat: @"%C", c];
++    }
++    if ([text length] == 0) {
++        return NO;
++    }
++
++    if ([_client respondsToSelector: @selector(insertText:replacementRange:)]) {
++        [_client insertText: text replacementRange: NSMakeRange(NSNotFound, 0)];
++        return YES;
++    }
++    if ([_client respondsToSelector: @selector(insertText:)]) {
++        [_client insertText: text];
++        return YES;
++    }
++    return NO;
++}
++
++- (void) discardMarkedText {
++    if ([_client respondsToSelector: @selector(unmarkText)]) {
++        [_client unmarkText];
++    }
++}
++
++- (void) invalidateCharacterCoordinates {
++}
++
+ @end
+diff -u --recursive a/AppKit/NSWindow.m b/AppKit/NSWindow.m
+--- a/AppKit/NSWindow.m	2026-08-14 04:57:45.788333288 +0200
++++ b/AppKit/NSWindow.m	2026-08-14 04:57:45.739535768 +0200
+@@ -1719,6 +1719,28 @@
+     }
+ }
+ 
++/*
++ * The first view in a tree that will accept first responder, depth first.
++ *
++ * Depth first because the content view of a window built in code is usually a plain container and
++ * the view that wants the keyboard is inside it.
++ */
++- (NSView *) _firstResponderCandidateInView: (NSView *) view {
++    if (view == nil) {
++        return nil;
++    }
++    if ([view acceptsFirstResponder]) {
++        return view;
++    }
++    for (NSView *child in [view subviews]) {
++        NSView *found = [self _firstResponderCandidateInView: child];
++        if (found != nil) {
++            return found;
++        }
++    }
++    return nil;
++}
++
+ - (void) makeKeyWindow {
+     [[self platformWindow] makeKey];
+ 
+@@ -1738,7 +1760,27 @@
+             [self recalculateKeyViewLoop];
+         }
+         if ([self firstResponder] == self) {
+-            [self makeFirstResponder: [_contentView nextValidKeyView]];
++            /*
++             * THE CONTENT VIEW IS THE FALLBACK, and without it a window that has no key view loop
++             * never gets a first responder at all.
++             *
++             * -nextValidKeyView walks nextKeyView links, and an application that builds its view
++             * tree in code rather than in a nib has none: it answers nil, -makeFirstResponder:
++             * fails on nil and puts the WINDOW back as first responder, and from then on every
++             * keystroke is sent to a window that does nothing with it. Delivered, dispatched,
++             * discarded, with nothing anywhere saying so.
++             *
++             * LibreOffice is exactly that application. Its window becomes key, isKeyWindow answers
++             * YES, and its first responder was the SalFrameWindow rather than the view inside it,
++             * so typing produced no characters while every layer reported success.
++             */
++            NSView *next = [_contentView nextValidKeyView];
++            if (next == nil) {
++                next = [self _firstResponderCandidateInView: _contentView];
++            }
++            if (next != nil) {
++                [self makeFirstResponder: next];
++            }
+         }
+     }
+ }

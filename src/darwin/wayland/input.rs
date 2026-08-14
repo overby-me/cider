@@ -72,6 +72,7 @@ unsafe extern "C" {
     );
     fn cider_wayland_post_flags_changed(modifiers: u64, window_number: i64);
     fn cider_wayland_set_keyboard_focus(delegate: Object, platform_window: Object);
+    fn cider_wayland_carbon_keycode(evdev_keycode: u32) -> c_int;
 }
 
 /// libxkbcommon, which is a host library reached through a forwarding stub.
@@ -574,7 +575,10 @@ extern "C" fn on_keyboard_key(
             chars.as_ptr() as *const c_char,
             chars.as_ptr() as *const c_char,
             if repeat { 1 } else { 0 },
-            keycode as c_int,
+            // THE CARBON VIRTUAL KEY CODE, not the evdev one. An application reads the key code
+            // and applies its own layout; handing it the raw number means it looks up an unrelated
+            // key, which is why every keystroke arrived and nothing appeared.
+            cider_wayland_carbon_keycode(keycode),
         );
     }
 }
