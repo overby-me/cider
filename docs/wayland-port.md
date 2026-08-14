@@ -1014,3 +1014,31 @@ Both times a cleanup broke a source file, the run afterwards printed a healthy l
 the PREVIOUSLY INSTALLED dylib, because the harness copies a build artefact into the prefix and a
 failed build leaves the old one in place. A green run after a failed build is not a green run.
 Check the build result before believing the run.
+
+## Clicking a menu OPENS it, and the menu is invisible for a nameable reason
+
+From one log, in order:
+
+    cider-wayland-input button=0x110 pressed=true x=95 y=11      the click on the File menu
+    cider-wayland-window create=ok number=15 size=247x381 level=2   the menu, five lines later
+    cider-wayland-window mapped=yes number=15
+
+So the click was hit tested to the menu bar, dispatched, and acted on. That is criterion two mouse
+half met in the words of the prompt, click a menu and it opens, and it is a much stronger result
+than the caret: a caret says a click reached the document view, a menu says it reached a specific
+control and the application ran its handler.
+
+WHY THE MENU IS NOT ON SCREEN, and this is ours. Every window here is created as an xdg_toplevel,
+so a compositor treats a menu as another application window: a tiling one gives it a tile of its
+own or stacks it elsewhere, and it never appears under the pointer where a menu belongs. Menus and
+tooltips are xdg_popup, which is positioned RELATIVE TO ITS PARENT with an anchor rectangle, and
+that is the missing piece.
+
+LEVEL IS THE SIGNAL and it is already available: this window arrived with level=2, which is
+NSFloatingWindowLevel, while document windows are level=0. The earlier attempt to distinguish
+window kinds used the style mask and could not separate a menu from a scrollbar helper; the level
+does it exactly.
+
+NEXT RUNG, now concrete: get_popup with a positioner for windows above level 0, keeping toplevel
+for level 0. The parent is the key window, the anchor rectangle comes from the frame origin the
+application already sets, and popup_done has to unmap.

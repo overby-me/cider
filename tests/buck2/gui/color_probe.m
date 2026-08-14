@@ -104,6 +104,43 @@ int main(int argc, const char **argv)
 		fflush(stdout);
 	}
 
+	/*
+	 * THE NSSTRING TO UNICHAR PATH, which is how VCL turns the string handed to
+	 * insertText:replacementRange: into its own OUString. If getCharacters answers nothing, the
+	 * character code it derives is zero, its own guard rejects the keystroke as a non character,
+	 * and the text is discarded with everything upstream looking correct. That is exactly the
+	 * observed failure, and it is testable without LibreOffice.
+	 */
+	@autoreleasepool {
+		NSString *made = [NSString stringWithUTF8String: "h"];
+		printf("COLOR_PROBE string=%p length=%lu class=%s\n", made, (unsigned long) [made length],
+			class_getName([made class]));
+		fflush(stdout);
+
+		unichar buffer[8];
+		memset(buffer, 0, sizeof(buffer));
+		[made getCharacters: buffer range: NSMakeRange(0, [made length])];
+		printf("COLOR_PROBE getCharacters-range=%u expected=%u\n", (unsigned) buffer[0],
+			(unsigned) 'h');
+		fflush(stdout);
+
+		unichar single = [made characterAtIndex: 0];
+		printf("COLOR_PROBE characterAtIndex=%u\n", (unsigned) single);
+		fflush(stdout);
+
+		memset(buffer, 0, sizeof(buffer));
+		[made getCharacters: buffer];
+		printf("COLOR_PROBE getCharacters-norange=%u\n", (unsigned) buffer[0]);
+		fflush(stdout);
+
+		/* And through CoreFoundation, which is the other way VCL might do it. */
+		UniChar cfbuf[8];
+		memset(cfbuf, 0, sizeof(cfbuf));
+		CFStringGetCharacters((CFStringRef) made, CFRangeMake(0, 1), cfbuf);
+		printf("COLOR_PROBE CFStringGetCharacters=%u\n", (unsigned) cfbuf[0]);
+		fflush(stdout);
+	}
+
 	printf("COLOR_PROBE_OK\n");
 	fflush(stdout);
 	return 0;
