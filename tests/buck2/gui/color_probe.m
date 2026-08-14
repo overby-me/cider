@@ -313,6 +313,44 @@ int main(int argc, const char **argv)
 		CGColorSpaceRelease(space);
 	}
 
+
+	/*
+	 * DOES A CLIP SURVIVE ITS OWN RESTORE.
+	 *
+	 * VCL sets a clip region for the rectangle it is repainting, draws, and restores. If the restore
+	 * does not actually drop the clip, every later paint is confined to the FIRST rectangle anyone
+	 * clipped to, and the rest of the window keeps whatever it had. That is exactly what the menu bar
+	 * looks like: two items painted, the rest of the strip never updated, and one click on the bar
+	 * brings all of it back.
+	 */
+	@autoreleasepool {
+		unsigned char pixels[16 * 4];
+		memset(pixels, 0, sizeof(pixels));
+		CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+		CGContextRef ctx = CGBitmapContextCreate(pixels, 16, 1, 8, 16 * 4, space,
+			(uint32_t) kCGImageAlphaNoneSkipFirst | (uint32_t) kCGBitmapByteOrder32Big);
+
+		if (ctx != NULL) {
+			CGContextSaveGState(ctx);
+			CGContextClipToRect(ctx, CGRectMake(0, 0, 4, 1));
+			CGContextSetRGBFillColor(ctx, 1.0, 0.0, 0.0, 1.0);
+			CGContextFillRect(ctx, CGRectMake(0, 0, 16, 1));
+			CGContextRestoreGState(ctx);
+
+			CGContextSetRGBFillColor(ctx, 0.0, 1.0, 0.0, 1.0);
+			CGContextFillRect(ctx, CGRectMake(0, 0, 16, 1));
+
+			/* Pixel 10 is outside the clip that was restored, so it must be the SECOND colour. */
+			unsigned char *far = &pixels[10 * 4];
+			printf("COLOR_PROBE clip inside=%d,%d,%d outside=%d,%d,%d%s\n", pixels[1], pixels[2],
+				pixels[3], far[1], far[2], far[3],
+				(far[2] != 255) ? "   <-- the clip outlived its restore" : "");
+			fflush(stdout);
+			CGContextRelease(ctx);
+		}
+		CGColorSpaceRelease(space);
+	}
+
 	printf("COLOR_PROBE_OK\n");
 	fflush(stdout);
 	return 0;
