@@ -73,6 +73,7 @@ unsafe extern "C" {
     fn cider_wayland_post_flags_changed(modifiers: u64, window_number: i64);
     fn cider_wayland_set_keyboard_focus(delegate: Object, platform_window: Object);
     fn cider_wayland_carbon_keycode(evdev_keycode: u32) -> c_int;
+    fn cider_wayland_carbon_for_keysym(keysym: u32) -> c_int;
     fn cider_wayland_watch_focus_notifications();
 }
 
@@ -110,6 +111,9 @@ unsafe extern "C" {
         buffer: *mut c_char,
         size: usize,
     ) -> c_int;
+    /// The keysym the LAYOUT resolves this key to, which is the only thing that knows what the key
+    /// means. The physical keycode does not.
+    fn xkb_state_key_get_one_sym(state: *mut XkbState, key: u32) -> u32;
 }
 
 /// xkb_keymap_format: the only text format there is.
@@ -532,7 +536,7 @@ extern "C" fn on_keyboard_key(
     let pressed = state == unsafe { wl::cider_wl_keyboard_key_state_pressed() };
     let keycode = key + XKB_KEYCODE_OFFSET;
 
-    let (surface, modifiers, text, repeat) = {
+    let (surface, modifiers, text, repeat, keysym) = {
         let Ok(mut st) = INPUT.lock() else { return };
         let mut buffer = [0u8; 64];
         let text = if st.xkb_state.is_null() {
@@ -554,7 +558,34 @@ extern "C" fn on_keyboard_key(
         };
         let repeat = pressed && st.last_key == key;
         st.last_key = if pressed { key } else { 0 };
-        (st.keyboard_focus, st.modifiers, text, repeat)
+        // THE KEYSYM, which is what the layout resolved this key to. The physical code alone
+        // cannot say what the key means on anything but a US keyboard.
+        let keysym = if st.xkb_state.is_null() {
+            0
+        } else {
+            unsafe { xkb_state_key_get_one_sym(st.xkb_state, keycode) }
+        };
+        (st.keyboard_focus, st.modifiers, text, repeat, keysym)
+    };
+
+    /*
+     * PREFER THE KEYSYM, fall back to the physical table.
+     *
+     * Translating the raw evdev number through a fixed US layout table is right on a US keyboard
+     * and wrong everywhere else, and it fails SILENTLY: the character is correct while the key code
+     * names an unrelated key. LibreOffice reads the key code to decide what a keystroke means, so
+     * it was being told Escape and handed the letter h at the same time, and it believed the code.
+     *
+     * The fallback remains for keys the keysym table does not name, where the physical guess is
+     * better than nothing.
+     */
+    let carbon = {
+        let from_sym = unsafe { cider_wayland_carbon_for_keysym(keysym) };
+        if from_sym >= 0 {
+            from_sym
+        } else {
+            unsafe { cider_wayland_carbon_keycode(keycode) }
+        }
     };
 
     // A key with no window is not an error: the compositor can deliver one between a focus change
@@ -562,7 +593,7 @@ extern "C" fn on_keyboard_key(
     let number = window::window_for_surface(surface).map(|(_, _, _, n)| n).unwrap_or(0);
     if tracing() {
         println!(
-            "cider-wayland-input key={key} pressed={pressed} window={number} text={:?}",
+            "cider-wayland-input key={key} keysym={keysym:#x} carbon={carbon} pressed={pressed} window={number} text={:?}",
             text.as_ref().map(|t| String::from_utf8_lossy(t).to_string())
         );
     }
@@ -580,7 +611,7 @@ extern "C" fn on_keyboard_key(
             // THE CARBON VIRTUAL KEY CODE, not the evdev one. An application reads the key code
             // and applies its own layout; handing it the raw number means it looks up an unrelated
             // key, which is why every keystroke arrived and nothing appeared.
-            cider_wayland_carbon_keycode(keycode),
+            carbon,
         );
     }
 }

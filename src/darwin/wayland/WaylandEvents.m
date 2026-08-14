@@ -226,3 +226,86 @@ void cider_wayland_watch_focus_notifications(void)
 {
 	[CiderWaylandFocusWatch install];
 }
+
+/*
+ * The Carbon virtual key code for an XKB KEYSYM, or -1 when there is no equivalent.
+ *
+ * WHY THE KEYSYM AND NOT THE KEYCODE. A physical keycode only means a letter if the layout says so.
+ * Translating the raw evdev number through a fixed US table gives the right answer on a US
+ * keyboard and the wrong one everywhere else, and the failure is silent: the character is correct
+ * while the key code names an unrelated key. An application that reads the key code to decide what
+ * a keystroke MEANS, which LibreOffice does, then discards perfectly good text.
+ *
+ * Measured before fixing: with a synthetic keymap the letter h arrived as Carbon 53, kVK_Escape,
+ * and e arrived as Carbon 18, kVK_ANSI_1. A Danish layout has the same problem for real, since its
+ * keycodes do not agree with the US table either.
+ *
+ * The keysym is what the keymap already resolved, so this is the layer that knows.
+ */
+int cider_wayland_carbon_for_keysym(unsigned int keysym)
+{
+	/* Letters. Upper and lower case resolve to the same physical key. */
+	static const int letters[26] = {
+		kVK_ANSI_A, kVK_ANSI_B, kVK_ANSI_C, kVK_ANSI_D, kVK_ANSI_E, kVK_ANSI_F,
+		kVK_ANSI_G, kVK_ANSI_H, kVK_ANSI_I, kVK_ANSI_J, kVK_ANSI_K, kVK_ANSI_L,
+		kVK_ANSI_M, kVK_ANSI_N, kVK_ANSI_O, kVK_ANSI_P, kVK_ANSI_Q, kVK_ANSI_R,
+		kVK_ANSI_S, kVK_ANSI_T, kVK_ANSI_U, kVK_ANSI_V, kVK_ANSI_W, kVK_ANSI_X,
+		kVK_ANSI_Y, kVK_ANSI_Z,
+	};
+	static const int digits[10] = {
+		kVK_ANSI_0, kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3, kVK_ANSI_4,
+		kVK_ANSI_5, kVK_ANSI_6, kVK_ANSI_7, kVK_ANSI_8, kVK_ANSI_9,
+	};
+
+	if (keysym >= 'a' && keysym <= 'z') {
+		return letters[keysym - 'a'];
+	}
+	if (keysym >= 'A' && keysym <= 'Z') {
+		return letters[keysym - 'A'];
+	}
+	if (keysym >= '0' && keysym <= '9') {
+		return digits[keysym - '0'];
+	}
+
+	switch (keysym) {
+	case 0x0020: return kVK_Space;
+	case 0x002d: return kVK_ANSI_Minus;
+	case 0x003d: return kVK_ANSI_Equal;
+	case 0x005b: return kVK_ANSI_LeftBracket;
+	case 0x005d: return kVK_ANSI_RightBracket;
+	case 0x005c: return kVK_ANSI_Backslash;
+	case 0x003b: return kVK_ANSI_Semicolon;
+	case 0x0027: return kVK_ANSI_Quote;
+	case 0x002c: return kVK_ANSI_Comma;
+	case 0x002e: return kVK_ANSI_Period;
+	case 0x002f: return kVK_ANSI_Slash;
+	case 0x0060: return kVK_ANSI_Grave;
+	/* The XKB function key block. */
+	case 0xff08: return kVK_Delete;
+	case 0xff09: return kVK_Tab;
+	case 0xff0d: return kVK_Return;
+	case 0xff1b: return kVK_Escape;
+	case 0xff50: return kVK_Home;
+	case 0xff51: return kVK_LeftArrow;
+	case 0xff52: return kVK_UpArrow;
+	case 0xff53: return kVK_RightArrow;
+	case 0xff54: return kVK_DownArrow;
+	case 0xff55: return kVK_PageUp;
+	case 0xff56: return kVK_PageDown;
+	case 0xff57: return kVK_End;
+	case 0xffff: return kVK_ForwardDelete;
+	case 0xffbe: return kVK_F1;
+	case 0xffbf: return kVK_F2;
+	case 0xffc0: return kVK_F3;
+	case 0xffc1: return kVK_F4;
+	case 0xffc2: return kVK_F5;
+	case 0xffc3: return kVK_F6;
+	case 0xffc4: return kVK_F7;
+	case 0xffc5: return kVK_F8;
+	case 0xffc6: return kVK_F9;
+	case 0xffc7: return kVK_F10;
+	case 0xffc8: return kVK_F11;
+	case 0xffc9: return kVK_F12;
+	default: return -1;
+	}
+}

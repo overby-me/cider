@@ -886,3 +886,32 @@ supplies. The table written for this port is more complete than the one it was c
 The X11 failure raises no ObjC exception either, so it is a C++ one inside LibreOffice, the same
 shape of failure as the Wayland keyboard: caught, unnamed, and reported only as Unspecified
 Application Error.
+
+## Key codes were derived from the physical key, which is wrong on every layout but US
+
+Measured, with a synthetic keymap, BEFORE the fix:
+
+    key=1 carbon=53 text=h      Carbon 53 is kVK_Escape
+    key=2 carbon=18 text=e      Carbon 18 is kVK_ANSI_1
+
+and after, with the keysym consulted first:
+
+    key=1 keysym=0x68 carbon=4    kVK_ANSI_H
+    key=2 keysym=0x65 carbon=14   kVK_ANSI_E
+    key=3 keysym=0x6c carbon=37   kVK_ANSI_L
+    key=4 keysym=0x6f carbon=31   kVK_ANSI_O
+
+A PHYSICAL KEYCODE ONLY MEANS A LETTER IF THE LAYOUT SAYS SO. Translating the raw evdev number
+through a fixed US table is right on a US keyboard and wrong everywhere else, and it fails
+SILENTLY: the character is correct while the key code names an unrelated key. An application that
+reads the key code to decide what a keystroke MEANS is then told Escape while being handed the
+letter h. This machine has a Danish layout, so it was wrong for real and not only under the test
+harness.
+
+IT DID NOT FIX LIBREOFFICE TYPING. The document still shows a zero pixel difference after the same
+five keystrokes. So this was a real bug found while looking for another one, which is worth having
+on its own terms: shortcuts and every keycode dependent behaviour would have been wrong on any
+non US keyboard.
+
+The probe still types hello into a modern NSTextInputClient, and the weston control still reaches
+13 windows and survives.
