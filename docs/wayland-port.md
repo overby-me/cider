@@ -825,3 +825,37 @@ So the compositor resizes and LibreOffice relayouts. Criterion three is met, and
 evidence rather than with a size in a log.
 
 The chrome colour is wrong in both shots, which is the separate defect recorded above.
+
+## Where task 112 actually stands, and what would move it
+
+    RENDERS CORRECTLY   no      everything this port draws is right; the chrome is not
+    INTERACTIVE         partly  mouse works in LibreOffice; keyboard does not, though it is
+                                delivered correctly at every measured link
+    RESIZABLE           yes     demonstrated at two widths with pictures
+
+APPLICATION ACTIVATION was checked this round as well, since VCL might gate focus on it: NSWindow
+platformWindowActivated: sets the window active, NSApp isActive is derived from that, and
+_windowDidBecomeActive: posts NSApplicationDidBecomeActiveNotification. That path is intact, so it
+joins the list of excluded explanations rather than becoming a fix.
+
+### Why the instrument rounds have stopped paying
+
+Both open defects sit on the far side of a boundary that has now been measured clean from this side
+in eight separate ways. The keyboard reaches LibreOffice own insertText:replacementRange: with the
+right character, once per keystroke. The chrome colour arrives already wrong inside an image the
+application renders itself, with no coloured fill ever passing through CoreGraphics. Every
+instrument that can be placed at a CoreGraphics or AppKit boundary has been placed, and each one
+now reports that its side is correct.
+
+WHAT WOULD ACTUALLY MOVE IT, in rough order of expected value:
+
+  1. A LibreOffice build with symbols, or a debug build of libvclplug_osxlo alone. Every question
+     left is of the form which branch does VCL take, and that is unanswerable from outside it.
+  2. A smaller NSTextInputClient application that reproduces the same discard, which would turn a
+     one hour LibreOffice cycle into a fifteen second one and might expose a difference this port
+     can fix after all.
+  3. Comparing against the X11 backend on the same LibreOffice: if keys work there and not here,
+     the difference is a signal this backend does not send, and that is a short list.
+
+The mouse asymmetry is the strongest hint on record: clicks reach VCL and place a caret, so the
+frame is alive, focused and routing, and only the key path is dropped.
