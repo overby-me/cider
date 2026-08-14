@@ -1631,3 +1631,15 @@ A NOTE ON THE TEST ITSELF. The first version of this used Control and Return for
 concluded that scrolling was broken because the picture did not change. The document had one page:
 the shortcut on this platform is COMMAND and Return, and the application was right. The check that
 caught it was reading the page count in the status bar rather than trusting the comparison.
+
+## The endpoint builds from scratch, which is the last thing that was unproven
+
+    nix build .#cider-buck2-min   ->  /nix/store/...-cider-min, exit 0, no errors
+
+That is: pins fetched fresh from their recorded revisions, the whole patch series applied, the buck2
+graph lowered, and the min prefix compiled and linked with the toolchain now at -O2. It took about
+forty minutes and 9076 lines of log.
+
+It matters because buck2 alone cannot check any of it. buck2 builds from vendor/src, which is the
+MATERIALISED pin tree and is not tracked, so it will keep building fixes that exist only on this
+disk and report success. This is the only path that starts from what is committed.
