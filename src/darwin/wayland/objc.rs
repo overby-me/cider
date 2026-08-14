@@ -76,6 +76,9 @@ unsafe extern "C" {
     /// concluding that a notification was ignored.
     #[link_name = "objc_msgSend"]
     pub fn msg_send_sel_bool(receiver: Object, sel: Sel, arg: Sel) -> ObjcBool;
+    /// -isKindOfClass:, which takes a Class and answers a BOOL.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_class_bool(receiver: Object, sel: Sel, cls: Class) -> ObjcBool;
     #[link_name = "objc_msgSend"]
     pub fn msg_send_i64_ret(receiver: Object, sel: Sel) -> i64;
     #[link_name = "objc_msgSend"]

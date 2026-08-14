@@ -2067,3 +2067,39 @@ run loop pattern -- one pool per pass, released at the TOP of the next pass, so 
 being handled -- and it kills the application on its first window: it is holding something from the
 previous pass. The pool therefore covers the drain and this backend own per-pass work, and the event
 fetch stays outside it.
+
+## Three things the user could see, and one of them was a real protocol mistake
+
+THE MENU BAR WAS TOO SHORT AND ITS ITEMS TOO SMALL. menuFontOfSize: 0 resolves to the general 12
+point default and the bar is sized from that string height plus eight points, which came out
+SIXTEEN points tall. Apple uses a 14 point menu font in a bar of about 22 at 1x. Both are set now,
+with 22 as a floor: a height derived purely from a measured string follows whatever the font backend
+reports, and a fallback face with tight metrics would silently squash the bar again.
+
+THE FIRST MENU SAID "Application". On Apple systems the title of the first item in the main menu is
+IGNORED and the system substitutes the running application name; LibreOffice titles that item
+Application and expects never to see the word. NSMainMenuView substitutes it now, from
+CFBundleDisplayName, then CFBundleName, then the process name. docs/wayland-menubar-app-name.png:
+LibreOffice File Edit View Insert Format Styles Table Form Tools Window Help.
+
+THE SAVE DIALOG WAS A TILE BESIDE THE DOCUMENT instead of a dialog centred over it, and that was our
+bug rather than the compositor being odd. A panel is TITLED, so the rule that decides parenting made
+it a parent in its own right. It asks the delegate whether it is an NSPanel now -- NSSavePanel,
+NSOpenPanel and the window NSAlert builds all are -- and gives it a parent, which is how xdg_shell
+expresses a dialog and what makes a compositor float it.
+
+AND THE PARENT WAS WRONG TOO, which only the wire showed. WAYLAND_DEBUG=1 on a run prints
+
+    xdg_toplevel#151.set_parent(xdg_toplevel#29)
+    xdg_toplevel#19.configure(1256, 684)     <- the document window is 19, not 29
+
+The parent being sent was the most recent TITLED window, and this application creates a dozen that
+are never shown. A parent that is not a mapped view is ignored, so the dialog was tiled. It is
+parented to a MAPPED toplevel now, the same rule popups already used, and the result is
+docs/wayland-dialog-centred.png: the panel at its natural 500x400, centred at 378,142 in a 1256x684
+output, over a document window that keeps the whole screen.
+
+STILL EMPTY: the save panel window has no TITLE on the wire, only set_title(""). Both halves of the
+plumbing are right -- NSWindow forwards to the platform window, and the backend now asks the window
+for its title when the toplevel is created rather than relying on having seen it earlier -- so
+something in the panel own path leaves it unset. Cosmetic, and unfinished.

@@ -95,6 +95,8 @@ pub struct WindowState {
     pub nudged: bool,
     /// The popup role, when this window is a menu or a tooltip rather than a document window.
     pub popup: *mut wl::XdgPopup,
+    /// The title AppKit gave this window, which it may have given before the toplevel existed.
+    pub title: Option<std::ffi::CString>,
     /// Whether AppKit still has to be told to draw the whole of this window.
     pub needs_full_display: bool,
     /// KEEP REDRAWING FOR A MOMENT AFTER A RESIZE. One forced display is not enough: the
@@ -141,6 +143,7 @@ impl WindowState {
             configured_size: None,
             nudged: false,
             popup: std::ptr::null_mut(),
+            title: None,
             needs_full_display: true,
             redraw_until: None,
             last_forced_display: None,
@@ -688,6 +691,7 @@ fn create_surface(st: &mut WindowState) -> bool {
             if let Ok(text) = std::ffi::CString::new(app_id) {
                 wl::cider_xdg_toplevel_set_app_id(st.toplevel, text.as_ptr());
             }
+            apply_pending_title(st);
         }
         /*
          * A BORDERLESS WINDOW IS NOT A DOCUMENT, and saying so is the difference between an
@@ -701,14 +705,44 @@ fn create_surface(st: &mut WindowState) -> bool {
          * The parent is the most recent TITLED window, which is what these belong to in practice.
          * Compositors float a toplevel that has a parent, which is the behaviour wanted here.
          */
-        let titled = st.style_mask & 0x1 != 0 && st.popup.is_null();
+        /*
+         * A PANEL IS A DIALOG, not a second document, and a compositor cannot tell from the style
+         * mask alone: a save panel is TITLED, so the rule below made it a parent and a tiling
+         * compositor gave it half the screen beside the document. On Apple systems that panel is
+         * modal and centred over the window it belongs to.
+         *
+         * xdg_toplevel.set_parent is exactly that relationship, and compositors float a toplevel
+         * that has a parent instead of tiling it. NSPanel is the class every one of these is:
+         * NSSavePanel, NSOpenPanel and the window NSAlert builds all inherit from it, and asking
+         * the delegate is precise where guessing from the style mask is not.
+         */
+        let is_panel = if st.delegate.is_null() {
+            false
+        } else {
+            let cls = objc::objc_getClass(cstr!("NSPanel"));
+            !cls.is_null()
+                && objc::msg_send_class_bool(
+                    st.delegate,
+                    objc::sel_registerName(cstr!("isKindOfClass:")),
+                    cls,
+                ) != objc::NO
+        };
+        let titled = st.style_mask & 0x1 != 0 && st.popup.is_null() && !is_panel;
+        println!(
+            "cider-wayland-window role number={} style={:#x} panel={} titled={} delegate={}",
+            st.number, st.style_mask, is_panel, titled, !st.delegate.is_null()
+        );
         if titled {
             LAST_TITLED_TOPLEVEL.store(st.toplevel as usize, Ordering::Release);
             PARENT_XDG_SURFACE.store(st.xdg as usize, Ordering::Release);
             PARENT_LEFT.store(st.frame.origin.x as i64, Ordering::Release);
             PARENT_TOP.store((st.frame.origin.y + st.frame.size.height) as i64, Ordering::Release);
         } else if !st.toplevel.is_null() {
-            let parent = LAST_TITLED_TOPLEVEL.load(Ordering::Acquire) as *mut wl::XdgToplevel;
+            // A MAPPED window first, and the remembered one only as a fallback: a parent that is
+            // not on screen is not a parent as far as the compositor is concerned.
+            let parent = mapped_toplevel().unwrap_or(
+                LAST_TITLED_TOPLEVEL.load(Ordering::Acquire) as *mut wl::XdgToplevel,
+            );
             if !parent.is_null() && parent != st.toplevel {
                 wl::cider_xdg_toplevel_set_parent(st.toplevel, parent);
             }
@@ -1307,6 +1341,25 @@ fn mapped_toplevel_xdg() -> Option<*mut wl::XdgSurface> {
     None
 }
 
+/// The toplevel of a window that is actually MAPPED, which is the only parent a compositor will
+/// honour.
+///
+/// LAST_TITLED_TOPLEVEL is not that. It records the most recent window with a title bar, and this
+/// application creates a dozen of those that are never shown: the save panel was being parented to
+/// xdg_toplevel#29 while the document on screen was #19, and a parent that is not a real view is
+/// ignored, so the panel was tiled beside the document instead of floating over it. Seen on the
+/// wire with WAYLAND_DEBUG, which is the only place the two numbers appear side by side.
+fn mapped_toplevel() -> Option<*mut wl::XdgToplevel> {
+    let list = WINDOWS.lock().ok()?;
+    for &p in list.iter().rev() {
+        let st = unsafe { (p as *mut WindowState).as_ref() }?;
+        if st.mapped && st.popup.is_null() && !st.toplevel.is_null() {
+            return Some(st.toplevel);
+        }
+    }
+    None
+}
+
 fn register_window(st: *mut WindowState) {
     if let Ok(mut list) = WINDOWS.lock() {
         list.push(st as usize);
@@ -1400,17 +1453,62 @@ extern "C" fn set_level(this: Object, _cmd: Sel, level: c_int) {
     }
 }
 
+/*
+ * REMEMBERED, THEN APPLIED, because AppKit titles a window before there is anything to title.
+ *
+ * A panel is given its title while it is being built and the toplevel is created later, when it is
+ * first shown; this dropped anything set before that moment, and the compositor listed the window
+ * with an EMPTY name -- a blank entry in every window list and switcher on the desktop. The save
+ * panel was exactly that case.
+ */
 extern "C" fn set_title(this: Object, _cmd: Sel, title: Object) {
     let Some(st) = (unsafe { state(this) }) else { return };
-    if st.toplevel.is_null() || title.is_null() {
+    if title.is_null() {
         return;
     }
     unsafe {
         let sel_utf8 = objc::sel_registerName(cstr!("UTF8String"));
         let raw = objc::msg_send0(title, sel_utf8) as *const c_char;
-        if !raw.is_null() {
-            wl::cider_xdg_toplevel_set_title(st.toplevel, raw);
+        if raw.is_null() {
+            return;
+        }
+        let owned = std::ffi::CStr::from_ptr(raw).to_owned();
+        if !st.toplevel.is_null() {
+            wl::cider_xdg_toplevel_set_title(st.toplevel, owned.as_ptr());
             session::flush();
+        }
+        st.title = Some(owned);
+    }
+}
+
+/// Put a title on a toplevel that has just been created.
+///
+/// ASKING THE WINDOW IS MORE RELIABLE THAN REMEMBERING. A title set before this backend had any
+/// state for the window is not in st.title, and a window with no title is a blank entry in every
+/// window list on the desktop -- the save panel was exactly that, reported by the compositor as the
+/// empty string while it plainly says Save inside.
+fn apply_pending_title(st: &mut WindowState) {
+    if st.toplevel.is_null() {
+        return;
+    }
+    if st.title.is_none() && !st.delegate.is_null() {
+        unsafe {
+            let title = objc::msg_send0(st.delegate, objc::sel_registerName(cstr!("title")));
+            if !title.is_null() {
+                let raw = objc::msg_send0(title, objc::sel_registerName(cstr!("UTF8String")))
+                    as *const c_char;
+                if !raw.is_null() {
+                    let owned = std::ffi::CStr::from_ptr(raw).to_owned();
+                    if !owned.as_bytes().is_empty() {
+                        st.title = Some(owned);
+                    }
+                }
+            }
+        }
+    }
+    if let Some(title) = &st.title {
+        unsafe {
+            wl::cider_xdg_toplevel_set_title(st.toplevel, title.as_ptr());
         }
     }
 }
