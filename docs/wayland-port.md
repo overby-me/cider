@@ -623,3 +623,37 @@ and install a SIGSEGV handler. The first write faults, the handler prints the fa
 pointer and restores PROT_READ|PROT_WRITE, and scripts/core-guest-stack.py resolves that address to
 a symbol. A watchpoint answers who writes the memory without needing to guess which layer to
 instrument, which is what every attempt so far has had to guess.
+
+## The writer is found, and every empty trace is explained, 2026-08-14
+
+    CIDER_WATCH write offset=0 pc=0x77ffc5ac66d1 image=Onyx2D symbol=O2argb8u_copy_by_coverage+65
+
+One run. No hypothesis. src/darwin/wayland/watch.c makes the shm mapping read only after clearing
+it, catches the fault, and asks dladdr who the faulting instruction belongs to.
+
+WHY EVERY TRACE BEFORE THIS PRINTED NOTHING, from O2RasterizeWriteCoverageSpan8888_Copy:
+
+    O2argb8u *direct = surface->_read_argb8u(surface, x, y, dst, length);
+    if (direct != NULL) dst = direct;
+    O2argb8u_copy_by_coverage(src, dst, coverage, chunk);
+    if (direct == NULL) { O2SurfaceWriteSpan_argb8u_PRE(surface, x, y, dst, chunk); }
+
+WHEN A SURFACE OFFERS DIRECT ACCESS THE RASTERISER WRITES INTO IT AND NEVER CALLS THE SPAN WRITER.
+O2ImageRead_BGRA8888_to_argb8u returns a pointer straight into the pixels on little endian, so a
+window surface always takes that path. Every trace placed in _writeargb8u was in the branch that
+window drawing does not use, which is why three independent filters all found nothing and why the
+16x16 icon buffers, which do not take the direct path, were the only writes ever seen.
+
+The layout is NOT swapped, checked rather than assumed: O2argb8u is O2argb8u_LE, which is b, g, r,
+a, and that matches BGRA memory. The blend arithmetic in O2argb8u_copy_by_coverage is correct for
+that layout too.
+
+### Where the remaining colour bug must be
+
+The write path is now known and it is only three values wide: src, which comes from
+O2PaintReadSpan_argb8u_PRE, and coverage, and the destination it blends against. The next step is
+to trace those three at that call site, filtered to the window surface, which is now possible
+because the site is known rather than guessed.
+
+A WATCHPOINT NEEDS NO HYPOTHESIS, and that is the lesson worth keeping. Every previous instrument
+required choosing a layer first, and each wrong choice produced a silence that read like a result.

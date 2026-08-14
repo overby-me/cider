@@ -21,6 +21,11 @@ use crate::objc::{self, NsPoint, NsRect, Object, ObjcBool, Sel, NO, YES};
 use crate::session;
 use crate::wl;
 
+unsafe extern "C" {
+    /// The write watchpoint, in C because the Darwin signal structures are correct there.
+    fn cider_wayland_watch_begin(base: *mut c_void, len: usize);
+}
+
 /// Byte offset of the state pointer inside an instance, learned at registration. -1 until then,
 /// which is the only value that can mean "not registered" for an offset.
 static STATE_OFFSET: AtomicIsize = AtomicIsize::new(-1);
@@ -476,6 +481,10 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     unsafe {
         let words = std::slice::from_raw_parts_mut(map as *mut u32, size / 4);
         words.fill(CLEAR_PIXEL);
+        // ARMED AFTER THE CLEAR, so the fill itself is not what faults. Diagnostic only, and it
+        // does nothing unless CIDER_WAYLAND_WATCH is set. See watch.c for why a watchpoint rather
+        // than another trace: every trace so far had to guess which layer to instrument.
+        cider_wayland_watch_begin(map, size);
     }
 
     unsafe {

@@ -183,6 +183,7 @@ cc_objects(
     srcs = [
         "WaylandEvents.m",
         "WaylandPasteboard.m",
+        "watch.c",
     ],
     compiler_flags = [
         "-D_LIBC_NO_FEATURE_VERIFICATION",
