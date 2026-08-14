@@ -363,3 +363,50 @@ So the genuinely new work is roughly:
 
   C. KEEP THE X11 BACKEND INSTALLED for those services only. Cheapest now, but it contradicts
      Wayland-only and leaves the X libraries in the bridge.
+
+## LibreOffice Writer lays out a real window, 2026-08-14
+
+Three walls fell, each of which had ENDED THE PROCESS, and none of which was about Wayland:
+
+1. `-pasteboardWithName:` answered nil. Fatal, not degraded: the office asks for the general
+   pasteboard while building its first frame. `WaylandPasteboard.m` is a process-local clipboard.
+   Cross-application transfer still needs wl_data_device and a seat.
+2. `-[NSScroller setKnobProportion:]` did not exist in Cocotron. Unrecognized selector, process
+   ends. Patch `cocotron/0033`.
+3. `O2Surface` did not handle `kO2ImageAlphaNoneSkipFirst` with `kO2BitmapByteOrder32Big`, which
+   LibreOffice asks for; it fell through to the DEFAULT writer, which is a silent wrong result
+   rather than a failure. Patch `cocotron/0034`.
+
+Past them Writer draws toolbars with icons, the ruler, paragraph and font controls, a white page,
+the sidebar, and a status bar with page, word count, language and zoom.
+
+### The instruments, which is why those were findable
+
+`CIDER_WAYLAND_DUMP=<dir>` writes each window as a BMP from the same pages the compositor reads.
+`weston-screenshooter` captures the composited result. The two disagreeing is a format, stride or
+alpha bug and nothing else separates those. BOTH need care: the dump path is a GUEST path, so a
+host directory silently writes nothing, and weston refuses a screenshot without `--debug`, failing
+as a BLACK IMAGE rather than an error. A black screenshot here means the capture failed.
+
+`present`/`flush` counters separate an application that draws nonsense from one that draws
+correctly and never commits again. The event wait is capped (`MAX_EVENT_WAIT`) because
+NSApplication redisplays BETWEEN events, so an unbounded wait means the first frame is the only
+frame.
+
+`tests/buck2/gui/color_probe.m` runs the exact pair `libvclplug_osxlo` sends
+(`colorUsingColorSpaceName:device:` then `getRed:green:blue:alpha:`) and shows the colour path is
+CLEAN. `tests/buck2/gui/runloop_probe.m` shows `runMode:beforeDate:` honours its date. Both are
+negative results that each killed a leading theory.
+
+### Still wrong, and stated plainly
+
+- PARTS OF THE CHROME SHOW UNINITIALISED PIXELS. The values change between runs. Neither O2 span
+  writer produces them (traced), HITheme is never called (traced with `STUB_VERBOSE`), and the
+  colour table is not the source (proved by giving every name a unique loud colour and seeing NONE
+  of them appear on screen). Unresolved.
+- NO INPUT AT ALL. `wl_seat` is detected in the registry and never bound. `libxkbcommon` already
+  exists as a native forwarding stub, so the keymap side has a library to build on.
+- RESIZE IS GATED OFF behind `CIDER_WAYLAND_NOTIFY_RESIZE`. Delivering the configure from inside
+  the Wayland callback re-enters AppKit; it needs deferring to the main loop.
+- Every killed run leaves a crash flag, so the next start spends itself in a modal recovery dialog.
+  The runner clears it; a bare run needs `-norestore`.
