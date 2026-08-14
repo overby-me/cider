@@ -406,8 +406,13 @@ negative results that each killed a leading theory.
   of them appear on screen). Unresolved.
 - NO INPUT AT ALL. `wl_seat` is detected in the registry and never bound. `libxkbcommon` already
   exists as a native forwarding stub, so the keymap side has a library to build on.
+  SUPERSEDED: the seat is bound, and the pointer and keyboard both work end to end.
 - RESIZE IS GATED OFF behind `CIDER_WAYLAND_NOTIFY_RESIZE`. Delivering the configure from inside
   the Wayland callback re-enters AppKit; it needs deferring to the main loop.
+  SUPERSEDED: the configure is recorded in the callback and applied from the main loop, the
+  environment variable is gone from the source entirely, and the resize is demonstrated at 700x600
+  and 1150x640. This list is the state of the port on the morning of 2026-08-14 and is kept for the
+  history; the sections below it are what is true now.
 - Every killed run leaves a crash flag, so the next start spends itself in a modal recovery dialog.
   The runner clears it; a bare run needs `-norestore`.
 
