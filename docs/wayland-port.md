@@ -1373,3 +1373,28 @@ the deferred work now runs: that counter is recomputed by an idle handler, not b
 
 So criterion two is met: click a menu and it opens (docs/wayland-menu-open.png), type in a document
 and characters appear (docs/wayland-typing-works.png).
+
+## RESIZE, re-demonstrated on the current build, 2026-08-14 evening
+
+    cider-wayland-window resized number=2 size=1256x684
+    cider-wayland-window resized number=2 size=700x600
+    cider-wayland-window resized number=2 size=1150x640
+
+docs/wayland-resize-narrow.png is 700x600 and docs/wayland-resize-wide.png is 1150x640, both with
+the correct chrome. At the narrow size the application has RELAID OUT rather than been clipped: the
+toolbars collapse into the overflow chevron, the ruler ends at 14 instead of 18, and the status bar
+drops the fields that no longer fit.
+
+TWO HARNESS BUGS WERE IN THE WAY, and both made the resize look broken when it was not.
+
+    [class=".*"] MATCHES NOTHING ON WAYLAND. class is an X11 property. Every resize this harness
+    issued was aimed at whatever happened to be focused. The selector is [app_id=".*"] now, which
+    needs the next item to work at all.
+
+    THE TOPLEVEL HAD NO app_id. A window with none is anonymous to the compositor: no rule can match
+    it, it has no identity in a task list and it gets no icon. The backend sets it now, from the
+    bundle identifier, so LibreOffice appears as org.libreoffice.script.
+
+Resizing the OUTPUT rather than the window is also what a person actually does by dragging a window
+edge; a floating resize is a request the compositor may clamp, and it left the width unchanged every
+time.

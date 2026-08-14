@@ -294,3 +294,10 @@ uint32_t cider_xdg_positioner_constraint_slide_flip(void) {
 int cider_wl_display_get_fd(struct wl_display *display) {
 	return wl_display_get_fd(display);
 }
+
+// THE APPLICATION IDENTITY, which a compositor uses for everything it does per application: window
+// rules, task lists, icons, and matching a window at all. A toplevel without one is anonymous, and
+// a rule written against it cannot fire.
+void cider_xdg_toplevel_set_app_id(struct xdg_toplevel *toplevel, const char *app_id) {
+	xdg_toplevel_set_app_id(toplevel, app_id);
+}

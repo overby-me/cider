@@ -485,6 +485,20 @@ fn create_surface(st: &mut WindowState) -> bool {
                 &TOPLEVEL_LISTENER,
                 st as *mut WindowState as *mut c_void,
             );
+            /*
+             * SAY WHICH APPLICATION THIS IS. A toplevel with no app_id is anonymous to the
+             * compositor: no window rule can match it, it has no identity in a task list, and it
+             * gets no icon. It is also how a person drives it from outside, which is how this was
+             * noticed: a resize aimed at the window did nothing, because there was nothing to aim
+             * at.
+             *
+             * The bundle identifier is the right answer where there is one, since that is what the
+             * application calls itself; the executable name is the honest fallback.
+             */
+            let app_id = app_identifier();
+            if let Ok(text) = std::ffi::CString::new(app_id) {
+                wl::cider_xdg_toplevel_set_app_id(st.toplevel, text.as_ptr());
+            }
         }
         /*
          * A BORDERLESS WINDOW IS NOT A DOCUMENT, and saying so is the difference between an
@@ -872,6 +886,39 @@ pub fn force_redraw_if_due() {
             st.needs_full_display = true;
         }
     }
+}
+
+/// What this application calls itself, for xdg_toplevel.set_app_id.
+///
+/// The bundle identifier first, because that is the name the application chose and the one a
+/// compositor rule would be written against. Falling back to the executable name keeps every
+/// window identifiable even for a binary with no bundle at all.
+fn app_identifier() -> String {
+    unsafe {
+        let bundle_cls = objc::objc_getClass(cstr!("NSBundle"));
+        if !bundle_cls.is_null() {
+            let main = objc::msg_send0(bundle_cls, objc::sel_registerName(cstr!("mainBundle")));
+            if !main.is_null() {
+                let ident =
+                    objc::msg_send0(main, objc::sel_registerName(cstr!("bundleIdentifier")));
+                if !ident.is_null() {
+                    let raw = objc::msg_send0(ident, objc::sel_registerName(cstr!("UTF8String")))
+                        as *const std::os::raw::c_char;
+                    if !raw.is_null() {
+                        if let Ok(text) = std::ffi::CStr::from_ptr(raw).to_str() {
+                            if !text.is_empty() {
+                                return text.to_string();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| "cider".to_string())
 }
 
 /// Seconds since the backend was loaded.
