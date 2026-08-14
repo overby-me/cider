@@ -569,3 +569,34 @@ are toolbar and status bar sized, and it imports CGBitmapContextGetData, CGBitma
 and memcpy. So it draws into its own buffers and copies them into the window itself. Those
 allocations were also missed at first, by a trace that printed the first twenty bitmap contexts and
 was filled by 1x1 and 16x16 icon scratch buffers before a frame sized one appeared.
+
+## An unfound writer: window sized surfaces are filled by something not yet located
+
+Stated precisely so the next attempt does not repeat this one.
+
+WHAT WAS ESTABLISHED, by pointer comparison rather than by reading the format switch:
+
+    CIDER_O2_WRITER size=1024x656 info=00002002 supported=1 argb8u=0x...100 bgra=0x...100 match=1
+
+The window surface selects O2SurfaceWrite_argb8u_to_BGRA8888, the same function instrumented. The
+comparison is the point: deducing the writer from the bitmap info by hand had already been wrong
+once.
+
+WHAT WAS THEN MEASURED: with a trace inside that function and NO filters except a surface width of
+400 or more, ZERO writes were recorded in a run where the window ended up holding a complete
+rendered interface, 3358 distinct colours, page, text and icons. Not one.
+
+So a path fills window sized surfaces without passing through _writeargb8u, and it has not been
+found. It is not O2BitmapContextGetData: that is never called, traced. It is not CGLayer: never
+created, traced. Everything reachable from _pixelBytes outside O2Surface.m is a READ.
+
+### Three filter mistakes, all the same mistake
+
+Every empty result from this instrument before today was an artefact, and each cost a round:
+
+  spans of at least 64 pixels  -- Onyx2D emits spans of EIGHT, so nothing ever matched
+  the first pixel only         -- skips any blit whose left edge is grey, which is most of them
+  a print cap of forty         -- consumed by 16x16 icon scratch buffers before the window painted
+
+THE RULE. Run the instrument with NO filter first and confirm it fires, then add one selector at a
+time. An instrument that cannot fire proves nothing, and its silence reads exactly like a result.
