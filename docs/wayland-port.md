@@ -511,3 +511,35 @@ platform will draw a control background.
 A NOTE ON THE STATUS BAR MEASUREMENT. It reads 8,245,41 against a clear of 0,255,0, so it is not
 strictly untouched: something paints it with a nearly transparent wash. Close to the clear colour
 is not the same as equal to it, and the difference is a real clue rather than noise.
+
+## Windows that were never shown were being mapped anyway, 2026-08-14
+
+The blank rectangles are gone. See docs/wayland-render-after-visibility.png: no band through the
+page, no blank sidebar, no flat panels over the document.
+
+THE BUG. present() is reached from -flushBuffer, from -makeKey, from -setTitle and from half a
+dozen other places, and the first one to arrive MAPPED THE SURFACE. An application creates windows
+long before it shows them and LibreOffice creates plenty it never shows at all, so those appeared
+as flat rectangles of whatever the backend had cleared the buffer to. Thirteen windows created,
+four mapped, three of them containing ONE unique colour across every pixel. Now: thirteen created,
+ONE mapped, and that one has 3358 distinct colours in it.
+
+HOW A WINDOW IS ACTUALLY SHOWN, which took two wrong turns to find. It is NOT
+-showWindowWithoutActivation, which is what -[NSWindow setIsVisible:] calls and which LibreOffice
+never reaches: gating on that alone mapped nothing at all. -[NSWindow orderWindow:relativeTo:] sets
+its own _isVisible directly and then calls -placeAboveWindow: on the platform window, so THAT is
+the signal. Both routes now mark the window visible, and -showWindowForAppActivation: does too,
+which had been a no-op.
+
+WAYLAND HAS NO EXPOSE EVENT, which is a real difference from X11 rather than a detail. X sends
+Expose whenever a window needs its contents and the X11 backend draws from that; a Wayland client
+owns its buffer and must know when to paint. Newly shown and newly resized windows are therefore
+marked for display explicitly, from the main loop.
+
+### Still wrong
+
+The chrome around the page, the sidebar strip and the status bar background are painted in a colour
+that is still not right, and it still shows the signature of an uninitialised read: within one run
+the regions share a BLUE byte exactly while red and green differ, and the values change between
+runs. It is no longer the clear colour and no longer a blank window; it is a fill with a wrong
+colour, which is a different and smaller problem than the one this fixes.

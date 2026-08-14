@@ -110,6 +110,10 @@ unsafe extern "C" {
     /// +[NSDate dateWithTimeIntervalSinceNow:], which is how the event wait gets an upper bound.
     #[link_name = "objc_msgSend"]
     pub fn msg_send_f64(receiver: Object, sel: Sel, a: f64) -> Object;
+    /// -setNeedsDisplay:, one BOOL. A single argument selector needs its OWN declaration: reusing
+    /// the object-plus-flag one puts the object where the flag belongs, which silently sends NO.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_bool(receiver: Object, sel: Sel, flag: ObjcBool) -> Object;
     /// +[NSColor colorWithDeviceRed:green:blue:alpha:], four doubles.
     #[link_name = "objc_msgSend"]
     pub fn msg_send_f64_4(receiver: Object, sel: Sel, a: f64, b: f64, c: f64, d: f64) -> Object;

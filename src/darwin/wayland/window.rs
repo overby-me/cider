@@ -74,6 +74,11 @@ pub struct WindowState {
     pub flushes: u64,
     /// A size the compositor asked for, not yet given to AppKit. Applied by the main loop.
     pub pending_size: Option<(i32, i32)>,
+    /// Whether AppKit still has to be told to draw the whole of this window.
+    pub needs_full_display: bool,
+    /// Whether AppKit has actually SHOWN this window. A Mach-O application creates windows long
+    /// before it shows them, and one that was never ordered front must not appear.
+    pub visible: bool,
 }
 
 impl WindowState {
@@ -104,6 +109,8 @@ impl WindowState {
             presents: 0,
             flushes: 0,
             pending_size: None,
+            needs_full_display: true,
+            visible: false,
         }
     }
 }
@@ -189,6 +196,55 @@ pub fn deliver_pending_configures() {
         Ok(list) => list.clone(),
         Err(_) => return,
     };
+    for p in pending.iter().copied() {
+        let st = match unsafe { (p as *mut WindowState).as_mut() } {
+            Some(st) => st,
+            None => continue,
+        };
+        /*
+         * ASK APPKIT TO DRAW, because nothing else is going to.
+         *
+         * THIS IS THE DIFFERENCE BETWEEN X11 AND WAYLAND, and it is not a small one. X sends an
+         * Expose event whenever a window needs its contents, and the X11 backend turns that into
+         * drawing. WAYLAND HAS NO EXPOSE: a client owns its buffer and is expected to know when to
+         * paint. A backend ported from the X11 one therefore maps windows that AppKit never draws
+         * into, and they stay exactly as the backend cleared them.
+         *
+         * Measured before fixing: three of LibreOffice child windows contained ONE unique colour
+         * across every pixel, which was the clear value, and they appeared as flat rectangles over
+         * the document, over the sidebar and through the middle of the page.
+         *
+         * Done from the main loop rather than at map time, for the same reason the configure is:
+         * -display draws immediately, and calling it from inside a compositor callback re-enters
+         * AppKit at a moment of its choosing rather than ours.
+         */
+        if st.needs_full_display && !st.delegate.is_null() && st.mapped {
+            st.needs_full_display = false;
+            let delegate = st.delegate;
+            let number = st.number;
+            unsafe {
+                // MARK IT DIRTY FIRST. -display draws what needs displaying, and a window that
+                // nobody has invalidated needs nothing: the call returns having drawn not one
+                // pixel. The content view is what owns the area, so that is what is marked.
+                let content =
+                    objc::msg_send0(delegate, objc::sel_registerName(cstr!("contentView")));
+                if !content.is_null() {
+                    objc::msg_send_bool(
+                        content,
+                        objc::sel_registerName(cstr!("setNeedsDisplay:")),
+                        objc::YES,
+                    );
+                }
+                objc::msg_send0(delegate, objc::sel_registerName(cstr!("display")));
+                if std::env::var_os("CIDER_WAYLAND_TRACE_DISPLAY").is_some() {
+                    println!(
+                        "cider-wayland-window display-forced number={number} content={}",
+                        if content.is_null() { "nil" } else { "yes" }
+                    );
+                }
+            }
+        }
+    }
     for p in pending {
         let st = match unsafe { (p as *mut WindowState).as_mut() } {
             Some(st) => st,
@@ -375,6 +431,7 @@ fn ensure_backing(st: &mut WindowState) -> bool {
      * weston headless never showed it: that compositor never resizes anything. A tiling compositor
      * resizes the first window it maps.
      */
+    st.needs_full_display = true;
     if had_backing && !st.delegate.is_null() {
         unsafe {
             let sel = objc::sel_registerName(cstr!("platformWindowDidInvalidateCGContext:"));
@@ -471,6 +528,22 @@ fn release_backing(st: &mut WindowState) {
 /// Whatever AppKit has drawn is already in those pages, so this is attach, damage and commit and
 /// nothing else. That is the point of mapping rather than copying.
 fn present(st: &mut WindowState) {
+    /*
+     * A WINDOW APPKIT HAS NOT SHOWN MUST NOT BE MAPPED, and this is the whole of that rule.
+     *
+     * present() is reached from flushBuffer, from -makeKey, from -setTitle and from half a dozen
+     * other places, so before this check ANY of them mapped the surface. An application creates
+     * windows long before it shows them, and LibreOffice creates plenty it never shows at all:
+     * those appeared as flat rectangles of the clear colour, over the document, over the sidebar
+     * and as a band through the middle of the page. Their buffers contained ONE unique colour,
+     * which is how they were finally identified.
+     *
+     * Visibility arrives through -showWindowWithoutActivation and -showWindowForAppActivation:,
+     * which is what -[NSWindow setIsVisible:] calls.
+     */
+    if !st.visible {
+        return;
+    }
     if st.surface.is_null() || !st.configured || !ensure_backing(st) {
         return;
     }
@@ -882,8 +955,24 @@ extern "C" fn rect_noop(_this: Object, _cmd: Sel, _frame: NsRect) {}
 
 extern "C" fn show_window_without_activation(this: Object, _cmd: Sel) {
     if let Some(st) = unsafe { state(this) } {
+        st.visible = true;
+        st.needs_full_display = true;
         present(st);
     }
+}
+
+/// The other half of showing, which AppKit uses when the whole application comes forward. It was a
+/// no-op, so a window shown only this way stayed invisible.
+extern "C" fn show_window_for_app_activation(this: Object, _cmd: Sel, _frame: NsRect) {
+    if let Some(st) = unsafe { state(this) } {
+        st.visible = true;
+        st.needs_full_display = true;
+        present(st);
+    }
+}
+
+extern "C" fn hide_window_for_app_deactivation(this: Object, _cmd: Sel, _frame: NsRect) {
+    hide_window(this, _cmd);
 }
 
 /// Unmap by attaching a null buffer, which is how a Wayland client hides a surface: there is no
@@ -897,6 +986,7 @@ extern "C" fn hide_window(this: Object, _cmd: Sel) {
             }
         }
         st.mapped = false;
+        st.visible = false;
         session::flush();
     }
 }
@@ -906,7 +996,26 @@ extern "C" fn window_number(this: Object, _cmd: Sel) -> i64 {
 }
 
 /// Stacking is the compositor's, as with -setLevel:.
-extern "C" fn place_window(_this: Object, _cmd: Sel, _other: i64) {}
+/*
+ * -placeAboveWindow: and -placeBelowWindow:, which are how AppKit ORDERS A WINDOW FRONT.
+ *
+ * This was a no-op, and that is why nothing appeared once mapping was gated on visibility:
+ * -[NSWindow orderWindow:relativeTo:] does not call -showWindowWithoutActivation at all. It sets
+ * its own _isVisible directly and tells the platform window to place itself, so THIS is the signal
+ * that a window is meant to be on screen. -setIsVisible: is the other route and is used less.
+ *
+ * Stacking order is not implemented: xdg_shell has no request to place one toplevel above another,
+ * because that is the compositor decision. What matters here is the visibility half.
+ */
+extern "C" fn place_window(this: Object, _cmd: Sel, _other: i64) {
+    if let Some(st) = unsafe { state(this) } {
+        if !st.visible {
+            st.visible = true;
+            st.needs_full_display = true;
+        }
+        present(st);
+    }
+}
 
 /// A CLIENT CANNOT FOCUS ITSELF in Wayland. The compositor grants focus; xdg_activation exists for
 /// the request but needs a token from an existing focused surface, which an app being launched has
@@ -1012,8 +1121,8 @@ pub unsafe fn register() -> objc::Class {
         objc::MethodDef { sel: cstr!("setHasShadow:"), types: cstr!("v@:c"), imp: set_has_shadow as *const c_void },
         objc::MethodDef { sel: cstr!("sheetOrderFrontFromFrame:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: rect_noop as *const c_void },
         objc::MethodDef { sel: cstr!("sheetOrderOutToFrame:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: rect_noop as *const c_void },
-        objc::MethodDef { sel: cstr!("showWindowForAppActivation:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: rect_noop as *const c_void },
-        objc::MethodDef { sel: cstr!("hideWindowForAppDeactivation:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: rect_noop as *const c_void },
+        objc::MethodDef { sel: cstr!("showWindowForAppActivation:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: show_window_for_app_activation as *const c_void },
+        objc::MethodDef { sel: cstr!("hideWindowForAppDeactivation:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: hide_window_for_app_deactivation as *const c_void },
         objc::MethodDef { sel: cstr!("hideWindow"), types: cstr!("v@:"), imp: hide_window as *const c_void },
         objc::MethodDef { sel: cstr!("showWindowWithoutActivation"), types: cstr!("v@:"), imp: show_window_without_activation as *const c_void },
         objc::MethodDef { sel: cstr!("windowNumber"), types: cstr!("q@:"), imp: window_number as *const c_void },
