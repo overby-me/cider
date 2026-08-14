@@ -29,6 +29,11 @@ struct State {
     /// The offer another client owns, if any, and whether it advertises text we can read.
     offer: *mut wl::WlDataOffer,
     offer_mime: Option<CString>,
+    /// What the current offer turned out to contain. An application asks what is on the clipboard
+    /// before it asks for the bytes, and often more than once per paste, and each ask is a pipe and
+    /// a wait on another process. The answer cannot change without a new offer, so it is kept until
+    /// one arrives.
+    offer_cache: Option<Vec<u8>>,
 }
 
 unsafe impl Send for State {}
@@ -40,6 +45,7 @@ static STATE: Mutex<State> = Mutex::new(State {
     text: Vec::new(),
     offer: std::ptr::null_mut(),
     offer_mime: None,
+    offer_cache: None,
 });
 
 /// THE TYPES, in the order a text-shaped consumer wants them. utf8_string is what modern clients
@@ -283,6 +289,7 @@ extern "C" fn on_data_offer(
         }
         st.offer = offer;
         st.offer_mime = None;
+        st.offer_cache = None;
     }
 }
 
@@ -299,6 +306,7 @@ extern "C" fn on_selection(
             }
             st.offer = std::ptr::null_mut();
             st.offer_mime = None;
+            st.offer_cache = None;
         }
     }
 }
@@ -328,10 +336,13 @@ static DEVICE_LISTENER: wl::WlDataDeviceListener = wl::WlDataDeviceListener {
 /// The read end is made non-blocking and polled with a deadline: a client that never writes must
 /// not freeze the application, and one that is merely slow must not be cut off.
 pub fn text() -> Option<Vec<u8>> {
-    let (offer, mime) = match STATE.lock() {
-        Ok(st) => (st.offer, st.offer_mime.clone()),
+    let (offer, mime, cached) = match STATE.lock() {
+        Ok(st) => (st.offer, st.offer_mime.clone(), st.offer_cache.clone()),
         Err(_) => return None,
     };
+    if let Some(bytes) = cached {
+        return if bytes.is_empty() { None } else { Some(bytes) };
+    }
     let offer = if offer.is_null() { return None } else { offer };
     let mime = mime?;
 
@@ -367,6 +378,13 @@ pub fn text() -> Option<Vec<u8>> {
     }
     unsafe { libc_close(read_fd) };
     println!("cider-wayland-clipboard paste=ok bytes={}", out.len());
+    if let Ok(mut st) = STATE.lock() {
+        // Cached even when EMPTY, so a clipboard holding something we cannot read is asked for once
+        // rather than on every keystroke that enables a Paste menu item.
+        if st.offer == offer {
+            st.offer_cache = Some(out.clone());
+        }
+    }
     if out.is_empty() { None } else { Some(out) }
 }
 

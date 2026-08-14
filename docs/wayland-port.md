@@ -1903,6 +1903,8 @@ inserted the applications OWN old text: wl-copy had taken the selection but the 
 its data and never looked further. wl_data_source.cancelled is that news, and it now empties the
 general pasteboard, which is what makes the next paste fall through to the system selection.
 
-KNOWN COST, not yet addressed: -types asks the system on every call, so a paste does the pipe
-round trip more than once (four in the run above). It is bounded by a 500 ms deadline and correct,
-but it should be cached against the offer.
+THE COST IS PAID: -types asks the system on every call, and an application asks more than once per
+paste, so the run above did four pipe transfers where one was needed. The answer cannot change
+without a new offer, so it is cached against the offer and cleared when one arrives. Same run after:
+ONE transfer, both directions unchanged. The empty answer is cached too, or a clipboard holding
+something we cannot read would be asked for again on every keystroke that enables a Paste item.
