@@ -1808,3 +1808,20 @@ above the bottom, with the file list above them at 807x1325+18+55. Nothing is cu
 
 DO NOT JUDGE A RENDERING FROM A SCALED CROP. Two claims in this file came from that and both were
 wrong, this one and the drag selection one. Crop at full resolution, or read the pixels.
+
+## Save As works now: the panel has a field you can type a filename into
+
+docs/wayland-save-name-field.png shows it: a Save As label, a field holding cider-typed-name with
+the caret after it, and the Cancel and Save buttons under it. The proof is again the file, not the
+picture: /Users/root/Documents/cider-typed-name is an OpenDocument Text with the document text in
+it, and the name came from the KEYSTROKES, not from the name LibreOffice set on the panel.
+
+The nib content view holds a scroll view and two buttons and nothing else, so there was nowhere to
+type. The field is built when the panel is about to run rather than added to the nib, for two
+reasons: the nib is a binary in the pin, so a patch to it would be unreviewable, and a panel that
+builds its own field also works for a caller that never loaded the nib. The list gives up the height
+the field takes, so nothing overlaps at any window size, and the field is made first responder so
+the first keystroke lands in it.
+
+An open panel never gets one. NSOpenPanel has its own runModal and its own OK action for the same
+reason: opening answers with the selected row, and a name field would have nothing to do.

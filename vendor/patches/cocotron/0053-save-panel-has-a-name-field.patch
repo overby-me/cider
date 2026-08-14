@@ -1,0 +1,170 @@
+--- a/AppKit/include/AppKit/NSSavePanel.h
++++ b/AppKit/include/AppKit/NSSavePanel.h
+@@ -28,6 +28,8 @@
+     NSFileHandlingPanelOKButton = NSOKButton,
+ };
+ 
++@class NSTextField;
++
+ @interface NSSavePanel : NSPanel {
+     NSString *_dialogTitle;
+ 
+@@ -49,6 +51,11 @@
+     NSView *_accessoryView;
+ 
+     IBOutlet NSOutlineView *_outlineView;
++
++    /* The editable filename field. The nib has no such view, so a save panel could not be given a
++     * name by TYPING one; this is built when the panel is about to run. Never built for an open
++     * panel, which has no name field on any platform. */
++    NSTextField *_nameField;
+ }
+ 
+ @property (copy) NSString *nameFieldStringValue;
+@@ -88,6 +95,8 @@
+  * that does not answer raises, and an application that configures its panel before showing it dies
+  * before the panel appears. See the implementation. */
+ - (void) setCanSelectHiddenExtension: (BOOL) value;
++/* Builds the name field if it is missing. Called before the panel runs. */
++- (void) _ensureNameField;
+ - (BOOL) canSelectHiddenExtension;
+ - (void) validateVisibleColumns;
+ - (IBAction) cancel: (id) sender;
+--- a/AppKit/NSSavePanel.subproj/NSSavePanel.m
++++ b/AppKit/NSSavePanel.subproj/NSSavePanel.m
+@@ -22,6 +22,8 @@
+ #import <AppKit/NSDisplay.h>
+ #import <AppKit/NSRaise.h>
+ #import <AppKit/NSSavePanel.h>
++#import <AppKit/NSScrollView.h>
++#import <AppKit/NSTextField.h>
+ #import <AppKit/NSView.h>
+ 
+ @implementation NSSavePanel
+@@ -72,6 +74,7 @@
+     [_directory release];
+     [_requiredFileType release];
+     [_accessoryView release];
++    [_nameField release];
+     [super dealloc];
+ }
+ 
+@@ -111,6 +114,8 @@
+     if (_nameFieldStringValue == nil) {
+         _nameFieldStringValue = @"";
+     }
++
++    [_nameField setStringValue: _nameFieldStringValue];
+ }
+ 
+ /*
+@@ -131,11 +136,98 @@
+  * both still answer with the row. NSOpenPanel overrides this anyway, deliberately: nothing about
+  * opening should change because saving was fixed.
+  */
++/*
++ * THE FIELD YOU TYPE THE FILENAME INTO, which this panel did not have at all.
++ *
++ * The nib content view holds a scroll view and two buttons and nothing else, so the only name a
++ * save panel could ever return was the one the application set on it. Saving worked, but Save As
++ * did not: there was nowhere to type.
++ *
++ * BUILT HERE RATHER THAN IN THE NIB on purpose. The nib is a binary in the pin, so a patch cannot
++ * touch it in a way anyone could review, and a panel that builds its own field also works for any
++ * caller that never loaded the nib. The list gives up the height the field takes, so nothing
++ * overlaps at any window size.
++ *
++ * NOT FOR AN OPEN PANEL: NSOpenPanel has its own -runModal and never calls this, which is the same
++ * reason its OK action is its own.
++ */
++- (void) _ensureNameField {
++    if (_nameField != nil) {
++        return;
++    }
++
++    NSView *content = [self contentView];
++
++    if (content == nil) {
++        return;
++    }
++
++    NSRect bounds = [content bounds];
++    NSArray *subviews = [content subviews];
++    NSScrollView *list = nil;
++    NSInteger i, count = [subviews count];
++
++    for (i = 0; i < count; i++) {
++        NSView *view = [subviews objectAtIndex: i];
++
++        if ([view isKindOfClass: [NSScrollView class]]) {
++            list = (NSScrollView *) view;
++        }
++    }
++
++    CGFloat fieldBottom = 56.0;
++    CGFloat fieldHeight = 24.0;
++    CGFloat labelWidth = 72.0;
++    CGFloat margin = 18.0;
++    CGFloat fieldLeft = margin + labelWidth + 6.0;
++
++    NSTextField *label = [[[NSTextField alloc]
++            initWithFrame: NSMakeRect(margin, fieldBottom, labelWidth, fieldHeight)] autorelease];
++
++    [label setStringValue: @"Save As:"];
++    [label setEditable: NO];
++    [label setSelectable: NO];
++    [label setBordered: NO];
++    [label setDrawsBackground: NO];
++    [label setAutoresizingMask: NSViewMaxYMargin];
++    [content addSubview: label];
++
++    _nameField = [[NSTextField alloc]
++            initWithFrame: NSMakeRect(fieldLeft, fieldBottom,
++                                      bounds.size.width - fieldLeft - margin, fieldHeight)];
++    [_nameField setEditable: YES];
++    [_nameField setStringValue: (_nameFieldStringValue != nil) ? _nameFieldStringValue : @""];
++    [_nameField setAutoresizingMask: NSViewWidthSizable | NSViewMaxYMargin];
++    [content addSubview: _nameField];
++
++    /* The list keeps its top edge and gives up the bottom, so the field never lands on top of it. */
++    if (list != nil) {
++        NSRect frame = [list frame];
++        CGFloat top = NSMaxY(frame);
++        CGFloat wanted = fieldBottom + fieldHeight + 12.0;
++
++        if (top > wanted) {
++            frame.origin.y = wanted;
++            frame.size.height = top - wanted;
++            [list setFrame: frame];
++        }
++    }
++}
++
+ - (IBAction) _selectFile: (id) sender {
+     NSURL *url = [_outlineView itemAtRow: [_outlineView selectedRow]];
+     NSString *path = [url path];
+     NSString *name = [self nameFieldStringValue];
+ 
++    /* WHAT WAS TYPED WINS over what the application set, which is the whole point of the field. */
++    if (_nameField != nil) {
++        NSString *typed = [_nameField stringValue];
++
++        if ([typed length] > 0) {
++            name = typed;
++        }
++    }
++
+     if ([name length] > 0) {
+         NSFileManager *fm = [NSFileManager defaultManager];
+         BOOL isDirectory = NO;
+@@ -181,6 +273,10 @@
+                                runModalForDirectory: [self directory]
+                                                file: [self filename]];
+     } else {
++        [self _ensureNameField];
++        if (_nameField != nil) {
++            [self makeFirstResponder: _nameField];
++        }
+         res = [NSApp runModalForWindow: self];
+         [self close];
+     }
