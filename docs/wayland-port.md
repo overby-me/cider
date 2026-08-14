@@ -2125,3 +2125,16 @@ The suspects that remain are the blocks themselves: either LibreOffice idle work
 memory that is never freed in this environment, or this fork of libdispatch leaking the CONTINUATION
 of every block it runs. The next measurement is to count blocks and bytes across one drain, which
 separates those two, and CIDER_WAYLAND_NO_DRAIN is in the tree to make that comparison cheap.
+
+## libdispatch is not the leak: 240,000 blocks cost 232 kilobytes
+
+tests/buck2/gui/dispatch_probe.m is the suspect on its own, with no window, no application object and
+no LibreOffice: it queues trivial blocks on the main queue and drains them exactly the way the pump
+does, printing its own resident size as it goes.
+
+    DISPATCH_PROBE start  rss_kb=16208
+    DISPATCH_PROBE round=12 blocks=240000 rss_kb=16440
+
+232 KB across a quarter of a million blocks, about one byte each, and flat from round five onwards.
+So the continuation machinery gives back what it takes, and the 7 MB/s an idle LibreOffice grows is
+what ITS blocks do rather than the queue that runs them.
