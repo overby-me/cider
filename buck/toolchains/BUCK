@@ -50,6 +50,21 @@ _DARWIN_FLAGS = [
     "-arch",
     "x86_64",
     "-mmacosx-version-min=11.0",
+    # -O2, AND THIS IS A CORRECTNESS FLAG BEFORE IT IS A SPEED ONE.
+    #
+    # There was no -O flag here at all, so clang used its default, which is -O0, for every Darwin
+    # object in the tree: the rasteriser, the font stack, Foundation, AppKit, libdispatch, all of it.
+    #
+    # What that costs is not only time. libdispatch RELIES on tail calls, its wakeup and drain paths
+    # call each other in a chain an optimiser turns into a loop, and at -O0 every link becomes a real
+    # stack frame of 656 bytes for a function taking three arguments. Measured: LibreOffice died
+    # about eighteen seconds in, faulting on the store of a FUNCTION ARGUMENT into its own frame,
+    # with the stack pointer inside the PROT_NONE guard page under a 520 KB worker stack. That is a
+    # stack overflow caused by the absence of one flag.
+    #
+    # -O2 rather than -O3 or -Os: it is what Apple builds these sources with, so it is the setting
+    # their inline assembly, their alignment assumptions and their tail calls are tested against.
+    "-O2",
 ] + (["-isystem", _CLANG_RESOURCE_DIR + "/include"] if _CLANG_RESOURCE_DIR else [])
 
 cc_toolchain(

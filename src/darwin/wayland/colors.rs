@@ -29,6 +29,11 @@ enum Recipe {
 fn recipe_for(name: &str) -> Option<Recipe> {
     Some(match name {
         "controlColor" => Recipe::Grey(0.93),
+        // NAMES THE X11 TABLE DOES NOT HAVE, added because the application asks for them and a nil
+        // answer is not neutral: AppKit hands the caller no colour at all and whatever it was going
+        // to paint gets whatever was already there.
+        "windowBackgroundColor" => Recipe::Grey(0.93),
+        "selectedTextBackgroundColor" => Recipe::ClassMethod("lightGrayColor"),
         "disabledControlTextColor" => Recipe::ClassMethod("grayColor"),
         "controlTextColor" => Recipe::ClassMethod("blackColor"),
         "menuBackgroundColor" => Recipe::Grey(0.9),
@@ -79,17 +84,21 @@ fn recipe_for(name: &str) -> Option<Recipe> {
 /// changed. Giving each name a unique unmistakable colour and looking at the result distinguishes
 /// them in one run: regions that change are ours, regions that do not never came from here.
 fn probe_recipe(name: &str) -> Option<(f64, f64, f64)> {
-    Some(match name {
-        "controlColor" => (1.0, 0.0, 0.0),
-        "headerColor" => (0.0, 1.0, 1.0),
-        "underPageBackgroundColor" => (1.0, 0.0, 1.0),
-        "selectedControlColor" => (1.0, 1.0, 0.0),
-        "controlBackgroundColor" => (1.0, 0.5, 0.0),
-        "textBackgroundColor" => (0.5, 0.0, 1.0),
-        "menuBackgroundColor" => (0.0, 0.5, 0.5),
-        "mainMenuBarColor" => (0.5, 0.5, 0.0),
-        _ => return None,
-    })
+    // EVERY NAME, not eight of them. The first version of this palette covered the names that were
+    // suspected, which can only ever confirm a suspicion: a region painted from a name that is not
+    // in the list looks exactly like a region painted from nowhere. The colours are generated from
+    // the name so that adding a name to the table cannot forget to add one here.
+    let mut hash: u64 = 1469598103934665603;
+    for byte in name.as_bytes() {
+        hash ^= *byte as u64;
+        hash = hash.wrapping_mul(1099511628211);
+    }
+    // Bright and separated: the darkest channel is lifted so that no two names collide visually
+    // with a plausible real colour like black or white.
+    let r = 0.15 + 0.85 * (((hash >> 16) & 0xff) as f64 / 255.0);
+    let g = 0.15 + 0.85 * (((hash >> 32) & 0xff) as f64 / 255.0);
+    let b = 0.15 + 0.85 * (((hash >> 48) & 0xff) as f64 / 255.0);
+    Some((r, g, b))
 }
 
 /// Answer -colorWithName:.

@@ -1236,3 +1236,36 @@ The application now runs live for about eighteen to twenty seconds and then dies
 allocator or on an os_unfair_lock taken recursively, differently between runs. Racy corruption
 looks like that. Caching the main run loop so the waker cannot race its creation did not fix it, so
 the next candidate is re-entrancy in what now runs during a wakeup rather than the wakeup itself.
+
+### There was no -O flag in the toolchain at all
+
+_DARWIN_FLAGS in buck/toolchains/BUCK had no -O, so clang used its default, which is -O0, for every
+Darwin object in this tree: the rasteriser, the font stack, Foundation, AppKit, libdispatch, all of
+it. The 105 explicit -O0 flags in vendor/src/BUCK were a separate thing and are now -O2 as well.
+
+    AppKit   2,883,944 -> 2,525,280 bytes
+    Onyx2D     955,480 ->   912,808 bytes
+    libdispatch 849,656 ->  493,560 bytes
+
+Checked by building 80 vendored dylibs, JavaScriptCore included: 6085 compiles, all green.
+
+The headless conversion benchmark does NOT move (3.9 s against 3.6 s, inside the noise), which makes
+sense: that path is dominated by LibreOffice own code and by fontconfig and freetype, all of which
+were already optimised. The win is in OUR code, which is what draws.
+
+### The chrome is black now, and it is not our colour table
+
+The all-names probe palette settles it. Every system colour this backend hands out is now a distinct
+bright colour under CIDER_WAYLAND_COLOR_PROBE, generated from the name so a new entry cannot be
+forgotten, rather than the eight names the first version covered: a region painted from a name that
+was NOT in that list looked exactly like a region painted from nowhere.
+
+    menu bar   70,201,164   = mainMenuBarColor, ours
+    toolbar    0,0,0        = not ours
+    margin     0,0,0        = not ours
+
+So the application asks for a black background and neither our palette nor the missing names
+explain it. Dark mode is ruled out too: AppleInterfaceStyle is nil and the effective appearance is
+NSAppearanceNameAqua. Before -O2 the same regions were a DIFFERENT arbitrary colour every run;
+zeroed memory rather than recycled memory is the whole difference, so the value is still one nobody
+set, and it is set inside LibreOffice. docs/wayland-chrome-black-at-O2.png.
