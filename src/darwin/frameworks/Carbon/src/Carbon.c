@@ -69,18 +69,77 @@ OSStatus UnregisterEventHotKey(void *inHotKey)
  * The metric is zeroed as well as reported failed: a caller that ignores the status still reads a
  * defined value rather than whatever was on its stack.
  */
+/* CoreGraphics, declared rather than included: this file has no CG header in its include path and
+ * the framework is reexported by this one, so the symbols resolve at link time. */
+typedef double CiderCGFloat;
+typedef struct CiderCGRect { CiderCGFloat x, y, width, height; } CiderCGRect;
+typedef struct CiderCGContext *CiderCGContextRef;
+extern void CGContextSaveGState(CiderCGContextRef);
+extern void CGContextRestoreGState(CiderCGContextRef);
+extern void CGContextSetLineWidth(CiderCGContextRef, CiderCGFloat);
+extern void CGContextSetRGBStrokeColor(CiderCGContextRef, CiderCGFloat, CiderCGFloat, CiderCGFloat,
+                                       CiderCGFloat);
+extern void CGContextStrokeRect(CiderCGContextRef, CiderCGRect);
+
 OSStatus GetThemeMetric(UInt32 inMetric, int *outMetric)
 {
+    if (getenv("CIDER_TRACE_THEME") != NULL) {
+        fprintf(stderr, "CIDER_THEME GetThemeMetric metric=%u\n", (unsigned) inMetric);
+    }
     if (verbose) puts("STUB: GetThemeMetric called");
     if (outMetric) *outMetric = 0;
     return cider_unimpErr;
 }
 
+/*
+ * THE FRAME AROUND A FIELD, which LibreOffice asks for and nothing was drawing.
+ *
+ * It is one of only four theme calls the application imports (with the two menu ones and the text
+ * box), and the stub returned an error so that callers would fall back. For a FRAME there is
+ * nothing to fall back to that looks right: the toolbar fields came out as flat white boxes with no
+ * edge, which is one of the places the interface stops looking like macOS.
+ *
+ * HIThemeFrameDrawInfo is version, kind, state, isFocused, in that order, all 32 bit. Only the kind
+ * and the focus are used here: a text field and a list box are a hairline rectangle in slightly
+ * different greys, and a focused field on Apple systems grows a ring, which is drawn in the system
+ * accent blue.
+ *
+ * DRAWN IN THE CALLER CONTEXT AND STATE-RESTORED, because this is called in the middle of the
+ * application own drawing and must not leak a colour or a line width into it.
+ */
 OSStatus HIThemeDrawFrame(const void *inRect, const void *inDrawInfo, void *inContext,
                           UInt32 inOrientation)
 {
+    const CiderCGRect *rect = (const CiderCGRect *) inRect;
+    const UInt32 *info = (const UInt32 *) inDrawInfo;
+    CiderCGContextRef context = (CiderCGContextRef) inContext;
+
     if (verbose) puts("STUB: HIThemeDrawFrame called");
-    return cider_unimpErr;
+    if (rect == NULL || context == NULL) {
+        return cider_unimpErr;
+    }
+
+    const UInt32 kind = (info != NULL) ? info[1] : 0;
+    const UInt32 isFocused = (info != NULL) ? info[3] : 0;
+
+    /* kHIThemeFrameListBox is a touch darker than a text field, which is the only difference that
+     * survives at this size. */
+    const CiderCGFloat grey = (kind == 1) ? 0.62 : 0.70;
+
+    CGContextSaveGState(context);
+    CGContextSetLineWidth(context, 1.0);
+    CGContextSetRGBStrokeColor(context, grey, grey, grey + 0.02, 1.0);
+    CiderCGRect edge = { rect->x + 0.5, rect->y + 0.5, rect->width - 1.0, rect->height - 1.0 };
+    CGContextStrokeRect(context, edge);
+
+    if (isFocused) {
+        CGContextSetRGBStrokeColor(context, 0.15, 0.45, 0.90, 0.85);
+        CGContextSetLineWidth(context, 2.0);
+        CiderCGRect ring = { rect->x + 1.0, rect->y + 1.0, rect->width - 2.0, rect->height - 2.0 };
+        CGContextStrokeRect(context, ring);
+    }
+    CGContextRestoreGState(context);
+    return 0;
 }
 
 OSStatus HIThemeDrawMenuBackground(const void *inMenuRect, const void *inMenuDrawInfo,

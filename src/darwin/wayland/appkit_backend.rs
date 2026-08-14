@@ -296,12 +296,47 @@ extern "C" fn display_add_system_color(_this: Object, _cmd: Sel, _color: Object,
 /// RETURNING A STRUCT BY VALUE across the runtime is the reason these are spelled out rather than
 /// left abstract: a 32 byte return goes through the hidden pointer path, and Rust's extern "C"
 /// does that correctly, which is what makes a Rust IMP usable here at all.
-extern "C" fn display_inset_rect(_this: Object, _cmd: Sel, frame: NsRect, _style: usize) -> NsRect {
-    frame
+/// The height of the title bar this backend draws, in points. Apple uses 22 at 1x for a document
+/// window, and the traffic lights are sized and spaced from it.
+pub const TITLE_BAR_HEIGHT: f64 = 22.0;
+
+/// NSTitledWindowMask.
+const NS_TITLED_WINDOW_MASK: usize = 1;
+
+extern "C" fn display_inset_rect(_this: Object, _cmd: Sel, frame: NsRect, style: usize) -> NsRect {
+    /*
+     * A TITLED WINDOW HAS A TITLE BAR, and on this backend it is ours to draw.
+     *
+     * Wayland gives a client a surface and nothing else; a compositor decorates only if the client
+     * asks through the decoration protocol, and what it draws is the DESKTOP style rather than the
+     * application. For an application whose whole point is to look like macOS, the honest answer is
+     * to draw the macOS one, which is what NSThemeFrame now does -- see the patch that goes with
+     * this. So the content rect is the frame minus that bar, exactly as it is on Apple systems, and
+     * the bar sits above the content.
+     */
+    if style & NS_TITLED_WINDOW_MASK == 0 {
+        return frame;
+    }
+    NsRect {
+        origin: frame.origin,
+        size: objc::NsSize {
+            width: frame.size.width,
+            height: (frame.size.height - TITLE_BAR_HEIGHT).max(0.0),
+        },
+    }
 }
 
-extern "C" fn display_outset_rect(_this: Object, _cmd: Sel, frame: NsRect, _style: usize) -> NsRect {
-    frame
+extern "C" fn display_outset_rect(_this: Object, _cmd: Sel, frame: NsRect, style: usize) -> NsRect {
+    if style & NS_TITLED_WINDOW_MASK == 0 {
+        return frame;
+    }
+    NsRect {
+        origin: frame.origin,
+        size: objc::NsSize {
+            width: frame.size.width,
+            height: frame.size.height + TITLE_BAR_HEIGHT,
+        },
+    }
 }
 
 /// Registered from a C constructor, because NSBundle asks for the principal class BY NAME as soon

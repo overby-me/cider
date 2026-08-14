@@ -2203,3 +2203,47 @@ the pattern is rewritten, so a requested style, weight or size survives:
 
 docs/wayland-ui-font-helvetica.png is the menu bar in it. Compare with
 docs/wayland-menubar-app-name.png, which is the same bar in DejaVu.
+
+## A macOS title bar, because nobody else was going to draw one
+
+docs/wayland-macos-titlebar.png: a light bar with the three lights on the left, the window title
+centred, and the menu bar under it. The lights are grey there because the window is not key in a
+headless run, which is also what Apple does.
+
+Cocotron never drew one -- the line it replaces read "when/if we add titlebars and such do it here"
+-- because on Apple systems the window server draws it. On Wayland nobody does: a compositor
+decorates only if the client asks through the decoration protocol, and what it draws is the DESKTOP
+style. For an application whose point is to look like macOS, the macOS one is the right answer.
+
+The geometry half is in the backend: a titled window now reserves 22 points at the top, which is
+what Apple uses at 1x, so the content rect is the frame minus the bar exactly as it is there. The
+drawing half is in NSThemeFrame: bar, hairline, three 12 point lights 8 apart and 20 from the left,
+title centred in the small system font, everything dimmed when the window is not key.
+
+IT IS DRAWING ONLY. Clicking a light does nothing and the bar cannot be dragged yet; that needs
+hit-testing and xdg_toplevel.move, and a button that does not work is worse than one that is
+honestly not there yet. Interaction after the change is unaffected: drag selection still highlights
+exactly the span the pointer crosses, with the test coordinates moved down by the 22 points the bar
+takes.
+
+## The combo dropdown the user reported is still missing, and here is what it is NOT
+
+Set Paragraph Style, Font Name and Font Size draw as plain boxes with no dropdown affordance. Ruled
+out, each by measurement rather than argument:
+
+    AppKit cells            a trace on every -[NSCell drawWithFrame:inView:] and on NSButtonCell
+                            bezel drawing shows THREE cells drawn in a whole startup, all of them
+                            17x14 checkboxes with the NSSwitch image. No combo, no popup, no arrow.
+    HITheme                 the application imports exactly four theme calls and none of them is a
+                            button; HIThemeDrawFrame is now implemented (a hairline rect, focus
+                            ring when focused) and changed nothing on those fields.
+    GetThemeMetric          never called in a run at all, so a zero metric is not shrinking anything
+    stubbed C functions     the seventeen the application imports are all CoreText and font related
+                            plus NSSetFocusRingStyle; no drawing primitive it uses is a stub
+    gradients               it does not use any: its drawing is paths, rects, images and CGLayers
+    CGLayer                 O2Context_builtin implements drawLayer:inRect:, it is not the abstract
+                            raise the base class has
+
+So the application draws those fields itself and simply does not put the button there under this
+stack. The next move is LibreOffice own logging around its native widget path rather than more
+guessing from the outside.
