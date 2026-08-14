@@ -705,8 +705,8 @@ fn present(st: &mut WindowState) {
     if !st.mapped {
         st.mapped = true;
         println!(
-            "cider-wayland-window mapped=yes number={} size={}x{}",
-            st.number, st.buffer_w, st.buffer_h
+            "cider-wayland-window mapped=yes number={} size={}x{} t={:.2}",
+            st.number, st.buffer_w, st.buffer_h, elapsed()
         );
     }
     report_pixels(st);
@@ -717,8 +717,8 @@ fn present(st: &mut WindowState) {
     st.presents += 1;
     if st.presents <= 3 || st.presents % 50 == 0 {
         println!(
-            "cider-wayland-window present number={} count={} size={}x{}",
-            st.number, st.presents, st.buffer_w, st.buffer_h
+            "cider-wayland-window present number={} count={} size={}x{} t={:.2}",
+            st.number, st.presents, st.buffer_w, st.buffer_h, elapsed()
         );
     }
     dump_buffer(st);
@@ -757,28 +757,33 @@ fn dump_buffer(st: &mut WindowState) {
     if image_len == 0 || image_len > st.map_len {
         return;
     }
-    let mut out = Vec::with_capacity(54 + image_len);
+    // THE HEADER AND THE PIXELS ARE WRITTEN SEPARATELY, not concatenated into a buffer first. The
+    // pixels are already in memory and copying twelve megabytes to prepend fifty four bytes showed
+    // up as five percent of the whole profile, which is a diagnostic charging more than the thing
+    // it diagnoses.
+    let mut header = [0u8; 54];
     let file_len = (54 + image_len) as u32;
-    out.extend_from_slice(b"BM");
-    out.extend_from_slice(&file_len.to_le_bytes());
-    out.extend_from_slice(&0u32.to_le_bytes());
-    out.extend_from_slice(&54u32.to_le_bytes());
-    out.extend_from_slice(&40u32.to_le_bytes());
-    out.extend_from_slice(&w.to_le_bytes());
-    out.extend_from_slice(&(-h).to_le_bytes());
-    out.extend_from_slice(&1u16.to_le_bytes());
-    out.extend_from_slice(&32u16.to_le_bytes());
-    out.extend_from_slice(&0u32.to_le_bytes());
-    out.extend_from_slice(&(image_len as u32).to_le_bytes());
-    out.extend_from_slice(&[0u8; 16]);
-    out.extend_from_slice(unsafe { std::slice::from_raw_parts(st.pixels, image_len) });
+    header[0..2].copy_from_slice(b"BM");
+    header[2..6].copy_from_slice(&file_len.to_le_bytes());
+    header[10..14].copy_from_slice(&54u32.to_le_bytes());
+    header[14..18].copy_from_slice(&40u32.to_le_bytes());
+    header[18..22].copy_from_slice(&w.to_le_bytes());
+    header[22..26].copy_from_slice(&(-h).to_le_bytes());
+    header[26..28].copy_from_slice(&1u16.to_le_bytes());
+    header[28..30].copy_from_slice(&32u16.to_le_bytes());
+    header[34..38].copy_from_slice(&(image_len as u32).to_le_bytes());
 
     let path = format!("{}/window-{}.bmp", dir.to_string_lossy(), st.number);
     // Written whole then renamed, because a reader that opens a half written 12 MB file sees a
     // torn image and blames the renderer.
     let tmp = format!("{path}.tmp");
-    if std::fs::write(&tmp, &out).is_ok() {
-        let _ = std::fs::rename(&tmp, &path);
+    let pixels = unsafe { std::slice::from_raw_parts(st.pixels, image_len) };
+    if let Ok(mut file) = std::fs::File::create(&tmp) {
+        use std::io::Write;
+        if file.write_all(&header).is_ok() && file.write_all(pixels).is_ok() {
+            drop(file);
+            let _ = std::fs::rename(&tmp, &path);
+        }
     }
 }
 
@@ -824,6 +829,17 @@ fn report_pixels(st: &mut WindowState) {
         "cider-wayland-window pixels=drawn number={} changed={drawn}/{total} colours={distinct}{capped} centre={centre:08x}",
         st.number
     );
+}
+
+/// Seconds since the backend was loaded.
+///
+/// EVERY PERFORMANCE QUESTION NEEDS A CLOCK. Without one the log says what happened in what order
+/// and nothing about how long any of it took, so "startup is slow" cannot be turned into a number,
+/// and a change cannot be shown to have helped. The first call fixes the origin, and register()
+/// makes that call at load time so the origin is the process rather than the first window.
+pub fn elapsed() -> f64 {
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    START.get_or_init(std::time::Instant::now).elapsed().as_secs_f64()
 }
 
 /// Enough distinct values to tell flat fills from rasterised glyphs, and small enough that the
@@ -901,7 +917,15 @@ fn cg_context_for(st: &mut WindowState) -> Object {
 // static memory. Whether the runtime copies a type string is a detail of the runtime, and a
 // dangling one would corrupt arguments rather than fail.
 
+extern "C" {
+    /// Installs the application side traces, which have to be in place before the settings are
+    /// read. A window is created long before any input arrives, and headless compositors advertise
+    /// no seat at all, so keying the install off the first event misses startup entirely.
+    fn cider_wayland_trace_vcl();
+}
+
 extern "C" fn init_with_delegate(this: Object, _cmd: Sel, delegate: Object) -> Object {
+    unsafe { cider_wayland_trace_vcl() };
     let super_class = unsafe { objc::class_getSuperclass(objc::object_getClass(this)) };
     let mut sup = objc::ObjcSuper { receiver: this, super_class };
     let sel_init = unsafe { objc::sel_registerName(cstr!("init")) };
@@ -1266,6 +1290,9 @@ extern "C" fn create_sub_window(_this: Object, _cmd: Sel, _frame: NsRect) -> Obj
 /// # Safety
 /// Called once, from the bundle's initialiser.
 pub unsafe fn register() -> objc::Class {
+    // THE CLOCK STARTS AT LOAD, not at the first window. Otherwise the first thing that asks the
+    // time is also what defines zero, and every stamp reads as if it happened immediately.
+    println!("cider-wayland-window clock=started t={:.2}", elapsed());
     let methods = [
         objc::MethodDef { sel: cstr!("initWithDelegate:"), types: cstr!("@@:@"), imp: init_with_delegate as *const c_void },
         objc::MethodDef { sel: cstr!("setDelegate:"), types: cstr!("v@:@"), imp: set_delegate as *const c_void },

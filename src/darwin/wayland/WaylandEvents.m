@@ -31,6 +31,8 @@
  * type is an NSEventType, already decided by the caller: the mapping from a Linux button code to
  * left, right or other belongs with the protocol, not here.
  */
+void cider_wayland_trace_vcl(void);
+
 void cider_wayland_post_mouse(int type, double x, double y, double windowHeight,
 	unsigned long modifiers, id delegate, int clickCount, int buttonNumber, double deltaX,
 	double deltaY)
@@ -38,6 +40,7 @@ void cider_wayland_post_mouse(int type, double x, double y, double windowHeight,
 	if (delegate == nil) {
 		return;
 	}
+	cider_wayland_trace_vcl();
 	NSPoint location = NSMakePoint(x, windowHeight - y);
 	NSEvent *event = [NSEvent mouseEventWithType: (NSEventType) type
 									   location: location
@@ -65,6 +68,7 @@ void cider_wayland_post_mouse(int type, double x, double y, double windowHeight,
 void cider_wayland_post_key(int isDown, unsigned long modifiers, long windowNumber,
 	const char *characters, const char *charactersIgnoringModifiers, int isRepeat, int keyCode)
 {
+	cider_wayland_trace_vcl();
 	@autoreleasepool {
 		NSString *chars = characters != NULL
 			? [NSString stringWithUTF8String: characters]
@@ -233,6 +237,9 @@ int cider_wayland_carbon_keycode(unsigned int evdevKeycode)
 void cider_wayland_watch_focus_notifications(void)
 {
 	[CiderWaylandFocusWatch install];
+	/* THE SETTINGS ARE READ BEFORE THE FIRST EVENT. Installing the traces from the first keystroke
+	 * is far too late for anything that happens during startup, and the colours are read there. */
+	cider_wayland_trace_vcl();
 }
 
 /*
@@ -316,4 +323,326 @@ int cider_wayland_carbon_for_keysym(unsigned int keysym)
 	case 0xffc9: return kVK_F12;
 	default: return -1;
 	}
+}
+
+/*
+ * WHAT THE APPLICATION DOES WITH A KEYSTROKE, measured INSIDE the application.
+ *
+ * WHY THIS INSTRUMENT EXISTS. Every link on this side of the boundary has been checked and each one
+ * is correct: the keymap resolves the letter, the Carbon code is right, the NSEvent is built, the
+ * key window is key, its first responder is the application own view, and Cocotron calls that view
+ * insertText:replacementRange: exactly once per keystroke. Nothing appears in the document. From
+ * outside, "the application discards it" and "the application never gets that far" look identical,
+ * and no amount of further tracing on this side separates them.
+ *
+ * The application is Objective-C, so its own methods can be wrapped from here without patching it:
+ * the boundary that matters, -sendKeyInputAndReleaseToFrame:character:modifiers:, is the exact point
+ * where the text stops being AppKit and becomes an application key event. If that fires, everything
+ * this backend is responsible for is done and the loss is inside the application own C++. If it does
+ * not, the branch that swallowed the character is named by what the trace DOES show.
+ *
+ * The selectors are enumerated rather than assumed, because guessing a selector that this build does
+ * not have produces a trace that stays silent for the wrong reason.
+ */
+#import <objc/message.h>
+
+typedef void (*CiderInsertIMP)(id, SEL, id, NSRange);
+typedef void (*CiderSendKeyIMP)(id, SEL, unsigned short, unsigned short, unsigned int);
+typedef BOOL (*CiderBoolIMP)(id, SEL);
+typedef void (*CiderIdIMP)(id, SEL, id);
+typedef void (*CiderSelIMP)(id, SEL, SEL);
+
+static CiderInsertIMP cider_vcl_insert_range;
+static CiderIdIMP cider_vcl_insert_plain;
+static CiderSendKeyIMP cider_vcl_send_key;
+static CiderBoolIMP cider_vcl_has_marked;
+static CiderIdIMP cider_vcl_key_down;
+static CiderSelIMP cider_vcl_do_command;
+static CiderIdIMP cider_vcl_became_key;
+static CiderIdIMP cider_vcl_mouse_down;
+static CiderIdIMP cider_vcl_mouse_up;
+static CiderIdIMP cider_vcl_mouse_dragged;
+typedef void (*CiderGetRGBAIMP)(id, SEL, CGFloat *, CGFloat *, CGFloat *, CGFloat *);
+
+static const char *cider_vcl_text(id string)
+{
+	id str = string;
+	if (str != nil && ![str isKindOfClass: [NSString class]] &&
+		[str respondsToSelector: @selector(string)]) {
+		str = [str string];
+	}
+	if (str != nil && [str respondsToSelector: @selector(UTF8String)]) {
+		const char *text = [str UTF8String];
+		return text ? text : "(nil utf8)";
+	}
+	return "(not a string)";
+}
+
+static void cider_vcl_trace_insert_range(id self, SEL _cmd, id string, NSRange range)
+{
+	fprintf(stderr, "CIDER_VCL insertText:replacementRange: text=[%s]\n", cider_vcl_text(string));
+	fflush(stderr);
+	if (cider_vcl_insert_range != NULL) {
+		cider_vcl_insert_range(self, _cmd, string, range);
+	}
+	fprintf(stderr, "CIDER_VCL insertText:replacementRange: returned\n");
+	fflush(stderr);
+}
+
+static void cider_vcl_trace_insert_plain(id self, SEL _cmd, id string)
+{
+	fprintf(stderr, "CIDER_VCL insertText: text=[%s]\n", cider_vcl_text(string));
+	fflush(stderr);
+	if (cider_vcl_insert_plain != NULL) {
+		cider_vcl_insert_plain(self, _cmd, string);
+	}
+}
+
+/* THE BOUNDARY. Past this call the character is an application key event and no longer AppKit. */
+static void cider_vcl_trace_send_key(id self, SEL _cmd, unsigned short code, unsigned short ch,
+	unsigned int mods)
+{
+	fprintf(stderr, "CIDER_VCL sendKeyInputAndReleaseToFrame code=%u char=%u mods=0x%x\n",
+		(unsigned) code, (unsigned) ch, mods);
+	fflush(stderr);
+	if (cider_vcl_send_key != NULL) {
+		cider_vcl_send_key(self, _cmd, code, ch, mods);
+	}
+	fprintf(stderr, "CIDER_VCL sendKeyInputAndReleaseToFrame returned\n");
+	fflush(stderr);
+}
+
+static BOOL cider_vcl_trace_has_marked(id self, SEL _cmd)
+{
+	BOOL answer = NO;
+	if (cider_vcl_has_marked != NULL) {
+		answer = cider_vcl_has_marked(self, _cmd);
+	}
+	static int printed;
+	if (printed < 12) {
+		printed++;
+		fprintf(stderr, "CIDER_VCL hasMarkedText=%d\n", (int) answer);
+		fflush(stderr);
+	}
+	return answer;
+}
+
+static void cider_vcl_trace_key_down(id self, SEL _cmd, id event)
+{
+	id window = [self respondsToSelector: @selector(window)] ? [(NSView *) self window] : nil;
+	fprintf(stderr, "CIDER_VCL keyDown view=%s window=%ld isKey=%d firstResponder=%s\n",
+		class_getName([self class]),
+		window ? (long) [(NSWindow *) window windowNumber] : -1,
+		window ? (int) [(NSWindow *) window isKeyWindow] : -1,
+		(window && [(NSWindow *) window firstResponder])
+			? class_getName([[(NSWindow *) window firstResponder] class]) : "nil");
+	fflush(stderr);
+	if (cider_vcl_key_down != NULL) {
+		cider_vcl_key_down(self, _cmd, event);
+	}
+	fprintf(stderr, "CIDER_VCL keyDown returned\n");
+	fflush(stderr);
+}
+
+static void cider_vcl_trace_do_command(id self, SEL _cmd, SEL command)
+{
+	fprintf(stderr, "CIDER_VCL doCommandBySelector=%s\n", sel_getName(command));
+	fflush(stderr);
+	if (cider_vcl_do_command != NULL) {
+		cider_vcl_do_command(self, _cmd, command);
+	}
+}
+
+static void cider_vcl_trace_became_key(id self, SEL _cmd, id note)
+{
+	fprintf(stderr, "CIDER_VCL windowDidBecomeKey window=%ld\n",
+		[self respondsToSelector: @selector(windowNumber)]
+			? (long) [(NSWindow *) self windowNumber] : -1);
+	fflush(stderr);
+	if (cider_vcl_became_key != NULL) {
+		cider_vcl_became_key(self, _cmd, note);
+	}
+	fprintf(stderr, "CIDER_VCL windowDidBecomeKey returned\n");
+	fflush(stderr);
+}
+
+/*
+ * THE MOUSE BUTTON, both halves.
+ *
+ * VCL swallows key input while it is TRACKING, which is the state a mouse down puts it in and a
+ * mouse up takes it out of. So a button press that arrives without its release is not a lost click:
+ * it is a keyboard that stops working from that moment on, which is exactly the observed behaviour.
+ * Measured: three characters typed before the click appear in the document and every character
+ * after it is discarded, with the AppKit side of both identical.
+ */
+static void cider_vcl_trace_mouse(id self, SEL _cmd, id event)
+{
+	fprintf(stderr, "CIDER_VCL %s clickCount=%ld buttonNumber=%ld\n", sel_getName(_cmd),
+		(event != nil && [event respondsToSelector: @selector(clickCount)])
+			? (long) [(NSEvent *) event clickCount] : -1,
+		(event != nil && [event respondsToSelector: @selector(buttonNumber)])
+			? (long) [(NSEvent *) event buttonNumber] : -1);
+	fflush(stderr);
+	CiderIdIMP original = nil;
+	if (_cmd == sel_registerName("mouseDown:")) {
+		original = cider_vcl_mouse_down;
+	} else if (_cmd == sel_registerName("mouseUp:")) {
+		original = cider_vcl_mouse_up;
+	} else {
+		original = cider_vcl_mouse_dragged;
+	}
+	if (original != NULL) {
+		original(self, _cmd, event);
+	}
+}
+
+/*
+ * WHAT COLOUR THE APPLICATION IS ACTUALLY HANDED.
+ *
+ * ONE WRAP PER CLASS, and this is not defensive coding: -getRed:green:blue:alpha: is overridden by
+ * the concrete colour classes, so wrapping it on NSColor catches nothing an application actually
+ * calls. Measured the wrong way first, and the trace stayed silent through a whole run while the
+ * application was reading colours the entire time, which reads exactly like "it never asks".
+ *
+ * Wrapping a class that INHERITS the method would install over the same Method twice and make the
+ * saved implementation our own trampoline, which recurses until the stack ends, so a class whose
+ * implementation is already ours is skipped.
+ */
+static void cider_vcl_report_rgba(id self, CGFloat *red, CGFloat *green, CGFloat *blue,
+	CGFloat *alpha)
+{
+	static int printed;
+	if (printed >= 4000) {
+		return;
+	}
+	printed++;
+	fprintf(stderr, "CIDER_VCL getRed class=%s rgba=%.3f,%.3f,%.3f,%.3f\n",
+		class_getName([self class]), red ? (double) *red : -1.0, green ? (double) *green : -1.0,
+		blue ? (double) *blue : -1.0, alpha ? (double) *alpha : -1.0);
+	fflush(stderr);
+}
+
+#define CIDER_RGBA_WRAP(N) \
+	static CiderGetRGBAIMP cider_vcl_get_rgba_##N; \
+	static void cider_vcl_trace_get_rgba_##N(id self, SEL _cmd, CGFloat *red, CGFloat *green, \
+		CGFloat *blue, CGFloat *alpha) \
+	{ \
+		if (cider_vcl_get_rgba_##N != NULL) { \
+			cider_vcl_get_rgba_##N(self, _cmd, red, green, blue, alpha); \
+		} \
+		cider_vcl_report_rgba(self, red, green, blue, alpha); \
+	}
+
+CIDER_RGBA_WRAP(0)
+CIDER_RGBA_WRAP(1)
+CIDER_RGBA_WRAP(2)
+
+static void cider_vcl_wrap(Class cls, const char *name, IMP replacement, void **saved)
+{
+	if (cls == Nil) {
+		return;
+	}
+	SEL sel = sel_registerName(name);
+	Method method = class_getInstanceMethod(cls, sel);
+	if (method == NULL) {
+		fprintf(stderr, "CIDER_VCL absent class=%s selector=%s\n", class_getName(cls), name);
+		fflush(stderr);
+		return;
+	}
+	*saved = (void *) method_setImplementation(method, replacement);
+	fprintf(stderr, "CIDER_VCL wrapped class=%s selector=%s\n", class_getName(cls), name);
+	fflush(stderr);
+}
+
+/* Print what the class really has, so a wrap that never fires is distinguishable from a selector
+ * this build spells differently. */
+static void cider_vcl_list(Class cls, const char *needle)
+{
+	if (cls == Nil) {
+		return;
+	}
+	unsigned int count = 0;
+	Method *methods = class_copyMethodList(cls, &count);
+	if (methods == NULL) {
+		return;
+	}
+	for (unsigned int i = 0; i < count; i++) {
+		const char *name = sel_getName(method_getName(methods[i]));
+		if (needle == NULL || strstr(name, needle) != NULL) {
+			fprintf(stderr, "CIDER_VCL has class=%s selector=%s\n", class_getName(cls), name);
+		}
+	}
+	fflush(stderr);
+	free(methods);
+}
+
+void cider_wayland_trace_vcl(void)
+{
+	if (getenv("CIDER_TRACE_VCL") == NULL) {
+		return;
+	}
+	/*
+	 * TWO GUARDS, NOT ONE. NSColor exists from the moment AppKit loads and the application classes
+	 * appear only when its plug-in is loaded, so a single guard means either the colours are missed
+	 * (waiting for the plug-in) or the wrap is attempted again and again. Wrapping twice is not
+	 * harmless either: the second wrap saves the first trampoline as the original and calling it
+	 * recurses forever.
+	 */
+	static BOOL colorDone = NO;
+	if (!colorDone) {
+		colorDone = YES;
+		const char *classes[3] = { "NSColor", "NSColor_CGColor", "NSColor_catalog" };
+		IMP trampolines[3] = { (IMP) cider_vcl_trace_get_rgba_0, (IMP) cider_vcl_trace_get_rgba_1,
+			(IMP) cider_vcl_trace_get_rgba_2 };
+		void *saved[3] = { &cider_vcl_get_rgba_0, &cider_vcl_get_rgba_1, &cider_vcl_get_rgba_2 };
+		for (int i = 0; i < 3; i++) {
+			Class cls = objc_getClass(classes[i]);
+			if (cls == Nil) {
+				continue;
+			}
+			Method method = class_getInstanceMethod(cls, @selector(getRed:green:blue:alpha:));
+			if (method == NULL) {
+				continue;
+			}
+			IMP current = method_getImplementation(method);
+			if (current == trampolines[0] || current == trampolines[1] ||
+				current == trampolines[2]) {
+				continue;
+			}
+			cider_vcl_wrap(cls, "getRed:green:blue:alpha:", trampolines[i], saved[i]);
+		}
+	}
+
+	static BOOL done = NO;
+	if (done) {
+		return;
+	}
+	Class view = objc_getClass("SalFrameView");
+	Class window = objc_getClass("SalFrameWindow");
+	if (view == Nil) {
+		/* The plug-in has not been loaded yet. Not an error: try again at the next keystroke. */
+		return;
+	}
+	done = YES;
+	cider_vcl_list(view, "nsert");
+	cider_vcl_list(view, "Key");
+	cider_vcl_list(view, "arked");
+	cider_vcl_wrap(view, "insertText:replacementRange:", (IMP) cider_vcl_trace_insert_range,
+		(void **) &cider_vcl_insert_range);
+	cider_vcl_wrap(view, "insertText:", (IMP) cider_vcl_trace_insert_plain,
+		(void **) &cider_vcl_insert_plain);
+	cider_vcl_wrap(view, "sendKeyInputAndReleaseToFrame:character:modifiers:",
+		(IMP) cider_vcl_trace_send_key, (void **) &cider_vcl_send_key);
+	cider_vcl_wrap(view, "hasMarkedText", (IMP) cider_vcl_trace_has_marked,
+		(void **) &cider_vcl_has_marked);
+	cider_vcl_wrap(view, "keyDown:", (IMP) cider_vcl_trace_key_down,
+		(void **) &cider_vcl_key_down);
+	cider_vcl_wrap(view, "doCommandBySelector:", (IMP) cider_vcl_trace_do_command,
+		(void **) &cider_vcl_do_command);
+	cider_vcl_wrap(window, "windowDidBecomeKey:", (IMP) cider_vcl_trace_became_key,
+		(void **) &cider_vcl_became_key);
+	cider_vcl_wrap(view, "mouseDown:", (IMP) cider_vcl_trace_mouse, (void **) &cider_vcl_mouse_down);
+	cider_vcl_wrap(view, "mouseUp:", (IMP) cider_vcl_trace_mouse, (void **) &cider_vcl_mouse_up);
+	cider_vcl_wrap(view, "mouseDragged:", (IMP) cider_vcl_trace_mouse,
+		(void **) &cider_vcl_mouse_dragged);
 }

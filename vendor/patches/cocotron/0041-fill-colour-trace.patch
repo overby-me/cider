@@ -1,0 +1,53 @@
+--- a/Onyx2D/O2Context.m	2026-08-14 10:33:08.439154861 +0200
++++ b/Onyx2D/O2Context.m	2026-08-14 10:33:08.440154867 +0200
+@@ -24,6 +24,10 @@
+ #import <Onyx2D/O2Color.h>
+ #import <Onyx2D/O2ColorSpace.h>
+ #import <Onyx2D/O2Context.h>
++#include <stdlib.h>
++#include <string.h>
++#include <dlfcn.h>
++#include <execinfo.h>
+ #import <Onyx2D/O2Encoding.h>
+ #import <Onyx2D/O2Exceptions.h>
+ #import <Onyx2D/O2GraphicsState.h>
+@@ -833,6 +837,39 @@
+     if (self == nil)
+         return;
+ 
++    /* THE FILL COLOUR AS IT ARRIVES, which is the seam between whoever chose the colour and the
++     * rasteriser that uses it. A colour that is right here and wrong on screen is a rasteriser
++     * problem; one that is already wrong here came from the caller. */
++    if (getenv("CIDER_WAYLAND_TRACE_COLORS") != NULL) {
++        static int printed;
++        if (printed < 24) {
++            printed++;
++            size_t count = color ? O2ColorGetNumberOfComponents(color) : 0;
++            const O2Float *comps = color ? O2ColorGetComponents(color) : NULL;
++            fprintf(stderr, "CIDER_FILLCOLOR color=%p n=%zu comps=%.3f,%.3f,%.3f,%.3f\n",
++                    (void *) color, count, (count > 0 && comps) ? (double) comps[0] : -1.0,
++                    (count > 1 && comps) ? (double) comps[1] : -1.0,
++                    (count > 2 && comps) ? (double) comps[2] : -1.0,
++                    (count > 3 && comps) ? (double) comps[3] : -1.0);
++            /* WHO CHOSE IT. The components alone name the pixel on screen but not the code that
++             * asked for it, and the two libraries that could have are compiled from different
++             * source trees. dladdr turns the return addresses into image and symbol names, which is
++             * the whole answer. */
++            void *frames[8];
++            int depth = backtrace(frames, 8);
++            for (int i = 1; i < depth; i++) {
++                Dl_info info;
++                if (dladdr(frames[i], &info) != 0 && info.dli_fname != NULL) {
++                    const char *slash = strrchr(info.dli_fname, '/');
++                    fprintf(stderr, "CIDER_FILLCOLOR    #%d %s!%s\n", i,
++                            slash ? slash + 1 : info.dli_fname,
++                            info.dli_sname ? info.dli_sname : "?");
++                }
++            }
++            fflush(stderr);
++        }
++    }
++
+     O2GStateSetFillColor(O2ContextCurrentGState(self), color);
+ }
+ 

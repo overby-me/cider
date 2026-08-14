@@ -1,0 +1,50 @@
+--- a/Onyx2D/O2Context_builtin.m	2026-08-14 10:33:08.429154806 +0200
++++ b/Onyx2D/O2Context_builtin.m	2026-08-14 10:33:08.430154812 +0200
+@@ -135,6 +135,47 @@
+     O2GStateSetDeviceSpaceCTM(O2ContextCurrentGState(self), flip);
+ }
+ 
++/*
++ * A LAYER IS A CONTEXT OF ITS OWN, matching this one.
++ *
++ * -createCompatibleContextWithSize:unused: has always ended in [[self class] alloc]
++ * initWithSize:context:, and NO context class in this tree implemented that selector, so every
++ * CGLayer and every transparency layer raised "unrecognized selector" instead of drawing. The
++ * failure is not subtle where it happens, but it is invisible until something asks for a layer:
++ * LibreOffice does exactly that as soon as its Skia renderer is turned off, and the application
++ * terminates before its first window.
++ *
++ * The layer surface matches the parent in depth, colour space and bitmap info, which is what
++ * COMPATIBLE means here: the whole point of a layer is that its contents can be composited back
++ * without a conversion.
++ */
++- initWithSize: (O2Size) size context: (O2Context *) context {
++    size_t width = (size_t) ceil(size.width);
++    size_t height = (size_t) ceil(size.height);
++
++    /* A zero sized layer is legal to ask for and impossible to allocate; one pixel keeps every
++     * later size calculation in range without pretending the request succeeded at the asked size. */
++    if (width < 1) {
++        width = 1;
++    }
++    if (height < 1) {
++        height = 1;
++    }
++
++    O2Surface *surface = nil;
++    if ([context respondsToSelector: @selector(createSurfaceWithWidth:height:)]) {
++        surface = [(O2Context_builtin *) context createSurfaceWithWidth: width height: height];
++    }
++    if (surface == nil) {
++        [self release];
++        return nil;
++    }
++
++    self = [self initWithSurface: surface flipped: NO];
++    [surface release];
++    return self;
++}
++
+ - (O2Surface *) createSurfaceWithWidth: (size_t) width height: (size_t) height {
+     return [[[self surfaceClass] alloc]
+                initWithBytes: NULL

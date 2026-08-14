@@ -141,6 +141,104 @@ int main(int argc, const char **argv)
 		fflush(stdout);
 	}
 
+
+	/*
+	 * THE CONVERSION THE APPLICATION REALLY PERFORMS, which is not the one tested above.
+	 *
+	 * LibreOffice getColor passes [pWin deviceDescription] as the device, never nil, and that is a
+	 * different path through the colour classes: a device dictionary selects a colour space, and a
+	 * conversion that cannot find one has to answer something. The chrome colour CHANGES BETWEEN
+	 * RUNS, purple one run and green the next, which is uninitialised memory being read rather than
+	 * a wrong constant, so the question is which of these calls leaves a component untouched.
+	 *
+	 * The components are printed as LibreOffice would store them, scaled to bytes, because that is
+	 * what ends up on screen and a float that reads plausibly can still scale to nonsense.
+	 */
+	@autoreleasepool {
+		NSWindow *window = [[NSWindow alloc] initWithContentRect: NSMakeRect(0, 0, 320, 200)
+													  styleMask: NSTitledWindowMask
+														backing: NSBackingStoreBuffered
+														  defer: NO];
+		NSDictionary *device = [window deviceDescription];
+		printf("COLOR_PROBE deviceDescription=%s count=%lu\n", device ? "yes" : "(nil)",
+			device ? (unsigned long) [device count] : 0UL);
+		for (NSString *key in [device allKeys]) {
+			printf("COLOR_PROBE   device[%s]=%s\n", [[key description] UTF8String],
+				[[[device objectForKey: key] description] UTF8String]);
+		}
+		fflush(stdout);
+
+		const char *names[] = { "windowBackgroundColor", "controlColor", "textColor",
+								"controlTextColor", NULL };
+		for (int i = 0; names[i] != NULL; i++) {
+			SEL sel = sel_registerName(names[i]);
+			NSColor *color = [NSColor performSelector: sel];
+			NSColor *rgb = [color colorUsingColorSpaceName: NSDeviceRGBColorSpace device: device];
+			CGFloat r = SENTINEL, g = SENTINEL, b = SENTINEL, a = SENTINEL;
+			if (rgb != nil) {
+				[rgb getRed: &r green: &g blue: &b alpha: &a];
+			}
+			printf("COLOR_PROBE withdevice %-24s converted=%s rgb=%.3f,%.3f,%.3f bytes=%d,%d,%d%s\n",
+				names[i], rgb ? "yes" : "NIL", (double) r, (double) g, (double) b,
+				(int) (r * 255.0), (int) (g * 255.0), (int) (b * 255.0),
+				(r == SENTINEL) ? "   <-- UNTOUCHED, this is the bug" : "");
+			fflush(stdout);
+		}
+	}
+
+
+	/*
+	 * IS A FRESH BITMAP ZEROED. This is a contract, not a detail: CGBitmapContextCreate with a NULL
+	 * data pointer allocates the memory itself and Apple documents it as zeroed, and Onyx2D relies
+	 * on exactly that, with a comment saying so, by allocating through NSMutableData dataWithLength.
+	 *
+	 * The chrome of this application renders a FLAT colour that is DIFFERENT ON EVERY RUN: purple
+	 * once, green the next, pale cyan the next. A wrong constant cannot do that and neither can a
+	 * wrong palette entry, both of which would be wrong the same way every time. Recycled heap that
+	 * nobody cleared can, and it is the only candidate left that behaves like this.
+	 *
+	 * The heap is DIRTIED FIRST, which is the whole point of the test: a zeroing bug is invisible
+	 * against fresh pages from the kernel, because those are already zero. Freeing a dirty block of
+	 * the same size makes the allocator hand that block back.
+	 */
+	@autoreleasepool {
+		const size_t bytes = 4 * 1024 * 1024;
+		void *dirty = malloc(bytes);
+		memset(dirty, 0xAB, bytes);
+		free(dirty);
+
+		NSMutableData *data = [NSMutableData dataWithLength: bytes];
+		const unsigned char *raw = [data bytes];
+		size_t nonzero = 0;
+		for (size_t i = 0; i < bytes; i++) {
+			if (raw[i] != 0) nonzero++;
+		}
+		printf("COLOR_PROBE NSMutableData dataWithLength nonzero=%zu of %zu%s\n", nonzero, bytes,
+			nonzero ? "   <-- NOT ZEROED, this is the bug" : "");
+		fflush(stdout);
+
+		void *dirty2 = malloc(bytes);
+		memset(dirty2, 0xCD, bytes);
+		free(dirty2);
+
+		CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+		CGContextRef ctx = CGBitmapContextCreate(NULL, 512, 512, 8, 512 * 4, space,
+			kCGImageAlphaNoneSkipFirst);
+		const unsigned char *pixels = CGBitmapContextGetData(ctx);
+		size_t pixelNonzero = 0;
+		if (pixels != NULL) {
+			for (size_t i = 0; i < 512 * 512 * 4; i++) {
+				if (pixels[i] != 0) pixelNonzero++;
+			}
+		}
+		printf("COLOR_PROBE CGBitmapContextCreate data=%p nonzero=%zu of %d%s\n", pixels,
+			pixelNonzero, 512 * 512 * 4,
+			pixelNonzero ? "   <-- NOT ZEROED, this is the bug" : "");
+		fflush(stdout);
+		CGContextRelease(ctx);
+		CGColorSpaceRelease(space);
+	}
+
 	printf("COLOR_PROBE_OK\n");
 	fflush(stdout);
 	return 0;

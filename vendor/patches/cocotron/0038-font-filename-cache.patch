@@ -1,0 +1,55 @@
+--- a/Onyx2D/O2Font_freetype.m	2026-08-14 10:33:08.423154774 +0200
++++ b/Onyx2D/O2Font_freetype.m	2026-08-14 10:33:08.424154779 +0200
+@@ -1,4 +1,5 @@
+ #import <Onyx2D/O2Font_freetype.h>
++#include <pthread.h>
+ #ifdef FREETYPE_PRESENT
+ #import <Onyx2D/O2Encoding.h>
+ 
+@@ -65,6 +66,32 @@
+ }
+ 
+ + (NSString *) filenameForPattern: (NSString *) pattern {
++    /*
++     * MEMOISED, because this is a pure function of the pattern and the shared configuration, and it
++     * is not cheap: a fontconfig match walks the whole font set comparing every property of every
++     * candidate. Nothing above it caches, so a font asked for by name is matched again on every
++     * single creation.
++     *
++     * Measured with perf on a live LibreOffice, resolving the guest stacks through the image list:
++     * FcFontMatch reached from here was 28 percent of ALL samples, more than the rasteriser, the
++     * font renderer and the application put together. The shared config is built once and never
++     * mutated afterwards, so the answer cannot change under the cache.
++     *
++     * A MISS IS CACHED TOO, as an empty string. A name that resolves to nothing is exactly the case
++     * that goes on to ask again with a different pattern, and not caching it means the expensive
++     * question is repeated for every miss.
++     */
++    static NSMutableDictionary *cache = nil;
++    static pthread_mutex_t cacheLock = PTHREAD_MUTEX_INITIALIZER;
++    NSString *key = (pattern != nil) ? pattern : @"";
++
++    pthread_mutex_lock(&cacheLock);
++    NSString *hit = [[cache objectForKey: key] retain];
++    pthread_mutex_unlock(&cacheLock);
++    if (hit != nil) {
++        return [[hit autorelease] length] != 0 ? hit : nil;
++    }
++
+     FcConfig *config = O2FontSharedFontConfig();
+ 
+     FcPattern *pat = FcNameParse((unsigned char *) [pattern UTF8String]);
+@@ -87,6 +114,13 @@
+     }
+ 
+     FcPatternDestroy(match);
++
++    pthread_mutex_lock(&cacheLock);
++    if (cache == nil) {
++        cache = [[NSMutableDictionary alloc] init];
++    }
++    [cache setObject: (res != nil) ? res : @"" forKey: key];
++    pthread_mutex_unlock(&cacheLock);
+     return res;
+ }
+ 

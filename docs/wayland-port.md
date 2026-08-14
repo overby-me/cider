@@ -1076,3 +1076,120 @@ The anchor rectangle converts between two coordinate systems that disagree about
 AppKit origin bottom left with y increasing upwards, Wayland top left with y increasing downwards,
 so the conversion goes through the parent TOP edge. Getting that wrong puts the menu at the other
 end of the window rather than under its title.
+
+## Typing works. Clicking breaks it. And the chrome colour is a use after free, 2026-08-14
+
+Three findings, each from an instrument that did not exist this morning.
+
+### THE KEYBOARD REACHES THE APPLICATION CORRECTLY, and characters DO appear
+
+The application own key path is now measured from INSIDE the application, by wrapping its
+Objective-C methods from this backend (CIDER_TRACE_VCL). Per keystroke:
+
+    CIDER_VCL keyDown view=SalFrameView window=2 isKey=1 firstResponder=SalFrameView
+    CIDER_VCL insertText:replacementRange: text=[h]
+    CIDER_VCL hasMarkedText=0
+    CIDER_VCL sendKeyInputAndReleaseToFrame code=519 char=104 mods=0x0
+
+code 519 is KEY_H and char 104 is h. That is the textbook path with the right values at every step,
+so everything this backend is responsible for is done.
+
+AND THE TEXT APPEARS ON SCREEN: three characters typed before any click show up in the document with
+the caret after them (docs/wayland-typing-noclick.png). Criterion two, the typing half, is
+DEMONSTRATED, with one condition.
+
+THE CONDITION IS THE CLICK. Characters typed AFTER a click in the document body are delivered
+identically, byte for byte, and nothing appears. Same window, same first responder, same key code,
+same sendKeyInputAndReleaseToFrame. So the loss is inside the application, after the point where its
+own code accepts the keystroke, and the mouse is what changes its mind. The mouse methods are traced
+now as well, which is where that thread continues.
+
+### THE CHROME COLOUR WAS A USE AFTER FREE IN NSColor_catalog
+
+    - (NSColor *) colorUsingColorSpaceName: (NSColorSpaceName) space device: (NSDictionary *) device
+    {
+        ...
+        _color = [_color colorUsingColorSpaceName: space device: device];   // autoreleased, no retain
+        return _color;
+    }
+
+An autoreleased object stored in an instance variable with no retain. The catalog colour outlives
+the pool, and every later -setFill, -CGColor and -patternImage reads freed memory. What it looks
+like from outside says nothing about colour objects: every window was filled with a FLAT colour that
+was DIFFERENT ON EVERY RUN, purple, then green, then orange, while the menu bar beside it stayed the
+correct grey. -[NSThemeFrame drawRect:] fills the whole window with the window backgroundColor,
+which is a catalog colour, which is why it was the whole window.
+
+Fixed by not caching: the answer depends on the colour space AND the device asked for, so a cache
+keyed on neither is wrong even when the memory is alive. The window background and the page are the
+right colours now.
+
+METHOD NOTE, because two hypotheses were eliminated by measurement and both were plausible:
+uninitialised bitmaps (CGBitmapContextCreate and NSMutableData dataWithLength: were tested against a
+DIRTIED heap, both zero correctly) and a wrong palette entry (a wrong constant cannot change between
+runs). What identified it was the pair of facts that the colour was FLAT and that it MOVED.
+
+### THE REST OF THE CHROME IS STILL WRONG, and the source is now named
+
+The toolbars, the sidebar and the status bar are still a flat run-varying colour. The fill trace
+(CIDER_WAYLAND_TRACE_COLORS) with a backtrace through dladdr names the exact call:
+
+    CIDER_FILLCOLOR comps=0.518,0.914,0.714,1.000     (times 255: 132,233,182, the pixels on screen)
+      Onyx2D!O2ContextSetRGBFillColor
+      CoreGraphics!CGContextSetRGBFillColor
+      libmergedlo.dylib!OutputDevice::InitFillColor
+      libmergedlo.dylib!OutputDevice::DrawRect
+      libmergedlo.dylib!OutputDevice::DrawColorWallpaper
+      libmergedlo.dylib!vcl::Window::Erase
+
+So the application itself asks for the garbage colour: the rasteriser is innocent and so is the
+palette. Alpha is exactly 1.0 and the three components are arbitrary, which is what a VCL Color made
+of three garbage BYTES looks like after the divide by 255. Every colour the application reads
+through -getRed:green:blue:alpha: is sane (70 reads in a run, all of them), so the garbage enters
+somewhere that is not a system colour read.
+
+### Two more things that were broken and are not any more
+
+A COMPATIBLE CONTEXT HAD NO IMPLEMENTATION. -createCompatibleContextWithSize:unused: has always
+ended in [[self class] alloc] initWithSize:context:, and no context class in the tree implemented
+that selector, so every CGLayer and every transparency layer raised unrecognized selector. Nothing
+noticed until SAL_DISABLESKIA=1, where LibreOffice terminates before its first window. Implemented
+on O2Context_builtin, and that path now runs.
+
+SKIA IS THE DEFAULT RENDERER HERE, which is worth knowing: with it off, the classic CoreGraphics
+path is used and every drawing call goes through Onyx2D, which is why the fill trace above could see
+the colour at all.
+
+### The startup was never slow, the harness was
+
+Measured, after adding a clock to the backend log (t= on every mapped and present line) and a wall
+clock outside it:
+
+    WALL to first document window: 2.53 s
+    cider-wayland-window mapped=yes number=2 size=1024x656 t=1.76
+
+Two and a half seconds from launch to a fully drawn Writer window, toolbars, ruler, sidebar and all.
+Every GUI experiment in this task has been waiting SETTLE=95 seconds for that, which is a 40x tax on
+every question asked. scratchpad/bench-gui.sh is the fast harness; the runners keep a longer settle
+only where they drive input, because the drivers need the compositor to have settled too.
+
+### Where the time actually goes, sampled rather than guessed
+
+perf cannot read Mach-O, so a profile of the guest is a wall of hex addresses. scripts/
+perf-guest-symbols.py joins the mapping list in the perf data to nm output per image and resolves
+them, which turned a useless profile into named answers in one pass:
+
+    28%  FcFontMatch under Onyx2D O2FontCreateWithFontName_platform
+    12%  memset under large_malloc calloc
+     5%  Vec::extend_from_slice under wayland_appkit_lib::window::dump_buffer
+     4%  map_foreach under kqueue_closed_fd, on every close() the guest makes
+
+The first is a font lookup with no cache anywhere above it: a fontconfig match walks the whole font
+set comparing every property, and it ran on every single font creation. Memoised in
+O2Font_freetype filenameForPattern:, which is a pure function of the pattern and the shared config.
+
+The third was this backend own dump instrument copying twelve megabytes to prepend a fifty four byte
+header. Now written as two writes.
+
+    text to PDF conversion, before: 4.58 s, 4.45 s
+    text to PDF conversion, after:  3.40 s, 3.59 s
