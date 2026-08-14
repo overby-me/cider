@@ -938,3 +938,26 @@ frame at all, while it does act on mouse events for the same frame. Everything A
 measured correct: the key code, the modifiers, the key window, the notification, the first
 responder, the text interpretation, and the delivery into the application own
 insertText:replacementRange:.
+
+## The mouse claim, re-checked against an idle control
+
+The evidence for the mouse working was a 1x17 pixel change after a click, read as a text caret. A
+BLINKING CARET PRODUCES EXACTLY THAT DIFFERENCE WITH NOBODY TOUCHING ANYTHING, so the claim needed a
+control it did not have. scratchpad/run-lo-idle.sh takes three screenshots a second apart and sends
+no input at all:
+
+    idle-1 vs idle-2   0 differing pixels
+    idle-2 vs idle-3   0 differing pixels
+
+Nothing changes on its own. So the 1x17 vertical bar was caused by the click, and the mouse half of
+criterion two stands. It stands on a control now rather than on an inference.
+
+That also sharpens the asymmetry: VCL acts on mouse events for this frame and not on key events,
+with both delivered correctly and both measured.
+
+### The delegate registration was checked too, and is sound
+
+Cocotron posts the key window notification with object self and registers the delegate with object
+self, and setDelegate assigns _delegate BEFORE registering, so respondsToSelector tests the new
+delegate. Both were plausible ways for the application observer to be silently skipped while the
+observer added for this investigation still fired, and neither is happening.
