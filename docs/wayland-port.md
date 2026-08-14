@@ -1791,6 +1791,17 @@ sense: the application caught every one and reported nothing.
 The A and B for 3 is exact: the same script and the same click on the same panel wrote no file with
 the row version and wrote the document with the name field version, one run apart.
 
-STILL WRONG in the panel: its buttons are clipped by about half. The panel maps at 500x400 and the
-compositor tiles it to the full height, and something in the layout is a title bar taller than the
-surface. The document window does not do this. Not chased yet.
+STILL WRONG in the panel: its buttons are clipped by about half. What it is NOT, measured with
+CIDER_WAYLAND_TRACE_GEOMETRY and CIDER_WAYLAND_TRACE_RESIZE rather than guessed:
+
+    cider-wayland-geometry number=19 surface=628x684 frame=628x684 content=628x684+0+0
+
+The panel's surface, its NSWindow frame and its content view are the SAME size, and no
+-setFrame: ever asks for a bigger one (the only setFrame calls in a whole run are 162x34 popups). So
+it is not a buffer larger than the configured size being cropped by the tiling compositor, which was
+the obvious theory and the wrong one, and it is not the menu inset either: the document window
+reports content 16 shorter than its frame because it HAS the menu bar, and the panel reports no
+inset at all, correctly.
+
+That leaves the panel's own subview layout inside a content view that is the right size. Next place
+to look is the nib's autoresizing, not our geometry.

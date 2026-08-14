@@ -1250,6 +1250,16 @@ extern "C" fn set_title(this: Object, _cmd: Sel, title: Object) {
 extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
     let Some(st) = (unsafe { state(this) }) else { return };
     let resized = frame.size.width != st.frame.size.width || frame.size.height != st.frame.size.height;
+    if resized && std::env::var_os("CIDER_WAYLAND_TRACE_GEOMETRY").is_some() {
+        // A SIZE THE COMPOSITOR DID NOT ASK FOR is worth seeing: on a tiling compositor a buffer
+        // larger than the configured size is CROPPED, and the part that goes missing is the bottom
+        // of the window, which is where a dialog keeps its buttons.
+        println!(
+            "cider-wayland-setframe number={} asked={}x{} current={}x{}",
+            st.number, frame.size.width, frame.size.height,
+            st.frame.size.width, st.frame.size.height
+        );
+    }
     st.frame = frame;
     if resized {
         // THE CONTEXT DESCRIBES A SIZE, so it cannot outlive one. AppKit is told rather than left
