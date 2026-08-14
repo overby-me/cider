@@ -14,7 +14,7 @@
 // needs the surface handed to an O2Context, which is the next rung; a window that shows the wrong
 // contents is visible and debuggable, a window that never maps is not.
 use std::os::raw::{c_char, c_int, c_void};
-use std::sync::atomic::{AtomicI64, AtomicIsize, Ordering};
+use std::sync::atomic::{AtomicI64, AtomicIsize, AtomicUsize, Ordering};
 
 use crate::cstr;
 use crate::objc::{self, NsPoint, NsRect, Object, ObjcBool, Sel, NO, YES};
@@ -28,6 +28,10 @@ static STATE_OFFSET: AtomicIsize = AtomicIsize::new(-1);
 /// Window numbers must be unique and nonzero: AppKit uses them as identity, and 0 reads as "no
 /// window" in several of its own comparisons.
 static NEXT_WINDOW_NUMBER: AtomicI64 = AtomicI64::new(1);
+
+/// The most recently created TITLED toplevel, used as the parent for borderless ones. A pointer
+/// held as an integer because a raw pointer is not Sync and this is only ever read back as one.
+static LAST_TITLED_TOPLEVEL: AtomicUsize = AtomicUsize::new(0);
 
 /// Everything one window owns. Boxed and pointed to by the instance's single ivar, so the ObjC
 /// object stays one word wider than CGWindow and all the real state has a Rust type.
@@ -199,6 +203,10 @@ pub fn deliver_pending_configures() {
         // The drawn report is reset so the new size is measured rather than reported from the
         // previous buffer.
         st.reported_drawn = false;
+        // REBUILD BEFORE NOTIFYING. AppKit draws in response to a frame change, and it asks for a
+        // graphics context when it does; if the surface is still the old size at that moment it
+        // draws a large window into a small one and the result is clipped rather than laid out.
+        ensure_backing(st);
         println!(
             "cider-wayland-window resized number={} size={width}x{height}",
             st.number
@@ -270,6 +278,27 @@ fn create_surface(st: &mut WindowState) -> bool {
             &TOPLEVEL_LISTENER,
             st as *mut WindowState as *mut c_void,
         );
+        /*
+         * A BORDERLESS WINDOW IS NOT A DOCUMENT, and saying so is the difference between an
+         * application and a pile of tiles. AppKit opens tooltips, palettes, scrollbar helpers and
+         * menu shadows as ordinary NSWindows with a borderless style mask; without a parent, a
+         * compositor has no way to tell them from the document and a tiling one gives each an
+         * equal share of the screen. Measured: LibreOffice opened twenty four windows and the
+         * document window was resized from 1256 wide to 628 and then to 314 as its own tooltips
+         * were tiled beside it.
+         *
+         * The parent is the most recent TITLED window, which is what these belong to in practice.
+         * Compositors float a toplevel that has a parent, which is the behaviour wanted here.
+         */
+        let titled = st.style_mask & 0x1 != 0;
+        if titled {
+            LAST_TITLED_TOPLEVEL.store(st.toplevel as usize, Ordering::Release);
+        } else {
+            let parent = LAST_TITLED_TOPLEVEL.load(Ordering::Acquire) as *mut wl::XdgToplevel;
+            if !parent.is_null() && parent != st.toplevel {
+                wl::cider_xdg_toplevel_set_parent(st.toplevel, parent);
+            }
+        }
         wl::cider_wl_surface_commit(st.surface);
         for _ in 0..20 {
             session::roundtrip();
@@ -284,8 +313,9 @@ fn create_surface(st: &mut WindowState) -> bool {
         }
     }
     println!(
-        "cider-wayland-window create=ok number={} size={}x{}",
-        st.number, st.frame.size.width as i32, st.frame.size.height as i32
+        "cider-wayland-window create=ok number={} size={}x{} level={} style={:#x}",
+        st.number, st.frame.size.width as i32, st.frame.size.height as i32, st.level,
+        st.style_mask
     );
     true
 }
@@ -333,7 +363,24 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     if !st.pixels.is_null() && st.buffer_w == w && st.buffer_h == h {
         return true;
     }
+    let had_backing = !st.pixels.is_null();
     release_backing(st);
+    /*
+     * TELL APPKIT ITS CACHED CONTEXT IS GONE. NSWindow keeps the graphics context per thread in
+     * _threadToContext and hands the SAME one out until something invalidates it, and the only
+     * thing that does is -platformWindowDidInvalidateCGContext:. Without this call AppKit goes on
+     * drawing through an O2Context whose surface wraps pixels this function has just unmapped.
+     *
+     * It is a use after free on every rebuild, and a rebuild only happens on RESIZE, which is why
+     * weston headless never showed it: that compositor never resizes anything. A tiling compositor
+     * resizes the first window it maps.
+     */
+    if had_backing && !st.delegate.is_null() {
+        unsafe {
+            let sel = objc::sel_registerName(cstr!("platformWindowDidInvalidateCGContext:"));
+            objc::msg_send_obj(st.delegate, sel, st.owner);
+        }
+    }
 
     let shm = session::shm();
     if shm.is_null() {

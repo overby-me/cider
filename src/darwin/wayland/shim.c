@@ -219,3 +219,12 @@ double cider_wl_fixed_to_double(int32_t f) { return wl_fixed_to_double(f); }
 // because the client never asks for a new pointer.
 void cider_wl_pointer_release(struct wl_pointer *pointer) { wl_pointer_release(pointer); }
 void cider_wl_keyboard_release(struct wl_keyboard *keyboard) { wl_keyboard_release(keyboard); }
+
+// A PARENT IS HOW A COMPOSITOR KNOWS A WINDOW IS NOT A DOCUMENT. xdg_toplevel.set_parent marks a
+// surface as belonging to another, and compositors float those rather than placing them in the
+// tiling layout. Without it every tooltip, palette and scrollbar helper an application opens is
+// treated as a peer of the document window: a tiling compositor splits the screen with each one,
+// and the document ends up a few hundred pixels wide with a dozen slivers beside it.
+void cider_xdg_toplevel_set_parent(struct xdg_toplevel *toplevel, struct xdg_toplevel *parent) {
+	xdg_toplevel_set_parent(toplevel, parent);
+}

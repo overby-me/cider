@@ -65,6 +65,7 @@ unsafe extern "C" {
     pub fn cider_xdg_wm_base_get_xdg_surface(b: *mut XdgWmBase, s: *mut WlSurface) -> *mut XdgSurface;
     pub fn cider_xdg_surface_get_toplevel(s: *mut XdgSurface) -> *mut XdgToplevel;
     pub fn cider_xdg_toplevel_set_title(t: *mut XdgToplevel, title: *const c_char);
+    pub fn cider_xdg_toplevel_set_parent(t: *mut XdgToplevel, parent: *mut XdgToplevel);
     pub fn cider_xdg_toplevel_add_listener(t: *mut XdgToplevel, l: *const XdgToplevelListener, data: *mut c_void) -> c_int;
     pub fn cider_wl_registry_bind_output(r: *mut WlRegistry, name: u32, version: u32) -> *mut WlOutput;
     pub fn cider_wl_output_add_listener(o: *mut WlOutput, l: *const WlOutputListener, data: *mut c_void) -> c_int;
