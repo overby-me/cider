@@ -1,0 +1,107 @@
+--- a/CoreText/CTFont.m
++++ b/CoreText/CTFont.m
+@@ -114,13 +114,75 @@
+     return _CiderFontCreateForFamily(name, size);
+ }
+ 
++/*
++ * THE STYLE THE DESCRIPTOR ASKED FOR, which was being dropped on the floor.
++ *
++ * A name here is not a name, it is a FONTCONFIG PATTERN: O2Font_freetype hands the string straight
++ * to FcNameParse, so "Liberation Serif:style=Bold" selects the bold face of that family. Everything
++ * above this passed the bare family and nothing else, so a bold run and a regular run resolved to
++ * the same file and bold text rendered in the regular weight -- with LibreOffice perfectly happy,
++ * because it had applied the format and the B in its toolbar was lit.
++ *
++ * Returns a copy the caller frees, or NULL when there is nothing to add.
++ */
++static CFStringRef _CiderPatternForFamilyWithTraits(CFStringRef family, unsigned symbolic)
++{
++    const int italic = (symbolic & (1 << 0)) != 0;
++    const int bold = (symbolic & (1 << 1)) != 0;
++
++    if (family == NULL || (!bold && !italic)) return NULL;
++
++    CFStringRef style = NULL;
++    if (bold && italic) {
++        style = CFSTR("Bold Italic");
++    } else if (bold) {
++        style = CFSTR("Bold");
++    } else {
++        style = CFSTR("Italic");
++    }
++    return CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("%@:style=%@"), family, style);
++}
++
++/* The symbolic traits a descriptor carries, or zero. */
++static unsigned _CiderSymbolicTraitsOfDescriptor(CTFontDescriptorRef descriptor)
++{
++    CFDictionaryRef traits =
++            (CFDictionaryRef) CTFontDescriptorCopyAttribute(descriptor, kCTFontTraitsAttribute);
++    if (traits == NULL) return 0;
++
++    unsigned symbolic = 0;
++    if (CFGetTypeID(traits) == CFDictionaryGetTypeID()) {
++        CFNumberRef n = (CFNumberRef) CFDictionaryGetValue(traits, kCTFontSymbolicTrait);
++        if (n != NULL && CFGetTypeID(n) == CFNumberGetTypeID()) {
++            int value = 0;
++            CFNumberGetValue(n, kCFNumberIntType, &value);
++            symbolic = (unsigned) value;
++        }
++    }
++    CFRelease(traits);
++    return symbolic;
++}
++
+ CTFontRef CTFontCreateWithFontDescriptor(CTFontDescriptorRef descriptor, CGFloat size,
+                                          const CGAffineTransform *matrix)
+ {
+     /* The descriptor is the attribute dictionary CTFontCollection built, so the family name is a
+      * lookup away. Copy, because the name says Copy and this owns the result. */
+     CFStringRef family = CTFontDescriptorCopyAttribute(descriptor, kCTFontFamilyNameAttribute);
+-    CTFontRef font = _CiderFontCreateForFamily(family, size);
++    CTFontRef font = NULL;
++
++    /* STYLE FIRST, FAMILY AS THE FALLBACK. A family with no bold face on disk must still produce a
++     * font rather than nothing, and fontconfig would happily substitute a DIFFERENT family for the
++     * style, which is worse than the regular weight of the right one. */
++    CFStringRef pattern =
++            _CiderPatternForFamilyWithTraits(family, _CiderSymbolicTraitsOfDescriptor(descriptor));
++    if (pattern != NULL) {
++        font = _CiderFontCreateForFamily(pattern, size);
++        CFRelease(pattern);
++    }
++    if (font == NULL) {
++        font = _CiderFontCreateForFamily(family, size);
++    }
+     if (family != NULL) CFRelease(family);
+     return font;
+ }
+--- a/CoreText/CTFontDescriptor.m
++++ b/CoreText/CTFontDescriptor.m
+@@ -56,3 +56,15 @@
+     if (language != NULL) *language = NULL;
+     return CTFontDescriptorCopyAttribute(descriptor, attribute);
+ }
++
++/*
++ * A DESCRIPTOR IS THE ATTRIBUTE DICTIONARY in this port -- CTFontCollection builds one per face and
++ * CTFontDescriptorCopyAttribute reads straight out of it -- so creating one from attributes is a
++ * copy, and the stub that returned NULL was the reason an application could not ask for a font by
++ * anything except a family name. LibreOffice calls this 53 times in a single run.
++ */
++CTFontDescriptorRef CTFontDescriptorCreateWithAttributes(CFDictionaryRef attributes)
++{
++    if (attributes == NULL) return NULL;
++    return (CTFontDescriptorRef) CFDictionaryCreateCopy(kCFAllocatorDefault, attributes);
++}
+--- a/CoreText/stubs.c
++++ b/CoreText/stubs.c
+@@ -1,6 +1,3 @@
+ #include <stdio.h>
+ 
+-void *CTFontDescriptorCreateWithAttributes(void) {
+-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+-    return NULL;
+-}
++/* CTFontDescriptorCreateWithAttributes is implemented in CTFontDescriptor.m now. */

@@ -1968,7 +1968,25 @@ core has one thread left in a syscall. What named it was raising the application
 SAL_LOG=+WARN+INFO and reading the last lines before the fatal: dyld prints exactly which symbol it
 could not bind, and the ObjC runtime prints exactly which selector went unrecognised.
 
-STILL WRONG, and stated plainly: BOLD DOES NOT RENDER. Selecting a word and pressing Command B does
-apply the format -- the B in the toolbar lights up -- and the glyphs stay in the regular weight. The
-bold face is present on disk (LiberationSerif-Bold.ttf in the application own fonts directory), so
-this is font matching, not a missing file. Undo and the find toolbar itself both work.
+## Bold renders, and the reason it did not is one line of plumbing
+
+docs/wayland-bold-renders.png: the selected word is visibly heavier than the text around it, and
+after Command Z it is back to the regular weight. Ordinary use now passes end to end: select a word,
+bold it, undo it, open find, type a word and see the match highlighted.
+
+THE FORMAT WAS NEVER THE PROBLEM. LibreOffice applied it and lit the B in its toolbar; the glyphs
+came out regular because the request never reached the file. Two things were in the way.
+
+A NAME HERE IS A FONTCONFIG PATTERN. O2Font_freetype hands the string straight to FcNameParse, so
+"Liberation Serif:style=Bold" selects the bold face -- and everything above it passed the bare
+family and nothing else, so a bold run and a regular run resolved to the same file.
+CTFontCreateWithFontDescriptor now reads the symbolic traits it was given and asks for the styled
+pattern, falling back to the family when the face does not exist: a family with no bold on disk must
+still produce a font, and letting fontconfig substitute a different FAMILY for the style would be
+worse than the regular weight of the right one.
+
+AND THE DESCRIPTOR COULD NOT BE BUILT AT ALL. CTFontDescriptorCreateWithAttributes was a stub
+returning NULL -- with the wrong signature, taking void -- so an application could not ask for a
+font by anything except a family name. A descriptor in this port IS the attribute dictionary, which
+CTFontCollection builds per face and CTFontDescriptorCopyAttribute reads straight out of, so
+creating one from attributes is a copy. LibreOffice calls it 53 times in a single run.
