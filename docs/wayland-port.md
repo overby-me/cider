@@ -1937,3 +1937,38 @@ The extension needed one more thing after that. -_selectFile: read the text fiel
 extension applied by -nameFieldStringValue was computed and thrown away. It reads the accessor now.
 allowed=( pdf ) in the trace above is what supplies the extension; a name typed WITH one is left
 alone, or a save dialog ends up writing report.pdf.pdf.
+
+## Command F killed the application, twice over, and neither wall was visible before the keystroke
+
+Find is ordinary use, and it took two fixes to survive it. docs/wayland-find-toolbar.png is the
+result: a close button, a Find field, up and down arrows, Find All, Match Case and the search icon.
+
+FIRST, A MISSING SYMBOL THAT LINKED CLEANLY. LibreOffice draws the toolbar through a transparency
+layer and the exact call it makes was not there:
+
+    dyld: lazy symbol binding failed: Symbol not found: _CGContextBeginTransparencyLayerWithRect
+      Referenced from: libvclplug_osxlo.dylib
+
+Bound LAZILY, so nothing complains until the first call: the plain BeginTransparencyLayer existed and
+was backed by a real Onyx2D layer, only the rect variant was absent. It is implemented as the layer
+plus a clip to the rect, and the clip is applied AFTER the layer begins on purpose:
+-beginTransparencyLayerWithInfo: saves the graphics state and -endTransparencyLayer restores it
+before compositing, so the clip disappears with the layer instead of leaking into later drawing.
+
+SECOND, THE FOCUS RING. Past the symbol, the next keystroke raised
+-[NSComboBoxCell drawFocusRingMaskWithFrame:inView:] as an unrecognized selector. AppKit draws a
+focus ring by asking the CELL to fill the shape it wants ringed and then stroking around that fill;
+NSCell defines the default and subclasses override it. Nothing here defined it at all, so the first
+control that took focus killed the process. NSCell fills its frame now, and answers
+-focusRingMaskBoundsForFrame:inView: with the same rectangle.
+
+HOW IT WAS FOUND, because the first two attempts were wrong. The crash is SIGABRT, LibreOffice turns
+it into Unspecified Application Error, gdb catches the abort but cannot walk a Mach-O stack, and the
+core has one thread left in a syscall. What named it was raising the applications OWN logging to
+SAL_LOG=+WARN+INFO and reading the last lines before the fatal: dyld prints exactly which symbol it
+could not bind, and the ObjC runtime prints exactly which selector went unrecognised.
+
+STILL WRONG, and stated plainly: BOLD DOES NOT RENDER. Selecting a word and pressing Command B does
+apply the format -- the B in the toolbar lights up -- and the glyphs stay in the regular weight. The
+bold face is present on disk (LiberationSerif-Bold.ttf in the application own fonts directory), so
+this is font matching, not a missing file. Undo and the find toolbar itself both work.
