@@ -113,3 +113,34 @@ void cider_wayland_post_flags_changed(unsigned long modifiers, long windowNumber
 		[[NSDisplay currentDisplay] postEvent: event atStart: NO];
 	}
 }
+
+/*
+ * Keyboard focus, delivered as AppKit window activation.
+ *
+ * A KEY EVENT IS NOT ENOUGH ON ITS OWN. AppKit routes text to the first responder of the KEY
+ * window, and a window only becomes key when the platform says it was activated. Without this the
+ * keystrokes arrive, are posted, are dispatched, and go nowhere: measured on LibreOffice, where
+ * h e l l o were each delivered to window 2 and the document stayed empty.
+ *
+ * The previously focused window is deactivated first, in that order, because AppKit tracks a
+ * single key window and activating a second while the first still believes it is key leaves two.
+ */
+static id cider_wayland_key_window = nil;
+
+void cider_wayland_set_keyboard_focus(id delegate, id platformWindow)
+{
+	if (cider_wayland_key_window == delegate) {
+		return;
+	}
+	if (cider_wayland_key_window != nil &&
+		[cider_wayland_key_window respondsToSelector:
+			@selector(platformWindowDeactivated:checkForAppDeactivation:)]) {
+		[cider_wayland_key_window platformWindowDeactivated: nil
+								   checkForAppDeactivation: NO];
+	}
+	cider_wayland_key_window = delegate;
+	if (delegate != nil &&
+		[delegate respondsToSelector: @selector(platformWindowActivated:displayIfNeeded:)]) {
+		[delegate platformWindowActivated: platformWindow displayIfNeeded: YES];
+	}
+}

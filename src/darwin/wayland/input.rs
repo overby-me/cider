@@ -71,6 +71,7 @@ unsafe extern "C" {
         key_code: c_int,
     );
     fn cider_wayland_post_flags_changed(modifiers: u64, window_number: i64);
+    fn cider_wayland_set_keyboard_focus(delegate: Object, platform_window: Object);
 }
 
 /// libxkbcommon, which is a host library reached through a forwarding stub.
@@ -479,10 +480,17 @@ extern "C" fn on_keyboard_enter(
     surface: *mut wl::WlSurface,
     _keys: *mut c_void,
 ) {
-    let Ok(mut st) = INPUT.lock() else { return };
-    st.keyboard_focus = surface;
+    {
+        let Ok(mut st) = INPUT.lock() else { return };
+        st.keyboard_focus = surface;
+    }
     if tracing() {
         println!("cider-wayland-input keyboard=enter");
+    }
+    // ACTIVATION, not just focus bookkeeping. AppKit sends text to the first responder of the KEY
+    // window, and nothing here made a window key, so keystrokes were delivered and discarded.
+    if let Some((owner, delegate, _height, _number)) = window::window_for_surface(surface) {
+        unsafe { cider_wayland_set_keyboard_focus(delegate, owner) };
     }
 }
 
@@ -492,8 +500,11 @@ extern "C" fn on_keyboard_leave(
     _serial: u32,
     _surface: *mut wl::WlSurface,
 ) {
-    let Ok(mut st) = INPUT.lock() else { return };
-    st.keyboard_focus = std::ptr::null_mut();
+    {
+        let Ok(mut st) = INPUT.lock() else { return };
+        st.keyboard_focus = std::ptr::null_mut();
+    }
+    unsafe { cider_wayland_set_keyboard_focus(std::ptr::null_mut(), std::ptr::null_mut()) };
 }
 
 extern "C" fn on_keyboard_key(
