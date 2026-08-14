@@ -690,3 +690,40 @@ not been identified.
   THE COLOUR SPACE OF THE GREYS. Building them with colorWithDeviceRed rather than
     colorWithCalibratedWhite changes nothing on screen, so that change was reverted rather than
     kept on a hunch.
+
+## The chrome colour is inside LibreOffice own backing image, and the whole path is now known
+
+The full stack at the paint, captured with backtrace and dladdr at the site the watchpoint named:
+
+    O2RasterizeWriteCoverageSpan8888_Copy
+    O2DContextFillEdgesOnSurface
+    -[O2Context_builtin drawImage:inRect:]
+    CGContextDrawImage
+    AquaSalGraphics::UpdateWindow(CGRect&)          <- libvclplug_osxlo
+    -[SalFrameView drawRect:]
+    -[NSView displayRectIgnoringOpacity:] ... -[NSWindow displayIfNeeded]
+    AquaSalFrame::Show(bool, bool)
+
+So the chrome is not filled, it is BLITTED: LibreOffice renders into its own image and draws that
+image into the window. Reading a pixel out of the SOURCE at the blit:
+
+    CIDER_IMAGE src=1024x640 bpp=32 info=00002002 mid=116,92,210,255 direct=1
+    screen at that region: srgb(116,92,210)
+
+IDENTICAL. The source image already contains the wrong colour, so neither the blit nor the
+rasteriser nor the colour table is responsible for it.
+
+### Ruled out this round, each by an experiment rather than an argument
+
+  THE BLIT AND THE RASTERISER. src at the blend equals the pixel on screen, exactly.
+  UNINITIALISED CALLER MEMORY. Zeroing every caller supplied buffer at surface creation ended the
+    run, because the application also wraps icon data it has already filled; zeroing only window
+    sized ones is survivable and changes NOTHING on screen. So the wrong pixels are not simply
+    malloc garbage in a buffer nobody painted.
+
+### What is left
+
+The wrong pixels are produced inside LibreOffice own rendering into its own image, before anything
+this port can see through a CoreGraphics call. The next question is which of its draws produces
+them, and the honest answer is that finding it needs either its debug symbols or a narrower
+reproducer than a whole office suite.
