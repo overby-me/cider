@@ -1467,3 +1467,26 @@ in the run above is that the typing meant for the document navigated the open me
 A REGION CAN HOLD A STALE FRAME. In the second picture the menu bar shows Application and File and
 nothing else; in the third, taken after a click forced a repaint, the rest of the bar is there. The
 content is drawn correctly when it is drawn, but nothing repaints that strip on its own.
+
+## ESCAPE CLOSES THE MENU. It was bound to the wrong selector, 2026-08-14 night
+
+    "0x001B" = "cancel:";		was
+    "0x001B" = "cancelOperation:";	is
+
+AppKit binds Escape to -cancelOperation:, and that is the selector applications implement:
+LibreOffice has cancelOperation: in its selector table and does NOT have cancel:, so Escape arrived,
+was translated correctly, reached -[SalFrameView keyDown:], turned into doCommandBySelector: cancel:
+and stopped there. Nothing was missing from the keyboard path; one name was wrong.
+
+NSResponder now has the default -cancelOperation: that AppKit documents, which passes cancel: along
+the responder chain, so this framework own panels that implement the older selector keep working.
+
+Measured after: doCommandBySelector: cancelOperation: is followed by
+sendKeyInputAndReleaseToFrame code=1281 char=27, which is KEY_ESCAPE, and the open menu closes
+(docs/wayland-escape-closes-menu.png). Typing straight after that goes to the MENU BAR rather than
+the document, which is what LibreOffice does everywhere else: one Escape leaves the menu, a second
+leaves the menu bar.
+
+WHAT FOUND IT was tracing the application own doCommandBySelector: alongside the key path. Return
+was already working through insertNewline:, so the two side by side said the machinery was right and
+one binding was not.
