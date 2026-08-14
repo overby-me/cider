@@ -82,6 +82,10 @@ extern "C" fn display_next_event(
     dequeue: objc::ObjcBool,
 ) -> Object {
     session::pump();
+    // AFTER the pump, because that is what turns compositor events into the pending state this
+    // applies. Doing it here rather than in the callback is the whole point: the main loop is
+    // where re-entering AppKit is safe.
+    window::deliver_pending_configures();
     // WHETHER THE APPLICATION ASKS THIS BACKEND FOR EVENTS AT ALL is the question underneath a
     // window that never redraws, and it is not answerable from the outside: an application with
     // its own main loop and one that is wedged in this call look identical from a log of window

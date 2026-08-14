@@ -68,6 +68,8 @@ pub struct WindowState {
     pub presents: u64,
     /// How many times AppKit has asked this window to flush, presented or not.
     pub flushes: u64,
+    /// A size the compositor asked for, not yet given to AppKit. Applied by the main loop.
+    pub pending_size: Option<(i32, i32)>,
 }
 
 impl WindowState {
@@ -97,6 +99,7 @@ impl WindowState {
             last_dump: None,
             presents: 0,
             flushes: 0,
+            pending_size: None,
         }
     }
 }
@@ -150,28 +153,59 @@ extern "C" fn on_toplevel_configure(
     if st.frame.size.width as i32 == width && st.frame.size.height as i32 == height {
         return;
     }
-    st.frame.size.width = width as f64;
-    st.frame.size.height = height as f64;
     /*
-     * DO NOT FREE THE BACKING HERE. It was released on the spot, and the O2Context that AppKit
-     * is holding goes with it: the next thing to draw did so through a context whose surface had
-     * been unmapped underneath it. Headless weston never resizes a surface and reached three
-     * windows; a tiling compositor resizes the splash immediately and killed the process there.
+     * RECORD, DO NOT APPLY. This runs inside a libwayland callback, which is reached from the
+     * middle of the event pump, and both of the obvious things to do here are wrong.
      *
-     * ensure_backing already rebuilds when the size no longer matches, and it runs at PRESENT
-     * time, when nothing is mid-draw. Marking it is enough.
+     * Freeing the backing frees the O2Context AppKit is holding, so the next draw goes through a
+     * surface that was unmapped underneath it. Delivering the frame change re-enters AppKit from a
+     * compositor callback, which killed the process on a real compositor while a headless one that
+     * never resizes looked perfectly healthy.
+     *
+     * NOT APPLYING IT AT ALL IS ALSO WRONG, and that is the version this replaces: the buffer
+     * followed the compositor while NSWindow kept its original frame, so AppKit drew a large
+     * window into a small surface. weston headless never resizes, so it never showed; a tiling
+     * compositor resizes every window and LibreOffice died there after a dozen windows.
+     *
+     * So the size is remembered and applied by the main loop, where nothing is mid-draw and
+     * re-entering AppKit is exactly what is supposed to happen.
      */
-    st.reported_drawn = false;
-    println!("cider-wayland-window configured number={} size={width}x{height}", st.number);
-    // TELLING APPKIT IS GATED, and off by default, because it is not safe unprompted. A
-    // compositor may configure a surface at any moment, including while the application is still
-    // building the window; a tiling one resizes the splash immediately. Delivering
-    // platformWindow:frameChanged:didSize: there re-enters AppKit from a Wayland callback, and
-    // LibreOffice died on a real compositor while surviving on a headless one that never resizes.
-    //
-    // The size is recorded either way, so -frame answers correctly and the next present picks up
-    // the new dimensions. What is skipped is only the unsolicited callback.
-    if !st.delegate.is_null() && std::env::var_os("CIDER_WAYLAND_NOTIFY_RESIZE").is_some() {
+    st.pending_size = Some((width, height));
+    if std::env::var_os("CIDER_WAYLAND_TRACE_RESIZE").is_some() {
+        println!("cider-wayland-window configured number={} size={width}x{height}", st.number);
+    }
+}
+
+/// Apply the sizes compositors asked for, from the MAIN LOOP rather than from a callback.
+///
+/// Called once per turn of the event pump. Everything here is what -on_toplevel_configure
+/// deliberately does not do: change the frame AppKit sees, and tell AppKit it changed.
+pub fn deliver_pending_configures() {
+    let pending: Vec<usize> = match WINDOWS.lock() {
+        Ok(list) => list.clone(),
+        Err(_) => return,
+    };
+    for p in pending {
+        let st = match unsafe { (p as *mut WindowState).as_mut() } {
+            Some(st) => st,
+            None => continue,
+        };
+        let Some((width, height)) = st.pending_size.take() else { continue };
+        if st.frame.size.width as i32 == width && st.frame.size.height as i32 == height {
+            continue;
+        }
+        st.frame.size.width = width as f64;
+        st.frame.size.height = height as f64;
+        // The drawn report is reset so the new size is measured rather than reported from the
+        // previous buffer.
+        st.reported_drawn = false;
+        println!(
+            "cider-wayland-window resized number={} size={width}x{height}",
+            st.number
+        );
+        if st.delegate.is_null() {
+            continue;
+        }
         unsafe {
             let sel = objc::sel_registerName(cstr!("platformWindow:frameChanged:didSize:"));
             objc::msg_send_frame_changed(st.delegate, sel, st.owner, st.frame, objc::YES);
