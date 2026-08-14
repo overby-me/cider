@@ -1505,3 +1505,22 @@ What it is NOT, each checked rather than assumed:
 
 A full redraw after a frame change is right in any case and is committed here, but it did not fix
 this: the resize happens before the menus are built.
+
+## THE MENU BAR IS COMPLETE. Nothing told the strip its menu had changed, 2026-08-14 night
+
+docs/wayland-menubar-complete.png: Application, File, Edit, View, Insert, Format, Styles, Table,
+Form, Tools, Window, Help, at rest, with no interaction.
+
+A window builds its main menu view once, from the menu object the application shares, and NSMenu
+addItem:, insertItem:atIndex: and removeItem: mutated that object and told nobody. LibreOffice fills
+its menu bar in as it loads, so the strip kept the two items it had when it was first drawn, for the
+whole session, and one click on the bar repainted it and all twelve appeared at once.
+
+AppKit posts NSMenuDidAddItemNotification for exactly this. Those names do not exist in this
+framework, so the mutators invalidate the views directly: a walk of the window list per mutation,
+which happens while an application builds its menus and essentially never afterwards.
+
+WHAT MADE IT FINDABLE was comparing the two instruments the plan has always described. The BMP dump
+and the compositor screenshot AGREED, which ruled out every commit, stride and format explanation in
+one step and left only "the application really did draw two items". After that the question was why,
+and the answer was that it had drawn them when there were two.
