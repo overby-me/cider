@@ -81,10 +81,78 @@ extern "C" fn display_next_event(
     dequeue: objc::ObjcBool,
 ) -> Object {
     session::pump();
+    // WHETHER THE APPLICATION ASKS THIS BACKEND FOR EVENTS AT ALL is the question underneath a
+    // window that never redraws, and it is not answerable from the outside: an application with
+    // its own main loop and one that is wedged in this call look identical from a log of window
+    // operations.
+    {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static CALLS: AtomicU64 = AtomicU64::new(0);
+        let n = CALLS.fetch_add(1, Ordering::Relaxed) + 1;
+        if n <= 3 || n % 500 == 0 {
+            println!("cider-wayland-appkit nextevent calls={n}");
+        }
+    }
     let super_class = unsafe { objc::class_getSuperclass(objc::object_getClass(this)) };
     let mut sup = ObjcSuper { receiver: this, super_class };
     let sel = unsafe { objc::sel_registerName(cstr!("nextEventMatchingMask:untilDate:inMode:dequeue:")) };
-    unsafe { objc::msg_send_super_event(&mut sup, sel, mask, until, mode, dequeue) }
+    let ev = unsafe { objc::msg_send_super_event(&mut sup, sel, mask, capped_until(until), mode, dequeue) };
+    // RETURNING IS THE INTERESTING PART, not being called. The call count alone cannot tell a
+    // backend that is wedged inside this wait from one that returned and let the application block
+    // somewhere else entirely, and those two have nothing in common as bugs.
+    if std::env::var_os("CIDER_WAYLAND_TRACE_EVENTS").is_some() {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static RETURNS: AtomicU64 = AtomicU64::new(0);
+        let n = RETURNS.fetch_add(1, Ordering::Relaxed) + 1;
+        if n <= 3 || n % 500 == 0 {
+            println!("cider-wayland-appkit nextevent returned={n}");
+        }
+    }
+    ev
+}
+
+/// The longest this backend will let the application sleep inside one event wait, in seconds.
+///
+/// It has to be an upper bound rather than the wait itself: NSApplication REDISPLAYS BETWEEN
+/// EVENTS, so how often the loop comes back around is how often the screen can change.
+const MAX_EVENT_WAIT: f64 = 0.016;
+
+/// Bound the date NSDisplay will wait until.
+///
+/// AN IDLE APPLICATION ASKS TO WAIT FOREVER. NSApplication passes distantFuture when it has
+/// nothing to do, NSDisplay hands that straight to -[NSRunLoop runMode:beforeDate:], and with no
+/// run loop source attached to the Wayland socket that call never returns. Nothing after it runs:
+/// not the next -_displayAllWindowsIfNeeded, not the pump above. The observed shape of this was an
+/// application that drew its window exactly once, flushed exactly once, and then showed that first
+/// frame for the rest of its life while continuing to run.
+///
+/// Capping the wait turns that into a polling loop. It is not the eventual design, which is to make
+/// the Wayland fd a run loop source and sleep properly; it is the smallest change that makes the
+/// display cycle turn, and it is honest about costing a wakeup per frame.
+fn capped_until(until: Object) -> Object {
+    unsafe {
+        let date_cls = objc::objc_getClass(cstr!("NSDate"));
+        if date_cls.is_null() {
+            return until;
+        }
+        // A caller that wants a SHORTER wait than the cap keeps it: taking the cap unconditionally
+        // would turn every poll with a near date into a 16 ms sleep and slow down modal loops.
+        if !until.is_null() {
+            let remaining =
+                objc::msg_send_f64_ret(until, objc::sel_registerName(cstr!("timeIntervalSinceNow")));
+            if std::env::var_os("CIDER_WAYLAND_TRACE_EVENTS").is_some() {
+                println!("cider-wayland-appkit until remaining={remaining}");
+            }
+            if remaining <= MAX_EVENT_WAIT {
+                return until;
+            }
+        } else if std::env::var_os("CIDER_WAYLAND_TRACE_EVENTS").is_some() {
+            println!("cider-wayland-appkit until=nil");
+        }
+        let sel = objc::sel_registerName(cstr!("dateWithTimeIntervalSinceNow:"));
+        let capped = objc::msg_send_f64(date_cls, sel, MAX_EVENT_WAIT);
+        if capped.is_null() { until } else { capped }
+    }
 }
 
 /// -newWindowWithDelegate:, the method that makes this a window system at all.

@@ -70,6 +70,28 @@ fn recipe_for(name: &str) -> Option<Recipe> {
     })
 }
 
+/// A DELIBERATELY LOUD PALETTE, used only when CIDER_WAYLAND_COLOR_PROBE is set.
+///
+/// It exists to answer a question that reading code cannot: WHICH system colour is a given region
+/// of the screen actually painted with. LibreOffice draws its chrome in values that match nothing
+/// in the table below, and the two candidate explanations (the application never asks us, or it
+/// asks and something later corrupts the answer) predict different things when the answers are
+/// changed. Giving each name a unique unmistakable colour and looking at the result distinguishes
+/// them in one run: regions that change are ours, regions that do not never came from here.
+fn probe_recipe(name: &str) -> Option<(f64, f64, f64)> {
+    Some(match name {
+        "controlColor" => (1.0, 0.0, 0.0),
+        "headerColor" => (0.0, 1.0, 1.0),
+        "underPageBackgroundColor" => (1.0, 0.0, 1.0),
+        "selectedControlColor" => (1.0, 1.0, 0.0),
+        "controlBackgroundColor" => (1.0, 0.5, 0.0),
+        "textBackgroundColor" => (0.5, 0.0, 1.0),
+        "menuBackgroundColor" => (0.0, 0.5, 0.5),
+        "mainMenuBarColor" => (0.5, 0.5, 0.0),
+        _ => return None,
+    })
+}
+
 /// Answer -colorWithName:.
 ///
 /// The name arrives as an NSString, so it is read back through -UTF8String rather than compared
@@ -91,8 +113,25 @@ pub fn color_with_name(name: objc::Object) -> objc::Object {
         let Ok(text) = CStr::from_ptr(raw).to_str() else {
             return std::ptr::null_mut();
         };
+        if std::env::var_os("CIDER_WAYLAND_COLOR_PROBE").is_some() {
+            if let Some((r, g, b)) = probe_recipe(text) {
+                let sel = objc::sel_registerName(cstr!("colorWithDeviceRed:green:blue:alpha:"));
+                let c = objc::msg_send_f64_4(color_cls, sel, r, g, b, 1.0);
+                println!("cider-wayland-color name={text} probe={r},{g},{b}");
+                return c;
+            }
+        }
         match recipe_for(text) {
-            None => std::ptr::null_mut(),
+            None => {
+                // A NAME THAT ANSWERS nil IS INVISIBLE FROM ABOVE. AppKit does not complain; it
+                // draws with no colour, and the result is a control that renders as nothing at
+                // all. That is not distinguishable from a layout bug by looking, so the names are
+                // printed instead of guessed at.
+                if std::env::var_os("CIDER_WAYLAND_TRACE_COLORS").is_some() {
+                    println!("cider-wayland-color name={text} result=nil");
+                }
+                std::ptr::null_mut()
+            }
             Some(Recipe::ClassMethod(sel_name)) => {
                 // sel_registerName needs a NUL terminated string and these are Rust literals, so
                 // one small allocation per lookup. AppKit caches system colours, so this is not a

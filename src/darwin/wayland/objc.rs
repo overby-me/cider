@@ -107,6 +107,17 @@ unsafe extern "C" {
     /// The four-argument super call for -nextEventMatchingMask:untilDate:inMode:dequeue:.
     #[link_name = "objc_msgSendSuper"]
     pub fn msg_send_super_event(sup: *mut ObjcSuper, sel: Sel, mask: u64, until: Object, mode: Object, dequeue: ObjcBool) -> Object;
+    /// +[NSDate dateWithTimeIntervalSinceNow:], which is how the event wait gets an upper bound.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_f64(receiver: Object, sel: Sel, a: f64) -> Object;
+    /// +[NSColor colorWithDeviceRed:green:blue:alpha:], four doubles.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_f64_4(receiver: Object, sel: Sel, a: f64, b: f64, c: f64, d: f64) -> Object;
+    /// -[NSDate timeIntervalSinceNow]. A DOUBLE COMES BACK IN xmm0 THROUGH THE ORDINARY ENTRY
+    /// POINT on x86-64; objc_msgSend_fpret exists there only for long double, so aliasing the
+    /// plain symbol with a double return is correct rather than a shortcut.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_f64_ret(receiver: Object, sel: Sel) -> f64;
 }
 
 /// AppKit geometry: two doubles of origin, two of size. repr(C) so the struct is passed the way

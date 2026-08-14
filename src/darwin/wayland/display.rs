@@ -24,16 +24,20 @@ extern "C" fn dragging_manager(_this: Object, _cmd: Sel) -> Object {
     std::ptr::null_mut()
 }
 
-/// THE PASTEBOARD IS A REAL GAP, called out rather than quietly nil. X11Pasteboard is a genuine
-/// implementation over X selections, and the Wayland equivalent is wl_data_device, which needs a
-/// seat. weston headless advertises no seat, so there is nothing to build against yet; a document
-/// application will want this and the log will say it was asked for.
-extern "C" fn pasteboard_with_name(_this: Object, _cmd: Sel, _name: Object) -> Object {
-    static ANNOUNCED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-    if !ANNOUNCED.swap(true, std::sync::atomic::Ordering::Relaxed) {
-        println!("cider-wayland-appkit pasteboard=unimplemented reason=needs-wl_data_device");
-    }
-    std::ptr::null_mut()
+/// The pasteboard, which is process-local for now. WaylandPasteboard.m carries the reasoning; what
+/// matters here is that ANSWERING nil IS FATAL rather than degraded. LibreOffice asks for the
+/// general pasteboard during startup and the nil propagates into an "Unspecified Application
+/// Error" that mentions no clipboard anywhere, so the previous version of this function ended the
+/// process with a log line that looked like a note about a missing feature.
+///
+/// Cross-application transfer still needs wl_data_device and a wl_seat, and that is the piece this
+/// does not do.
+extern "C" fn pasteboard_with_name(_this: Object, _cmd: Sel, name: Object) -> Object {
+    unsafe { cider_wayland_pasteboard_with_name(name) }
+}
+
+extern "C" {
+    fn cider_wayland_pasteboard_with_name(name: Object) -> Object;
 }
 
 /// Display-agnostic constants. Both are plain numbers in the X11 backend with no X call anywhere

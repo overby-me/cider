@@ -62,6 +62,12 @@ pub struct WindowState {
     /// Whether the drawn-pixel count has been printed. Once is enough: it answers a question about
     /// whether drawing works at all, not one about every frame.
     pub reported_drawn: bool,
+    /// When this window last wrote a dump, so the rate limit has something to compare against.
+    pub last_dump: Option<std::time::Instant>,
+    /// How many times this window has been committed to the compositor.
+    pub presents: u64,
+    /// How many times AppKit has asked this window to flush, presented or not.
+    pub flushes: u64,
 }
 
 impl WindowState {
@@ -88,6 +94,9 @@ impl WindowState {
             map_len: 0,
             context: std::ptr::null_mut(),
             reported_drawn: false,
+            last_dump: None,
+            presents: 0,
+            flushes: 0,
         }
     }
 }
@@ -398,6 +407,76 @@ fn present(st: &mut WindowState) {
         );
     }
     report_pixels(st);
+    // HOW MANY TIMES A WINDOW IS PRESENTED separates two failures that look identical on screen:
+    // an application that draws nonsense, and one that draws correctly but never commits again, so
+    // the compositor keeps showing an early frame forever. The dump below is taken at present time
+    // and therefore cannot tell them apart on its own.
+    st.presents += 1;
+    if st.presents <= 3 || st.presents % 50 == 0 {
+        println!(
+            "cider-wayland-window present number={} count={} size={}x{}",
+            st.number, st.presents, st.buffer_w, st.buffer_h
+        );
+    }
+    dump_buffer(st);
+}
+
+/// Write the window's pixels to a BMP under $CIDER_WAYLAND_DUMP, so the contents can be LOOKED AT.
+///
+/// Every measurement above this one is a summary: a changed count, a distinct-colour count, one
+/// centre pixel. All three are satisfied by a window that draws confident nonsense, and that is
+/// exactly the failure they cannot distinguish. This writes the pixels themselves.
+///
+/// BMP because it needs no encoder: a 32bpp BI_RGB image IS the shm buffer with a 54 byte header in
+/// front of it, and the byte order the header implies is the byte order wl_shm already uses. A
+/// NEGATIVE HEIGHT means top-down, which is the direction the buffer is already in; without it
+/// every dump comes out mirrored and the mistake looks like a rendering bug.
+fn dump_buffer(st: &mut WindowState) {
+    let Some(dir) = std::env::var_os("CIDER_WAYLAND_DUMP") else {
+        return;
+    };
+    if st.pixels.is_null() || st.map_len == 0 {
+        return;
+    }
+    // Rate limited because a 2752x1152 window is 12 MB per write, and a redraw storm would
+    // otherwise measure the disk rather than the application.
+    let now = std::time::Instant::now();
+    if let Some(prev) = st.last_dump {
+        if now.duration_since(prev).as_millis() < 400 {
+            return;
+        }
+    }
+    st.last_dump = Some(now);
+
+    let (w, h) = (st.buffer_w, st.buffer_h);
+    let stride = (w as usize) * 4;
+    let image_len = stride * (h as usize);
+    if image_len == 0 || image_len > st.map_len {
+        return;
+    }
+    let mut out = Vec::with_capacity(54 + image_len);
+    let file_len = (54 + image_len) as u32;
+    out.extend_from_slice(b"BM");
+    out.extend_from_slice(&file_len.to_le_bytes());
+    out.extend_from_slice(&0u32.to_le_bytes());
+    out.extend_from_slice(&54u32.to_le_bytes());
+    out.extend_from_slice(&40u32.to_le_bytes());
+    out.extend_from_slice(&w.to_le_bytes());
+    out.extend_from_slice(&(-h).to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&32u16.to_le_bytes());
+    out.extend_from_slice(&0u32.to_le_bytes());
+    out.extend_from_slice(&(image_len as u32).to_le_bytes());
+    out.extend_from_slice(&[0u8; 16]);
+    out.extend_from_slice(unsafe { std::slice::from_raw_parts(st.pixels, image_len) });
+
+    let path = format!("{}/window-{}.bmp", dir.to_string_lossy(), st.number);
+    // Written whole then renamed, because a reader that opens a half written 12 MB file sees a
+    // torn image and blames the renderer.
+    let tmp = format!("{path}.tmp");
+    if std::fs::write(&tmp, &out).is_ok() {
+        let _ = std::fs::rename(&tmp, &path);
+    }
 }
 
 /// Say whether anything was actually DRAWN into the pages, once.
@@ -751,6 +830,16 @@ extern "C" fn enable_flush_window(this: Object, _cmd: Sel) {
 
 extern "C" fn flush_buffer(this: Object, _cmd: Sel) {
     if let Some(st) = unsafe { state(this) } {
+        // A SUPPRESSED FLUSH AND AN ABSENT ONE LOOK THE SAME FROM OUTSIDE: both leave the
+        // compositor showing an old frame forever. Counting them separately is the difference
+        // between a stuck disable count and a window nothing ever asks to flush.
+        st.flushes += 1;
+        if st.flushes <= 3 || st.flushes % 100 == 0 {
+            println!(
+                "cider-wayland-window flush number={} count={} disabled={}",
+                st.number, st.flushes, st.flush_disabled
+            );
+        }
         if st.flush_disabled == 0 {
             present(st);
         }

@@ -1,0 +1,81 @@
+// What does a system colour turn into when an application reads it the way LibreOffice does?
+//
+// LibreOffice renders its whole chrome in colours that CHANGE FROM RUN TO RUN: a flat window came
+// out magenta once and a toolbar came out (145,248,13) the next time. Values that move between
+// runs are uninitialised memory being read, not a wrong constant, and the only question worth
+// asking is which call leaves them uninitialised.
+//
+// THE SEQUENCE IS COPIED FROM libvclplug_osxlo, not invented: that binary's selector table
+// contains exactly -colorUsingColorSpaceName:device: and -getRed:green:blue:alpha:, and nothing
+// newer, so this is the pair to test. A message to nil is the specific failure being hunted,
+// because it leaves the out-parameters untouched and says NOTHING: no exception, no log, no
+// return value to check. The sentinel below is what makes that visible.
+#import <AppKit/AppKit.h>
+#import <Foundation/Foundation.h>
+#import <stdio.h>
+
+// A value no real colour component can hold, so "untouched" is distinguishable from "black".
+static const CGFloat SENTINEL = -999.0;
+
+static void probe(const char *label, NSColor *color)
+{
+	if (color == nil) {
+		printf("COLOR_PROBE %-32s color=NIL\n", label);
+		fflush(stdout);
+		return;
+	}
+
+	// The conversion LibreOffice performs before reading components. device:nil rather than a
+	// window's deviceDescription: the probe has no window, and a nil device is the case that
+	// matters anyway since it is what a colour with no display attached gets.
+	NSColor *rgb = [color colorUsingColorSpaceName: NSDeviceRGBColorSpace device: nil];
+	if (rgb == nil) {
+		printf("COLOR_PROBE %-32s space=%s converted=NIL  <-- getRed would leave garbage\n",
+			label, [[color colorSpaceName] UTF8String] ?: "?");
+		fflush(stdout);
+		return;
+	}
+
+	CGFloat r = SENTINEL, g = SENTINEL, b = SENTINEL, a = SENTINEL;
+	[rgb getRed: &r green: &g blue: &b alpha: &a];
+
+	bool untouched = (r == SENTINEL && g == SENTINEL && b == SENTINEL);
+	printf("COLOR_PROBE %-32s space=%-24s rgba=%.3f,%.3f,%.3f,%.3f%s\n", label,
+		[[rgb colorSpaceName] UTF8String] ?: "?", (double) r, (double) g, (double) b, (double) a,
+		untouched ? "   <-- UNTOUCHED, this is the bug" : "");
+	fflush(stdout);
+}
+
+int main(int argc, const char **argv)
+{
+	printf("COLOR_PROBE start\n");
+	fflush(stdout);
+
+	@autoreleasepool {
+		// The class methods LibreOffice reads for its StyleSettings. Named individually rather
+		// than looped, because each one is a different path through the colour classes and a
+		// loop over strings would hide which of them is the broken one.
+		probe("windowBackgroundColor", [NSColor windowBackgroundColor]);
+		probe("controlColor", [NSColor controlColor]);
+		probe("controlTextColor", [NSColor controlTextColor]);
+		probe("textColor", [NSColor textColor]);
+		probe("textBackgroundColor", [NSColor textBackgroundColor]);
+		probe("selectedControlColor", [NSColor selectedControlColor]);
+		probe("selectedTextBackgroundColor", [NSColor selectedTextBackgroundColor]);
+		probe("headerColor", [NSColor headerColor]);
+		probe("gridColor", [NSColor gridColor]);
+		probe("keyboardFocusIndicatorColor", [NSColor keyboardFocusIndicatorColor]);
+
+		// The two constructors the table in colors.rs actually uses, tested directly. If a
+		// calibrated white survives the conversion and a catalog colour does not, the fault is in
+		// the catalog wrapper rather than in the colour itself.
+		probe("literal calibratedWhite 0.93", [NSColor colorWithCalibratedWhite: 0.93 alpha: 1.0]);
+		probe("literal blueColor", [NSColor blueColor]);
+		probe("literal deviceRed", [NSColor colorWithDeviceRed: 0.25 green: 0.5 blue: 0.75
+														alpha: 1.0]);
+	}
+
+	printf("COLOR_PROBE_OK\n");
+	fflush(stdout);
+	return 0;
+}

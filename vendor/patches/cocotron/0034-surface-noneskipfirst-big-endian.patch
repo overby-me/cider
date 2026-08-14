@@ -1,0 +1,28 @@
+diff -u --recursive a/Onyx2D/O2Surface.m b/Onyx2D/O2Surface.m
+--- a/Onyx2D/O2Surface.m	2026-08-14 02:47:18.402965545 +0200
++++ b/Onyx2D/O2Surface.m	2026-08-14 02:47:18.390288748 +0200
+@@ -478,6 +478,24 @@
+                         self->_writeargb8u = O2SurfaceWrite_argb8u_to_BGRA8888;
+                         return YES;
+ 
++                    /*
++                     * AND THE BIG ENDIAN SPELLING OF THE SAME THING, which LibreOffice asks for
++                     * by the thousand: bitmapInfo 0x4006 is this alpha case with
++                     * kO2BitmapByteOrder32Big, and it fell through to the error and got the
++                     * default writer. The consequence was not a wrong colour, it was NO WRITE AT
++                     * ALL, so every widget drawn through such a surface showed whatever the
++                     * memory held. That reads as randomly coloured chrome that changes between
++                     * runs, which looks like a palette bug and is not one.
++                     *
++                     * Big endian with alpha first puts the skipped byte first and then R, G, B,
++                     * which IS the argb8u layout, so the same writers the neighbouring alpha
++                     * cases use for Big are correct here.
++                     */
++                    case kO2BitmapByteOrder16Big:
++                    case kO2BitmapByteOrder32Big:
++                        self->_writeargb32f = O2SurfaceWrite_argb32f_to_argb8u;
++                        self->_writeargb8u = O2SurfaceWrite_argb8u_to_argb8u;
++                        return YES;
+                     }
+                     break;
+ 
