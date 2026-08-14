@@ -802,3 +802,26 @@ them, not frame focus and not event delivery.
 
 That rules out the remaining explanations on this side, since anything about focus or liveness
 would break the mouse too.
+
+## Resize is DEMONSTRATED, not asserted, 2026-08-14
+
+Driven from the compositor with swaymsg, at two deliberately different widths, and compared as
+pictures: docs/wayland-resize-narrow.png and docs/wayland-resize-wide.png. The log line for the
+same run:
+
+    cider-wayland-window resized number=2 size=700x600
+    cider-wayland-window resized number=2 size=1150x640
+
+A BUFFER THAT CHANGES SIZE IS NOT A RELAYOUT, which is why this needed pictures. What the two shots
+show is the application moving its own furniture:
+
+    toolbar          about 18 icons at 700, many more at 1150, through the omega and the globe
+    formatting bar   ends at abc at 700; at 1150 it adds superscript, subscript, font colour,
+                     highlight, the alignment group and the list group
+    status bar       four fields at 700; at 1150 it adds English (Denmark) and Insert
+    ruler and page   rescaled and recentred at both widths
+
+So the compositor resizes and LibreOffice relayouts. Criterion three is met, and it is met with
+evidence rather than with a size in a log.
+
+The chrome colour is wrong in both shots, which is the separate defect recorded above.
