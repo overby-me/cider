@@ -784,3 +784,21 @@ The chrome colour is inside an image LibreOffice renders itself, with no coloure
 CoreGraphics. The keystrokes are delivered into its own text input method and discarded. Both are
 now characterised precisely, both are outside this port, and going further into either needs
 LibreOffice debug symbols or a reproducer smaller than an office suite.
+
+## The focus notification fires, and the mouse asymmetry is the useful clue
+
+    CIDER_NOTIFY windowDidBecomeKey window=2 delegate=SalFrameWindow
+
+Registering a selector and that selector being CALLED are different claims, and only the first had
+been checked. An observer of this backend own, added for exactly this question, shows the
+notification is really posted and really delivered, with the LibreOffice window as the delegate.
+It is kept behind CIDER_TRACE_KEYS since it costs nothing and this question will come up again.
+
+THE ASYMMETRY IS THE PART TO CARRY FORWARD. Mouse events reach VCL and are ACTED ON: a click in the
+document places a text caret, measured as a 1x17 pixel change. Key events reach the same frame,
+through the same window, into its own insertText:replacementRange:, and produce nothing. So the
+frame is alive, focused and routing events; it is the KEY path inside VCL specifically that drops
+them, not frame focus and not event delivery.
+
+That rules out the remaining explanations on this side, since anything about focus or liveness
+would break the mouse too.

@@ -73,6 +73,7 @@ unsafe extern "C" {
     fn cider_wayland_post_flags_changed(modifiers: u64, window_number: i64);
     fn cider_wayland_set_keyboard_focus(delegate: Object, platform_window: Object);
     fn cider_wayland_carbon_keycode(evdev_keycode: u32) -> c_int;
+    fn cider_wayland_watch_focus_notifications();
 }
 
 /// libxkbcommon, which is a host library reached through a forwarding stub.
@@ -491,6 +492,7 @@ extern "C" fn on_keyboard_enter(
     // WHICH window is activated is printed because it is not the same question as which window the
     // keys are addressed to: the compositor decides focus, and a key event that names one window
     // while another is key goes to a first responder that is not there.
+    unsafe { cider_wayland_watch_focus_notifications() };
     match window::window_for_surface(surface) {
         Some((owner, delegate, _height, number)) => {
             if tracing() {

@@ -179,3 +179,50 @@ int cider_wayland_carbon_keycode(unsigned int evdevKeycode)
 	}
 	return cider_evdev_to_carbon[evdevKeycode];
 }
+
+/*
+ * Does the key window notification actually FIRE.
+ *
+ * -setDelegate: registering a selector and that selector being CALLED are different claims, and so
+ * far only the first was checked. LibreOffice learns which frame has focus from
+ * windowDidBecomeKey:, and it accepts key input only for a focused frame, so a notification that is
+ * registered and never posted would explain characters arriving and being discarded exactly.
+ *
+ * An observer of this backend own answers it without touching the application: if this fires, the
+ * notification works and the application observer fires too.
+ */
+@interface CiderWaylandFocusWatch : NSObject
++ (void) install;
+@end
+
+@implementation CiderWaylandFocusWatch
+
++ (void) becameKey: (NSNotification *) note
+{
+	id window = [note object];
+	fprintf(stderr, "CIDER_NOTIFY windowDidBecomeKey window=%ld delegate=%s\n",
+		[window respondsToSelector: @selector(windowNumber)] ? (long) [window windowNumber] : -1,
+		[window respondsToSelector: @selector(delegate)] && [window delegate]
+			? class_getName([[window delegate] class]) : "nil");
+	fflush(stderr);
+}
+
++ (void) install
+{
+	static BOOL installed = NO;
+	if (installed || getenv("CIDER_TRACE_KEYS") == NULL) {
+		return;
+	}
+	installed = YES;
+	[[NSNotificationCenter defaultCenter] addObserver: self
+											 selector: @selector(becameKey:)
+												 name: NSWindowDidBecomeKeyNotification
+											   object: nil];
+}
+
+@end
+
+void cider_wayland_watch_focus_notifications(void)
+{
+	[CiderWaylandFocusWatch install];
+}
