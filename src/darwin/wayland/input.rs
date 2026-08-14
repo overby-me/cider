@@ -385,6 +385,14 @@ extern "C" fn on_pointer_axis(
     // the conventional ten units per line.
     let amount = -unsafe { wl::cider_wl_fixed_to_double(value) } / 10.0;
     let (dx, dy) = if axis == 0 { (0.0, amount) } else { (amount, 0.0) };
+    // THE SCROLL HAD NO TRACE EITHER, so a wheel that does nothing could not be told from a wheel
+    // whose events never arrived. Both were live possibilities: this harness could not produce an
+    // axis event at all until a virtual pointer device was used.
+    if tracing() {
+        println!(
+            "cider-wayland-input axis={axis} value={value} dx={dx:.2} dy={dy:.2} x={px:.0} y={py:.0}"
+        );
+    }
     unsafe {
         cider_wayland_post_mouse(NS_SCROLL_WHEEL, px, py, height, modifiers, delegate, 0, 0, dx, dy);
     }
@@ -850,6 +858,24 @@ pub fn pointer_location() -> (f64, f64) {
     match INPUT.lock() {
         Ok(st) => (st.pointer_x, st.pointer_y),
         Err(_) => (0.0, 0.0),
+    }
+}
+
+/// The pointer position in SCREEN coordinates, which is what -[NSEvent mouseLocation] answers.
+///
+/// Wayland reports motion in surface coordinates with y increasing downwards, and AppKit wants the
+/// screen with y increasing upwards, so this is the window origin plus the flipped local position.
+/// Applications ask this before deciding which widget an event belongs to: LibreOffice does it for
+/// every scroll wheel event, and with the origin as the answer the wheel was applied to a point
+/// outside the window, so eight scroll events reached its own scrollWheel: and moved nothing.
+pub fn pointer_screen_location() -> (f64, f64) {
+    let (surface, x, y) = match INPUT.lock() {
+        Ok(st) => (st.pointer_focus, st.pointer_x, st.pointer_y),
+        Err(_) => return (0.0, 0.0),
+    };
+    match window::frame_for_surface(surface) {
+        Some((origin_x, origin_y, height)) => (origin_x + x, origin_y + (height - y)),
+        None => (x, y),
     }
 }
 

@@ -362,6 +362,7 @@ static CiderIdIMP cider_vcl_became_key;
 static CiderIdIMP cider_vcl_mouse_down;
 static CiderIdIMP cider_vcl_mouse_up;
 static CiderIdIMP cider_vcl_mouse_dragged;
+static CiderIdIMP cider_vcl_scroll_wheel;
 typedef void (*CiderRectIMP)(id, SEL, NSRect);
 static CiderRectIMP cider_vcl_draw_rect;
 typedef void (*CiderGetRGBAIMP)(id, SEL, CGFloat *, CGFloat *, CGFloat *, CGFloat *);
@@ -479,6 +480,16 @@ static void cider_vcl_trace_became_key(id self, SEL _cmd, id note)
  */
 static void cider_vcl_trace_mouse(id self, SEL _cmd, id event)
 {
+	if (_cmd == sel_registerName("scrollWheel:")) {
+		fprintf(stderr, "CIDER_VCL scrollWheel deltaX=%.2f deltaY=%.2f\n",
+			(event != nil) ? (double) [(NSEvent *) event deltaX] : 0.0,
+			(event != nil) ? (double) [(NSEvent *) event deltaY] : 0.0);
+		fflush(stderr);
+		if (cider_vcl_scroll_wheel != NULL) {
+			cider_vcl_scroll_wheel(self, _cmd, event);
+		}
+		return;
+	}
 	fprintf(stderr, "CIDER_VCL %s clickCount=%ld buttonNumber=%ld\n", sel_getName(_cmd),
 		(event != nil && [event respondsToSelector: @selector(clickCount)])
 			? (long) [(NSEvent *) event clickCount] : -1,
@@ -490,6 +501,8 @@ static void cider_vcl_trace_mouse(id self, SEL _cmd, id event)
 		original = cider_vcl_mouse_down;
 	} else if (_cmd == sel_registerName("mouseUp:")) {
 		original = cider_vcl_mouse_up;
+	} else if (_cmd == sel_registerName("scrollWheel:")) {
+		original = cider_vcl_scroll_wheel;
 	} else {
 		original = cider_vcl_mouse_dragged;
 	}
@@ -706,6 +719,8 @@ void cider_wayland_trace_vcl(void)
 	cider_vcl_wrap(view, "mouseUp:", (IMP) cider_vcl_trace_mouse, (void **) &cider_vcl_mouse_up);
 	cider_vcl_wrap(view, "mouseDragged:", (IMP) cider_vcl_trace_mouse,
 		(void **) &cider_vcl_mouse_dragged);
+	cider_vcl_wrap(view, "scrollWheel:", (IMP) cider_vcl_trace_mouse,
+		(void **) &cider_vcl_scroll_wheel);
 	cider_vcl_wrap(view, "drawRect:", (IMP) cider_vcl_trace_draw_rect,
 		(void **) &cider_vcl_draw_rect);
 }

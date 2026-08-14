@@ -107,18 +107,26 @@ extern "C" fn graphics_port_for_print(
     std::ptr::null_mut()
 }
 
-/// NO POINTER WITHOUT A SEAT, and no query for its position even with one: Wayland delivers motion
-/// as events to a focused surface and offers no way to ask. The origin is what AppKit reads as
-/// nothing to report.
+/// Where the pointer is, in screen coordinates.
+///
+/// Wayland has no request that asks: the position is only ever known from the motion events that
+/// reported it, which is exactly what this returns. Answering the origin instead, which is what this
+/// did while there was no seat to track, is not a harmless placeholder. An application that asks
+/// where the pointer is before acting on an event decides the event happened at the corner of the
+/// screen: LibreOffice does that for every scroll, so the wheel reached its own scrollWheel: eight
+/// times and moved nothing.
 extern "C" fn mouse_location(_this: Object, _cmd: Sel) -> NsPoint {
-    NsPoint { x: 0.0, y: 0.0 }
+    let (x, y) = crate::input::pointer_screen_location();
+    NsPoint { x, y }
 }
 
 /// Modifier state arrives with key events in Wayland (wl_keyboard.modifiers) rather than being
 /// queryable, so there is nothing to report until there is a keyboard. Zero means no modifiers
 /// held, which is true whenever nothing has been pressed.
 extern "C" fn current_modifier_flags(_this: Object, _cmd: Sel) -> usize {
-    0
+    // The modifiers arrive with wl_keyboard.modifiers and are kept there; zero was right only while
+    // nothing was tracking them.
+    crate::input::modifier_flags() as usize
 }
 
 /// The window numbers, front to back.

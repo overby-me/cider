@@ -1643,3 +1643,35 @@ forty minutes and 9076 lines of log.
 It matters because buck2 alone cannot check any of it. buck2 builds from vendor/src, which is the
 MATERIALISED pin tree and is not tracked, so it will keep building fixes that exist only on this
 disk and report success. This is the only path that starts from what is committed.
+
+## The wheel scrolls, and two placeholders that had stopped being true
+
+docs/wayland-wheel-scrolls.png: eight wheel notches over the page and the view moves to the next
+page, status bar Pages 1 and 2 of 2.
+
+TWO BUGS, and the second is the interesting one.
+
+THE POINTER WAS ALWAYS AT THE ORIGIN. -[NSDisplay mouseLocation] returned 0,0 and
+-currentModifierFlags returned 0, both written when there was no seat to track and both left behind
+when there was. An application that asks where the pointer is before acting decides the event
+happened at the corner of the screen. They read the tracked state now.
+
+AND -[NSEvent phase] DID NOT EXIST. LibreOffice classifies every scroll with isMouseScrollWheelEvent,
+which reads -phase and -momentumPhase before anything else: a wheel is where both are None, a
+trackpad gesture is where they are not. Neither selector existed, so the first thing the application
+did with a scroll was raise an unrecognized selector, and its own handler swallowed it. Eight scroll
+events reached -[SalFrameView scrollWheel:] with the right deltas and the document did not move.
+
+    cider: RAISE NSInvalidArgumentException: -[NSEvent_mouse phase]: unrecognized selector
+
+That line is why CIDER_TRACE_EXCEPTIONS exists, and it named the bug in one run after two rounds of
+guessing had not.
+
+A NOTE ON THE HARNESS. None of this could be tested until the pointer was driven by a virtual
+pointer device (wlrctl) rather than by compositor IPC: swaymsg cursor set warps and drops the button
+grab, cursor move is coalesced and delivered after the release, and cursor press cannot make an axis
+event at all. With a virtual device the drag arrives as it should, motion with buttons=0x1 and type 6,
+NSLeftMouseDragged.
+
+STILL NOT WORKING: a drag across text does not SELECT it. The events are right, so the next question
+is what LibreOffice does with them.

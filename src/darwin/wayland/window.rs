@@ -932,6 +932,19 @@ fn app_identifier() -> String {
         .unwrap_or_else(|| "cider".to_string())
 }
 
+/// The frame origin and height of the window that owns a surface, for turning a pointer position
+/// into the screen coordinates AppKit asks for.
+pub fn frame_for_surface(surface: *mut wl::WlSurface) -> Option<(f64, f64, f64)> {
+    let list = WINDOWS.lock().ok()?;
+    for &p in list.iter() {
+        let st = unsafe { (p as *mut WindowState).as_ref() }?;
+        if st.surface == surface {
+            return Some((st.frame.origin.x, st.frame.origin.y, st.frame.size.height));
+        }
+    }
+    None
+}
+
 /// Seconds since the backend was loaded.
 ///
 /// EVERY PERFORMANCE QUESTION NEEDS A CLOCK. Without one the log says what happened in what order
