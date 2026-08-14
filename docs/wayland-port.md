@@ -1398,3 +1398,45 @@ TWO HARNESS BUGS WERE IN THE WAY, and both made the resize look broken when it w
 Resizing the OUTPUT rather than the window is also what a person actually does by dragging a window
 edge; a floating resize is a request the compositor may clamp, and it left the width unchanged every
 time.
+
+## THE TWENTY SECOND DEATH WAS A WORKQUEUE THREAD NESTING INTO ITS OWN STACK, 2026-08-14 night
+
+LibreOffice ran for eighteen to twenty five seconds and died, every run, on both backends. It does
+not any more: alive at 8, 16, 24, 32 and 40 seconds, no crash line, and the event pump steady at
+about 58 calls a second through t=48.
+
+### What it was
+
+_start_wqthread never touches the stack pointer. On a real system XNU sets it before jumping, so a
+worker thread begins each item at the top of a fresh stack. This emulation jumped to that same entry
+point from inside sys_workq_kernreturn, which is itself running on the thread stack, and left the
+stack pointer where it was. Every park and wake cycle NESTED: the frames of the previous cycle
+stayed below the new ones.
+
+    48x _start_wqthread
+    48x _pthread_wqthread
+    48x _dispatch_source_invoke
+    48x ___workq_kernreturn
+    48x _sys_workq_kernreturn
+
+That is one sampled window of a 1.5 MB stack, and the fix is one instruction: the pthread structure
+sits AT the top of the stack for a workqueue thread, which is what libpthread records as stackaddr,
+so restoring rsp to self is exactly what the kernel does.
+
+### Why it took so long to see
+
+It never looked like a stack overflow. The thread ran out of room at a different place every run, so
+the symptom was a fault inside free(), or an os_unfair_lock aborting for recursion, or a heap that
+the allocator refused to walk. Three separate memory bugs that were all the same bug.
+
+### The reproducer, which is the part worth keeping
+
+tests/buck2/gui/timeout_probe.m. In its run loop mode it does nothing but enter and leave
+CFRunLoopRunInMode with a sixteen millisecond timeout, which creates and cancels one dispatch timer
+source per pass. Before the fix it died between pass 500 and pass 1000, reliably, in about ten
+seconds. After it, 1520 passes and a clean exit. Its sources mode is smaller still: create, cancel
+and release timer sources in a loop, with no CoreFoundation at all.
+
+Getting from a word processor that dies in twenty seconds to a forty line program that dies in ten
+is most of the work here. The stack histogram is what named it: dumping the whole live stack and
+counting return addresses by frequency, rather than reading the top frame.
