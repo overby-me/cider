@@ -915,3 +915,26 @@ non US keyboard.
 
 The probe still types hello into a modern NSTextInputClient, and the weston control still reaches
 13 windows and survives.
+
+## Modifiers were hard coded bit positions, which is the same mistake as the key codes
+
+    cider-wayland-input modifiers=0x40000 depressed=0x4      0x40000 is NSControlKeyMask
+
+WHICH BIT IS CONTROL IS A QUESTION FOR THE KEYMAP. The positions used before were the conventional
+xkb order, which holds for ordinary layouts and not for synthetic ones, and a wrong guess means a
+modifier that is never reported: every shortcut misses and nothing says why. The indices now come
+from xkb_keymap_mod_get_index by name, with XKB_STATE_MODS_EFFECTIVE so a latched or locked
+modifier counts as held. The old order remains as a fallback for the window before a keymap arrives.
+
+AND CTRL+Q STILL DOES NOT QUIT LIBREOFFICE. It now receives the correct key code, kVK_ANSI_Q, with
+the correct modifier, and does nothing, so this fix is correct without being the cause. That is the
+second such fix in two rounds.
+
+### What that pair of results means
+
+A shortcut and a character take different branches inside VCL and BOTH produce nothing. So the
+failure is not in text handling specifically; it is that VCL is not acting on key events for this
+frame at all, while it does act on mouse events for the same frame. Everything AppKit side is
+measured correct: the key code, the modifiers, the key window, the notification, the first
+responder, the text interpretation, and the delivery into the application own
+insertText:replacementRange:.

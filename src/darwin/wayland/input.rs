@@ -114,6 +114,11 @@ unsafe extern "C" {
     /// The keysym the LAYOUT resolves this key to, which is the only thing that knows what the key
     /// means. The physical keycode does not.
     fn xkb_state_key_get_one_sym(state: *mut XkbState, key: u32) -> u32;
+    /// WHICH BIT IS CONTROL is a question for the keymap, not a constant. The conventional order
+    /// holds for ordinary layouts and not for synthetic ones, and guessing it wrongly means a
+    /// modifier that is never reported.
+    fn xkb_keymap_mod_get_index(keymap: *mut XkbKeymap, name: *const c_char) -> u32;
+    fn xkb_state_mod_index_is_active(state: *mut XkbState, idx: u32, components: u32) -> c_int;
 }
 
 /// xkb_keymap_format: the only text format there is.
@@ -640,26 +645,59 @@ extern "C" fn on_keyboard_modifiers(
                 );
             }
         }
-        // The bit positions are the xkb defaults for the standard modifiers. Reading them by name
-        // through xkb_keymap_mod_get_index would be better and is the obvious next step; this is
-        // correct for every keymap that keeps the usual order, which is all of them in practice.
+        /*
+         * ASK THE KEYMAP WHICH BIT IS WHICH. The bit positions used before were the conventional
+         * xkb order, which holds for ordinary layouts and not for synthetic ones, and a wrong
+         * guess means a modifier that is simply never reported: every shortcut misses and nothing
+         * says why. This is the same mistake the key codes had, one layer along.
+         *
+         * XKB_STATE_MODS_EFFECTIVE, so a latched or locked modifier counts as held, which is what
+         * an application means by asking whether shift is down.
+         */
+        const EFFECTIVE: u32 = 1 << 3;
         let mut flags = 0u64;
-        if mods_depressed & (1 << 0) != 0 {
-            flags |= NS_SHIFT;
-        }
-        if mods_locked & (1 << 1) != 0 {
-            flags |= NS_ALPHA_SHIFT;
-        }
-        if mods_depressed & (1 << 2) != 0 {
-            flags |= NS_CONTROL;
-        }
-        if mods_depressed & (1 << 3) != 0 {
-            flags |= NS_ALTERNATE;
-        }
-        if mods_depressed & (1 << 6) != 0 {
-            flags |= NS_COMMAND;
+        if !st.xkb_state.is_null() && !st.xkb_keymap.is_null() {
+            let active = |name: &std::ffi::CStr| -> bool {
+                unsafe {
+                    let idx = xkb_keymap_mod_get_index(st.xkb_keymap, name.as_ptr());
+                    idx != u32::MAX
+                        && xkb_state_mod_index_is_active(st.xkb_state, idx, EFFECTIVE) > 0
+                }
+            };
+            if active(c"Shift") {
+                flags |= NS_SHIFT;
+            }
+            if active(c"Lock") {
+                flags |= NS_ALPHA_SHIFT;
+            }
+            if active(c"Control") {
+                flags |= NS_CONTROL;
+            }
+            if active(c"Mod1") {
+                flags |= NS_ALTERNATE;
+            }
+            if active(c"Mod4") {
+                flags |= NS_COMMAND;
+            }
+        } else {
+            // No keymap yet: the conventional order is the only thing left, and it is better than
+            // reporting nothing at all.
+            if mods_depressed & (1 << 0) != 0 {
+                flags |= NS_SHIFT;
+            }
+            if mods_locked & (1 << 1) != 0 {
+                flags |= NS_ALPHA_SHIFT;
+            }
+            if mods_depressed & (1 << 2) != 0 {
+                flags |= NS_CONTROL;
+            }
         }
         st.modifiers = flags;
+        if tracing() {
+            println!(
+                "cider-wayland-input modifiers={flags:#x} depressed={mods_depressed:#x} latched={mods_latched:#x} locked={mods_locked:#x}"
+            );
+        }
         (flags, st.keyboard_focus)
     };
     let number = window::window_for_surface(surface).map(|(_, _, _, n)| n).unwrap_or(0);
