@@ -250,6 +250,16 @@ pub fn deliver_pending_configures() {
                     );
                 }
                 objc::msg_send0(delegate, objc::sel_registerName(cstr!("display")));
+                /*
+                 * AND PRESENT IT. -display draws into the pages the compositor maps, but a
+                 * compositor does not re-read a surface it was not told about: without an attach,
+                 * a damage and a commit, the drawing is invisible. AppKit flushes after its own
+                 * display cycle and this one is ours, so the flush is ours to do.
+                 *
+                 * Measured before adding it: the application drawRect ran twenty times against a
+                 * forced display and the frame on screen never changed once.
+                 */
+                present(st);
                 if std::env::var_os("CIDER_WAYLAND_TRACE_DISPLAY").is_some() {
                     println!(
                         "cider-wayland-window display-forced number={number} content={}",
@@ -829,6 +839,39 @@ fn report_pixels(st: &mut WindowState) {
         "cider-wayland-window pixels=drawn number={} changed={drawn}/{total} colours={distinct}{capped} centre={centre:08x}",
         st.number
     );
+}
+
+/// Ask every mapped window to redraw, if CIDER_WAYLAND_FORCE_REDRAW is set to a millisecond period.
+///
+/// A DIAGNOSTIC BEFORE IT IS ANYTHING ELSE. The application paints its window three times and then
+/// never again, and there are two very different reasons that could be: it never invalidates
+/// anything, or it invalidates and the display cycle never reaches drawRect. Forcing the display
+/// separates them in one run, and if the picture CHANGES when forced, everything that is wrong on
+/// screen right now is a stale frame rather than a drawing bug.
+pub fn force_redraw_if_due() {
+    let Some(period) = std::env::var_os("CIDER_WAYLAND_FORCE_REDRAW") else {
+        return;
+    };
+    let Some(ms) = period.to_string_lossy().parse::<u64>().ok() else {
+        return;
+    };
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static LAST: AtomicU64 = AtomicU64::new(0);
+    let now = (elapsed() * 1000.0) as u64;
+    let last = LAST.load(Ordering::Relaxed);
+    if now.saturating_sub(last) < ms {
+        return;
+    }
+    LAST.store(now, Ordering::Relaxed);
+    let Ok(list) = WINDOWS.lock() else {
+        return;
+    };
+    for &p in list.iter() {
+        let st = unsafe { &mut *(p as *mut WindowState) };
+        if st.mapped && !st.delegate.is_null() {
+            st.needs_full_display = true;
+        }
+    }
 }
 
 /// Seconds since the backend was loaded.

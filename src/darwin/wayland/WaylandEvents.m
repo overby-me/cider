@@ -362,6 +362,8 @@ static CiderIdIMP cider_vcl_became_key;
 static CiderIdIMP cider_vcl_mouse_down;
 static CiderIdIMP cider_vcl_mouse_up;
 static CiderIdIMP cider_vcl_mouse_dragged;
+typedef void (*CiderRectIMP)(id, SEL, NSRect);
+static CiderRectIMP cider_vcl_draw_rect;
 typedef void (*CiderGetRGBAIMP)(id, SEL, CGFloat *, CGFloat *, CGFloat *, CGFloat *);
 
 static const char *cider_vcl_text(id string)
@@ -537,6 +539,27 @@ CIDER_RGBA_WRAP(0)
 CIDER_RGBA_WRAP(1)
 CIDER_RGBA_WRAP(2)
 
+/*
+ * IS THE APPLICATION EVEN ASKED TO DRAW.
+ *
+ * -[NSWindow display] is called and no flush follows, which has two very different explanations:
+ * AppKit never reaches the view, or the view is reached and decides it has nothing to do. Only the
+ * application can answer the second, so the question is put to its own drawRect.
+ */
+static void cider_vcl_trace_draw_rect(id self, SEL _cmd, NSRect rect)
+{
+	static int printed;
+	if (printed < 20) {
+		printed++;
+		fprintf(stderr, "CIDER_VCL drawRect x=%.0f y=%.0f w=%.0f h=%.0f\n", (double) rect.origin.x,
+			(double) rect.origin.y, (double) rect.size.width, (double) rect.size.height);
+		fflush(stderr);
+	}
+	if (cider_vcl_draw_rect != NULL) {
+		cider_vcl_draw_rect(self, _cmd, rect);
+	}
+}
+
 static void cider_vcl_wrap(Class cls, const char *name, IMP replacement, void **saved)
 {
 	if (cls == Nil) {
@@ -683,6 +706,8 @@ void cider_wayland_trace_vcl(void)
 	cider_vcl_wrap(view, "mouseUp:", (IMP) cider_vcl_trace_mouse, (void **) &cider_vcl_mouse_up);
 	cider_vcl_wrap(view, "mouseDragged:", (IMP) cider_vcl_trace_mouse,
 		(void **) &cider_vcl_mouse_dragged);
+	cider_vcl_wrap(view, "drawRect:", (IMP) cider_vcl_trace_draw_rect,
+		(void **) &cider_vcl_draw_rect);
 }
 
 /*
@@ -735,4 +760,25 @@ void cider_wayland_wake_main(void)
 	if (main != NULL) {
 		CFRunLoopWakeUp(main);
 	}
+}
+
+/*
+ * DRAIN THE MAIN QUEUE, which is what CoreFoundation does on macOS and nothing does here.
+ *
+ * LibreOffice wakes its own event loop with dispatch_async(dispatch_get_main_queue(), ...): that is
+ * the ONLY dispatch call it makes, and everything it defers depends on the block arriving. Blocks on
+ * the main queue run when the main thread drains it, and on macOS the main run loop does that by
+ * calling _dispatch_main_queue_callback_4CF from its main queue port handler. The run loop here is
+ * Cocotron own, so that call never happened and every block queued for the main thread sat there
+ * forever.
+ *
+ * The callback returns immediately when the queue is empty, and it crashes with a clear message if
+ * it is called from the wrong thread, so calling it once per pass through the event pump is both
+ * cheap and self checking.
+ */
+void _dispatch_main_queue_callback_4CF(void *msg);
+
+void cider_wayland_drain_main_queue(void)
+{
+	_dispatch_main_queue_callback_4CF(NULL);
 }

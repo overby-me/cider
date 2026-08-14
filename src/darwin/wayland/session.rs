@@ -302,6 +302,33 @@ pub fn pump() {
     if d.is_null() {
         return;
     }
+    /*
+     * NOT RE-ENTRANT, and libwayland says so: prepare_read, read_events and cancel_read are a
+     * protocol with a reader COUNT behind it, and entering it again before the previous pair has
+     * finished leaves that count wrong. Re-entry is not hypothetical here: this runs from
+     * -nextEventMatchingMask:, an event handler can call back into AppKit, and AppKit asks for the
+     * next event whenever it feels like it, so the call can nest inside itself.
+     *
+     * The symptom of getting this wrong is not a Wayland error. It is a heap that stops making
+     * sense somewhere else entirely, which is exactly what was seen: a fault inside free(), in
+     * _set_tiny_meta_header_free, eighteen seconds in, once the application started running its own
+     * deferred work and this began to be called sixty times a second instead of five.
+     */
+    static IN_PUMP: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    struct PumpGuard;
+    impl Drop for PumpGuard {
+        fn drop(&mut self) {
+            IN_PUMP.store(false, std::sync::atomic::Ordering::Release);
+        }
+    }
+    if IN_PUMP.swap(true, std::sync::atomic::Ordering::Acquire) {
+        static REPORTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+        if !REPORTED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            println!("cider-wayland-session pump=reentered skipped=yes");
+        }
+        return;
+    }
+    let _guard = PumpGuard;
     unsafe {
         // prepare_read fails while anything is already decoded, so drain first. The loop is
         // libwayland's own idiom, not a retry.

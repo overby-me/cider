@@ -1269,3 +1269,41 @@ explain it. Dark mode is ruled out too: AppleInterfaceStyle is nil and the effec
 NSAppearanceNameAqua. Before -O2 the same regions were a DIFFERENT arbitrary colour every run;
 zeroed memory rather than recycled memory is the whole difference, so the value is still one nobody
 set, and it is set inside LibreOffice. docs/wayland-chrome-black-at-O2.png.
+
+## The main queue was never drained, and the crash is not ours, 2026-08-14 later
+
+### LibreOffice queues its wakeups on the main queue and nothing drained it
+
+dispatch_async is the ONLY dispatch call LibreOffice makes, and it makes it on the main queue:
+AquaSalInstance::wakeupYield posts a block there to tell its own event loop that something arrived.
+Blocks on the main queue run when the main thread drains it, and on macOS the run loop does that by
+calling _dispatch_main_queue_callback_4CF from its main queue port handler. The run loop here is
+Cocotron own, so that call never happened and every block queued for the main thread sat there for
+the life of the process.
+
+The event pump calls it now, once per pass, which is where the run loop would. The callback returns
+immediately on an empty queue and crashes loudly if called from the wrong thread, so it is cheap and
+self checking.
+
+### A display that is not presented is invisible
+
+-[NSWindow display] draws into the pages the compositor maps, but a compositor does not re-read a
+surface it was not told about. Measured with a forced redraw: the application drawRect ran twenty
+times and the frame on screen never changed once. deliver_pending_configures now presents after it
+displays, and CIDER_WAYLAND_FORCE_REDRAW=<ms> is the diagnostic that found it.
+
+### The chrome is drawn black EVERY frame, and the crash is not Wayland
+
+Two eliminations, both by measurement.
+
+THE BLACK IS NOT A STALE FRAME. With a forced redraw every 500 ms and a present after each one, the
+picture is redrawn about fifty times and comes out black every time. The application draws it that
+way, deliberately, on every pass.
+
+THE CRASH IS NOT THE WAYLAND BACKEND. The same LibreOffice on the X11 backend, which is a different
+NSDisplay entirely, reaches the same point and dies the same way with "Unspecified Application
+Error". The waker did not cause the crash; it let the application run far enough to reach one that
+was always there. The allocator, asked to check itself (MallocCheckHeapEach), aborts inside free
+under _dispatch_source_invoke -> _dispatch_dispose, and the other face of the same damage is an
+os_unfair_lock taken recursively, which is what a corrupted lock word looks like. The lock identity
+was checked and cleared: thread ports are unique, thirteen of thirteen.

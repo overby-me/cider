@@ -73,6 +73,10 @@ extern "C" fn display_init(this: Object, _cmd: Sel) -> Object {
 /// application, so the symptom of skipping this is a window that stops responding rather than an
 /// error anyone can see. This is the same shape as the X11 backend, which calls
 /// -processPendingEvents here for the same reason.
+unsafe extern "C" {
+    fn cider_wayland_drain_main_queue();
+}
+
 extern "C" fn display_next_event(
     this: Object,
     _cmd: Sel,
@@ -82,9 +86,14 @@ extern "C" fn display_next_event(
     dequeue: objc::ObjcBool,
 ) -> Object {
     session::pump();
+    // THE APPLICATION OWN DEFERRED WORK, which nothing else here runs. See the comment on the C
+    // side: LibreOffice queues its wakeups on the main queue and the main queue is drained by the
+    // main thread, which is this one, at the point the run loop would do it on macOS.
+    unsafe { cider_wayland_drain_main_queue() };
     // AFTER the pump, because that is what turns compositor events into the pending state this
     // applies. Doing it here rather than in the callback is the whole point: the main loop is
     // where re-entering AppKit is safe.
+    window::force_redraw_if_due();
     window::deliver_pending_configures();
     // WHETHER THE APPLICATION ASKS THIS BACKEND FOR EVENTS AT ALL is the question underneath a
     // window that never redraws, and it is not answerable from the outside: an application with
