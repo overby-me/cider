@@ -410,3 +410,33 @@ negative results that each killed a leading theory.
   the Wayland callback re-enters AppKit; it needs deferring to the main loop.
 - Every killed run leaves a crash flag, so the next start spends itself in a modal recovery dialog.
   The runner clears it; a bare run needs `-norestore`.
+
+## Input works, verified by injection rather than by hand, 2026-08-14
+
+    INPUT_PROBE totals mouseDown=1 mouseUp=1 moved=2 keyDown=5 keyUp=5 flags=2
+    INPUT_PROBE typed=hello
+    INPUT_PROBE VERDICT mouse=WORKS keyboard=WORKS
+
+Pointer motion, a button press and release, and five keystrokes that arrived as the characters
+h e l l o, resolved through the compositor keymap with libxkbcommon.
+
+### The harness is the hard part, and it is worth writing down
+
+weston headless advertises a seat with NO capabilities, so input cannot be tested against it even
+in principle. sway on the wlroots HEADLESS backend has a seat but no devices, and the tools that
+create virtual ones (wlrctl, wtype) hold the device only while they run. That is a few
+milliseconds, which is far too short for a client to see the capabilities event, ask for a pointer
+and be handed one. Measured rather than assumed: the pointer attached 120 TIMES and received not
+one event.
+
+What works is sway NESTED in the user session (WLR_BACKENDS=wayland). The wayland backend forwards
+real, persistent devices, so the capability is stable and an injected event is delivered like any
+other. Injection goes to the nested compositor, so nothing reaches whatever the user had focused.
+See scratchpad/run-input-nested.sh.
+
+### The bug this found
+
+connect() built its xdg_wm_base and registry listeners as LOCALS. libwayland keeps the pointer and
+does not copy the struct, so both dangled the moment connect() returned. weston never sends
+xdg_wm_base.ping, so this was invisible; sway pings as soon as a surface exists and the client
+jumped into reused stack memory, exiting with code 1 and no output at all.
