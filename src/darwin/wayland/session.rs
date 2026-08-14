@@ -256,7 +256,8 @@ pub fn connect() -> bool {
             "cider-wayland-appkit init=ok display=connected globals={} seat={} output={}",
             globals.total, globals.seat, globals.output
         );
-        true
+        start_waker();
+    true
     }
 }
 
@@ -325,4 +326,63 @@ pub fn roundtrip() {
     if !d.is_null() {
         unsafe { wl::wl_display_roundtrip(d) };
     }
+}
+
+/// A thread whose only job is to poke the main thread.
+///
+/// THE COMPOSITOR CANNOT REACH A SLEEPING CLIENT. Wayland delivers everything over a socket, and an
+/// application parked inside the Darwin runtime is not watching it; the connection is only serviced
+/// when the application happens to ask AppKit for an event. Measured on LibreOffice, that stopped
+/// happening five seconds after launch.
+///
+/// The fd is watched rather than a timer run on its own, so an idle application stays idle, with a
+/// slow tick underneath it so that time based work (a blinking caret, an animation, a deferred
+/// repaint) still gets a chance. Nothing here touches the Wayland connection itself: reading it from
+/// two threads needs the prepare_read protocol, and the main thread is the one that reads.
+pub fn start_waker() {
+    use std::os::raw::c_int;
+    unsafe extern "C" {
+        fn cider_wayland_wake_main();
+        /// Looks the main run loop up ON THE MAIN THREAD, before the waker can race its creation.
+        fn cider_wayland_wake_prepare();
+        fn poll(fds: *mut PollFd, nfds: u64, timeout: c_int) -> c_int;
+    }
+    #[repr(C)]
+    struct PollFd {
+        fd: c_int,
+        events: i16,
+        revents: i16,
+    }
+    const POLLIN: i16 = 0x0001;
+
+    // A SWITCH, because this changes when the application runs its own deferred work, and that is
+    // exactly the kind of change that wants a comparison run rather than an argument.
+    if std::env::var_os("CIDER_WAYLAND_NO_WAKER").is_some() {
+        println!("cider-wayland-session waker=off reason=CIDER_WAYLAND_NO_WAKER");
+        return;
+    }
+    unsafe { cider_wayland_wake_prepare() };
+    let fd = unsafe { wl::cider_wl_display_get_fd(display()) };
+    if fd < 0 {
+        println!("cider-wayland-session waker=skipped reason=no-fd");
+        return;
+    }
+    std::thread::Builder::new()
+        .name("cider-wayland-waker".to_string())
+        .spawn(move || {
+            loop {
+                let mut fds = PollFd { fd, events: POLLIN, revents: 0 };
+                // The timeout IS the idle tick. Long enough that an idle application is not spun,
+                // short enough that a caret blink and a deferred repaint still happen.
+                let ready = unsafe { poll(&mut fds as *mut PollFd, 1, 16) };
+                unsafe { cider_wayland_wake_main() };
+                if ready > 0 {
+                    // The socket stays readable until the main thread reads it, so waking in a tight
+                    // loop would burn a core. This is the smallest pause that cannot outrun a frame.
+                    std::thread::sleep(std::time::Duration::from_millis(4));
+                }
+            }
+        })
+        .ok();
+    println!("cider-wayland-session waker=started fd={fd}");
 }

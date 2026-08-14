@@ -1193,3 +1193,46 @@ header. Now written as two writes.
 
     text to PDF conversion, before: 4.58 s, 4.45 s
     text to PDF conversion, after:  3.40 s, 3.59 s
+
+## Nobody was watching the socket, and the whole runtime is built -O0, 2026-08-14
+
+### The application stopped asking for events after five seconds
+
+Wayland delivers everything over a file descriptor and NOTHING in this application waits on it. The
+main thread parks inside the Darwin runtime, in a Mach receive under libdispatch, and comes back
+only when the runtime has a reason of its own. Counted with a clock on the call:
+
+    nextevent calls=200  t=4.99      and then nothing for the rest of the run
+
+That is the whole explanation for a window that draws once and never repaints, a caret that never
+blinks and text that appears only if something else forces a redraw. It is not a paint bug.
+
+The fix here is a thread that polls the connection fd and wakes the main thread, which is the small
+version of the eventual design (making the fd a run loop source). With it:
+
+    nextevent calls=1000  t=18.2     about 62 calls a second, steady
+
+CIDER_WAYLAND_NO_WAKER turns it off, because a change that alters WHEN an application runs its own
+deferred work needs a comparison run, not an argument.
+
+### And then it crashed, which is how the -O0 was found
+
+With the application actually running its deferred work, it died about eighteen seconds in. The
+fault was a store of a FUNCTION ARGUMENT into its own stack frame, in _dispatch_source_wakeup, with
+the stack pointer inside the PROT_NONE guard page below a 520 KB worker stack. That is a stack
+overflow, and the disassembly says why: 656 bytes of frame for a function taking three arguments,
+because every one of the 108 targets in vendor/src/BUCK is compiled -O0 and none is compiled -O2.
+
+libdispatch RELIES on tail calls: its wakeup and drain paths call each other in a chain an optimiser
+turns into a loop. At -O0 every link is a real frame. Building libdispatch -O2 (493 KB against
+849 KB) removes that crash.
+
+It also answers a question the user asked directly, about performance: the whole runtime, this
+rasteriser and this font stack included, is built unoptimised.
+
+### What is still wrong
+
+The application now runs live for about eighteen to twenty seconds and then dies inside the memory
+allocator or on an os_unfair_lock taken recursively, differently between runs. Racy corruption
+looks like that. Caching the main run loop so the waker cannot race its creation did not fix it, so
+the next candidate is re-entrancy in what now runs during a wakeup rather than the wakeup itself.

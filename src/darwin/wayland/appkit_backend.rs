@@ -94,11 +94,17 @@ extern "C" fn display_next_event(
         use std::sync::atomic::{AtomicU64, Ordering};
         static CALLS: AtomicU64 = AtomicU64::new(0);
         let n = CALLS.fetch_add(1, Ordering::Relaxed) + 1;
-        if n <= 3 || n % 500 == 0 {
+        // HOW OFTEN, not just whether. NSApplication redisplays between events, so the rate of this
+        // call IS the frame rate available to the application, and a rate of a few per second looks
+        // exactly like a window that does not repaint.
+        if n <= 3 || n % 200 == 0 {
             // THE MASK IS THE INTERESTING PART. NSDisplay does not merely skip a queued event that
             // does not match it, it DISCARDS it, so an application asking with a narrow mask
             // silently destroys every event of any other type that arrived in the meantime.
-            println!("cider-wayland-appkit nextevent calls={n} mask={mask:#x}");
+            println!(
+                "cider-wayland-appkit nextevent calls={n} mask={mask:#x} t={:.2}",
+                window::elapsed()
+            );
         }
     }
     let super_class = unsafe { objc::class_getSuperclass(objc::object_getClass(this)) };

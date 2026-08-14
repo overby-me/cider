@@ -49,6 +49,8 @@ unsafe extern "C" {
 
     // shim.c, because these are static inline upstream and cannot cross the bridge.
     pub fn cider_wl_display_get_registry(display: *mut WlDisplay) -> *mut WlRegistry;
+    /// The connection file descriptor, for POLLING ONLY. The main thread does the reading.
+    pub fn cider_wl_display_get_fd(display: *mut WlDisplay) -> i32;
     pub fn cider_wl_registry_add_listener(
         registry: *mut WlRegistry,
         listener: *const RegistryListener,

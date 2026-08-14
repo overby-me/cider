@@ -2332,7 +2332,16 @@ cc_objects(
         "-D__DARWIN_UNIX03",
         "-fPIC",
         "-ggdb",
-        "-O0",
+        # -O2 RATHER THAN -O0, and this is a correctness fix before it is a speed one.
+        #
+        # libdispatch relies on tail calls: its wakeup and drain paths call each other in a chain
+        # that an optimising compiler turns into a loop. At -O0 every one of those becomes a real
+        # stack frame, and an unoptimised frame here is 656 bytes for a function that takes three
+        # arguments, so a chain that is bounded on macOS runs off the end of a 520 KB worker stack.
+        # Measured: SIGSEGV with the stack pointer inside the guard page below the stack, faulting
+        # on the store of an ARGUMENT, in _dispatch_source_wakeup. LibreOffice died about eighteen
+        # seconds after launch, every run, as soon as its deferred work started running at all.
+        "-O2",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -2377,7 +2386,8 @@ cc_objects(
         "-nostdinc",
         "-D_Bool=bool",
         "-ggdb",
-        "-O0",
+        "-O2",  # see libdispatch_shared_obj: tail calls, not speed
+
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -2417,7 +2427,8 @@ cc_objects(
         "-D__DARWIN_UNIX03",
         "-fPIC",
         "-ggdb",
-        "-O0",
+        "-O2",  # see libdispatch_shared_obj: tail calls, not speed
+
         "-Wno-return-type",
     ],
     toolchain = "toolchains//:darwin_cc",

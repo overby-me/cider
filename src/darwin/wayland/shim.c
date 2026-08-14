@@ -288,3 +288,9 @@ uint32_t cider_xdg_positioner_constraint_slide_flip(void) {
 	       XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X |
 	       XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y;
 }
+
+// The connection file descriptor, so something other than the main thread can WATCH it. Reading it
+// stays with the main thread; this is only for poll.
+int cider_wl_display_get_fd(struct wl_display *display) {
+	return wl_display_get_fd(display);
+}

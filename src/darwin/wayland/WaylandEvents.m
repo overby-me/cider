@@ -613,6 +613,44 @@ void cider_wayland_trace_vcl(void)
 		}
 	}
 
+	/*
+	 * WHICH COLOUR CLASSES EXIST AND WHICH ONE ANSWERS NOTHING.
+	 *
+	 * The application reads a colour into locals it does not initialise (its own code, not ours), so
+	 * a -getRed:green:blue:alpha: that returns without writing hands it whatever was on the stack.
+	 * That produces a colour with three arbitrary components and an alpha of exactly one, which is
+	 * what the window fill has been every run. Listing the classes and their implementations says
+	 * whether such a class exists at all, which reading one class at a time cannot.
+	 */
+	static BOOL listed = NO;
+	if (!listed) {
+		listed = YES;
+		int count = objc_getClassList(NULL, 0);
+		Class *classes = (Class *) calloc((unsigned) count, sizeof(Class));
+		if (classes != NULL) {
+			count = objc_getClassList(classes, count);
+			for (int i = 0; i < count; i++) {
+				const char *name = class_getName(classes[i]);
+				if (strncmp(name, "NSColor", 7) != 0) {
+					continue;
+				}
+				Method rgba = class_getInstanceMethod(classes[i],
+					@selector(getRed:green:blue:alpha:));
+				Method conv = class_getInstanceMethod(classes[i],
+					@selector(colorUsingColorSpaceName:device:));
+				fprintf(stderr, "CIDER_VCL colorclass=%s getRed=%s own=%d convert=%s\n", name,
+					rgba ? "yes" : "NO",
+					rgba && class_getMethodImplementation(classes[i],
+						@selector(getRed:green:blue:alpha:)) !=
+						class_getMethodImplementation(class_getSuperclass(classes[i]),
+							@selector(getRed:green:blue:alpha:)) ? 1 : 0,
+					conv ? "yes" : "NO");
+			}
+			free(classes);
+			fflush(stderr);
+		}
+	}
+
 	static BOOL done = NO;
 	if (done) {
 		return;
@@ -645,4 +683,56 @@ void cider_wayland_trace_vcl(void)
 	cider_vcl_wrap(view, "mouseUp:", (IMP) cider_vcl_trace_mouse, (void **) &cider_vcl_mouse_up);
 	cider_vcl_wrap(view, "mouseDragged:", (IMP) cider_vcl_trace_mouse,
 		(void **) &cider_vcl_mouse_dragged);
+}
+
+/*
+ * WAKE THE MAIN THREAD.
+ *
+ * WHY THIS IS NEEDED AT ALL. The Wayland connection is a file descriptor and nothing in this
+ * application waits on it: the main thread parks inside the Darwin runtime, in a Mach receive under
+ * libdispatch, and comes back only when the runtime has some reason of its own. Measured, the
+ * application asked this backend for events 200 times in the first five seconds and then went quiet
+ * for the rest of the run. What that looks like on screen is an application that draws its window,
+ * never repaints it, never blinks its caret and shows typed text only if something else happens to
+ * force a redraw.
+ *
+ * The eventual design is to make the connection fd a run loop source. This is the small version of
+ * the same thing: something has to touch the main thread from outside, and both mechanisms the
+ * runtime offers are used because which of them is live depends on what the main thread parked in.
+ * An empty block on the main queue is not a no-op: DELIVERING it is the point.
+ */
+#import <dispatch/dispatch.h>
+#import <CoreFoundation/CoreFoundation.h>
+
+/*
+ * THE RUN LOOP IS LOOKED UP ONCE, ON THE MAIN THREAD.
+ *
+ * CFRunLoopGetMain() creates the main run loop on its first call, and calling it from the waker
+ * thread means that creation can race the main thread using CoreFoundation for anything else.
+ * Measured while it did: two runs, two different memory corruptions, one an abort inside
+ * os_unfair_lock for taking a lock recursively and one a fault inside free(), both about eighteen
+ * seconds in and neither reproducible in the same place twice. Racy corruption looks exactly like
+ * that, and it is not what a wakeup should ever be able to cause.
+ */
+static CFRunLoopRef cider_wayland_main_runloop;
+
+void cider_wayland_wake_prepare(void)
+{
+	if (cider_wayland_main_runloop == NULL) {
+		cider_wayland_main_runloop = CFRunLoopGetMain();
+	}
+}
+
+void cider_wayland_wake_main(void)
+{
+	/*
+	 * NOT dispatch_async. The first version of this posted an empty block to the main queue, which
+	 * woke the application exactly as intended and then crashed it: the fault was inside libdispatch
+	 * itself, at _dispatch_source_wakeup with _dispatch_continuation_pop on the stack, on a worker
+	 * thread rather than the main one. Waking a run loop needs no queue, so the queue is not used.
+	 */
+	CFRunLoopRef main = cider_wayland_main_runloop;
+	if (main != NULL) {
+		CFRunLoopWakeUp(main);
+	}
 }
