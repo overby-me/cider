@@ -148,6 +148,11 @@ struct InputState {
     /// Which buttons are down, so motion can be reported as a DRAG rather than a move. AppKit
     /// treats those as different events and a text selection needs the drag.
     buttons_down: u32,
+    /// Double click state: when the last press was, where it was, and how many in a row.
+    last_press_time: u32,
+    last_press_x: f64,
+    last_press_y: f64,
+    click_count: i32,
     keyboard_focus: *mut wl::WlSurface,
     modifiers: u64,
     xkb_context: *mut XkbContext,
@@ -166,6 +171,10 @@ static INPUT: std::sync::Mutex<InputState> = std::sync::Mutex::new(InputState {
     pointer_x: 0.0,
     pointer_y: 0.0,
     buttons_down: 0,
+    last_press_time: 0,
+    last_press_x: 0.0,
+    last_press_y: 0.0,
+    click_count: 0,
     keyboard_focus: std::ptr::null_mut(),
     modifiers: 0,
     xkb_context: std::ptr::null_mut(),
@@ -311,20 +320,33 @@ extern "C" fn on_pointer_motion(
         }
     }
     unsafe {
-        cider_wayland_post_mouse(event_type, px, py, height, modifiers, delegate, 0, 0, 0.0, 0.0);
+        // A DRAG CARRIES THE CLICK COUNT OF THE CLICK THAT STARTED IT. AppKit does that, and an
+        // application reads it: a drag reported as zero clicks is not a drag that began with a
+        // press, so the code that extends a selection never runs. Measured: mouseDown, six
+        // mouseDragged and mouseUp all reached LibreOffice, every one of the drags said
+        // clickCount=0, and nothing was selected.
+        let clicks = if buttons != 0 { 1 } else { 0 };
+        cider_wayland_post_mouse(event_type, px, py, height, modifiers, delegate, clicks, 0, 0.0, 0.0);
     }
 }
+
+/// How close together in time two presses have to be to count as a double click, in milliseconds.
+/// The macOS default is 500 and the Wayland clock is in the same units, so no conversion.
+const DOUBLE_CLICK_MS: u32 = 500;
+/// And how close in space. A double click is two clicks at the same PLACE; a pointer that moved a
+/// long way between them is two separate clicks however fast they were.
+const DOUBLE_CLICK_SLOP: f64 = 5.0;
 
 extern "C" fn on_pointer_button(
     _data: *mut c_void,
     _pointer: *mut wl::WlPointer,
     _serial: u32,
-    _time: u32,
+    time: u32,
     button: u32,
     state: u32,
 ) {
     let pressed = state == unsafe { wl::cider_wl_pointer_button_state_pressed() };
-    let (surface, px, py, modifiers) = {
+    let (surface, px, py, modifiers, clicks) = {
         let Ok(mut st) = INPUT.lock() else { return };
         let bit = match button {
             BTN_LEFT => 1u32 << 0,
@@ -336,7 +358,26 @@ extern "C" fn on_pointer_button(
         } else {
             st.buttons_down &= !bit;
         }
-        (st.pointer_focus, st.pointer_x, st.pointer_y, st.modifiers)
+        /*
+         * COUNT THE CLICKS. AppKit reports the second press of a double click as clickCount 2, and
+         * applications read it: that is how a double click selects a word and how a third click
+         * selects a line. This backend reported 1 for every press, so a double click was two single
+         * clicks and nothing that needs one could ever happen.
+         */
+        if pressed {
+            let near = (st.pointer_x - st.last_press_x).abs() <= DOUBLE_CLICK_SLOP
+                && (st.pointer_y - st.last_press_y).abs() <= DOUBLE_CLICK_SLOP;
+            let soon = time.wrapping_sub(st.last_press_time) <= DOUBLE_CLICK_MS;
+            st.click_count = if near && soon && st.click_count > 0 {
+                st.click_count + 1
+            } else {
+                1
+            };
+            st.last_press_time = time;
+            st.last_press_x = st.pointer_x;
+            st.last_press_y = st.pointer_y;
+        }
+        (st.pointer_focus, st.pointer_x, st.pointer_y, st.modifiers, st.click_count)
     };
     let Some((_owner, delegate, height, _number)) = window::window_for_surface(surface) else {
         if tracing() {
@@ -356,13 +397,13 @@ extern "C" fn on_pointer_button(
     };
     if tracing() {
         println!(
-            "cider-wayland-input button={button:#x} pressed={pressed} x={px} y={py} type={event_type}"
+            "cider-wayland-input button={button:#x} pressed={pressed} x={px} y={py} type={event_type} clicks={clicks}"
         );
     }
     unsafe {
         // A click count of 1 rather than 0: a zero count reads as "not a click" and controls that
         // act on a click never fire.
-        cider_wayland_post_mouse(event_type, px, py, height, modifiers, delegate, 1, number, 0.0, 0.0);
+        cider_wayland_post_mouse(event_type, px, py, height, modifiers, delegate, clicks, number, 0.0, 0.0);
     }
 }
 

@@ -490,6 +490,16 @@ static void cider_vcl_trace_mouse(id self, SEL _cmd, id event)
 		}
 		return;
 	}
+	/* WHAT THE APPLICATION WILL READ. LibreOffice does not use the location on the event: every
+	 * mouse coordinate it computes comes from [NSEvent mouseLocation], the global pointer position,
+	 * so that is the number that decides where a click and a drag land. */
+	NSPoint global = [NSEvent mouseLocation];
+	fprintf(stderr, "CIDER_VCL   mouseLocation=%.0f,%.0f windowFrame=%.0f,%.0f\n",
+		(double) global.x, (double) global.y,
+		([self respondsToSelector: @selector(window)] && [(NSView *) self window])
+			? (double) [[(NSView *) self window] frame].origin.x : -1.0,
+		([self respondsToSelector: @selector(window)] && [(NSView *) self window])
+			? (double) [[(NSView *) self window] frame].origin.y : -1.0);
 	fprintf(stderr, "CIDER_VCL %s clickCount=%ld buttonNumber=%ld\n", sel_getName(_cmd),
 		(event != nil && [event respondsToSelector: @selector(clickCount)])
 			? (long) [(NSEvent *) event clickCount] : -1,

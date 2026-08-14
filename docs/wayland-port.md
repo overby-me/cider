@@ -1675,3 +1675,28 @@ NSLeftMouseDragged.
 
 STILL NOT WORKING: a drag across text does not SELECT it. The events are right, so the next question
 is what LibreOffice does with them.
+
+## A double click was two single clicks, and selection is still not working
+
+AppKit reports the second press of a double click as clickCount 2, and applications read it: that is
+how a double click selects a word and a third click selects a line. This backend reported 1 for
+every press, so a double click was two single clicks and nothing that needs one could happen. Presses
+are counted now, within 500 ms and 5 pixels of the previous one, which is the macOS rule.
+
+    CIDER_VCL mouseDown: clickCount=1
+    CIDER_VCL mouseDown: clickCount=2     <- after the fix
+
+AND SELECTION STILL DOES NOT WORK, by drag or by double click. Everything at the boundary is now
+verified correct, which is worth listing because each was a candidate:
+
+    the drag arrives as NSLeftMouseDragged with buttons held (motion trace, type 6)
+    mouseDown, six mouseDragged and mouseUp all reach -[SalFrameView ...]
+    the click count is 1 for the press and 2 for a double click
+    the coordinates LibreOffice computes are right: it reads [NSEvent mouseLocation], and
+      mouseLocation minus the window frame origin is exactly the local position, moving 285 to 390
+      across the drag
+    no exception is raised anywhere in the run, so nothing is being swallowed
+    a single click DOES position the caret, so the same coordinates through the same path work
+
+So the events are right and the application does not act on them. The next step is VCL side: what
+starts a text selection in a Writer edit window, and what it requires that a caret move does not.
