@@ -115,7 +115,12 @@ extern "C" fn display_next_event(
     // THE APPLICATION OWN DEFERRED WORK, which nothing else here runs. See the comment on the C
     // side: LibreOffice queues its wakeups on the main queue and the main queue is drained by the
     // main thread, which is this one, at the point the run loop would do it on macOS.
-    unsafe { cider_wayland_drain_main_queue() };
+    // A SWITCH FOR ATTRIBUTION, not a feature: with the drain off the application stops running its
+    // own deferred work, which breaks it, but it answers WHOSE allocations the idle leak is in one
+    // run instead of an afternoon of guessing.
+    if std::env::var_os("CIDER_WAYLAND_NO_DRAIN").is_none() {
+        unsafe { cider_wayland_drain_main_queue() };
+    }
     // AFTER the pump, because that is what turns compositor events into the pending state this
     // applies. Doing it here rather than in the callback is the whole point: the main loop is
     // where re-entering AppKit is safe.

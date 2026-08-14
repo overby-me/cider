@@ -2103,3 +2103,25 @@ STILL EMPTY: the save panel window has no TITLE on the wire, only set_title("").
 plumbing are right -- NSWindow forwards to the platform window, and the backend now asks the window
 for its title when the toplevel is created rather than relying on having seen it earlier -- so
 something in the panel own path leaves it unset. Cosmetic, and unfinished.
+
+## Where the residual idle leak is NOT, which is most of the work of finding it
+
+After the autorelease pool, an idle LibreOffice still grows about 7 MB/s. Everything below is ruled
+out by measurement, so the next attempt can start where this one stopped.
+
+    the view bitmap cache      CIDER_NO_VIEW_CACHE=1 changes the slope not at all
+    the buffer dumps           removing CIDER_WAYLAND_DUMP changes the slope not at all
+    our surfaces and buffers   mapping count flat at ~1310, descriptors flat at 41, and the one shm
+                               file mapping stays 3.3 MB
+    the brk heap               [heap] is 50 MB before and 50 MB after
+    the main queue drain       turning it OFF makes it WORSE, 19.5 MB/s instead of 7: the blocks
+                               pile up unrun. The drain is the relief, not the cause.
+
+What IS growing is anonymous mappings: 622 MB to 908 MB in 45 seconds, which is the guest malloc
+taking new chunks. At 65 pump passes a second that is about 100 KB per pass, far too much for event
+garbage and far too regular for anything the user is doing, since the user is doing nothing.
+
+The suspects that remain are the blocks themselves: either LibreOffice idle work allocating C++
+memory that is never freed in this environment, or this fork of libdispatch leaking the CONTINUATION
+of every block it runs. The next measurement is to count blocks and bytes across one drain, which
+separates those two, and CIDER_WAYLAND_NO_DRAIN is in the tree to make that comparison cheap.
