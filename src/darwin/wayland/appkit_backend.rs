@@ -18,6 +18,7 @@
 // CIDER_WAYLAND_BACKEND=0 declines on purpose, for comparing against X11 without rebuilding.
 use std::os::raw::c_void;
 
+mod clipboard;
 mod colors;
 mod display;
 mod fonts;

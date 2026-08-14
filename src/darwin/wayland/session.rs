@@ -222,6 +222,26 @@ pub fn connect() -> bool {
                 println!("cider-wayland-input seat=bind-failed");
             } else {
                 crate::input::attach_seat(seat);
+                /*
+                 * THE CLIPBOARD BETWEEN APPLICATIONS RIDES ON THE SEAT, which is why it is bound
+                 * here and not with the other globals: a wl_data_device is obtained FOR a seat, and
+                 * a compositor with no seat has no clipboard to share either.
+                 */
+                if globals.data_device_manager {
+                    let manager = wl::cider_wl_registry_bind_data_device_manager(
+                        registry,
+                        globals.bound.data_device_manager_name,
+                        globals.bound.data_device_manager_version,
+                    );
+                    if manager.is_null() {
+                        println!("cider-wayland-clipboard manager=bind-failed");
+                    } else {
+                        crate::clipboard::note_manager(manager);
+                        crate::clipboard::attach_seat(seat);
+                    }
+                } else {
+                    println!("cider-wayland-clipboard manager=absent");
+                }
                 // A roundtrip so the capabilities event is processed before anything asks whether
                 // there is a pointer.
                 wl::wl_display_roundtrip(display);

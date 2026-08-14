@@ -14,6 +14,23 @@
 use std::os::raw::{c_char, c_int, c_void};
 
 use crate::cstr;
+
+/// THE LAST SERIAL FROM THIS SEAT, which the clipboard needs and nothing else does.
+///
+/// wl_data_device.set_selection is REFUSED unless its serial belongs to a recent input event: that
+/// is how a compositor stops a background client from taking the clipboard from under the user. So
+/// every key and every button press records one here.
+pub static LAST_SERIAL: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+pub fn last_serial() -> u32 {
+    LAST_SERIAL.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+fn note_serial(serial: u32) {
+    if serial != 0 {
+        LAST_SERIAL.store(serial, std::sync::atomic::Ordering::Relaxed);
+    }
+}
 use crate::objc::Object;
 use crate::window;
 use crate::wl;
@@ -340,11 +357,12 @@ const DOUBLE_CLICK_SLOP: f64 = 5.0;
 extern "C" fn on_pointer_button(
     _data: *mut c_void,
     _pointer: *mut wl::WlPointer,
-    _serial: u32,
+    serial: u32,
     time: u32,
     button: u32,
     state: u32,
 ) {
+    note_serial(serial);
     let pressed = state == unsafe { wl::cider_wl_pointer_button_state_pressed() };
     let (surface, px, py, modifiers, clicks) = {
         let Ok(mut st) = INPUT.lock() else { return };
@@ -557,10 +575,11 @@ unsafe extern "C" {
 extern "C" fn on_keyboard_enter(
     _data: *mut c_void,
     _keyboard: *mut wl::WlKeyboard,
-    _serial: u32,
+    serial: u32,
     surface: *mut wl::WlSurface,
     _keys: *mut c_void,
 ) {
+    note_serial(serial);
     {
         let Ok(mut st) = INPUT.lock() else { return };
         st.keyboard_focus = surface;
@@ -655,11 +674,12 @@ const NS_NUMERIC_PAD_MASK: u64 = 1 << 21;
 extern "C" fn on_keyboard_key(
     _data: *mut c_void,
     _keyboard: *mut wl::WlKeyboard,
-    _serial: u32,
+    serial: u32,
     _time: u32,
     key: u32,
     state: u32,
 ) {
+    note_serial(serial);
     let pressed = state == unsafe { wl::cider_wl_keyboard_key_state_pressed() };
     let keycode = key + XKB_KEYCODE_OFFSET;
 

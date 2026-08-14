@@ -238,6 +238,11 @@ darwin_rust_staticlib(
     name = "wayland_appkit_lib",
     crate_root = "appkit_backend.rs",
     srcs = [
+        # EVERY MODULE, and this list is the only thing buck2 watches. A module that is missing
+        # here still COMPILES, because rustc reads it from the source directory, and the archive is
+        # then never rebuilt when it changes: an edit to it silently keeps the previous object.
+        # That cost a link error naming a function that was plainly in the file.
+        "clipboard.rs",
         "colors.rs",
         "display.rs",
         "input.rs",

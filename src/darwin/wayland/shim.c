@@ -301,3 +301,60 @@ int cider_wl_display_get_fd(struct wl_display *display) {
 void cider_xdg_toplevel_set_app_id(struct xdg_toplevel *toplevel, const char *app_id) {
 	xdg_toplevel_set_app_id(toplevel, app_id);
 }
+
+// THE CLIPBOARD BETWEEN APPLICATIONS, which is wl_data_device and nothing to do with the seat
+// beyond needing one. A selection is OWNED by a client: the owner advertises MIME types and writes
+// the bytes down a pipe when someone asks, so there is no clipboard daemon and no data at rest.
+struct wl_data_device_manager *cider_wl_registry_bind_data_device_manager(struct wl_registry *registry,
+                                                                         uint32_t name,
+                                                                         uint32_t version) {
+	return wl_registry_bind(registry, name, &wl_data_device_manager_interface, version);
+}
+
+struct wl_data_device *cider_wl_data_device_manager_get_data_device(
+        struct wl_data_device_manager *manager, struct wl_seat *seat) {
+	return wl_data_device_manager_get_data_device(manager, seat);
+}
+
+struct wl_data_source *cider_wl_data_device_manager_create_data_source(
+        struct wl_data_device_manager *manager) {
+	return wl_data_device_manager_create_data_source(manager);
+}
+
+int cider_wl_data_device_add_listener(struct wl_data_device *device,
+                                      const struct wl_data_device_listener *listener, void *data) {
+	return wl_data_device_add_listener(device, listener, data);
+}
+
+int cider_wl_data_source_add_listener(struct wl_data_source *source,
+                                      const struct wl_data_source_listener *listener, void *data) {
+	return wl_data_source_add_listener(source, listener, data);
+}
+
+void cider_wl_data_source_offer(struct wl_data_source *source, const char *mime_type) {
+	wl_data_source_offer(source, mime_type);
+}
+
+void cider_wl_data_source_destroy(struct wl_data_source *source) {
+	wl_data_source_destroy(source);
+}
+
+// THE SERIAL IS NOT DECORATION: a compositor refuses a selection whose serial it does not recognise
+// as a recent input event, which is how it stops a background client from stealing the clipboard.
+void cider_wl_data_device_set_selection(struct wl_data_device *device, struct wl_data_source *source,
+                                        uint32_t serial) {
+	wl_data_device_set_selection(device, source, serial);
+}
+
+void cider_wl_data_offer_receive(struct wl_data_offer *offer, const char *mime_type, int32_t fd) {
+	wl_data_offer_receive(offer, mime_type, fd);
+}
+
+void cider_wl_data_offer_destroy(struct wl_data_offer *offer) {
+	wl_data_offer_destroy(offer);
+}
+
+int cider_wl_data_offer_add_listener(struct wl_data_offer *offer,
+                                     const struct wl_data_offer_listener *listener, void *data) {
+	return wl_data_offer_add_listener(offer, listener, data);
+}

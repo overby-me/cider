@@ -131,6 +131,7 @@ pub struct Globals {
     pub xdg_wm_base: bool,
     pub seat: bool,
     pub output: bool,
+    pub data_device_manager: bool,
 }
 
 impl Globals {
@@ -144,6 +145,11 @@ impl Globals {
                 self.compositor = true;
                 self.bound.compositor_name = name;
                 self.bound.compositor_version = version.min(4);
+            }
+            "wl_data_device_manager" => {
+                self.data_device_manager = true;
+                self.bound.data_device_manager_name = name;
+                self.bound.data_device_manager_version = version.min(3);
             }
             "wl_shm" => {
                 self.shm = true;
@@ -208,6 +214,8 @@ pub struct Bound {
     pub output_version: u32,
     pub seat_name: u32,
     pub seat_version: u32,
+    pub data_device_manager_name: u32,
+    pub data_device_manager_version: u32,
 }
 
 /// One callback: the compositor has finished with the buffer. That event is the only honest
@@ -421,4 +429,76 @@ pub struct XdgPopupListener {
     /// that nothing can remove.
     pub popup_done: extern "C" fn(data: *mut c_void, popup: *mut XdgPopup),
     pub repositioned: extern "C" fn(data: *mut c_void, popup: *mut XdgPopup, token: u32),
+}
+
+// -------------------------------------------------------------------------------------------
+// THE CLIPBOARD BETWEEN APPLICATIONS: wl_data_device and the source and offer it trades in.
+//
+// The model is not a store. A client that copies OWNS the selection: it advertises MIME types and
+// is asked, later and possibly never, to write the bytes into a pipe the other client opened. A
+// client that pastes is handed an OFFER, picks a type from the ones advertised, and reads.
+
+pub enum WlDataDeviceManager {}
+pub enum WlDataDevice {}
+pub enum WlDataSource {}
+pub enum WlDataOffer {}
+
+unsafe extern "C" {
+    pub fn cider_wl_registry_bind_data_device_manager(
+        r: *mut WlRegistry, name: u32, version: u32,
+    ) -> *mut WlDataDeviceManager;
+    pub fn cider_wl_data_device_manager_get_data_device(
+        m: *mut WlDataDeviceManager, seat: *mut WlSeat,
+    ) -> *mut WlDataDevice;
+    pub fn cider_wl_data_device_manager_create_data_source(
+        m: *mut WlDataDeviceManager,
+    ) -> *mut WlDataSource;
+    pub fn cider_wl_data_device_add_listener(
+        d: *mut WlDataDevice, l: *const WlDataDeviceListener, data: *mut c_void,
+    ) -> c_int;
+    pub fn cider_wl_data_source_add_listener(
+        s: *mut WlDataSource, l: *const WlDataSourceListener, data: *mut c_void,
+    ) -> c_int;
+    pub fn cider_wl_data_source_offer(s: *mut WlDataSource, mime: *const c_char);
+    pub fn cider_wl_data_source_destroy(s: *mut WlDataSource);
+    pub fn cider_wl_data_device_set_selection(
+        d: *mut WlDataDevice, s: *mut WlDataSource, serial: u32,
+    );
+    pub fn cider_wl_data_offer_receive(o: *mut WlDataOffer, mime: *const c_char, fd: i32);
+    pub fn cider_wl_data_offer_destroy(o: *mut WlDataOffer);
+    pub fn cider_wl_data_offer_add_listener(
+        o: *mut WlDataOffer, l: *const WlDataOfferListener, data: *mut c_void,
+    ) -> c_int;
+}
+
+/// EVERY EVENT THE INTERFACE DECLARES, for the reason spelled out above wl_pointer: libwayland
+/// indexes this struct by opcode, so a short struct is read past its end.
+#[repr(C)]
+pub struct WlDataDeviceListener {
+    pub data_offer: extern "C" fn(data: *mut c_void, d: *mut WlDataDevice, offer: *mut WlDataOffer),
+    pub enter: extern "C" fn(
+        data: *mut c_void, d: *mut WlDataDevice, serial: u32, surface: *mut WlSurface,
+        x: i32, y: i32, offer: *mut WlDataOffer,
+    ),
+    pub leave: extern "C" fn(data: *mut c_void, d: *mut WlDataDevice),
+    pub motion: extern "C" fn(data: *mut c_void, d: *mut WlDataDevice, time: u32, x: i32, y: i32),
+    pub drop: extern "C" fn(data: *mut c_void, d: *mut WlDataDevice),
+    pub selection: extern "C" fn(data: *mut c_void, d: *mut WlDataDevice, offer: *mut WlDataOffer),
+}
+
+#[repr(C)]
+pub struct WlDataSourceListener {
+    pub target: extern "C" fn(data: *mut c_void, s: *mut WlDataSource, mime: *const c_char),
+    pub send: extern "C" fn(data: *mut c_void, s: *mut WlDataSource, mime: *const c_char, fd: i32),
+    pub cancelled: extern "C" fn(data: *mut c_void, s: *mut WlDataSource),
+    pub dnd_drop_performed: extern "C" fn(data: *mut c_void, s: *mut WlDataSource),
+    pub dnd_finished: extern "C" fn(data: *mut c_void, s: *mut WlDataSource),
+    pub action: extern "C" fn(data: *mut c_void, s: *mut WlDataSource, action: u32),
+}
+
+#[repr(C)]
+pub struct WlDataOfferListener {
+    pub offer: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, mime: *const c_char),
+    pub source_actions: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, actions: u32),
+    pub action: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, action: u32),
 }

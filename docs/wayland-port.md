@@ -1874,3 +1874,35 @@ The repeat stops on evidence rather than a guess: while the bottom row of the bu
 clear value the application has not painted the bottom of its own window, so it keeps being told,
 and once that row is painted it stops. A deadline bounds it for a window that is legitimately dark
 down there.
+
+## The clipboard reaches other applications now, both ways
+
+WaylandPasteboard.m said it did not do this and named the missing piece: wl_data_device, which needs
+a seat, which now exists. Verified against wl-clipboard as the other application, in one run:
+
+    OUT  select all in the document, Command C, then wl-paste --list-types and wl-paste
+         text/plain;charset=utf-8 / UTF8_STRING / text/plain / TEXT
+         Drag across this sentence with the mouse please
+    IN   wl-copy "CLIPBOARD FROM LINUX", then Command V in the document
+         docs/wayland-clipboard-from-linux.png shows that line in the page
+
+THREE THINGS HAD TO LINE UP, and each was invisible on its own.
+
+THE COPY IS LAZY AT BOTH ENDS. Publishing from -setData:forType: caught nothing, because LibreOffice
+never calls it at copy time: it DECLARES the types it could produce and waits to be asked. Wayland
+makes the same bargain, so ownership is taken in -addTypes:owner: and the bytes are rendered in the
+wl_data_source.send callback, where the pasteboard asks its owner for the first time. A copy nobody
+pastes costs one protocol message and renders nothing.
+
+THE SERIAL IS THE PERMISSION. set_selection is refused unless its serial belongs to a recent input
+event on the seat, which is how a compositor stops a background process from taking the clipboard.
+input.rs records the serial of every key and button press for this.
+
+LOSING OWNERSHIP HAS TO REACH THE PASTEBOARD. With the first two done, copy out worked and paste in
+inserted the applications OWN old text: wl-copy had taken the selection but the pasteboard still held
+its data and never looked further. wl_data_source.cancelled is that news, and it now empties the
+general pasteboard, which is what makes the next paste fall through to the system selection.
+
+KNOWN COST, not yet addressed: -types asks the system on every call, so a paste does the pipe
+round trip more than once (four in the run above). It is bounded by a 500 ms deadline and correct,
+but it should be cached against the offer.
