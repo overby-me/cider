@@ -482,8 +482,26 @@ fn create_surface(st: &mut WindowState) -> bool {
          * this application creates a dozen and one is mapped. So the parent is looked up among the
          * windows that are actually mapped, which is information this backend already keeps.
          */
+        /*
+         * AND A BORDERLESS WINDOW IS NOT ONE EITHER, which the level alone does not catch.
+         *
+         * A TOOLTIP is level 0 and style mask 0, so the rule above made it a toplevel, and on a
+         * tiling compositor every one of them took a share of the screen. Measured in one run:
+         * twenty windows 18 points tall mapped as the pointer crossed the toolbar, one every
+         * 0.3 seconds, and the last one survived as a 419x684 TILE painted 59x18, which is the
+         * black third of the screen in docs/wayland-open-two-documents.png. It also moved every
+         * other window while a test was driving it, which is what made this harness look flaky:
+         * the document window was 1690 wide in one run and 419 in the next for no reason the test
+         * could see.
+         *
+         * The comment above is still right that the style mask alone cannot separate a menu from a
+         * scrollbar helper. It does not have to: those helpers are never mapped, so the two signals
+         * together are exact. Borderless AND parented is a tooltip; borderless with no mapped
+         * parent stays a toplevel, which is what a splash screen wants.
+         */
         let parent_xdg = mapped_toplevel_xdg().unwrap_or(std::ptr::null_mut());
-        let wants_popup = st.level > 0 && !parent_xdg.is_null() && parent_xdg != st.xdg;
+        let transient = st.level > 0 || st.style_mask == 0;
+        let wants_popup = transient && !parent_xdg.is_null() && parent_xdg != st.xdg;
         if wants_popup {
             let base = session::wm_base();
             let positioner = if base.is_null() {

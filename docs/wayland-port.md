@@ -1825,3 +1825,30 @@ the first keystroke lands in it.
 
 An open panel never gets one. NSOpenPanel has its own runModal and its own OK action for the same
 reason: opening answers with the selected row, and a name field would have nothing to do.
+
+## Opening a document works, and fixing it removed the thing that made this harness flaky
+
+docs/wayland-open-panel-selects.png: Command O, and the file at the guest root is selected in the
+panel list. docs/wayland-open-two-documents.png: two document windows, the original and the opened
+one, both showing the saved sentence and both saying 8 words, 47 characters.
+
+A TOOLTIP IS NOT A WINDOW EITHER. The rule that decides toplevel or popup was the window LEVEL
+alone, and a tooltip is level 0 with style mask 0, so every tooltip became a toplevel. On a tiling
+compositor each one takes a share of the screen. Measured in one run: TWENTY windows 18 points tall
+mapped as the pointer crossed the toolbar, one every 0.3 seconds, and the last survivor was a
+419x684 tile painted 59x18 -- a black third of the screen.
+
+It also explains the flakiness that cost hours of this session. The tiles were being reshuffled by
+tooltips while a test was driving the application, so the document window was 1690 wide in one run
+and 419 in the next, clicks computed from a previous screenshot landed somewhere else, and the save
+panel appeared to open only sometimes. After the fix a whole run maps TWO toplevels, the document
+and the panel, and the tile geometry is the same every run.
+
+The signals together are exact: borderless AND parented is a tooltip; borderless with no mapped
+parent stays a toplevel, which is what a splash screen wants; the scrollbar helpers the old comment
+worried about are never mapped at all.
+
+STILL WRONG: the newly opened window sometimes paints only its original 656 rows and leaves the rest
+of the tile black, although the resize reached it -- the geometry trace shows surface 845x1388 and
+content 845x1372 for that window. The run before it painted the same window fully. So it is a race
+between the first draw and the configure, not a missing notification.
