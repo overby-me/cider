@@ -2022,3 +2022,23 @@ to be drawn by AppKit at all: the draws that happen while it is on screen have c
 window=(null), which is LibreOffice rendering its own controls into its own context with a cell and
 no view, one of them 93 points wide and ZERO high. That is why the OK has no bezel and only its
 label shows. The button is still clickable, which is how the crash above was reached at all.
+
+## A view can be cached into a bitmap now, which fifteen calls a run were quietly failing to do
+
+-[NSView bitmapImageRepForCachingDisplayInRect:] and -cacheDisplayInRect:toBitmapImageRep: were both
+NSUnimplementedMethod. They are used TOGETHER -- ask for a rep, then fill it -- so a caller received
+nil and then nothing, and a view that answers nil is indistinguishable from one that drew an empty
+image. Fifteen calls in a single LibreOffice run, every one from NSScroller.
+
+The rep is RGBA8 non planar, and the fill reuses -displayRectIgnoringOpacity:inContext: rather than
+calling -drawRect: directly, because that path already handles focus, clipping and subviews and, as
+the comment above it says, works for a view with NO WINDOW -- which is the ordinary case for
+something being rendered into a bitmap.
+
+The translation is the whole of the second half: the rect being cached has to be moved to the rep
+origin, or a control living at x=200 is drawn 200 points off the edge of a 60 point rep and the
+caller gets an empty image, which looks exactly like a view that refused to draw.
+
+Verified by absence and by no regression: the unimplemented line is gone from a full run, the
+application survives to its timeout with no unrecognised selectors, and drag selection still
+highlights exactly the span the pointer crosses.
