@@ -1720,3 +1720,28 @@ and neither a drag nor a double click selects anything. The difference between a
 selection on the VCL side is TRACKING: MouseButtonDown starts it, mouse moves are delivered to the
 tracking window as TrackingEvents rather than as plain moves, and MouseButtonUp ends it. That is
 where to look next, and it is the only part of this that has not been instrumented.
+
+## CORRECTION: mouse selection works. The tests were clicking in the margin
+
+docs/wayland-drag-selects.png: a drag across the line and Drag across this sente is highlighted,
+exactly the span the pointer covered. docs/wayland-double-click-selects.png: a double click on the
+first word and Drag is highlighted.
+
+THE SECTIONS ABOVE THAT SAY SELECTION DOES NOT WORK ARE WRONG, and the reason is worth keeping. The
+drag started at x=285 and the double click at x=330, and in that window the text starts at x=390:
+both were in the page margin, where there is nothing to select and where LibreOffice correctly does
+nothing. Three rounds of instrumenting the event path found nothing wrong with it because there was
+nothing wrong with it.
+
+What found the mistake was the plainest test available: type a known line, click at three different
+places, type a marker after each, and read where the markers landed.
+
+    2AAAA BBBB CCCC DDDD1
+
+The 1 came from a click past the end of the line and landed at the end; the 2 came from a click at
+x=400 and landed at the start, which is correct, because x=400 is ten pixels into a text that starts
+at 390. Both clicks were right and so was the application. The map from screen position to text
+position was the missing measurement, and it took two minutes.
+
+The click count fix that came out of the same investigation is real and still needed: a double click
+reported as two single clicks cannot select a word however good the coordinates are.
