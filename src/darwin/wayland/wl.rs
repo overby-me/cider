@@ -380,3 +380,42 @@ pub struct WlKeyboardListener {
     ),
     pub repeat_info: extern "C" fn(data: *mut c_void, keyboard: *mut WlKeyboard, rate: i32, delay: i32),
 }
+
+// -------------------------------------------------------------------------------------------
+// POPUPS: menus and tooltips, which belong to a parent surface rather than to the desktop.
+
+pub enum XdgPositioner {}
+pub enum XdgPopup {}
+
+unsafe extern "C" {
+    pub fn cider_xdg_wm_base_create_positioner(base: *mut XdgWmBase) -> *mut XdgPositioner;
+    pub fn cider_xdg_positioner_set_size(p: *mut XdgPositioner, w: i32, h: i32);
+    pub fn cider_xdg_positioner_set_anchor_rect(p: *mut XdgPositioner, x: i32, y: i32, w: i32, h: i32);
+    pub fn cider_xdg_positioner_set_anchor(p: *mut XdgPositioner, anchor: u32);
+    pub fn cider_xdg_positioner_set_gravity(p: *mut XdgPositioner, gravity: u32);
+    pub fn cider_xdg_positioner_set_constraint_adjustment(p: *mut XdgPositioner, adjust: u32);
+    pub fn cider_xdg_positioner_destroy(p: *mut XdgPositioner);
+    pub fn cider_xdg_surface_get_popup(
+        surface: *mut XdgSurface,
+        parent: *mut XdgSurface,
+        positioner: *mut XdgPositioner,
+    ) -> *mut XdgPopup;
+    pub fn cider_xdg_popup_add_listener(popup: *mut XdgPopup, l: *const XdgPopupListener, data: *mut c_void) -> c_int;
+    pub fn cider_xdg_popup_destroy(popup: *mut XdgPopup);
+    pub fn cider_xdg_positioner_anchor_bottom_left() -> u32;
+    pub fn cider_xdg_positioner_gravity_bottom_right() -> u32;
+    pub fn cider_xdg_positioner_constraint_slide_flip() -> u32;
+}
+
+/// THREE EVENTS, because the interface declares three. repositioned is version 3 and cannot fire
+/// on a version 1 binding, but a listener shorter than the interface is read past the end the first
+/// time a compositor sends a later event.
+#[repr(C)]
+pub struct XdgPopupListener {
+    pub configure: extern "C" fn(data: *mut c_void, popup: *mut XdgPopup, x: i32, y: i32, width: i32, height: i32),
+    /// THE COMPOSITOR DISMISSED IT, which is how a menu closes on Wayland: not by the client
+    /// deciding, but by a click elsewhere or a focus change. Ignoring this leaves a menu on screen
+    /// that nothing can remove.
+    pub popup_done: extern "C" fn(data: *mut c_void, popup: *mut XdgPopup),
+    pub repositioned: extern "C" fn(data: *mut c_void, popup: *mut XdgPopup, token: u32),
+}

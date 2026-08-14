@@ -1042,3 +1042,37 @@ does it exactly.
 NEXT RUNG, now concrete: get_popup with a positioner for windows above level 0, keeping toplevel
 for level 0. The parent is the key window, the anchor rectangle comes from the frame origin the
 application already sets, and popup_done has to unmap.
+
+## THE FILE MENU OPENS ON SCREEN. Criterion two, mouse half, is met, 2026-08-14
+
+docs/wayland-menu-open.png. Click the File title and the menu appears under it with every item
+drawn: New, Open with Ctrl+O beside it, Recent Documents, Wizards, Templates, Save with Ctrl+S,
+Export, Print with Ctrl+P, and the disabled entries correctly greyed. Measured alongside:
+
+    cider-wayland-window popup=ok number=15 size=247x381 level=2
+    cider-wayland-window create=ok number=15
+    cider-wayland-window mapped=yes number=15
+    cider-wayland-window pixels=drawn number=15 changed=94107/94107 colours=64+
+
+That is the prompt own wording satisfied: click a menu and it opens.
+
+### What it took, and the two mistakes in the middle
+
+A MENU IS AN xdg_popup, NOT A TOPLEVEL. xdg_shell has two roles: a toplevel is an entry in the
+compositor list of open windows, a popup belongs to a parent, is positioned against it with an
+anchor rectangle, and is dismissed by the compositor rather than closed by the client. As a toplevel
+the menu opened correctly and was placed as a tile somewhere else entirely.
+
+THE LEVEL IS THE SIGNAL. Menus arrive at level 2, NSFloatingWindowLevel; document windows at 0. An
+earlier attempt at this used the style mask and could not tell a menu from a scrollbar helper.
+
+AND THE PARENT MUST BE MAPPED. The first working version parented the popup to the last TITLED
+window, and every popup came back create=FAILED reason=never-configured with NOTHING in the
+compositor log. Most titled windows here are never shown: the application makes a dozen and one is
+mapped. Looking the parent up among windows that are actually mapped is what made the compositor
+configure it.
+
+The anchor rectangle converts between two coordinate systems that disagree about which way is up:
+AppKit origin bottom left with y increasing upwards, Wayland top left with y increasing downwards,
+so the conversion goes through the parent TOP edge. Getting that wrong puts the menu at the other
+end of the window rather than under its title.

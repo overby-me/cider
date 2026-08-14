@@ -228,3 +228,63 @@ void cider_wl_keyboard_release(struct wl_keyboard *keyboard) { wl_keyboard_relea
 void cider_xdg_toplevel_set_parent(struct xdg_toplevel *toplevel, struct xdg_toplevel *parent) {
 	xdg_toplevel_set_parent(toplevel, parent);
 }
+
+// ---------------------------------------------------------------------------------------------
+// POPUPS. A menu is not a window in the sense a compositor means: it belongs to another surface,
+// it is positioned RELATIVE to it, and it is dismissed rather than closed. Creating one as an
+// xdg_toplevel gives a tiling compositor a tile of its own to place, which is why LibreOffice menus
+// opened and appeared nowhere near the pointer.
+struct xdg_positioner *cider_xdg_wm_base_create_positioner(struct xdg_wm_base *base) {
+	return xdg_wm_base_create_positioner(base);
+}
+
+void cider_xdg_positioner_set_size(struct xdg_positioner *p, int32_t w, int32_t h) {
+	xdg_positioner_set_size(p, w, h);
+}
+
+void cider_xdg_positioner_set_anchor_rect(struct xdg_positioner *p, int32_t x, int32_t y,
+                                          int32_t w, int32_t h) {
+	xdg_positioner_set_anchor_rect(p, x, y, w, h);
+}
+
+void cider_xdg_positioner_set_anchor(struct xdg_positioner *p, uint32_t anchor) {
+	xdg_positioner_set_anchor(p, anchor);
+}
+
+void cider_xdg_positioner_set_gravity(struct xdg_positioner *p, uint32_t gravity) {
+	xdg_positioner_set_gravity(p, gravity);
+}
+
+// SLIDE AND FLIP RATHER THAN CLIP. A menu near the edge of the screen has to move to stay whole,
+// and without this the compositor is entitled to cut it off instead.
+void cider_xdg_positioner_set_constraint_adjustment(struct xdg_positioner *p, uint32_t adjust) {
+	xdg_positioner_set_constraint_adjustment(p, adjust);
+}
+
+void cider_xdg_positioner_destroy(struct xdg_positioner *p) { xdg_positioner_destroy(p); }
+
+struct xdg_popup *cider_xdg_surface_get_popup(struct xdg_surface *surface,
+                                              struct xdg_surface *parent,
+                                              struct xdg_positioner *positioner) {
+	return xdg_surface_get_popup(surface, parent, positioner);
+}
+
+int cider_xdg_popup_add_listener(struct xdg_popup *popup, const struct xdg_popup_listener *listener,
+                                 void *data) {
+	return xdg_popup_add_listener(popup, listener, data);
+}
+
+void cider_xdg_popup_destroy(struct xdg_popup *popup) { xdg_popup_destroy(popup); }
+
+uint32_t cider_xdg_positioner_anchor_bottom_left(void) {
+	return XDG_POSITIONER_ANCHOR_BOTTOM_LEFT;
+}
+uint32_t cider_xdg_positioner_gravity_bottom_right(void) {
+	return XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT;
+}
+uint32_t cider_xdg_positioner_constraint_slide_flip(void) {
+	return XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_X |
+	       XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y |
+	       XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X |
+	       XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y;
+}

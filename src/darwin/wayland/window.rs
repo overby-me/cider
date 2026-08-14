@@ -38,6 +38,12 @@ static NEXT_WINDOW_NUMBER: AtomicI64 = AtomicI64::new(1);
 /// held as an integer because a raw pointer is not Sync and this is only ever read back as one.
 static LAST_TITLED_TOPLEVEL: AtomicUsize = AtomicUsize::new(0);
 
+/// The xdg_surface of that same window, which is what a POPUP has to be parented to, plus the
+/// frame it occupies so an anchor rectangle can be expressed in its coordinates.
+static PARENT_XDG_SURFACE: AtomicUsize = AtomicUsize::new(0);
+static PARENT_TOP: AtomicI64 = AtomicI64::new(0);
+static PARENT_LEFT: AtomicI64 = AtomicI64::new(0);
+
 /// Everything one window owns. Boxed and pointed to by the instance's single ivar, so the ObjC
 /// object stays one word wider than CGWindow and all the real state has a Rust type.
 pub struct WindowState {
@@ -79,6 +85,8 @@ pub struct WindowState {
     pub flushes: u64,
     /// A size the compositor asked for, not yet given to AppKit. Applied by the main loop.
     pub pending_size: Option<(i32, i32)>,
+    /// The popup role, when this window is a menu or a tooltip rather than a document window.
+    pub popup: *mut wl::XdgPopup,
     /// Whether AppKit still has to be told to draw the whole of this window.
     pub needs_full_display: bool,
     /// Whether AppKit has actually SHOWN this window. A Mach-O application creates windows long
@@ -114,6 +122,7 @@ impl WindowState {
             presents: 0,
             flushes: 0,
             pending_size: None,
+            popup: std::ptr::null_mut(),
             needs_full_display: true,
             visible: false,
         }
@@ -295,6 +304,48 @@ extern "C" fn on_toplevel_close(data: *mut c_void, _toplevel: *mut wl::XdgToplev
     }
 }
 
+extern "C" fn on_popup_configure(
+    _data: *mut c_void,
+    _popup: *mut wl::XdgPopup,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+) {
+    if std::env::var_os("CIDER_WAYLAND_TRACE_RESIZE").is_some() {
+        println!("cider-wayland-window popup-configure x={x} y={y} size={width}x{height}");
+    }
+}
+
+/// THE COMPOSITOR DISMISSED THE MENU, which is how a menu closes on Wayland: a click elsewhere or
+/// a focus change, decided by the compositor rather than by the client. Ignoring it leaves a menu
+/// on screen that nothing can remove.
+extern "C" fn on_popup_done(data: *mut c_void, _popup: *mut wl::XdgPopup) {
+    let Some(st) = (unsafe { (data as *mut WindowState).as_mut() }) else { return };
+    println!("cider-wayland-window popup=dismissed number={}", st.number);
+    st.visible = false;
+    st.mapped = false;
+    unsafe {
+        if !st.surface.is_null() {
+            wl::cider_wl_surface_attach(st.surface, std::ptr::null_mut(), 0, 0);
+            wl::cider_wl_surface_commit(st.surface);
+        }
+        if !st.delegate.is_null() {
+            let sel = objc::sel_registerName(cstr!("platformWindowWillClose:"));
+            objc::msg_send_obj(st.delegate, sel, st.owner);
+        }
+    }
+    session::flush();
+}
+
+extern "C" fn on_popup_repositioned(_d: *mut c_void, _p: *mut wl::XdgPopup, _token: u32) {}
+
+static POPUP_LISTENER: wl::XdgPopupListener = wl::XdgPopupListener {
+    configure: on_popup_configure,
+    popup_done: on_popup_done,
+    repositioned: on_popup_repositioned,
+};
+
 extern "C" fn on_configure_bounds(_d: *mut c_void, _t: *mut wl::XdgToplevel, _w: i32, _h: i32) {}
 
 extern "C" fn on_wm_capabilities(_d: *mut c_void, _t: *mut wl::XdgToplevel, _c: *mut c_void) {}
@@ -328,17 +379,103 @@ fn create_surface(st: &mut WindowState) -> bool {
             println!("cider-wayland-window create=FAILED reason=no-xdg-surface");
             return false;
         }
-        st.toplevel = wl::cider_xdg_surface_get_toplevel(st.xdg);
-        if st.toplevel.is_null() {
-            println!("cider-wayland-window create=FAILED reason=no-toplevel");
-            return false;
-        }
         wl::cider_xdg_surface_add_listener(st.xdg, &XDG_LISTENER, st as *mut WindowState as *mut c_void);
-        wl::cider_xdg_toplevel_add_listener(
-            st.toplevel,
-            &TOPLEVEL_LISTENER,
-            st as *mut WindowState as *mut c_void,
-        );
+
+        /*
+         * A MENU IS NOT A WINDOW, and this is where the two roles part.
+         *
+         * xdg_shell has two: a toplevel is an entry in the compositor idea of open windows, and a
+         * POPUP belongs to another surface, is placed relative to it, and is dismissed rather than
+         * closed. Creating a menu as a toplevel is what made LibreOffice menus open correctly and
+         * appear nowhere near the pointer: measured, a click on the File menu created a 247x381
+         * window at level 2 which a tiling compositor then placed as a tile of its own.
+         *
+         * THE LEVEL IS THE SIGNAL. AppKit gives menus and tooltips a window level above
+         * NSNormalWindowLevel, and document windows level 0. An earlier attempt used the style mask
+         * and could not tell a menu from a scrollbar helper; the level separates them exactly.
+         */
+        /*
+         * THE PARENT MUST BE A MAPPED TOPLEVEL. A popup is positioned against a surface that is on
+         * screen, and a compositor simply never configures one whose parent is not: measured, three
+         * popups in a row reported create=FAILED reason=never-configured with no complaint in the
+         * compositor log at all.
+         *
+         * Tracking the last TITLED window is not enough, because most of those are never shown:
+         * this application creates a dozen and one is mapped. So the parent is looked up among the
+         * windows that are actually mapped, which is information this backend already keeps.
+         */
+        let parent_xdg = mapped_toplevel_xdg().unwrap_or(std::ptr::null_mut());
+        let wants_popup = st.level > 0 && !parent_xdg.is_null() && parent_xdg != st.xdg;
+        if wants_popup {
+            let base = session::wm_base();
+            let positioner = if base.is_null() {
+                std::ptr::null_mut()
+            } else {
+                wl::cider_xdg_wm_base_create_positioner(base)
+            };
+            if !positioner.is_null() {
+                let w = (st.frame.size.width as i32).max(1);
+                let h = (st.frame.size.height as i32).max(1);
+                /*
+                 * THE ANCHOR IS IN THE PARENT COORDINATE SPACE, and the two spaces disagree about
+                 * which way is up: AppKit puts the origin at the bottom left with y increasing
+                 * upwards, Wayland at the top left with y increasing downwards. Converting through
+                 * the parent TOP edge is what makes a menu appear under its title rather than
+                 * mirrored to the other end of the window.
+                 */
+                let local_x = st.frame.origin.x as i64 - PARENT_LEFT.load(Ordering::Acquire);
+                let popup_top = (st.frame.origin.y + st.frame.size.height) as i64;
+                let local_y = PARENT_TOP.load(Ordering::Acquire) - popup_top;
+                wl::cider_xdg_positioner_set_size(positioner, w, h);
+                wl::cider_xdg_positioner_set_anchor_rect(
+                    positioner,
+                    local_x.max(0) as i32,
+                    local_y.max(0) as i32,
+                    1,
+                    1,
+                );
+                wl::cider_xdg_positioner_set_anchor(
+                    positioner,
+                    wl::cider_xdg_positioner_anchor_bottom_left(),
+                );
+                wl::cider_xdg_positioner_set_gravity(
+                    positioner,
+                    wl::cider_xdg_positioner_gravity_bottom_right(),
+                );
+                wl::cider_xdg_positioner_set_constraint_adjustment(
+                    positioner,
+                    wl::cider_xdg_positioner_constraint_slide_flip(),
+                );
+                st.popup = wl::cider_xdg_surface_get_popup(st.xdg, parent_xdg, positioner);
+                wl::cider_xdg_positioner_destroy(positioner);
+            }
+            if st.popup.is_null() {
+                println!("cider-wayland-window popup=FAILED number={} falling back", st.number);
+            } else {
+                wl::cider_xdg_popup_add_listener(
+                    st.popup,
+                    &POPUP_LISTENER,
+                    st as *mut WindowState as *mut c_void,
+                );
+                println!(
+                    "cider-wayland-window popup=ok number={} size={}x{} level={}",
+                    st.number, st.frame.size.width as i32, st.frame.size.height as i32, st.level
+                );
+            }
+        }
+
+        if st.popup.is_null() {
+            st.toplevel = wl::cider_xdg_surface_get_toplevel(st.xdg);
+            if st.toplevel.is_null() {
+                println!("cider-wayland-window create=FAILED reason=no-toplevel");
+                return false;
+            }
+            wl::cider_xdg_toplevel_add_listener(
+                st.toplevel,
+                &TOPLEVEL_LISTENER,
+                st as *mut WindowState as *mut c_void,
+            );
+        }
         /*
          * A BORDERLESS WINDOW IS NOT A DOCUMENT, and saying so is the difference between an
          * application and a pile of tiles. AppKit opens tooltips, palettes, scrollbar helpers and
@@ -351,10 +488,13 @@ fn create_surface(st: &mut WindowState) -> bool {
          * The parent is the most recent TITLED window, which is what these belong to in practice.
          * Compositors float a toplevel that has a parent, which is the behaviour wanted here.
          */
-        let titled = st.style_mask & 0x1 != 0;
+        let titled = st.style_mask & 0x1 != 0 && st.popup.is_null();
         if titled {
             LAST_TITLED_TOPLEVEL.store(st.toplevel as usize, Ordering::Release);
-        } else {
+            PARENT_XDG_SURFACE.store(st.xdg as usize, Ordering::Release);
+            PARENT_LEFT.store(st.frame.origin.x as i64, Ordering::Release);
+            PARENT_TOP.store((st.frame.origin.y + st.frame.size.height) as i64, Ordering::Release);
+        } else if !st.toplevel.is_null() {
             let parent = LAST_TITLED_TOPLEVEL.load(Ordering::Acquire) as *mut wl::XdgToplevel;
             if !parent.is_null() && parent != st.toplevel {
                 wl::cider_xdg_toplevel_set_parent(st.toplevel, parent);
@@ -817,6 +957,19 @@ extern "C" fn init_with_delegate(this: Object, _cmd: Sel, delegate: Object) -> O
 /// number of windows an application has open, which is tens, and a linear scan of tens of pointers
 /// per event is not worth a hash.
 static WINDOWS: std::sync::Mutex<Vec<usize>> = std::sync::Mutex::new(Vec::new());
+
+/// The xdg_surface of a window that is mapped and is a toplevel, which is the only thing a popup
+/// may be parented to.
+fn mapped_toplevel_xdg() -> Option<*mut wl::XdgSurface> {
+    let list = WINDOWS.lock().ok()?;
+    for &p in list.iter().rev() {
+        let st = unsafe { (p as *mut WindowState).as_ref() }?;
+        if st.mapped && st.popup.is_null() && !st.xdg.is_null() {
+            return Some(st.xdg);
+        }
+    }
+    None
+}
 
 fn register_window(st: *mut WindowState) {
     if let Ok(mut list) = WINDOWS.lock() {
