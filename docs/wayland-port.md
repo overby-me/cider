@@ -1490,3 +1490,18 @@ leaves the menu bar.
 WHAT FOUND IT was tracing the application own doCommandBySelector: alongside the key path. Return
 was already working through insertNewline:, so the two side by side said the machinery was right and
 one binding was not.
+
+## The menu bar strip, which is the last visible rendering defect, 2026-08-14 night
+
+At rest the menu bar shows Application and File and nothing else. One click on it and the whole bar
+is there: Edit, View, Insert, Format, Styles, Table, Form, Tools, Window, Help. A forced redraw does
+the same, which says the application HAS the items and simply does not repaint that strip on its own.
+
+What it is NOT, each checked rather than assumed:
+
+    NOT a resize artefact. It happens in the headless harness where the window is never resized.
+    NOT the buffer. A forced display plus present paints the whole bar correctly.
+    NOT missing menus. They are all present and open correctly once painted.
+
+A full redraw after a frame change is right in any case and is committed here, but it did not fix
+this: the resize happens before the menus are built.

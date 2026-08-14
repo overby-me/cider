@@ -298,6 +298,17 @@ pub fn deliver_pending_configures() {
             let sel = objc::sel_registerName(cstr!("platformWindow:frameChanged:didSize:"));
             objc::msg_send_frame_changed(st.delegate, sel, st.owner, st.frame, objc::YES);
         }
+        /*
+         * AND REDRAW THE WHOLE THING. A frame change makes the application lay out again, and it
+         * repaints what it believes changed; anything it lays out but does not consider dirty keeps
+         * whatever the buffer held at the OLD size.
+         *
+         * Visible symptom, and it survived every other fix in this file: LibreOffice menu bar showed
+         * Application and File and nothing else, at rest, for the whole session, because the window
+         * is resized once during startup and the rest of the bar was laid out into a strip nobody
+         * repainted. One click on the bar brought all of it back.
+         */
+        st.needs_full_display = true;
     }
 }
 
