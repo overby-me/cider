@@ -2042,3 +2042,28 @@ caller gets an empty image, which looks exactly like a view that refused to draw
 Verified by absence and by no regression: the unimplemented line is gone from a full run, the
 application survives to its timeout with no unrecognised selectors, and drag selection still
 highlights exactly the span the pointer crosses.
+
+## The event pump had no autorelease pool, and idle cost nineteen megabytes a second
+
+Found by soaking rather than by reading: five minutes of ordinary editing took resident memory from
+1.4 GB to 11.7 GB. The first suspicion was the document growing, so the soak was rewritten to keep it
+to ONE LINE, and it still climbed. Then the control that settled it: the same run with NO INTERACTION
+AT ALL, no keyboard, no mouse, nothing but the pump.
+
+    idle, no pool            1.29 GB to 3.60 GB in two minutes    about 19 MB/s
+    idle, pool on the drain  0.76 GB to 1.59 GB in two minutes    about 7 MB/s
+    editing soak, before     1.4 GB to 11.7 GB in five minutes
+
+Flat mapping count throughout (1310), flat file descriptors (41): anonymous memory that is never
+given back, and an application doing NOTHING cannot leak from what it is doing.
+
+On Apple systems the run loop wraps every iteration in an autorelease pool. This backend IS the loop
+-- it calls the libdispatch main queue drain directly from -nextEventMatchingMask: -- and there was
+no pool anywhere, so every autoreleased object made by a block on the main queue lived until exit.
+For LibreOffice that means its timers, its idle work and the drawing they cause.
+
+WHAT IS NOT FIXED: about 7 MB/s remains, and it is the events themselves. The proper answer is the
+run loop pattern -- one pool per pass, released at the TOP of the next pass, so the event survives
+being handled -- and it kills the application on its first window: it is holding something from the
+previous pass. The pool therefore covers the drain and this backend own per-pass work, and the event
+fetch stays outside it.

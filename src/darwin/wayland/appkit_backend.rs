@@ -82,6 +82,10 @@ extern "C" fn display_init(this: Object, _cmd: Sel) -> Object {
 /// -processPendingEvents here for the same reason.
 unsafe extern "C" {
     fn cider_wayland_drain_main_queue();
+    /// An autorelease pool around the work this backend does per pass. See the comment on the C
+    /// side: the returned event must NOT be inside it.
+    fn cider_wayland_pool_push() -> *mut c_void;
+    fn cider_wayland_pool_pop(pool: *mut c_void);
 }
 
 extern "C" fn display_next_event(
@@ -92,6 +96,21 @@ extern "C" fn display_next_event(
     mode: Object,
     dequeue: objc::ObjcBool,
 ) -> Object {
+    /*
+     * A POOL AROUND THIS BACKEND OWN WORK, and only that.
+     *
+     * Everything here calls into AppKit and produces autoreleased objects, and it runs on every
+     * pass, so without a pool it accumulates for the life of the process.
+     *
+     * IT CANNOT BE STRETCHED TO COVER THE EVENT FETCH BELOW. The event that comes back is
+     * autoreleased and the caller has not seen it yet, so a pool closing here would free it. I
+     * tried the run loop pattern instead -- one pool per pass, released at the top of the NEXT pass,
+     * which is what Apple does -- and the application dies on its first window with Unspecified
+     * Application Error: it is holding something from the previous pass that this would free. So
+     * the fetch stays outside, and the autoreleased events it returns are the residual leak
+     * measured in the plan.
+     */
+    let pool = unsafe { cider_wayland_pool_push() };
     session::pump();
     // THE APPLICATION OWN DEFERRED WORK, which nothing else here runs. See the comment on the C
     // side: LibreOffice queues its wakeups on the main queue and the main queue is drained by the
@@ -102,6 +121,7 @@ extern "C" fn display_next_event(
     // where re-entering AppKit is safe.
     window::force_redraw_if_due();
     window::deliver_pending_configures();
+    unsafe { cider_wayland_pool_pop(pool) };
     // WHETHER THE APPLICATION ASKS THIS BACKEND FOR EVENTS AT ALL is the question underneath a
     // window that never redraws, and it is not answerable from the outside: an application with
     // its own main loop and one that is wedged in this call look identical from a log of window

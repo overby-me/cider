@@ -805,5 +805,44 @@ void _dispatch_main_queue_callback_4CF(void *msg);
 
 void cider_wayland_drain_main_queue(void)
 {
-	_dispatch_main_queue_callback_4CF(NULL);
+	/*
+	 * THE POOL IS NOT OPTIONAL, and its absence is a leak of about nineteen megabytes a SECOND.
+	 *
+	 * On Apple systems the run loop wraps every iteration in an autorelease pool, and that is where
+	 * the garbage of a pass through the event loop goes. This backend calls the dispatch drain
+	 * directly, so there was no pool anywhere: every autoreleased object created by a block on the
+	 * main queue -- which for LibreOffice means its timers, its idle work and the drawing they
+	 * cause -- lived until the process exited.
+	 *
+	 * Measured with the application sitting completely IDLE, no keyboard, no mouse, nothing but the
+	 * pump running: resident memory climbed from 1.29 GB to 3.60 GB in two minutes, in a straight
+	 * line, with the mapping count flat at 1310. Flat mappings and rising anonymous memory is a heap
+	 * that is never given back, and an idle application cannot leak from anything it is doing --
+	 * only from what the loop under it is doing.
+	 */
+	@autoreleasepool {
+		_dispatch_main_queue_callback_4CF(NULL);
+	}
+}
+
+/*
+ * A POOL AROUND THE BACKEND OWN WORK IN THE EVENT PUMP, which is the other half of the leak.
+ *
+ * The drain below has its own pool. Everything ELSE this backend does per pass -- servicing the
+ * connection, delivering configures, forcing a redraw -- also calls into AppKit and also produces
+ * autoreleased objects, and it runs just as often.
+ *
+ * It cannot simply wrap the whole of -nextEventMatchingMask:. The EVENT that call returns is
+ * autoreleased and has to outlive the pool, which is exactly why Apple drains the pool after the
+ * event is HANDLED rather than before it is returned. So the pool is pushed and popped around the
+ * part that returns nothing, and the event fetch stays outside it.
+ */
+void *cider_wayland_pool_push(void)
+{
+	return [[NSAutoreleasePool alloc] init];
+}
+
+void cider_wayland_pool_pop(void *pool)
+{
+	[(NSAutoreleasePool *) pool release];
 }
