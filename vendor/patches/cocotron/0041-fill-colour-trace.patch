@@ -1,5 +1,5 @@
---- a/Onyx2D/O2Context.m	2026-08-14 10:33:08.439154861 +0200
-+++ b/Onyx2D/O2Context.m	2026-08-14 10:33:08.440154867 +0200
+--- a/Onyx2D/O2Context.m	2026-08-14 13:44:18.071588094 +0200
++++ b/Onyx2D/O2Context.m	2026-08-14 13:44:18.071719884 +0200
 @@ -24,6 +24,10 @@
  #import <Onyx2D/O2Color.h>
  #import <Onyx2D/O2ColorSpace.h>
@@ -20,7 +20,7 @@
 +     * problem; one that is already wrong here came from the caller. */
 +    if (getenv("CIDER_WAYLAND_TRACE_COLORS") != NULL) {
 +        static int printed;
-+        if (printed < 24) {
++        if (printed < 400) {
 +            printed++;
 +            size_t count = color ? O2ColorGetNumberOfComponents(color) : 0;
 +            const O2Float *comps = color ? O2ColorGetComponents(color) : NULL;

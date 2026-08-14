@@ -1,0 +1,45 @@
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.c	2026-08-14 13:43:51.979946452 +0200
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.c	2026-08-14 13:43:51.980436957 +0200
+@@ -129,8 +129,29 @@
+ // Before you make any changes to the assembly code, I strongly recommend looking at the `_start_wqthread`
+ // code. `_start_wqthread` does not follow the usual calling conventions you would expect. You can find the
+ // source in `libpthread/src/pthread_asm.S`.
++__attribute__((noinline))
+ void wqueue_entry_point_asm_jump(void* self, int thread_port, void* stackaddr,
+ 		void* item, int reuse, int nevents) {
++	/*
++	 * THE STACK IS RESET HERE, BECAUSE THE KERNEL DOES IT ON A REAL SYSTEM.
++	 *
++	 * _start_wqthread never touches the stack pointer: XNU sets it before jumping, so the entry
++	 * point begins at the top of a fresh stack every time a worker is handed work. This emulation
++	 * jumped to the same entry point from inside sys_workq_kernreturn, which is itself running on
++	 * that thread stack, and left the stack pointer where it was.
++	 *
++	 * So every park and wake cycle NESTED. The frames of the previous cycle stayed below the new
++	 * ones, and a worker thread that served a few hundred items ran off the end of its stack. What
++	 * that looks like from outside is not a stack overflow: it is a fault inside free(), or an
++	 * os_unfair_lock aborting for recursion, at a different place every run, because the thing that
++	 * ran out of room is whatever happened to be deepest. LibreOffice died about twenty seconds
++	 * after launch, every run, and a forty line probe that only creates and cancels dispatch timer
++	 * sources reproduces it in ten.
++	 *
++	 * The pthread structure sits AT the top of the stack for a workqueue thread, which is what
++	 * libpthread records as stackaddr, so self IS the value to restore. A null self keeps the
++	 * current stack rather than jumping to zero.
++	 */
+ 	
+ 	// No additional function calls should occur beyond this point. Otherwise, we will risk our
+ 	// registers being call-clobbered. I recommend reading the following doc for more details:
+@@ -153,6 +174,12 @@
+ 
+ #if __x86_64__
+ 	__asm__ __volatile__ (
++		// Reset the stack to the top for this thread, which is what the kernel does before it
++		// jumps here. Nothing on the old stack is read after this point.
++		"testq %%rdi, %%rdi\n"
++		"jz 1f\n"
++		"movq %%rdi, %%rsp\n"
++		"1:\n"
+ 		// `_start_wqthread` does not expect the stack to be aligned (using the 
+ 		// call instruction will add the return address to the stack, causing 
+ 		// it to be aligned).

@@ -1524,3 +1524,23 @@ WHAT MADE IT FINDABLE was comparing the two instruments the plan has always desc
 and the compositor screenshot AGREED, which ruled out every commit, stride and format explanation in
 one step and left only "the application really did draw two items". After that the question was why,
 and the answer was that it had drawn them when there were two.
+
+## Every fix of today is a PATCH FILE now, which it was not an hour ago
+
+vendor/src is a MATERIALISED pin: it is overlaid from vendor/pins and patched, and it is not tracked.
+Nine of today's fixes lived only in that tree, which means the next time the pin materialises they
+would have been gone, and the only trace of a day of work would have been the commit messages.
+
+    cocotron 0043 windowless displayRectIgnoringOpacity:inContext:
+    cocotron 0044 NSBox draws, and keeps the fill colour it is given
+    cocotron 0045 alpha first big endian writes A R G B, not R G B A
+    cocotron 0046 NSResponder cancelOperation: default
+    cocotron 0047 Escape is cancelOperation:, not cancel:
+    cocotron 0048 a menu change invalidates the bar that draws it
+    cocotron 0049 NSWindow _mainMenuChanged
+    cocotron 0050 the colour component read trace
+    xnu      0010 the workqueue entry resets the stack
+    xnu      0011 the workqueue park timeout knob
+
+Each one was checked by reverse applying it against the tree: if it does not come back off cleanly
+it does not describe what is actually there.

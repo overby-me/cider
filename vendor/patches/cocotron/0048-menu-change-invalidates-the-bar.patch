@@ -1,0 +1,54 @@
+--- a/AppKit/NSMenu.subproj/NSMenu.m	2026-08-14 13:42:47.199714206 +0200
++++ b/AppKit/NSMenu.subproj/NSMenu.m	2026-08-14 13:42:47.199889489 +0200
+@@ -344,6 +344,27 @@
+     _title = title;
+ }
+ 
++
++/*
++ * Tell the windows that draw the application menu bar that it has changed.
++ *
++ * AppKit posts NSMenuDidAddItemNotification and friends for this; those names do not exist in this
++ * framework, so the views are invalidated directly. It costs a walk of the window list per menu
++ * mutation, which happens while an application builds its menus and essentially never afterwards.
++ */
++static void NSMenuMainMenuDidChange(NSMenu *menu) {
++    NSApplication *application = NSApp;
++
++    if (application == nil || menu != [application mainMenu]) {
++        return;
++    }
++    for (NSWindow *window in [application windows]) {
++        if ([window respondsToSelector: @selector(_mainMenuChanged)]) {
++            [window performSelector: @selector(_mainMenuChanged)];
++        }
++    }
++}
++
+ - (void) setAutoenablesItems: (BOOL) flag {
+     _autoenablesItems = flag;
+ }
+@@ -351,6 +372,7 @@
+ - (void) addItem: (NSMenuItem *) item {
+     [item performSelector: @selector(_setMenu:) withObject: self];
+     [_itemArray addObject: item];
++    NSMenuMainMenuDidChange(self);
+ }
+ 
+ - (NSMenuItem *) addItemWithTitle: (NSString *) title
+@@ -375,6 +397,7 @@
+ - (void) removeItem: (NSMenuItem *) item {
+     [item performSelector: @selector(_setMenu:) withObject: nil];
+     [_itemArray removeObjectIdenticalTo: item];
++    NSMenuMainMenuDidChange(self);
+ }
+ 
+ - (void) removeItemAtIndex: (NSInteger) index {
+@@ -384,6 +407,7 @@
+ - (void) insertItem: (NSMenuItem *) item atIndex: (NSInteger) index {
+     [item performSelector: @selector(_setMenu:) withObject: self];
+     [_itemArray insertObject: item atIndex: index];
++    NSMenuMainMenuDidChange(self);
+ }
+ 
+ - (NSMenuItem *) insertItemWithTitle: (NSString *) title

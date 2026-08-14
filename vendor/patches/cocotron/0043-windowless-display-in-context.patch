@@ -1,0 +1,63 @@
+--- a/AppKit/NSView.m	2026-08-14 13:42:47.188569584 +0200
++++ b/AppKit/NSView.m	2026-08-14 13:42:47.189461940 +0200
+@@ -2540,6 +2540,60 @@
+         return;
+     }
+ 
++    /*
++     * A VIEW WITH NO WINDOW STILL HAS TO DRAW, and this is the case that matters.
++     *
++     * -displayRectIgnoringOpacity: goes through -lockFocus, which needs a window, so for a view that
++     * has none it draws nothing at all and returns as if it had worked. That is not a corner case
++     * here: it is how LibreOffice reads the system colours. It builds a ONE PIXEL bitmap context
++     * over a local variable, makes a windowless NSBox, sets its fill colour to the system colour it
++     * wants to resolve, asks it to display into that context, and reads the pixel back.
++     *
++     * When nothing draws, the pixel keeps whatever the stack held. That is exactly what was on
++     * screen: the whole window chrome in a colour that CHANGED BETWEEN RUNS, purple, then green,
++     * then orange, and after an unrelated build change a stable black, because the stack slot
++     * happened to be zero. Neither was a palette bug, and both looked like one.
++     *
++     * So a windowless view draws itself, and its subviews under a translation, with the given
++     * context made current. No focus, no window, no display cycle: the caller has told us where to
++     * put the pixels.
++     */
++    if ([self window] == nil) {
++        NSGraphicsContext *saved = [NSGraphicsContext currentContext];
++        CGContextRef port = (CGContextRef) [context graphicsPort];
++
++        [NSGraphicsContext setCurrentContext: context];
++        if (port != NULL) {
++            CGContextSaveGState(port);
++        }
++        [self drawRect: rect];
++        if (port != NULL) {
++            CGContextRestoreGState(port);
++        }
++
++        for (NSView *subview in [self subviews]) {
++            NSRect frame = [subview frame];
++            NSRect visible = NSIntersectionRect(rect, frame);
++
++            if (NSIsEmptyRect(visible)) {
++                continue;
++            }
++            if (port != NULL) {
++                CGContextSaveGState(port);
++                CGContextTranslateCTM(port, frame.origin.x, frame.origin.y);
++            }
++            [subview displayRectIgnoringOpacity: NSOffsetRect(visible, -frame.origin.x,
++                                                              -frame.origin.y)
++                                      inContext: context];
++            if (port != NULL) {
++                CGContextRestoreGState(port);
++            }
++        }
++
++        [NSGraphicsContext setCurrentContext: saved];
++        return;
++    }
++
+     NSGraphicsContext *saved = [NSGraphicsContext currentContext];
+     [NSGraphicsContext setCurrentContext: context];
+     [self displayRectIgnoringOpacity: rect];

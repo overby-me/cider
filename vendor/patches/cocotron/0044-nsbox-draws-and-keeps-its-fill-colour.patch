@@ -1,0 +1,30 @@
+--- a/AppKit/NSBox.m	2026-08-14 13:42:47.192657867 +0200
++++ b/AppKit/NSBox.m	2026-08-14 13:42:47.192999114 +0200
+@@ -120,7 +120,26 @@
+ 
+     [super initWithFrame: frame];
+ 
+-    _isTransparent = YES;
++    /*
++     * NOT TRANSPARENT, which is the documented AppKit default and the opposite of what this was.
++     *
++     * -drawRect: returns immediately for a transparent box, so a box created in code drew NOTHING,
++     * ever. That is not a cosmetic difference: LibreOffice reads every one of its background
++     * colours by rendering a one pixel NSBox filled with a system colour and sampling the result,
++     * and an untouched pixel gave it whatever the stack held. The whole window chrome came out in a
++     * colour that changed between runs, and later a flat black, from this one line.
++     *
++     * A box decoded from a nib keeps whatever the nib says, which is the other branch above.
++     */
++    _isTransparent = NO;
++    /*
++     * THE CUSTOM PROPERTIES NEED SOMEWHERE TO LIVE. -setFillColor:, -setBorderColor: and the two
++     * metrics all store into this dictionary, and it was only ever created when decoding a nib, so
++     * for a box built in code every one of those setters was a silent no-op and every getter
++     * answered nil. -drawRect: then set no colour at all before filling, which left the previous
++     * colour in the context, so the box painted the groove colour whatever it had been told.
++     */
++    _customData = [[NSMutableDictionary alloc] init];
+     _titleCell = [[NSTextFieldCell alloc] initTextCell: @""];
+     _borderType = NSLineBorder;
+     _titlePosition = NSAboveTop;

@@ -1,0 +1,23 @@
+--- a/AppKit/NSWindow.m	2026-08-14 13:42:47.201391558 +0200
++++ b/AppKit/NSWindow.m	2026-08-14 13:42:47.201556232 +0200
+@@ -2864,6 +2864,20 @@
+     }
+ }
+ 
++/*
++ * THE MENU BAR CHANGED, so the strip that draws it has to be repainted.
++ *
++ * A window builds its main menu view once, from the menu object the application shares, and nothing
++ * told it when items were added to that object afterwards. LibreOffice fills its menu bar in as it
++ * loads, so the bar showed Application and File and nothing else for the whole session; one click
++ * on it repainted the strip and all twelve menus appeared at once.
++ */
++- (void) _mainMenuChanged {
++    if (_menuView != nil) {
++        [_menuView setNeedsDisplay: YES];
++    }
++}
++
+ - (void) setMenu: (NSMenu *) menu {
+     if (_menuView != nil) {
+         NSSize oldSize = [_menuView frame].size;
