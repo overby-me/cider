@@ -961,3 +961,31 @@ Cocotron posts the key window notification with object self and registers the de
 self, and setDelegate assigns _delegate BEFORE registering, so respondsToSelector tests the new
 delegate. Both were plausible ways for the application observer to be silently skipped while the
 observer added for this investigation still fired, and neither is happening.
+
+## The key path is textbook, including the application own frames
+
+Captured with backtrace and dladdr inside interpretKeyEvents:
+
+    ImplSVMain
+    Desktop::Main
+    Application::Execute
+    Application::Yield
+    AquaSalInstance::DoYield
+    -[VCL_NSApplication sendEvent:]      the application own override
+    -[NSApplication sendEvent:]          which it CHAINS TO
+    -[NSWindow sendEvent:]
+    -[SalFrameView keyDown:]             the application own
+    -[NSResponder interpretKeyEvents:]
+
+This is the canonical macOS key path, with LibreOffice frames above and below ours. Two things
+follow.
+
+THE APPLICATION OWN keyDown RUNS, so whatever state it sets up before asking for text interpretation
+is set up. The discard happens after that, inside its own insertText:replacementRange:, with its own
+key state prepared by its own code.
+
+AND AN EARLIER INFERENCE HERE WAS WRONG. A note above reasoned that VCL_NSApplication overrides
+sendEvent: and does not chain to super, because a trace placed in the Cocotron implementation never
+fired. The stack shows -[NSApplication sendEvent:] IS in the chain. The trace failed for some other
+reason and the conclusion drawn from its silence was unfounded, which is the third time a silent
+instrument has been read as a result in this file.
