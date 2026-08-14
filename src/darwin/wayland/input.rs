@@ -297,6 +297,19 @@ extern "C" fn on_pointer_motion(
     } else {
         NS_MOUSE_MOVED
     };
+    // MOTION IS THE ONLY POINTER EVENT WITH NO TRACE, which made a drag that selected nothing
+    // impossible to tell from a drag whose motion never arrived. Rate limited because a real
+    // pointer produces hundreds of these a second.
+    if tracing() {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static SEEN: AtomicU64 = AtomicU64::new(0);
+        let n = SEEN.fetch_add(1, Ordering::Relaxed) + 1;
+        if n <= 4 || n % 50 == 0 {
+            println!(
+                "cider-wayland-input motion={n} x={px:.0} y={py:.0} buttons={buttons:#x} type={event_type}"
+            );
+        }
+    }
     unsafe {
         cider_wayland_post_mouse(event_type, px, py, height, modifiers, delegate, 0, 0, 0.0, 0.0);
     }

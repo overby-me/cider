@@ -1582,3 +1582,22 @@ character and the word count went to 1.
 
 The bare string comes from the keysym now, which carries no modifier transformation. After: Control
 and A leaves the text alone and keeps the selection.
+
+## The endpoint evaluates again, and the mouse motion trace
+
+nix build .#cider-buck2-min --dry-run now resolves the whole graph and exits 0: the pins materialise
+with the full patch series, the buck2 graph lowers, and the derivations for cider-min are listed. It
+has not done that at any point in this session.
+
+MOUSE MOTION HAS A TRACE NOW. It was the only pointer event without one, which made a drag that
+selects nothing indistinguishable from a drag whose motion never arrived. With it:
+
+    cider-wayland-input motion=1 x=300 y=215 buttons=0x0 type=5
+    cider-wayland-input button=0x110 pressed=true x=300 y=215 type=1
+    cider-wayland-input button=0x110 pressed=false x=300 y=215 type=2
+    cider-wayland-input motion=2 x=540 y=215 buttons=0x0 type=5
+
+The release arrives BEFORE the motion. Both swaymsg forms behave this way: cursor set warps and drops
+the button grab, and cursor move is coalesced into one motion delivered after the release. So DRAG
+SELECTION IS UNVERIFIED rather than broken: the backend classifies a move with a button held as a
+drag and posts it as one, and this harness cannot produce that ordering. A real pointer would.
