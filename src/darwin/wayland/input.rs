@@ -551,6 +551,58 @@ extern "C" fn on_keyboard_leave(
     unsafe { cider_wayland_set_keyboard_focus(std::ptr::null_mut(), std::ptr::null_mut()) };
 }
 
+
+/// The Unicode code point AppKit puts in -characters for a key that has no printable character.
+///
+/// THIS IS NOT DECORATION. AppKit does not deliver an arrow key or Page Down as an empty string: it
+/// delivers a character in the private use block, 0xF700 upwards, and every key binding table in
+/// the framework and in applications is written against those values. xkbcommon produces nothing at
+/// all for these keys, so the event arrived with an empty -characters, no binding could match it,
+/// and the application saw a keystroke with no content.
+///
+/// Measured before fixing: Page Down and Home reached this backend with the right keysyms and the
+/// right Carbon codes, and NOTHING reached -[SalFrameView keyDown:]. Arrows, Home, End, Page Up and
+/// Page Down, the function keys and forward delete were all in that state, which is most of moving
+/// around a document.
+fn appkit_function_key(keysym: u32) -> Option<(u32, bool)> {
+    // (code point, is an arrow). AppKit marks arrows with the numeric pad flag as well, which is
+    // what the framework key binding table matches on.
+    let mapped = match keysym {
+        0xff52 => (0xF700, true),  // Up
+        0xff54 => (0xF701, true),  // Down
+        0xff51 => (0xF702, true),  // Left
+        0xff53 => (0xF703, true),  // Right
+        0xffbe => (0xF704, false), // F1
+        0xffbf => (0xF705, false),
+        0xffc0 => (0xF706, false),
+        0xffc1 => (0xF707, false),
+        0xffc2 => (0xF708, false),
+        0xffc3 => (0xF709, false),
+        0xffc4 => (0xF70A, false),
+        0xffc5 => (0xF70B, false),
+        0xffc6 => (0xF70C, false),
+        0xffc7 => (0xF70D, false),
+        0xffc8 => (0xF70E, false),
+        0xffc9 => (0xF70F, false), // F12
+        0xff63 => (0xF727, false), // Insert
+        0xffff => (0xF728, false), // Forward delete
+        0xff50 => (0xF729, false), // Home
+        0xff57 => (0xF72B, false), // End
+        0xff55 => (0xF72C, false), // Page Up
+        0xff56 => (0xF72D, false), // Page Down
+        0xff61 => (0xF72E, false), // Print Screen
+        0xff14 => (0xF72F, false), // Scroll Lock
+        0xff13 => (0xF730, false), // Pause
+        _ => return None,
+    };
+    Some(mapped)
+}
+
+/// AppKit sets this for every key in the function block.
+const NS_FUNCTION_KEY_MASK: u64 = 1 << 23;
+/// And this as well for the arrows.
+const NS_NUMERIC_PAD_MASK: u64 = 1 << 21;
+
 extern "C" fn on_keyboard_key(
     _data: *mut c_void,
     _keyboard: *mut wl::WlKeyboard,
@@ -624,7 +676,25 @@ extern "C" fn on_keyboard_key(
         );
     }
 
-    let mut chars = text.unwrap_or_default();
+    /*
+     * A KEY WITH NO PRINTABLE CHARACTER STILL HAS A CHARACTER, in AppKit terms. Substituting the
+     * function block code point is what makes arrows, Home, End, Page Up and Page Down and the
+     * function keys exist at all above this layer.
+     */
+    let (mut chars, modifiers) = match appkit_function_key(keysym) {
+        Some((code, is_arrow)) => {
+            let mut extra = NS_FUNCTION_KEY_MASK;
+            if is_arrow {
+                extra |= NS_NUMERIC_PAD_MASK;
+            }
+            let mut encoded = [0u8; 4];
+            let text = char::from_u32(code)
+                .map(|c| c.encode_utf8(&mut encoded).as_bytes().to_vec())
+                .unwrap_or_default();
+            (text, modifiers | extra)
+        }
+        None => (text.unwrap_or_default(), modifiers),
+    };
     chars.push(0);
     /*
      * THE TWO STRINGS ARE NOT THE SAME STRING.
@@ -638,7 +708,10 @@ extern "C" fn on_keyboard_key(
      * found, and the application inserted the control character into the document instead of
      * selecting anything.
      */
-    let mut bare = {
+    let mut bare = if appkit_function_key(keysym).is_some() {
+        // A function key has no unmodified spelling that differs; both strings are the code point.
+        chars.clone()
+    } else {
         let mut buffer = [0u8; 64];
         let n = unsafe {
             xkb_keysym_to_utf8(keysym, buffer.as_mut_ptr() as *mut c_char, buffer.len())

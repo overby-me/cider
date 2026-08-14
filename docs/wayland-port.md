@@ -1601,3 +1601,28 @@ The release arrives BEFORE the motion. Both swaymsg forms behave this way: curso
 the button grab, and cursor move is coalesced into one motion delivered after the release. So DRAG
 SELECTION IS UNVERIFIED rather than broken: the backend classifies a move with a button held as a
 drag and posts it as one, and this harness cannot produce that ordering. A real pointer would.
+
+## Arrows, Home, End, Page Up and Page Down did not exist at all until now
+
+docs/wayland-page-down-scrolls.png: a four page document, made with Command and Return, then Command
+and Home to the top, then two Page Downs. The status bar reads Pages 2 and 3 of 4 and the text of the
+next page is on screen. That is view scrolling, driven from the keyboard, end to end.
+
+WHAT WAS WRONG. AppKit does not deliver an arrow key or Page Down as an empty string: it delivers a
+character in the private use block from 0xF700 up, and every key binding table in the framework and
+in applications is written against those values. xkbcommon produces NOTHING for those keys, so this
+backend sent an empty -characters, no binding matched, and the application received a keystroke with
+no content. Measured: Page Down and Home arrived here with the right keysyms and the right Carbon
+codes and NOTHING reached -[SalFrameView keyDown:].
+
+The mapping covers the four arrows, Home, End, Page Up, Page Down, Insert, forward delete, F1 to F12
+and the three lock keys. AppKit also sets the function modifier for all of them and the numeric pad
+modifier for the arrows, which is what the framework binding table matches on, so both are set.
+
+After: Page Down arrives as KEY_PAGEDOWN with modifiers 0x800000, Command and Home as KEY_HOME with
+0x840000, and the view moves.
+
+A NOTE ON THE TEST ITSELF. The first version of this used Control and Return for a page break and
+concluded that scrolling was broken because the picture did not change. The document had one page:
+the shortcut on this platform is COMMAND and Return, and the application was right. The check that
+caught it was reading the page count in the status bar rather than trusting the comparison.
