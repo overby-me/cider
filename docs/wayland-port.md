@@ -727,3 +727,30 @@ The wrong pixels are produced inside LibreOffice own rendering into its own imag
 this port can see through a CoreGraphics call. The next question is which of its draws produces
 them, and the honest answer is that finding it needs either its debug symbols or a narrower
 reproducer than a whole office suite.
+
+## LibreOffice never sets a coloured fill through CoreGraphics, which closes off the CG layer
+
+Traced at O2ContextSetFillColorWithColor, which every CG fill colour must pass through, printing a
+backtrace whenever a non black non grey colour is set. NOT ONE in a whole run.
+
+Combined with the previous entry, where the image handed to CGContextDrawImage already contained
+the wrong colour, this says the chrome pixels are produced by LibreOffice OWN RENDERER writing into
+its own memory, and only the finished image is handed to CoreGraphics. That is why every instrument
+placed at a CoreGraphics boundary has come up empty: there is nothing to see there.
+
+### The eliminations, gathered in one place
+
+  the colour table                 -- loud values DO reach the screen, so it is consulted
+  the colour conversion            -- clean for every colour LibreOffice reads, tested directly
+  the rasteriser                   -- src at the blend equals the pixel on screen, exactly
+  the blit                         -- the source image already holds the wrong colour
+  a format or stride difference    -- buffer dump and screenshot agree
+  CGLayer                          -- never created
+  uninitialised caller buffers     -- zeroing window sized ones changes nothing
+  CG fill colours                  -- never set to anything coloured, not once
+  dark mode                        -- AppleInterfaceStyle nil, effective appearance Aqua
+
+WHAT THAT LEAVES is LibreOffice deciding a wrong colour internally and painting it with its own
+code. The remaining lead is the one thing that IS observably ours: the loud palette experiment
+proves it reads controlColor for that region, so the value it derives from controlColor is where to
+look, and that derivation happens in VCL rather than in anything this port implements.
