@@ -1336,11 +1336,6 @@ prefix_tree(
         "libexec/cider/System/Library/Security/Certificates.bundle": "//vendor/src:certificates_bundle",
         "libexec/cider/System/Library/User Template": "//vendor/src/usertemplate:prefix_Non_localized",
         "libexec/cider/private": "//vendor/src/files:prefix_private",
-        # THE USER DATABASE, which this prefix did not have. Libinfo's file module opens
-        # /etc/master.passwd and nothing else when the effective uid is 0, which every guest here
-        # is, so getpwuid answered NULL for everyone. See src/darwin/etc/master.passwd.
-        "libexec/cider/private/etc/master.passwd": "//src/darwin/etc:master_passwd",
-        "libexec/cider/private/etc/group": "//src/darwin/etc:group",
         "libexec/cider/private/etc/pam.d": "//vendor/src/openpam:prefix_pam_d",
         "libexec/cider/private/etc/periodic/daily": "//vendor/src/crontabs:prefix_files_daily",
         "libexec/cider/private/etc/periodic/monthly": "//vendor/src/crontabs:prefix_files_monthly",
@@ -1368,6 +1363,16 @@ prefix_tree(
         "libexec/cider/usr/share/zsh/5.7.1/help": "//vendor/src/zsh:prefix_zsh_Doc_help",
     },
     files = {
+        # THE USER DATABASE, which this prefix did not have. Libinfo's file module opens
+        # /etc/master.passwd and nothing else when the effective uid is 0, which every guest here
+        # is, so getpwuid answered NULL for everyone. See src/darwin/etc/master.passwd.
+        #
+        # THEY ARE FILES AND THEY WERE IN trees, which is a real difference and not a tidy-up: the
+        # trees loop reads PrefixDirInfo off every entry and an export_file does not have one, so
+        # //buck/prefix:cider_prefix failed ANALYSIS from the day they were added. Nothing built the
+        # full prefix in between, so nothing said so.
+        "libexec/cider/private/etc/master.passwd": "//src/darwin/etc:master_passwd",
+        "libexec/cider/private/etc/group": "//src/darwin/etc:group",
         "libexec/cider/Library/Python/2.7/site-packages/Extras.pth": "//vendor/src/python_modules:darling_src_Extras-2.7.pth",
         "libexec/cider/Library/Python/2.7/site-packages/README": "//vendor/src/python:2.7_Python-2.7.16_Lib_site-packages_README",
         "libexec/cider/System/Library/Components/CoreAudio.component/Contents/Info.plist": "//src/darwin/CoreAudio:CoreAudioComponent_Info.plist",

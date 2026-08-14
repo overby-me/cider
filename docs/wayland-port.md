@@ -1745,3 +1745,21 @@ position was the missing measurement, and it took two minutes.
 
 The click count fix that came out of the same investigation is real and still needed: a double click
 reported as two single clicks cannot select a word however good the coordinates are.
+
+## The Wayland backend is the DEFAULT, and X11 is what happens when no compositor answers
+
+CIDER_WAYLAND_BACKEND was an opt-in while the backend could not do the job. It is an opt-OUT now
+(set it to 0 to decline on purpose and compare against X11 without rebuilding).
+
+Nothing about the fallback needed writing, because AppKit already expresses availability the right
+way: NSDisplay sorts the backend bundles by NSPriority DESCENDING (NSDisplay.m does [p2 compare: p1])
+and takes the first whose principal class returns non-nil from -init. Wayland is 300 and X11 is 200,
+so Wayland is asked first and answers nil when it cannot reach a compositor.
+
+Both directions are checked, and the second one is the one that matters:
+
+    compositor present, variable unset   window mapped, 1024x656, first frame at t=2.54 s
+    no compositor at all                 cider-wayland-appkit init=declined reason=no-compositor
+
+The second is a control that FIRES: if the decline had stopped working, the line would be missing and
+X11 would never be reached on a machine without Wayland.

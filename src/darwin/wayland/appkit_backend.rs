@@ -10,9 +10,12 @@
 // taking the first that returns non-nil. There is no +isAvailable. AVAILABILITY IS EXPRESSED BY
 // RETURNING NIL, so an -init that cannot reach a compositor must return nil and let X11 win.
 //
-// OPT-IN FOR NOW. This backend declines unless CIDER_WAYLAND_BACKEND is set, because it does not
-// yet implement the abstract methods NSDisplay requires and being chosen would break every GUI
-// program rather than only the new path. The variable comes out when the methods go in.
+// IT IS THE DEFAULT NOW, and the opt-in variable is an opt-OUT. It was opt-in while the abstract
+// methods NSDisplay requires were missing, because being chosen then would have broken every GUI
+// program rather than only the new path. They are in: LibreOffice renders, takes keyboard and
+// mouse, and resizes on this backend, which is what the variable was waiting for.
+//
+// CIDER_WAYLAND_BACKEND=0 declines on purpose, for comparing against X11 without rebuilding.
 use std::os::raw::c_void;
 
 mod colors;
@@ -28,11 +31,14 @@ use objc::{Class, NsRect, ObjcSuper, Object, Sel};
 
 /// -init, the whole of the backend's current behaviour.
 ///
-/// Returns nil unless CIDER_WAYLAND_BACKEND is set AND a compositor answers, which is how a
-/// backend says "not me" on this side of AppKit.
+/// Returns nil unless a compositor answers, which is how a backend says "not me" on this side of
+/// AppKit, or unless CIDER_WAYLAND_BACKEND is set to 0 to decline deliberately.
+///
+/// NOTHING ELSE IS NEEDED TO KEEP X11 WORKING WHERE THERE IS NO WAYLAND: connect() fails without a
+/// compositor, this returns nil, and NSDisplay moves on to the next bundle by priority.
 extern "C" fn display_init(this: Object, _cmd: Sel) -> Object {
-    if std::env::var_os("CIDER_WAYLAND_BACKEND").is_none() {
-        println!("cider-wayland-appkit init=declined reason=CIDER_WAYLAND_BACKEND-unset");
+    if std::env::var_os("CIDER_WAYLAND_BACKEND").as_deref() == Some(std::ffi::OsStr::new("0")) {
+        println!("cider-wayland-appkit init=declined reason=CIDER_WAYLAND_BACKEND-0");
         return std::ptr::null_mut();
     }
 
