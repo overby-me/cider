@@ -859,3 +859,30 @@ WHAT WOULD ACTUALLY MOVE IT, in rough order of expected value:
 
 The mouse asymmetry is the strongest hint on record: clicks reach VCL and place a caret, so the
 frame is alive, focused and routing, and only the key path is dropped.
+
+## The X11 control does not start, so this backend has already passed the one it replaces
+
+Run back to back, same LibreOffice, same prefix, same session. scratchpad/run-lo-x11.sh selects the
+X11 backend simply by NOT setting CIDER_WAYLAND_BACKEND, and drives Xvfb with xdotool.
+
+    X11 backend       SOFFICE_EXIT=1, Unspecified Application Error, dies during startup
+    Wayland backend   13 windows, 1 mapped, EXIT=137, renders and survives the harness
+
+Repeated twice with the same result, so it is not flakiness.
+
+TWO CONSEQUENCES, and the second one closes a lever this plan was counting on.
+
+  The Wayland backend is FURTHER ALONG than the X11 one for this application. LibreOffice reaching
+  a laid out document window at all is new, not a regression from something that used to work.
+
+  Comparing the two backends cannot diagnose the keyboard, because there is no working control to
+  compare against. That was the third of the three levers listed above and it is now spent; the
+  remaining two are symbols for libvclplug_osxlo and a small NSTextInputClient reproducer.
+
+INCIDENTAL, and it says something about the colour table: the X11 run prints missing color for
+underPageBackgroundColor, systemGrayColor and controlAccentColor, all of which the Wayland table
+supplies. The table written for this port is more complete than the one it was copied from.
+
+The X11 failure raises no ObjC exception either, so it is a C++ one inside LibreOffice, the same
+shape of failure as the Wayland keyboard: caught, unnamed, and reported only as Unspecified
+Application Error.
