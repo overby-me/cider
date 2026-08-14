@@ -989,3 +989,28 @@ sendEvent: and does not chain to super, because a trace placed in the Cocotron i
 fired. The stack shows -[NSApplication sendEvent:] IS in the chain. The trace failed for some other
 reason and the conclusion drawn from its silence was unfounded, which is the third time a silent
 instrument has been read as a result in this file.
+
+## Every gate an application can check is open
+
+    CIDER_FOCUS window=2 class=SalFrameWindow canBecomeKey=1 isKey=1 isMain=1 canBeMain=1
+                appActive=1 firstResponder=SalFrameView
+
+Key AND main, the application active, and its own view as first responder. Each of those was a
+plausible gate on the keyboard and each is correct, so they are printed together now rather than
+being rediscovered one at a time.
+
+Two more configurations tried and eliminated in the same round:
+
+  TYPING WITH NO CLICK FIRST. Every earlier run clicked into the document before typing, and a
+  click could plausibly move focus somewhere that swallows keys. Three keystrokes delivered with no
+  click at all: zero pixels changed. So the click is not the problem.
+
+  A KEYBOARD SHORTCUT. Ctrl+Q with the correct key code and the correct modifier does not quit,
+  so it is not that text is lost while commands work.
+
+### A recurring hazard worth naming, since it has now happened twice
+
+Both times a cleanup broke a source file, the run afterwards printed a healthy looking result from
+the PREVIOUSLY INSTALLED dylib, because the harness copies a build artefact into the prefix and a
+failed build leaves the old one in place. A green run after a failed build is not a green run.
+Check the build result before believing the run.

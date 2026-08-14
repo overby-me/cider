@@ -158,9 +158,17 @@ void cider_wayland_set_keyboard_focus(id delegate, id platformWindow)
 	 * because the failing case looks exactly like the working one from outside.
 	 */
 	if (getenv("CIDER_TRACE_KEYS") != NULL && delegate != nil) {
-		NSLog(@"CIDER_FOCUS window=%ld class=%s canBecomeKey=%d isKey=%d firstResponder=%s",
+		/*
+		 * EVERY PIECE OF STATE AN APPLICATION CAN CHECK before deciding a key event is for it.
+		 * Each was a plausible gate on the keyboard and each is reported correct, so they are
+		 * printed together rather than rediscovered one at a time.
+		 */
+		NSLog(@"CIDER_FOCUS window=%ld class=%s canBecomeKey=%d isKey=%d isMain=%d canBeMain=%d "
+			  @"appActive=%d firstResponder=%s",
 			(long) [delegate windowNumber], class_getName([delegate class]),
 			(int) [delegate canBecomeKeyWindow], (int) [delegate isKeyWindow],
+			(int) [delegate isMainWindow], (int) [delegate canBecomeMainWindow],
+			(int) [NSApp isActive],
 			[delegate firstResponder] ? class_getName([[delegate firstResponder] class]) : "nil");
 	}
 }
