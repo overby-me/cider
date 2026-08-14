@@ -1358,3 +1358,18 @@ other explanations had been eliminated one at a time.
 The menu bar shows Application and File and not the rest of the menus. That is the next rendering
 question. The application still dies at about twenty seconds, and that is NOT this backend: the X11
 backend reaches the same point and dies the same way.
+
+## TYPING WORKS, BEFORE AND AFTER A CLICK. Criterion two is met, 2026-08-14 evening
+
+docs/wayland-typing-works.png. The document reads abcxyz and the status bar reads 1 word, 6
+characters. The driver typed abc with no click, then clicked in the middle of the page, then typed
+xyz. Both halves appear, in order, in the right place.
+
+The click regression is gone and it was never about the mouse: characters after a click were always
+delivered to the application correctly, and what was missing was the REPAINT. The main queue drain
+is what fixed it, because LibreOffice defers its screen updates through blocks on the main queue and
+nothing was running them. The status bar updating its word count in the same frame is the proof that
+the deferred work now runs: that counter is recomputed by an idle handler, not by the keystroke.
+
+So criterion two is met: click a menu and it opens (docs/wayland-menu-open.png), type in a document
+and characters appear (docs/wayland-typing-works.png).
