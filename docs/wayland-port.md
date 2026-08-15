@@ -2645,3 +2645,23 @@ source. A test that cannot fail proves nothing, and this one was made to fail be
         Cider, start of the day       3.63 s   7.1x
         Cider, now                    2.20 s   4.3x
         first document window         2.53 s -> 1.52 s
+
+## AND THE OTHER HALF OF memmove: SMALL COPIES
+
+rep movsb took the big copies and left the small ones, which were still going one long at a time,
+and memmove was still 10 percent of the run. Copies of 32 bytes or fewer now read BOTH ENDS and then
+write both ends, in eight, four or two byte pieces that overlap in the middle.
+
+Reading everything before writing anything has a property worth more than the speed: it is correct
+for ANY overlap in either direction, because every load happens before every store. No direction
+test and no second implementation for the backward case. The rep movsb floor drops to 32 with the
+small path underneath it, so nothing lands on the portable loop except a backward overlapping move
+of more than 32 bytes.
+
+    text to PDF  2.20 s -> 2.07 s
+
+Same 79807 case probe, still zero failures, and the window dump still byte identical.
+
+    native LibreOffice 25.8.5.2   0.51 s
+    Cider, start of the day       3.63 s   7.1x
+    Cider, now                    2.07 s   4.1x

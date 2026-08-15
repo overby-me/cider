@@ -1,56 +1,86 @@
 --- a/src/string/generic/memmove.c
 +++ b/src/string/generic/memmove.c
-@@ -51,6 +51,30 @@
-  * (the portable versions of) bcopy, memcpy, and memmove.
+@@ -34,6 +34,7 @@
+ 
+ #if !_PLATFORM_OPTIMIZED_MEMMOVE
+ 
++#include <stdint.h>
+ #include <sys/types.h>
+ 
+ /*
+@@ -72,9 +73,62 @@
+  * invisible here and slow for a user.
   */
+ #if defined(__x86_64__)
+-#define CIDER_REP_MOVSB_FLOOR 64
++#define CIDER_REP_MOVSB_FLOOR 32
+ #endif
  
 +/*
-+ * THE STRING ROUTINE THIS SYSTEM ACTUALLY USES, and it was the 1990 Berkeley portable one: a loop
-+ * that moves one long at a time. It is correct everywhere and slow everywhere, and there is no
-+ * optimised variant in this tree at all -- upstream keeps the assembly out of the portable
-+ * directory and only the portable directory was ever built.
++ * SMALL COPIES: LOAD EVERYTHING, THEN STORE EVERYTHING.
 + *
-+ * It costs more than anything else in the system. Profiling a LibreOffice text to PDF conversion,
-+ * _platform_memmove was 19.97 percent of ALL samples, the single largest leaf, ahead of the
-+ * allocator, the loader and the font machinery.
++ * Half of what was left after rep movsb is copies too short for it, and a byte at a time is the
++ * wrong way to move sixteen bytes on a machine with sixteen byte registers. Reading both ends
++ * before writing either has a property worth more than the speed: it is correct for ANY overlap, in
++ * either direction, because every load happens before every store. No direction test, no second
++ * implementation for the backward case.
 + *
-+ * rep movsb is the answer on x86-64. Every processor since Ivy Bridge implements it as a wide
-+ * internal copy (ERMS), and every one since Ice Lake makes it good for short lengths too (FSRM),
-+ * which is what glibc reaches for in the same situation. It copies FORWARD only, so it is used
-+ * where forward is safe -- no overlap, or the destination below the source -- and the portable loop
-+ * below still handles a backward overlapping move, which is rare.
-+ *
-+ * SHORT COPIES KEEP THE OLD PATH. The instruction has a startup cost that a handful of bytes does
-+ * not amortise on every part it runs on, and being wrong about that on an old processor would be
-+ * invisible here and slow for a user.
++ * The packed struct is how an unaligned load is spelled in portable C; both compilers turn it into
++ * one instruction.
 + */
-+#if defined(__x86_64__)
-+#define CIDER_REP_MOVSB_FLOOR 64
-+#endif
++struct cider_u64 { uint64_t v; } __attribute__((packed));
++struct cider_u32 { uint32_t v; } __attribute__((packed));
++struct cider_u16 { uint16_t v; } __attribute__((packed));
++
++static inline void cider_move_small(char *dst, const char *src, size_t n)
++{
++	if (n >= 16) {
++		/* Up to 32 bytes as four eight byte pieces: the first two and the last two, which
++		 * overlap in the middle for anything that is not exactly 32. */
++		uint64_t a = ((const struct cider_u64 *) src)->v;
++		uint64_t b = ((const struct cider_u64 *) (src + 8))->v;
++		uint64_t c = ((const struct cider_u64 *) (src + n - 16))->v;
++		uint64_t d = ((const struct cider_u64 *) (src + n - 8))->v;
++
++		((struct cider_u64 *) dst)->v = a;
++		((struct cider_u64 *) (dst + 8))->v = b;
++		((struct cider_u64 *) (dst + n - 16))->v = c;
++		((struct cider_u64 *) (dst + n - 8))->v = d;
++	} else if (n >= 8) {
++		uint64_t a = ((const struct cider_u64 *) src)->v;
++		uint64_t b = ((const struct cider_u64 *) (src + n - 8))->v;
++
++		((struct cider_u64 *) dst)->v = a;
++		((struct cider_u64 *) (dst + n - 8))->v = b;
++	} else if (n >= 4) {
++		uint32_t a = ((const struct cider_u32 *) src)->v;
++		uint32_t b = ((const struct cider_u32 *) (src + n - 4))->v;
++
++		((struct cider_u32 *) dst)->v = a;
++		((struct cider_u32 *) (dst + n - 4))->v = b;
++	} else if (n >= 2) {
++		uint16_t a = ((const struct cider_u16 *) src)->v;
++		uint16_t b = ((const struct cider_u16 *) (src + n - 2))->v;
++
++		((struct cider_u16 *) dst)->v = a;
++		((struct cider_u16 *) (dst + n - 2))->v = b;
++	} else if (n == 1) {
++		dst[0] = src[0];
++	}
++}
 +
  void *
  _platform_memmove(void *dst0, const void *src0, size_t length)
  {
-@@ -61,6 +85,22 @@
+@@ -85,6 +139,11 @@
  	if (length == 0 || dst == src)		/* nothing to do */
  		goto done;
  
-+#if defined(__x86_64__)
-+	if (length >= CIDER_REP_MOVSB_FLOOR &&
-+	    ((uintptr_t) dst < (uintptr_t) src ||
-+	     (uintptr_t) dst >= (uintptr_t) src + length)) {
-+		void *d = dst;
-+		const void *s = src;
-+		size_t n = length;
-+
-+		__asm__ volatile("rep movsb"
-+		                 : "+D"(d), "+S"(s), "+c"(n)
-+		                 :
-+		                 : "memory");
++	if (length <= 32) {
++		cider_move_small(dst, src, length);
 +		goto done;
 +	}
-+#endif
 +
- 	/*
- 	 * Macros: loop-t-times; and loop-t-times, t>0
- 	 */
+ #if defined(__x86_64__)
+ 	if (length >= CIDER_REP_MOVSB_FLOOR &&
+ 	    ((uintptr_t) dst < (uintptr_t) src ||
