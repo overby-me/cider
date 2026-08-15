@@ -957,6 +957,23 @@ static void releasePatternInfo(void *info) {
 }
 
 /*
+ * THE COLOUR SPACE AS AN OBJECT, which is what an application written since 10.7 asks for.
+ *
+ * Cocotron only has the NAME based conversion, so iTerm2 died on an unrecognized selector as soon
+ * as its delegate started building colours. Every colour space this framework can produce is RGB,
+ * sRGB or device, so the conversion is the RGB one and nil is not an answer worth giving: a caller
+ * that gets nil back here treats the colour as unusable.
+ */
+- (NSColor *) colorUsingColorSpace: (NSColorSpace *) space {
+    NSColor *converted = [self colorUsingColorSpaceName: NSDeviceRGBColorSpace];
+
+    if (converted == nil) {
+        converted = [self colorUsingColorSpaceName: NSCalibratedRGBColorSpace];
+    }
+    return (converted != nil) ? converted : self;
+}
+
+/*
  * Darker and lighter versions of a colour, which is how a toolkit draws pressed and hovered
  * states without a second colour for each.
  *

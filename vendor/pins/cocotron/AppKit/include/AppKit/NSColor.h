@@ -27,6 +27,7 @@ typedef NSString *NSColorListName;
 typedef NSString *NSColorName;
 typedef NSString *NSColorSpaceName;
 
+@class NSColorSpace;
 @class NSImage;
 @class NSPasteboard;
 
@@ -277,6 +278,9 @@ typedef NSString *NSColorSpaceName;
 - (NSColor *) colorWithAlphaComponent: (CGFloat) alpha;
 
 - (NSColor *) colorUsingColorSpaceName: (NSString *) colorSpace;
+/* The colour space as an OBJECT rather than a name, which is what an application written since
+ * 10.7 asks for. Every space this framework can make is RGB, so this is the RGB conversion. */
+- (NSColor *) colorUsingColorSpace: (NSColorSpace *) space;
 - (NSColor *) colorUsingColorSpaceName: (NSString *) colorSpace
                                 device: (NSDictionary *) device;
 
