@@ -56,6 +56,10 @@ enum {
      * name by TYPING one; this is built when the panel is about to run. Never built for an open
      * panel, which has no name field on any platform. */
     NSTextField *_nameField;
+
+    /* Whether the panel has already been laid out. The layout adds views, so running it twice would
+     * put two hairlines and two name fields in the panel. */
+    BOOL _laidOut;
 }
 
 @property (copy) NSString *nameFieldStringValue;
@@ -95,8 +99,12 @@ enum {
  * that does not answer raises, and an application that configures its panel before showing it dies
  * before the panel appears. See the implementation. */
 - (void) setCanSelectHiddenExtension: (BOOL) value;
-/* Builds the name field if it is missing. Called before the panel runs. */
-- (void) _ensureNameField;
+/* Lays the panel out the way macOS does: buttons bottom right, the accessory view above them, then
+ * the name row, then the file list. Builds the name field and adds the accessory view, both of
+ * which the nib lacks. Called once, before the panel runs. */
+- (void) _ensurePanelLayout;
+/* NO for an open panel, which has no name field on any platform. */
+- (BOOL) _wantsNameField;
 - (BOOL) canSelectHiddenExtension;
 - (void) validateVisibleColumns;
 - (IBAction) cancel: (id) sender;

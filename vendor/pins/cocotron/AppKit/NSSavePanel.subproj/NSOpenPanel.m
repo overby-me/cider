@@ -132,6 +132,12 @@ static NSOpenPanel *_newPanel = nil;
     return [self runModal];
 }
 
+/* AN OPEN PANEL HAS NO NAME FIELD on any platform: the row is the answer. Everything else about the
+ * layout, including the accessory view an application gives it, is the same as a save panel. */
+- (BOOL) _wantsNameField {
+    return NO;
+}
+
 - (NSInteger) runModal {
     NSInteger res;
     if ([[NSDisplay currentDisplay]
@@ -145,6 +151,7 @@ static NSOpenPanel *_newPanel = nil;
          * at the bottom edge of the panel in every screenshot, and a button that is half there is
          * either laid out below the content or laid out into a window shorter than the nib. The
          * two rects say which without another guess. */
+        [self _ensurePanelLayout];
         if (getenv("CIDER_TRACE_PANEL") != NULL) {
             NSView *content = [self contentView];
             NSArray *subviews = [content subviews];

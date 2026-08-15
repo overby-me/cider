@@ -21,12 +21,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <stdlib.h>
 
 #import <AppKit/NSApplication.h>
+#import <AppKit/NSButton.h>
+#import <AppKit/NSColor.h>
 #import <AppKit/NSDisplay.h>
+#import <AppKit/NSFont.h>
+#import <AppKit/NSGraphics.h>
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSSavePanel.h>
+#import <AppKit/NSScreen.h>
 #import <AppKit/NSScrollView.h>
 #import <AppKit/NSTextField.h>
 #import <AppKit/NSView.h>
+
+/* THE HAIRLINE BETWEEN SECTIONS. macOS separates the name row, the accessory view and the buttons
+ * with a one point rule the full width of the panel, and the reference screenshot has two of them.
+ * A view rather than a drawn line because the sections move when the panel is resized. */
+@interface _CiderPanelSeparator : NSView
+@end
+
+@implementation _CiderPanelSeparator
+
+- (void) drawRect: (NSRect) rect {
+    [[NSColor colorWithCalibratedWhite: 0.84 alpha: 1.0] setFill];
+    NSRectFill([self bounds]);
+}
+
+@end
 
 @implementation NSSavePanel
 
@@ -199,34 +219,39 @@ static NSSavePanel *_newPanel = nil;
  * opening should change because saving was fixed.
  */
 /*
- * THE FIELD YOU TYPE THE FILENAME INTO, which this panel did not have at all.
+ * WHAT THE PANEL LOOKS LIKE, and two things the nib never had.
  *
- * The nib content view holds a scroll view and two buttons and nothing else, so the only name a
- * save panel could ever return was the one the application set on it. Saving worked, but Save As
- * did not: there was nowhere to type.
+ * THE NAME FIELD. The nib content view holds a scroll view and two buttons and nothing else, so the
+ * only name a save panel could ever return was the one the application set on it. Saving worked,
+ * Save As did not: there was nowhere to type.
  *
- * BUILT HERE RATHER THAN IN THE NIB on purpose. The nib is a binary in the pin, so a patch cannot
- * touch it in a way anyone could review, and a panel that builds its own field also works for any
- * caller that never loaded the nib. The list gives up the height the field takes, so nothing
- * overlaps at any window size.
+ * THE ACCESSORY VIEW. -setAccessoryView: stored the view and no more, so it was never on screen. It
+ * is not decoration: LibreOffice puts File type and the save options in it, and it measures 300 by
+ * 153 with seven subviews, which the panel trace says on every save. Without it there is no way to
+ * choose what a document is saved AS, and the reference screenshot from macOS is close to half
+ * accessory view by area.
  *
- * NOT FOR AN OPEN PANEL: NSOpenPanel has its own -runModal and never calls this, which is the same
- * reason its OK action is its own.
+ * BUILT HERE RATHER THAN IN THE NIB on purpose. The nib is a keyed archive, so an edit to it is not
+ * reviewable, and a panel that lays itself out also works for a caller that never loaded one.
+ *
+ * The order, bottom to top, is the macOS order: buttons at the bottom right, a hairline, the
+ * accessory view, a hairline, the name row, and the file list taking whatever is left.
  */
-- (void) _ensureNameField {
-    if (_nameField != nil) {
-        return;
-    }
+- (BOOL) _wantsNameField {
+    return YES;
+}
 
+- (void) _ensurePanelLayout {
     NSView *content = [self contentView];
 
-    if (content == nil) {
+    if (content == nil || _laidOut) {
         return;
     }
+    _laidOut = YES;
 
-    NSRect bounds = [content bounds];
     NSArray *subviews = [content subviews];
     NSScrollView *list = nil;
+    NSButton *okButton = nil, *cancelButton = nil;
     NSInteger i, count = [subviews count];
 
     for (i = 0; i < count; i++) {
@@ -234,45 +259,158 @@ static NSSavePanel *_newPanel = nil;
 
         if ([view isKindOfClass: [NSScrollView class]]) {
             list = (NSScrollView *) view;
+        } else if ([view isKindOfClass: [NSButton class]]) {
+            /* BY ACTION, NOT BY POSITION OR TITLE. The prompt is localized and either button can be
+             * moved; what it DOES is the one thing that cannot change. */
+            if ([(NSButton *) view action] == @selector(_cancel:)) {
+                cancelButton = (NSButton *) view;
+            } else {
+                okButton = (NSButton *) view;
+            }
         }
     }
 
-    CGFloat fieldBottom = 56.0;
-    CGFloat fieldHeight = 24.0;
-    CGFloat labelWidth = 72.0;
-    CGFloat margin = 18.0;
-    CGFloat fieldLeft = margin + labelWidth + 6.0;
+    const CGFloat margin = 20.0;
+    const CGFloat gap = 14.0;
+    const CGFloat rowHeight = 24.0;
+    const CGFloat labelWidth = 76.0;
+    const CGFloat minimumList = 180.0;
 
-    NSTextField *label = [[[NSTextField alloc]
-            initWithFrame: NSMakeRect(margin, fieldBottom, labelWidth, fieldHeight)] autorelease];
+    CGFloat width = [content bounds].size.width;
+    CGFloat buttonHeight = (okButton != nil) ? [okButton frame].size.height : 32.0;
+    CGFloat accessoryHeight = 0.0, accessoryWidth = 0.0;
 
-    [label setStringValue: @"Save As:"];
-    [label setEditable: NO];
-    [label setSelectable: NO];
-    [label setBordered: NO];
-    [label setDrawsBackground: NO];
-    [label setAutoresizingMask: NSViewMaxYMargin];
-    [content addSubview: label];
+    if (_accessoryView != nil) {
+        accessoryHeight = [_accessoryView frame].size.height;
+        accessoryWidth = [_accessoryView frame].size.width;
+    }
 
-    _nameField = [[NSTextField alloc]
-            initWithFrame: NSMakeRect(fieldLeft, fieldBottom,
-                                      bounds.size.width - fieldLeft - margin, fieldHeight)];
-    [_nameField setEditable: YES];
-    [_nameField setStringValue: (_nameFieldStringValue != nil) ? _nameFieldStringValue : @""];
-    [_nameField setAutoresizingMask: NSViewWidthSizable | NSViewMaxYMargin];
-    [content addSubview: _nameField];
+    /* HOW TALL THE PANEL HAS TO BE for all of that plus a usable list. The nib is 400 points of
+     * content and an accessory view is another 150 with its rule and its margins, so a panel that
+     * did not grow would show the list as a slit. */
+    CGFloat needed = gap + buttonHeight + gap;
 
-    /* The list keeps its top edge and gives up the bottom, so the field never lands on top of it. */
+    if (_accessoryView != nil) {
+        needed += 1.0 + gap + accessoryHeight + gap;
+    }
+    if ([self _wantsNameField]) {
+        needed += 1.0 + gap + rowHeight + gap;
+    }
+    needed += minimumList + gap;
+
+    if ([content bounds].size.height < needed) {
+        NSRect frame = [self frame];
+        CGFloat grow = needed - [content bounds].size.height;
+        NSScreen *screen = [self screen];
+
+        if (screen == nil) {
+            screen = [NSScreen mainScreen];
+        }
+        if (screen != nil) {
+            CGFloat room = [screen visibleFrame].size.height - frame.size.height - 20.0;
+
+            if (grow > room) {
+                grow = (room > 0.0) ? room : 0.0;
+            }
+        }
+        /* THE TOP EDGE STAYS PUT, which is what a window that grows looks like on any desktop. */
+        frame.size.height += grow;
+        frame.origin.y -= grow;
+        [self setFrame: frame display: NO];
+    }
+
+    CGFloat height = [content bounds].size.height;
+    CGFloat y = gap;
+
+    if (okButton != nil) {
+        NSRect frame = [okButton frame];
+
+        [okButton setBezelStyle: NSRoundedBezelStyle];
+        frame.origin.x = width - margin - frame.size.width;
+        frame.origin.y = y;
+        [okButton setFrame: frame];
+        [okButton setAutoresizingMask: NSViewMinXMargin | NSViewMaxYMargin];
+
+        if (cancelButton != nil) {
+            NSRect cancel = [cancelButton frame];
+
+            /* BOTH BUTTONS AT THE RIGHT, cancel then the default one. The nib has cancel in the far
+             * bottom left corner, which is a Windows dialog. */
+            [cancelButton setBezelStyle: NSRoundedBezelStyle];
+            cancel.origin.x = frame.origin.x - 12.0 - cancel.size.width;
+            cancel.origin.y = y;
+            [cancelButton setFrame: cancel];
+            [cancelButton setAutoresizingMask: NSViewMinXMargin | NSViewMaxYMargin];
+        }
+        y += frame.size.height + gap;
+    }
+
+    if (_accessoryView != nil) {
+        _CiderPanelSeparator *rule = [[[_CiderPanelSeparator alloc]
+                initWithFrame: NSMakeRect(0.0, y, width, 1.0)] autorelease];
+
+        [rule setAutoresizingMask: NSViewWidthSizable | NSViewMaxYMargin];
+        [content addSubview: rule];
+        y += 1.0 + gap;
+
+        NSRect frame = [_accessoryView frame];
+
+        frame.origin.x = floor((width - accessoryWidth) / 2.0);
+        frame.origin.y = y;
+        [_accessoryView setFrame: frame];
+        [_accessoryView setAutoresizingMask:
+                                NSViewMinXMargin | NSViewMaxXMargin | NSViewMaxYMargin];
+        [content addSubview: _accessoryView];
+        y += accessoryHeight + gap;
+    }
+
+    if ([self _wantsNameField] && _nameField == nil) {
+        _CiderPanelSeparator *rule = [[[_CiderPanelSeparator alloc]
+                initWithFrame: NSMakeRect(0.0, y, width, 1.0)] autorelease];
+
+        [rule setAutoresizingMask: NSViewWidthSizable | NSViewMaxYMargin];
+        [content addSubview: rule];
+        y += 1.0 + gap;
+
+        NSTextField *label = [[[NSTextField alloc]
+                initWithFrame: NSMakeRect(margin, y, labelWidth, rowHeight)] autorelease];
+
+        /* RIGHT ALIGNED AND GREY, which is what every label in a macOS form is. */
+        [label setStringValue: @"Save As:"];
+        [label setEditable: NO];
+        [label setSelectable: NO];
+        [label setBordered: NO];
+        [label setDrawsBackground: NO];
+        [label setAlignment: NSRightTextAlignment];
+        [label setTextColor: [NSColor colorWithCalibratedWhite: 0.32 alpha: 1.0]];
+        [label setAutoresizingMask: NSViewMaxYMargin];
+        [content addSubview: label];
+
+        CGFloat fieldLeft = margin + labelWidth + 8.0;
+
+        _nameField = [[NSTextField alloc]
+                initWithFrame: NSMakeRect(fieldLeft, y, width - fieldLeft - margin, rowHeight)];
+        [_nameField setEditable: YES];
+        [_nameField setStringValue: (_nameFieldStringValue != nil) ? _nameFieldStringValue : @""];
+        [_nameField setAutoresizingMask: NSViewWidthSizable | NSViewMaxYMargin];
+        [content addSubview: _nameField];
+        y += rowHeight + gap;
+    }
+
+    /* THE LIST TAKES WHAT IS LEFT, top edge at the top margin. Everything below it has a fixed
+     * height, so this is the only view whose size depends on the panel. */
     if (list != nil) {
         NSRect frame = [list frame];
-        CGFloat top = NSMaxY(frame);
-        CGFloat wanted = fieldBottom + fieldHeight + 12.0;
 
-        if (top > wanted) {
-            frame.origin.y = wanted;
-            frame.size.height = top - wanted;
-            [list setFrame: frame];
+        frame.origin.x = margin;
+        frame.origin.y = y;
+        frame.size.width = width - margin * 2.0;
+        frame.size.height = height - y - gap;
+        if (frame.size.height < 40.0) {
+            frame.size.height = 40.0;
         }
+        [list setFrame: frame];
+        [list setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable];
     }
 }
 
@@ -345,7 +483,22 @@ static NSSavePanel *_newPanel = nil;
         if ([[self title] length] == 0 && [_dialogTitle length] > 0) {
             [self setTitle: _dialogTitle];
         }
-        [self _ensureNameField];
+        [self _ensurePanelLayout];
+        if (getenv("CIDER_TRACE_PANEL") != NULL) {
+            NSView *content = [self contentView];
+            NSArray *subviews = [content subviews];
+            NSInteger i, count = [subviews count];
+
+            NSLog(@"CIDER_PANEL save window=%@ content=%@ subviews=%ld accessory=%@",
+                  NSStringFromRect([self frame]), NSStringFromRect([content frame]), (long) count,
+                  [_accessoryView class]);
+            for (i = 0; i < count; i++) {
+                NSView *view = [subviews objectAtIndex: i];
+
+                NSLog(@"CIDER_PANEL   sub=%@ frame=%@", [view class],
+                      NSStringFromRect([view frame]));
+            }
+        }
         if (_nameField != nil) {
             [self makeFirstResponder: _nameField];
         }
@@ -449,6 +602,14 @@ static NSSavePanel *_newPanel = nil;
     view = [view retain];
     [_accessoryView release];
     _accessoryView = view;
+    /* WHETHER THE CALLER SENDS ONE AT ALL decides whether the panel needs a section for it. On
+     * macOS this is where LibreOffice puts File type and the save options, and the reference
+     * screenshot is half accessory view by area. */
+    if (getenv("CIDER_TRACE_PANEL") != NULL) {
+        NSLog(@"CIDER_PANEL accessory=%@ frame=%@ subviews=%lu", [view class],
+              (view != nil) ? NSStringFromRect([view frame]) : @"(nil)",
+              (unsigned long) [[view subviews] count]);
+    }
 }
 
 - (void) setCanCreateDirectories: (BOOL) value {

@@ -513,6 +513,30 @@ static const CGFloat kImageMargin = 2.;
     return _alternateImage;
 }
 
+/*
+ * WHAT A MAC PUSH BUTTON DOES WITH ITS LABEL, and cocotron does neither of the two.
+ *
+ * The title of a bordered push button is CENTRED. Cocotron uses the cell text alignment, which a nib
+ * encodes as left, so Cancel and Save in the file panel sat against the left edge of their bezels
+ * with a third of the button empty on the right.
+ *
+ * And the DEFAULT button draws its label in WHITE, because that button is filled with the accent
+ * colour. Ours drew black on blue.
+ *
+ * Narrowly gated on the two bezel styles that mean a push button, and on there being no image, so a
+ * check box, a radio, a disclosure triangle and a textured toolbar button all keep what they had.
+ */
+- (BOOL) _isMacPushButton {
+    return [self isBordered] && [self image] == nil &&
+           (_bezelStyle == NSRoundedBezelStyle || _bezelStyle == NSRoundRectBezelStyle);
+}
+
+- (BOOL) _isDefaultPushButton {
+    return [self _isMacPushButton] &&
+           (([[_controlView window] defaultButtonCell] == self) ||
+            [[self keyEquivalent] isEqualToString: @"\r"]);
+}
+
 - (NSAttributedString *) attributedTitle {
     if (_titleOrAttributedTitle == nil) {
         // attributedTitle is explicitly documented to return an empty
@@ -532,14 +556,18 @@ static const CGFloat kImageMargin = 2.;
             [attributes setObject: font forKey: NSFontAttributeName];
 
         [paraStyle setLineBreakMode: _lineBreakMode];
-        [paraStyle setAlignment: _textAlignment];
+        [paraStyle setAlignment: [self _isMacPushButton] ? NSCenterTextAlignment
+                                                         : _textAlignment];
         [attributes setObject: paraStyle forKey: NSParagraphStyleAttributeName];
 
-        if ([self isEnabled])
-            [attributes setObject: [NSColor controlTextColor]
+        if (![self isEnabled])
+            [attributes setObject: [NSColor disabledControlTextColor]
+                           forKey: NSForegroundColorAttributeName];
+        else if ([self _isDefaultPushButton])
+            [attributes setObject: [NSColor alternateSelectedControlTextColor]
                            forKey: NSForegroundColorAttributeName];
         else
-            [attributes setObject: [NSColor disabledControlTextColor]
+            [attributes setObject: [NSColor controlTextColor]
                            forKey: NSForegroundColorAttributeName];
 
         return [[[NSAttributedString alloc] initWithString: [self title]
@@ -559,14 +587,18 @@ static const CGFloat kImageMargin = 2.;
         [attributes setObject: font forKey: NSFontAttributeName];
 
     [paraStyle setLineBreakMode: _lineBreakMode];
-    [paraStyle setAlignment: _textAlignment];
+    /* The alternate title is the same label in the other state, so it is centred by the same rule. */
+    [paraStyle setAlignment: [self _isMacPushButton] ? NSCenterTextAlignment : _textAlignment];
     [attributes setObject: paraStyle forKey: NSParagraphStyleAttributeName];
 
-    if ([self isEnabled])
-        [attributes setObject: [NSColor controlTextColor]
+    if (![self isEnabled])
+        [attributes setObject: [NSColor disabledControlTextColor]
+                       forKey: NSForegroundColorAttributeName];
+    else if ([self _isDefaultPushButton])
+        [attributes setObject: [NSColor alternateSelectedControlTextColor]
                        forKey: NSForegroundColorAttributeName];
     else
-        [attributes setObject: [NSColor disabledControlTextColor]
+        [attributes setObject: [NSColor controlTextColor]
                        forKey: NSForegroundColorAttributeName];
 
     return [[[NSAttributedString alloc] initWithString: [self alternateTitle]
