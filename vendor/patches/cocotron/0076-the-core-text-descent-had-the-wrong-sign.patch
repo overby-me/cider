@@ -1,0 +1,94 @@
+--- a/CoreText/KTFont_FT.m
++++ b/CoreText/KTFont_FT.m
+@@ -217,10 +217,25 @@
+     return (face == NULL) ? 0.0 : (CGFloat) face->ascender * [self _unitScale];
+ }
+ 
+-/* NEGATIVE, as FreeType and Cocoa both report it: the distance BELOW the baseline. */
++/*
++ * POSITIVE, because this is the CORE TEXT descent and not the Cocoa one.
++ *
++ * FreeType reports face->descender as a negative number, the distance BELOW the baseline, and so
++ * does Cocoa for -[NSFont descender]. CTFontGetDescent is the other convention: a positive
++ * distance. The two are one negation apart and the base class does it, KTFont -descender being
++ * -(CGFontGetDescent/upem)*size; this override dropped it, and the sign then travelled:
++ *
++ *     -[NSFont descender] is -CTFontGetDescent, so it came out POSITIVE 3.408
++ *     -defaultLineHeightForFont is round(ascent + descent + leading), so it came out 10 for a
++ *      12 point font whose glyphs need 17
++ *
++ * A line height smaller than the glyphs is a clip: [NSAttributedString size] returned 9 for a
++ * button title, drawTitle clips to that rect, and Cancel and Open in the file picker were drawn
++ * cut through the middle. Every string AppKit lays out went through the same number.
++ */
+ - (CGFloat) descender {
+     FT_Face face = [self _face];
+-    return (face == NULL) ? 0.0 : (CGFloat) face->descender * [self _unitScale];
++    return (face == NULL) ? 0.0 : -((CGFloat) face->descender * [self _unitScale]);
+ }
+ 
+ /* The gap BETWEEN lines, which is the line height minus what the glyphs themselves occupy.
+--- a/AppKit/NSButtonCell.m
++++ b/AppKit/NSButtonCell.m
+@@ -1131,6 +1131,9 @@
+                                   : 0),
+               frame.size.width, frame.size.height, frame.origin.x, frame.origin.y,
+               [controlView frame].size.width, [controlView frame].size.height);
++        NSLog(@"CIDER_BUTTON_BEZEL title=%@ flipped=%d adjusted=%gx%g+%g+%g style=%d",
++              [self title], (int) [controlView isFlipped], frame.size.width, frame.size.height,
++              frame.origin.x, frame.origin.y, (int) _bezelStyle);
+     }
+ 
+     NSRect adjustment =
+@@ -1507,6 +1510,22 @@
+                     autorelease];
+         }
+ 
++        /* THE LABEL AND THE BOX IT GOES IN. The Cancel and Open titles in the file picker are cut
++         * through the middle by the bottom of their own bezel, and a title that is too low is
++         * either centred in the wrong rect or centred in the right one and then moved. The bezel
++         * frame comes from the same adjustment, so both rects have to be read together. */
++        if (getenv("CIDER_TRACE_PANEL") != NULL) {
++            NSLog(@"CIDER_BUTTON_TITLE title=%@ flipped=%d adjusted=%gx%g+%g+%g "
++                   "titleRect=%gx%g+%g+%g titleSize=%gx%g",
++                  [title string], (int) [controlView isFlipped], frame.size.width,
++                  frame.size.height, frame.origin.x, frame.origin.y, titleRect.size.width,
++                  titleRect.size.height, titleRect.origin.x, titleRect.origin.y,
++                  titleSize.width, titleSize.height);
++            NSFont *tf = [self font];
++            NSLog(@"CIDER_BUTTON_FONT font=%@ size=%g ascender=%g descender=%g lineHeight=%g",
++                  [tf fontName], [tf pointSize], [tf ascender], [tf descender],
++                  [tf defaultLineHeightForFont]);
++        }
+         [self drawTitle: title withFrame: titleRect inView: controlView];
+     }
+ }
+--- a/AppKit/NSSavePanel.subproj/NSOpenPanel.m
++++ b/AppKit/NSSavePanel.subproj/NSOpenPanel.m
+@@ -141,6 +141,26 @@
+                                                file: [self filename]
+                                               types: [self allowedFileTypes]];
+     } else {
++        /* WHERE THE PANEL PUT ITS OWN CONTROLS. The Cancel and Open buttons are drawn cut in half
++         * at the bottom edge of the panel in every screenshot, and a button that is half there is
++         * either laid out below the content or laid out into a window shorter than the nib. The
++         * two rects say which without another guess. */
++        if (getenv("CIDER_TRACE_PANEL") != NULL) {
++            NSView *content = [self contentView];
++            NSArray *subviews = [content subviews];
++            NSInteger i, count = [subviews count];
++
++            NSLog(@"CIDER_PANEL layout window=%@ content=%@ subviews=%ld",
++                  NSStringFromRect([self frame]), NSStringFromRect([content frame]),
++                  (long) count);
++            for (i = 0; i < count; i++) {
++                NSView *view = [subviews objectAtIndex: i];
++
++                NSLog(@"CIDER_PANEL   sub=%@ frame=%@ mask=%lu", [view class],
++                      NSStringFromRect([view frame]),
++                      (unsigned long) [view autoresizingMask]);
++            }
++        }
+         res = [NSApp runModalForWindow: self];
+         [self close];
+     }
