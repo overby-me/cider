@@ -2930,3 +2930,39 @@ cider-src failed with 3 of 4 hunks rejected. The rule is not "regenerate against
 in the abstract, it is: FIND A cider-src STORE PATH FROM BEFORE THAT PATCH EXISTED and diff against
 that one. They are all still in the store; grep them for a marker the patch adds and pick one that
 does not have it.
+
+## THE INVISIBLE BUTTON LABEL IS alternateSelectedControlTextColor, AND IT IS DRAWN ON TOP
+
+Two corrections and one identification, all from the colour probe, which assigns every system colour
+a unique bright value and prints the name next to it.
+
+    Reset   Apply   Cancel   drawn in one probe colour
+    OK                       drawn in ANOTHER: #E87F9D, which the log names exactly
+
+    cider-wayland-color name=alternateSelectedControlTextColor probe=0.9067,0.5,0.6167
+
+232/255, 127/255, 157/255. That is the match, and it is not close to any other name in the run.
+
+SO THE LABEL IS DRAWN, AND IT IS DRAWN ON TOP OF OUR BEZEL. In the probe run the OK label is plainly
+visible over the white bezel. The earlier entry said the label was underneath and that the half alpha
+probe had settled it: that was wrong. Half alpha cannot distinguish white text under a white bezel
+from white text on top of one, because both come out white either way, and I read it as proof.
+
+THE SECOND CORRECTION: it is not white in the Options dialog because nothing is drawn there. It IS
+drawn, in a colour that happens to be white in the real palette, which is why the region has no
+pixels that differ from the bezel. Three buttons next to it are drawn in controlTextColor and are
+perfectly visible.
+
+WHY THIS IS NOT A ONE LINE FIX. alternateSelectedControlTextColor is white on macOS and correctly
+white here: it is the text colour for an emphasised background. LibreOffice uses it for its DEFAULT
+BUTTON text and expects that button to be filled with the accent colour, which on macOS happens
+because AppKit knows which cell is the window default button. LibreOffice tells us nothing: all four
+buttons arrive with identical cell state, no title, no key equivalent, no view, state 0, and only
+their widths differ. There is no signal to key on, and inventing one would be a guess dressed as a
+fix.
+
+WHAT WOULD ACTUALLY FIX IT: a way for the native control draw to learn that a button is the default
+one. That is a LibreOffice side question, and the answer is in how its macOS backend passes
+ControlState::DEFAULT into the cell it paints with.
+
+docs/wayland-default-button-colour-probe.png is the picture that names it.
