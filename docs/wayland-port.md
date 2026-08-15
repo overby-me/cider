@@ -2613,3 +2613,35 @@ CUMULATIVE, and against the only reference that matters:
 VERIFIED, not assumed: the window dump is byte identical to the run before the change, zero
 unrecognized selectors, typing still gives 8 words 47 characters, and the File menu still opens with
 every item. A change to file descriptor bookkeeping earns that check.
+
+## memmove WAS THE 1990 PORTABLE LOOP, AND IT WAS THE LARGEST THING IN THE SYSTEM
+
+With fontconfig and the kqueue map dealt with, the profile had one obvious leaf left:
+_platform_memmove at 19.97 percent of ALL samples, ahead of the allocator, the loader and the font
+machinery. It is the Berkeley portable implementation from 1990, a loop that moves one long at a
+time, and there is no optimised variant anywhere in this tree: upstream keeps the assembly out of
+the portable directory and only the portable directory was ever built.
+
+Large forward copies use rep movsb now. Every x86-64 part since Ivy Bridge implements it as a wide
+internal copy, and every one since Ice Lake makes it good for short lengths too, which is what glibc
+reaches for in the same place. It copies forward only, so it is used where forward is safe -- no
+overlap, or the destination below the source -- and the portable loop still handles a backward
+overlapping move. Short copies keep the old path, because the instruction has a startup cost that a
+handful of bytes does not amortise on every part it runs on.
+
+    text to PDF  2.52 s -> 2.20 s
+
+AND THERE IS A TEST THAT COULD FAIL, which for the most safety critical function in the system is
+the point. tests/buck2/gui/memmove_probe.m checks 79807 cases against a byte at a time reference:
+every length to 300 at every alignment pair, lengths around the floor and the page size, and OVERLAP
+IN BOTH DIRECTIONS. It reports 0 failures.
+
+THE CONTROL FIRES. Removing the overlap guard, so that backward overlapping moves also take rep
+movsb, makes the same probe report 1111 failures and name them: every one is a destination above its
+source. A test that cannot fail proves nothing, and this one was made to fail before it was trusted.
+
+    CUMULATIVE, against native, one task, one machine:
+        native LibreOffice 25.8.5.2   0.51 s
+        Cider, start of the day       3.63 s   7.1x
+        Cider, now                    2.20 s   4.3x
+        first document window         2.53 s -> 1.52 s

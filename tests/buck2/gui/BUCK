@@ -775,3 +775,80 @@ darwin_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+# DOES memmove STILL COPY THE RIGHT BYTES. See tests/buck2/gui/memmove_probe.m: the large
+# forward case is rep movsb now, and this is the test that could fail if it were wrong.
+cc_objects(
+    name = "memmove_probe_obj",
+    srcs = ["memmove_probe.m"],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        # AppKit's headers use ARC-era attributes but the frameworks are built MRR, and the
+        # probe is written to match them.
+        "-fno-objc-arc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        # The whole surface AppKit's HEADERS reach, not what the probe calls.
+        # Taken from xpc_obj, the widest AppKit consumer the port already builds,
+        # because chasing this cascade one #include at a time is what
+        # buck-port.py exists to automate and this target is hand-written.
+        "//vendor/src:fw_AppKit",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreData",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_CoreText",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_IOKit",
+        "//vendor/src:fw_Metal",
+        "//vendor/src:fw_Onyx2D",
+        "//vendor/src:fw_QuartzCore",
+        "//vendor/src:fw_Security",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_ATS",
+        "//src/darwin/frameworks:fw_ApplicationServices",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_ColorSync",
+        "//src/darwin/frameworks:fw_ColorSyncLegacy",
+        "//src/darwin/frameworks:fw_CoreImage",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_CoreVideo",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_HIServices",
+        "//src/darwin/frameworks:fw_HIToolbox",
+        "//src/darwin/frameworks:fw_IOSurface",
+        "//src/darwin/frameworks:fw_ImageIO",
+        "//src/darwin/frameworks:fw_LangAnalysis",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_LocalAuthentication",
+        "//src/darwin/frameworks:fw_OpenGL",
+        "//src/darwin/frameworks:fw_PrintCore",
+        "//src/darwin/frameworks:fw_QD",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/frameworks:fw_SpeechSynthesis",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "memmove_probe",
+    objs = [
+        ":memmove_probe_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+
