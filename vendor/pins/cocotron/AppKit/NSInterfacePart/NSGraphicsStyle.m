@@ -624,6 +624,14 @@ static NSDictionary *cider_key_symbol_attributes(void) {
     NSRect bounds = rect;
     NSBezierPath *shape;
 
+    if (getenv("CIDER_TRACE_VCL") != NULL) {
+        fprintf(stderr, "CIDER_MENUBG rect=%gx%g+%g+%g view=%s viewbounds=%gx%g+%g+%g\n",
+                rect.size.width, rect.size.height, rect.origin.x, rect.origin.y,
+                object_getClassName(_view), [_view bounds].size.width,
+                [_view bounds].size.height, [_view bounds].origin.x, [_view bounds].origin.y);
+        fflush(stderr);
+    }
+
     NSRectFillUsingOperation(bounds, NSCompositeClear);
 
     shape = [NSBezierPath bezierPathWithRoundedRect: NSInsetRect(bounds, 0.5, 0.5)

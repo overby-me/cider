@@ -76,6 +76,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
     [self orderFront: nil];
 
+    /*
+     * DRAW IT NOW, AT THE SIZE IT ENDED UP.
+     *
+     * The view is created at the size of the CELL, which for a menu asked for at a point is 167 by
+     * 0, and resized here to the size of its contents. Marking it as needing display is not enough:
+     * the only background this menu ever drew was at 148 by 49, measured, so the panel that reached
+     * the screen was the backend clear value with items painted on it. No rounded corner, no border,
+     * no translucent fill: the whole macOS look of a menu comes from that one draw.
+     */
+    [self display];
+
     return [_view runTrackingWithEvent: event];
 }
 

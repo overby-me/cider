@@ -88,4 +88,8 @@ typedef enum {
 
 - (void) synchronizeTitleAndSelectedItem;
 
+/* Shows the menu as if the cell had been clicked, which is how an application opens a popup itself.
+ * LibreOffice builds its context menu through this one. */
+- (void) performClickWithFrame: (NSRect) cellFrame inView: (NSView *) controlView;
+
 @end
