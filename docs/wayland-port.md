@@ -2745,3 +2745,50 @@ reported not-macho=23 before the real ones were copied in, 0 after.
 The version of iTerm2 is worth stating too: the nixpkgs recipe points at the stable URL with a hash
 that no longer matches what that URL serves, so the bundle here was fetched with its real hash. The
 version inside it is still 3.6.10, the same as nixpkgs claims.
+
+## ITERM2 3.4.23 LOADS AND REACHES THE RUN LOOP
+
+3.6.10 is blocked on SwiftUI and four other frameworks nobody here has written. 3.4.23 is the last
+release before iTerm2 took on SwiftUI and Swift concurrency, and the difference is not small:
+
+    3.6.10   needs=89  present=63  in-bundle=10  missing=9
+    3.4.23   needs=33  present=27  in-bundle=6   missing=0
+
+NOTHING is missing at the library level for 3.4.23. It failed at the SYMBOL level instead:
+
+    Symbol not found: _kTISPropertyUnicodeKeyLayoutData
+    Expected in: /System/Library/Frameworks/Carbon.framework/Versions/A/Carbon
+
+and HIToolbox had been exporting that symbol all along. Carbon is an UMBRELLA framework and
+HIToolbox lives under it, so an application that links Carbon expects to reach Text Input Services
+through it; the two level namespace then demands the symbol from CARBON, and exporting it from the
+sub framework is not enough. Carbon re-exports HIToolbox now, one line, and LibreOffice is
+unaffected: its window dump is byte identical and its startup unchanged.
+
+With that, iTerm2 3.4.23 gets all the way to AppKit:
+
+    cider-wayland-appkit register=ok class=NSDisplayWayland
+    cider-wayland-appkit init=ok display=connected globals=22 seat=false output=true
+    cider-wayland-appkit nextevent calls=3 mask=0xffffffff t=0.26
+
+IT DOES NOT OPEN A WINDOW, and it does not crash either: the process is alive when the harness kills
+it at the time limit. So the next question is what it is waiting for, not what it is missing.
+
+THE WORK LIST IS 25 SYMBOLS, from scripts/macho-undefined.py, which reads what the binary needs and
+subtracts what every Mach-O in the tree exports. Not one dyld failure per run, the whole set at once:
+
+    CATransform3D{Concat,MakeRotation,MakeScale,MakeTranslation}   Core Animation transforms
+    CGContext{Get,Set}FontSmoothingStyle                           text rendering
+    CGEvent{Get,Set}Flags, CGSDefaultConnectionForThread           event and window server
+    CGSessionCopyCurrentDictionary, CGWindowListCopyWindowInfo
+    FSEventStream{CopyDescription,FlushAsync,FlushSync}            file system events
+    GetCurrentKeyModifiers, IsSecureEventInputEnabled              Carbon input
+    LS{CanURLAcceptURL,CopyDefaultRoleHandlerForContentType,...}   Launch Services
+    NSAccessibilityRoleDescriptionForUIElement
+    MTLCaptureDescriptor, NSSearchToolbarItem                      two classes
+    _NSDictionaryOfVariableBindings, memset_pattern16
+
+CAVEAT ON THAT TOOL, and it matters: the set difference is FLAT and the runtime is two level, so a
+symbol that exists in the wrong library reads as resolved. That is exactly the Carbon case above,
+which the tool did NOT report. It answers what is missing entirely; dyld still has to say what is
+missing FROM THE RIGHT PLACE.

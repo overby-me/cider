@@ -5209,6 +5209,14 @@ darwin_dylib(
     ],
     reexport = [
         "//src/darwin/frameworks:ApplicationServices_dylib",
+        # CARBON IS AN UMBRELLA AND HIToolbox IS UNDER IT. An application links Carbon and expects
+        # to reach the Text Input Services through it, because that is where Apple put them; the
+        # two level namespace then demands the symbol from CARBON specifically, so exporting it
+        # from HIToolbox alone is not enough. iTerm2 dies at load with
+        #     Symbol not found: _kTISPropertyUnicodeKeyLayoutData
+        #     Expected in: /System/Library/Frameworks/Carbon.framework/Versions/A/Carbon
+        # while HIToolbox has exported it all along.
+        "//src/darwin/frameworks:HIToolbox_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
