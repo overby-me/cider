@@ -1,0 +1,65 @@
+--- a/AppKit/NSButtonCell.m
++++ b/AppKit/NSButtonCell.m
+@@ -901,6 +901,21 @@
+     */
+     NSRect frame = {{0, 0}, {0, 0}};
+ 
++    /*
++     * BUT ONLY WHEN THERE IS A VIEW WHOSE FRAME IS TOO BIG. The whole compensation above exists
++     * because a button built in Interface Builder gets a VIEW frame ten points larger than the
++     * bezel it wants drawn. An application that draws a cell straight into a context passes the
++     * EXACT rectangle it wants filled and has no oversized view anywhere, so subtracting ten from
++     * it and moving it up seven paints a short strip below the button instead of the button.
++     *
++     * Measured with the magenta control below: LibreOffice asks for a 93x20 push button and the
++     * bezel landed as an 83x10 band at the bottom edge of it, which is why the OK label in the
++     * print alert appeared to be sitting on the bottom border of its own box.
++     */
++    if (_controlView == nil) {
++        return frame;
++    }
++
+     if ([self isKindOfClass: [NSComboBoxCell class]]) {
+         switch (_controlSize) {
+         case NSRegularControlSize:
+@@ -1084,13 +1099,18 @@
+      * unbordered, or has a bezel style nothing draws, and those two look identical on screen. */
+     if (getenv("CIDER_TRACE_PANEL") != NULL) {
+         NSLog(@"CIDER_BUTTON cell=%s type=%d state=%d img=%s imgname=%@ title=%@ attr=%@ class=%s window=%@ bezel=%d bordered=%d "
+-               "defaulted=%d frame=%gx%g+%g+%g view=%gx%g",
++               "defaulted=%d key=%@ frame=%gx%g+%g+%g view=%gx%g",
+               object_getClassName(self), (int) _highlightsBy, (int) [self state],
+               // what it would draw INSIDE the bezel, which is the other half of an empty control
+               ([self image] != nil) ? "image" : "noimage", [[self image] name],
+               [self title], [[self attributedTitle] string],
+               object_getClassName(controlView), [[controlView window] title],
+               (int) _bezelStyle, (int) [self isBordered], (int) defaulted,
++              // THE DEFAULT BUTTON HAS TO ANNOUNCE ITSELF SOMEHOW. cocotron only knows one through
++              // the window, and an application that draws with no view has no window to ask; the
++              // Return key equivalent is the other convention and libvclplug_osxlo does import
++              // setKeyEquivalent:, so this says whether that is how it marks its default button.
++              [self keyEquivalent],
+               frame.size.width, frame.size.height, frame.origin.x, frame.origin.y,
+               [controlView frame].size.width, [controlView frame].size.height);
+     }
+@@ -1102,6 +1122,20 @@
+     frame.origin.x += adjustment.origin.x;
+     frame.origin.y += adjustment.origin.y;
+ 
++    /* A CONTROL THAT FIRES, TEMPORARILY. Whether this bezel reaches the screen at all is the
++     * question, and a grey bezel on a grey dialog cannot answer it. */
++    if (getenv("CIDER_BEZEL_MAGENTA") != NULL) {
++        /* THE FRAME, AND A HALO ROUND IT. Filling only the frame answers "did anything land here"
++         * and nothing else; when the answer is a single row it cannot say whether the rest was
++         * clipped, drawn above, or drawn below. The halo is the same rectangle grown by forty
++         * points in every direction, in two colours: whatever survives the clip shows WHERE this
++         * coordinate space actually is on screen relative to what the application drew. */
++        [[NSColor colorWithCalibratedRed: 0.0 green: 0.9 blue: 0.4 alpha: 1.0] setFill];
++        NSRectFill(NSInsetRect(frame, -40.0, -40.0));
++        [[NSColor magentaColor] setFill];
++        NSRectFill(frame);
++    }
++
+     switch (_bezelStyle) {
+ 
+     case NSDisclosureBezelStyle:

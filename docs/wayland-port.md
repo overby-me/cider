@@ -2486,3 +2486,34 @@ the DEFAULT button is filled with the accent colour and its text is white, which
 draws it white; our bezel is not blue, so the text vanishes into it. The cell cannot currently tell
 that it is the default button, because the only signal cocotron has for that is
 [[controlView window] defaultButtonCell] and LibreOffice draws with no view at all.
+
+## A CELL DRAWN WITHOUT A VIEW NEEDS NO VIEW COMPENSATION
+
+-[NSButtonCell getControlSizeAdjustment:] shrinks a rounded push button by ten points and moves it
+up seven. The comment above it says why: a button built in Interface Builder gets a VIEW frame
+larger than the bezel it wants drawn, to leave room for the shadow, so the cell compensates. An
+application that draws a cell straight into a context passes the EXACT rectangle it wants filled
+and has no oversized view anywhere, so the compensation is subtracted from a number that never had
+it added. The adjustment is skipped when there is no control view, which is only ever the drawn
+directly case.
+
+Measured in the print alert, same crop both times: the white area of the button grew from 5085 to
+5691 pixels and the bezel now fills the rectangle LibreOffice asked for instead of a smaller box
+inside it.
+
+THE INSTRUMENT THAT SETTLED IT, and it is worth keeping: CIDER_BEZEL_MAGENTA fills the bezel rect
+in magenta AND fills the same rect grown by forty points in green. Filling only the frame answers
+"did anything land here" and nothing else; when the answer is a single row, it cannot say whether
+the rest was clipped, drawn above or drawn below. The halo showed the clip was a four row band at
+the bottom edge of the button, which is what named the offset. docs/wayland-bezel-halo-control.png.
+
+STILL WRONG, AND I DID NOT SETTLE IT: the OK label does not appear. It is drawn in near white
+(measured: 19 pixels of #F2F2F2 against a #FFFFFF bezel, before the bezel grew over them), which is
+what an application draws when it believes the button is the DEFAULT one, because on Apple systems
+that button is filled with the accent colour and its text is white. Two explanations remain and the
+evidence does not separate them: our bezel is white where macOS would be blue, or LibreOffice draws
+its label BEFORE asking for the bezel and the bezel paints over it. The second is suggested by the
+label disappearing entirely once the bezel grew. What would separate them is a bezel drawn at half
+alpha, which is one build and one run away. Note also that the cell cannot tell it is the default
+button: cocotron knows only through [[controlView window] defaultButtonCell], there is no view, and
+the key equivalent is EMPTY in the trace, so LibreOffice is not marking it that way either.
