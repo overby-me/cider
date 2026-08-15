@@ -3760,3 +3760,41 @@ sentence that was typed.
 
 That is the accessory view earning its place: until today it was stored and never shown, so no format
 other than the default could be chosen at all.
+
+## THE CONTEXT MENU, which never once appeared, and what three wrong guesses cost
+
+2026-08-15, commits 2d8ed0ea, fb9d731e and 488f8a91. Right clicking in a document did nothing at all.
+The event was never the problem: the right button arrives, the view gets rightMouseDown, VCL builds
+the menu and asks for two dozen colours to style it with. Everything after that was ours.
+
+    1. AquaSalMenu ShowNativePopupMenu opens the menu through
+       -[NSPopUpButtonCell performClickWithFrame:inView:], which did not exist. The whole thing died
+       on the unrecognized selector.
+    2. With that written, a menu window appeared at 0,-290, off the top of the screen. The tracking
+       placed it at the origin of the control view BOUNDS and ignored the cell frame it was given.
+       That is the same point for an ordinary popup button and wrong for everyone else: LibreOffice
+       draws into a view that fills the window and passes the rectangle it wants the menu at.
+    3. My first fix took the cell frame only when it was not empty, and NSIsEmptyRect is TRUE for a
+       rect with zero HEIGHT, which is exactly what a caller asking for a menu AT A POINT passes.
+    4. The menu then opened as a square translucent slab: the only background it ever drew was at
+       148x49, because the view is created at the size of the CELL and resized when tracking starts,
+       and marking it as needing display is not the same as drawing it.
+    5. It had six bands of separators where macOS has three, because an application leaves its empty
+       groups in and macOS drops a separator that follows a separator.
+
+TWO INSTRUMENTS came out of this, both kept, because three of those five were guesses that a trace
+would have settled sooner:
+
+    the window role line names the APPKIT CLASS of each surface, so a 164x304 panel at level 6 is
+      identified as an NSPopUpWindow rather than guessed at
+    CIDER_WAYLAND_TRACE_CREATOR prints the frames that made a window, which is what finally named
+      AquaSalMenu ShowNativePopupMenu at the top of the stack
+
+And one thing worth knowing about this tree: an NSLog from inside that tracking loop never reaches
+the log, in a run full of other NSLog output. The traces there are fprintf.
+
+Looked at, against the reference the user supplied: Cut, Copy, Paste, one inset rule, Clone
+Formatting, Clear Direct Formatting, Character, Paragraph, List, one rule, Insert Comment, one rule,
+Page Style, on a rounded translucent panel with a hairline border, at the pointer. The reference has
+exactly those groups. What it still lacks: a chevron rather than a triangle for a submenu, the taller
+system rows, and a drop shadow.
