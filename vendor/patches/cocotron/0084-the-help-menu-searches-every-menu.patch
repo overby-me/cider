@@ -1,0 +1,257 @@
+--- a/AppKit/NSMenuView.h
++++ b/AppKit/NSMenuView.h
+@@ -22,13 +22,22 @@
+ @interface NSMenuView : NSView {
+     NSUInteger _selectedItemIndex;
+     NSMutableArray *_visibleArray;
++    /* THE HELP MENU SEARCH. Typing in an open Help menu filters every menu in the application, the
++     * way macOS does. The query lives on the view rather than on the menu because it belongs to
++     * this presentation of it and has to go when the menu closes. */
++    NSString *_searchQuery;
++    NSMutableArray *_searchResults;
+ }
+ 
+ - (NSUInteger) itemIndexAtPoint: (NSPoint) point;
++- (NSUInteger) itemIndexAtPoint: (NSPoint) point rect: (NSRect*) rect;
+ - (NSUInteger) selectedItemIndex;
+ - (void) setSelectedItemIndex: (NSUInteger) itemIndex;
+ 
+ - (NSArray *) visibleItemArray;
++- (BOOL) _isApplicationHelpMenu;
++- (NSString *) _searchQuery;
++- (void) _setSearchQuery: (NSString *) query;
+ - (NSMenuItem *) itemAtSelectedIndex;
+ 
+ - (NSMenuView *) viewAtSelectedIndexPositionOnScreen: (NSScreen *) screen;
+--- a/AppKit/NSMenu.subproj/NSMenuView.h
++++ b/AppKit/NSMenu.subproj/NSMenuView.h
+@@ -22,6 +22,11 @@
+ @interface NSMenuView : NSView {
+     NSUInteger _selectedItemIndex;
+     NSMutableArray *_visibleArray;
++    /* THE HELP MENU SEARCH. Typing in an open Help menu filters every menu in the application, the
++     * way macOS does. The query lives on the view rather than on the menu because it belongs to
++     * this presentation of it and has to go when the menu closes. */
++    NSString *_searchQuery;
++    NSMutableArray *_searchResults;
+ }
+ 
+ - (NSUInteger) itemIndexAtPoint: (NSPoint) point;
+@@ -30,6 +35,9 @@
+ - (void) setSelectedItemIndex: (NSUInteger) itemIndex;
+ 
+ - (NSArray *) visibleItemArray;
++- (BOOL) _isApplicationHelpMenu;
++- (NSString *) _searchQuery;
++- (void) _setSearchQuery: (NSString *) query;
+ - (NSMenuItem *) itemAtSelectedIndex;
+ 
+ - (NSMenuView *) viewAtSelectedIndexPositionOnScreen: (NSScreen *) screen;
+--- a/AppKit/NSMenu.subproj/NSMenuView.m
++++ b/AppKit/NSMenu.subproj/NSMenuView.m
+@@ -66,7 +66,127 @@
+     return [[self menu] itemArray];
+ }
+ 
++/*
++ * THE HELP MENU SEARCH, which is a real macOS feature and not a decoration.
++ *
++ * On macOS the Help menu has a search field at the top, and typing in it filters every menu the
++ * application has. Cocotron has no view items in menus, so the field is not a field: typing while
++ * the Help menu is open collects a query, the menu shows it on the first row, and the rows under it
++ * become the matching items FROM EVERY MENU.
++ *
++ * THE MATCHES ARE THE ORIGINAL ITEMS, not copies. An application puts its own state on its menu
++ * items -- LibreOffice hands a SalNSMenuItem to its own -menuItemTriggered: and reads a pointer off
++ * it -- so a copied item with the same target and action would call that with a sender it cannot
++ * use. Putting the real item in the list means the click is the same click it would have been in
++ * the menu it came from.
++ */
++/* The window a filtered menu lives in has to change size with it. NSMenuView does not know how big
++ * its items are; NSSubmenuView does, and overrides this. */
++- (void) _resizeForCurrentItems {
++}
++
++- (BOOL) _isApplicationHelpMenu {
++    NSMenu *menu = [self menu];
++
++    if (menu == nil || [NSApp mainMenu] == nil) {
++        return NO;
++    }
++    if ([[menu title] caseInsensitiveCompare: @"Help"] != NSOrderedSame) {
++        return NO;
++    }
++    /* A menu called Help that is not IN the menu bar is somebody else's. */
++    NSArray *top = [[NSApp mainMenu] itemArray];
++    NSInteger i, count = [top count];
++
++    for (i = 0; i < count; i++) {
++        if ([[top objectAtIndex: i] submenu] == menu) {
++            return YES;
++        }
++    }
++    return NO;
++}
++
++- (NSString *) _searchQuery {
++    return _searchQuery;
++}
++
++static void cider_collect_matches(NSMenu *menu, NSString *query, NSMutableArray *into,
++                                  NSUInteger limit, NSMutableSet *seen)
++{
++    NSArray *items = [menu itemArray];
++    NSInteger i, count = [items count];
++
++    for (i = 0; i < count && [into count] < limit; i++) {
++        NSMenuItem *item = [items objectAtIndex: i];
++
++        if ([item isSeparatorItem] || [item isHidden]) {
++            continue;
++        }
++        if ([item hasSubmenu]) {
++            cider_collect_matches([item submenu], query, into, limit, seen);
++            continue;
++        }
++        if ([item action] == NULL) {
++            continue;
++        }
++
++        NSString *title = [item title];
++
++        if ([title length] == 0 || [seen containsObject: title]) {
++            continue;
++        }
++        if ([title rangeOfString: query options: NSCaseInsensitiveSearch].location != NSNotFound) {
++            [seen addObject: title];
++            [into addObject: item];
++        }
++    }
++}
++
++- (void) _setSearchQuery: (NSString *) query {
++    if (query == _searchQuery || [query isEqualToString: _searchQuery]) {
++        return;
++    }
++    [_searchQuery release];
++    _searchQuery = [query copy];
++
++    if (_searchResults == nil) {
++        _searchResults = [[NSMutableArray alloc] init];
++    }
++    [_searchResults removeAllObjects];
++
++    if ([_searchQuery length] > 0) {
++        /* The first row is the query itself, which is what the search FIELD would have shown. It is
++         * disabled, so arrow navigation and clicking both skip over it. */
++        NSMenuItem *header = [[[NSMenuItem alloc]
++                initWithTitle: [NSString stringWithFormat: @"Search: %@", _searchQuery]
++                       action: NULL
++                keyEquivalent: @""] autorelease];
++
++        [header setEnabled: NO];
++        [_searchResults addObject: header];
++
++        NSMutableSet *seen = [NSMutableSet set];
++
++        cider_collect_matches([NSApp mainMenu], _searchQuery, _searchResults, 12, seen);
++
++        if ([_searchResults count] == 1) {
++            NSMenuItem *none = [[[NSMenuItem alloc] initWithTitle: @"No Results"
++                                                           action: NULL
++                                                    keyEquivalent: @""] autorelease];
++
++            [none setEnabled: NO];
++            [_searchResults addObject: none];
++        }
++    }
++
++    _selectedItemIndex = NSNotFound;
++    [self setNeedsDisplay: YES];
++}
++
+ - (NSArray *) visibleItemArray {
++    if (_searchQuery != nil && [_searchQuery length] > 0 && _searchResults != nil) {
++        return _searchResults;
++    }
+     NSArray *items = [[self menu] itemArray];
+ 
+     // Construct a new array of just the visible items
+@@ -332,8 +452,29 @@
+                 MENUDEBUG(@"Selecting current item and exit");
+                 state = STATE_EXIT;
+                 break;
++            case 8:   // Backspace
++            case 0x7f: // Delete, which is what a Mac keyboard sends
++            {
++                NSMenuView *typing = [viewStack lastObject];
++
++                if ([typing _isApplicationHelpMenu] && [[typing _searchQuery] length] > 0) {
++                    NSString *current = [typing _searchQuery];
++
++                    [typing _setSearchQuery:
++                            [current substringToIndex: [current length] - 1]];
++                    [typing _resizeForCurrentItems];
++                }
++            } break;
+             case 27: // Escape = pop unless we're done then it's cancel
+             {
++                /* A SEARCH IS WHAT ESCAPE CLEARS FIRST, before it closes anything. */
++                NSMenuView *typing = [viewStack lastObject];
++
++                if ([typing _isApplicationHelpMenu] && [[typing _searchQuery] length] > 0) {
++                    [typing _setSearchQuery: nil];
++                    [typing _resizeForCurrentItems];
++                    break;
++                }
+                 if ([viewStack count] > 1) {
+                     NSView *view = [viewStack lastObject];
+                     MENUDEBUG(@"popping cascading view: %@", view);
+@@ -480,6 +621,18 @@
+                 }
+             } break;
+             case kNSMenuKeyboardNavigationLetter: {
++                /* TYPING IN THE HELP MENU IS A SEARCH, not a jump to the next item beginning with
++                 * that letter. Everywhere else it is still the jump. */
++                if ([activeMenuView _isApplicationHelpMenu]) {
++                    NSString *current = [activeMenuView _searchQuery];
++                    NSString *typed = [NSString stringWithCharacters: &ch length: 1];
++
++                    [activeMenuView _setSearchQuery:
++                            (current == nil) ? typed
++                                             : [current stringByAppendingString: typed]];
++                    [activeMenuView _resizeForCurrentItems];
++                    break;
++                }
+                 MENUDEBUG(@"Letter...");
+                 NSString *letterString =
+                         [[NSString stringWithCharacters: &ch
+--- a/AppKit/NSMenu.subproj/NSSubmenuView.m
++++ b/AppKit/NSMenu.subproj/NSSubmenuView.m
+@@ -150,6 +150,26 @@
+     return YES;
+ }
+ 
++/* The Help menu search changes how many rows there are, so the view and the window it is in have to
++ * follow. The TOP edge stays where it is, because that is the edge attached to the menu bar. */
++- (void) _resizeForCurrentItems {
++    NSSize size = [self sizeForMenuItems: [self visibleItemArray]];
++    NSWindow *window = [self window];
++    NSRect frame = [self frame];
++
++    frame.size = size;
++    [self setFrame: frame];
++
++    if (window != nil) {
++        NSRect windowFrame = [window frame];
++
++        windowFrame.origin.y = NSMaxY(windowFrame) - size.height;
++        windowFrame.size = size;
++        [window setFrame: windowFrame display: YES];
++    }
++    [self setNeedsDisplay: YES];
++}
++
+ static NSRect boundsToTitleAreaRect(NSRect rect) {
+     return NSInsetRect(rect, WINDOW_BORDER_THICKNESS, WINDOW_BORDER_THICKNESS);
+ }
