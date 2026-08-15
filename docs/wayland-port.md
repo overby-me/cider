@@ -3736,3 +3736,27 @@ the next thing to find out.
 
 The instrument stays: a control that does nothing when clicked is either not being hit or being hit
 and ignoring it, and those are the same picture from outside.
+
+## A POPUP MENU THAT VANISHES, and the two coordinate spaces behind it
+
+2026-08-15, commit 5990488d. The entry above ended with a question: the File type menu opened and was
+gone from a screenshot two seconds later, and I did not know whether the release, the modal session
+or something else dismissed it. It was none of those.
+
+Cocotron already implements the sticky behaviour macOS has: a short click with no movement leaves the
+menu up, a click that moved or was held releases into a selection. The two are told apart by
+comparing where the pointer is NOW against where it STARTED. Now comes from NSEvent mouseLocation,
+which is on the SCREEN. Started was [event locationInWindow], in the control window, never converted.
+They agree only for a window at the origin. The save panel sits at 595,483, so every click looked
+like a drag of several hundred points and released immediately.
+
+The fix is one conversion. What it buys is every NSPopUpButton in every dialog, not just this one.
+
+WHAT THE JOURNEY NOW DOES, end to end and checked on disk rather than on screen alone: type a
+sentence, Command S, type a name, click the File type popup, the menu stays up with ODF Text Document
+(.odt) highlighted and Word 2010 to 365 Document (.docx) five rows down, drag to it, release, Save.
+The file is Microsoft Word 2007+ by file(1), a zip of ten entries, and word/document.xml contains the
+sentence that was typed.
+
+That is the accessory view earning its place: until today it was stored and never shown, so no format
+other than the default could be chosen at all.
