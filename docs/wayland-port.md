@@ -3370,3 +3370,37 @@ page. Copy and paste inside the document works too.
 STILL A STUB WITH A NOTE ON IT: NSSetFocusRingStyle now draws a ring rather than printing, and the
 call is reached, but no ring has been SEEN in a LibreOffice dialog -- probably the same overpainting
 that owns the white box above a focused field.
+
+## SHOULD COCOTRON BE BUNDLED RATHER THAN PATCHED, measured
+
+2026-08-15. The question came from the user after the eighty sixth patch. The numbers first, because
+the answer follows from them:
+
+    86 patch files, 8,092 patch lines, 5,044 of them ADDED lines
+    137 files touched out of 1,327 in the pin, which is 10.3 percent
+    the pin is 16 MB
+    upstream cjwl/cocotron: last pushed 2015-11-06, eleven years cold
+    our upstream darlinghq/darling-cocotron: alive but only just, last commit 2026-06-06, and the
+      recent ones are Fedora build fixes for a build system this fork does not use
+
+And the cost that is paid every single commit: a patch has to be regenerated against a REFERENCE
+TREE built by applying the whole series to a pristine fetch, then verified by applying it to a copy
+and diffing. That is minutes per commit and it has a whole memory entry about the ways it goes
+wrong.
+
+THE REPOSITORY ALREADY HAS THE PATTERN AND THE RULE. vendor/pins/ciderd is checked into git with a
+VENDORED.md that says why: so its sources can be edited in-tree WITHOUT THE PATCH FILE INDIRECTION.
+The de-vendoring rule this fork wrote down is patch live Apple upstreams, bundle dead ones.
+Cocotron is a dead upstream by that test.
+
+So: bundle it. The mechanical shape, kept deliberately small:
+
+    git add vendor/pins/cocotron with the 86 patches already applied
+    delete vendor/patches/cocotron and the manifest entry in nix/submodules.json
+    add vendor/pins/cocotron/VENDORED.md naming darlinghq/darling-cocotron and the base commit
+      c8d38d16a9f613d300157bebbab2b9501bc0c274, with the patch series preserved in git history
+    the PATH does not change, so the 710 cocotron references in vendor/src/BUCK do not either
+
+NOT DONE IN THIS SESSION, on purpose: it puts 16 MB and 1,327 files into the repository in one
+commit, and the thing it has to be verified against is the nix endpoint, which is the expensive
+build. It wants its own session with the checks run, not the tail of a long one.
