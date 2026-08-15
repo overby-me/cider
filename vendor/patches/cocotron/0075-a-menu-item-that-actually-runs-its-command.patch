@@ -1,0 +1,81 @@
+--- a/AppKit/NSMenu.subproj/NSMenuView.m
++++ b/AppKit/NSMenu.subproj/NSMenuView.m
+@@ -18,6 +18,9 @@
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ 
+ #import <AppKit/NSMainMenuView.h>
++#include <objc/runtime.h>
++#include <stdio.h>
++
+ #import <AppKit/NSMenuView.h>
+ #import <AppKit/NSMenuWindow.h>
+ #import <AppKit/NSRaise.h>
+@@ -610,6 +613,48 @@
+ 
+     MENUDEBUG(@"done with the event loop");
+ 
++    /* AND THE STACK IT ENDED WITH. Which VIEW the item came from is the whole question: the deepest
++     * open menu is the one the user was looking at, and an item taken from the menu bar instead is
++     * the parent of the thing they chose. */
++    if (getenv("CIDER_TRACE_MENU") != NULL) {
++        fprintf(stderr, "CIDER_MENU stack depth=%lu", (unsigned long) [viewStack count]);
++        for (NSUInteger i = 0; i < [viewStack count]; i++) {
++            NSMenuView *v = [viewStack objectAtIndex: i];
++
++            fprintf(stderr, " [%lu %s sel=%ld]", (unsigned long) i, object_getClassName(v),
++                    (long) [v selectedItemIndex]);
++        }
++        fprintf(stderr, "\n");
++        fflush(stderr);
++    }
++
++
++    /*
++     * THE ITEM THE USER CHOSE IS THE ONE IN THE DEEPEST MENU, not the one that opened it.
++     *
++     * item is set the moment the mouse comes up on the MENU BAR, which is what opens a menu in the
++     * first place, and after that nothing replaced it: choosing Character from the Format menu sent
++     * the action of FORMAT. LibreOffice takes that as open the menu, so every menu item in the
++     * application did nothing at all, by mouse and by keyboard alike, silently and with no
++     * exception. The trace that named it:
++     *
++     *     CIDER_MENU stack depth=2 [0 NSMainMenuView sel=5] [1 NSSubmenuView sel=8]
++     *     CIDER_MENU track item=Format action=menuItemTriggered:
++     *
++     * Selected index 8 of the submenu IS the chosen item and it was right there.
++     *
++     * A parent is skipped: an item that owns a submenu is not a command, and firing it would
++     * re-open the menu that was just closed.
++     */
++    if ([viewStack count] > 1) {
++        NSMenuItem *deepest = [[viewStack lastObject] itemAtSelectedIndex];
++
++        if (deepest != nil && [deepest submenu] == nil) {
++            item = deepest;
++            MENUDEBUG(@"took the item from the deepest menu view: %@", item);
++        }
++    }
++
+     // If we've got a menu still visible
+     if (item == nil && [viewStack count] > 0) {
+         // Get the selected item
+@@ -628,6 +673,19 @@
+     [[self window] setAcceptsMouseMovedEvents: oldAcceptsMouseMovedEvents];
+     [self setNeedsDisplay: YES];
+ 
++    /* WHAT THE TRACK ENDED WITH, and whether it is about to be thrown away. Choosing a menu item
++     * does nothing at all in this port, by mouse or by Return, and the whole difference between a
++     * tracking loop that found no item and one that found a DISABLED item is this line. Cocotron
++     * already notes above that main menu items report disabled even though they work. */
++    if (getenv("CIDER_TRACE_MENU") != NULL) {
++        fprintf(stderr, "CIDER_MENU track item=%s enabled=%d action=%s target=%s\n",
++                (item != nil) ? [[item title] UTF8String] : "nil",
++                (item != nil) ? (int) [item isEnabled] : -1,
++                (item != nil && [item action] != NULL) ? sel_getName([item action]) : "none",
++                (item != nil && [item target] != nil) ? object_getClassName([item target]) : "nil");
++        fflush(stderr);
++    }
++
+     return ([item isEnabled]) ? item : (NSMenuItem *) nil;
+ }
+ 

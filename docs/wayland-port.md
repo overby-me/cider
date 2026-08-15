@@ -3036,3 +3036,35 @@ THE INSTRUMENT IS THE LASTING PART. OBJC_PRINT_EXCEPTION_THROW belongs in the li
 this file: it names the raise site of anything that throws, through @throw and objc_exception_throw
 alike, with symbols, and it needed no code from us at all. A backtrace was also added to
 -[NSException raise] on the way, which is worth keeping for the raises that DO go through it.
+
+## NO MENU ITEM HAS EVER RUN ITS COMMAND, AND NOW THEY ALL DO
+
+This is the largest functional hole found in the port so far, and it was hiding behind a criterion
+that had been called met. Menus were verified as OPENING. Nobody had verified that choosing an item
+from one DOES anything, and it did not: Format then Character opened nothing, by mouse and by
+keyboard alike, with no exception, no unrecognised selector and no log line.
+
+The instrument is two lines in the tracking loop, behind CIDER_TRACE_MENU, and it named the bug on
+its first run:
+
+    CIDER_MENU stack depth=2 [0 NSMainMenuView sel=5] [1 NSSubmenuView sel=8]
+    CIDER_MENU track item=Format enabled=1 action=menuItemTriggered: target=SalNSMenuItem
+
+Selected index 8 of the SUBMENU is Character, and it is right there in the stack. What was sent was
+FORMAT, the menu bar item that opened the menu. item is assigned the moment the mouse comes up on
+the menu bar, which is what opens a menu at all, and nothing ever replaced it. LibreOffice reads
+that action as open the menu, so every command in every menu did nothing, silently.
+
+The item now comes from the DEEPEST open menu when there is more than one, and a parent is skipped:
+an item that owns a submenu is not a command, and firing it would reopen the menu just closed.
+
+    CIDER_MENU track item=Character… action=menuItemTriggered:
+
+docs/wayland-character-dialog.png is the result: five tabs, the family list with Liberation Serif
+selected, typeface and size with their blue dropdowns, the language row with a Features button, the
+preview, and Help, Reset, Cancel and a blue OK. None of that had ever been reachable.
+
+WHAT THIS SAYS ABOUT THE CRITERIA. Interactive was called met on typing, key equivalents, menu
+opening, clicking and dragging in the document, and the toolbar dropdowns. All of those are true and
+none of them covers a menu item. A criterion is only as good as the actions actually driven, and
+the honest way to hold it is to keep adding actions until one fails, which is what happened here.
