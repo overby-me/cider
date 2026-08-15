@@ -165,7 +165,14 @@ impl Globals {
             "xdg_wm_base" => {
                 self.xdg_wm_base = true;
                 self.bound.xdg_name = name;
-                self.bound.xdg_version = version.min(1);
+                // VERSION 3, because that is where xdg_popup.reposition arrives, and without it a
+                // popup can never be moved after it is created: its position is whatever the
+                // positioner said at the moment it was made. LibreOffice builds its dropdown list
+                // windows during startup and moves each one into place just before showing it, so
+                // bound at version 1 every list appeared at the left edge of the screen rather than
+                // under its own field. The listeners already declare the events of 4 and 5, but
+                // there is nothing to gain from them yet.
+                self.bound.xdg_version = version.min(3);
             }
             "wl_seat" => {
                 self.seat = true;
@@ -419,6 +426,14 @@ unsafe extern "C" {
     ) -> *mut XdgPopup;
     pub fn cider_xdg_popup_add_listener(popup: *mut XdgPopup, l: *const XdgPopupListener, data: *mut c_void) -> c_int;
     pub fn cider_xdg_popup_destroy(popup: *mut XdgPopup);
+    /// Whether this compositor speaks xdg_shell 3 or later, which is where reposition arrived.
+    /// Asking an older one is a protocol error and takes the connection down with it.
+    pub fn cider_xdg_popup_can_reposition(popup: *mut XdgPopup) -> c_int;
+    pub fn cider_xdg_popup_reposition(
+        popup: *mut XdgPopup,
+        positioner: *mut XdgPositioner,
+        token: u32,
+    );
     pub fn cider_xdg_positioner_anchor_bottom_left() -> u32;
     pub fn cider_xdg_positioner_gravity_bottom_right() -> u32;
     pub fn cider_xdg_positioner_constraint_slide_flip() -> u32;

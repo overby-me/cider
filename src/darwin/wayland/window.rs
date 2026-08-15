@@ -115,6 +115,10 @@ pub struct WindowState {
     pub hidden_by_deactivation: bool,
     /// Whether the window is maximised, so the zoom button can toggle rather than only set.
     pub maximized: bool,
+    /// A counter, not a handle: xdg_popup.reposition takes a token the compositor echoes back so a
+    /// client can tell which request a configure belongs to. Nothing here waits on one yet, but the
+    /// protocol wants it to change per request.
+    pub reposition_token: u32,
 }
 
 impl WindowState {
@@ -155,6 +159,7 @@ impl WindowState {
             visible: false,
             hidden_by_deactivation: false,
             maximized: false,
+            reposition_token: 0,
         }
     }
 }
@@ -630,57 +635,7 @@ fn create_surface(st: &mut WindowState) -> bool {
                 wl::cider_xdg_wm_base_create_positioner(base)
             };
             if !positioner.is_null() {
-                let w = (st.frame.size.width as i32).max(1);
-                let h = (st.frame.size.height as i32).max(1);
-                /*
-                 * THE ANCHOR IS IN THE PARENT COORDINATE SPACE, and the two spaces disagree about
-                 * which way is up: AppKit puts the origin at the bottom left with y increasing
-                 * upwards, Wayland at the top left with y increasing downwards. Converting through
-                 * the parent TOP edge is what makes a menu appear under its title rather than
-                 * mirrored to the other end of the window.
-                 */
-                let local_x = st.frame.origin.x as i64 - parent_left;
-                let popup_top = (st.frame.origin.y + st.frame.size.height) as i64;
-                let local_y = parent_top - popup_top;
-                wl::cider_xdg_positioner_set_size(positioner, w, h);
-                wl::cider_xdg_positioner_set_anchor_rect(
-                    positioner,
-                    local_x.max(0) as i32,
-                    local_y.max(0) as i32,
-                    1,
-                    1,
-                );
-                wl::cider_xdg_positioner_set_anchor(
-                    positioner,
-                    wl::cider_xdg_positioner_anchor_bottom_left(),
-                );
-                wl::cider_xdg_positioner_set_gravity(
-                    positioner,
-                    wl::cider_xdg_positioner_gravity_bottom_right(),
-                );
-                wl::cider_xdg_positioner_set_constraint_adjustment(
-                    positioner,
-                    wl::cider_xdg_positioner_constraint_slide_flip(),
-                );
-                /* THE WHOLE CONVERSION ON ONE LINE. A popup that lands under the pointer instead of
-                 * below it eats the next click, and the arithmetic has four inputs that are easy to
-                 * mix up: where the application asked, how big it is, and where the parent thinks
-                 * its left and top edges are. Printing the result next to the request is the only
-                 * way to see which of them is wrong. */
-                if std::env::var_os("CIDER_WAYLAND_TRACE_DISPLAY").is_some() {
-                    println!(
-                        "cider-wayland-window popup number={} asked={},{} size={}x{} parent-left={} parent-top={} local={},{}",
-                        st.number,
-                        st.frame.origin.x as i64,
-                        st.frame.origin.y as i64,
-                        w,
-                        h,
-                        parent_left,
-                        parent_top,
-                        local_x,
-                        local_y
-                    );
-                }
+                fill_positioner(positioner, st, parent_left, parent_top, "create");
                 st.popup = wl::cider_xdg_surface_get_popup(st.xdg, parent_xdg, positioner);
                 wl::cider_xdg_positioner_destroy(positioner);
             }
@@ -1407,6 +1362,94 @@ static WINDOWS: std::sync::Mutex<Vec<usize>> = std::sync::Mutex::new(Vec::new())
 
 /// The xdg_surface of a window that is mapped and is a toplevel, which is the only thing a popup
 /// may be parented to.
+/// THE ANCHOR IS IN THE PARENT COORDINATE SPACE, and the two spaces disagree about which way is
+/// up: AppKit puts the origin at the bottom left with y increasing upwards, Wayland at the top left
+/// with y increasing downwards. Converting through the parent TOP edge is what makes a menu appear
+/// under its title rather than mirrored to the other end of the window.
+///
+/// One function for both the creation and the reposition, because two copies of this arithmetic
+/// would drift and the drift would be invisible: a popup in the wrong place still draws.
+unsafe fn fill_positioner(
+    positioner: *mut wl::XdgPositioner,
+    st: &WindowState,
+    parent_left: i64,
+    parent_top: i64,
+    why: &str,
+) {
+    let w = (st.frame.size.width as i32).max(1);
+    let h = (st.frame.size.height as i32).max(1);
+    let local_x = st.frame.origin.x as i64 - parent_left;
+    let popup_top = (st.frame.origin.y + st.frame.size.height) as i64;
+    let local_y = parent_top - popup_top;
+
+    unsafe {
+        wl::cider_xdg_positioner_set_size(positioner, w, h);
+        wl::cider_xdg_positioner_set_anchor_rect(
+            positioner,
+            local_x.max(0) as i32,
+            local_y.max(0) as i32,
+            1,
+            1,
+        );
+        wl::cider_xdg_positioner_set_anchor(
+            positioner,
+            wl::cider_xdg_positioner_anchor_bottom_left(),
+        );
+        wl::cider_xdg_positioner_set_gravity(
+            positioner,
+            wl::cider_xdg_positioner_gravity_bottom_right(),
+        );
+        wl::cider_xdg_positioner_set_constraint_adjustment(
+            positioner,
+            wl::cider_xdg_positioner_constraint_slide_flip(),
+        );
+    }
+    /* THE WHOLE CONVERSION ON ONE LINE. A popup that lands under the pointer instead of below it
+     * eats the next click, and the arithmetic has four inputs that are easy to mix up: where the
+     * application asked, how big it is, and where the parent thinks its left and top edges are.
+     * Printing the result next to the request is the only way to see which of them is wrong. */
+    if std::env::var_os("CIDER_WAYLAND_TRACE_DISPLAY").is_some() {
+        println!(
+            "cider-wayland-window popup={why} number={} asked={},{} size={w}x{h} parent-left={parent_left} parent-top={parent_top} local={local_x},{local_y}",
+            st.number,
+            st.frame.origin.x as i64,
+            st.frame.origin.y as i64,
+        );
+    }
+}
+
+/// MOVE A POPUP THAT IS ALREADY UP, which the protocol only allows through reposition.
+///
+/// An xdg_popup position is decided by the positioner it was CREATED with and never changes on its
+/// own. LibreOffice builds its dropdown list windows during startup, parks them at whatever origin
+/// it happens to have, and moves each one into place just before showing it, so every list appeared
+/// where its window had been at creation: hard against the left edge of the screen instead of
+/// hanging under its own toolbar field.
+fn reposition_popup(st: &mut WindowState) {
+    if st.popup.is_null() {
+        return;
+    }
+    if unsafe { wl::cider_xdg_popup_can_reposition(st.popup) } == 0 {
+        return;
+    }
+    let Some((_, parent_left, parent_top)) = mapped_toplevel_anchor() else { return };
+    let base = session::wm_base();
+    if base.is_null() {
+        return;
+    }
+    unsafe {
+        let positioner = wl::cider_xdg_wm_base_create_positioner(base);
+        if positioner.is_null() {
+            return;
+        }
+        fill_positioner(positioner, st, parent_left, parent_top, "move");
+        st.reposition_token = st.reposition_token.wrapping_add(1);
+        wl::cider_xdg_popup_reposition(st.popup, positioner, st.reposition_token);
+        wl::cider_xdg_positioner_destroy(positioner);
+    }
+    session::flush();
+}
+
 fn mapped_toplevel_xdg() -> Option<*mut wl::XdgSurface> {
     mapped_toplevel_anchor().map(|(xdg, _, _)| xdg)
 }
@@ -1661,7 +1704,28 @@ extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
             }
         }
     }
+    let moved = frame.origin.x != st.frame.origin.x || frame.origin.y != st.frame.origin.y;
     st.frame = frame;
+    /* A POPUP THAT MOVED HAS TO BE TOLD TO MOVE. Its position was decided by the positioner it was
+     * created with, and this application creates its dropdown windows long before it shows one. */
+    if !st.popup.is_null() {
+        /* EVERY setFrame ON A POPUP, moved or not. Whether the application repositions a dropdown
+         * before showing it is the whole question here, and a trace that fires only on a move
+         * cannot tell "it never moved" from "the move never reached us". */
+        if std::env::var_os("CIDER_WAYLAND_TRACE_DISPLAY").is_some() {
+            println!(
+                "cider-wayland-window popup=setframe number={} origin={},{} size={}x{} moved={moved} resized={resized}",
+                st.number,
+                st.frame.origin.x as i64,
+                st.frame.origin.y as i64,
+                st.frame.size.width as i64,
+                st.frame.size.height as i64
+            );
+        }
+        if moved || resized {
+            reposition_popup(st);
+        }
+    }
     if resized {
         // THE CONTEXT DESCRIBES A SIZE, so it cannot outlive one. AppKit is told rather than left
         // holding a context over a mapping that no longer exists, which is the same contract

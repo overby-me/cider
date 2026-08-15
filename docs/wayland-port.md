@@ -2416,3 +2416,29 @@ STILL WRONG, and next: an xdg_popup position is fixed when the popup is CREATED.
 its dropdown windows at startup and moves them before showing, so the list appears at the position
 the window had at creation, which is why it hugs the left edge of the screen instead of hanging
 under its own field. That wants xdg_popup.reposition.
+
+## A DROPDOWN NOW HANGS UNDER ITS OWN FIELD, which needed xdg_shell version 3
+
+An xdg_popup position is decided by the positioner it was CREATED with and never changes on its
+own. LibreOffice builds its dropdown list windows during startup, parks them at a default origin
+and moves each one into place just before showing it, so every list appeared where its window had
+been at creation: hard against the left edge of the screen.
+
+    popup=setframe number=7 origin=125,14  size=384x602   the parked default
+    popup=setframe number=7 origin=368,-22 size=384x602   where it actually goes
+    popup=move     number=7 asked=368,-22  local=240,105  and now the compositor is told
+
+The protocol answer is xdg_popup.reposition, which arrived in version 3, and this client had been
+binding xdg_wm_base at VERSION 1 since the beginning. Binding at 3 is safe here: the popup listener
+already declares repositioned, and the toplevel listener already declares the configure_bounds and
+wm_capabilities of 4 and 5.
+
+WHAT MADE IT FINDABLE was tracing every setFrame on a popup rather than only the ones that moved.
+The first version printed on a move and printed nothing at all, which reads as "the application
+never repositions its lists" when the truth was that our reposition path was dead: can_reposition
+answered no on a version 1 popup and returned in silence. A trace that fires only when the
+interesting thing happens cannot tell you it never happened.
+
+docs/wayland-font-list-under-its-field.png: one click on the arrow, and the list drops from the
+field it belongs to with its scrollbar, every family in its own face. The File menu still opens
+under its title, checked in the same round.

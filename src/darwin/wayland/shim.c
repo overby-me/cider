@@ -276,6 +276,23 @@ int cider_xdg_popup_add_listener(struct xdg_popup *popup, const struct xdg_popup
 
 void cider_xdg_popup_destroy(struct xdg_popup *popup) { xdg_popup_destroy(popup); }
 
+// A POPUP POSITION IS FIXED WHEN THE POPUP IS MADE, and applications do not work that way.
+// LibreOffice builds its dropdown list windows at startup, parks them wherever, and MOVES them just
+// before showing one, so a list made once and never repositioned appears where its window happened
+// to be at creation: hard against the left edge of the screen rather than under its own field.
+// Reposition is the protocol answer to exactly that. It arrived in xdg_shell version 3, so a
+// compositor that only speaks 1 or 2 has to be left alone: asking is a protocol error and kills the
+// connection.
+int cider_xdg_popup_can_reposition(struct xdg_popup *popup) {
+	return popup != NULL &&
+	       wl_proxy_get_version((struct wl_proxy *) popup) >= XDG_POPUP_REPOSITION_SINCE_VERSION;
+}
+
+void cider_xdg_popup_reposition(struct xdg_popup *popup, struct xdg_positioner *positioner,
+                                uint32_t token) {
+	xdg_popup_reposition(popup, positioner, token);
+}
+
 uint32_t cider_xdg_positioner_anchor_bottom_left(void) {
 	return XDG_POSITIONER_ANCHOR_BOTTOM_LEFT;
 }
