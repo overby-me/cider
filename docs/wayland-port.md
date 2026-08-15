@@ -2378,3 +2378,41 @@ AND ONE MORE LOST EDIT, found by the same whole-pin diff that found the wheel fi
 CIDER_NO_VIEW_CACHE, the A and B switch from the memory hunt, only in the materialised tree. It is
 in this patch too. The rule stands and keeps earning: diff the built pin against the live tree
 before every commit that touches vendor.
+
+## THE FIRST CLICK ON A DROPDOWN DID NOTHING, and the culprit was a tooltip twenty five points high
+
+Clicking the Font Name arrow did nothing. Clicking it a second time did nothing. The third one
+opened the list. Not a hit area: the backend log shows all three arriving at the same window with
+the same coordinates.
+
+    button pressed=true x=404 y=95 window=2      nothing happens
+    pointer=enter x=1 y=3 window=12              a TOOLTIP appears UNDER the pointer
+    button=dropped reason=no-window-for-surface  the second click goes to it and dies
+    button pressed=true x=404 y=95 window=2      the list opens
+
+The A and B that named it: turn tooltips off in the profile and ONE click opens the list, every
+time. A tooltip in this toolkit is a float, and a click that closes a float is consumed before any
+control sees it. So the question became why the tooltip was under the pointer at all, and the
+answer was arithmetic:
+
+    popup number=12 asked=528,551 parent-left=125 parent-top=660 local=403,91   before
+    popup number=12 asked=528,551 parent-left=128 parent-top=685 local=400,116  after
+
+LibreOffice had placed it correctly, twenty one points BELOW the pointer in its own bottom left
+coordinates. PARENT_TOP was stored by whichever titled window was created last, and this
+application creates titled windows it never shows: one of them, 1004x591 at 125,69, put the top
+edge at 660 while the window on screen had its top at 685. Every popup came out twenty five points
+high. For a menu that is invisible; for a tooltip it is the difference between sitting below the
+pointer and sitting under it. The anchor now comes from the SAME window that is used as the popup
+parent, read when the popup is made rather than remembered from a window that may not even be on
+screen.
+
+docs/wayland-font-list-one-click.png is one click on the arrow: every family drawn in its own face,
+Arabic and Hebrew samples included, Liberation Serif selected. The File menu still opens under its
+title, checked in the same round, and the menu test had been clicking at y=10 ever since the title
+bar arrived, which is inside the chrome.
+
+STILL WRONG, and next: an xdg_popup position is fixed when the popup is CREATED. LibreOffice makes
+its dropdown windows at startup and moves them before showing, so the list appears at the position
+the window had at creation, which is why it hugs the left edge of the screen instead of hanging
+under its own field. That wants xdg_popup.reposition.

@@ -500,6 +500,16 @@ static void cider_vcl_trace_mouse(id self, SEL _cmd, id event)
 			? (double) [[(NSView *) self window] frame].origin.x : -1.0,
 		([self respondsToSelector: @selector(window)] && [(NSView *) self window])
 			? (double) [[(NSView *) self window] frame].origin.y : -1.0);
+	/* AND WHERE THE EVENT ITSELF SAYS IT IS, which is the number the application converts into a
+	 * widget. mouseLocation is the CURRENT pointer and the event carries the position it was
+	 * DELIVERED at; when a click does not reach the control under the pointer, those two disagree
+	 * and nothing else shows it. */
+	if (event != nil && [event respondsToSelector: @selector(locationInWindow)]) {
+		NSPoint where = [(NSEvent *) event locationInWindow];
+
+		fprintf(stderr, "CIDER_VCL   locationInWindow=%.0f,%.0f\n", (double) where.x,
+			(double) where.y);
+	}
 	fprintf(stderr, "CIDER_VCL %s clickCount=%ld buttonNumber=%ld\n", sel_getName(_cmd),
 		(event != nil && [event respondsToSelector: @selector(clickCount)])
 			? (long) [(NSEvent *) event clickCount] : -1,

@@ -612,7 +612,14 @@ fn create_surface(st: &mut WindowState) -> bool {
          * together are exact. Borderless AND parented is a tooltip; borderless with no mapped
          * parent stays a toplevel, which is what a splash screen wants.
          */
-        let parent_xdg = mapped_toplevel_xdg().unwrap_or(std::ptr::null_mut());
+        let (parent_xdg, parent_left, parent_top) = match mapped_toplevel_anchor() {
+            Some((xdg, left, top)) => (xdg, left, top),
+            None => (
+                std::ptr::null_mut(),
+                PARENT_LEFT.load(Ordering::Acquire),
+                PARENT_TOP.load(Ordering::Acquire),
+            ),
+        };
         let transient = st.level > 0 || st.style_mask == 0;
         let wants_popup = transient && !parent_xdg.is_null() && parent_xdg != st.xdg;
         if wants_popup {
@@ -632,9 +639,9 @@ fn create_surface(st: &mut WindowState) -> bool {
                  * the parent TOP edge is what makes a menu appear under its title rather than
                  * mirrored to the other end of the window.
                  */
-                let local_x = st.frame.origin.x as i64 - PARENT_LEFT.load(Ordering::Acquire);
+                let local_x = st.frame.origin.x as i64 - parent_left;
                 let popup_top = (st.frame.origin.y + st.frame.size.height) as i64;
-                let local_y = PARENT_TOP.load(Ordering::Acquire) - popup_top;
+                let local_y = parent_top - popup_top;
                 wl::cider_xdg_positioner_set_size(positioner, w, h);
                 wl::cider_xdg_positioner_set_anchor_rect(
                     positioner,
@@ -655,6 +662,25 @@ fn create_surface(st: &mut WindowState) -> bool {
                     positioner,
                     wl::cider_xdg_positioner_constraint_slide_flip(),
                 );
+                /* THE WHOLE CONVERSION ON ONE LINE. A popup that lands under the pointer instead of
+                 * below it eats the next click, and the arithmetic has four inputs that are easy to
+                 * mix up: where the application asked, how big it is, and where the parent thinks
+                 * its left and top edges are. Printing the result next to the request is the only
+                 * way to see which of them is wrong. */
+                if std::env::var_os("CIDER_WAYLAND_TRACE_DISPLAY").is_some() {
+                    println!(
+                        "cider-wayland-window popup number={} asked={},{} size={}x{} parent-left={} parent-top={} local={},{}",
+                        st.number,
+                        st.frame.origin.x as i64,
+                        st.frame.origin.y as i64,
+                        w,
+                        h,
+                        parent_left,
+                        parent_top,
+                        local_x,
+                        local_y
+                    );
+                }
                 st.popup = wl::cider_xdg_surface_get_popup(st.xdg, parent_xdg, positioner);
                 wl::cider_xdg_positioner_destroy(positioner);
             }
@@ -979,6 +1005,18 @@ fn present(st: &mut WindowState) {
         let total = st.map_len / 4;
         let words = unsafe { std::slice::from_raw_parts(st.pixels as *const u32, total) };
         if words.iter().all(|&w| w == CLEAR_PIXEL) {
+            /*
+             * AND SAY SO WHEN ASKED, because this rule is indistinguishable from the application
+             * never showing the window at all: both end with no map line and nothing on screen.
+             * A dropdown list that is presented and still blank is OUR bug; one that is never
+             * presented is the application not opening it, and those want opposite work.
+             */
+            if std::env::var_os("CIDER_WAYLAND_TRACE_DISPLAY").is_some() {
+                println!(
+                    "cider-wayland-window skip=allclear number={} size={}x{} t={:.2}",
+                    st.number, st.buffer_w, st.buffer_h, elapsed()
+                );
+            }
             return;
         }
     }
@@ -1370,11 +1408,27 @@ static WINDOWS: std::sync::Mutex<Vec<usize>> = std::sync::Mutex::new(Vec::new())
 /// The xdg_surface of a window that is mapped and is a toplevel, which is the only thing a popup
 /// may be parented to.
 fn mapped_toplevel_xdg() -> Option<*mut wl::XdgSurface> {
+    mapped_toplevel_anchor().map(|(xdg, _, _)| xdg)
+}
+
+/// The mapped parent AND the edges its coordinate space starts from, which have to come from the
+/// same window or a popup lands somewhere nobody asked for.
+///
+/// PARENT_LEFT and PARENT_TOP used to be stored by whichever titled window was created last, and
+/// this application creates titled windows it never shows. One of them, 1004x591 at 125,69, put the
+/// top edge at 660 while the window actually on screen had its top at 685, so every popup came out
+/// TWENTY FIVE POINTS HIGH. For a menu that is invisible. For a tooltip it is the difference
+/// between sitting below the pointer and sitting UNDER it, and a tooltip under the pointer takes
+/// the click that was meant for the button beneath: measured, the first click on a toolbar dropdown
+/// did nothing at all and the third one opened it.
+fn mapped_toplevel_anchor() -> Option<(*mut wl::XdgSurface, i64, i64)> {
     let list = WINDOWS.lock().ok()?;
     for &p in list.iter().rev() {
         let st = unsafe { (p as *mut WindowState).as_ref() }?;
         if st.mapped && st.popup.is_null() && !st.xdg.is_null() {
-            return Some(st.xdg);
+            let left = st.frame.origin.x as i64;
+            let top = (st.frame.origin.y + st.frame.size.height) as i64;
+            return Some((st.xdg, left, top));
         }
     }
     None

@@ -289,8 +289,20 @@ extern "C" fn on_pointer_enter(
     st.pointer_focus = surface;
     st.pointer_x = unsafe { wl::cider_wl_fixed_to_double(x) };
     st.pointer_y = unsafe { wl::cider_wl_fixed_to_double(y) };
+    /* WHICH SURFACE, RESOLVED. The compositor points at whatever is under the cursor and a tooltip
+     * that has just appeared there is a surface like any other; if it is one we cannot resolve, the
+     * next click is thrown away here rather than by the application, and the two are
+     * indistinguishable without this line. */
     if tracing() {
-        println!("cider-wayland-input pointer=enter x={} y={}", st.pointer_x, st.pointer_y);
+        let resolved = match window::window_for_surface(surface) {
+            Some((_, _, _, number)) => number as i64,
+            None => -1,
+        };
+
+        println!(
+            "cider-wayland-input pointer=enter x={} y={} window={resolved}",
+            st.pointer_x, st.pointer_y
+        );
     }
 }
 
@@ -406,7 +418,7 @@ extern "C" fn on_pointer_button(
         }
         (st.pointer_focus, st.pointer_x, st.pointer_y, st.modifiers, st.click_count)
     };
-    let Some((_owner, delegate, height, _number)) = window::window_for_surface(surface) else {
+    let Some((_owner, delegate, height, window_number)) = window::window_for_surface(surface) else {
         if tracing() {
             println!("cider-wayland-input button=dropped reason=no-window-for-surface");
         }
@@ -422,9 +434,14 @@ extern "C" fn on_pointer_button(
         (_, true) => (NS_OTHER_MOUSE_DOWN, 3),
         (_, false) => (NS_OTHER_MOUSE_UP, 3),
     };
+    /* WHICH WINDOW THE CLICK WENT TO, which is not decided here but by the compositor: it sends
+     * pointer events to whatever surface is under the pointer, and a tooltip that has just appeared
+     * there is a surface like any other. A click delivered with the right coordinates to the wrong
+     * window looks identical to a control that ignores clicks, and this is the only line that can
+     * tell them apart. */
     if tracing() {
         println!(
-            "cider-wayland-input button={button:#x} pressed={pressed} x={px} y={py} type={event_type} clicks={clicks}"
+            "cider-wayland-input button={button:#x} pressed={pressed} x={px} y={py} type={event_type} clicks={clicks} window={window_number}"
         );
     }
     unsafe {
