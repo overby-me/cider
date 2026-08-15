@@ -3144,3 +3144,41 @@ menu still opens, typing still gives 8 words 47 characters.
 AND THE GREP THAT LIED, again: the first search for destroyed objects found nothing because
 WAYLAND_DEBUG writes wl_surface#17 and the pattern said wl_surface@17. Same shape as the carriage
 return in the key equivalent: the instrument was fine and the question was malformed.
+
+## AND THE UNMAP IS THE THING: A TOPLEVEL THAT COMES BACK NEEDS A NEW ROLE, NOT A NEW BUFFER
+
+The wire log, with the noise removed, is the whole lifecycle of the file picker and it ends in the
+error every time:
+
+    2330  get_xdg_surface(new id xdg_surface#96, wl_surface#101)
+    2331  xdg_surface#96.get_toplevel(new id xdg_toplevel#102)
+    2335  wl_surface#101.commit()                 the empty commit that asks for a configure
+    2344  xdg_surface#96.configure(66)
+    2345  xdg_surface#96.ack_configure(66)
+    2354  wl_surface#101.attach(wl_buffer#104) + commit        mapped, and correct
+    2392  wl_surface#101.attach(nil) + commit                  UNMAPPED
+    2451  xdg_surface#96.configure(67)
+    2452  xdg_surface#96.ack_configure(67)
+    2459  wl_surface#101.attach(wl_buffer#104) + commit        remapped
+          wl_display#1.error(xdg_wm_base#5, 4, "wrong configure serial: 67")
+
+Every step of that is what the protocol asks for read literally, and it still dies. The unmap at
+2392 is what makes the difference: a surface that has been unmapped is RESET, and the compositor
+does not consider the configure it sends afterwards to belong to the same generation. Clients that
+hide and show a toplevel do not do it this way. They DESTROY the xdg_toplevel and the xdg_surface,
+and build new ones when the window comes back.
+
+So the fix is a change of strategy in this backend, not another guard: hide should destroy the role
+objects, show should create them again and go through the initial configure. That is the next piece
+of work and it is a real one.
+
+TWO GUARDS TRIED AND KEPT, NEITHER OF WHICH FIXED IT, said plainly:
+  the configured flag is cleared when a surface is unmapped, because an unmapped surface really does
+    have to be configured again before a buffer may be attached
+  an unmap that changes nothing is skipped, which took the picker from EIGHTEEN unmaps in one modal
+    session to one
+Both are correct on their own terms and both leave the error exactly where it was, same serial, same
+place. Neither is a fix and neither is presented as one.
+
+Regressions checked after both: document window byte identical, startup 1.52 s, the File menu opens,
+the save panel still writes its file (9703 bytes), zero unrecognized selectors.

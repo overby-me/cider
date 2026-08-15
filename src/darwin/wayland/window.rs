@@ -1858,6 +1858,23 @@ extern "C" fn hide_window(this: Object, _cmd: Sel) {
         /* WHO DISAPPEARED AND WHEN. A window that unmaps is indistinguishable from a compositor
          * that stopped drawing, and both look like a black screen; only the client knows which it
          * did. */
+        /*
+         * HIDING A HIDDEN WINDOW IS NOT FREE, it is a protocol event.
+         *
+         * Every call here attaches a null buffer and commits, which UNMAPS the surface. AppKit asks
+         * repeatedly -- the file picker was hidden eighteen times in one modal session, seventeen
+         * of them while it was already hidden -- and each one resets the surface state the
+         * compositor keeps, including the configure it is waiting to have acknowledged. The wire
+         * log shows those eighteen unmaps landing BETWEEN a configure and the ack that follows it,
+         * and the connection dies on the next ack with
+         *     xdg_wm_base error 4 wrong configure serial
+         *
+         * An unmap that changes nothing is skipped now. That does not fix the modal spin above it,
+         * and it is not claimed to.
+         */
+        if !st.visible && !st.mapped {
+            return;
+        }
         println!("cider-wayland-window hide number={} visible={}", st.number, st.visible);
         unsafe {
             if !st.surface.is_null() {
