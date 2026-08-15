@@ -372,11 +372,11 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
 // overwrite this, if you need a different set of alternating background colors
 // NOTE: the list may contain more then two colors
 + (NSArray *) controlAlternatingRowBackgroundColors {
+    /* NEUTRAL, NOT BLUE. The second colour here was a light blue, which reads as a selection rather
+     * than as banding: every other row in the file panel looked picked. macOS bands with a grey a
+     * shade off white and keeps blue for what is actually selected. */
     return [NSArray arrayWithObjects: [NSColor whiteColor],
-                                      [NSColor colorWithCalibratedRed: 0.90
-                                                                green: 0.95
-                                                                 blue: 1.0
-                                                                alpha: 1.0],
+                                      [NSColor colorWithCalibratedWhite: 0.96 alpha: 1.0],
                                       nil];
 }
 

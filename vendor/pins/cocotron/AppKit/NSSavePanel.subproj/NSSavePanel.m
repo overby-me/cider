@@ -397,6 +397,24 @@ static NSSavePanel *_newPanel = nil;
         y += rowHeight + gap;
     }
 
+    /* WHAT THE LIST SHOWS, and it is not what a Mac shows. Rows banded in light blue are a
+     * Cocotron default; the open panel in macOS is plain white with a blue pill on the selected
+     * row. And a panel that lists dot files opens on .ciderd.sock and .init.pid, above anything a
+     * person would want, so the data source is told which the panel is. */
+    if (_outlineView != nil) {
+        id source = [_outlineView dataSource];
+
+        /* AND THE BACKGROUND WITH IT. Turning the banding off drops the table back on its own
+         * background colour, which is the control grey: the list came out grey on a white panel.
+         * A file list is white on macOS. */
+        [_outlineView setUsesAlternatingRowBackgroundColors: NO];
+        [_outlineView setBackgroundColor: [NSColor whiteColor]];
+        if ([source respondsToSelector: @selector(setShowsHiddenFiles:)]) {
+            [source setShowsHiddenFiles: _showsHiddenFiles];
+            [_outlineView reloadData];
+        }
+    }
+
     /* THE LIST TAKES WHAT IS LEFT, top edge at the top margin. Everything below it has a fixed
      * height, so this is the only view whose size depends on the panel. */
     if (list != nil) {
