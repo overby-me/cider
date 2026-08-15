@@ -2821,3 +2821,38 @@ It is not reached yet, and saying otherwise would be inventing a cause.
 Both traces are gated behind CIDER_TRACE_NIB and stay: an entry probe on a method that is supposed
 to run is the only thing that separates "this failed" from "this never happened", which is the
 mistake this port has now made twice.
+
+## CORRECTION: THE NIB IS OPENED, IT IS A NIBArchive, AND IT FAILS TO DECODE
+
+The entry above is wrong and this replaces it. It said the nib was never opened and
+NSApplicationMain was never entered. Both claims came from probes that print with NSLog, and NSLog
+PRODUCES NOTHING IN THIS PROCESS. I read the silence of an instrument I had never seen speak here,
+which is the same mistake this port has now made three times, and this time it reached a commit
+message.
+
+The same probes with fprintf to stderr, which needs nothing but a file descriptor:
+
+    CIDER_NIB open /Applications/iTerm.app/Contents/Resources/MainMenu.nib
+    CIDER_NIB instantiate bytes=58174
+    CIDER_NIB bytes=58174 keyed=1 magic=NIBArchive objectData=NIL
+    CIDER_NIB NSApplication run
+    CIDER_NIB finishLaunching entering delegate=nil
+    CIDER_NIB finishLaunching done delegate=nil windows=0
+
+So iTerm2 does everything a Cocoa application does. It opens its main nib. The nib is a NIBArchive,
+the format Xcode has written since version 4, whose first eleven bytes are that ASCII text.
+Cocotron NSNib knows two formats, the keyed property list and the older typedstream, and assumes
+keyed for any file that is not a directory, so the keyed unarchiver is handed a NIBArchive and
+returns NIL. Nothing raises. No object graph, so NO DELEGATE and NO WINDOWS, and the application
+then runs its loop forever in perfect health with nothing on screen.
+
+THE BLOCKER IS A NIBArchive READER. That is a real piece of work and a well defined one: header,
+object table, key table, value table, class table, then rebuilding the graph the same way the keyed
+path already does.
+
+TWO THINGS TO KEEP FROM THE HUNT. Probes print with fprintf and fflush from now on, because a probe
+that depends on Foundation cannot report on a process where Foundation is what is in question. And
+finishLaunching is now reached from the first event pump as well as from -run, which is correct on
+its own terms: an application with its own loop still has to be told it launched. It changed nothing
+here, because iTerm2 does come through -run, and LibreOffice is unaffected either way: byte
+identical dump, unchanged startup.
