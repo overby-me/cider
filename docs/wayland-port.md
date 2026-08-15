@@ -3324,3 +3324,49 @@ AND THE STARTUP FAILURE IN THE README IS GONE. It claimed one start in sixty fai
 a start-stack mmap failure. Measured with the container torn down between attempts: 420 cold starts
 and 140 warm shells, zero failures. If the rate were still one in sixty the chance of that is about
 one in a thousand, so the entry went.
+
+## THE MENUS ARE MAC MENUS NOW, and the clipboard was already there
+
+2026-08-15, later. Three more things the user named, and one they asked for.
+
+THE APPLICATION NAME IS BOLD, which is the only bold title in a Mac menu bar. Drawing it took four
+lines. Getting a bold FONT took the rest: boldSystemFontOfSize converts the system font through
+fontFamilyWithTypefaceName, the system font is called San Francisco, the typefaces this backend
+publishes are named with fontconfig patterns, and no family matched -- so the conversion returned
+the SAME font and everything that asked for bold silently got regular, including the window titles
+made bold an hour earlier. Ask the family directly, and test traits as BITS: typefaceWithTraits
+compares the mask for EQUALITY and a real face carries bold AND unitalic, so asking for the bold bit
+alone matches nothing that exists.
+
+KEY EQUIVALENTS LOOK LIKE MAC ONES, after three faults in a row:
+
+    the modifier was spelled Ctrl+ through the Windows modifier map
+    Command is the DEFAULT modifier and NSMenuItem initialised the mask to zero, so Hide, Hide
+      Others and Quit drew as a bare H, H and Q
+    the key NAME came from a plist keyed by character, so a function key -- a character in the
+      private use area -- matched nothing and the raw character was appended, which draws as
+      nothing: Insert Table showed Ctrl+ with no key after it
+
+And then the symbols did not draw either. MEASURED: the Command symbol is ZERO points wide in the
+menu font, so the string was laid out into a rect measured without it and only the letter survived.
+CIDER_TRACE_FONTS names the face, TeX Gyre Heros, a Helvetica clone with no Command glyph, and a
+probe over five characters showed every other one measuring fine. So the key equivalent, and only
+that, is drawn in the first family that measures the symbol wider than nothing -- DejaVu Sans here.
+If no family has it the text forms go in, and that decision is a measurement rather than a font
+name.
+
+THE HELP MENU SEARCHES EVERY MENU, which is a real macOS feature. Typing in the open Help menu
+collects a query, the first row shows it, and the rows under it are the matching items from every
+menu -- the ORIGINAL items, not copies, because LibreOffice reads a pointer off the sender of
+menuItemTriggered. A correction to the commit that added it: it does NOT need a Down first. With
+CIDER_TRACE_MENU the stack at the moment the letter arrives is already
+[NSMainMenuView, NSSubmenuView(Help)]; the run that suggested otherwise had clicked Tools.
+
+AND THE CLIPBOARD, which nobody had checked since the port and which is a criterion in its own
+right. Both directions work: Command C in the document and wl-paste on the compositor side reports
+four types and the right text; wl-copy on the compositor side and Command V puts that line in the
+page. Copy and paste inside the document works too.
+
+STILL A STUB WITH A NOTE ON IT: NSSetFocusRingStyle now draws a ring rather than printing, and the
+call is reached, but no ring has been SEEN in a LibreOffice dialog -- probably the same overpainting
+that owns the white box above a focused field.
