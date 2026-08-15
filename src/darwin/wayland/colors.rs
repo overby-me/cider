@@ -56,7 +56,12 @@ fn recipe_for(name: &str) -> Option<Recipe> {
         "headerColor" => Recipe::ClassMethod("greenColor"),
         "textBackgroundColor" => Recipe::ClassMethod("whiteColor"),
         "textColor" => Recipe::ClassMethod("blackColor"),
-        "selectedTextColor" => Recipe::ClassMethod("whiteColor"),
+        // BLACK ON THE LIGHT BLUE ABOVE, not white. These two are a pair: selected text is drawn in
+        // this colour on selectedTextBackgroundColor, and white on a pale blue is barely there. The
+        // selected name in the save panel came out as a ghost of itself, which is exactly what the
+        // reference screenshot from macOS does not show: there it is ordinary black text with a
+        // blue band behind it.
+        "selectedTextColor" => Recipe::ClassMethod("blackColor"),
         "headerTextColor" => Recipe::ClassMethod("blackColor"),
         "menuItemTextColor" => Recipe::ClassMethod("blackColor"),
         "selectedMenuItemTextColor" => Recipe::ClassMethod("whiteColor"),

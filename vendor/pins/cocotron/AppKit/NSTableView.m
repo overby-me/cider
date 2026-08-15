@@ -1273,8 +1273,13 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
                     setDrawsBackground: NO]; // so the selection shows properly,
                                              // dont just set the color so
                                              // custom background works
+            /* THE COLOUR THAT GOES WITH THE FILL. A selected row is filled with
+             * selectedControlColor, which is the accent blue, so its text is the colour meant for
+             * an emphasised control: white. selectedTextColor is the other case, text selected
+             * inside a field, where the band behind it is pale and the text stays black. Using it
+             * here tied the two together, and one of them had to be wrong. */
             [(NSTextFieldCell *) dataCell
-                    setTextColor: [NSColor selectedTextColor]];
+                    setTextColor: [NSColor alternateSelectedControlTextColor]];
         } else
             [(NSTextFieldCell *) dataCell setTextColor: [NSColor textColor]];
     }
