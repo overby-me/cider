@@ -3109,3 +3109,38 @@ freezes everything. It changed nothing, because the failure is a spin rather tha
 dispatching events from inside an event handler is exactly the re-entry that guard exists to
 prevent. A change that fixes nothing and can corrupt a heap is not worth keeping. What stayed is the
 counter: the old trace printed once and could not distinguish one re-entry from a million.
+
+## THE BLACK SCREEN IS A PROTOCOL ERROR, AND HERE IS THE WIRE
+
+WAYLAND_DEBUG names it in one run. The whole sequence, from the file picker mapping to the
+connection dying, is nine lines:
+
+    xdg_toplevel#102.configure(500, 422, array[4])      the picker
+    xdg_surface#96.configure(67)
+     -> xdg_surface#96.ack_configure(67)
+    xdg_toplevel#19.configure(1256, 684, array[16])     the document
+    xdg_surface#18.configure(69)
+     -> xdg_surface#18.ack_configure(69)
+     -> wl_surface#101.attach(wl_buffer#104, 0, 0)      the picker, its own buffer, committed
+     -> wl_surface#17.attach(wl_buffer#20, 0, 0)        the document, committed
+    wl_display#1.error(xdg_wm_base#5, 4, "wrong configure serial: 67")
+
+A protocol error is FATAL: the compositor drops the client and every surface with it. That is the
+black screen, the empty workspace, the correct buffers and the twenty thousand a second spin, all
+four at once, and none of them is a separate bug.
+
+WHAT DOES NOT EXPLAIN IT, tested rather than argued: each configure is acknowledged immediately, on
+the surface that sent it, with the serial it sent, and the pairing is right (xdg_surface#96 does
+belong to wl_surface#101, and #18 to #17). The ids are RECYCLED, which is worth knowing: xdg_surface
+id 96 is created late in the run, long after other objects have come and gone.
+
+AND ONE HYPOTHESIS TESTED AND REJECTED, kept because it is right on its own terms: the configured
+flag was set once at creation and never cleared when a surface is unmapped. An unmapped surface
+starts again, and attaching before the new configure is acknowledged is a protocol error. It is
+cleared now in -hide and on popup dismissal. It did NOT fix this, and saying so is the point: the
+same error, with the same serial, at the same place. The document window is byte identical, the File
+menu still opens, typing still gives 8 words 47 characters.
+
+AND THE GREP THAT LIED, again: the first search for destroyed objects found nothing because
+WAYLAND_DEBUG writes wl_surface#17 and the pattern said wl_surface@17. Same shape as the carriage
+return in the key equivalent: the instrument was fine and the question was malformed.

@@ -521,6 +521,8 @@ extern "C" fn on_popup_done(data: *mut c_void, _popup: *mut wl::XdgPopup) {
     println!("cider-wayland-window popup=dismissed number={}", st.number);
     st.visible = false;
     st.mapped = false;
+    /* Same reason as -hide: a dismissed popup is unmapped and has to be configured again. */
+    st.configured = false;
     unsafe {
         if !st.surface.is_null() {
             wl::cider_wl_surface_attach(st.surface, std::ptr::null_mut(), 0, 0);
@@ -1865,6 +1867,19 @@ extern "C" fn hide_window(this: Object, _cmd: Sel) {
         }
         st.mapped = false;
         st.visible = false;
+        /*
+         * AND IT IS NO LONGER CONFIGURED. An unmapped surface starts again: the compositor sends a
+         * fresh configure when it comes back, and attaching before that serial is acknowledged is a
+         * protocol error, not a picture. This flag was set once at creation and never cleared, so a
+         * window that was hidden and shown again attached on the strength of an acknowledgement
+         * from minutes earlier.
+         *
+         * Seen on the wire, and it kills the connection outright:
+         *     wl_display#1.error(xdg_wm_base#5, 4, "wrong configure serial: 67")
+         * after which the compositor drops every surface, the workspace is empty, the screen is
+         * black, and the application carries on drawing into buffers nobody will ever read.
+         */
+        st.configured = false;
         session::flush();
     }
 }
