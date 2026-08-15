@@ -40,6 +40,14 @@ static const NSTimeInterval kMenuInitialClickThreshold = .3f;
 
 #define MIN_TITLE_KEY_GAP 8
 #define WINDOW_BORDER_THICKNESS 3
+
+/*
+ * THE SPACE ABOVE THE FIRST ROW AND BELOW THE LAST, which is not the same as the side border and
+ * used to be. Apple leaves about six points at each end; the border here is three, and using it for
+ * both put the first title hard against the top of the panel. Kept separate so widening one does
+ * not widen the other.
+ */
+#define MENU_VERTICAL_PADDING 6
 #define IMAGE_TITLE_GAP 8
 
 // Note: moved these above init to avoid compiler warnings
@@ -95,9 +103,7 @@ static const NSTimeInterval kMenuInitialClickThreshold = .3f;
     CGFloat maxTitleWidth = 0.0f;
     BOOL anItemHasAnImage = NO;
     CGFloat maxKeyWidth = 0.0f;
-    CGFloat totalHeight =
-            WINDOW_BORDER_THICKNESS; // border. Magic constants that may not be
-                                     // right for Win7 vs XP
+    CGFloat totalHeight = MENU_VERTICAL_PADDING;
     NSSize gutterSize = [[self graphicsStyle] menuItemGutterSize];
     NSSize rightArrowSize = [[self graphicsStyle] menuItemBranchArrowSize];
     unsigned i, count = [items count];
@@ -172,9 +178,9 @@ static const NSTimeInterval kMenuInitialClickThreshold = .3f;
     }
     result.width += rightArrowSize.width;
 
-    // Add the left+right and bottom borders
+    // Add the left+right borders and the bottom padding
     result.width += WINDOW_BORDER_THICKNESS * 2;
-    result.height += WINDOW_BORDER_THICKNESS;
+    result.height += MENU_VERTICAL_PADDING;
 
     if (_cachedItemRects == nil && [items isEqual: [self visibleItemArray]]) {
         // Build our cached item rects

@@ -90,8 +90,20 @@ static NSDictionary *sBoldSelectedMenuTextAttributes = nil;
 
 @implementation NSGraphicsStyle (NSMenu)
 
-#define TITLE_TOP_MARGIN 2
-#define TITLE_BOTTOM_MARGIN 2
+/*
+ * A MENU ROW IS TWENTY FOUR POINTS TALL, and it was twenty one.
+ *
+ * Measured rather than guessed, from the reference screenshot the user sent: the text bands in it
+ * are forty eight retina pixels apart, and the same eight items and three separators make a panel
+ * 236 points tall. Ours came to 207, so every row was three points short and the whole menu read as
+ * cramped next to the real one. The text itself is the same size in both; it is the space around it
+ * that was missing.
+ *
+ * The parts of a row are centred in it by -[NSPopUpView drawRect:], so both halves are the same and
+ * nothing moves off centre.
+ */
+#define TITLE_TOP_MARGIN 3.5
+#define TITLE_BOTTOM_MARGIN 3.5
 /* The state column, its gap to the title, and the two insets that make a highlight a pill rather
  * than a band. Apple numbers, measured on screen at the same point size. */
 #define MENU_GUTTER_WIDTH 12
