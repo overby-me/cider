@@ -2538,3 +2538,45 @@ button cell, there is no view, and the key equivalent is empty in the trace.
 
 The instrument stays, and it is a general one: an opaque thing that covers another cannot be told
 apart from a thing that was never drawn, and half alpha separates them in a single run.
+
+## PERFORMANCE, MEASURED AGAINST NATIVE FOR THE FIRST TIME
+
+Every number here had been Cider against Cider, which can say whether a change helped and never how
+far there is to go. The same text to PDF conversion, same machine, same input:
+
+    native LibreOffice 25.8.5.2   0.51 s   (three runs, warm, within 0.015 s of each other)
+    Cider  LibreOffice 25.2.1.2   3.63 s   BEFORE
+    Cider  LibreOffice 25.2.1.2   2.87 s   AFTER the change below
+
+Not the same binary, which has to be said rather than hidden: nixpkgs ships 25.8 and the dmg we run
+is 25.2. Same task though, and the ratio went from 7.1x to 5.6x.
+
+WHERE IT IS NOT: startup. A trivial guest program through the same launcher costs 0.175 s against
+0.004 s native, and soffice --version costs 0.337 s against 0.293 s. The container and the loader
+are not the problem; the work is.
+
+WHERE IT WAS: fontconfig, 34.6 percent of the run in children and 31.4 in SELF, and inside it
+FcFontMatch alone at 29.69 percent -- more than the layout, the rasteriser and the PDF filter
+together. FcFontMatch walks the entire font set comparing every element of the pattern against every
+candidate, and it was called 1573 times in one startup.
+
+THE FIX IS ONE WORD IN AN OBJECT SET. The typeface names handed to AppKit are fontconfig patterns
+produced by FcNameUnparse during enumeration, and Onyx2D parses them back later to find the font
+FILE. The file was in our hands at enumeration and dropped on the floor, so finding it again cost a
+full match per typeface. Asking FcFontList for file as well, and reading it back out of the pattern
+instead of matching, took the matches from 1573 to 333.
+
+    text to PDF          3.63 s  ->  2.87 s
+    first document window 2.53 s ->  1.52 s     (backend own clock 1.86 -> 1.08)
+
+AND THE RENDERING IS BYTE IDENTICAL, which is the check that matters for a change to font
+resolution: the same window dump, compared pixel for pixel against the run before it, differs in
+ZERO pixels. The fonts resolve to exactly the files they did before, only without asking twice.
+
+TWO THINGS TRIED FIRST THAT DID NOT WORK, recorded so they are not tried again:
+  A cache in front of the substitution. 281 calls, 281 MISSES: an application enumerating its font
+    list asks about each family exactly once, so there is nothing to hit.
+  A fontconfig cache directory inside the container. The guest has no /etc/fonts at all and
+    XDG_CACHE_HOME arrives from the HOST as a path that does not exist in the container, which looks
+    like a smoking gun and is not: pointing it at a guest directory changed nothing and wrote
+    nothing. The cost was matching, not scanning.

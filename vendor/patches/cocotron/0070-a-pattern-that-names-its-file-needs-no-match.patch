@@ -1,0 +1,36 @@
+--- a/Onyx2D/O2Font_freetype.m
++++ b/Onyx2D/O2Font_freetype.m
+@@ -144,6 +144,33 @@
+     }
+ 
+     FcPattern *pat = FcNameParse((unsigned char *) [resolved UTF8String]);
++
++    /*
++     * A PATTERN THAT ALREADY NAMES ITS FILE NEEDS NO MATCH AT ALL.
++     *
++     * The typeface names this system hands to AppKit are fontconfig patterns produced by
++     * FcNameUnparse during enumeration, and they now carry the file the font came from. Asking
++     * fontconfig to find that file again means walking the entire font set and comparing every
++     * property of every candidate, which is exactly the work that made FcFontMatch 29.69 percent of
++     * a text to PDF conversion. Reading it out of the pattern is a hash lookup.
++     *
++     * The memo above stays: a pattern WITHOUT a file, which is what an application asking for a
++     * font by name produces, still has to be matched, and matching it twice is still waste.
++     */
++    FcChar8 *known = NULL;
++    if (FcPatternGetString(pat, FC_FILE, 0, &known) == FcResultMatch && known != NULL) {
++        NSString *direct = [NSString stringWithUTF8String: (char *) known];
++
++        FcPatternDestroy(pat);
++        pthread_mutex_lock(&cacheLock);
++        if (cache == nil) {
++            cache = [[NSMutableDictionary alloc] init];
++        }
++        [cache setObject: (direct != nil) ? direct : @"" forKey: key];
++        pthread_mutex_unlock(&cacheLock);
++        return direct;
++    }
++
+     FcConfigSubstitute(config, pat, FcMatchPattern);
+     FcDefaultSubstitute(pat);
+ 

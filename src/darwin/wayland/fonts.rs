@@ -139,6 +139,65 @@ unsafe fn substitute_family(name: *const c_char) -> Option<*mut FcPattern> {
     }
 }
 
+/// THE FAMILY NAME THAT FONTCONFIG SUBSTITUTES FOR THIS ONE, remembered.
+///
+/// FcFontMatch walks the whole font set and compares every element of the pattern against every
+/// candidate, and it was 29.69 percent of a whole text to PDF conversion -- more than the layout,
+/// the rasteriser and the PDF filter together. Nothing above it cached, and an application that
+/// enumerates its font list asks for the typefaces of EVERY family, so the same expensive answer
+/// was computed once per family on every start.
+///
+/// Only the resulting family NAME is wanted here; the listing that follows is done with a fresh
+/// pattern, exactly as the X11 version does. So the cache holds a string, not a pattern, and there
+/// is no lifetime question about a pattern owned by fontconfig.
+///
+/// The configuration is not reloaded during a run, so the answer cannot change under the cache.
+fn substituted_family_name(name: &CStr) -> Option<std::ffi::CString> {
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+    use std::sync::OnceLock;
+
+    static CACHE: OnceLock<Mutex<HashMap<Vec<u8>, Option<std::ffi::CString>>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let key = name.to_bytes().to_vec();
+
+    if let Ok(map) = cache.lock() {
+        if let Some(hit) = map.get(&key) {
+            if std::env::var_os("CIDER_TRACE_FONTS").is_some() {
+                println!("cider-wayland-font substitute=hit family={}", name.to_string_lossy());
+            }
+            return hit.clone();
+        }
+    }
+
+    let answer = unsafe {
+        match substitute_family(name.as_ptr()) {
+            None => None,
+            Some(substituted) => {
+                let mut family_name: *mut c_char = std::ptr::null_mut();
+                let have = FcPatternGetString(substituted, cstr!("family"), 0, &mut family_name)
+                    == FC_RESULT_MATCH
+                    && !family_name.is_null();
+                let owned = if have { Some(CStr::from_ptr(family_name).to_owned()) } else { None };
+                FcPatternDestroy(substituted);
+                owned
+            }
+        }
+    };
+
+    if std::env::var_os("CIDER_TRACE_FONTS").is_some() {
+        println!(
+            "cider-wayland-font substitute=miss family={} answer={}",
+            name.to_string_lossy(),
+            answer.as_ref().map(|a| a.to_string_lossy().into_owned()).unwrap_or_default()
+        );
+    }
+    if let Ok(mut map) = cache.lock() {
+        map.insert(key, answer.clone());
+    }
+    answer
+}
+
 /// The typefaces within one family, as NSFontTypeface objects.
 ///
 /// This is the X11 implementation, which is pure fontconfig and touches no X call, WITH ONE BUG
@@ -166,32 +225,60 @@ pub fn typefaces_for_family(family: objc::Object) -> objc::Object {
         if raw.is_null() {
             return out;
         }
-        let Some(substituted) = substitute_family(raw) else {
-            return out;
-        };
-        // The substituted pattern is only wanted for its family name; the listing is done with a
-        // fresh pattern, exactly as the X11 version does.
-        let mut family_name: *mut c_char = std::ptr::null_mut();
-        let have_name = FcPatternGetString(substituted, cstr!("family"), 0, &mut family_name)
-            == FC_RESULT_MATCH
-            && !family_name.is_null();
-        if !have_name {
-            FcPatternDestroy(substituted);
-            return out;
-        }
-
-        let pat = FcPatternCreate();
-        FcPatternAddString(pat, cstr!("family"), family_name);
-        FcPatternDestroy(substituted);
+        /*
+         * THE FILE IS IN THE OBJECT SET, and that one word is worth about a second of startup.
+         *
+         * The typeface name handed back is FcNameUnparse of this pattern, and Onyx2D parses it back
+         * later to find the font FILE. Without file here the round trip is lossy: the file we
+         * already have in our hands is dropped, and finding it again costs a full FcFontMatch, once
+         * per typeface. Measured before this: 1573 distinct patterns in one startup, 1573 matches,
+         * and FcFontMatch was 29.69 percent of the run.
+         */
         let props = FcObjectSetBuild(
             cstr!("family"),
             cstr!("style"),
             cstr!("slant"),
             cstr!("width"),
             cstr!("weight"),
+            cstr!("file"),
             std::ptr::null::<c_char>(),
         );
-        let set = FcFontList(std::ptr::null_mut(), pat, props);
+
+        /*
+         * ASK FOR THE FAMILY THAT WAS NAMED FIRST, and only fall back to fontconfig's substitution
+         * when there is no such family.
+         *
+         * The substitution is what resolves an ALIAS -- sans-serif, or a name this system does not
+         * have -- and it costs an FcFontMatch, which walks the entire font set comparing every
+         * element of the pattern against every candidate. That was 29.69 percent of a whole text to
+         * PDF conversion, more than the layout, the rasteriser and the PDF filter together.
+         *
+         * And almost every call is for a name that needs no substitution at all: an application
+         * enumerating its font list asks us for the families and then asks each one for its
+         * typefaces, so the name it hands back came from fontconfig in the first place. Measured:
+         * 281 substitutions in one startup, every one of them a name we had just supplied.
+         *
+         * A caching layer does not help here, which was the first thing tried and the reason this
+         * comment exists: the 281 names are 281 DIFFERENT names, so a cache is 281 misses.
+         */
+        let mut pat = FcPatternCreate();
+        FcPatternAddString(pat, cstr!("family"), raw);
+        let mut set = FcFontList(std::ptr::null_mut(), pat, props);
+        let listed = if set.is_null() { 0 } else { (*set).nfont };
+
+        if listed == 0 {
+            if !set.is_null() {
+                FcFontSetDestroy(set);
+            }
+            FcPatternDestroy(pat);
+            let Some(family_name) = substituted_family_name(CStr::from_ptr(raw)) else {
+                FcObjectSetDestroy(props);
+                return out;
+            };
+            pat = FcPatternCreate();
+            FcPatternAddString(pat, cstr!("family"), family_name.as_ptr());
+            set = FcFontList(std::ptr::null_mut(), pat, props);
+        }
 
         let string_with = objc::sel_registerName(cstr!("stringWithUTF8String:"));
         let alloc = objc::sel_registerName(cstr!("alloc"));
