@@ -3873,3 +3873,35 @@ is a debugger rather than another trace.
 
 Regressions checked by running them rather than by reasoning: the LibreOffice save panel opens,
 reveals its directory and saves; iTerm2 decodes its nib and opens its first run dialog.
+
+## WHAT A CORE DUMP SAID THAT NO TRACE COULD
+
+2026-08-16, commits 3a507f1b and 4c074fc7. MoneyMoney died with no exception, no message and exit
+code 1, five objects into instantiating its own controllers. Traces had taken it as far as the name
+of the class, Realtime, and stopped being able to say anything: the process was simply gone.
+
+systemd collects a core for the guest, because a guest process IS mldr with Mach-O images mapped into
+it, and scripts/core-guest-stack.py turns those addresses into names through the NT_FILE note. The
+stack answered in one line:
+
+    #3 CFAbsoluteTimeGetCurrent
+    #4 NSRequestConcreteImplementation
+    #5 to #19 the same address in the application, fifteen times
+
+Fifteen identical frames is a stack overflow, and a stack overflow has nothing to print, which is why
+every instrument in this tree was silent.
+
+WHAT IT WAS. +[NSTimeZone localTimeZone] read getenv TZ unconditionally and built a string from the
+result. TZ is usually not set: getenv returns NULL, the string is nil, the zone is nil, and every
+method on it lands on the ABSTRACT base class, which raises. An application that retries around that
+raise recurses until the stack ends. The system zone is the fallback now, which works because the
+container finally has a zone database.
+
+It did NOT get MoneyMoney further. It still dies inside Realtime, which is application code and the
+next thing to look at with a debugger. The fix stands anyway: a nil local time zone is wrong for
+every application on this port, and the recursion it can cause is now written down.
+
+AND THE SUBMENU CHEVRON, from the same reference screenshot as the separators: two strokes meeting at
+a point rather than a filled triangle. The first attempt drew a vertical BAR, because the arrow box
+after its margins is four points by eight and insetting it left nothing, which the screenshot said
+before anything was claimed about it.
