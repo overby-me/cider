@@ -507,12 +507,74 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return [[self selectedItem] tag];
 }
 
+/*
+ * SHOW THE MENU WITHOUT A CLICK, which is how an application opens a popup itself.
+ *
+ * LibreOffice builds its context menu through this: right clicking in a document created the menu
+ * window, asked this framework for two dozen colours to style it with, and then died on the
+ * unrecognized selector, so no context menu ever appeared anywhere in the application. Nothing else
+ * was wrong: the right button arrives, the view gets rightMouseDown, and the menu is built.
+ *
+ * The work is the same as a click, and the tracking loop needs an event only to know where the
+ * gesture started, so one is made at the centre of the cell.
+ */
+- (void) performClickWithFrame: (NSRect) cellFrame inView: (NSView *) controlView {
+    NSPoint centre = NSMakePoint(NSMidX(cellFrame), NSMidY(cellFrame));
+    NSEvent *event = [NSEvent mouseEventWithType: NSLeftMouseDown
+                                        location: [controlView convertPoint: centre toView: nil]
+                                   modifierFlags: 0
+                                          window: [controlView window]
+                                      clickCount: 1
+                                          deltaX: 0.0
+                                          deltaY: 0.0];
+
+    if (getenv("CIDER_TRACE_MENU") != NULL) {
+        NSPoint base = [controlView convertPoint: cellFrame.origin toView: nil];
+
+        NSLog(@"CIDER_POPUPCLICK view=%@ window=%@ cell=%@ base=%@ screen=%@ pointer=%@",
+              [controlView class], [[controlView window] title], NSStringFromRect(cellFrame),
+              NSStringFromPoint(base),
+              NSStringFromPoint([[controlView window] convertBaseToScreen: base]),
+              NSStringFromPoint([NSEvent mouseLocation]));
+    }
+    [self trackMouse: event inRect: cellFrame ofView: controlView untilMouseUp: YES];
+}
+
 - (BOOL) trackMouse: (NSEvent *) event
               inRect: (NSRect) cellFrame
               ofView: (NSView *) controlView
         untilMouseUp: (BOOL) flag
 {
-    NSPoint origin = [controlView bounds].origin;
+    /*
+     * THE CELL FRAME IS WHERE THE MENU GOES, not the view origin.
+     *
+     * This used the origin of the control view BOUNDS, which is the same point for an ordinary
+     * popup button, whose cell fills its own view, and is wrong for every other caller: the cell
+     * frame is the argument that says WHERE the cell is, and an application that draws several
+     * cells into one view, or hands us a rectangle in a window sized view, gets all of its menus in
+     * the same place. LibreOffice is the second kind, and every context menu in it was placed at
+     * the origin of a view that fills the window, which after the frame adjustment below is off the
+     * top of the screen: measured at 0,-290 for a 164x304 menu.
+     */
+    /* NSIsEmptyRect IS TRUE FOR A RECT WITH ZERO HEIGHT, and that is what a caller asking for a
+     * menu AT A POINT passes: LibreOffice hands us 167x0 at 569,425. A test for emptiness therefore
+     * threw away the only thing in the argument that mattered and fell back to the view origin,
+     * which is 0,0 for the view that fills the window. The cell frame is the answer in every case:
+     * for an ordinary popup button it is the cell inside its own view, which is the same point the
+     * bounds gave. */
+    NSPoint origin = cellFrame.origin;
+
+    if (getenv("CIDER_TRACE_VCL") != NULL) {
+        /* fprintf rather than NSLog: the same trace through NSLog never appeared in a log that was
+         * full of other NSLog output, and one instrument that cannot lie is worth more than the
+         * mystery. */
+        fprintf(stderr, "CIDER_POPUPTRACK view=%s cell=%gx%g+%g+%g bounds=%gx%g+%g+%g origin=%g,%g\n",
+                object_getClassName(controlView), cellFrame.size.width, cellFrame.size.height,
+                cellFrame.origin.x, cellFrame.origin.y, [controlView bounds].size.width,
+                [controlView bounds].size.height, [controlView bounds].origin.x,
+                [controlView bounds].origin.y, origin.x, origin.y);
+        fflush(stderr);
+    }
 
 #if 0
    // Note: the min options don't mean much unless we don't have room for the menu, so either way we just pop
@@ -534,6 +596,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #endif
     origin = [controlView convertPoint: origin toView: nil];
     origin = [[controlView window] convertBaseToScreen: origin];
+
+    /*
+     * WHERE THE MENU GOES WHEN THE VIEW IS NOWHERE.
+     *
+     * The origin above is the control view origin converted to SCREEN coordinates, and that
+     * conversion goes through the view WINDOW. LibreOffice draws its native widgets into a detached
+     * view with no window at all: the conversion is then a message to nil, the origin comes back as
+     * the zero point, and the menu is placed at 0,-290, off the top of the screen. That is where
+     * every context menu in the application was going, which is why right clicking a document
+     * appeared to do nothing.
+     *
+     * The pointer is the right answer for a menu whose control is not on screen, and it is where a
+     * context menu belongs anyway.
+     */
+    if ([controlView window] == nil) {
+        origin = [NSEvent mouseLocation];
+        if (getenv("CIDER_TRACE_MENU") != NULL) {
+            NSLog(@"CIDER_POPUPCELL detached view=%@ menu-at=%@", [controlView class],
+                  NSStringFromPoint(origin));
+        }
+    }
 
     [[_menu delegate] menuNeedsUpdate: _menu];
     //	[[_menu delegate] menuWillOpen: _menu];

@@ -876,10 +876,32 @@ fn create_surface(st: &mut WindowState) -> bool {
         let miniaturizable = st.style_mask & 0x4 != 0;
         let dialog = st.style_mask & 0x1 != 0 && !miniaturizable;
         let titled = st.style_mask & 0x1 != 0 && st.popup.is_null() && !is_panel && !dialog;
+        /* WHICH APPKIT CLASS THIS SURFACE IS. A window that appears in the wrong place, or appears
+         * and should not have, is identified by its class faster than by its size and level: a
+         * 164x304 panel at level 6 is a popup window, a combo box list or a tooltip, and only the
+         * class says which. Chasing a context menu through three wrong guesses is what put this
+         * here. */
+        let class_name = if st.delegate.is_null() {
+            "(none)".to_string()
+        } else {
+            let cls = objc::object_getClass(st.delegate);
+            let name = if cls.is_null() { std::ptr::null() } else { objc::class_getName(cls) };
+            if name.is_null() {
+                "(unknown)".to_string()
+            } else {
+                std::ffi::CStr::from_ptr(name).to_string_lossy().into_owned()
+            }
+        };
         println!(
-            "cider-wayland-window role number={} style={:#x} panel={} dialog={} titled={} delegate={}",
-            st.number, st.style_mask, is_panel, dialog, titled, !st.delegate.is_null()
+            "cider-wayland-window role number={} style={:#x} panel={} dialog={} titled={} class={}",
+            st.number, st.style_mask, is_panel, dialog, titled, class_name
         );
+        /* WHO MADE THIS WINDOW. The class alone was not enough once: an NSPopUpWindow appeared for
+         * every right click while the only code in the framework that can create one was proved
+         * not to run. CIDER_WAYLAND_TRACE_CREATOR names the frames. */
+        if crate::env_flag!("CIDER_WAYLAND_TRACE_CREATOR") {
+            crate::print_backtrace(&format!("window-{}-{}", st.number, class_name));
+        }
         if titled {
             LAST_TITLED_TOPLEVEL.store(st.toplevel as usize, Ordering::Release);
             PARENT_XDG_SURFACE.store(st.xdg as usize, Ordering::Release);

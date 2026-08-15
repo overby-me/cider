@@ -268,7 +268,7 @@ extern "C" fn display_next_event(
 }
 
 /// The frames above here, resolved with dladdr, because a spin is always about the caller.
-fn print_backtrace(why: &str) {
+pub fn print_backtrace(why: &str) {
     use std::os::raw::{c_char, c_int};
     unsafe extern "C" {
         fn backtrace(buffer: *mut c_void, size: c_int) -> c_int;
