@@ -2665,3 +2665,40 @@ Same 79807 case probe, still zero failures, and the window dump still byte ident
     native LibreOffice 25.8.5.2   0.51 s
     Cider, start of the day       3.63 s   7.1x
     Cider, now                    2.07 s   4.1x
+
+## memset WAS A FUNCTION CALL PER FOUR BYTES, AND THE PROBE THAT SAID IT WAS FINE WAS WRONG
+
+_platform_memset built a four byte pattern and handed it to _platform_memset_pattern4, whose loop
+calls _platform_memmove ONCE PER FOUR BYTES. Clearing a page was a thousand calls. Every memset and
+every bzero in the system went through it. It is rep stosb now above 32 bytes, with the same written
+out small path as memmove underneath.
+
+HONESTLY: THIS DID NOT MOVE THE BENCHMARK. The conversion is 2.09 s against 2.07 s before, which is
+noise. The profile had memset_pattern4 at about 2 percent and that is at the edge of what this
+measurement can see. It is kept because a call per four bytes is indefensible and because the probe
+now covers it, not because a number improved.
+
+AND THE REAL FINDING IS THE PROBE. A one byte overwrite planted in _platform_memset on purpose was
+reported OK by 19472 cases. The reason is worth more than the fix:
+
+    for (size_t i = 0; i < length; i++) reference[off + i] = value;
+
+CLANG TURNS THAT INTO A CALL TO memset. The reference was no longer independent of the thing under
+test: both sides called the same broken function and agreed. A dump of one case showed TEN bytes of
+the fill value on BOTH sides where there should have been nine, which is what finally named it.
+Marking the reference destination volatile forbids the rewrite, and with that the same probe reports
+the planted bug immediately and names firstdiff as off plus length.
+
+A reference implementation compiled by the same compiler as the implementation can BECOME it. That
+applies to every hand written memcpy, memmove, memset and strlen check anyone writes here.
+
+## AND A PATCH REGENERATED AGAINST A PATCHED PIN IS NOT THAT PATCH
+
+The libplatform patch stopped applying and the cider-src build failed with 2 of 3 hunks rejected.
+The cause: after committing 0001, the pin in the store HAS 0001 applied, so regenerating 0001 by
+diffing that pin against the live tree produces the DELTA SINCE 0001, not 0001. It applied cleanly
+in the check, because the check applied it to the same already-patched pin.
+
+Regenerate against a pristine pin: an older cider-src store path from before the patch existed, or
+reverse the committed patch first. And the verification has to apply the WHOLE SERIES to a pristine
+tree, which is what caught it.

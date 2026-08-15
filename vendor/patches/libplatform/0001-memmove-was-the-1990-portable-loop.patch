@@ -8,14 +8,34 @@
  #include <sys/types.h>
  
  /*
-@@ -72,9 +73,62 @@
-  * invisible here and slow for a user.
+@@ -51,6 +52,83 @@
+  * (the portable versions of) bcopy, memcpy, and memmove.
   */
- #if defined(__x86_64__)
--#define CIDER_REP_MOVSB_FLOOR 64
-+#define CIDER_REP_MOVSB_FLOOR 32
- #endif
  
++/*
++ * THE STRING ROUTINE THIS SYSTEM ACTUALLY USES, and it was the 1990 Berkeley portable one: a loop
++ * that moves one long at a time. It is correct everywhere and slow everywhere, and there is no
++ * optimised variant in this tree at all -- upstream keeps the assembly out of the portable
++ * directory and only the portable directory was ever built.
++ *
++ * It costs more than anything else in the system. Profiling a LibreOffice text to PDF conversion,
++ * _platform_memmove was 19.97 percent of ALL samples, the single largest leaf, ahead of the
++ * allocator, the loader and the font machinery.
++ *
++ * rep movsb is the answer on x86-64. Every processor since Ivy Bridge implements it as a wide
++ * internal copy (ERMS), and every one since Ice Lake makes it good for short lengths too (FSRM),
++ * which is what glibc reaches for in the same situation. It copies FORWARD only, so it is used
++ * where forward is safe -- no overlap, or the destination below the source -- and the portable loop
++ * below still handles a backward overlapping move, which is rare.
++ *
++ * SHORT COPIES KEEP THE OLD PATH. The instruction has a startup cost that a handful of bytes does
++ * not amortise on every part it runs on, and being wrong about that on an old processor would be
++ * invisible here and slow for a user.
++ */
++#if defined(__x86_64__)
++#define CIDER_REP_MOVSB_FLOOR 32
++#endif
++
 +/*
 + * SMALL COPIES: LOAD EVERYTHING, THEN STORE EVERYTHING.
 + *
@@ -72,7 +92,7 @@
  void *
  _platform_memmove(void *dst0, const void *src0, size_t length)
  {
-@@ -85,6 +139,11 @@
+@@ -61,6 +139,27 @@
  	if (length == 0 || dst == src)		/* nothing to do */
  		goto done;
  
@@ -81,6 +101,22 @@
 +		goto done;
 +	}
 +
- #if defined(__x86_64__)
- 	if (length >= CIDER_REP_MOVSB_FLOOR &&
- 	    ((uintptr_t) dst < (uintptr_t) src ||
++#if defined(__x86_64__)
++	if (length >= CIDER_REP_MOVSB_FLOOR &&
++	    ((uintptr_t) dst < (uintptr_t) src ||
++	     (uintptr_t) dst >= (uintptr_t) src + length)) {
++		void *d = dst;
++		const void *s = src;
++		size_t n = length;
++
++		__asm__ volatile("rep movsb"
++		                 : "+D"(d), "+S"(s), "+c"(n)
++		                 :
++		                 : "memory");
++		goto done;
++	}
++#endif
++
+ 	/*
+ 	 * Macros: loop-t-times; and loop-t-times, t>0
+ 	 */
