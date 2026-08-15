@@ -2580,3 +2580,36 @@ TWO THINGS TRIED FIRST THAT DID NOT WORK, recorded so they are not tried again:
     XDG_CACHE_HOME arrives from the HOST as a path that does not exist in the container, which looks
     like a smoking gun and is not: pointing it at a guest directory changed nothing and wrote
     nothing. The cost was matching, not scanning.
+
+## A CLOSE SHOULD NOT WALK THE DESCRIPTOR LIMIT
+
+With fontconfig out of the way the profile named its own second: map_foreach at 15.47 percent of the
+whole run, behind only memmove, and every caller was the same thing.
+
+    map_foreach <- kqueue_closed_fd <- sys_close_nocancel <- fclose
+    map_foreach <- kqueue_closed_fd <- sys_close_nocancel <- opendir
+    map_foreach <- kqueue_closed_fd <- sys_close_nocancel <- rtl_bootstrap_args_open
+    map_foreach <- kqueue_closed_fd <- sys_close_nocancel <- fileaccess ReconnectingFile close
+    map_foreach <- kqueue_closed_fd <- sys_close_nocancel <- Python
+
+Every close(2). libkqueue keeps its kqueues in a flat array indexed by descriptor, sized with the
+process HARD limit, which in this container is 524287 slots, and map_foreach walked ALL of them: four
+megabytes scanned to find the handful of kqueues an application actually has. libkqueue own comment
+above kqueue_closed_fd says the function is too expensive for how often it is called and that
+walking every kqueue should go; this is the cheap half of that.
+
+The map now remembers one past the highest index ever inserted and walks only that far. It only
+grows, and a walk that races an insert into a higher slot would have missed that entry anyway,
+because the walk goes in index order and an insert behind its cursor is missed with or without it.
+
+    text to PDF  2.87 s -> 2.52 s
+
+CUMULATIVE, and against the only reference that matters:
+
+    native LibreOffice 25.8.5.2   0.51 s
+    Cider, start of the day       3.63 s   7.1x
+    Cider, now                    2.52 s   4.9x
+
+VERIFIED, not assumed: the window dump is byte identical to the run before the change, zero
+unrecognized selectors, typing still gives 8 words 47 characters, and the File menu still opens with
+every item. A change to file descriptor bookkeeping earns that check.
