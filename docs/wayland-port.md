@@ -3651,3 +3651,24 @@ as this backend can make it.
 
 Not measured yet, and the honest list: typing latency, scrolling, layout of a long document, and
 memory.
+
+## FOUR MORE JOURNEYS, driven by keys and a virtual pointer rather than by pixel guesses
+
+2026-08-15. With the settle down from thirty seconds to ten, a journey costs about a minute, so
+these were run to find breakage rather than to confirm anything:
+
+    find        Command F focuses the find bar, typing brown and pressing Return highlights brown in
+                The quick brown fox jumps over the lazy dog, and the bar shows the word with a caret
+    formatting  Command A then Command B makes the whole sentence bold
+    undo        Command Z takes the bold off again
+    scrolling   eight wheel steps from cider-vptr move the page under the cursor
+    printing    Command P raises the LibreOffice alert No default printer found, drawn correctly
+                with the red stop icon, the blue default button and traffic lights
+
+The last one is not a rendering bug and not fixable here: there is no print system in the container,
+so LibreOffice is right. Printing needs CUPS inside the prefix, which is a different piece of work
+from the GUI port.
+
+Nothing in the four broke, so nothing was changed for them. The dotted focus rectangle around a
+selected row and the missing ring on a focused field were changed, and both are in their own
+commits.
