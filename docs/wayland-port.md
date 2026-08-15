@@ -3399,7 +3399,7 @@ So: bundle it. The mechanical shape, kept deliberately small:
     delete vendor/patches/cocotron and the manifest entry in nix/submodules.json
     add vendor/pins/cocotron/VENDORED.md naming darlinghq/darling-cocotron and the base commit
       c8d38d16a9f613d300157bebbab2b9501bc0c274, with the patch series preserved in git history
-    the PATH does not change, so the 710 cocotron references in vendor/src/BUCK do not either
+    the 710 cocotron references in vendor/src/BUCK keep working, but NOT because nothing moves
 
 NOT DONE IN THIS SESSION, on purpose: it puts 16 MB and 1,327 files into the repository in one
 commit, and the thing it has to be verified against is the nix endpoint, which is the expensive
@@ -3435,3 +3435,23 @@ somewhere a git range can use it:
 Catching up later is then git log base..upstream against darling-cocotron and a merge of what
 matters, rather than archaeology. The VENDORED.md that lands with the bundle carries these four
 lines verbatim.
+
+
+## A CORRECTION TO THE BUNDLING PLAN, before anybody follows it
+
+The entry above says the path does not change. That is wrong in a way that matters, and the
+correction is the useful part:
+
+    vendor/src is GITIGNORED and is explicitly EXCLUDED from the nix source in cider-src.nix, with
+      a comment saying it is hundreds of megabytes and would rehash every build. The patched tree
+      cannot be checked in where it lives today.
+    a bundled pin lives at vendor/pins/<name>, in git, with NO entry in nix/submodules.json. That
+      is the whole mechanism: baseSrc is the repository tree, and only pins WITH manifest entries
+      are overlaid on top of it. vendor/pins/ciderd is the precedent.
+    cocotron has no per-pin BUCK. Its rules are in the single generated vendor/src/BUCK and name
+      cocotron/... paths, so vendor/src/cocotron still has to EXIST after bundling.
+
+So the missing step is the third one: scripts/buck-src.nu materialises vendor/pins/<name> into
+vendor/src/<name> from the MANIFEST, and it has to learn to copy an in-tree pin when there is no
+manifest entry rather than trying to fetch it. Everything else is as described, and the fork point
+that has to reach VENDORED.md is written above.
