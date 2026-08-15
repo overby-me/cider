@@ -3626,3 +3626,28 @@ What the two reverted commits still record, for anyone who needs a surface ancho
 edge: the shim and FFI for zwlr_layer_shell_v1, the third surface role in create_surface, the
 NSMainMenuWindowLevel signal, hasScreenMenuBar on NSDisplay, and the one place in
 +[NSWindow hasMainMenuForStyleMask:] where the whole geometry follows from one answer.
+
+## STARTUP IS NOT THE PROBLEM, measured against the native build under the same compositor
+
+2026-08-15. Goal 3 of the queue is performance measured against native LibreOffice, and there was no
+number for it. Every harness in the scratchpad sleeps twenty five to thirty seconds before touching
+anything, which is a guess nobody had ever checked.
+
+Both builds were started under the SAME nested sway, from a clean profile, and the compositor was
+polled until a window of the application was mapped:
+
+    native  LibreOffice 25.8.5.2, Linux, gtk3     1.38 s to a window
+    cider   LibreOffice 25.2.1.2, macOS build     1.13 s to a window
+
+The screenshots two seconds later say what those numbers are worth, and they are the reason the
+measurement is not a summary statistic: ours shows a COMPLETE Writer window, menu bar, toolbars,
+ruler, page, sidebar, find bar and caret. The native one is still filling in, with half its toolbar
+icons missing and a stray Set Paragraph Style tooltip on the canvas.
+
+So starting is roughly at parity and the settle in the harnesses is superstition. What remains on
+the performance axis is the one measured thing: LibreOffice polls nineteen thousand times a second
+while a system dialog is open, which costs 45 percent of a core, and each poll is already as cheap
+as this backend can make it.
+
+Not measured yet, and the honest list: typing latency, scrolling, layout of a long document, and
+memory.
