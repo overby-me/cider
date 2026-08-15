@@ -701,17 +701,12 @@ static void loadItemIntoMapTables(NSOutlineView *self, id item,
                                        row: (NSInteger) row
                                     inRect: (NSRect) rect
 {
-    if ([_tableColumns objectAtIndex: column] == _outlineTableColumn) {
-        NSRect newRect = NSInsetRect(rect, 1, 0);
-        // NSDottedFrameRect is kinda weird
-        newRect.origin.y++;
-        newRect.size.height--;
-        [super drawHighlightedSelectionForColumn: column
-                                             row: row
-                                          inRect: newRect];
-        NSDottedFrameRect(rect);
-    } else
-        [super drawHighlightedSelectionForColumn: column row: row inRect: rect];
+    /* NO DOTTED RECTANGLE ROUND THE SELECTED ROW, which is a Windows habit and was drawn here on
+     * top of the fill. macOS says selected with the fill alone; a dotted frame reads as a focus
+     * ring that nothing else in the interface has. The inset and the one point shuffle went with
+     * it: they existed to make room for the frame, and without them the fill covers the whole
+     * row, which is what every other column already did. */
+    [super drawHighlightedSelectionForColumn: column row: row inRect: rect];
 }
 
 - (void) _drawGridForItem: (id) item

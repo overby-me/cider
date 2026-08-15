@@ -105,6 +105,9 @@ enum {
 - (void) _ensurePanelLayout;
 /* NO for an open panel, which has no name field on any platform. */
 - (BOOL) _wantsNameField;
+/* Expands the list down to the directory the panel is set to and scrolls it into view, so the panel
+ * shows where it is actually saving rather than the root of the file system. */
+- (void) _revealDirectory;
 - (BOOL) canSelectHiddenExtension;
 - (void) validateVisibleColumns;
 - (IBAction) cancel: (id) sender;

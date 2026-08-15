@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSDisplay.h>
 #import <AppKit/NSFont.h>
 #import <AppKit/NSGraphics.h>
+#import <AppKit/NSOutlineView.h>
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSSavePanel.h>
 #import <AppKit/NSScreen.h>
@@ -432,6 +433,100 @@ static NSSavePanel *_newPanel = nil;
     }
 }
 
+/*
+ * SHOW THE DIRECTORY THE PANEL IS ACTUALLY SAVING INTO.
+ *
+ * The list is rooted at / and stayed there, so a save panel opened on /Users/root/Documents showed
+ * Applications, bin, dev and the rest of the prefix root, and the file landed somewhere the panel
+ * had never displayed. The trace said it plainly on every run: directory=/Users/root/Documents with
+ * the list showing /.
+ *
+ * There is no path popup to navigate with, so the tree is not RE-ROOTED, which would trap a caller
+ * inside one directory. Each component is expanded in turn and the target scrolled into view, which
+ * leaves everything else reachable.
+ *
+ * The item objects belong to the data source, so they are found by path among the rows that are
+ * currently visible rather than constructed here: expanding a level makes its children rows, which
+ * is what the next component is looked up in.
+ */
+- (id) _itemForPath: (NSString *) path {
+    NSInteger i, count = [_outlineView numberOfRows];
+
+    for (i = 0; i < count; i++) {
+        NSURL *item = [_outlineView itemAtRow: i];
+
+        if ([[item path] isEqualToString: path]) {
+            return item;
+        }
+    }
+    return nil;
+}
+
+- (void) _revealDirectory {
+    NSString *directory = [self directory];
+
+    if (_outlineView == nil || [directory length] == 0) {
+        return;
+    }
+
+    /* STARTS AT THE ROOT, not at the empty string. -pathComponents gives "/" as its first element
+     * and skipping it without seeding the path built Users rather than /Users, which matches no row
+     * and made the whole walk stop on its first step. */
+    NSArray *parts = [directory pathComponents];
+    NSString *path = @"/";
+    NSInteger i, count = [parts count];
+
+    for (i = 0; i < count; i++) {
+        NSString *part = [parts objectAtIndex: i];
+
+        if ([part isEqualToString: @"/"]) {
+            continue;
+        }
+        path = [path stringByAppendingPathComponent: part];
+
+        id item = [self _itemForPath: path];
+
+        /* PER COMPONENT, because a walk that stops has one place it stopped and the path it was
+         * looking for at the time. The first version built Users rather than /Users and this line
+         * is what said so. */
+        if (getenv("CIDER_TRACE_PANEL") != NULL) {
+            NSLog(@"CIDER_PANEL reveal step=%@ item=%@", path, item);
+        }
+        if (item == nil) {
+            break;
+        }
+        [_outlineView expandItem: item];
+    }
+
+    id target = [self _itemForPath: directory];
+
+    if (target != nil) {
+        NSInteger row = [_outlineView rowForItem: target];
+
+        if (row >= 0) {
+            /* SELECTED ONLY FOR A SAVE, where the row IS the destination. An open panel answers
+             * with the selected row, so selecting a directory there would answer with a directory
+             * for a caller that asked for a file. */
+            if ([self _wantsNameField]) {
+                [_outlineView selectRow: row byExtendingSelection: NO];
+            }
+            /* THE CONTENTS OF IT, not just the row. -scrollRowToVisible: scrolls the MINIMUM, so
+             * the directory landed on the bottom edge with everything in it below the fold, which
+             * is the one thing the panel is meant to be showing. Scrolling past it first and then
+             * back puts it near the top with its files under it. */
+            NSInteger last = [_outlineView numberOfRows] - 1;
+            NSInteger below = (row + 8 < last) ? row + 8 : last;
+
+            [_outlineView scrollRowToVisible: below];
+            [_outlineView scrollRowToVisible: row];
+        }
+    }
+    if (getenv("CIDER_TRACE_PANEL") != NULL) {
+        NSLog(@"CIDER_PANEL reveal directory=%@ found=%d rows=%ld", directory, (int) (target != nil),
+              (long) [_outlineView numberOfRows]);
+    }
+}
+
 - (IBAction) _selectFile: (id) sender {
     NSURL *url = [_outlineView itemAtRow: [_outlineView selectedRow]];
     NSString *path = [url path];
@@ -502,6 +597,7 @@ static NSSavePanel *_newPanel = nil;
             [self setTitle: _dialogTitle];
         }
         [self _ensurePanelLayout];
+        [self _revealDirectory];
         if (getenv("CIDER_TRACE_PANEL") != NULL) {
             NSView *content = [self contentView];
             NSArray *subviews = [content subviews];

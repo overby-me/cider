@@ -152,6 +152,7 @@ static NSOpenPanel *_newPanel = nil;
          * either laid out below the content or laid out into a window shorter than the nib. The
          * two rects say which without another guess. */
         [self _ensurePanelLayout];
+        [self _revealDirectory];
         if (getenv("CIDER_TRACE_PANEL") != NULL) {
             NSView *content = [self contentView];
             NSArray *subviews = [content subviews];
