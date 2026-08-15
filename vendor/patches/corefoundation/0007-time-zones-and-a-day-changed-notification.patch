@@ -49,8 +49,29 @@
  }
  
 --- a/NSDictionary.m	2026-08-15 22:30:54.529661506 +0200
-+++ b/NSDictionary.m	2026-08-15 22:30:54.530661511 +0200
-@@ -1253,6 +1253,19 @@
++++ b/NSDictionary.m	2026-08-15 22:50:31.459576945 +0200
+@@ -1199,6 +1199,20 @@
+ 
+ - (void)setObject:(id)obj forKeyedSubscript:(id <NSCopying>)key
+ {
++    /*
++     * NIL REMOVES THE KEY, it does not throw. That is what the subscript is DOCUMENTED to do, and
++     * the difference is not academic: dict[key] = something-that-might-be-nil is ordinary code, and
++     * forwarding it straight to setObject:forKey: turns every one of those into a fatal
++     * NSInvalidArgumentException.
++     *
++     * MoneyMoney dies in exactly that way during startup: -[NSDateFormatter setDateFormat:] stores
++     * its argument with _attributes[@"dateFormat"] = string, the application passes nil to clear it,
++     * and the process is killed with Cannot set nil objects nor nil keys.
++     */
++    if (obj == nil) {
++        [self removeObjectForKey:key];
++        return;
++    }
+     [self setObject:obj forKey:key];
+ }
+ 
+@@ -1253,6 +1267,19 @@
      {
          if ((obj == nil) || (key == nil))
          {

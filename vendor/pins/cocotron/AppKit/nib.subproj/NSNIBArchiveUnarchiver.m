@@ -422,8 +422,27 @@ static BOOL NIBTracing(void) {
         [className isEqualToString: @"NSMutableArray"] ||
         [className isEqualToString: @"NSSet"] ||
         [className isEqualToString: @"NSMutableSet"]) {
-        NSMutableArray *contents = [[NSMutableArray alloc] init];
+        /*
+         * STORED BEFORE IT IS FILLED, for the same reason an object is stored before it is
+         * initialised: a cycle THROUGH A CONTAINER has to terminate.
+         *
+         * The first version built the whole array and only then recorded it, so an array holding an
+         * object whose own decoding reaches that array again recursed until the stack ran out. The
+         * process died with no exception and no message, 700 objects into a 1573 object nib, and
+         * the last thing printed was the array it had just started: MoneyMoney has that shape and
+         * neither LibreOffice nor iTerm2 does.
+         *
+         * A MUTABLE container is what gets stored even where the archive says NSArray or NSSet. The
+         * alternative is to swap in an immutable copy at the end, and then the objects that already
+         * hold the mutable one are holding something else: two collections where the nib meant one.
+         * NSMutableArray is an NSArray, and nothing in a decoded nib mutates one afterwards.
+         */
+        BOOL wantsSet = [className hasSuffix: @"Set"];
+        id contents = wantsSet ? (id) [[NSMutableSet alloc] init]
+                               : (id) [[NSMutableArray alloc] init];
         NSUInteger i;
+
+        _instances[index] = contents;
 
         for (i = 0; i < object->valueCount; i++) {
             struct _NIBValue *value = &_values[object->valueIndex + i];
@@ -435,20 +454,6 @@ static BOOL NIBTracing(void) {
                     [contents addObject: member];
                 }
             }
-        }
-        if ([className hasSuffix: @"Set"]) {
-            id set = [className isEqualToString: @"NSMutableSet"]
-                             ? (id) [[NSMutableSet alloc] initWithArray: contents]
-                             : (id) [[NSSet alloc] initWithArray: contents];
-
-            [contents release];
-            return set;
-        }
-        if ([className isEqualToString: @"NSArray"]) {
-            NSArray *immutable = [[NSArray alloc] initWithArray: contents];
-
-            [contents release];
-            return immutable;
         }
         return contents;
     }
@@ -480,6 +485,13 @@ static BOOL NIBTracing(void) {
     }
 
     NSString *className = _classNames[_objects[index].classIndex];
+
+    if (NIBTracing()) {
+        fprintf(stderr, "CIDER_NIB enter %lu %s\n", (unsigned long) index,
+                [className UTF8String]);
+        fflush(stderr);
+    }
+
     id built = [self _buildContainerOfClass: className atIndex: index];
 
     if (built != nil) {
@@ -495,6 +507,15 @@ static BOOL NIBTracing(void) {
             fflush(stderr);
         }
         return nil;
+    }
+
+    /* WHICH OBJECT IS BEING BUILT, because a decode that dies takes the process with it and says
+     * nothing: MoneyMoney parsed its 1573 objects and then vanished with no exception and no
+     * message. The last line printed is the class that did it. */
+    if (NIBTracing()) {
+        fprintf(stderr, "CIDER_NIB build %lu %s\n", (unsigned long) index,
+                [className UTF8String]);
+        fflush(stderr);
     }
 
     /* STORED BEFORE IT IS INITIALISED, which is the only way a cycle terminates: a menu item names
@@ -517,6 +538,11 @@ static BOOL NIBTracing(void) {
     if (awake != instance) {
         _instances[index] = awake;
         instance = awake;
+    }
+    if (NIBTracing()) {
+        fprintf(stderr, "CIDER_NIB built %lu %s ok\n", (unsigned long) index,
+                [className UTF8String]);
+        fflush(stderr);
     }
     return instance;
 }

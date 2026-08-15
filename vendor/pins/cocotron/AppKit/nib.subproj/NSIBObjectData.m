@@ -117,8 +117,21 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
         [nameTable setObject: [NSFontManager sharedFontManager]
                       forKey: @"Font Manager"];
 
+#define CIDER_NIB_STEP(what)                                                                     \
+    do {                                                                                         \
+        if (getenv("CIDER_TRACE_NIB") != NULL) {                                                 \
+            fprintf(stderr, "CIDER_NIB objectdata %s\n", (what));                               \
+            fflush(stderr);                                                                      \
+        }                                                                                        \
+    } while (0)
+
+        /* WHICH DECODE IS IN FLIGHT. A nib that dies inside one of these takes the process with it
+         * and prints nothing, so the last step named is the one that did it. */
+        CIDER_NIB_STEP("NSNamesValues");
         NSArray *namesValues = [keyed decodeObjectForKey: @"NSNamesValues"];
+        CIDER_NIB_STEP("NSNamesKeys");
         NSArray *namedObjects = [keyed decodeObjectForKey: @"NSNamesKeys"];
+        CIDER_NIB_STEP("names decoded");
         count = [namesValues count];
         for (i = 0; i < count; i++) {
             NSString *check = [namesValues objectAtIndex: i];
@@ -143,6 +156,7 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
             }
         }
 
+        CIDER_NIB_STEP("NSRoot");
         _fileOwner = [[keyed decodeObjectForKey: @"NSRoot"] retain];
         if ([_fileOwner isKindOfClass: [NSCustomObject class]]) {
             if (_fileOwner != owner) {
@@ -155,6 +169,7 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
         _accessibilityConnectors = [[keyed
                 decodeObjectForKey: @"NSAccessibilityConnectors"] retain];
 
+        CIDER_NIB_STEP("NSClassesKeys");
         NSArray *classesKeys = [keyed decodeObjectForKey: @"NSClassesKeys"];
         NSArray *classesValues = [keyed decodeObjectForKey: @"NSClassesValues"];
 
@@ -162,13 +177,24 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
             [_classTable setObject: classesValues[i] forKey: classesKeys[i]];
         }
 
+        CIDER_NIB_STEP("NSConnections");
         [_connections setArray: [keyed decodeObjectForKey: @"NSConnections"]];
         _fontManager = [[keyed decodeObjectForKey: @"NSFontManager"] retain];
         self.targetFramework = [keyed decodeObjectForKey: @"NSFramework"];
         _nextOid = [keyed decodeInt64ForKey: @"NSNextOid"];
 
+        CIDER_NIB_STEP("NSObjectsKeys");
         NSArray *objectKeys = [keyed decodeObjectForKey: @"NSObjectsKeys"];
+        CIDER_NIB_STEP("NSObjectsValues");
         NSArray *objectValues = [keyed decodeObjectForKey: @"NSObjectsValues"];
+
+        /* THE TWO ARE PARALLEL, and the loop below indexes one by the count of the other: if a
+         * decoder ever drops an entry from one, this reads off the end of the other. */
+        if (getenv("CIDER_TRACE_NIB") != NULL) {
+            fprintf(stderr, "CIDER_NIB objectdata keys=%lu values=%lu\n",
+                    (unsigned long) [objectKeys count], (unsigned long) [objectValues count]);
+            fflush(stderr);
+        }
 
         // Replace any custom object with the real thing - and update anything
         // tracking them
@@ -179,6 +205,16 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
             id aKey = objectKeys[i];
             id aValue = objectValues[i];
             id replacement = nil;
+
+            if (getenv("CIDER_TRACE_NIB") != NULL) {
+                fprintf(stderr, "CIDER_NIB objectpair %lu key=%s wants=%s value=%s\n",
+                        (unsigned long) i, object_getClassName(aKey),
+                        [aKey respondsToSelector: @selector(className)]
+                                ? [[aKey className] UTF8String]
+                                : "(no class name)",
+                        object_getClassName(aValue));
+                fflush(stderr);
+            }
 
             if (aValue == owner && [aKey isKindOfClass: [NSCustomObject class]]) {
                 replacement = [aKey createCustomInstance];
@@ -198,6 +234,7 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
             }
         }
 
+        CIDER_NIB_STEP("NSOidsKeys");
         NSArray *oidKeys = [keyed decodeObjectForKey: @"NSOidsKeys"];
         NSArray *oidValues = [keyed decodeObjectForKey: @"NSOidsValues"];
 

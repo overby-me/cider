@@ -94,6 +94,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         NSUnimplementedMethod();
     } else {
         BOOL sharedInstance = [coder decodeBoolForKey: @"NSSharedInstance"];
+
+        /* WHICH BRANCH AND WHETHER IT CAME BACK. A nib that dies here takes the process with it and
+         * says nothing: MoneyMoney decoded 700 objects and vanished on this class. */
+        if (getenv("CIDER_TRACE_NIB") != NULL) {
+            fprintf(stderr, "CIDER_NIB defaultscontroller shared=%d entering\n",
+                    (int) sharedInstance);
+            fflush(stderr);
+        }
         if (sharedInstance) {
             [self release];
             // Be sure to retain the shared object - the caller must be able to
@@ -102,6 +110,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                     retain];
         } else {
             self = [self init];
+        }
+        if (getenv("CIDER_TRACE_NIB") != NULL) {
+            fprintf(stderr, "CIDER_NIB defaultscontroller done self=%p\n", (void *) self);
+            fflush(stderr);
         }
     }
     return self;
