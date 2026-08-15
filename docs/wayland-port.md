@@ -2966,3 +2966,35 @@ one. That is a LibreOffice side question, and the answer is in how its macOS bac
 ControlState::DEFAULT into the cell it paints with.
 
 docs/wayland-default-button-colour-probe.png is the picture that names it.
+
+## AND THE SIGNAL WAS THERE ALL ALONG: THE RETURN KEY
+
+The entry above says LibreOffice gives no way to tell which button is the default one, that all four
+arrive with identical cell state, and that inventing a rule would be a guess. That was wrong, and
+the reason it was wrong is the fourth instrument failure of this session.
+
+Two of the traced lines were identical in every visible character and yet did not collapse under
+uniq. The difference was invisible:
+
+    ... defaulted=0 key=^M frame=93x20+0+0     the default button
+    ... defaulted=0 key=   frame=93x20+0+0     the others
+
+A CARRIAGE RETURN in the key equivalent. The log printed the string raw, and a control character
+does not show: it moves the cursor. So a signal that was in every run of this hunt was read as its
+own absence, and I wrote that absence into a commit.
+
+THE RETURN KEY IS THE macOS CONVENTION for the default button, and LibreOffice follows it.
+-[NSButtonCell drawBezelWithFrame:inView:] now asks the window OR the key equivalent, which needs no
+view at all, and the default bezel is filled with the accent colour instead of being a white box
+inside a black ring, which was a much older macOS. White label on accent blue is exactly what
+LibreOffice expects, because it draws that label in alternateSelectedControlTextColor.
+
+    keychar=13 twice, keychar=0 forty two times, in one Options dialog
+
+VERIFIED IN THREE DIALOGS, all looked at rather than counted: Options shows Reset, Apply and Cancel
+white with dark labels and OK blue with a white one; the print alert shows a blue OK that can be
+read for the first time; the save panel shows a blue Save beside a white Cancel, and it still writes
+the file, cider-typed-name.odt, 9699 bytes. Zero unrecognized selectors in every run.
+
+AND THE TRACE IS FIXED SO IT CANNOT HAPPEN AGAIN: the key equivalent prints as a character CODE.
+A probe that renders a control character raw can hide the very thing it was added to find.
