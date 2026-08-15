@@ -107,6 +107,10 @@ pub struct WindowState {
     /// application that ignores a resize to the size it already has needs to be told a DIFFERENT
     /// one before it will lay out again.
     pub nudged: bool,
+    /// How many more frame changes to deliver to make the application believe a resize happened:
+    /// two means one row short and then the true size, which is what a drag of a window edge looks
+    /// like and is the only thing this application acts on.
+    pub nudge_pending: u8,
     /// The popup role, when this window is a menu or a tooltip rather than a document window.
     pub popup: *mut wl::XdgPopup,
     /// The title AppKit gave this window, which it may have given before the toplevel existed.
@@ -169,6 +173,7 @@ impl WindowState {
             pending_size: None,
             configured_size: None,
             nudged: false,
+            nudge_pending: 0,
             popup: std::ptr::null_mut(),
             title: None,
             needs_full_display: true,
@@ -315,13 +320,31 @@ pub fn deliver_pending_configures() {
         // happens to a document window opened from a file dialog -- and a notification delivered
         // then changes nothing. So the condition to stop is the bottom of the window being painted,
         // with a deadline so a window that is legitimately dark at the bottom cannot spin forever.
-        let repeat_due = match (st.redraw_until, st.last_forced_display) {
-            (Some(until), last) if now < until => {
-                last.is_none_or(|prev| now.duration_since(prev).as_millis() >= 150)
-                    && bottom_row_is_clear(st)
-            }
-            _ => false,
-        };
+        /*
+         * A NUDGE IS OWED WHENEVER THE APPLICATION ARGUED, and that is a different signal from the
+         * bottom of the window being unpainted.
+         *
+         * bottom_row_is_clear only sees a window the application never painted at all. LibreOffice
+         * paints: it lays its content out for the size IT wanted, fills the rest with its own grey
+         * and stops. A document opened from the file picker into a tiled slot came up with its find
+         * bar across the middle of the window and grey below it, and every check said the window
+         * was fine -- the frame was 845x1388, the content view was 845x1338, the pixels were drawn.
+         *
+         * What is known at the moment of the argument is that the application asked for a size the
+         * compositor will not give it. That is the signal, and set_frame records it.
+         */
+        let nudge_owed = st.nudge_pending > 0
+            && st
+                .last_forced_display
+                .is_none_or(|prev| now.duration_since(prev).as_millis() >= 150);
+        let repeat_due = nudge_owed
+            || match (st.redraw_until, st.last_forced_display) {
+                (Some(until), last) if now < until => {
+                    last.is_none_or(|prev| now.duration_since(prev).as_millis() >= 150)
+                        && bottom_row_is_clear(st)
+                }
+                _ => false,
+            };
         if (st.needs_full_display || repeat_due) && !st.delegate.is_null() && st.mapped {
             st.needs_full_display = false;
             st.last_forced_display = Some(now);
@@ -359,10 +382,13 @@ pub fn deliver_pending_configures() {
                  * and one laid out for the size it actually has.
                  */
                 let mut frame = st.frame;
-                if !st.nudged {
+                if st.nudge_pending > 1 {
+                    frame.size.height = (frame.size.height - 1.0).max(1.0);
+                } else if !st.nudged && st.nudge_pending == 0 {
                     st.nudged = true;
                     frame.size.height = (frame.size.height - 1.0).max(1.0);
                 }
+                st.nudge_pending = st.nudge_pending.saturating_sub(1);
                 unsafe {
                     let sel = objc::sel_registerName(cstr!("platformWindow:frameChanged:didSize:"));
                     objc::msg_send_frame_changed(st.delegate, sel, st.owner, frame, objc::YES);
@@ -1964,6 +1990,10 @@ extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
                     Some(std::time::Instant::now() + std::time::Duration::from_secs(6));
                 st.last_forced_display = None;
                 st.nudged = false;
+                // TWO FRAME CHANGES ARE OWED: one row short, then the true size. See the comment on
+                // nudge_owed in deliver_pending_configures for why the painted-pixel test cannot
+                // stand in for this.
+                st.nudge_pending = 2;
                 // REBUILD BEFORE NOTIFYING, the same order deliver_pending_configures uses: the
                 // application draws in answer to a frame change and asks for a context while it
                 // does, and the context has to be the one over the new bitmap.
