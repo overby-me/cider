@@ -3556,3 +3556,49 @@ ten steps were sent and four printed, which reads as dropped motion and cost a r
 
 What is still not driven: a double click, which selects a word, and drag and drop, which is a stub
 in the backend rather than a harness limitation.
+
+## THE FILE PANELS, and the view that was being thrown away
+
+2026-08-15, commits 5e94177e, 63cbc518 and 81fc1752. The reference screenshots the user supplied
+made the save sheet the biggest remaining difference, and the first thing found was not a style
+problem at all.
+
+    CIDER_PANEL accessory=NSView frame={{0, 0}, {300, 153}} subviews=7
+
+-setAccessoryView: stored the view and did nothing else. That is where LibreOffice puts File type
+and the save options, so three hundred by a hundred and fifty three points of controls were being
+dropped on every save, and there was no way to choose what a document was saved as.
+
+WHAT THE PANEL DOES NOW, bottom to top, which is the macOS order: buttons at the bottom right, a
+hairline, the accessory view, a hairline, the name row, and the file list taking what is left. The
+window grows for the accessory view when the screen has room, otherwise the list gives up the
+difference. An open panel is the same layout with no name field, one override rather than a second
+copy.
+
+FOUR THINGS THAT WERE NOT MAC, all found by putting the two screenshots side by side:
+
+    a push button title is CENTRED, and cocotron used the cell alignment, which a nib encodes as
+      left, so Cancel and Save sat against the left edge of their bezels
+    the DEFAULT button draws its label WHITE, because it is filled with the accent colour; ours was
+      black on blue
+    the list showed dot files, unsorted (the data source carried a TODO where the sort should be),
+      and banded every other row in light blue, which reads as a selection
+    the selected name in the field was white on pale blue, a ghost of itself
+
+The last one was one colour used for two different backgrounds. selectedTextColor is for text
+selected inside a field, where the band is pale and the text stays black; a table row is filled with
+selectedControlColor, the accent, and takes alternateSelectedControlTextColor. Cocotron used
+selectedTextColor for both, so one of them was always wrong.
+
+While there: the data source read the directory once per row. An outline view asks for a count and
+then for each child by index, and both called contentsOfDirectoryAtURL:, so N rows meant N plus one
+reads and N plus one arrays of NSURL, again on every reload. Read once and kept now, keyed by path.
+
+Looked at: the save panel shows ODF Text Document (.odt) with Automatic file name extension ticked
+and the two disabled rows, in the order macOS has them; the open panel shows File type, Version and
+Read-only; both still complete their journeys, one document saved as cider-typed-name.odt and
+another opened as cider-open-me.odt by typing its name in the list.
+
+STILL NOT MACOS: these are windows with traffic lights, not sheets attached to the document. There
+is no sidebar, no Where popup, no preview and no search field. A selected row is drawn with a dotted
+focus rectangle around it, which is a Windows habit.
