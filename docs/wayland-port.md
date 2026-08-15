@@ -3455,3 +3455,31 @@ So the missing step is the third one: scripts/buck-src.nu materialises vendor/pi
 vendor/src/<name> from the MANIFEST, and it has to learn to copy an in-tree pin when there is no
 manifest entry rather than trying to fetch it. Everything else is as described, and the fork point
 that has to reach VENDORED.md is written above.
+
+## COCOTRON IS SOURCE NOW, and the step that plan missed
+
+2026-08-15, task #114 done in commit c7adfb57. The tree is checked in at vendor/pins/cocotron with
+the 86 patches applied, the manifest entry is gone, vendor/patches/cocotron is deleted, and
+VENDORED.md carries the fork point so upstream fixes are still a git range.
+
+THE STEP THE PLAN MISSED, and it is the useful part of the entry: a bundled pin still has to REACH
+vendor/src. The generated vendor/src/BUCK names cocotron files there and knows nothing about where
+they came from, so BOTH materialisers had to learn about a pin with no manifest entry:
+
+    scripts/buck-src.nu    copies an in-tree pin instead of printing no submodule entry and exiting
+    ciderBuck2Graph.nix    materializePins gained an EXPLICIT bundled list, not a scan of
+                           vendor/pins, because the two bundled pins want opposite treatment:
+                           ciderd carries its own BUCK and builds in place, cocotron is compiled by
+                           vendor/src/BUCK and must be copied
+
+Skipping the second one fails at analysis with
+
+    Source file cocotron/AppKit/include/AppKit/AppKit.h does not exist as a member of package
+    root//vendor/src
+
+which is what the first attempt did, and is why the verification order matters: the materialised
+tree diffed against the old one first, then buck2 over the four frameworks, then the nix pinsTree
+derivation, then the pin checks, then the application itself.
+
+What is NOT verified: a full nix endpoint build. pinsTree is the derivation that consumes the pin
+materialisation and it passes; .#cider was not run.
