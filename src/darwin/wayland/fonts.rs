@@ -35,6 +35,7 @@ pub struct FcFontSet {
 unsafe extern "C" {
     fn FcInit() -> c_int;
     fn FcPatternAddString(p: *mut FcPattern, object: *const c_char, s: *const c_char) -> c_int;
+    fn FcPatternAddBool(p: *mut FcPattern, object: *const c_char, b: c_int) -> c_int;
     fn FcNameParse(name: *const c_char) -> *mut FcPattern;
     fn FcNameUnparse(p: *mut FcPattern) -> *mut c_char;
     fn FcStrFree(s: *mut c_char);
@@ -72,6 +73,11 @@ pub fn all_family_names() -> objc::Object {
         let out = objc::msg_send0(set_cls, sel_set);
 
         let pattern = FcPatternCreate();
+        // SCALABLE ONLY. A bitmap X11 font has one size and no outline, and everything above this
+        // draws by scaling an outline to a point size, so a face without one renders as nothing.
+        // The list here becomes the typeface patterns applications hand back to us later, so a
+        // bitmap font that enters here reaches FreeType with no match in between.
+        FcPatternAddBool(pattern, cstr!("scalable"), 1);
         let props = FcObjectSetBuild(cstr!("family"), std::ptr::null::<c_char>());
         // NULL config: fontconfig reads that as the current configuration, which is what the
         // Cocotron helper would have handed back.
@@ -263,6 +269,7 @@ pub fn typefaces_for_family(family: objc::Object) -> objc::Object {
          */
         let mut pat = FcPatternCreate();
         FcPatternAddString(pat, cstr!("family"), raw);
+        FcPatternAddBool(pat, cstr!("scalable"), 1);
         let mut set = FcFontList(std::ptr::null_mut(), pat, props);
         let listed = if set.is_null() { 0 } else { (*set).nfont };
 
@@ -277,6 +284,7 @@ pub fn typefaces_for_family(family: objc::Object) -> objc::Object {
             };
             pat = FcPatternCreate();
             FcPatternAddString(pat, cstr!("family"), family_name.as_ptr());
+            FcPatternAddBool(pat, cstr!("scalable"), 1);
             set = FcFontList(std::ptr::null_mut(), pat, props);
         }
 

@@ -102,6 +102,21 @@ static NSString *_CiderPreferredFamilies(NSString *family)
                         @"Inter,Helvetica,TeX Gyre Heros,Liberation Sans,sans-serif", @"sf pro display",
                         @"Inter,Helvetica,TeX Gyre Heros,Liberation Sans,sans-serif", @"helvetica neue",
                         @"Inter,Helvetica,TeX Gyre Heros,Liberation Sans,sans-serif", @"lucida grande",
+                        /*
+                         * THE MONOSPACED APPLE FACES, none of which exist on a Linux box and none
+                         * of which fontconfig has an alias for: asking for Menlo or Monaco returned
+                         * DejaVu SANS, a proportional face, and a terminal laid out in it is not a
+                         * terminal. Measured with fc-match on this machine before the list was
+                         * written. The generic monospace is last so the list still answers on a
+                         * system that has none of the named ones.
+                         */
+                        @"DejaVu Sans Mono,Liberation Mono,Noto Sans Mono,monospace", @"menlo",
+                        @"DejaVu Sans Mono,Liberation Mono,Noto Sans Mono,monospace", @"monaco",
+                        @"DejaVu Sans Mono,Liberation Mono,Noto Sans Mono,monospace", @"sf mono",
+                        @"DejaVu Sans Mono,Liberation Mono,Noto Sans Mono,monospace", @"andale mono",
+                        @"DejaVu Sans Mono,Liberation Mono,Noto Sans Mono,monospace", @"consolas",
+                        @"Liberation Mono,DejaVu Sans Mono,Noto Sans Mono,monospace", @"courier",
+                        @"Liberation Mono,DejaVu Sans Mono,Noto Sans Mono,monospace", @"courier new",
                         nil];
     }
     return [map objectForKey: [family lowercaseString]];
@@ -151,6 +166,14 @@ static NSString *_CiderPreferredFamilies(NSString *family)
     }
 
     FcPattern *pat = FcNameParse((unsigned char *) [resolved UTF8String]);
+
+    /*
+     * SCALABLE ONLY, and this is not a preference. A bitmap X11 font can win a match, and one did:
+     * fifty two faces in a single iTerm2 start came back family=Fixed style=Regular glyphs=224,
+     * which has one size, no outline to scale, and 224 glyphs. Everything above this draws by
+     * scaling an outline to a point size, so a face without one renders as nothing at all.
+     */
+    FcPatternAddBool(pat, FC_SCALABLE, FcTrue);
 
     /*
      * A PATTERN THAT ALREADY NAMES ITS FILE NEEDS NO MATCH AT ALL.
@@ -296,7 +319,13 @@ static NSString *_CiderPreferredFamilies(NSString *family)
     }
 
     if (!(face->face_flags & FT_FACE_FLAG_SCALABLE)) {
-        NSLog(@"FreeType font face is not scalable");
+        /* WHICH FACE, because the message alone cannot be acted on: fifty two of these in one
+         * iTerm2 start and no way to tell whether it was one font asked for fifty two times or
+         * fifty two different ones. The family and style are what fontconfig matched on. */
+        NSLog(@"FreeType font face is not scalable: family=%s style=%s glyphs=%ld",
+              (face->family_name != NULL) ? face->family_name : "(none)",
+              (face->style_name != NULL) ? face->style_name : "(none)",
+              (long) face->num_glyphs);
     }
 
     _unitsPerEm = (O2Float) face->units_per_EM;
