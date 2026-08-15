@@ -140,10 +140,6 @@ typedef NS_OPTIONS(NSUInteger, NSApplicationPresentationOptions) {
     NSMutableArray *_orderedWindows; // get rid of
     NSTimer *_attentionTimer;
     NSApplicationPresentationOptions _presentationOptions;
-
-    /* THE ONE MENU BAR, when the display puts it on the screen rather than in every window. Nil on
-     * a backend that answers NO to hasScreenMenuBar, which is all of them but Wayland. */
-    NSWindow *_menuBarWindow;
 }
 
 @property(strong) NSMenu *helpMenu;

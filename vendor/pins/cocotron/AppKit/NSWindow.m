@@ -234,12 +234,6 @@ static BOOL _allowsAutomaticWindowTabbing;
  * two have to agree or a window gets a menu bar in one place and dialog placement in the other.
  */
 + (BOOL) hasMainMenuForStyleMask: (NSWindowStyleMask) styleMask {
-    /* THE ONE PLACE THE MENU BAR MOVES. This answer decides whether a window carries a menu row of
-     * its own AND how much taller its frame is than its content, so a backend that puts the bar at
-     * the top of the screen, where macOS puts it, only has to say so once. */
-    if ([[NSDisplay currentDisplay] hasScreenMenuBar]) {
-        return NO;
-    }
     if ((styleMask & NSTitledWindowMask) == 0) {
         return NO;
     }

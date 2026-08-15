@@ -231,11 +231,6 @@ def main [--all] {
     # and nixpkgs ships that XML in no output of wayland.
     let wl_core = (do -i { ^nix build ".#wayland-core-protocol" --no-link --print-out-paths }
         | complete | get stdout | str trim | lines | last)
-    # A THIRD ROOT, because the wlroots protocols ship in their own package. wayland-protocols has
-    # no layer shell in it: an application cannot ask for a strip anchored to the top of the screen
-    # with anything in the standard set, and a menu bar where macOS puts it is exactly that.
-    let wlr_protocols = (do -i { ^nix build "nixpkgs#wlr-protocols" --no-link --print-out-paths }
-        | complete | get stdout | str trim | lines | last)
     let wayland_conf = (if ($wl_scanner | is-empty) or ($wl_protocols | is-empty) {
         print "  wayland: NOT resolved, the backend targets will not configure"
         ""
@@ -244,7 +239,6 @@ def main [--all] {
         $"wayland_scanner = ($wl_scanner)/bin/wayland-scanner
 wayland_protocols = ($wl_protocols)/share/wayland-protocols
 wayland_core_protocol = ($wl_core)
-wlr_protocols = ($wlr_protocols)/share/wlr-protocols
 "
     })
 

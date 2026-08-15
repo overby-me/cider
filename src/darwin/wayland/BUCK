@@ -20,21 +20,6 @@ wayland_protocol(
     visibility = ["PUBLIC"],
 )
 
-# THE MENU BAR GOES WHERE macOS PUTS IT, and no standard protocol can put it there. A Wayland
-# client cannot place a toplevel: the compositor decides. Layer shell is the extension that lets a
-# surface anchor to an edge of the screen and reserve room, which is what a menu bar, a dock and a
-# panel all are. It is a wlroots protocol, so it comes from a different XML set, and a compositor
-# is free not to have it: the strip is asked for and the in-window menu bar stays if the answer is
-# no.
-wayland_protocol(
-    name = "layer_shell_protocol",
-    out_c = "wlr-layer-shell-protocol.c",
-    out_h = "wlr-layer-shell-unstable-v1-client-protocol.h",
-    protocol = "unstable/wlr-layer-shell-unstable-v1.xml",
-    root = "wlr",
-    visibility = ["PUBLIC"],
-)
-
 # THE CORE PROTOCOL, GENERATED LOCALLY, and the reason is measured rather than stylistic. The
 # forwarding stub for libwayland-client exports its FUNCTIONS (wl_display_connect,
 # wl_proxy_marshal_flags, wl_proxy_add_listener) and none of its DATA: wl_registry_interface and
@@ -62,7 +47,6 @@ cc_objects(
     gen_srcs = [
         ":core_protocol",
         ":xdg_shell_protocol",
-        ":layer_shell_protocol",
     ],
     compiler_flags = [
         "-Wno-unused-parameter",
@@ -77,7 +61,6 @@ cc_objects(
         # codegen rule stages. A consumer that lists only srcs cannot find the header.
         ":core_protocol",
         ":xdg_shell_protocol",
-        ":layer_shell_protocol",
         "//src/darwin:sdk_env",
         "//src/linux/native:host_headers",
     ],

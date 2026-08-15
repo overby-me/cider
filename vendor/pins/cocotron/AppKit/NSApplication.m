@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSEvent.h>
 #import <AppKit/NSImage.h>
 #import <AppKit/NSImageView.h>
-#import <AppKit/NSMainMenuView.h>
 #import <AppKit/NSMenu.h>
 #import <AppKit/NSMenuItem.h>
 #import <AppKit/NSModalSessionX.h>
@@ -426,78 +425,11 @@ static NSAppearance *_ciderApplicationAppearance = nil;
     }
 }
 
-/*
- * THE MENU BAR AS macOS HAS IT: one strip along the top of the SCREEN, shared by every window,
- * rather than a row inside each of them.
- *
- * The window is borderless and sits at NSMainMenuWindowLevel, which is the signal the backend reads
- * to give it the top of the display instead of placing it like an ordinary window. Nothing else in
- * this framework uses that level.
- *
- * Only built when the display says it can put it there. Everywhere else this returns nil and the
- * menu row inside each window is what draws.
- */
-- (NSWindow *) _screenMenuBarWindow {
-    if (![[NSDisplay currentDisplay] hasScreenMenuBar]) {
-        return nil;
-    }
-    if (_menuBarWindow == nil) {
-        NSRect screen = [[NSScreen mainScreen] frame];
-        CGFloat height = [NSMainMenuView menuHeight];
-        NSRect frame = NSMakeRect(screen.origin.x, NSMaxY(screen) - height, screen.size.width,
-                                  height);
-
-        _menuBarWindow = [[NSWindow alloc] initWithContentRect: frame
-                                                     styleMask: NSBorderlessWindowMask
-                                                       backing: NSBackingStoreBuffered
-                                                         defer: NO];
-        [_menuBarWindow setLevel: NSMainMenuWindowLevel];
-        [_menuBarWindow setTitle: @"Menu Bar"];
-
-        NSMainMenuView *view = [[[NSMainMenuView alloc]
-                initWithFrame: NSMakeRect(0.0, 0.0, frame.size.width, height)
-                         menu: _mainMenu] autorelease];
-
-        [view setAutoresizingMask: NSViewWidthSizable];
-        [[_menuBarWindow contentView] addSubview: view];
-        [[_menuBarWindow contentView] setAutoresizesSubviews: YES];
-    }
-    return _menuBarWindow;
-}
-
-/* The menu changed while the bar is on the screen. The view keeps item rectangles from the last
- * layout, so it is told the menu again rather than merely invalidated. */
-- (void) _screenMenuBarChanged {
-    NSMainMenuView *view = [self _screenMenuBarView];
-
-    if (view != nil) {
-        [view setMenu: _mainMenu];
-        [view setNeedsDisplay: YES];
-        [_menuBarWindow display];
-    }
-}
-
-- (NSMainMenuView *) _screenMenuBarView {
-    NSArray *subviews = [[_menuBarWindow contentView] subviews];
-
-    return ([subviews count] > 0) ? [subviews objectAtIndex: 0] : nil;
-}
-
 - (void) setMainMenu: (NSMenu *) menu {
     int i, count = [_windows count];
 
     [_mainMenu autorelease];
     _mainMenu = [menu retain];
-
-    /* THE STRIP FIRST, because the loop below is what feeds the per-window rows and there are none
-     * when the bar is on the screen. Both run: setMenu: on a window with no menu view only records
-     * the menu, which is what a window still wants for its key equivalents. */
-    NSWindow *bar = [self _screenMenuBarWindow];
-
-    if (bar != nil) {
-        [[self _screenMenuBarView] setMenu: _mainMenu];
-        [bar orderFront: nil];
-    }
 
     for (i = 0; i < count; i++) {
         NSWindow *window = [_windows objectAtIndex: i];

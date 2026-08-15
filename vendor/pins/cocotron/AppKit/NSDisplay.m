@@ -298,10 +298,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return NO;
 }
 
-- (BOOL) hasScreenMenuBar {
-    return NO;
-}
-
 - (int) savePanel: (NSSavePanel *) savePanel
         runModalForDirectory: (NSString *) directory
                         file: (NSString *) file

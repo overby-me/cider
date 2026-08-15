@@ -17,7 +17,6 @@
 
 #include "wayland-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
-#include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 struct wl_registry *cider_wl_display_get_registry(struct wl_display *display) {
 	return wl_display_get_registry(display);
@@ -419,74 +418,4 @@ void cider_xdg_toplevel_set_maximized(struct xdg_toplevel *toplevel) {
 
 void cider_xdg_toplevel_unset_maximized(struct xdg_toplevel *toplevel) {
 	xdg_toplevel_unset_maximized(toplevel);
-}
-
-// ---------------------------------------------------------------------------------------------
-// LAYER SHELL, which is the only way to put a menu bar where macOS puts it.
-//
-// A Wayland client cannot place a toplevel: position is the compositor's business, and nothing in
-// the standard protocol set asks for "the top edge of the screen, full width, always visible, and
-// keep other windows out of it". Layer shell does exactly that, and every compositor built on
-// wlroots or smithay has it because their own panels and docks are written to it. A compositor is
-// free not to: the strip is asked for and the in-window menu bar stays when the answer is no.
-struct zwlr_layer_shell_v1 *cider_wl_registry_bind_layer_shell(struct wl_registry *registry,
-                                                               uint32_t name, uint32_t version) {
-	return wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, version);
-}
-
-const struct wl_interface *cider_zwlr_layer_shell_v1_interface(void) {
-	return &zwlr_layer_shell_v1_interface;
-}
-
-// The output may be NULL, which means the compositor picks one. A menu bar wants the output the
-// application is on, and until there is a reason to choose, the compositor knows better than we do.
-struct zwlr_layer_surface_v1 *cider_zwlr_layer_shell_get_layer_surface(
-        struct zwlr_layer_shell_v1 *shell, struct wl_surface *surface, struct wl_output *output,
-        uint32_t layer, const char *name_space) {
-	return zwlr_layer_shell_v1_get_layer_surface(shell, surface, output, layer, name_space);
-}
-
-void cider_zwlr_layer_surface_set_size(struct zwlr_layer_surface_v1 *surface, uint32_t width,
-                                       uint32_t height) {
-	zwlr_layer_surface_v1_set_size(surface, width, height);
-}
-
-// WHICH EDGES IT IS STUCK TO. Anchoring to left, right and top at once is what makes a strip: the
-// width comes from the screen rather than from the client, and only the height is ours.
-void cider_zwlr_layer_surface_set_anchor(struct zwlr_layer_surface_v1 *surface, uint32_t anchor) {
-	zwlr_layer_surface_v1_set_anchor(surface, anchor);
-}
-
-// THE ROOM NO OTHER WINDOW MAY USE. Without this a maximised window sits UNDER the menu bar, which
-// is how a panel with no exclusive zone behaves and is not what a menu bar is.
-void cider_zwlr_layer_surface_set_exclusive_zone(struct zwlr_layer_surface_v1 *surface,
-                                                 int32_t zone) {
-	zwlr_layer_surface_v1_set_exclusive_zone(surface, zone);
-}
-
-void cider_zwlr_layer_surface_set_keyboard_interactivity(struct zwlr_layer_surface_v1 *surface,
-                                                         uint32_t interactivity) {
-	zwlr_layer_surface_v1_set_keyboard_interactivity(surface, interactivity);
-}
-
-void cider_zwlr_layer_surface_ack_configure(struct zwlr_layer_surface_v1 *surface, uint32_t serial) {
-	zwlr_layer_surface_v1_ack_configure(surface, serial);
-}
-
-void cider_zwlr_layer_surface_destroy(struct zwlr_layer_surface_v1 *surface) {
-	zwlr_layer_surface_v1_destroy(surface);
-}
-
-int cider_zwlr_layer_surface_add_listener(struct zwlr_layer_surface_v1 *surface,
-                                          const struct zwlr_layer_surface_v1_listener *listener,
-                                          void *data) {
-	return zwlr_layer_surface_v1_add_listener(surface, listener, data);
-}
-
-// A POPUP OVER A STRIP. An xdg_popup needs an xdg_surface parent, and a layer surface is not one,
-// so the popup is made with a NULL parent and handed to the layer surface afterwards. This is the
-// only way a menu can open under a menu bar that is not a window.
-void cider_zwlr_layer_surface_get_popup(struct zwlr_layer_surface_v1 *surface,
-                                        struct xdg_popup *popup) {
-	zwlr_layer_surface_v1_get_popup(surface, popup);
 }
