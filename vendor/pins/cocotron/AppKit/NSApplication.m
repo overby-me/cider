@@ -443,6 +443,23 @@ static NSAppearance *_ciderApplicationAppearance = nil;
     [self setMainMenu: menu];
 }
 
+/*
+ * WHETHER THE NEXT LAUNCH SHOULD RESTORE STATE, which an application asks NSApp and this had not.
+ *
+ * iTerm2 sends it to the application object and dies on the unrecognized selector, with the process
+ * ending there. NO is the answer a fresh start wants and it is the safe one: restoring state that
+ * was never saved is the failure mode with consequences.
+ *
+ * IT CANNOT MASK AN APPLICATION OF ITS OWN. Every caller subclasses NSApplication, so an
+ * implementation in the subclass wins over this one; this only answers when nothing else does.
+ */
+- (BOOL) shouldRestoreStateOnNextLaunch {
+    return NO;
+}
+
+- (void) setShouldRestoreStateOnNextLaunch: (BOOL) value {
+}
+
 - (void) setApplicationIconImage: (NSImage *) image {
     image = [image retain];
     [_applicationIconImage release];

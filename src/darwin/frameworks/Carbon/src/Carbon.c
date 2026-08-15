@@ -223,6 +223,19 @@ OSStatus DisableSecureEventInput(void)
 }
 
 /*
+ * AND WHETHER IT IS ON, which the two above never recorded and a caller asks on every keystroke:
+ * iTerm2 binds this lazily, so the process died with a dyld symbol error the first time a key was
+ * pressed rather than at load. FALSE, because nothing here turns it on for real; the pair above
+ * report success without doing anything, and saying yes would tell a password field it is
+ * protected when it is not.
+ */
+Boolean IsSecureEventInputEnabled(void)
+{
+    if (verbose) puts("STUB: IsSecureEventInputEnabled called");
+    return false;
+}
+
+/*
  * ZERO IS THE CORRECT ANSWER, not a placeholder: no buttons are down and no modifiers are held
  * when there is no seat, which is exactly what the Wayland display backend reports for the same
  * question.

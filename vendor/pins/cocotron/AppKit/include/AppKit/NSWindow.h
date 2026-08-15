@@ -425,6 +425,8 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 - (NSButton *) standardWindowButton: (NSWindowButton) value;
 - (NSButtonCell *) defaultButtonCell;
 - (NSWindow *) attachedSheet;
+/* The sheets attached to this window, empty when there are none. */
+- (NSArray *) sheets;
 
 - (id) windowController;
 - (NSArray *) drawers;

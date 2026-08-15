@@ -1467,6 +1467,15 @@ static BOOL _allowsAutomaticWindowTabbing;
     return _defaultButtonCell;
 }
 
+/* EVERY SHEET ON THIS WINDOW, which is the plural of the one above and is what current code asks
+ * for. There is no sheet machinery here, so the honest answer is the empty array rather than an
+ * unrecognized selector: iTerm2 asks each of its windows during startup and dies on the raise. */
+- (NSArray *) sheets {
+    NSWindow *attached = [self attachedSheet];
+
+    return (attached != nil) ? [NSArray arrayWithObject: attached] : [NSArray array];
+}
+
 - (NSWindow *) attachedSheet {
     return [_sheetContext sheet];
 }
