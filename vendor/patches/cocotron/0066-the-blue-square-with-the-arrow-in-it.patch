@@ -1,0 +1,99 @@
+--- a/AppKit/NSComboBoxCell.m
++++ b/AppKit/NSComboBoxCell.m
+@@ -58,6 +58,22 @@
+     return self;
+ }
+ 
++/*
++ * A COMBO BOX MADE IN CODE HAS A LIVE BUTTON, the way one made in a nib always did.
++ *
++ * initWithCoder sets _buttonEnabled and _isButtonBordered explicitly; nothing set them for a cell
++ * allocated and initialised by hand, so the button drew in its DISABLED colour for every
++ * application that does not use nibs. LibreOffice is one, and every toolbar selector came out grey
++ * instead of the system accent blue. The item count rule in the add and remove methods is left
++ * alone: it still greys the button when an application empties the list itself.
++ */
++- initTextCell: (NSString *) string {
++    self = [super initTextCell: string];
++    _buttonEnabled = YES;
++    _isButtonBordered = YES;
++    return self;
++}
++
+ - (void) dealloc {
+     [_dataSource release];
+     [_objectValues release];
+--- a/AppKit/NSInterfacePart/NSGraphicsStyle.m
++++ b/AppKit/NSInterfacePart/NSGraphicsStyle.m
+@@ -802,24 +802,54 @@
+                          bordered: (BOOL) bordered
+                           pressed: (BOOL) pressed
+ {
+-    NSImage *image = [NSImage imageNamed: @"NSComboBoxCellDown"];
+-    NSSize imageSize = [image size];
+-    NSRect imageRect;
+-
+-    if (pressed)
+-        NSInterfaceDrawDepressedButton(rect, rect);
+-    else
+-        NSDrawButton(rect, rect);
+-
+-    imageRect.origin.x = rect.origin.x +
+-                         (rect.size.width - imageSize.width) / 2 +
+-                         (pressed ? 1 : 0);
+-    imageRect.origin.y = rect.origin.y +
+-                         (rect.size.height - imageSize.height) / 2 +
+-                         (pressed ? -1 : 0);
+-    imageRect.size = imageSize;
++    /*
++     * THE BLUE SQUARE WITH THE ARROW IN IT, which is what this control looks like on Apple systems
++     * and what the user asked for by name. It was a grey chiselled button with a black triangle
++     * from a tiff, which is the look of a different decade and a different system.
++     *
++     * A rounded rectangle in the system accent blue with a WHITE chevron, dimmed to grey when the
++     * control is disabled and darkened while it is held down. The corner radius and the inset are
++     * the small numbers that decide whether it reads as native: the button sits INSIDE the field
++     * rather than filling its whole height, which is why the rect is inset before anything is drawn
++     * into it.
++     */
++    CGContextRef context = NSCurrentGraphicsPort();
++    NSRect box = NSInsetRect(rect, 1.0, 2.0);
++    CGFloat radius = 3.0;
+ 
+-    [self drawButtonImage: image inRect: imageRect enabled: enabled mixed: NO];
++    if (box.size.width <= 0 || box.size.height <= 0) {
++        return;
++    }
++
++    CGContextSaveGState(context);
++
++    if (!enabled) {
++        [[NSColor colorWithCalibratedRed: 0.78 green: 0.78 blue: 0.80 alpha: 1.0] setFill];
++    } else if (pressed) {
++        [[NSColor colorWithCalibratedRed: 0.00 green: 0.36 blue: 0.80 alpha: 1.0] setFill];
++    } else {
++        [[NSColor colorWithCalibratedRed: 0.00 green: 0.48 blue: 1.00 alpha: 1.0] setFill];
++    }
++    [[NSBezierPath bezierPathWithRoundedRect: box xRadius: radius yRadius: radius] fill];
++
++    /* The chevron, drawn rather than loaded: an image would have to exist at every size and would
++     * be the wrong colour the moment the button is not blue. */
++    CGFloat width = MIN(7.0, box.size.width - 4.0);
++    CGFloat height = width / 2.0;
++    CGFloat centreX = NSMidX(box);
++    CGFloat centreY = NSMidY(box) + (pressed ? -0.5 : 0.0);
++
++    if (width > 1.0) {
++        CGContextBeginPath(context);
++        CGContextMoveToPoint(context, centreX - width / 2.0, centreY + height / 2.0);
++        CGContextAddLineToPoint(context, centreX + width / 2.0, centreY + height / 2.0);
++        CGContextAddLineToPoint(context, centreX, centreY - height / 2.0);
++        CGContextClosePath(context);
++        [[NSColor whiteColor] setFill];
++        CGContextFillPath(context);
++    }
++
++    CGContextRestoreGState(context);
+ }
+ 
+ @end

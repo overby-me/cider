@@ -2442,3 +2442,21 @@ interesting thing happens cannot tell you it never happened.
 docs/wayland-font-list-under-its-field.png: one click on the arrow, and the list drops from the
 field it belongs to with its scrollbar, every family in its own face. The File menu still opens
 under its title, checked in the same round.
+
+## THE BLUE SQUARE WITH THE ARROW IN IT
+
+The user named this one exactly: the toolbar selectors were missing the blue square with the arrow
+down inside. With the geometry fixed they had a button, but it was the old cocotron one, a grey
+chiselled bevel with a black triangle loaded from a tiff, which is the look of a different decade
+and a different system. It is drawn now: a rounded rectangle in the system accent blue with a white
+chevron, grey when the control is disabled and darker while it is held down. Drawing beats an image
+here because an image has to exist at every size and is the wrong colour the moment the button is
+not blue.
+
+AND IT CAME OUT GREY THE FIRST TIME, which is the part worth keeping. NSComboBoxCell sets
+_buttonEnabled and _isButtonBordered in initWithCoder and NOWHERE ELSE, so a cell made in code
+rather than loaded from a nib has a button that is disabled from birth. Every application that does
+not use nibs got the disabled colour, and LibreOffice is one. The item count rule in the add and
+remove methods is left alone, so an application that empties its own list still greys the button.
+
+docs/wayland-blue-dropdown-buttons.png, and note the Find toolbar has one too.
