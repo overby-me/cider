@@ -43,12 +43,37 @@ pkgs.runCommand name {
 
   mv "$out/bin/cider" "$out/bin/cider-launcher"
 
+  # THE INTERFACE FONT SHIPS WITH THE PACKAGE, because the one it wants is not on most machines.
+  #
+  # Cider draws its interface in Inter when it can: it is the closest open source face to San
+  # Francisco, and without it the Apple families fall back to a Helvetica clone, which is the face
+  # Apple replaced in 2015. Installing a font into the user home to fix that would be rude, and
+  # editing the system fontconfig is not ours to do either.
+  #
+  # So the package carries its own fontconfig file that INCLUDES the system one and adds exactly one
+  # directory. It is used only when the user has not set FONTCONFIG_FILE themselves, so anyone with
+  # their own configuration keeps it.
+  mkdir -p "$out/share/cider"
+  cat > "$out/share/cider/fonts.conf" <<EOF
+  <?xml version="1.0"?>
+  <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+  <fontconfig>
+    <include ignore_missing="yes">/etc/fonts/fonts.conf</include>
+    <dir>${pkgs.inter}/share/fonts</dir>
+  </fontconfig>
+  EOF
+  sed -i 's/^  //' "$out/share/cider/fonts.conf"
+
   cat > "$out/bin/cider" <<EOF
   #!${pkgs.runtimeShell}
   # The daemon takes both from the environment (src/linux/server/src/container.rs), and the
   # launcher passes its environment through to it.
   export DSERVER_LIBEXEC_PATH="$out/libexec/cider"
   export DSERVER_MLDR_PATH="$out/libexec/cider/usr/libexec/cider/mldr"
+  # The interface font, and only when the user has not chosen a configuration of their own.
+  if [ -z "\''${FONTCONFIG_FILE:-}" ]; then
+    export FONTCONFIG_FILE="$out/share/cider/fonts.conf"
+  fi
   exec "$out/bin/cider-launcher" "\$@"
   EOF
   sed -i 's/^  //' "$out/bin/cider"
