@@ -893,6 +893,105 @@ const BITMAP_INFO: u32 = 2 | 0x2000;
 /// measures against, which is why it is a constant rather than a literal in one place.
 const CLEAR_PIXEL: u32 = 0xffee_eeee;
 
+/// What a TRANSPARENT window is cleared to. A menu is rounded and translucent on macOS, which means
+/// the pixels outside its rounded shape have to be nothing at all rather than a light grey, and
+/// nothing at all is premultiplied zero.
+const CLEAR_ALPHA: u32 = 0x0000_0000;
+
+/// Whether this window is drawn with an alpha channel: the transient ones, which are the menus, the
+/// dropdown lists and the tooltips. A document window is opaque and stays on the format the
+/// protocol guarantees.
+fn wants_alpha(st: &WindowState) -> bool {
+    // AND THE WINDOWS WE DRAW A FRAME FOR, which get rounded corners punched out of the same
+    // channel. A window with a title bar is one this backend decorates, and macOS rounds all four
+    // of its corners.
+    st.level > 0 || st.style_mask & 0x1 != 0
+}
+
+/// The radius macOS rounds a window and a menu with.
+const CORNER_RADIUS: i32 = 10;
+
+/// Punch the four corners out of the buffer, so a window is a rounded rectangle.
+///
+/// DONE HERE RATHER THAN IN APPKIT because the corners of a window are not all drawn by the same
+/// thing: the frame paints the top ones and the application content paints over the bottom ones,
+/// and a content view that fills its own rect square would undo any rounding the frame did. The
+/// pixels are the one place where every drawing has already happened.
+///
+/// The coverage is sampled four by four so the edge is smooth rather than a staircase, and it
+/// SCALES the pixel rather than clearing it: the buffer is premultiplied, so multiplying all four
+/// channels by the coverage is exactly a partial alpha.
+fn round_corners(st: &mut WindowState) {
+    if st.pixels.is_null() || !wants_alpha(st) {
+        return;
+    }
+    let w = st.draw_w;
+    let h = st.draw_h;
+    let r = CORNER_RADIUS;
+    if w < r * 2 || h < r * 2 {
+        return;
+    }
+    let stride = w as usize;
+    let total = st.map_len / 4;
+    if total < stride * (h as usize) {
+        return;
+    }
+    let words = unsafe { std::slice::from_raw_parts_mut(st.pixels as *mut u32, total) };
+    let rf = r as f64;
+    for corner in 0..4 {
+        let right = corner & 1 == 1;
+        let bottom = corner & 2 == 2;
+        for cy in 0..r {
+            for cx in 0..r {
+                // Distance from the corner circle centre, measured from the pixel CENTRE.
+                let mut covered = 0u32;
+                for sy in 0..4 {
+                    for sx in 0..4 {
+                        let px = cx as f64 + (sx as f64 + 0.5) / 4.0;
+                        let py = cy as f64 + (sy as f64 + 0.5) / 4.0;
+                        let dx = rf - px;
+                        let dy = rf - py;
+                        if dx * dx + dy * dy <= rf * rf {
+                            covered += 1;
+                        }
+                    }
+                }
+                if covered == 16 {
+                    continue;
+                }
+                let x = if right { w - 1 - cx } else { cx };
+                let y = if bottom { h - 1 - cy } else { cy };
+                let idx = (y as usize) * stride + (x as usize);
+                let pixel = words[idx];
+                if covered == 0 {
+                    words[idx] = 0;
+                    continue;
+                }
+                /*
+                 * ONLY A PIXEL THAT IS STILL FULLY OPAQUE, which is what makes this safe to run on
+                 * every present. Scaling by coverage a second time would scale an already scaled
+                 * pixel, and a window that presents thirty times a second would watch its own
+                 * corners fade to nothing. A pixel AppKit has just drawn is opaque; one this
+                 * function has already touched is not.
+                 */
+                if (pixel >> 24) != 0xff {
+                    continue;
+                }
+                let scale = |c: u32| ((c * covered) / 16) & 0xff;
+                words[idx] = (scale((pixel >> 24) & 0xff) << 24)
+                    | (scale((pixel >> 16) & 0xff) << 16)
+                    | (scale((pixel >> 8) & 0xff) << 8)
+                    | scale(pixel & 0xff);
+            }
+        }
+    }
+}
+
+/// The value this window clears to, which is not the same for the two formats.
+fn clear_value(st: &WindowState) -> u32 {
+    if wants_alpha(st) { CLEAR_ALPHA } else { CLEAR_PIXEL }
+}
+
 /// Make sure the window has shm pages of the right size, mapped, with a wl_buffer over them.
 ///
 /// Returns false if anything failed, with a reason in the log. Every caller treats false as "there
@@ -967,7 +1066,7 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     }
     unsafe {
         let words = std::slice::from_raw_parts_mut(map as *mut u32, size / 4);
-        words.fill(CLEAR_PIXEL);
+        words.fill(clear_value(st));
         // ARMED AFTER THE CLEAR, so the fill itself is not what faults. Diagnostic only, and it
         // does nothing unless CIDER_WAYLAND_WATCH is set. See watch.c for why a watchpoint rather
         // than another trace: every trace so far had to guess which layer to instrument.
@@ -981,7 +1080,11 @@ fn ensure_backing(st: &mut WindowState) -> bool {
             munmap(map, size);
             return false;
         }
-        let format = wl::cider_wl_shm_format_xrgb8888();
+        let format = if wants_alpha(st) {
+            wl::cider_wl_shm_format_argb8888()
+        } else {
+            wl::cider_wl_shm_format_xrgb8888()
+        };
         // OFFSET ZERO AND THE DRAWING STRIDE. Zero is the first row of the bitmap, which an
         // unflipped context makes the TOP of the window, and a stride wider than the buffer takes
         // the left of each row: between them the compositor is shown the top left corner of a
@@ -1079,7 +1182,8 @@ fn present(st: &mut WindowState) {
     if !st.mapped && !st.pixels.is_null() && st.map_len >= 4 {
         let total = st.map_len / 4;
         let words = unsafe { std::slice::from_raw_parts(st.pixels as *const u32, total) };
-        if words.iter().all(|&w| w == CLEAR_PIXEL) {
+        let clear = clear_value(st);
+        if words.iter().all(|&w| w == clear) {
             /*
              * AND SAY SO WHEN ASKED, because this rule is indistinguishable from the application
              * never showing the window at all: both end with no map line and nothing on screen.
@@ -1095,6 +1199,7 @@ fn present(st: &mut WindowState) {
             return;
         }
     }
+    round_corners(st);
     unsafe {
         wl::cider_wl_surface_attach(st.surface, st.buffer, 0, 0);
         wl::cider_wl_surface_damage(st.surface, 0, 0, st.buffer_w, st.buffer_h);
@@ -1211,7 +1316,8 @@ fn bottom_row_is_clear(st: &WindowState) -> bool {
         return false;
     }
     let words = unsafe { std::slice::from_raw_parts(st.pixels as *const u32, total) };
-    words[total - width..].iter().all(|&w| w == CLEAR_PIXEL)
+    let clear = clear_value(st);
+    words[total - width..].iter().all(|&w| w == clear)
 }
 
 fn report_pixels(st: &mut WindowState) {
@@ -1223,7 +1329,8 @@ fn report_pixels(st: &mut WindowState) {
         return;
     }
     let words = unsafe { std::slice::from_raw_parts(st.pixels as *const u32, total) };
-    let drawn = words.iter().filter(|&&w| w != CLEAR_PIXEL).count();
+    let clear = clear_value(st);
+    let drawn = words.iter().filter(|&&w| w != clear).count();
     if drawn == 0 {
         return;
     }

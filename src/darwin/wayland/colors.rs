@@ -41,7 +41,10 @@ fn recipe_for(name: &str) -> Option<Recipe> {
         // answer is not neutral: AppKit hands the caller no colour at all and whatever it was going
         // to paint gets whatever was already there.
         "windowBackgroundColor" => Recipe::Grey(0.93),
-        "selectedTextBackgroundColor" => Recipe::ClassMethod("lightGrayColor"),
+        // LIGHT BLUE, NOT GREY. This is the colour an application fills a selected row or a
+        // selected run of text with, and LibreOffice asks for it by name for the tree in its
+        // Options dialog: with lightGrayColor the selected category read as disabled.
+        "selectedTextBackgroundColor" => Recipe::Rgb(0.70, 0.84, 1.0),
         "disabledControlTextColor" => Recipe::ClassMethod("grayColor"),
         "controlTextColor" => Recipe::ClassMethod("blackColor"),
         "menuBackgroundColor" => Recipe::Grey(0.96),
@@ -66,7 +69,7 @@ fn recipe_for(name: &str) -> Option<Recipe> {
         "linkColor" => Recipe::ClassMethod("blueColor"),
         "unemphasizedSelectedTextColor" => Recipe::ClassMethod("blackColor"),
         "selectedContentBackgroundColor" => ACCENT,
-        "unemphasizedSelectedContentBackgroundColor" => Recipe::ClassMethod("lightGrayColor"),
+        "unemphasizedSelectedContentBackgroundColor" => Recipe::Rgb(0.82, 0.89, 0.98),
         // The modern semantic names, added with the AppKit class methods that ask for them.
         // Greys rather than named class methods where Cocoa has no equivalent constructor: the
         // point of these is a LEGIBLE HIERARCHY, primary text darker than secondary and so on,
@@ -137,6 +140,13 @@ pub fn color_with_name(name: objc::Object) -> objc::Object {
                 println!("cider-wayland-color name={text} probe={r},{g},{b}");
                 return c;
             }
+        }
+        // EVERY NAME, NOT ONLY THE ONES THAT FAIL. A colour that is answered with the WRONG colour
+        // is invisible to the nil trace below and is exactly what a foreign looking control is: the
+        // Options tree drew its selected row grey, and the only way to learn which of a dozen
+        // plausible names it had asked for was to watch the application ask.
+        if std::env::var_os("CIDER_WAYLAND_TRACE_COLORS").is_some() {
+            println!("cider-wayland-color asked={text}");
         }
         match recipe_for(text) {
             None => {

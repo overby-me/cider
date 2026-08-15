@@ -152,6 +152,10 @@ int cider_wl_buffer_add_listener(struct wl_buffer *buffer, const struct wl_buffe
 // rather than asking which are supported.
 uint32_t cider_wl_shm_format_xrgb8888(void) { return WL_SHM_FORMAT_XRGB8888; }
 
+// AND THE ONE WITH AN ALPHA CHANNEL, which is also guaranteed. A menu on macOS is translucent with
+// rounded corners, and both need the compositor to blend rather than ignore the fourth byte.
+uint32_t cider_wl_shm_format_argb8888(void) { return WL_SHM_FORMAT_ARGB8888; }
+
 // A FRAME CALLBACK FIRES WHEN THE COMPOSITOR HAS PRESENTED, which is a different claim from a
 // buffer release: release is about buffer LIFETIME and can be deferred, while a frame callback is
 // the compositor saying it drew. Asking for both means a failure says which half is missing.
