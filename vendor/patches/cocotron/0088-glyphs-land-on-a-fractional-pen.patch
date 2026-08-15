@@ -1,0 +1,58 @@
+--- a/Onyx2D/O2Context_builtin_FT.m
++++ b/Onyx2D/O2Context_builtin_FT.m
+@@ -1,4 +1,5 @@
+ #import <Onyx2D/O2Context_builtin_FT.h>
++#include <freetype/ftoutln.h>
+ #import <Onyx2D/O2Font_freetype.h>
+ #import <Onyx2D/O2GraphicsState.h>
+ #import <Onyx2D/O2Paint_color.h>
+@@ -210,22 +211,47 @@
+         return;
+     }
+ 
++    /*
++     * A FRACTIONAL PEN, AND THE GLYPH MOVED ONTO IT.
++     *
++     * This used to add slot->advance.x >> 6 to an integer pen, which throws away up to a
++     * sixty-fourth of a pixel per glyph and then accumulates: a line of forty characters can end up
++     * most of a pixel short, and the spacing inside a word visibly wobbles because each glyph lands
++     * on whichever pixel the truncation left. macOS positions glyphs at fractional x, which is most
++     * of why its text looks even at small sizes.
++     *
++     * So the pen is kept in 26.6 fixed point, the glyph outline is TRANSLATED by the fractional
++     * part before it is rasterised, and only the whole part decides which pixel the bitmap starts
++     * at. FreeType antialiases the shifted outline, so the fraction shows up as coverage rather
++     * than as a jump.
++     */
++    FT_Pos penX = (FT_Pos) lround(point.x * 64.0);
++    FT_Pos penStart = penX;
++
+     for (i = 0; i < count; i++) {
+ 
+         ftError = FT_Load_Glyph(face, glyphs[i], FT_LOAD_DEFAULT);
+         if (ftError)
+             continue;
+ 
++        FT_Pos whole = penX & ~63;
++        FT_Pos fraction = penX - whole;
++
++        if (fraction != 0 && slot->format == FT_GLYPH_FORMAT_OUTLINE) {
++            FT_Outline_Translate(&slot->outline, fraction, 0);
++        }
++
+         ftError = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
+         if (ftError)
+             continue;
+ 
+         renderFreeTypeBitmap(self, _surface, &slot->bitmap,
+-                             point.x + slot->bitmap_left,
++                             (whole >> 6) + slot->bitmap_left,
+                              point.y - slot->bitmap_top, paint);
+ 
+-        point.x += slot->advance.x >> 6;
++        penX += slot->advance.x;
+     }
++    point.x += (penX - penStart) / 64.0;
+ 
+     O2PaintRelease(paint);
+ 
