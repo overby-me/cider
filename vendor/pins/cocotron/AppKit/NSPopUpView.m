@@ -517,7 +517,21 @@ static NSRect boundsToTitleAreaRect(NSRect rect) {
     } state = STATE_FIRSTMOUSEDOWN;
     NSPoint firstLocation, point = [event locationInWindow];
     NSInteger initialSelectedIndex = _selectedIndex;
-    firstLocation = point;
+
+    /*
+     * IN SCREEN COORDINATES, because that is what it is compared against.
+     *
+     * firstLocation was the point in the CONTROL's window, and the loop below compares it with
+     * [NSEvent mouseLocation], which is on the screen. The two agree only for a window at the
+     * origin, so for a panel anywhere else the difference is the window origin, hundreds of points,
+     * and mouseMoved is true on the first pass.
+     *
+     * What that costs is the STICKY MENU: a short click with no movement is meant to leave the menu
+     * up, and instead every click was read as a drag and released immediately, so the menu appeared
+     * and vanished within one frame. Measured on the file type popup in the save panel, whose window
+     * sits at 595,483: click it and nothing stayed on screen.
+     */
+    firstLocation = [[event window] convertBaseToScreen: point];
 
     // Make sure we get mouse moved events, too, so we can respond apporpiately
     // to click-click actions as well as of click-and-drag
