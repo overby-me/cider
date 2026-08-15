@@ -1,0 +1,488 @@
+/* Copyright (c) 2006-2007 Christopher J. W. Lloyd
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+
+// Original - Christopher Lloyd <cjwl@objc.net>
+#import <AppKit/NSFont.h>
+#import <Foundation/NSBundle.h>
+#import <Foundation/NSProcessInfo.h>
+#import <AppKit/NSGraphicsStyle.h>
+#import <AppKit/NSMainMenuView.h>
+#import <AppKit/NSMenuWindow.h>
+#import <AppKit/NSSubmenuView.h>
+
+#define MENU_BAR_ITEM_PADDING 9
+
+/*
+   - implement raised border on mouse over
+   - use system menu font
+ */
+
+@implementation NSMainMenuView
+
+/*
+ * THE MENU BAR FONT AND ITS HEIGHT, which were both too small to look like a menu bar.
+ *
+ * menuFontOfSize: 0 resolves to the general 12 point default here, and the bar is sized from that
+ * string height plus eight points of margin, which came out SIXTEEN points tall with items to
+ * match: legible, and visibly not a menu bar. Apple uses a 14 point menu font in a bar of about 22
+ * points at 1x, and the difference is what a user notices immediately.
+ *
+ * The floor matters as much as the font. A height derived purely from a measured string follows
+ * whatever the font backend reports, and a fallback face with tight metrics silently squashes the
+ * bar again; 22 is the smallest thing that still reads as a menu bar.
+ */
++ (NSFont *) menuFont {
+    return [NSFont menuBarFontOfSize: 14.0];
+}
+
++ (CGFloat) menuHeight {
+    NSDictionary *attributes = [NSDictionary
+            dictionaryWithObjectsAndKeys: [self menuFont], NSFontAttributeName,
+                                          nil];
+    CGFloat result = [@"Menu" sizeWithAttributes: attributes].height;
+
+    result += 3; // border top/bottom margin
+    result += 4; // border
+    result += 1; // sunken title baseline
+
+    return MAX(result, 22.0);
+}
+
+- initWithFrame: (NSRect) frame menu: (NSMenu *) menu {
+    [super initWithFrame: frame];
+
+    _menu = [menu retain];
+    _font = [[[self class] menuFont] retain];
+    _selectedItemIndex = NSNotFound;
+    [self sizeToFit];
+
+    return self;
+}
+
+- (void) dealloc {
+    // [_menu release]; NSView does this for us
+    [_font release];
+    [super dealloc];
+}
+
+- (BOOL) isFlipped {
+    return YES;
+}
+
+- (BOOL) isOpaque {
+    return YES;
+}
+
+- (NSMenu *) menu {
+    return _menu;
+}
+
+- (void) setMenu: (NSMenu *) menu {
+    [super setMenu: menu];
+    [self sizeToFit];
+}
+
+/*
+ * THE FIRST MENU IS THE APPLICATION, and it shows the APPLICATION NAME whatever the item is called.
+ *
+ * That is what Apple does: the title of the first item in the main menu is ignored and the system
+ * substitutes the name of the running application. Applications rely on it -- LibreOffice titles
+ * that item "Application" and expects never to see the word -- so without the substitution the menu
+ * bar of every Cocoa application here begins with a menu called Application.
+ *
+ * CFBundleDisplayName first because it is the localised one, then CFBundleName, then the process
+ * name for something running outside a bundle.
+ */
+- (NSString *) _applicationDisplayName {
+    NSBundle *bundle = [NSBundle mainBundle];
+    NSString *name = [bundle objectForInfoDictionaryKey: @"CFBundleDisplayName"];
+
+    if ([name length] == 0) {
+        name = [bundle objectForInfoDictionaryKey: @"CFBundleName"];
+    }
+    if ([name length] == 0) {
+        name = [[NSProcessInfo processInfo] processName];
+    }
+    return name;
+}
+
+- (NSString *) _displayTitleForItem: (NSMenuItem *) item {
+    NSArray *items = [[self menu] itemArray];
+
+    if ([items count] > 0 && [items objectAtIndex: 0] == item) {
+        NSString *name = [self _applicationDisplayName];
+
+        if ([name length] > 0) {
+            return name;
+        }
+    }
+    return [item title];
+}
+
+/* The FIRST title in the bar is the application name, and macOS draws that one bold. Everything
+ * here has to agree about it: the box is measured with the bold font as well as drawn with it, or
+ * the name overlaps the menu next to it. */
+- (BOOL) _isAppNameItem: (NSMenuItem *) item {
+    NSArray *items = [[self menu] itemArray];
+
+    return ([items count] > 0) && ([items objectAtIndex: 0] == item);
+}
+
+- (NSRect) titleRectForItem: (NSMenuItem *) item
+         previousBorderRect: (NSRect) previousBorderRect
+{
+    NSRect result;
+    NSString *title = [self _displayTitleForItem: item];
+    NSSize titleSize = [self _isAppNameItem: item]
+                               ? [[self graphicsStyle] menuBarAppTitleSize: title]
+                               : [[self graphicsStyle] menuItemTextSize: title];
+
+    /* NINE POINTS EACH SIDE, which is what an Apple menu bar puts between its titles. Six left
+     * them crowded enough that File, Edit and View read as one run of text. */
+    result.origin = NSMakePoint(
+            NSMaxX(previousBorderRect) + MENU_BAR_ITEM_PADDING,
+            floor(([self bounds].size.height - titleSize.height) / 2));
+    result.size = titleSize;
+
+    return result;
+}
+
+- (NSRect) borderRectFromTitleRect: (NSRect) titleRect {
+    NSRect result = NSInsetRect(titleRect, -MENU_BAR_ITEM_PADDING, 0);
+
+    result.size.height = [self bounds].size.height - 2;
+    result.origin.y = 0;
+
+    return result;
+}
+
+- (void) sizeToFit {
+#if 1
+    [self setFrameSize: NSMakeSize([self frame].size.width,
+                                   [[self class] menuHeight])];
+#else
+    NSArray *items = [[self menu] itemArray];
+    int i, count = [items count];
+    CGFloat height = 0;
+
+    if (count == 0) {
+        [self setFrameSize: NSMakeSize([self frame].size.width, 0)];
+        return;
+    }
+
+    for (i = 0; i < count; i++) {
+        NSMenuItem *item = [items objectAtIndex: i];
+        NSString *title = [self _displayTitleForItem: item];
+        NSSize size = [title sizeWithAttributes: [self titleAttributes]];
+
+        height = MAX(height, size.height);
+    }
+
+    height += 2; // border top/bottom margin
+    height += 4; // border
+    height += 1; // sunken title baseline
+
+    [self setFrameSize: NSMakeSize([self frame].size.width, height)];
+#endif
+}
+
+static void drawSunkenBorder(NSRect rect) {
+    NSRect rects[5];
+    NSColor *colors[5];
+
+    rects[0] = rect;
+    rects[0].size.width = 1;
+    colors[0] = [NSColor darkGrayColor];
+    rects[1] = rect;
+    rects[1].size.height = 1;
+    colors[1] = [NSColor darkGrayColor];
+    rects[2] = rect;
+    rects[2].origin.x = NSMaxX(rect) - 1;
+    rects[2].size.width = 1;
+    colors[2] = [NSColor whiteColor];
+    rects[3] = rect;
+    rects[3].origin.y = NSMaxY(rect) - 1;
+    rects[3].size.height = 1;
+    colors[3] = [NSColor whiteColor];
+    rects[4] = NSInsetRect(rect, 1, 1);
+    colors[4] = [NSColor controlColor];
+
+    NSRectFillListWithColors(rects, colors, 5);
+}
+
+- (NSImage *) overflowImage {
+    return [[self window] isKeyWindow]
+                   ? [NSImage imageNamed: @"NSMenuViewDoubleRightArrow"]
+                   : [NSImage imageNamed: @"NSMenuViewDoubleRightArrowGray"];
+}
+
+- (NSRect) overflowRect {
+    NSRect bounds = [self bounds];
+    NSImage *image = [self overflowImage];
+    NSSize size = [image size];
+    NSRect rect = NSInsetRect(NSMakeRect(0, 0, size.width, bounds.size.height),
+                              -3, 0);
+
+    rect.origin.x = NSMaxX(bounds) - rect.size.width;
+
+    return rect;
+}
+
+- (void) drawRect: (NSRect) rect {
+    NSRect bounds = [self bounds];
+    NSArray *items = [[self menu] itemArray];
+    NSUInteger i, count = [items count];
+    NSRect previousBorderRect = NSMakeRect(0, 0, 0, 0);
+    BOOL overflow = NO;
+    NSPoint mouseLoc = [[NSApp currentEvent] locationInWindow];
+
+    mouseLoc = [self convertPoint: mouseLoc fromView: nil];
+
+    [[self graphicsStyle] drawMenuBarBackgroundInRect: bounds];
+
+    for (i = 0; i < count; i++) {
+        NSMenuItem *item = [items objectAtIndex: i];
+        NSString *title = [self _displayTitleForItem: item];
+        NSRect titleRect = [self titleRectForItem: item
+                               previousBorderRect: previousBorderRect];
+        NSRect borderRect = [self borderRectFromTitleRect: titleRect];
+
+        [[self graphicsStyle]
+                drawMenuBarItemBorderInRect: borderRect
+                                      hover: (i ==
+                                              _selectedItemIndex) /*NSPointInRect(mouseLoc,borderRect)*/
+                                   selected: (i == _selectedItemIndex)];
+
+        titleRect.origin.x = borderRect.origin.x +
+                             (NSWidth(borderRect) - NSWidth(titleRect)) / 2;
+        titleRect.origin.y = borderRect.origin.y +
+                             (NSHeight(borderRect) - NSHeight(titleRect)) / 2;
+
+        if ([self _isAppNameItem: item]) {
+            [[self graphicsStyle] drawMenuBarAppTitle: title
+                                               inRect: titleRect
+                                             selected: (i == _selectedItemIndex)];
+        } else {
+            [[self graphicsStyle] drawMenuItemText: title
+                                            inRect: titleRect
+                                           enabled: YES
+                                          selected: (i == _selectedItemIndex)];
+        }
+
+        previousBorderRect = borderRect;
+
+        if (NSMaxX(borderRect) > NSMaxX(bounds)) {
+            overflow = YES;
+            break;
+        }
+    }
+
+    if (overflow) {
+        NSImage *image = [self overflowImage];
+        NSSize size = [image size];
+        NSRect rect = [self overflowRect];
+        NSPoint origin;
+        NSRect fill = rect;
+
+        [[NSColor controlColor] setFill];
+        fill.origin.x -= 4;
+        fill.size.width += 4;
+        NSRectFill(fill);
+
+        if (_selectedItemIndex == count)
+            drawSunkenBorder(rect);
+
+        origin = rect.origin;
+        origin.x += 3;
+        origin.y += floor((rect.size.height - size.height) / 2);
+        [image compositeToPoint: origin operation: NSCompositeSourceOver];
+    }
+}
+
+- (NSUInteger) overflowIndex {
+    NSRect bounds = [self bounds];
+    NSArray *items = [[self menu] itemArray];
+    NSUInteger i, count = [items count];
+    NSRect previousBorderRect = NSMakeRect(0, 0, 0, 0);
+
+    for (i = 0; i < count; i++) {
+        NSMenuItem *item = [items objectAtIndex: i];
+        NSRect titleRect = [self titleRectForItem: item
+                               previousBorderRect: previousBorderRect];
+        NSRect borderRect = [self borderRectFromTitleRect: titleRect];
+
+        if (NSMaxX(borderRect) > NSMaxX(bounds))
+            return i;
+
+        previousBorderRect = borderRect;
+    }
+
+    return NSNotFound;
+}
+
+- (NSUInteger) itemIndexAtPoint: (NSPoint) point {
+    NSUInteger result = NSNotFound;
+    NSRect bounds = [self bounds];
+    NSArray *items = [[self menu] itemArray];
+    NSUInteger i, count = [items count];
+    NSRect previousBorderRect = NSMakeRect(0, 0, 0, 0);
+    BOOL overflow = NO;
+
+    for (i = 0; i < count; i++) {
+        NSMenuItem *item = [items objectAtIndex: i];
+        NSRect titleRect = [self titleRectForItem: item
+                               previousBorderRect: previousBorderRect];
+        NSRect borderRect = [self borderRectFromTitleRect: titleRect];
+
+        if (NSMaxX(borderRect) > NSMaxX(bounds))
+            overflow = YES;
+
+        if (NSMouseInRect(point, borderRect, [self isFlipped]))
+            result = i;
+
+        previousBorderRect = borderRect;
+    }
+
+    if (overflow) {
+        if (NSMouseInRect(point, [self overflowRect], [self isFlipped]))
+            return count;
+    }
+
+    return result;
+}
+
+- (NSUInteger) itemIndexAtPoint: (NSPoint) point rect: (NSRect*) rect {
+    NSUInteger result = NSNotFound;
+    NSRect bounds = [self bounds];
+    NSArray *items = [[self menu] itemArray];
+    NSUInteger i, count = [items count];
+    NSRect previousBorderRect = NSMakeRect(0, 0, 0, 0);
+    BOOL overflow = NO;
+
+    for (i = 0; i < count; i++) {
+        NSMenuItem *item = [items objectAtIndex: i];
+        NSRect titleRect = [self titleRectForItem: item
+                               previousBorderRect: previousBorderRect];
+        NSRect borderRect = [self borderRectFromTitleRect: titleRect];
+
+        if (NSMaxX(borderRect) > NSMaxX(bounds))
+            overflow = YES;
+
+        if (NSMouseInRect(point, borderRect, [self isFlipped])) {
+            *rect = borderRect;
+            result = i;
+        }
+
+        previousBorderRect = borderRect;
+    }
+
+    if (overflow) {
+        if (NSMouseInRect(point, [self overflowRect], [self isFlipped])) {
+            *rect = [self overflowRect];
+            return count;
+        }
+    }
+
+    return result;
+}
+
+- (void) positionBranchForSelectedItem: (NSWindow *) branch
+                                screen: (NSScreen *) screen
+{
+    NSRect branchFrame = [branch frame];
+    NSRect screenVisible = [screen visibleFrame];
+    NSArray *items = [[self menu] itemArray];
+    NSUInteger i, count = [items count];
+    NSRect previousBorderRect = NSMakeRect(0, 0, 0, 0);
+    NSRect itemRect = NSZeroRect;
+    NSPoint topLeft = NSZeroPoint;
+
+    if (_selectedItemIndex == count) {
+        itemRect = [self overflowRect];
+
+        topLeft = NSMakePoint(itemRect.origin.x, NSMaxY(itemRect));
+    } else {
+        for (i = 0; i < count; i++) {
+            NSMenuItem *item = [items objectAtIndex: i];
+            NSRect titleRect = [self titleRectForItem: item
+                                   previousBorderRect: previousBorderRect];
+            itemRect = [self borderRectFromTitleRect: titleRect];
+
+            if (i == _selectedItemIndex) {
+                topLeft = NSMakePoint(itemRect.origin.x, NSMaxY(itemRect));
+                break;
+            }
+
+            previousBorderRect = itemRect;
+        }
+    }
+
+    topLeft = [self convertPoint: topLeft toView: nil];
+    topLeft = [[self window] convertBaseToScreen: topLeft];
+
+    if (topLeft.y - branchFrame.size.height < NSMinY(screenVisible)) {
+        topLeft = NSMakePoint(itemRect.origin.x, NSMinY(itemRect));
+
+        topLeft = [self convertPoint: topLeft toView: nil];
+        topLeft = [[self window] convertBaseToScreen: topLeft];
+
+        topLeft.y += branchFrame.size.height;
+    }
+
+    if (topLeft.x + branchFrame.size.width > NSMaxX(screenVisible))
+        topLeft.x = NSMaxX(screenVisible) - branchFrame.size.width;
+    if (topLeft.x < NSMinX(screenVisible))
+        topLeft.x = NSMinX(screenVisible);
+
+    [branch setFrameTopLeftPoint: topLeft];
+}
+
+- (NSMenuView *) viewAtSelectedIndexPositionOnScreen: (NSScreen *) screen {
+    NSArray *items = [self visibleItemArray];
+
+    if (_selectedItemIndex == [items count]) {
+        NSMenuWindow *branch =
+                [[NSMenuWindow alloc] initWithMenu: [self menu]
+                                   overflowAtIndex: [self overflowIndex]];
+
+        [self positionBranchForSelectedItem: branch screen: screen];
+
+        [branch orderFront: nil];
+        return [branch menuView];
+    }
+
+    if (_selectedItemIndex < [items count]) {
+        NSMenuItem *item = [items objectAtIndex: _selectedItemIndex];
+
+        if ([item hasSubmenu]) {
+            if ([[[item submenu] itemArray] count] > 0) {
+                NSMenuWindow *branch =
+                        [[NSMenuWindow alloc] initWithMenu: [item submenu]];
+
+                [self positionBranchForSelectedItem: branch screen: screen];
+
+                [branch orderFront: nil];
+                return [branch menuView];
+            }
+        }
+    }
+    return nil;
+}
+
+@end

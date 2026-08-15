@@ -78,7 +78,6 @@
   {"path": "vendor/pins/TextEdit", "owner": "darlinghq", "repo": "darling-TextEdit", "rev": "99ec72a94dab166eefa264e9802ebd0d80aca845", "recursive": false, "hash": "sha256-ZSSZzjnhT8VMDa0WAMSEZ1Acf7JoBzYGVbAtIz1tmPE="},
   {"path": "vendor/pins/bsm", "owner": "darlinghq", "repo": "darling-bsm", "rev": "bec0dd61bb07469d1fcb3985822d350abc9934f7", "recursive": false, "hash": "sha256-2Lic8dhegqvjVPOhOTqbWTYlAiTTKLo33aT7oDhYSXw="},
   {"path": "vendor/pins/Heimdal", "owner": "darlinghq", "repo": "darling-Heimdal", "rev": "3dfb09751063d6c144143edfb2ef13aa3e8c57de", "recursive": false, "hash": "sha256-OJ+mfwVo2QoZ0YeEh6i+Pq2DChKIkLlfmg/3aN7Xclo="},
-  {"path": "vendor/pins/cocotron", "owner": "darlinghq", "repo": "darling-cocotron", "rev": "c8d38d16a9f613d300157bebbab2b9501bc0c274", "recursive": false, "hash": "sha256-xdsvX0i0a174ob8ccIN4sprGeFSolor1/vzRMan4nmk="},
   {"path": "vendor/pins/libtelnet", "owner": "darlinghq", "repo": "darling-libtelnet", "rev": "1ebd4eef48d06e6411ed2a0f60ba5d3fce5ab455", "recursive": false, "hash": "sha256-Ubxs8DoZiWL9ZqjYGRD94r1pQqPYk05xeDyrI/RoO/E="},
   {"path": "vendor/pins/remote_cmds", "owner": "darlinghq", "repo": "darling-remote_cmds", "rev": "3bb9f88724726d0d3073c04dfdc4785564113341", "recursive": false, "hash": "sha256-znpEO3ZfH7LZnh1Fn51MeuM6Uqzl4H5ew7PldLdajoA="},
   {"path": "vendor/pins/SmartCardServices", "owner": "darlinghq", "repo": "darling-SmartCardServices", "rev": "ec53ce56972565047a716ab166176f203f520393", "recursive": false, "hash": "sha256-wGlmHI6rungl9WRlet6TeK+ph+AZjyS6FUW/tMtNbFk="},

@@ -1,0 +1,1 @@
+NSTextView.subproj/NSRangeArray.h

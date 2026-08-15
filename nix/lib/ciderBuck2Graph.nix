@@ -92,6 +92,15 @@
     if allPins
     then map (e: e.path) (builtins.filter (e: lib.hasPrefix "vendor/pins/" e.path) manifest)
     else pins;
+  # BUNDLED PINS HAVE NO MANIFEST ENTRY, which is the whole mechanism: they are checked into the
+  # repository and nothing fetches them. They still have to reach vendor/src, because the generated
+  # vendor/src/BUCK names their files there and knows nothing about where they came from.
+  #
+  # AN EXPLICIT LIST RATHER THAN A SCAN, because the two bundled pins want opposite treatment:
+  # vendor/pins/ciderd carries its own BUCK and builds IN PLACE, while cocotron is compiled by
+  # vendor/src/BUCK and must be copied. A scan of vendor/pins would sweep both up and break the one
+  # that works.
+  bundledVendorSrcPins = [ "vendor/pins/cocotron" ];
   # The project as Nix sees it, filtered to what the build can possibly read. BOTH
   # derivations take it whole: the graph dump and the source closure.
   #
@@ -317,6 +326,17 @@
         rmdir ${p} 2>/dev/null || true
         ln -sfn ${backLink}vendor/src/${name} ${p}
       '') wantedPins
+    + lib.concatMapStrings (p: let
+        name = builtins.baseNameOf p;
+      in ''
+        echo "materializing vendor/src/${name} (vendored in-tree, no manifest entry)"
+        mkdir -p vendor/src/${name}
+        cp -a --reflink=auto ${p}/. vendor/src/${name}/
+        chmod -R u+w vendor/src/${name}
+        # The same SDK farm link a fetched pin gets, pointing at the copy rather than a second one.
+        rm -rf ${p}
+        ln -sfn ../../vendor/src/${name} ${p}
+      '') bundledVendorSrcPins
   );
   # The vendored Rust crates, which vendor/rust/BUCK globs and which are gitignored like the
   # pins: without them the analysis fails on the first crate it loads, since a source

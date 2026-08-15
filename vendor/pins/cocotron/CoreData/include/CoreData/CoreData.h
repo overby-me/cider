@@ -1,0 +1,16 @@
+#import <CoreData/NSAttributeDescription.h>
+#import <CoreData/NSEntityDescription.h>
+#import <CoreData/NSEntityMapping.h>
+#import <CoreData/NSFetchRequest.h>
+#import <CoreData/NSFetchRequestExpression.h>
+#import <CoreData/NSFetchedPropertyDescription.h>
+#import <CoreData/NSManagedObject.h>
+#import <CoreData/NSManagedObjectContext.h>
+#import <CoreData/NSManagedObjectID.h>
+#import <CoreData/NSManagedObjectModel.h>
+#import <CoreData/NSMappingModel.h>
+#import <CoreData/NSMergeConflict.h>
+#import <CoreData/NSPersistentStoreCoordinator.h>
+#import <CoreData/NSPropertyDescription.h>
+#import <CoreData/NSPropertyMapping.h>
+#import <CoreData/NSRelationshipDescription.h>

@@ -144,6 +144,30 @@ def main [--all, ...paths: string] {
 
         let hits = ($entries | where path == $sub)
         if ($hits | is-empty) {
+            # A BUNDLED PIN HAS NO MANIFEST ENTRY, and that is the whole mechanism rather than an
+            # error. vendor/pins/ciderd and vendor/pins/cocotron are checked into git: nothing
+            # fetches them, so this copies the tree that is already here. Without this the port
+            # cannot materialize a pin it owns, and the message it printed instead -- no submodule
+            # entry -- reads like a broken manifest.
+            let in_tree = ($repo_root | path join $sub)
+            if ($in_tree | path type) == "dir" {
+                print $"vendor/src: ($name) is vendored in-tree, copying"
+                if ($dest | path exists) { do -i { ^chmod -R u+w $dest } }
+                let keep_bundled = (if ($dest | path exists) {
+                    ls -a $dest | where name =~ '/BUCK$' | get name
+                } else { [] })
+                let saved = (mktemp -d)
+                for f in $keep_bundled { ^cp -a $f $saved }
+                rm -rf $dest
+                ^cp -a --no-preserve=ownership $in_tree $dest
+                ^chmod -R u+w $dest
+                for f in $keep_bundled {
+                    let base = ($f | path basename)
+                    ^cp -a ($saved | path join $base) ($dest | path join $base)
+                }
+                rm -rf $saved
+                continue
+            }
             say $"no submodule entry for ($sub)"
             exit 1
         }
