@@ -68,6 +68,20 @@ pub struct WindowState {
     pub buffer: *mut wl::WlBuffer,
     pub buffer_w: i32,
     pub buffer_h: i32,
+    /// The size of the BITMAP, which is not always the size of the buffer.
+    ///
+    /// A window with a minimum size cannot obey a compositor that configures it smaller, and
+    /// LibreOffice has several: tiled to 700x600, the Start Center kept a 700x733 frame. Drawing a
+    /// 733 tall window into a 600 tall bitmap loses the top 133 rows, because the context is
+    /// unflipped and anchors at the bottom, and the top of a window is its title bar and its menu
+    /// bar. So the bitmap is as large as the application insists on and the wl_buffer stays the
+    /// size the compositor asked for, taken from the START of the same pages, which is the top of
+    /// the window. What overflows is the bottom, which is a scroll area rather than the controls.
+    pub draw_w: i32,
+    pub draw_h: i32,
+    /// The frame the application refuses to shrink below, 0 when it has never refused one.
+    pub insist_w: i32,
+    pub insist_h: i32,
     /// The shm pages, mapped. AppKit DRAWS DIRECTLY INTO THESE: the O2Surface is built over this
     /// pointer, so there is no copy between what was drawn and what the compositor reads.
     pub pixels: *mut u8,
@@ -141,6 +155,10 @@ impl WindowState {
             buffer: std::ptr::null_mut(),
             buffer_w: 0,
             buffer_h: 0,
+            draw_w: 0,
+            draw_h: 0,
+            insist_w: 0,
+            insist_h: 0,
             pixels: std::ptr::null_mut(),
             map_len: 0,
             context: std::ptr::null_mut(),
@@ -412,6 +430,23 @@ pub fn deliver_pending_configures() {
             unsafe {
                 let sel = objc::sel_registerName(cstr!("platformWindow:frameChanged:didSize:"));
                 objc::msg_send_frame_changed(st.delegate, sel, st.owner, st.frame, objc::YES);
+                /*
+                 * AND THEN ASK WHAT IT DID WITH IT, because a window with a minimum size does not
+                 * come back to say no. NSWindow clamps inside -setFrame: and never calls the
+                 * platform window again, so the only way to learn that 700x600 became 700x733 is to
+                 * read the frame afterwards. When it is larger, the bitmap grows to hold the whole
+                 * window and the buffer stays the size the compositor asked for; see draw_w.
+                 */
+                let actual =
+                    objc::msg_send_rect_ret(st.delegate, objc::sel_registerName(cstr!("frame")));
+                let aw = actual.size.width as i32;
+                let ah = actual.size.height as i32;
+                if aw > width || ah > height {
+                    st.insist_w = aw.max(width);
+                    st.insist_h = ah.max(height);
+                    ensure_backing(st);
+                    st.needs_full_display = true;
+                }
             }
         }
         /*
@@ -867,7 +902,13 @@ fn ensure_backing(st: &mut WindowState) -> bool {
 
     let w = (st.frame.size.width as i32).max(1);
     let h = (st.frame.size.height as i32).max(1);
-    if !st.pixels.is_null() && st.buffer_w == w && st.buffer_h == h {
+    // The bitmap is the larger of the two sizes in each direction, so a window the application
+    // refuses to shrink still has somewhere to draw all of itself.
+    let dw = w.max(st.insist_w);
+    let dh = h.max(st.insist_h);
+    if !st.pixels.is_null() && st.buffer_w == w && st.buffer_h == h && st.draw_w == dw
+        && st.draw_h == dh
+    {
         return true;
     }
     let had_backing = !st.pixels.is_null();
@@ -894,8 +935,8 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     if shm.is_null() {
         return false;
     }
-    let stride = w * 4;
-    let size = (stride as usize) * (h as usize);
+    let stride = dw * 4;
+    let size = (stride as usize) * (dh as usize);
 
     // A PLAIN FILE, not shm_open: the compositor receives the DESCRIPTOR and mmaps that, so where
     // the file lives never travels with it and the guest needs no working /dev/shm.
@@ -941,6 +982,10 @@ fn ensure_backing(st: &mut WindowState) -> bool {
             return false;
         }
         let format = wl::cider_wl_shm_format_xrgb8888();
+        // OFFSET ZERO AND THE DRAWING STRIDE. Zero is the first row of the bitmap, which an
+        // unflipped context makes the TOP of the window, and a stride wider than the buffer takes
+        // the left of each row: between them the compositor is shown the top left corner of a
+        // window that is larger than its surface, rather than the bottom right.
         st.buffer = wl::cider_wl_shm_pool_create_buffer(pool, 0, w, h, stride, format);
         // The pool may go as soon as the buffer exists: the buffer holds its own reference to the
         // mapping, which is what makes a resize a new pool rather than a torn down surface.
@@ -956,6 +1001,14 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     st.map_len = size;
     st.buffer_w = w;
     st.buffer_h = h;
+    st.draw_w = dw;
+    st.draw_h = dh;
+    if dw != w || dh != h {
+        println!(
+            "cider-wayland-window backing=oversize number={} buffer={w}x{h} bitmap={dw}x{dh}",
+            st.number
+        );
+    }
     true
 }
 
@@ -976,6 +1029,8 @@ fn release_backing(st: &mut WindowState) {
     st.backing = None;
     st.buffer_w = 0;
     st.buffer_h = 0;
+    st.draw_w = 0;
+    st.draw_h = 0;
 }
 
 /// Hand the mapped pages to the compositor.
@@ -1095,7 +1150,9 @@ fn dump_buffer(st: &mut WindowState) {
     }
     st.last_dump = Some(now);
 
-    let (w, h) = (st.buffer_w, st.buffer_h);
+    // THE BITMAP, not the buffer: the pages are the drawing, and on a window the compositor sized
+    // smaller than its minimum the two differ.
+    let (w, h) = (st.draw_w, st.draw_h);
     let stride = (w as usize) * 4;
     let image_len = stride * (h as usize);
     if image_len == 0 || image_len > st.map_len {
@@ -1145,10 +1202,10 @@ fn dump_buffer(st: &mut WindowState) {
 /// this answers: a window whose widgets are still laid out for the size it was created with paints
 /// the top of the surface and leaves the rest cleared.
 fn bottom_row_is_clear(st: &WindowState) -> bool {
-    if st.pixels.is_null() || st.buffer_w <= 0 || st.buffer_h <= 0 {
+    if st.pixels.is_null() || st.draw_w <= 0 || st.draw_h <= 0 {
         return false;
     }
-    let width = st.buffer_w as usize;
+    let width = st.draw_w as usize;
     let total = st.map_len / 4;
     if total < width {
         return false;
@@ -1171,7 +1228,7 @@ fn report_pixels(st: &mut WindowState) {
         return;
     }
     st.reported_drawn = true;
-    let centre = words[total / 2 + (st.buffer_w as usize) / 2];
+    let centre = words[total / 2 + (st.draw_w as usize) / 2];
     // DISTINCT COLOURS, not just a changed count, because the changed count cannot see text: black
     // glyphs on a coloured fill differ from the clear value either way, so the count is identical
     // whether the string rasterised or not. A flat fill has two values in it and antialiased
@@ -1318,10 +1375,10 @@ fn cg_context_for(st: &mut WindowState) -> Object {
             objc::msg_send0(surface_cls, alloc),
             init_surface,
             st.pixels as *mut c_void,
-            st.buffer_w as usize,
-            st.buffer_h as usize,
+            st.draw_w as usize,
+            st.draw_h as usize,
             8,
-            (st.buffer_w * 4) as usize,
+            (st.draw_w * 4) as usize,
             color_space,
             BITMAP_INFO,
         );
@@ -1342,7 +1399,7 @@ fn cg_context_for(st: &mut WindowState) -> Object {
         } else {
             println!(
                 "cider-wayland-window context=ok number={} size={}x{}",
-                st.number, st.buffer_w, st.buffer_h
+                st.number, st.draw_w, st.draw_h
             );
         }
         st.context
@@ -1751,6 +1808,23 @@ extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
     if st.popup.is_null() {
         if let Some((cw, ch)) = st.configured_size {
             if frame.size.width as i32 != cw || frame.size.height as i32 != ch {
+                /*
+                 * A SIZE IT WILL NOT GIVE UP IS NOT A SIZE TO ARGUE WITH.
+                 *
+                 * Told 700x600 by a tiling compositor, the Start Center answers 700x733 and keeps
+                 * answering it: the window has a minimum and no amount of telling changes that.
+                 * The buffer stays the size the compositor asked for, because that is not ours to
+                 * choose, and the BITMAP grows to what the application insists on so that the part
+                 * shown is the top of the window rather than a view scrolled 133 rows down with no
+                 * title bar and no menu bar. Measured with CIDER_WAYLAND_TRACE_GEOMETRY:
+                 *     surface=700x600 frame=700x733 content=700x689+0+0
+                 */
+                let want_w = frame.size.width as i32;
+                let want_h = frame.size.height as i32;
+                if want_w > cw || want_h > ch {
+                    st.insist_w = want_w.max(cw);
+                    st.insist_h = want_h.max(ch);
+                }
                 st.frame.origin = frame.origin;
                 st.frame.size.width = cw as f64;
                 st.frame.size.height = ch as f64;
@@ -1759,6 +1833,10 @@ extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
                     Some(std::time::Instant::now() + std::time::Duration::from_secs(6));
                 st.last_forced_display = None;
                 st.nudged = false;
+                // REBUILD BEFORE NOTIFYING, the same order deliver_pending_configures uses: the
+                // application draws in answer to a frame change and asks for a context while it
+                // does, and the context has to be the one over the new bitmap.
+                ensure_backing(st);
                 if !st.delegate.is_null() {
                     unsafe {
                         let sel =
