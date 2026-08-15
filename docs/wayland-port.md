@@ -4039,3 +4039,28 @@ the blue button behind it is a solid blue rectangle. With it, none of that is th
 What is not done: a submenu samples the window rather than the menu it opened from, because the
 parent search skips popups, and the backdrop is taken once per present, so a window that redraws
 under an open menu leaves it holding the older picture until the menu draws again.
+
+
+## The application queue, as it stands
+
+Three applications were added to the work by the user, from a Bluesky thread and one sent directly.
+Where each one is, so the next session does not measure it again.
+
+**iA Writer, task 115: BLOCKED ON GETTING IT, and on nothing in this tree.** The download page
+distributes the Mac version through the Mac App Store only; there is no direct trial dmg or zip. A
+public trial download is allowed and a purchase is not, so there is no legitimate way to obtain it
+at present. Worth re-checking if iA ever publishes a direct trial.
+
+**Swift Publisher 5, task 116: RUNS AS FAR AS ITS TEMPLATE GALLERY.** The trial is a public download
+from cdn.belightsoft.com, a UDBZ dmg that 7z reads without mounting anything. The SwiftUI question
+that hung over this one is answered: it links no Swift runtime library at all. It loads, decodes its
+nibs, and presents its Template Gallery, then dies in the welcome nib inside the keyed unarchiver.
+
+**MoneyMoney, task 117: LOADS AND DIES IN ITS OWN CODE.** It gets through startup as far as its
+Realtime controller, which is application code rather than anything in this tree, and wants a
+debugger rather than another trace.
+
+Everything these three needed to get as far as they did was general: a missing framework, missing
+classes, missing constants, an initialiser that recursed, a URL session that could not be built, a
+window with no appearance. None of it was specific to any one of them, which is the argument for
+running unfamiliar applications in the first place.
