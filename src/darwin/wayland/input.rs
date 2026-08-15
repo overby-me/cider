@@ -202,7 +202,7 @@ static INPUT: std::sync::Mutex<InputState> = std::sync::Mutex::new(InputState {
 
 fn tracing() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *ON.get_or_init(|| std::env::var_os("CIDER_WAYLAND_TRACE_INPUT").is_some())
+    *ON.get_or_init(|| crate::env_flag!("CIDER_WAYLAND_TRACE_INPUT"))
 }
 
 /// Attach to a seat. Called once, from the registry sweep.

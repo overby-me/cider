@@ -88,6 +88,10 @@ unsafe extern "C" {
     fn cider_wayland_pool_pop(pool: *mut c_void);
 }
 
+/// When the last full pass of pump, drain and redraw ran, so a poll can be told there is nothing
+/// new without repeating it.
+static LAST_PASS: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
+
 extern "C" fn display_next_event(
     this: Object,
     _cmd: Sel,
@@ -110,6 +114,48 @@ extern "C" fn display_next_event(
      * the fetch stays outside, and the autoreleased events it returns are the residual leak
      * measured in the plan.
      */
+    /*
+     * A POLL IS NOT A WAIT, and doing a full pass of work for one is most of what a spinning
+     * application costs.
+     *
+     * Named with a backtrace at the point of the poll: LibreOffice runs
+     *     Application::Execute -> Yield -> AquaSalInstance::DoYield -> AquaSalTimer::callTimerCallback
+     *     -> Scheduler::CallbackTaskScheduling -> AquaSalInstance::AnyInput
+     * and AnyInput asks for an event with a date that has ALREADY PASSED. Measured while a file
+     * picker was open: nineteen thousand of those a second. The application is entitled to ask;
+     * what it is not entitled to is a compositor round trip, a main queue drain and a sweep of
+     * every window each time.
+     *
+     * So a poll that arrives within two milliseconds of the last real pass gets the queue as it
+     * already is. Anything that arrives in the meantime is picked up by the next pass, which is at
+     * most two milliseconds later, and a caller that actually WAITS is never rate limited.
+     */
+    let now = std::time::Instant::now();
+    let polling = if until.is_null() {
+        false
+    } else {
+        let remaining = unsafe {
+            objc::msg_send_f64_ret(until, objc::sel_registerName(cstr!("timeIntervalSinceNow")))
+        };
+        remaining <= 0.0
+    };
+    let skip_work = polling
+        && LAST_PASS
+            .lock()
+            .ok()
+            .and_then(|last| *last)
+            .is_some_and(|last| now.duration_since(last).as_micros() < 2000);
+    if skip_work {
+        let super_class = unsafe { objc::class_getSuperclass(objc::object_getClass(this)) };
+        let mut sup = ObjcSuper { receiver: this, super_class };
+        let sel = unsafe {
+            objc::sel_registerName(cstr!("nextEventMatchingMask:untilDate:inMode:dequeue:"))
+        };
+        return unsafe { objc::msg_send_super_event(&mut sup, sel, mask, until, mode, dequeue) };
+    }
+    if let Ok(mut last) = LAST_PASS.lock() {
+        *last = Some(now);
+    }
     let pool = unsafe { cider_wayland_pool_push() };
     session::pump();
     // THE APPLICATION OWN DEFERRED WORK, which nothing else here runs. See the comment on the C
@@ -118,7 +164,7 @@ extern "C" fn display_next_event(
     // A SWITCH FOR ATTRIBUTION, not a feature: with the drain off the application stops running its
     // own deferred work, which breaks it, but it answers WHOSE allocations the idle leak is in one
     // run instead of an afternoon of guessing.
-    if std::env::var_os("CIDER_WAYLAND_NO_DRAIN").is_none() {
+    if !crate::env_flag!("CIDER_WAYLAND_NO_DRAIN") {
         unsafe { cider_wayland_drain_main_queue() };
     }
     // AFTER the pump, because that is what turns compositor events into the pending state this
@@ -155,7 +201,7 @@ extern "C" fn display_next_event(
     // RETURNING IS THE INTERESTING PART, not being called. The call count alone cannot tell a
     // backend that is wedged inside this wait from one that returned and let the application block
     // somewhere else entirely, and those two have nothing in common as bugs.
-    if std::env::var_os("CIDER_WAYLAND_TRACE_EVENTS").is_some() {
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_EVENTS") {
         use std::sync::atomic::{AtomicU64, Ordering};
         static RETURNS: AtomicU64 = AtomicU64::new(0);
         let n = RETURNS.fetch_add(1, Ordering::Relaxed) + 1;
@@ -163,11 +209,56 @@ extern "C" fn display_next_event(
             println!("cider-wayland-appkit nextevent returned={n}");
         }
     }
+    /*
+     * AND IF THERE WAS NOTHING, SLEEP UNTIL THERE MIGHT BE, which is the difference between an
+     * application waiting and an application spinning.
+     *
+     * MEASURED, with the counter above: nineteen thousand one hundred and eighty nine calls a
+     * second while a file picker sat on screen doing nothing, and the guest burning 58 percent of a
+     * core. Raising the wait cap from 16 ms to 50 changed that by three percent, which is the proof
+     * that nothing here was ever waiting: -[NSApplication nextEventMatchingMask:] loops while the
+     * result is nil and the date is in the future, and cocotron NSRunLoop -runMode:beforeDate:
+     * returns at once when there is no input source to wait on. So the wait has to be here, on the
+     * one descriptor that can actually deliver something.
+     *
+     * Type 100 is the idle event NSDisplay manufactures when its queue is empty, which
+     * NSApplication turns straight back into nil, so it counts as nothing.
+     */
+    let empty = if ev.is_null() {
+        true
+    } else {
+        unsafe { objc::msg_send_i64_ret(ev, objc::sel_registerName(cstr!("type"))) == 100 }
+    };
+    if empty {
+        wait_for_something(until);
+    }
+    /* WHICH OF THE TWO THIS IS, counted rather than argued: a loop that spins because there is
+     * always an event to hand back is a different bug from one that spins because the wait does not
+     * wait, and the counts separate them in one run. */
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_SPIN") {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static EMPTY: AtomicU64 = AtomicU64::new(0);
+        static FULL: AtomicU64 = AtomicU64::new(0);
+        static LAST_TYPE: AtomicU64 = AtomicU64::new(999);
+        if empty {
+            EMPTY.fetch_add(1, Ordering::Relaxed);
+        } else {
+            let t = unsafe { objc::msg_send_i64_ret(ev, objc::sel_registerName(cstr!("type"))) };
+            LAST_TYPE.store(t as u64, Ordering::Relaxed);
+            let n = FULL.fetch_add(1, Ordering::Relaxed) + 1;
+            if n % 2000 == 0 {
+                println!(
+                    "cider-wayland-appkit spin empty={} full={n} lasttype={t}",
+                    EMPTY.load(Ordering::Relaxed)
+                );
+            }
+        }
+    }
     // WHAT IS HANDED BACK TO THE APPLICATION, which is the last point this backend can observe.
     // Anything after this belongs to the application: LibreOffice SUBCLASSES NSApplication and
     // overrides -sendEvent:, so a trace inside Cocotron proves nothing about whether the event was
     // received. Type 100 is the idle event NSDisplay manufactures and is not worth printing.
-    if !ev.is_null() && std::env::var_os("CIDER_TRACE_KEYS").is_some() {
+    if !ev.is_null() && crate::env_flag!("CIDER_TRACE_KEYS") {
         let t = unsafe { objc::msg_send_i64_ret(ev, objc::sel_registerName(cstr!("type"))) };
         if t != 100 {
             println!("cider-wayland-appkit delivered-event type={t}");
@@ -176,11 +267,129 @@ extern "C" fn display_next_event(
     ev
 }
 
+/// The frames above here, resolved with dladdr, because a spin is always about the caller.
+fn print_backtrace(why: &str) {
+    use std::os::raw::{c_char, c_int};
+    unsafe extern "C" {
+        fn backtrace(buffer: *mut c_void, size: c_int) -> c_int;
+        fn dladdr(addr: *const c_void, info: *mut DlInfo) -> c_int;
+    }
+    #[repr(C)]
+    struct DlInfo {
+        fname: *const c_char,
+        fbase: *mut c_void,
+        sname: *const c_char,
+        saddr: *mut c_void,
+    }
+    let mut frames: [*mut c_void; 24] = [std::ptr::null_mut(); 24];
+    let count = unsafe { backtrace(frames.as_mut_ptr() as *mut c_void, 24) };
+    println!("cider-wayland-appkit backtrace why={why} frames={count}");
+    for (i, frame) in frames.iter().enumerate().take(count.max(0) as usize) {
+        let mut info = DlInfo {
+            fname: std::ptr::null(),
+            fbase: std::ptr::null_mut(),
+            sname: std::ptr::null(),
+            saddr: std::ptr::null_mut(),
+        };
+        let ok = unsafe { dladdr(*frame as *const c_void, &mut info) };
+        let name = if ok != 0 && !info.sname.is_null() {
+            unsafe { std::ffi::CStr::from_ptr(info.sname) }.to_string_lossy().into_owned()
+        } else {
+            format!("{:p}", *frame)
+        };
+        println!("cider-wayland-appkit   #{i} {name}");
+    }
+}
+
+/// Sleep on the compositor socket until it has something, the deadline passes, or the cap expires.
+///
+/// The waker thread watches the same descriptor and pokes the main run loop; this is the main
+/// thread doing the same watch for itself, which is what it must do when the caller has asked for
+/// an event and there is none. Nothing is READ here -- reading is the pump's job, under the
+/// prepare_read protocol -- so a level triggered poll that returns immediately next pass is
+/// correct rather than a busy loop: the pump at the top of the next call consumes what arrived.
+fn wait_for_something(until: Object) {
+    use std::os::raw::c_int;
+    unsafe extern "C" {
+        fn poll(fds: *mut PollFd, nfds: u64, timeout: c_int) -> c_int;
+    }
+    #[repr(C)]
+    struct PollFd {
+        fd: c_int,
+        events: i16,
+        revents: i16,
+    }
+    const POLLIN: i16 = 0x0001;
+
+    let mut budget = max_event_wait();
+    if !until.is_null() {
+        let remaining = unsafe {
+            objc::msg_send_f64_ret(until, objc::sel_registerName(cstr!("timeIntervalSinceNow")))
+        };
+        if remaining <= 0.0 {
+            if crate::env_flag!("CIDER_WAYLAND_TRACE_SPIN") {
+                use std::sync::atomic::{AtomicU64, Ordering};
+                static PAST: AtomicU64 = AtomicU64::new(0);
+                let n = PAST.fetch_add(1, Ordering::Relaxed) + 1;
+                if n % 2000 == 0 {
+                    println!("cider-wayland-appkit wait=none n={n} remaining={remaining}");
+                }
+                /* AND WHO IS ASKING. A caller that passes a date already in the past is not waiting
+                 * for anything, it is polling, and the only thing that can explain a poll nineteen
+                 * thousand times a second is the loop above it. Named once, with dladdr, the same
+                 * recipe that named the hide chain. */
+                if n == 1 {
+                    print_backtrace("poll-with-no-wait");
+                }
+            }
+            return;
+        }
+        budget = budget.min(remaining);
+    }
+    let ms = (budget * 1000.0).round() as c_int;
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_SPIN") {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static N: AtomicU64 = AtomicU64::new(0);
+        let n = N.fetch_add(1, Ordering::Relaxed) + 1;
+        if n % 2000 == 0 {
+            println!("cider-wayland-appkit wait n={n} ms={ms} budget={budget}");
+        }
+    }
+    if ms <= 0 {
+        return;
+    }
+    // FLUSH BEFORE SLEEPING. Anything this pass queued is still in the outgoing buffer, and going
+    // to sleep on the answer to a request that was never sent is how a client hangs.
+    session::flush();
+    let fd = unsafe { wl::cider_wl_display_get_fd(session::display()) };
+    if fd < 0 {
+        return;
+    }
+    let mut fds = PollFd { fd, events: POLLIN, revents: 0 };
+    unsafe { poll(&mut fds as *mut PollFd, 1, ms) };
+}
+
 /// The longest this backend will let the application sleep inside one event wait, in seconds.
 ///
 /// It has to be an upper bound rather than the wait itself: NSApplication REDISPLAYS BETWEEN
 /// EVENTS, so how often the loop comes back around is how often the screen can change.
-const MAX_EVENT_WAIT: f64 = 0.016;
+const MAX_EVENT_WAIT_DEFAULT: f64 = 0.016;
+
+/// The same, overridable for a MEASUREMENT rather than for a user to tune.
+///
+/// How often the loop comes back around is how often the screen can change AND how much CPU an
+/// application burns while it waits, and those pull in opposite directions. The number that settles
+/// it is measured with CIDER_WAYLAND_EVENT_WAIT set to each candidate, not argued about.
+fn max_event_wait() -> f64 {
+    static WAIT: std::sync::OnceLock<f64> = std::sync::OnceLock::new();
+    *WAIT.get_or_init(|| {
+        std::env::var("CIDER_WAYLAND_EVENT_WAIT")
+            .ok()
+            .and_then(|v| v.parse::<f64>().ok())
+            .filter(|v| *v > 0.0 && *v < 1.0)
+            .unwrap_or(MAX_EVENT_WAIT_DEFAULT)
+    })
+}
 
 /// Bound the date NSDisplay will wait until.
 ///
@@ -205,17 +414,17 @@ fn capped_until(until: Object) -> Object {
         if !until.is_null() {
             let remaining =
                 objc::msg_send_f64_ret(until, objc::sel_registerName(cstr!("timeIntervalSinceNow")));
-            if std::env::var_os("CIDER_WAYLAND_TRACE_EVENTS").is_some() {
+            if crate::env_flag!("CIDER_WAYLAND_TRACE_EVENTS") {
                 println!("cider-wayland-appkit until remaining={remaining}");
             }
-            if remaining <= MAX_EVENT_WAIT {
+            if remaining <= max_event_wait() {
                 return until;
             }
-        } else if std::env::var_os("CIDER_WAYLAND_TRACE_EVENTS").is_some() {
+        } else if crate::env_flag!("CIDER_WAYLAND_TRACE_EVENTS") {
             println!("cider-wayland-appkit until=nil");
         }
         let sel = objc::sel_registerName(cstr!("dateWithTimeIntervalSinceNow:"));
-        let capped = objc::msg_send_f64(date_cls, sel, MAX_EVENT_WAIT);
+        let capped = objc::msg_send_f64(date_cls, sel, max_event_wait());
         if capped.is_null() { until } else { capped }
     }
 }
@@ -234,6 +443,19 @@ extern "C" fn display_new_window(_this: Object, _cmd: Sel, delegate: Object) -> 
 /// THE SIZE COMES FROM wl_output NOW, and the log line says which source it used. The constant
 /// remains as a fallback because wl_output is optional: a compositor can advertise none and still
 /// open windows, and in that case the answer really is a guess and says so.
+/// THE ANSWER IS CACHED, and that is a performance fix rather than a tidy up.
+///
+/// -[NSWindow _makeSureIsOnAScreen] asks for the screens ONCE PER VISIBLE WINDOW, and cocotron runs
+/// that sweep over every window on every fetch of every event. LibreOffice has forty odd windows,
+/// so this was allocating an NSScreen and an NSArray, and PRINTING A LINE, a couple of thousand
+/// times a second. Measured with a file picker open: the guest burned 58 percent of a core doing
+/// nothing, and the log filled with identical screens=1 lines.
+///
+/// The screen only changes when the compositor says so, so the array is built once per size and
+/// handed back retained. The line is printed when the value CHANGES, which is the only time it
+/// carries information.
+static SCREENS: std::sync::Mutex<Option<(f64, f64, usize)>> = std::sync::Mutex::new(None);
+
 extern "C" fn display_screens(_this: Object, _cmd: Sel) -> Object {
     unsafe {
         let screen_cls = objc::objc_getClass(cstr!("NSScreen"));
@@ -248,6 +470,13 @@ extern "C" fn display_screens(_this: Object, _cmd: Sel) -> Object {
             Some((w, h)) => (w, h, "wl_output"),
             None => (1024.0, 768.0, "provisional"),
         };
+        if let Ok(cache) = SCREENS.lock() {
+            if let Some((cw, ch, array)) = *cache {
+                if cw == width && ch == height && array != 0 {
+                    return array as Object;
+                }
+            }
+        }
         let frame = NsRect::new(0.0, 0.0, width, height);
         let alloc = objc::sel_registerName(cstr!("alloc"));
         let init2 = objc::sel_registerName(cstr!("initWithFrame:visibleFrame:"));
@@ -260,6 +489,12 @@ extern "C" fn display_screens(_this: Object, _cmd: Sel) -> Object {
         let with_objs = objc::sel_registerName(cstr!("arrayWithObjects:count:"));
         let one = [screen];
         let array = objc::msg_send_ptr_len(array_cls, with_objs, one.as_ptr(), 1);
+        // RETAINED, because it outlives the autorelease pool of whichever event fetch happened to
+        // build it and is handed to every later caller.
+        let array = objc::msg_send0(array, objc::sel_registerName(cstr!("retain")));
+        if let Ok(mut cache) = SCREENS.lock() {
+            *cache = Some((width, height, array as usize));
+        }
         println!(
             "cider-wayland-appkit screens=1 frame={}x{} source={source}",
             width as i32, height as i32

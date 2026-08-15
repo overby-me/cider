@@ -212,7 +212,7 @@ pub fn connect() -> bool {
         // THE SEAT, which is where input comes from. A compositor without one is not an error:
         // weston headless advertises no seat, and a window that cannot be clicked is still a
         // window. The capabilities event decides what is actually attached.
-        if globals.seat && std::env::var_os("CIDER_WAYLAND_NO_SEAT").is_none() {
+        if globals.seat && !crate::env_flag!("CIDER_WAYLAND_NO_SEAT") {
             let seat = wl::cider_wl_registry_bind_seat(
                 registry,
                 globals.bound.seat_name,
@@ -429,7 +429,7 @@ pub fn start_waker() {
 
     // A SWITCH, because this changes when the application runs its own deferred work, and that is
     // exactly the kind of change that wants a comparison run rather than an argument.
-    if std::env::var_os("CIDER_WAYLAND_NO_WAKER").is_some() {
+    if crate::env_flag!("CIDER_WAYLAND_NO_WAKER") {
         println!("cider-wayland-session waker=off reason=CIDER_WAYLAND_NO_WAKER");
         return;
     }

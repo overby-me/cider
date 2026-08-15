@@ -1,0 +1,80 @@
+--- a/AppKit/NSDisplay.m
++++ b/AppKit/NSDisplay.m
+@@ -172,10 +172,25 @@
+     }
+ 
+     if (result == nil) {
+-        result = [[[NSEvent alloc] initWithType: NSAppKitSystem
+-                                       location: NSZeroPoint
+-                                  modifierFlags: 0
+-                                         window: nil] autorelease];
++        /*
++         * NOTHING IS NOT AN EVENT, when the caller was not waiting.
++         *
++         * An empty queue used to be answered with a freshly allocated NSAppKitSystem event, which
++         * -[NSApplication nextEventMatchingMask:] turns straight back into nil. That is an
++         * allocation, an autorelease and a free for an answer that means no. It does not matter at
++         * a few hundred a second; LibreOffice asks AquaSalInstance::AnyInput NINETEEN THOUSAND
++         * times a second while a file picker is open, all of them with a date that has already
++         * passed, and then it is most of the allocator traffic in the process.
++         *
++         * A caller that ASKED TO WAIT still gets the event, because cocotron own run loop uses it
++         * as the thing that makes -[NSApplication run] come back around.
++         */
++        if ([untilDate timeIntervalSinceNow] > 0) {
++            result = [[[NSEvent alloc] initWithType: NSAppKitSystem
++                                           location: NSZeroPoint
++                                      modifierFlags: 0
++                                             window: nil] autorelease];
++        }
+     }
+ 
+     return result;
+--- a/AppKit/NSApplication.m
++++ b/AppKit/NSApplication.m
+@@ -840,15 +840,38 @@
+         NS_DURING [NSClassFromString(@"Win32RunningCopyPipe")
+                 performSelector: @selector(createRunningCopyPipe)];
+ 
+-        // This should happen before _makeSureIsOnAScreen so we don't reposition
+-        // done windows
+-        [self _checkForReleasedWindows];
++        /*
++         * THE HOUSEKEEPING IS PER PASS, AND A POLL IS NOT A PASS.
++         *
++         * These four sweep every window the application has, and two of them send a selector to
++         * each: with LibreOffice that is forty windows, and its own methods take the VCL yield
++         * mutex on the way past. That is affordable when an event loop comes round sixty times a
++         * second. It is not affordable when the application POLLS: AquaSalInstance::AnyInput asks
++         * for an event with a date already in the past, nineteen thousand times a second while a
++         * file picker is open, and the sweep then costs eight hundred thousand message sends a
++         * second to discover nothing.
++         *
++         * A poll that arrives within two milliseconds of the last sweep skips it. A caller that
++         * asked to WAIT never skips, so nothing that depends on the sweep can be starved by more
++         * than two milliseconds.
++         */
++        static NSTimeInterval lastSweep = 0.0;
++        NSTimeInterval nowInterval = [NSDate timeIntervalSinceReferenceDate];
++        BOOL polling = ([untilDate timeIntervalSinceNow] <= 0.0);
+ 
+-        [[NSApp windows]
+-                makeObjectsPerformSelector: @selector(_makeSureIsOnAScreen)];
++        if (!polling || (nowInterval - lastSweep) >= 0.002) {
++            lastSweep = nowInterval;
+ 
+-        [self _checkForAppActivation];
+-        [self _displayAllWindowsIfNeeded];
++            // This should happen before _makeSureIsOnAScreen so we don't reposition
++            // done windows
++            [self _checkForReleasedWindows];
++
++            [[NSApp windows]
++                    makeObjectsPerformSelector: @selector(_makeSureIsOnAScreen)];
++
++            [self _checkForAppActivation];
++            [self _displayAllWindowsIfNeeded];
++        }
+ 
+         nextEvent = [[_display nextEventMatchingMask: mask
+                                            untilDate: untilDate

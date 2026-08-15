@@ -133,7 +133,7 @@ pub fn color_with_name(name: objc::Object) -> objc::Object {
         let Ok(text) = CStr::from_ptr(raw).to_str() else {
             return std::ptr::null_mut();
         };
-        if std::env::var_os("CIDER_WAYLAND_COLOR_PROBE").is_some() {
+        if crate::env_flag!("CIDER_WAYLAND_COLOR_PROBE") {
             if let Some((r, g, b)) = probe_recipe(text) {
                 let sel = objc::sel_registerName(cstr!("colorWithDeviceRed:green:blue:alpha:"));
                 let c = objc::msg_send_f64_4(color_cls, sel, r, g, b, 1.0);
@@ -145,7 +145,7 @@ pub fn color_with_name(name: objc::Object) -> objc::Object {
         // is invisible to the nil trace below and is exactly what a foreign looking control is: the
         // Options tree drew its selected row grey, and the only way to learn which of a dozen
         // plausible names it had asked for was to watch the application ask.
-        if std::env::var_os("CIDER_WAYLAND_TRACE_COLORS").is_some() {
+        if crate::env_flag!("CIDER_WAYLAND_TRACE_COLORS") {
             println!("cider-wayland-color asked={text}");
         }
         match recipe_for(text) {
@@ -154,7 +154,7 @@ pub fn color_with_name(name: objc::Object) -> objc::Object {
                 // draws with no colour, and the result is a control that renders as nothing at
                 // all. That is not distinguishable from a layout bug by looking, so the names are
                 // printed instead of guessed at.
-                if std::env::var_os("CIDER_WAYLAND_TRACE_COLORS").is_some() {
+                if crate::env_flag!("CIDER_WAYLAND_TRACE_COLORS") {
                     println!("cider-wayland-color name={text} result=nil");
                 }
                 std::ptr::null_mut()

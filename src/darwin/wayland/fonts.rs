@@ -163,7 +163,7 @@ fn substituted_family_name(name: &CStr) -> Option<std::ffi::CString> {
 
     if let Ok(map) = cache.lock() {
         if let Some(hit) = map.get(&key) {
-            if std::env::var_os("CIDER_TRACE_FONTS").is_some() {
+            if crate::env_flag!("CIDER_TRACE_FONTS") {
                 println!("cider-wayland-font substitute=hit family={}", name.to_string_lossy());
             }
             return hit.clone();
@@ -185,7 +185,7 @@ fn substituted_family_name(name: &CStr) -> Option<std::ffi::CString> {
         }
     };
 
-    if std::env::var_os("CIDER_TRACE_FONTS").is_some() {
+    if crate::env_flag!("CIDER_TRACE_FONTS") {
         println!(
             "cider-wayland-font substitute=miss family={} answer={}",
             name.to_string_lossy(),

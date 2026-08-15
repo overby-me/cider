@@ -249,7 +249,7 @@ extern "C" fn on_toplevel_configure(
      * re-entering AppKit is exactly what is supposed to happen.
      */
     st.pending_size = Some((width, height));
-    if std::env::var_os("CIDER_WAYLAND_TRACE_RESIZE").is_some() {
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_RESIZE") {
         println!("cider-wayland-window configured number={} size={width}x{height}", st.number);
     }
 }
@@ -259,6 +259,30 @@ extern "C" fn on_toplevel_configure(
 /// Called once per turn of the event pump. Everything here is what -on_toplevel_configure
 /// deliberately does not do: change the frame AppKit sees, and tell AppKit it changed.
 pub fn deliver_pending_configures() {
+    /*
+     * THE FAST PATH IS THE COMMON ONE, and it used to allocate.
+     *
+     * This runs on EVERY fetch of EVERY event, which under a modal loop is sixty times a second
+     * forever, and almost every one of those passes has nothing to do: no compositor resize
+     * waiting, no forced redraw due. It still cloned the window list, which is a heap allocation
+     * per pass, and read the clock once per WINDOW, and LibreOffice has forty of them. Both showed
+     * in the profile of an idle file picker: malloc and clock_gettime near the top, under
+     * deliver_pending_configures.
+     *
+     * So the list is scanned under the lock first, allocating nothing, and the work only starts if
+     * some window actually has some.
+     */
+    let anything = match WINDOWS.lock() {
+        Ok(list) => list.iter().any(|&p| {
+            unsafe { (p as *mut WindowState).as_ref() }.is_some_and(|st| {
+                st.pending_size.is_some() || st.needs_full_display || st.redraw_until.is_some()
+            })
+        }),
+        Err(_) => return,
+    };
+    if !anything {
+        return;
+    }
     let pending: Vec<usize> = match WINDOWS.lock() {
         Ok(list) => list.clone(),
         Err(_) => return,
@@ -370,7 +394,7 @@ pub fn deliver_pending_configures() {
                  * forced display and the frame on screen never changed once.
                  */
                 present(st);
-                if std::env::var_os("CIDER_WAYLAND_TRACE_DISPLAY").is_some() {
+                if crate::env_flag!("CIDER_WAYLAND_TRACE_DISPLAY") {
                     println!(
                         "cider-wayland-window display-forced number={number} content={}",
                         if content.is_null() { "nil" } else { "yes" }
@@ -455,7 +479,7 @@ pub fn deliver_pending_configures() {
          * looks like a clipped dialog and not like a geometry bug, so the two rects are worth having
          * side by side rather than inferred from a screenshot.
          */
-        if has_delegate && std::env::var_os("CIDER_WAYLAND_TRACE_GEOMETRY").is_some() {
+        if has_delegate && crate::env_flag!("CIDER_WAYLAND_TRACE_GEOMETRY") {
             // THE DELEGATE IS THE NSWindow. st.owner is our own platform window, which answers the
             // sixteen selectors AppKit sends a backend window and NOT -contentView; asking it
             // raises inside our own code and the application reports Unspecified Application Error.
@@ -566,7 +590,7 @@ extern "C" fn on_popup_configure(
     width: i32,
     height: i32,
 ) {
-    if std::env::var_os("CIDER_WAYLAND_TRACE_RESIZE").is_some() {
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_RESIZE") {
         println!("cider-wayland-window popup-configure x={x} y={y} size={width}x{height}");
     }
 }
@@ -1190,7 +1214,7 @@ fn present(st: &mut WindowState) {
              * A dropdown list that is presented and still blank is OUR bug; one that is never
              * presented is the application not opening it, and those want opposite work.
              */
-            if std::env::var_os("CIDER_WAYLAND_TRACE_DISPLAY").is_some() {
+            if crate::env_flag!("CIDER_WAYLAND_TRACE_DISPLAY") {
                 println!(
                     "cider-wayland-window skip=allclear number={} size={}x{} t={:.2}",
                     st.number, st.buffer_w, st.buffer_h, elapsed()
@@ -1239,7 +1263,7 @@ fn present(st: &mut WindowState) {
 /// NEGATIVE HEIGHT means top-down, which is the direction the buffer is already in; without it
 /// every dump comes out mirrored and the mistake looks like a rendering bug.
 fn dump_buffer(st: &mut WindowState) {
-    let Some(dir) = std::env::var_os("CIDER_WAYLAND_DUMP") else {
+    let Some(dir) = crate::env_value!("CIDER_WAYLAND_DUMP") else {
         return;
     };
     if st.pixels.is_null() || st.map_len == 0 {
@@ -1367,7 +1391,7 @@ fn report_pixels(st: &mut WindowState) {
 /// separates them in one run, and if the picture CHANGES when forced, everything that is wrong on
 /// screen right now is a stale frame rather than a drawing bug.
 pub fn force_redraw_if_due() {
-    let Some(period) = std::env::var_os("CIDER_WAYLAND_FORCE_REDRAW") else {
+    let Some(period) = crate::env_value!("CIDER_WAYLAND_FORCE_REDRAW") else {
         return;
     };
     let Some(ms) = period.to_string_lossy().parse::<u64>().ok() else {
@@ -1637,7 +1661,7 @@ unsafe fn fill_positioner(
      * eats the next click, and the arithmetic has four inputs that are easy to mix up: where the
      * application asked, how big it is, and where the parent thinks its left and top edges are.
      * Printing the result next to the request is the only way to see which of them is wrong. */
-    if std::env::var_os("CIDER_WAYLAND_TRACE_DISPLAY").is_some() {
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_DISPLAY") {
         println!(
             "cider-wayland-window popup={why} number={} asked={},{} size={w}x{h} parent-left={parent_left} parent-top={parent_top} local={local_x},{local_y}",
             st.number,
@@ -1885,7 +1909,7 @@ fn apply_pending_title(st: &mut WindowState) {
 extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
     let Some(st) = (unsafe { state(this) }) else { return };
     let resized = frame.size.width != st.frame.size.width || frame.size.height != st.frame.size.height;
-    if resized && std::env::var_os("CIDER_WAYLAND_TRACE_GEOMETRY").is_some() {
+    if resized && crate::env_flag!("CIDER_WAYLAND_TRACE_GEOMETRY") {
         // A SIZE THE COMPOSITOR DID NOT ASK FOR is worth seeing: on a tiling compositor a buffer
         // larger than the configured size is CROPPED, and the part that goes missing is the bottom
         // of the window, which is where a dialog keeps its buttons.
@@ -1963,7 +1987,7 @@ extern "C" fn set_frame(this: Object, _cmd: Sel, frame: NsRect) {
         /* EVERY setFrame ON A POPUP, moved or not. Whether the application repositions a dropdown
          * before showing it is the whole question here, and a trace that fires only on a move
          * cannot tell "it never moved" from "the move never reached us". */
-        if std::env::var_os("CIDER_WAYLAND_TRACE_DISPLAY").is_some() {
+        if crate::env_flag!("CIDER_WAYLAND_TRACE_DISPLAY") {
             println!(
                 "cider-wayland-window popup=setframe number={} origin={},{} size={}x{} moved={moved} resized={resized}",
                 st.number,
@@ -2121,7 +2145,7 @@ extern "C" fn hide_window(this: Object, _cmd: Sel) {
         /* AND WHO ASKED. A window that hides itself two seconds after it appears is being ordered
          * out by somebody, and the name and the number cannot say who. The same recipe that named
          * the print crash: the frames, resolved with dladdr, no debugger involved. */
-        if std::env::var_os("CIDER_TRACE_HIDE").is_some() {
+        if crate::env_flag!("CIDER_TRACE_HIDE") {
             unsafe {
                 unsafe extern "C" {
                     fn backtrace(buffer: *mut *mut c_void, size: c_int) -> c_int;

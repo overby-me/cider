@@ -173,6 +173,34 @@ pub struct ObjcSuper {
     pub super_class: Class,
 }
 
+/// An environment switch, read ONCE.
+///
+/// GETENV IS NOT FREE AND THIS BACKEND ASKS IT ON EVERY EVENT. Every trace in the port is gated on
+/// a variable, the gates sit in the pump and in the draw path, and getenv walks the whole
+/// environment under a lock. Measured with perf while a file picker was open: 21.7 percent of ALL
+/// samples were inside __findenv_locked, 12.9 of them from display_next_event alone, which is more
+/// than the application spent drawing.
+///
+/// The variables are set before the process starts and never change, so one read per site is
+/// enough, and a OnceLock keeps the answer next to the code that asks.
+#[macro_export]
+macro_rules! env_flag {
+    ($name:literal) => {{
+        static FLAG: ::std::sync::OnceLock<bool> = ::std::sync::OnceLock::new();
+        *FLAG.get_or_init(|| ::std::env::var_os($name).is_some())
+    }};
+}
+
+/// The same, for a switch whose VALUE matters rather than its presence.
+#[macro_export]
+macro_rules! env_value {
+    ($name:literal) => {{
+        static VALUE: ::std::sync::OnceLock<Option<::std::ffi::OsString>> =
+            ::std::sync::OnceLock::new();
+        VALUE.get_or_init(|| ::std::env::var_os($name)).as_ref()
+    }};
+}
+
 /// A NUL terminated literal, since every runtime call takes a C string and Rust literals are not.
 #[macro_export]
 macro_rules! cstr {
