@@ -1,0 +1,26 @@
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -225,15 +225,19 @@
+  * full LibreOffice menu bar, File through Help, inside a 419x165 Save Document dialog. No dialog on
+  * macOS has ever looked like that.
+  *
+- * Resizable is the distinction that holds: a document window is resizable and a dialog is not, which
+- * is the same signal the Wayland backend uses to decide that a window is a dialog and should float
+- * over its parent rather than sit beside it.
++ * THE MINIMISE BUTTON IS THE DISTINCTION THAT HOLDS, and resizable was too narrow. It caught the
++ * save prompt, which is titled and closable and nothing more, and missed the Options window, which
++ * is titled, closable and RESIZABLE and got a full menu bar of its own drawn across the top of a
++ * preferences dialog. No dialog on macOS has a minimise button, whatever else it has, and a
++ * document window has all four bits. This is the same signal the Wayland backend uses to decide
++ * that a window is a dialog and should float over its parent rather than sit beside it, and the
++ * two have to agree or a window gets a menu bar in one place and dialog placement in the other.
+  */
+ + (BOOL) hasMainMenuForStyleMask: (NSWindowStyleMask) styleMask {
+     if ((styleMask & NSTitledWindowMask) == 0) {
+         return NO;
+     }
+-    return (styleMask & NSResizableWindowMask) != 0;
++    return (styleMask & NSMiniaturizableWindowMask) != 0;
+ }
+ 
+ /* This method is Cococtron specific and can be override by subclasses, do not

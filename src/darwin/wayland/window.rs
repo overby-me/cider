@@ -716,16 +716,22 @@ fn create_surface(st: &mut WindowState) -> bool {
                 ) != objc::NO
         };
         /*
-         * AND A TITLED WINDOW THAT CANNOT BE RESIZED IS A DIALOG, which catches the ones an
+         * AND A TITLED WINDOW WITH NO MINIMISE BUTTON IS A DIALOG, which catches the ones an
          * application builds itself rather than through NSPanel.
          *
-         * LibreOffice asks to save on close with a window of its own: style 0x3, titled and
-         * closable and NOT resizable, 419x165. A document window is 0xf. On Apple systems that
-         * window is a modal dialog over the document; here it was a second tile beside it. A window
-         * that cannot be resized is not a document, and that is exactly the distinction macOS draws.
+         * The rule used to be "cannot be resized", and that was too narrow. It caught the save
+         * prompt, style 0x3, titled and closable and nothing else. It did NOT catch the Options
+         * window, style 0xb, which is titled, closable and RESIZABLE but has no minimise button:
+         * a tiling compositor gave that one half the screen, LibreOffice would not lay its 967 wide
+         * content out into a 628 wide tile, and the right third of the dialog was simply off the
+         * edge with its buttons on it.
+         *
+         * MINIATURIZABLE IS THE SIGNAL because it is the one macOS itself uses. A document window
+         * is 0xf and has all four bits; a dialog never has a minimise button, whatever else it has.
+         * Being unresizable is a special case of that, so the save prompt is still caught.
          */
-        let resizable = st.style_mask & 0x8 != 0;
-        let dialog = st.style_mask & 0x1 != 0 && !resizable;
+        let miniaturizable = st.style_mask & 0x4 != 0;
+        let dialog = st.style_mask & 0x1 != 0 && !miniaturizable;
         let titled = st.style_mask & 0x1 != 0 && st.popup.is_null() && !is_panel && !dialog;
         println!(
             "cider-wayland-window role number={} style={:#x} panel={} dialog={} titled={} delegate={}",
