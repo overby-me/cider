@@ -3798,3 +3798,44 @@ Formatting, Clear Direct Formatting, Character, Paragraph, List, one rule, Inser
 Page Style, on a rounded translucent panel with a hairline border, at the pointer. The reference has
 exactly those groups. What it still lacks: a chevron rather than a triangle for a submenu, the taller
 system rows, and a drop shadow.
+
+## A SECOND APPLICATION, and the two things that stop one from loading at all
+
+2026-08-16, commit b791cade. The user asked in public which macOS applications would be worth
+running under this, and the answers became tasks: iA Writer, Swift Publisher 5 and MoneyMoney, which
+they sent directly. MoneyMoney went first because it is AppKit rather than SwiftUI.
+
+Getting it is three steps and no Apple tooling: the trial is a xar, its payload a cpio, and libarchive
+reads both. Inside is a universal binary built against the macOS 26.2 SDK whose MainMenu.nib is a
+NIBArchive, which this tree learned to read the day before.
+
+TWENTY SYMBOLS were unresolved by scripts/macho-undefined.py, which is a short list for an
+application of this size, and dyld named them one at a time. Strings mostly: print keys, popover
+close reasons, the text content types a password manager fills, the action dictionary keys of an
+embedded web view, the TLS properties of a stream. Two were CLASSES, NSDraggingSession and
+NSStatusBarButton, and a missing class is a link error rather than a message that goes nowhere: the
+process cannot start at all.
+
+ONE OF THEM TEACHES SOMETHING GENERAL. NSCalendarDayChangedNotification is declared in Foundation and
+defining it there changed nothing, because dyld said where it wanted it:
+
+    Expected in: /System/Library/Frameworks/CoreFoundation.framework
+
+A two level namespace import names the library. The header is not the authority; the import record is.
+
+AND THE CONTAINER HAD NO TIME ZONES, which is a fault in this port rather than in the application.
+The prefix links /usr/share/zoneinfo at /Volumes/SystemRoot/usr/share/zoneinfo, which is the host
+path on Debian and Fedora and does not exist on NixOS. The cost is not a wrong clock: CFDateFormatter
+puts the zone into a dictionary, a dictionary refuses nil, and the throw is fatal. The message says
+Cannot set nil objects nor nil keys and nothing about time.
+
+The instrument that found it stays: a nil insert now names the key before it throws.
+
+    CIDER_DICT_NIL object=(nil) key=__NSCFConstantString keytext=kCFDateFormatterTimeZoneKey
+
+The packaging points the link at the tzdata the package already depends on. Proved by making that
+link by hand in the runtime tree: the time zone nil disappears. The packaged form has not been
+rebuilt, since that is the endpoint build.
+
+WHERE IT STANDS: MoneyMoney loads and dies during startup on another nil under the key dateFormat.
+Not a window yet, and every step of the way is above rather than summarised.
