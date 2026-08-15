@@ -426,6 +426,10 @@ unsafe extern "C" {
     ) -> *mut XdgPopup;
     pub fn cider_xdg_popup_add_listener(popup: *mut XdgPopup, l: *const XdgPopupListener, data: *mut c_void) -> c_int;
     pub fn cider_xdg_popup_destroy(popup: *mut XdgPopup);
+    /// Role first, then the xdg_surface, then the wl_surface. See the shim for why this exists.
+    pub fn cider_xdg_toplevel_destroy(toplevel: *mut XdgToplevel);
+    pub fn cider_xdg_surface_destroy(surface: *mut XdgSurface);
+    pub fn cider_wl_surface_destroy(surface: *mut WlSurface);
     /// Whether this compositor speaks xdg_shell 3 or later, which is where reposition arrived.
     /// Asking an older one is a protocol error and takes the connection down with it.
     pub fn cider_xdg_popup_can_reposition(popup: *mut XdgPopup) -> c_int;

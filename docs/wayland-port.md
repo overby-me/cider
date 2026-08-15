@@ -3182,3 +3182,30 @@ place. Neither is a fix and neither is presented as one.
 
 Regressions checked after both: document window byte identical, startup 1.52 s, the File menu opens,
 the save panel still writes its file (9703 bytes), zero unrecognized selectors.
+
+## AND THAT IS THE FIX: HIDE DESTROYS THE ROLE, SHOW BUILDS IT AGAIN
+
+The previous entry says what the answer has to be, and it is. Hiding a window no longer attaches a
+null buffer. It destroys the role objects in the order the protocol requires -- the xdg_toplevel or
+xdg_popup first, then the xdg_surface, then the wl_surface -- and drops the backing. Showing it
+again finds no surface and runs create_surface, which is the same code that built it the first time
+and does the whole handshake: empty commit, wait for the configure, acknowledge, attach.
+
+    protocol errors  1 -> 0
+    screen after Insert then Image   mean 0 -> mean 0.926
+
+docs/wayland-insert-image-survives.png is the document window after that command: menu bar,
+toolbars, blue dropdowns, ruler, page, status bar, find bar, all intact. The blackout is gone.
+
+WHAT IS STILL NOT RIGHT, and it is a different bug: the picker maps and is hidden again within a
+couple of seconds, so it is not usable yet. The modal loop that spins at twenty thousand nextEvent
+calls a second is still spinning. Insert then Image no longer destroys the session, which is what
+this fixes; it does not yet insert an image.
+
+REGRESSIONS, all re-run because this changes the lifecycle of every window in the port:
+    document window      byte identical dump, startup 1.52 s
+    File menu            opens with every item, typing gives 8 words 47 characters
+    save panel           floats, takes a typed name, writes cider-typed-name.odt at 9701 bytes
+    Options dialog       floats at its natural size, whole tree, blue default button
+    resize               three configures applied, 700x600 and 1150x640 relaid out
+    zero unrecognized selectors and zero protocol errors in every one of them

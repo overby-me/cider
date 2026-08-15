@@ -947,6 +947,11 @@ fn present(st: &mut WindowState) {
     if !st.visible {
         return;
     }
+    /* A HIDDEN WINDOW HAS NO SURFACE AT ALL NOW, so showing it again means building the role from
+     * scratch, exactly as it was built the first time. */
+    if st.surface.is_null() && st.visible && !create_surface(st) {
+        return;
+    }
     if st.surface.is_null() || !st.configured || !ensure_backing(st) {
         return;
     }
@@ -1876,12 +1881,40 @@ extern "C" fn hide_window(this: Object, _cmd: Sel) {
             return;
         }
         println!("cider-wayland-window hide number={} visible={}", st.number, st.visible);
+        /*
+         * DESTROY THE ROLE, DO NOT JUST DROP THE BUFFER.
+         *
+         * Hiding used to attach a null buffer, which unmaps the surface and leaves the objects in
+         * place. The compositor treats an unmapped surface as RESET: the configure it sends when
+         * the surface comes back belongs to a new generation, our acknowledgement of it is refused,
+         * and the connection dies with
+         *     xdg_wm_base error 4, wrong configure serial
+         * taking every surface with it. That is the black screen behind Insert then Image, and the
+         * wire log in the plan has the whole nine line sequence.
+         *
+         * Real clients hide a toplevel by destroying its role objects and building new ones when it
+         * returns, which is what create_surface does from scratch. Order matters and is the
+         * protocol: role first, then the xdg_surface, then the wl_surface.
+         */
         unsafe {
+            if !st.popup.is_null() {
+                wl::cider_xdg_popup_destroy(st.popup);
+                st.popup = std::ptr::null_mut();
+            }
+            if !st.toplevel.is_null() {
+                wl::cider_xdg_toplevel_destroy(st.toplevel);
+                st.toplevel = std::ptr::null_mut();
+            }
+            if !st.xdg.is_null() {
+                wl::cider_xdg_surface_destroy(st.xdg);
+                st.xdg = std::ptr::null_mut();
+            }
             if !st.surface.is_null() {
-                wl::cider_wl_surface_attach(st.surface, std::ptr::null_mut(), 0, 0);
-                wl::cider_wl_surface_commit(st.surface);
+                wl::cider_wl_surface_destroy(st.surface);
+                st.surface = std::ptr::null_mut();
             }
         }
+        release_backing(st);
         st.mapped = false;
         st.visible = false;
         /*

@@ -276,6 +276,19 @@ int cider_xdg_popup_add_listener(struct xdg_popup *popup, const struct xdg_popup
 
 void cider_xdg_popup_destroy(struct xdg_popup *popup) { xdg_popup_destroy(popup); }
 
+// TEARING A WINDOW DOWN, IN THE ORDER THE PROTOCOL REQUIRES: the role object first, then the
+// xdg_surface, then the wl_surface. Destroying an xdg_surface while its toplevel still exists is a
+// protocol error in its own right.
+//
+// This exists because hiding a toplevel by attaching a null buffer does NOT work: the surface is
+// reset by the compositor and the configure that follows belongs to a new generation, so the next
+// acknowledgement is refused and the connection dies. See the plan, wrong configure serial.
+void cider_xdg_toplevel_destroy(struct xdg_toplevel *toplevel) { xdg_toplevel_destroy(toplevel); }
+
+void cider_xdg_surface_destroy(struct xdg_surface *surface) { xdg_surface_destroy(surface); }
+
+void cider_wl_surface_destroy(struct wl_surface *surface) { wl_surface_destroy(surface); }
+
 // A POPUP POSITION IS FIXED WHEN THE POPUP IS MADE, and applications do not work that way.
 // LibreOffice builds its dropdown list windows at startup, parks them wherever, and MOVES them just
 // before showing one, so a list made once and never repositioned appears where its window happened
