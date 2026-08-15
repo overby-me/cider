@@ -79,10 +79,6 @@ changed by exporting `CIDERPREFIX`. A prefix is created and initialized on first
 Prefixes use `overlayfs`, so a prefix cannot live on NFS or eCryptfs. The default location will
 not work with an encrypted home directory.
 
-## Known issues
-
-**A full build can be very large.** Use `.#cider-min` on a constrained machine.
-
 ## Development
 
 Where things live:
