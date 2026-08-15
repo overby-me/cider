@@ -3602,3 +3602,27 @@ another opened as cider-open-me.odt by typing its name in the list.
 STILL NOT MACOS: these are windows with traffic lights, not sheets attached to the document. There
 is no sidebar, no Where popup, no preview and no search field. A selected row is drawn with a dotted
 focus rectangle around it, which is a Windows habit.
+
+## THE MENU BAR STAYS IN THE WINDOW, and that is a decision rather than a limitation
+
+2026-08-15. Built and reverted the same day: 0c979445 added the wlr layer shell, 229df081 moved the
+menu bar onto a strip anchored to the top of the screen, and a2981ba5 took both out.
+
+It worked. The strip came up as a layer surface anchored top, left and right with an exclusive zone,
+the bar read LibreOffice File Edit View Insert Format Styles Table Form Tools Window Help with the
+application name bold along the top of the display, the document window below it had no menu row of
+its own, and clicking File opened the File menu under it with the Command key equivalents in place.
+A compositor without layer shell, headless weston, kept the old row inside the window.
+
+THE USER STOPPED IT, and the reason is the design one: on Linux there is no global menu bar. A strip
+along the top of the display belongs to the DESKTOP, not to an application, and an application that
+claims it is fighting whatever panel the user already runs. The menu bar is part of the window here.
+
+That is the line for the authentic axis. Matching macOS pixel for pixel stops where it would take
+over the desktop, and the in-window menu row is the answer rather than a step towards something
+else.
+
+What the two reverted commits still record, for anyone who needs a surface anchored to a screen
+edge: the shim and FFI for zwlr_layer_shell_v1, the third surface role in create_surface, the
+NSMainMenuWindowLevel signal, hasScreenMenuBar on NSDisplay, and the one place in
++[NSWindow hasMainMenuForStyleMask:] where the whole geometry follows from one answer.
