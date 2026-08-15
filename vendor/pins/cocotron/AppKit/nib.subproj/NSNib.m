@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <stdio.h>
 
 #import <AppKit/NSNib.h>
+#import "NSNIBArchiveUnarchiver.h"
 #import <AppKit/NSNibLoading.h>
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSTableCornerView.h>
@@ -190,7 +191,21 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
         NSMenu *menu;
         NSArray *topLevelObjects;
 
-        if (_flags._isKeyed) {
+        if ([_NSNIBArchiveUnarchiver isNIBArchiveData: _data]) {
+            /* THE THIRD FORMAT. Xcode 4 and everything since writes NIBArchive, and the two
+             * unarchivers above read neither of its halves. The object graph inside is the same
+             * one the keyed archive carries, so only the container is different and everything
+             * below this point is unchanged. */
+            _NSNIBArchiveUnarchiver *nibArchive;
+
+            unarchiver = nibArchive = [[[_NSNIBArchiveUnarchiver alloc]
+                    initForReadingWithData: _data] autorelease];
+            [nibArchive setDelegate: self];
+            [nibArchive setClass: [NSTableCornerView class] forClassName: @"_NSCornerView"];
+            [nibArchive setClass: [NSNibHelpConnector class] forClassName: @"NSIBHelpConnector"];
+
+            objectData = [nibArchive decodeObjectForRootKey: @"IB.objectdata"];
+        } else if (_flags._isKeyed) {
             NSKeyedUnarchiver *keyed;
             unarchiver = keyed = [[[NSKeyedUnarchiver alloc]
                     initForReadingWithData: _data] autorelease];

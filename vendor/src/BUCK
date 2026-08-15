@@ -57619,6 +57619,7 @@ cc_objects(
         "cocotron/AppKit/nib.subproj/NSIBObjectData.m",
         "cocotron/AppKit/nib.subproj/NSIBUserDefinedRuntimeAttributesConnector.m",
         "cocotron/AppKit/nib.subproj/NSMenuTemplate.m",
+        "cocotron/AppKit/nib.subproj/NSNIBArchiveUnarchiver.m",
         "cocotron/AppKit/nib.subproj/NSNib.m",
         "cocotron/AppKit/nib.subproj/NSNibAXRelationshipConnector.m",
         "cocotron/AppKit/nib.subproj/NSNibAuxiliaryActionConnector.m",
