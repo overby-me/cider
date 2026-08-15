@@ -2702,3 +2702,46 @@ in the check, because the check applied it to the same already-patched pin.
 Regenerate against a pristine pin: an older cider-src store path from before the patch existed, or
 reverse the committed patch first. And the verification has to apply the WHOLE SERIES to a pristine
 tree, which is what caught it.
+
+## ITERM2: WHAT IT WOULD TAKE, MEASURED RATHER THAN GUESSED
+
+The second north star, tried for the first time. It does not start. The interesting part is not that,
+it is knowing exactly why without discovering it one dyld error at a time.
+
+    dyld: Library not loaded: /System/Library/Frameworks/CryptoKit.framework/...
+
+scripts/macho-needs.py reads the load commands of a Mach-O and answers the whole question at once,
+which is the difference between one round trip and thirty. For iTerm2 3.6.10, x86_64 slice:
+
+    needs=89  present=63  in-bundle=10  missing=9  weak-missing=7
+
+THE NINE, and they fall into exactly two groups:
+
+    /System/Library/Frameworks/CryptoKit          not in this tree, and not in Darling either
+    /System/Library/Frameworks/QuickLookUI
+    /System/Library/Frameworks/ScreenCaptureKit
+    /System/Library/Frameworks/SwiftUI
+
+    /usr/lib/swift/libswift_Concurrency           Swift 5.5 and later
+    /usr/lib/swift/libswiftSystem                 swift-system, 5.6 and later
+    /usr/lib/swift/libswiftSystem_Foundation
+    /usr/lib/swift/libswiftUniformTypeIdentifiers
+    /usr/lib/swift/libswiftWebKit
+
+THE SECOND GROUP IS ONE PIN BUMP. vendor/pins/swift is version.txt 5.2.2, and its build.sh extracts
+the dylibs straight out of an official swift.org release package. Every missing library there
+belongs to a LATER Swift, so moving that pin forward should supply all five at once, with no new
+code. That is a tractable next step and it should be taken before anything else here.
+
+THE FIRST GROUP IS REAL WORK. SwiftUI in particular is not a stub anyone writes in an afternoon, and
+a framework that loads while exporting nothing does not help: a two level namespace binds classes
+and data at load time, so it fails at the first symbol the application really uses.
+
+AND A LOCAL TRAP WORTH KNOWING. The forty four swift dylibs in the runtime tree are 131 byte GIT LFS
+POINTER FILES here and real Mach-O only in the nix pin. Anything asking whether the file EXISTS
+reports a complete Swift runtime; dyld disagrees. macho-needs.py reads the magic for that reason and
+reported not-macho=23 before the real ones were copied in, 0 after.
+
+The version of iTerm2 is worth stating too: the nixpkgs recipe points at the stable URL with a hash
+that no longer matches what that URL serves, so the bundle here was fetched with its real hash. The
+version inside it is still 3.6.10, the same as nixpkgs claims.
