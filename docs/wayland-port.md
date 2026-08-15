@@ -3515,3 +3515,44 @@ WHAT THE REFERENCE STILL HAS AND WE DO NOT: a focused text field with a blue rin
 LibreOffice paints over it), and the system save and open panels, which on macOS are a sheet with a
 sidebar, a Where popup and no traffic lights at all, where ours is cocotron own layout with a file
 list. Those are the next two rungs of the authentic axis.
+
+## A POINTER THAT HOLDS A BUTTON, and drag selection turns out to work
+
+2026-08-15, commit fd32b11e. Drag selection had been carried as unverified for weeks. The reason was
+never the port: nothing available could express a drag.
+
+    sway IPC   builds a virtual device for the command list it is running and destroys it with the
+               list, so the press and the release reach the client with the SAME timestamp and
+               before any motion. Measured on the wire, not assumed.
+    wlrctl     has click, move and scroll. No press, no release.
+
+A gesture whose button is already gone when the first motion arrives is a mouse move, and that is
+what LibreOffice was being sent every time this was tried.
+
+scripts/cider-vptr.c is a wlr-virtual-pointer-unstable-v1 client. The device it creates lives
+exactly as long as the process, so a press, ten motions spread over real time and a release come
+from one device. Commands are one per line on stdin: abs, rel, press, release, scroll, sleep. The
+protocol glue is generated rather than committed and the recipe is in the header comment. The
+harness that drives it is run-lo-vdrag.sh.
+
+WHAT IT ANSWERED. The line was typed, the sentence measured at x 277 to 507, the drag run from 290
+to 500 at y 250:
+
+    button=0x110 pressed=true x=290 y=250 type=1 clicks=1 window=2
+    motion=2 x=311 y=250 buttons=0x1 type=6
+    ... eight more, every one with the button still down ...
+    motion=11 x=500 y=250 buttons=0x1 type=6
+    button=0x110 pressed=false x=500 y=250 type=2 clicks=1 window=2
+
+Looked at: the highlight covers the sentence from just after Dr to just before the final e, which is
+the dragged range rather than the whole line. Then typing ZZZ over it leaves DrZZZe, and the dark
+ink in that row falls from 277 to 507 down to 277 to 328. A highlight can be argued about in a
+screenshot; text that a keystroke deleted cannot, because only a selection does that.
+
+Two things this also settles. The pointer capability is withdrawn and re-advertised as the tool
+comes and goes, and the backend handles it, which the release path in input.rs was written for and
+had never been exercised. And the motion trace no longer rate limits a motion with a button held:
+ten steps were sent and four printed, which reads as dropped motion and cost a run to work out.
+
+What is still not driven: a double click, which selects a word, and drag and drop, which is a stub
+in the backend rather than a harness limitation.
