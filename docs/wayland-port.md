@@ -3483,3 +3483,35 @@ derivation, then the pin checks, then the application itself.
 
 What is NOT verified: a full nix endpoint build. pinsTree is the derivation that consumes the pin
 materialisation and it passes; .#cider was not run.
+
+## WINDOWS FLOAT NOW, which is what the reference screenshots actually show
+
+2026-08-15. The user supplied screenshots of LibreOffice on real macOS, and the largest remaining
+difference in them was not a control at all: every window and every dialog sits on a soft shadow,
+and ours were flat rectangles against the desktop.
+
+A Wayland client draws its own shadow. The surface is twenty four points bigger than the window on
+each side, the ring is painted with a falling alpha, and xdg_surface.set_window_geometry names the
+inner rectangle so that tiling, snapping and popup anchoring keep working on the WINDOW. The shadow
+is cast from a rectangle six points above the window, so more of it falls below than above.
+
+FOUR THINGS MOVE WITH THE MARGIN, and each is a bug if it does not:
+
+    the O2 surface handed to AppKit is the INNER rectangle -- a pointer into the middle of the
+      mapping with the padded stride, which is how a subrectangle of a bitmap is described
+    the corner mask rounds the WINDOW, or the shadow gets the round corners and the window keeps
+      square ones
+    the damage covers the padded surface, or the shadow never appears
+    POINTER COORDINATES ARRIVE IN SURFACE SPACE, so every one is twenty four too large in both
+      axes; without subtracting it every click lands a widget down and to the right
+
+Verified by looking, and by re-running everything the geometry could break: the application menu
+opens under its own title with the blue pill and the Command symbols, which exercises both popup
+anchoring and click coordinates; typing reaches the document; resize to 700x600 relayouts; startup
+1.5215 s; zero unrecognized selectors. CIDER_WAYLAND_NO_SHADOW turns it off, which is how before and
+after were compared.
+
+WHAT THE REFERENCE STILL HAS AND WE DO NOT: a focused text field with a blue ring (ours draws one,
+LibreOffice paints over it), and the system save and open panels, which on macOS are a sheet with a
+sidebar, a Where popup and no traffic lights at all, where ours is cocotron own layout with a file
+list. Those are the next two rungs of the authentic axis.
