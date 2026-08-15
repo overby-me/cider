@@ -25,11 +25,19 @@ Each one boots a container and runs a real program:
 | Nix, running inside the container | `scripts/checks/buck-nix-bash-check.nu` |
 | JavaScriptCore running a script | `scripts/checks/buck-jsc-check.nu` |
 | libdispatch, Security, CoreAudio, scripting bridges | `buck-{dispatch,security,audio,scripting}-check.nu` |
-| A trivial AppKit window under X11 | `scripts/checks/buck-appkit-check.nu` |
+| A trivial AppKit window on Wayland | `scripts/checks/buck-appkit-check.nu` |
+| A guest binary reaching a Wayland compositor | `scripts/checks/buck-wayland-check.nu` |
 
 Anything not in that table is unverified here. In particular Cider has **not** been shown to
 install `.pkg` files, mount Xcode disk images, or run Xcode or its toolchain. Darling documents
 those; this fork does not currently test them, so it does not claim them.
+
+The GUI backend is Wayland. The X11 one it replaced is gone, and there is no `DISPLAY` fallback: a
+window is an `xdg_surface` on a compositor, drawn into shared memory by Onyx2D. What that currently
+carries is LibreOffice, which renders, takes keyboard and mouse, resizes with the compositor, opens
+its menus and its file dialogs, and inserts a picture through one. That is driven by hand rather
+than by a check in the table above, and every step of it, with the screenshots, is in
+`docs/wayland-port.md`.
 
 ## Build
 
