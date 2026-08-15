@@ -350,12 +350,14 @@ extern "C" fn on_pointer_motion(
     };
     // MOTION IS THE ONLY POINTER EVENT WITH NO TRACE, which made a drag that selected nothing
     // impossible to tell from a drag whose motion never arrived. Rate limited because a real
-    // pointer produces hundreds of these a second.
+    // pointer produces hundreds of these a second, EXCEPT while a button is held: a drag is the
+    // case this trace exists for, it is short, and a rate limited one reads as motion that was
+    // dropped. Ten steps were sent and four were printed, which cost a run to work out.
     if tracing() {
         use std::sync::atomic::{AtomicU64, Ordering};
         static SEEN: AtomicU64 = AtomicU64::new(0);
         let n = SEEN.fetch_add(1, Ordering::Relaxed) + 1;
-        if n <= 4 || n % 50 == 0 {
+        if buttons != 0 || n <= 4 || n % 50 == 0 {
             println!(
                 "cider-wayland-input motion={n} x={px:.0} y={py:.0} buttons={buttons:#x} type={event_type}"
             );
