@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSPanel.h>
 #import <Foundation/NSURL.h>
 
+@class NSPopUpButton;
 @class NSView, NSOutlineView;
 
 enum {
@@ -56,6 +57,16 @@ enum {
      * name by TYPING one; this is built when the panel is about to run. Never built for an open
      * panel, which has no name field on any platform. */
     NSTextField *_nameField;
+
+    /* WHERE THE FILE GOES, as a popup rather than as a tree to walk. macOS opens a save panel
+     * COLLAPSED: a name, a place to put it, and a chevron for anyone who wants the whole file
+     * system. The list is still there behind the chevron. */
+    NSPopUpButton *_whereButton;
+    NSButton *_disclosureButton;
+    BOOL _expanded;
+    /* What the collapsed form needs, so a window the compositor makes taller can tell that it has
+     * room to spare rather than a band of empty grey. */
+    CGFloat _neededHeight;
 
     /* Whether the panel has already been laid out. The layout adds views, so running it twice would
      * put two hairlines and two name fields in the panel. */

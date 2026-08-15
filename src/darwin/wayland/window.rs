@@ -257,6 +257,12 @@ extern "C" fn on_toplevel_configure(
      * So the size is remembered and applied by the main loop, where nothing is mid-draw and
      * re-entering AppKit is exactly what is supposed to happen.
      */
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_GEOMETRY") {
+        println!(
+            "cider-wayland-configure number={} asked={}x{} frame={}x{}",
+            st.number, width, height, st.frame.size.width as i32, st.frame.size.height as i32
+        );
+    }
     st.pending_size = Some((width, height));
     if crate::env_flag!("CIDER_WAYLAND_TRACE_RESIZE") {
         println!("cider-wayland-window configured number={} size={width}x{height}", st.number);
@@ -1375,6 +1381,12 @@ fn ensure_backing(st: &mut WindowState) -> bool {
         && st.draw_h == dh && st.margin == shadow_margin(st)
     {
         return true;
+    }
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_GEOMETRY") {
+        println!(
+            "cider-wayland-backing number={} was={}x{} now={}x{} bitmap={}x{} insist={}x{}",
+            st.number, st.buffer_w, st.buffer_h, w, h, dw, dh, st.insist_w, st.insist_h
+        );
     }
     let had_backing = !st.pixels.is_null();
     release_backing(st);

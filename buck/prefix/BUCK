@@ -12,6 +12,7 @@ prefix_tree(
         # into /Library/Frameworks, so that is the path applications link it at. It is also a FLAT
         # bundle, with no Versions/A, which is why there is no symlink pair for it further down.
         "libexec/cider/Library/Frameworks/iTunesLibrary.framework/iTunesLibrary": "//src/darwin/frameworks:iTunesLibrary_dylib",
+        "libexec/cider/System/Library/Frameworks/Combine.framework/Versions/A/Combine": "//src/darwin/frameworks:Combine_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/bitcode_strip": "//vendor/src:bitcode_strip",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/check_dylib": "//vendor/src:check_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/checksyms": "//vendor/src:checksyms",
@@ -3818,6 +3819,8 @@ prefix_tree(
         "libexec/cider/System/Library/Frameworks/Contacts.framework/Versions/Current": "A",
         "libexec/cider/System/Library/Frameworks/ContactsUI.framework/ContactsUI": "Versions/Current/ContactsUI",
         "libexec/cider/System/Library/Frameworks/ContactsUI.framework/Versions/Current": "A",
+        "libexec/cider/System/Library/Frameworks/Combine.framework/Combine": "Versions/Current/Combine",
+        "libexec/cider/System/Library/Frameworks/Combine.framework/Versions/Current": "A",
         "libexec/cider/System/Library/Frameworks/CoreAudio.framework/CoreAudio": "Versions/Current/CoreAudio",
         "libexec/cider/System/Library/Frameworks/CoreAudio.framework/Versions/Current": "A",
         "libexec/cider/System/Library/Frameworks/CoreAudioKit.framework/CoreAudioKit": "Versions/Current/CoreAudioKit",

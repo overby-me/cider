@@ -249,6 +249,10 @@ static NSSavePanel *_newPanel = nil;
         return;
     }
     _laidOut = YES;
+    [[NSNotificationCenter defaultCenter] addObserver: self
+                                             selector: @selector(_panelDidResize:)
+                                                 name: NSWindowDidResizeNotification
+                                               object: self];
 
     NSArray *subviews = [content subviews];
     NSScrollView *list = nil;
@@ -289,17 +293,33 @@ static NSSavePanel *_newPanel = nil;
     /* HOW TALL THE PANEL HAS TO BE for all of that plus a usable list. The nib is 400 points of
      * content and an accessory view is another 150 with its rule and its margins, so a panel that
      * did not grow would show the list as a slit. */
+    /* A SAVE PANEL IS COLLAPSED UNTIL ASKED, and an OPEN panel is nothing without its list, so the
+     * list is optional for one and not for the other. */
+    BOOL showsList = ![self _wantsNameField] || _expanded;
+
     CGFloat needed = gap + buttonHeight + gap;
 
     if (_accessoryView != nil) {
         needed += 1.0 + gap + accessoryHeight + gap;
     }
     if ([self _wantsNameField]) {
-        needed += 1.0 + gap + rowHeight + gap;
+        /* The rule, then the Where row, then the Save As row. */
+        needed += 1.0 + gap + rowHeight + gap + rowHeight + gap;
     }
-    needed += minimumList + gap;
+    if (showsList) {
+        needed += minimumList + gap;
+    }
 
-    if ([content bounds].size.height < needed) {
+    /* THE PANEL IS EXACTLY AS TALL AS WHAT IS IN IT, in both directions. It used only to GROW,
+     * which was right while the list was always there; a collapsed panel that kept the nib height
+     * would be a name field with a field of empty grey under it. */
+    _neededHeight = needed;
+    if (getenv("CIDER_TRACE_PANEL") != NULL) {
+        NSLog(@"CIDER_PANEL height content=%.0f needed=%.0f window=%.0f showsList=%d expanded=%d",
+              [content bounds].size.height, needed, [self frame].size.height, (int) showsList,
+              (int) _expanded);
+    }
+    if (fabs([content bounds].size.height - needed) >= 1.0) {
         NSRect frame = [self frame];
         CGFloat grow = needed - [content bounds].size.height;
         NSScreen *screen = [self screen];
@@ -307,7 +327,7 @@ static NSSavePanel *_newPanel = nil;
         if (screen == nil) {
             screen = [NSScreen mainScreen];
         }
-        if (screen != nil) {
+        if (grow > 0.0 && screen != nil) {
             CGFloat room = [screen visibleFrame].size.height - frame.size.height - 20.0;
 
             if (grow > room) {
@@ -318,6 +338,10 @@ static NSSavePanel *_newPanel = nil;
         frame.size.height += grow;
         frame.origin.y -= grow;
         [self setFrame: frame display: NO];
+        if (getenv("CIDER_TRACE_PANEL") != NULL) {
+            NSLog(@"CIDER_PANEL resized grow=%.0f window=%.0f content=%.0f", grow,
+                  [self frame].size.height, [[self contentView] bounds].size.height);
+        }
     }
 
     CGFloat height = [content bounds].size.height;
@@ -373,6 +397,55 @@ static NSSavePanel *_newPanel = nil;
         [content addSubview: rule];
         y += 1.0 + gap;
 
+        /*
+         * WHERE THE FILE GOES, which is the row a macOS save panel has and this one did not.
+         *
+         * The reference screenshot the user sent opens COLLAPSED: Save As, then Where, then a
+         * chevron at the end of the Where row for anyone who wants the file system. Ours always
+         * showed the whole tree, which is the panel a Mac only shows after you ask for it.
+         *
+         * The chevron toggles the list rather than replacing it, so nothing that already worked is
+         * taken away: the tree is still where a file is chosen out of a directory the popup does
+         * not offer.
+         */
+        NSTextField *whereLabel = [[[NSTextField alloc]
+                initWithFrame: NSMakeRect(margin, y, labelWidth, rowHeight)] autorelease];
+
+        [whereLabel setStringValue: @"Where:"];
+        [whereLabel setEditable: NO];
+        [whereLabel setSelectable: NO];
+        [whereLabel setBordered: NO];
+        [whereLabel setDrawsBackground: NO];
+        [whereLabel setAlignment: NSRightTextAlignment];
+        [whereLabel setTextColor: [NSColor colorWithCalibratedWhite: 0.32 alpha: 1.0]];
+        [whereLabel setAutoresizingMask: NSViewMaxYMargin];
+        [content addSubview: whereLabel];
+
+        CGFloat whereLeft = margin + labelWidth + 8.0;
+        CGFloat chevronWidth = 30.0;
+
+        _whereButton = [[NSPopUpButton alloc]
+                initWithFrame: NSMakeRect(whereLeft, y,
+                                          width - whereLeft - margin - chevronWidth - 8.0,
+                                          rowHeight)
+                    pullsDown: NO];
+        [_whereButton setTarget: self];
+        [_whereButton setAction: @selector(_whereChanged:)];
+        [_whereButton setAutoresizingMask: NSViewWidthSizable | NSViewMaxYMargin];
+        [content addSubview: _whereButton];
+        [self _rebuildWhereMenu];
+
+        _disclosureButton = [[NSButton alloc]
+                initWithFrame: NSMakeRect(width - margin - chevronWidth, y, chevronWidth,
+                                          rowHeight)];
+        [_disclosureButton setBezelStyle: NSRoundedBezelStyle];
+        [_disclosureButton setTitle: _expanded ? @"^" : @"v"];
+        [_disclosureButton setTarget: self];
+        [_disclosureButton setAction: @selector(_toggleBrowser:)];
+        [_disclosureButton setAutoresizingMask: NSViewMinXMargin | NSViewMaxYMargin];
+        [content addSubview: _disclosureButton];
+        y += rowHeight + gap;
+
         NSTextField *label = [[[NSTextField alloc]
                 initWithFrame: NSMakeRect(margin, y, labelWidth, rowHeight)] autorelease];
 
@@ -419,17 +492,196 @@ static NSSavePanel *_newPanel = nil;
     /* THE LIST TAKES WHAT IS LEFT, top edge at the top margin. Everything below it has a fixed
      * height, so this is the only view whose size depends on the panel. */
     if (list != nil) {
-        NSRect frame = [list frame];
+        /* HIDDEN RATHER THAN REMOVED when the panel is collapsed. The outline view is the nib
+         * view every other method here reaches for, and taking it out of the hierarchy would make
+         * -_revealDirectory and -_selectFile answer nil instead of a path. */
+        [list setHidden: !showsList];
+        if ([list isHidden]) {
+            NSRect frame = [list frame];
 
-        frame.origin.x = margin;
-        frame.origin.y = y;
-        frame.size.width = width - margin * 2.0;
-        frame.size.height = height - y - gap;
-        if (frame.size.height < 40.0) {
-            frame.size.height = 40.0;
+            frame.origin.x = margin;
+            frame.origin.y = y;
+            frame.size.width = width - margin * 2.0;
+            frame.size.height = 1.0;
+            [list setFrame: frame];
+        } else {
+            NSRect frame = [list frame];
+
+            frame.origin.x = margin;
+            frame.origin.y = y;
+            frame.size.width = width - margin * 2.0;
+            frame.size.height = height - y - gap;
+            if (frame.size.height < 40.0) {
+                frame.size.height = 40.0;
+            }
+            [list setFrame: frame];
+            [list setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable];
         }
-        [list setFrame: frame];
-        [list setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable];
+    }
+}
+
+/*
+ * THE PLACES THE POPUP OFFERS: the directory the panel was told to open in, then the usual four.
+ * Each one is checked to exist, because a container whose home has no Desktop should not offer one,
+ * and each is offered once, so a panel opened in Documents does not list it twice.
+ */
+- (void) _rebuildWhereMenu {
+    if (_whereButton == nil) {
+        return;
+    }
+
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSMutableArray *paths = [NSMutableArray array];
+    NSString *current = [self directory];
+
+    if ([current length] > 0) {
+        [paths addObject: current];
+    }
+    for (NSString *p in [NSArray arrayWithObjects: NSHomeDirectory(),
+                                  [NSHomeDirectory() stringByAppendingPathComponent: @"Documents"],
+                                  [NSHomeDirectory() stringByAppendingPathComponent: @"Desktop"],
+                                  [NSHomeDirectory() stringByAppendingPathComponent: @"Downloads"],
+                                  nil]) {
+        BOOL isDirectory = NO;
+
+        if ([fm fileExistsAtPath: p isDirectory: &isDirectory] && isDirectory
+            && ![paths containsObject: p]) {
+            [paths addObject: p];
+        }
+    }
+
+    [_whereButton removeAllItems];
+    for (NSString *p in paths) {
+        NSString *title = [p lastPathComponent];
+
+        if ([title length] == 0 || [title isEqualToString: @"/"]) {
+            title = @"Computer";
+        }
+        [_whereButton addItemWithTitle: title];
+        [[_whereButton lastItem] setRepresentedObject: p];
+    }
+    if ([_whereButton numberOfItems] > 0) {
+        [_whereButton selectItemAtIndex: 0];
+    }
+}
+
+- (IBAction) _whereChanged: (id) sender {
+    NSString *path = [[_whereButton selectedItem] representedObject];
+
+    if ([path length] == 0) {
+        return;
+    }
+    [self setDirectory: path];
+    if (_expanded) {
+        [self _revealDirectory];
+    }
+    if (getenv("CIDER_TRACE_PANEL") != NULL) {
+        NSLog(@"CIDER_PANEL where=%@", path);
+    }
+}
+
+/*
+ * THE CHEVRON, which grows the panel by the height of the list and shrinks it back. The layout runs
+ * once and then guards itself, so this moves the views it owns rather than running it again.
+ */
+/*
+ * A PANEL THAT CANNOT BE SMALL SHOWS THE BROWSER RATHER THAN AN EMPTY BAND.
+ *
+ * A collapsed save panel is 355 points tall here and the compositor may say otherwise: sway hands
+ * this one 500x422 and CONFIGURES IT BACK every time it is asked to shrink, which is the
+ * compositor prerogative and not something a client argues with. Measured, three lines:
+ *
+ *     setframe  number=48 asked=500x355 current=500x422
+ *     backing   number=48 was=0x0       now=500x355
+ *     configure number=48 asked=500x422 frame=500x355
+ *
+ * Obeying it left 67 points of empty grey above the first row. So the surplus goes to the list: if
+ * the window ends up taller than the collapsed form needs, the browser is shown and fills it, which
+ * is both the useful thing and the only arrangement with nothing empty in it.
+ */
+- (void) _panelDidResize: (NSNotification *) note {
+    if (!_laidOut || _neededHeight <= 0.0) {
+        return;
+    }
+
+    CGFloat have = [[self contentView] bounds].size.height;
+    BOOL wantsList = (have > _neededHeight + 60.0);
+
+    if (wantsList == _expanded) {
+        return;
+    }
+    if (getenv("CIDER_TRACE_PANEL") != NULL) {
+        NSLog(@"CIDER_PANEL resize have=%.0f needed=%.0f expanding=%d", have, _neededHeight,
+              (int) wantsList);
+    }
+    _expanded = wantsList;
+    [_disclosureButton setTitle: _expanded ? @"^" : @"v"];
+    [self _placeBrowser];
+    if (_expanded) {
+        [self _revealDirectory];
+    }
+}
+
+/* Where the list goes, given whatever height the window has ended up with. */
+- (void) _placeBrowser {
+    NSView *content = [self contentView];
+    NSScrollView *list = nil;
+
+    for (NSView *view in [content subviews]) {
+        if ([view isKindOfClass: [NSScrollView class]]) {
+            list = (NSScrollView *) view;
+        }
+    }
+    if (list == nil) {
+        return;
+    }
+
+    CGFloat top = (_nameField != nil) ? NSMaxY([_nameField frame]) + 14.0 : 20.0;
+    NSRect frame = NSMakeRect(20.0, top, [content bounds].size.width - 40.0,
+                              [content bounds].size.height - top - 14.0);
+
+    if (frame.size.height < 40.0) {
+        frame.size.height = 40.0;
+    }
+    [list setHidden: !_expanded];
+    [list setFrame: frame];
+    [content setNeedsDisplay: YES];
+}
+
+- (IBAction) _toggleBrowser: (id) sender {
+    NSView *content = [self contentView];
+    NSScrollView *list = nil;
+
+    for (NSView *view in [content subviews]) {
+        if ([view isKindOfClass: [NSScrollView class]]) {
+            list = (NSScrollView *) view;
+        }
+    }
+
+    _expanded = !_expanded;
+    [_disclosureButton setTitle: _expanded ? @"^" : @"v"];
+
+    /* THE VIEWS ARE MOVED RATHER THAN LAID OUT AGAIN. -_ensurePanelLayout ADDS the hairlines and
+     * the rows, and it guards itself against running twice for exactly that reason: calling it
+     * again here would leave a second rule under the accessory view on every toggle. Everything
+     * below the list has a fixed height and is pinned to the bottom, so only the window and the
+     * list itself have to change. */
+    NSRect frame = [self frame];
+    CGFloat delta = 240.0;
+
+    if (_expanded) {
+        frame.size.height += delta;
+        frame.origin.y -= delta;
+    } else {
+        frame.size.height -= delta;
+        frame.origin.y += delta;
+    }
+    [self setFrame: frame display: YES];
+
+    (void) list;
+    [self _placeBrowser];
+    if (_expanded) {
+        [self _revealDirectory];
     }
 }
 

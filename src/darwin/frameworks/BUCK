@@ -16976,3 +16976,57 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END hand written: iTunesLibrary
+
+
+# BEGIN hand written: Combine
+# NOT generated from the reference build: it has no Combine either. See
+# src/darwin/frameworks/Combine/src/Combine.m for why an empty framework is worth having.
+# buck-registry: src/frameworks/Combine/Combine = Combine_dylib
+
+cc_objects(
+    name = "Combine_obj",
+    srcs = [
+        "Combine/src/Combine.m",
+    ],
+    compiler_flags = [
+        "-DCombine_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_Security",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_UniformTypeIdentifiers",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "Combine_dylib",
+    dylib_name = "Combine",
+    install_name = "/System/Library/Frameworks/Combine.framework/Versions/A/Combine",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        ":Combine_obj",
+    ],
+    siblings = [
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END hand written: Combine
