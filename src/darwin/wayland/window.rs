@@ -1100,6 +1100,177 @@ fn paint_shadow(st: &mut WindowState) {
     }
 }
 
+/// How far the backdrop under a menu is blurred. What matters is not the number but the effect:
+/// the colour of what is behind still comes through, and its text stops being readable.
+const BACKDROP_BLUR_RADIUS: i32 = 12;
+
+/// PUT A BLURRED COPY OF WHAT IS BEHIND A MENU UNDERNEATH IT, which is the last thing between these
+/// panels and the ones in the reference screenshots.
+///
+/// A menu here is translucent and the compositor blends it over whatever is below, so the toolbar
+/// and the document text behind it arrive SHARP and readable through the panel. On macOS the same
+/// panel sits on a blurred backdrop: the colour of what is behind shows, the detail does not.
+///
+/// Wayland has no way to ask for what is behind a surface, and it never will: a client cannot read
+/// the compositor output. But a menu belongs to a window this process drew itself, and those pixels
+/// are right here, so the backdrop is taken from the PARENT WINDOW BUFFER rather than the screen.
+/// A menu that overhangs its parent samples the parent edge outwards, which is what a blur of that
+/// region would look like anyway.
+///
+/// The compositing is done at present time, after the application has drawn and before the corners
+/// are punched out, and it runs INSIDE THE GEOMETRY RECTANGLE ONLY. The shadow ring outside it must
+/// stay translucent, because it falls on the real desktop rather than on the parent window, and a
+/// pixel the application left fully transparent is left alone so the rounded silhouette survives.
+fn blur_backdrop(st: &mut WindowState) {
+    if st.pixels.is_null() || st.popup.is_null() || !wants_alpha(st) {
+        return;
+    }
+    if crate::env_flag!("CIDER_WAYLAND_NO_VIBRANCY") {
+        return;
+    }
+    let w = st.draw_w;
+    let h = st.draw_h;
+    if w <= 0 || h <= 0 {
+        return;
+    }
+
+    // The parent is the window this menu was anchored to: the most recent mapped toplevel, which is
+    // the same rule fill_positioner uses to place it.
+    let me = st as *const WindowState as usize;
+    let parent = {
+        let Ok(list) = WINDOWS.lock() else { return };
+        let mut found: Option<(usize, NsRect, i32, i32, i32, usize)> = None;
+        for &p in list.iter().rev() {
+            if p == me {
+                continue;
+            }
+            let Some(other) = (unsafe { (p as *const WindowState).as_ref() }) else { continue };
+            if other.mapped && other.popup.is_null() && !other.pixels.is_null() && other.draw_w > 0 {
+                found = Some((
+                    other.pixels as usize,
+                    other.frame,
+                    other.draw_w,
+                    other.draw_h,
+                    other.margin,
+                    other.map_len,
+                ));
+                break;
+            }
+        }
+        found
+    };
+    let Some((src_ptr, pframe, pw, ph, pmargin, pmap_len)) = parent else { return };
+
+    let pstride = (pw + pmargin * 2) as usize;
+    if pmap_len / 4 < pstride * ((ph + pmargin * 2) as usize) {
+        return;
+    }
+    let src = unsafe { std::slice::from_raw_parts(src_ptr as *const u32, pmap_len / 4) };
+
+    // AppKit measures from the bottom left and the buffers from the top left, so the vertical
+    // offset goes through the TOP edge of each frame, which is the same conversion the positioner
+    // makes when the popup is placed.
+    let off_x = (st.frame.origin.x - pframe.origin.x).round() as i32;
+    let off_y = ((pframe.origin.y + pframe.size.height)
+        - (st.frame.origin.y + st.frame.size.height))
+        .round() as i32;
+
+    let n = (w as usize) * (h as usize);
+    let mut chan: [Vec<u32>; 3] = [vec![0u32; n], vec![0u32; n], vec![0u32; n]];
+    for y in 0..h {
+        let sy = (off_y + y).clamp(0, ph - 1) + pmargin;
+        for x in 0..w {
+            let sx = (off_x + x).clamp(0, pw - 1) + pmargin;
+            let px = src[(sy as usize) * pstride + (sx as usize)];
+            let i = (y as usize) * (w as usize) + (x as usize);
+            chan[0][i] = (px >> 16) & 0xff;
+            chan[1][i] = (px >> 8) & 0xff;
+            chan[2][i] = px & 0xff;
+        }
+    }
+
+    // Three box blurs are a Gaussian to the eye and each one is a running sum, so the cost does not
+    // grow with the radius: about a millisecond for a menu this size.
+    for c in chan.iter_mut() {
+        for _ in 0..3 {
+            box_blur(c, w as usize, h as usize, BACKDROP_BLUR_RADIUS as usize);
+        }
+    }
+
+    let margin = st.margin as usize;
+    let stride = (w + st.margin * 2) as usize;
+    let total = st.map_len / 4;
+    if total < stride * ((h + st.margin * 2) as usize) {
+        return;
+    }
+    let words = unsafe { std::slice::from_raw_parts_mut(st.pixels as *mut u32, total) };
+    for y in 0..h {
+        for x in 0..w {
+            let idx = ((y as usize) + margin) * stride + (x as usize) + margin;
+            let pixel = words[idx];
+            let a = (pixel >> 24) & 0xff;
+            // Nothing to do for a pixel that is already solid, and NOTHING TO DO for one the
+            // application left empty: that is a corner, and filling it would square the menu off.
+            if a == 0 || a == 255 {
+                continue;
+            }
+            let i = (y as usize) * (w as usize) + (x as usize);
+            let inv = 255 - a;
+            // The buffer is premultiplied, so the backdrop is added under the drawn pixel by
+            // scaling it with the alpha that is left over.
+            let r = ((pixel >> 16) & 0xff) + chan[0][i] * inv / 255;
+            let g = ((pixel >> 8) & 0xff) + chan[1][i] * inv / 255;
+            let b = (pixel & 0xff) + chan[2][i] * inv / 255;
+            words[idx] = 0xff00_0000 | (r.min(255) << 16) | (g.min(255) << 8) | b.min(255);
+        }
+    }
+}
+
+/// One box blur pass over a single channel, in place, with the edges extended.
+fn box_blur(v: &mut [u32], w: usize, h: usize, r: usize) {
+    if w == 0 || h == 0 || r == 0 {
+        return;
+    }
+    let window = (2 * r + 1) as u32;
+    let mut row = vec![0u32; w];
+    for y in 0..h {
+        let base = y * w;
+        row[..w].copy_from_slice(&v[base..base + w]);
+        let mut sum: u32 = row[0] * (r as u32 + 1);
+        for x in 1..=r.min(w - 1) {
+            sum += row[x];
+        }
+        if w <= r {
+            sum += row[w - 1] * (r + 1 - w) as u32;
+        }
+        for x in 0..w {
+            v[base + x] = sum / window;
+            let add = row[(x + r + 1).min(w - 1)];
+            let sub = row[x.saturating_sub(r)];
+            sum = sum + add - sub;
+        }
+    }
+    let mut col = vec![0u32; h];
+    for x in 0..w {
+        for y in 0..h {
+            col[y] = v[y * w + x];
+        }
+        let mut sum: u32 = col[0] * (r as u32 + 1);
+        for y in 1..=r.min(h - 1) {
+            sum += col[y];
+        }
+        if h <= r {
+            sum += col[h - 1] * (r + 1 - h) as u32;
+        }
+        for y in 0..h {
+            v[y * w + x] = sum / window;
+            let add = col[(y + r + 1).min(h - 1)];
+            let sub = col[y.saturating_sub(r)];
+            sum = sum + add - sub;
+        }
+    }
+}
+
 /// The radius macOS rounds a window and a menu with.
 const CORNER_RADIUS: i32 = 10;
 
@@ -1405,6 +1576,7 @@ fn present(st: &mut WindowState) {
             return;
         }
     }
+    blur_backdrop(st);
     round_corners(st);
     unsafe {
         if st.margin > 0 && !st.xdg.is_null() {
