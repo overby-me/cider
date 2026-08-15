@@ -45,30 +45,41 @@ void LocalExceptionHandler(NSException* e)
 	unsigned int hangmask = handler.exceptionHangingMask;
 	id delegate = handler.delegate;
 
-	if (delegate != NULL)
+	/*
+	 * BOTH DELEGATE METHODS ARE OPTIONAL, and sending one that is not there from inside the
+	 * uncaught exception handler is the worst place to raise: the handler runs under the
+	 * terminate handler, so a second exception there aborts the process with
+	 *
+	 *     libc++abi: terminate_handler unexpectedly threw an exception
+	 *
+	 * and NOTHING about the first exception is ever printed. Swift Publisher 5 sets a delegate
+	 * that implements neither, and the exception it actually hit was invisible until this was
+	 * guarded.
+	 *
+	 * A delegate that does not answer leaves the decision with the mask, which is what the
+	 * no-delegate path below already did.
+	 */
+	bool log = (mask & NSLogUncaughtExceptionMask) != 0;
+	bool handle = (mask & NSHandleUncaughtExceptionMask) != 0;
+
+	if ([delegate respondsToSelector: @selector(exceptionHandler:shouldLogException:mask:)])
 	{
-		bool handle, log;
-
-		handle = [delegate exceptionHandler: [NSExceptionHandler defaultExceptionHandler]
-		              shouldHandleException: e
-                                       mask: mask];
-
-		log = [delegate exceptionHandler: [NSExceptionHandler defaultExceptionHandler]
-		              shouldLogException: e
-                                    mask: mask];
-
-		if (log)
-			NSLog(@"Uncaught exception: %@", e);
-		if (handle)
-			abort();
+		log = [delegate exceptionHandler: handler
+		             shouldLogException: e
+		                           mask: mask];
 	}
-	else
+
+	if ([delegate respondsToSelector: @selector(exceptionHandler:shouldHandleException:mask:)])
 	{
-		if (mask & NSLogUncaughtExceptionMask)
-			NSLog(@"Uncaught exception: %@", e);
-		if (hangmask & NSHangOnUncaughtExceptionMask)
-			kill(getpid(), SIGTRAP);
-		if (mask & NSHandleUncaughtExceptionMask)
-			abort();
+		handle = [delegate exceptionHandler: handler
+		             shouldHandleException: e
+		                              mask: mask];
 	}
+
+	if (log)
+		NSLog(@"Uncaught exception: %@", e);
+	if (hangmask & NSHangOnUncaughtExceptionMask)
+		kill(getpid(), SIGTRAP);
+	if (handle)
+		abort();
 }

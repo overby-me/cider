@@ -18,7 +18,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import "CGConversions.h"
+#import <CoreGraphics/CGPDFDictionary.h>
 #import <CoreGraphics/CGPDFPage.h>
+#import <Onyx2D/O2PDFDictionary.h>
 #import <Onyx2D/O2PDFPage.h>
 
 CGPDFPageRef CGPDFPageRetain(CGPDFPageRef self) {
@@ -45,4 +47,16 @@ CGAffineTransform CGPDFPageGetDrawingTransform(CGPDFPageRef self, CGPDFBox box,
 {
     return CGAffineTransformFromO2(O2PDFPageGetDrawingTransform(
             (O2PDFPageRef)self, box, rect, clockwiseDegrees, preserveAspectRatio));
+}
+
+/*
+ * THE PAGE DICTIONARY, which is where everything about a page that is not its geometry lives: its
+ * resources, its annotations, its rotation. An application that wants any of that has to start
+ * here, and this is the only way in from C.
+ */
+CGPDFDictionaryRef CGPDFPageGetDictionary(CGPDFPageRef self) {
+    if (self == NULL)
+        return NULL;
+
+    return (CGPDFDictionaryRef) [(O2PDFPage *) self dictionary];
 }

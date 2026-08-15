@@ -56715,6 +56715,7 @@ cc_objects(
         "cocotron/CoreGraphics/CGLayer.m",
         "cocotron/CoreGraphics/CGPDFContext.m",
         "cocotron/CoreGraphics/CGPDFDocument.m",
+        "cocotron/CoreGraphics/CGPDFObject.m",
         "cocotron/CoreGraphics/CGPDFPage.m",
         "cocotron/CoreGraphics/CGPath.m",
         "cocotron/CoreGraphics/CGPattern.m",

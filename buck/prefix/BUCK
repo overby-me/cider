@@ -8,6 +8,10 @@ prefix_tree(
         "bin/cider": "//src/linux/launcher:cider",
         "bin/cider-coredump": "//src/linux/hosttools:cider-coredump",
         "bin/ciderd": "//src/linux/server:ciderd",
+        # NOT UNDER System/Library, and that is where it belongs: iTunes installs this framework
+        # into /Library/Frameworks, so that is the path applications link it at. It is also a FLAT
+        # bundle, with no Versions/A, which is why there is no symlink pair for it further down.
+        "libexec/cider/Library/Frameworks/iTunesLibrary.framework/iTunesLibrary": "//src/darwin/frameworks:iTunesLibrary_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/bitcode_strip": "//vendor/src:bitcode_strip",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/check_dylib": "//vendor/src:check_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/checksyms": "//vendor/src:checksyms",

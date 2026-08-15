@@ -49,6 +49,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                        value: (O2PDFDictionary **) dictionaryp;
 - (BOOL) getStreamForKey: (const char *) key value: (O2PDFStream **) streamp;
 
+/*
+ * EVERY KEY IN TURN, which nothing above can do: the accessors all take a key you already know, and
+ * a caller that wants to read a dictionary it has never seen (the metadata of a PDF someone else
+ * wrote) has no way in. The callback takes a void * for the value rather than an O2PDFObject *, so
+ * that the layer above can be CoreGraphics without this class having to know about it.
+ */
+- (void) applyFunction: (void (*)(const char *key, void *value, void *info)) function
+                  info: (void *) info;
+
 @end
 
 NSUInteger O2PDFHashCString(NSMapTable *table, const void *data);

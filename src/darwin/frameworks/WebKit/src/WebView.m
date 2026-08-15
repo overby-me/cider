@@ -19,3 +19,15 @@ NSString *const WebActionElementKey = @"WebActionElementKey";
 NSString *const WebActionButtonKey = @"WebActionButtonKey";
 NSString *const WebActionModifierFlagsKey = @"WebActionModifierFlagsKey";
 NSString *const WebActionOriginalURLKey = @"WebActionOriginalURLKey";
+
+/*
+ * THE NODE UNDER THE POINTER, and the three notifications a load posts as it runs. Swift Publisher
+ * 5 references all four; the names they carry are the ones macOS uses, which drop the View, because
+ * an application that observes a notification by string gets nothing if the string is not the same
+ * one the poster used.
+ */
+NSString *const WebElementDOMNodeKey = @"WebElementDOMNode";
+
+NSString *const WebViewProgressStartedNotification = @"WebProgressStartedNotification";
+NSString *const WebViewProgressEstimateChangedNotification = @"WebProgressEstimateChangedNotification";
+NSString *const WebViewProgressFinishedNotification = @"WebProgressFinishedNotification";

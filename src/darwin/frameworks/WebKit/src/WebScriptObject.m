@@ -34,3 +34,36 @@
 }
 
 @end
+
+/*
+ * UNDEFINED IS A VALUE IN JAVASCRIPT and nil is not it, so the bridge needs an object that means it.
+ * A dictionary cannot hold nil, and undefined is exactly what a property that was never set reads
+ * back as, so every bridged value that came from JavaScript can be one of these.
+ *
+ * It is a singleton, and the interface is declared here because the header this framework ships
+ * does not carry it. Swift Publisher 5 references the class, which is enough to stop the process
+ * loading without it.
+ */
+
+@interface WebUndefined : NSObject
++ (WebUndefined *) undefined;
+@end
+
+@implementation WebUndefined
+
++ (WebUndefined *) undefined {
+    static WebUndefined *shared = nil;
+
+    @synchronized(self) {
+        if (shared == nil)
+            shared = [[WebUndefined alloc] init];
+    }
+
+    return shared;
+}
+
+- (NSString *) description {
+    return @"undefined";
+}
+
+@end

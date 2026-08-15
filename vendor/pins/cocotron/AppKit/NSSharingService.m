@@ -5,6 +5,13 @@ NSSharingServiceName const NSSharingServiceNameAddToSafariReadingList = @"com.ap
 NSSharingServiceName const NSSharingServiceNameComposeEmail = @"com.apple.share.Mail.compose";
 NSSharingServiceName const NSSharingServiceNameComposeMessage = @"com.apple.messages.ShareExtension";
 
+// The rest of the built in services an application can name. AirDrop is the one Swift Publisher 5
+// references, and a name that is missing stops the process loading, whether or not the service
+// could ever run here: none of them can, and the picker above answers nothing.
+NSSharingServiceName const NSSharingServiceNameSendViaAirDrop = @"com.apple.share.AirDrop.send";
+NSSharingServiceName const NSSharingServiceNameUseAsDesktopPicture = @"com.apple.desktop.picture";
+NSSharingServiceName const NSSharingServiceNameCloudSharing = @"com.apple.CloudSharingUI.ShareService";
+
 NSSharingServiceName const NSSharingServiceNamePostOnFacebook = @"com.apple.share.Facebook.post";
 NSSharingServiceName const NSSharingServiceNamePostOnTwitter = @"com.apple.share.Twitter.post";
 NSSharingServiceName const NSSharingServiceNamePostOnSinaWeibo = @"com.apple.share.SinaWeibo.post";

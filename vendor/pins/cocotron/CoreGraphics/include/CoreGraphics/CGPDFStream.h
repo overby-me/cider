@@ -1,4 +1,4 @@
-/* Copyright (c) 2007 Christopher J. W. Lloyd
+/* Copyright (c) 2026 Cider
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -16,28 +16,19 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
-#import <CoreGraphics/CGAffineTransform.h>
-#import <CoreGraphics/CGGeometry.h>
-#import <CoreGraphics/CGPDFDictionary.h>
 
-typedef struct CF_BRIDGED_TYPE(id) O2PDFPage *CGPDFPageRef;
+#ifndef COREGRAPHICS_CGPDFSTREAM_H
+#define COREGRAPHICS_CGPDFSTREAM_H
 
-typedef enum {
-    kCGPDFMediaBox = 0,
-    kCGPDFCropBox = 1,
-    kCGPDFBleedBox = 2,
-    kCGPDFTrimBox = 3,
-    kCGPDFArtBox = 4,
-} CGPDFBox;
+#include <CoreGraphics/CGPDFDictionary.h>
+#include <CoreGraphics/CoreGraphicsExport.h>
 
-CF_IMPLICIT_BRIDGING_ENABLED
+typedef struct CGPDFStream *CGPDFStreamRef;
 
-COREGRAPHICS_EXPORT CGPDFPageRef CGPDFPageRetain(CGPDFPageRef self);
-COREGRAPHICS_EXPORT void CGPDFPageRelease(CGPDFPageRef self);
-COREGRAPHICS_EXPORT CGRect CGPDFPageGetBoxRect(CGPDFPageRef self, CGPDFBox box);
-COREGRAPHICS_EXPORT CGAffineTransform
-CGPDFPageGetDrawingTransform(CGPDFPageRef self, CGPDFBox box, CGRect rect,
-                             int clockwiseDegrees, bool preserveAspectRatio);
-COREGRAPHICS_EXPORT CGPDFDictionaryRef CGPDFPageGetDictionary(CGPDFPageRef self);
+/*
+ * A STREAM IS A DICTIONARY WITH BYTES AFTER IT. The dictionary says what the bytes are and how they
+ * are compressed, so reading a stream always starts here.
+ */
+COREGRAPHICS_EXPORT CGPDFDictionaryRef CGPDFStreamGetDictionary(CGPDFStreamRef stream);
 
-CF_IMPLICIT_BRIDGING_DISABLED
+#endif // COREGRAPHICS_CGPDFSTREAM_H

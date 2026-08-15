@@ -48,3 +48,44 @@ NSString *const kABUpdatedRecords=@"ABUpdatedRecords";
 
 // This one is not exported by any header but is required by libraries
 NSString *const kABRestoreFromBackup=@"ABRestoreFromBackup";
+
+/*
+ * THE LABELS AND THE ADDRESS DICTIONARY KEYS, added for Swift Publisher 5, which reads a contact to
+ * build a mailing label and cannot start without them.
+ *
+ * The values are the ones macOS uses, not invented names. A label is written into the address book
+ * database as it stands, so a program that stores _$!<Work>!$_ and reads back something else has a
+ * contact whose telephone number has lost its label. The bracketed form is what a real database
+ * holds; the application layer turns it into the localised word.
+ */
+
+NSString *const kABAddressStreetKey = @"Street";
+NSString *const kABAddressCityKey = @"City";
+NSString *const kABAddressStateKey = @"State";
+NSString *const kABAddressZIPKey = @"ZIP";
+NSString *const kABAddressCountryKey = @"Country";
+NSString *const kABAddressCountryCodeKey = @"CountryCode";
+
+NSString *const kABInstantMessageUsernameKey = @"InstantMessageUsername";
+
+NSString *const kABHomePageProperty = @"ABHomePage";
+NSString *const kABNoteProperty = @"ABNote";
+
+NSString *const kABHomeLabel = @"_$!<Home>!$_";
+NSString *const kABWorkLabel = @"_$!<Work>!$_";
+NSString *const kABOtherLabel = @"_$!<Other>!$_";
+NSString *const kABAnniversaryLabel = @"_$!<Anniversary>!$_";
+
+NSString *const kABAddressHomeLabel = @"_$!<Home>!$_";
+NSString *const kABAddressWorkLabel = @"_$!<Work>!$_";
+
+NSString *const kABEmailHomeLabel = @"_$!<Home>!$_";
+NSString *const kABEmailWorkLabel = @"_$!<Work>!$_";
+
+NSString *const kABPhoneHomeLabel = @"_$!<Home>!$_";
+NSString *const kABPhoneWorkLabel = @"_$!<Work>!$_";
+NSString *const kABPhoneMobileLabel = @"_$!<Mobile>!$_";
+NSString *const kABPhoneMainLabel = @"_$!<Main>!$_";
+NSString *const kABPhoneHomeFAXLabel = @"_$!<HomeFAX>!$_";
+NSString *const kABPhoneWorkFAXLabel = @"_$!<WorkFAX>!$_";
+NSString *const kABPhonePagerLabel = @"_$!<Pager>!$_";

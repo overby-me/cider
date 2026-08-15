@@ -216,6 +216,18 @@ NSMapTableKeyCallBacks O2PDFOwnedCStringKeyCallBacks = {O2PDFHashCString,
     return [object checkForType: kO2PDFObjectTypeStream value: streamp];
 }
 
+- (void) applyFunction: (void (*)(const char *key, void *value, void *info)) function
+                  info: (void *) info
+{
+    NSMapEnumerator state = NSEnumerateMapTable(_table);
+    const char *key;
+    id value;
+
+    while (NSNextMapEnumeratorPair(&state, (void **) &key, (void **) &value)) {
+        function(key, value, info);
+    }
+}
+
 - (NSString *) description {
     NSMutableString *result = [NSMutableString string];
     NSMapEnumerator state = NSEnumerateMapTable(_table);
