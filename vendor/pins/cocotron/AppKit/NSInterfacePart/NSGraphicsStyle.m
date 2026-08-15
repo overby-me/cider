@@ -669,12 +669,26 @@ static NSDictionary *cider_key_symbol_attributes(void) {
     themeRect.size.width -= (margins.left + margins.right);
     themeRect.size.height -= (margins.top + margins.bottom);
 
+    /*
+     * A CHEVRON, NOT A FILLED TRIANGLE. The reference screenshot the user supplied shows what macOS
+     * puts beside a submenu: two strokes meeting at a point, the same weight as the text. A solid
+     * triangle is what this drew, and it is the older look from a different decade.
+     *
+     * NOT INSET. The arrow box after its margins is about four points by eight, so taking two more
+     * off each side leaves a rectangle with no width at all: the first version of this drew a
+     * vertical BAR beside every submenu, which is what the screenshot showed.
+     */
+    NSRect chevron = themeRect;
+    CGFloat middle = NSMidY(chevron);
+
+    CGContextSetLineWidth(context, 1.5);
+    CGContextSetLineCap(context, kCGLineCapRound);
+    CGContextSetLineJoin(context, kCGLineJoinRound);
     CGContextBeginPath(context);
-    CGContextMoveToPoint(context, NSMinX(themeRect), NSMaxY(themeRect));
-    CGContextAddLineToPoint(context, NSMaxX(themeRect), NSMidY(themeRect));
-    CGContextAddLineToPoint(context, NSMinX(themeRect), NSMinY(themeRect));
-    CGContextClosePath(context);
-    CGContextFillPath(context);
+    CGContextMoveToPoint(context, NSMinX(chevron), NSMaxY(chevron));
+    CGContextAddLineToPoint(context, NSMaxX(chevron), middle);
+    CGContextAddLineToPoint(context, NSMinX(chevron), NSMinY(chevron));
+    CGContextStrokePath(context);
 }
 
 /* A ROUNDED PILL INSET FROM THE EDGES, which is what an Apple menu highlights with. A full width
