@@ -1,0 +1,72 @@
+--- a/AppKit/nib.subproj/NSNib.m
++++ b/AppKit/nib.subproj/NSNib.m
+@@ -67,6 +67,12 @@
+ 
+     NIBDEBUG(@"initWithContentsOfFile: %@", path);
+ 
++    /* AT THE ENTRY, so that silence downstream means something. A trace on the decode alone cannot
++     * tell a nib that failed to decode from a nib that was never opened. */
++    if (getenv("CIDER_TRACE_NIB") != NULL) {
++        NSLog(@"CIDER_NIB open %@", path);
++    }
++
+     NSString *objects = path;
+     BOOL isDirectory = NO;
+ 
+@@ -167,6 +173,10 @@
+ 
+     NIBDEBUG(@"instantiateNibWithExternalNameTable: %@", nameTable);
+ 
++    if (getenv("CIDER_TRACE_NIB") != NULL) {
++        NSLog(@"CIDER_NIB instantiate bytes=%lu", (unsigned long) [_data length]);
++    }
++
+     NSIBObjectData *objectData;
+     @autoreleasepool {
+         _nameTable = [nameTable retain];
+@@ -206,6 +216,28 @@
+             objectData = [unkeyed decodeObject];
+         }
+ 
++        /*
++         * WHICH FORMAT THE FILE ACTUALLY IS, and whether anything came out of it.
++         *
++         * This class knows two archives: the keyed property list Interface Builder wrote until
++         * Xcode 3, and the older typedstream. Xcode 4 and everything since writes a THIRD, whose
++         * first eleven bytes are the ASCII text NIBArchive, and nothing here reads it. A nib that
++         * fails to decode is silent: objectData comes back nil, no menu is built, no delegate is
++         * connected and no window is ever made, which from the outside looks exactly like an
++         * application that started and decided to do nothing. iTerm2 is that application.
++         */
++        if (getenv("CIDER_TRACE_NIB") != NULL) {
++            const char *head = (_data != nil && [_data length] >= 11) ? [_data bytes] : "";
++            char magic[12] = { 0 };
++
++            if ([_data length] >= 11) {
++                memcpy(magic, head, 11);
++            }
++            NSLog(@"CIDER_NIB bytes=%lu keyed=%d magic=%s objectData=%@",
++                  (unsigned long) [_data length], (int) _flags._isKeyed, magic,
++                  (objectData != nil) ? @"decoded" : @"NIL");
++        }
++
+         [objectData buildConnectionsWithNameTable: _nameTable];
+         if ((menu = [objectData mainMenu]) != nil) {
+             // Rename the first item to have the application name.
+--- a/AppKit/NSApplication.m
++++ b/AppKit/NSApplication.m
+@@ -1685,6 +1685,14 @@
+     Class class = [bundle principalClass];
+     NSString *nibFile = [bundle infoDictionary][@"NSMainNibFile"];
+ 
++    /* THE ENTRY OF THE FUNCTION EVERY COCOA APPLICATION STARTS IN. An application that reaches the
++     * run loop without a window has either loaded no nib or never come through here at all, and
++     * those want completely different work; a trace further down cannot tell them apart. */
++    if (getenv("CIDER_TRACE_NIB") != NULL) {
++        NSLog(@"CIDER_NIB NSApplicationMain principal=%s nib=%@",
++              (class != Nil) ? class_getName(class) : "nil", nibFile);
++    }
++
+ #ifndef DARLING
+     if (argc > 1) {
+         NSMutableArray *arguments =

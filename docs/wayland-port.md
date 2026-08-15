@@ -2792,3 +2792,32 @@ CAVEAT ON THAT TOOL, and it matters: the set difference is FLAT and the runtime 
 symbol that exists in the wrong library reads as resolved. That is exactly the Carbon case above,
 which the tool did NOT report. It answers what is missing entirely; dyld still has to say what is
 missing FROM THE RIGHT PLACE.
+
+## ITERM2 IDLES IN A RUN LOOP IT DID NOT REACH THROUGH NSApplicationMain
+
+Four probes, and the useful result is which ones stayed silent.
+
+    seat                 headless weston has none; nested sway forwards real devices and reports
+                         seat=capabilities pointer=true keyboard=true. NO WINDOW EITHER WAY, so
+                         waiting for a keyboard is not what it is doing.
+    NSNib entry          -[NSNib initWithContentsOfFile:] is NEVER CALLED. Not a nib that fails to
+                         decode: no nib is opened at all, and iTerm2 does import
+                         loadNibNamed:owner:topLevelObjects:.
+    NSApplicationMain    NEVER ENTERED, although the binary imports the symbol.
+    the core             all four threads blocked in libsystem_kernel, and the stack words name
+                         CoreFoundation and this backend, which is what an idle run loop looks like.
+
+So the application is running a run loop and pumping our events, and it did not get there through
+the function every Cocoa application starts in. Those two facts together are the next thread to
+pull, and they rule out most of what was suspected: it is not a missing library, not a nib format,
+not the seat, not a hang in an RPC.
+
+WHAT THE MAIN NIB IS, for when the nib path does become the question: MainMenu.nib is a NIBArchive,
+the format Xcode has written since version 4, whose first eleven bytes are the ASCII text
+NIBArchive. Cocotron NSNib reads exactly two formats, the keyed property list and the older
+typedstream, and treats anything not a directory as keyed. So the nib WOULD fail if it were reached.
+It is not reached yet, and saying otherwise would be inventing a cause.
+
+Both traces are gated behind CIDER_TRACE_NIB and stay: an entry probe on a method that is supposed
+to run is the only thing that separates "this failed" from "this never happened", which is the
+mistake this port has now made twice.
