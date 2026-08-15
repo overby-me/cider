@@ -91,3 +91,41 @@
              @throw [NSException exceptionWithName:NSInvalidArgumentException reason:@"Cannot set nil objects nor nil keys" userInfo:nil];
              return;
          }
+--- a/NSTimeZone.m	2026-08-15 22:56:02.744757442 +0200
++++ b/NSTimeZone.m	2026-08-15 22:56:02.746757454 +0200
+@@ -118,10 +118,32 @@
+     static NSTimeZone *localTZ = nil;
+     static dispatch_once_t once = 0L;
+     dispatch_once(&once, ^{
+-        CFStringRef zoneName = CFStringCreateWithCString(kCFAllocatorDefault, getenv("TZ"), kCFStringEncodingUTF8);
+-        localTZ = (NSTimeZone *)CFTimeZoneCreateWithName(NULL, zoneName, false);
++        /*
++         * TZ IS USUALLY NOT SET, and this read it unconditionally: getenv returns NULL, the string
++         * is built from a null pointer, and the zone comes back nil. Every NSTimeZone method then
++         * lands on the ABSTRACT base class, which raises, and an application that retries around
++         * that raise recurses until the stack ends. That is how MoneyMoney died: fifteen identical
++         * frames of its own code over one NSRequestConcreteImplementation, and no message at all,
++         * because a stack overflow has nothing to print.
++         *
++         * The system zone is the answer when the environment has nothing to say, which is what
++         * every other Unix program does with /etc/localtime.
++         */
++        const char *tz = getenv("TZ");
++
++        if (tz != NULL && *tz != '\0') {
++            CFStringRef zoneName = CFStringCreateWithCString(kCFAllocatorDefault, tz,
++                                                             kCFStringEncodingUTF8);
++
++            if (zoneName != NULL) {
++                localTZ = (NSTimeZone *)CFTimeZoneCreateWithName(NULL, zoneName, false);
++                CFRelease(zoneName);
++            }
++        }
++        if (localTZ == nil) {
++            localTZ = (NSTimeZone *)CFTimeZoneCopyDefault();
++        }
+         [localTZ retain];
+-        CFRelease(zoneName);
+     });
+     return localTZ;
+ }
