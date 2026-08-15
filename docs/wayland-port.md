@@ -3839,3 +3839,37 @@ rebuilt, since that is the endpoint build.
 
 WHERE IT STANDS: MoneyMoney loads and dies during startup on another nil under the key dateFormat.
 Not a window yet, and every step of the way is above rather than summarised.
+
+## FIVE STEPS INTO A NIB THAT KILLS THE PROCESS, and the traces that made each one a line
+
+2026-08-16, commit ad1d2878. MoneyMoney loaded and then died during startup with no exception, no
+message and exit code 1. Five guesses would have been five wasted runs, so the decoder learned to
+say what it was doing, and each step named itself.
+
+    CIDER_NIB enter 1077 NSUserDefaultsController      a class this framework has
+    CIDER_NIB built 1077 NSUserDefaultsController ok   and it came back
+    CIDER_NIB enter 1078 NSArray                       so the next thing is an array
+    CIDER_NIB objectdata NSObjectsValues               which is being decoded for this key
+    CIDER_NIB objectdata keys=168 values=168           and the two parallel arrays agree
+    CIDER_NIB objectpair 164 key=NSCustomObject wants=Realtime value=NSApplication
+
+TWO REAL FAULTS came out of it, and both are general rather than about this application.
+
+A NIL SUBSCRIPT REMOVES THE KEY. dict[key] = nil is documented to remove the entry and ours forwarded
+it to setObject:forKey:, which refuses nil. Ordinary code of that shape was fatal:
+-[NSDateFormatter setDateFormat:] stores its argument that way and is given nil to clear the format.
+
+A CONTAINER IS STORED BEFORE IT IS FILLED. The NIBArchive reader recorded an array only after
+building it, so a cycle through a container never terminated and the stack ran out: silence, because
+a stack overflow has nothing to print. Objects were already stored before initWithCoder: for exactly
+this reason; containers were not. The stored container is mutable even where the archive says
+NSArray, because swapping in an immutable copy at the end would leave every object that already
+holds the mutable one holding a different collection.
+
+WHERE MONEYMONEY STANDS: 1573 objects decode, NSIBObjectData walks its object table, and the
+application instantiates its own controllers in turn -- NSUserDefaultsController, NewsCheck, Locale,
+Realtime -- and dies inside the last one with no output. That is application code, and the next step
+is a debugger rather than another trace.
+
+Regressions checked by running them rather than by reasoning: the LibreOffice save panel opens,
+reveals its directory and saves; iTerm2 decodes its nib and opens its first run dialog.
