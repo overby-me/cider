@@ -3710,3 +3710,29 @@ to the end. THREE THINGS STOP IT AFTER THAT, in order:
 
 What was needed on our side and is now there: the NIBArchive reader, and colorUsingColorSpace: on
 NSColor, which is the 10.7 way to ask for a conversion and the only way current code asks.
+
+## WHICH VIEW A CLICK REACHED, and what the file type popup does with one
+
+2026-08-15. The save panel shows LibreOffice accessory view now, so the obvious next journey is
+saving as .docx through the File type popup in it. Three runs clicked at three positions and nothing
+happened, which from outside is indistinguishable from a control that ignores clicks.
+
+NSWindow now prints the view a mouse down hit under CIDER_TRACE_PANEL, and the question answered
+itself in one line each time:
+
+    CIDER_HIT at=300,106 view=NSView frame={{100, 75}, {300, 153}} responder=0
+    CIDER_HIT at=300,210 view=NSPopUpButton frame={{77, 126}, {200, 22}} responder=1
+
+The first is the accessory CONTAINER, which means the click missed every control inside it. The
+second is the popup button, and that click opened a menu: popup=ok number=33 size=233x363 level=6.
+So the accessory view is hit tested and its controls work; the earlier runs were aimed wrong, and
+the arithmetic that aimed them was wrong in a way only a trace could show.
+
+WHAT STILL DOES NOT WORK: the menu that opens is gone from a screenshot taken two seconds later, and
+the keys typed after it went into the NAME FIELD, so the file was saved as cider-docx-nameWord.odt
+rather than as a Word document. A popup menu on macOS stays up until something is chosen. Whether
+ours is dismissed by the release, by the modal session the panel is running, or by something else is
+the next thing to find out.
+
+The instrument stays: a control that does nothing when clicked is either not being hit or being hit
+and ignoring it, and those are the same picture from outside.

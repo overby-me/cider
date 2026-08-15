@@ -2399,6 +2399,17 @@ static BOOL _allowsAutomaticWindowTabbing;
     case NSLeftMouseDown: {
         NSView *view = [_backgroundView hitTest: [event locationInWindow]];
 
+        /* WHICH VIEW A CLICK ACTUALLY REACHED. A control that does nothing when clicked is either
+         * not being hit at all or being hit and ignoring it, and from outside the two are the same
+         * picture. Set CIDER_TRACE_PANEL and the answer is one line per click. */
+        if (getenv("CIDER_TRACE_PANEL") != NULL) {
+            NSPoint where = [event locationInWindow];
+
+            NSLog(@"CIDER_HIT window=%@ at=%g,%g view=%@ frame=%@ responder=%d", [self title],
+                  where.x, where.y, [view class], NSStringFromRect([view frame]),
+                  (int) [view acceptsFirstResponder]);
+        }
+
         if ([view acceptsFirstResponder]) {
             if ([view needsPanelToBecomeKey]) {
                 [self makeFirstResponder: view];
