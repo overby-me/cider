@@ -3672,3 +3672,41 @@ from the GUI port.
 Nothing in the four broke, so nothing was changed for them. The dotted focus rectangle around a
 selected row and the missing ring on a focused field were changed, and both are in their own
 commits.
+
+## ITERM2 GETS PAST ITS NIB, and the next three things in the way are named
+
+2026-08-15, commits 6aed9b8a and 883685d8. Goal 4 of the queue is iTerm2 given the same treatment as
+LibreOffice, and it had never started at all: it loaded MainMenu.nib, got nothing, and ran an event
+loop over zero windows.
+
+The reason was the FORMAT. This framework reads the typedstream and the keyed property list nib;
+everything Xcode has written since version 4 is a NIBArchive, and nothing read it. A nib that fails
+to decode is silent, which is why this looked like an application that starts and does nothing.
+
+The object graph inside a NIBArchive is the one this framework already builds, class for class and
+key for key, so only the container needed reading. Where iTerm2 is now:
+
+    CIDER_NIB archive objects=1849 keys=55 values=7683 classes=17
+    CIDER_NIB bytes=58174 keyed=1 magic=NIBArchive objectData=decoded
+    CIDER_NIB NSApplication run
+    CIDER_NIB finishLaunching entering delegate=iTermApplicationDelegate
+    CIDER_NIB finishLaunching done delegate=iTermApplicationDelegate windows=0
+
+The nib decodes, the menu is built, the delegate is connected, and applicationDidFinishLaunching runs
+to the end. THREE THINGS STOP IT AFTER THAT, in order:
+
+    +[ODSession defaultSession]      OpenDirectory, which this tree does not have at all. Raised
+                                     inside finishLaunching and caught by NSApplication, so it is
+                                     survivable rather than fatal.
+    shouldRestoreStateOnNextLaunch   sent to the NSApp instance, whose class is the KVO subclass
+                                     NSKVONotifying_iTermApplication. The only definition of that
+                                     selector in the binary is a CLASS method of
+                                     iTermRestorableStateController, so either iTerm2 is asking an
+                                     object that cannot answer or something about the KVO subclass
+                                     is answering the wrong lookup. Not yet worked out, and it is
+                                     what kills the process.
+    windows=0                        no terminal window is made even before that, so there is more
+                                     than one thing left.
+
+What was needed on our side and is now there: the NIBArchive reader, and colorUsingColorSpace: on
+NSColor, which is the 10.7 way to ask for a conversion and the only way current code asks.
