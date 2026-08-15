@@ -2998,3 +2998,41 @@ the file, cider-typed-name.odt, 9699 bytes. Zero unrecognized selectors in every
 
 AND THE TRACE IS FIXED SO IT CANNOT HAPPEN AGAIN: the key equivalent prints as a character CODE.
 A probe that renders a control character raw can hide the very thing it was added to find.
+
+## COMMAND P NO LONGER KILLS THE APPLICATION
+
+Printing has died on dismissal since it first drew a dialog, and the log said only
+
+    Terminating app due to uncaught exception, reason: index (0) beyond array bounds (0)
+
+which is a true statement about an empty array and useless: there are hundreds of arrays. What
+named it was an instrument that was already in the runtime and had never been used here:
+
+    OBJC_PRINT_EXCEPTION_THROW=YES
+
+Apple objc4 prints a full symbolised backtrace at every throw, and it works through @throw, which
+-[NSException raise] does not see. Two blockers, one after the other, both ours:
+
+    -[NSPopUpButtonCell selectItemAtIndex:]   checked for negative and not for too large, so
+                                             selecting item 0 of an EMPTY popup raised. AppKit
+                                             deselects instead, which is what an application relies
+                                             on while it is still filling the menu.
+    -[NSPrintPanel addAccessoryController:]   did not exist. It is how a Cocoa application puts its
+                                             own options into the print dialog, and LibreOffice does
+                                             exactly that. doesNotRecognizeSelector raises, nothing
+                                             in that chain catches it, and the process went down.
+
+Both fixed. Command and P now shows the No default printer found alert, and clicking OK returns to
+the document with the text, the caret and the word count intact: docs/wayland-print-survives.png,
+and the process is still alive when the harness kills it at the time limit.
+
+PRINTING STILL DOES NOT PRINT, and this does not claim otherwise. There is no printer and no spooler
+in the container, so the alert is the correct outcome; what changed is that the alert is now the
+END of the story rather than the last thing before losing the document. The accessory controllers
+are stored and handed back but the panel does not display them yet, which is a gap and is written
+in the header rather than papered over.
+
+THE INSTRUMENT IS THE LASTING PART. OBJC_PRINT_EXCEPTION_THROW belongs in the list at the top of
+this file: it names the raise site of anything that throws, through @throw and objc_exception_throw
+alike, with symbols, and it needed no code from us at all. A backtrace was also added to
+-[NSException raise] on the way, which is worth keeping for the raises that DO go through it.

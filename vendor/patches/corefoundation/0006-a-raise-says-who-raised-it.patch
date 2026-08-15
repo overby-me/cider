@@ -1,0 +1,44 @@
+--- a/NSException.m
++++ b/NSException.m
+@@ -5,6 +5,10 @@
+ //  Copyright (c) 2014 Apportable. All rights reserved.
+ //
+ 
++#include <dlfcn.h>
++#include <execinfo.h>
++#include <string.h>
++
+ #import <Foundation/NSException.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -108,6 +112,30 @@
+         fprintf(stderr, "cider: RAISE %s: %s\n",
+                 [[self name] UTF8String] ?: "?",
+                 [[self reason] UTF8String] ?: "?");
++
++        /*
++         * AND WHO RAISED IT, which the name and the reason cannot say.
++         *
++         * index (0) beyond array bounds (0) is a true statement about an empty array and useless on
++         * its own: there are hundreds of arrays. The frames name the caller, and dladdr resolves
++         * them without a debugger, which matters here because gdb cannot walk a Mach-O stack at all
++         * and the core dump route costs half a gigabyte and a separate resolver.
++         *
++         * Symbols only, no offsets: the point is which function, and an offset into a stripped
++         * image is noise.
++         */
++        void *frames[16];
++        int count = backtrace(frames, 16);
++
++        for (int i = 1; i < count; i++) {
++            Dl_info info;
++
++            if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
++                const char *image = info.dli_fname ? strrchr(info.dli_fname, '/') : NULL;
++
++                fprintf(stderr, "cider:   %-28s %s\n", image ? image + 1 : "?", info.dli_sname);
++            }
++        }
+         fflush(stderr);
+     }
+     @throw self;
