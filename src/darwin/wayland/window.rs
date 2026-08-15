@@ -372,6 +372,29 @@ pub fn deliver_pending_configures() {
         }
         st.frame.size.width = width as f64;
         st.frame.size.height = height as f64;
+        /*
+         * AND MOVE IT TO WHERE THE COMPOSITOR PUT IT, which is the top left corner.
+         *
+         * A RESIZE THAT KEEPS THE OLD ORIGIN CORRUPTS EVERY POPUP. Wayland never tells a client
+         * where its window is, so the origin here is whatever the application guessed at creation;
+         * growing the size while keeping that guess moves the window TOP by the difference, and the
+         * top is what fill_positioner subtracts to turn a screen coordinate into a parent local
+         * one. Measured on a tiling compositor that sized the document to the whole output: the
+         * frame stayed at 128,668 while the size became 1690x1388, so the parent top read 2056 on a
+         * 1388 tall screen and the File menu, asked for at screen y 935, was placed 668 pixels too
+         * low, at the bottom left corner instead of under its title.
+         *
+         * Treating a resized toplevel as sitting at the screen origin is exact when the compositor
+         * gave it the whole output, and for a window placed anywhere else it still leaves the
+         * offsets right RELATIVE TO THE WINDOW, which is the space an xdg_positioner anchor rect is
+         * measured in anyway.
+         */
+        if st.popup.is_null() && !st.toplevel.is_null() {
+            if let Some((_, screen_h)) = session::output_size() {
+                st.frame.origin.x = 0.0;
+                st.frame.origin.y = screen_h - height as f64;
+            }
+        }
         st.configured_size = Some((width, height));
         // The drawn report is reset so the new size is measured rather than reported from the
         // previous buffer.
@@ -519,20 +542,49 @@ extern "C" fn on_popup_configure(
 extern "C" fn on_popup_done(data: *mut c_void, _popup: *mut wl::XdgPopup) {
     let Some(st) = (unsafe { (data as *mut WindowState).as_mut() }) else { return };
     println!("cider-wayland-window popup=dismissed number={}", st.number);
+    /*
+     * A DISMISSED POPUP IS HIDDEN, NOT CLOSING, and telling AppKit otherwise took the whole
+     * application apart.
+     *
+     * This used to send -platformWindowWillClose:, which cocotron turns into -performClose:, the
+     * full the-user-closed-this-window protocol. The compositor dismisses popups whenever focus
+     * moves, so opening the file picker dismissed nine of LibreOffice own parked menus, and each
+     * one ran the close path. Named by the backtrace, reading upwards:
+     *
+     *     on_popup_done
+     *     -[NSWindow performClose:]
+     *     -[SalFrameWindow windowShouldClose:]
+     *     ImplNSAppPostEvents
+     *     -[NSApplication nextEventMatchingMask:...]
+     *     -[NSArray makeObjectsPerformSelector:...]
+     *     -[NSWindow _hideForDeactivation]
+     *     hide_window_for_app_deactivation
+     *
+     * The application pumped events inside windowShouldClose, decided it was being deactivated, and
+     * hid every window it had -- including the file picker that had just opened.
+     *
+     * popup_done means the popup is gone. Tear our side down so a later show rebuilds it, and say
+     * nothing to AppKit: the close protocol belongs to xdg_toplevel.close, which is a different
+     * event with a different meaning.
+     */
     st.visible = false;
     st.mapped = false;
-    /* Same reason as -hide: a dismissed popup is unmapped and has to be configured again. */
     st.configured = false;
     unsafe {
-        if !st.surface.is_null() {
-            wl::cider_wl_surface_attach(st.surface, std::ptr::null_mut(), 0, 0);
-            wl::cider_wl_surface_commit(st.surface);
+        if !st.popup.is_null() {
+            wl::cider_xdg_popup_destroy(st.popup);
+            st.popup = std::ptr::null_mut();
         }
-        if !st.delegate.is_null() {
-            let sel = objc::sel_registerName(cstr!("platformWindowWillClose:"));
-            objc::msg_send_obj(st.delegate, sel, st.owner);
+        if !st.xdg.is_null() {
+            wl::cider_xdg_surface_destroy(st.xdg);
+            st.xdg = std::ptr::null_mut();
+        }
+        if !st.surface.is_null() {
+            wl::cider_wl_surface_destroy(st.surface);
+            st.surface = std::ptr::null_mut();
         }
     }
+    release_backing(st);
     session::flush();
 }
 
@@ -1881,6 +1933,38 @@ extern "C" fn hide_window(this: Object, _cmd: Sel) {
             return;
         }
         println!("cider-wayland-window hide number={} visible={}", st.number, st.visible);
+        /* AND WHO ASKED. A window that hides itself two seconds after it appears is being ordered
+         * out by somebody, and the name and the number cannot say who. The same recipe that named
+         * the print crash: the frames, resolved with dladdr, no debugger involved. */
+        if std::env::var_os("CIDER_TRACE_HIDE").is_some() {
+            unsafe {
+                unsafe extern "C" {
+                    fn backtrace(buffer: *mut *mut c_void, size: c_int) -> c_int;
+                    fn dladdr(addr: *const c_void, info: *mut DlInfo) -> c_int;
+                }
+                #[repr(C)]
+                struct DlInfo {
+                    fname: *const std::os::raw::c_char,
+                    fbase: *mut c_void,
+                    sname: *const std::os::raw::c_char,
+                    saddr: *mut c_void,
+                }
+                let mut frames: [*mut c_void; 20] = [std::ptr::null_mut(); 20];
+                let count = backtrace(frames.as_mut_ptr(), 20);
+                for i in 1..count as usize {
+                    let mut info = DlInfo {
+                        fname: std::ptr::null(),
+                        fbase: std::ptr::null_mut(),
+                        sname: std::ptr::null(),
+                        saddr: std::ptr::null_mut(),
+                    };
+                    if dladdr(frames[i], &mut info) != 0 && !info.sname.is_null() {
+                        let name = std::ffi::CStr::from_ptr(info.sname).to_string_lossy();
+                        println!("cider-wayland-window   hide-from {name}");
+                    }
+                }
+            }
+        }
         /*
          * DESTROY THE ROLE, DO NOT JUST DROP THE BUFFER.
          *
