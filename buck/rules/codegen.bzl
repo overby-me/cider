@@ -346,17 +346,29 @@ exec "$@" "$out"
 _WAYLAND_SCANNER = read_root_config("cider", "wayland_scanner", "")
 _WAYLAND_PROTOCOLS = read_root_config("cider", "wayland_protocols", "")
 _WAYLAND_CORE = read_root_config("cider", "wayland_core_protocol", "")
+_WLR_PROTOCOLS = read_root_config("cider", "wlr_protocols", "")
+
+_WAYLAND_ROOTS = {
+    # The standard set, and where xdg-shell comes from.
+    "wayland": _WAYLAND_PROTOCOLS,
+    # Extracted from the wayland source by nix/wayland-core-protocol.nix, because no installed
+    # output carries it.
+    "core": _WAYLAND_CORE,
+    # The wlroots set. Layer shell lives here and nowhere else, and it is what anchors a surface to
+    # an edge of the screen.
+    "wlr": _WLR_PROTOCOLS,
+}
 
 def _wayland_protocol_impl(ctx):
     if not _WAYLAND_SCANNER or not _WAYLAND_PROTOCOLS:
         fail("wayland_protocol needs [cider] wayland_scanner and wayland_protocols in " +
              ".buckconfig.local: run scripts/buck-setup.nu")
-    # CORE OR EXTENSION. The extensions live in the wayland-protocols share directory; the core
-    # XML is extracted from the wayland source by nix/wayland-core-protocol.nix, because no
-    # installed output carries it.
-    root = _WAYLAND_CORE if ctx.attrs.core else _WAYLAND_PROTOCOLS
+    # WHICH SET THE XML BELONGS TO. core is kept as an attribute because it predates the roots and
+    # is used by name in the tree; root names the rest.
+    root = _WAYLAND_CORE if ctx.attrs.core else _WAYLAND_ROOTS.get(ctx.attrs.root, "")
     if not root:
-        fail("wayland_protocol: no XML root in .buckconfig.local, run scripts/buck-setup.nu")
+        fail("wayland_protocol: no XML root " + ctx.attrs.root +
+             " in .buckconfig.local, run scripts/buck-setup.nu")
     xml = root + "/" + ctx.attrs.protocol
     out_c = ctx.actions.declare_output(ctx.attrs.out_c)
     out_h = ctx.actions.declare_output(ctx.attrs.out_h)
@@ -380,9 +392,11 @@ wayland_protocol = rule(
         "header_root": attrs.string(default = ""),
         "out_c": attrs.string(),
         "out_h": attrs.string(),
-        # Relative to the wayland-protocols share directory, e.g.
+        # Relative to the share directory of the set named by root, e.g.
         # stable/xdg-shell/xdg-shell.xml
         "protocol": attrs.string(),
+        # Which set the XML comes from: wayland, core or wlr.
+        "root": attrs.string(default = "wayland"),
     },
 )
 

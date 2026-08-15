@@ -146,6 +146,9 @@ pub struct Globals {
     pub seat: bool,
     pub output: bool,
     pub data_device_manager: bool,
+    /// OPTIONAL, and the only one that is. Everything else here either exists or the backend
+    /// declines; a compositor with no layer shell simply keeps the menu bar inside the window.
+    pub layer_shell: bool,
 }
 
 impl Globals {
@@ -189,6 +192,13 @@ impl Globals {
                 // Binding lower does not avoid it: the INTERFACE still declares it, so the
                 // listener has to carry it either way.
                 self.bound.seat_version = version.min(5);
+            }
+            "zwlr_layer_shell_v1" => {
+                self.layer_shell = true;
+                self.bound.layer_shell_name = name;
+                // Version 4 brings zwlr_layer_surface_v1.set_exclusive_edge; nothing below 1 is
+                // needed, and the events this listener declares are the two of version 1.
+                self.bound.layer_shell_version = version.min(4);
             }
             "wl_output" => {
                 self.output = true;
@@ -237,6 +247,8 @@ pub struct Bound {
     pub seat_version: u32,
     pub data_device_manager_name: u32,
     pub data_device_manager_version: u32,
+    pub layer_shell_name: u32,
+    pub layer_shell_version: u32,
 }
 
 /// One callback: the compositor has finished with the buffer. That event is the only honest
@@ -534,4 +546,76 @@ pub struct WlDataOfferListener {
     pub offer: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, mime: *const c_char),
     pub source_actions: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, actions: u32),
     pub action: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, action: u32),
+}
+
+// ---------------------------------------------------------------------------------------------
+// LAYER SHELL. A menu bar on macOS is at the top of the SCREEN, and a Wayland client cannot put a
+// toplevel there: position belongs to the compositor. zwlr_layer_shell_v1 is the extension that
+// asks for an edge, a size and a reserved zone, which is what every panel, dock and bar on this
+// desktop is built from. Optional by design, and the backend keeps the in-window bar when the
+// compositor does not offer it.
+pub enum ZwlrLayerShell {}
+pub enum ZwlrLayerSurface {}
+
+/// The layers, bottom to top. A menu bar belongs on TOP, above ordinary windows and below a lock
+/// screen, which is where a compositor panel sits.
+pub const LAYER_BACKGROUND: u32 = 0;
+pub const LAYER_BOTTOM: u32 = 1;
+pub const LAYER_TOP: u32 = 2;
+pub const LAYER_OVERLAY: u32 = 3;
+
+pub const ANCHOR_TOP: u32 = 1;
+pub const ANCHOR_BOTTOM: u32 = 2;
+pub const ANCHOR_LEFT: u32 = 4;
+pub const ANCHOR_RIGHT: u32 = 8;
+
+/// Keyboard focus for a layer surface: none, exclusive, or on demand. A menu bar takes it ON
+/// DEMAND, so clicking the bar focuses it and nothing else steals the keyboard from the document.
+pub const KEYBOARD_NONE: u32 = 0;
+pub const KEYBOARD_EXCLUSIVE: u32 = 1;
+pub const KEYBOARD_ON_DEMAND: u32 = 2;
+
+/// Two events. configure carries the size the compositor decided and a serial that must be
+/// acknowledged; closed means the surface is gone and the client must destroy it.
+#[repr(C)]
+pub struct ZwlrLayerSurfaceListener {
+    pub configure: extern "C" fn(
+        data: *mut c_void,
+        surface: *mut ZwlrLayerSurface,
+        serial: u32,
+        width: u32,
+        height: u32,
+    ),
+    pub closed: extern "C" fn(data: *mut c_void, surface: *mut ZwlrLayerSurface),
+}
+
+unsafe extern "C" {
+    pub fn cider_wl_registry_bind_layer_shell(
+        r: *mut WlRegistry,
+        name: u32,
+        version: u32,
+    ) -> *mut ZwlrLayerShell;
+    pub fn cider_zwlr_layer_shell_v1_interface() -> *const WlInterface;
+    pub fn cider_zwlr_layer_shell_get_layer_surface(
+        shell: *mut ZwlrLayerShell,
+        surface: *mut WlSurface,
+        output: *mut WlOutput,
+        layer: u32,
+        name_space: *const c_char,
+    ) -> *mut ZwlrLayerSurface;
+    pub fn cider_zwlr_layer_surface_set_size(s: *mut ZwlrLayerSurface, width: u32, height: u32);
+    pub fn cider_zwlr_layer_surface_set_anchor(s: *mut ZwlrLayerSurface, anchor: u32);
+    pub fn cider_zwlr_layer_surface_set_exclusive_zone(s: *mut ZwlrLayerSurface, zone: i32);
+    pub fn cider_zwlr_layer_surface_set_keyboard_interactivity(
+        s: *mut ZwlrLayerSurface,
+        interactivity: u32,
+    );
+    pub fn cider_zwlr_layer_surface_ack_configure(s: *mut ZwlrLayerSurface, serial: u32);
+    pub fn cider_zwlr_layer_surface_destroy(s: *mut ZwlrLayerSurface);
+    pub fn cider_zwlr_layer_surface_add_listener(
+        s: *mut ZwlrLayerSurface,
+        listener: *const ZwlrLayerSurfaceListener,
+        data: *mut c_void,
+    ) -> c_int;
+    pub fn cider_zwlr_layer_surface_get_popup(s: *mut ZwlrLayerSurface, popup: *mut XdgPopup);
 }

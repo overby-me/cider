@@ -23,6 +23,9 @@ static REGISTRY: AtomicPtr<wl::WlRegistry> = AtomicPtr::new(std::ptr::null_mut()
 static COMPOSITOR: AtomicPtr<wl::WlCompositor> = AtomicPtr::new(std::ptr::null_mut());
 static SHM: AtomicPtr<wl::WlShm> = AtomicPtr::new(std::ptr::null_mut());
 static WM_BASE: AtomicPtr<wl::XdgWmBase> = AtomicPtr::new(std::ptr::null_mut());
+/// The layer shell, if this compositor has one. Null is a normal answer and means the menu bar
+/// stays inside the window, which is what every run before 2026-08-15 did.
+static LAYER_SHELL: AtomicPtr<wl::ZwlrLayerShell> = AtomicPtr::new(std::ptr::null_mut());
 
 /// Where the registry sweep accumulates. Only touched between the add_listener and the roundtrip
 /// that drives it, both inside connect(), so it never escapes that call.
@@ -267,14 +270,31 @@ pub fn connect() -> bool {
             }
         }
 
+        // THE STRIP AT THE TOP OF THE SCREEN, if the compositor can give us one. Bound here and
+        // used later: a menu bar where macOS puts it is a layer surface and cannot be anything
+        // else, because a client does not get to place a toplevel.
+        if globals.layer_shell {
+            let shell = wl::cider_wl_registry_bind_layer_shell(
+                registry,
+                globals.bound.layer_shell_name,
+                globals.bound.layer_shell_version,
+            );
+            if shell.is_null() {
+                println!("cider-wayland-appkit layer-shell=bind-failed");
+            } else {
+                LAYER_SHELL.store(shell, Ordering::Release);
+            }
+        }
+
         DISPLAY.store(display, Ordering::Release);
         REGISTRY.store(registry, Ordering::Release);
         COMPOSITOR.store(compositor, Ordering::Release);
         SHM.store(shm, Ordering::Release);
         WM_BASE.store(base, Ordering::Release);
         println!(
-            "cider-wayland-appkit init=ok display=connected globals={} seat={} output={}",
-            globals.total, globals.seat, globals.output
+            "cider-wayland-appkit init=ok display=connected globals={} seat={} output={} layer-shell={}",
+            globals.total, globals.seat, globals.output,
+            !LAYER_SHELL.load(Ordering::Acquire).is_null()
         );
         start_waker();
     true
@@ -295,6 +315,11 @@ pub fn shm() -> *mut wl::WlShm {
 
 pub fn wm_base() -> *mut wl::XdgWmBase {
     WM_BASE.load(Ordering::Acquire)
+}
+
+/// Null when the compositor has no layer shell, which is a supported state rather than a failure.
+pub fn layer_shell() -> *mut wl::ZwlrLayerShell {
+    LAYER_SHELL.load(Ordering::Acquire)
 }
 
 /// Push queued requests without waiting for anything. A commit that is never flushed is a window
