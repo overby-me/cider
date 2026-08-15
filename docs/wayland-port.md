@@ -3262,3 +3262,65 @@ ignored. Colours for drawn shapes are built from components here.
 STILL NOT AUTHENTIC, and named so it is not forgotten: there is no backdrop blur behind a menu, so
 translucency shows the toolbar sharply where macOS shows it smeared. Nothing else on the user list
 is outstanding.
+
+## TWO JOURNEYS THAT GO ALL THE WAY THROUGH, and what they cost
+
+2026-08-15. A menu that opens is not an application that works. Two complete user journeys now run
+end to end, each driven through the compositor with a real pointer and a real keyboard:
+
+OPEN A FILE. Command O, the picker maps at 500x422, click a row, click Open, and the document opens
+in its own window. sway reports both: cider-typed-name.odt and cider-open-me.odt, side by side,
+845x1388 each.
+
+INSERT A PICTURE. Insert, three Downs, Return, the picker maps, click the PNG, click Open, and the
+image is decoded, placed in the page with selection handles, and the toolbar becomes the image
+toolbar: anchor, wrap, align, filter, transparency. docs is where the screenshot goes if it is ever
+needed again; the run is scratchpad/run-lo-image.sh.
+  A MENU ITEM IS COMMITTED WITH THE KEYBOARD, not with a second click. A second click on an open
+  menu dismisses it, which is why the first attempt reached the picker zero times out of two while
+  the working command runner had been walking with Down and committing with Return all along.
+  The harness clicks a row by pixel offset, so a new file in the directory shifts every row: one run
+  selected the directory bin and LibreOffice answered Unknown image format, correctly.
+
+WHAT THE PICKER COSTS, measured because it felt slow. The call counter in the backend said
+
+    nextevent calls 13000 -> 2751400 over 142.7 s = 19189 per second
+
+and a dladdr backtrace at the point of the call named the caller: AquaSalInstance::AnyInput, under
+Scheduler::CallbackTaskScheduling, under AquaSalTimer::callTimerCallback, under DoYield, under
+Application::Execute. It asks for an event with a date that has ALREADY PASSED, nineteen thousand
+times a second, and each of those was getting a full pass of the backend and of AppKit.
+
+Raising the event wait cap from 16 ms to 50 changed the cost by three percent, which is the proof
+that nothing was waiting: the cap bounds a wait that happens, and none did.
+
+    getenv                        21.7 percent of all samples, gone: env_flag reads once
+    [NSScreen screens]            an NSScreen, an NSArray and a printed line per visible window per
+                                  pass, now built once per output size
+    deliver_pending_configures    cloned the window list and read the clock per window, now scans
+                                  under the lock and allocates only when there is work
+    the AppKit housekeeping sweep four sweeps of every window per pass, eight hundred thousand
+                                  message sends a second with forty windows, now skipped for a poll
+                                  that arrives within 2 ms of the last one
+    the manufactured idle event   an NSEvent allocated to mean nothing, now nil for a poll
+
+    picker open  62 percent of a core -> 45.  idle 2.6 percent, unchanged.  startup 1.521 s.
+
+Still true: LibreOffice polls nineteen thousand times a second while a system dialog is open. Making
+each poll cheap is not the same as not polling, and the remaining 45 percent is mostly its own
+scheduler and yield mutex on the way to asking.
+
+AND A WINDOW THAT ARGUES ABOUT ITS SIZE GETS NUDGED. A document opened into a tiled slot came up
+laid out for the size it wanted: find bar across the middle, grey below it. Everything measurable
+said the window was fine -- frame 845x1388, content view 845x1338, delegate implements
+windowDidResize, pixels drawn. The line that mattered was setframe asked=1024x690 current=845x1388:
+the application argued, this backend overruled it, and that is correct and not enough. The nudge
+that makes LibreOffice lay out again -- one row short, then the true size -- was gated on
+bottom_row_is_clear, which only sees a window nobody painted. LibreOffice paints. The signal is the
+argument, not the pixels, so set_frame records it and two frame changes are delivered regardless of
+what the window looks like.
+
+AND THE STARTUP FAILURE IN THE README IS GONE. It claimed one start in sixty failed with a SIGFPE or
+a start-stack mmap failure. Measured with the container torn down between attempts: 420 cold starts
+and 140 warm shells, zero failures. If the rate were still one in sixty the chance of that is about
+one in a thousand, so the entry went.
