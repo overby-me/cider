@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSAttributedString.h>
+#import <AppKit/NSBezierPath.h>
+#import <AppKit/NSControl.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSFont.h>
 #import <AppKit/NSGraphics.h>
@@ -463,6 +465,40 @@ static void drawRoundedBezel(CGContextRef context, CGRect frame) {
                                                 bezeledNotLine: NO];
             backRect = NSInsetRect(backRect, -1, -1);
         }
+    }
+
+    /*
+     * THE BLUE RING ROUND THE FIELD BEING EDITED, which macOS has and this had nothing at all: the
+     * name in the save panel is selected the moment the panel opens and the field it sits in looked
+     * exactly like every other field on the panel.
+     *
+     * FOCUS IS THE EDITOR, not the responder chain. A field being typed into has a FIELD EDITOR
+     * installed, and that editor is the first responder rather than the control, so asking the
+     * window for its first responder never names the field. -currentEditor is the question that
+     * answers it, and it is nil for a cell drawn with no view at all, which is how LibreOffice
+     * draws its own controls: they keep what they had.
+     */
+    if ([self isBezeled] && [control isKindOfClass: [NSControl class]] &&
+        [(NSControl *) control currentEditor] != nil) {
+        NSColor *accent = [NSColor colorWithCalibratedRed: 0.0 green: 0.478 blue: 1.0 alpha: 1.0];
+        /* The glow OUTSIDE the frame is clipped by whatever clip the cell was given, so the ring
+         * that has to survive is the one drawn inside it. Both are drawn: where there is room the
+         * result is the soft macOS ring, and where there is not it is a blue border. */
+        NSBezierPath *glow = [NSBezierPath bezierPathWithRoundedRect: NSInsetRect(frame, -1.5, -1.5)
+                                                            xRadius: 5.0
+                                                            yRadius: 5.0];
+
+        [[accent colorWithAlphaComponent: 0.40] setStroke];
+        [glow setLineWidth: 3.0];
+        [glow stroke];
+
+        NSBezierPath *edge = [NSBezierPath bezierPathWithRoundedRect: NSInsetRect(frame, 0.5, 0.5)
+                                                            xRadius: 4.0
+                                                            yRadius: 4.0];
+
+        [accent setStroke];
+        [edge setLineWidth: 1.0];
+        [edge stroke];
     }
 
     if ([self drawsBackground]) {
