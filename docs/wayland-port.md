@@ -3977,8 +3977,19 @@ was right, but the same edit moved the HANG MASK onto the path that has a delega
 attached SIGTRAP is not a pause, it is the end of the process, and it killed this application for two
 runs after the real bug was already fixed.
 
-WHERE IT STOPS. The assistant window is created and presented at 760 by 680, and the application
-then opens its welcome nib and dies in the keyed unarchiver. No screenshot has been taken: the
-window lives about a tenth of a second. The main menu is built in code and binds its items to
+AND HERE IT IS: docs/wayland-swift-publisher-template-gallery.png. The window lives about a tenth of
+a second, so a driver that waits for a settle never sees it; shooting continuously from the moment
+the compositor starts does. What that image shows is the Template Gallery, with its source list
+(All, then DESKTOP PUBLISHING with sixteen categories under it, DISCS AND MEDIA, BUSINESS CARDS), a
+grid of four template tiles with their captions, an Open Recent popup and a Choose button. It is
+recognisably the application.
+
+WHAT IS WRONG IN IT, and the screenshot is the reason any of this is known rather than assumed. The
+template grid sits on a DARK GREY background where macOS has a light one. The in-window menu bar
+carries only the application name, which is the objectValue exception below cutting createMainMenu
+short. The heading Please choose a design is clipped along its top edge. The window is placed at
+y = -40, so its title bar is off the top of the screen.
+
+WHERE IT STOPS. The application then opens its welcome nib and dies in the keyed unarchiver. The main menu is built in code and binds its items to
 objectValue, which NSMenuItem does not have, so every item raises; -[NSWindow standardWindowButton:]
 is unimplemented; and a layer-backed view has no compositor to render it.
