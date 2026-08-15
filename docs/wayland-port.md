@@ -3404,3 +3404,34 @@ So: bundle it. The mechanical shape, kept deliberately small:
 NOT DONE IN THIS SESSION, on purpose: it puts 16 MB and 1,327 files into the repository in one
 commit, and the thing it has to be verified against is the nix endpoint, which is the expensive
 build. It wants its own session with the checks run, not the tail of a long one.
+
+## THE INTERFACE FONT IS INTER NOW, WHEN THE MACHINE HAS IT
+
+2026-08-15, task #113. The interface resolved to TeX Gyre Heros, a clone of Helvetica, which is the
+face Apple REPLACED with San Francisco in 2015: it renders perfectly and it is a decade out of date.
+Inter is the closest open source face to San Francisco, and the hook to prefer it already existed --
+_CiderPreferredFamilies rewrites the Apple family names before fontconfig sees them, so that an
+unknown Apple family does not silently become DejaVu Sans. Inter goes at the front of that list.
+
+Because it is a fontconfig FAMILY LIST, the first family present wins: a machine without Inter gets
+exactly what it had. Verified both ways in one session -- with a scratchpad fontconfig that adds the
+nixpkgs inter store path, the menu bar is visibly not Helvetica any more; without it, the same run
+is byte for byte the old face. Inter also has U+2318, so the Command symbols draw in the interface
+font rather than through the DejaVu fallback.
+
+Not done: shipping Inter with the runtime, which means adding it to the package and having the
+launcher point FONTCONFIG_FILE at a generated configuration that includes the system one.
+
+## AND THE COCOTRON VERSION, WRITTEN DOWN BEFORE IT IS BUNDLED
+
+Task #114 will check the tree into git and delete the patch series, so the fork point has to survive
+somewhere a git range can use it:
+
+    upstream   https://github.com/darlinghq/darling-cocotron
+    base rev   c8d38d16a9f613d300157bebbab2b9501bc0c274
+    taken      2026-08-15; upstream head that day was the 2026-06-06 merge of the Fedora 44 fix
+    ancestor   cjwl/cocotron, last pushed 2015-11-06, which is the dead original
+
+Catching up later is then git log base..upstream against darling-cocotron and a merge of what
+matters, rather than archaeology. The VENDORED.md that lands with the bundle carries these four
+lines verbatim.
