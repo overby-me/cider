@@ -3209,3 +3209,56 @@ REGRESSIONS, all re-run because this changes the lifecycle of every window in th
     Options dialog       floats at its natural size, whole tree, blue default button
     resize               three configures applied, 700x600 and 1150x640 relaid out
     zero unrecognized selectors and zero protocol errors in every one of them
+
+## AUTHENTIC IS A SEPARATE AXIS FROM WORKING, and the user reads it faster than any check
+
+2026-08-15. Six observations arrived while the loop was working, each one a sentence, each one
+real: the menu bar and the items are spaced wrong, macOS has separators, menus are translucent and
+rounded, the highlight is rounded, there is more air; the combo boxes and check boxes are not
+rounded; Reset, Apply, Cancel and OK are not rounded; the Options window is not rounded and its
+title is not bold; the tree selection is grey where macOS is light blue; the traffic lights sit too
+far in.
+
+Five of the six were fixed in four commits, and the interesting part is that three of them had ONE
+cause each, none of which was a styling constant.
+
+THE FONT METRIC. Cancel and Open in the file picker were drawn cut through the middle of their own
+letters. The bezel was whole, so the clip was the title rect, and the title rect was nine points
+tall for a font whose glyphs need seventeen. -[NSFont defaultLineHeightForFont] is
+round(ascent + descent + leading) and the descent arriving there was NEGATIVE: KTFont_FT returned
+face->descender straight from FreeType, where Core Text is the other convention. One negation, and
+every string AppKit lays out got taller -- menu items went from fourteen points to twenty one, which
+is most of what "more space around them" asked for.
+
+THE SUBMENU ARROW. Every submenu had a tick beside it that looked like an apostrophe. The arrow
+column was five points wide and the drawing insets it by its margins, two each side, so the triangle
+that reached the screen was ONE point wide. The column is fourteen now and the triangle four by
+eight.
+
+THE MIDDLE BAND. Reset, Apply and Cancel were white rectangles with a grey line above and below and
+no sides. The bezel rect an application asks for is ten points wider than the button it shows, and
+the view-less path skipped the whole size adjustment, so the rounded ends were five points outside
+the visible area at each end. The vertical half of that adjustment is still skipped, because it is
+what patch 0068 removed for good reason.
+
+AND ONE MECHANISM WORTH KEEPING: TRANSPARENCY. A menu on macOS is rounded and translucent, which
+means the pixels outside the shape have to be nothing at all. A transient window now gets an
+ARGB8888 buffer instead of the XRGB8888 the protocol guarantees, cleared to zero rather than to
+light grey, and the corners of every decorated window are punched out in present() -- in the PIXELS,
+because the top corners of a window are painted by the frame and the bottom ones by the application
+content, so anything AppKit rounds the content would square off again. The mask samples coverage
+four by four and only scales a pixel that is still fully opaque, which is what makes it safe to run
+on every present rather than fading its own corners away one frame at a time.
+
+Proved in the buffer before it was believed on screen, with CIDER_WAYLAND_DUMP:
+    window-24 (a menu)     corner 00000000, three pixels in fff5f5f5
+    window-2 (a document)  ffececec everywhere, untouched
+
+A CATALOG COLOUR CANNOT BE ASKED FOR A VARIANT OF ITSELF. The first translucent menu came out
+BLACK, which is a cleared surface with nothing drawn on it: the fill was
+[[NSColor menuBackgroundColor] colorWithAlphaComponent: 0.94] and that answered something the fill
+ignored. Colours for drawn shapes are built from components here.
+
+STILL NOT AUTHENTIC, and named so it is not forgotten: there is no backdrop blur behind a menu, so
+translucency shows the toolbar sharply where macOS shows it smeared. Nothing else on the user list
+is outstanding.
