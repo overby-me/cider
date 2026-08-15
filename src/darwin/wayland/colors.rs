@@ -22,7 +22,15 @@ enum Recipe {
     ClassMethod(&'static str),
     /// [NSColor colorWithCalibratedWhite:<v> alpha:1.0]
     Grey(f64),
+    /// [NSColor colorWithCalibratedRed:g:b:alpha:1.0], for the colours Cocoa has no constructor
+    /// for. THE ACCENT IS ONE OF THEM: blueColor is 0,0,1, a saturated primary that Apple has not
+    /// used for a selection since Aqua, and every selected menu item, every default button and
+    /// every highlighted row was drawn in it.
+    Rgb(f64, f64, f64),
 }
+
+/// The macOS accent blue, which is what a selection is filled with.
+const ACCENT: Recipe = Recipe::Rgb(0.0, 0.478, 1.0);
 
 /// The table, in the order the X11 backend tests the names. Order does not matter to correctness
 /// here because the lookup is exact, but keeping it makes the two readable side by side.
@@ -36,10 +44,10 @@ fn recipe_for(name: &str) -> Option<Recipe> {
         "selectedTextBackgroundColor" => Recipe::ClassMethod("lightGrayColor"),
         "disabledControlTextColor" => Recipe::ClassMethod("grayColor"),
         "controlTextColor" => Recipe::ClassMethod("blackColor"),
-        "menuBackgroundColor" => Recipe::Grey(0.9),
-        "mainMenuBarColor" => Recipe::Grey(0.9),
+        "menuBackgroundColor" => Recipe::Grey(0.96),
+        "mainMenuBarColor" => Recipe::Grey(0.96),
         "controlShadowColor" => Recipe::ClassMethod("darkGrayColor"),
-        "selectedControlColor" => Recipe::ClassMethod("blueColor"),
+        "selectedControlColor" => ACCENT,
         "controlBackgroundColor" => Recipe::ClassMethod("whiteColor"),
         "controlLightHighlightColor" => Recipe::ClassMethod("lightGrayColor"),
         "headerColor" => Recipe::ClassMethod("greenColor"),
@@ -49,7 +57,7 @@ fn recipe_for(name: &str) -> Option<Recipe> {
         "headerTextColor" => Recipe::ClassMethod("blackColor"),
         "menuItemTextColor" => Recipe::ClassMethod("blackColor"),
         "selectedMenuItemTextColor" => Recipe::ClassMethod("whiteColor"),
-        "selectedMenuItemColor" => Recipe::ClassMethod("blueColor"),
+        "selectedMenuItemColor" => ACCENT,
         "selectedControlTextColor" => Recipe::ClassMethod("blackColor"),
         "windowFrameColor" => Recipe::ClassMethod("lightGrayColor"),
         "shadowColor" => Recipe::ClassMethod("blackColor"),
@@ -57,15 +65,15 @@ fn recipe_for(name: &str) -> Option<Recipe> {
         "labelColor" => Recipe::ClassMethod("blackColor"),
         "linkColor" => Recipe::ClassMethod("blueColor"),
         "unemphasizedSelectedTextColor" => Recipe::ClassMethod("blackColor"),
-        "selectedContentBackgroundColor" => Recipe::ClassMethod("blueColor"),
+        "selectedContentBackgroundColor" => ACCENT,
         "unemphasizedSelectedContentBackgroundColor" => Recipe::ClassMethod("lightGrayColor"),
         // The modern semantic names, added with the AppKit class methods that ask for them.
         // Greys rather than named class methods where Cocoa has no equivalent constructor: the
         // point of these is a LEGIBLE HIERARCHY, primary text darker than secondary and so on,
         // and grey levels express that directly.
         "underPageBackgroundColor" => Recipe::Grey(0.85),
-        "controlAccentColor" => Recipe::ClassMethod("blueColor"),
-        "separatorColor" => Recipe::Grey(0.8),
+        "controlAccentColor" => ACCENT,
+        "separatorColor" => Recipe::Grey(0.87),
         "secondaryLabelColor" => Recipe::Grey(0.4),
         "tertiaryLabelColor" => Recipe::Grey(0.55),
         "quaternaryLabelColor" => Recipe::Grey(0.7),
@@ -154,6 +162,12 @@ pub fn color_with_name(name: objc::Object) -> objc::Object {
             Some(Recipe::Grey(level)) => {
                 let sel = objc::sel_registerName(cstr!("colorWithCalibratedWhite:alpha:"));
                 objc::msg_send_f64_2(color_cls, sel, level, 1.0)
+            }
+            Some(Recipe::Rgb(r, g, b)) => {
+                let sel = objc::sel_registerName(cstr!(
+                    "colorWithCalibratedRed:green:blue:alpha:"
+                ));
+                objc::msg_send_f64_4(color_cls, sel, r, g, b, 1.0)
             }
         }
     }
