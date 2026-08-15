@@ -93,6 +93,14 @@ void cider_xdg_toplevel_set_title(struct xdg_toplevel *toplevel, const char *tit
 	xdg_toplevel_set_title(toplevel, title);
 }
 
+// WHERE THE WINDOW ACTUALLY IS INSIDE THE SURFACE. A client that draws a shadow makes its surface
+// bigger than its window, and this is how the compositor is told which part is the window: tiling,
+// snapping and popup anchoring all use this rectangle rather than the buffer.
+void cider_xdg_surface_set_window_geometry(struct xdg_surface *surface, int32_t x, int32_t y,
+                                           int32_t width, int32_t height) {
+	xdg_surface_set_window_geometry(surface, x, y, width, height);
+}
+
 void cider_xdg_surface_ack_configure(struct xdg_surface *surface, uint32_t serial) {
 	xdg_surface_ack_configure(surface, serial);
 }

@@ -287,8 +287,11 @@ extern "C" fn on_pointer_enter(
 ) {
     let Ok(mut st) = INPUT.lock() else { return };
     st.pointer_focus = surface;
-    st.pointer_x = unsafe { wl::cider_wl_fixed_to_double(x) };
-    st.pointer_y = unsafe { wl::cider_wl_fixed_to_double(y) };
+    // SURFACE SPACE MINUS THE SHADOW. See window::margin_for_surface: a window that draws a shadow
+    // sits inside a bigger surface, and the pointer arrives in the surface.
+    let margin = window::margin_for_surface(surface);
+    st.pointer_x = unsafe { wl::cider_wl_fixed_to_double(x) } - margin;
+    st.pointer_y = unsafe { wl::cider_wl_fixed_to_double(y) } - margin;
     /* WHICH SURFACE, RESOLVED. The compositor points at whatever is under the cursor and a tooltip
      * that has just appeared there is a surface like any other; if it is one we cannot resolve, the
      * next click is thrown away here rather than by the application, and the two are
@@ -328,8 +331,9 @@ extern "C" fn on_pointer_motion(
 ) {
     let (surface, px, py, buttons, modifiers) = {
         let Ok(mut st) = INPUT.lock() else { return };
-        st.pointer_x = unsafe { wl::cider_wl_fixed_to_double(x) };
-        st.pointer_y = unsafe { wl::cider_wl_fixed_to_double(y) };
+        let margin = window::margin_for_surface(st.pointer_focus);
+        st.pointer_x = unsafe { wl::cider_wl_fixed_to_double(x) } - margin;
+        st.pointer_y = unsafe { wl::cider_wl_fixed_to_double(y) } - margin;
         (st.pointer_focus, st.pointer_x, st.pointer_y, st.buttons_down, st.modifiers)
     };
     let Some((_owner, delegate, height, _number)) = window::window_for_surface(surface) else {

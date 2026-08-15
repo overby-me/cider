@@ -79,6 +79,9 @@ pub struct WindowState {
     /// the window. What overflows is the bottom, which is a scroll area rather than the controls.
     pub draw_w: i32,
     pub draw_h: i32,
+    /// How much empty surface surrounds the window, for the shadow. Zero for a window that has
+    /// none, which is every popup and every undecorated one.
+    pub margin: i32,
     /// The frame the application refuses to shrink below, 0 when it has never refused one.
     pub insist_w: i32,
     pub insist_h: i32,
@@ -161,6 +164,7 @@ impl WindowState {
             buffer_h: 0,
             draw_w: 0,
             draw_h: 0,
+            margin: 0,
             insist_w: 0,
             insist_h: 0,
             pixels: std::ptr::null_mut(),
@@ -891,6 +895,25 @@ fn create_surface(st: &mut WindowState) -> bool {
                 wl::cider_xdg_toplevel_set_parent(st.toplevel, parent);
             }
         }
+        /*
+         * WHICH PART OF THE SURFACE IS THE WINDOW, before the first commit.
+         *
+         * A window with a shadow has a surface bigger than itself, and without this the compositor
+         * treats the whole thing as the window: a tiled window would be inset by the shadow, a
+         * maximised one would overhang the screen, and a popup would be anchored to the shadow
+         * rather than to the menu bar. The geometry is set once here and again after every resize,
+         * because the size is part of it.
+         */
+        let margin = shadow_margin(st);
+        if margin > 0 && !st.xdg.is_null() {
+            wl::cider_xdg_surface_set_window_geometry(
+                st.xdg,
+                margin,
+                margin,
+                (st.frame.size.width as i32).max(1),
+                (st.frame.size.height as i32).max(1),
+            );
+        }
         wl::cider_wl_surface_commit(st.surface);
         for _ in 0..20 {
             session::roundtrip();
@@ -958,6 +981,90 @@ fn wants_alpha(st: &WindowState) -> bool {
     st.level > 0 || st.style_mask & 0x1 != 0
 }
 
+/// HOW WIDE THE SHADOW IS, in surface pixels around the window.
+///
+/// macOS floats every window and every dialog on a soft shadow, and a flat rectangle against the
+/// desktop is one of the last things that says this is not a Mac. A Wayland client draws its own:
+/// the surface is made bigger than the window, the extra ring is painted with a falling alpha, and
+/// xdg_surface.set_window_geometry tells the compositor which part is the WINDOW so that tiling,
+/// snapping and popup anchoring still use the right rectangle.
+const SHADOW_MARGIN: i32 = 24;
+
+/// Whether this window gets one. A decorated toplevel does; a popup does not, because a menu is
+/// already drawn with its own rounded panel and a compositor places it against its parent.
+fn shadow_margin(st: &WindowState) -> i32 {
+    if crate::env_flag!("CIDER_WAYLAND_NO_SHADOW") {
+        return 0;
+    }
+    if st.popup.is_null() && st.style_mask & 0x1 != 0 && wants_alpha(st) {
+        SHADOW_MARGIN
+    } else {
+        0
+    }
+}
+
+/// Paint the ring around the window, once per backing.
+///
+/// The application never touches these pixels, so this runs when the pages are allocated rather
+/// than per frame. Premultiplied, like everything else in the buffer, and offset DOWNWARD: an Apple
+/// shadow sits below its window rather than around it evenly.
+fn paint_shadow(st: &mut WindowState) {
+    let margin = st.margin;
+    if margin <= 0 || st.pixels.is_null() {
+        return;
+    }
+    let alloc_w = st.draw_w + margin * 2;
+    let alloc_h = st.draw_h + margin * 2;
+    let total = st.map_len / 4;
+    if total < (alloc_w as usize) * (alloc_h as usize) {
+        return;
+    }
+    let words = unsafe { std::slice::from_raw_parts_mut(st.pixels as *mut u32, total) };
+    let inner_x0 = margin as f64;
+    let inner_y0 = margin as f64;
+    let inner_x1 = (margin + st.draw_w) as f64;
+    let inner_y1 = (margin + st.draw_h) as f64;
+    let reach = margin as f64;
+    // The shadow is cast from a rectangle sitting slightly ABOVE the window, so more of it falls
+    // below than above, which is what a light source over the screen does.
+    let drop = 6.0;
+
+    for y in 0..alloc_h {
+        for x in 0..alloc_w {
+            let inside_x = (x as f64) >= inner_x0 && (x as f64) < inner_x1;
+            let inside_y = (y as f64) >= inner_y0 && (y as f64) < inner_y1;
+            if inside_x && inside_y {
+                continue;
+            }
+            let dx = if (x as f64) < inner_x0 {
+                inner_x0 - x as f64
+            } else if (x as f64) >= inner_x1 {
+                x as f64 - inner_x1 + 1.0
+            } else {
+                0.0
+            };
+            let dy = if (y as f64) < inner_y0 + drop {
+                inner_y0 + drop - y as f64
+            } else if (y as f64) >= inner_y1 + drop {
+                y as f64 - (inner_y1 + drop) + 1.0
+            } else {
+                0.0
+            };
+            let distance = (dx * dx + dy * dy).sqrt();
+            if distance >= reach {
+                continue;
+            }
+            let fall = 1.0 - distance / reach;
+            let alpha = (0.30 * fall * fall * 255.0).round() as u32;
+            if alpha == 0 {
+                continue;
+            }
+            // Premultiplied black: the colour channels are zero, so only the alpha carries it.
+            words[(y as usize) * (alloc_w as usize) + (x as usize)] = alpha << 24;
+        }
+    }
+}
+
 /// The radius macOS rounds a window and a menu with.
 const CORNER_RADIUS: i32 = 10;
 
@@ -981,7 +1088,10 @@ fn round_corners(st: &mut WindowState) {
     if w < r * 2 || h < r * 2 {
         return;
     }
-    let stride = w as usize;
+    // THE CORNERS OF THE WINDOW, NOT OF THE SURFACE. With a shadow the surface is bigger, and
+    // rounding its corners would round the shadow while leaving the window square.
+    let margin = st.margin as usize;
+    let stride = (w + st.margin * 2) as usize;
     let total = st.map_len / 4;
     if total < stride * (h as usize) {
         return;
@@ -1011,7 +1121,7 @@ fn round_corners(st: &mut WindowState) {
                 }
                 let x = if right { w - 1 - cx } else { cx };
                 let y = if bottom { h - 1 - cy } else { cy };
-                let idx = (y as usize) * stride + (x as usize);
+                let idx = ((y as usize) + margin) * stride + (x as usize) + margin;
                 let pixel = words[idx];
                 if covered == 0 {
                     words[idx] = 0;
@@ -1056,7 +1166,7 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     let dw = w.max(st.insist_w);
     let dh = h.max(st.insist_h);
     if !st.pixels.is_null() && st.buffer_w == w && st.buffer_h == h && st.draw_w == dw
-        && st.draw_h == dh
+        && st.draw_h == dh && st.margin == shadow_margin(st)
     {
         return true;
     }
@@ -1084,8 +1194,15 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     if shm.is_null() {
         return false;
     }
-    let stride = dw * 4;
-    let size = (stride as usize) * (dh as usize);
+    // THE SURFACE IS BIGGER THAN THE WINDOW WHEN THERE IS A SHADOW, and everything below counts in
+    // the padded space: the stride, the mapping, and the wl_buffer. Only the O2 surface handed to
+    // AppKit is the inner rectangle, which it reaches through a pointer into the middle of the
+    // mapping.
+    let margin = shadow_margin(st);
+    let alloc_w = dw + margin * 2;
+    let alloc_h = dh + margin * 2;
+    let stride = alloc_w * 4;
+    let size = (stride as usize) * (alloc_h as usize);
 
     // A PLAIN FILE, not shm_open: the compositor receives the DESCRIPTOR and mmaps that, so where
     // the file lives never travels with it and the guest needs no working /dev/shm.
@@ -1139,7 +1256,9 @@ fn ensure_backing(st: &mut WindowState) -> bool {
         // unflipped context makes the TOP of the window, and a stride wider than the buffer takes
         // the left of each row: between them the compositor is shown the top left corner of a
         // window that is larger than its surface, rather than the bottom right.
-        st.buffer = wl::cider_wl_shm_pool_create_buffer(pool, 0, w, h, stride, format);
+        st.buffer =
+            wl::cider_wl_shm_pool_create_buffer(pool, 0, w + margin * 2, h + margin * 2, stride,
+                                                format);
         // The pool may go as soon as the buffer exists: the buffer holds its own reference to the
         // mapping, which is what makes a resize a new pool rather than a torn down surface.
         wl::cider_wl_shm_pool_destroy(pool);
@@ -1156,6 +1275,8 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     st.buffer_h = h;
     st.draw_w = dw;
     st.draw_h = dh;
+    st.margin = margin;
+    paint_shadow(st);
     if dw != w || dh != h {
         println!(
             "cider-wayland-window backing=oversize number={} buffer={w}x{h} bitmap={dw}x{dh}",
@@ -1251,8 +1372,19 @@ fn present(st: &mut WindowState) {
     }
     round_corners(st);
     unsafe {
+        if st.margin > 0 && !st.xdg.is_null() {
+            // The size is part of the geometry, so a resized window has to say so again.
+            wl::cider_xdg_surface_set_window_geometry(
+                st.xdg,
+                st.margin,
+                st.margin,
+                st.buffer_w.max(1),
+                st.buffer_h.max(1),
+            );
+        }
         wl::cider_wl_surface_attach(st.surface, st.buffer, 0, 0);
-        wl::cider_wl_surface_damage(st.surface, 0, 0, st.buffer_w, st.buffer_h);
+        wl::cider_wl_surface_damage(st.surface, 0, 0, st.buffer_w + st.margin * 2,
+                                    st.buffer_h + st.margin * 2);
         wl::cider_wl_surface_commit(st.surface);
     }
     session::flush();
@@ -1531,11 +1663,16 @@ fn cg_context_for(st: &mut WindowState) -> Object {
         let surface = objc::msg_send_surface_init(
             objc::msg_send0(surface_cls, alloc),
             init_surface,
-            st.pixels as *mut c_void,
+            // INTO THE MIDDLE OF THE MAPPING when there is a shadow: the surface AppKit draws on
+            // is the window, and the ring around it belongs to this backend. A wider stride than
+            // the width is exactly how a subrectangle of a bitmap is described.
+            (st.pixels as usize
+                + (st.margin as usize) * ((st.draw_w + st.margin * 2) as usize) * 4
+                + (st.margin as usize) * 4) as *mut c_void,
             st.draw_w as usize,
             st.draw_h as usize,
             8,
-            (st.draw_w * 4) as usize,
+            ((st.draw_w + st.margin * 2) * 4) as usize,
             color_space,
             BITMAP_INFO,
         );
@@ -1792,6 +1929,23 @@ fn unregister_window(st: *mut WindowState) {
 /// The HEIGHT comes back because Wayland puts the origin at the TOP left and AppKit puts it at the
 /// bottom left, so every coordinate has to be flipped and the flip needs the window height. Doing
 /// it at the call site would mean each caller reaching into the state for it.
+/// How far the WINDOW is inset inside its surface, for a surface that carries a shadow.
+///
+/// Pointer coordinates arrive in SURFACE space. With a shadow the surface is bigger than the window
+/// and its origin is up and to the left of it, so every pointer position is that much too large:
+/// without this a click lands twenty four points down and right of where it was aimed, which reads
+/// as an off-by-a-widget bug everywhere at once.
+pub fn margin_for_surface(surface: *mut wl::WlSurface) -> f64 {
+    let Ok(list) = WINDOWS.lock() else { return 0.0 };
+    for &p in list.iter() {
+        let Some(st) = (unsafe { (p as *mut WindowState).as_ref() }) else { continue };
+        if st.surface == surface {
+            return st.margin as f64;
+        }
+    }
+    0.0
+}
+
 pub fn window_for_surface(surface: *mut wl::WlSurface) -> Option<(Object, Object, f64, i64)> {
     let list = WINDOWS.lock().ok()?;
     for &p in list.iter() {

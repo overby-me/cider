@@ -88,6 +88,13 @@ unsafe extern "C" {
     pub fn wl_display_read_events(display: *mut WlDisplay) -> c_int;
     pub fn wl_display_cancel_read(display: *mut WlDisplay);
     pub fn cider_xdg_surface_ack_configure(s: *mut XdgSurface, serial: u32);
+    pub fn cider_xdg_surface_set_window_geometry(
+        s: *mut XdgSurface,
+        x: i32,
+        y: i32,
+        width: i32,
+        height: i32,
+    );
     pub fn cider_wl_surface_commit(s: *mut WlSurface);
     pub fn cider_xdg_surface_add_listener(s: *mut XdgSurface, l: *const XdgSurfaceListener, data: *mut c_void) -> c_int;
     pub fn cider_xdg_wm_base_pong(b: *mut XdgWmBase, serial: u32);
