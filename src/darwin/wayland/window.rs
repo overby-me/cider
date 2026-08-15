@@ -1014,11 +1014,24 @@ const SHADOW_MARGIN: i32 = 24;
 
 /// Whether this window gets one. A decorated toplevel does; a popup does not, because a menu is
 /// already drawn with its own rounded panel and a compositor places it against its parent.
+/// A MENU FLOATS TOO, and on a narrower shadow than a window.
+///
+/// The reference screenshots from macOS have one under every menu and every popup, and ours were
+/// flat panels sitting directly on the document. The surface grows the same way a window does and
+/// xdg_surface.set_window_geometry names the inner rectangle, so the compositor still anchors the
+/// popup by the MENU rather than by the shadow around it.
+const MENU_SHADOW_MARGIN: i32 = 14;
+
 fn shadow_margin(st: &WindowState) -> i32 {
     if crate::env_flag!("CIDER_WAYLAND_NO_SHADOW") {
         return 0;
     }
-    if st.popup.is_null() && st.style_mask & 0x1 != 0 && wants_alpha(st) {
+    if !st.popup.is_null() {
+        // Only the ones this backend draws a panel for. The application also opens borderless
+        // helpers at level 0 with no alpha, and a shadow around one of those is a grey smear.
+        return if wants_alpha(st) { MENU_SHADOW_MARGIN } else { 0 };
+    }
+    if st.style_mask & 0x1 != 0 && wants_alpha(st) {
         SHADOW_MARGIN
     } else {
         0
