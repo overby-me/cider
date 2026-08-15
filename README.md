@@ -81,16 +81,6 @@ not work with an encrypted home directory.
 
 ## Known issues
 
-**The container sometimes fails to start.** Measured at roughly one start in sixty, with two
-signatures: a `SIGFPE` at startup, and
-
-```
-[mldr] start-stack mmap at 0x7fffff600000 failed
-```
-
-Both kill the process before the program inside it runs. Re-running usually succeeds. The cause
-is not yet known.
-
 **A full build can be very large.** Use `.#cider-min` on a constrained machine.
 
 ## Development
