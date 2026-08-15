@@ -78,7 +78,15 @@ void LocalExceptionHandler(NSException* e)
 
 	if (log)
 		NSLog(@"Uncaught exception: %@", e);
-	if (hangmask & NSHangOnUncaughtExceptionMask)
+
+	/*
+	 * THE HANG MASK IS ONLY FOR AN APPLICATION THAT ASKED TO BE STOPPED IN A DEBUGGER, and with no
+	 * debugger attached SIGTRAP is not a pause, it is the end of the process. It stays where it has
+	 * always been -- on the path with no delegate -- because an application that installs a
+	 * delegate has said it wants to decide, and Swift Publisher 5 was killed here by a trap for an
+	 * exception it had already handled well enough to keep going.
+	 */
+	if (delegate == NULL && (hangmask & NSHangOnUncaughtExceptionMask))
 		kill(getpid(), SIGTRAP);
 	if (handle)
 		abort();

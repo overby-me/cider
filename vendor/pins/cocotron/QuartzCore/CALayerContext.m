@@ -21,10 +21,26 @@
 
     CGLChoosePixelFormat(attributes, &_pixelFormat, &numberOfVirtualScreens);
 
+    /*
+     * NO GL CONTEXT MEANS NO LAYER CONTEXT, rather than a layer context with a null one in it.
+     *
+     * This used to log and carry on, and then every later call handed that null to CARenderer and
+     * to CGL. On a backend with no OpenGL at all -- which is every backend here -- an application
+     * that sets wantsLayer took the whole process down inside the first scroll view it built, with
+     * two of these lines just before it. Swift Publisher 5 is one such application.
+     *
+     * Answering nil puts -[NSView _createLayerContextIfNeeded] back on the path it takes for a view
+     * whose superview already has a layer: it keeps its CALayer, it has no context to render it
+     * with, and it draws the ordinary way. That is a real loss of layer animation and not a
+     * pretence otherwise, but it is a running application rather than a dead one.
+     */
     if ((error = CGLCreateContext(_pixelFormat, NULL, &_glContext)) !=
-        kCGLNoError)
-        NSLog(@"CGLCreateContext failed with %d in %s %d", error, __FILE__,
-              __LINE__);
+        kCGLNoError) {
+        NSLog(@"CGLCreateContext failed with %d in %s %d, so this view has no layer context",
+              error, __FILE__, __LINE__);
+        [self release];
+        return nil;
+    }
 
     _frame = rect;
 

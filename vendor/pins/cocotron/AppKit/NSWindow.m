@@ -18,6 +18,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#import <AppKit/NSAppearance.h>
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSCursor.h>
@@ -539,6 +540,39 @@ static BOOL _allowsAutomaticWindowTabbing;
 
 - (NSString *) title {
     return _title;
+}
+
+/*
+ * THE APPEARANCE OF A WINDOW, which NSApplication has had and this class has not.
+ *
+ * A window with no appearance of its own takes the applications, which is what macOS means by
+ * EFFECTIVE, and it is never nil there. Missing it is not a missing colour: applications OBSERVE
+ * effectiveAppearance to follow a switch to dark mode, and a key that is not there is an
+ * NSUnknownKeyException out of -addObserver:forKeyPath:. Swift Publisher 5 observes it on its
+ * window and the throw took the process down after the window had been made.
+ *
+ * The appearance is kept in the window and answered honestly. Nothing here follows the desktop
+ * light or dark setting yet, so what an application reads is the one aqua appearance the interface
+ * is drawn in.
+ */
+- (void) setAppearance: (NSAppearance *) appearance {
+    if (_ciderAppearance == appearance)
+        return;
+
+    [appearance retain];
+    [_ciderAppearance release];
+    _ciderAppearance = appearance;
+}
+
+- (NSAppearance *) appearance {
+    return _ciderAppearance;
+}
+
+- (NSAppearance *) effectiveAppearance {
+    if (_ciderAppearance != nil)
+        return _ciderAppearance;
+
+    return [NSApp effectiveAppearance];
 }
 
 - (NSString *) representedFilename {

@@ -115,8 +115,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return self;
 }
 
-- initWithFrame: (NSRect) frame {
-    [super initWithFrame: frame];
+/*
+ * THE MATRIX SET UP, SEPARATELY FROM THE METHOD THAT IS OVERRIDDEN.
+ *
+ * The three initialisers below all need this, and two of them used to get it by sending
+ * -initWithFrame: to SELF. That is a call into the subclass, and a subclass whose own
+ * -initWithFrame: calls one of the longer initialisers -- which is ordinary Cocoa, because on macOS
+ * the designated initialiser of NSMatrix is the long one and -initWithFrame: is the convenience --
+ * recursed until the stack ran out. Swift Publisher 5 does exactly that and died in the prologue of
+ * the method below with an eight megabyte stack full of one four frame cycle repeated 34,600 times.
+ */
+- (void) _initMatrixWithFrame: (NSRect) frame {
     _target = nil;
     _action = NULL;
     _doubleAction = NULL;
@@ -132,6 +141,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     _cellClass = [NSCell class];
     _mode = NSListModeMatrix;
     _tabKeyTraversesCells = YES;
+}
+
+- initWithFrame: (NSRect) frame {
+    [super initWithFrame: frame];
+    [self _initMatrixWithFrame: frame];
 
     return self;
 }
@@ -144,7 +158,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 {
     NSInteger i;
 
-    [self initWithFrame: frame];
+    [super initWithFrame: frame];
+    [self _initMatrixWithFrame: frame];
 
     _mode = mode;
     _protoCell = [prototype copy];
@@ -164,7 +179,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 {
     NSInteger i;
 
-    [self initWithFrame: frame];
+    [super initWithFrame: frame];
+    [self _initMatrixWithFrame: frame];
 
     _mode = mode;
     _cellClass = cls;
@@ -400,6 +416,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (BOOL) allowsEmptySelection {
     return _allowsEmptySelection;
+}
+
+/*
+ * SELECTION BY RECTANGLE: dragging across a matrix selects the BLOCK of cells the drag encloses,
+ * rather than the run from the first cell to the last in reading order. The flag was read out of
+ * the nib already and stored, and there was no way to ask for it or to set it, so a subclass that
+ * turns it on in its own initialiser died on an unrecognized selector before its window was built.
+ * Swift Publisher 5 does that in the template chooser, which is a matrix of thumbnails and is
+ * exactly the shape this flag is for.
+ */
+- (BOOL) isSelectionByRect {
+    return _selectionByRect;
 }
 
 - (BOOL) tabKeyTraversesCells {
@@ -644,6 +672,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (void) setAllowsEmptySelection: (BOOL) flag {
     _allowsEmptySelection = flag;
+}
+
+- (void) setSelectionByRect: (BOOL) flag {
+    _selectionByRect = flag;
 }
 
 - (void) setTabKeyTraversesCells: (BOOL) flag {

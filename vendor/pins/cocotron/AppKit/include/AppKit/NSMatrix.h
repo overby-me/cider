@@ -94,6 +94,7 @@ typedef enum {
 
 - (NSMatrixMode) mode;
 - (BOOL) allowsEmptySelection;
+- (BOOL) isSelectionByRect;
 - (BOOL) tabKeyTraversesCells;
 
 - (BOOL) autosizesCells;
@@ -137,6 +138,7 @@ typedef enum {
 
 - (void) setMode: (NSMatrixMode) mode;
 - (void) setAllowsEmptySelection: (BOOL) flag;
+- (void) setSelectionByRect: (BOOL) flag;
 - (void) setTabKeyTraversesCells: (BOOL) flag;
 
 - (void) setAutosizesCells: (BOOL) flag;

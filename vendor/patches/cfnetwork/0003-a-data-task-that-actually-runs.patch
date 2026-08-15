@@ -1,0 +1,175 @@
+--- a/src/URL/NSURLSession.m	2026-08-16 00:14:05.567842116 +0200
++++ b/src/URL/NSURLSession.m	2026-08-16 00:14:05.553222180 +0200
+@@ -6,6 +6,13 @@
+ //
+ 
+ #import <Foundation/NSURLSession.h>
++#import <Foundation/NSData.h>
++#import <Foundation/NSError.h>
++#import <Foundation/NSURLConnection.h>
++#import <Foundation/NSURLError.h>
++#import <Foundation/NSURLRequest.h>
++#import <Foundation/NSURLResponse.h>
++#import <dispatch/dispatch.h>
+ #import <objc/runtime.h>
+ 
+ const int64_t NSURLSessionTransferSizeUnknown = -1LL;
+@@ -25,7 +32,158 @@
+ 
+ @end
+ 
++/*
++ * A TASK THAT ACTUALLY RUNS, where before these four classes were empty.
++ *
++ * -[NSURLSession dataTaskWithRequest:completionHandler:] has always built one of these and every
++ * application that called it died: -initWithRequest:completionHandler: did not exist, so the task
++ * came back as an unrecognized selector in the middle of whatever the application was doing at
++ * startup. Swift Publisher 5 asks for one inside applicationWillFinishLaunching, so the rest of
++ * that method never ran.
++ *
++ * WHAT THIS IS AND IS NOT. It is the SYNCHRONOUS load this library already has, moved onto a
++ * background queue and answered through the completion handler, which is the shape callers expect
++ * and is enough for the request-and-reply use that nearly all of them make. It is NOT the streaming
++ * delegate protocol: there is no didReceiveData, no progress, no upload body callbacks, and the
++ * byte counts are filled in once at the end rather than as the transfer runs. A caller that needs
++ * those gets nothing from them rather than something wrong.
++ */
++@interface NSURLSessionTask () {
++    void (^_ciderCompletion)(NSData *, NSURLResponse *, NSError *);
++}
++@end
++
+ @implementation NSURLSessionTask
++
++- (instancetype)initWithRequest:(NSURLRequest *)request completionHandler:(void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
++{
++    if ((self = [super init]) == nil)
++    {
++        return nil;
++    }
++
++    static NSUInteger nextIdentifier = 0;
++    @synchronized ([NSURLSessionTask class])
++    {
++        _taskIdentifier = ++nextIdentifier;
++    }
++
++    _originalRequest = [request copy];
++    _currentRequest = [request copy];
++    _ciderCompletion = [completionHandler copy];
++    _state = NSURLSessionTaskStateSuspended;
++    _countOfBytesExpectedToReceive = NSURLSessionTransferSizeUnknown;
++    _countOfBytesExpectedToSend = NSURLSessionTransferSizeUnknown;
++
++    return self;
++}
++
++- (instancetype)initWithRequest:(NSURLRequest *)request
++{
++    return [self initWithRequest:request completionHandler:nil];
++}
++
++- (void)dealloc
++{
++    [_ciderCompletion release];
++    [_originalRequest release];
++    [_currentRequest release];
++    [_response release];
++    [_error release];
++    [_taskDescription release];
++    [super dealloc];
++}
++
++/*
++ * A TASK STARTS SUSPENDED AND -resume IS WHAT SENDS IT, which is why this is not done in the
++ * initialiser: a caller is allowed to set properties on the task first, and one that never resumes
++ * expects nothing to have happened.
++ */
++- (void)resume
++{
++    @synchronized (self)
++    {
++        if (_state != NSURLSessionTaskStateSuspended)
++        {
++            return;
++        }
++        _state = NSURLSessionTaskStateRunning;
++    }
++
++    [self retain];
++    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
++        NSURLResponse *response = nil;
++        NSError *error = nil;
++        NSData *data = [NSURLConnection sendSynchronousRequest:_currentRequest
++                                            returningResponse:&response
++                                                        error:&error];
++
++        @synchronized (self)
++        {
++            if (_state == NSURLSessionTaskStateCanceling)
++            {
++                [self release];
++                return;
++            }
++            [_response release];
++            _response = [response retain];
++            [_error release];
++            _error = [error retain];
++            _countOfBytesReceived = (int64_t)[data length];
++            _state = NSURLSessionTaskStateCompleted;
++        }
++
++        if (_ciderCompletion != NULL)
++        {
++            _ciderCompletion(data, response, error);
++        }
++        [self release];
++    });
++}
++
++- (void)suspend
++{
++    @synchronized (self)
++    {
++        if (_state == NSURLSessionTaskStateRunning)
++        {
++            // The load is already in flight on another queue and there is no way to hold it there,
++            // so this records the intent and lets the transfer finish. Answering nothing at all
++            // would be worse: a caller that suspends and resumes would wait forever.
++            _state = NSURLSessionTaskStateSuspended;
++        }
++    }
++}
++
++- (void)cancel
++{
++    void (^completion)(NSData *, NSURLResponse *, NSError *) = nil;
++
++    @synchronized (self)
++    {
++        if (_state == NSURLSessionTaskStateCompleted || _state == NSURLSessionTaskStateCanceling)
++        {
++            return;
++        }
++        _state = NSURLSessionTaskStateCanceling;
++        completion = [[_ciderCompletion retain] autorelease];
++        [_error release];
++        _error = [[NSError alloc] initWithDomain:NSURLErrorDomain
++                                            code:NSURLErrorCancelled
++                                        userInfo:nil];
++    }
++
++    if (completion != NULL)
++    {
++        completion(nil, nil, _error);
++    }
++}
++
++- (id)copyWithZone:(NSZone *)zone
++{
++    return [self retain];
++}
++
+ @end
+ 
+ @implementation NSURLSessionDataTask

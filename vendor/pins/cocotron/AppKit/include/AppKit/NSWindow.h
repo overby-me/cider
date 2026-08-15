@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSUserInterfaceItemIdentification.h>
 #import <AppKit/NSAccessibilityProtocols.h>
 
+@class NSAppearance;
 @class NSView, NSEvent, NSColor, NSColorSpace, NSCursor, NSImage, NSScreen,
         NSText, NSTextView, CGWindow, NSPasteboard, NSSheetContext,
         NSUndoManager, NSButton, NSButtonCell, NSDrawer, NSDockTile, NSToolbar,
@@ -162,6 +163,7 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
     NSMutableArray<NSWindow *> *_childWindows;
 
     NSString *_representedFilename;
+    NSAppearance *_ciderAppearance;
     NSString *_title;
     NSString *_miniwindowTitle;
     NSImage *_miniwindowImage;
@@ -291,6 +293,9 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 - (id<NSWindowDelegate>) delegate;
 
 - (NSString *) title;
+- (NSAppearance *) appearance;
+- (void) setAppearance: (NSAppearance *) appearance;
+- (NSAppearance *) effectiveAppearance;
 - (NSString *) representedFilename;
 - (NSURL *) representedURL;
 

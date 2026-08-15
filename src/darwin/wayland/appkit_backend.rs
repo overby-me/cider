@@ -509,6 +509,32 @@ extern "C" fn display_all_font_family_names(_this: Object, _cmd: Sel) -> Object 
 }
 
 extern "C" fn display_typefaces(_this: Object, _cmd: Sel, family: Object) -> Object {
+    // CIDER_TRACE_FONTS says which family was asked for and how many faces went back, printed
+    // BEFORE and AFTER the work so a fault inside it is visible as a line with no answer.
+    if crate::env_flag!("CIDER_TRACE_FONTS") {
+        let name = unsafe {
+            let raw = crate::objc::msg_send0(
+                family,
+                crate::objc::sel_registerName(cstr!("UTF8String")),
+            ) as *const std::os::raw::c_char;
+            if raw.is_null() {
+                "<nil>".to_string()
+            } else {
+                std::ffi::CStr::from_ptr(raw).to_string_lossy().into_owned()
+            }
+        };
+        println!("cider-wayland-fonts typefaces family={name} asking");
+        let out = fonts::typefaces_for_family(family);
+        let n = if out.is_null() {
+            -1
+        } else {
+            unsafe {
+                crate::objc::msg_send0(out, crate::objc::sel_registerName(cstr!("count"))) as isize
+            }
+        };
+        println!("cider-wayland-fonts typefaces family={name} faces={n}");
+        return out;
+    }
     fonts::typefaces_for_family(family)
 }
 
