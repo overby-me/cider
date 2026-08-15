@@ -3993,3 +3993,49 @@ y = -40, so its title bar is off the top of the screen.
 WHERE IT STOPS. The application then opens its welcome nib and dies in the keyed unarchiver. The main menu is built in code and binds its items to
 objectValue, which NSMenuItem does not have, so every item raises; -[NSWindow standardWindowButton:]
 is unimplemented; and a layer-backed view has no compositor to render it.
+
+
+## Menus, finished: the rows and the blur
+
+2026-08-16, commits 9124f8ee and 14f60990. The user named three things about menus that were not
+macOS: a triangle instead of a chevron, the row spacing, and no shadow. The chevron and the shadow
+were done earlier; these two close the list.
+
+THE ROWS WERE MEASURED, NOT LOOKED AT. Counting rows of dark pixels down the middle of the reference
+screenshot gives the pitch directly: 70, 48, 48, 48, 48, 70, 70 retina pixels, so 24 points between
+titles and 35 across a separator, and 236 points of panel for eight items and three separators. Ours
+read 32, 21, 20, 21, 21, 33, 32 and a panel of 207. The text bands are the same height in both
+images, so what was missing was the space around the text rather than the size of the type. Title
+margins went from two points to three and a half, and the space at the two ENDS of the panel became
+its own constant at six rather than borrowing the three point side border, because Apple leaves
+noticeably more at the ends than at the sides. After: 35, 24, 24, 24, 24, 35, 35, and a panel of
+164 by 237.
+
+A BLURRED BACKDROP, WHICH WAYLAND CANNOT GIVE YOU. A menu here is translucent and the compositor
+blends it over what is below, so the toolbar and the document text behind it arrive sharp and
+readable through the panel. macOS blurs what is behind: the colour comes through, the detail does
+not. There is no protocol for this and there will not be one, because a client does not get to read
+the compositor output.
+
+The way in is that a menu belongs to a window THIS PROCESS DREW, and those pixels are in a buffer of
+ours. So the backdrop is sampled from the parent window buffer, blurred, and composited under the
+panel. Three box blurs are a Gaussian to the eye and each is a running sum, so the radius costs
+nothing; a menu sized panel takes about a millisecond.
+
+Three rules make it correct rather than merely blurry:
+
+- INSIDE THE GEOMETRY RECTANGLE ONLY. The shadow ring outside it falls on the real desktop rather
+  than on the parent window, so it has to stay translucent and the compositor has to keep blending
+  it.
+- A FULLY TRANSPARENT PIXEL IS LEFT ALONE. Those are the rounded corners; filling them would square
+  the menu off.
+- A SOLID PIXEL IS LEFT ALONE. There is nothing to see through it.
+
+Proved with a kill switch rather than by assertion: CIDER_WAYLAND_NO_VIBRANCY=1 turns it off, and
+the two runs of the same harness over the same Start Center were looked at side by side. Without it,
+Open File, Remote Files, Recent Documents and Templates are readable straight through the menu and
+the blue button behind it is a solid blue rectangle. With it, none of that is there.
+
+What is not done: a submenu samples the window rather than the menu it opened from, because the
+parent search skips popups, and the backdrop is taken once per present, so a window that redraws
+under an open menu leaves it holding the older picture until the menu draws again.
