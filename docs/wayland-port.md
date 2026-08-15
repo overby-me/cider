@@ -2460,3 +2460,29 @@ not use nibs got the disabled colour, and LibreOffice is one. The item count rul
 remove methods is left alone, so an application that empties its own list still greys the button.
 
 docs/wayland-blue-dropdown-buttons.png, and note the Find toolbar has one too.
+
+## THE OK BUTTON WAS NINETY THREE WIDE AND ZERO HIGH, and one stubbed metric explains it
+
+GetThemeMetric answered ZERO and an error for every metric it was ever asked. That reads like a
+harmless stub, and it is not: a caller that ignores the status lays its control out at nothing.
+LibreOffice asks for exactly ONE metric, kThemeMetricPushButtonHeight, three times per print alert,
+and its OK button arrived at the cell as
+
+    CIDER_BUTTON bezel=1 bordered=1 title= frame=93x0+0+0     before
+    CIDER_BUTTON bezel=1 bordered=1 title= frame=93x20+0+0    after
+
+The table now answers the documented Aqua values for the metrics worth standing behind and keeps
+the old fallback for anything else, so a caller asking for something not in the table still uses
+its own idea rather than a number invented here.
+
+A SECOND FIX IN THE SAME AREA THAT DID NOT MOVE THIS SYMPTOM, said plainly because it would be
+easy to imply otherwise: -[NSButtonCell cellSize] adds up the title and the image, so a bordered
+button with NEITHER measures zero high. That is wrong on its own terms and it is fixed, with the
+same floors NSPopUpButtonCell already uses, but LibreOffice does not ask the cell for that height,
+it asks the theme, so the button stayed 93x0 until the metric changed.
+
+WHAT IS STILL WRONG THERE: the label reads OK in near white on a near white bezel. On Apple systems
+the DEFAULT button is filled with the accent colour and its text is white, which is why LibreOffice
+draws it white; our bezel is not blue, so the text vanishes into it. The cell cannot currently tell
+that it is the default button, because the only signal cocotron has for that is
+[[controlView window] defaultButtonCell] and LibreOffice draws with no view at all.

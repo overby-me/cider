@@ -81,14 +81,55 @@ extern void CGContextSetRGBStrokeColor(CiderCGContextRef, CiderCGFloat, CiderCGF
                                        CiderCGFloat);
 extern void CGContextStrokeRect(CiderCGContextRef, CiderCGRect);
 
+/*
+ * HOW BIG THE SYSTEM SAYS ITS CONTROLS ARE, which decides layout rather than drawing.
+ *
+ * This answered ZERO and an error for every metric. An application that ignores the status then
+ * lays a control out at nothing: LibreOffice asks for exactly ONE metric, kThemeMetricPushButtonHeight
+ * (19), three times per print alert, and its OK button came out NINETY THREE WIDE AND ZERO HIGH.
+ * A zero here is not a safe default, it is a layout that collapses.
+ *
+ * The values are the documented Aqua ones. Only the metrics with a value known well enough to
+ * stand behind are answered; anything else keeps the old behaviour, so a caller asking for
+ * something not in this table still falls back to its own idea rather than to a wrong number.
+ */
 OSStatus GetThemeMetric(UInt32 inMetric, int *outMetric)
 {
-    if (getenv("CIDER_TRACE_THEME") != NULL) {
-        fprintf(stderr, "CIDER_THEME GetThemeMetric metric=%u\n", (unsigned) inMetric);
+    int value = -1;
+
+    switch (inMetric) {
+
+    case 0: value = 15; break;  /* kThemeMetricScrollBarWidth */
+    case 1: value = 11; break;  /* kThemeMetricSmallScrollBarWidth */
+    case 2: value = 18; break;  /* kThemeMetricCheckBoxHeight */
+    case 3: value = 18; break;  /* kThemeMetricRadioButtonHeight */
+    case 4: value = 2; break;   /* kThemeMetricEditTextFrameOutset */
+    case 5: value = 1; break;   /* kThemeMetricListBoxFrameOutset */
+    case 6: value = 3; break;   /* kThemeMetricFocusRectOutset */
+    case 7: value = 2; break;   /* kThemeMetricImageWellThickness */
+    case 8: value = 0; break;   /* kThemeMetricScrollBarOverlap */
+    case 9: value = 21; break;  /* kThemeMetricLargeTabHeight */
+    case 14: value = 17; break; /* kThemeMetricSmallTabHeight */
+    case 19: value = 20; break; /* kThemeMetricPushButtonHeight */
+    case 20: value = 17; break; /* kThemeMetricListHeaderHeight */
+    case 21: value = 14; break; /* kThemeMetricSmallCheckBoxHeight */
+    case 23: value = 14; break; /* kThemeMetricSmallRadioButtonHeight */
+    default: break;
     }
-    if (verbose) puts("STUB: GetThemeMetric called");
-    if (outMetric) *outMetric = 0;
-    return cider_unimpErr;
+
+    if (getenv("CIDER_TRACE_THEME") != NULL) {
+        fprintf(stderr, "CIDER_THEME GetThemeMetric metric=%u answer=%d\n", (unsigned) inMetric,
+                value);
+    }
+
+    if (value < 0) {
+        if (verbose) puts("STUB: GetThemeMetric called with an unknown metric");
+        if (outMetric) *outMetric = 0;
+        return cider_unimpErr;
+    }
+
+    if (outMetric) *outMetric = value;
+    return 0;
 }
 
 /*
