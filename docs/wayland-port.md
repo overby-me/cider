@@ -2856,3 +2856,39 @@ finishLaunching is now reached from the first event pump as well as from -run, w
 its own terms: an application with its own loop still has to be told it launched. It changed nothing
 here, because iTerm2 does come through -run, and LibreOffice is unaffected either way: byte
 identical dump, unchanged startup.
+
+## THE XNU LOG IGNORED ITS OWN LEVEL AND HAD REACHED 5.2 GIGABYTES
+
+The hook the emulation calls to log took a level argument and threw it away, printing every message
+including debug. The waitq and mach message layers call the debug macro on every link, unlink,
+prepost and receive, which is a write syscall per line for the busiest code in the system.
+
+    683 KB written in a twenty second LibreOffice run
+    5.2 GB sitting in the prefix
+
+A log nobody reads that fills a disk is worse than no log, and this machine has been wedged once by
+a full filesystem already. Warning and above by default now, with CIDER_XNU_LOG=debug, info,
+warning, error or none to move the floor without a rebuild.
+
+    155 KB in a THIRTY FIVE second run, so about six times less per unit of time
+
+What survives is worth keeping and worth someone reading: 859 of Trying to lock mutex without an
+active thread and 859 of the unlock counterpart in one startup, plus 430 of an unimplemented thread
+policy flavour. Those are real warnings that were buried under the debug flood.
+
+Verified: byte identical window dump, zero unrecognized selectors, startup unchanged at 1.52 s.
+
+## THE THREE CRITERIA, RE-CHECKED AT THE END OF 2026-08-15
+
+Fifteen commits today, including memmove, memset, the kqueue map and libSystem, so all three were
+checked again on the final build rather than assumed.
+
+    RENDERS      the window dump is byte identical to the one inspected this morning, and that one
+                 was looked at: menu bar, blue dropdown buttons, Match Case check box, ruler, page,
+                 status bar, find bar
+    INTERACTIVE  typing gives 8 words 47 characters in the status bar and the text is on the page,
+                 the File menu opens under its title with every item and shortcut
+    RESIZABLE    700x600 and 1150x640, relaid out both ways, toolbar overflowing to the chevron at
+                 the narrow size and fully expanded at the wide one
+
+Zero unrecognized selectors in every run.

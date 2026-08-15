@@ -710,7 +710,33 @@ mod hooks {
 
     pub(super) static mut KERNEL_TASK: *mut xnu_sys_task_t = std::ptr::null_mut();
 
-    pub(super) unsafe extern "C" fn log(_l: xnu_sys_log_level_t, m: *const c_char) {
+    /// THE LEVEL WAS IGNORED AND EVERY MESSAGE WAS PRINTED, DEBUG INCLUDED.
+    ///
+    /// The waitq and mach message layers call the debug macro on every link, unlink, prepost and
+    /// receive, which is a write syscall per line for the busiest code in the emulation. Measured:
+    /// 683 KILOBYTES in a twenty second LibreOffice run, and the log in this prefix had reached
+    /// 5.2 GIGABYTES. A log nobody reads that fills a disk is worse than no log, and this machine
+    /// has already been wedged once by a full filesystem.
+    ///
+    /// Warning and above by default. CIDER_XNU_LOG=debug, info, warning or error sets the floor,
+    /// so the noisy levels are one variable away rather than a rebuild away.
+    pub(super) unsafe extern "C" fn log(level: xnu_sys_log_level_t, m: *const c_char) {
+        use std::sync::OnceLock;
+
+        static FLOOR: OnceLock<u32> = OnceLock::new();
+        let floor = *FLOOR.get_or_init(|| {
+            match std::env::var("CIDER_XNU_LOG").as_deref() {
+                Ok("debug") => 0,
+                Ok("info") => 1,
+                Ok("error") => 3,
+                Ok("none") => 4,
+                _ => 2,
+            }
+        });
+
+        if (level as u32) < floor {
+            return;
+        }
         if !m.is_null() {
             eprintln!("[xnu_sys] {}", std::ffi::CStr::from_ptr(m).to_string_lossy());
         }
