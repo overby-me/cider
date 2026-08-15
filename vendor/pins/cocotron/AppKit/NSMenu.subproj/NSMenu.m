@@ -363,6 +363,13 @@ static void NSMenuMainMenuDidChange(NSMenu *menu) {
             [window performSelector: @selector(_mainMenuChanged)];
         }
     }
+    /* AND THE STRIP, which is not one of those windows in any sense that matters: its menu view is
+     * a subview it owns rather than the _menuView the frame builds, so the loop above walks past
+     * it. Without this the bar shows whatever the menu held when the application first set it,
+     * which for LibreOffice is the application item and nothing else. */
+    if ([application respondsToSelector: @selector(_screenMenuBarChanged)]) {
+        [application performSelector: @selector(_screenMenuBarChanged)];
+    }
 }
 
 - (void) setAutoenablesItems: (BOOL) flag {

@@ -14,7 +14,7 @@
 use std::os::raw::c_void;
 
 use crate::cstr;
-use crate::objc::{self, NsPoint, Object, Sel};
+use crate::objc::{self, NsPoint, Object, ObjcBool, Sel, NO, YES};
 
 /// DRAG AND DROP IS NOT IMPLEMENTED, and nil is how the X11 backend says so. NSDraggingManager's
 /// own methods are all abstract, so any object that is not a real manager would raise on first
@@ -195,4 +195,19 @@ pub fn methods() -> Vec<objc::MethodDef> {
         objc::MethodDef { sel: cstr!("currentModifierFlags"), types: cstr!("Q@:"), imp: current_modifier_flags as *const c_void },
         objc::MethodDef { sel: cstr!("orderedWindowNumbers"), types: cstr!("@@:"), imp: ordered_window_numbers as *const c_void },
     ]
+}
+
+/// WHETHER THE MENU BAR BELONGS TO THE SCREEN, which is what macOS does and what cocotron does on
+/// no platform. AppKit asks before it decides whether a window carries a menu row of its own, so
+/// answering yes moves the bar out of every window in one place.
+///
+/// The answer is the compositor's: without a layer shell there is nowhere to put a strip, and the
+/// row inside the window is the only thing that works. CIDER_WAYLAND_NO_MENUBAR forces the old
+/// behaviour on a compositor that has one.
+pub extern "C" fn display_has_screen_menu_bar(_this: Object, _cmd: Sel) -> ObjcBool {
+    if crate::session::layer_shell().is_null() || crate::env_flag!("CIDER_WAYLAND_NO_MENUBAR") {
+        NO
+    } else {
+        YES
+    }
 }

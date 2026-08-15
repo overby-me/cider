@@ -85,6 +85,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (BOOL) implementsCustomPanelForClass: (Class) panelClass;
 
+/* WHETHER THE MENU BAR BELONGS TO THE SCREEN. macOS has one bar at the top of the display shared by
+ * every window; cocotron gives each window a row of its own, which is what Windows and X11 do. A
+ * backend that can put a strip at the top of the screen answers YES here and AppKit stops putting a
+ * menu row inside windows. Default NO, so a backend that says nothing keeps the old behaviour. */
+- (BOOL) hasScreenMenuBar;
+
 - (int) savePanel: (NSSavePanel *) savePanel
         runModalForDirectory: (NSString *) directory
                         file: (NSString *) file;

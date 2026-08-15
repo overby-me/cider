@@ -592,6 +592,11 @@ pub extern "C" fn cider_wayland_appkit_register() {
                 types: cstr!("@@:"),
                 imp: display_screens as *const c_void,
             },
+            objc::MethodDef {
+                sel: cstr!("hasScreenMenuBar"),
+                types: cstr!("c@:"),
+                imp: display::display_has_screen_menu_bar as *const c_void,
+            },
             // The encodings below describe a CGRect return and a CGRect plus NSUInteger argument.
             // They matter for introspection and forwarding; the CALL itself goes through the IMP,
             // whose Rust signature is what has to match the ABI.

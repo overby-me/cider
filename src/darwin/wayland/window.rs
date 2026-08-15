@@ -50,6 +50,10 @@ pub struct WindowState {
     pub surface: *mut wl::WlSurface,
     pub xdg: *mut wl::XdgSurface,
     pub toplevel: *mut wl::XdgToplevel,
+    /// The layer surface, for the ONE window that is a strip anchored to the screen rather than a
+    /// window the compositor places: the menu bar. Null for everything else, and null for the menu
+    /// bar too on a compositor with no layer shell, where it stays a row inside each window.
+    pub layer: *mut wl::ZwlrLayerSurface,
     pub delegate: Object,
     /// The ObjC instance this state belongs to. A listener is handed the Rust state and the
     /// delegate expects the CGWindow, so one of the two has to point at the other.
@@ -148,6 +152,7 @@ impl WindowState {
             surface: std::ptr::null_mut(),
             xdg: std::ptr::null_mut(),
             toplevel: std::ptr::null_mut(),
+            layer: std::ptr::null_mut(),
             delegate: std::ptr::null_mut(),
             owner: std::ptr::null_mut(),
             frame: NsRect::new(0.0, 0.0, 512.0, 384.0),
@@ -664,6 +669,10 @@ extern "C" fn on_popup_done(data: *mut c_void, _popup: *mut wl::XdgPopup) {
             wl::cider_xdg_popup_destroy(st.popup);
             st.popup = std::ptr::null_mut();
         }
+        if !st.layer.is_null() {
+            wl::cider_zwlr_layer_surface_destroy(st.layer);
+            st.layer = std::ptr::null_mut();
+        }
         if !st.xdg.is_null() {
             wl::cider_xdg_surface_destroy(st.xdg);
             st.xdg = std::ptr::null_mut();
@@ -696,6 +705,57 @@ static TOPLEVEL_LISTENER: wl::XdgToplevelListener = wl::XdgToplevelListener {
     wm_capabilities: on_wm_capabilities,
 };
 
+/// NSMainMenuWindowLevel, which is kCGMainMenuWindowLevel and therefore 3 in this AppKit rather
+/// than the 24 macOS uses. Nothing else in the framework sets it: menus are at the submenu and
+/// popup levels, alerts at the modal panel level, so this level names the menu bar and only it.
+const MENU_BAR_LEVEL: c_int = 3;
+
+/// The compositor has decided how big the strip is. A layer surface has its own configure with the
+/// size in it, and its own ack; the xdg one does not apply and is never sent for this surface.
+extern "C" fn on_layer_configure(
+    data: *mut c_void,
+    surface: *mut wl::ZwlrLayerSurface,
+    serial: u32,
+    width: u32,
+    height: u32,
+) {
+    unsafe {
+        wl::cider_zwlr_layer_surface_ack_configure(surface, serial);
+        if let Some(st) = (data as *mut WindowState).as_mut() {
+            st.configured = true;
+            // THE WIDTH IS THE SCREEN'S, and that is the point of anchoring to both sides: the
+            // client asked for zero and the compositor answers with what it decided. A height of
+            // zero means it kept ours.
+            if width > 0 {
+                let height = if height > 0 { height as i32 } else { st.frame.size.height as i32 };
+                if width as i32 != st.frame.size.width as i32 || height != st.frame.size.height as i32
+                {
+                    st.pending_size = Some((width as i32, height));
+                }
+            }
+        }
+    }
+}
+
+extern "C" fn on_layer_closed(data: *mut c_void, _surface: *mut wl::ZwlrLayerSurface) {
+    if let Some(st) = unsafe { (data as *mut WindowState).as_mut() } {
+        println!("cider-wayland-window strip=closed number={}", st.number);
+        st.mapped = false;
+    }
+}
+
+static LAYER_LISTENER: wl::ZwlrLayerSurfaceListener = wl::ZwlrLayerSurfaceListener {
+    configure: on_layer_configure,
+    closed: on_layer_closed,
+};
+
+/// Whether this window is the menu bar AND the compositor can give it the top of the screen.
+fn wants_strip(st: &WindowState) -> bool {
+    st.level == MENU_BAR_LEVEL
+        && !session::layer_shell().is_null()
+        && !crate::env_flag!("CIDER_WAYLAND_NO_MENUBAR")
+}
+
 /// Create the surface, the xdg_surface and the toplevel, then complete the configure handshake.
 ///
 /// AN EMPTY COMMIT COMES FIRST. That is the protocol: committing with no buffer asks the
@@ -713,6 +773,65 @@ fn create_surface(st: &mut WindowState) -> bool {
             println!("cider-wayland-window create=FAILED reason=no-surface");
             return false;
         }
+        /*
+         * THE MENU BAR IS THE THIRD ROLE, and it is not a window at all.
+         *
+         * A toplevel is placed by the compositor and a popup hangs off another surface. Neither can
+         * be the top edge of the screen, full width, above everything, with the rest of the desktop
+         * kept out of it. That is a layer surface, and it is what every panel and dock on this
+         * desktop is. The strip returns EARLY: it has no xdg_surface, no toplevel, no parent and no
+         * window geometry, and every later call on those is already guarded by a null check.
+         */
+        if wants_strip(st) {
+            let height = (st.frame.size.height as i32).max(1);
+
+            st.layer = wl::cider_zwlr_layer_shell_get_layer_surface(
+                session::layer_shell(),
+                st.surface,
+                std::ptr::null_mut(),
+                wl::LAYER_TOP,
+                cstr!("cider-menubar"),
+            );
+            if st.layer.is_null() {
+                println!("cider-wayland-window create=FAILED reason=no-layer-surface");
+                return false;
+            }
+            wl::cider_zwlr_layer_surface_add_listener(
+                st.layer,
+                &LAYER_LISTENER,
+                st as *mut WindowState as *mut c_void,
+            );
+            // WIDTH ZERO MEANS THE ANCHORS DECIDE. Anchored left and right, the compositor gives
+            // the whole screen width and tells us what it was; naming a width here would fight it.
+            wl::cider_zwlr_layer_surface_set_size(st.layer, 0, height as u32);
+            wl::cider_zwlr_layer_surface_set_anchor(
+                st.layer,
+                wl::ANCHOR_TOP | wl::ANCHOR_LEFT | wl::ANCHOR_RIGHT,
+            );
+            // The room no other window may use. Without it a maximised window sits under the bar.
+            wl::cider_zwlr_layer_surface_set_exclusive_zone(st.layer, height);
+            // ON DEMAND: clicking the bar gives it the keyboard, and nothing is taken from the
+            // document until then.
+            wl::cider_zwlr_layer_surface_set_keyboard_interactivity(st.layer, wl::KEYBOARD_ON_DEMAND);
+            wl::cider_wl_surface_commit(st.surface);
+            for _ in 0..20 {
+                session::roundtrip();
+                if st.configured {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(25));
+            }
+            if !st.configured {
+                println!("cider-wayland-window create=FAILED reason=strip-never-configured");
+                return false;
+            }
+            println!(
+                "cider-wayland-window strip=ok number={} size={}x{} height={}",
+                st.number, st.frame.size.width as i32, st.frame.size.height as i32, height
+            );
+            return true;
+        }
+
         st.xdg = wl::cider_xdg_wm_base_get_xdg_surface(base, st.surface);
         if st.xdg.is_null() {
             println!("cider-wayland-window create=FAILED reason=no-xdg-surface");
@@ -2381,6 +2500,10 @@ extern "C" fn hide_window(this: Object, _cmd: Sel) {
             if !st.toplevel.is_null() {
                 wl::cider_xdg_toplevel_destroy(st.toplevel);
                 st.toplevel = std::ptr::null_mut();
+            }
+            if !st.layer.is_null() {
+                wl::cider_zwlr_layer_surface_destroy(st.layer);
+                st.layer = std::ptr::null_mut();
             }
             if !st.xdg.is_null() {
                 wl::cider_xdg_surface_destroy(st.xdg);
