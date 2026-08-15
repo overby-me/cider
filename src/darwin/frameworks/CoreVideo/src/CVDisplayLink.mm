@@ -73,6 +73,18 @@ CVReturn CVDisplayLinkSetOutputCallback(CVDisplayLinkRef displayLink, CVDisplayL
 	return kCVReturnSuccess;
 }
 
+/*
+ * WHICH DISPLAY THE LINK FOLLOWS. There is one display here and the link is a timer rather than a
+ * real vertical blank, so the answer is success and nothing else. An application that asks for a
+ * display link at all needs this to LINK: MoneyMoney does, and dyld stops the process for it.
+ */
+CVReturn CVDisplayLinkSetCurrentCGDisplay(CVDisplayLinkRef displayLink, CGDirectDisplayID displayID)
+{
+	if (!displayLink)
+		return kCVReturnInvalidArgument;
+	return kCVReturnSuccess;
+}
+
 CVReturn CVDisplayLinkSetCurrentCGDisplayFromOpenGLContext(CVDisplayLinkRef displayLink, CGLContextObj cglContext, CGLPixelFormatObj cglPixelFormat)
 {
 	if (!displayLink)

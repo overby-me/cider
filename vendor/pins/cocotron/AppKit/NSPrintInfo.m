@@ -44,6 +44,14 @@ NSPrintInfoAttributeKey const NSPrintDetailedErrorReporting = @"NSDetailedErrorR
 NSPrintInfoAttributeKey const NSPrintFirstPage = @"NSFirstPage";
 NSPrintInfoAttributeKey const NSPrintHeaderAndFooter = @"NSPrintHeaderAndFooter";
 NSPrintInfoAttributeKey const NSPrintJobDisposition = @"NSJobDisposition";
+/* THE REST OF THE PRINT DICTIONARY KEYS, which are strings and nothing else: an application that
+ * fills in a print info by key needs them to LINK, whether or not anything here reads them back. */
+NSPrintInfoAttributeKey const NSPrintTime = @"NSPrintTime";
+NSPrintInfoAttributeKey const NSPrintFaxNumber = @"NSPrintFaxNumber";
+NSPrintInfoAttributeKey const NSPrintPagesAcross = @"NSPagesAcross";
+NSPrintInfoAttributeKey const NSPrintPagesDown = @"NSPagesDown";
+NSPrintInfoAttributeKey const NSPrintReversePageOrder = @"NSPrintReversePageOrder";
+NSPrintInfoAttributeKey const NSPrintJobSavingFileNameExtensionHidden = @"NSJobSavingFileNameExtensionHidden";
 NSPrintInfoAttributeKey const NSPrintJobSavingURL = @"NSJobSavingURL";
 NSPrintInfoAttributeKey const NSPrintLastPage = @"NSLastPage";
 NSPrintInfoAttributeKey const NSPrintMustCollate = @"NSMustCollate";

@@ -1,0 +1,72 @@
+--- a/NSCalendar.m	2026-08-15 22:30:54.524661481 +0200
++++ b/NSCalendar.m	2026-08-15 22:30:54.525661485 +0200
+@@ -10,6 +10,23 @@
+ #import "NSCalendarInternal.h"
+ #import "NSObjectInternal.h"
+ 
++/*
++ * THE NOTIFICATION SENT WHEN THE DAY ROLLS OVER, and it lives HERE rather than in Foundation
++ * because that is where an application looks for it. The dyld error says so in one line:
++ *
++ *     Symbol not found: _NSCalendarDayChangedNotification
++ *     Expected in: /System/Library/Frameworks/CoreFoundation.framework
++ *
++ * Defining it in Foundation, which is what its header says, changed nothing: a two level namespace
++ * import names the library, and this is the library named. MoneyMoney observes it, because a
++ * banking application redraws its dates at midnight, and without the symbol dyld refuses to load
++ * the process at all.
++ *
++ * Nothing posts it yet. An observer that never fires is a stale date; a process that cannot load is
++ * nothing at all.
++ */
++NSString *const NSCalendarDayChangedNotification = @"NSCalendarDayChangedNotification";
++
+ extern void CFCalendarSetGregorianStartDate(CFCalendarRef calendar, CFDateRef date);
+ extern CFDateRef CFCalendarCopyGregorianStartDate(CFCalendarRef calendar);
+ extern Boolean _CFCalendarDecomposeAbsoluteTimeV(CFCalendarRef calendar, CFAbsoluteTime at, const char *componentDesc, int **componentVector, int count);
+--- a/CFTimeZone.c	2026-08-15 22:30:54.526661491 +0200
++++ b/CFTimeZone.c	2026-08-15 22:31:25.413817670 +0200
+@@ -834,6 +834,21 @@
+     }
+     tz = __CFTimeZoneDefault ? (CFTimeZoneRef)CFRetain(__CFTimeZoneDefault) : NULL;
+     __CFTimeZoneUnlockGlobal();
++    /*
++     * NEVER NULL, because a caller puts the answer straight into a dictionary.
++     *
++     * The container had NO zone database at all, so the system zone could not be worked out, a nil
++     * zone reached kCFDateFormatterTimeZoneKey, and the dictionary threw: MoneyMoney died during
++     * startup on Cannot set nil objects nor nil keys, with nothing in the message about time zones.
++     *
++     * WHAT ACTUALLY FIXED THAT was the zone database, in the packaging. This is the floor under it
++     * rather than the fix: the nil that was observed came through another call, so returning GMT
++     * here changed nothing on its own, and it is still wrong for this function to answer NULL when
++     * every caller puts the answer somewhere that refuses one.
++     */
++    if (NULL == tz) {
++	tz = CFTimeZoneCreateWithTimeIntervalFromGMT(kCFAllocatorSystemDefault, 0.0);
++    }
+     return tz;
+ }
+ 
+--- a/NSDictionary.m	2026-08-15 22:30:54.529661506 +0200
++++ b/NSDictionary.m	2026-08-15 22:30:54.530661511 +0200
+@@ -1253,6 +1253,19 @@
+     {
+         if ((obj == nil) || (key == nil))
+         {
++            /* WHICH SIDE WAS NIL AND WHO ASKED. This throw is fatal to whatever application hit
++             * it and the message says neither. MoneyMoney dies here during startup, and one line
++             * with the key in it is the difference between a guess and a fix. */
++            if (getenv("CIDER_TRACE_EXCEPTIONS") != NULL) {
++                fprintf(stderr, "CIDER_DICT_NIL object=%s key=%s keytext=%s dict=%s\n",
++                        obj ? object_getClassName(obj) : "(nil)",
++                        key ? object_getClassName(key) : "(nil)",
++                        (key != nil) ? CFStringGetCStringPtr((CFStringRef) key,
++                                                             kCFStringEncodingUTF8)
++                                     : "(nil)",
++                        object_getClassName(self));
++                fflush(stderr);
++            }
+             @throw [NSException exceptionWithName:NSInvalidArgumentException reason:@"Cannot set nil objects nor nil keys" userInfo:nil];
+             return;
+         }

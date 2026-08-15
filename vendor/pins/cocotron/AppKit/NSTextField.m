@@ -37,6 +37,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 @end
 
+/*
+ * WHAT A FIELD IS FOR, which macOS 11 added so a password manager can fill it in. Nothing here acts
+ * on them; an application that tags its login fields needs them to LINK, and MoneyMoney tags both.
+ */
+NSString *const NSTextContentTypeUsername = @"NSTextContentTypeUsername";
+NSString *const NSTextContentTypePassword = @"NSTextContentTypePassword";
+
 @implementation NSTextField
 
 @synthesize preferredMaxLayoutWidth = _preferredMaxLayoutWidth;

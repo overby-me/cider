@@ -5,6 +5,12 @@ NSNotificationName const NSPopoverWillCloseNotification = @"NSPopoverWillCloseNo
 NSNotificationName const NSPopoverWillShowNotification = @"NSPopoverWillShowNotification";
 NSNotificationName const NSPopoverDidShowNotification = @"NSPopoverDidShowNotification";
 
+/* WHY THE POPOVER CLOSED, which arrives in the userInfo of the notification above. Strings, and
+ * an application that reads them needs them to LINK whether or not this stub ever sends one. */
+NSString *const NSPopoverCloseReasonKey = @"NSPopoverCloseReason";
+NSString *const NSPopoverCloseReasonStandard = @"NSPopoverCloseReasonStandard";
+NSString *const NSPopoverCloseReasonDetachToWindow = @"NSPopoverCloseReasonDetachToWindow";
+
 @interface NSPopover : NSObject
 @end
 

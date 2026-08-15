@@ -49,3 +49,29 @@ NSDraggingImageComponentKey const NSDraggingImageComponentLabelKey = @"label";
 }
 
 @end
+
+/*
+ * THE SESSION A DRAG RUNS IN, which macOS 10.7 added and this framework never had.
+ *
+ * beginDraggingSessionWithItems:event:source: answers one of these and an application keeps it to
+ * ask about the drag or to change it midway. MoneyMoney references the CLASS, so without it the
+ * process cannot even be loaded: a missing class is a link error, not a message that goes nowhere.
+ *
+ * Every message is forwarded and logged, which is what a stub in this tree does. What it cannot do
+ * is make a drag happen: dragging in this port is a stub on the Wayland side too, and that is
+ * recorded rather than papered over.
+ */
+@interface NSDraggingSession : NSObject
+@end
+
+@implementation NSDraggingSession
+
+- (NSMethodSignature *) methodSignatureForSelector: (SEL) aSelector {
+    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+}
+
+- (void) forwardInvocation: (NSInvocation *) anInvocation {
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
+@end

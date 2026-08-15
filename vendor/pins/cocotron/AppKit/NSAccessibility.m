@@ -375,6 +375,9 @@ NSString *const NSAccessibilityLinkRole = @"NSAccessibilityLinkRole";
 NSString *const NSAccessibilityListRole = @"NSAccessibilityListRole";
 NSString *const NSAccessibilityMatteRole = @"NSAccessibilityMatteRole";
 NSString *const NSAccessibilityMenuBarRole = @"NSAccessibilityMenuBarRole";
+/* The role of an ITEM in the menu bar, which an application asks for when it builds its own
+ * accessibility tree. MoneyMoney does. */
+NSString *const NSAccessibilityMenuBarItemRole = @"AXMenuBarItem";
 NSString *const NSAccessibilityMenuButtonRole =
         @"NSAccessibilityMenuButtonRole";
 NSString *const NSAccessibilityMenuItemRole = @"NSAccessibilityMenuItemRole";

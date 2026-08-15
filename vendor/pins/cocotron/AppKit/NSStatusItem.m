@@ -19,6 +19,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSGraphicsContext.h>
 #import <AppKit/NSImage.h>
+#import <AppKit/NSButton.h>
 #import <AppKit/NSMenu.h>
 #import <AppKit/NSPopUpWindow.h>
 #import <AppKit/NSRaise.h>
@@ -440,5 +441,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 {
     NSUnimplementedMethod();
 }
+
+@end
+
+/*
+ * THE BUTTON INSIDE A STATUS ITEM, which is how everything since macOS 10.10 draws one: an
+ * application asks the item for its button and sets a title, an image and an action on that.
+ *
+ * There is no status bar on this desktop and this class does nothing, but it has to EXIST: an
+ * application that references the class cannot be loaded without it, which is where MoneyMoney
+ * stopped. Subclassing NSButton rather than NSObject so the ordinary setters an application calls
+ * on it land somewhere sensible instead of being forwarded into a log.
+ */
+@interface NSStatusBarButton : NSButton
+@end
+
+@implementation NSStatusBarButton
 
 @end

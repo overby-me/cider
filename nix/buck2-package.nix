@@ -64,6 +64,23 @@ pkgs.runCommand name {
   EOF
   sed -i 's/^  //' "$out/share/cider/fonts.conf"
 
+  # THE TIME ZONE DATABASE, because the container has none on this distribution.
+  #
+  # The prefix links /usr/share/zoneinfo at /Volumes/SystemRoot/usr/share/zoneinfo, which is the
+  # host path on Debian and Fedora and does not exist on NixOS: tzdata is a store path there, and
+  # /usr/share does not exist at all. So the link dangles, the container has no zones, and
+  # CFTimeZoneCopySystem answers nothing.
+  #
+  # What that costs is not a wrong clock, it is a dead application. CFDateFormatter puts the zone it
+  # gets into a dictionary, a dictionary refuses nil, and the throw is fatal: MoneyMoney dies during
+  # startup on Cannot set nil objects nor nil keys, with nothing in the message about time.
+  #
+  # The package knows where tzdata is, so it points the link there through the same SystemRoot mount
+  # the prefix already uses, and gives /etc/localtime a real target. A user in another zone can still
+  # set TZ, which is what every Unix program reads first.
+  ln -sfn "/Volumes/SystemRoot${pkgs.tzdata}/share/zoneinfo" "$out/libexec/cider/usr/share/zoneinfo"
+  ln -sfn "/usr/share/zoneinfo/UTC" "$out/libexec/cider/private/etc/localtime"
+
   cat > "$out/bin/cider" <<EOF
   #!${pkgs.runtimeShell}
   # The daemon takes both from the environment (src/linux/server/src/container.rs), and the
