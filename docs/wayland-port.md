@@ -3068,3 +3068,44 @@ WHAT THIS SAYS ABOUT THE CRITERIA. Interactive was called met on typing, key equ
 opening, clicking and dragging in the document, and the toolbar dropdowns. All of those are true and
 none of them covers a menu item. A criterion is only as good as the actions actually driven, and
 the honest way to hold it is to keep adding actions until one fails, which is what happened here.
+
+## AND THE FIRST THING BEHIND THE MENUS IS BROKEN: INSERT IMAGE BLANKS THE DISPLAY
+
+With menu items working, four commands that had never run were driven. The first one broke, and it
+breaks hard: Insert then Image opens the file picker and THE WHOLE SCREEN GOES BLACK. Every
+screenshot after it is uniformly zero, and the session never recovers.
+
+WHAT IS NOT WRONG, which took the buffer dump to establish and is the reason this is not a drawing
+bug at all:
+
+    window-2   1256x684  mean 0.94   the document, correct
+    window-24   234x456  mean 0.88   a popup, correct
+    window-25   500x422  mean 0.96   THE FILE PICKER ITSELF, correct
+
+docs/wayland-file-picker-buffer.png is that picker, drawn properly, at the moment the screen shows
+nothing. The application is painting; the compositor is not showing it.
+
+WHAT THE COMPOSITOR SEES: nothing at all. Asking sway for its tree before and after is the whole
+story.
+
+    before   con org.libreoffice.sc Untitled 1  0,0 1256x684
+    after    the workspace is EMPTY
+
+The document window was never hidden and never invalidated from our side; the traces added here say
+so by name. The picker is hidden five times over, the first while it is still visible.
+
+AND THE APPLICATION IS NOT FROZEN, IT IS SPINNING:
+
+    nextevent calls=1198200 t=89.71
+
+about twenty thousand calls a second. A modal session polls with a date that has already passed, the
+wait cap keeps the short wait as it is supposed to, and the loop runs flat out. Whether the spin
+starves the connection or the surfaces go away for another reason is not established, and this does
+not claim it is.
+
+TRIED AND REVERTED, recorded so it is not tried again: servicing the connection from the re-entrant
+pump. The theory was that a modal session leaves only the nested pump running and skipping it
+freezes everything. It changed nothing, because the failure is a spin rather than a freeze, and
+dispatching events from inside an event handler is exactly the re-entry that guard exists to
+prevent. A change that fixes nothing and can corrupt a heap is not worth keeping. What stayed is the
+counter: the old trace printed once and could not distinguish one re-entry from a million.

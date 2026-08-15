@@ -1543,6 +1543,7 @@ extern "C" fn invalidate(this: Object, _cmd: Sel) {
         // OUT OF THE INPUT REGISTRY FIRST. A surface that is about to lose its buffer can still be
         // named by an event already in the compositor queue, and answering that with a window
         // whose delegate has just been cleared is worse than not answering at all.
+        println!("cider-wayland-window invalidate number={}", st.number);
         unregister_window(st as *mut WindowState);
         st.delegate = std::ptr::null_mut();
         st.mapped = false;
@@ -1852,6 +1853,10 @@ extern "C" fn hide_window_for_app_deactivation(this: Object, _cmd: Sel, _frame: 
 /// hide request, an unmapped surface is one with no content.
 extern "C" fn hide_window(this: Object, _cmd: Sel) {
     if let Some(st) = unsafe { state(this) } {
+        /* WHO DISAPPEARED AND WHEN. A window that unmaps is indistinguishable from a compositor
+         * that stopped drawing, and both look like a black screen; only the client knows which it
+         * did. */
+        println!("cider-wayland-window hide number={} visible={}", st.number, st.visible);
         unsafe {
             if !st.surface.is_null() {
                 wl::cider_wl_surface_attach(st.surface, std::ptr::null_mut(), 0, 0);

@@ -342,10 +342,35 @@ pub fn pump() {
         }
     }
     if IN_PUMP.swap(true, std::sync::atomic::Ordering::Acquire) {
-        static REPORTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-        if !REPORTED.swap(true, std::sync::atomic::Ordering::Relaxed) {
-            println!("cider-wayland-session pump=reentered skipped=yes");
+        /*
+         * RE-ENTRY IS COUNTED, NOT SERVICED.
+         *
+         * The guard above is right about prepare_read, read_events and cancel_read: that trio is a
+         * protocol with a reader count and nesting it corrupts the heap. It is NOT right about the
+         * rest. Flushing what we have written and dispatching what has already been read touch none
+         * of that count.
+         *
+         * The difference is a MODAL SESSION. An application that opens a modal window runs its own
+         * event loop INSIDE the event we just delivered, so the outer pump is blocked in sendEvent
+         * and the only pump still running is the nested one -- which this returned from without
+         * doing anything. Nothing was flushed, nothing was dispatched, no frame callback ever came
+         * back, and the whole display went BLACK the moment Insert then Image opened its file
+         * picker. Every screenshot after that was empty and the application never drew again.
+         *
+         * The outer pump still owns the reading. The inner one keeps the pipe moving.
+         */
+        static REPORTED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let n = REPORTED.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+        if n <= 3 || n % 500 == 0 {
+            println!("cider-wayland-session pump=reentered count={n} skipped=yes");
         }
+        /*
+         * AND NOTHING IS DONE HERE, deliberately. Dispatching from the nested call was tried, on
+         * the theory that a modal session leaves only the inner pump running: it changed nothing
+         * (the freeze it was meant to explain is a SPIN, see the plan) and it dispatches events
+         * from inside an event handler, which is the shape of re-entry this guard exists to stop.
+         * A change that fixes nothing and can corrupt a heap is not worth keeping.
+         */
         return;
     }
     let _guard = PumpGuard;
