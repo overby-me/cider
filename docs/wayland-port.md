@@ -3905,3 +3905,80 @@ AND THE SUBMENU CHEVRON, from the same reference screenshot as the separators: t
 a point rather than a filled triangle. The first attempt drew a vertical BAR, because the arrow box
 after its margins is four points by eight and insetting it left nothing, which the screenshot said
 before anything was claimed about it.
+
+
+## Swift Publisher 5, and what a prologue fault means
+
+2026-08-16, commits 2959ea88 and 10b9ae00. The second application from the user list, and the first
+one to draw a window of its own.
+
+THE SWIFTUI QUESTION WAS MEASURED, NOT ASSUMED. The user replied in the Bluesky thread that SwiftUI
+support was probably needed before any of these could run. For this one it is not: the x86_64 slice
+of the trial links Cocoa, WebKit, Quartz, CoreImage, AddressBook, ExceptionHandling and
+iTunesLibrary, and not one Swift runtime library. Reading the load commands took a minute and saved
+the assumption. The trial itself is a public download, a UDBZ dmg that 7z from nixpkgs reads without
+a mount, and it goes into a prefix of its own so a broken install cannot take LibreOffice with it.
+
+NINE ROUNDS TO LOAD. Run it, read what dyld says, fix that, run again. Every one was a real gap:
+
+- iTunesLibrary, a whole framework and not one macOS ships. iTunes installs it into
+  /Library/Frameworks, so it is a FLAT bundle with no Versions/A, and the install name has to say
+  exactly that or the loader never finds it. It answers nil with an error, which is the truth on a
+  machine with no iTunes library, rather than a stub object whose empty collections a caller would
+  believe.
+- AddressBook: ABGroup and ABMultiValue as classes, and twenty four label and key constants with
+  the values macOS uses. A label is stored in the database as it stands, so a spelling that differs
+  is a phone number that has lost its label.
+- WebKit: WebUndefined, which is what a bridged JavaScript value that was never set reads back as,
+  and four keys whose names drop the View exactly as macOS does.
+- AppKit: three more sharing service names. CoreText: the five frame attributes, declared in the
+  header since it was written and defined nowhere at all.
+- CoreGraphics: THE PDF C API. Onyx2D has parsed and drawn PDF for years and no application could
+  call any of it from C. CGPDFArrayGet{Count,Object,Array,Dictionary,Stream,String},
+  CGPDFObjectGet{Type,Value}, CGPDFDictionaryApplyFunction, CGPDFStreamGetDictionary,
+  CGPDFPageGetDictionary, and for writing CGPDFContextCreateWithURL with BeginPage and EndPage.
+  These are bindings onto methods that already existed. The nine CGPDFObjectType values are
+  deliberately the same numbers Onyx2D uses internally, so there is no translation table to drift,
+  and the range is checked rather than assumed because everything past the stream type in that
+  enumeration is a parser mark with no PDF meaning. CGPDFDictionaryApplyFunction needed one new
+  thing underneath: every accessor on O2PDFDictionary takes a key you already know, so a caller
+  reading a dictionary it has never seen had no way in.
+
+A PROLOGUE FAULT IS A STACK OVERFLOW, and this is the method worth keeping from the second half.
+The application died with no message, and the fault looked like nothing:
+
+    RIP  AppKit+0x65e6c   twelve bytes into -[NSMatrix initWithFrame:mode:cellClass:...]
+    RSP  0x7FFFFF5FFFF8   eight bytes below a page boundary
+
+A prologue faults where it first WRITES, so a fault twelve bytes in with a stack pointer one word
+past a page boundary IS the diagnosis: the stack ran out. Counting the stack words that land in a
+mapped image then named the cycle exactly, four frames repeated 34,600 times.
+
+The cause was general. -[NSMatrix initWithFrame:mode:cellClass:numberOfRows:numberOfColumns:] began
+by sending -initWithFrame: TO SELF, which is a call into the subclass. On macOS the long form is the
+designated initialiser and -initWithFrame: is the convenience, so a subclass whose -initWithFrame:
+calls the long form is ordinary Cocoa, and here it recursed forever. The shared setup is a method of
+its own now and no initialiser sends anything to self to reach it.
+
+TWO PLACES TO READ REGISTERS, because coredumpctl shows one thread and it is not the one that
+faulted. The DAEMON log carries the guest register dump (ciderd.log, the sigexc gregs block, where
+greg 8 is RDI and greg 15 is RSP), and scripts/core-guest-stack.py resolves any address through the
+NT_FILE note. Between them, a receiver of 0xFFCECECEFFCECECE is identifiable as a fill pattern
+rather than an object without a debugger anywhere.
+
+FIVE MORE FIXES, all general: setSelectionByRect: on NSMatrix; CALayerContext answering nil rather
+than keeping a null GL context (there is no OpenGL on this backend, so every layer-backed view was
+building one); NSURLSessionTask and the three classes under it, which were EMPTY, so no data task
+could be built at all; the app-group container on NSFileManager; and the appearance of an NSWindow,
+which applications OBSERVE to follow dark mode and which threw out of addObserver:forKeyPath:.
+
+AND A CORRECTION TO THE DAY BEFORE. Guarding the two optional NSExceptionHandler delegate methods
+was right, but the same edit moved the HANG MASK onto the path that has a delegate. With no debugger
+attached SIGTRAP is not a pause, it is the end of the process, and it killed this application for two
+runs after the real bug was already fixed.
+
+WHERE IT STOPS. The assistant window is created and presented at 760 by 680, and the application
+then opens its welcome nib and dies in the keyed unarchiver. No screenshot has been taken: the
+window lives about a tenth of a second. The main menu is built in code and binds its items to
+objectValue, which NSMenuItem does not have, so every item raises; -[NSWindow standardWindowButton:]
+is unimplemented; and a layer-backed view has no compositor to render it.
