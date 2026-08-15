@@ -1,0 +1,30 @@
+--- a/AppKit/NSInterfacePart/NSGraphicsStyle.m
++++ b/AppKit/NSInterfacePart/NSGraphicsStyle.m
+@@ -398,16 +398,24 @@
+ }
+ 
+ - (void) drawPushButtonNormalInRect: (NSRect) rect defaulted: (BOOL) defaulted {
++    /*
++     * WHO DRAWS LAST, which decides whether a missing button label is the wrong COLOUR or the wrong
++     * ORDER. Set CIDER_BEZEL_ALPHA and this bezel becomes half transparent: a label drawn BEFORE it
++     * shows through, and a label that is simply not there stays not there. Two explanations that
++     * look identical on an opaque button, separated by one run.
++     */
++    CGFloat alpha = (getenv("CIDER_BEZEL_ALPHA") != NULL) ? 0.5 : 1.0;
++
+     if (defaulted) {
+-        [[NSColor blackColor] setFill];
++        [[NSColor colorWithCalibratedWhite: 0.0 alpha: alpha] setFill];
+         NSRectFill(rect);
+         rect = NSInsetRect(rect, 1, 1);
+     }
+ 
+-    [[NSColor colorWithCalibratedWhite: 0.78 alpha: 1.0] set];
++    [[NSColor colorWithCalibratedWhite: 0.78 alpha: alpha] set];
+     [[NSBezierPath bezierPathWithRoundedRect: rect xRadius: 4 yRadius: 4] fill];
+     rect = NSInsetRect(rect, 1, 1);
+-    [[NSColor whiteColor] set];
++    [[NSColor colorWithCalibratedWhite: 1.0 alpha: alpha] set];
+     [[NSBezierPath bezierPathWithRoundedRect: rect xRadius: 4 yRadius: 4] fill];
+ }
+ 

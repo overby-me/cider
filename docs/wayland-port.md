@@ -2517,3 +2517,24 @@ label disappearing entirely once the bezel grew. What would separate them is a b
 alpha, which is one build and one run away. Note also that the cell cannot tell it is the default
 button: cocotron knows only through [[controlView window] defaultButtonCell], there is no view, and
 the key equivalent is EMPTY in the trace, so LibreOffice is not marking it that way either.
+
+## AND IT IS SETTLED: THE OK LABEL IS THERE, UNDER OUR OWN BEZEL
+
+The entry above left two explanations standing and said what would separate them. It took one run.
+CIDER_BEZEL_ALPHA draws the push button bezel at half alpha, and with it the word OK appears,
+WHITE, centred, correctly sized, plainly underneath. docs/wayland-ok-label-under-the-bezel.png.
+
+So the label is not missing, not the wrong size and not in the wrong place. LibreOffice draws it and
+then something makes our bezel land ON TOP of it. The button is redrawn three times per alert, and
+the halo control showed the last of those clipped to a four row band, so the likeliest shape is a
+partial repaint that renders the native bezel again without the text. That is LibreOffice repaint
+sequencing and it needs logging on the application side, not more guessing from here.
+
+WHY THE LABEL IS WHITE, which now matters: it is what an application draws when it believes the
+button is the DEFAULT one, since Apple systems fill that button with the accent colour. Our bezel is
+white, so even with the ordering fixed the label would be white on white. Both have to be right.
+The cell still cannot tell it is the default button: cocotron knows only through the window default
+button cell, there is no view, and the key equivalent is empty in the trace.
+
+The instrument stays, and it is a general one: an opaque thing that covers another cannot be told
+apart from a thing that was never drawn, and half alpha separates them in a single run.
