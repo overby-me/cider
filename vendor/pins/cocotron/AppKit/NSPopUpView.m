@@ -48,15 +48,34 @@ static const NSTimeInterval kMenuInitialClickThreshold = .3f;
             dictionaryWithObjectsAndKeys: _font, NSFontAttributeName, nil];
 }
 
+/*
+ * A SEPARATOR THAT SEPARATES NOTHING IS NOT SHOWN, which is what macOS does and what the reference
+ * screenshot of this very menu shows: three rules in the system version against six bands of them
+ * here. An application builds a context menu from groups and leaves the empty groups in, so
+ * LibreOffice hands us runs of two and three separators, plus one at the end.
+ */
 - (NSArray *) visibleItemArray {
     NSArray *items = [[self menu] itemArray];
 
     NSMutableArray *visibleArray = [[[NSMutableArray alloc] init] autorelease];
+    BOOL previousWasSeparator = YES; /* a leading separator has nothing above it either */
 
     for (NSMenuItem *item in items) {
-        if (![item isHidden]) {
-            [visibleArray addObject: item];
+        if ([item isHidden]) {
+            continue;
         }
+        if ([item isSeparatorItem]) {
+            if (previousWasSeparator) {
+                continue;
+            }
+            previousWasSeparator = YES;
+        } else {
+            previousWasSeparator = NO;
+        }
+        [visibleArray addObject: item];
+    }
+    while ([visibleArray count] > 0 && [[visibleArray lastObject] isSeparatorItem]) {
+        [visibleArray removeLastObject];
     }
 
     return visibleArray;

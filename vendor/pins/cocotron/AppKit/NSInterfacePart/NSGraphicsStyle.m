@@ -445,10 +445,14 @@ static NSDictionary *cider_key_symbol_attributes(void) {
  * below, and the air is what makes a group read as a group. */
 - (void) drawMenuSeparatorInRect: (NSRect) rect {
     CGFloat y = floor(NSMidY(rect));
+    /* INSET, as macOS draws it: the rule stops short of both edges rather than cutting the panel in
+     * two. Ten points each side, which is what the reference screenshot measures. */
+    CGFloat inset = (rect.size.width > 40.0) ? 10.0 : 0.0;
 
     [[NSColor colorWithCalibratedWhite: 0.0 alpha: 0.12] setFill];
-    NSRectFillUsingOperation(NSMakeRect(rect.origin.x, y, rect.size.width, 1),
-                             NSCompositeSourceOver);
+    NSRectFillUsingOperation(
+            NSMakeRect(rect.origin.x + inset, y, rect.size.width - inset * 2.0, 1),
+            NSCompositeSourceOver);
 }
 
 - (void) drawMenuGutterInRect: (NSRect) rect {
