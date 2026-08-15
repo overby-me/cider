@@ -1,0 +1,141 @@
+--- a/AppKit/NSTableView.m
++++ b/AppKit/NSTableView.m
+@@ -2062,6 +2062,115 @@
+     }
+ }
+ 
++/*
++ * TYPE SELECT, which is how a Mac list is actually driven.
++ *
++ * Typing the name of a file in an open panel selects it on macOS. Here it did nothing at all: the
++ * responder chain delivers characters to -insertText: and NSTableView did not implement it, so
++ * every keystroke fell through to the window and was dropped. A file dialog that can only be
++ * driven by clicking a row is not the dialog the application thinks it opened.
++ *
++ * THE BUFFER IS FILE STATIC RATHER THAN AN IVAR. Only one table can be first responder, so only one
++ * can be mid-prefix, and this way the class layout does not change for a feature that is entirely
++ * transient. The prefix expires after three quarters of a second, which is what Apple uses.
++ */
++/*
++ * AND THE KEYS HAVE TO REACH IT, which they did not.
++ *
++ * A key down goes to the first responder, and NSTableView had no -keyDown:, so NSResponder passed
++ * it up the chain to the WINDOW, which interpreted it against ITSELF. insertText: was therefore
++ * never sent to the table that had the focus, and neither was moveUp: or moveDown: -- the arrow
++ * keys in a list did nothing either, which nobody had noticed because nothing drove them.
++ *
++ * A CONTROL CHARACTER STILL GOES UP. Return has to reach -performKeyEquivalent: so the default
++ * button of a panel fires, and Escape has to reach the panel to cancel it; interpreting those here
++ * would turn them into insertNewline: and swallow them. Function keys, arrows included, are not
++ * control characters and are interpreted here, which is what makes the list navigable.
++ */
++- (void) keyDown: (NSEvent *) event {
++    NSString *characters = [event charactersIgnoringModifiers];
++    unichar first = ([characters length] > 0) ? [characters characterAtIndex: 0] : 0;
++
++    if (first < 0x20 || first == 0x7f) {
++        [super keyDown: event];
++        return;
++    }
++    [self interpretKeyEvents: [NSArray arrayWithObject: event]];
++}
++
++static NSString *sTypeSelectPrefix = nil;
++static NSTimeInterval sTypeSelectAt = 0.0;
++static NSTableView *sTypeSelectView = nil;
++
++- (void) insertText: (id) text {
++    NSString *typed = [text isKindOfClass: [NSAttributedString class]] ? [text string] : text;
++
++    if ([typed length] == 0) {
++        return;
++    }
++
++    NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
++
++    if (sTypeSelectView != self || (now - sTypeSelectAt) > 0.75) {
++        [sTypeSelectPrefix release];
++        sTypeSelectPrefix = nil;
++    }
++    sTypeSelectView = self;
++    sTypeSelectAt = now;
++
++    NSString *prefix = (sTypeSelectPrefix == nil)
++                               ? [typed copy]
++                               : [[sTypeSelectPrefix stringByAppendingString: typed] copy];
++
++    [sTypeSelectPrefix release];
++    sTypeSelectPrefix = prefix;
++
++    NSArray *columns = [self tableColumns];
++
++    if ([columns count] == 0) {
++        return;
++    }
++
++    NSTableColumn *column = [columns objectAtIndex: 0];
++    NSInteger i, count = [self numberOfRows];
++    NSUInteger length = [prefix length];
++
++    if (getenv("CIDER_TRACE_PANEL") != NULL) {
++        NSLog(@"CIDER_TYPESELECT prefix=%@ rows=%ld column=%@", prefix, (long) count,
++              [column identifier]);
++    }
++    for (i = 0; i < count; i++) {
++        id value = [self dataSourceObjectValueForTableColumn: column row: i];
++        NSString *string;
++
++        /* A ROW VALUE IS NOT ALWAYS A STRING. The open panel feeds its outline view NSURLs, whose
++         * description is file:///cider-open-me.odt, so a prefix of the file NAME matched nothing
++         * and the whole feature looked unimplemented. What the user sees in the row is the last
++         * path component, and that is what typing has to match. */
++        if ([value isKindOfClass: [NSString class]]) {
++            string = value;
++        } else if ([value isKindOfClass: [NSURL class]]) {
++            string = [[value path] lastPathComponent];
++        } else {
++            string = [value description];
++        }
++        if (i < 3 && getenv("CIDER_TRACE_PANEL") != NULL) {
++            NSLog(@"CIDER_TYPESELECT   row=%ld class=%@ text=%@", (long) i, [value class], string);
++        }
++
++        if ([string length] < length) {
++            continue;
++        }
++        if ([[string substringToIndex: length] caseInsensitiveCompare: prefix] ==
++            NSOrderedSame) {
++            [self selectRowIndexes: [NSIndexSet indexSetWithIndex: i]
++                    byExtendingSelection: NO];
++            [self scrollRowToVisible: i];
++            return;
++        }
++    }
++}
++
+ - (void) moveUp: sender {
+     [self _moveUp: YES extend: NO];
+ }
+--- a/AppKit/NSSavePanel.subproj/NSOpenPanel.m
++++ b/AppKit/NSSavePanel.subproj/NSOpenPanel.m
+@@ -161,6 +161,20 @@
+                       (unsigned long) [view autoresizingMask]);
+             }
+         }
++        /* THE LIST IS WHAT THE KEYBOARD SHOULD DRIVE. An open panel has no name field, so with no
++         * first responder set the characters went to the window and nowhere else, and typing a
++         * file name selected nothing. NSTableView answers -insertText: with a type select now, and
++         * this is what points the keyboard at it. */
++        if (_outlineView != nil) {
++            BOOL took = [self makeFirstResponder: _outlineView];
++
++            if (getenv("CIDER_TRACE_PANEL") != NULL) {
++                NSLog(@"CIDER_PANEL firstresponder took=%d outline=%p now=%@", (int) took,
++                      (void *) _outlineView, [self firstResponder]);
++            }
++        } else if (getenv("CIDER_TRACE_PANEL") != NULL) {
++            NSLog(@"CIDER_PANEL firstresponder outline=nil");
++        }
+         res = [NSApp runModalForWindow: self];
+         [self close];
+     }
