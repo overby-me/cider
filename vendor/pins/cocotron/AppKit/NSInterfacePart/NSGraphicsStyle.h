@@ -56,6 +56,11 @@ typedef struct _Margins {
 - (Margins) menuItemTextMargins;
 
 - (void) drawMenuSeparatorInRect: (NSRect) rect;
+/* The search field at the top of a Help menu, and the grey heading over a group of results. Both
+ * are drawn rather than laid out: they are menu items marked by tag. */
+- (void) drawMenuSearchFieldInRect: (NSRect) rect query: (NSString *) query;
+- (void) drawMenuSectionHeaderInRect: (NSRect) rect title: (NSString *) title;
+
 - (void) drawMenuGutterInRect: (NSRect) rect;
 - (void) drawMenuCheckmarkInRect: (NSRect) rect
                          enabled: (BOOL) enabled

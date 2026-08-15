@@ -155,19 +155,37 @@ static void cider_collect_matches(NSMenu *menu, NSString *query, NSMutableArray 
     [_searchResults removeAllObjects];
 
     if ([_searchQuery length] > 0) {
-        /* The first row is the query itself, which is what the search FIELD would have shown. It is
-         * disabled, so arrow navigation and clicking both skip over it. */
-        NSMenuItem *header = [[[NSMenuItem alloc]
-                initWithTitle: [NSString stringWithFormat: @"Search: %@", _searchQuery]
-                       action: NULL
-                keyEquivalent: @""] autorelease];
+        /* THE FIRST ROW IS THE FIELD. macOS puts a real search field at the top of this menu, and
+         * the reference screenshot the user supplied shows it: a rounded white box with a magnifier
+         * in it holding what has been typed. It is a menu item marked by tag, disabled so arrow
+         * navigation and clicking both skip over it, and drawn as a field rather than as text. */
+        NSMenuItem *header = [[[NSMenuItem alloc] initWithTitle: _searchQuery
+                                                         action: NULL
+                                                  keyEquivalent: @""] autorelease];
 
         [header setEnabled: NO];
+        [header setTag: CiderMenuSearchFieldTag];
         [_searchResults addObject: header];
 
         NSMutableSet *seen = [NSMutableSet set];
 
         cider_collect_matches([NSApp mainMenu], _searchQuery, _searchResults, 12, seen);
+
+        /* AND A HEADING OVER THE RESULTS, which the same screenshot has: Menu Items in small grey
+         * capitals over the commands. Only when there are results to head. */
+        if ([_searchResults count] > 1) {
+            NSMenuItem *section = [[[NSMenuItem alloc]
+                    initWithTitle: NSLocalizedStringFromTableInBundle(
+                                           @"Menu Items", nil,
+                                           [NSBundle bundleForClass: [NSMenuView class]],
+                                           @"Heading over the menu commands a Help search found")
+                           action: NULL
+                    keyEquivalent: @""] autorelease];
+
+            [section setEnabled: NO];
+            [section setTag: CiderMenuSectionHeaderTag];
+            [_searchResults insertObject: section atIndex: 1];
+        }
 
         if ([_searchResults count] == 1) {
             NSMenuItem *none = [[[NSMenuItem alloc] initWithTitle: @"No Results"

@@ -201,6 +201,20 @@ static NSRect boundsToTitleAreaRect(NSRect rect) {
             [[self graphicsStyle] drawMenuSeparatorInRect: separatorRect];
 
             origin.y += NSHeight(separatorRect);
+        } else if ([item tag] == CiderMenuSearchFieldTag ||
+                   [item tag] == CiderMenuSectionHeaderTag) {
+            /* THE TWO ROWS OF THE HELP SEARCH THAT ARE NOT COMMANDS. One is the search field, one
+             * is the grey heading over the results; both are menu items so that the arrow keys and
+             * the layout treat them like everything else, and neither is drawn like a command. */
+            NSRect rowRect = NSMakeRect(origin.x, origin.y, itemArea.size.width,
+                                        [self heightOfMenuItem: item]);
+
+            if ([item tag] == CiderMenuSearchFieldTag) {
+                [[self graphicsStyle] drawMenuSearchFieldInRect: rowRect query: [item title]];
+            } else {
+                [[self graphicsStyle] drawMenuSectionHeaderInRect: rowRect title: [item title]];
+            }
+            origin.y += rowRect.size.height;
         } else {
 #define CENTER_PART_RECT_VERTICALLY(partSize) {                                \
         NSSize __partSize = (partSize);                                        \

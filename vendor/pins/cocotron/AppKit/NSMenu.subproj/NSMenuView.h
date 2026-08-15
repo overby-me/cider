@@ -19,6 +19,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/AppKit.h>
 
+/* THE TWO ROWS THE HELP SEARCH DRAWS DIFFERENTLY. macOS puts a real search FIELD at the top of that
+ * menu and a grey section heading above the results; both are menu items here, marked by tag so the
+ * drawing can tell them from a command. The values are far outside anything an application uses. */
+enum {
+    CiderMenuSearchFieldTag = -9911,
+    CiderMenuSectionHeaderTag = -9912,
+};
+
 @interface NSMenuView : NSView {
     NSUInteger _selectedItemIndex;
     NSMutableArray *_visibleArray;

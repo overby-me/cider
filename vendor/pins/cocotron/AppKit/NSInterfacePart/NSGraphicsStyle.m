@@ -455,6 +455,86 @@ static NSDictionary *cider_key_symbol_attributes(void) {
             NSCompositeSourceOver);
 }
 
+/*
+ * THE SEARCH FIELD AT THE TOP OF THE HELP MENU, drawn rather than laid out.
+ *
+ * macOS puts a real NSSearchField in that menu. This is a menu view, and a control inside a menu
+ * item would have to be tracked, focused and resized by code that does not exist here; what the
+ * user sees is a rounded white well with a magnifier and the text they typed, and that is what this
+ * draws. The caret is the end of the text, because the field always has the focus while the menu is
+ * open.
+ */
+- (void) drawMenuSearchFieldInRect: (NSRect) rect query: (NSString *) query {
+    NSRect well = NSInsetRect(rect, 8.0, 3.0);
+    NSBezierPath *shape = [NSBezierPath bezierPathWithRoundedRect: well
+                                                         xRadius: 6.0
+                                                         yRadius: 6.0];
+
+    [[NSColor whiteColor] setFill];
+    [shape fill];
+    [[NSColor colorWithCalibratedWhite: 0.0 alpha: 0.18] setStroke];
+    [shape setLineWidth: 1.0];
+    [shape stroke];
+
+    /* THE MAGNIFIER IS TWO STROKES, a circle and a handle, because there is no icon set here and a
+     * glyph from a font is not guaranteed to exist in whatever face the menu is using. */
+    CGFloat centreY = NSMidY(well);
+    NSRect lens = NSMakeRect(NSMinX(well) + 6.0, centreY - 4.0, 8.0, 8.0);
+    NSBezierPath *glass = [NSBezierPath bezierPathWithOvalInRect: lens];
+
+    [[NSColor colorWithCalibratedWhite: 0.45 alpha: 1.0] setStroke];
+    [glass setLineWidth: 1.5];
+    [glass stroke];
+
+    NSBezierPath *handle = [NSBezierPath bezierPath];
+    /* WHICH WAY IS DOWN. A menu view is FLIPPED, so subtracting from y moves the handle UP and the
+     * magnifier came out as the Mars symbol: a circle with the stem pointing up and to the right.
+     * Ask the view rather than assuming either convention. */
+    CGFloat down = [_view isFlipped] ? 1.0 : -1.0;
+
+    [handle moveToPoint: NSMakePoint(NSMaxX(lens) - 1.0, centreY + 3.0 * down)];
+    [handle lineToPoint: NSMakePoint(NSMaxX(lens) + 2.5, centreY + 6.0 * down)];
+    [handle setLineWidth: 1.5];
+    [handle stroke];
+
+    NSMutableDictionary *attributes = [NSMutableDictionary dictionary];
+
+    [attributes setObject: [NSFont menuFontOfSize: 0] forKey: NSFontAttributeName];
+    [attributes setObject: [NSColor blackColor] forKey: NSForegroundColorAttributeName];
+
+    NSSize size = [query sizeWithAttributes: attributes];
+    NSPoint where = NSMakePoint(NSMaxX(lens) + 7.0, centreY - size.height / 2.0);
+
+    [query drawAtPoint: where withAttributes: attributes];
+
+    /* The caret, because the keyboard is pointed at this field the whole time the menu is up. */
+    NSRect caret = NSMakeRect(where.x + size.width + 1.0, centreY - size.height / 2.0 + 1.0, 1.0,
+                              size.height - 2.0);
+
+    [[NSColor blackColor] setFill];
+    NSRectFill(caret);
+}
+
+/*
+ * A GREY HEADING OVER A GROUP, which is what macOS puts above the results of a menu search: small,
+ * grey, and not selectable.
+ */
+- (void) drawMenuSectionHeaderInRect: (NSRect) rect title: (NSString *) title {
+    NSMutableDictionary *attributes = [NSMutableDictionary dictionary];
+    NSFont *font = [NSFont menuFontOfSize: [NSFont smallSystemFontSize]];
+
+    if (font != nil) {
+        [attributes setObject: font forKey: NSFontAttributeName];
+    }
+    [attributes setObject: [NSColor colorWithCalibratedWhite: 0.45 alpha: 1.0]
+                   forKey: NSForegroundColorAttributeName];
+
+    NSSize size = [title sizeWithAttributes: attributes];
+    NSPoint where = NSMakePoint(rect.origin.x + 12.0, NSMidY(rect) - size.height / 2.0);
+
+    [title drawAtPoint: where withAttributes: attributes];
+}
+
 - (void) drawMenuGutterInRect: (NSRect) rect {
     // Nothing to do.
 }
