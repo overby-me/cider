@@ -1126,6 +1126,30 @@ void O2ContextSetBlendMode(O2ContextRef self, O2BlendMode blendMode) {
     if (self == nil)
         return;
 
+    /* CIDER_TRACE_BLEND names every blend mode other than the normal one, with the frames that
+     * asked for it. A region that comes out solid black is either a fill or a blend, and the two
+     * want opposite fixes. */
+    if (blendMode != kO2BlendModeNormal && getenv("CIDER_TRACE_BLEND") != NULL) {
+        static int printed;
+
+        if (printed < 30) {
+            void *frames[6];
+            int depth = backtrace(frames, 6);
+
+            printed++;
+            fprintf(stderr, "CIDER_BLEND mode=%d", (int) blendMode);
+            for (int i = 1; i < depth; i++) {
+                Dl_info info;
+
+                if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+                    fprintf(stderr, " <- %s", info.dli_sname);
+                }
+            }
+            fprintf(stderr, "\n");
+            fflush(stderr);
+        }
+    }
+
     O2GStateSetBlendMode(O2ContextCurrentGState(self), blendMode);
 }
 
