@@ -407,6 +407,20 @@ typedef NS_ENUM(NSInteger, NSWindowTitleVisibility) {
     NSWindowTitleHidden  = 1,
 };
 
+/* WHETHER THE WINDOW IS COVERED, which applications poll to decide whether to keep drawing. This
+ * compositor does not tell us, and VISIBLE is the answer that keeps a caller working: a window
+ * wrongly told it is hidden stops updating, which looks like a frozen application. */
+typedef NS_OPTIONS(NSUInteger, NSWindowOcclusionState) {
+    NSWindowOcclusionStateVisible = 1 << 1,
+};
+
+- (NSWindowOcclusionState) occlusionState;
+
+/* THE PRIVATE BLUR PAIR. A window server composites a blur behind a transparent window; this one
+ * does not, so both are accepted and do nothing. They are not optional for the caller: iTerm2 calls
+ * disableBlur on a window it has just built, and an unrecognized selector there is fatal. */
+- (void) enableBlur: (double) radius;
+- (void) disableBlur;
 - (BOOL) titlebarAppearsTransparent;
 - (void) setTitlebarAppearsTransparent: (BOOL) transparent;
 - (NSWindowTitleVisibility) titleVisibility;

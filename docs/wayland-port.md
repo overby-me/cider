@@ -5566,3 +5566,27 @@ MEASURED: abort cores in a 40 second run went from six to ZERO, and the applicat
 run. LOOKED AT the screenshots at 12, 18 and 20 seconds: menu bar, traffic lights, black terminal
 area, and STILL NO PROMPT AND NO TEXT. One brokenPipe remains in the log, so the session child
 still ends; it is no longer the loader that kills it. That is the next rung.
+
+
+## Two window methods the terminal needs, and where the session stands
+
+2026-08-16, end of the night. iTerm2 now runs a full 45 second harness run without terminating.
+
+TWO MISSING NSWindow METHODS, both found in the applications OWN exception log
+(Users/root/Library/Application Support/iTerm2/log.0.txt, which records what it caught):
+
+    -[iTermWindow occlusionState]   unrecognized selector
+    -[NSWindow disableBlur]         unrecognized selector, and this one was fatal
+
+occlusionState answers VISIBLE for a visible window, because an application told its window is
+hidden stops drawing, which looks like a freeze. The blur pair is private AppKit that a window
+server would composite; this one does not, so both are accepted and do nothing.
+
+WHERE THE SESSION STANDS, honestly: the helper no longer aborts, no brokenPipe appears in the last
+runs, and the application stays up. There is still NO PROMPT AND NO TEXT in the terminal. The last
+exec chain under strace ends at the application itself, so no shell is being started at all yet;
+what starts it, and why it does not, is the next thing to measure.
+
+A NOTE FOR WHOEVER LOOKS NEXT: the applications own log is the best instrument here. It records
+every exception iTerm2 catches, including the ones it swallows, and it is a plain text file in the
+prefix.

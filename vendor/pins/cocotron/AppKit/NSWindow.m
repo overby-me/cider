@@ -1240,6 +1240,17 @@ static BOOL _allowsAutomaticWindowTabbing;
     return [self convertBaseToScreen: point];
 }
 
+- (void) enableBlur: (double) radius {
+    // no window server blur here, and saying so beats raising
+}
+
+- (void) disableBlur {
+}
+
+- (NSWindowOcclusionState) occlusionState {
+    return _isVisible ? NSWindowOcclusionStateVisible : 0;
+}
+
 - (BOOL) titlebarAppearsTransparent {
     return _titlebarAppearsTransparent;
 }
