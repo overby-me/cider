@@ -29,6 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <stdlib.h>
 #include <string.h>
 
+/* Defined below, and declared here because the advances function above it is a caller. Answers
+ * whether the receiver reads or writes glyphs as NSGlyph rather than CGGlyph. */
+static bool cider_glyph_arg_is_wide(id object, SEL selector, unsigned int index);
+
 /* Defined in constants.c and declared in no header, the same as in CTFontCollection.m. */
 extern const CFStringRef kCTFontSymbolicTrait;
 
@@ -480,15 +484,53 @@ CGRect CTFontGetBoundingRectsForGlyphs(CTFontRef font, CTFontOrientation orienta
     return union_;
 }
 
+/* THE SAME TWO CLASSES, THE SAME SELECTOR, AND THE MISMATCH RUNS THE OTHER WAY.
+ *
+ * -getGlyphs: above is about what the method WRITES. This one is about what it READS: KTFont takes
+ * CGGlyph, two bytes each, and NSFont takes NSGlyph, eight. Handing an NSFont the caller CGGlyph
+ * array makes it read four glyphs worth of bytes as one index, so the glyphs it measures are
+ * nonsense and so are the advances.
+ *
+ * That is not academic. iTerm2 sizes its character cell from these advances and its terminal grid
+ * from the cell: after a resize it reported 225 columns in a 1000 pixel window, a cell of 4.4
+ * pixels, while drawing glyphs about twice that wide.
+ *
+ * And the sum was accumulated onto an UNINITIALISED double, so the return value was whatever the
+ * stack held plus the advances. Both are fixed here.
+ */
 double CTFontGetAdvancesForGlyphs(CTFontRef font, CTFontOrientation orientation,
                                 const CGGlyph *glyphs, CGSize *advances,
                                 CFIndex count)
 {
-    [font getAdvancements: advances forGlyphs: glyphs count: count];
+    id object = (id) font;
+    uintptr_t stack[256];
+    uintptr_t *wide = NULL;
+    double sum = 0.0;
+    CFIndex i;
 
-    double sum;
+    if (object == nil || advances == NULL || glyphs == NULL || count <= 0) {
+        return 0.0;
+    }
 
-    for (int i = 0; i < count; i++) {
+    if (cider_glyph_arg_is_wide(object, @selector(getAdvancements:forGlyphs:count:), 3)) {
+        wide = (count <= (CFIndex) (sizeof(stack) / sizeof(stack[0])))
+                   ? stack
+                   : (uintptr_t *) calloc((size_t) count, sizeof(uintptr_t));
+        if (wide == NULL) {
+            return 0.0;
+        }
+        for (i = 0; i < count; i++) {
+            wide[i] = glyphs[i];
+        }
+        [object getAdvancements: advances forGlyphs: (const CGGlyph *) wide count: count];
+        if (wide != stack) {
+            free(wide);
+        }
+    } else {
+        [object getAdvancements: advances forGlyphs: glyphs count: count];
+    }
+
+    for (i = 0; i < count; i++) {
         sum += advances[i].width;
     }
 
@@ -544,10 +586,9 @@ CFArrayRef CTFontCopyFeatureSettings(CTFontRef font)
  * the stack and over the saved font pointer. The value read back was 0x47, a glyph index, and the
  * process then died messaging it. So decide by what the method actually writes.
  */
-static bool cider_glyph_method_is_wide(id object)
+static bool cider_glyph_arg_is_wide(id object, SEL selector, unsigned int index)
 {
-    Method method = class_getInstanceMethod(object_getClass(object),
-                                            @selector(getGlyphs:forCharacters:length:));
+    Method method = class_getInstanceMethod(object_getClass(object), selector);
     char *type;
     bool wide;
 
@@ -557,14 +598,21 @@ static bool cider_glyph_method_is_wide(id object)
 
     /* Argument 2 is the first one after self and _cmd. "^S" is unsigned short *, which is CGGlyph
      * and needs no translation; anything wider is an NSGlyph array. */
-    type = method_copyArgumentType(method, 2);
+    type = method_copyArgumentType(method, index);
     if (type == NULL) {
         return false;
     }
 
-    wide = (strcmp(type, "^S") != 0);
+    /* A CGGlyph array encodes as a pointer to unsigned short, with or without the const marker.
+     * Anything else is an NSGlyph array, which is four times as wide. */
+    wide = (strcmp(type, "^S") != 0 && strcmp(type, "r^S") != 0);
     free(type);
     return wide;
+}
+
+static bool cider_glyph_method_is_wide(id object)
+{
+    return cider_glyph_arg_is_wide(object, @selector(getGlyphs:forCharacters:length:), 2);
 }
 
 bool CTFontGetGlyphsForCharacters(CTFontRef font, const UniChar *characters,
