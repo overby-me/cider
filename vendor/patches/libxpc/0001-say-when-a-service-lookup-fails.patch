@@ -1,0 +1,29 @@
+--- a/src/connection.m
++++ b/src/connection.m
+@@ -25,6 +25,8 @@
+ #import <xpc/connection.h>
+ #include <pthread/pthread.h>
+ #include <bootstrap.h>
++#include <stdio.h>
++#include <stdlib.h>
+ #include <xpc/serialization.h>
+ #import <objc/runtime.h>
+ #include <Block.h>
+@@ -745,6 +747,17 @@
+ 		status = bootstrap_look_up(bootstrap_port, this->service_name, &this->checkin_port);
+ 		if (status != KERN_SUCCESS) {
+ 			xpc_log_error(connection, "failed to lookup service with name \"%s\"", this->service_name);
++			/*
++			 * AND SAY IT SOMEWHERE THAT CAN BE READ. xpc_log_error goes to os_log, os_log goes to
++			 * syslog, and this container has no syslog socket, so a failed service lookup is
++			 * completely silent. That silence is expensive: iTerm2 decodes inline images in a
++			 * bundled XPC service, and every imgcat drew nothing, logged nothing, and looked like
++			 * a rendering bug for a long time.
++			 */
++			if (getenv("CIDER_TRACE_XPC") != NULL) {
++				fprintf(stderr, "CIDER_XPC lookup failed for service %s\n", this->service_name);
++				fflush(stderr);
++			}
+ 			goto error_out;
+ 		}
+ 	} else if (this->is_server_peer) {
