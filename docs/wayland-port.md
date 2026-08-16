@@ -5619,3 +5619,45 @@ all, which makes it timing dependent and means the next measurement has to be ta
 
 LibreOffice is unaffected by the launcher change: Writer draws its title bar, menu bar, both
 toolbar rows, ruler, page, sidebar and status bar, with zero raises.
+
+
+## Why the terminal is empty: the forked child spins, and so does the daemon
+
+2026-08-16, last measurement of the night. The session exists (the title bar says 80x25) but no
+shell ever runs. The reason is now measured rather than guessed.
+
+WHAT HAPPENS. iTerm2 forks for its session. The child checks in with the daemon and then never
+reaches exec:
+
+    /proc/<child>/status    State: R (running)   Threads: 1
+    /proc/<child>/syscall   47 (recvmsg)
+    utime/stime over 3 s    14 -> 26 and 84 -> 147, so it is BURNING CPU, not blocked
+
+And the daemon is burning more than the child:
+
+    ciderd  +197 ticks in 3 seconds     (about two thirds of a core)
+    child   +124 ticks in 3 seconds
+
+WHAT IT IS. Under strace, which is the only way to see the daemon own messages, a 25 second run
+prints
+
+    350 x [xnu_sys] Trying to lock mutex without an active thread!
+    351 x [xnu_sys] Trying to unlock mutex without an active thread!
+
+That is src/linux/server/src/xnu/locks.rs: when current_thread() is NULL, xnu_sys_mutex_lock falls
+back to the native queue lock and SPINS, with a comment saying anything taking that path must hold
+briefly. Something on the forked child path takes it constantly instead.
+
+current_thread() is NULL when there is no MICROTHREAD, so the caller is running on the daemon own
+thread rather than on a guest call microthread. Finding which caller that is, and giving it a
+microthread (or making the lock park instead of spin), is the next rung. It is the last thing
+between iTerm2 and a shell prompt.
+
+A NOTE ON INSTRUMENTS, learned the hard way in this same hour: getenv is NOT usable from
+libsystem_kernel. It sits below libc, and a trace gated on getenv there broke the container so
+completely that every command answered
+
+    cider: write() to the shellspawn socket failed
+
+Read /proc/self/environ instead, the way execve.c does. And the daemon messages never reach the app
+log: strace -f -e trace=write is the only way to read them.
