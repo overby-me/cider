@@ -5033,3 +5033,28 @@ what it decides.
 
 So the SIGSEGV in an image initialiser is still unexplained: what is known is that it happens after
 libc++ initialisers, before AppKit, with the loader fully satisfied.
+
+## The fault is before CoreFoundation, and the stubs are the likely reason
+
+2026-08-16. CoreFoundation now opens the crash handler from its own initialiser when
+CIDER_TRACE_CRASH is set, which is on the path every application takes and needs no DYLD_ variable
+that dyld may prune. It is dlopen rather than a second copy of the handler, so the alternate stack
+and the chaining live in one place.
+
+AND IT STILL PRINTS NOTHING, which is itself the measurement: CORE FOUNDATION IS NEVER INITIALISED.
+A probe at the top of __CFInitialize did not fire, and DYLD_PRINT_INITIALIZERS ends at the two
+libc++ initialisers. So iTerm2 3.6.10 dies BEFORE CoreFoundation, in or just after libc++.
+
+WHAT THAT POINTS AT, stated as a hypothesis with its reasoning rather than a conclusion. The
+difference between this run and every run that got further is the ELEVEN LOAD STUBS. Of the 308
+symbols they answer, many are Swift TYPE METADATA and PROTOCOL CONFORMANCE descriptors, and this
+file defines every one of them as a FUNCTION. dyld is satisfied by that, because dyld only binds
+addresses. The Swift runtime is not: image initialisation walks the conformance and metadata
+sections of every loaded image and DEREFERENCES those addresses as structures, and a function is
+not a structure. That is exactly the shape of a SIGSEGV during initialisation with the loader
+already finished.
+
+If it holds, it also says something about the ceiling: SwiftUI cannot be answered with stubs at all,
+because what an application needs from it first is metadata, not code. The way to prove it is a
+handler that is installed before libc++, which means dyld itself or libSystem rather than
+CoreFoundation, and that is the next rung.

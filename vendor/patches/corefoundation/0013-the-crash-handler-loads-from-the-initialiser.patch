@@ -1,0 +1,30 @@
+--- a/CFRuntime.c
++++ b/CFRuntime.c
+@@ -965,6 +965,27 @@
+     if (!__CFInitialized && !__CFInitializing) {
+         __CFInitializing = 1;
+ 
++        /*
++         * THE CRASH HANDLER, EARLY ENOUGH TO SEE AN IMAGE INITIALISER FAULT.
++         *
++         * CIDER_TRACE_CRASH installs handlers from two places already, and both are too late for a
++         * fault during startup: the Wayland backend is loaded when the application asks AppKit for
++         * a display, and the inserted library never arrives at all for a binary whose DYLD_
++         * environment dyld prunes. This one is on the path EVERY application takes: CoreFoundation
++         * is loaded before AppKit, and its initialiser runs before the frameworks above it.
++         *
++         * dlopen rather than a copy of the handler, so there is ONE implementation of it, in
++         * src/darwin/crashtrace, with the alternate stack and the chaining that took two attempts
++         * to get right. Silent by default: nothing is opened unless the variable is set.
++         */
++        if (getenv("CIDER_TRACE_CRASH") != NULL) {
++            void *handle = dlopen("/usr/lib/cider-crashtrace.dylib", RTLD_NOW | RTLD_GLOBAL);
++
++            if (handle == NULL) {
++                fprintf(stderr, "cider: CIDER_TRACE_CRASH set but cider-crashtrace did not open\n");
++                fflush(stderr);
++            }
++        }
+ 
+ #ifdef __i386__
+     __exceptionInit();
