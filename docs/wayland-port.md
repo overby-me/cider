@@ -4432,3 +4432,59 @@ colorWithCatalogName rather than around it. What is left is a blend mode used fo
 selection, or a control drawn into a fresh bitmap and then composited as opaque, which would show
 whatever the bitmap started as. The next step is to trace the fill colour and the blend mode in
 force over that rectangle.
+
+
+## The black font name box was a transparency layer composited in the wrong place
+
+2026-08-16. The box is white again, with the family name in it and the dropdown next to it working:
+docs/wayland-font-box-fixed.png, and the list it opens, drawn with every family in its own face, is
+docs/wayland-font-list.png. The bug was ours and it was general, so it is worth writing down how it
+was cornered, because five instruments in a row said NO and the sixth said where.
+
+WHAT IT WAS. Core Graphics groups drawing between CGContextBeginTransparencyLayer and
+CGContextEndTransparencyLayer and composites the group once at the end. O2Context_builtin ended one
+by drawing the layer into the rect (0,0,width,height) IN USER SPACE. User space is not device space
+the moment a caller translates the transform, and LibreOffice draws every native control by sending
+drawWithFrame:inView: to an NSCell between those two calls, with the transform translated to the
+control. So a 1256 by 634 layer was composited at 238,-571, clipped to the control, and the control
+was filled with pixels from outside the layer, which read as zero. Solid black, only after a click,
+because only then is that control drawn as an editable field.
+
+HOW IT WAS FOUND, in the order the instruments spoke, since each one that says no is a fact:
+
+    CIDER_TRACE_SYSCOLOR      Every named colour the run resolves, 111 of them. Not one nil and not
+                              one raise, so a missing system colour was out. It also showed which
+                              names LibreOffice actually reads, and textBackgroundColor is not one.
+    CIDER_TRACE_FILL=black    Every rect fill in a near black colour, with its caller. THREE in the
+                              whole run, all of them OutputDevice::Erase on small offscreens, none
+                              of them the box.
+    CIDER_FILLPATH            The same filter for path fills, which carry no rect and which the
+                              first instrument therefore could not see. Nothing at the box size.
+    CIDER_TRACE_DRAWIMAGE     Every image draw with its size. No blit anywhere near 170 by 16, so
+                              the box does not arrive as a bitmap either.
+    CIDER_FILL_REDPROBE       The one that turned the question around. It repaints the white fill
+                              that DOES land there in red, and the box stayed black, which proves
+                              the fill is not the last write. Elimination could not have told a
+                              wrong colour from an overpaint; a one bit experiment did, in one run.
+    CIDER_TRACE_PAINT         Every path, image and shading that touches a given rectangle, with the
+                              clip and the surface it lands on. One line named the caller:
+                              endTransparencyLayer, an image of 1256 by 634 at 238,-571 under a
+                              clip of 148 by 18, from paintCell.
+
+A WRONG SIZE FILTER COST TWO RUNS, and it is the kind of mistake that reads as evidence. The first
+fill trace was set to 190 by 20 with a tolerance of eight, and the box is 176 by 20 drawn into a 170
+by 16 hole, so the fills that mattered fell outside the window and the trace said the box is never
+filled. Measure the rectangle from the screenshot before filtering on it.
+
+WHAT THE FIX IS, and what it costs. A transparency layer now draws straight onto the surface. That
+is not the Core Graphics semantic, and the comment in the code says so: a group alpha, a group blend
+mode and a group shadow now apply per primitive instead of once to the whole group. The half of the
+feature that existed was worse than nothing, because only the edge fill path ever consulted the
+layer surface while drawImage and the FreeType glyph renderer wrote to the parent, so a control drew
+its background one way and its text the other and then a misplaced composite ran over the result.
+Doing it properly needs every primitive to be pointable at a group surface, which is a separate
+piece of work and is written down here rather than half done again.
+
+STILL WRONG IN THE SAME TOOLBAR. The first row still stops after redo in the nested 1256 by 684
+harness with no overflow chevron, while the second row is complete and the same toolbar in the
+headless 1600 by 1000 harness is whole. That one is untouched by this fix.

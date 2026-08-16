@@ -1255,6 +1255,66 @@ void O2ContextFillRects(O2ContextRef self, const O2Rect *rects,
     if (self == nil)
         return;
 
+    /*
+     * CIDER_TRACE_FILL names a fill of a given size with the colour it uses and the frames that
+     * asked for it. A rectangle that comes out solid black on screen is a fill with a black colour,
+     * a fill with no colour set, or something drawn over it, and only the caller can tell those
+     * apart. Set it to a size, WIDTHxHEIGHT, to see only fills of about that shape.
+     */
+    const char *want = getenv("CIDER_TRACE_FILL");
+
+    if (want != NULL && count > 0) {
+        int wantW = 0, wantH = 0;
+        int bySize = (sscanf(want, "%dx%d", &wantW, &wantH) == 2);
+        int byBlack = (strcmp(want, "black") == 0);
+
+        if (bySize || byBlack) {
+            int w = (int) rects[0].size.width, h = (int) rects[0].size.height;
+            O2GState *probe = O2ContextCurrentGState(self);
+            const O2Float *pc = probe->_fillColor ? O2ColorGetComponents(probe->_fillColor) : NULL;
+            size_t pn = probe->_fillColor ? O2ColorGetNumberOfComponents(probe->_fillColor) : 0;
+            /* Near black in any of the shapes a colour comes in: grey plus alpha, or rgb plus
+             * alpha. A colour with no components at all counts too, since that is a fill with
+             * nothing set and paints whatever the context held. */
+            int isBlack = (pn == 0)
+                    || (pc != NULL && pn >= 3 && pc[0] < 0.02 && pc[1] < 0.02 && pc[2] < 0.02)
+                    || (pc != NULL && pn == 2 && pc[0] < 0.02);
+            int matches = bySize
+                    ? (w >= wantW - 8 && w <= wantW + 8 && h >= wantH - 6 && h <= wantH + 6)
+                    : (isBlack && w > 20 && h > 6);
+
+            if (matches) {
+                static int printed;
+
+                if (printed < 30) {
+                    O2GState *gState = O2ContextCurrentGState(self);
+                    const O2Float *comp = O2ColorGetComponents(gState->_fillColor);
+                    size_t n = gState->_fillColor
+                            ? O2ColorGetNumberOfComponents(gState->_fillColor)
+                            : 0;
+                    void *frames[7];
+                    int depth = backtrace(frames, 7);
+
+                    printed++;
+                    fprintf(stderr, "CIDER_FILL %dx%d n=%zu c=%.3f,%.3f,%.3f,%.3f", w, h, n,
+                            (n > 0 && comp) ? (double) comp[0] : -1.0,
+                            (n > 1 && comp) ? (double) comp[1] : -1.0,
+                            (n > 2 && comp) ? (double) comp[2] : -1.0,
+                            (n > 3 && comp) ? (double) comp[3] : -1.0);
+                    for (int i = 1; i < depth; i++) {
+                        Dl_info info;
+
+                        if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+                            fprintf(stderr, " <- %s", info.dli_sname);
+                        }
+                    }
+                    fprintf(stderr, "\n");
+                    fflush(stderr);
+                }
+            }
+        }
+    }
+
     O2ContextBeginPath(self);
     O2ContextAddRects(self, rects, count);
     O2ContextFillPath(self);
@@ -1273,6 +1333,38 @@ void O2ContextDrawPath(O2ContextRef self, O2PathDrawingMode pathMode) {
     if (self == nil)
         return;
 
+    /*
+     * A PATH FILL IS THE OTHER WAY A RECTANGLE GETS PAINTED, and it is the one that carries no rect
+     * of its own, so a trace that watches only O2ContextFillRects cannot see it at all. Same filter
+     * as CIDER_TRACE_FILL: black, and big enough to be a control rather than a hairline.
+     */
+    const char *want = getenv("CIDER_TRACE_FILL");
+
+    if (want != NULL && strcmp(want, "black") == 0 && pathMode != kO2PathStroke) {
+        O2GState *gs = O2ContextCurrentGState(self);
+        const O2Float *pc = gs->_fillColor ? O2ColorGetComponents(gs->_fillColor) : NULL;
+        size_t pn = gs->_fillColor ? O2ColorGetNumberOfComponents(gs->_fillColor) : 0;
+        int isBlack = (pn == 0)
+                || (pc != NULL && pn >= 3 && pc[0] < 0.02 && pc[1] < 0.02 && pc[2] < 0.02)
+                || (pc != NULL && pn == 2 && pc[0] < 0.02);
+        O2Rect bb = O2ContextGetPathBoundingBox(self);
+
+        if (isBlack && bb.size.width > 20 && bb.size.height > 6) {
+            void *frames[7];
+            int count = backtrace(frames, 7);
+            char **names = backtrace_symbols(frames, count);
+
+            fprintf(stderr, "CIDER_FILLPATH %dx%d at %d,%d mode=%d n=%zu",
+                    (int) bb.size.width, (int) bb.size.height, (int) bb.origin.x,
+                    (int) bb.origin.y, (int) pathMode, pn);
+            for (int i = 2; i < count && names != NULL; i++) {
+                fprintf(stderr, " <- %s", names[i]);
+            }
+            fprintf(stderr, "\n");
+            if (names != NULL)
+                free(names);
+        }
+    }
     [self drawPath: pathMode];
 }
 

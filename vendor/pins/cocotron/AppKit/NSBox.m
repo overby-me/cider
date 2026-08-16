@@ -20,6 +20,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSAttributedString.h>
 #import <AppKit/NSBezierPath.h>
 #import <AppKit/NSBox.h>
+#include <objc/runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
 #import <AppKit/NSCell.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSFont.h>
@@ -376,6 +379,37 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     }
 
     if (_boxType == NSBoxCustom) {
+
+        /*
+         * CIDER_TRACE_BOX prints the colour this box was told to fill with, and the rectangle it
+         * fills. LibreOffice DERIVES ITS WHOLE THEME from these: AquaSalFrame::UpdateSettings
+         * renders one of these boxes per system colour and samples the result, so a colour that
+         * arrives here wrong is a colour that will be wrong everywhere in the application
+         * afterwards, and one that arrives nil paints with whatever the context held.
+         */
+        if (getenv("CIDER_TRACE_BOX") != NULL) {
+            NSColor *fill = [self fillColor];
+            static int printed;
+
+            if (printed < 40) {
+                printed++;
+                if (fill == nil) {
+                    fprintf(stderr, "CIDER_BOX fill=nil rect=%.0fx%.0f\n", rect.size.width,
+                            rect.size.height);
+                } else {
+                    NSColor *rgb = [fill colorUsingColorSpaceName: NSDeviceRGBColorSpace];
+                    CGFloat r = -1, g = -1, b = -1, a = -1;
+
+                    if (rgb != nil) {
+                        [rgb getRed: &r green: &g blue: &b alpha: &a];
+                    }
+                    fprintf(stderr, "CIDER_BOX fill=%s rgba=%.3f,%.3f,%.3f,%.3f rect=%.0fx%.0f\n",
+                            object_getClassName(fill), (double) r, (double) g, (double) b,
+                            (double) a, rect.size.width, rect.size.height);
+                }
+                fflush(stderr);
+            }
+        }
 
         // Ignoring corner radius for now.
         [[self fillColor] set];

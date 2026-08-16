@@ -19,6 +19,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSColor_CGColor.h>
 #import <AppKit/NSColor_catalog.h>
+#include <stdio.h>
+#include <stdlib.h>
 #import <AppKit/NSDisplay.h>
 #import <AppKit/NSGraphics.h>
 
@@ -147,7 +149,33 @@ NSColor *NSColorGetCatalogColor(NSColorListName catalogName,
      * Caching was never right in any case: the answer depends on the colour space AND the device
      * asked for, so a cache keyed on neither returns the previous caller answer to the next one.
      */
-    return [_color colorUsingColorSpaceName: colorSpace device: device];
+    NSColor *converted = [_color colorUsingColorSpaceName: colorSpace device: device];
+
+    /*
+     * WHAT A NAMED COLOUR ACTUALLY ANSWERS. A caller that reads the components off a nil, or off a
+     * colour whose entry is missing, gets zeros, and zeros are BLACK. That is invisible from the
+     * outside: the control simply paints dark and nothing is logged anywhere. Silent by default,
+     * on with CIDER_TRACE_SYSCOLOR.
+     */
+    if (getenv("CIDER_TRACE_SYSCOLOR") != NULL) {
+        if (converted == nil) {
+            fprintf(stderr, "CIDER_SYSCOLOR %s -> NIL (entry %s)\n", [_colorName UTF8String],
+                    _color == nil ? "missing" : "present");
+        } else {
+            CGFloat r = 0, g = 0, b = 0, a = 0;
+
+            @try {
+                [converted getRed: &r green: &g blue: &b alpha: &a];
+            } @catch (NSException *e) {
+                fprintf(stderr, "CIDER_SYSCOLOR %s -> RAISED %s\n", [_colorName UTF8String],
+                        [[e name] UTF8String]);
+                return converted;
+            }
+            fprintf(stderr, "CIDER_SYSCOLOR %s -> %.3f,%.3f,%.3f,%.3f\n", [_colorName UTF8String],
+                    (double) r, (double) g, (double) b, (double) a);
+        }
+    }
+    return converted;
 }
 
 - (CGColorRef) CGColorRef {

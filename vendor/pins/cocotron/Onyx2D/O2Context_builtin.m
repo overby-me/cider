@@ -24,6 +24,9 @@
 #import <Onyx2D/O2ClipState.h>
 #import <Onyx2D/O2Color.h>
 #import <Onyx2D/O2Context_builtin.h>
+#include <execinfo.h>
+#include <stdio.h>
+#include <stdlib.h>
 #import <Onyx2D/O2Exceptions.h>
 #import <Onyx2D/O2GraphicsState.h>
 #import <Onyx2D/O2Image.h>
@@ -191,11 +194,34 @@ void O2DContextClipAndFillEdges(O2Context_builtin *self, int fillRuleMask);
     return O2SizeMake(O2ImageGetWidth(_surface), O2ImageGetHeight(_surface));
 }
 
+/*
+ * A TRANSPARENCY LAYER DRAWS STRAIGHT ONTO THIS SURFACE, AND THAT IS THE HONEST THING TO DO HERE.
+ *
+ * What a transparency layer is in Core Graphics: everything drawn between begin and end accumulates
+ * in a group, and the group is composited ONCE at the end with the alpha, blend mode and shadow that
+ * were in force when it began. That needs the group to be a surface of its own that every drawing
+ * primitive writes to.
+ *
+ * This engine cannot do that yet, and the half of it that existed was worse than not having it. The
+ * layer surface was only ever consulted by the edge fill path: -drawImage:inRect: and the FreeType
+ * glyph renderer write to _surface directly. So a control drawn inside a layer had its background
+ * fill go one way and its icon and its text the other, and then the composite ran with the layer
+ * rect (0,0,width,height) taken in USER space, which inside a native control draw is translated to
+ * the control. LibreOffice draws every native control by sending -drawWithFrame:inView: to an NSCell
+ * between CGContextBeginTransparencyLayer and CGContextEndTransparencyLayer: a 1256 by 634 layer
+ * was composited at 238,-571 under a clip the size of the control, so the control was filled with
+ * pixels from outside the layer, which read as zero. THE FONT NAME BOX IN THE WRITER TOOLBAR WENT
+ * SOLID BLACK the moment it was clicked, and the white background fill that ran a moment earlier
+ * was nowhere to be seen.
+ *
+ * Until every primitive can be pointed at a group surface, the group IS this surface. The gstate is
+ * still saved and restored, and the parameters Core Graphics documents as reset inside a layer are
+ * still reset, so drawing between the two calls behaves. WHAT IS LOST, stated plainly: a group
+ * alpha, a group blend mode and a group shadow apply per primitive instead of once to the whole
+ * group. The group shadow never worked in any case, since the only code that read _shadowKernel was
+ * the composite that could not be trusted to land in the right place.
+ */
 - (void) beginTransparencyLayerWithInfo: (NSDictionary *) unused {
-    O2LayerRef layer = O2LayerCreateWithContext(self, [self size], unused);
-
-    [self->_layerStack addObject: layer];
-    O2LayerRelease(layer);
     O2ContextSaveGState(self);
 
     /**
@@ -212,32 +238,7 @@ void O2DContextClipAndFillEdges(O2Context_builtin *self, int fillRuleMask);
 }
 
 - (void) endTransparencyLayer {
-    O2LayerRef layer = O2LayerRetain([self->_layerStack lastObject]);
-
     O2ContextRestoreGState(self);
-    [self->_layerStack removeLastObject];
-
-    O2Size size = [self size];
-
-    if (O2ContextCurrentGState(self)->_shadowKernel) {
-        O2Surface *shadow =
-                [self createSurfaceWithWidth: O2ImageGetWidth(_surface)
-                                      height: O2ImageGetHeight(_surface)];
-
-        O2SurfaceGaussianBlur(shadow, O2LayerGetSurface(layer),
-                              O2ContextCurrentGState(self)->_shadowKernel,
-                              O2ContextCurrentGState(self)->_shadowColor);
-        O2ContextDrawImage(
-                self,
-                O2RectMake(O2ContextCurrentGState(self)->_shadowOffset.width,
-                           O2ContextCurrentGState(self)->_shadowOffset.height,
-                           size.width, size.height),
-                shadow);
-    }
-
-    O2ContextDrawLayerInRect(self, O2RectMake(0, 0, size.width, size.height),
-                             layer);
-    O2LayerRelease(layer);
 }
 
 void O2ContextDeviceClipReset_builtin(O2Context_builtin *self) {
@@ -351,8 +352,72 @@ ONYX2D_STATIC O2Paint *paintFromColor(O2Context_builtin *self, O2ColorRef color,
     return result;
 }
 
+
+/*
+ * CIDER_TRACE_PAINT=x,y,w,h names EVERY write that lands in a rectangle of the WINDOW surface, in
+ * order and with the frames that asked for it. Four instruments had already ruled out a black rect
+ * fill, a black path fill, an image blit and a clear, and the red probe then proved the white fill
+ * that IS there is overpainted by something later. This is the instrument that sees the something:
+ * one line per path, image, layer and shading that touches the rectangle.
+ */
+static int cider_paint_box(O2Context_builtin *self, O2Rect r, const char *what, size_t colorN,
+                           const O2Float *colorC)
+{
+    const char *want = getenv("CIDER_TRACE_PAINT");
+
+    if (want == NULL)
+        return 0;
+
+    int bx = 0, by = 0, bw = 0, bh = 0;
+
+    if (sscanf(want, "%d,%d,%d,%d", &bx, &by, &bw, &bh) != 4)
+        return 0;
+
+    if (self->_surface == nil)
+        return 0;
+
+    int x0 = (int) r.origin.x, y0 = (int) r.origin.y;
+    int x1 = x0 + (int) r.size.width, y1 = y0 + (int) r.size.height;
+
+    if (x1 < bx || x0 > bx + bw || y1 < by || y0 > by + bh)
+        return 0;
+
+    void *frames[8];
+    int count = backtrace(frames, 8);
+    char **names = backtrace_symbols(frames, count);
+
+    O2Rect clip = O2ContextGetClipBoundingBox((O2ContextRef) self);
+
+    fprintf(stderr, "CIDER_PAINT %s %dx%d at %d,%d clip=%dx%d@%d,%d on=%zux%zu n=%zu", what,
+            (int) r.size.width, (int) r.size.height, x0, y0, (int) clip.size.width,
+            (int) clip.size.height, (int) clip.origin.x, (int) clip.origin.y,
+            O2ImageGetWidth((O2ImageRef) self->_surface),
+            O2ImageGetHeight((O2ImageRef) self->_surface), colorN);
+    if (colorC != NULL && colorN >= 2) {
+        fprintf(stderr, " c=%.3f", (double) colorC[0]);
+        for (size_t i = 1; i < colorN && i < 4; i++)
+            fprintf(stderr, ",%.3f", (double) colorC[i]);
+    }
+    for (int i = 2; i < count && names != NULL; i++)
+        fprintf(stderr, " <- %s", names[i]);
+    fprintf(stderr, "\n");
+    fflush(stderr);
+    if (names != NULL)
+        free(names);
+    return 1;
+}
+
 - (void) drawPath: (O2PathDrawingMode) drawingMode {
     O2GState *gState = O2ContextCurrentGState(self);
+
+    {
+        O2Rect bb = O2ContextGetPathBoundingBox(self);
+        O2ColorRef fc = gState->_fillColor;
+
+        cider_paint_box(self, bb, drawingMode == kO2PathStroke ? "stroke" : "path",
+                        fc ? O2ColorGetNumberOfComponents(fc) : 0,
+                        fc ? O2ColorGetComponents(fc) : NULL);
+    }
 
     O2RasterizerSetShouldAntialias(self, gState->_shouldAntialias,
                                    gState->_antialiasingQuality);
@@ -447,6 +512,8 @@ ONYX2D_STATIC O2Paint *paintFromColor(O2Context_builtin *self, O2ColorRef color,
 
 - (void) drawShading: (O2Shading *) shading {
     O2GState *gState = O2ContextCurrentGState(self);
+
+    cider_paint_box(self, O2RectMake(0, 0, 100000, 100000), "shading", 0, NULL);
     O2ClipState *clipState = O2GStateClipState(gState);
     O2Paint *paint;
 
@@ -516,6 +583,21 @@ createImageToSurfaceTransform(O2ImageRef image, O2Rect rect,
 
 - (void) drawImage: (O2Image *) image inRect: (O2Rect) rect {
     O2GState *gState = O2ContextCurrentGState(self);
+
+    {
+        O2Point o = O2PointApplyAffineTransform(rect.origin, gState->_deviceSpaceTransform);
+        O2Size z = O2SizeApplyAffineTransform(rect.size, gState->_deviceSpaceTransform);
+
+        if (z.width < 0) {
+            o.x += z.width;
+            z.width = -z.width;
+        }
+        if (z.height < 0) {
+            o.y += z.height;
+            z.height = -z.height;
+        }
+        cider_paint_box(self, O2RectMake(o.x, o.y, z.width, z.height), "image", 0, NULL);
+    }
     O2ImageRef softMask = O2ImageGetMask(image);
 
     O2AffineTransform imageToSurface = createImageToSurfaceTransform(
