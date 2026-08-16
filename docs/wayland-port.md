@@ -4326,3 +4326,47 @@ and a positive d is exactly the case that assumption gets wrong.
 That is a lead rather than a proven cause, and it is recorded as one. What is proven is the line
 above it: the status bar text goes through a bitmap context with a positive d, and the status bar
 strip is one of the two things on screen that come out mirrored.
+
+
+## The upside down text, fixed
+
+2026-08-16, commit 93b9f4c4. Every dropdown list drew upside down, text and all, and so did the
+status bar. The document beside them was right, which is what made it hard.
+
+The FreeType path takes the scale out of the text rendering matrix with a square root,
+
+    scaleY = sqrt(b*b + d*d)
+
+which is always positive, so the SIGN of d never reached the glyph. Then every glyph was placed at
+the baseline minus its top with its rows written downwards, which is right for one sign and the
+mirror image for the other. Both signs happen in this application:
+
+    trm=[1 0 0 -1 ...]   the document window, correct all along
+    trm=[1 0 0  1 ...]   the status bar, which draws each item into its own small bitmap context
+
+A glyph outline is defined with y going UP. A negative d turns that into y going down the screen,
+which is exactly the order FreeType hands its bitmap back in, so the rows go out as they come. A
+positive d leaves the outline pointing the way it started, and the glyph then belongs on the screen
+mirrored: the rows go out in reverse and the top of the glyph sits below the baseline. That is done
+now, and only in that case.
+
+THE METHOD IS THE PART TO REUSE, because three guesses were wrong before it. First dump the SOURCE
+pixels of the blit rather than reasoning about the blit: the popup bitmap was already mirrored and
+the document bitmap was not, which ruled out the blit and ruled out all bitmap contexts at once.
+Then trace the TEXT RENDERING MATRIX rather than the CTM. The CTM alone cannot answer this question,
+because the text matrix is the other half of it and the two multiply.
+
+Looked at, three images and not one: the font dropdown in
+docs/wayland-font-dropdown.png reads Fira Sans, Liberation Serif, Noto Naskh Arabic and the rest,
+each name drawn in its own face with the Arabic and Hebrew samples the right way round; the status
+bar reads Page 1 of 1, the word count, English Denmark, Insert and 100 per cent; and the document
+window, the toolbars and our own menus are untouched, because the sign they draw with was already
+the other one.
+
+WHAT THE FIX UNCOVERS, and it is the next rung: the toolbar icons redrawn while a dropdown is open
+come out blue where they should be black and red, and a few are missing. The format is traced now,
+bpc=8 bpp=32 info=0x6 which is alpha-none-skip-first with byte order DEFAULT, colour space RGB, and
+initFunctionsForParameters rewrites a default byte order to 32Little on a little endian machine, so
+those pixels are read as BGRX. That is not a sufficient explanation on its own, because the same
+format is used for the icons that come out correct at startup, and it is recorded as an observation
+rather than a diagnosis.
