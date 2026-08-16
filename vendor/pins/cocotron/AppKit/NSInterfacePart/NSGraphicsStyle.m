@@ -1468,13 +1468,27 @@ static BOOL isOnImage(NSString *name) {
     CGFloat centreY = NSMidY(box) + (pressed ? -0.5 : 0.0);
 
     if (width > 1.0) {
+        /*
+         * A CHEVRON IS A STROKE, NOT A FILLED TRIANGLE, and this drew the triangle while the
+         * comment above claimed otherwise. Apple has drawn these as a thin V since the flat style
+         * arrived; a solid arrowhead is the older look and is the one thing in this control that
+         * still read as foreign once the blue rounded button was right.
+         *
+         * Two segments, round cap and round join so the vertex and the tips are soft rather than
+         * mitred to a point, and a thickness derived from the size so it stays proportional if the
+         * control grows.
+         */
+        CGFloat thickness = MAX(1.0, width / 5.0);
+
         CGContextBeginPath(context);
         CGContextMoveToPoint(context, centreX - width / 2.0, centreY + height / 2.0);
-        CGContextAddLineToPoint(context, centreX + width / 2.0, centreY + height / 2.0);
         CGContextAddLineToPoint(context, centreX, centreY - height / 2.0);
-        CGContextClosePath(context);
-        [[NSColor whiteColor] setFill];
-        CGContextFillPath(context);
+        CGContextAddLineToPoint(context, centreX + width / 2.0, centreY + height / 2.0);
+        CGContextSetLineWidth(context, thickness);
+        CGContextSetLineCap(context, kCGLineCapRound);
+        CGContextSetLineJoin(context, kCGLineJoinRound);
+        [[NSColor whiteColor] setStroke];
+        CGContextStrokePath(context);
     }
 
     CGContextRestoreGState(context);
