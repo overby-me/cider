@@ -6407,3 +6407,27 @@ Six is the important one: iTerm2 drops the image before it would hand anything t
 whatever is missing is a check inside iTerm2 rather than a decoder of ours. Finding it means reading
 what iTerm2 requires of a session before it will display an image, which is where this stops for now
 rather than being called done.
+
+### Inline images need an XPC service, and it never starts
+
+The previous section narrowed this to inside iTerm2. It is now named.
+
+iTerm2 does not decode inline images in process. Its binary exports
+decodeImageFromData:withReply:, and the withReply suffix is the NSXPCConnection convention, so the
+work goes to a service. The bundle has one: Contents/XPCServices/iTerm2SandboxedWorker.xpc, whose
+executable is present and 1.7 MB. Sampling the process list every five seconds for the length of a
+run, while imgcat runs, never sees it. It is never started.
+
+That explains every observation at once. Our decoders are never asked because the data never reaches
+them; nothing is logged because iTerm2 treats a decode that does not answer as a failed decode; and
+no rows are reserved because there is no image to size.
+
+WHERE THE GAP IS. libxpc already knows about bundle services: xpc_connection_create resolves through
+initAsClientForService, and bundle.m knows Contents/XPCServices is where they live. Our launchd does
+not: the string XPCServices appears ZERO times in it. On macOS launchd is what discovers an
+application XPC services and spawns them on demand, so a connection to a bundled service name has
+nothing to resolve against here.
+
+So the next rung for inline images is launching bundle XPC services, not anything in CoreGraphics.
+That is a real piece of work rather than a missing selector, and it is worth saying that it is also
+what any application using a sandboxed helper will need.
