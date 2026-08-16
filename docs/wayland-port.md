@@ -5124,3 +5124,39 @@ restricted binary. CoreFoundation opening the crash handler was meant to be that
 nothing, which now has two possible meanings rather than one: either CoreFoundation is never
 initialised, or the application never gets that far. The way to tell them apart is a print from an
 image that is loaded and initialised even earlier, and libSystem is the candidate.
+
+
+## The fault is real after all, and it is in load_categories_nolock
+
+2026-08-16. strace on the whole process tree, filtered to write, exit_group and the signals, ends the
+argument about what happens to iTerm2 3.6.10:
+
+    [guest kprintf] sigexc_handler(11, ...)
+    [guest kprintf] sigexc: have RIP 0x74887AA5B56A
+    [guest kprintf] sigexc: emulating default signal
+    kill(0, SIGSEGV)
+    --- SIGSEGV {si_code=SI_USER, si_pid=2} ---   +++ killed by SIGSEGV (core dumped) +++
+
+So there IS a genuine signal 11 first. What the core showed, a sent SIGSEGV from pid 2, is the
+SECOND one: Darling sigexc emulates the default action by killing the process GROUP, which is also
+why the shell helper died and why the harness saw an ordinary exit status. Both of the previous two
+entries were reading that second signal.
+
+AND THE GUEST HANDLER PRINTS THE FAULTING RIP, which the core resolves through its NT_FILE note:
+
+    0x74887AA5B56A  libobjc.A.dylib+0x3356a
+                    load_categories_nolock(header_info *)::$_0::operator()(category_t * const *)
+
+That is the Objective-C runtime ATTACHING CATEGORIES from a loaded image. It walks the category list
+of each image and follows each category class pointer, and one of those pointers is not a class.
+
+WHICH MAKES THE STUB THEORY CONCRETE AND SHIFTS IT. The load stubs answer eleven libraries with one
+TRAPPING FUNCTION PER SYMBOL, and some of those symbols are _OBJC_CLASS_$_ names:
+SCContentFilter, SCShareableContent, QLPreviewPanel and their relatives. dyld is satisfied, because
+dyld binds addresses. The Objective-C runtime is not: a category in the application that extends one
+of those classes hands load_categories_nolock a pointer to a FUNCTION where a class object belongs,
+and the first field it reads is nonsense.
+
+So the next rung is not a mystery, it is a generator change: a stub for an _OBJC_CLASS_$_ symbol has
+to be a REAL Objective-C class, compiled as Objective-C against libobjc, not a trap. The Swift
+metadata symbols have the same shape of problem behind them and are the rung after that.
