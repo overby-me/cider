@@ -30,10 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (id) resetToDefaultValues {
     self = [super resetToDefaultValues];
     _filenames = [NSArray new];
-    [_dialogTitle release];
-    _dialogTitle = [NSLocalizedStringFromTableInBundle(
-            @"Open", nil, [NSBundle bundleForClass: [NSOpenPanel class]],
-            @"The title of the open panel") copy];
+    /* Through the setter, for the same reason the superclass does: the window is named too. */
+    [self setTitle: NSLocalizedStringFromTableInBundle(
+                            @"Open", nil, [NSBundle bundleForClass: [NSOpenPanel class]],
+                            @"The title of the open panel")];
     _allowsMultipleSelection = NO;
     _canChooseDirectories = NO;
     _canChooseFiles = YES;

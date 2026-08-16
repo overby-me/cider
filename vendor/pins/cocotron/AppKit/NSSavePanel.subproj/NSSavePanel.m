@@ -54,7 +54,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 @synthesize showsHiddenFiles=_showsHiddenFiles;
 
 - (id) resetToDefaultValues {
-    _dialogTitle = @"Save";
+    /*
+     * THROUGH THE SETTER, so the WINDOW is called Save as well as the dialog.
+     *
+     * The nib this panel is loaded from calls its window Window, which is what a nib says when
+     * nobody has named it, and the assignment that used to be here changed only the ivar. The
+     * title bar therefore read Window, in the one dialog a person is most likely to be looking at.
+     * This runs after the nib is loaded, so it wins; an application that sets its own title later
+     * still wins over this.
+     */
+    [self setTitle: @"Save"];
     _nameFieldStringValue = @"";
     _filename = @"";
     _directory = [NSHomeDirectory() copy];
@@ -890,10 +899,19 @@ static NSSavePanel *_newPanel = nil;
     return _accessoryView;
 }
 
+/*
+ * AND THE WINDOW GETS IT TOO, which is what made the title bar of every save panel empty.
+ *
+ * This override kept the title for the dialog and never called super, so -[NSWindow title] stayed
+ * empty and the theme frame, which draws whatever the window is called, had nothing to draw. Even
+ * -runModal setting the title explicitly did nothing: it came straight back here and was stored in
+ * the same place again. The panel had traffic lights and a blank bar next to them.
+ */
 - (void) setTitle: (NSString *) title {
     title = [title copy];
     [_dialogTitle release];
     _dialogTitle = title;
+    [super setTitle: title];
 }
 
 - (void) setDirectory: (NSString *) directory {
