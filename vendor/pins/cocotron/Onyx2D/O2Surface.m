@@ -629,6 +629,50 @@ static BOOL initFunctionsForParameters(O2Surface *self, size_t bitsPerComponent,
     return NO;
 }
 
+/*
+ * BITS PER PIXEL IS DERIVED FROM THE DESCRIPTION, NOT ASSUMED TO BE THIRTY TWO.
+ *
+ * CGBitmapContextCreate is not given a bits-per-pixel; Core Graphics works it out from the bits per
+ * component, the number of components in the colour space, and whether the format stores an alpha
+ * byte. This class assumed 32 for everything, which is right for the RGB with alpha that most
+ * callers want and wrong for every other kind of bitmap.
+ *
+ * What it cost: LibreOffice draws a bitmap with a mask by making an EIGHT BIT GREY context for the
+ * mask, and the assumption turned that into a grey colour space claiming thirty two bits per pixel,
+ * a combination nothing supports:
+ *
+ *     O2Image failed to init with bpc=8, bpp=32, colorSpace=type=0, bitmapInfo=0x0
+ *     <- QuartzSalBitmap::CreateContext <- CreateWithSalBitmapAndMask
+ *     <- AquaGraphicsBackend::drawAlphaBitmap <- OutputDevice::DrawDeviceAlphaBitmap
+ *
+ * The alpha cases follow Core Graphics exactly, including the two SKIP forms: a skipped alpha byte
+ * is still a byte in the pixel, so it counts.
+ */
+static size_t cider_bits_per_pixel(size_t bitsPerComponent, O2ColorSpaceRef colorSpace,
+                                   O2BitmapInfo bitmapInfo)
+{
+    size_t components = O2ColorSpaceGetNumberOfComponents(colorSpace);
+
+    switch (bitmapInfo & kO2BitmapAlphaInfoMask) {
+    case kO2ImageAlphaNone:
+        break;
+
+    case kO2ImageAlphaOnly:
+        components = 1;
+        break;
+
+    default:
+        components += 1;
+        break;
+    }
+
+    if (components == 0) {
+        components = 1;
+    }
+
+    return bitsPerComponent * components;
+}
+
 - initWithBytes: (void *) bytes
                    width: (size_t) width
                   height: (size_t) height
@@ -638,7 +682,7 @@ static BOOL initFunctionsForParameters(O2Surface *self, size_t bitsPerComponent,
               bitmapInfo: (O2BitmapInfo) bitmapInfo
 {
     O2DataProvider *provider;
-    int bitsPerPixel = 32;
+    int bitsPerPixel = (int) cider_bits_per_pixel(bitsPerComponent, colorSpace, bitmapInfo);
 
     if (bytes != NULL) {
         provider = [[[O2DataProvider alloc] initWithBytes: bytes

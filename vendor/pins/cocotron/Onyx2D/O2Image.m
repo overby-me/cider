@@ -32,6 +32,9 @@
 #import <Onyx2D/O2DataProvider.h>
 #import <Onyx2D/O2Exceptions.h>
 #import <Onyx2D/O2Image.h>
+#include <dlfcn.h>
+#include <execinfo.h>
+#include <stdio.h>
 #import <Onyx2D/O2Surface.h>
 
 @implementation O2Image
@@ -355,6 +358,28 @@ ONYX2D_STATIC BOOL initFunctionsForParameters(O2Image *self,
         NSLog(@"O2Image failed to init with bpc=%zu, "
               @"bpp=%zu,colorSpace=%@,bitmapInfo=0x%0X",
               bitsPerComponent, bitsPerPixel, colorSpace, bitmapInfo);
+        /*
+         * AND WHO ASKED FOR IT, which the message above does not say and which is the only thing
+         * that can be acted on: a combination this class refuses is either a caller building a
+         * wrong description or this class being wrong about what it supports, and the two want
+         * opposite fixes.
+         */
+        {
+            void *frames[10];
+            int depth = backtrace(frames, 10);
+
+            fprintf(stderr, "CIDER_IMAGE_FAIL bpc=%zu bpp=%zu type=%d info=0x%X",
+                    bitsPerComponent, bitsPerPixel, (int) [colorSpace type], bitmapInfo);
+            for (int i = 1; i < depth; i++) {
+                Dl_info info;
+
+                if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+                    fprintf(stderr, " <- %s", info.dli_sname);
+                }
+            }
+            fprintf(stderr, "\n");
+            fflush(stderr);
+        }
         [self dealloc];
         return nil;
     }
