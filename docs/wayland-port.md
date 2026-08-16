@@ -6054,3 +6054,27 @@ wrong way:
      container and opened from INSIDE it, where it routinely does not exist. It now creates it.
   3. It reported no error when the write failed, so the absence of a file read as the window never
      being presented. It now says which path failed and why.
+
+### One line: the clip view background nobody turned off
+
+-[NSScrollView setDrawsBackground:] stored the flag and never passed it on. macOS documents that it
+must: turning a scroll view background off turns its content view background off too. NSClipView
+keeps its own flag and it defaults to YES, so iTerm2, which explicitly asks for no background,
+got one anyway. -[NSClipView drawRect:] filled the whole document area with opaque black AFTER the
+text view had drawn into it, and the last write wins.
+
+iTerm2 now shows a working terminal: the dyld initializer lines, Unimplemented syscall (351), Login
+incorrect, and a login prompt with a block cursor, white on black. The line reading echo hello from
+cider is what the harness typed, so keystrokes reach the pty and come back as glyphs.
+
+WHAT THIS SAYS ABOUT INSTRUMENTS. Five in a row confirmed a fact that was true and useless: the
+glyphs were rasterised, positioned correctly, blended with the right paint, into the right surface,
+and readable back out of it afterwards. All true. None of them asked what happened NEXT. The one
+that found it in a single run was CIDER_TRACE_PAINT=x,y,w,h, which prints every write that lands in
+a named rectangle together with the frames that asked for it: the last write into the first text row
+was NSClipView filling black. For anything invisible, reach for that first.
+
+A SECOND LESSON, cheaper and more embarrassing. A harness that forwards every switch writes VAR= for
+the ones that are unset, and getenv answers an empty string for that, which is not NULL. So
+CIDER_GLYPH_RED was on in a run nobody asked to be red, and the first screenshot of working text came
+out entirely red and read as a colour bug. Both glyph gates now treat empty as off.
