@@ -28,6 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 @property(class, strong, readonly) NSColorSpace *sRGBColorSpace;
 
 + (NSColorSpace *) deviceRGBColorSpace;
++ (NSColorSpace *) genericRGBColorSpace;
++ (NSColorSpace *) genericGrayColorSpace;
++ (NSColorSpace *) deviceGrayColorSpace;
++ (NSColorSpace *) genericCMYKColorSpace;
++ (NSColorSpace *) deviceCMYKColorSpace;
 
 - initWithCGColorSpace: (CGColorSpaceRef) cgColorSpace;
 

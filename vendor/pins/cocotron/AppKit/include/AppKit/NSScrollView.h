@@ -56,6 +56,9 @@ APPKIT_EXPORT NSString *const NSScrollViewDidLiveScrollNotification;
     CGFloat _magnification;
     CGFloat _minMagnification;
     CGFloat _maxMagnification;
+    NSInteger _verticalScrollElasticity;
+    NSInteger _horizontalScrollElasticity;
+    BOOL _usesPredominantAxisScrolling;
 }
 
 + (NSSize) frameSizeForContentSize: (NSSize) contentSize
@@ -146,6 +149,25 @@ APPKIT_EXPORT NSString *const NSScrollViewDidLiveScrollNotification;
 - (void) tile;
 - (void) reflectScrolledClipView: (NSClipView *) clipView;
 
+@end
+
+/* Elasticity is the rubber band at the end of a scroll, and the predominant axis flag locks a
+ * two axis gesture to one of them. This backend has neither behaviour, so the values are KEPT AND
+ * NOT ACTED ON: an application that sets them is describing what it wants from a trackpad, and
+ * refusing the message outright kills it (iTerm2 does exactly this on the window it opens). */
+typedef NS_ENUM(NSInteger, NSScrollElasticity) {
+    NSScrollElasticityAutomatic = 0,
+    NSScrollElasticityNone      = 1,
+    NSScrollElasticityAllowed   = 2,
+};
+
+@interface NSScrollView (CiderElasticity)
+- (NSScrollElasticity) verticalScrollElasticity;
+- (void) setVerticalScrollElasticity: (NSScrollElasticity) elasticity;
+- (NSScrollElasticity) horizontalScrollElasticity;
+- (void) setHorizontalScrollElasticity: (NSScrollElasticity) elasticity;
+- (BOOL) usesPredominantAxisScrolling;
+- (void) setUsesPredominantAxisScrolling: (BOOL) flag;
 @end
 
 @interface NSScrollView (CiderScrollerStyle)

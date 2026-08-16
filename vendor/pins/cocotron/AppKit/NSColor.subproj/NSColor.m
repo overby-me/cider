@@ -17,6 +17,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#import <AppKit/NSColorSpace.h>
 #import <AppKit/NSBezierPath.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSColor_CGColor.h>
@@ -721,6 +722,68 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
                               brightness: brightness
                                    alpha: alpha
                                spaceName: NSCalibratedRGBColorSpace];
+}
+
+/* THE MODERN SPELLING, 10.9 and later, of the calibrated constructor beside it. colorWithRed:...
+ * and colorWithWhite:... already had theirs; hue did not, and an application that builds a colour
+ * from HSB got an unrecognized selector and died. */
++ (NSColor *) colorWithHue: (CGFloat) hue
+                saturation: (CGFloat) saturation
+                brightness: (CGFloat) brightness
+                     alpha: (CGFloat) alpha
+{
+    return [self colorWithCalibratedHue: hue
+                             saturation: saturation
+                             brightness: brightness
+                                  alpha: alpha];
+}
+
+/* Display P3 is a WIDER gamut than this backend has any notion of, so the components are taken as
+ * they are. A colour that should be more saturated than sRGB can express comes out as its sRGB
+ * neighbour, which is the same approximation the rest of this file makes. */
++ (NSColor *) colorWithDisplayP3Red: (CGFloat) red
+                              green: (CGFloat) green
+                               blue: (CGFloat) blue
+                              alpha: (CGFloat) alpha
+{
+    return [self colorWithSRGBRed: red green: green blue: blue alpha: alpha];
+}
+
+/* Subclasses that know better override this. Answering sRGB is the useful default: the callers
+ * are converting a colour, and raising here kills them. */
+- (NSColorSpace *) colorSpace {
+    return [NSColorSpace sRGBColorSpace];
+}
+
+/* A COLOUR IN AN ARBITRARY SPACE, components first and alpha last, which is how an application
+ * hands over a colour it built itself. The count tells the space apart: 2 is white plus alpha,
+ * 5 is CMYK plus alpha, anything else is treated as RGB, which is what this backend can draw. */
++ (NSColor *) colorWithColorSpace: (NSColorSpace *) space
+                       components: (const CGFloat *) components
+                            count: (NSInteger) count
+{
+    if (space == nil || components == NULL || count < 2) {
+        return nil;
+    }
+
+    CGColorSpaceRef cgSpace = [space CGColorSpace];
+    if (cgSpace == NULL) {
+        return nil;
+    }
+
+    CGColorRef ref = CGColorCreate(cgSpace, components);
+    if (ref == NULL) {
+        return nil;
+    }
+
+    NSColorSpaceName name = (count == 2)   ? NSCalibratedWhiteColorSpace
+                            : (count == 5) ? NSDeviceCMYKColorSpace
+                                           : NSCalibratedRGBColorSpace;
+    NSColor *color = [NSColor_CGColor colorWithColorRef: ref spaceName: name];
+
+    CGColorRelease(ref);
+
+    return color;
 }
 
 + (NSColor *) colorWithCatalogName: (NSColorListName) catalogName

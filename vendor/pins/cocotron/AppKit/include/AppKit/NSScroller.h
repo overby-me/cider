@@ -72,6 +72,7 @@ typedef NSUInteger NSUsableScrollerParts;
     BOOL _isHighlighted;
 
     NSScrollerStyle _scrollerStyle;
+    NSInteger _knobStyle;
 }
 
 + (CGFloat) scrollerWidthForControlSize: (NSControlSize) controlSize
@@ -83,6 +84,17 @@ typedef NSUInteger NSUsableScrollerParts;
 - (void) setKnobProportion: (CGFloat) zeroToOneKnob;
 - (NSScrollArrowPosition) arrowsPosition;
 - (NSControlSize) controlSize;
+/* Which of the three knob appearances an OVERLAY scroller draws. This backend draws one legacy
+ * scroller, so the value is KEPT AND NOT ACTED ON, and an application that sets it for a dark
+ * window keeps running instead of dying on an unrecognized selector. */
+typedef NS_ENUM(NSInteger, NSScrollerKnobStyle) {
+    NSScrollerKnobStyleDefault = 0,
+    NSScrollerKnobStyleDark    = 1,
+    NSScrollerKnobStyleLight   = 2,
+};
+
+- (NSScrollerKnobStyle) knobStyle;
+- (void) setKnobStyle: (NSScrollerKnobStyle) style;
 - (NSScrollerStyle) scrollerStyle;
 + (NSScrollerStyle) preferredScrollerStyle;
 

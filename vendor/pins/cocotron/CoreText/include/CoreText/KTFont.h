@@ -34,6 +34,7 @@ enum { CGNullGlyph = 0x0 };
                 size: (CGFloat) size
             language: (NSString *) language;
 
+- (CGFontRef) graphicsFont;
 - (CFStringRef) copyName;
 
 /* One raw sfnt table, or NULL. Overridden where there is a real face to read it from; the base

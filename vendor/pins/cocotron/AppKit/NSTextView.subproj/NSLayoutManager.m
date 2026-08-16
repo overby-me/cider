@@ -1230,6 +1230,15 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
     return [self _currentGlyphRangeForTextContainer: container];
 }
 
+/* THE SINGLE INDEX FORM of the range mapping below, routed through it so the two cannot drift:
+ * this file maps glyphs to characters one to one, and if that ever stops being true this follows
+ * along. iTerm2 asks for it while measuring its cell. */
+- (NSUInteger) glyphIndexForCharacterAtIndex: (NSUInteger) charIndex {
+    return [self glyphRangeForCharacterRange: NSMakeRange(charIndex, 1)
+                        actualCharacterRange: NULL]
+            .location;
+}
+
 - (NSRange) glyphRangeForCharacterRange: (NSRange) charRange
                    actualCharacterRange: (NSRangePointer) actualCharRange
 {

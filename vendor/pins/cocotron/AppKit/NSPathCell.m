@@ -30,6 +30,19 @@
     return self;
 }
 
+/* THE COPY IS BITWISE. NSCell copies with NSCopyObject, so a subclass that releases object ivars
+ * in dealloc has to re-own them here or the second dealloc is an over release. Five ivars, every one of them released in dealloc. */
+- copyWithZone: (NSZone *) zone {
+    NSPathCell *copy = [super copyWithZone: zone];
+
+    copy->_URL = [_URL copy];
+    copy->_allowedTypes = [_allowedTypes copy];
+    copy->_backgroundColor = [_backgroundColor copy];
+    copy->_pathComponentCells = [_pathComponentCells copy];
+    copy->_placeholder = [_placeholder copy];
+    return copy;
+}
+
 - (void) dealloc {
     [_URL release];
     [_pathComponentCells release];

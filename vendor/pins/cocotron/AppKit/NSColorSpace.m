@@ -45,6 +45,39 @@ NSString *const _NSColorCoreUICatalogNamePrefix =
     return result;
 }
 
+/* THE GENERIC SPACES, which are what an application asks for when it wants a colour that does not
+ * depend on a particular display. This backend draws everything through one RGB space, so generic
+ * RGB IS sRGB here; saying so is better than an unrecognized selector, which is fatal. */
++ (NSColorSpace *) genericRGBColorSpace {
+    return [self sRGBColorSpace];
+}
+
++ (NSColorSpace *) genericGrayColorSpace {
+    CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
+    NSColorSpace *result = [[[self alloc] initWithCGColorSpace: gray] autorelease];
+
+    CGColorSpaceRelease(gray);
+
+    return result;
+}
+
++ (NSColorSpace *) deviceGrayColorSpace {
+    return [self genericGrayColorSpace];
+}
+
++ (NSColorSpace *) genericCMYKColorSpace {
+    CGColorSpaceRef cmyk = CGColorSpaceCreateDeviceCMYK();
+    NSColorSpace *result = [[[self alloc] initWithCGColorSpace: cmyk] autorelease];
+
+    CGColorSpaceRelease(cmyk);
+
+    return result;
+}
+
++ (NSColorSpace *) deviceCMYKColorSpace {
+    return [self genericCMYKColorSpace];
+}
+
 - initWithCGColorSpace: (CGColorSpaceRef) cgColorSpace {
     _cgColorSpace = CGColorSpaceRetain(cgColorSpace);
     return self;

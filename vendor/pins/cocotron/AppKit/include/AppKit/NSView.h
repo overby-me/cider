@@ -257,6 +257,13 @@ APPKIT_EXPORT const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPre
 
 - (void) setNextKeyView: (NSView *) next;
 - (BOOL) acceptsFirstMouse: (NSEvent *) event;
+typedef NS_OPTIONS(NSUInteger, NSTouchTypeMask) {
+    NSTouchTypeMaskDirect   = 1 << 0,
+    NSTouchTypeMaskIndirect = 1 << 1,
+};
+
+- (NSTouchTypeMask) allowedTouchTypes;
+- (void) setAllowedTouchTypes: (NSTouchTypeMask) types;
 - (BOOL) acceptsTouchEvents;
 - (void) setAcceptsTouchEvents: (BOOL) accepts;
 - (BOOL) wantsRestingTouches;

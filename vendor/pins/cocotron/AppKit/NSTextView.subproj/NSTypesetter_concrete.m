@@ -860,6 +860,36 @@ static void loadGlyphAndCharacterCacheForLocation(NSTypesetter_concrete *self,
     }
 }
 
+/* THE DISTANCE FROM THE TOP OF THE LINE FRAGMENT TO THE BASELINE, which for the standard
+ * behaviour is the ascender of the font in force at that glyph. Taken from the text storage when
+ * there is one, because the caller may ask outside a layout pass, where the cached _font belongs
+ * to whatever ran last. Abstract until now, and an abstract raise here kills the application. */
+- (CGFloat) baselineOffsetInLayoutManager: (NSLayoutManager *) layoutManager
+                               glyphIndex: (NSUInteger) glyphIndex
+{
+    NSFont *font = _font;
+    NSTextStorage *storage = [layoutManager textStorage];
+
+    if (storage != nil) {
+        NSUInteger characterIndex = [layoutManager characterIndexForGlyphAtIndex: glyphIndex];
+
+        if (characterIndex < [storage length]) {
+            NSFont *attributed = [storage attribute: NSFontAttributeName
+                                            atIndex: characterIndex
+                                     effectiveRange: NULL];
+            if (attributed != nil) {
+                font = attributed;
+            }
+        }
+    }
+
+    if (font == nil) {
+        font = [NSFont systemFontOfSize: 0];
+    }
+
+    return ceilf([font ascender]);
+}
+
 - (void) layoutNextFragment {
 
 #if DEBUG_TYPESETTER

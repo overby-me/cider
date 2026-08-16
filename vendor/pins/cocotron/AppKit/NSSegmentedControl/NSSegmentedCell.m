@@ -63,6 +63,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return self;
 }
 
+/* THE COPY IS BITWISE. NSCell copies with NSCopyObject, so a subclass that releases object ivars
+ * in dealloc has to re-own them here or the second dealloc is an over release.  */
+- copyWithZone: (NSZone *) zone {
+    NSSegmentedCell *copy = [super copyWithZone: zone];
+
+    /* Both are MUTABLE and are added to as segments change, so a mutable copy. */
+    copy->_segments = [_segments mutableCopy];
+    copy->_segmentComputedWidths = [_segmentComputedWidths mutableCopy];
+    return copy;
+}
+
 - (void) dealloc {
     [_segments release];
     [_segmentComputedWidths release];

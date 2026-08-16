@@ -430,6 +430,11 @@ NSNotificationName NSControlTintDidChangeNotification = @"NSControlTintDidChange
     [super dealloc];
 }
 
+/* EVERY OBJECT ivar dealloc RELEASES has to be re-owned here, because the copy starts as
+ * NSCopyObject, a BITWISE copy: the two cells then hold the same pointers with one reference
+ * between them, and the second dealloc is an over release. Cells are copied constantly (a control
+ * copies the cell it is given, a table copies per row), so this is not a corner. The one that was
+ * missing here is the identifier, and it was released twice on any control whose cell has one. */
 - copyWithZone: (NSZone *) zone {
     NSCell *copy = NSCopyObject(self, 0, zone);
 
@@ -438,6 +443,7 @@ NSNotificationName NSControlTintDidChangeNotification = @"NSControlTintDidChange
     copy->_image = [_image retain];
     copy->_formatter = [_formatter retain];
     copy->_representedObject = [_representedObject retain];
+    copy->_identifier = [_identifier copy];
 
     return copy;
 }
@@ -932,8 +938,20 @@ static int cider_trace_cell(void) {
     value = [value copyWithZone: NULL];
 
     if (cider_trace_cell()) {
-        fprintf(stderr, "CIDER_CELL setObjectValue self=%p old=%p new=%p\n", (void *) self,
-                (void *) _objectValue, (void *) value);
+        fprintf(stderr, "CIDER_CELL setObjectValue self=%p(%s) view=%s old=%p new=%p\n",
+                (void *) self, class_getName(object_getClass(self)),
+                class_getName(object_getClass([self controlView])), (void *) _objectValue,
+                (void *) value);
+        fflush(stderr);
+    }
+
+    /* AT 2 THE OLD VALUE IS READ AND THEN LEAKED. Reading its class is the thing that faults when
+     * something has already freed it, and it faults HERE rather than inside objc_release, which
+     * is what tells the two apart. Leaking instead of releasing then says whether the release was
+     * the only problem. Both are debugging behaviour and neither is on by default. */
+    if (cider_trace_cell() >= 2 && _objectValue != nil) {
+        fprintf(stderr, "CIDER_CELL   oldisa=%p class=%s\n", *(void **) _objectValue,
+                class_getName(object_getClass(_objectValue)));
         fflush(stderr);
     }
 

@@ -17,6 +17,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#import <AppKit/NSColorSpace.h>
 #import <AppKit/NSColor_CGColor.h>
 #import <AppKit/NSGraphics.h>
 #import <AppKit/NSGraphicsContextFunctions.h>
@@ -621,6 +622,21 @@ static void drawPattern(void *info, CGContextRef cgContext) {
 
 static void releasePatternInfo(void *info) {
     [(NSImage *) info release];
+}
+
+/* THE COLOUR SPACE AS AN OBJECT, which is what applications ask for when they want to convert a
+ * colour rather than name a space. The CGColor knows it exactly, so prefer that and fall back to
+ * the space NAME this object was built with. */
+- (NSColorSpace *) colorSpace {
+    CGColorSpaceRef cgSpace = (_colorRef != NULL) ? CGColorGetColorSpace(_colorRef) : NULL;
+
+    if (cgSpace != NULL) {
+        return [[[NSColorSpace alloc] initWithCGColorSpace: cgSpace] autorelease];
+    }
+    if ([_colorSpaceName isEqualToString: NSDeviceRGBColorSpace]) {
+        return [NSColorSpace deviceRGBColorSpace];
+    }
+    return [NSColorSpace sRGBColorSpace];
 }
 
 @end

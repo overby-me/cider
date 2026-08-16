@@ -167,6 +167,8 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
     NSString *_representedFilename;
     NSAppearance *_ciderAppearance;
     NSMutableArray *_titlebarAccessoryViewControllers;
+    BOOL _titlebarAppearsTransparent;
+    NSInteger _titleVisibility;
     Class _restorationClass;
     NSString *_title;
     NSString *_miniwindowTitle;
@@ -396,6 +398,19 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 - (NSPoint) convertPointToBacking: (NSPoint) point;
 - (NSPoint) convertPointFromBacking: (NSPoint) point;
 
+/* A TRANSPARENT TITLEBAR lets the window content show through the title area, and hidden title
+ * visibility drops the text. The chrome here is drawn by one path that does neither, so both are
+ * KEPT AND NOT ACTED ON; what matters is that an application which asks for the modern look keeps
+ * running. iTerm2 asks on the window it opens. */
+typedef NS_ENUM(NSInteger, NSWindowTitleVisibility) {
+    NSWindowTitleVisible = 0,
+    NSWindowTitleHidden  = 1,
+};
+
+- (BOOL) titlebarAppearsTransparent;
+- (void) setTitlebarAppearsTransparent: (BOOL) transparent;
+- (NSWindowTitleVisibility) titleVisibility;
+- (void) setTitleVisibility: (NSWindowTitleVisibility) visibility;
 - (NSArray *) titlebarAccessoryViewControllers;
 - (void) setTitlebarAccessoryViewControllers: (NSArray *) controllers;
 - (void) addTitlebarAccessoryViewController: (NSTitlebarAccessoryViewController *) controller;

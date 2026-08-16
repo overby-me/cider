@@ -1220,6 +1220,22 @@ static BOOL _allowsAutomaticWindowTabbing;
  * bottom layout attributes land in NSThemeFrame, and that is a separate piece of work; an
  * application that adds one and gets a raise cannot even reach the question.
  */
+- (BOOL) titlebarAppearsTransparent {
+    return _titlebarAppearsTransparent;
+}
+
+- (void) setTitlebarAppearsTransparent: (BOOL) transparent {
+    _titlebarAppearsTransparent = transparent;
+}
+
+- (NSWindowTitleVisibility) titleVisibility {
+    return (NSWindowTitleVisibility) _titleVisibility;
+}
+
+- (void) setTitleVisibility: (NSWindowTitleVisibility) visibility {
+    _titleVisibility = visibility;
+}
+
 - (NSArray *) titlebarAccessoryViewControllers {
     if (_titlebarAccessoryViewControllers == nil)
         _titlebarAccessoryViewControllers = [[NSMutableArray alloc] init];

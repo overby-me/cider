@@ -64,6 +64,8 @@ typedef enum {
     CTFontRef _ctFont;
 }
 
+- (CGFontRef) graphicsFont;
+
 + (CGFloat) systemFontSize;
 + (CGFloat) smallSystemFontSize;
 + (CGFloat) labelFontSize;

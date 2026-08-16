@@ -75,7 +75,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) dealloc {
-    [_dataSource release];
+    /* THE DATA SOURCE IS NOT OWNED. -setDataSource: assigns it, as the delegate pattern requires,
+     * so releasing it here was an over release on every combo box that had one. */
     [_objectValues release];
     [super dealloc];
 }
@@ -83,7 +84,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - copyWithZone: (NSZone *) zone {
     NSComboBoxCell *copy = [super copyWithZone: zone];
 
-    copy->_objectValues = [_objectValues copy];
+    copy->_objectValues = [_objectValues mutableCopy]; // it is a MUTABLE array and gets added to
 
     return copy;
 }

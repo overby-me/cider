@@ -1,0 +1,20 @@
+--- a/src/NSScanner.m
++++ b/src/NSScanner.m
+@@ -284,11 +284,15 @@
+ {
+     NSUInteger strLength = [s length];
+     NSCharacterSet* inverted = [self _invertedSkipSet];
++    NSUInteger location = [self scanLocation];
+     if (!inverted)
+     {
+-        return strLength;
++        /* NO SKIP SET MEANS SKIP NOTHING, so scanning starts where the caller left it. Returning
++         * the string LENGTH here made every scan method return NO the moment anybody called
++         * -setCharactersToBeSkipped:nil, which is the first thing a hand written tokeniser does:
++         * the callers all compute length = [string length] - location, get 0, and give up. */
++        return location;
+     }
+-    NSUInteger location = [self scanLocation];
+     NSUInteger length = strLength - location;
+     NSRange skipRange = [s rangeOfCharacterFromSet:inverted options:0 range:NSMakeRange(location, length)];
+     return skipRange.location == NSNotFound ? strLength : skipRange.location;

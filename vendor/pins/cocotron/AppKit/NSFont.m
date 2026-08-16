@@ -622,6 +622,13 @@ static NSLock *_cacheLock = nil;
     return _pointSize;
 }
 
+/* NSFont IS a CTFont on macOS, toll free bridged, so applications hand one straight to
+ * CTFontCopyGraphicsFont. This is how that function unwraps it without CoreText having to know
+ * about AppKit. iTerm2 measures its character cell this way on every window it opens. */
+- (CGFontRef) graphicsFont {
+    return _cgFont;
+}
+
 - (NSString *) fontName {
     return _name;
 }

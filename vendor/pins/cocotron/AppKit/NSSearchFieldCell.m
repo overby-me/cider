@@ -53,6 +53,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return self;
 }
 
+/* THE COPY IS BITWISE. NSCell copies with NSCopyObject, so a subclass that releases object ivars
+ * in dealloc has to re-own them here or the second dealloc is an over release.  */
+- copyWithZone: (NSZone *) zone {
+    NSSearchFieldCell *copy = [super copyWithZone: zone];
+
+    /* The two buttons belong to the cell that draws them, so they are COPIED rather than
+     * shared: two search fields drawing from one button cell would fight over its state. */
+    copy->_searchButtonCell = [_searchButtonCell copy];
+    copy->_cancelButtonCell = [_cancelButtonCell copy];
+    return copy;
+}
+
 - (void) dealloc {
     [_searchButtonCell release];
     [_cancelButtonCell release];

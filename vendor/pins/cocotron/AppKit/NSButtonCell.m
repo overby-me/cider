@@ -478,6 +478,7 @@ static const CGFloat kImageMargin = 2.;
     result->_titleOrAttributedTitle = [_titleOrAttributedTitle copy];
     result->_alternateTitle = [_alternateTitle copy];
     result->_alternateImage = [_alternateImage retain];
+    result->_normalImage = [_normalImage retain]; // released in dealloc, so it must be owned here
     result->_keyEquivalent = [_keyEquivalent copy];
     result->_sound = [_sound retain];
     result->_keyEquivalentFont = [_keyEquivalentFont retain];

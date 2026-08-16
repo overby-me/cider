@@ -30,6 +30,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return self;
 }
 
+/* The CGFont this font was built from, for CTFontCopyGraphicsFont. Not retained here: the caller
+ * of that function is the one that owns a reference. */
+- (CGFontRef) graphicsFont {
+    return _font;
+}
+
 - initWithUIFontType: (CTFontUIFontType) uiFontType
                 size: (CGFloat) size
             language: (NSString *) language

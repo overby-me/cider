@@ -1104,4 +1104,31 @@ static Class _rulerViewClass = nil;
     [self tile];
 }
 
+#pragma mark -
+#pragma mark Elasticity, kept and not acted on
+
+- (NSScrollElasticity) verticalScrollElasticity {
+    return _verticalScrollElasticity;
+}
+
+- (void) setVerticalScrollElasticity: (NSScrollElasticity) elasticity {
+    _verticalScrollElasticity = elasticity;
+}
+
+- (NSScrollElasticity) horizontalScrollElasticity {
+    return _horizontalScrollElasticity;
+}
+
+- (void) setHorizontalScrollElasticity: (NSScrollElasticity) elasticity {
+    _horizontalScrollElasticity = elasticity;
+}
+
+- (BOOL) usesPredominantAxisScrolling {
+    return _usesPredominantAxisScrolling;
+}
+
+- (void) setUsesPredominantAxisScrolling: (BOOL) flag {
+    _usesPredominantAxisScrolling = flag;
+}
+
 @end

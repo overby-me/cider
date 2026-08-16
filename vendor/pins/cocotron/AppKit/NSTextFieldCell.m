@@ -158,6 +158,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
     cell->_backgroundColor = [_backgroundColor copy];
     cell->_textColor = [_textColor copy];
+    /* Both of these are released in dealloc and were being shared with the original, which is an
+     * over release the moment either cell goes away. */
+    cell->_placeholder = [_placeholder copy];
+    cell->_allowedInputSourceLocales = [_allowedInputSourceLocales copy];
 
     return cell;
 }

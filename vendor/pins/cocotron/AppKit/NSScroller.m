@@ -665,4 +665,12 @@ static inline CGFloat roundFloat(CGFloat value) {
     }
 }
 
+- (NSScrollerKnobStyle) knobStyle {
+    return (NSScrollerKnobStyle) _knobStyle;
+}
+
+- (void) setKnobStyle: (NSScrollerKnobStyle) style {
+    _knobStyle = style;
+}
+
 @end

@@ -484,6 +484,12 @@ BOOL O2FontGetGlyphAdvances(O2FontRef self, const O2Glyph *glyphs, size_t count,
 {
     size_t i;
 
+    /* CoreGraphics ANSWERS FALSE for a null font rather than faulting, and callers test the
+     * result: iTerm2 asks for the advance of W and falls back to its own measurement when this
+     * says no. Faulting here turned a missing font into a dead application. */
+    if (self == NULL || glyphs == NULL || advances == NULL)
+        return NO;
+
     if (self->_advances == NULL)
         [self fetchAdvances];
 

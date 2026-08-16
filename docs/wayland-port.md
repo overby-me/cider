@@ -5337,3 +5337,59 @@ version is the whole change:
 
 The result is BYTE IDENTICAL to the bundle that was already installed, so every earlier measurement
 carries over unchanged.
+
+
+## A scanner that had been refusing to scan, and the cell copies that release twice
+
+2026-08-16, later. iTerm2 3.4.23 went from dying in its own grammar parser to opening a terminal
+session. Four separate things, each measured:
+
+THE SCANNER SCANNED NOTHING once anybody set the skip set to nil. -[NSScanner
+setCharactersToBeSkipped:nil] is the first line of every hand written tokeniser, and the helper
+every scan method starts with answered the STRING LENGTH when there was no skip set. The callers
+all compute
+
+    length = [string length] - location
+
+so they got 0 and returned NO. That is why CoreParse could not tokenise a single space and iTerm2
+reported
+
+    Could not parse EBNF for grammar. 1:2: Found <Error>, Expected {(Identifier)}
+
+The self test that settled it, run inside the guest on the exact input CoreParse fails on:
+
+    inverted(space)=0 inverted(c)=1 firstNonSpaceFrom1=2 scanned=0 [(nil)] locAfter=1
+
+Every ingredient correct, the scan itself refusing. It reads scanned=1 [ ] locAfter=2 now.
+
+CTFontCopyGraphicsFont WAS A STUB RETURNING NIL, and CGFontGetGlyphAdvances dereferenced what it
+got. NSFont is toll free bridged to CTFont on macOS, so applications hand their NSFont straight to
+that function; iTerm2 does it when it measures a character cell. Both classes answer -graphicsFont
+now, and O2FontGetGlyphAdvances answers NO for a null font, which is what CoreGraphics does.
+
+THE CELL COPIES RELEASE OBJECTS THEY NEVER OWNED. -[NSCell copyWithZone:] starts with NSCopyObject,
+a BITWISE copy, and then re-owns the ivars it knows about. Every ivar it forgot is held by two
+cells with one reference between them, so the second dealloc is an over release. Audited the whole
+hierarchy by comparing what each dealloc releases against what each copy re-owns:
+
+    NSCell            _identifier
+    NSButtonCell      _normalImage
+    NSTextFieldCell   _placeholder, _allowedInputSourceLocales
+    NSBrowserCell, NSMenuItemCell, NSPathCell, NSSearchFieldCell, NSSegmentedCell
+                      no copyWithZone: at all, so everything their dealloc releases
+
+Two more found while reading: NSComboBoxCell released a data source it had only ASSIGNED, and
+copied a MUTABLE array with -copy, so the copy raised on the next -addObject:.
+
+NINE MISSING APPKIT METHODS, each one an unrecognized selector that killed the application:
+scroll elasticity and predominant axis scrolling, colorWithHue:saturation:brightness:alpha: and
+colorWithDisplayP3Red:..., -[NSColor colorSpace], colorWithColorSpace:components:count:,
+NSColorSpace generic and device spaces, -[NSView allowedTouchTypes],
+-[NSLayoutManager glyphIndexForCharacterAtIndex:], the typesetter baseline offset,
+-[NSScroller setKnobStyle:] and the transparent titlebar pair. The ones that describe hardware or
+chrome this backend does not have are KEPT AND NOT ACTED ON, and the code says so.
+
+WHERE IT IS NOW: iTerm2 3.4.23 builds its window, measures its font, creates a session and loads
+the find bar nib. It ends in an over release inside an autorelease pool pop during that nib load,
+and in about one run in three, in the same place a cell releases a string that something else has
+already freed. Still NO WINDOW ON SCREEN, and the next rung is that over release.

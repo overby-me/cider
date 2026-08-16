@@ -20,6 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <CoreText/CTFont.h>
 #import <CoreText/CoreText.h>
 #import <CoreText/KTFont.h>
+#import <Foundation/NSString.h>
+#import <objc/message.h>
 
 /* Defined in constants.c and declared in no header, the same as in CTFontCollection.m. */
 extern const CFStringRef kCTFontSymbolicTrait;
@@ -546,10 +548,27 @@ CFIndex CTFontGetLigatureCaretPositions(CTFontRef font, CGGlyph glyph, CGFloat *
     return -1;
 }
 
+/* THE CALLER OWNS WHAT COMES BACK, and it is usually not a CTFont that arrives here. AppKit NSFont
+ * is toll free bridged to CTFont on macOS, so applications hand their NSFont straight to this
+ * function; iTerm2 does exactly that when it measures a character cell. Both classes answer
+ * -graphicsFont, so ask for that rather than assuming which one this is. */
 CGFontRef CTFontCopyGraphicsFont(CTFontRef font, CTFontDescriptorRef _Nullable *attributes)
 {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
-    return nil;
+    id object = (id) font;
+
+    if (object == nil) {
+        return NULL;
+    }
+
+    if (![object respondsToSelector: @selector(graphicsFont)]) {
+        NSLog(@"CTFontCopyGraphicsFont: %@ is not a font this implementation can unwrap",
+              [object class]);
+        return NULL;
+    }
+
+    CGFontRef graphics = ((CGFontRef(*)(id, SEL)) objc_msgSend)(object, @selector(graphicsFont));
+
+    return (graphics != NULL) ? CGFontRetain(graphics) : NULL;
 }
 
 CTFontRef

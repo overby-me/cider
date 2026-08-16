@@ -19,6 +19,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#import <objc/runtime.h>
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSClipView.h>
 #import <AppKit/NSColor.h>
@@ -1392,6 +1393,19 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 
 - (void) setAcceptsTouchEvents: (BOOL) accepts {
     NSUnimplementedMethod();
+}
+
+/* THE 10.12 REPLACEMENT for setAcceptsTouchEvents:, which says WHICH touch types a view wants
+ * rather than yes or no. There is no touch device behind this backend, so the mask is KEPT AND
+ * NOT ACTED ON; what matters is that asking for it does not kill the application, which is what
+ * an unrecognized selector does. Stored per view, since a view is asked for it again. */
+- (NSTouchTypeMask) allowedTouchTypes {
+    return (NSTouchTypeMask) (uintptr_t) objc_getAssociatedObject(self, @selector(allowedTouchTypes));
+}
+
+- (void) setAllowedTouchTypes: (NSTouchTypeMask) types {
+    objc_setAssociatedObject(self, @selector(allowedTouchTypes),
+                             (id) (uintptr_t) types, OBJC_ASSOCIATION_ASSIGN);
 }
 
 - (BOOL) wantsRestingTouches {

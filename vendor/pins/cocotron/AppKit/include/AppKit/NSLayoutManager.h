@@ -198,6 +198,7 @@ typedef NS_ENUM(NSInteger, NSTextLayoutOrientation) {
                           rectCount: (NSUInteger *) rectCount;
 
 - (NSUInteger) characterIndexForGlyphAtIndex: (NSUInteger) glyphIndex;
+- (NSUInteger) glyphIndexForCharacterAtIndex: (NSUInteger) charIndex;
 - (NSRange) characterRangeForGlyphRange: (NSRange) glyphRange
                        actualGlyphRange: (NSRange *) actualGlyphRange;
 - (NSRect *) rectArrayForCharacterRange: (NSRange) characterRange

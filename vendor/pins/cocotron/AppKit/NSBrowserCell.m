@@ -41,6 +41,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return [self initTextCell: @""];
 }
 
+/* THE COPY IS BITWISE. NSCell copies with NSCopyObject, so a subclass that releases object ivars
+ * in dealloc has to re-own them here or the second dealloc is an over release. Images are shared, so a retain. */
+- copyWithZone: (NSZone *) zone {
+    NSBrowserCell *copy = [super copyWithZone: zone];
+
+    copy->_alternateImage = [_alternateImage retain];
+    return copy;
+}
+
 - (void) dealloc {
     [_alternateImage release];
     [super dealloc];

@@ -204,6 +204,22 @@ typedef NSString *NSColorSpaceName;
                      green: (CGFloat) green
                       blue: (CGFloat) blue
                      alpha: (CGFloat) alpha;
++ (NSColor *) colorWithColorSpace: (NSColorSpace *) space
+                       components: (const CGFloat *) components
+                            count: (NSInteger) count;
+
+- (NSColorSpace *) colorSpace;
+
++ (NSColor *) colorWithHue: (CGFloat) hue
+                saturation: (CGFloat) saturation
+                brightness: (CGFloat) brightness
+                     alpha: (CGFloat) alpha;
+
++ (NSColor *) colorWithDisplayP3Red: (CGFloat) red
+                              green: (CGFloat) green
+                               blue: (CGFloat) blue
+                              alpha: (CGFloat) alpha;
+
 + (NSColor *) colorWithSRGBRed: (CGFloat) red
                          green: (CGFloat) green
                           blue: (CGFloat) blue

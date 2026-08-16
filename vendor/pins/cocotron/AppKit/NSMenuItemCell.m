@@ -49,7 +49,16 @@
     return self;
  }
 
- - (void) dealloc {
+ /* THE COPY IS BITWISE. NSCell copies with NSCopyObject, so a subclass that releases object ivars
+ * in dealloc has to re-own them here or the second dealloc is an over release. A menu item has identity and is not duplicated, so a retain. */
+- copyWithZone: (NSZone *) zone {
+    NSMenuItemCell *copy = [super copyWithZone: zone];
+
+    copy->_menuItem = [_menuItem retain];
+    return copy;
+}
+
+- (void) dealloc {
     [_menuItem release];
     [super dealloc];
 }
