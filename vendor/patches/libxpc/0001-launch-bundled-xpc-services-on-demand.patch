@@ -16,7 +16,7 @@
  #include <xpc/serialization.h>
  #import <objc/runtime.h>
  #include <Block.h>
-@@ -613,6 +622,65 @@
+@@ -613,6 +622,85 @@
  }
  
  // init helper/common init
@@ -38,8 +38,28 @@
 + */
 +static bool cider_spawn_bundled_service(const char* serviceName)
 +{
-+	XPC_CLASS(bundle)* mainBundle = [XPC_CLASS(bundle) mainBundle];
++	XPC_CLASS(bundle)* mainBundle = nil;
 +	bool spawned = false;
++
++	/*
++	 * OFF BY DEFAULT, and the reason is measured rather than cautious. Starting the service works,
++	 * and it moves the failure one step later into NSXPCConnection, which crashes sending the first
++	 * message:
++	 *
++	 *     _Block_signature + 24
++	 *     -[NSXPCConnection _sendInvocation:orArguments:count:methodSignature:selector:withProxy:]
++	 *     -[iTermSlowOperationGateway asyncGetInfoForProcess:...]
++	 *
++	 * Before this, the lookup failed and the application carried on without the service. With it,
++	 * iTerm2 gets a connection it cannot use and dies, which is worse than the feature being
++	 * absent. So the discovery and spawning live here, ready, behind a switch, until
++	 * NSXPCConnection can carry a call.
++	 */
++	if (!getenv("CIDER_XPC_LAUNCH_SERVICES")) {
++		return false;
++	}
++
++	mainBundle = [XPC_CLASS(bundle) mainBundle];
 +
 +	if (!mainBundle || !serviceName) {
 +		return false;
@@ -82,7 +102,7 @@
  - (instancetype)initForService: (const char*)serviceName queue: (dispatch_queue_t)queue asServer: (BOOL)asServer
  {
  	if (self = [super init]) {
-@@ -743,8 +811,24 @@
+@@ -743,8 +831,24 @@
  	} else if (this->service_name) {
  		// client for named server
  		status = bootstrap_look_up(bootstrap_port, this->service_name, &this->checkin_port);
