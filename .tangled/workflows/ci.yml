@@ -48,9 +48,18 @@ steps:
   #
   # The features are named on the command line rather than written into a nix.conf, because where
   # that file has to go is a property of the engine and this is a property of the command.
+  #
+  # ca-derivations is in that list because this flake USES content addressed derivations, which the
+  # first run to get this far proved by dying on
+  #
+  #   error: experimental Nix feature 'ca-derivations' is disabled
+  #
+  # Reaching that error was itself the progress: every earlier run failed in the cachix step and
+  # never evaluated anything at all.
   - name: "Flake outputs evaluate"
     command: |
-      nix --extra-experimental-features "nix-command flakes" flake show --json > /dev/null
+      nix --extra-experimental-features "nix-command flakes ca-derivations" \
+        flake show --json > /dev/null
 
   # NO BUILD STEPS, AND THAT IS THE POINT RATHER THAN A GAP. Darling is too large for a hosted
   # runner to finish; a CI that attempts it is a CI that always fails and is therefore ignored,
