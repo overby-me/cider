@@ -5225,3 +5225,40 @@ to be instantiated, and instantiating it walks into a type this prefix answers w
 stub can satisfy dyld, which binds addresses; it cannot satisfy swift_checkMetadataState, which
 reads a metadata record. This is the ceiling the stub approach was always going to hit, now with the
 frames to prove it rather than a hypothesis.
+
+
+## iTerm2 3.4.23 opens its terminal window path, and two more real gaps on the way
+
+2026-08-16. With the nib use after free fixed, the 3.4.23 build launches, runs a stable event loop
+and gets as far as building a terminal window. Two things had to be fixed to get there and both were
+mine to fix.
+
+THE EMPTY SINGLETONS NEEDED A CONCRETE CLASS. Building __NSDictionary0__ with
+objc_constructInstance took the class it was given literally, and NSDictionary is ABSTRACT: the
+first -count on it raised
+
+    NSDictionary count requires a subclass implementation
+
+which iTerm2 hit while registering a built in function with an empty dictionary literal in it. That
+was a regression from the storage change two entries ago, and it is fixed with two small concrete
+classes, __CiderEmptyDictionary and __CiderEmptyArray, which implement the primitives an empty
+collection needs and nothing else.
+
+ALLOWS DEFAULT TIGHTENING FOR TRUNCATION is a real 10.11 property and it was missing from both the
+cell and the view. macOS squeezes inter character spacing a little before it truncates; this tree
+does neither automatically, so the value is KEPT AND NOT ACTED ON, which the code says. The view
+forwards to its cell, because a label is what a caller has in its hands and that is where the setter
+arrives.
+
+WHERE IT STOPS NOW, and it is a good deal further than a window that never opened:
+
+    0  libobjc.A.dylib   objc_release + 37
+    1  AppKit            -[NSCell setObjectValue:] + 91
+    3  AppKit            -[NSControl setStringValue:]
+    5  iTerm2            -[iTermWindowShortcutLabelTitlebarAccessoryViewController updateLabel]
+    6  iTerm2            -[PseudoTerminal finishInitializationWithSmartLayout:...]
+    13 iTerm2            -[iTermUntitledWindowStateMachine openWindowIfWanted]
+
+So the application IS opening its terminal window, and the fault is in releasing the old object value
+of a cell. That is the next rung, and the titlebar accessory controller in the frames is one this
+port only just gained, which makes it the first thing to look at.

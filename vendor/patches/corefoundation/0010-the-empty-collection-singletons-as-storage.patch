@@ -51,8 +51,22 @@
  #if !defined (__cplusplus)
  static const CFRuntimeClass __CFNotATypeClass = {
      0,
-@@ -1169,8 +1210,11 @@
-         clsArray = objc_lookUpClass("NSArray");
+@@ -1187,12 +1228,23 @@
+ 
+         Class clsDict, clsArray;
+         SEL selAlloc, selInit;
+-        clsDict = objc_lookUpClass("NSDictionary");
+-        clsArray = objc_lookUpClass("NSArray");
++        /* The CONCRETE empty collections, because objc_constructInstance takes the class it is
++         * given literally and an abstract NSDictionary raises on its first -count. */
++        clsDict = objc_lookUpClass("__CiderEmptyDictionary");
++        clsArray = objc_lookUpClass("__CiderEmptyArray");
++        if (clsDict == NULL) {
++            clsDict = objc_lookUpClass("NSDictionary");
++        }
++        if (clsArray == NULL) {
++            clsArray = objc_lookUpClass("NSArray");
++        }
          selAlloc = sel_registerName("alloc");
          selInit = sel_registerName("init");
 -        __NSDictionary0__ = objc_msgSend(objc_msgSend(clsDict, selAlloc), selInit);

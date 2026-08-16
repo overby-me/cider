@@ -1378,3 +1378,23 @@ void NSDrawNinePartImage(NSRect frame, NSImage* topLeftCorner,
 {
     NSUnimplementedFunction();
 };
+
+/*
+ * TIGHTENING BEFORE TRUNCATING, which is a layout hint rather than a switch: macOS squeezes the
+ * inter character spacing a little before it gives up and draws an ellipsis. This tree does neither
+ * automatically, so the value is KEPT AND NOT ACTED ON, and that is said here rather than implied.
+ *
+ * It exists because the setter is an ordinary thing to call on a label and the unrecognized selector
+ * raised out of a nib decode: iTerm2 sets it on its window title label while building a window.
+ */
+@implementation NSCell (CiderTightening)
+
+- (BOOL) allowsDefaultTighteningForTruncation {
+    return _allowsDefaultTighteningForTruncation;
+}
+
+- (void) setAllowsDefaultTighteningForTruncation: (BOOL) value {
+    _allowsDefaultTighteningForTruncation = value;
+}
+
+@end

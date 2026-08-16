@@ -563,3 +563,20 @@ NSString *const NSTextContentTypePassword = @"NSTextContentTypePassword";
 }
 
 @end
+
+/*
+ * THE VIEW FORWARDS TO ITS CELL, which is where the property lives. A label is what a caller has in
+ * its hands, so the setter arrives HERE: iTerm2 sets it on its window title label and the
+ * unrecognized selector came out of a nib decode even after NSCell had the property.
+ */
+@implementation NSTextField (CiderTightening)
+
+- (BOOL) allowsDefaultTighteningForTruncation {
+    return [[self cell] allowsDefaultTighteningForTruncation];
+}
+
+- (void) setAllowsDefaultTighteningForTruncation: (BOOL) value {
+    [[self cell] setAllowsDefaultTighteningForTruncation: value];
+}
+
+@end

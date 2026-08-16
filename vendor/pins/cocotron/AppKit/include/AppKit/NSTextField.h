@@ -66,3 +66,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 + (instancetype) labelWithAttributedString: (NSAttributedString *) string;
 + (instancetype) textFieldWithString: (NSString *) string;
 @end
+
+@interface NSTextField (CiderTightening)
+- (BOOL) allowsDefaultTighteningForTruncation;
+- (void) setAllowsDefaultTighteningForTruncation: (BOOL) value;
+@end

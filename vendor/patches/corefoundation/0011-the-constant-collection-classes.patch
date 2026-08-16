@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/NSConstantLiterals.m
-@@ -0,0 +1,107 @@
+@@ -0,0 +1,161 @@
 +/*
 + * THE CONSTANT LITERAL CLASSES, WHICH THE COMPILER CREATES INSTANCES OF AND NOBODY ELSE DOES.
 + *
@@ -105,6 +105,60 @@
 +        [keys addObject: _keys[i]];
 +    }
 +    return [keys objectEnumerator];
++}
++
++@end
++
++
++/*
++ * THE EMPTY SINGLETONS NEED A CONCRETE CLASS, and that is what these two are.
++ *
++ * __NSDictionary0__struct and __NSArray0__struct are STORAGE, so the object has to be built inside
++ * them with objc_constructInstance, and that call takes the class it is given literally: handing it
++ * NSDictionary produces an instance of the ABSTRACT class, whose -count raises
++ *
++ *     NSDictionary count requires a subclass implementation
++ *
++ * the first time anything asks. iTerm2 raised exactly that while registering a built in function
++ * with an empty dictionary literal in it. These two subclasses implement the primitives an empty
++ * collection needs and nothing else, which is all the singletons ever have to answer.
++ */
++@interface __CiderEmptyDictionary : NSDictionary
++@end
++
++@interface __CiderEmptyArray : NSArray
++@end
++
++@implementation __CiderEmptyDictionary
++
++CIDER_IMMORTAL
++
++- (NSUInteger) count {
++    return 0;
++}
++
++- (id) objectForKey: (id) key {
++    return nil;
++}
++
++- (NSEnumerator *) keyEnumerator {
++    return [[NSArray array] objectEnumerator];
++}
++
++@end
++
++@implementation __CiderEmptyArray
++
++CIDER_IMMORTAL
++
++- (NSUInteger) count {
++    return 0;
++}
++
++- (id) objectAtIndex: (NSUInteger) index {
++    [NSException raise: NSRangeException
++                format: @"index (%lu) beyond array bounds (0)", (unsigned long) index];
++    return nil;
 +}
 +
 +@end

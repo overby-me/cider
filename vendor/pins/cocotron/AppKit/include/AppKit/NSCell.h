@@ -130,6 +130,7 @@ APPKIT_EXPORT NSNotificationName NSControlTintDidChangeNotification;
     BOOL _isHighlighted;
     BOOL _showsFirstResponder;
     BOOL _refusesFirstResponder;
+    BOOL _allowsDefaultTighteningForTruncation;
     BOOL _isContinuous;
     BOOL _allowsMixedState;
     BOOL _allowsEditingTextAttributes;
@@ -316,3 +317,8 @@ void NSDrawThreePartImage(NSRect frame, NSImage *startCap, NSImage *centerFill,
                           NSImage *endCap, BOOL vertical,
                           NSCompositingOperation operation, CGFloat alpha,
                           BOOL flipped);
+
+@interface NSCell (CiderTightening)
+- (BOOL) allowsDefaultTighteningForTruncation;
+- (void) setAllowsDefaultTighteningForTruncation: (BOOL) value;
+@end
