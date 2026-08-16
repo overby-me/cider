@@ -4108,3 +4108,38 @@ The pattern across all three applications tried so far holds: what stops them is
 specific to them. A missing framework, a missing class, missing constants, an initialiser that
 recursed, a URL session that could not be built, a window with no appearance. Only iA Writer has hit
 something that is genuinely its own kind of problem.
+
+
+## The tick, the title, and one gap that is not ours
+
+2026-08-16, commits 93014bd9 and 30c9ce9b, both found by comparing against the screenshots the user
+sent rather than by reading code.
+
+A TICKED MENU ITEM SHOWED THE LETTER a. The mark was drawn as character 0x61 of Marlett, the Windows
+interface font, in which 0x61 is a check mark. Marlett is not on this system and nothing substitutes
+for it, so the character came out as itself: the View menu had six stray letters down its gutter. It
+is two strokes now, in the same style as the submenu chevron, which had been replaced earlier for
+exactly the same reason. The vertical direction is asked for rather than assumed, because a menu
+view is flipped and a tick is not symmetric about its middle.
+
+THE SAVE PANEL HAD AN EMPTY TITLE BAR, and fixing that revealed a second fault behind the first.
+-[NSSavePanel setTitle:] kept the string for the dialog and never called super, so the window title
+was never set and the theme frame had nothing to draw. With that fixed the bar read Window, which is
+what a nib calls a window nobody has named: resetToDefaultValues runs after the nib is loaded and
+assigned the ivar directly rather than going through the setter. Both panels now set their default
+through the setter, so the placeholder is overridden and an application that sets its own title
+later still wins.
+
+AND ONE GAP THAT IS PROBABLY NOT OURS, written down because the next session will see it too. The
+macOS reference has a status bar under the find bar; ours ends at the find bar. What is established:
+the profile has no StatusBar entry at all, and the View menu shows Status Bar UNCHECKED, so
+LibreOffice itself believes it is off rather than us failing to draw it. What is not established:
+why it is off. The profile persists between runs in the same prefix, so an earlier driven run may
+have turned it off; a fresh prefix is the first thing to try, before anything about drawing.
+
+Three harness facts came out of the same session. A nested sway can be any size with
+WLR_BACKENDS=headless and an output resolution line, where the wayland backend ignores it and
+follows the parent window. The first click into an inactive window is spent activating it, so a run
+whose first action is clicking a menu title opens nothing. And an empty environment value is still
+SET as far as the backend is concerned, which is how passing CIDER_WAYLAND_NO_VIBRANCY= silently
+turned the menu blur off in every run of one harness and made a working feature look regressed.
