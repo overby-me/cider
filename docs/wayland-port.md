@@ -6237,3 +6237,35 @@ Applying that same cell to the second gives 225 * 8.9, which is about 2000, or E
 1000 pixel output. So the font metrics are fine and the application is being told its content is
 twice as wide as it is, on the second resize only. That is the shape of a scale factor applied where
 it should not be, and it is the next thing to look at in the backend resize path.
+
+### The iTerm2 grid was never wrong, and the terminal has no tty
+
+Two earlier explanations for the terminal grid are both WRONG and this records the correction, since
+each was written down as if it were progress.
+
+It is not a doubled width: the geometry trace is exact at every step, surface 1000x620 giving frame
+1000x620 and content 1000x570. It is not the advances either: fixing two real defects in
+CTFontGetAdvancesForGlyphs changed the reported grid by nothing.
+
+THE NUMBERS FIT THE PREVIOUS SIZE. 179 by 47 is what a 1280x720 window holds, since its content is
+1280x670 and the cell is about 7.15 by 14.3. 225 by 67 is what 1600x1000 holds. Nudging the output
+once more, to 1004x624, made the title read 139 by 40, which is what the 1000x620 window held. So
+the grid is computed correctly and reported one resize late, every time.
+
+AND THE REASON IT CANNOT TRACK THE WINDOW AT ALL is one command away. With a shell running, typing
+stty size answers
+
+    not a tty
+
+so the session standard input is not a terminal by isatty. A shell that is not on a tty gets no
+SIGWINCH and has no window size to report, which is exactly the shape of a grid that only ever
+catches up when something else pokes it. Whatever iTerm2 is spawning its session onto, our pty
+emulation does not present it as a tty. That is the next rung, and it is worth more than the title:
+a terminal whose child has no controlling terminal has no job control either.
+
+A HARNESS TRAP WORTH RECORDING, since it cost three runs and looked exactly like a broken Return
+key. wtype creates a virtual keyboard, sends its keys and destroys the device at exit. A Return sent
+by its OWN invocation produced NO key event in the application at all, while the same Return sent
+inside the invocation that typed the text arrived correctly as keysym 0xff0d, carbon 36. The input
+trace is what separated the two. Same shape as the virtual pointer: one device, held open, for the
+whole gesture.
