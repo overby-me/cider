@@ -1,0 +1,40 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+# base64, which macOS has at /usr/bin/base64 and this prefix did not have at all.
+#
+# Not generated from a reference build: Apple builds no such target in basic_cmds, where uuencode
+# keeps a private base64.c for its -m flag and exposes no separate tool. See base64.c for what the
+# interface has to look like and why the version probe matters.
+
+cc_objects(
+    name = "base64_obj",
+    srcs = [
+        "base64.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "base64",
+    objs = [
+        ":base64_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

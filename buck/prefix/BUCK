@@ -618,6 +618,7 @@ prefix_tree(
         "libexec/cider/usr/bin/at": "//vendor/src/system_cmds:at",
         "libexec/cider/usr/bin/awk": "//vendor/src:awk",
         "libexec/cider/usr/bin/banner": "//vendor/src:banner",
+        "libexec/cider/usr/bin/base64": "//src/darwin/base64:base64",
         "libexec/cider/usr/bin/basename": "//vendor/src:basename",
         "libexec/cider/usr/bin/bc": "//vendor/src:bc",
         "libexec/cider/usr/bin/biff": "//vendor/src:biff",

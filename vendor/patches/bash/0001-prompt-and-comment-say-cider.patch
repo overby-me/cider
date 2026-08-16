@@ -1,0 +1,16 @@
+--- a/bashrc
++++ b/bashrc
+@@ -4,11 +4,11 @@
+ fi
+ 
+ # PS1='\h:\W \u\$ '
+-PS1="Darling [\\w]\\$ "
++PS1="Cider [\\w]\\$ "
+ # Make bash check its window size after a process completes
+ shopt -s checkwinsize
+ 
+ [ -r "/etc/bashrc_$TERM_PROGRAM" ] && . "/etc/bashrc_$TERM_PROGRAM"
+ 
+-# Darling: For colored ls output
++# Cider: For colored ls output
+ export CLICOLOR=1
