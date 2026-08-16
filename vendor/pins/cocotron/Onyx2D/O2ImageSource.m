@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 /* Copyright (c) 2007 Christopher J. W. Lloyd
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -57,11 +59,22 @@ NSString *kO2ImagePropertyTIFFOrientation = @"Orientation";
 
         if ([cls isPresentInDataProvider: provider]) {
             [provider rewind];
+            if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL) {
+                fprintf(stderr, "CIDER_IMAGESOURCE matched %s\n", [classes[i] UTF8String]);
+                fflush(stderr);
+            }
             return [[cls alloc] initWithDataProvider: provider
                                              options: (NSDictionary *) options];
         }
     }
 
+    /* SAY SO WHEN NOTHING RECOGNISES IT. A decoder that answers nil and a decoder that was never
+     * asked look identical from the caller, and an application that quietly draws no picture is
+     * exactly that ambiguity. */
+    if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL) {
+        fprintf(stderr, "CIDER_IMAGESOURCE no decoder recognised the data\n");
+        fflush(stderr);
+    }
     return nil;
 }
 

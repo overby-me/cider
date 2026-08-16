@@ -6383,3 +6383,27 @@ windows belong to a compositor that is gone, so the new screenshot is black.
 Before believing a black frame, list what is still running for that prefix and clear it. And note
 the trap when doing so: pgrep matches YOUR OWN command line if it contains the prefix name, so a
 kill loop over its output kills the shell running it.
+
+### Inline images: narrowed to inside iTerm2, with six things ruled out
+
+Answering the dialog by CLICK could not prove which button was hit, since both dismiss it. Answering
+it with RETURN can, because that activates the DEFAULT button, which is Yes. Done that way the
+result is the same: no image.
+
+So the failure is real, and these are now measured rather than assumed:
+
+  1. base64 is correct. The tool written for this produces output byte identical to GNU base64 for
+     the actual file, 660 bytes each.
+  2. The escape sequence is dispatched. The badge, which uses the same OSC 1337 handler, reached
+     iTerm2 drawing code and crashed there, which is what led to the CTLine and CTFramesetter work.
+  3. The permission dialog is not the blocker any more. It draws correctly and is answered.
+  4. It is not the payload size. An 8x8 image, 184 base64 bytes, behaves exactly like a 240x120 one.
+  5. It is not the bit depth. Eight bit and sixteen bit PNG behave the same.
+  6. OUR DECODERS ARE NEVER ASKED. CIDER_TRACE_IMAGESOURCE, added here, prints every time a decoder
+     matches or nothing does. A full iTerm2 run matches 46 times, all TIFF and ICNS for application
+     resources, and NEVER PNG.
+
+Six is the important one: iTerm2 drops the image before it would hand anything to CoreGraphics, so
+whatever is missing is a check inside iTerm2 rather than a decoder of ours. Finding it means reading
+what iTerm2 requires of a session before it will display an image, which is where this stops for now
+rather than being called done.
