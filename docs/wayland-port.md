@@ -4175,3 +4175,46 @@ anything at all. The next step is guest syscall tracing rather than another envi
 
 This is a real not-fully-working item: a person installing this and starting LibreOffice for the
 first time sees an error dialog and has to start it a second time.
+
+
+## The first run, diagnosed to the instruction
+
+2026-08-16, commit b5e0cfcf. The first LibreOffice run against a new profile dies with Unspecified
+Application Error and zero windows; the second run on the same profile works. Everything in this
+tree was silent about it: no exception, no unrecognised selector, and SAL_LOG produces nothing
+because nixpkgs ships the release build with logging compiled out.
+
+THE REASON NOTHING COULD SEE IT is worth more than the bug. A fatal signal goes to the handler the
+application installed, which is correct, and is also the end of any hope of debugging: the handler
+prints its own message and exits cleanly, so there is no core and the guest stack resolver has
+nothing to read. The only trace was one line in the DAEMON log, sigexc: will forward signal to app
+handler.
+
+So there is now a switch. CIDER_SIGNAL_NO_APP_HANDLER=1 makes sigexc take the DEFAULT effect for the
+four signals that mean the process is broken, SEGV, BUS, ILL and FPE, and the kernel writes a core.
+It is read once at setup, from /proc/self/environ because that code is below libc, and it changes
+nothing unless it is set. The first time it was used it answered in one line:
+
+    tid 3  libskialo.dylib+0x49936b  MetalWindowContext::checkDestroyShared (+43)
+
+And the disassembly of those three instructions is the whole bug:
+
+    mov rax, qword ptr [fGlobalShared]
+    mov rax, qword ptr [rax + 0x20]
+    mov eax, dword ptr [rax + 8]        <- faults
+
+Skia reads the reference count of fGlobalShared->[0x20] without checking it for null, and null
+checks the same field two instructions later. The field is null because MTLCreateSystemDefaultDevice
+answers nil here, which is the truth: there is no Metal on this system. So this is a Skia null
+dereference on its own failed-Metal path, inside the one-time capability probe LibreOffice runs per
+profile. Once it has crashed, the profile records enough that the probe never runs again, which is
+exactly why the second run works.
+
+MEASURED AND DID NOT HELP: SAL_DISABLE_SKIA=1, SAL_FORCE_SKIA_RASTER=1, and making
++[CAMetalLayer alloc] answer nil so that a class whose every method raises cannot be built at all.
+That last change was reverted, because it fixed nothing and an unproven behaviour change is not
+worth keeping. The probe runs whatever the Skia decision is.
+
+Where that leaves it: not fixable from our side without a working Metal, and the workaround is what
+already happens by accident, which is to start it twice. It stays on the list as a real
+not-fully-working item rather than being quietly dropped.
