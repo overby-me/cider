@@ -312,6 +312,15 @@ fn setup_prefix(ctx: &Ctx) {
         "/private/var",
         "/private/var/log",
         "/private/var/db",
+        // launchd as PID 1 puts its client socket in _PATH_VARTMP/launchd, and mkdir does not
+        // create parents, so without this its ipc_server_init gives up and every launchctl says
+        // "launch_msg(): Socket is not connected". NECESSARY BUT NOT SUFFICIENT, measured: with
+        // the directory present launchd still never creates the socket, because the MIG call that
+        // would ask it to never reaches launchd. See docs/wayland-port.md.
+        "/private/var/tmp",
+        // the job overrides database launchctl opens on startup
+        "/private/var/db/launchd.db",
+        "/private/var/db/launchd.db/com.apple.launchd",
         "/private/etc",
         "/var",
         "/var/run",

@@ -5815,3 +5815,45 @@ what iTerm2 pty helper checks before it will stay alive, and what any XPC servic
 FOR THE RECORD, the other side of the same run: the overrides database directory
 /private/var/db/launchd.db/com.apple.launchd does not exist in the prefix. That one is cosmetic
 next to the socket failure, but it will need creating too.
+
+
+## Correction, and a sharper chain for task 47
+
+2026-08-16. The previous entry said launchd second thread could not reach the daemon and that this
+was why launchctl got nothing. THAT WAS WRONG, and timestamps settle it:
+
+    16:30:22.192  *** launchd[1] has started up. ***
+    16:30:22.683  /bin/launchctl: Could not open job overrides database at ...
+    16:30:22.745  /bin/launchctl: launch_msg(): Socket is not connected
+    16:31:01.900  *** 1:2: dserver_rpc_explicit_mach_reply_port: BAD SEND STATUS: -111 ***
+
+The -111 lines come THIRTY NINE SECONDS LATER, when the harness timeout tears the container down.
+They are shutdown noise. The failure is at 22.745, and it had already happened.
+
+WHAT IS ACTUALLY MEASURED NOW:
+
+  1. launchd starts.
+  2. launchctl needs launchd socket path. liblaunch asks for it with _vprocmgr_getsocket, which is
+     vproc_mig_getsocket over the BOOTSTRAP PORT. Failing that, sun_path stays empty, connect never
+     happens, and the send reports ENOTCONN as "Socket is not connected".
+  3. The child DOES have a bootstrap port. The daemon own task-create log, raised to warning for one
+     run, says so:
+         xnu_sys_task_create: nsid=1 parent=0x0 parent_bootstrap=0x0          <- launchd, the root
+         xnu_sys_task_create: nsid=4 parent=0x...560 parent_bootstrap=0x...140 <- its child, INHERITED
+  4. launchd NEVER CREATES ITS SOCKET. The pid1 socket lives at _PATH_VARTMP/launchd/sock, created
+     by ipc_server_init, which runs only when job_mig_getsocket is called. After a run there is no
+     /private/var/tmp/launchd at all, and no mkdir error in the log either. So job_mig_getsocket
+     never ran: THE MIG MESSAGE NEVER REACHED LAUNCHD.
+
+So the question for task 47 is now narrow: a message sent to a valid, inherited bootstrap port is
+not delivered to the receiver queue. That is daemon side Mach routing, not the guest, not fork, and
+not the environment.
+
+ONE REAL GAP FIXED ON THE WAY, and it is necessary but NOT sufficient: /private/var/tmp did not
+exist in the prefix, and neither did the launchd job overrides database directory. mkdir does not
+create parents, so even once the message arrives, ipc_server_init would have failed. The launcher
+creates both now. Tested: launchd still does not come up, which is why this is written down as
+necessary rather than as a fix.
+
+LibreOffice after the launcher change: Writer draws its title bar, menu bar, both toolbar rows,
+ruler, page, sidebar and status bar, with zero raises.
