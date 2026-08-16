@@ -4064,3 +4064,47 @@ Everything these three needed to get as far as they did was general: a missing f
 classes, missing constants, an initialiser that recursed, a URL session that could not be built, a
 window with no appearance. None of it was specific to any one of them, which is the argument for
 running unfamiliar applications in the first place.
+
+
+## iA Writer, and where a Swift application actually stops
+
+2026-08-16. The user asked whether iA Writer can be downloaded from the iA site rather than the Mac
+App Store. It can, and the earlier note in this tree saying otherwise was wrong: the downloads page
+has a Mac trial button, and the endpoint behind it answers with a public zip.
+
+    curl -s -X POST 'https://ia.net/download?type=writer&code=downloads&start=1'
+    {"success":true,"file":"https://files.ia.net/writer/release/iA-Writer-8.0.6-80046.zip"}
+
+MEASURED FROM THE BINARY rather than assumed: an x86_64 slice, built against the macOS 26.5 SDK with
+a minimum of 10.15, linking the Swift runtime and NOT SwiftUI. The Swift runtime turned out not to
+be a blocker at all, which is worth knowing for every Swift application after this one: the prefix
+already ships a real libswiftCore, six and a half megabytes with twenty seven thousand symbols, and
+forty three framework overlays beside it.
+
+Three things were missing and all three were general:
+
+- NSFileVersion, an entire Foundation class. There is no version store on this system, so every
+  query answers empty, which is what macOS answers for a file that has never been versioned, and the
+  calls that would modify a store fail with an error rather than reporting a success that did not
+  happen.
+- kCACornerCurveCircular and kCACornerCurveContinuous in QuartzCore. A continuous corner is the
+  squircle; nothing here draws the difference yet, but a referenced string constant that does not
+  exist is a link error.
+- NSMenuDidAddItemNotification and its two siblings. The comment in NSMenu.m already said they were
+  missing and that the menu bar was invalidated directly instead. They are posted now, with the
+  index under NSMenuItemIndex, which is the key an observer written for macOS reads.
+
+AND THEN THE REAL WALL, which is the useful part of this entry:
+
+    Symbol not found: _$s7Combine10PublishersO3MapVMn
+
+That is the Swift nominal type descriptor for Combine.Publishers.Map. An empty Combine framework
+gets the application past the LOAD of Combine; this is what it reaches for next. Swift type metadata
+cannot be written in Objective-C, so this is not a stub away. It needs Combine compiled from Swift
+under the module name Combine, matching the ABI the application was compiled against. That is a
+project, and it is the honest answer for iA Writer today.
+
+The pattern across all three applications tried so far holds: what stops them is almost never
+specific to them. A missing framework, a missing class, missing constants, an initialiser that
+recursed, a URL session that could not be built, a window with no appearance. Only iA Writer has hit
+something that is genuinely its own kind of problem.
