@@ -1,3 +1,4 @@
+#import <objc/runtime.h>
 #import <Onyx2D/O2Context_builtin_FT.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,6 +96,18 @@ static void applyCoverageToSpan_lRGBA8888_PRE(O2argb8u *dst,
  * flipped: the glyph is drawn bottom row first, for a text matrix whose vertical component is
  * POSITIVE. See the call site for what that means and why it happens.
  */
+/* The glyph traces below sit on the per glyph path, so the environment is read ONCE. A getenv for
+ * every glyph of every line is a measurable cost in a terminal that repaints whole screens. */
+static BOOL ciderTraceGlyphRun(void)
+{
+    static int cached = -1;
+
+    if (cached < 0) {
+        cached = (getenv("CIDER_TRACE_GLYPHRUN") != NULL) ? 1 : 0;
+    }
+    return cached ? YES : NO;
+}
+
 static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
                                  FT_Bitmap *bitmap, NSInteger x, NSInteger y,
                                  O2Paint *paint, BOOL flipped)
@@ -111,6 +124,20 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
 
     NSInteger renderWidth = maxX - minX;
     NSInteger renderHeight = maxY - minY;
+
+    if (ciderTraceGlyphRun()) {
+        static int printedBlit;
+
+        if (printedBlit < 200) {
+            printedBlit++;
+            fprintf(stderr,
+                    "CIDER_GLYPHBLIT at=%ld,%ld bitmap=%ldx%ld vp=%d,%d %dx%d render=%ldx%ld\n",
+                    (long) x, (long) y, (long) fullWidth, (long) fullHeight, (int) self->_vpx,
+                    (int) self->_vpy, (int) self->_vpwidth, (int) self->_vpheight,
+                    (long) renderWidth, (long) renderHeight);
+            fflush(stderr);
+        }
+    }
 
     if (renderWidth <= 0 || renderHeight <= 0) {
         // Fully clipped.
@@ -215,6 +242,20 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
     O2Font_freetype *font = (O2Font_freetype *) gState->_font;
     FT_Face face = [font face];
 
+    if (ciderTraceGlyphRun()) {
+        static int printedEntry;
+
+        if (printedEntry < 200) {
+            printedEntry++;
+            fprintf(stderr,
+                    "CIDER_GLYPHFT count=%lu pointSize=%.2f size=%.2f font=%p cls=%s face=%p\n",
+                    (unsigned long) count, (double) O2GStatePointSize(gState),
+                    (double) fontSize.height, (void *) font,
+                    font ? object_getClassName(font) : "<nil>", (void *) face);
+            fflush(stderr);
+        }
+    }
+
     int i;
     FT_Error ftError;
 
@@ -253,8 +294,23 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
     for (i = 0; i < count; i++) {
 
         ftError = FT_Load_Glyph(face, glyphs[i], FT_LOAD_DEFAULT);
-        if (ftError)
+        if (ftError) {
+            /* A glyph index the face does not have is skipped silently here, which is why a whole
+             * line of text can come out blank with nothing in the log to say so. */
+            if (ciderTraceGlyphRun()) {
+                static int printedLoad;
+
+                if (printedLoad < 40) {
+                    printedLoad++;
+                    fprintf(stderr,
+                            "CIDER_GLYPHLOAD FAILED glyph=%u error=%d face=%p numGlyphs=%ld\n",
+                            (unsigned) glyphs[i], (int) ftError, (void *) face,
+                            (long) face->num_glyphs);
+                    fflush(stderr);
+                }
+            }
             continue;
+        }
 
         FT_Pos whole = penX & ~63;
         FT_Pos fraction = penX - whole;

@@ -20,6 +20,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import "CGConversions.h"
 #import <CoreGraphics/CGContext.h>
 #import <Onyx2D/O2Context.h>
+#include <stdlib.h>
+#include <string.h>
 #import <Onyx2D/O2MutablePath.h>
 
 CGContextRef CGContextRetain(CGContextRef context) {
@@ -654,9 +656,82 @@ void CGContextDrawTiledImage(CGContextRef c, CGRect rect, CGImageRef image)
     printf("STUB %s\n", __PRETTY_FUNCTION__);
 }
 
+/* Read once: this sits on the text drawing path. */
+static BOOL ciderGlyphEnv(const char *name)
+{
+    if (strcmp(name, "CIDER_GLYPH_RED") == 0) {
+        static int red = -1;
+
+        if (red < 0) {
+            red = (getenv("CIDER_GLYPH_RED") != NULL) ? 1 : 0;
+        }
+        return red ? YES : NO;
+    }
+    {
+        static int run = -1;
+
+        if (run < 0) {
+            run = (getenv("CIDER_TRACE_GLYPHRUN") != NULL) ? 1 : 0;
+        }
+        return run ? YES : NO;
+    }
+}
+
+/* Each position is in TEXT space, so it goes through the text matrix to reach user space. The
+ * translation of that matrix IS the current text position, which is why a position of zero draws
+ * where CGContextSetTextPosition last put things.
+ *
+ * This was a stub, and it is the whole reason the iTerm2 terminal was black: the application asked
+ * for glyphs 97 times in one launch and every call printed and returned. Onyx2D already draws a
+ * glyph at a point, so drive that per glyph, exactly as KTFont drawGlyphs does.
+ *
+ * The text matrix is restored afterwards. Callers of this function supply absolute positions for
+ * every glyph rather than relying on an advance, so leaving the position on the last glyph would
+ * silently shift the next run. */
 void CGContextShowGlyphsAtPositions(CGContextRef c,
-                                    const CGGlyph * glyphs, const CGPoint * Lpositions,
+                                    const CGGlyph * glyphs, const CGPoint * positions,
                                     size_t count)
 {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    O2AffineTransform textMatrix;
+    size_t i;
+
+    if (c == NULL || glyphs == NULL || positions == NULL || count == 0) {
+        return;
+    }
+
+    textMatrix = O2ContextGetTextMatrix((O2ContextRef) c);
+
+    /* CIDER_GLYPH_RED repaints every glyph in red. A read only trace cannot tell text drawn in the
+     * wrong colour from text not drawn at all, and both look like an empty terminal. */
+    if (ciderGlyphEnv("CIDER_GLYPH_RED")) {
+        O2ContextSetRGBFillColor((O2ContextRef) c, 1.0, 0.0, 0.0, 1.0);
+    }
+
+    if (ciderGlyphEnv("CIDER_TRACE_GLYPHRUN")) {
+        static int printedRun;
+
+        if (printedRun < 200) {
+            O2Point first = O2PointApplyAffineTransform(positions[0], textMatrix);
+
+            printedRun++;
+            fprintf(stderr,
+                    "CIDER_GLYPHRUN count=%zu textmatrix=[%.2f %.2f %.2f %.2f %.1f %.1f] "
+                    "pos0=%.1f,%.1f device0=%.1f,%.1f glyphs=%u,%u,%u\n",
+                    count, (double) textMatrix.a, (double) textMatrix.b, (double) textMatrix.c,
+                    (double) textMatrix.d, (double) textMatrix.tx, (double) textMatrix.ty,
+                    (double) positions[0].x, (double) positions[0].y, (double) first.x,
+                    (double) first.y, (unsigned) glyphs[0],
+                    (unsigned) (count > 1 ? glyphs[1] : 0),
+                    (unsigned) (count > 2 ? glyphs[2] : 0));
+            fflush(stderr);
+        }
+    }
+
+    for (i = 0; i < count; i++) {
+        O2Point point = O2PointApplyAffineTransform(positions[i], textMatrix);
+
+        O2ContextShowGlyphsAtPoint((O2ContextRef) c, point.x, point.y, &glyphs[i], 1);
+    }
+
+    O2ContextSetTextMatrix((O2ContextRef) c, textMatrix);
 }

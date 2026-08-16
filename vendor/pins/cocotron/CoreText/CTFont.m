@@ -660,7 +660,23 @@ CGFontRef CTFontCopyGraphicsFont(CTFontRef font, CTFontDescriptorRef _Nullable *
 
     CGFontRef graphics = ((CGFontRef(*)(id, SEL)) objc_msgSend)(object, @selector(graphicsFont));
 
-    return (graphics != NULL) ? CGFontRetain(graphics) : NULL;
+    /* A font that answers the selector but has no graphics font underneath makes the caller set a
+     * NULL font on its context, after which every glyph it draws goes nowhere and the failure looks
+     * like a blank view rather than a missing font. Say which font it was. */
+    if (graphics == NULL) {
+        static int reported = 0;
+
+        if (reported < 8) {
+            reported++;
+            NSLog(@"CTFontCopyGraphicsFont: %@ has no graphics font, so text drawn with it will be "
+                  @"invisible",
+                  [object respondsToSelector: @selector(fontName)] ? [object fontName]
+                                                                   : (id) [object class]);
+        }
+        return NULL;
+    }
+
+    return CGFontRetain(graphics);
 }
 
 CTFontRef
