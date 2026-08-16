@@ -4488,3 +4488,42 @@ piece of work and is written down here rather than half done again.
 STILL WRONG IN THE SAME TOOLBAR. The first row still stops after redo in the nested 1256 by 684
 harness with no overflow chevron, while the second row is complete and the same toolbar in the
 headless 1600 by 1000 harness is whole. That one is untouched by this fix.
+
+
+## Resize, checked again with LibreOffice itself and not with a test window
+
+2026-08-16. The earlier resize evidence in this document is a test window. This is the application:
+headless sway starts at 1256 by 684, LibreOffice Writer opens, and the OUTPUT RESOLUTION is then
+changed under the running process, twice, with a shot at each size. run-lo-resize.sh in the
+scratchpad does it.
+
+    configure number=2 asked=1600x900 frame=1256x684    backing 1256x684 -> 1600x900
+    configure number=2 asked=1000x620 frame=1600x900    backing 1600x900 -> 1000x620
+
+AND THE APPLICATION RELAYOUTS, which is the half that a buffer size cannot tell you. At 1600 by 900
+the title bar, both toolbars and the status bar span the wider window, the page is centred in the
+new width and the sidebar stays on the right edge: docs/wayland-resize-1600x900.png. At 1000 by 620
+BOTH TOOLBAR ROWS COLLAPSE AND GROW AN OVERFLOW CHEVRON, the page narrows, and the status bar packs
+its fields tighter: docs/wayland-resize-1000x620.png. That is the macOS behaviour, and the chevron
+appearing on its own is the part worth pointing at, since it is VCL deciding it has less room rather
+than us clipping something.
+
+## The truncated toolbar row is the nested harness, and here is how far that is nailed down
+
+Same day, chasing the first row that stops after redo. What is now established:
+
+    1256 by 684 headless, no input        row complete to the right edge
+    1256 by 684 headless, one click       row complete
+    1256 by 684 nested in a compositor    row stops after redo, no overflow chevron
+    live resize to 1600 and to 1000       relayout correct at both, chevron at the small size
+
+So it is not the width, since the same width headless is whole, and it is not the click, since a
+click headless changes nothing. It is the nested backend, WLR_BACKENDS=wayland, and the screen the
+application is told about is right there too: screens=1 frame=1256x684 source=wl_output.
+
+The paint trace says what LibreOffice does rather than what it decides. The row is painted WHOLE
+TWICE, thirty two icons from x=7 to x=1189, and the third pass paints TWELVE, at exactly the same
+positions, 7 through 446. Nothing about spacing or item size changed, the row simply ends early, so
+the next step is on the LibreOffice side of the boundary: what does it ask us for between the second
+and third pass. The icons in the missing part are drawn and then dropped, which also means this is
+not a missing image or a failed reader.
