@@ -53,6 +53,11 @@ typedef NS_ENUM(NSInteger, NSTextLayoutOrientation) {
 
     BOOL _layoutInvalid;
     BOOL _allowsNonContiguousLayout;
+    BOOL _usesFontLeading;
+    BOOL _showsInvisibleCharacters;
+    BOOL _showsControlCharacters;
+    BOOL _backgroundLayoutEnabled;
+    CGFloat _hyphenationFactor;
 
     NSRect _extraLineFragmentRect;
     NSRect _extraLineFragmentUsedRect;
@@ -296,4 +301,17 @@ typedef NS_ENUM(NSInteger, NSTextLayoutOrientation) {
 
 - (NSTextLayoutOrientation) layoutOrientation;
 
+@end
+
+@interface NSLayoutManager (CiderTypesettingSwitches)
+- (CGFloat) hyphenationFactor;
+- (void) setHyphenationFactor: (CGFloat) factor;
+- (BOOL) usesFontLeading;
+- (void) setUsesFontLeading: (BOOL) value;
+- (BOOL) showsInvisibleCharacters;
+- (void) setShowsInvisibleCharacters: (BOOL) value;
+- (BOOL) showsControlCharacters;
+- (void) setShowsControlCharacters: (BOOL) value;
+- (BOOL) backgroundLayoutEnabled;
+- (void) setBackgroundLayoutEnabled: (BOOL) value;
 @end

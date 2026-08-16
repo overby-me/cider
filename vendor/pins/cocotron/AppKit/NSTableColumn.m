@@ -263,3 +263,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 @end
+
+/*
+ * THE TITLE, which is the header cell string value under a shorter name. It is the spelling every
+ * modern caller uses and it was missing: iTerm2 names the columns of its profile list that way and
+ * the raise ended the window it was building.
+ */
+@implementation NSTableColumn (CiderTitle)
+
+- (NSString *) title {
+    return [[self headerCell] stringValue];
+}
+
+- (void) setTitle: (NSString *) title {
+    [[self headerCell] setStringValue: title != nil ? title : @""];
+}
+
+@end

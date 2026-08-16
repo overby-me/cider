@@ -128,3 +128,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 @end
+
+/*
+ * THE CONVENIENCE CONSTRUCTORS, which are how a modern application builds a view in code.
+ *
+ * They have been in AppKit since 10.12 and none of them existed here, so an application that builds
+ * its interface without a nib raised on the first one it reached. Each is exactly what the
+ * documentation says it is: a view sized to fit its content, with the ordinary defaults for a label
+ * or a button set up before it is returned.
+ */
+@implementation NSImageView (CiderConvenience)
+
++ (instancetype) imageViewWithImage: (NSImage *) image {
+    NSSize size = image != nil ? [image size] : NSMakeSize(0, 0);
+    NSImageView *view = [[[self alloc] initWithFrame: NSMakeRect(0, 0, size.width, size.height)]
+            autorelease];
+
+    [view setImage: image];
+    [view setImageScaling: NSImageScaleProportionallyDown];
+    return view;
+}
+
+@end

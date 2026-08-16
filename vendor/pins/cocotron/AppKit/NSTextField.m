@@ -519,3 +519,47 @@ NSString *const NSTextContentTypePassword = @"NSTextContentTypePassword";
 }
 
 @end
+
+/* See the note in NSImageView: the 10.12 convenience constructors, and these are the text ones. */
+@implementation NSTextField (CiderConvenience)
+
++ (instancetype) labelWithString: (NSString *) string {
+    NSTextField *field = [[[self alloc] initWithFrame: NSMakeRect(0, 0, 100, 22)] autorelease];
+
+    [field setStringValue: string != nil ? string : @""];
+    [field setBezeled: NO];
+    [field setDrawsBackground: NO];
+    [field setEditable: NO];
+    [field setSelectable: NO];
+    [field sizeToFit];
+    return field;
+}
+
++ (instancetype) wrappingLabelWithString: (NSString *) string {
+    NSTextField *field = [self labelWithString: string];
+
+    [field setSelectable: YES];
+    [[field cell] setWraps: YES];
+    return field;
+}
+
++ (instancetype) labelWithAttributedString: (NSAttributedString *) string {
+    NSTextField *field = [self labelWithString: @""];
+
+    [field setAttributedStringValue: string];
+    [field sizeToFit];
+    return field;
+}
+
++ (instancetype) textFieldWithString: (NSString *) string {
+    NSTextField *field = [[[self alloc] initWithFrame: NSMakeRect(0, 0, 100, 22)] autorelease];
+
+    [field setStringValue: string != nil ? string : @""];
+    [field setBezeled: YES];
+    [field setDrawsBackground: YES];
+    [field setEditable: YES];
+    [field setSelectable: YES];
+    return field;
+}
+
+@end

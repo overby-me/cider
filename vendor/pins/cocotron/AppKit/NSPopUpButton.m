@@ -201,7 +201,18 @@ static NSString *const NSPopUpButtonBindingObservationContext =
     if ([self pullsDown]) {
         // The title gets stored in the zero index item in the menu - it made
         // sense to Apple at some point...
-        [[_cell itemAtIndex: 0] setTitle: title];
+        //
+        // AND THERE MAY BE NO ITEM YET, which used to be an NSRangeException from
+        // -[NSArray objectAtIndex:] with nothing in the message to say which array. A pull down
+        // button that is given its title before it is given its menu is ordinary: iTerm2 builds the
+        // overflow button of its tab bar that way, and the raise took the whole terminal window
+        // with it. The title item is created here instead, which is the item this line is reading
+        // when there IS one.
+        if ([_cell numberOfItems] == 0) {
+            [_cell addItemWithTitle: title != nil ? title : @""];
+        } else {
+            [[_cell itemAtIndex: 0] setTitle: title];
+        }
         [self synchronizeTitleAndSelectedItem];
     } else {
         [super setTitle: title];

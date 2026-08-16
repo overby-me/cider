@@ -59,3 +59,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 // TODO
 
 @end
+
+@interface NSTextField (CiderConvenience)
++ (instancetype) labelWithString: (NSString *) string;
++ (instancetype) wrappingLabelWithString: (NSString *) string;
++ (instancetype) labelWithAttributedString: (NSAttributedString *) string;
++ (instancetype) textFieldWithString: (NSString *) string;
+@end

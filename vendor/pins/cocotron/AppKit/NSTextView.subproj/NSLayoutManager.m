@@ -2926,3 +2926,56 @@ static inline void _appendRectToCache(NSLayoutManager *self, NSRect rect) {
     NSUnimplementedMethod();
 }
 @end
+
+/*
+ * THE TYPESETTING SWITCHES, stored and answered.
+ *
+ * A text system client sets these while it configures a layout manager, and every one of them was
+ * an unrecognized selector: iTerm2 sets the hyphenation factor while building its window and the
+ * raise ended the window. WHAT IS NOT DONE: none of them changes the layout here. There is no
+ * hyphenation, invisible characters are not drawn as glyphs, control characters are not shown and
+ * layout is never done in the background. They are kept so a caller reads back what it wrote.
+ */
+@implementation NSLayoutManager (CiderTypesettingSwitches)
+
+- (CGFloat) hyphenationFactor {
+    return _hyphenationFactor;
+}
+
+- (void) setHyphenationFactor: (CGFloat) factor {
+    _hyphenationFactor = factor;
+}
+
+- (BOOL) usesFontLeading {
+    return _usesFontLeading;
+}
+
+- (void) setUsesFontLeading: (BOOL) value {
+    _usesFontLeading = value;
+}
+
+- (BOOL) showsInvisibleCharacters {
+    return _showsInvisibleCharacters;
+}
+
+- (void) setShowsInvisibleCharacters: (BOOL) value {
+    _showsInvisibleCharacters = value;
+}
+
+- (BOOL) showsControlCharacters {
+    return _showsControlCharacters;
+}
+
+- (void) setShowsControlCharacters: (BOOL) value {
+    _showsControlCharacters = value;
+}
+
+- (BOOL) backgroundLayoutEnabled {
+    return _backgroundLayoutEnabled;
+}
+
+- (void) setBackgroundLayoutEnabled: (BOOL) value {
+    _backgroundLayoutEnabled = value;
+}
+
+@end

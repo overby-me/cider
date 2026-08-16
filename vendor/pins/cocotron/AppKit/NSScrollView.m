@@ -1078,3 +1078,30 @@ static Class _rulerViewClass = nil;
 }
 
 @end
+
+/*
+ * THE SCROLLER STYLE ON THE SCROLL VIEW. NSScroller has had it since the class-level sizing methods
+ * were added and the scroll view never did, so an application asking a scroll view which style it
+ * uses got an unrecognized selector. iTerm2 asks while laying out its window.
+ *
+ * The answer follows the scrollers that are actually there, and defaults to LEGACY, which is what
+ * this tree draws: an overlay scroller fades in over the content and nothing here does that.
+ */
+@implementation NSScrollView (CiderScrollerStyle)
+
+- (NSScrollerStyle) scrollerStyle {
+    NSScroller *scroller = [self verticalScroller];
+
+    if (scroller == nil)
+        scroller = [self horizontalScroller];
+
+    return scroller != nil ? [scroller scrollerStyle] : NSScrollerStyleLegacy;
+}
+
+- (void) setScrollerStyle: (NSScrollerStyle) style {
+    [[self verticalScroller] setScrollerStyle: style];
+    [[self horizontalScroller] setScrollerStyle: style];
+    [self tile];
+}
+
+@end

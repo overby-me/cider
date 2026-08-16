@@ -4687,3 +4687,56 @@ WHERE ITERM2 IS NOW: five windows created, including the terminal window at 400x
 NO CRASH, and the application reports one exception of its own, "index (0) beyond array bounds (0)",
 which it survives. NO BUFFER IS EVER ATTACHED, so nothing is on screen yet: the windows exist and
 have never been shown. That is the next rung.
+
+
+## Ten missing pieces of AppKit between iTerm2 and a window, found one run at a time
+
+2026-08-16, still goal 4. With the forwarding fix in place, every remaining gap announces itself as
+an unrecognized selector instead of a stack overflow, so the loop became: run, read the one line,
+implement it, run again. Ten rounds, about three minutes each.
+
+    -[NSPopUpButton setTitle:]            for a PULL DOWN it wrote into item zero of a menu that can
+                                          be empty, which is an NSRangeException with nothing in the
+                                          message to say which array. iTerm2 titles the overflow
+                                          button of its tab bar before it fills it. The title item
+                                          is created when there is none.
+    the 10.10 accessibility properties    accessibilityLabel, title, value, help, role, subrole,
+                                          roleDescription, identifier, children, parent, element and
+                                          enabled. Kept with associated storage, so they work on a
+                                          view, a cell or a plain object without an ivar anywhere.
+                                          NOTHING READS THEM: there is no accessibility bus here.
+    +[NSSearchField cellClass]            missing, so a search field got a plain NSTextFieldCell and
+                                          every search method went to a cell that never heard of it.
+    NSTableView allowsTypeSelect and      stored and answered. Type select does not select by
+    floatsGroupRows, rowSizeStyle,        typing, group rows do not float, the style does not change
+    usesAutomaticRowHeights, style        the drawing.
+    -[NSTableColumn setTitle:]            the header cell string value under its modern name.
+    -[NSScrollView scrollerStyle]         follows the scrollers that are there, defaults to LEGACY,
+                                          which is what this tree draws.
+    -[NSTextStorage initWithAttributedString:]  a primitive Foundation implements on the PLACEHOLDER
+                                          class only, so a real subclass never inherits it.
+    NSLayoutManager hyphenationFactor     and usesFontLeading, showsInvisibleCharacters,
+                                          showsControlCharacters, backgroundLayoutEnabled. Stored;
+                                          none of them changes the layout.
+    the 10.12 convenience constructors    NSImageView imageViewWithImage:, NSTextField
+                                          labelWithString: and its three relatives, NSButton
+                                          buttonWithTitle:target:action:, checkboxWithTitle: and
+                                          radioButtonWithTitle:.
+    NSWindow restorationClass             the window half of state restoration, kept and not
+                                          persisted, like the NSResponder methods.
+
+AND THE INSTRUMENT THAT MADE THE LOOP POSSIBLE. CIDER_TRACE_EXCEPTIONS used to live inside
+-[NSException raise], which is one of two ways an exception is thrown and not the one Foundation
+uses: every range check does @throw [NSException exceptionWithName:...] and never touches -raise.
+The trace now runs in the exception PREPROCESSOR, which objc_exception_throw calls for both paths,
+so it names the throw and the frames underneath it:
+
+    cider: RAISE NSRangeException: index (0) beyond array bounds (0)
+    cider:   CoreFoundation    -[__NSCFArray objectAtIndex:]
+    cider:   AppKit            -[NSPopUpButton setTitle:]
+    cider:   iTerm2            -[PSMOverflowPopUpButton initWithFrame:pullsDown:]
+
+WHERE ITERM2 IS: three windows created, no exception left in the run and NO WINDOW ON SCREEN. It
+ends without a crash and without a message after setting an alpha value on an image view, which is
+the next thing to chase. NO REGRESSION: LibreOffice Writer draws its window, both toolbars, ruler,
+page, sidebar and status bar, with no unrecognized selector in the whole run.

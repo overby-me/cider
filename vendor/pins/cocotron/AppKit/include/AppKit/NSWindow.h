@@ -167,6 +167,7 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
     NSString *_representedFilename;
     NSAppearance *_ciderAppearance;
     NSMutableArray *_titlebarAccessoryViewControllers;
+    Class _restorationClass;
     NSString *_title;
     NSString *_miniwindowTitle;
     NSImage *_miniwindowImage;
@@ -386,6 +387,9 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 - (void) setTitle: (NSString *) title;
 
 /* THE TITLE BAR ACCESSORIES, which are how a macOS application puts its own controls up there. */
+/* STATE RESTORATION, the window half of it. Nothing is persisted; see NSResponder. */
+- (Class) restorationClass;
+- (void) setRestorationClass: (Class) restorationClass;
 - (CGFloat) backingScaleFactor;
 - (NSRect) convertRectToBacking: (NSRect) rect;
 - (NSRect) convertRectFromBacking: (NSRect) rect;

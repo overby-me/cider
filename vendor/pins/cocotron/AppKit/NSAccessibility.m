@@ -2,6 +2,9 @@
 #import <Foundation/NSString.h>
 #import <AppKit/NSAccessibilityConstants.h>
 #import <AppKit/NSView.h>
+#import <objc/runtime.h>
+#import <Foundation/NSValue.h>
+#import <Foundation/NSArray.h>
 
 NSString *const NSAccessibilityChildrenAttribute =
         @"NSAccessibilityChildrenAttribute";
@@ -627,3 +630,137 @@ void NSAccessibilityPostNotificationWithUserInfo(id element,
 {
     printf("STUB %s\n", __PRETTY_FUNCTION__);
 }
+
+/*
+ * THE 10.10 ACCESSIBILITY PROPERTIES, STORED AND NEVER CONSUMED.
+ *
+ * Everything above this is the informal protocol from the decade before: an attribute name and a
+ * value looked up by string. The property spelling that replaced it is what applications actually
+ * call, and not one of these existed, so a view that was given an accessibility label raised an
+ * unrecognized selector and took its window with it. iTerm2 does it while building the overflow
+ * button of its tab bar.
+ *
+ * They are kept on the object with associated storage, which needs no ivar in any class and works
+ * for a view, a cell or a plain object, exactly as macOS lets you set them on anything. WHAT IS NOT
+ * HERE: nothing reads them. There is no accessibility bus on this system, so a label set here is
+ * recorded and never announced. That is worth stating rather than implying, since the call
+ * succeeding looks like the feature working.
+ */
+@implementation NSObject (CiderAccessibilityProperties)
+
+static const void *kCiderAXLabel = &kCiderAXLabel;
+static const void *kCiderAXTitle = &kCiderAXTitle;
+static const void *kCiderAXValue = &kCiderAXValue;
+static const void *kCiderAXHelp = &kCiderAXHelp;
+static const void *kCiderAXRole = &kCiderAXRole;
+static const void *kCiderAXRoleDescription = &kCiderAXRoleDescription;
+static const void *kCiderAXSubrole = &kCiderAXSubrole;
+static const void *kCiderAXIdentifier = &kCiderAXIdentifier;
+static const void *kCiderAXChildren = &kCiderAXChildren;
+static const void *kCiderAXParent = &kCiderAXParent;
+static const void *kCiderAXElement = &kCiderAXElement;
+static const void *kCiderAXEnabled = &kCiderAXEnabled;
+
+- (NSString *) accessibilityLabel {
+    return objc_getAssociatedObject(self, kCiderAXLabel);
+}
+
+- (void) setAccessibilityLabel: (NSString *) label {
+    objc_setAssociatedObject(self, kCiderAXLabel, label, OBJC_ASSOCIATION_COPY_NONATOMIC);
+}
+
+- (NSString *) accessibilityTitle {
+    return objc_getAssociatedObject(self, kCiderAXTitle);
+}
+
+- (void) setAccessibilityTitle: (NSString *) title {
+    objc_setAssociatedObject(self, kCiderAXTitle, title, OBJC_ASSOCIATION_COPY_NONATOMIC);
+}
+
+- (id) accessibilityValue {
+    return objc_getAssociatedObject(self, kCiderAXValue);
+}
+
+- (void) setAccessibilityValue: (id) value {
+    objc_setAssociatedObject(self, kCiderAXValue, value, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (NSString *) accessibilityHelp {
+    return objc_getAssociatedObject(self, kCiderAXHelp);
+}
+
+- (void) setAccessibilityHelp: (NSString *) help {
+    objc_setAssociatedObject(self, kCiderAXHelp, help, OBJC_ASSOCIATION_COPY_NONATOMIC);
+}
+
+- (NSString *) accessibilityRole {
+    return objc_getAssociatedObject(self, kCiderAXRole);
+}
+
+- (void) setAccessibilityRole: (NSString *) role {
+    objc_setAssociatedObject(self, kCiderAXRole, role, OBJC_ASSOCIATION_COPY_NONATOMIC);
+}
+
+- (NSString *) accessibilityRoleDescription {
+    return objc_getAssociatedObject(self, kCiderAXRoleDescription);
+}
+
+- (void) setAccessibilityRoleDescription: (NSString *) description {
+    objc_setAssociatedObject(self, kCiderAXRoleDescription, description,
+                             OBJC_ASSOCIATION_COPY_NONATOMIC);
+}
+
+- (NSString *) accessibilitySubrole {
+    return objc_getAssociatedObject(self, kCiderAXSubrole);
+}
+
+- (void) setAccessibilitySubrole: (NSString *) subrole {
+    objc_setAssociatedObject(self, kCiderAXSubrole, subrole, OBJC_ASSOCIATION_COPY_NONATOMIC);
+}
+
+- (NSString *) accessibilityIdentifier {
+    return objc_getAssociatedObject(self, kCiderAXIdentifier);
+}
+
+- (void) setAccessibilityIdentifier: (NSString *) identifier {
+    objc_setAssociatedObject(self, kCiderAXIdentifier, identifier, OBJC_ASSOCIATION_COPY_NONATOMIC);
+}
+
+- (NSArray *) accessibilityChildren {
+    return objc_getAssociatedObject(self, kCiderAXChildren);
+}
+
+- (void) setAccessibilityChildren: (NSArray *) children {
+    objc_setAssociatedObject(self, kCiderAXChildren, children, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (id) accessibilityParent {
+    return objc_getAssociatedObject(self, kCiderAXParent);
+}
+
+/* The parent is NOT retained, which is what it is on macOS: the tree owns downwards. */
+- (void) setAccessibilityParent: (id) parent {
+    objc_setAssociatedObject(self, kCiderAXParent, parent, OBJC_ASSOCIATION_ASSIGN);
+}
+
+- (BOOL) isAccessibilityElement {
+    return [objc_getAssociatedObject(self, kCiderAXElement) boolValue];
+}
+
+- (void) setAccessibilityElement: (BOOL) element {
+    objc_setAssociatedObject(self, kCiderAXElement, [NSNumber numberWithBool: element],
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (BOOL) isAccessibilityEnabled {
+    NSNumber *stored = objc_getAssociatedObject(self, kCiderAXEnabled);
+
+    return stored != nil ? [stored boolValue] : YES;
+}
+
+- (void) setAccessibilityEnabled: (BOOL) enabled {
+    objc_setAssociatedObject(self, kCiderAXEnabled, [NSNumber numberWithBool: enabled],
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+@end

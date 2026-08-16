@@ -98,6 +98,11 @@ typedef enum {
     BOOL _allowsMultipleSelection;
     BOOL _allowsEmptySelection;
     BOOL _allowsColumnSelection;
+    BOOL _allowsTypeSelect;
+    BOOL _floatsGroupRows;
+    BOOL _usesAutomaticRowHeights;
+    NSInteger _rowSizeStyle;
+    NSInteger _tableStyle;
     NSSize _intercellSpacing;
 
     BOOL _alternatingRowBackground;
@@ -286,4 +291,18 @@ typedef enum {
 - (void) tableViewSelectionDidChange: (NSNotification *) note;
 - (void) tableViewColumnDidMove: (NSNotification *) note;
 - (void) tableViewColumnDidResize: (NSNotification *) note;
+@end
+
+@interface NSTableView (CiderModernProperties)
+- (BOOL) allowsTypeSelect;
+- (void) setAllowsTypeSelect: (BOOL) value;
+- (BOOL) floatsGroupRows;
+- (void) setFloatsGroupRows: (BOOL) value;
+- (BOOL) usesAutomaticRowHeights;
+- (void) setUsesAutomaticRowHeights: (BOOL) value;
+- (NSInteger) rowSizeStyle;
+- (void) setRowSizeStyle: (NSInteger) value;
+- (NSInteger) style;
+- (void) setStyle: (NSInteger) value;
+- (NSInteger) effectiveStyle;
 @end

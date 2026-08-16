@@ -42,3 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) setImageScaling: (NSImageScaling) scaling;
 
 @end
+
+@interface NSImageView (CiderConvenience)
++ (instancetype) imageViewWithImage: (NSImage *) image;
+@end

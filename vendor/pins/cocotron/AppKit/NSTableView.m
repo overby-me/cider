@@ -2205,3 +2205,62 @@ static NSTableView *sTypeSelectView = nil;
 @implementation NSTableView (Bindings)
 
 @end
+
+/*
+ * THE PROPERTIES A TABLE HAS GROWN SINCE 10.5, stored and answered.
+ *
+ * Every one of them was an unrecognized selector, and a table view is configured by ordinary code
+ * before it is ever shown: iTerm2 sets allowsTypeSelect on its profile list while building a window
+ * and the raise took the window with it. WHAT IS NOT DONE, said plainly: type select does not
+ * select by typing, group rows do not float, the row size style does not change any row height and
+ * the style does not change the drawing. The values are kept so that a caller reads back what it
+ * wrote, which is what the rest of a nib decode and a settings pass depend on.
+ */
+@implementation NSTableView (CiderModernProperties)
+
+- (BOOL) allowsTypeSelect {
+    return _allowsTypeSelect;
+}
+
+- (void) setAllowsTypeSelect: (BOOL) value {
+    _allowsTypeSelect = value;
+}
+
+- (BOOL) floatsGroupRows {
+    return _floatsGroupRows;
+}
+
+- (void) setFloatsGroupRows: (BOOL) value {
+    _floatsGroupRows = value;
+}
+
+- (BOOL) usesAutomaticRowHeights {
+    return _usesAutomaticRowHeights;
+}
+
+- (void) setUsesAutomaticRowHeights: (BOOL) value {
+    _usesAutomaticRowHeights = value;
+}
+
+- (NSInteger) rowSizeStyle {
+    return _rowSizeStyle;
+}
+
+- (void) setRowSizeStyle: (NSInteger) value {
+    _rowSizeStyle = value;
+}
+
+- (NSInteger) style {
+    return _tableStyle;
+}
+
+- (void) setStyle: (NSInteger) value {
+    _tableStyle = value;
+}
+
+/* Automatic resolves to the plain style here, since none of the inset styles are drawn. */
+- (NSInteger) effectiveStyle {
+    return _tableStyle;
+}
+
+@end

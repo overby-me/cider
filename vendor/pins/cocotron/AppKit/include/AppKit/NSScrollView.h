@@ -147,3 +147,8 @@ APPKIT_EXPORT NSString *const NSScrollViewDidLiveScrollNotification;
 - (void) reflectScrolledClipView: (NSClipView *) clipView;
 
 @end
+
+@interface NSScrollView (CiderScrollerStyle)
+- (NSScrollerStyle) scrollerStyle;
+- (void) setScrollerStyle: (NSScrollerStyle) style;
+@end

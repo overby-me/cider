@@ -1145,6 +1145,21 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 /*
+ * THE WINDOW HALF OF STATE RESTORATION. A window is told which class will restore it and whether it
+ * is restorable at all, and both were unrecognized selectors: iTerm2 sets the restoration class on
+ * its terminal window. The values are kept and NOTHING IS PERSISTED, which is the same statement as
+ * the NSResponder methods: this is a system with restoration turned off, and a window that is never
+ * saved is never restored.
+ */
+- (Class) restorationClass {
+    return _restorationClass;
+}
+
+- (void) setRestorationClass: (Class) restorationClass {
+    _restorationClass = restorationClass;
+}
+
+/*
  * THE BACKING SCALE, which is the number an application multiplies by to get device pixels. NSScreen
  * has answered this for a while and NSWindow did not, so iTerm2 raised on it while laying out a
  * terminal window. It follows the screen the window is on, as macOS does, and falls back to the main

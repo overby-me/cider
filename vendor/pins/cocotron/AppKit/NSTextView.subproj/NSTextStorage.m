@@ -30,6 +30,25 @@ NSString *const NSTextStorageDidProcessEditingNotification =
 
 @implementation NSTextStorage
 
+/*
+ * INITIALISING FROM ANOTHER ATTRIBUTED STRING, which every text system caller does.
+ *
+ * -initWithAttributedString: is a primitive of NSMutableAttributedString and Foundation implements
+ * it on the PLACEHOLDER class, so an ordinary subclass allocated for real, which is what a text
+ * storage is, never inherits it: iTerm2 raised an unrecognized selector on
+ * -[NSTextStorage_concrete initWithAttributedString:] while building a window. It is written in
+ * terms of the two primitives every concrete text storage has.
+ */
+- initWithAttributedString: (NSAttributedString *) other {
+    self = [self initWithString: @""];
+
+    if (self != nil && other != nil) {
+        [self setAttributedString: other];
+    }
+    return self;
+}
+
+
 + allocWithZone: (NSZone *) zone {
     if (self == [NSTextStorage class])
         return NSAllocateObject([NSTextStorage_concrete class], 0, NULL);

@@ -80,3 +80,8 @@ enum {
 - (void) _sort;
 
 @end
+
+@interface NSTableColumn (CiderTitle)
+- (NSString *) title;
+- (void) setTitle: (NSString *) title;
+@end

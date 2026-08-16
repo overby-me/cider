@@ -22,6 +22,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 @implementation NSSearchField
 
+/*
+ * THE CELL CLASS, which decides what -cell answers and therefore what every method on this class
+ * talks to. Without it NSTextField was inherited and a search field got a plain NSTextFieldCell, so
+ * -setSearchMenuTemplate:, -setRecentSearches: and the rest went to a cell that has never heard of
+ * them: an unrecognized selector for doing the ordinary thing with a search field. iTerm2 sets a
+ * menu template on its search field while building the window.
+ */
++ (Class) cellClass {
+    return [NSSearchFieldCell class];
+}
+
 - (NSSearchFieldCell *) _searchCell {
     return [self cell];
 }

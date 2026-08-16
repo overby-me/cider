@@ -67,3 +67,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) performClick: sender;
 
 @end
+
+@interface NSButton (CiderConvenience)
++ (instancetype) buttonWithTitle: (NSString *) title target: (id) target action: (SEL) action;
++ (instancetype) checkboxWithTitle: (NSString *) title target: (id) target action: (SEL) action;
++ (instancetype) radioButtonWithTitle: (NSString *) title target: (id) target action: (SEL) action;
+@end

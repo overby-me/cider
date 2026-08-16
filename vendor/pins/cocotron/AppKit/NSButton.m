@@ -294,3 +294,44 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 @end
+
+/* See the note in NSImageView: the 10.12 convenience constructors, and these are the button ones. */
+@implementation NSButton (CiderConvenience)
+
++ (instancetype) buttonWithTitle: (NSString *) title target: (id) target action: (SEL) action {
+    NSButton *button = [[[self alloc] initWithFrame: NSMakeRect(0, 0, 100, 32)] autorelease];
+
+    [button setTitle: title != nil ? title : @""];
+    [button setBezelStyle: NSRoundedBezelStyle];
+    [button setButtonType: NSMomentaryPushInButton];
+    [button setTarget: target];
+    [button setAction: action];
+    [button sizeToFit];
+    return button;
+}
+
++ (instancetype) checkboxWithTitle: (NSString *) title target: (id) target action: (SEL) action {
+    NSButton *button = [[[self alloc] initWithFrame: NSMakeRect(0, 0, 100, 18)] autorelease];
+
+    [button setTitle: title != nil ? title : @""];
+    [button setButtonType: NSSwitchButton];
+    [button setBezelStyle: 0];
+    [button setTarget: target];
+    [button setAction: action];
+    [button sizeToFit];
+    return button;
+}
+
++ (instancetype) radioButtonWithTitle: (NSString *) title target: (id) target action: (SEL) action {
+    NSButton *button = [[[self alloc] initWithFrame: NSMakeRect(0, 0, 100, 18)] autorelease];
+
+    [button setTitle: title != nil ? title : @""];
+    [button setButtonType: NSRadioButton];
+    [button setBezelStyle: 0];
+    [button setTarget: target];
+    [button setAction: action];
+    [button sizeToFit];
+    return button;
+}
+
+@end
