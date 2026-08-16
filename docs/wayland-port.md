@@ -4295,3 +4295,34 @@ raw-pixel dump written and removed in this session captured the FIRST four big d
 early and nearly empty. Capture the LAST instead, one file overwritten per draw, with the dropdown
 open, and compare that source bitmap against the screen. If the source is already upside down the
 fault is in what we drew into it; if it is not, the fault is in the blit.
+
+
+## Narrowing the upside down text to one transform
+
+2026-08-16, commits 8fa88373 and f7503125. Still not fixed, and this is what is known, so the next
+attempt starts here rather than at the beginning.
+
+The dump of the source images settled the first question. The 384x602 image that the popup blit
+draws is ALREADY upside down before our blit touches it, and the 1256x634 image behind the document
+window is upright: toolbars at the top, ruler under them, page below. So it is not all bitmap
+contexts, it is one of them, and the blit is innocent.
+
+The text instrument named the caller exactly:
+
+    CIDER_TEXTCTM ctm=[1.00 0.00 0.00 1.00 0.0 17.0] surface=61x17
+      <- KTFont drawGlyphs <- AquaGraphicsBackend::drawTextLayout
+      <- OutputDevice::DrawText <- StatusBar::ImplDrawItem <- StatusBar::Paint
+
+The status bar draws each item into its own small bitmap context, and the transform in force has d
+POSITIVE. Every text draw caught in that run has a positive d; not one has the negative d that a
+bitmap context starts with. That is a context the caller has flipped once, which is the ordinary
+CoreText idiom on macOS: scale by minus one in y and draw at negative y.
+
+And the other half, from reading the rasteriser rather than running it: the FreeType path in
+O2Context_builtin_FT places each glyph at point.y minus slot->bitmap_top and takes only the SCALE
+out of the text rendering matrix. It assumes a top down device space whatever the transform says,
+and a positive d is exactly the case that assumption gets wrong.
+
+That is a lead rather than a proven cause, and it is recorded as one. What is proven is the line
+above it: the status bar text goes through a bitmap context with a positive d, and the status bar
+strip is one of the two things on screen that come out mirrored.
