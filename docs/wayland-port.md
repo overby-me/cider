@@ -5262,3 +5262,78 @@ WHERE IT STOPS NOW, and it is a good deal further than a window that never opene
 So the application IS opening its terminal window, and the fault is in releasing the old object value
 of a cell. That is the next rung, and the titlebar accessory controller in the frames is one this
 port only just gained, which makes it the first thing to look at.
+
+
+## The index set kept its ranges unsorted, and that is what both iTerm2 crashes were
+
+2026-08-16. iTerm2 3.4.23 stopped crashing today, and the fix was not in AppKit at all. Three
+defects, all in the Foundation NSIndexSet, all on the same path:
+
+THE RANGES WERE NOT SORTED. -addIndex: finds the range that must PRECEDE the new one and then calls
+DL_INSERT, which inserts BEFORE the node it is given. So the new range landed on the wrong side:
+adding 0, 4 and 13 in ascending order produced
+
+    index 0 -- index 13 -- index 4
+
+Everything downstream assumes sorted order. -count sums the lengths and says 3, while
+-indexGreaterThanIndex: walks the list and stops at 13, so -[NSArray objectsAtIndexes:] filled two
+of the three slots it had malloced and handed the third, uninitialised, to its caller. That is
+where the two failures came from: sometimes the tail read as nil, and NSSet raised
+
+    The object at objects[2] is nil.
+
+and sometimes it read as garbage and CFSetCreate faulted in objc_msgSend with a receiver of 0x18.
+Same bug, two faces, which is why chasing either one alone did not converge. The split path in
+-removeIndexesInRange: had the identical mistake.
+
+THE CACHE OVERRAN TWO BUFFERS AND WAS NEVER USED. NSIndexSetBuildCache switches from a 32 entry
+stack array to the heap at rangeCount > 32, one entry after the array is full, with capacity still
+0, so it wrote past the stack array, then malloced ZERO bytes, then wrote through that, and never
+copied the entries it had already gathered. It also never set _cacheValid, so every reader has
+always taken the linear path and the cache was rebuilt, and leaked, on every -count. It is not
+built any more, and re-enabling it now has a written list of what must be true first.
+
+AN UNDERFILL IS NOT SILENT ANY MORE. -[NSArray objectsAtIndexes:] says so and clamps to what it
+actually filled, because handing uninitialised malloc to a caller is how this became two unrelated
+looking crashes.
+
+WHERE ITERM2 3.4.23 IS NOW: no crash, no raise. It builds its terminal window and then fails in its
+own code, with its own diagnostic:
+
+    Failed to create grammar: Error Domain=CPEBNFParserErrorDomain Code=1 Could not parse EBNF for
+    grammar. 1:2: Found <Error>, Expected {(Identifier)}
+
+so the next rung is the CoreParse tokeniser, which is the expression parser iTerm2 builds at
+startup. Still NO WINDOW ON SCREEN.
+
+## Why iTerm2 3.4.23 and not the 3.6.10 that nixpkgs ships
+
+MEASURED, not assumed. nixpkgs iterm2 is 3.6.10 and its main binary STRONG links SwiftUI:
+
+    strong  /System/Library/Frameworks/SwiftUI.framework/Versions/A/SwiftUI     Contents/MacOS/iTerm2
+    strong  /usr/lib/swift/libswift_Concurrency.dylib                           Contents/MacOS/iTerm2
+    strong  /usr/lib/swift/libswiftWebKit.dylib                                 Contents/MacOS/iTerm2
+    WEAK    /System/Library/Frameworks/Charts.framework/...                     Contents/MacOS/iTerm2
+    WEAK    /System/Library/Frameworks/FoundationModels.framework/...           Contents/MacOS/iTerm2
+
+and what it binds from SwiftUI is not a handful of functions but 46 TYPE RECORDS: the View protocol
+descriptor, Text, VStack, HStack, Color, AnyView, ForEach, State, EnvironmentValues, NSHostingView,
+GeometryReader and the generic conformances between them. A load stub satisfies dyld because dyld
+only needs an address; swift_checkMetadataState reads the record, which is why realizeAllClasses
+faults. That is a SwiftUI implementation, not a gap to fill, and the swift pin here is 5.2.2 from
+swift.org, which predates _Concurrency entirely.
+
+SO THE APP UNDER TEST IS THE NIXPKGS DERIVATION AT AN OLDER VERSION, not a hand download. nixpkgs
+iterm2 is a fetchzip of the iterm2.com stable zip parameterised by version, so overriding the
+version is the whole change:
+
+    pkgs.iterm2.overrideAttrs (old: {
+      version = "3.4.23";
+      src = pkgs.fetchzip {
+        url = "https://iterm2.com/downloads/stable/iTerm2-3_4_23.zip";
+        hash = "sha256-hQV/jGT/3JOvHBICyCeNnuSYMeeF7lfErN55f+Frg2w=";
+      };
+    })
+
+The result is BYTE IDENTICAL to the bundle that was already installed, so every earlier measurement
+carries over unchanged.

@@ -19,6 +19,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSAttributedString.h>
 #include <objc/runtime.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #import <AppKit/NSCell.h>
@@ -914,11 +915,32 @@ NSNotificationName NSControlTintDidChangeNotification = @"NSControlTintDidChange
     [(NSNumberFormatter *) _formatter setFormat: format];
 }
 
+/* CIDER_TRACE_CELL: the object value handover, RAW POINTERS AND NOTHING ELSE, because the whole
+ * question is whether one of these is still an object. Any message send here would fault before it
+ * printed. Set it to 2 and the old value is LEAKED instead of released, which separates a dead old
+ * value from a dead cell in a single run. */
+static int cider_trace_cell(void) {
+    static int state = -1;
+    if (state < 0) {
+        const char *e = getenv("CIDER_TRACE_CELL");
+        state = (e == NULL || *e == '\0') ? 0 : atoi(e);
+    }
+    return state;
+}
+
 - (void) setObjectValue: (id<NSCopying>) value {
     value = [value copyWithZone: NULL];
 
+    if (cider_trace_cell()) {
+        fprintf(stderr, "CIDER_CELL setObjectValue self=%p old=%p new=%p\n", (void *) self,
+                (void *) _objectValue, (void *) value);
+        fflush(stderr);
+    }
+
     [[self controlView] willChangeValueForKey: @"objectValue"];
-    [_objectValue release];
+    if (cider_trace_cell() < 2) {
+        [_objectValue release];
+    }
     _objectValue = value;
     _hasValidObjectValue = YES;
     [[self controlView] didChangeValueForKey: @"objectValue"];
