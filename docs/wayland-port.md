@@ -6484,3 +6484,25 @@ simply did not happen.
 A rebuild restores the SAME path, so the fix is one nix build away, but the failure reads as the
 application drawing nothing. Before believing an empty or black capture, check that the tool that
 was supposed to take it still exists.
+
+### The decode request goes out, the worker is running, and nothing comes back
+
+Correcting something written an hour earlier in the same sitting. The sandboxed worker does NOT exit
+immediately. It is alive: sampling during a run finds it 25 seconds in. The earlier claim came from
+sampling on the process NAME, and every guest process here is called mldr, so that test could never
+have matched whatever was running. Third measurement of this shape to be wrong in this way.
+
+What is actually true, all from one run with CIDER_XPC_LAUNCH_SERVICES on:
+
+  the service is spawned, com.iterm2.sandboxed-worker, and the lookup that follows SUCCEEDS,
+    since no lookup failure is reported for it;
+  the worker process is alive and stays alive, and run by hand it blocks in its run loop as a
+    service should rather than exiting;
+  iTerm2 sends the request, decodeImageFromData:withReply:, with a valid reply block and a reply
+    type of iTermImage;
+  no decoder is ever asked for the data, 43 matches in the run and all of them TIFF or ICNS for
+    application resources;
+  nothing fails, there is no decode error, no connection invalidation and no interruption.
+
+So the message leaves and nothing answers. The remaining question is whether the far side receives
+it at all, which is a question about the receiving half of NSXPCConnection rather than about images.
