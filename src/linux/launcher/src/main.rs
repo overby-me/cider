@@ -692,16 +692,31 @@ fn push_cmd(fd: c_int, cmd: u16, data: &[u8]) {
 }
 
 fn setup_shellspawn_env(fd: c_int) {
+    let login = get_login();
+
     push_env(fd, "PATH", "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin");
     push_env(fd, "TMPDIR", "/private/tmp");
-    push_env(fd, "HOME", &format!("/Users/{}", get_login()));
+    push_env(fd, "HOME", &format!("/Users/{login}"));
     // SHELL IS A PATH, AND A HOST PATH MEANS NOTHING IN HERE. On a nix host it is something like
     // /nix/store/...-bash-5.3p9/bin/bash, which does not exist inside the container, so every
     // application that launches "the user shell" from it fails to exec and reports a broken pipe
     // with no other explanation. iTerm2 opens a session that way. The guest ships /bin/bash.
     push_env(fd, "SHELL", "/bin/bash");
+    // AND A HOST USERNAME IS NO BETTER THAN A HOST PATH. These were inherited straight from the
+    // host, so USER said overby.me while HOME said /Users/root, and the only account this
+    // container has is root. Anything that resolves the name gets nothing: iTerm2 opens its
+    // session with login -fp $USER, getpwnam answered NULL, and login printed Login incorrect and
+    // sat at a prompt. The terminal drew perfectly and could not run a shell.
+    push_env(fd, "USER", &login);
+    push_env(fd, "LOGNAME", &login);
     for (k, v) in std::env::vars() {
-        if k == "PATH" || k == "TMPDIR" || k == "HOME" || k == "SHELL" {
+        if k == "PATH"
+            || k == "TMPDIR"
+            || k == "HOME"
+            || k == "SHELL"
+            || k == "USER"
+            || k == "LOGNAME"
+        {
             continue;
         }
         push_env(fd, &k, &v);
