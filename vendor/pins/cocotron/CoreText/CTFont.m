@@ -22,8 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <CoreText/KTFont.h>
 #import <Foundation/NSString.h>
 #import <objc/message.h>
+#import <objc/runtime.h>
+#include <execinfo.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* Defined in constants.c and declared in no header, the same as in CTFontCollection.m. */
 extern const CFStringRef kCTFontSymbolicTrait;
@@ -529,12 +533,77 @@ CFArrayRef CTFontCopyFeatureSettings(CTFontRef font)
     return nil;
 }
 
+/* TWO DIFFERENT CLASSES ANSWER -getGlyphs:forCharacters:length: WITH DIFFERENT ELEMENT WIDTHS.
+ *
+ * KTFont writes CGGlyph, which is two bytes. NSFont writes NSGlyph, which is NSUInteger, so eight.
+ * A caller of the C function allocates count * sizeof(CGGlyph) and is entitled to expect that much
+ * to be written; forwarding its buffer to an NSFont overruns it by a factor of four.
+ *
+ * That is not a cosmetic mismatch. iTerm2 allocates the glyph buffer with alloca directly below its
+ * locals and passes the NSFont straight out of its attributes dictionary, so the overrun runs up
+ * the stack and over the saved font pointer. The value read back was 0x47, a glyph index, and the
+ * process then died messaging it. So decide by what the method actually writes.
+ */
+static bool cider_glyph_method_is_wide(id object)
+{
+    Method method = class_getInstanceMethod(object_getClass(object),
+                                            @selector(getGlyphs:forCharacters:length:));
+    char *type;
+    bool wide;
+
+    if (method == NULL) {
+        return false;
+    }
+
+    /* Argument 2 is the first one after self and _cmd. "^S" is unsigned short *, which is CGGlyph
+     * and needs no translation; anything wider is an NSGlyph array. */
+    type = method_copyArgumentType(method, 2);
+    if (type == NULL) {
+        return false;
+    }
+
+    wide = (strcmp(type, "^S") != 0);
+    free(type);
+    return wide;
+}
+
 bool CTFontGetGlyphsForCharacters(CTFontRef font, const UniChar *characters,
                                   CGGlyph *glyphs, CFIndex count)
 {
-    [font getGlyphs: glyphs forCharacters: characters length: count];
-    // FIXME: change getGlyphs: to return a BOOL
-    return YES;
+    id object = (id) font;
+    uintptr_t stack[256];
+    uintptr_t *wide;
+    CFIndex i;
+
+    if (object == nil || glyphs == NULL || characters == NULL || count <= 0) {
+        return false;
+    }
+
+    if (!cider_glyph_method_is_wide(object)) {
+        [object getGlyphs: glyphs forCharacters: characters length: (NSUInteger) count];
+        return true;
+    }
+
+    wide = (count <= (CFIndex) (sizeof(stack) / sizeof(stack[0])))
+               ? stack
+               : (uintptr_t *) calloc((size_t) count, sizeof(uintptr_t));
+    if (wide == NULL) {
+        return false;
+    }
+
+    [object getGlyphs: (CGGlyph *) wide forCharacters: characters length: (NSUInteger) count];
+
+    for (i = 0; i < count; i++) {
+        /* NSControlGlyph is 0xFFFFFF and does not fit. CoreText answers 0 for a character it
+         * cannot map, so say that rather than truncating to a real glyph index. */
+        glyphs[i] = (wide[i] > 0xFFFF) ? 0 : (CGGlyph) wide[i];
+    }
+
+    if (wide != stack) {
+        free(wide);
+    }
+
+    return true;
 }
 
 void CTFontDrawGlyphs(CTFontRef font, const CGGlyph *glyphs, const CGPoint *positions,
@@ -571,9 +640,14 @@ CGFontRef CTFontCopyGraphicsFont(CTFontRef font, CTFontDescriptorRef _Nullable *
         static int reported = 0;
 
         if (reported < 8) {
+            void *frames[24];
+            int count = backtrace(frames, 24);
+
             reported++;
-            fprintf(stderr, "CTFontCopyGraphicsFont: %p is not an object\n", (void *) object);
+            fprintf(stderr, "CTFontCopyGraphicsFont: %p is not an object, frames=%d\n",
+                    (void *) object, count);
             fflush(stderr);
+            backtrace_symbols_fd(frames, count, 2);
         }
         return NULL;
     }
