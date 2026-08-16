@@ -5393,3 +5393,47 @@ WHERE IT IS NOW: iTerm2 3.4.23 builds its window, measures its font, creates a s
 the find bar nib. It ends in an over release inside an autorelease pool pop during that nib load,
 and in about one run in three, in the same place a cell releases a string that something else has
 already freed. Still NO WINDOW ON SCREEN, and the next rung is that over release.
+
+
+## The nib table released what it did not own, and iTerm2 reached its session
+
+2026-08-16, evening. iTerm2 3.4.23 now builds its window, its tab bar and a terminal session, and
+runs a display update cadence. Five more fixes, and the first one is a correction of my own.
+
+THE NIB TABLE OWNERSHIP, corrected. The earlier fix here changed a release to an AUTORELEASE in
+-[_NSNIBArchiveUnarchiver replaceObject:withObject:], because releasing deallocated the class
+swapper mid method. That was the same bug one pool deep: the reference the table holds is the one
+-initWithCoder: is in the middle of CONSUMING, so the swapper release at the end of that method is
+THE release, and the autorelease came due at the pool pop and freed it twice. What that looks like
+is a fault inside AutoreleasePoolPage::pop with no user frame in sight.
+
+The table does not touch the original at all now, and -_objectAtIndex: settles the count once
+initWithCoder: has returned and it can see both objects: if the slot was rewritten mid decode, the
+table already retained the replacement and init returned the same object with a second reference,
+so one is dropped. Proved by bisect first: leaking the whole table made the pool fault vanish and
+carried the application straight into its tab bar.
+
+AN EMPTY RANGE REMOVES NOTHING. -[NSMutableArray removeObjectsInRange:] started at NSMaxRange - 1,
+which is -1 for a zero length range at 0, and compared that SIGNED index against an UNSIGNED
+location, so -1 was promoted to a huge value, the guard held and it asked for index -1:
+
+    index (-1) beyond array bounds (0)
+
+iTerm2 hit it on the first tick of its throughput estimator, which empties a queue it has just
+drained.
+
+THREE MORE GAPS, each of which ended the process: -[NSWindow convertRectFromScreen:] and its three
+relatives, which is how anything current converts screen coordinates and how the tab bar places
+every tab; +[NSColor windowFrameTextColor] with a recipe in the Wayland colour table; and the
+private CGSDefaultConnectionForThread plus CGSSetWindowBackgroundBlurRadius, which iTerm2 binds
+LAZILY, so the process aborted at first use rather than failing to load.
+
+NSRunningApplication was a class with one stub method. It can answer about THIS process exactly,
+from the running process and its own bundle, so it does: currentApplication, the identity
+properties, and NO from the four that would act on another process, which is what the API says
+when the operation did not happen.
+
+WHERE IT IS NOW: the application runs. It creates its window, lays out its tab bar, sets up a
+session, and exits with status 1 during the first display updates, with no exception and no fault.
+The next rung is that exit: the likely candidate is the PTY and the shell behind the session.
+Still NO WINDOW ON SCREEN.

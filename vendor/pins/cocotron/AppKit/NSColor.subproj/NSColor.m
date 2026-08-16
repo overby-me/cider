@@ -427,6 +427,13 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
     return [NSColor controlColor];
 }
 
+/* THE TITLE TEXT ON THE WINDOW FRAME, which is a different colour from the frame itself and is
+ * asked for by name by anything that draws its own titlebar. iTerm2 draws its tab bar with it. */
++ (NSColor *) windowFrameTextColor {
+    return [NSColor colorWithCatalogName: @"System"
+                               colorName: @"windowFrameTextColor"];
+}
+
 + (NSColor *) windowFrameColor {
     return [NSColor colorWithCatalogName: @"System"
                                colorName: @"windowFrameColor"];

@@ -614,7 +614,25 @@ static BOOL NIBTracing(void) {
     id initialised = [instance initWithCoder: self];
     _scopeDepth--;
 
-    if (initialised != instance) {
+    /*
+     * WHO OWNS THE SLOT NOW. The table owns exactly one reference to whatever a slot holds.
+     * -initWithCoder: consumed the one that was in it, and returns one of its own. Two things can
+     * have happened while it ran:
+     *
+     *   the slot still holds what was put there  ->  store what init returned, the table owns it
+     *   -replaceObject:withObject: rewrote it    ->  the table already retained the replacement,
+     *                                                and init returned the SAME object with a
+     *                                                second reference, so drop one
+     */
+    id inSlot = _instances[index];
+
+    if (inSlot != instance && inSlot == initialised) {
+        [initialised release];
+        instance = initialised;
+    } else if (initialised != instance) {
+        if (inSlot != instance) {
+            [inSlot release]; // a replacement nothing is going to use
+        }
         _instances[index] = initialised;
         instance = initialised;
     }
@@ -652,22 +670,22 @@ static BOOL NIBTracing(void) {
     }
     for (i = 0; i < _objectCount; i++) {
         if (_instances[i] == original) {
-            [replacement retain];
             /*
-             * AUTORELEASE, NOT RELEASE, BECAUSE THE OBJECT BEING REPLACED IS USUALLY STILL RUNNING.
+             * THE ORIGINAL IS NOT RELEASED HERE, and that is deliberate both ways round.
              *
-             * The one caller of this is -[NSClassSwapper initWithCoder:], which replaces ITSELF with
-             * the object it just allocated and then keeps going: it reads its own ivars afterwards
-             * to send initWithCoder: to that object. The swapper only reference is the one this
-             * table holds, so releasing it here deallocates it MID METHOD, and the next ivar read
-             * comes out of freed memory.
+             * The one caller is -[NSClassSwapper initWithCoder:], which replaces ITSELF with the
+             * object it has just allocated and then keeps running: it reads its own ivars
+             * afterwards to send initWithCoder: to that object. So the swapper cannot be released
+             * here. It cannot be AUTORELEASED here either, which is the same bug one pool deep:
+             * the reference this table holds is the one -initWithCoder: is in the middle of
+             * CONSUMING, so the swapper release at the end of that method is the release, and
+             * a second one scheduled here comes due at the pool pop and frees it twice. That is
+             * a fault inside AutoreleasePoolPage::pop with no user frame in sight.
              *
-             * What that looks like is nothing like a use after free: objc_msgSend faults with a
-             * receiver of 0x18, sixteen frames into a nib decode, and it takes the whole application
-             * with it before its first window. Both iTerm2 3.4.23 and 3.6.10 died there.
+             * The table therefore does not own the original any more. -_objectAtIndex: below
+             * settles the count once initWithCoder: has returned and it can see both objects.
              */
-            [_instances[i] autorelease];
-            _instances[i] = replacement;
+            _instances[i] = [replacement retain];
         }
     }
 }

@@ -168,6 +168,7 @@ typedef NSString *NSColorSpaceName;
 
 + (NSColor *) windowBackgroundColor;
 + (NSColor *) windowFrameColor;
++ (NSColor *) windowFrameTextColor;
 
 + (NSColor *) selectedMenuItemColor;
 + (NSColor *) selectedMenuItemTextColor;

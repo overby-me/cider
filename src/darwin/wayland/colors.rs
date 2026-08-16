@@ -68,6 +68,9 @@ fn recipe_for(name: &str) -> Option<Recipe> {
         "selectedMenuItemColor" => ACCENT,
         "selectedControlTextColor" => Recipe::ClassMethod("blackColor"),
         "windowFrameColor" => Recipe::ClassMethod("lightGrayColor"),
+        // The TEXT on the frame, black on the light frame above, which is what a light mode macOS
+        // title bar looks like.
+        "windowFrameTextColor" => Recipe::ClassMethod("blackColor"),
         "shadowColor" => Recipe::ClassMethod("blackColor"),
         "alternateSelectedControlTextColor" => Recipe::ClassMethod("whiteColor"),
         "labelColor" => Recipe::ClassMethod("blackColor"),

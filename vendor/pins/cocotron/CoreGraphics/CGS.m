@@ -186,6 +186,22 @@ CGSConnectionID _CGSDefaultConnection(void)
 	return CGSMainConnectionID();
 }
 
+/* THE MODERN SPELLING of the one above. Applications that touch the window server privately call
+ * this one; iTerm2 asks for it before it can draw a single tab, and a missing lazy symbol aborts
+ * the process rather than raising. One connection serves every thread here. */
+CGSConnectionID CGSDefaultConnectionForThread(void)
+{
+	return CGSMainConnectionID();
+}
+
+/* THE BLUR BEHIND A WINDOW is composited by the window server, and this one does not composite it.
+ * Answering SUCCESS is the honest choice over an error: the caller is asking for a decoration, and
+ * an error makes an application treat a missing decoration as a failed window. */
+CGError CGSSetWindowBackgroundBlurRadius(CGSConnectionID connection, CGSWindowID window, int radius)
+{
+	return kCGSErrorSuccess;
+}
+
 CGSConnectionID CGSMainConnectionID(void)
 {
 	if (g_defaultConnection == -1)

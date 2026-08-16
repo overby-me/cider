@@ -42,6 +42,9 @@ extern void CGSInitialize(void);
 extern CGError CGSNewConnection(_Nullable CGSDictionaryObj attribs, CGSConnectionID* connId);
 extern CGError CGSReleaseConnection(CGSConnectionID connId);
 extern CGSConnectionID _CGSDefaultConnection(void);
+extern CGSConnectionID CGSDefaultConnectionForThread(void);
+extern CGError CGSSetWindowBackgroundBlurRadius(CGSConnectionID connection, CGSWindowID window,
+                                               int radius);
 extern CGSConnectionID CGSMainConnectionID(void);
 extern CGError CGSSetDenyWindowServerConnections(Boolean deny);
 extern void CGSShutdownServerConnections(void);

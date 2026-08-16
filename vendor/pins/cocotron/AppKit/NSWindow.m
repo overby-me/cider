@@ -1220,6 +1220,26 @@ static BOOL _allowsAutomaticWindowTabbing;
  * bottom layout attributes land in NSThemeFrame, and that is a separate piece of work; an
  * application that adds one and gets a raise cannot even reach the question.
  */
+- (NSRect) convertRectFromScreen: (NSRect) rect {
+    NSPoint origin = [self convertScreenToBase: rect.origin];
+
+    return NSMakeRect(origin.x, origin.y, rect.size.width, rect.size.height);
+}
+
+- (NSRect) convertRectToScreen: (NSRect) rect {
+    NSPoint origin = [self convertBaseToScreen: rect.origin];
+
+    return NSMakeRect(origin.x, origin.y, rect.size.width, rect.size.height);
+}
+
+- (NSPoint) convertPointFromScreen: (NSPoint) point {
+    return [self convertScreenToBase: point];
+}
+
+- (NSPoint) convertPointToScreen: (NSPoint) point {
+    return [self convertBaseToScreen: point];
+}
+
 - (BOOL) titlebarAppearsTransparent {
     return _titlebarAppearsTransparent;
 }

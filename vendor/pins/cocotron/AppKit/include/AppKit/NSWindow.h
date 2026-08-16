@@ -504,6 +504,15 @@ typedef NS_ENUM(NSInteger, NSWindowTitleVisibility) {
 - (NSPoint) convertBaseToScreen: (NSPoint) point;
 - (NSPoint) convertScreenToBase: (NSPoint) point;
 
+/* THE 10.7 REPLACEMENTS for the two above, which take a rect so that a caller can convert an
+ * origin without losing the size, plus the 10.14 point spellings. Everything current uses these:
+ * the tab bar in iTerm2 asks for a mouse location in window coordinates through
+ * -convertRectFromScreen: on every tab it lays out. */
+- (NSRect) convertRectFromScreen: (NSRect) rect;
+- (NSRect) convertRectToScreen: (NSRect) rect;
+- (NSPoint) convertPointFromScreen: (NSPoint) point;
+- (NSPoint) convertPointToScreen: (NSPoint) point;
+
 - (NSRect) frameRectForContentRect: (NSRect) rect;
 - (NSRect) contentRectForFrameRect: (NSRect) rect;
 - (NSRect) constrainFrameRect: (NSRect) rect toScreen: (NSScreen *) screen;

@@ -657,7 +657,10 @@ static CGFloat constrainTo(CGFloat value, CGFloat min, CGFloat max) {
 }
 
 - (BOOL) isOpaque {
-    NSUnimplementedMethod();
+    /* YES, and it is not unimplemented: a split view fills its bounds with the divider and its
+     * subviews, and the answer was already correct. What the NSUnimplementedMethod line did was
+     * log once PER DRAW: iTerm2 asks on every frame of its session, which buried the log under
+     * thousands of identical lines and made every other message impossible to find. */
     return YES;
 }
 
