@@ -4370,3 +4370,38 @@ initFunctionsForParameters rewrites a default byte order to 32Little on a little
 those pixels are read as BGRX. That is not a sufficient explanation on its own, because the same
 format is used for the icons that come out correct at startup, and it is recorded as an observation
 rather than a diagnosis.
+
+
+## The violet icons were a byte order
+
+2026-08-16, commit aa6990d9. The LibreOffice toolbar icons came out violet: the blue folder was
+magenta, the black floppy was blue, everything with colour in it rotated. Not always, which is what
+made it worth chasing properly.
+
+Core Graphics reads kCGBitmapByteOrderDefault as the layout the alpha info spells out, on every
+machine: with kCGImageAlphaNoneSkipFirst a pixel is X, R, G, B in memory, in that order. The host
+order is what kCGBitmapByteOrder32Little says instead, and a caller that wants it asks for it, which
+is exactly what the Wayland surface in this tree does. Onyx2D rewrote Default to 32Little on a
+little endian machine, so an XRGB pixel was read as B, G, R.
+
+The same icon in two runs said it exactly:
+
+    correct   srgb(119,205,247)     memory X=255 R=119 G=205 B=247
+    wrong     srgb(205,119,255)     those same bytes read as B=255 G=119 R=205
+
+Measured after the change, the same pixel in the harness that was wrong: srgb(119,205,247), the
+value the other harness had all along. And looked at: the folder is blue, the save icon is black and
+white, the PDF icon has its red A, the printer is blue and grey. The other harness is unchanged down
+to the pixel, and the save panel keeps its traffic lights, its blue default button and its blue tick
+and still writes the file.
+
+THE PART THAT MADE IT CONFUSING is worth remembering for the next time two harnesses disagree: the
+SAME icons were correct in one and violet in the other because the two runs take different paths
+inside LibreOffice, not because the compositors differ. The nested 1256x684 run draws 283 masked
+icons through drawAlphaBitmap; the headless 1600x1000 run draws none at all. A difference between
+harnesses is not always a difference in the environment.
+
+And one instrument cost an application crash to find. Dumping the pixels of a small masked image
+took LibreOffice down with Unspecified Application Error, because an image can reach the draw with no
+eight bit reader at all. The dump checks first now, and says so when it finds one, since an image
+nothing can read is a bug in its own right rather than something to step around quietly.
