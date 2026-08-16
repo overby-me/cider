@@ -653,7 +653,20 @@ static BOOL NIBTracing(void) {
     for (i = 0; i < _objectCount; i++) {
         if (_instances[i] == original) {
             [replacement retain];
-            [_instances[i] release];
+            /*
+             * AUTORELEASE, NOT RELEASE, BECAUSE THE OBJECT BEING REPLACED IS USUALLY STILL RUNNING.
+             *
+             * The one caller of this is -[NSClassSwapper initWithCoder:], which replaces ITSELF with
+             * the object it just allocated and then keeps going: it reads its own ivars afterwards
+             * to send initWithCoder: to that object. The swapper only reference is the one this
+             * table holds, so releasing it here deallocates it MID METHOD, and the next ivar read
+             * comes out of freed memory.
+             *
+             * What that looks like is nothing like a use after free: objc_msgSend faults with a
+             * receiver of 0x18, sixteen frames into a nib decode, and it takes the whole application
+             * with it before its first window. Both iTerm2 3.4.23 and 3.6.10 died there.
+             */
+            [_instances[i] autorelease];
             _instances[i] = replacement;
         }
     }

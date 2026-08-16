@@ -5195,3 +5195,33 @@ a binary that has one. Until then they are measured guesses.
 WHERE IT STOPS NOW: -[NSClassSwapper initWithCoder:] sending a message to 0x18 while decoding the
 main nib, which is the SAME fault the 3.4.23 build hits. So the two versions have converged on one
 bug in this port nib reader, and that is now the single thing between iTerm2 and a window.
+
+
+## The nib reader freed an object that was still running, and the wall after it is Swift metadata
+
+2026-08-16. The fault both iTerm2 versions converged on is a USE AFTER FREE in this port nib reader,
+and it is one line.
+
+-[_NSNIBArchiveUnarchiver replaceObject:withObject:] released the object it was replacing. Its one
+caller is -[NSClassSwapper initWithCoder:], which replaces ITSELF with the object it has just
+allocated and then keeps going: it reads its own ivars afterwards to send initWithCoder: to that
+object. The swapper only reference is the one the instance table holds, so releasing it there
+deallocated it MID METHOD, and the next ivar read came out of freed memory. What that looks like
+from outside is nothing like a use after free: objc_msgSend faulting with a receiver of 0x18,
+sixteen frames into a nib decode. It is an autorelease now.
+
+AND THE WALL AFTER IT IS THE ONE PREDICTED TWO ENTRIES AGO. iTerm2 3.6.10 now gets past the nib and
+dies in the Swift runtime:
+
+    0  libswiftKore.dylib     swift_checkMetadataState + 27          fault address 0
+    2  libswiftKore.dylib     swift_getGenericMetadata + 1477
+    4  iTermSwiftPackages     WebExtensionsFramework.BackgroundScriptNavigationDelegate ...
+    6  libswiftKore.dylib     swift_getSingletonMetadata + 949
+    8  libobjc.A.dylib        realizeClassMaybeSwiftMaybeRelock
+    9  libobjc.A.dylib        realizeAllClasses
+
+So the Objective-C runtime is realising every class, one of them is a Swift class whose metadata has
+to be instantiated, and instantiating it walks into a type this prefix answers with a LOAD STUB. A
+stub can satisfy dyld, which binds addresses; it cannot satisfy swift_checkMetadataState, which
+reads a metadata record. This is the ceiling the stub approach was always going to hit, now with the
+frames to prove it rather than a hypothesis.
