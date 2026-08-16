@@ -198,6 +198,25 @@ id _NSTabViewFloatingCell = nil;
     }
 }
 
+/*
+ * THE CONTROL SIZE, which the nib decoder has always read into _controlSize and which nothing could
+ * read or write afterwards. iTerm2 sets it on its tab view while building a terminal window and the
+ * unrecognized selector ended the process. Setting it re-picks the font, which is the same rule the
+ * decoder above uses, so a regular sized tab view asked to become small looks small.
+ */
+- (NSControlSize) controlSize {
+    return _controlSize;
+}
+
+- (void) setControlSize: (NSControlSize) size {
+    if (_controlSize == size)
+        return;
+
+    _controlSize = size;
+    [self setFont: [NSFont boldSystemFontOfSize: 13 - _controlSize * 2]];
+    [self setNeedsDisplay: YES];
+}
+
 - (NSFont *) font {
     return _font;
 }

@@ -43,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSView.h>
 #import <AppKit/NSWindow-Private.h>
 #import <AppKit/NSWindow.h>
+#import <AppKit/NSTitlebarAccessoryViewController.h>
 #import <AppKit/NSWindowAnimationContext.h>
 #import <ApplicationServices/ApplicationServices.h>
 #import <CoreGraphics/CGWindow.h>
@@ -419,6 +420,7 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) dealloc {
+    [_titlebarAccessoryViewControllers release];
     [[NSNotificationCenter defaultCenter] removeObserver: self];
     [_childWindows release];
     [_title release];
@@ -1140,6 +1142,112 @@ static BOOL _allowsAutomaticWindowTabbing;
 
     if ([self _isApplicationWindow])
         [NSApp changeWindowsItem: self title: title filename: NO];
+}
+
+/*
+ * THE BACKING SCALE, which is the number an application multiplies by to get device pixels. NSScreen
+ * has answered this for a while and NSWindow did not, so iTerm2 raised on it while laying out a
+ * terminal window. It follows the screen the window is on, as macOS does, and falls back to the main
+ * screen for a window that is not on one yet. The four converters are the same number applied.
+ */
+- (CGFloat) backingScaleFactor {
+    NSScreen *screen = [self screen];
+
+    if (screen == nil)
+        screen = [NSScreen mainScreen];
+
+    if ([screen respondsToSelector: @selector(backingScaleFactor)])
+        return [screen backingScaleFactor];
+
+    return 1.0;
+}
+
+- (NSRect) convertRectToBacking: (NSRect) rect {
+    CGFloat scale = [self backingScaleFactor];
+
+    return NSMakeRect(rect.origin.x * scale, rect.origin.y * scale, rect.size.width * scale,
+                      rect.size.height * scale);
+}
+
+- (NSRect) convertRectFromBacking: (NSRect) rect {
+    CGFloat scale = [self backingScaleFactor];
+
+    if (scale == 0.0)
+        return rect;
+
+    return NSMakeRect(rect.origin.x / scale, rect.origin.y / scale, rect.size.width / scale,
+                      rect.size.height / scale);
+}
+
+- (NSPoint) convertPointToBacking: (NSPoint) point {
+    CGFloat scale = [self backingScaleFactor];
+
+    return NSMakePoint(point.x * scale, point.y * scale);
+}
+
+- (NSPoint) convertPointFromBacking: (NSPoint) point {
+    CGFloat scale = [self backingScaleFactor];
+
+    if (scale == 0.0)
+        return point;
+
+    return NSMakePoint(point.x / scale, point.y / scale);
+}
+
+/*
+ * THE TITLE BAR ACCESSORIES. NSTitlebarAccessoryViewController is how an application puts its own
+ * controls into the title bar, and every one of these was an unrecognized selector: iTerm2 asks for
+ * the list while it is building its terminal window and the exception ends the process.
+ *
+ * The list is kept and answered, which is what a caller can observe from Objective-C, and the views
+ * are NOT PLACED in the title bar yet. That is stated plainly rather than hidden: an accessory added
+ * here does not appear on screen. Placing them means deciding where the leading, trailing and
+ * bottom layout attributes land in NSThemeFrame, and that is a separate piece of work; an
+ * application that adds one and gets a raise cannot even reach the question.
+ */
+- (NSArray *) titlebarAccessoryViewControllers {
+    if (_titlebarAccessoryViewControllers == nil)
+        _titlebarAccessoryViewControllers = [[NSMutableArray alloc] init];
+
+    return _titlebarAccessoryViewControllers;
+}
+
+- (void) setTitlebarAccessoryViewControllers: (NSArray *) controllers {
+    id old = _titlebarAccessoryViewControllers;
+
+    _titlebarAccessoryViewControllers = [controllers mutableCopy];
+    [old release];
+}
+
+- (void) addTitlebarAccessoryViewController: (NSTitlebarAccessoryViewController *) controller {
+    if (controller == nil)
+        return;
+
+    [[self titlebarAccessoryViewControllers] performSelector: @selector(addObject:)
+                                                  withObject: controller];
+}
+
+- (void) insertTitlebarAccessoryViewController: (NSTitlebarAccessoryViewController *) controller
+                                       atIndex: (NSInteger) index
+{
+    if (controller == nil)
+        return;
+
+    NSMutableArray *list = (NSMutableArray *) [self titlebarAccessoryViewControllers];
+
+    if (index < 0 || index > (NSInteger) [list count])
+        index = [list count];
+
+    [list insertObject: controller atIndex: index];
+}
+
+- (void) removeTitlebarAccessoryViewControllerAtIndex: (NSInteger) index {
+    NSMutableArray *list = (NSMutableArray *) [self titlebarAccessoryViewControllers];
+
+    if (index < 0 || index >= (NSInteger) [list count])
+        return;
+
+    [list removeObjectAtIndex: index];
 }
 
 - (void) setTitleWithRepresentedFilename: (NSString *) filename {

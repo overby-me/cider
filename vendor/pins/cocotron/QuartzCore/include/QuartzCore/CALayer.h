@@ -79,6 +79,18 @@ CA_EXPORT NSString *const kCAContentsFormatGray8Uint;
     CATransform3D _sublayerTransform;
     NSString *_minificationFilter;
     NSString *_magnificationFilter;
+    NSString *_contentsGravity;
+    NSDictionary *_actions;
+    CGColorRef _backgroundColor;
+    CGColorRef _borderColor;
+    CGFloat _borderWidth;
+    CGFloat _cornerRadius;
+    CGFloat _zPosition;
+    BOOL _hidden;
+    NSString *_name;
+    CGFloat _contentsScale;
+    BOOL _masksToBounds;
+    BOOL _needsDisplayOnBoundsChange;
     BOOL _needsDisplay;
     NSMutableDictionary *_animations;
     NSNumber *_textureId;
@@ -101,6 +113,25 @@ CA_EXPORT NSString *const kCAContentsFormatGray8Uint;
 
 @property(copy) NSString *minificationFilter;
 @property(copy) NSString *magnificationFilter;
+
+/* HOW THE CONTENTS SIT IN THE LAYER, and the scale they are drawn at. A layer backed view sets
+ * these as a matter of course, and every one of them was an unrecognized selector. */
+@property(copy) NSString *contentsGravity;
+@property CGFloat contentsScale;
+@property BOOL masksToBounds;
+@property BOOL needsDisplayOnBoundsChange;
+
+/* THE ACTION MAP, which is how an application turns an implicit animation OFF. */
+@property(copy) NSDictionary *actions;
+
+/* THE ORDINARY LAYER LOOK. Stored and answered; the drawing here does not honour them yet. */
+@property CGColorRef backgroundColor;
+@property CGColorRef borderColor;
+@property CGFloat borderWidth;
+@property CGFloat cornerRadius;
+@property CGFloat zPosition;
+@property(getter=isHidden) BOOL hidden;
+@property(copy) NSString *name;
 
 - init;
 

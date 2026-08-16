@@ -1,6 +1,7 @@
 #import <Foundation/NSDictionary.h>
 #import <QuartzCore/CAAnimation.h>
 #import <QuartzCore/CALayer.h>
+#import <CoreGraphics/CGColor.h>
 #import <QuartzCore/CALayerContext.h>
 #import <QuartzCore/CATransaction.h>
 
@@ -207,6 +208,50 @@ NSString *const kCAContentsFormatGray8Uint = @"Gray8";
     _sublayerTransform = value;
 }
 
+/*
+ * CONTENTS GRAVITY, SCALE, MASKING AND THE BOUNDS REDRAW FLAG.
+ *
+ * These four are set by ordinary layer backed views, and until now each one was an unrecognized
+ * selector that ended the process: iTerm2 raised on -setContentsGravity: while building a terminal
+ * window. They are STORED AND ANSWERED, and the drawing here does not yet honour them: contents are
+ * drawn the way this layer has always drawn them, masksToBounds does not clip, and a bounds change
+ * redraws or does not on the old rules. Storing them is what lets an application get past its own
+ * setup, and the honest statement of what is not done belongs here rather than in a release note.
+ */
+- (NSString *) contentsGravity {
+    return _contentsGravity != nil ? _contentsGravity : kCAGravityResize;
+}
+
+- (void) setContentsGravity: (NSString *) value {
+    value = [value copy];
+    [_contentsGravity release];
+    _contentsGravity = value;
+}
+
+- (CGFloat) contentsScale {
+    return _contentsScale > 0.0 ? _contentsScale : 1.0;
+}
+
+- (void) setContentsScale: (CGFloat) value {
+    _contentsScale = value;
+}
+
+- (BOOL) masksToBounds {
+    return _masksToBounds;
+}
+
+- (void) setMasksToBounds: (BOOL) value {
+    _masksToBounds = value;
+}
+
+- (BOOL) needsDisplayOnBoundsChange {
+    return _needsDisplayOnBoundsChange;
+}
+
+- (void) setNeedsDisplayOnBoundsChange: (BOOL) value {
+    _needsDisplayOnBoundsChange = value;
+}
+
 - (NSString *) minificationFilter {
     return _minificationFilter;
 }
@@ -250,6 +295,13 @@ NSString *const kCAContentsFormatGray8Uint = @"Gray8";
     [_animations release];
     [_minificationFilter release];
     [_magnificationFilter release];
+    [_actions release];
+    [_contentsGravity release];
+    [_name release];
+    if (_backgroundColor != NULL)
+        CGColorRelease(_backgroundColor);
+    if (_borderColor != NULL)
+        CGColorRelease(_borderColor);
     [super dealloc];
 }
 
@@ -356,7 +408,107 @@ NSString *const kCAContentsFormatGray8Uint = @"Gray8";
     return [super valueForKey: key];
 }
 
+/*
+ * THE ORDINARY LAYER LOOK: a background, a border, a corner radius, a z position, a name and the
+ * hidden flag. Every one of them was an unrecognized selector, and a layer backed view sets several
+ * of them as a matter of course, so an application died on the first one it reached. They are
+ * STORED AND ANSWERED and the drawing does NOT honour them yet: a layer with a background colour
+ * still draws exactly what it drew before. Said plainly because the difference is invisible from
+ * Objective-C and very visible on screen.
+ */
+- (CGColorRef) backgroundColor {
+    return _backgroundColor;
+}
+
+- (void) setBackgroundColor: (CGColorRef) value {
+    CGColorRef old = _backgroundColor;
+
+    _backgroundColor = value != NULL ? CGColorRetain(value) : NULL;
+    if (old != NULL)
+        CGColorRelease(old);
+}
+
+- (CGColorRef) borderColor {
+    return _borderColor;
+}
+
+- (void) setBorderColor: (CGColorRef) value {
+    CGColorRef old = _borderColor;
+
+    _borderColor = value != NULL ? CGColorRetain(value) : NULL;
+    if (old != NULL)
+        CGColorRelease(old);
+}
+
+- (CGFloat) borderWidth {
+    return _borderWidth;
+}
+
+- (void) setBorderWidth: (CGFloat) value {
+    _borderWidth = value;
+}
+
+- (CGFloat) cornerRadius {
+    return _cornerRadius;
+}
+
+- (void) setCornerRadius: (CGFloat) value {
+    _cornerRadius = value;
+}
+
+- (CGFloat) zPosition {
+    return _zPosition;
+}
+
+- (void) setZPosition: (CGFloat) value {
+    _zPosition = value;
+}
+
+- (BOOL) isHidden {
+    return _hidden;
+}
+
+- (void) setHidden: (BOOL) value {
+    _hidden = value;
+}
+
+- (NSString *) name {
+    return _name;
+}
+
+- (void) setName: (NSString *) value {
+    value = [value copy];
+    [_name release];
+    _name = value;
+}
+
+- (NSDictionary *) actions {
+    return _actions;
+}
+
+- (void) setActions: (NSDictionary *) value {
+    value = [value copy];
+    [_actions release];
+    _actions = value;
+}
+
+/*
+ * THE ACTION MAP IS CONSULTED FIRST, WHICH IS THE POINT OF IT. An application that wants no implicit
+ * animation for a property sets actions to a dictionary with NSNull under that key, and macOS then
+ * returns nothing for it. Answering a fresh CABasicAnimation for every key regardless, as this did,
+ * makes that setting unobservable. NSNull means NO ACTION and is returned as nil, exactly as the
+ * documented lookup order says.
+ */
 - (id<CAAction>) actionForKey: (NSString *) key {
+    if (key != nil && _actions != nil) {
+        id action = [_actions objectForKey: key];
+
+        if (action == [NSNull null])
+            return nil;
+        if (action != nil)
+            return action;
+    }
+
     CABasicAnimation *basic = [CABasicAnimation animationWithKeyPath: key];
 
     [basic setFromValue: [self valueForKey: key]];

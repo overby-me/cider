@@ -1,0 +1,29 @@
+--- a/src/NSConcreteMapTable.m
++++ b/src/NSConcreteMapTable.m
+@@ -1380,11 +1380,23 @@
+ {
+   GSIMapNode	node;
+ 
++  /* A NIL KEY IS NOT AN ERROR HERE, WHICH IS WHAT macOS DOES AND WHAT -removeObjectForKey: ten
++   * lines above has always done. A map table is not a dictionary: it is built on pointer functions
++   * and a caller is allowed to hand it nothing.
++   *
++   * Raising cost iTerm2 every window it ever tried to open. It creates an iTermVariables with no
++   * values in it and IMMEDIATELY sets the primary key to "id", the value of that key is looked up
++   * before anything can have set it, and -[iTermVariablesIndex setVariables:forKey:] is a tail call
++   * straight into this method with that nil. Disassembled rather than guessed: the index method is
++   * six instructions with no guard in it, so a shipping application does this on macOS on every
++   * window and lives. The insert is dropped rather than stored, since the entry a caller could look
++   * up under nil is not one this table can be asked for; the same caller comes back with a real key
++   * as soon as one exists, through the change block it installed.
++   */
+   if (aKey == nil)
+     {
+-      [NSException raise: NSInvalidArgumentException
+-		  format: @"[%@-%@:] given nil argument",
+-        NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
++      NSWarnMLog(@"attempt to insert nil key into map table %@", self);
++      return;
+     }
+   node = GSIMapNodeForKey(self, (GSIMapKey)aKey);
+   if (node)

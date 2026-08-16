@@ -1320,4 +1320,24 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
                           ofType: [name pathExtension]];
 }
 
+/*
+ * THE IMAGE ITSELF, not the path to it. -imageForResource: is what an application actually calls,
+ * and it was missing while the path lookup underneath it has been here all along, so iTerm2 raised
+ * on it while building a terminal window. macOS also finds images in a compiled asset catalog and
+ * this cannot, so a name that lives only in Assets.car answers nil rather than an image; a name
+ * that is a file in the bundle answers the image.
+ */
+- (NSImage *) imageForResource: (NSString *) name {
+    NSString *path = [self pathForImageResource: name];
+
+    if (path == nil)
+        return nil;
+
+    NSImage *image = [[[NSImage alloc] initWithContentsOfFile: path] autorelease];
+
+    [image setName: name];
+
+    return image;
+}
+
 @end

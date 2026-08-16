@@ -57,6 +57,9 @@ typedef enum {
 - (NSSize) minimumSize;
 - (NSRect) contentRect;
 
+- (NSControlSize) controlSize;
+- (void) setControlSize: (NSControlSize) size;
+
 - (NSFont *) font;
 - (NSTabViewType) tabViewType;
 - (NSTabPosition) tabPosition;

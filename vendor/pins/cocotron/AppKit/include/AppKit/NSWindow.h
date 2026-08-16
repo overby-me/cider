@@ -148,6 +148,8 @@ APPKIT_EXPORT const NSNotificationName NSWindowWillEnterFullScreenNotification;
 APPKIT_EXPORT const NSNotificationName NSWindowWillExitFullScreenNotification;
 APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 
+@class NSTitlebarAccessoryViewController;
+
 @interface NSWindow : NSResponder <NSUserInterfaceItemIdentification, NSAccessibility> {
     NSRect _frame;
     NSWindowStyleMask _styleMask;
@@ -164,6 +166,7 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 
     NSString *_representedFilename;
     NSAppearance *_ciderAppearance;
+    NSMutableArray *_titlebarAccessoryViewControllers;
     NSString *_title;
     NSString *_miniwindowTitle;
     NSImage *_miniwindowImage;
@@ -381,6 +384,20 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 - (void) setAutorecalculatesContentBorderThickness: (BOOL) automatic
                                            forEdge: (NSRectEdge) edge;
 - (void) setTitle: (NSString *) title;
+
+/* THE TITLE BAR ACCESSORIES, which are how a macOS application puts its own controls up there. */
+- (CGFloat) backingScaleFactor;
+- (NSRect) convertRectToBacking: (NSRect) rect;
+- (NSRect) convertRectFromBacking: (NSRect) rect;
+- (NSPoint) convertPointToBacking: (NSPoint) point;
+- (NSPoint) convertPointFromBacking: (NSPoint) point;
+
+- (NSArray *) titlebarAccessoryViewControllers;
+- (void) setTitlebarAccessoryViewControllers: (NSArray *) controllers;
+- (void) addTitlebarAccessoryViewController: (NSTitlebarAccessoryViewController *) controller;
+- (void) insertTitlebarAccessoryViewController: (NSTitlebarAccessoryViewController *) controller
+                                       atIndex: (NSInteger) index;
+- (void) removeTitlebarAccessoryViewControllerAtIndex: (NSInteger) index;
 - (void) setTitleWithRepresentedFilename: (NSString *) filename;
 - (void) setContentView: (NSView *) view;
 

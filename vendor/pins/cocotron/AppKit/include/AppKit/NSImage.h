@@ -160,6 +160,7 @@ typedef enum {
 
 @interface NSBundle (NSImage)
 - (NSString *) pathForImageResource: (NSString *) name;
+- (NSImage *) imageForResource: (NSString *) name;
 @end
 
 @protocol NSImageDelegate <NSObject>
