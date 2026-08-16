@@ -5058,3 +5058,37 @@ If it holds, it also says something about the ceiling: SwiftUI cannot be answere
 because what an application needs from it first is metadata, not code. The way to prove it is a
 handler that is installed before libc++, which means dyld itself or libSystem rather than
 CoreFoundation, and that is the next rung.
+
+
+## A correction: that SIGSEGV is not a fault, and it is not the application
+
+2026-08-16, and this entry corrects the two before it. The core dump from the iTerm2 3.6.10 run was
+read rather than assumed, and it says something different from what was written:
+
+    NT_SIGINFO   signo=11 code=0 addr=0x2
+    NT_PRSTATUS  pid=2 ppid=1 cursig=11
+
+si_code 0 is SI_USER, which means the signal was SENT rather than raised by a memory access, and for
+a sent signal the field that was read as a fault address is the sender pid. So nothing dereferenced
+address 0x2. And the process the core belongs to is PID 2 with parent 1 INSIDE THE GUEST, which is
+the shell helper that starts the application, not the application: the same helper whose stack the
+inserted handler printed earlier, twelve frames ending in listenForConnections and main.
+
+WHAT IS ACTUALLY KNOWN, with the guesses removed:
+
+    the loader is satisfied      no missing library, no missing symbol
+    initialisers begin           libobjc, libSystem, libc++ all print through
+                                 DYLD_PRINT_INITIALIZERS
+    and then it stops            CoreFoundation never initialises, and neither does libswiftCore,
+                                 whose initialiser would run before the application own
+    the shell reports 1          which is an ordinary exit status, not 128 plus a signal
+
+So the application is not crashing where the last two entries said it was. It stops between the
+libc++ initialisers and the Swift runtime initialiser, and the core that was being read all along
+belongs to the helper process.
+
+THE HYPOTHESIS ABOUT STUB METADATA IS THEREFORE UNSUPPORTED SO FAR. It may still be right, and the
+new suspect beside it is the libswiftCore SHIM itself: the real runtime was renamed to
+libswiftKore.dylib and re-exported under the old name, and the Swift runtime registers its own image
+during initialisation. The next rung is to find out whether the application process produces a core
+of its own at all, and to instrument the exit rather than the signal.
