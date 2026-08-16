@@ -143,6 +143,21 @@ void cider_wayland_post_flags_changed(unsigned long modifiers, long windowNumber
  * The previously focused window is deactivated first, in that order, because AppKit tracks a
  * single key window and activating a second while the first still believes it is key leaves two.
  */
+/*
+ * RETAINED, BECAUSE A RAW POINTER HERE OUTLIVES THE WINDOW IT NAMES.
+ *
+ * This used to be an unretained id. Nothing tells it when the window it points at is deallocated,
+ * so the next focus change sent respondsToSelector: to freed memory and the process took SIGSEGV
+ * inside objc_msgSend. It is reached most easily on the LEAVE path, where the delegate argument is
+ * nil and the only object messaged is this stale one:
+ *
+ *   0  libobjc.A.dylib  objc_msgSend + 41
+ *   1  Wayland          cider_wayland_set_keyboard_focus + 67
+ *   2  Wayland          wayland_appkit_lib::input::on_keyboard_leave
+ *
+ * If a pointer is kept across events then its object has to be owned, so it is retained while held
+ * and released when replaced.
+ */
 static id cider_wayland_key_window = nil;
 
 void cider_wayland_set_keyboard_focus(id delegate, id platformWindow)
@@ -156,7 +171,9 @@ void cider_wayland_set_keyboard_focus(id delegate, id platformWindow)
 		[cider_wayland_key_window platformWindowDeactivated: nil
 								   checkForAppDeactivation: NO];
 	}
-	cider_wayland_key_window = delegate;
+	/* Release AFTER the deactivation above, which still needs the old window alive. */
+	[cider_wayland_key_window release];
+	cider_wayland_key_window = [delegate retain];
 	if (delegate != nil &&
 		[delegate respondsToSelector: @selector(platformWindowActivated:displayIfNeeded:)]) {
 		/*

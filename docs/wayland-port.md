@@ -6506,3 +6506,77 @@ What is actually true, all from one run with CIDER_XPC_LAUNCH_SERVICES on:
 
 So the message leaves and nothing answers. The remaining question is whether the far side receives
 it at all, which is a question about the receiving half of NSXPCConnection rather than about images.
+
+### The worker refused every connection because it could not enter a sandbox
+
+The receiving half was the right place to look, and the answer was one instruction into iTerm2 own
+code rather than anywhere in ours.
+
+Tracing the whole chain at the five points it could stop, and naming each so the FIRST missing line
+is the answer, gave this for the two bundled services in one run:
+
+    pidinfo           XPCMAIN -> XPCSERVER -> XPCPEER responds=1 -> accepted=1 -> RECV -> INVOKE
+    sandboxed-worker  XPCMAIN -> XPCSERVER -> XPCPEER responds=1 -> accepted=0
+
+So the worker started, was offered the connection, and its own delegate said no. The first
+instruction of that delegate says why:
+
+    cmp byte [_sandboxSuccessful], 0
+    je   ...                          ; return NO
+
+and _sandboxSuccessful is set by main from a four call sequence, of which the FIRST already failed:
+
+    params = sandbox_create_params();      <- our libsandbox answered NULL
+    if (!params) goto fail;
+    profile = sandbox_compile_string(text, params, &error);
+    if (sandbox_apply_container(profile, 0) != 0) goto fail;
+
+NULL is not a neutral answer. An application that cannot BUILD a sandbox concludes it is running
+unprotected and disables the feature itself. sandbox_apply_container already returned zero, which
+its caller reads as success, so create_params was the only blocker. It now answers a static token.
+
+THIS IS A DELIBERATE LIE AND IT IS WRITTEN INTO THE SOURCE. A process that asks to be confined is
+told it was confined and is not. On this system that removes nothing it could have relied on, since
+the guest already runs with the privileges of the user running Cider and no sandbox was ever going
+to be applied; the alternative is not a safer iTerm2 but one that cannot show an image.
+
+With that changed the chain completes, accepted=1 through to
+decoded sel=decodeImageFromData:withReply:, and the PNG decoder is asked for the first time: 2
+matches for O2ImageSource_PNG where every previous run had 43 TIFF and 2 ICNS and never a PNG.
+
+### A focus change messaged a window that had been freed
+
+The run after that fix crashed where none had before:
+
+    0  libobjc.A.dylib  objc_msgSend + 41
+    1  Wayland          cider_wayland_set_keyboard_focus + 67
+    2  Wayland          wayland_appkit_lib::input::on_keyboard_leave
+
+cider_wayland_key_window was a raw unretained id. Nothing tells it when its window is deallocated,
+so the next focus change sent respondsToSelector: to freed memory. It is reached most easily on the
+LEAVE path, where the incoming delegate is nil and the only object messaged is the stale one. If a
+pointer is kept across events then its object has to be owned, so it is retained while held and
+released when replaced. Six frames captured after that, no crash.
+
+### The image draws, and the pixels are still wrong
+
+imgcat now produces a VISIBLE rectangle in the terminal, correctly sized and correctly placed
+between the command and the next prompt. That is new. It is not finished:
+
+    source imgtest8.png   240x120 truecolour, a vertical gradient from (244,0,11) to (9,0,246)
+    what is drawn         a uniform (128,128,128) rectangle, every sampled pixel identical
+
+A flat mid grey is a placeholder rather than a damaged gradient, and iTerm2 knows the size from the
+escape sequence, which is why the box is the right shape while empty.
+
+AND THE REPLY IS NOT THE PROBLEM, correcting a reading made an hour earlier. CIDER_XPCRECV never
+fired in the application process, which looked like a reply that never arrived; it cannot fire,
+because a message sent with send_message_with_reply is answered into a REPLY HANDLER and not into
+the connection event handler. Traced properly, both halves are there:
+
+    CIDER_XPCREPLYSEND pid=61 sel=decodeImageFromData:withReply:
+    CIDER_XPCREPLY     pid=20 seq=0 type=dictionary
+
+So the request is decoded by the worker, a reply is sent, and the application receives it. What is
+still unknown is what survives inside that reply: whether the iTermImage decodes back into an object
+with pixels in it.
