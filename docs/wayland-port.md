@@ -4585,3 +4585,50 @@ FOUR HARNESS TRAPS, all of them capable of looking exactly like a broken keyboar
 WHAT IS NOT PROVEN HERE. Command F was sent in an earlier pass and the find bar was not in the shot,
 but the shot and the Escape that closes it were half a second apart, so that is a harness timing
 question and not a finding. Drag and drop is still untested.
+
+
+## iTerm2 gets through window construction, and a catch all stub is worse than a missing method
+
+2026-08-16, goal 4. iTerm2 used to die inside its own variable machinery before any window. Seven
+gaps later it builds its terminal window without a single unrecognized selector and dies afterwards,
+silently, in layer and visual effect setup.
+
+THE FIRST ONE WAS US BEING STRICTER THAN macOS, and it is the one worth reading. NSConcreteMapTable
+raised NSInvalidArgumentException for a nil key, while removeObjectForKey: ten lines above has always
+warned and returned. A map table is not a dictionary. The proof that macOS accepts it is in the
+application, disassembled rather than guessed:
+
+    -[PseudoTerminal finishInitialization...]   makes an iTermVariables with NO values in it and
+                                                IMMEDIATELY calls setPrimaryKey with the string id
+    -[iTermVariables setPrimaryKey:]            builds a reference to that path and reads its value
+    -[iTermVariables valueForVariableName:]     answers nil: nothing has set id yet, and the name
+                                                has no dot for the path walk to follow
+    -[iTermVariablesIndex setVariables:forKey:] is SIX INSTRUCTIONS and a tail call straight into
+                                                setObject:forKey:, with no nil guard anywhere
+
+A shipping application does that on every window it opens. The insert is dropped now rather than
+stored, and the caller comes back with a real key through the change block it installed.
+
+A CATCH ALL STUB IS WORSE THAN A MISSING METHOD, which is the other lesson. NSVisualEffectView and
+NSTitlebarAccessoryViewController answered EVERY selector through a forwarding stub whose signature
+said the method returns void and takes nothing. A setter then arrives with an argument the signature
+does not describe, which is the NSForwardSignatureError iTerm2 produced on setMaterial:,
+setBlendingMode: and setState:, and a GETTER returns whatever is in the return register, so an
+application that asks which material it is gets a number nobody chose. Both classes have real
+properties now, and NSVisualEffectView draws its material as the nearest system colour, which is an
+approximation and is written down as one: blending behind the window needs the compositor and
+blending within it needs the content under the view.
+
+THE REST, all of them ordinary missing API: NSWindow titlebarAccessoryViewControllers and the add,
+insert, remove and set methods (kept and answered, NOT placed in the title bar yet); NSWindow
+backingScaleFactor and the four backing converters; CALayer contentsGravity, contentsScale,
+masksToBounds, needsDisplayOnBoundsChange, backgroundColor, borderColor, borderWidth, cornerRadius,
+zPosition, hidden and name (stored and answered, drawing does not honour them yet); the CALayer
+action map, where actionForKey: now consults it so that NSNull under a key means no action;
+NSTabView controlSize, which the nib decoder has always read and nothing could set; and NSBundle
+imageForResource:, the image rather than the path.
+
+WHERE IT STOPS NOW. No exception and no message: the process takes SIGABRT right after it sets up
+its visual effect views, and all five threads in the core are parked in libsystem_kernel, which is
+what the abort path looks like from outside. The next step is to walk the aborting thread rather
+than the thread list.
