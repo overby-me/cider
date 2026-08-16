@@ -6298,3 +6298,48 @@ DYLD_PRINT_INITIALIZERS=${DYLD_PRINT_INITIALIZERS:-}, which SETS the variable to
 and dyld tests only whether it is present. Every session began with dozens of initializer lines that
 raced the typing and scrambled it. This is the same empty-is-not-unset trap that had already been
 fixed inside our own glyph gates, met a second time from the other side.
+
+### A nil CTLine is not an empty line, it is a dead process
+
+Chasing imgcat produced a rule worth keeping. In this CoreFoundation, CFRelease of NULL is a HALT.
+So every CoreText creator that answers nil kills any caller written the ordinary way:
+
+    obj = CTSomethingCreateWith...(string);
+    ... measure ...
+    CFRelease(obj);
+
+CTLineCreateWithAttributedString and CTFramesetterCreateWithAttributedString were both stubs
+answering nil, and iTerm2 died in
+-[NSString(iTerm) it_boundingRectWithSize:attributes:truncated:] measuring its badge. The line stub
+alone was reached 759 times in a single launch, so this was not an obscure path.
+
+Both are implemented now. CTLine resolves the font from the attributes, maps characters to glyphs,
+measures advances and answers bounds, counts, offsets and hit testing, and draws through the same
+Onyx2D entry point as the rest of the text path. CTFramesetter answers a suggested size by laying
+the string out through CTLine with greedy word wrapping at the constraint width. Truncation and
+justification are not implemented and return the line RETAINED rather than nil, which is the same
+rule stated positively: hand back something the caller can release.
+
+FIXING THE FIRST ONE DID NOT STOP THE CRASH, which is the part worth remembering. The same HALT
+came from the same call site, and twenty instructions of iTerm2 disassembly showed the pattern
+create, measure, release with the released value coming from a DIFFERENT stub two calls earlier.
+That named the framesetter without guessing. When a create-and-release crash survives a fix, read
+the caller rather than the next plausible function.
+
+### base64, and the prompt that still said Darling
+
+The container had no base64 at all, which is what imgcat noticed first. Apple builds no such target
+in basic_cmds, where uuencode keeps a private base64.c for its -m flag, so there was nothing
+upstream to switch on and src/darwin/base64 is a first party implementation of the macOS interface.
+The interface is the part that matters: imgcat runs base64 --version and takes a different path if
+the answer mentions GNU, so answering an unknown option with usage on stderr and a failure, as macOS
+does, is deliberate.
+
+The shell prompt said Darling because the bash pin sets it in bashrc. That pin is materialised and
+read only, so the change is vendor/patches/bash rather than an edit.
+
+### Still not working after all that
+
+imgcat runs with no error and draws no image. The badge is accepted, measured without crashing, and
+not drawn. So iTerm2 inline drawing needs something beyond text measurement, and that is the next
+rung rather than a claim of success.
