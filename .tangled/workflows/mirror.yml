@@ -17,10 +17,21 @@ when:
   - event: ["push"]
     branch: ["main"]
 
-engine: nixery
+engine: microvm
+image: nixos
+
+# THE DEPTH IS NOT TRUSTED, and the fetch step below is why. A rewrite needs the whole history, but
+# the default clone depth is 1 and Depth is a plain int, so an explicit 0 here is indistinguishable
+# from an unset field and may well be read as the default. It is set because 0 is what a full clone
+# is spelled as when it is honoured, and the step below repairs a shallow clone if it was not.
+clone:
+  depth: 0
+
+dependencies:
+  - git
+  - git-filter-repo
 
 environment:
-  USER: root
   MIRROR_REPO: github.com/overby-me/cider
   # The first commit of this project. Everything before it is upstream Darling and is not published.
   GRAFT_ROOT: c90dc7f99
@@ -35,15 +46,17 @@ steps:
 
   - name: "Fetch the whole history"
     command: |
-      # A shallow clone cannot be rewritten, and CI checkouts are usually shallow.
+      # A shallow clone cannot be rewritten, and this one is shallow unless the depth above was
+      # honoured. Unshallowing a complete repository is an error, so it is guarded on the marker.
       if [ -f .git/shallow ]; then
         git fetch --unshallow
       fi
-      git rev-parse "$GRAFT_ROOT" > /dev/null
+      # THE CHECK THAT CANNOT LIE. An abbreviated hash only resolves if the object is actually
+      # present, so this fails loudly on a truncated history rather than mirroring one.
+      git cat-file -e "${GRAFT_ROOT}^{commit}"
 
   - name: "Rewrite so the first commit is the first commit of this project"
     command: |
-      nix-env -iA nixpkgs.git-filter-repo
       git replace --graft "$GRAFT_ROOT"
       # --force because this is a working clone with a remote, which filter-repo refuses by default.
       git filter-repo --force --quiet

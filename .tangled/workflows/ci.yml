@@ -19,28 +19,38 @@ when:
   - event: ["push", "pull_request"]
     branch: ["main", "buck2-port"]
 
-engine: nixery
+engine: microvm
+image: nixos
+
+# A package list rather than an install step: the engine puts these in every step, and caches
+# them, which is the whole reason to be on this engine rather than the nixery one.
+dependencies:
+  - cachix
+  - git
 
 environment:
-  USER: root
   CACHIX_NAME: cider-nix
 
 steps:
+  # CACHIX RATHER THAN THE NATIVE caches FIELD, deliberately. The microVM engine can take a
+  # substituter directly, but it wants the trusted public key alongside the URL, and that key is
+  # recorded nowhere in this repository. The cachix client fetches the key from the cachix API
+  # itself, so it is the spelling that cannot be got wrong here. If the key is ever written down,
+  # this step becomes a caches entry and disappears.
   - name: "Setup Cachix"
     command: |
-      nix-env -iA cachix -f https://cachix.org/api/v1/install
-      mkdir -p /tangled/home/.config/nix
-      echo -e "experimental-features = nix-command flakes\nmax-jobs = auto" > /tangled/home/.config/nix/nix.conf
-      cachix use $CACHIX_NAME
+      cachix use "$CACHIX_NAME"
 
   # EVERY ADVERTISED OUTPUT MUST EVALUATE. This is the step that would have caught both 2026-08-12
   # breaks: one died in buck2 analysis and one on a builtins.readDir of a directory #87 deleted,
   # and neither needed a single compile to surface. `nix flake show` walks the outputs, and
   # --all-systems is off because this flake is x86_64-linux only until the aarch64 release.
+  #
+  # The features are named on the command line rather than written into a nix.conf, because where
+  # that file has to go is a property of the engine and this is a property of the command.
   - name: "Flake outputs evaluate"
     command: |
-      rm -rf /homeless-shelter
-      nix flake show --json > /dev/null
+      nix --extra-experimental-features "nix-command flakes" flake show --json > /dev/null
 
   # NO BUILD STEPS, AND THAT IS THE POINT RATHER THAN A GAP. Darling is too large for a hosted
   # runner to finish; a CI that attempts it is a CI that always fails and is therefore ignored,
