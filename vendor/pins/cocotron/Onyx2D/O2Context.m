@@ -1444,10 +1444,13 @@ void O2ContextDrawImage(O2ContextRef self, O2Rect rect, O2ImageRef image) {
             O2AffineTransform ctm = O2ContextCurrentGState(self)->_deviceSpaceTransform;
 
             fprintf(stderr,
-                    "CIDER_DRAWIMAGE %zux%zu -> %.0f,%.0f %.0fx%.0f mask=%d ctm=[%.2f %.2f %.2f "
-                    "%.2f %.1f %.1f]",
+                    "CIDER_DRAWIMAGE %zux%zu -> %.0f,%.0f %.0fx%.0f mask=%d bpc=%zu bpp=%zu "
+                    "info=0x%X cs=%d ctm=[%.2f %.2f %.2f %.2f %.1f %.1f]",
                     O2ImageGetWidth(image), O2ImageGetHeight(image), rect.origin.x, rect.origin.y,
                     rect.size.width, rect.size.height, (int) (O2ImageGetMask(image) != NULL),
+                    O2ImageGetBitsPerComponent(image), O2ImageGetBitsPerPixel(image),
+                    (unsigned) O2ImageGetBitmapInfo(image),
+                    (int) [O2ImageGetColorSpace(image) type],
                     (double) ctm.a, (double) ctm.b, (double) ctm.c, (double) ctm.d,
                     (double) ctm.tx, (double) ctm.ty);
             for (int i = 1; i < depth; i++) {
