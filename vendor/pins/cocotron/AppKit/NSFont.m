@@ -157,12 +157,29 @@ static NSLock *_cacheLock = nil;
     return font;
 }
 
+/*
+ * THE CACHE OWNS WHAT IT HANDS OUT, which it did not before.
+ *
+ * +fontWithName:size: returns the cached object directly, with no retain and no autorelease, so
+ * every caller was holding a pointer the cache did not own: once the last real owner released the
+ * font it was deallocated, and any slot the removal did not clear kept pointing at freed memory.
+ * Removal matched by NAME AND SIZE rather than identity, so two fonts that agree on both cleared
+ * each others slots and left one dangling.
+ *
+ * What that looks like from an application is a font that is not an object: iTerm2 reads
+ * attributes[NSFontAttributeName] and gets 0x47 on one line and 0x18 on the next.
+ *
+ * Retaining here makes cached fonts effectively immortal, which is what a font cache is for and
+ * what AppKit does: the set is bounded by the distinct name and size pairs an application asks for.
+ */
 + (void) addFontToCache: (NSFont *) font {
 
     if (font == nil) {
         return;
     }
     NSUInteger i;
+
+    [font retain];
 
     [_cacheLock lock];
     for (i = 0; i < _fontCacheSize; i++) {
@@ -182,13 +199,21 @@ static NSLock *_cacheLock = nil;
     [_cacheLock unlock];
 }
 
+/* BY IDENTITY, not by name and size: two fonts can agree on both, and clearing the wrong slot is
+ * what left a dangling pointer in the cache. With the retain above this is only reached if
+ * something removes a font deliberately, since a cached font is never deallocated. */
 + (void) removeFontFromCache: (NSFont *) font {
-    [_cacheLock lock];
-    NSUInteger i = [self _cacheIndexOfFontWithName: [font fontName]
-                                              size: [font pointSize]];
+    NSUInteger i;
 
-    if (i != NSNotFound)
-        _fontCache[i] = nil;
+    [_cacheLock lock];
+    for (i = 0; i < _fontCacheSize; i++) {
+        if (_fontCache[i] == font) {
+            _fontCache[i] = nil;
+            [_cacheLock unlock];
+            [font release];
+            return;
+        }
+    }
     [_cacheLock unlock];
 }
 
