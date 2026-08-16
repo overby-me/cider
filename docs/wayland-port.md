@@ -6431,3 +6431,26 @@ nothing to resolve against here.
 So the next rung for inline images is launching bundle XPC services, not anything in CoreGraphics.
 That is a real piece of work rather than a missing selector, and it is worth saying that it is also
 what any application using a sandboxed helper will need.
+
+### The XPC lookup fails silently, and os_log will not tell you
+
+Following the previous entry, the exact failure point is
+-[XPC_CLASS(connection) activate] in vendor/src/libxpc/src/connection.m: for a client of a named
+service it calls bootstrap_look_up, and on failure calls xpc_log_error and gives up. Nothing
+registered com.iterm2.sandboxed-worker, so the lookup fails every time.
+
+The failure is INVISIBLE, and that is the part worth recording. xpc_log_error goes to os_log, os_log
+goes to syslog, and there is no syslog socket in this container. The sendto trick that recovers
+syslog text from syslog(3) callers does NOT work here: tracing sendto through a whole run captures
+721 calls and they are binary mach traffic. So a service that cannot be found produces no output on
+any channel.
+
+vendor/patches/libxpc adds a stderr line under CIDER_TRACE_XPC naming the service that could not be
+resolved. It is not exercised yet, because libxpc is a materialised pin and buck2 builds the
+unpatched copy until the source tree is rebuilt through nix.
+
+WHAT WOULD ACTUALLY FIX IMGCAT, stated so the next rung is not re-derived: launchd has to discover
+an application bundled XPC services, Contents/XPCServices with a CFBundleIdentifier of
+com.iterm2.sandboxed-worker in this case, and spawn one on demand when a client looks its name up.
+libxpc already knows where they live, bundle.m resolves the XPCServices subdirectory; launchd is the
+half that is missing.
