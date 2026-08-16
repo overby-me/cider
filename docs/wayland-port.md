@@ -5779,3 +5779,39 @@ release arrive at the device origin rather than where swaymsg put the compositor
 screenshots came out byte identical and the menu never opened. scratch/vptr/cider-vptr holds ONE
 device open for the whole script and takes abs/press/release on stdin, which is what run-lo-drag2.sh
 uses and why its clicks land.
+
+
+## Task 47 measured: launchd starts, and its second thread cannot reach the daemon
+
+2026-08-16. Running the container with launchd as init hangs, and now there is a chain rather than
+a symptom. The instrument is the one that worked on iTermServer: strace the container and read the
+syslog buffers, since nothing here has a syslog socket.
+
+    *** launchd[1] has started up. ***
+    /bin/launchctl: Could not open job overrides database at:
+        /private/var/db/launchd.db/com.apple.launchd/overrides.plist: 2: No such file or directory
+    /bin/launchctl: launch_msg(): Socket is not connected
+
+So launchd DOES start. launchctl then fails because it never learns launchd socket path:
+liblaunch asks for it with _vprocmgr_getsocket, which is vproc_mig_getsocket over the BOOTSTRAP
+PORT, and that Mach call does not get through.
+
+WHY IT DOES NOT GET THROUGH, and this is the part worth having:
+
+    *** 1:2: dserver_rpc_explicit_mach_reply_port: BAD SEND STATUS: -111 ***
+    *** 1:2: dserver_rpc_explicit_mach_msg_overwrite: BAD SEND STATUS: -111 ***
+    mach_msg_overwrite failed (internally): -111
+
+The 1:2 prefix is guest pid 1, thread 2, which is LAUNCHD ITSELF, and -111 is ECONNREFUSED on the
+per-thread RPC socket to the daemon, not a Mach error. launchd second thread cannot talk to the
+daemon at all, so it cannot serve the bootstrap request, so launchctl gets nothing, so no job ever
+starts and the container never comes up. launchd then takes a SIGABRT from pid 1.
+
+THAT IS THE NEXT RUNG FOR TASK 47: why a second thread of the container init has an RPC socket the
+daemon refuses. Every other guest process in the tree gets one, so it is specific to how PID 1
+threads are created or checked in. It also matters well beyond launchd, because a bootstrap port is
+what iTerm2 pty helper checks before it will stay alive, and what any XPC service needs.
+
+FOR THE RECORD, the other side of the same run: the overrides database directory
+/private/var/db/launchd.db/com.apple.launchd does not exist in the prefix. That one is cosmetic
+next to the socket failure, but it will need creating too.
