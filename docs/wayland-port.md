@@ -6153,3 +6153,44 @@ RESIZABLE. The output resolution was changed under a running Writer, twice:
 TWO CLAIMS IN THE LOOP PROMPT ARE STALE and this contradicts them with evidence: wl_seat is bound
 and input works, and resize is delivered and acted on. STATUS has said the three criteria are a
 floor rather than the goal for some time; this is the check behind that.
+
+### iTerm2 menus do not open, and what has been ruled out
+
+The click reaches the application. That is now measured rather than assumed, because pointer motion
+and button delivery were NOT traced at all and their silence had already been read twice as evidence
+of nothing arriving. With the trace added:
+
+    cider-wayland-input pointer=motion x=88 y=36 window=4 buttons=0
+    cider-wayland-input button=0x110 pressed=true  x=88 y=36 type=1 clicks=1 window=4
+    cider-wayland-input button=0x110 pressed=false x=88 y=36 type=2 clicks=1 window=4
+
+Exactly on the Shell menu, both edges, correct window. And CIDER_TRACE_MENU, which was NOT enabled
+in the iTerm2 harness the first two times it was consulted, reports ZERO tracking sessions with it
+properly on.
+
+Ruled out:
+
+  - The harness and the pointer path. The identical sequence opens the Format menu in LibreOffice,
+    verified in the same session.
+  - A vertical coordinate flip. Clicking the mirrored position, y = height - 36, behaves the same:
+    delivered, no track.
+  - The lazily bound LaunchServices symbol that used to abort the process on this exact click. That
+    is fixed separately; the application now survives and its shell prompt is still there.
+
+So the events arrive at window 4 with the right coordinates and the menu bar never tracks. The
+question to answer next is which window the iTerm2 menu bar actually lives in: an earlier glyph
+trace showed menu bar text rendering onto a 585x405 surface while the terminal was 1690x1388, and
+if the strip on screen is not the surface receiving these clicks, that is the whole bug.
+
+### iTerm2 resize: the window relayouts and the grid does not agree with itself
+
+Changing the output under a running iTerm2 works in the sense that matters least and fails in the
+one that matters. The window fills each new size and keeps drawing its text, and the title bar shows
+iTerm2 recomputing its grid from the initial 80x25. But the numbers disagree with each other:
+
+    1600 wide  ->  179 columns  ->  8.9 pixels per column
+    1000 wide  ->  225 columns  ->  4.4 pixels per column
+
+A smaller window reporting a LARGER grid is not a stale title, it is a cell width that changed
+between the two resizes, and the glyphs on screen do not change size to match. So resize is
+delivered and acted on, and the metrics it is acted on with are wrong.

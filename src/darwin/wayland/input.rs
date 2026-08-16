@@ -336,9 +336,20 @@ extern "C" fn on_pointer_motion(
         st.pointer_y = unsafe { wl::cider_wl_fixed_to_double(y) } - margin;
         (st.pointer_focus, st.pointer_x, st.pointer_y, st.buttons_down, st.modifiers)
     };
-    let Some((_owner, delegate, height, _number)) = window::window_for_surface(surface) else {
+    let Some((_owner, delegate, height, number)) = window::window_for_surface(surface) else {
+        // SAY SO. A motion for a surface this backend does not know is silently dropped, and the
+        // only visible effect is a click that does nothing, which reads as an application bug.
+        if crate::env_flag!("CIDER_WAYLAND_TRACE_INPUT") {
+            println!("cider-wayland-input pointer=motion x={px:.0} y={py:.0} surface=UNKNOWN");
+        }
         return;
     };
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_INPUT") {
+        println!(
+            "cider-wayland-input pointer=motion x={px:.0} y={py:.0} window={number} buttons={buttons}"
+        );
+    }
+    let _ = number;
     // A move with a button held is a DRAG, and AppKit routes the two differently: a drag goes to
     // the view that took the mouse down, a move goes to whatever is under the pointer.
     let event_type = if buttons & (1 << 0) != 0 {
