@@ -4898,3 +4898,30 @@ shorter than ninety.
 
 WHERE IT STOPS NOW: _OBJC_CLASS_$_MTLCaptureDescriptor. Metal is a MATERIALISED pin, so that one is a
 patch file rather than an edit, which is the next rung rather than this one.
+
+
+## The metal pin cannot be re-materialised, so the chain is blocked on a fetch and not on code
+
+2026-08-16. The next symbol after the CoreVideo keys is _OBJC_CLASS_$_MTLCaptureDescriptor. Metal is
+a FETCHED pin, so the class is a patch file rather than an edit, and the patch is written and proved
+against the materialised tree: vendor/patches/metal/0001-a-capture-descriptor-to-go-with-the-manager.patch
+adds the descriptor beside the manager it belongs to, holding the capture object, the destination
+and the output URL, and capturing nothing because there is no GPU trace on this system to write.
+
+IT CANNOT BE APPLIED, and the reason is not the patch. Re-materialising the pin fetches it again and
+the fetch no longer matches the manifest:
+
+    error: hash mismatch in fixed-output derivation source.drv
+             specified: sha256-fMa6Bgw0hlgJ8C5p05Jt5O+MqB0kMHrQuqmHWAaXmFw=
+                got:    sha256-YyHGLJ/SBFN43UC6aNLfELlAOU0cVTflvTBr1y09JlM=
+
+for darlinghq/darling-metal at rev ae20248dc144beab899e38752f5a530f28a0ea56, which nix/submodules.json
+pins with recursive true. A pinned rev whose content hashes differently means either the archive
+upstream serves changed or a submodule under it moved. THE HASH IS NOT TO BE PASTED OVER: the whole
+point of the pin is that the content is fixed, and replacing the expected hash with whatever is being
+served today accepts a change nobody has looked at. What is needed is to find out WHICH file differs,
+which is a fetch of both and a diff, and that is the next rung for this pin.
+
+Two consequences worth stating. Any patch to metal is blocked until then, so the iTerm2 load chain
+stops here. And a FRESH CHECKOUT cannot build metal at all today: the copy in vendor/src exists only
+because an older fetch is still in the store.

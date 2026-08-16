@@ -1,0 +1,64 @@
+--- a/include/Metal/MTLCaptureManager.h
++++ b/include/Metal/MTLCaptureManager.h
+@@ -5,3 +5,24 @@
+ 
+ @interface MTLCaptureManager : NSObject
+ @end
++
++/*
++ * A CAPTURE DESCRIPTOR: what to capture, where to put it, and in which form.
++ *
++ * It is declared beside the manager because it is the argument of the manager, which is how the SDK
++ * groups them too. Nothing captures here: there is no GPU trace to take, so what the class does is
++ * HOLD THE REQUEST, and a caller that sets a destination and reads it back gets what it wrote.
++ *
++ * It exists because the class SYMBOL stops a modern application at load time: iTerm2 3.6.10 links
++ * MTLCaptureDescriptor and dyld refuses to start the process without it.
++ */
++typedef NS_ENUM(NSInteger, MTLCaptureDestination) {
++    MTLCaptureDestinationDeveloperTools = 1,
++    MTLCaptureDestinationGPUTraceDocument = 2,
++};
++
++@interface MTLCaptureDescriptor : NSObject <NSCopying>
++@property (retain) id captureObject;
++@property MTLCaptureDestination destination;
++@property (copy) NSURL *outputURL;
++@end
+--- a/src/Metal/MTLCaptureManager.mm
++++ b/src/Metal/MTLCaptureManager.mm
+@@ -18,3 +18,34 @@
+ }
+ 
+ @end
++
++/*
++ * MTLCaptureDescriptor. See the note in the header: it carries the request and captures nothing,
++ * because there is no GPU trace on this system to write.
++ */
++@implementation MTLCaptureDescriptor {
++    id _captureObject;
++    MTLCaptureDestination _destination;
++    NSURL *_outputURL;
++}
++
++@synthesize captureObject = _captureObject;
++@synthesize destination = _destination;
++@synthesize outputURL = _outputURL;
++
++- (id) copyWithZone: (NSZone *) zone {
++    MTLCaptureDescriptor *copy = [[MTLCaptureDescriptor allocWithZone: zone] init];
++
++    copy.captureObject = _captureObject;
++    copy.destination = _destination;
++    copy.outputURL = _outputURL;
++    return copy;
++}
++
++- (void) dealloc {
++    [_captureObject release];
++    [_outputURL release];
++    [super dealloc];
++}
++
++@end
