@@ -4943,3 +4943,36 @@ run-lo-drag2.sh types two paragraphs, then presses at x=300 on the second line, 
 
 which is the range the drag covered, so the press, the motions and the release all arrived in order
 and were interpreted as one gesture. docs/wayland-interact-drag.png.
+
+
+## The pin was never wrong: the MATERIALISER fetched it as a tarball
+
+2026-08-16. The hash mismatch that blocked the metal pin is not upstream drift and not a changed
+archive. It is scripts/buck-src.nu fetching every pin with fetchFromGitHub:
+
+    let expr = "... pkgs.fetchFromGitHub { owner; repo; rev; hash; }"
+
+A GitHub archive tarball contains NO submodule content and no LFS objects, so its NAR hashes
+differently from the fetchgit the manifest hash was made with. nix/lib/cider-src.nix has always
+chosen the right fetcher (fetchgit with fetchSubmodules for a recursive pin, fetchLFS for the swift
+one); the script had a comment claiming it used the same arguments, and it used them only for the
+simple case.
+
+PROVED RATHER THAN ARGUED, in one line:
+
+    nix-prefetch-git --url https://github.com/darlinghq/darling-metal --rev ae20248... \
+        --fetch-submodules
+    -> "hash": "sha256-fMa6Bgw0hlgJ8C5p05Jt5O+MqB0kMHrQuqmHWAaXmFw="
+
+which is the manifest hash EXACTLY. The content upstream is intact; the fetch recipe was wrong. And
+the store agrees: the old cider-sub-vendor-pins-metal path still hashes to the same value.
+
+The script now mirrors cider-src.nix, and the blast radius is the seven recursive pins (libxpc,
+corecrypto, IOKitUser, openpam, xcbuild, nghttp2, metal) plus the one LFS pin (swift). Every one of
+them would have failed the same way, which means NONE of them could be re-materialised, and that is
+exactly the class of pin most likely to need a patch.
+
+WITH THAT FIXED, metal takes patches: MTLCaptureDescriptor beside the manager it belongs to, and
+MTKTextureLoader with its option keys, which answers nil with an error for every load because no
+device here can hold a texture. The chain then moves to the async URLSession data(from:delegate:)
+in libswiftFoundation, which is the same shim problem as libswiftCore and is next.

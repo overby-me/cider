@@ -1,0 +1,113 @@
+--- a/include/MetalKit/MetalKit.h
++++ b/include/MetalKit/MetalKit.h
+@@ -6,4 +6,35 @@
+ 
+ #import <MetalKit/MTKView.h>
+ 
++
++/*
++ * THE TEXTURE LOADER, which turns an image into a Metal texture.
++ *
++ * There is no Metal device that can hold a texture on this system, so every load answers nil with
++ * an error rather than a texture nobody can draw with, which is what the API does when a device
++ * cannot back the request. The class and its option keys are here because their SYMBOLS stop a
++ * modern application at load time: iTerm2 3.6.10 links MTKTextureLoader and one of its options.
++ */
++#import <Foundation/Foundation.h>
++
++extern NSString *const MTKTextureLoaderOptionTextureUsage;
++extern NSString *const MTKTextureLoaderOptionTextureStorageMode;
++extern NSString *const MTKTextureLoaderOptionTextureCPUCacheMode;
++extern NSString *const MTKTextureLoaderOptionSRGB;
++extern NSString *const MTKTextureLoaderOptionGenerateMipmaps;
++extern NSString *const MTKTextureLoaderOptionAllocateMipmaps;
++extern NSString *const MTKTextureLoaderErrorDomain;
++extern NSString *const MTKTextureLoaderErrorKey;
++
++@interface MTKTextureLoader : NSObject
++- (instancetype) initWithDevice: (id) device;
++@property (readonly) id device;
++- (id) newTextureWithContentsOfURL: (NSURL *) URL options: (NSDictionary *) options
++                             error: (NSError **) error;
++- (id) newTextureWithData: (NSData *) data options: (NSDictionary *) options
++                    error: (NSError **) error;
++- (id) newTextureWithCGImage: (void *) cgImage options: (NSDictionary *) options
++                       error: (NSError **) error;
++@end
++
+ #endif // _METALKIT_METALKIT_H_
+--- a/src/MetalKit/MTKView.m
++++ b/src/MetalKit/MTKView.m
+@@ -394,3 +394,72 @@
+ #endif
+ 
+ @end
++
++#import <MetalKit/MetalKit.h>
++
++/*
++ * MTKTextureLoader. See the note in MetalKit.h: the option keys carry the values macOS uses,
++ * because a caller writes them into an options dictionary and a reader compares them, and every
++ * load answers nil with an error, because no device here can hold a texture.
++ */
++NSString *const MTKTextureLoaderOptionTextureUsage = @"MTKTextureLoaderOptionTextureUsage";
++NSString *const MTKTextureLoaderOptionTextureStorageMode = @"MTKTextureLoaderOptionTextureStorageMode";
++NSString *const MTKTextureLoaderOptionTextureCPUCacheMode = @"MTKTextureLoaderOptionTextureCPUCacheMode";
++NSString *const MTKTextureLoaderOptionSRGB = @"MTKTextureLoaderOptionSRGB";
++NSString *const MTKTextureLoaderOptionGenerateMipmaps = @"MTKTextureLoaderOptionGenerateMipmaps";
++NSString *const MTKTextureLoaderOptionAllocateMipmaps = @"MTKTextureLoaderOptionAllocateMipmaps";
++NSString *const MTKTextureLoaderErrorDomain = @"MTKTextureLoaderErrorDomain";
++NSString *const MTKTextureLoaderErrorKey = @"MTKTextureLoaderErrorKey";
++
++@implementation MTKTextureLoader {
++    id _device;
++}
++
++- (instancetype) initWithDevice: (id) device {
++    self = [super init];
++    if (self != nil) {
++        _device = [device retain];
++    }
++    return self;
++}
++
++- (id) device {
++    return _device;
++}
++
++/* One place for the answer, so all three entry points fail the same way and say the same thing. */
++- (id) cider_noTexture: (NSError **) error {
++    if (error != NULL) {
++        NSDictionary *info = [NSDictionary
++                dictionaryWithObject: @"no Metal device can hold a texture on this system"
++                              forKey: MTKTextureLoaderErrorKey];
++
++        *error = [NSError errorWithDomain: MTKTextureLoaderErrorDomain code: 1 userInfo: info];
++    }
++    return nil;
++}
++
++- (id) newTextureWithContentsOfURL: (NSURL *) URL options: (NSDictionary *) options
++                             error: (NSError **) error
++{
++    return [self cider_noTexture: error];
++}
++
++- (id) newTextureWithData: (NSData *) data options: (NSDictionary *) options
++                    error: (NSError **) error
++{
++    return [self cider_noTexture: error];
++}
++
++- (id) newTextureWithCGImage: (void *) cgImage options: (NSDictionary *) options
++                       error: (NSError **) error
++{
++    return [self cider_noTexture: error];
++}
++
++- (void) dealloc {
++    [_device release];
++    [super dealloc];
++}
++
++@end

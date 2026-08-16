@@ -208,10 +208,29 @@ def main [--all, ...paths: string] {
         # A list joined rather than a concatenation: in nushell a newline before an operator
         # ends the expression, so a `+` at the start of a continuation line is parsed as a
         # command name and fails with "Command `+` not found".
+        # A RECURSIVE OR LFS PIN IS NOT A TARBALL, and using one is a hash mismatch every time.
+        #
+        # A GitHub archive tarball contains no submodule content and no LFS objects, so its NAR
+        # hashes differently from the fetchgit the manifest hash was made with. This function used
+        # fetchFromGitHub for every pin and the comment above claimed it matched cider-src.nix; it
+        # matched only the simple case. Seven pins are recursive (libxpc, corecrypto, IOKitUser,
+        # openpam, xcbuild, nghttp2, metal) and one is LFS (swift), and every one of them failed
+        # with
+        #     error: hash mismatch in fixed-output derivation source.drv
+        # which reads like the pin content changed upstream. It has not: fetching metal with
+        # nix-prefetch-git --fetch-submodules gives the manifest hash exactly.
+        let recursive = ($e | get -o recursive | default false)
+        let lfs = ($e | get -o lfs | default false)
+        let fetcher = (if $lfs {
+            $"in pkgs.fetchgit { url = \"https://github.com/($e.owner)/($e.repo)\"; rev = \"($e.rev)\"; hash = \"($e.hash)\"; fetchLFS = true; fetchSubmodules = ($recursive | into string); }"
+        } else if $recursive {
+            $"in pkgs.fetchgit { url = \"https://github.com/($e.owner)/($e.repo)\"; rev = \"($e.rev)\"; hash = \"($e.hash)\"; fetchSubmodules = true; }"
+        } else {
+            $"in pkgs.fetchFromGitHub { owner = \"($e.owner)\"; repo = \"($e.repo)\"; rev = \"($e.rev)\"; hash = \"($e.hash)\"; }"
+        })
         let expr = ([
             $"let pkgs = ($flake).inputs.nixpkgs.legacyPackages.${builtins.currentSystem};"
-            $"in pkgs.fetchFromGitHub { owner = \"($e.owner)\"; repo = \"($e.repo)\";"
-            $"rev = \"($e.rev)\"; hash = \"($e.hash)\"; }"
+            $fetcher
         ] | str join " ")
         let store_path = (^nix build --impure --no-link --print-out-paths --expr $expr
             | str trim | lines | last)
