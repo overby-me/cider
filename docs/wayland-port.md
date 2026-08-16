@@ -5092,3 +5092,35 @@ new suspect beside it is the libswiftCore SHIM itself: the real runtime was rena
 libswiftKore.dylib and re-exported under the old name, and the Swift runtime registers its own image
 during initialisation. The next rung is to find out whether the application process produces a core
 of its own at all, and to instrument the exit rather than the signal.
+
+
+## Two facts and a second retraction: the app EXITS 1, and the dyld trace was never about it
+
+2026-08-16. Two controls, each one line, and both change what the previous entries mean.
+
+EXIT CODES PROPAGATE THROUGH cider shell, which was assumed and is now measured:
+
+    cider shell /bin/bash -c "exit 0"   ->  0
+    cider shell /bin/bash -c "exit 3"   ->  3
+
+So PROBE_EXIT=1 from the iTerm2 run is the APPLICATION exiting with status 1. It is not killed, it
+does not fault, and it does not abort: it exits, the way a program exits when it has decided to.
+
+AND THE INITIALISER TRACE WAS NEVER ABOUT THE APPLICATION. DYLD_PRINT_INITIALIZERS printed the same
+three groups, ten libobjc initialisers then libSystem then two libc++, exactly three times, once per
+process: bash, path_helper and the shell helper. The application is missing from that list entirely,
+and the reason is the one already established for DYLD_INSERT_LIBRARIES: dyld PRUNES the DYLD_
+environment for a restricted binary, and iTerm2 is signed with library validation. So the sentence
+in the entry above, that it stops after the libc++ initialisers, describes the HELPERS. What the
+application does after loading is not visible in any of these runs.
+
+WHAT IS STILL TRUE. The loader is satisfied for the application: no missing library and no missing
+symbol. It gets far enough to load its own frameworks, because the duplicate class warnings for FMDB
+come from the application bundle against the copy in this prefix. And then it exits 1 with nothing
+on stderr.
+
+THE NEXT RUNG IS THEREFORE ABOUT VISIBILITY, not about a fault: find an instrument that survives a
+restricted binary. CoreFoundation opening the crash handler was meant to be that, and it prints
+nothing, which now has two possible meanings rather than one: either CoreFoundation is never
+initialised, or the application never gets that far. The way to tell them apart is a print from an
+image that is loaded and initialised even earlier, and libSystem is the candidate.
