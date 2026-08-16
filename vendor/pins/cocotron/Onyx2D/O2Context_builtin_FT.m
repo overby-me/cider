@@ -1,4 +1,6 @@
 #import <Onyx2D/O2Context_builtin_FT.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <freetype/ftoutln.h>
 #import <Onyx2D/O2Font_freetype.h>
 #import <Onyx2D/O2GraphicsState.h>
@@ -89,9 +91,13 @@ static void applyCoverageToSpan_lRGBA8888_PRE(O2argb8u *dst,
     }
 }
 
+/*
+ * flipped: the glyph is drawn bottom row first, for a text matrix whose vertical component is
+ * POSITIVE. See the call site for what that means and why it happens.
+ */
 static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
                                  FT_Bitmap *bitmap, NSInteger x, NSInteger y,
-                                 O2Paint *paint)
+                                 O2Paint *paint, BOOL flipped)
 {
     // Size of the bitmap.
     NSInteger fullWidth = bitmap->width;
@@ -123,8 +129,9 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
         NSInteger remainingLength = renderWidth;
 
         // We're going to advance these pointers as we move along this row.
+        NSInteger sourceRow = flipped ? (fullHeight - 1 - (curY - y)) : (curY - y);
         unsigned char *coverage =
-                bitmap->buffer + (curY - y) * fullWidth + (curX - x);
+                bitmap->buffer + sourceRow * fullWidth + (curX - x);
         O2argb8u *src = srcBuffer;
         O2argb8u *dst = dstBuffer;
 
@@ -179,6 +186,21 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
     O2AffineTransform Trm = O2ContextGetTextRenderingMatrix(self);
 
     NSPoint point = O2PointApplyAffineTransform(NSMakePoint(0, 0), Trm);
+
+    /* CIDER_TRACE_TEXTCTM here prints the TEXT RENDERING matrix, which is the text matrix and the
+     * transform together and is what actually decides which way up a glyph goes. The trace in
+     * O2Context prints the transform alone, and the two are not the same question. */
+    if (getenv("CIDER_TRACE_TEXTCTM") != NULL) {
+        static int printedFT;
+
+        if (printedFT < 40) {
+            printedFT++;
+            fprintf(stderr, "CIDER_TEXTTRM trm=[%.2f %.2f %.2f %.2f %.1f %.1f] origin=%.1f,%.1f\n",
+                    (double) Trm.a, (double) Trm.b, (double) Trm.c, (double) Trm.d,
+                    (double) Trm.tx, (double) Trm.ty, (double) point.x, (double) point.y);
+            fflush(stderr);
+        }
+    }
 
     // Only use the scaling part of the current transform to scale the font size
     O2Float scaleX = sqrt((Trm.a * Trm.a) + (Trm.c * Trm.c));
@@ -245,9 +267,32 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
         if (ftError)
             continue;
 
+        /*
+         * WHICH WAY UP THE GLYPH GOES IS IN THE TEXT MATRIX, and this used to ignore it.
+         *
+         * The scale is taken out of the text rendering matrix with a square root above, which is
+         * always positive, so the SIGN was thrown away. That is right for the usual case and wrong
+         * for the other one, and both happen in LibreOffice:
+         *
+         *     trm=[1 0 0 -1 ...]   the document window, and everything looked correct
+         *     trm=[1 0 0  1 ...]   the status bar, drawing each item into its own bitmap context
+         *
+         * A glyph outline is defined with y going UP. With a negative d that becomes y going DOWN
+         * in the device, which is exactly how FreeType hands back its bitmap, so the rows go out in
+         * order. With a POSITIVE d the outline keeps its direction and the glyph belongs on the
+         * screen mirrored: the rows go out in reverse, and the top of the glyph sits BELOW the
+         * baseline rather than above it.
+         *
+         * Without this the status bar and every dropdown list in the application came out upside
+         * down, text and all, while the document beside them was right.
+         */
+        BOOL flipped = (Trm.d > 0.0);
+        NSInteger glyphTop = flipped
+                ? (NSInteger) (point.y + slot->bitmap_top - (NSInteger) slot->bitmap.rows + 1)
+                : (NSInteger) (point.y - slot->bitmap_top);
+
         renderFreeTypeBitmap(self, _surface, &slot->bitmap,
-                             (whole >> 6) + slot->bitmap_left,
-                             point.y - slot->bitmap_top, paint);
+                             (whole >> 6) + slot->bitmap_left, glyphTop, paint, flipped);
 
         penX += slot->advance.x;
     }
