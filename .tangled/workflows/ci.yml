@@ -25,21 +25,21 @@ image: nixos
 # A package list rather than an install step: the engine puts these in every step, and caches
 # them, which is the whole reason to be on this engine rather than the nixery one.
 dependencies:
-  - cachix
   - git
 
-environment:
-  CACHIX_NAME: cider-nix
-
 steps:
-  # CACHIX RATHER THAN THE NATIVE caches FIELD, deliberately. The microVM engine can take a
-  # substituter directly, but it wants the trusted public key alongside the URL, and that key is
-  # recorded nowhere in this repository. The cachix client fetches the key from the cachix API
-  # itself, so it is the spelling that cannot be got wrong here. If the key is ever written down,
-  # this step becomes a caches entry and disappears.
-  - name: "Setup Cachix"
-    command: |
-      cachix use "$CACHIX_NAME"
+  # THERE IS NO CACHIX STEP, because there is no cachix cache. This file asked for one named
+  # cider-nix from the day it was written, and the first run that ever reported a result answered
+  #
+  #   Binary cache cider-nix doesn't exist or it's private and you need a token
+  #
+  # in 0s, which failed the workflow before it reached the evaluation the file exists to do. That
+  # is not an engine problem and moving engines did not cause it: the old file ran the same
+  # `cachix use` and would have died on the same line. The name was aspirational rather than real.
+  #
+  # Evaluation is also the step that needs a cache least, since it is allowed to build nothing.
+  # If a cache is created later it belongs in the microVM `caches` field, which wants the trusted
+  # public key next to the URL.
 
   # EVERY ADVERTISED OUTPUT MUST EVALUATE. This is the step that would have caught both 2026-08-12
   # breaks: one died in buck2 analysis and one on a builtins.readDir of a directory #87 deleted,

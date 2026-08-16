@@ -20,12 +20,17 @@ when:
 engine: microvm
 image: nixos
 
-# THE DEPTH IS NOT TRUSTED, and the fetch step below is why. A rewrite needs the whole history, but
-# the default clone depth is 1 and Depth is a plain int, so an explicit 0 here is indistinguishable
-# from an unset field and may well be read as the default. It is set because 0 is what a full clone
-# is spelled as when it is honoured, and the step below repairs a shallow clone if it was not.
+# THE DEPTH BELOW IS IGNORED, which is not a guess: the first run of this file logged its own clone
+# command as `git fetch --depth=1 --recurse-submodules=yes --tags`, with the 0 nowhere in it. Depth
+# is a plain int whose documented default is 1, so an explicit 0 cannot be told apart from a field
+# that was never set. It stays because 0 is what a full clone is spelled as if that is ever fixed,
+# and the fetch step below is what actually makes the history complete.
+#
+# Submodules are turned off because they are pure cost here: they are fetched by default, they took
+# over four minutes of the first run, and rewriting the superproject never looks inside one.
 clone:
   depth: 0
+  submodules: false
 
 dependencies:
   - git
