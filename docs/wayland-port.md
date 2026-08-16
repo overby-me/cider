@@ -6269,3 +6269,32 @@ by its OWN invocation produced NO key event in the application at all, while the
 inside the invocation that typed the text arrived correctly as keysym 0xff0d, carbon 36. The input
 trace is what separated the two. Same shape as the virtual pointer: one device, held open, for the
 whole gesture.
+
+### Correcting the tty claim: the session has a pty, and a resize breaks the input path
+
+The previous section concluded from one stty answer that the iTerm2 session was not on a tty. That
+is WRONG and this replaces it.
+
+Typing a command and pressing Return in a run with NO resize gives:
+
+    Darling [~]# ls -l /dev/fd/0
+    lrwx------ 1 root root 64 Aug 16 21:25 /dev/fd/0 -> /dev/pts/27
+
+So standard input is a real pty, the command runs, Return works, and ls even colours its output. The
+earlier not a tty came from a run that had resized three times first, and so did every later failure.
+
+WHAT IS ACTUALLY BROKEN, stated as narrowly as the evidence allows: after the output has been
+resized, keystrokes still reach the application, and the session no longer shows them. The key trace
+records all thirty two keys of the command including Return, delivered to window 4, and the terminal
+displays a bare prompt and nothing else. Without a resize the same harness types the same command
+and it appears and runs.
+
+Not yet isolated to a single resize rather than three, and not yet explained. What it is NOT: it is
+not the menu, since the same failure happens with the menu click aimed at the terminal body instead
+of the menu bar, and it is not key delivery, since the trace shows the keys arriving.
+
+THE TERMINAL WAS FULL OF DYLD NOISE AND THAT WAS OURS. The harness forwards
+DYLD_PRINT_INITIALIZERS=${DYLD_PRINT_INITIALIZERS:-}, which SETS the variable to the empty string,
+and dyld tests only whether it is present. Every session began with dozens of initializer lines that
+raced the typing and scrambled it. This is the same empty-is-not-unset trap that had already been
+fixed inside our own glyph gates, met a second time from the other side.
