@@ -4218,3 +4218,42 @@ worth keeping. The probe runs whatever the Skia decision is.
 Where that leaves it: not fixable from our side without a working Metal, and the workaround is what
 already happens by accident, which is to start it twice. It stays on the list as a real
 not-fully-working item rather than being quietly dropped.
+
+
+## The first run was two of ours, and the Skia frame was a red herring
+
+2026-08-16, commits c0fb3ea8 and 5eeff803. The first LibreOffice run against a new profile failed
+every time with Unspecified Application Error and no windows. Yesterday this was recorded as a Skia
+null dereference we could not fix. That was wrong, and the way it was wrong is worth keeping.
+
+CIDER_SIGNAL_NO_APP_HANDLER=1, added to see the crash at all, turns a HANDLED crash into an
+unhandled one. LibreOffice runs its Skia probe expecting it to be able to crash: it catches the
+signal itself, records the result, and never repeats it. So the switch made the probe crash look
+like the answer when it was the application working as designed.
+
+The real cause was two bugs of ours in the same code path.
+
+FIRST, O2SurfaceCreateImage dereferenced its argument on the first line. Every Core Graphics entry
+point on macOS checks: it writes something like invalid context 0x0 to the log and returns NULL, so
+a caller whose context creation failed limps rather than dies. That is the one that was fatal.
+
+SECOND, and the reason the context was null in the first place, O2Surface assumed thirty two BITS
+PER PIXEL for every bitmap. CGBitmapContextCreate is not given a bits-per-pixel; Core Graphics
+derives it from the bits per component, the number of components in the colour space, and whether
+the format stores an alpha byte. LibreOffice draws a bitmap with a mask by making an eight bit GREY
+context for the mask, and thirty two turned that into a combination nothing supports.
+
+The message named the combination but not the caller, so the failure now prints a backtrace with it,
+and that is what named this in one line:
+
+    O2Image failed to init with bpc=8, bpp=32, colorSpace=type=0, bitmapInfo=0x0
+    <- QuartzSalBitmap::CreateContext <- CreateWithSalBitmapAndMask
+    <- AquaGraphicsBackend::drawAlphaBitmap <- OutputDevice::DrawDeviceAlphaBitmap
+
+Measured on a clean profile path: before, no windows were presented at all; after, nineteen presents
+and no error. The first run reaches its window now, which it never did.
+
+AND THE BUG THIS UNCOVERS. The masked bitmap path now draws, and it draws VERTICALLY FLIPPED: the
+font dropdown in the toolbar comes out mirrored, text and all, and so does the strip along the
+bottom of the window. That path could not draw at all before, so it is newly visible rather than
+newly broken, and it is the next rung.
