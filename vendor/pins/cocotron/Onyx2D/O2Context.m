@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <Onyx2D/O2ClipState.h>
 #import <Onyx2D/O2Context.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <dlfcn.h>
 #include <execinfo.h>
@@ -1292,6 +1293,31 @@ void O2ContextShowGlyphs(O2ContextRef self, const O2Glyph *glyphs,
     if (self == nil)
         return;
 
+    /* CIDER_TRACE_TEXTCTM prints the transform in force when text is drawn, which is what tells a
+     * context that has been flipped once from one that has been flipped twice. */
+    if (getenv("CIDER_TRACE_TEXTCTM") != NULL) {
+        static int printed;
+
+        if (printed < 60) {
+            O2AffineTransform ctm = O2ContextCurrentGState(self)->_deviceSpaceTransform;
+            O2Size sz = O2SizeMake(0, 0);
+
+            if ([self respondsToSelector: @selector(surface)]) {
+                O2Surface *surf = [(O2BitmapContext *) self surface];
+
+                sz = O2SizeMake(O2ImageGetWidth(surf), O2ImageGetHeight(surf));
+            }
+
+            printed++;
+            fprintf(stderr, "CIDER_TEXTCTM ctm=[%.2f %.2f %.2f %.2f %.1f %.1f] surface=%.0fx%.0f\n",
+                    (double) ctm.a, (double) ctm.b, (double) ctm.c, (double) ctm.d,
+                    (double) ctm.tx, (double) ctm.ty, (double) sz.width, (double) sz.height);
+            fflush(stderr);
+        }
+    }
+    if (self == nil)
+        return;
+
     self->_showGlyphsFunction(self, NULL, glyphs, NULL, count);
 }
 
@@ -1399,14 +1425,20 @@ void O2ContextDrawImage(O2ContextRef self, O2Rect rect, O2ImageRef image) {
     if (getenv("CIDER_TRACE_DRAWIMAGE") != NULL) {
         static int printed;
 
-        if (printed < 40) {
+        if (printed < 4000) {
             void *frames[8];
             int depth = backtrace(frames, 8);
 
             printed++;
-            fprintf(stderr, "CIDER_DRAWIMAGE %zux%zu -> %.0f,%.0f %.0fx%.0f mask=%d",
+            O2AffineTransform ctm = O2ContextCurrentGState(self)->_deviceSpaceTransform;
+
+            fprintf(stderr,
+                    "CIDER_DRAWIMAGE %zux%zu -> %.0f,%.0f %.0fx%.0f mask=%d ctm=[%.2f %.2f %.2f "
+                    "%.2f %.1f %.1f]",
                     O2ImageGetWidth(image), O2ImageGetHeight(image), rect.origin.x, rect.origin.y,
-                    rect.size.width, rect.size.height, (int) (O2ImageGetMask(image) != NULL));
+                    rect.size.width, rect.size.height, (int) (O2ImageGetMask(image) != NULL),
+                    (double) ctm.a, (double) ctm.b, (double) ctm.c, (double) ctm.d,
+                    (double) ctm.tx, (double) ctm.ty);
             for (int i = 1; i < depth; i++) {
                 Dl_info info;
 
@@ -1416,6 +1448,36 @@ void O2ContextDrawImage(O2ContextRef self, O2Rect rect, O2ImageRef image) {
             }
             fprintf(stderr, "\n");
             fflush(stderr);
+        }
+
+        /*
+         * AND THE SOURCE PIXELS OF A BIG DRAW, one file per size, OVERWRITTEN each time so the
+         * LAST state survives rather than the first. The first version of this kept the first four
+         * and they were all early and empty, which answered nothing.
+         */
+        if (O2ImageGetWidth(image) > 200 && O2ImageGetHeight(image) > 200) {
+            char path[256];
+            size_t w = O2ImageGetWidth(image), h = O2ImageGetHeight(image);
+
+            snprintf(path, sizeof(path), "/tmp/shots/src-%zux%zu.raw", w, h);
+
+            FILE *f = fopen(path, "wb");
+
+            if (f != NULL) {
+                O2argb8u *row = malloc(w * sizeof(O2argb8u));
+
+                for (size_t y = 0; y < h && row != NULL; y++) {
+                    O2argb8u *got = O2Image_read_argb8u(image, 0, (int) y, row, (int) w);
+
+                    for (size_t x = 0; x < w; x++) {
+                        fputc(got[x].r, f);
+                        fputc(got[x].g, f);
+                        fputc(got[x].b, f);
+                    }
+                }
+                free(row);
+                fclose(f);
+            }
         }
     }
 
