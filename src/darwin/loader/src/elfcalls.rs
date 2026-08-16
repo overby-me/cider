@@ -78,13 +78,42 @@ extern "C" fn ec_dlerror() -> *mut c_char {
 /// WRITE, NOT format!, and no Rust formatting machinery of any kind: this runs on the ELFCALL
 /// path, where the guest calls in on an eight byte misaligned stack, and anything that touches a
 /// wide register there faults on the instruction rather than the argument.
+/// fd 2 AND, when CIDER_FATAL_LOG names one, a file.
+///
+/// A helper process does not own its stderr: the application that spawned it decides where fd 2
+/// goes, and for a pty helper that is the pty. So the message about why it is aborting lands
+/// somewhere nobody is reading. The file is opened per write, append only, because this path runs
+/// once and then aborts.
+static mut FATAL_FD: c_int = -1;
+
+unsafe fn fatal_fd() -> c_int {
+    if FATAL_FD >= 0 {
+        return FATAL_FD;
+    }
+    let path = libc::getenv(b"CIDER_FATAL_LOG\0".as_ptr() as *const c_char);
+    if path.is_null() || *path == 0 {
+        return -1;
+    }
+    FATAL_FD = libc::open(path, libc::O_WRONLY | libc::O_CREAT | libc::O_APPEND, 0o644);
+    FATAL_FD
+}
+
 unsafe fn say_bytes(bytes: &[u8]) {
     libc::write(2, bytes.as_ptr() as *const c_void, bytes.len());
+    let fd = fatal_fd();
+    if fd >= 0 {
+        libc::write(fd, bytes.as_ptr() as *const c_void, bytes.len());
+    }
 }
 
 unsafe fn say_cstr(p: *const c_char) {
     if !p.is_null() {
-        libc::write(2, p as *const c_void, libc::strlen(p));
+        let n = libc::strlen(p);
+        libc::write(2, p as *const c_void, n);
+        let fd = fatal_fd();
+        if fd >= 0 {
+            libc::write(fd, p as *const c_void, n);
+        }
     }
 }
 

@@ -5502,3 +5502,35 @@ window, and it is not yet a terminal.
 The screenshot had to be taken at one second because that is all the time there is; the earlier
 runs took theirs at fifty and caught nothing, which is why this looked like an application that
 never opened a window at all.
+
+
+## A fatal signal went to the whole process group, and iTerm2 stays up now
+
+2026-08-16, late. The application was never the process that died. iTerm2 spawns iTermServer to own
+its pty; the server aborts while loading, and the guest signal emulation did this:
+
+    // Resend signal to self
+    LINUX_SYSCALL(__NR_kill, 0, linux_signum);
+
+kill(0, sig) does not send to self. It sends to EVERY PROCESS IN THE CALLER GROUP, so the helper
+took the application down with it, and every other helper too. On macOS a child that crashes never
+touches its parent. It sends to getpid() now, and the SIGTSTP branch beside it had the same shape.
+
+MEASURED BEFORE AND AFTER, three runs each, same harness:
+
+    before   PROBE_EXIT=1, PROBE_EXIT=1, PROBE_EXIT=1        window gone after about 1.5 seconds
+    after    PROBE_EXIT=0, PROBE_EXIT=137, PROBE_EXIT=0      137 is the harness kill at 30 seconds
+
+So iTerm2 now survives its helper aborting. LOOKED AT the screenshots at 10, 16 and 18 seconds,
+including after the harness types into the window: the traffic lights, the iTerm2 menu bar and the
+black terminal area are all still there, and NOTHING ELSE IS. No prompt, no cursor, no typed text,
+no tab bar, because the session behind the window still never runs.
+
+WHAT IS STILL WRONG, precisely: iTermServer aborts inside mldr in ec_dlopen_fatal, so no shell is
+ever started. The fatal elfcalls print the library and the dlerror text now, and can also append to
+the file named by CIDER_FATAL_LOG, but neither reaches the log for this process: the application
+gives the helper its own fds and its own environment, and under strace the abort does not
+reproduce at all, which makes it a timing dependent one. That is the next rung.
+
+LibreOffice is unaffected by the signal change: Writer draws its title bar, menu bar, both toolbar
+rows, ruler, page, sidebar and status bar, with zero raises.
