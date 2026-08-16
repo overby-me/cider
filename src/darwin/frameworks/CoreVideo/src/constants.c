@@ -32,3 +32,10 @@ const CFStringRef kCVPixelBufferMetalCompatibilityKey = CFSTR("MetalCompatibilit
 const CFStringRef kCVPixelBufferBytesPerRowAlignmentKey = CFSTR("BytesPerRowAlignment");
 const CFStringRef kCVPixelBufferHeightKey = CFSTR("Height");
 const CFStringRef kCVPixelBufferWidthKey = CFSTR("Width");
+
+/* THE CG COMPATIBILITY KEYS. A caller puts these in the attributes dictionary of a pixel buffer
+ * pool to say the buffers must be usable as a CGImage or as the backing of a CGBitmapContext. The
+ * VALUES are the ones macOS uses, since a dictionary key that differs by a character is a request
+ * that is silently ignored. Their symbols stop a modern application at load time. */
+const CFStringRef kCVPixelBufferCGImageCompatibilityKey = CFSTR("CGImageCompatibility");
+const CFStringRef kCVPixelBufferCGBitmapContextCompatibilityKey = CFSTR("CGBitmapContextCompatibility");

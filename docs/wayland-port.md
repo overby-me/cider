@@ -4879,3 +4879,22 @@ NSURLContentTypeKey, kCLErrorDomain and the six CoreLocation accuracies.
 WHERE THE CHAIN IS NOW: _kCMMetadataBaseDataType_RawData in CoreMedia, with the CoreServices
 quarantine keys, the Carbon TIS input source keys, CoreVideo, MetalKit and two classes behind it.
 Every one of them is in the measured list in the section above.
+
+
+## Two more rounds, and a correction to the missing symbol list
+
+2026-08-16. kCMMetadataBaseDataType_RawData in CoreMedia, with the six other metadata base types
+beside it, and the two CoreVideo CG compatibility keys. Both are identifiers rather than behaviour:
+what matters is that the VALUE is the one macOS uses, since a dictionary key that differs by a
+character is a request that is silently ignored.
+
+AND A CORRECTION WORTH KEEPING. The per framework counts in the measurement above OVERSTATE the work,
+because the check compares what an import asks of a library against that library EXPORTS TRIE, and a
+trie does not list what the library RE-EXPORTS. The Carbon input source keys are already in
+HIToolbox, which Carbon re-exports; the LSQuarantine and UTType constants are already in
+LaunchServices, which CoreServices re-exports; most of the Foundation row is CoreFoundation, which
+Foundation re-exports. So the honest list is the one dyld produces, one line per run, and it is
+shorter than ninety.
+
+WHERE IT STOPS NOW: _OBJC_CLASS_$_MTLCaptureDescriptor. Metal is a MATERIALISED pin, so that one is a
+patch file rather than an edit, which is the next rung rather than this one.

@@ -18,6 +18,7 @@
 */
 
 #include <CoreMedia/CMTime.h>
+#include <CoreFoundation/CoreFoundation.h>
 
 const CMTime kCMTimeInvalid = {
     .value = 0,
@@ -53,3 +54,22 @@ const CMTime kCMTimeZero = {
     .flags = kCMTimeFlags_Valid,
     .epoch = 0
 };
+
+
+/*
+ * THE METADATA BASE DATA TYPES, which name the shape of a metadata value.
+ *
+ * They are identifiers rather than behaviour: a caller tags a metadata item with one of these
+ * strings and a reader compares it, so the VALUE has to be the one macOS uses. These are the
+ * documented com.apple.metadata.datatype identifiers.
+ *
+ * The raw data one is here because its SYMBOL stops a modern application at load time: iTerm2 3.6.10
+ * links it and dyld refuses to start without it.
+ */
+const CFStringRef kCMMetadataBaseDataType_RawData = CFSTR("com.apple.metadata.datatype.raw-data");
+const CFStringRef kCMMetadataBaseDataType_UTF8 = CFSTR("com.apple.metadata.datatype.UTF-8");
+const CFStringRef kCMMetadataBaseDataType_UTF16 = CFSTR("com.apple.metadata.datatype.UTF-16");
+const CFStringRef kCMMetadataBaseDataType_Float32 = CFSTR("com.apple.metadata.datatype.float32");
+const CFStringRef kCMMetadataBaseDataType_Float64 = CFSTR("com.apple.metadata.datatype.float64");
+const CFStringRef kCMMetadataBaseDataType_SInt32 = CFSTR("com.apple.metadata.datatype.int32");
+const CFStringRef kCMMetadataBaseDataType_SInt64 = CFSTR("com.apple.metadata.datatype.int64");
