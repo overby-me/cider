@@ -4405,3 +4405,30 @@ And one instrument cost an application crash to find. Dumping the pixels of a sm
 took LibreOffice down with Unspecified Application Error, because an image can reach the draw with no
 eight bit reader at all. The dump checks first now, and says so when it finds one, since an image
 nothing can read is a bug in its own right rather than something to step around quietly.
+
+
+## Two toolbar defects, characterised and not fixed
+
+2026-08-16. With the flip and the byte order fixed, two things in the LibreOffice toolbar are still
+wrong. Neither is fixed here; both are pinned down far enough that the next attempt can start from
+evidence rather than from a screenshot.
+
+THE FIRST TOOLBAR ROW STOPS AFTER REDO, in the nested 1256 by 684 harness. Twelve icons draw, new,
+open, save, PDF, print, preview, cut, copy, paste, clone, undo and redo, and then the row is empty
+to the right edge with NO overflow chevron, while the second row is complete and does show one. The
+same toolbar in the headless 1600 by 1000 harness is complete. Colour is ruled out, since the icons
+that do draw are now correct to the pixel, and so are missing readers, since CIDER_IMAGE_NOREADER
+never fired. What is not established is whether the missing icons are drawn at all, and the next
+step is to count the masked draws against the icons visible on screen.
+
+THE FONT NAME BOX GOES SOLID BLACK WHEN CLICKED, and the trigger is one action rather than a repaint
+in general. The shots either side of it say so: a3 and b0 have the box white at 255,255,255, the
+harness clicks at 300,95 which is inside it, and b1 has it black at 0,0,0 with a 1,1,1 fringe. The
+size box next to it is untouched. The picture is docs/wayland-font-box-black.png.
+
+A missing system colour is ruled out: CIDER_WAYLAND_TRACE_COLORS reports ZERO names answering nil in
+that run, and selectedTextBackgroundColor is in the table as a pale blue and is reached through
+colorWithCatalogName rather than around it. What is left is a blend mode used for drawing a
+selection, or a control drawn into a fresh bitmap and then composited as opaque, which would show
+whatever the bitmap started as. The next step is to trace the fill colour and the blend mode in
+force over that rectangle.
