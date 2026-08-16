@@ -2504,6 +2504,33 @@ extern "C" fn set_has_shadow(_this: Object, _cmd: Sel, _value: ObjcBool) {}
 
 extern "C" fn rect_noop(_this: Object, _cmd: Sel, _frame: NsRect) {}
 
+/*
+ * A SHEET IS JUST A WINDOW HERE, and not answering this ABORTED THE APPLICATION.
+ *
+ * Cocotron declares -sheetOrderFrontFromFrame:aboveWindow:, with TWO arguments. This class
+ * registered the one argument -sheetOrderFrontFromFrame:, which is a different selector, so the
+ * call reached the abstract implementation in CGWindow, which raises. iTerm2 opens a sheet when its
+ * session ends and died on the uncaught exception; LibreOffice puts its save and print dialogs on
+ * sheets, so this was waiting for both.
+ *
+ * Wayland has no notion of a window glued to the top of another one. The honest mapping is an
+ * ordinary toplevel, which is what showing it does: the sheet appears, it is separately placed by
+ * the compositor rather than sliding out of the parent title bar, and the application drives it as
+ * usual. The parent is accepted and ignored for that reason rather than by oversight.
+ */
+extern "C" fn sheet_order_front_from_frame_above_window(
+    this: Object,
+    _cmd: Sel,
+    _frame: NsRect,
+    _above: Object,
+) {
+    if let Some(st) = unsafe { state(this) } {
+        st.visible = true;
+        st.needs_full_display = true;
+        present(st);
+    }
+}
+
 extern "C" fn show_window_without_activation(this: Object, _cmd: Sel) {
     if let Some(st) = unsafe { state(this) } {
         st.visible = true;
@@ -2790,6 +2817,7 @@ pub unsafe fn register() -> objc::Class {
         objc::MethodDef { sel: cstr!("setAlphaValue:"), types: cstr!("v@:d"), imp: set_alpha_value as *const c_void },
         objc::MethodDef { sel: cstr!("setHasShadow:"), types: cstr!("v@:c"), imp: set_has_shadow as *const c_void },
         objc::MethodDef { sel: cstr!("sheetOrderFrontFromFrame:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: rect_noop as *const c_void },
+        objc::MethodDef { sel: cstr!("sheetOrderFrontFromFrame:aboveWindow:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}@"), imp: sheet_order_front_from_frame_above_window as *const c_void },
         objc::MethodDef { sel: cstr!("sheetOrderOutToFrame:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: rect_noop as *const c_void },
         objc::MethodDef { sel: cstr!("showWindowForAppActivation:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: show_window_for_app_activation as *const c_void },
         objc::MethodDef { sel: cstr!("hideWindowForAppDeactivation:"), types: cstr!("v@:{CGRect={CGPoint=dd}{CGSize=dd}}"), imp: hide_window_for_app_deactivation as *const c_void },

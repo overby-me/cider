@@ -1,0 +1,12 @@
+# login.term: account session
+#
+# THIS IS THE ONE LOGIN ACTUALLY ASKS FOR. Tracing the opens shows it requesting login.term and
+# never login, so a policy installed only under the shorter name changes nothing and the fallback
+# to /etc/pam.d/other, which denies everything, is what answers.
+#
+# See the login policy beside this file for why Cider does not use Apple's: theirs is built on
+# pam_opendirectory, and there is no directory service in this container.
+account    required       pam_permit.so
+# Worth having when it works, not worth failing a login over.
+session    optional       pam_launchd.so
+session    required       pam_permit.so

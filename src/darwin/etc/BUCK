@@ -30,3 +30,20 @@ export_file(
     src = "resolv.conf",
     visibility = ["PUBLIC"],
 )
+
+# THE LOGIN POLICY, which is why iTerm2 could not start a shell.
+#
+# Without it openpam falls back to /etc/pam.d/other, which denies everything. The file says why it
+# does not simply copy Apple's, which needs a directory service this container does not have.
+
+export_file(
+    name = "pam_d_login",
+    src = "pam.d/login",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "pam_d_login_term",
+    src = "pam.d/login.term",
+    visibility = ["PUBLIC"],
+)

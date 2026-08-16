@@ -2515,6 +2515,8 @@ prefix_tree(
         "libexec/cider/private/etc/pam.d/authorization_ctk": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_smartcard_authorization_ctk",
         "libexec/cider/private/etc/pam.d/authorization_la": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_localauthentication_authorization_la",
         "libexec/cider/private/etc/pam.d/authorization_lacont": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_localauthentication_authorization_lacont",
+        "libexec/cider/private/etc/pam.d/login": "//src/darwin/etc:pam_d_login",
+        "libexec/cider/private/etc/pam.d/login.term": "//src/darwin/etc:pam_d_login_term",
         "libexec/cider/private/etc/pam.d/screensaver_aks": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_aks_screensaver_aks",
         "libexec/cider/private/etc/pam.d/screensaver_ctk": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_smartcard_screensaver_ctk",
         "libexec/cider/private/etc/pam.d/screensaver_la": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_localauthentication_screensaver_la",
