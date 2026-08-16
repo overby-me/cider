@@ -5903,3 +5903,45 @@ the trait, which is what macOS does, rather than something the caller then draws
 
 LibreOffice after the launcher change: Writer draws its title bar, menu bar, both toolbar rows,
 ruler, page, sidebar and status bar, with zero raises.
+
+
+## The font iTerm2 draws with is not an object, and a correction about the font manager
+
+2026-08-16. With launchd up, iTerm2 reaches its text drawing and dies on the font. Two things,
+one of them a correction.
+
+THE CORRECTION. The previous entry said the next rung was -[NSFontManager convertFont:toHaveTrait:]
+answering the original font when it cannot apply the trait. IT ALREADY DOES. The lines
+
+    convertFont:toHaveTrait: failed, Monaco 1
+    convertFont:toHaveTrait: failed, Helvetica 2
+
+are OUR OWN NSLog, from a method that then returns the font unchanged, which is the macOS
+behaviour. Reading a log line as a defect without reading the code beneath it is the same mistake
+in a new place.
+
+WHAT IS ACTUALLY WRONG. iTerm2 takes the font straight out of its attributes dictionary:
+
+    NSFont *const font = cheapString.attributes[NSFontAttributeName];
+    [self selectFont:font inContext:ctx];
+
+and what comes out is not an object. CTFontCopyGraphicsFont now checks the pointer before messaging
+it and says so:
+
+    CTFontCopyGraphicsFont: 0x47 is not an object
+
+0x47, and on the next line iTerm2 asks the same value for its pointSize and faults at 0x18. So the
+value is small, junk, and DIFFERENT between the two reads. That is not a font that failed to
+resolve, which would be nil: it is memory being read as an object pointer when it holds something
+else.
+
+The guard is worth having on its own account, because a fault inside CTFontCopyGraphicsFont points
+at CoreText when the caller is the one holding rubbish, but it does not fix anything: iTerm2
+crashes two instructions later in its own code, messaging the same value.
+
+WHERE TO LOOK NEXT: who fills that attributes dictionary, and what our runtime returns to it. The
+same dictionary carries a CGColorRef under kCTForegroundColorAttributeName, which is the kind of
+CF-in-NS mixing where an object that is not really an object gets retained and released.
+
+LibreOffice after the CoreText change: Writer draws its title bar, menu bar, both toolbar rows,
+ruler, page, sidebar and status bar, with zero raises and no not-an-object lines.

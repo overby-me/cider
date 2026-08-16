@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <CoreText/KTFont.h>
 #import <Foundation/NSString.h>
 #import <objc/message.h>
+#include <stdint.h>
+#include <stdio.h>
 
 /* Defined in constants.c and declared in no header, the same as in CTFontCollection.m. */
 extern const CFStringRef kCTFontSymbolicTrait;
@@ -557,6 +559,22 @@ CGFontRef CTFontCopyGraphicsFont(CTFontRef font, CTFontDescriptorRef _Nullable *
     id object = (id) font;
 
     if (object == nil) {
+        return NULL;
+    }
+
+    /* A POINTER THIS SMALL OR THIS MISALIGNED IS NOT AN OBJECT, and messaging it faults inside
+     * objc_msgSend where the caller looks like the culprit. iTerm2 hands over whatever its
+     * attributes dictionary holds under NSFontAttributeName, and it has handed over 0x18. Say the
+     * value and answer NULL, which is what this function already answers for anything it cannot
+     * unwrap, rather than taking the process down. */
+    if ((uintptr_t) object < 0x1000 || ((uintptr_t) object & 0x7) != 0) {
+        static int reported = 0;
+
+        if (reported < 8) {
+            reported++;
+            fprintf(stderr, "CTFontCopyGraphicsFont: %p is not an object\n", (void *) object);
+            fflush(stderr);
+        }
         return NULL;
     }
 
