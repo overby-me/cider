@@ -4925,3 +4925,21 @@ which is a fetch of both and a diff, and that is the next rung for this pin.
 Two consequences worth stating. Any patch to metal is blocked until then, so the iTerm2 load chain
 stops here. And a FRESH CHECKOUT cannot build metal at all today: the copy in vendor/src exists only
 because an older fetch is still in the store.
+
+
+## Drag selection works, which was the last untested part of interactive
+
+2026-08-16. The three loop criteria have been checked with clicks, typing and shortcuts, but a DRAG
+had never been tested: a press, several motions spread over real time, and a release. It is the one
+gesture sway IPC cannot produce, because the virtual device it makes for a command list dies with
+the command list, so the press and the release arrive with the same timestamp and no motion is ever
+sent with a button held. vptr/cider-vptr exists for exactly this.
+
+run-lo-drag2.sh types two paragraphs, then presses at x=300 on the second line, moves through 360,
+430 and 500, and releases at 560. What comes back, looked at rather than counted:
+
+    cond paragraph, typed by a keyboard th        selected, pale blue band, text still black
+    Selected: 7 words, 38 characters              in the status bar
+
+which is the range the drag covered, so the press, the motions and the release all arrived in order
+and were interpreted as one gesture. docs/wayland-interact-drag.png.
