@@ -6078,3 +6078,43 @@ A SECOND LESSON, cheaper and more embarrassing. A harness that forwards every sw
 the ones that are unset, and getenv answers an empty string for that, which is not NULL. So
 CIDER_GLYPH_RED was on in a run nobody asked to be red, and the first screenshot of working text came
 out entirely red and read as a colour bug. Both glyph gates now treat empty as off.
+
+### A terminal with a shell in it
+
+Three things stood between iTerm2 and a shell, and none of them was the terminal.
+
+USER and LOGNAME were the HOST account. The launcher computed HOME from the container account and
+copied USER straight through from the host, so the environment said USER=overby.me and
+HOME=/Users/root at the same time. The only account this container has is root. iTerm2 opens its
+session with login -fp $USER, so getpwnam answered NULL and login printed Login incorrect.
+
+PAM denied it. /etc/pam.d/login was never installed at all, so openpam fell back to
+/etc/pam.d/other, which is pam_deny for every facility. Apple's own login policy would not have
+helped: it is built on pam_opendirectory and there is no directory service in this container. The
+Cider policies now live in src/darwin/etc/pam.d beside master.passwd and group, with the reasoning
+written into the files.
+
+Two traps in that one file. login asks for the service name login.term and never login, which
+tracing the opens says in one run and guessing does not. And naming a module that cannot be loaded
+breaks the whole policy no matter how it is marked: an optional pam_launchd.so produced
+"no pam_launchd.so found" followed by pam_start failing with a system error, and login exited 1
+having exec'd nothing.
+
+THE REASON IT WAS SILENT IS WORTH MORE THAN THE FIX. login reports these failures to syslog, not
+stderr, and there is no syslog socket in the container, so nothing appears anywhere. Every syslog
+call becomes a sendto on a dead descriptor and the message text is still in the buffer strace
+prints: strace -f -s 400 -e trace=sendto named all three messages, in order, in one run. Reach for
+that whenever a guest program exits with no output.
+
+Sheets were a separate abort. Cocotron declares sheetOrderFrontFromFrame:aboveWindow:, with two
+arguments; the Wayland window class registered the one argument sheetOrderFrontFromFrame:, which is
+a different selector, so the call reached the abstract implementation and raised. Wayland has no
+window glued to another, so a sheet is shown as an ordinary toplevel. iTerm2 now puts up its
+warning alert properly instead of dying, and LibreOffice, whose save and print dialogs are sheets,
+was one save away from the same crash.
+
+Looked at, not counted: the terminal shows a bash prompt reading Darling [~]# with a typed command
+on it.
+
+Still untested for iTerm2: mouse and menus, and resize. auditon, syscall 351, is still
+unimplemented and prints one line into the scrollback per session.
