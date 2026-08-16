@@ -387,6 +387,20 @@ void CGContextSelectFont(CGContextRef context, const char *name, CGFloat size,
     O2ContextSelectFont((O2ContextRef)context, name, size, encoding);
 }
 
+/* THE PRIVATE SMOOTHING STYLE PAIR, which a terminal reaches for on every fast path string it
+ * draws. iTerm2 binds CGContextGetFontSmoothingStyle LAZILY, so the process aborts at the first
+ * glyph rather than failing to load, and the whole terminal stays black.
+ *
+ * There is one glyph rasteriser behind this context and it has no style variants, so the getter
+ * answers 0, meaning the default, and the setter accepts and ignores. That is what the style
+ * actually is here rather than a guess about it. */
+int CGContextGetFontSmoothingStyle(CGContextRef context) {
+    return 0;
+}
+
+void CGContextSetFontSmoothingStyle(CGContextRef context, int style) {
+}
+
 void CGContextSetShouldSmoothFonts(CGContextRef context, bool yesOrNo) {
     O2ContextSetShouldSmoothFonts((O2ContextRef)context, yesOrNo);
 }

@@ -120,10 +120,48 @@ struct SpecialEnv {
     root_path: Option<String>,
 }
 
+
+/// Give the guest a macOS sized descriptor limit instead of the host one.
+///
+/// macOS ships a SOFT RLIMIT_NOFILE of a few hundred, and Cocoa applications are written to that:
+/// the standard way to sanitise a child before exec is to close every descriptor from 3 up to
+/// getdtablesize(), which returns the soft limit. On a Linux host that limit is whatever the login
+/// session has, and on this one it is 524287.
+///
+/// Every one of those closes is an RPC to the daemon here, so iTerm2 forking to launch its pty
+/// helper turned into half a million round trips: the child sat in recvmsg burning a core, the
+/// daemon burned two thirds of another servicing them, and the exec never arrived. That is why a
+/// terminal window opened with no shell in it.
+///
+/// The HARD limit is left alone, so anything that genuinely needs more descriptors can still raise
+/// its own soft limit the way it would on macOS.
+fn clamp_open_file_limit() {
+    const GUEST_SOFT_LIMIT: libc::rlim_t = 1024;
+
+    unsafe {
+        let mut limit: libc::rlimit = std::mem::zeroed();
+
+        if libc::getrlimit(libc::RLIMIT_NOFILE, &mut limit) != 0 {
+            return;
+        }
+        if limit.rlim_cur <= GUEST_SOFT_LIMIT {
+            return;
+        }
+
+        let wanted = libc::rlimit {
+            rlim_cur: GUEST_SOFT_LIMIT.min(limit.rlim_max),
+            rlim_max: limit.rlim_max,
+        };
+        libc::setrlimit(libc::RLIMIT_NOFILE, &wanted);
+    }
+}
+
 fn main() {
     // Prime the MLDR_DEBUG flag here, on main's aligned stack: the env read must
     // not happen later on an elfcall's misaligned stack (movaps constraint).
     mldr_debug();
+
+    clamp_open_file_limit();
 
     let argv: Vec<String> = std::env::args().collect();
     if argv.is_empty() {

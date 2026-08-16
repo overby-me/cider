@@ -56,7 +56,37 @@ const THREAD_WAITING: wait_result_t = -1;
 const THREAD_TIMED_OUT: wait_result_t = 1;
 const THREAD_UNINT: wait_interrupt_t = 0;
 
+/// WHO IS LOCKING WITHOUT A MICROTHREAD, which the warning below cannot say.
+///
+/// That warning fires hundreds of times a second once a guest forks, and it names neither the
+/// caller nor the path. With CIDER_LOCK_BACKTRACE naming a file, the first few are written there
+/// with a Rust backtrace, and one look at that names the code that has to change.
+fn log_no_thread_backtrace(what: &str) {
+    use std::io::Write;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static WRITTEN: AtomicUsize = AtomicUsize::new(0);
+
+    let path = match std::env::var("CIDER_LOCK_BACKTRACE") {
+        Ok(p) if !p.is_empty() => p,
+        _ => return,
+    };
+    /* SKIP THE START UP ONES. xnu_sys_init creates the kernel task before any microthread
+     * exists, so the first dozens of these are expected and say nothing. The interesting ones are
+     * the steady state, which is why this writes a window in the middle rather than the head. */
+    let seen = WRITTEN.fetch_add(1, Ordering::Relaxed);
+    if seen < 200 || seen >= 206 {
+        return;
+    }
+
+    let backtrace = std::backtrace::Backtrace::force_capture();
+    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+        let _ = writeln!(file, "=== {what}\n{backtrace}\n");
+    }
+}
+
 fn log_warning(what: &str) {
+    log_no_thread_backtrace(what);
     let mut buf = Vec::with_capacity(what.len() + 1);
     buf.extend_from_slice(what.as_bytes());
     buf.push(0);

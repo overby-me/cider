@@ -5661,3 +5661,44 @@ completely that every command answered
 
 Read /proc/self/environ instead, the way execve.c does. And the daemon messages never reach the app
 log: strace -f -e trace=write is the only way to read them.
+
+
+## Half a million closes: the descriptor limit is why the terminal had no shell
+
+2026-08-16, and this is the one that mattered. The guest inherits the host RLIMIT_NOFILE:
+
+    guest   ulimit -n = 524287
+    macOS   a few hundred, soft
+
+Cocoa applications are written to the macOS number. The standard way to sanitise a child before
+exec is to close every descriptor from 3 up to getdtablesize(), which returns the SOFT limit, so
+iTerm2 forking to launch its pty helper turned into over half a million close calls. Every one of
+those is an RPC to the daemon here. The child sat in recvmsg burning a core, the daemon burned two
+thirds of another servicing them, and the exec never arrived, which is why a terminal window opened
+with no shell in it.
+
+mldr now lowers the SOFT limit to 1024 for guest processes and leaves the HARD limit alone, so
+anything that genuinely needs more can raise its own the way it would on macOS. Measured after:
+guest ulimit -n = 1023, hard still 524287.
+
+WHAT THAT UNBLOCKED, in order, each one measured:
+  iTermServer SPAWNS and stays (a process watch sees five of them at 5.6 s where there were none);
+  the session reaches TEXT DRAWING, which announced itself by aborting inside
+    -[iTermTextDrawingHelper drawFastPathStringWithoutUnderlineOrStrikethrough:...] on a lazy bind
+    of _CGContextGetFontSmoothingStyle, a private CoreGraphics call this tree did not have. The
+    getter answers 0 and the setter ignores, because there is one rasteriser here with no style
+    variants. With it in place the abort is gone and the run survives its full 45 seconds.
+
+ALSO IN THIS ROUND: xnu task creation moved onto a kernel microthread. xnu_sys_task_create takes
+xnu mutexes, and with no current microthread xnu_sys_mutex_lock cannot park a waiter, so it spins
+on the queue lock; if a microthread holds that mutex the daemon thread spins for a thread only it
+can schedule. The lock-without-a-thread warnings dropped from 350 to 255 in a 25 second run. The
+remainder come from thread creation, which is the same shape and is chicken-and-egg: creating the
+first microthread cannot itself be on a microthread.
+
+WHERE IT STANDS: the window, the menu bar and the 80x25 title are drawn, iTermServer runs, and the
+terminal area is STILL BLACK with no prompt. No shell process appears under the server yet. That is
+the next rung.
+
+LibreOffice is unaffected by the descriptor change: Writer draws its title bar, menu bar, both
+toolbar rows, ruler, page, sidebar and status bar, with zero raises and no too-many-open-files.

@@ -96,8 +96,37 @@ impl Registry {
             })
             .and_then(|pnsid| self.tasks.get(&pnsid).copied())
             .unwrap_or(std::ptr::null_mut());
-        let t = xnu_sys_task_create(parent, pid, ctx_ptr, arch_from_wire(arch));
-        assert!(!t.is_null(), "xnu_sys_task_create failed for pid {pid}");
+        /*
+         * ON A MICROTHREAD, NOT ON THE DAEMON THREAD, AND THAT IS THE WHOLE POINT.
+         *
+         * xnu_sys_task_create takes xnu mutexes (ipc_task_init, ipc_task_enable, ipc_kobject_set).
+         * With no current microthread, xnu_sys_mutex_lock cannot park a waiter, so it falls back to
+         * spinning on the queue lock. If any microthread already holds that mutex the daemon thread
+         * spins forever waiting for a thread only IT can schedule: a hard deadlock, with ciderd at
+         * two thirds of a core and the guest that triggered it stuck in recvmsg.
+         *
+         * That is what stopped iTerm2 from ever starting a shell: the session child forks, its
+         * first call reaches here, and the daemon wedges. A kernel microthread gives the mutex a
+         * waiter it can suspend and resume, which is what the rest of this file already relies on.
+         */
+        let mut created: *mut xnu_sys_task_t = std::ptr::null_mut();
+        let created_slot = &mut created as *mut *mut xnu_sys_task_t as usize;
+        let wire_arch = arch_from_wire(arch);
+        let kernel = self.kernel_task;
+
+        sched::run_on_task(
+            kernel,
+            Box::new(move || {
+                let t = xnu_sys_task_create(parent, pid, ctx_ptr, wire_arch);
+                *(created_slot as *mut *mut xnu_sys_task_t) = t;
+            }),
+        );
+
+        let t = created;
+        assert!(
+            !t.is_null(),
+            "xnu_sys_task_create failed for pid {pid} (or its microthread never finished)"
+        );
         self.tasks.insert(pid, t);
         self.ctxs.insert(pid, ctx);
         // Publish to the task_lookup table so the static xnu_sys hook can resolve this task.

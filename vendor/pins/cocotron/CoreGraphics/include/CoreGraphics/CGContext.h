@@ -282,6 +282,10 @@ COREGRAPHICS_EXPORT void CGContextSetFontSize(CGContextRef context,
 COREGRAPHICS_EXPORT void CGContextSelectFont(CGContextRef context,
                                              const char *name, CGFloat size,
                                              CGTextEncoding encoding);
+/* Private, and a current terminal binds the getter lazily, so its absence aborts mid draw. */
+COREGRAPHICS_EXPORT int CGContextGetFontSmoothingStyle(CGContextRef context);
+COREGRAPHICS_EXPORT void CGContextSetFontSmoothingStyle(CGContextRef context, int style);
+
 COREGRAPHICS_EXPORT void CGContextSetShouldSmoothFonts(CGContextRef context,
                                                        bool yesOrNo);
 
