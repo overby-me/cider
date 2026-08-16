@@ -4976,3 +4976,33 @@ WITH THAT FIXED, metal takes patches: MTLCaptureDescriptor beside the manager it
 MTKTextureLoader with its option keys, which answers nil with an error for every load because no
 device here can hold a texture. The chain then moves to the async URLSession data(from:delegate:)
 in libswiftFoundation, which is the same shim problem as libswiftCore and is next.
+
+
+## dyld is satisfied: the nixpkgs iTerm2 loads, and dies in an image initialiser
+
+2026-08-16. The libswiftFoundation shim is the same shape as the libswiftCore one: the real overlay
+is renamed in place to libswiftKoundation.dylib, the name patched inside the x86_64 slice at equal
+length so nothing in the file moves, and a new libswiftFoundation.dylib re-exports it and adds the
+four symbols a 12.4 SDK asks for. All four TRAP rather than answer, deliberately: they are a
+throwing read, a throwing write and an ASYNC URLSession fetch, and a stub that returned an empty
+Data would be a silent wrong answer inside a program that is downloading something.
+
+WITH THAT IN PLACE, DYLD IS DONE. No missing library and no missing symbol remains for iTerm2
+3.6.10: the process gets past the loader, the Objective-C runtime starts registering classes (the
+FMDB duplicate class warnings are ordinary, the app ships its own copy of a framework this prefix
+also has), and image initialisers run.
+
+AND THEN IT DIES, with SIGSEGV, in an initialiser. DYLD_PRINT_INITIALIZERS names every image as it
+is about to run one, and the last two lines are libc++, so the fault is inside that initialiser or
+the next image before its line reaches the log. NOTHING IS PRINTED by the crash handler, and the
+reason is structural rather than a bug: CIDER_TRACE_CRASH installs the handler from the Wayland
+backend, which AppKit loads when the application asks for a display, and this crash happens long
+before that. The next rung is to install the handler EARLIER, from an image that is already loaded
+at initialiser time, and then read the frames the way every other fault in this port has been read.
+
+WHAT IS AND IS NOT IN THE TREE. The load stubs for the eleven missing libraries and the two Swift
+shims are in the PREFIX and in scratchpad/swiftstubs: they are how the measurement was taken, not a
+build. What is in the tree is everything a framework this port owns had to gain: WKContentWorld, the
+empty collection storage, the constant literal classes, the modern AppKit symbols, the CoreGraphics
+screen capture answers, the AVFoundation, CoreLocation, CoreMedia and CoreVideo constants, and the
+two metal patches.
