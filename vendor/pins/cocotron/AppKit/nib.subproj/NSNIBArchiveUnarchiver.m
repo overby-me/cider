@@ -364,6 +364,30 @@ static BOOL NIBTracing(void) {
  * archive instead, so handing them this decoder produces empty strings and empty arrays. They are
  * short and they are exact, so they are built directly.
  */
+/*
+ * EVERY INDEX IN HERE COMES FROM THE FILE, so every one of them is checked.
+ *
+ * A value index past the end of the table gives a garbage record: a kind that happens to read as
+ * data, an offset and a length that point anywhere. What that produced was a SIGSEGV inside
+ * objc_msgSend with a receiver of 0x18, sixteen frames into a nib decode, which says nothing about
+ * a nib at all. The two helpers below are the only way _values and the byte range are read now.
+ */
+- (struct _NIBValue *) _valueForObject: (struct _NIBObject *) object at: (NSUInteger) i {
+    NSUInteger slot = object->valueIndex + i;
+
+    if (i >= object->valueCount || slot >= _valueCount) {
+        return NULL;
+    }
+    return &_values[slot];
+}
+
+- (BOOL) _dataRangeIsInFile: (struct _NIBValue *) value {
+    NSUInteger offset = (NSUInteger) value->payload.data.offset;
+    NSUInteger length = (NSUInteger) value->payload.data.length;
+
+    return offset <= _length && length <= _length - offset;
+}
+
 - (id) _buildContainerOfClass: (NSString *) className atIndex: (NSUInteger) index {
     struct _NIBObject *object = &_objects[index];
 
@@ -372,9 +396,19 @@ static BOOL NIBTracing(void) {
         NSUInteger i;
 
         for (i = 0; i < object->valueCount; i++) {
-            struct _NIBValue *value = &_values[object->valueIndex + i];
+            struct _NIBValue *value = [self _valueForObject: object at: i];
 
+            if (value == NULL) {
+                break;
+            }
             if (value->kind == _NIBValueData) {
+                if (![self _dataRangeIsInFile: value]) {
+                    fprintf(stderr, "CIDER_NIB archive DATA OUT OF FILE for object %lu\n",
+                            (unsigned long) index);
+                    fflush(stderr);
+                    break;
+                }
+
                 NSString *text = [[NSString alloc]
                         initWithBytes: _bytes + value->payload.data.offset
                                length: value->payload.data.length
@@ -396,7 +430,11 @@ static BOOL NIBTracing(void) {
         NSUInteger i;
 
         for (i = 0; i < object->valueCount; i++) {
-            struct _NIBValue *value = &_values[object->valueIndex + i];
+            struct _NIBValue *value = [self _valueForObject: object at: i];
+
+            if (value == NULL) {
+                break;
+            }
 
             switch (value->kind) {
             case _NIBValueInt8:
@@ -484,7 +522,33 @@ static BOOL NIBTracing(void) {
         return _instances[index];
     }
 
-    NSString *className = _classNames[_objects[index].classIndex];
+    /*
+     * THE CLASS INDEX IS FROM THE FILE, SO IT IS CHECKED.
+     *
+     * Nothing bounded this read. A class index past the end of the table gave a garbage pointer,
+     * and the next thing done with it is a message send, which is a fault inside objc_msgSend with
+     * a receiver nobody can explain: iTerm2 died that way while decoding an NSTextField, sixteen
+     * frames deep in its own nib, with the fault address at 0x18 and no exception anywhere.
+     * A file that says something impossible gets nil for that object and a line saying so.
+     */
+    uint32_t classIndex = _objects[index].classIndex;
+
+    if (classIndex >= _classCount) {
+        fprintf(stderr,
+                "CIDER_NIB archive OUT OF RANGE class index %u for object %lu, %lu classes\n",
+                classIndex, (unsigned long) index, (unsigned long) _classCount);
+        fflush(stderr);
+        return nil;
+    }
+
+    NSString *className = _classNames[classIndex];
+
+    if (className == nil) {
+        fprintf(stderr, "CIDER_NIB archive NO CLASS NAME at index %u for object %lu\n", classIndex,
+                (unsigned long) index);
+        fflush(stderr);
+        return nil;
+    }
 
     if (NIBTracing()) {
         fprintf(stderr, "CIDER_NIB enter %lu %s\n", (unsigned long) index,

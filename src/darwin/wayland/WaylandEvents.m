@@ -308,14 +308,41 @@ static void cider_crash_handler(int sig, siginfo_t *info, void *uap)
 	raise(sig);
 }
 
-static void cider_install_crash_handler(void)
-{
-	static BOOL installed = NO;
+static void cider_install_crash_handler_now(void);
 
-	if (installed || getenv("CIDER_TRACE_CRASH") == NULL) {
+/*
+ * RE-INSTALLED, NOT INSTALLED ONCE, and that is not belt and braces.
+ *
+ * An application is entitled to install its own fatal signal handlers and a crash reporting one is
+ * ordinary: iTerm2 has one. Whoever calls sigaction last wins, and a handler that goes in at load
+ * time always loses to one the application installs while it starts up. The first SIGSEGV after that
+ * printed nothing at all here while the core file proved the fault was real. So this is called from
+ * the event pump as well, and it takes the handler back whenever it has been replaced.
+ */
+void cider_wayland_refresh_crash_handler(void)
+{
+	if (getenv("CIDER_TRACE_CRASH") == NULL) {
 		return;
 	}
-	installed = YES;
+
+	struct sigaction current;
+
+	if (sigaction(SIGSEGV, NULL, &current) == 0 && current.sa_sigaction == cider_crash_handler) {
+		return;
+	}
+	cider_install_crash_handler_now();
+}
+
+static void cider_install_crash_handler(void)
+{
+	if (getenv("CIDER_TRACE_CRASH") == NULL) {
+		return;
+	}
+	cider_install_crash_handler_now();
+}
+
+static void cider_install_crash_handler_now(void)
+{
 
 	struct sigaction sa;
 
@@ -338,8 +365,13 @@ static void cider_install_crash_handler(void)
 	sigaction(SIGBUS, &sa, NULL);
 	sigaction(SIGILL, &sa, NULL);
 	sigaction(SIGFPE, &sa, NULL);
-	fprintf(stderr, "cider-wayland crash-handler=installed\n");
-	fflush(stderr);
+	static BOOL announced = NO;
+
+	if (!announced) {
+		announced = YES;
+		fprintf(stderr, "cider-wayland crash-handler=installed\n");
+		fflush(stderr);
+	}
 }
 
 void cider_wayland_watch_focus_notifications(void)

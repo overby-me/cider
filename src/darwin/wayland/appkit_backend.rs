@@ -84,6 +84,9 @@ extern "C-unwind" fn display_init(this: Object, _cmd: Sel) -> Object {
  * and application code raises. See objc.rs. */
 unsafe extern "C-unwind" {
     fn cider_wayland_drain_main_queue();
+    /// Takes the crash handler back if the application has installed its own over it. Cheap: one
+    /// sigaction read, and it returns immediately when the trace is off.
+    fn cider_wayland_refresh_crash_handler();
     /// An autorelease pool around the work this backend does per pass. See the comment on the C
     /// side: the returned event must NOT be inside it.
     fn cider_wayland_pool_push() -> *mut c_void;
@@ -169,6 +172,7 @@ extern "C-unwind" fn display_next_event(
     if !crate::env_flag!("CIDER_WAYLAND_NO_DRAIN") {
         unsafe { cider_wayland_drain_main_queue() };
     }
+    unsafe { cider_wayland_refresh_crash_handler() };
     // AFTER the pump, because that is what turns compositor events into the pending state this
     // applies. Doing it here rather than in the callback is the whole point: the main loop is
     // where re-entering AppKit is safe.

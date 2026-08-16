@@ -4740,3 +4740,41 @@ WHERE ITERM2 IS: three windows created, no exception left in the run and NO WIND
 ends without a crash and without a message after setting an alpha value on an image view, which is
 the next thing to chase. NO REGRESSION: LibreOffice Writer draws its window, both toolbars, ruler,
 page, sidebar and status bar, with no unrecognized selector in the whole run.
+
+
+## A crash handler that loses to the application, and a nib reader that trusted the file
+
+2026-08-16. Two things after the ten API additions, and one of them is only half done.
+
+THE HANDLER HAS TO BE TAKEN BACK. CIDER_TRACE_CRASH printed nothing for a SIGSEGV that the core file
+proved was real, because an application is entitled to install its own fatal signal handlers and a
+crash reporting one is ordinary. iTerm2 has one, whoever calls sigaction last wins, and a handler
+installed at load time always loses to one installed during startup. It is now re-checked from the
+event pump and taken back whenever it has been replaced, which costs one sigaction read per pass and
+returns immediately when the trace is off. With that, the same fault printed forty one frames.
+
+EVERY INDEX IN THE NIB READER COMES FROM THE FILE, and none of them was checked: the class index of
+an object, the value index of a record, and the offset and length of a data payload. A value index
+past the end of the table gives a record whose kind, offset and length are whatever was in memory,
+which is a wild read dressed up as a decode. They are all bounded now and each says so on stderr
+when it fires.
+
+AND THE CRASH IT WAS WRITTEN FOR IS STILL THERE, which is the honest part. iTerm2 dies with
+
+    cider CRASH signal=11 code=1 addr=0x18
+    0  libobjc.A.dylib   objc_msgSend + 29
+    1  AppKit            -[_NSNIBArchiveUnarchiver _objectAtIndex:]
+    2  AppKit            -[NSResponder initWithCoder:]
+    ...
+    15 AppKit            -[NSBundle(NSNibLoading) loadNibFile:externalNameTable:withZone:]
+
+A receiver of 0x18 is a small integer where an object should be. CIDER_TRACE_NIB says exactly where
+in the graph it happens:
+
+    enter 8 NSTextField -> build 8 NSTextField -> enter 26 NSClassSwapper -> build 26
+    NSClassSwapper -> enter 27 NSString        and nothing after that
+
+so it is inside the container build or the class lookup for object 27, and NONE of the new bounds
+checks fire on the way. The next step is a trace at each branch of _buildContainerOfClass: and
+_classForName:, since the frame offset dladdr reports is measured from an exported symbol and does
+not point at the call it looks like it points at.
