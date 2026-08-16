@@ -6454,3 +6454,33 @@ an application bundled XPC services, Contents/XPCServices with a CFBundleIdentif
 com.iterm2.sandboxed-worker in this case, and spawn one on demand when a client looks its name up.
 libxpc already knows where they live, bundle.m resolves the XPCServices subdirectory; launchd is the
 half that is missing.
+
+### The sandboxed worker runs now, and imgcat still shows nothing
+
+With CIDER_XPC_LAUNCH_SERVICES on and the eightbyte fix in, an iTerm2 run reports
+
+    CIDER_XPC spawned bundled service com.iterm2.sandboxed-worker
+      at /Applications/iTerm.app/Contents/XPCServices/iTerm2SandboxedWorker.xpc/Contents/MacOS/iTerm2SandboxedWorker
+
+with no crash. So the service iTerm2 decodes inline images in is running, the connection to it no
+longer kills the process, and the picture STILL does not appear: imgcat echoes its command, the
+cursor moves to the next line, and nothing is drawn. There was not even a permission dialog in that
+run, which there always was before.
+
+Three real blockers have been removed on the way here, and none of them was the last one: no base64
+in the container, two CoreText creators returning nil into a CFRelease that halts, and an argument
+offset that was four bytes inside its own slot. The honest position is that inline images remain
+broken and the remaining cause is not yet identified.
+
+### A garbage collection can empty your screenshots
+
+Several runs produced no frames, and one earlier round produced pure black images, with no crash and
+no error from the application. The cause was not the application at all: the nix store paths the
+harness hard codes for grim and wtype had been garbage collected, so the screenshot and the typing
+simply did not happen.
+
+    run-iterm-visible.sh: line 85: /nix/store/...-grim-1.5.0/bin/grim: No such file or directory
+
+A rebuild restores the SAME path, so the fix is one nix build away, but the failure reads as the
+application drawing nothing. Before believing an empty or black capture, check that the tool that
+was supposed to take it still exists.
