@@ -1684,6 +1684,20 @@ static BOOL _allowsAutomaticWindowTabbing;
     return [_sheetContext sheet];
 }
 
+/* The OTHER end of the sheet relationship, and iTerm2 asks for it when a window becomes key. This
+ * window is a sheet only if some other window has it attached, and nothing here begins a sheet on
+ * its own, so the honest answer for a window that is not a sheet is nil. Missing, it raised, and
+ * the raise crossed a Rust callback that cannot unwind and took the process with it. */
+- (NSWindow *) sheetParent {
+    for (NSWindow *window in [NSApp windows]) {
+        if (window != self && [window attachedSheet] == self) {
+            return window;
+        }
+    }
+
+    return nil;
+}
+
 - (id) windowController {
     return _windowController;
 }

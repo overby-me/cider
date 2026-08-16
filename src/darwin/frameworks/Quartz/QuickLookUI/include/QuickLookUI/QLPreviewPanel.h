@@ -20,4 +20,10 @@
 #import <AppKit/AppKit.h>
 
 @interface QLPreviewPanel : NSPanel
+
+/* An application asks whether the panel exists BEFORE it asks for it, precisely so that a check
+ * does not bring the panel into being. iTerm2 does this on every window activation. */
++ (BOOL) sharedPreviewPanelExists;
++ (QLPreviewPanel *) sharedPreviewPanel;
+
 @end

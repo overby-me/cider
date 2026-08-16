@@ -1658,7 +1658,14 @@ fn dump_buffer(st: &mut WindowState) {
 
     // THE BITMAP, not the buffer: the pages are the drawing, and on a window the compositor sized
     // smaller than its minimum the two differ.
-    let (w, h) = (st.draw_w, st.draw_h);
+    // THE MARGIN IS PART OF THE ROW, and leaving it out sheared every dump of a window with a
+    // shadow: the pixels are read back at draw_w * 4 while the rows are actually
+    // (draw_w + margin * 2) * 4 apart, so each row starts a little earlier than the last and the
+    // image slants. It looked exactly like a rendering bug in the application, which is the worst
+    // thing an instrument can do. Dump the WHOLE allocation, which is also what the compositor
+    // reads, and keep it one contiguous write.
+    let margin = shadow_margin(st);
+    let (w, h) = (st.draw_w + margin * 2, st.draw_h + margin * 2);
     let stride = (w as usize) * 4;
     let image_len = stride * (h as usize);
     if image_len == 0 || image_len > st.map_len {

@@ -480,6 +480,7 @@ typedef NS_OPTIONS(NSUInteger, NSWindowOcclusionState) {
 - (NSButton *) standardWindowButton: (NSWindowButton) value;
 - (NSButtonCell *) defaultButtonCell;
 - (NSWindow *) attachedSheet;
+- (NSWindow *) sheetParent;
 /* The sheets attached to this window, empty when there are none. */
 - (NSArray *) sheets;
 

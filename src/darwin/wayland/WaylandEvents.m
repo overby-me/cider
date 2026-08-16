@@ -159,7 +159,26 @@ void cider_wayland_set_keyboard_focus(id delegate, id platformWindow)
 	cider_wayland_key_window = delegate;
 	if (delegate != nil &&
 		[delegate respondsToSelector: @selector(platformWindowActivated:displayIfNeeded:)]) {
-		[delegate platformWindowActivated: platformWindow displayIfNeeded: YES];
+		/*
+		 * CATCH HERE, BECAUSE THE CALLER CANNOT UNWIND.
+		 *
+		 * This function is called from wayland_appkit_lib::input::on_keyboard_enter, which is
+		 * extern C. Activation posts NSWindowDidBecomeKeyNotification, and an application observer
+		 * is free to raise: iTerm2 did, twice in a row, on selectors we did not have. An ObjC
+		 * exception unwinding through that Rust frame is not a Rust panic and catch_unwind cannot
+		 * see it; Rust aborts the process instead. So the terminal died the moment it was given
+		 * keyboard focus, which reads as a broken compositor rather than a missing selector.
+		 *
+		 * macOS does not take the application down for this either: an exception raised from a
+		 * notification handler reaches the run loop, which reports it and carries on. Report and
+		 * carry on.
+		 */
+		@try {
+			[delegate platformWindowActivated: platformWindow displayIfNeeded: YES];
+		} @catch (NSException *exception) {
+			NSLog(@"cider-wayland: activating window raised %@: %@, continuing",
+				  [exception name], [exception reason]);
+		}
 	}
 	/*
 	 * DID IT ACTUALLY BECOME KEY. Activation only makes a window key if it says it can, and a

@@ -19,5 +19,36 @@
 
 #import <QuickLookUI/QLPreviewPanel.h>
 
+/* THE CLASS WAS EMPTY, AND THAT KILLED ITERM2 ON EVERY WINDOW ACTIVATION.
+ *
+ * -[PseudoTerminal windowDidBecomeKey:] asks +sharedPreviewPanelExists, which did not exist, so the
+ * runtime raised NSInvalidArgumentException. The raise unwound out through
+ * wayland_appkit_lib::input::on_keyboard_enter, which is extern C and cannot unwind, and Rust
+ * aborted the process. From outside that is a terminal that dies when you give it focus.
+ *
+ * The two methods are a pair on purpose: asking whether the panel exists must NOT create it, which
+ * is the whole reason the application calls the first one. */
+static QLPreviewPanel *sSharedPreviewPanel = nil;
+
 @implementation QLPreviewPanel
+
++ (BOOL) sharedPreviewPanelExists
+{
+    return sSharedPreviewPanel != nil;
+}
+
++ (QLPreviewPanel *) sharedPreviewPanel
+{
+    if (sSharedPreviewPanel == nil) {
+        sSharedPreviewPanel = [[self alloc]
+                initWithContentRect: NSMakeRect(0, 0, 640, 480)
+                          styleMask: NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
+                                     NSWindowStyleMaskResizable | NSWindowStyleMaskUtilityWindow
+                            backing: NSBackingStoreBuffered
+                              defer: YES];
+    }
+
+    return sSharedPreviewPanel;
+}
+
 @end
