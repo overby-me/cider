@@ -295,12 +295,26 @@ ONYX2D_STATIC BOOL initFunctionsForParameters(O2Image *self,
     self->_read_a32f = O2ImageRead_ANY_to_A8_to_Af;
     self->_read_argb32f = O2ImageRead_ANY_to_argb8u_to_argb32f;
 
+    /*
+     * THE DEFAULT BYTE ORDER IS THE ORDER THE COMPONENTS ARE NAMED IN, not the order of the host.
+     *
+     * Core Graphics reads kCGBitmapByteOrderDefault as the layout the alpha info spells out: with
+     * kCGImageAlphaNoneSkipFirst a pixel is X, R, G, B in memory, in that order, on every machine.
+     * The host order is what kCGBitmapByteOrder32Little says instead, and a caller that wants it
+     * asks for it, which is what the Wayland surface in this tree does.
+     *
+     * This used to rewrite Default to 32Little on a little endian machine, which reads an XRGB
+     * pixel as B, G, R and rotates every colour by one byte. Measured on the LibreOffice toolbar,
+     * the same icon in two runs, one of which draws it through the masked path with a default byte
+     * order and one of which does not:
+     *
+     *     correct   srgb(119,205,247)      memory X=255 R=119 G=205 B=247
+     *     wrong     srgb(205,119,255)      the same bytes read as B=255 G=119 R=205
+     *
+     * which is the rotation exactly. The folder came out violet instead of blue.
+     */
     if ((bitmapInfo & kO2BitmapByteOrderMask) == kO2BitmapByteOrderDefault) {
-#ifdef __LITTLE_ENDIAN__
-        bitmapInfo |= kO2BitmapByteOrder32Little;
-#else
         bitmapInfo |= kO2BitmapByteOrder32Big;
-#endif
     }
 
     switch ([colorSpace type]) {

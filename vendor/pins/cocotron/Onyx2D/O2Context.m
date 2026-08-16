@@ -1469,7 +1469,30 @@ void O2ContextDrawImage(O2ContextRef self, O2Rect rect, O2ImageRef image) {
          * LAST state survives rather than the first. The first version of this kept the first four
          * and they were all early and empty, which answered nothing.
          */
-        if (O2ImageGetWidth(image) > 200 && O2ImageGetHeight(image) > 200) {
+        /*
+         * AN IMAGE WITH NO EIGHT BIT READER IS WORTH SAYING OUT LOUD. Dumping one crashes, which is
+         * how this was noticed: the small masked dump added here took the application down with
+         * Unspecified Application Error, and the reason was a null _read_argb8u rather than
+         * anything about the dump.
+         */
+        if (image->_read_argb8u == NULL) {
+            static int said;
+
+            if (said < 10) {
+                said++;
+                fprintf(stderr, "CIDER_IMAGE_NOREADER %zux%zu bpc=%zu bpp=%zu info=0x%X cs=%d\n",
+                        O2ImageGetWidth(image), O2ImageGetHeight(image),
+                        O2ImageGetBitsPerComponent(image), O2ImageGetBitsPerPixel(image),
+                        (unsigned) O2ImageGetBitmapInfo(image),
+                        (int) [O2ImageGetColorSpace(image) type]);
+                fflush(stderr);
+            }
+        }
+
+        /* Big ones only: a small one is not worth a file, and reading one whose reader is missing
+         * is a crash. */
+        if (O2ImageGetWidth(image) > 200 && O2ImageGetHeight(image) > 200
+            && image->_read_argb8u != NULL) {
             char path[256];
             size_t w = O2ImageGetWidth(image), h = O2ImageGetHeight(image);
 
