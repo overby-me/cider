@@ -6026,3 +6026,31 @@ is never presented. Look for where the view backing store and the committed wl_b
 resize that allocates a new surface while drawing still holds the old one, or a back buffer that is
 never swapped. CIDER_WAYLAND_DUMP writes no files even with the variable passed through the harness,
 which is consistent with the same split and is the cheapest thing to check first.
+
+### It is overdraw, and the dump was lying
+
+Correcting the previous section, which guessed that the drawing went to a surface nobody presents.
+It does not.
+
+The glyph blit trace now prints the surface it is writing to and that surface's size. Terminal
+glyphs land on a 1690x1388 surface. The window dump is 1738x1436. That is the same surface plus the
+24 pixel shadow margin on each side, so the text is going into the window buffer the compositor
+reads, exactly where it should.
+
+What is true, and is the actual bug: at the moment a glyph is blended, the destination pixel is
+TRANSPARENT. Every premultiplied sample has alpha equal to red. iTerm2 fills its terminal background
+opaque black BEFORE it draws text, so that fill has not happened yet. In the presented buffer the
+same area is opaque black. Something paints the background AFTER the text, which on macOS is the
+wrong way round, so the next thing to look at is our view draw order: a parent or sibling painting
+after the text view rather than before it.
+
+THREE BUGS IN THE INSTRUMENT ITSELF, all fixed, and each one had already sent the investigation the
+wrong way:
+
+  1. It sheared. Rows were read back at draw_w * 4 while they are really (draw_w + margin * 2) * 4
+     apart, so each row started earlier than the last and the whole image slanted. On a window with
+     a shadow that is every dump. It looked like a rendering bug in the application.
+  2. It wrote nothing when the directory did not exist. The path is named from OUTSIDE the
+     container and opened from INSIDE it, where it routinely does not exist. It now creates it.
+  3. It reported no error when the write failed, so the absence of a file read as the window never
+     being presented. It now says which path failed and why.

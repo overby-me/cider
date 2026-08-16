@@ -131,10 +131,13 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
         if (printedBlit < 200) {
             printedBlit++;
             fprintf(stderr,
-                    "CIDER_GLYPHBLIT at=%ld,%ld bitmap=%ldx%ld vp=%d,%d %dx%d render=%ldx%ld\n",
+                    "CIDER_GLYPHBLIT at=%ld,%ld bitmap=%ldx%ld vp=%d,%d %dx%d render=%ldx%ld "
+                    "surface=%p %zux%zu ctx=%p\n",
                     (long) x, (long) y, (long) fullWidth, (long) fullHeight, (int) self->_vpx,
                     (int) self->_vpy, (int) self->_vpwidth, (int) self->_vpheight,
-                    (long) renderWidth, (long) renderHeight);
+                    (long) renderWidth, (long) renderHeight, (void *) surface,
+                    (size_t) O2ImageGetWidth(surface), (size_t) O2ImageGetHeight(surface),
+                    (void *) self);
             fflush(stderr);
         }
     }

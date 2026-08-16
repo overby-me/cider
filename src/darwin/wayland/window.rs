@@ -1664,7 +1664,10 @@ fn dump_buffer(st: &mut WindowState) {
     // image slants. It looked exactly like a rendering bug in the application, which is the worst
     // thing an instrument can do. Dump the WHOLE allocation, which is also what the compositor
     // reads, and keep it one contiguous write.
-    let margin = shadow_margin(st);
+    // st.margin, NOT shadow_margin(st): the first is what THIS mapping was allocated with and the
+    // second is what a new one would get. Recomputing it silently produced an image longer than the
+    // mapping, which this function answers by returning, so the dump simply stopped appearing.
+    let margin = st.margin;
     let (w, h) = (st.draw_w + margin * 2, st.draw_h + margin * 2);
     let stride = (w as usize) * 4;
     let image_len = stride * (h as usize);
@@ -1687,17 +1690,32 @@ fn dump_buffer(st: &mut WindowState) {
     header[28..30].copy_from_slice(&32u16.to_le_bytes());
     header[34..38].copy_from_slice(&(image_len as u32).to_le_bytes());
 
-    let path = format!("{}/window-{}.bmp", dir.to_string_lossy(), st.number);
+    // CREATE THE DIRECTORY. It is named from OUTSIDE the container but opened from INSIDE it, and
+    // a path that plainly exists on the host is routinely absent in here, which this function used
+    // to answer by writing nothing at all.
+    let dir = dir.to_string_lossy().to_string();
+    let _ = std::fs::create_dir_all(&dir);
+    let path = format!("{dir}/window-{}.bmp", st.number);
     // Written whole then renamed, because a reader that opens a half written 12 MB file sees a
     // torn image and blames the renderer.
     let tmp = format!("{path}.tmp");
     let pixels = unsafe { std::slice::from_raw_parts(st.pixels, image_len) };
-    if let Ok(mut file) = std::fs::File::create(&tmp) {
-        use std::io::Write;
-        if file.write_all(&header).is_ok() && file.write_all(pixels).is_ok() {
-            drop(file);
-            let _ = std::fs::rename(&tmp, &path);
+    // SAY SO WHEN THE WRITE FAILS. A dump that silently does not appear is worse than no dump: it
+    // was read as the window never being presented, twice, when the directory simply did not exist
+    // inside the container.
+    match std::fs::File::create(&tmp) {
+        Ok(mut file) => {
+            use std::io::Write;
+            if file.write_all(&header).is_ok() && file.write_all(pixels).is_ok() {
+                drop(file);
+                if let Err(error) = std::fs::rename(&tmp, &path) {
+                    println!("cider-wayland-window dump rename {path} failed: {error}");
+                }
+            } else {
+                println!("cider-wayland-window dump write {tmp} failed");
+            }
         }
+        Err(error) => println!("cider-wayland-window dump create {tmp} failed: {error}"),
     }
 }
 
