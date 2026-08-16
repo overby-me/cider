@@ -277,6 +277,24 @@ static void cider_crash_handler(int sig, siginfo_t *info, void *uap)
 	if (rip != 0) {
 		frames[count++] = (void *) rip;
 	}
+
+	/*
+	 * THE WORD AT RSP IS THE IMMEDIATE CALLER, and without it the chain skips a frame.
+	 *
+	 * A function that has not pushed a frame pointer yet, or never pushes one at all, leaves rbp
+	 * belonging to ITS caller: walking rbp from there names the caller of the caller and the frame
+	 * that actually faulted is missing. objc_msgSend is exactly that function, and it is where a
+	 * message to a bad receiver faults, so the missing frame is the one that sent the message. The
+	 * word at the stack pointer is its return address; it is included when it looks like a code
+	 * address rather than data.
+	 */
+	if (rsp != 0 && (rsp & 7) == 0) {
+		uint64_t top = *(uint64_t *) rsp;
+
+		if (top > 0x1000 && top != rip) {
+			frames[count++] = (void *) top;
+		}
+	}
 	uint64_t previous = 0;
 
 	while (count < 64 && rbp != 0 && rbp > previous && (rbp & 7) == 0) {

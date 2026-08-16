@@ -4778,3 +4778,73 @@ so it is inside the container build or the class lookup for object 27, and NONE 
 checks fire on the way. The next step is a trace at each branch of _buildContainerOfClass: and
 _classForName:, since the frame offset dladdr reports is measured from an exported symbol and does
 not point at the call it looks like it points at.
+
+
+## The nixpkgs iTerm2 is 3.6.10, and what it actually needs is now measured rather than guessed
+
+2026-08-16. The user asked for the iTerm2 nixpkgs ships, not the 3.4.23 that was being used because
+3.6.10 was assumed to be out of reach. nixpkgs iterm2 is a darwin package so it cannot BUILD here,
+but its source is a plain fetch and the artifact is identical:
+
+    nix eval  nixpkgs#legacyPackages.x86_64-darwin.iterm2.version   -> 3.6.10
+    nix eval  ...iterm2.src.outputHash  -> sha256-igdExoh3d8EZBuKkqyNqF087jUISax07rSWG3eenUbw=
+    nix store prefetch-file --unpack https://iterm2.com/downloads/stable/iTerm2-3_6_10.zip
+                                     -> the SAME hash, so this is nixpkgs iTerm2 to the byte
+
+It is installed in the prefix now; 3.4.23 is kept beside it as iTerm-3.4.23.app.
+
+WHAT IT LINKS, and this is the whole point of measuring: 89 libraries, of which the prefix already
+has 63. Of the 16 it does not have, six are WEAK and ten are required to start at all:
+
+    strong   SwiftUI, Charts, FoundationModels, QuickLookUI, ScreenCaptureKit, CryptoKit,
+             libswift_Concurrency, libswiftSystem, libswiftSystem_Foundation, libswiftWebKit,
+             libswiftUniformTypeIdentifiers
+    weak     Network, libswiftCoreMIDI, libswiftOSLog, libswiftQuickLookUI, libswiftSpatial,
+             libswiftVideoToolbox and several more the loader may ignore
+
+HOW MANY SYMBOLS EACH ONE OWES, counted from every Mach-O in the bundle, which is 31 files. The
+count needs BOTH import formats: these binaries use LC_DYLD_CHAINED_FIXUPS, so the classic bind
+tables miss most of it, and the chained fixup import table misses what the older binaries still bind
+the old way. The union is 308 symbols:
+
+    SwiftUI 97, libswift_Concurrency 85, Charts 62, FoundationModels 18,
+    libswiftUniformTypeIdentifiers 18, CryptoKit 11, libswiftWebKit 8, ScreenCaptureKit 5,
+    libswiftSystem 2, QuickLookUI 1, libswiftSystem_Foundation 1
+
+That is small enough to answer with LOAD STUBS: a Mach-O dylib with the right install name and one
+trapping function per symbol, so dyld can finish and the application can start. Every stub traps if
+it is ever REACHED, which is what tells a load from a use. scratchpad/stub-until-loads.sh runs the
+loop: start the app, read the one line dyld prints, build that library, go again.
+
+AND THE SWIFT RUNTIME IS ALMOST ENOUGH ALREADY, which is the surprise. The prefix carries 44 real
+Apple Swift dylibs. Against this application:
+
+    libswiftCore        wants 939 symbols, MISSING 8
+    libswiftFoundation  wants 467, missing 4
+    libswiftos          wants 10, missing 3
+    libswiftDispatch    wants 68, missing 1
+    libswiftObjectiveC, libswiftAppKit, libswiftDarwin   missing NONE
+
+Eight symbols is a shim, not a port. dyld looks for a symbol in the library the import NAMES, so a
+separate dylib cannot supply them: the real library is renamed in place to libswiftKore.dylib (the
+name is patched inside the x86_64 slice of the fat file, same length so nothing moves) and a new
+libswiftCore.dylib re-exports it and adds the eight. Three of them have a SAFE answer rather than a
+stub, and safe is not the same as right: isUniquelyReferenced answers NO, so every copy on write
+buffer copies; isStackAllocationSafe answers NO, so the allocation goes to the heap; and the
+@available check answers YES, which is what this stack claims everywhere else.
+
+WHERE IT STOPS TODAY: dyld gets all the way through the Swift runtime and stops on
+_OBJC_CLASS_$_WKContentWorld. That is the head of a short and completely concrete queue, measured
+the same way, of symbols missing from frameworks this tree DOES have:
+
+    CoreServices 9   the LSQuarantine keys and three UTType constants
+    AppKit 6         NSTextMovementUserInfoKey, NSFilePromiseReceiver, NSGlassEffectView,
+                     NSImageSymbolConfiguration, NSSearchToolbarItem, NSTouch
+    AVFoundation 6   Carbon 5 (the TIS input source keys), CoreFoundation 5, CoreGraphics 3
+                     (CGDisplayCreateImage and the two screen capture access calls),
+                     CoreLocation 3, CoreVideo 2, MetalKit 2, Metal 1, Network 1, WebKit 1,
+                     CoreMedia 1, ApplicationServices 1
+
+About ninety symbols, most of them CONSTANTS. NOTHING OF THIS IS IN THE TREE YET: the stubs and the
+shim live in the prefix and in scratchpad/swiftstubs, so this section is a measurement and a method,
+not a build. Putting them in means BUCK targets and packaging entries, which is the next rung.

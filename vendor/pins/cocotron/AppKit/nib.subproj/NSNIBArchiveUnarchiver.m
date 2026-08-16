@@ -347,6 +347,11 @@ static BOOL NIBTracing(void) {
 }
 
 - (Class) _classForName: (NSString *) name {
+    if (NIBTracing()) {
+        fprintf(stderr, "CIDER_NIB classfor enter subs=%p\n", (void *) _classSubstitutions);
+        fflush(stderr);
+    }
+
     Class substitute = [_classSubstitutions objectForKey: name];
 
     if (substitute != nil) {
@@ -391,6 +396,13 @@ static BOOL NIBTracing(void) {
 - (id) _buildContainerOfClass: (NSString *) className atIndex: (NSUInteger) index {
     struct _NIBObject *object = &_objects[index];
 
+    if (NIBTracing()) {
+        fprintf(stderr, "CIDER_NIB container %lu %s values=%u at=%u of %lu\n",
+                (unsigned long) index, [className UTF8String], (unsigned) object->valueCount,
+                (unsigned) object->valueIndex, (unsigned long) _valueCount);
+        fflush(stderr);
+    }
+
     if ([className isEqualToString: @"NSString"] ||
         [className isEqualToString: @"NSMutableString"]) {
         NSUInteger i;
@@ -400,6 +412,11 @@ static BOOL NIBTracing(void) {
 
             if (value == NULL) {
                 break;
+            }
+            if (NIBTracing()) {
+                fprintf(stderr, "CIDER_NIB   string value %lu kind=%d\n", (unsigned long) i,
+                        (int) value->kind);
+                fflush(stderr);
             }
             if (value->kind == _NIBValueData) {
                 if (![self _dataRangeIsInFile: value]) {
@@ -414,6 +431,11 @@ static BOOL NIBTracing(void) {
                                length: value->payload.data.length
                              encoding: NSUTF8StringEncoding];
 
+                if (NIBTracing()) {
+                    fprintf(stderr, "CIDER_NIB   string built len=%lu\n",
+                            (unsigned long) [text length]);
+                    fflush(stderr);
+                }
                 if ([className isEqualToString: @"NSMutableString"]) {
                     NSString *mutable = [[NSMutableString alloc] initWithString: text];
 

@@ -18,6 +18,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import "NSClassSwapper.h"
+#include <stdio.h>
+#include <stdlib.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSKeyedArchiver.h>
 #import <Foundation/NSString.h>
@@ -39,6 +41,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     _className = [[coder decodeObjectForKey: @"NSClassName"] retain];
     _originalClassName =
             [[coder decodeObjectForKey: @"NSOriginalClassName"] retain];
+
+    /* WHICH CLASS IS BEING SWAPPED IN, because what happens next is the APPLICATION own
+     * -initWithCoder:, and a fault in there looks like a fault in the nib reader. */
+    if (getenv("CIDER_TRACE_NIB") != NULL) {
+        fprintf(stderr, "CIDER_NIB swapper class=%s original=%s\n",
+                [_className UTF8String] ?: "(nil)", [_originalClassName UTF8String] ?: "(nil)");
+        fflush(stderr);
+    }
 
     Class class = NSClassFromString(_className);
 
