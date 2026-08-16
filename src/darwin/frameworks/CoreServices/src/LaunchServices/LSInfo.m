@@ -317,6 +317,26 @@ CFArrayRef LSCopyAllHandlersForURLScheme(CFStringRef inURLScheme)
 	return NULL;
 }
 
+/*
+ * DECLARED IN THE HEADER AND NEVER DEFINED, WHICH KILLED ITERM2 ON A MENU CLICK.
+ *
+ * A missing symbol an application only reaches on one path costs nothing at link time and aborts
+ * the process the first time that path runs: dyld binds it lazily, so the failure is
+ *
+ *     dyld: Symbol not found: _LSCopyDefaultRoleHandlerForContentType
+ *
+ * arriving the moment the Shell menu is opened, and nowhere near where anything looks wrong. The
+ * sibling right below has been answering NULL all along.
+ *
+ * NULL is the honest answer rather than a placeholder: it means no handler is registered for that
+ * content type, which is true, since this container has no LaunchServices database at all.
+ */
+CFStringRef LSCopyDefaultRoleHandlerForContentType(CFStringRef inContentType, LSRolesMask inRole)
+{
+	puts("LSCopyDefaultRoleHandlerForContentType STUB");
+	return NULL;
+}
+
 CFArrayRef LSCopyAllRoleHandlersForContentType(CFStringRef inContentType, LSRolesMask inRole)
 {
 	puts("LSCopyAllRoleHandlersForContentType STUB");
