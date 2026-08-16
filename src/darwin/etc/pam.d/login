@@ -20,7 +20,8 @@ auth       sufficient     pam_rootok.so
 auth       required       pam_permit.so
 account    required       pam_permit.so
 password   required       pam_permit.so
-# The launchd session is worth having when it works and is not worth failing a login over, which
-# is what optional means here.
-session    optional       pam_launchd.so
+# NO pam_launchd.so HERE, and optional would not have saved it. openpam reports
+# "no pam_launchd.so found" and then pam_start fails outright with a system error, so naming a
+# module that cannot be loaded breaks the whole policy however it is marked. login then exits 1
+# with nothing on stderr, because it reports that failure to syslog.
 session    required       pam_permit.so

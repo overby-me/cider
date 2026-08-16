@@ -7,6 +7,6 @@
 # See the login policy beside this file for why Cider does not use Apple's: theirs is built on
 # pam_opendirectory, and there is no directory service in this container.
 account    required       pam_permit.so
-# Worth having when it works, not worth failing a login over.
-session    optional       pam_launchd.so
+# NO pam_launchd.so: openpam cannot load it and pam_start then fails for the whole policy,
+# whatever the control flag says.
 session    required       pam_permit.so
