@@ -882,6 +882,18 @@ const NSTimeInterval kMouseMovementThreshold = .001f;
     BOOL didAccept = [[self window] acceptsMouseMovedEvents];
     NSMenuItem *item;
 
+    /* THE ENTRY, because the exit trace alone cannot tell a track that found nothing from a click
+     * that never reached this view at all, and those want opposite work. */
+    if (getenv("CIDER_TRACE_MENU") != NULL) {
+        NSPoint where = [self convertPoint: [event locationInWindow] fromView: nil];
+
+        fprintf(stderr, "CIDER_MENU mouseDown on %s at %.0f,%.0f bounds=%.0fx%.0f items=%ld\n",
+                object_getClassName(self), (double) where.x, (double) where.y,
+                (double) [self bounds].size.width, (double) [self bounds].size.height,
+                (long) [[self menu] numberOfItems]);
+        fflush(stderr);
+    }
+
     [[self window] setAcceptsMouseMovedEvents: YES];
     item = [self trackForEvent: event];
     [[self window] setAcceptsMouseMovedEvents: didAccept];

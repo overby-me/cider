@@ -19,6 +19,7 @@
  * transport and which are pure bookkeeping.
  */
 #import <AppKit/NSPasteboard.h>
+#import <AppKit/NSPasteboardItem.h>
 #import <Foundation/Foundation.h>
 
 /* The Rust side of the system selection. See src/darwin/wayland/clipboard.rs: publishing takes
@@ -36,6 +37,60 @@ extern ssize_t cider_wayland_clipboard_get_text(unsigned char *out, size_t cap);
 + (WaylandPasteboard *) pasteboardWithName: (NSPasteboardName) name;
 - (instancetype) initWithName: (NSPasteboardName) name;
 - (NSData *) _localDataForType: (NSPasteboardType) type;
+@end
+
+/*
+ * THE ITEM VIEW OF THE SAME CLIPBOARD, and its absence stopped every iTerm2 menu from opening.
+ *
+ * Opening a menu makes AppKit validate its items, iTerm2 validates Paste by asking the general
+ * pasteboard for -pasteboardItems, that selector did not exist, and the raise unwound straight out
+ * of -[NSMenuView trackForEvent:]. So the click reached the menu view, tracking started, and no
+ * menu ever appeared. Nothing about that looks like a clipboard problem from outside.
+ *
+ * A clipboard holds ONE item with several representations of the same thing, so this answers one
+ * item carrying the types the board already reports, and asks the board itself for the bytes.
+ * NSPasteboardItem upstream is a stub that logs unknown selectors rather than raising, so
+ * overriding the three that carry data is enough and anything else stays as harmless as before.
+ */
+@interface CiderPasteboardItem : NSPasteboardItem {
+    WaylandPasteboard *_board;
+    NSArray<NSPasteboardType> *_types;
+}
+- (instancetype) initWithBoard: (WaylandPasteboard *) board
+                         types: (NSArray<NSPasteboardType> *) types;
+@end
+
+@implementation CiderPasteboardItem
+
+- (instancetype) initWithBoard: (WaylandPasteboard *) board
+                         types: (NSArray<NSPasteboardType> *) types
+{
+    if ((self = [super init]) != nil) {
+        /* The board owns these items only for the length of the call, and it outlives them, so it
+         * is held weakly on purpose to keep the two from retaining each other. */
+        _board = board;
+        _types = [types copy];
+    }
+    return self;
+}
+
+- (void) dealloc {
+    [_types release];
+    [super dealloc];
+}
+
+- (NSArray<NSPasteboardType> *) types {
+    return _types;
+}
+
+- (NSString *) stringForType: (NSPasteboardType) type {
+    return [_board stringForType: type];
+}
+
+- (NSData *) dataForType: (NSPasteboardType) type {
+    return [_board dataForType: type];
+}
+
 @end
 
 @implementation WaylandPasteboard
@@ -262,6 +317,19 @@ static NSMutableDictionary<NSPasteboardName, WaylandPasteboard *> *nameToPboard;
         }
     }
     return mine;
+}
+
+- (NSArray<NSPasteboardItem *> *) pasteboardItems {
+    NSArray<NSPasteboardType> *types = [self types];
+
+    if ([types count] == 0) {
+        /* Empty, not nil: an empty clipboard has no items, and callers iterate the answer. */
+        return [NSArray array];
+    }
+
+    return [NSArray arrayWithObject: [[[CiderPasteboardItem alloc] initWithBoard: self
+                                                                          types: types]
+            autorelease]];
 }
 
 - (NSPasteboardType) availableTypeFromArray: (NSArray<NSPasteboardType> *) types {
