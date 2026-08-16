@@ -4632,3 +4632,58 @@ WHERE IT STOPS NOW. No exception and no message: the process takes SIGABRT right
 its visual effect views, and all five threads in the core are parked in libsystem_kernel, which is
 what the abort path looks like from outside. The next step is to walk the aborting thread rather
 than the thread list.
+
+
+## A silent abort, a stack overflow and a default forwarding that re-invoked
+
+2026-08-16, goal 4 again. iTerm2 died after its terminal window was created with SIGABRT and no
+message. Three instruments were needed, and two of them are new and stay in the tree.
+
+FIRST, WHOSE ABORT. The only line in the log was
+
+    thread caused non-unwinding panic. aborting.
+
+which is a RUST panic reaching an extern "C" boundary. RUST_BACKTRACE=full named the boundary as
+wayland_appkit_lib::display_next_event, called from -[NSApplication nextEventMatchingMask:]. There
+was no panic of ours in it: an OBJECTIVE-C EXCEPTION was unwinding through a Rust frame declared
+plain "C", and the compiler had promised the optimiser that cannot happen, so what ran instead was
+panic_cannot_unwind. The declarations that matter now say "C-unwind": objc_msgSend and every alias
+of it, the glue that drains the main queue, and the eleven IMPs this backend registers. An exception
+raised by application code now travels through us the way it travels through a real AppKit method,
+and the FIRST one to come out was -[NSData initWithBase64Encoding:], deprecated in 10.9 and still
+called by shipping software. It is implemented, along with -base64Encoding, on top of the modern
+pair.
+
+SECOND, THE CRASH THAT NAMES ITSELF. CIDER_TRACE_CRASH=1 installs a handler for SIGSEGV, SIGBUS,
+SIGILL and SIGFPE that prints the signal, the fault address and the frames, then restores the
+default and re-raises so the core is still written. Two details make it work where the core did not:
+it runs on an ALTERNATE STACK, because the fault it was written for is a stack overflow and a
+handler with no stack cannot run, and the frames come from the FAULT CONTEXT rather than from
+backtrace(), which walks the handler stack and answered zero frames. The frame pointer chain in the
+interrupted context is walked by hand with two guards, that it climbs and that it stays aligned.
+
+    cider CRASH signal=11 code=1 addr=0x7fffff5fffc8 rip=... rsp=0x7fffff5fff50 frames=64
+
+Eight bytes past the bottom of the eight megabyte main stack, and the frames repeat:
+
+    -[iTermApplication invalidateRestorableState]
+    _CF_forwarding_prep_0 -> ___forwarding___ -> -[NSInvocation _invokeUsingIMP:withFrame:]
+    -[iTermApplication invalidateRestorableState]      ... about a hundred and thirty thousand times
+
+THIRD, AND IT IS A GENERAL BUG. -[NSObject forwardInvocation:] set the invocation target to self and
+INVOKED it, which dispatches the same selector on the same object. When forwarding is reached
+because a lookup failed that is merely pointless; when it is reached because of a SUPER CALL to a
+method the superclass does not have, the invocation resolves the selector on the receiver class,
+finds the subclass override that made the super call, and calls it again, forever. Any application
+that overrides a method this tree is missing and calls super died of a stack overflow with nothing
+in the log. macOS raises doesNotRecognizeSelector there, and so does this now.
+
+The missing method underneath was real too: NSResponder had no state restoration at all.
+-invalidateRestorableState, -encodeRestorableStateWithCoder:, -restoreStateWithCoder: and
++restorableStateKeyPaths are the documented no-op defaults now. The state is NOT persisted, which is
+the behaviour of a system with restoration turned off, and that is written in the code.
+
+WHERE ITERM2 IS NOW: five windows created, including the terminal window at 400x450 and its panels,
+NO CRASH, and the application reports one exception of its own, "index (0) beyond array bounds (0)",
+which it survives. NO BUFFER IS EVER ATTACHED, so nothing is on screen yet: the windows exist and
+have never been shown. That is the next rung.

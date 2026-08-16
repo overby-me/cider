@@ -172,3 +172,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         sender; // these aren't in OSX (can't hurt)
 
 @end
+
+@interface NSResponder (NSRestorableState)
++ (NSArray *) restorableStateKeyPaths;
+- (void) invalidateRestorableState;
+- (void) encodeRestorableStateWithCoder: (NSCoder *) coder;
+- (void) restoreStateWithCoder: (NSCoder *) coder;
+@end

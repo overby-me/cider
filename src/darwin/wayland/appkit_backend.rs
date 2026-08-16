@@ -37,7 +37,7 @@ use objc::{Class, NsRect, ObjcSuper, Object, Sel};
 ///
 /// NOTHING ELSE IS NEEDED TO KEEP X11 WORKING WHERE THERE IS NO WAYLAND: connect() fails without a
 /// compositor, this returns nil, and NSDisplay moves on to the next bundle by priority.
-extern "C" fn display_init(this: Object, _cmd: Sel) -> Object {
+extern "C-unwind" fn display_init(this: Object, _cmd: Sel) -> Object {
     if std::env::var_os("CIDER_WAYLAND_BACKEND").as_deref() == Some(std::ffi::OsStr::new("0")) {
         println!("cider-wayland-appkit init=declined reason=CIDER_WAYLAND_BACKEND-0");
         return std::ptr::null_mut();
@@ -80,7 +80,9 @@ extern "C" fn display_init(this: Object, _cmd: Sel) -> Object {
 /// application, so the symptom of skipping this is a window that stops responding rather than an
 /// error anyone can see. This is the same shape as the X11 backend, which calls
 /// -processPendingEvents here for the same reason.
-unsafe extern "C" {
+/* "C-unwind" for the same reason as the objc block: draining the main queue RUNS APPLICATION CODE,
+ * and application code raises. See objc.rs. */
+unsafe extern "C-unwind" {
     fn cider_wayland_drain_main_queue();
     /// An autorelease pool around the work this backend does per pass. See the comment on the C
     /// side: the returned event must NOT be inside it.
@@ -92,7 +94,7 @@ unsafe extern "C" {
 /// new without repeating it.
 static LAST_PASS: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
 
-extern "C" fn display_next_event(
+extern "C-unwind" fn display_next_event(
     this: Object,
     _cmd: Sel,
     mask: u64,
@@ -434,7 +436,7 @@ fn capped_until(until: Object) -> Object {
 /// AppKit owns the returned window: the name begins with new, so the caller has the reference and
 /// releases it. Returning nil is survivable and says so in the log; AppKit reports a window it
 /// could not create rather than dying inside one.
-extern "C" fn display_new_window(_this: Object, _cmd: Sel, delegate: Object) -> Object {
+extern "C-unwind" fn display_new_window(_this: Object, _cmd: Sel, delegate: Object) -> Object {
     window::new_window(delegate)
 }
 
@@ -456,7 +458,7 @@ extern "C" fn display_new_window(_this: Object, _cmd: Sel, delegate: Object) -> 
 /// carries information.
 static SCREENS: std::sync::Mutex<Option<(f64, f64, usize)>> = std::sync::Mutex::new(None);
 
-extern "C" fn display_screens(_this: Object, _cmd: Sel) -> Object {
+extern "C-unwind" fn display_screens(_this: Object, _cmd: Sel) -> Object {
     unsafe {
         let screen_cls = objc::objc_getClass(cstr!("NSScreen"));
         let array_cls = objc::objc_getClass(cstr!("NSArray"));
@@ -504,11 +506,11 @@ extern "C" fn display_screens(_this: Object, _cmd: Sel) -> Object {
 }
 
 /// -allFontFamilyNames, which AppKit asks for before any window exists.
-extern "C" fn display_all_font_family_names(_this: Object, _cmd: Sel) -> Object {
+extern "C-unwind" fn display_all_font_family_names(_this: Object, _cmd: Sel) -> Object {
     fonts::all_family_names()
 }
 
-extern "C" fn display_typefaces(_this: Object, _cmd: Sel, family: Object) -> Object {
+extern "C-unwind" fn display_typefaces(_this: Object, _cmd: Sel, family: Object) -> Object {
     // CIDER_TRACE_FONTS says which family was asked for and how many faces went back, printed
     // BEFORE and AFTER the work so a fault inside it is visible as a line with no answer.
     if crate::env_flag!("CIDER_TRACE_FONTS") {
@@ -538,14 +540,14 @@ extern "C" fn display_typefaces(_this: Object, _cmd: Sel, family: Object) -> Obj
     fonts::typefaces_for_family(family)
 }
 
-extern "C" fn display_color_with_name(_this: Object, _cmd: Sel, name: Object) -> Object {
+extern "C-unwind" fn display_color_with_name(_this: Object, _cmd: Sel, name: Object) -> Object {
     colors::color_with_name(name)
 }
 
 /// AppKit hands the display a colour to remember under a name. Nothing needs remembering yet: the
 /// table is static, so this accepts and ignores rather than raising, which is what an override
 /// with no state should do.
-extern "C" fn display_add_system_color(_this: Object, _cmd: Sel, _color: Object, _name: Object) {}
+extern "C-unwind" fn display_add_system_color(_this: Object, _cmd: Sel, _color: Object, _name: Object) {}
 
 /// The window border geometry pair.
 ///
@@ -564,7 +566,7 @@ pub const TITLE_BAR_HEIGHT: f64 = 22.0;
 /// NSTitledWindowMask.
 const NS_TITLED_WINDOW_MASK: usize = 1;
 
-extern "C" fn display_inset_rect(_this: Object, _cmd: Sel, frame: NsRect, style: usize) -> NsRect {
+extern "C-unwind" fn display_inset_rect(_this: Object, _cmd: Sel, frame: NsRect, style: usize) -> NsRect {
     /*
      * A TITLED WINDOW HAS A TITLE BAR, and on this backend it is ours to draw.
      *
@@ -587,7 +589,7 @@ extern "C" fn display_inset_rect(_this: Object, _cmd: Sel, frame: NsRect, style:
     }
 }
 
-extern "C" fn display_outset_rect(_this: Object, _cmd: Sel, frame: NsRect, style: usize) -> NsRect {
+extern "C-unwind" fn display_outset_rect(_this: Object, _cmd: Sel, frame: NsRect, style: usize) -> NsRect {
     if style & NS_TITLED_WINDOW_MASK == 0 {
         return frame;
     }
@@ -600,10 +602,53 @@ extern "C" fn display_outset_rect(_this: Object, _cmd: Sel, frame: NsRect, style
     }
 }
 
+
+/// NAME THE PANIC, because a Rust panic inside an Objective-C method is otherwise an abort with
+/// nothing on it.
+///
+/// Every method this backend registers is an `extern "C"` IMP, and a panic that reaches that
+/// boundary calls `panic_cannot_unwind`, which aborts. What the process then prints is the SECOND
+/// panic, "panic in a function that cannot unwind", and the first one -- the one that says which
+/// line and why -- was going through the ordinary formatting machinery and did not survive the
+/// abort in the iTerm2 run that found this. The message here is built and written with ONE write to
+/// fd 2, which cannot be buffered away, and it says where it came from.
+fn install_panic_hook() {
+    use std::sync::Once;
+    static ONCE: Once = Once::new();
+
+    ONCE.call_once(|| {
+        let previous = std::panic::take_hook();
+
+        std::panic::set_hook(Box::new(move |info| {
+            let where_ = info
+                .location()
+                .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+                .unwrap_or_else(|| "<no location>".to_string());
+            let what = if let Some(s) = info.payload().downcast_ref::<&str>() {
+                (*s).to_string()
+            } else if let Some(s) = info.payload().downcast_ref::<String>() {
+                s.clone()
+            } else {
+                "<non string payload>".to_string()
+            };
+            let line = format!("cider-wayland PANIC at {where_}: {what}\n");
+
+            unsafe extern "C" {
+                fn write(fd: i32, buf: *const c_void, count: usize) -> isize;
+            }
+            unsafe {
+                write(2, line.as_ptr() as *const c_void, line.len());
+            }
+            previous(info);
+        }));
+    });
+}
+
 /// Registered from a C constructor, because NSBundle asks for the principal class BY NAME as soon
 /// as the bundle loads.
 #[unsafe(no_mangle)]
-pub extern "C" fn cider_wayland_appkit_register() {
+pub extern "C-unwind" fn cider_wayland_appkit_register() {
+    install_panic_hook();
     // The methods that needed a file of their own, plus display.rs, which holds the 18 whose
     // answer is a constant, a nil or a walk of AppKit's own state.
     let mut methods = vec![

@@ -23,7 +23,17 @@ pub type Object = *mut c_void;
 pub type Sel = *mut c_void;
 pub type Imp = *const c_void;
 
-unsafe extern "C" {
+/*
+ * DECLARED "C-unwind", NOT "C", BECAUSE AN OBJECTIVE-C EXCEPTION IS AN UNWIND.
+ *
+ * objc_msgSend runs the method, and a method may raise. That unwind travels the same Itanium path a
+ * C++ throw does, and if it crosses a Rust frame declared plain "C" the compiler has promised the
+ * optimiser it cannot happen: what actually runs is panic_cannot_unwind, and the process ABORTS with
+ * "panic in a function that cannot unwind" and not one word about the exception. That is exactly how
+ * iTerm2 died, in the middle of building its terminal window, with the real reason nowhere in the
+ * log.
+ */
+unsafe extern "C-unwind" {
     pub fn objc_getClass(name: *const c_char) -> Class;
     pub fn objc_allocateClassPair(superclass: Class, name: *const c_char, extra: usize) -> Class;
     pub fn objc_registerClassPair(cls: Class);

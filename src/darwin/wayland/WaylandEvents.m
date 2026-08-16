@@ -14,6 +14,12 @@
  * coordinate bug.
  */
 #import <AppKit/AppKit.h>
+#include <string.h>
+#include <unistd.h>
+#include <execinfo.h>
+#include <signal.h>
+#include <sys/ucontext.h>
+#include <stdint.h>
 #import <Foundation/Foundation.h>
 #import <stdlib.h>
 #import <objc/runtime.h>
@@ -234,8 +240,111 @@ int cider_wayland_carbon_keycode(unsigned int evdevKeycode)
 
 @end
 
+/*
+ * A CRASH THAT NAMES ITSELF, because a fault in the guest otherwise leaves nothing to read.
+ *
+ * The core file is no help: by the time it is written every thread is parked in a kernel call, so
+ * the faulting frame is gone and gdb walks five stacks that all end in libsystem_kernel. This
+ * handler runs ON the faulting thread, prints the signal, the address and the frames the way every
+ * other trace in this tree does, and then restores the default and re-raises so the core is still
+ * taken and nothing downstream changes.
+ *
+ * Silent by default. CIDER_TRACE_CRASH=1 turns it on.
+ */
+static void cider_crash_handler(int sig, siginfo_t *info, void *uap)
+{
+	(void) uap;
+
+	/*
+	 * THE FRAMES COME FROM THE FAULT CONTEXT, NOT FROM backtrace().
+	 *
+	 * backtrace() walks the stack of the HANDLER, and the handler runs on the alternate stack
+	 * precisely because the main one may be exhausted: it answered zero frames for the stack
+	 * overflow that found this. The frame pointer saved in the interrupted context still describes
+	 * the faulting stack, so the chain is walked by hand from there, with the two guards a blown
+	 * stack needs: the chain must climb, and it must stay in one region.
+	 */
+	void *frames[64];
+	int count = 0;
+	ucontext_t *uc = (ucontext_t *) uap;
+	uint64_t rip = 0, rbp = 0, rsp = 0;
+
+	if (uc != NULL && uc->uc_mcontext != NULL) {
+		rip = uc->uc_mcontext->__ss.__rip;
+		rbp = uc->uc_mcontext->__ss.__rbp;
+		rsp = uc->uc_mcontext->__ss.__rsp;
+	}
+	if (rip != 0) {
+		frames[count++] = (void *) rip;
+	}
+	uint64_t previous = 0;
+
+	while (count < 64 && rbp != 0 && rbp > previous && (rbp & 7) == 0) {
+		uint64_t next = ((uint64_t *) rbp)[0];
+		uint64_t ret = ((uint64_t *) rbp)[1];
+
+		if (ret == 0) {
+			break;
+		}
+		frames[count++] = (void *) ret;
+		previous = rbp;
+		rbp = next;
+	}
+
+	char head[220];
+	int len = snprintf(head, sizeof head,
+		"\ncider CRASH signal=%d code=%d addr=%p rip=%p rsp=%p rbp=%p frames=%d\n",
+		sig, info != NULL ? info->si_code : 0, info != NULL ? info->si_addr : NULL,
+		(void *) rip, (void *) rsp, (void *) rbp, count);
+
+	write(2, head, (size_t) len);
+	backtrace_symbols_fd(frames, count, 2);
+
+	struct sigaction dfl;
+
+	memset(&dfl, 0, sizeof dfl);
+	dfl.sa_handler = SIG_DFL;
+	sigaction(sig, &dfl, NULL);
+	raise(sig);
+}
+
+static void cider_install_crash_handler(void)
+{
+	static BOOL installed = NO;
+
+	if (installed || getenv("CIDER_TRACE_CRASH") == NULL) {
+		return;
+	}
+	installed = YES;
+
+	struct sigaction sa;
+
+	/* AN ALTERNATE STACK, because the fault this was written for is a stack overflow and a handler
+	 * that needs stack to run has none left on the thread that faulted. */
+	static char alt[SIGSTKSZ * 4];
+	stack_t ss;
+
+	memset(&ss, 0, sizeof ss);
+	ss.ss_sp = alt;
+	ss.ss_size = sizeof alt;
+	ss.ss_flags = 0;
+	sigaltstack(&ss, NULL);
+
+	memset(&sa, 0, sizeof sa);
+	sa.sa_sigaction = cider_crash_handler;
+	sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGSEGV, &sa, NULL);
+	sigaction(SIGBUS, &sa, NULL);
+	sigaction(SIGILL, &sa, NULL);
+	sigaction(SIGFPE, &sa, NULL);
+	fprintf(stderr, "cider-wayland crash-handler=installed\n");
+	fflush(stderr);
+}
+
 void cider_wayland_watch_focus_notifications(void)
 {
+	cider_install_crash_handler();
 	[CiderWaylandFocusWatch install];
 	/* THE SETTINGS ARE READ BEFORE THE FIRST EVENT. Installing the traces from the first keystroke
 	 * is far too late for anything that happens during startup, and the colours are read there. */

@@ -330,3 +330,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 @end
+
+/*
+ * STATE RESTORATION, the part of it that every application touches.
+ *
+ * -invalidateRestorableState is called by ordinary Cocoa code whenever something worth restoring
+ * changes, and applications override it and call super. With no implementation anywhere in the
+ * chain that super call went to forwarding, and the default forwarding used to re-invoke, so an
+ * application that did the ordinary thing recursed until the main stack ran out. iTerm2 does exactly
+ * that from -[iTermApplication invalidateRestorableState].
+ *
+ * The state itself is NOT persisted here: macOS writes it into a saved application state bundle and
+ * reads it back on the next launch, and nothing in this tree does that. These are the documented
+ * NO-OP defaults, which is what NSResponder itself provides on macOS: the encode and restore methods
+ * do nothing, the key path list is empty, and invalidating marks nothing because there is nothing to
+ * write. An application gets the behaviour of a system where restoration is turned off.
+ */
+@implementation NSResponder (NSRestorableState)
+
++ (NSArray *) restorableStateKeyPaths {
+    return [NSArray array];
+}
+
+- (void) invalidateRestorableState {
+}
+
+- (void) encodeRestorableStateWithCoder: (NSCoder *) coder {
+}
+
+- (void) restoreStateWithCoder: (NSCoder *) coder {
+}
+
+@end
