@@ -5702,3 +5702,43 @@ the next rung.
 
 LibreOffice is unaffected by the descriptor change: Writer draws its title bar, menu bar, both
 toolbar rows, ruler, page, sidebar and status bar, with zero raises and no too-many-open-files.
+
+
+## The terminal has no shell because there is no bootstrap port
+
+2026-08-16, and this one is answered in the applications own words. iTermServer now loads and runs,
+but it exits within 50 milliseconds of starting, with status 0 and nothing on stderr. Its log goes
+to syslog, which does not exist in the container, so it was invisible: strace catches the sendto
+that fails, and the message is in the buffer.
+
+    iTermFileDescriptorMultiServer.c:952  Initialize: Server starting Initialize()
+    iTermFileDescriptorMultiServer.c:888  InitializeSignals: Installing SIGHUP handler.
+    iTermFileDescriptorMultiServer.c:790  MainLoop: Entering main loop.
+    iTermFileDescriptorMultiServer.c:686  SelectLoop: Begin SelectLoop.
+    iTermFileDescriptorServerShared.c:287 iTermSelect: select returned 2, error = Bad file descriptor
+    iTermFileDescriptorMultiServer.c:939  CheckIfBootstrapPortIsDead: Unable to get the type of the
+                                          bootstrap port! errno=9
+    iTermFileDescriptorMultiServer.c:922  QuitCleanly: QuitCleanly
+    iTermFileDescriptorMultiServer.c:993  CleanUp: Cleaning up to exit
+
+So it starts, enters its select loop, asks mach_port_type about its bootstrap port to check whether
+its parent is still alive, gets an error, and QUITS DELIBERATELY. That is correct behaviour for the
+application. What is missing is ours: this container runs with DARLING_NO_LAUNCHD, whose init is
+shellspawn, so nothing ever becomes the bootstrap server and every task inherits a NULL bootstrap
+port. From inside the guest:
+
+    launchctl list   ->   bootstrap_parent() 268435459
+
+RUNNING WITH LAUNCHD INSTEAD IS NOT A WAY ROUND IT TODAY. With DARLING_NO_LAUNCHD=0 the run
+produces no application output at all and the screenshot is entirely black: no window, nothing.
+That is task #47 and it is still open.
+
+SO THE NEXT RUNG IS ONE OF TWO THINGS, and it is worth choosing deliberately: make launchd work as
+the container init, or give tasks a valid bootstrap port without it. The second is smaller but has
+a trap: a port that exists and is never serviced turns a fast failure into a hang for anything that
+actually sends a lookup, which may be worse than what happens now.
+
+WHAT WORKS AS OF TONIGHT: iTerm2 opens its window, draws the traffic lights, the menu bar and the
+80x25 title, runs a full 45 second harness run without crashing or raising, spawns its pty helper,
+and reaches its text drawing path. The terminal area is BLACK and there is NO SHELL, for the reason
+above.
