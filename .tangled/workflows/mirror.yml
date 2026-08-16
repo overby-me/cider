@@ -1,0 +1,59 @@
+# Mirror main to github.com/overby-me/cider.
+#
+# THE MIRROR IS NOT A COPY OF THIS HISTORY, and that is deliberate. This repository begins with 569
+# commits of upstream Darling, by Ariel Abreu, Lubos Dolezel and others, that predate any Cider work.
+# The mirror starts at the first commit of this project instead, so the published history is the
+# work rather than the inheritance.
+#
+# That means a plain push cannot work: the rewritten commits have different identifiers, so the two
+# histories never fast forward onto one another. The rewrite is redone here on every run and the
+# result is force pushed. git filter-repo is deterministic, so the same input commits produce the
+# same output commits and the mirror stays stable rather than churning.
+#
+# WHAT THIS NEEDS THAT A WORKFLOW CANNOT PROVIDE: a GitHub token with push rights, added as the
+# repository secret GITHUB_MIRROR_TOKEN in the tangled settings. Without it the job fails on its
+# first step and says so rather than pushing nothing quietly.
+when:
+  - event: ["push"]
+    branch: ["main"]
+
+engine: nixery
+
+environment:
+  USER: root
+  MIRROR_REPO: github.com/overby-me/cider
+  # The first commit of this project. Everything before it is upstream Darling and is not published.
+  GRAFT_ROOT: c90dc7f99
+
+steps:
+  - name: "Check the token is present"
+    command: |
+      if [ -z "$GITHUB_MIRROR_TOKEN" ]; then
+        echo "GITHUB_MIRROR_TOKEN is not set; add it as a repository secret in the tangled settings"
+        exit 1
+      fi
+
+  - name: "Fetch the whole history"
+    command: |
+      # A shallow clone cannot be rewritten, and CI checkouts are usually shallow.
+      if [ -f .git/shallow ]; then
+        git fetch --unshallow
+      fi
+      git rev-parse "$GRAFT_ROOT" > /dev/null
+
+  - name: "Rewrite so the first commit is the first commit of this project"
+    command: |
+      nix-env -iA nixpkgs.git-filter-repo
+      git replace --graft "$GRAFT_ROOT"
+      # --force because this is a working clone with a remote, which filter-repo refuses by default.
+      git filter-repo --force --quiet
+      echo "root commit after rewrite:"
+      git log --oneline | tail -1
+
+  - name: "Push to GitHub"
+    command: |
+      # No tags and no other branches: the mirror publishes one line of work.
+      git tag -d $(git tag) 2>/dev/null || true
+      # The token is in the URL rather than a config file so it is never written to disk.
+      git push --force "https://x-access-token:${GITHUB_MIRROR_TOKEN}@${MIRROR_REPO}.git" \
+        HEAD:refs/heads/main 2>&1 | sed -e "s/${GITHUB_MIRROR_TOKEN}/REDACTED/g"

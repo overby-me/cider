@@ -1,0 +1,41 @@
+--- a/NSMethodSignature.m
++++ b/NSMethodSignature.m
+@@ -156,11 +156,28 @@
+             // FIXME: This is far from being a complete implementation of
+             // the x86-64 calling convention.
+             BOOL isFP = currentType[0] == _C_FLT || currentType[0] == _C_DBL;
++            /*
++             * A STACK ARGUMENT ALWAYS OCCUPIES A WHOLE EIGHTBYTE, and advancing by the bare size is
++             * what broke every method with more than six register class arguments.
++             *
++             * frameSize here is aligned to MAX(alignment, sizeof(int)), so an int contributes FOUR.
++             * That is right for the size of the value and wrong for the slot it sits in: the x86-64
++             * convention rounds each on-stack argument up to eight, and the next argument starts at
++             * the next eightbyte rather than four bytes later.
++             *
++             * Measured, because it is not a rounding nicety. iTerm2 sends
++             * getProcessInfoForProcessID:flavor:arg:size:reqid:withReply:, whose eight arguments
++             * put an int and then a reply block on the stack. The block came out at offset 0xe4,
++             * NSInvocation read a pointer from four bytes inside its slot, and the value handed to
++             * _Block_signature was 0xffdeeec800007fff, half of one word and half of the next. The
++             * process died there, so the pid info service was unusable and anything else with a
++             * seventh argument was too.
++             */
+             if (isFP) {
+                 unsigned short registersNeeded = ALIGN_TO(frameSize, 16) / 16;
+                 if (usedSSERegisters + registersNeeded > 8) {
+                     _types[_count].offset = _frameLength;
+-                    _frameLength += frameSize;
++                    _frameLength += ALIGN_TO(frameSize, 8);
+                 } else {
+                     _types[_count].offset = 0x30 + usedSSERegisters * 16;
+                     usedSSERegisters += registersNeeded;
+@@ -169,7 +186,7 @@
+                 unsigned short registersNeeded = ALIGN_TO(frameSize, 8) / 8;
+                 if (usedGPRegisters + registersNeeded > 6 || frameSize > 16) {
+                     _types[_count].offset = _frameLength;
+-                    _frameLength += frameSize;
++                    _frameLength += ALIGN_TO(frameSize, 8);
+                 } else {
+                     _types[_count].offset = usedGPRegisters * 8;
+                     usedGPRegisters += registersNeeded;
