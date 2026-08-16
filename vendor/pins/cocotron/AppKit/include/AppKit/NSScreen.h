@@ -47,6 +47,7 @@ typedef NSString *NSDeviceDescriptionKey;
 
 - (CGFloat) userSpaceScaleFactor;
 - (CGFloat) backingScaleFactor;
+- (NSString *) localizedName;
 
 @end
 

@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/src/NSConstantNumbers.m
-@@ -0,0 +1,191 @@
+@@ -0,0 +1,291 @@
 +/*
 + * THE CONSTANT LITERAL CLASSES, WHICH THE COMPILER CREATES INSTANCES OF AND NOBODY ELSE DOES.
 + *
@@ -23,7 +23,11 @@
 +#import <Foundation/NSException.h>
 +#import <Foundation/NSEnumerator.h>
 +
-+/* The layouts clang emits. The value always follows the isa, which is the field that matters. */
++/* The layouts clang emits. The value always follows the isa, which is the field that matters.
++ *
++ * EVERY WIDTH IS ANSWERED, not just the natural one. A caller asks an NSNumber for whichever width
++ * it wants and the class converts: iTerm2 asked a constant integer for shortValue and the missing
++ * accessor was an unrecognized selector that terminated the application on its main nib. */
 +
 +@interface NSConstantIntegerNumber : NSNumber {
 +@public
@@ -86,6 +90,38 @@
 +    return _value != 0;
 +}
 +
++- (short) shortValue {
++    return (short) _value;
++}
++
++- (unsigned short) unsignedShortValue {
++    return (unsigned short) _value;
++}
++
++- (char) charValue {
++    return (char) _value;
++}
++
++- (unsigned char) unsignedCharValue {
++    return (unsigned char) _value;
++}
++
++- (unsigned int) unsignedIntValue {
++    return (unsigned int) _value;
++}
++
++- (long) longValue {
++    return (long) _value;
++}
++
++- (unsigned long) unsignedLongValue {
++    return (unsigned long) _value;
++}
++
++- (NSUInteger) unsignedIntegerValue {
++    return (NSUInteger) _value;
++}
++
 +- (void) getValue: (void *) buffer {
 +    *(long long *) buffer = _value;
 +}
@@ -132,6 +168,38 @@
 +    return _value != 0.0;
 +}
 +
++- (short) shortValue {
++    return (short) _value;
++}
++
++- (unsigned short) unsignedShortValue {
++    return (unsigned short) _value;
++}
++
++- (char) charValue {
++    return (char) _value;
++}
++
++- (unsigned char) unsignedCharValue {
++    return (unsigned char) _value;
++}
++
++- (unsigned int) unsignedIntValue {
++    return (unsigned int) _value;
++}
++
++- (long) longValue {
++    return (long) _value;
++}
++
++- (unsigned long) unsignedLongValue {
++    return (unsigned long) _value;
++}
++
++- (NSUInteger) unsignedIntegerValue {
++    return (NSUInteger) _value;
++}
++
 +- (void) getValue: (void *) buffer {
 +    *(double *) buffer = _value;
 +}
@@ -176,6 +244,38 @@
 +
 +- (BOOL) boolValue {
 +    return _value != 0.0f;
++}
++
++- (short) shortValue {
++    return (short) _value;
++}
++
++- (unsigned short) unsignedShortValue {
++    return (unsigned short) _value;
++}
++
++- (char) charValue {
++    return (char) _value;
++}
++
++- (unsigned char) unsignedCharValue {
++    return (unsigned char) _value;
++}
++
++- (unsigned int) unsignedIntValue {
++    return (unsigned int) _value;
++}
++
++- (long) longValue {
++    return (long) _value;
++}
++
++- (unsigned long) unsignedLongValue {
++    return (unsigned long) _value;
++}
++
++- (NSUInteger) unsignedIntegerValue {
++    return (NSUInteger) _value;
 +}
 +
 +- (void) getValue: (void *) buffer {

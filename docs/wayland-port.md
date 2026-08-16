@@ -5160,3 +5160,38 @@ and the first field it reads is nonsense.
 So the next rung is not a mystery, it is a generator change: a stub for an _OBJC_CLASS_$_ symbol has
 to be a REAL Objective-C class, compiled as Objective-C against libobjc, not a trap. The Swift
 metadata symbols have the same shape of problem behind them and are the rung after that.
+
+
+## The class stubs became real classes, and the nixpkgs iTerm2 reached AppKit
+
+2026-08-16. The load_categories_nolock fault said what to do and it worked. Six of the stub symbols
+are _OBJC_CLASS_$_ names, QLPreviewPanel and the five ScreenCaptureKit classes, and they are now
+compiled as REAL Objective-C classes against libobjc instead of trapping functions. With that:
+
+    cider-wayland-appkit register=ok class=NSDisplayWayland
+    cider-wayland-appkit init=ok display=connected globals=57 seat=true output=true
+
+iTerm2 3.6.10 runs its own main, reaches NSApplicationMain, connects to the compositor through this
+backend and starts decoding MainMenu.nib. That is the first time the nixpkgs build has executed a
+line of its own code.
+
+WHAT IT FOUND NEXT, in order, each fixed and each a real gap:
+
+    -[NSConstantIntegerNumber shortValue]     the constant number classes answered only the natural
+                                              width. Every width converts now, which is what an
+                                              NSNumber does.
+    -[NSConstantDictionary keyEnumerator]     a fault on address 1, which is a COUNT being used as a
+                                              pointer: the ivar order was wrong.
+    -[NSScreen localizedName]                 in AppKit since 10.15 and missing. It answers a plain
+                                              descriptive name, since the compositor hands out no
+                                              marketing name for a display.
+
+AND ONE THING THAT IS EVIDENCE RATHER THAN UNDERSTANDING, said plainly in the code: the two constant
+collections do not agree about where the count goes. The dictionary works with the count LAST and
+the array with the count FIRST, and both orders were established from a fault address rather than a
+document. The reliable way to settle it is to read a constant instance out of the __DATA section of
+a binary that has one. Until then they are measured guesses.
+
+WHERE IT STOPS NOW: -[NSClassSwapper initWithCoder:] sending a message to 0x18 while decoding the
+main nib, which is the SAME fault the 3.4.23 build hits. So the two versions have converged on one
+bug in this port nib reader, and that is now the single thing between iTerm2 and a window.

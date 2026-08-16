@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/NSConstantLiterals.m
-@@ -0,0 +1,97 @@
+@@ -0,0 +1,107 @@
 +/*
 + * THE CONSTANT LITERAL CLASSES, WHICH THE COMPILER CREATES INSTANCES OF AND NOBODY ELSE DOES.
 + *
@@ -24,7 +24,17 @@
 +#import <Foundation/NSException.h>
 +#import <Foundation/NSEnumerator.h>
 +
-+/* The layouts clang emits. The value always follows the isa, which is the field that matters. */
++/* The layouts clang emits.
++ *
++ * THE TWO COLLECTIONS DO NOT AGREE ABOUT WHERE THE COUNT GOES, and both orders were established
++ * from the fault address rather than from a document. A dictionary with the count first died in
++ * -[NSConstantDictionary keyEnumerator] dereferencing 1, and it works with the count last. An array
++ * with the count LAST then died in -[NSConstantArray objectAtIndex:] dereferencing 5, which is a
++ * count being used as a pointer, so the array keeps the count first.
++ *
++ * That is evidence, not understanding, and it is worth saying so: the reliable way to settle both is
++ * to read a constant instance out of the __DATA section of a binary that has one and look at the
++ * words. Until that is done, treat these two layouts as measured guesses. */
 +
 +@interface NSConstantArray : NSArray {
 +@public
@@ -35,9 +45,9 @@
 +
 +@interface NSConstantDictionary : NSDictionary {
 +@public
-+    unsigned long _count;
 +    const id *_keys;
 +    const id *_objects;
++    unsigned long _count;
 +}
 +@end
 +

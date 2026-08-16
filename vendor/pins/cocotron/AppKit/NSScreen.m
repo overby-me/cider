@@ -27,6 +27,20 @@ NSNotificationName const NSScreenColorSpaceDidChangeNotification = @"NSScreenCol
 
 @implementation NSScreen
 
+/*
+ * THE NAME A USER WOULD SEE for this screen. It has been in AppKit since 10.15 and an application
+ * that lists displays calls it: iTerm2 does while it finishes launching, and the unrecognized
+ * selector terminated it.
+ *
+ * There is one display here and it comes from the compositor, which does not hand out a marketing
+ * name, so this answers a plain descriptive one rather than inventing a model. That is what macOS
+ * does for a display whose name it cannot read.
+ */
+- (NSString *) localizedName {
+    return @"Display";
+}
+
+
 - initWithFrame: (NSRect) frame visibleFrame: (NSRect) visibleFrame {
     _frame = frame;
     _visibleFrame = visibleFrame;
