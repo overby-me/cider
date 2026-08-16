@@ -4143,3 +4143,35 @@ follows the parent window. The first click into an inactive window is spent acti
 whose first action is clicking a menu title opens nothing. And an empty environment value is still
 SET as far as the backend is concerned, which is how passing CIDER_WAYLAND_NO_VIBRANCY= silently
 turned the menu blur off in every run of one harness and made a working feature look regressed.
+
+
+## The status bar answered a question and asked a better one
+
+2026-08-16. The macOS reference has a status bar under the find bar and ours did not, which looked
+like a drawing gap. It was not: the View menu showed Status Bar unchecked, and deleting the
+LibreOffice PROFILE, not the prefix, brought the whole thing back on the next run.
+
+    Page 1 of 1 | 0 words, 0 characters | Default Page Style | English (Denmark) | Insert |
+    selection mode | book view icons | zoom slider | 100 percent
+
+That is docs/wayland-status-bar.png, and it draws correctly in every part. The bar had been switched
+off in the accumulated profile by some earlier driven run. The lesson is worth more than the answer:
+THE LIBREOFFICE PROFILE SURVIVES BETWEEN RUNS in the same prefix, so a question about what the
+application believes starts by deleting the profile, not by reading our drawing code.
+
+AND THAT TEST FOUND A REAL DEFECT. The first run with no profile fails:
+
+    run 1, no profile at all   -> Unspecified Application Error, and zero windows
+    run 2, same path           -> starts normally, fourteen windows
+
+Reproduced four times, both on the default profile path and on a clean -env:UserInstallation path,
+so it is not about one directory. It is not profile creation as such either: soffice --headless
+--terminate_after_init on a clean path exits zero and leaves a complete profile behind. It is the
+GUI first run specifically.
+
+SAL_LOG is no help here, and that is worth knowing before the next attempt: nixpkgs ships the
+official release build, which has SAL_INFO and SAL_WARN compiled out, so no log level produces
+anything at all. The next step is guest syscall tracing rather than another environment variable.
+
+This is a real not-fully-working item: a person installing this and starting LibreOffice for the
+first time sees an error dialog and has to start it a second time.
