@@ -1,0 +1,2072 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects", "cc_static_lib")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:install.bzl", "prefix_dir")
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+prefix_dir(
+    name = "prefix_gen_usr",
+    srcs = glob(
+        ["gen/usr/**"],
+        exclude = [],
+    ),
+    strip = "gen/usr",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs
+
+# BEGIN generated: libgroff
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) libgroff   -- review before committing.
+# cmake target: libgroff  ->  libgroff
+# 47 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "libgroff_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libgroff_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libgroff_obj",
+    srcs = [
+        "gen/src/libs/libgroff/version.cpp",
+        "groff/src/libs/libgroff/assert.cpp",
+        "groff/src/libs/libgroff/change_lf.cpp",
+        "groff/src/libs/libgroff/cmap.cpp",
+        "groff/src/libs/libgroff/color.cpp",
+        "groff/src/libs/libgroff/cset.cpp",
+        "groff/src/libs/libgroff/device.cpp",
+        "groff/src/libs/libgroff/errarg.cpp",
+        "groff/src/libs/libgroff/error.cpp",
+        "groff/src/libs/libgroff/fatal.cpp",
+        "groff/src/libs/libgroff/filename.cpp",
+        "groff/src/libs/libgroff/font.cpp",
+        "groff/src/libs/libgroff/fontfile.cpp",
+        "groff/src/libs/libgroff/geometry.cpp",
+        "groff/src/libs/libgroff/glyphuni.cpp",
+        "groff/src/libs/libgroff/htmlhint.cpp",
+        "groff/src/libs/libgroff/hypot.cpp",
+        "groff/src/libs/libgroff/invalid.cpp",
+        "groff/src/libs/libgroff/lf.cpp",
+        "groff/src/libs/libgroff/lineno.cpp",
+        "groff/src/libs/libgroff/macropath.cpp",
+        "groff/src/libs/libgroff/maxfilename.cpp",
+        "groff/src/libs/libgroff/maxpathname.cpp",
+        "groff/src/libs/libgroff/mksdir.cpp",
+        "groff/src/libs/libgroff/nametoindex.cpp",
+        "groff/src/libs/libgroff/new.cpp",
+        "groff/src/libs/libgroff/paper.cpp",
+        "groff/src/libs/libgroff/prime.cpp",
+        "groff/src/libs/libgroff/ptable.cpp",
+        "groff/src/libs/libgroff/relocate.cpp",
+        "groff/src/libs/libgroff/searchpath.cpp",
+        "groff/src/libs/libgroff/string.cpp",
+        "groff/src/libs/libgroff/strsave.cpp",
+        "groff/src/libs/libgroff/symbol.cpp",
+        "groff/src/libs/libgroff/tmpfile.cpp",
+        "groff/src/libs/libgroff/tmpname.cpp",
+        "groff/src/libs/libgroff/unicode.cpp",
+        "groff/src/libs/libgroff/uniglyph.cpp",
+        "groff/src/libs/libgroff/uniuni.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libgroff_inc_groff_gen_src_include",
+        ":libgroff_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libgroff_obj2",
+    srcs = [
+        "groff/src/libs/libgroff/getopt.c",
+        "groff/src/libs/libgroff/getopt1.c",
+        "groff/src/libs/libgroff/iftoa.c",
+        "groff/src/libs/libgroff/itoa.c",
+        "groff/src/libs/libgroff/matherr.c",
+        "groff/src/libs/libgroff/progname.c",
+        "groff/src/libs/libgroff/quotearg.c",
+        "groff/src/libs/libgroff/spawnvp.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fwrapv",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libgroff_inc_groff_gen_src_include",
+        ":libgroff_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: libgroff
+
+# BEGIN generated: libgroff archive
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --archives libgroff   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "libgroff",
+    lib_name = "libgroff.a",
+    objs = [
+        # libgroff
+        ":libgroff_obj",
+        ":libgroff_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libgroff archive
+
+# BEGIN generated: groff_driver
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) groff_driver   -- review before committing.
+# cmake target: groff_driver  ->  groff_driver
+
+cc_header_root(
+    name = "groff_driver_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "groff_driver_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "groff_driver_obj",
+    srcs = [
+        "groff/src/libs/libdriver/input.cpp",
+        "groff/src/libs/libdriver/printer.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":groff_driver_inc_groff_gen_src_include",
+        ":groff_driver_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: groff_driver
+
+# BEGIN generated: groff_bib
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) groff_bib   -- review before committing.
+# cmake target: groff_bib  ->  groff_bib
+# 5 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "groff_bib_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "groff_bib_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "groff_bib_obj",
+    srcs = [
+        "groff/src/libs/libbib/common.cpp",
+        "groff/src/libs/libbib/index.cpp",
+        "groff/src/libs/libbib/linear.cpp",
+        "groff/src/libs/libbib/search.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":groff_bib_inc_groff_gen_src_include",
+        ":groff_bib_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "groff_bib_obj2",
+    srcs = [
+        "groff/src/libs/libbib/map.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fwrapv",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":groff_bib_inc_groff_gen_src_include",
+        ":groff_bib_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: groff_bib
+
+# BEGIN generated: addftinfo
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) addftinfo   -- review before committing.
+# cmake target: addftinfo  ->  src/external/groff/groff/src/utils/addftinfo/addftinfo
+
+cc_header_root(
+    name = "addftinfo_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "addftinfo_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "addftinfo_obj",
+    srcs = [
+        "groff/src/utils/addftinfo/addftinfo.cpp",
+        "groff/src/utils/addftinfo/guess.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":addftinfo_inc_groff_gen_src_include",
+        ":addftinfo_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: addftinfo
+
+# BEGIN generated: addftinfo binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries addftinfo   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "addftinfo",
+    objs = [
+        # addftinfo
+        ":addftinfo_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: addftinfo binary
+
+# BEGIN generated: eqn
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) eqn   -- review before committing.
+# cmake target: eqn  ->  src/external/groff/groff/src/preproc/eqn/eqn
+
+cc_header_root(
+    name = "eqn_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "eqn_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "eqn_obj",
+    srcs = [
+        "groff/src/preproc/eqn/box.cpp",
+        "groff/src/preproc/eqn/delim.cpp",
+        "groff/src/preproc/eqn/eqn.cpp",
+        "groff/src/preproc/eqn/lex.cpp",
+        "groff/src/preproc/eqn/limit.cpp",
+        "groff/src/preproc/eqn/list.cpp",
+        "groff/src/preproc/eqn/main.cpp",
+        "groff/src/preproc/eqn/mark.cpp",
+        "groff/src/preproc/eqn/other.cpp",
+        "groff/src/preproc/eqn/over.cpp",
+        "groff/src/preproc/eqn/pile.cpp",
+        "groff/src/preproc/eqn/script.cpp",
+        "groff/src/preproc/eqn/special.cpp",
+        "groff/src/preproc/eqn/sqrt.cpp",
+        "groff/src/preproc/eqn/text.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":eqn_inc_groff_gen_src_include",
+        ":eqn_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: eqn
+
+# BEGIN generated: eqn binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries eqn   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "eqn",
+    objs = [
+        # eqn
+        ":eqn_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: eqn binary
+
+# BEGIN generated: grn
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) grn   -- review before committing.
+# cmake target: grn  ->  src/external/groff/groff/src/preproc/grn/grn
+
+cc_header_root(
+    name = "grn_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "grn_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "grn_obj",
+    srcs = [
+        "groff/src/preproc/grn/hdb.cpp",
+        "groff/src/preproc/grn/hgraph.cpp",
+        "groff/src/preproc/grn/hpoint.cpp",
+        "groff/src/preproc/grn/main.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":grn_inc_groff_gen_src_include",
+        ":grn_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grn
+
+# BEGIN generated: grn binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries grn   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "grn",
+    objs = [
+        # grn
+        ":grn_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grn binary
+
+# BEGIN generated: grodvi
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) grodvi   -- review before committing.
+# cmake target: grodvi  ->  src/external/groff/groff/src/devices/grodvi/grodvi
+
+cc_header_root(
+    name = "grodvi_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "grodvi_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "grodvi_obj",
+    srcs = [
+        "groff/src/devices/grodvi/dvi.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":grodvi_inc_groff_gen_src_include",
+        ":grodvi_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grodvi
+
+# BEGIN generated: grodvi binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries grodvi   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "grodvi",
+    objs = [
+        # grodvi
+        ":grodvi_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+        "//vendor/src/groff:driver",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grodvi binary
+
+# BEGIN generated: groff
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) groff   -- review before committing.
+# cmake target: groff  ->  src/external/groff/groff/src/libs/libgroff/libgroff.a
+# 2 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "groff_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "groff_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "groff_obj",
+    srcs = [
+        "groff/src/roff/groff/groff.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":groff_inc_groff_gen_src_include",
+        ":groff_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "groff_obj2",
+    srcs = [
+        "groff/src/roff/groff/pipeline.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fwrapv",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":groff_inc_groff_gen_src_include",
+        ":groff_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: groff
+
+# BEGIN generated: groff binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries groff   -- review before committing.
+# Links 1 cmake object library/ies, 3 flag groups in total.
+
+darwin_binary(
+    name = "groff",
+    objs = [
+        # groff
+        ":groff_obj",
+        ":groff_obj2",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: groff binary
+
+# BEGIN generated: grolbp
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) grolbp   -- review before committing.
+# cmake target: grolbp  ->  src/external/groff/groff/src/devices/grolbp/grolbp
+
+cc_header_root(
+    name = "grolbp_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "grolbp_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "grolbp_obj",
+    srcs = [
+        "groff/src/devices/grolbp/lbp.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":grolbp_inc_groff_gen_src_include",
+        ":grolbp_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grolbp
+
+# BEGIN generated: grolbp binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries grolbp   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "grolbp",
+    objs = [
+        # grolbp
+        ":grolbp_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+        "//vendor/src/groff:driver",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grolbp binary
+
+# BEGIN generated: grolj4
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) grolj4   -- review before committing.
+# cmake target: grolj4  ->  src/external/groff/groff/src/devices/grolj4/grolj4
+
+cc_header_root(
+    name = "grolj4_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "grolj4_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "grolj4_obj",
+    srcs = [
+        "groff/src/devices/grolj4/lj4.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":grolj4_inc_groff_gen_src_include",
+        ":grolj4_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grolj4
+
+# BEGIN generated: grolj4 binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries grolj4   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "grolj4",
+    objs = [
+        # grolj4
+        ":grolj4_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+        "//vendor/src/groff:driver",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grolj4 binary
+
+# BEGIN generated: grops
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) grops   -- review before committing.
+# cmake target: grops  ->  src/external/groff/groff/src/devices/grops/grops
+
+cc_header_root(
+    name = "grops_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "grops_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "grops_obj",
+    srcs = [
+        "groff/src/devices/grops/ps.cpp",
+        "groff/src/devices/grops/psrm.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":grops_inc_groff_gen_src_include",
+        ":grops_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grops
+
+# BEGIN generated: grops binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries grops   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "grops",
+    objs = [
+        # grops
+        ":grops_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+        "//vendor/src/groff:driver",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grops binary
+
+# BEGIN generated: grotty
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) grotty   -- review before committing.
+# cmake target: grotty  ->  src/external/groff/groff/src/devices/grotty/grotty
+
+cc_header_root(
+    name = "grotty_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "grotty_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "grotty_obj",
+    srcs = [
+        "groff/src/devices/grotty/tty.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":grotty_inc_groff_gen_src_include",
+        ":grotty_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grotty
+
+# BEGIN generated: grotty binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries grotty   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "grotty",
+    objs = [
+        # grotty
+        ":grotty_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+        "//vendor/src/groff:driver",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grotty binary
+
+# BEGIN generated: hpftodit
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) hpftodit   -- review before committing.
+# cmake target: hpftodit  ->  src/external/groff/groff/src/utils/hpftodit/hpftodit
+
+cc_header_root(
+    name = "hpftodit_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "hpftodit_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "hpftodit_obj",
+    srcs = [
+        "groff/src/utils/hpftodit/hpftodit.cpp",
+        "groff/src/utils/hpftodit/hpuni.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":hpftodit_inc_groff_gen_src_include",
+        ":hpftodit_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: hpftodit
+
+# BEGIN generated: hpftodit binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries hpftodit   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "hpftodit",
+    objs = [
+        # hpftodit
+        ":hpftodit_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: hpftodit binary
+
+# BEGIN generated: indxbib
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) indxbib   -- review before committing.
+# cmake target: indxbib  ->  src/external/groff/groff/src/utils/indxbib/indxbib
+# 2 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "indxbib_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "indxbib_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "indxbib_obj",
+    srcs = [
+        "groff/src/utils/indxbib/indxbib.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":indxbib_inc_groff_gen_src_include",
+        ":indxbib_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "indxbib_obj2",
+    srcs = [
+        "groff/src/utils/indxbib/signal.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fwrapv",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":indxbib_inc_groff_gen_src_include",
+        ":indxbib_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: indxbib
+
+# BEGIN generated: indxbib binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries indxbib   -- review before committing.
+# Links 1 cmake object library/ies, 3 flag groups in total.
+
+darwin_binary(
+    name = "indxbib",
+    objs = [
+        # indxbib
+        ":indxbib_obj",
+        ":indxbib_obj2",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+        "//vendor/src/groff:bib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: indxbib binary
+
+# BEGIN generated: lkbib
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) lkbib   -- review before committing.
+# cmake target: lkbib  ->  src/external/groff/groff/src/utils/lkbib/lkbib
+
+cc_header_root(
+    name = "lkbib_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lkbib_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lkbib_obj",
+    srcs = [
+        "groff/src/utils/lkbib/lkbib.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":lkbib_inc_groff_gen_src_include",
+        ":lkbib_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lkbib
+
+# BEGIN generated: lkbib binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries lkbib   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "lkbib",
+    objs = [
+        # lkbib
+        ":lkbib_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+        "//vendor/src/groff:bib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lkbib binary
+
+# BEGIN generated: lookbib
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) lookbib   -- review before committing.
+# cmake target: lookbib  ->  src/external/groff/groff/src/utils/lookbib/lookbib
+
+cc_header_root(
+    name = "lookbib_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lookbib_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lookbib_obj",
+    srcs = [
+        "groff/src/utils/lookbib/lookbib.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":lookbib_inc_groff_gen_src_include",
+        ":lookbib_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lookbib
+
+# BEGIN generated: lookbib binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries lookbib   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "lookbib",
+    objs = [
+        # lookbib
+        ":lookbib_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+        "//vendor/src/groff:bib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lookbib binary
+
+# BEGIN generated: pfbtops
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) pfbtops   -- review before committing.
+# cmake target: pfbtops  ->  src/external/groff/groff/src/utils/pfbtops/pfbtops
+
+cc_header_root(
+    name = "pfbtops_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pfbtops_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pfbtops_obj",
+    srcs = [
+        "groff/src/utils/pfbtops/pfbtops.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fwrapv",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pfbtops_inc_groff_gen_src_include",
+        ":pfbtops_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pfbtops
+
+# BEGIN generated: pfbtops binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries pfbtops   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "pfbtops",
+    objs = [
+        # pfbtops
+        ":pfbtops_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pfbtops binary
+
+# BEGIN generated: pic
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) pic   -- review before committing.
+# cmake target: pic  ->  src/external/groff/groff/src/preproc/pic/pic
+
+cc_header_root(
+    name = "pic_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pic_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pic_obj",
+    srcs = [
+        "groff/src/preproc/pic/common.cpp",
+        "groff/src/preproc/pic/lex.cpp",
+        "groff/src/preproc/pic/main.cpp",
+        "groff/src/preproc/pic/object.cpp",
+        "groff/src/preproc/pic/pic.cpp",
+        "groff/src/preproc/pic/tex.cpp",
+        "groff/src/preproc/pic/troff.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pic_inc_groff_gen_src_include",
+        ":pic_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pic
+
+# BEGIN generated: pic binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries pic   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "pic",
+    objs = [
+        # pic
+        ":pic_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pic binary
+
+# BEGIN generated: refer
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) refer   -- review before committing.
+# cmake target: refer  ->  src/external/groff/groff/src/preproc/refer/refer
+
+cc_header_root(
+    name = "refer_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "refer_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "refer_obj",
+    srcs = [
+        "groff/src/preproc/refer/command.cpp",
+        "groff/src/preproc/refer/label.cpp",
+        "groff/src/preproc/refer/ref.cpp",
+        "groff/src/preproc/refer/refer.cpp",
+        "groff/src/preproc/refer/token.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":refer_inc_groff_gen_src_include",
+        ":refer_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: refer
+
+# BEGIN generated: refer binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries refer   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "refer",
+    objs = [
+        # refer
+        ":refer_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+        "//vendor/src/groff:bib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: refer binary
+
+# BEGIN generated: soelim
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) soelim   -- review before committing.
+# cmake target: soelim  ->  src/external/groff/groff/src/preproc/soelim/soelim
+
+cc_header_root(
+    name = "soelim_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "soelim_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "soelim_obj",
+    srcs = [
+        "groff/src/preproc/soelim/soelim.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":soelim_inc_groff_gen_src_include",
+        ":soelim_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: soelim
+
+# BEGIN generated: soelim binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries soelim   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "soelim",
+    objs = [
+        # soelim
+        ":soelim_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: soelim binary
+
+# BEGIN generated: tbl
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) tbl   -- review before committing.
+# cmake target: tbl  ->  src/external/groff/groff/src/preproc/tbl/tbl
+
+cc_header_root(
+    name = "tbl_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tbl_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tbl_obj",
+    srcs = [
+        "groff/src/preproc/tbl/main.cpp",
+        "groff/src/preproc/tbl/table.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":tbl_inc_groff_gen_src_include",
+        ":tbl_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tbl
+
+# BEGIN generated: tbl binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries tbl   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "tbl",
+    objs = [
+        # tbl
+        ":tbl_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tbl binary
+
+# BEGIN generated: tfmtodit
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) tfmtodit   -- review before committing.
+# cmake target: tfmtodit  ->  src/external/groff/groff/src/utils/tfmtodit/tfmtodit
+
+cc_header_root(
+    name = "tfmtodit_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tfmtodit_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tfmtodit_obj",
+    srcs = [
+        "groff/src/utils/tfmtodit/tfmtodit.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":tfmtodit_inc_groff_gen_src_include",
+        ":tfmtodit_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tfmtodit
+
+# BEGIN generated: tfmtodit binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries tfmtodit   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "tfmtodit",
+    objs = [
+        # tfmtodit
+        ":tfmtodit_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tfmtodit binary
+
+# BEGIN generated: troff
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) troff   -- review before committing.
+# cmake target: troff  ->  src/external/groff/groff/src/roff/troff/troff
+
+cc_header_root(
+    name = "troff_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "troff_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "troff_obj",
+    srcs = [
+        "gen/src/roff/troff/majorminor.cpp",
+        "groff/src/roff/troff/dictionary.cpp",
+        "groff/src/roff/troff/div.cpp",
+        "groff/src/roff/troff/env.cpp",
+        "groff/src/roff/troff/input.cpp",
+        "groff/src/roff/troff/mtsm.cpp",
+        "groff/src/roff/troff/node.cpp",
+        "groff/src/roff/troff/number.cpp",
+        "groff/src/roff/troff/reg.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":troff_inc_groff_gen_src_include",
+        ":troff_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: troff
+
+# BEGIN generated: troff binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries troff   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "troff",
+    objs = [
+        # troff
+        ":troff_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: troff binary
+
+# BEGIN generated: post-grohtml
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) post-grohtml   -- review before committing.
+# cmake target: post-grohtml  ->  src/external/groff/groff/src/devices/grohtml/post-grohtml
+
+cc_header_root(
+    name = "post-grohtml_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "post-grohtml_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "post-grohtml_obj",
+    srcs = [
+        "groff/src/devices/grohtml/html-table.cpp",
+        "groff/src/devices/grohtml/html-text.cpp",
+        "groff/src/devices/grohtml/output.cpp",
+        "groff/src/devices/grohtml/post-html.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":post-grohtml_inc_groff_gen_src_include",
+        ":post-grohtml_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: post-grohtml
+
+# BEGIN generated: post-grohtml binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries post-grohtml   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "post-grohtml",
+    objs = [
+        # post-grohtml
+        ":post-grohtml_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+        "//vendor/src/groff:driver",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: post-grohtml binary
+
+# BEGIN generated: pre-grohtml
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) pre-grohtml   -- review before committing.
+# cmake target: pre-grohtml  ->  src/external/groff/groff/src/preproc/html/pre-grohtml
+
+cc_header_root(
+    name = "pre-grohtml_inc_groff_gen_src_include",
+    headers = glob(["gen/src/include/*.h", "gen/src/include/**/*.h", "gen/src/include/*.c"]),
+    root = "gen/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pre-grohtml_inc_groff_groff_src_include",
+    headers = glob(["groff/src/include/*.h", "groff/src/include/**/*.h", "groff/src/include/*.c"]),
+    root = "groff/src/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pre-grohtml_obj",
+    srcs = [
+        "groff/src/preproc/html/pre-html.cpp",
+        "groff/src/preproc/html/pushback.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GETOPT_PREFIX=groff_",
+        "-fPIC",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-missing-exception-spec",
+        "-Wno-unused-value",
+        "-Wno-parentheses",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-mismatched-new-delete",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pre-grohtml_inc_groff_gen_src_include",
+        ":pre-grohtml_inc_groff_groff_src_include",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pre-grohtml
+
+# BEGIN generated: pre-grohtml binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries pre-grohtml   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "pre-grohtml",
+    objs = [
+        # pre-grohtml
+        ":pre-grohtml_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/groff:libgroff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pre-grohtml binary
+
+# BEGIN generated: groff_driver archive
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --archives groff_driver   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "driver",
+    lib_name = "libdriver.a",
+    objs = [
+        # groff_driver
+        ":groff_driver_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: groff_driver archive
+
+# BEGIN generated: groff_bib archive
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --archives groff_bib   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "bib",
+    lib_name = "libbib.a",
+    objs = [
+        # groff_bib
+        ":groff_bib_obj",
+        ":groff_bib_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: groff_bib archive

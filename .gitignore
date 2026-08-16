@@ -23,6 +23,13 @@ Thumbs.db
 .kdev_include_paths
 *~
 Makefile
+# ...EXCEPT inside a vendored upstream tarball, where a Makefile is SOURCE rather than cmake
+# output. The bare rule above is a cmake-era artifact rule, and it never bit while these
+# lived at src/external because they were already tracked and an ignore rule does not untrack.
+# #87 stage 2 moved them to a NEW path, where the rule does apply, and seven committed
+# Makefiles under libpthread_workqueue-0.8.2 silently stopped being tracked: 153 tracked files
+# went in and 146 came out. Caught by counting, not by any failure.
+!vendor/pins/**/Makefile
 CMakeFiles
 cmake_install.cmake
 CMakeCache.txt
@@ -34,14 +41,21 @@ tests/*
 !tests/sandbox/
 !tests/syscall/
 !tests/dirserv/
-!tests/darling-smoke.nix
-!tests/darling-builder.nix
-!tests/nix-in-darling.nix
+!tests/cider-smoke.nix
+# The VM-side twin of scripts/checks/buck-bash-check.nu: the bash milestone for the buck2 port.
+!tests/cider-buck2-smoke.nix
+!tests/cider-builder.nix
+!tests/nix-in-cider.nix
 !tests/nix/
-!tests/darlingserver/
+!tests/ciderd/
+!tests/buck2/
+!tests/buck2/**
 
-# The suggested build folder
-build
+# The suggested build folder. ANCHORED TO THE ROOT, and that is not cosmetic: a bare `build`
+# matches a directory of that name at ANY depth, so it silently swallowed scripts/build/ the
+# moment the scripts were split, making five tracked scripts untracked. cmake is gone (#82), so
+# this now guards only against someone recreating the old root build dir by hand.
+/build
 # ...but not the vendored nix-ninja (its lowering + rust-ninja both have build/ subdirs).
 !nix/lib/nix-ninja/
 !nix/lib/nix-ninja/**
@@ -55,35 +69,35 @@ debbuild
 debian/changelog
 debian/.debhelper
 debian/files
-debian/darling-dkms.substvars
-debian/darling-dkms/
-debian/darling.substvars
-debian/darling/
+debian/cider-dkms.substvars
+debian/cider-dkms/
+debian/cider.substvars
+debian/cider/
 debian/debhelper-build-stamp
 debian/tmp/
-debian/darling-core/
-debian/darling-system/
-debian/darling-cli/
-debian/darling-cli-python2-common/
-debian/darling-ffi/
-debian/darling-cli-devenv/
-debian/darling-cli-gui-common/
-debian/darling-iokitd/
-debian/darling-iosurface/
-debian/darling-cli-devenv-gui-common/
-debian/darling-cli-extra/
-debian/darling-gui/
-debian/darling-python2/
-debian/darling-cli-python-common/
-debian/darling-pyobjc/
-debian/darling-ruby/
-debian/darling-perl/
-debian/darling-jsc-webkit-common/
-debian/darling-jsc/
-debian/darling-iokitd-cli-devenv-gui-common/
-debian/darling-cli-devenv-gui-stubs-common/
-debian/darling-gui-stubs/
-debian/darling-extra/
+debian/cider-core/
+debian/cider-system/
+debian/cider-cli/
+debian/cider-cli-python2-common/
+debian/cider-ffi/
+debian/cider-cli-devenv/
+debian/cider-cli-gui-common/
+debian/cider-iokitd/
+debian/cider-iosurface/
+debian/cider-cli-devenv-gui-common/
+debian/cider-cli-extra/
+debian/cider-gui/
+debian/cider-python2/
+debian/cider-cli-python-common/
+debian/cider-pyobjc/
+debian/cider-ruby/
+debian/cider-perl/
+debian/cider-jsc-webkit-common/
+debian/cider-jsc/
+debian/cider-iokitd-cli-devenv-gui-common/
+debian/cider-cli-devenv-gui-stubs-common/
+debian/cider-gui-stubs/
+debian/cider-extra/
 debian/*.substvars
 
 .idea
@@ -93,3 +107,39 @@ cmake-build-*
 .direnv/
 result
 result-*
+
+# Buck2 (plan/buck2-port.md): daemon state + build outputs, and the local
+# config override (absolute toolchain paths, per-machine settings).
+buck-out/
+.buckconfig.local
+
+# Python bytecode cache (nix-ninja build helpers)
+__pycache__/
+*.pyc
+
+# The duct-tape XNU subset is a PIN now, not vendored source (batch B). It is materialised
+# into place from its own pin store: by scripts/buck-src.nu for a direct buck2 build, and by
+# materializePins in nix/lib/ciderBuck2Graph.nix inside the Nix graph derivation. The pin
+# carries the whole of XNU rather than the 1,974 file subset that used to be committed here,
+# and patches/xnu-sys-xnu holds the delta that made the vendored copy differ from upstream.
+/vendor/pins/ciderd/xnu-sys/xnu/
+
+# The cargo build directory of the graph-specs tool (#99). NOT a blanket `target/` rule: 83
+# TRACKED paths in this repo contain a /target/ component, all of them upstream, and a blanket
+# rule would quietly untrack every one of them.
+/src/linux/buildtools/graph-specs/target/
+/src/linux/buildtools/skeleton/target/
+/src/linux/buildtools/src-normalise/target/
+/nix/lib/dyn-actions-spec-fixup/target/
+
+# Editor state. .vscode/launch.json was TRACKED until the release prep; the build already
+# excludes the directory so an editor cannot invalidate a derivation, and now it cannot be
+# committed either.
+.vscode/
+
+# Scratch output from debugging runs. outputs/out/ held an empty loop.out and a 482 byte
+# strace and was COMMITTED until the release prep.
+/outputs/
+
+# A 250 byte boot log that was sitting at the repository root.
+/.dfx-boot.log

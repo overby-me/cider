@@ -1,0 +1,85 @@
+--- a/src/string/generic/bzero.c
++++ b/src/string/generic/bzero.c
+@@ -22,6 +22,12 @@
+  */
+ 
+ #include <platform/string.h>
++#include <stdint.h>
++
++/* Unaligned stores, spelled the portable way. Same shape as the ones in memmove.c. */
++struct cider_u64 { uint64_t v; } __attribute__((packed));
++struct cider_u32 { uint32_t v; } __attribute__((packed));
++struct cider_u16 { uint16_t v; } __attribute__((packed));
+ 
+ #if !VARIANT_STATIC
+ // to satisfy compiler-generated memset inside libplatform (e.g. makecontext)
+@@ -35,8 +41,61 @@
+ 
+ #if !_PLATFORM_OPTIMIZED_MEMSET
+ 
++/*
++ * MEMSET WAS A FUNCTION CALL PER FOUR BYTES.
++ *
++ * The implementation below this comment used to build a four byte pattern and hand it to
++ * _platform_memset_pattern4, whose loop calls _platform_memmove once per four bytes. Clearing a
++ * page meant a thousand calls. Every memset and every bzero in the system went through it, and it
++ * is reached constantly: the allocator clears what it hands out, and the C library memset_chk lands
++ * here too.
++ *
++ * rep stosb is what this instruction set has for the job, the same reasoning as rep movsb in
++ * memmove: a wide internal store on every part since Ivy Bridge, good for short lengths since Ice
++ * Lake. Small lengths still take a written out path, because the instruction has a startup cost
++ * that a handful of bytes does not amortise everywhere.
++ */
+ void *
+ _platform_memset(void *b, int c, size_t len) {
++#if defined(__x86_64__)
++	unsigned char *p = b;
++	unsigned char v = (unsigned char) c;
++
++	if (len == 0) {
++		return b;
++	}
++	if (len <= 32) {
++		uint64_t wide = 0x0101010101010101ULL * (uint64_t) v;
++
++		if (len >= 16) {
++			((struct cider_u64 *) p)->v = wide;
++			((struct cider_u64 *) (p + 8))->v = wide;
++			((struct cider_u64 *) (p + len - 16))->v = wide;
++			((struct cider_u64 *) (p + len - 8))->v = wide;
++		} else if (len >= 8) {
++			((struct cider_u64 *) p)->v = wide;
++			((struct cider_u64 *) (p + len - 8))->v = wide;
++		} else if (len >= 4) {
++			((struct cider_u32 *) p)->v = (uint32_t) wide;
++			((struct cider_u32 *) (p + len - 4))->v = (uint32_t) wide;
++		} else if (len >= 2) {
++			((struct cider_u16 *) p)->v = (uint16_t) wide;
++			((struct cider_u16 *) (p + len - 2))->v = (uint16_t) wide;
++		} else {
++			p[0] = v;
++		}
++		return b;
++	}
++
++	void *d = p;
++	size_t n = len;
++
++	__asm__ volatile("rep stosb"
++	                 : "+D"(d), "+c"(n)
++	                 : "a"((int) v)
++	                 : "memory");
++	return b;
++#else
+ 	unsigned char pattern[4];
+ 
+ 	pattern[0] = (unsigned char)c;
+@@ -46,6 +105,7 @@
+ 
+ 	_platform_memset_pattern4(b, pattern, len);
+ 	return b;
++#endif
+ }
+ 
+ #if VARIANT_STATIC

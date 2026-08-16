@@ -1,0 +1,1 @@
+NSInterfacePart/NSInterfacePartAttributedString.h

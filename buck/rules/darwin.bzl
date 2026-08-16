@@ -1,0 +1,323 @@
+# Darwin/Mach-O linking: dylibs, install_name, reexport, and the firstpass
+# machinery that breaks the libSystem cycle.
+#
+# HOW THE CYCLE IS ACTUALLY BROKEN (cmake/cider_lib.cmake's add_circular, and
+# the -dylib_file list in cmake/use_ld64.cmake). This is the plan's "highest
+# risk" item, and reading the reference makes it much less scary than it sounds:
+#
+#   objects ──┬──> X_firstpass.dylib   linked with -flat_namespace
+#             │                        -undefined suppress, so unresolved
+#             │                        symbols are simply allowed
+#             └──> X.dylib             linked against its siblings'
+#                                      *_firstpass.dylib
+#
+# Both passes are built from the SAME objects, and the firstpass pass resolves
+# nothing, so the ARTIFACT graph is acyclic even though the libraries are
+# mutually dependent. It is a plain DAG, which is all Buck2 needs.
+#
+# The one thing that does not survive the translation is putting both passes in
+# one rule: if `libsystem_c` and `libsystem_kernel` each named the other, the
+# TARGET graph would be cyclic and buck2 would reject it. So a circular library
+# is TWO targets, exactly as cmake makes two targets, and the firstpass ones form
+# a layer that depends on nothing but objects.
+#
+# `-dylib_file <install_name>:<path>` is how a link resolves an install_name to
+# a file that is not where it will live at runtime. cmake keeps one global map of
+# every firstpass dylib and passes the whole thing to every link; here each target
+# contributes its own mapping through a provider, so a link only carries the
+# mappings for libraries it actually depends on. Same effect, and the dependency
+# edges stay honest.
+
+load(":cc.bzl", "CcLibInfo", "CcObjectsInfo", "compile_objects", "merge_dep_libs", "stage_include_root")
+load("@toolchains//:cc.bzl", "CcToolchainInfo")
+load("//buck/rules:inproc.bzl", "InProcInfo")
+
+DarwinDylibInfo = provider(fields = [
+    # The -install_name this dylib will have at runtime.
+    "install_name",
+    # This target's dylib artifact.
+    "dylib",
+    # [(install_name, artifact)] for this dylib and everything it depends on,
+    # rendered as -Wl,-dylib_file,<name>:<path> on a consumer's link line.
+    "dylib_files",
+])
+
+def _merge_dylib_files(deps):
+    """Transitive (install_name, artifact) pairs, first occurrence wins."""
+    seen = {}
+    out = []
+    for dep in deps:
+        info = dep.get(DarwinDylibInfo)
+        if info == None:
+            continue
+        for name, art in info.dylib_files:
+            if name not in seen:
+                seen[name] = True
+                out.append((name, art))
+    return out
+
+def _darwin_link(ctx, tc, out, objects, extra_flags, link_libs, dylib_files):
+    # PER RULE, and returned so the caller can DECLARE it. The toolchain could write one
+    # shared script instead, and that is nicer, but buck2 audit output cannot parse where a
+    # toolchain artifact lands ("Path does not have a platform configuration or content-based
+    # hash") and the graph dump runs audit output over every buck-out path in an argv. An
+    # ordinary target artifact it resolves every day, so the script lives here and each rule
+    # puts it in InProcInfo.artifacts.
+    driver = None
+    if getattr(tc, "ld_artifact", None):
+        driver = ctx.actions.write(
+            ctx.label.name + "__ld_driver.sh",
+            cmd_args(
+                "#!/bin/sh",
+                cmd_args("exec", tc.cc, cmd_args(tc.ld_artifact, format = '-fuse-ld="$PWD/{}"'), '"$@"', delimiter = " "),
+                delimiter = "\n",
+            ),
+            is_executable = True,
+            with_inputs = True,
+        )
+    cmd = cmd_args(driver if driver else tc.cc)
+    cmd.add(tc.cflags)
+    cmd.add(tc.ldflags)
+    # The Mach-O linker is selected by -B plus the target triple: clang's driver
+    # looks for `<triple>-ld` in the -B dirs, which is exactly why cctools names
+    # it x86_64-apple-darwin20-ld. (-fuse-ld= would also work but only with an
+    # ABSOLUTE path, which a Starlark rule cannot compute; set [cider] ld in
+    # .buckconfig.local to an absolute path to use it instead.)
+    # THE LINKER AS A BUILT ARTIFACT, when the toolchain was given one (#65). Passing the
+    # artifact rather than a string is what makes the link DEPEND on it: buck2 builds ld64
+    # first and the Nix lowering records it as an input, exactly as it already does for
+    # migcom, which appears in the inputs of all 110 actions that run it.
+    #
+    # -B wants the DIRECTORY, because clang's driver looks for <triple>-ld inside it; parent
+    # is how cmd_args names an artifact's directory without turning it into a string and
+    # losing the dependency.
+    if getattr(tc, "ld_artifact", None):
+        # NOTHING HERE. The generated driver above already carries -fuse-ld with an absolute
+        # path, which is what selects the linker.
+        #
+        # DO NOT ADD -B<dir> BACK. It looks harmless and it breaks the DUMP: a -B argument is
+        # a DIRECTORY, and src/linux/buildtools/graph-specs/src/dump.rs runs `buck2 audit output` over every
+        # buck-out path in an argv to learn which action produced it. A directory is not an
+        # output, so audit fails the whole dump with "Malformed buck-out path ... No output
+        # artifacts found" naming that directory. Measured: the buck2 build was green and the
+        # Nix graph derivation died on exactly this.
+        pass
+    else:
+        for d in tc.ld_search_dirs:
+            cmd.add(["-B", d])
+        if tc.ld:
+            cmd.add(cmd_args(tc.ld, format = "-fuse-ld={}"))
+    cmd.add(extra_flags)
+    cmd.add(["-o", out.as_output()])
+    cmd.add(objects)
+    cmd.add(link_libs)
+    for name, art in dylib_files:
+        cmd.add(cmd_args(art, format = "-Wl,-dylib_file," + name + ":{}"))
+    ctx.actions.run(cmd, category = "darwin_link", identifier = ctx.label.name)
+    return driver
+
+def _darwin_dylib_impl(ctx):
+    tc = ctx.attrs.toolchain[CcToolchainInfo]
+    merged = merge_dep_libs(ctx.attrs.deps)
+
+    include_dirs = []
+    if ctx.attrs.headers:
+        include_dirs.append(stage_include_root(
+            ctx,
+            ctx.label.name + "__private_include",
+            ctx.attrs.include_root,
+            ctx.attrs.headers,
+        ))
+    include_dirs.extend(merged.include_dirs)
+
+    objects = compile_objects(
+        ctx,
+        tc,
+        ctx.attrs.srcs,
+        include_dirs,
+        merged.exported_flags + ctx.attrs.compiler_flags,
+        "__objs",
+        ctx.attrs.prefix_headers,
+    )
+    for group in ctx.attrs.objs:
+        objects.extend(group[CcObjectsInfo].objects)
+
+    out = ctx.actions.declare_output(ctx.attrs.dylib_name or (ctx.label.name + ".dylib"))
+
+    # -nostdlib: clang's Darwin driver would otherwise add -lSystem, and libSystem
+    # is the very thing being built. The reference build passes it too (via
+    # cmake/cider_lib.cmake), alongside -shared; -dynamiclib is the same request
+    # spelled the Darwin way.
+    flags = ["-dynamiclib", "-nostdlib"]
+    if ctx.attrs.install_name:
+        flags.append("-Wl,-dylib_install_name," + ctx.attrs.install_name)
+    flags.extend(["-Wl,-compatibility_version," + ctx.attrs.compatibility_version])
+    if ctx.attrs.current_version:
+        flags.extend(["-Wl,-current_version," + ctx.attrs.current_version])
+    if ctx.attrs.firstpass:
+        # The whole point of a firstpass dylib: resolve nothing, so it can be
+        # built before the libraries it will eventually need.
+        flags.extend(["-Wl,-flat_namespace", "-Wl,-undefined,suppress"])
+    flags.extend(ctx.attrs.linker_flags)
+    for flag, art in ctx.attrs.link_flag_files.items():
+        flags.append(cmd_args(art, format = flag + ",{}"))
+
+    # Siblings are linked through their FIRSTPASS dylib, which is what makes the
+    # mutual dependency expressible.
+    link_libs = []
+
+    # REEXPORTS FIRST, because ld64 records LC_LOAD_DYLIB in command-line order and the
+    # reference puts them first: its -Wl,-reexport_library lives in LINK_FLAGS, which cmake
+    # emits ahead of LINK_LIBRARIES. Ordering libSystem ahead of libc++abi gave libc++ a
+    # different dependency order than the reference build, and the guest then aborted in
+    # libc++'s initializer -- the one difference left between this port's libc++ and a
+    # Nix-built one once the reexport itself was restored.
+    for r in ctx.attrs.reexport:
+        link_libs.append(cmd_args(r[DarwinDylibInfo].dylib, format = "-Wl,-reexport_library,{}"))
+    for sib in ctx.attrs.siblings:
+        link_libs.append(sib[DarwinDylibInfo].dylib)
+    for up in ctx.attrs.upward:
+        # An upward dependency is loaded and initialized only after this library
+        # is fully loaded; dyld requires it when a libSystem sublibrary depends on
+        # something that itself depends on libSystem and has initializers.
+        link_libs.append(cmd_args(up[DarwinDylibInfo].dylib, format = "-Wl,-upward_library,{}"))
+    link_libs.extend(merged.static_libs)
+    link_libs.extend(merged.linker_flags)
+
+    dylib_files = _merge_dylib_files(
+        ctx.attrs.siblings + ctx.attrs.upward + ctx.attrs.reexport + ctx.attrs.deps,
+    )
+    ld_driver = _darwin_link(ctx, tc, out, objects, flags, link_libs, dylib_files)
+
+    own = []
+    if ctx.attrs.install_name:
+        own = [(ctx.attrs.install_name, out)]
+
+    return [
+        # The driver script is WRITTEN, never run by another action, so nothing else reaches it
+        # and buck/bxl/materialize.bxl only ensures what is declared here.
+        InProcInfo(artifacts = [ld_driver] if ld_driver else []),
+        DefaultInfo(default_output = out),
+        CcObjectsInfo(objects = objects),
+        DarwinDylibInfo(
+            install_name = ctx.attrs.install_name,
+            dylib = out,
+            dylib_files = own + dylib_files,
+        ),
+        CcLibInfo(
+            include_dirs = merged.include_dirs,
+            exported_flags = merged.exported_flags,
+            static_libs = [],
+            linker_flags = [],
+        ),
+    ]
+
+_darwin_dylib_attrs = {
+    "compatibility_version": attrs.string(default = "1.0.0"),
+    "compiler_flags": attrs.list(attrs.string(), default = []),
+    "current_version": attrs.string(default = ""),
+    "deps": attrs.list(attrs.dep(), default = []),
+    # Artifact name; defaults to <name>.dylib. Darling's dylib names rarely match
+    # the cmake target name (libsystem_c.dylib vs libsystem_c_firstpass.dylib).
+    "dylib_name": attrs.string(default = ""),
+    # Link with unresolved symbols allowed, for the first of the two passes.
+    "firstpass": attrs.bool(default = False),
+    "headers": attrs.list(attrs.source(), default = []),
+    "include_root": attrs.string(default = ""),
+    "install_name": attrs.string(default = ""),
+    # Linker flags whose argument is a FILE: {"-Wl,-alias_list": <source>}. The file
+    # travels as a declared input, and the flag is emitted as `<flag>,<path>`.
+    # libplatform needs this: it defines _platform_strcmp and only an alias list
+    # makes it answer to _strcmp, so dropping the flag leaves every client of the
+    # string routines undefined.
+    "link_flag_files": attrs.dict(attrs.string(), attrs.source(), default = {}),
+    "linker_flags": attrs.list(attrs.string(), default = []),
+    "objs": attrs.list(attrs.dep(), default = []),
+    "prefix_headers": attrs.list(attrs.source(), default = []),
+    # Libraries whose symbols this dylib re-exports as its own (the umbrella
+    # pattern: libSystem.B.dylib reexports every sublibrary).
+    "reexport": attrs.list(attrs.dep(), default = []),
+    # Mutually dependent libraries, linked through their firstpass dylib.
+    "siblings": attrs.list(attrs.dep(), default = []),
+    "srcs": attrs.list(attrs.source(), default = []),
+    "toolchain": attrs.toolchain_dep(default = "toolchains//:darwin_cc"),
+    "upward": attrs.list(attrs.dep(), default = []),
+}
+
+darwin_dylib = rule(
+    impl = _darwin_dylib_impl,
+    attrs = _darwin_dylib_attrs,
+)
+
+# ---------------------------------------------------------------------------
+# darwin_binary: a Mach-O executable.
+# ---------------------------------------------------------------------------
+
+def _darwin_binary_impl(ctx):
+    tc = ctx.attrs.toolchain[CcToolchainInfo]
+    merged = merge_dep_libs(ctx.attrs.deps)
+
+    include_dirs = []
+    if ctx.attrs.headers:
+        include_dirs.append(stage_include_root(
+            ctx,
+            ctx.label.name + "__private_include",
+            ctx.attrs.include_root,
+            ctx.attrs.headers,
+        ))
+    include_dirs.extend(merged.include_dirs)
+
+    objects = compile_objects(
+        ctx,
+        tc,
+        ctx.attrs.srcs,
+        include_dirs,
+        merged.exported_flags + ctx.attrs.compiler_flags,
+        "__objs",
+        ctx.attrs.prefix_headers,
+    )
+    for group in ctx.attrs.objs:
+        objects.extend(group[CcObjectsInfo].objects)
+
+    out = ctx.actions.declare_output(ctx.attrs.exe_name or ctx.label.name)
+    link_libs = []
+    for lib in ctx.attrs.dylibs:
+        link_libs.append(lib[DarwinDylibInfo].dylib)
+    link_libs.extend(merged.static_libs)
+    link_libs.extend(merged.linker_flags)
+    dylib_files = _merge_dylib_files(ctx.attrs.dylibs + ctx.attrs.deps)
+
+    # -nostdlib for the same reason the dylib link needs it: clang's Darwin driver
+    # would otherwise add -lSystem, and there is no -L holding one. The executable
+    # DOES need libSystem, and gets it as an explicit artifact through `dylibs`.
+    bin_flags = ["-nostdlib"] + list(ctx.attrs.linker_flags)
+    for flag, art in ctx.attrs.link_flag_files.items():
+        bin_flags.append(cmd_args(art, format = flag + ",{}"))
+    ld_driver = _darwin_link(ctx, tc, out, objects, bin_flags, link_libs, dylib_files)
+    return [
+        InProcInfo(artifacts = [ld_driver] if ld_driver else []),
+        DefaultInfo(default_output = out),
+    ]
+
+darwin_binary = rule(
+    impl = _darwin_binary_impl,
+    attrs = {
+        "compiler_flags": attrs.list(attrs.string(), default = []),
+        "deps": attrs.list(attrs.dep(), default = []),
+        "dylibs": attrs.list(attrs.dep(), default = []),
+        "exe_name": attrs.string(default = ""),
+        "headers": attrs.list(attrs.source(), default = []),
+        "include_root": attrs.string(default = ""),
+        # Linker flags whose argument is a FILE: {"-Wl,-alias_list": <source>}. The file
+    # travels as a declared input, and the flag is emitted as `<flag>,<path>`.
+    # libplatform needs this: it defines _platform_strcmp and only an alias list
+    # makes it answer to _strcmp, so dropping the flag leaves every client of the
+    # string routines undefined.
+    "link_flag_files": attrs.dict(attrs.string(), attrs.source(), default = {}),
+    "linker_flags": attrs.list(attrs.string(), default = []),
+        "objs": attrs.list(attrs.dep(), default = []),
+        "prefix_headers": attrs.list(attrs.source(), default = []),
+        "srcs": attrs.list(attrs.source(), default = []),
+        "toolchain": attrs.toolchain_dep(default = "toolchains//:darwin_cc"),
+    },
+)

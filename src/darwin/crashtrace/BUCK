@@ -1,0 +1,37 @@
+# A crash handler that can be INSERTED, so a fault during image initialisation has frames.
+# See src/darwin/crashtrace/src/crashtrace.m for why the backend copy cannot see that fault.
+# buck-registry: usr/lib/cider-crashtrace.dylib = crashtrace_dylib
+
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+
+cc_objects(
+    name = "crashtrace_obj",
+    srcs = ["src/crashtrace.m"],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "crashtrace_dylib",
+    dylib_name = "cider-crashtrace",
+    install_name = "/usr/lib/cider-crashtrace.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":crashtrace_obj"],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)

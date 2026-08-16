@@ -1,0 +1,15 @@
+--- a/src/URL/NSCFURLSession.m	2026-08-15 23:41:45.792302088 +0200
++++ b/src/URL/NSCFURLSession.m	2026-08-15 23:41:45.776240195 +0200
+@@ -20,7 +20,11 @@
+     static dispatch_once_t once = 0L;
+     static NSURLSession *sharedSession = nil;
+     dispatch_once(&once, ^{
+-        sharedSession = (NSURLSession *)[[__NSCFURLSession alloc] initWithConfiguration:(NSURLSessionConfiguration *)[__NSCFURLSessionConfiguration defaultSessionConfiguration] delegate:nil delegateQueue:nil];
++        // THE CONFIGURATION COMES FROM NSURLSessionConfiguration, which is the class that has a
++        // default one. __NSCFURLSessionConfiguration is an empty private class above this line
++        // and has never had that method, so every application that asked for the shared session
++        // died on an unrecognized selector before it drew anything.
++        sharedSession = (NSURLSession *)[[__NSCFURLSession alloc] initWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration] delegate:nil delegateQueue:nil];
+     });
+     return sharedSession;
+ }

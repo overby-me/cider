@@ -1,0 +1,51 @@
+load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:codegen.bzl", "script_gen")
+load("//buck/rules:files.bzl", "export_file")
+
+# The host-side daemon itself is the Rust crate linux/server; what remains here
+# for the Buck2 port is the shared header surface and the generated RPC wrappers
+# that xnu-sys (and the Rust daemon, via bindgen) compile against.
+
+cc_header_root(
+    name = "dserver_headers",
+    headers = glob(["include/*.h", "include/**/*.h"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+# generate-rpc-wrappers.py emits the RPC surface from its own calls list:
+# the public header, the internal header, and the library source.
+#
+# The cmake build writes the two headers into separate binary dirs
+# (include/ and internal-include/) and puts both on the include path. Here they
+# land in one staged root under their `ciderd/` namespace, which resolves
+# <ciderd/rpc.h> and <ciderd/rpc.internal.h> identically -- there
+# is no name collision to keep them apart for.
+#
+# The fourth argument is interpolated verbatim into the generated library
+# source's `#include {}` line. cmake passes a quoted RELATIVE path
+# ("../include/ciderd/rpc.h") because in its layout the generated rpc.c
+# and rpc.h land in sibling binary dirs. Here they share one staged root, so the
+# angle-bracket form is passed instead and resolves through -I like any other
+# declared header. Same header either way; the argument exists precisely so the
+# caller can choose how the generated source refers to it.
+script_gen(
+    name = "dserver_rpc",
+    outs = [
+        "ciderd/rpc.h",
+        "ciderd/rpc.internal.h",
+        "src/rpc.c",
+    ],
+    args = ["<ciderd/rpc.h>"],
+    script = "scripts/generate-rpc-wrappers.py",
+    visibility = ["PUBLIC"],
+)
+
+# fast_context.c belongs to this package, and the daemon that compiles it lives in
+# linux/server -- so it travels as a label, since a source attribute has to name a file of
+# the package that declares it.
+export_file(
+    name = "src_fast_context.c",
+    src = "src/fast_context.c",
+    visibility = ["PUBLIC"],
+)

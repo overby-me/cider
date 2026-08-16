@@ -1,0 +1,22 @@
+--- a/NSArray.m
++++ b/NSArray.m
+@@ -464,9 +464,17 @@
+ 
+ - (void)removeObjectsInRange:(NSRange)range
+ {
+-    for (NSInteger idx = NSMaxRange(range) - 1; idx >= range.location; idx--)
++    /* AN EMPTY RANGE REMOVES NOTHING. The old loop started at NSMaxRange - 1, which is -1 for a
++     * zero length range at 0, and then compared a SIGNED index against an UNSIGNED location, so
++     * the -1 was promoted to a huge value, the guard held, and -removeObjectAtIndex: was asked for
++     * index -1. An application that empties a queue it has just drained hit it on the first tick:
++     *
++     *     index (-1) beyond array bounds (0)
++     *
++     * Counting removals instead keeps every index unsigned and makes the empty case a no op. */
++    for (NSUInteger removed = 0; removed < range.length; removed++)
+     {
+-        [self removeObjectAtIndex:idx];
++        [self removeObjectAtIndex:NSMaxRange(range) - 1 - removed];
+     }
+ }
+ 

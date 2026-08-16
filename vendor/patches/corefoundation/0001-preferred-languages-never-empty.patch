@@ -1,0 +1,51 @@
+diff -u --recursive a/CFLocale.c b/CFLocale.c
+--- a/CFLocale.c	2026-08-13 17:27:36.130116651 +0200
++++ b/CFLocale.c	2026-08-13 17:27:36.145657230 +0200
+@@ -752,6 +752,47 @@
+     }
+     if (languagesArray)	CFRelease(languagesArray);
+ #endif
++    /*
++     * NEVER RETURN AN EMPTY ARRAY. On a real Mac this list always has at least one entry, so
++     * callers are written as if index 0 exists and several do not check the count first.
++     * LibreOffice is one of them: it confirms the value is an array and then reads element 0,
++     * and against an empty CFArray that read goes past the end and hands what it finds to a
++     * function expecting a string. The symptom was an NSException from
++     * -[__NSCFArray _getCString:maxLength:encoding:], three layers away from this line.
++     *
++     * The emptiness is self inflicted and circular: +[NSUserDefaults standardUserDefaults]
++     * registers AppleLanguages from +[NSLocale preferredLanguages], which is this function,
++     * which builds its answer only from an existing AppleLanguages preference. With none, the
++     * result is empty and that empty array becomes the registered value.
++     *
++     * NOT GUARDED BY __DARLING__, deliberately: that macro is not defined for this target, so a
++     * guarded version compiles to nothing and looks like it works. There is no window server to
++     * ask in this port at all, so the environment is the honest source, and it is where every
++     * other program on this system reads the user's language from.
++     */
++    if (CFArrayGetCount(newArray) == 0) {
++	const char *env = getenv("LANG");
++	if (!env || !*env) env = getenv("LC_ALL");
++	if (!env || !*env) env = getenv("LC_MESSAGES");
++	char buf[64];
++	size_t i = 0;
++	if (env && *env && strcmp(env, "C") != 0 && strcmp(env, "POSIX") != 0) {
++	    /* en_US.UTF-8 -> en-US, which is the identifier form this list holds. */
++	    for (; i + 1 < sizeof(buf) && env[i] && env[i] != '.' && env[i] != '@'; i++) {
++		buf[i] = (env[i] == '_') ? '-' : env[i];
++	    }
++	} else {
++	    buf[i++] = 'e';
++	    buf[i++] = 'n';
++	}
++	buf[i] = '\0';
++	CFStringRef fallback = CFStringCreateWithCString(kCFAllocatorSystemDefault, buf,
++							 kCFStringEncodingUTF8);
++	if (fallback) {
++	    CFArrayAppendValue(newArray, fallback);
++	    CFRelease(fallback);
++	}
++    }
+     return newArray;
+ }
+ 

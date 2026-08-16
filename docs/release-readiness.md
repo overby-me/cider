@@ -1,0 +1,551 @@
+# What Cider needs before a first release
+
+Written 2026-08-12, from measurements taken on the tree at that date, not from impressions. Every
+number below came from running something; where a thing was checked but not proven, it says so.
+
+The next release after this one is aarch64, so the last section is separate: it is not release
+work, it is what the aarch64 work will hit, measured now while it is cheap to measure.
+
+---
+
+## The finding that matters most: nothing verifies this project
+
+Two independent breaks in the flake's DEFAULT output were found today by evaluating it by hand.
+Neither is exotic and both had been sitting there:
+
+    1. buck2 aquery over the whole graph died in ANALYSIS on root//buck/prefix:cider_prefix,
+       because making the Rust xcrun and PlistBuddy the installed binaries put a
+       darwin_rust_staticlib into the prefix and the graph derivation did not supply the
+       toolchain. Introduced 2026-08-12 (#102 flip), fixed the same day (4d190e633201).
+    2. The lowering staged src/<name> for every entry of projectSrc/src. #87 stage 2 emptied
+       src/ into src/darwin/ and src/linux/, so builtins.readDir hit a directory that does not exist,
+       which is an EVAL ERROR rather than a no-op. Dead since #87, fixed 2026-08-12
+       (e2f268e59a0d). The same file already carried a comment about the FIRST instance of
+       exactly this, and this was the second.
+
+**Why nobody saw them.** CI exists, at `.tangled/workflows/ci.yml`, and it is disconnected in two
+independent ways:
+
+    when: branch: main            main is at f70d5b60, "#80", which is 22 tasks behind. All
+                                  work is on buck2-port, so CI has not run on any of it.
+    nix build .#cider             NOT DEFINED in flake.nix.
+    nix build .#cider-sdk         NOT DEFINED in flake.nix.
+
+So even if it fired it would fail on a missing attribute. Effective automated verification of
+this repository is currently zero. Everything green today is green because a human ran it.
+
+**This is the first release blocker, and it is structural rather than a bug.** A release is a
+promise that the thing builds for someone else; right now nothing but a person at this keyboard
+has ever checked that, and the two breaks above are what that costs.
+
+**WHAT A PERSON AT THIS KEYBOARD HAS NOW CHECKED, 2026-08-12 late.** Both halves passed, together,
+for the first time since the port:
+
+    nix build .#cider-buck2-prefix --option substituters ""    EXIT 0. 7,298 derivations
+                                                               planned, zero staging failures,
+                                                               zero errors. The full endpoint.
+    scripts/buck-test.nu with CIDER_GUEST_PARITY=1             166 passed, 0 failed, including
+                                                               both container gates: xcrun, and
+                                                               PlistBuddy over 48 argument cases
+                                                               and 13 interactive sessions with
+                                                               0 retries.
+
+That is a baseline, not automation. It says the tree is good tonight; it does not say the next
+change will be caught, and only CI could say that.
+
+---
+
+## Blockers
+
+**B0. The command the README gives a user did not complete.** This is the most user-visible item
+on the page and it was measured today, not recalled.
+
+    started   nix build .#cider-buck2-prefix-min -L --no-link
+    16:40     last log line, after the sources stage:
+              "sources: 58506 distinct project source(s), from 5483827 per-target entries"
+    16:51     no log output for 11 minutes. The nix client had used 12 SECONDS of CPU in 16
+              minutes and had ZERO children; the nix-daemon worker serving it also had zero
+              children; and no compiler, linker or buck2 build process existed anywhere on the
+              machine. The only buck2 processes were three IDLE daemons left over from earlier
+              sessions, at 15, 11 and 10 hours elapsed.
+    16:55     killed.
+
+Not computing, not building, not waiting on a child: wedged. This matches the recorded
+"endpoint builds freeze" entry whose mechanism is UNKNOWN and for which the harness reaper,
+general daemon reaping and CA derivations have already been ruled out.
+
+**WHAT THIS DOES NOT ESTABLISH, and the distinction matters before anyone hunts it.** It was one
+run on a machine that also had three stale buck2 daemons and an unrelated process pinning a core.
+It does not show the freeze is deterministic, nor that it is the same freeze as the recorded one,
+nor that a clean machine would hit it. What it does establish is that nobody can currently promise
+a stranger that the documented command finishes, which is the thing a release is.
+
+**The first move is not a fix, it is a reproduction on a clean machine**, which is also what B1
+buys: CI is a clean machine that runs the documented command every time.
+
+### B0 reproduced 2026-08-12 19:22, with the evidence the first observation lacked
+
+Same command, same stall point: immediately after `cider-buck2-sources` completes. What the
+instrument caught, which the 16:55 observation did not:
+
+    client 3239272   wchan unix_stream_read_generic, blocked on
+                     /nix/var/nix/daemon-socket/socket. 3 CPU ticks in 45 s, so 0.07 percent.
+                     Its 17 threads are Boehm GC markers parked in futex_do_wait: the
+                     evaluator is idle, not thinking.
+    daemon 3239326   about 0.5 percent, steady: 22 ticks in 60 s, 41 in 90 s, 44 in 75 s.
+                     ZERO children. Root owned, so its wchan and io are unreadable without
+                     privilege, which is the one hole left in this picture.
+    the build graph  NOTHING started since. /nix/var/log/nix/drvs shows
+                     cider-buck2-sources.drv.bz2 at 19:22:41 as the newest, and a .bz2 there
+                     means that derivation FINISHED. No builder process exists on the machine.
+    competition      none. One client, one worker, no other nix process, any user.
+
+**THE RECORDED "unreaped zombies" HYPOTHESIS IS REFUTED for this case.** There ARE zombies on
+the box and they are `sd_espeak-ng`, `sd_festival`, `sd_voxin` and five more: speech-dispatcher
+modules under one unrelated parent. None belongs to nix or to a builder.
+
+**STARVATION WAS THE OBVIOUS ANSWER AND IT IS WRONG, which is why it was tested rather than
+assumed.** The machine was saturated: `xscreensaver` at **1993 percent CPU**, roughly 20 of 22
+cores, load 22.10. SIGSTOP on it dropped load to 9.15 within 75 seconds and freed the cores; the
+daemon tick rate did not change and the log did not advance. It was resumed afterwards. So the
+machine being busy is a real and separate problem, not this one.
+
+**A METHOD ERROR THAT COST TWO WRONG CONCLUSIONS IN ONE SESSION.** `ps -o pcpu` reports a
+LIFETIME AVERAGE, not current usage. It made an idle daemon look like it was working at 12.3
+percent, and it hid the screensaver behind processes with longer histories. Sample
+`/proc/PID/stat` fields 14 and 15 across an interval instead, which is what produced every number
+above.
+
+### B0 ROOT CAUSE, 2026-08-12 19:47: it is binary-cache querying, and it is invisible
+
+Re-running with `-vv` answered it in one line, repeated eleven hundred times:
+
+    downloading 'https://zed.cachix.org/<hash>.narinfo'...
+
+The daemon is not stuck. It is asking four substituters, one narinfo at a time, whether each
+output already exists:
+
+    substituters     overby-me.cachix.org, nix-community.cachix.org, zed.cachix.org,
+                     cache.nixos.org
+    queries seen     1,116 in the first minutes, about 279 paths times four caches
+    RATE             4 to 5 queries per MINUTE
+
+At that rate a graph with thousands of paths takes hours, and **nix prints nothing about it at
+default verbosity**, which is the entire reason this looked like a freeze. Every earlier
+observation is consistent with it: no builder process, no new derivation, a client blocked on the
+daemon socket, empty socket queues, and a daemon ticking at half a percent because it is waiting
+on the network rather than computing.
+
+**THE PROOF IS A CONTROL, not the log.** Re-run with substituters disabled:
+
+    nix build .#cider-buck2-prefix-min --option substituters ""
+
+It moved IMMEDIATELY: 4,653 log lines in 90 seconds and real compilation
+(`building '...buck2-security_ssl_obj.drv'`). Same tree, same machine, same daemon.
+
+**THE CACHES THEMSELVES ARE FAST, which is what makes this a nix-side problem rather than a
+network one.** curl against all four: 0.06 s, 0.08 s, 0.16 s, 0.59 s total, all HTTP 200. So four
+healthy caches answering in under a second somehow yield four lookups a minute.
+
+**AND MY EARLIER "STARVATION IS RULED OUT" WAS NOT SOUND.** That test watched the build log, which
+only prints on derivation events, over 75 seconds. At four queries a minute the log could not have
+moved whatever the answer was. The observable could not respond to the intervention, so the test
+proved nothing. The substituter finding stands on its own control, above.
+
+**WHAT B0 IS NOT:** not a deadlock, not zombies, not the disk. It is a throughput problem in
+substituter querying that presents as a hang.
+
+### B0 CONCLUDED 2026-08-12 20:52: the build completes
+
+With substituters disabled and the two bugs below fixed:
+
+    nix build .#cider-buck2-prefix-min --no-link --print-out-paths --option substituters ""
+    EXIT=0
+    /nix/store/51nlpdb0xl04kxhxhkrmr3h3ywv0nvjl-buck2-cider_prefix_min-out
+
+A full end-to-end run took 7 minutes 22 seconds with ZERO errors, and produced a 125 MB prefix at
+`cider_prefix_min__prefix`. A confirming re-run returned exit 0 in 19 seconds against the cache.
+So this is one full build plus a confirming realisation, not three from scratch, and it is stated
+that way on purpose.
+
+**WHY THE QUERIES ARE SLOW IS STILL NOT EXPLAINED, and that matters for how much this generalises.**
+The caches answer in under a second and IPv6 is not the problem: curl over both protocols to
+cache.nixos.org and zed.cachix.org returns HTTP 200 in 0.05 to 0.08 s, and the box has a working
+default IPv6 route. So four healthy caches, two healthy protocols, and nix still manages four
+lookups a minute. Candidates not yet tested: connection reuse and the http-connections limit, the
+narinfo disk cache, and contention from the machine being saturated at the time.
+
+**THIS MAY BE MACHINE-LOCAL RATHER THAN A CIDER DEFECT.** The substituter list is in this
+developer's nix.conf, not in the repo, and nothing Cider ships can fix a user's cache
+configuration.
+
+**AND CI CANNOT SETTLE IT, which retracts what this section said before.** The earlier version
+argued that a clean CI machine running the documented command was the measurement that decides
+whether B0 generalises. It is not, because CI can never finish that build: Darling is too large,
+and a hosted runner will hit its limit long before the prefix exists. An argument that depends on
+a machine nobody has is not an argument.
+
+So the honest statement for a release is unchanged and unhedged: the build completes on a
+developer machine, and a slow substituter set can make it look like it has hung, with no output
+to say so. Whether that slowness happens elsewhere is unmeasured, and the way to measure it is
+someone else running the build, not automation.
+
+### What the stall was HIDING: the two guest Rust tools do not build in the endpoint
+
+The moment the build got past it, both failed:
+
+    /nix/store/...-cider-darwin-rust-1.95.0/bin/rustc: No such file or directory
+    buck2 lower: an action of root//src/darwin/xcselect:xcrun_rs_lib failed
+
+The lowered derivation replays a recorded argv that names the toolchain by ABSOLUTE store path,
+and that path was not among the derivation's inputs, so the sandbox did not have it. Fixed by
+adding it to the lowering's tool set in `nix/lib/ciderBuck2Lower.nix`, beside `pkgs.rustc`, but
+for a different reason: the others are bare command names needing PATH, this one needs to exist.
+
+
+**B1. DONE 2026-08-12 (4f7e30082b64), then NARROWED.** CI was disconnected twice over and is now
+pointed at the branch the work is on, naming attributes that exist.
+
+**BUT IT DOES NOT BUILD, and that is deliberate.** Darling is too large for a hosted runner to
+finish, so a CI that tries is a CI that always fails and therefore gets ignored. What CI keeps is
+the half that is both cheap and load bearing: EVALUATING every advertised flake output. That is
+not a consolation prize. Both breaks that started this document, the analysis failure and the dead
+src/ readDir, were EVAL errors: neither needed a single compile to surface, and evaluation alone
+would have caught both in seconds.
+
+**B2. DONE 2026-08-12 (4dfbeeaf7d33). Decide and signpost what the product IS.** `flake.nix` exposes **51** package attributes.
+Almost all are development probes: `cider-buck2-dyn-gen-scale`, `cider-buck2-blocks`,
+`cider-buck2-probe-bigfile`, `cider-buck2-graph-min-skeleton`. A newcomer cannot tell which one is
+Cider. `packages.default` is `cider-buck2`. The README tells people to build
+`.#cider-buck2-prefix-min`, which is the MINIMAL prefix, not the product. Pick the user-facing
+name, make `default` be it, and mark the rest internal.
+
+**B3. DONE 2026-08-12. The README promised Darling's features, not Cider's measured ones.** It is largely inherited
+prose and it currently claims `installer -pkg`, `hdiutil attach` of an Xcode DMG, `unxip`, and
+compiling with Apple's clang inside the prefix. Those are Darling's claims. **None of them is
+covered by any check in this repo**, and the runtime checks that do exist cover bash, AppKit under
+X11, JSC, dispatch, security, scripting, launchd and audio. Either verify each claim or remove it.
+Shipping a README that overstates is worse than shipping a short one.
+
+**B4. PARTLY DONE 2026-08-12: VERSION and CHANGELOG.md added, no tag yet.** `ls CHANGELOG* VERSION*` returns nothing and
+flake.nix carries no version string. A release needs a number, a dated summary of what works, and
+an explicit statement of what does not.
+
+**B5. State the licence position in the README, not just in the file.** DONE 2026-08-12: the
+README now says plainly that Cider is a fork of Darling licensed GPL v3 or later, and points at
+LICENSE. Compare `#101`, where dockur/macos was measured pushing exactly this question onto its
+users.
+
+---
+
+## Should fix, not blocking
+
+**S1. DONE 2026-08-12 (040911576041), and the user widened it to .vscode, outputs/, plan/, .gdbinit and CONTRIBUTORS.md. `tools/` was a museum.** Four items with no live caller:
+
+    tools/generate-xcode-stubs.py    24 KB, python3, upstream Darling
+    tools/cider-stub-gen            10 KB, python3, renamed by #84 so it LOOKS first-party,
+                                     referenced by nothing in the tree
+    tools/i386-map                   python2 (#!/usr/bin/env python), which will not run
+    tools/debian/                    make-deb, ppa-build-source: Darling's Debian packaging,
+                                     and Cider builds with Nix
+
+The python campaign cleared `scripts/`, and these are outside it. Deleting the dead ones is
+minutes and removes an obvious "is this project maintained" signal.
+
+**S2. The container faults at startup about once per 61 runs.** Measured across four full runs of
+the PlistBuddy parity gate: one `rc 136` SIGFPE with a core dump that did not reproduce in 10
+attempts against either binary, and two `[mldr] start-stack mmap at 0x7fffff600000 failed`, once
+killing the process before its program ran. A user will hit this and report it as "cider is
+flaky", so it needs either a fix or a known-issues entry with that exact string in it.
+
+**S3. DONE 2026-08-12. Say how to actually RUN it.** The README shows `cider shell echo Hello world` but the build
+instruction produces a prefix. There is a NixOS module (`programs.cider`, in `nix/nixosModule.nix`)
+and it is not mentioned. Add the install path: module, `nix profile install`, or a wrapper.
+
+---
+
+## What is genuinely in good shape
+
+Worth stating, because the blockers above are about packaging rather than substance.
+
+    developer-machine leakage   ONE line in the whole tracked tree, in a doc. Checked across
+                                27,355 tracked files.
+    the build system            buck2 only since #82; cmake and nix-ninja are gone
+    python                      zero in scripts/, and the remaining four are in tools/ (S1)
+    host tools                  getuuid, elfdep, wrapgen in Rust with byte-parity gates the
+                                suite runs
+    guest tools                 xcrun and PlistBuddy in Rust, gated inside the container,
+                                61 cases plus 13 interactive sessions
+    the suite                   163 checks, last full run 0 failed
+    licence hygiene             GPL headers kept through the #84 rename, provenance of
+                                header-less files proven by blob identity (#76)
+
+---
+
+## aarch64, which is the NEXT release, measured now
+
+Not release work. Measured while the tree is in front of me so the estimate is not a guess.
+
+**The build-system surface is small.** 18 first-party files name `x86_64-apple-darwin`, and after
+removing docs and PLAN prose the real change list is about a dozen:
+
+    buck/toolchains/BUCK            5 mentions      buck/rules/codegen.bzl      2
+    buck/rules/darwin.bzl           1               buck/rules/rust.bzl         1
+    buck/toolchains/cc.bzl          1               nix/lib/ciderBuck2Graph.nix 1 (the triplet)
+    nix/darwinRust.nix              4               scripts/buck-coverage.nu    8
+    scripts/buck-setup.nu           1               scripts/checks/buck-rpath-check.nu 2
+    scripts/buck-darwin-rust-build.nu 3             scripts/buck-darwin-rust-symcheck.nu 2
+
+**Our own assembly is almost nothing.** Of 115 files with assembly or inline asm, 112 are under
+`src/darwin/` and are vendored Apple content (CoreAudio utility classes, SDK headers, libm). The
+first-party ones are three: `src/linux/server/src/xnu/memory.rs` and the two wrapgen files, whose asm
+is a `.section` directive rather than instructions. The deep porting cost people expect from
+"aarch64" is not in our code.
+
+**libm already ships ARM.** `src/darwin/libm/Source/ARM/` exists upstream alongside `Source/Intel/`.
+
+**Three concrete things will need widening, and one is new today:**
+
+    nix/darwinRust.nix   pins rust-std for x86_64-apple-darwin ONLY. Guest Rust binaries are
+                         now INSTALLED (xcrun, PlistBuddy), so aarch64 needs the matching std
+                         pinned or those two do not build at all on the new target.
+    the triplet          x86_64-apple-darwin20 in nix/lib/ciderBuck2Graph.nix, which also names
+                         the ld64 binary
+    ld64                 MEASURED 2026-08-12 AND IT WORKS. This was the first thing to check
+                         because everything depends on it, and the answer is yes: clang built
+                         a trivial arm64-apple-macos11 object and our buck2-built ld64 linked
+                         it into "Mach-O 64-bit arm64 executable, flags:<NOUNDEFS>". The
+                         binary is named x86_64-apple-darwin20-ld and handles arm64 anyway,
+                         which is ordinary for cctools ld64.
+                         WHAT IT DOES NOT SHOW: that was a static link of one object with
+                         -e _main. It does not prove linking against arm64 dylibs or an arm64
+                         libSystem, because we have neither yet.
+
+**The honest unknown.** Nothing here says what the GUEST side costs: duct-tape, mldr and the
+syscall layer all assume x86_64 register layout, and that was not measured today because it needs
+reading rather than counting. Budget for that separately.
+
+---
+
+## Directory consolidation: what was done, and what was measured and rejected
+
+Asked for 2026-08-12. The project has **1,833 tracked directories**, and **1,646 are under
+`src/darwin/`**: `src/darwin/Developer` alone is 761 directories, 2,806 files and 1,982 headers, and it is
+load-bearing (`buck/generated/sdk_headers.bzl`, `sdk_framework_darwin_Developer.bzl`, `src/darwin/BUCK`
+and `vendor/src/BUCK` all name it). `src/darwin/frameworks` is 86 components and `private-frameworks`
+56. That is the macOS surface Cider implements, so the count there is the product, not clutter.
+
+**DONE.** Deleted `tools/` (22 files, all verified unreferenced by path), `.vscode/`, `outputs/`,
+`misc/` (one logo, zero references, moved to `docs/`), `plan/` (retired into `docs/`), `.gdbinit`
+(broken: it imports `gdb_maloader` from a `tools/` that does not exist), `CONTRIBUTORS.md`, three
+empty directories (`build/`, `plan/`, and one named `<ciderd`) and a stray `.dfx-boot.log`.
+`etc/` became `src/darwin/etc/`, which needed a `SOURCE_RENAMES` entry in the install generator and
+was verified by regeneration rather than by inspection.
+
+**REJECTED: `patches/` into `vendor/pins/`.** `vendor/pins/` is not a container, it is a NAMESPACE OF PIN NAMES,
+and two places enumerate it: `nix/lib/ciderBuck2Lower.nix:1326` does
+`builtins.readDir (projectSrc + "/pins")` and symlinks every entry as a pin, and
+`scripts/checks/buck-escape-roots-check.nu:24` computes "a readDir of pins minus the pin names" and
+reports what is left. A `vendor/pins/patches/` would appear to both as a pin called `patches`. Moving it
+to `nix/` instead would fit the applier in `nix/lib/cider-src.nix` but mischaracterise it, since
+`scripts/buck-src.nu` applies patches too and is not Nix. It stays at the top level.
+
+**DONE 2026-08-13: `buck-src` + `buck-rust` + `pins` are now `vendor/src`, `vendor/rust` and
+`vendor/pins`.** One top-level directory where there were three. This entry used to say NOT DONE,
+and the reason it gave was verification rather than effort: a rename of this size fails somewhere
+only a full build reaches, and the full build was blocker B0. B0 was answered and a full endpoint
+build went green the same night, so the change became provable and was made.
+
+It was 20,625 lines across 247 tracked files, driven from the TRACKED FILE LIST rather than a
+filesystem walk, which matters in both directions: skipping `buck-src/` to avoid its 260,000
+materialized files also skips the tracked 63,424-line `buck-src/BUCK` that holds 3,774 of the
+references, and not skipping it rewrites materialized upstream source.
+
+**WHAT A TEXT SUBSTITUTION CANNOT SEE, and all three bit.** This is the part worth keeping:
+
+    FILENAMES that contain the token. scripts/buck-src.nu became scripts/vendor/src.nu in 71
+      files. The moved thing is a directory; a script whose name shares the characters is not it.
+    BARE CONSTANTS with no trailing slash. The sweep was anchored on `pins/` so that identifiers
+      like wantedPins survived, and that anchor hid twelve declarations: pinRoot, PIN_ROOT in
+      three tools, a PROJECT_TOPS entry, PIN_ROOT_DEPTH, two readDir paths and the staging
+      exclusion list. THIS is the one that broke the build: with pinRoot still "pins" every pin
+      failed the directly-under-the-root test and the vendor/src indirection was never created.
+    SYMLINK TARGETS. 4,031 of them. Opening a link follows it, so a content rewrite edits what
+      it points AT and never the link itself. The repointing pass has to run to a FIXPOINT; one
+      sweep left 2,077 behind.
+
+**AND TWO FALSE ALARMS, each of which looked exactly like a real break.** 2,077 links INSIDE the
+moved trees needed no change at all, because five levels up from `vendor/src/x` is `vendor/`, so
+`pins/y` already meant `vendor/pins/y`; a detector that compares strings instead of resolving them
+calls those broken. And the suite reported `ioclasscount` and `zprint` as not Mach-O when both
+build fine: the buck2 daemon had stale state, because **watchman does not descend into symlinks**
+and this move repointed 4,031 of them. Kill the daemon after a change like that.
+
+**VERIFIED, ALL FOUR:**
+
+    buck2 targets //...                    10,853 targets, EXIT 0, no errors
+    nix eval of the full prefix drvPath    EXIT 0. Rebuilds the graph, so it exercises pin
+                                           materialization, the BXL pass and every label
+    nix build .#cider-buck2-prefix         EXIT 0. 7,296 derivations, zero errors, zero
+                                           staging failures, substituters off
+    scripts/buck-test.nu                   166 passed, 0 failed, with CIDER_GUEST_PARITY=1
+
+**ONE TRAP TO KNOW BEFORE RUNNING THAT SUITE.** It failed twice on the moved tree for reasons
+that were not the tree. `cider-src-normalise` comes from the dev shell, and a stale direnv cache
+kept serving the binary built BEFORE the move, which still had the old pin root compiled in; its
+own log gives it away by saying `buck-src:` where current sources say `vendor/src:`. And the
+buck2 daemon reported two binaries as not Mach-O until it was restarted, because watchman does
+not descend into symlinks and the move repointed 4,031 of them. Both are environment, not code,
+and both cost an hour.
+
+---
+
+## Item 5, why the substituter queries are slow: SOLVED, and it was never narinfo
+
+Investigated 2026-08-12 at the user's request and ANSWERED the same night; the answer is in the
+last section below. The eliminations that got there are each backed by a measurement rather than
+an argument, and they are kept because three of them are still worth not re-testing.
+
+**RATE LIMITING: REFUTED.** A sample build-trace URL returns a plain `404` in 0.13 s from
+Cloudflare with no `429`, no `Retry-After` and no rate-limit headers of any kind.
+
+**IPv6: REFUTED.** curl over BOTH protocols to cache.nixos.org and zed.cachix.org returns HTTP 200
+in 0.05 to 0.08 s, and the box has a working default IPv6 route. This mattered enough to test
+because the repo already records tangled.org timing out over IPv6.
+
+**CPU STARVATION: REFUTED, properly this time.** An A-B-A with 24 CPU hogs against a live query
+stream: **144 queries per 30 s, then 139 under load, then 146 after.** No effect. The earlier
+"ruling out" of starvation was invalid because it watched the build log, which only prints on
+derivation events and could not have responded within the window; this one watches the query
+count, which can.
+
+**QUERYING AT SCALE IS FAST HERE.** A `--dry-run` of nixpkgs#texliveFull enumerated **5,271 paths
+to fetch** in under three minutes, and Cider's own build-trace lookups run at about 5 per SECOND.
+So nothing about this machine makes nix queries slow in general.
+
+**WHAT IS LEFT** is that the slow case was narinfo lookups DURING a Cider build, at 4 to 5 per
+minute, while everything else measured is 60 to 3,600 times faster. Two candidates remain
+untested: something specific to substituting CONTENT-ADDRESSED outputs, which is what Cider's
+lowered derivations are (#55), and the narinfo disk cache, which was 40 KB, i.e. empty, so every
+lookup was a network miss and a fresh insert.
+
+**WHY IT WAS NOT SETTLED: each attempt cost 15 minutes and my own commits invalidated the graph.**
+Reaching the query phase needs the graph derivation, which takes 11 minutes 20 seconds to rebuild,
+and any commit touching a non-excluded path forces that rebuild. Two attempts were spent this way.
+
+### SETTLED 2026-08-12 23:35. It is the content-addressed outputs, and they are not narinfo lookups at all
+
+**THE REPRODUCER IS ONE COMMAND, not a build.** `nix path-info .#cider-buck2-prefix` finishes in
+**45.8 s** with `--option substituters ""` and **does not finish in 180 s** without it. Same
+evaluation both times, so the whole difference is querying. That it reproduces on `path-info` is
+what made this affordable; the 15-minute attempts were never necessary.
+
+**WHAT IT IS ACTUALLY ASKING FOR.** Run with `-vvv`, 150 seconds of it is:
+
+    710 downloads started, of 178 distinct derivations           = 4.0 requests per derivation
+    one per configured substituter: cache.nixos.org, overby-me.cachix.org,
+                                    nix-community.cachix.org, zed.cachix.org
+    709 of 709 finished downloads returned HTTP 404
+    narinfo requests: ZERO
+
+Every one is `https://<cache>/build-trace-v2/<drv>/out.doi`. **Resolving a content-addressed
+derivation output is a BUILD TRACE lookup, not a narinfo lookup**, so the whole investigation was
+named after the wrong request. Cider's lowered derivations are all CA (#55), they exist only on
+this machine, and no cache can ever have them, so every request is a 404 by construction.
+
+**AND NOTHING IS REMEMBERED.** `~/.cache/nix/binary-cache-v8.sqlite` has a `BuildTrace` table. It
+had 0 rows before those 709 misses and 0 rows after, same file size, same mtime to the minute. The
+misses are not cached, positively or negatively, so **every invocation repeats the entire storm.**
+
+**THE ARITHMETIC OF THE HANG.** 284 requests per minute, 4 per derivation, 7,298 derivations in
+the full prefix: about 29,000 requests, roughly **100 minutes of pure 404s before the first
+derivation can build**. It is not a wedge, a rate limit or a network fault, and it matches every
+symptom of B0: no output, no CPU, and instant progress the moment substituters are off.
+
+**ONE NUMBER IN THE B0 SECTION ABOVE IS WRONG, AND IT IS NOT THIS ONE.** That section reports
+"1,116 queries in the first minutes, about 279 paths times four caches" and then a rate of "4 to 5
+queries per MINUTE". Those two lines cannot both be right: 1,116 queries in a few minutes IS
+roughly 279 per minute, which is my 284 per minute to within noise. The rate line is the error,
+and the paths-times-caches line is the one that agrees with a direct count. It matters because 4
+to 5 per minute makes the network look broken, and it is not: individual requests are fast, there
+are simply about 29,000 of them.
+
+The one thing genuinely not settled is the request TYPE. B0 was observed as `.narinfo` downloads
+during a build; this measurement is `build-trace-v2/.doi` during a `path-info`, with zero narinfo.
+Both are the same substituter round trip in the same closed loop, and disabling substituters fixes
+both, but a build may well ask for both kinds. Re-measuring that would mean invalidating all 7,298
+derivations to get an unbuilt set to query, which costs the baseline this document just gained, so
+it was NOT done and is not claimed.
+
+**CANDIDATE B, the empty narinfo disk cache, IS REFUTED AS AN EXPLANATION** even though the
+observation was accurate. The 40 KB file is empty because CA build traces are never written to it,
+which is a CONSEQUENCE of the mechanism above rather than a cause. A second reason it could not
+have been the cause: this box runs multi-user nix, so a BUILD's queries are made by the daemon
+against `/root/.cache/nix`, which is not the file that was measured.
+
+**NO BEHAVIOUR CHANGED, per the standing instruction.** The options, for the user to choose:
+
+  * keep passing `--option substituters ""` for endpoint builds, which is what every build in this
+    document already does and costs nothing but a flag;
+  * set it once for these outputs, in `nixConfig` or the module, which is a repo behaviour change
+    and therefore a decision rather than a fix;
+  * report the uncached negative build-trace result upstream to nix. A miss that is never
+    remembered turns one unavoidable lookup into one per invocation forever, and that is the part
+    that looks like a defect rather than a design.
+
+## A NEW failure found while chasing item 5: the FULL prefix does not evaluate
+
+`nix build .#cider-buck2-prefix` now dies in evaluation, before any building:
+
+    error: attribute '"root//vendor/src:pin-bootstrap_cmds"' missing
+    at nix/lib/ciderBuck2Lower.nix:1483:46
+      builderScript = builderScriptWith (d: "${drvs.${d}}");
+
+A lowered derivation names a dependency for which no lowered derivation exists. `.#cider-buck2-
+prefix-min` is unaffected and completes, which is what was verified for B0; the full prefix was
+NOT re-verified today, so this went unseen. It is unknown whether it predates today's work or was
+introduced by it, and that question is the first step rather than a guess.
+
+### RESOLVED 2026-08-12, and it hid a second failure behind it
+
+**The eval failure was a disagreement about pin grouping.** `cider-graph-specs` writes the coarse
+synthetic `root//vendor/src:pin-<name>` labels unconditionally, while the lowering defaulted
+`coarsePins = false` and so keyed its derivations by the fine per-pin labels. The two halves
+therefore named different things and a dependency pointed at nothing. Fixed by making
+`coarsePins = true` the default, with a guard that throws and cites the generator lines rather
+than letting a future `false` reproduce a missing-attribute error thousands of lines from its
+cause. The full prefix evaluates again: EXIT 0 in 27 seconds.
+
+**Behind it was a staging failure that only the full prefix could reach**, 412 identical copies of
+
+    ln: failed to create symbolic link 'vendor/pins/ciderd/xnu-sys/xnu': Permission denied
+
+cascading into 340 `Cannot build` errors. `vendor/pins/ciderd/xnu-sys/xnu` is the one pin that lives
+inside another `vendor/pins/` entry, and `.gitignore` excludes it from the source precisely so that it
+arrives from its own store path. The staging linked every top-level `vendor/pins/` entry straight into
+the store, so planting the nested pin underneath one of those links was a write into `/nix/store`.
+`prefix-min` never builds the targets that want that pin, which is why it stayed green through
+all of it.
+
+Fixed as a general rule rather than a case for `ciderd`: a top-level `vendor/pins/` entry that CONTAINS a
+wanted pin is mirrored with `cp -Rs`, real directories and a symlink per file, and made writable.
+This is the third time this repo has learned that a subtree cannot be staged as a directory
+symlink when something must be planted inside it, after the relative-escape rule and the `src/`
+staging, so the test is written on the wanted-pin set and not on a name.
+
+Verified on the smallest artifact that exercises it, then on the real thing:
+`root//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys` builds EXIT 0 with every `mig_` generator under it,
+and the full prefix run that follows passes 75,000 log lines with zero staging failures.
+
+## Upstreaming to buck2, prepared and not filed
+
+[docs/upstream-buck2.md](upstream-buck2.md) holds two findings written up to the standard a
+maintainer could act on: `aquery` renders an action command as a joined string rather than an
+argv list, and `aquery` states no inputs and no outputs for any action, which is worst for the
+in-process kinds that have no command either. Both were measured first-hand on
+buck2 unstable-2026-04-15 on 2026-08-12.
+
+Nothing has been sent. The document ends with what has to happen before it could be: re-measure
+on current buck2, write a reproducer that is not Cider, and file the two separately, since one is
+a rendering change and the other is a data-model gap with a closed three-year-old issue behind it
+([facebook/buck2#475](https://github.com/facebook/buck2/issues/475), no maintainer reply).

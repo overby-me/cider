@@ -1,0 +1,23 @@
+--- a/src/NSFileManager.m	2026-08-16 00:14:05.568169165 +0200
++++ b/src/NSFileManager.m	2026-08-16 00:14:05.554222186 +0200
+@@ -520,6 +520,20 @@
+     return [[urls copy] autorelease];
+ }
+ 
++/*
++ * THERE ARE NO APPLICATION GROUPS HERE, and nil is the documented answer for a group the process is
++ * not a member of, so this is the truth rather than a stub. An application asks for one to find the
++ * container it shares with its own extensions; it gets nothing, and every one of them is written to
++ * handle that, because on macOS a group has to be in the entitlements to exist at all.
++ *
++ * It is here because the method was missing entirely, and a missing method is an exception in the
++ * middle of whatever the caller was doing. Swift Publisher 5 asks during startup.
++ */
++- (NSURL *)containerURLForSecurityApplicationGroupIdentifier:(NSString *)groupIdentifier
++{
++    return nil;
++}
++
+ - (NSURL *)URLForDirectory:(NSSearchPathDirectory)directory inDomain:(NSSearchPathDomainMask)domain appropriateForURL:(NSURL *)url create:(BOOL)shouldCreate error:(NSError **)error
+ {
+     // how is appropriateForURL come into play? it does not seem to be used...

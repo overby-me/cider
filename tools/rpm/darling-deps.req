@@ -1,5 +1,0 @@
-#!/usr/bin/sh
-
-while read filename; do
-	"$1" "$filename"
-done

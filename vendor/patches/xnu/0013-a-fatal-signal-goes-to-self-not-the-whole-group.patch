@@ -1,0 +1,31 @@
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+@@ -431,7 +431,8 @@
+ 			if (bsd_signum == SIGTSTP || bsd_signum == SIGSTOP)
+ 			{
+ 				kern_printf("sigexc: emulating SIGTSTP/SIGSTOP\n");
+-				LINUX_SYSCALL(__NR_kill, 0, LINUX_SIGSTOP);
++				// self, for the same reason as the fatal case below
++				LINUX_SYSCALL(__NR_kill, LINUX_SYSCALL0(__NR_getpid), LINUX_SIGSTOP);
+ 			}
+ 			else
+ 			{
+@@ -447,8 +448,16 @@
+ 						&sa, NULL,
+ 						sizeof(sa.sa_mask));
+ 
+-				// Resend signal to self
+-				LINUX_SYSCALL(__NR_kill, 0, linux_signum);
++				/* TO SELF MEANS TO SELF, NOT TO THE PROCESS GROUP. kill(0, sig) sends the
++				 * signal to EVERY process in the caller group, so one helper taking a fatal
++				 * signal killed the application that spawned it, and every other helper with
++				 * it. On macOS a child that crashes never touches its parent.
++				 *
++				 * What that looked like: iTerm2 spawns iTermServer to own its pty, the server
++				 * aborted while loading, and the application vanished with status 1, no
++				 * message and no fault of its own. Hours went into the wrong process. */
++				int self_pid = LINUX_SYSCALL0(__NR_getpid);
++				LINUX_SYSCALL(__NR_kill, self_pid, linux_signum);
+ 			}
+ 		}
+ 	}

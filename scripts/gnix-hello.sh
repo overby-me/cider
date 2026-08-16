@@ -1,13 +1,13 @@
 #!/bin/sh
-# gnix-hello.sh -- runs INSIDE one darling shell session (rootless one-shot).
+# gnix-hello.sh -- runs INSIDE one cider shell session (rootless one-shot).
 # Guest `nix build` compiles GNU hello FROM SOURCE via the darwin stdenv and runs
-# it: the *official* campaign M1 (vs the toolchain M1 in build-hello-under-darling.sh).
-# See plan/guest-nix-m1.md. Everything below is solved; the build currently reaches
-# hello's configure and trips the darlingserver fork/exec concurrency bug at the
-# first clang call (plan/blockers.md).
+# it: the *official* campaign M1 (vs the toolchain M1 in build-hello-under-cider.nu).
+# See docs/changelog.md. Everything below is solved; the build currently reaches
+# hello's configure and trips the ciderd fork/exec concurrency bug at the
+# first clang call (docs/changelog.md).
 #
-# Requires (set up on the HOST before `darling shell sh <this>`):
-#   - <prefix>/.enable-writable-nix   (darlingserver overlays a writable native /nix)
+# Requires (set up on the HOST before `cider shell sh <this>`):
+#   - <prefix>/.enable-writable-nix   (ciderd overlays a writable native /nix)
 #   - hello's COMPLETE build closure realised in the host store:
 #       nix-store -r $(nix-store -q --references $HELLO_DRV | grep '\.drv$')
 #   - a db dump of that closure (minus hello's own output) at $HELLO_DB_DUMP:
@@ -16,6 +16,11 @@
 #   NIXBIN         x86_64-darwin nix bin dir (store path, seen via the /nix overlay)
 #   HELLO_DRV      the hello derivation to build
 #   HELLO_DB_DUMP  host path to the closure db dump (reached via /Volumes/SystemRoot)
+#
+# STAYS BASH. This runs inside the GUEST, under a cider shell session, where the
+# shell is Darwin bash 3.2.57 and there is no nushell in the prefix. The bash-to-
+# nushell conversion (task #40) covers HOST tooling only; converting this would break
+# the guest, and putting a nushell in the prefix is a different project.
 NIXBIN="${NIXBIN:-/nix/store/fw9y98mcqkksxyah45mmbsrvaxxv7r6x-nix-2.34.8/bin}"
 HELLO_DRV="${HELLO_DRV:-/nix/store/yc10hxdna1mi7a8b96azgyg3prfi72ns-hello-2.12.3.drv}"
 HELLO_DB_DUMP="${HELLO_DB_DUMP:?set HELLO_DB_DUMP to the host closure-dump path}"
@@ -52,8 +57,8 @@ touch /nix/store/.wtest 2>/dev/null && { echo "nix_store_WRITABLE"; rm -f /nix/s
 echo "=BUILD="
 [ -e "$HELLO_DRV" ] || { echo "NO_HELLO_DRV"; exit 1; }
 # Retry: guest build/test binaries occasionally take a transient signal (e.g.
-# SIGFPE in an autoconf mbrtowc/locale probe) -- a darling execution-fidelity
-# flake, not a real build error (plan/guest-nix-m1.md, task #44). nix builds are
+# SIGFPE in an autoconf mbrtowc/locale probe) -- a cider execution-fidelity
+# flake, not a real build error (docs/changelog.md, task #44). nix builds are
 # atomic, so a fresh attempt re-runs configure and usually passes.
 brc=1
 for attempt in 1 2 3 4; do

@@ -1,0 +1,81 @@
+--- a/CFRuntime.c
++++ b/CFRuntime.c
+@@ -136,9 +136,50 @@
+ 
+ extern void __HALT(void);
+ 
++extern id objc_constructInstance(Class cls, void *bytes);
++extern size_t class_getInstanceSize(Class cls);
++
++/* Build the object in the caller buffer when it fits, and say so plainly when it does not. */
++static id __CFPlaceEmptySingleton(Class cls, void *storage, size_t capacity, SEL selAlloc,
++                                  SEL selInit)
++{
++    if (cls == NULL) {
++        return NULL;
++    }
++    if (class_getInstanceSize(cls) <= capacity) {
++        id placed = objc_constructInstance(cls, storage);
++
++        if (placed != NULL) {
++            return objc_msgSend(placed, selInit);
++        }
++    }
++    return objc_msgSend(objc_msgSend(cls, selAlloc), selInit);
++}
++
++
+ static CFTypeID __kCFNotATypeTypeID = _kCFRuntimeNotATypeID;
+ id __NSDictionary0__, __NSArray0__;
+ 
++/*
++ * THE EMPTY SINGLETONS AS STORAGE, WHICH IS WHAT A MODERN BINARY IMPORTS.
++ *
++ * __NSDictionary0__ and __NSArray0__ are POINTERS to the shared empty collections, and code compiled
++ * against a current SDK does not use them: it refers to __NSDictionary0__struct and
++ * __NSArray0__struct, the STORAGE of those two objects, so that an empty literal is an address
++ * rather than a load. iTerm2 3.6.10 does exactly that, and dyld stops before main with
++ *
++ *     Symbol not found: ___NSDictionary0__struct
++ *
++ * The two objects are built INSIDE these buffers with objc_constructInstance, which is the runtime
++ * call for placing an instance in memory the caller owns, so the pointer and the struct are the same
++ * object rather than two empty dictionaries that are not identical to each other. The buffers are
++ * generous and the size is CHECKED at construction: if a class ever outgrows one, the pointer falls
++ * back to an ordinary allocation and the struct stays zero, which is a visible nil rather than a
++ * silently corrupt object.
++ */
++__attribute__((aligned(16))) char __NSDictionary0__struct[512];
++__attribute__((aligned(16))) char __NSArray0__struct[512];
++
+ #if !defined (__cplusplus)
+ static const CFRuntimeClass __CFNotATypeClass = {
+     0,
+@@ -1187,12 +1228,23 @@
+ 
+         Class clsDict, clsArray;
+         SEL selAlloc, selInit;
+-        clsDict = objc_lookUpClass("NSDictionary");
+-        clsArray = objc_lookUpClass("NSArray");
++        /* The CONCRETE empty collections, because objc_constructInstance takes the class it is
++         * given literally and an abstract NSDictionary raises on its first -count. */
++        clsDict = objc_lookUpClass("__CiderEmptyDictionary");
++        clsArray = objc_lookUpClass("__CiderEmptyArray");
++        if (clsDict == NULL) {
++            clsDict = objc_lookUpClass("NSDictionary");
++        }
++        if (clsArray == NULL) {
++            clsArray = objc_lookUpClass("NSArray");
++        }
+         selAlloc = sel_registerName("alloc");
+         selInit = sel_registerName("init");
+-        __NSDictionary0__ = objc_msgSend(objc_msgSend(clsDict, selAlloc), selInit);
+-        __NSArray0__ = objc_msgSend(objc_msgSend(clsArray, selAlloc), selInit);
++        __NSDictionary0__ = __CFPlaceEmptySingleton(clsDict, __NSDictionary0__struct,
++                                                    sizeof __NSDictionary0__struct, selAlloc,
++                                                    selInit);
++        __NSArray0__ = __CFPlaceEmptySingleton(clsArray, __NSArray0__struct,
++                                               sizeof __NSArray0__struct, selAlloc, selInit);
+ 
+         __CFInitializing = 0;
+         __CFInitialized = 1;

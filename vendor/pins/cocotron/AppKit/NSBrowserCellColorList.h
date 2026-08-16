@@ -1,0 +1,1 @@
+NSColorPicker.subproj/NSBrowserCellColorList.h

@@ -1,0 +1,1 @@
+nib.subproj/NSClassSwapper.h

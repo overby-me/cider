@@ -1,0 +1,27 @@
+# login: auth account password session
+#
+# A CIDER CONFIGURATION, not the Apple one, and the difference is deliberate.
+#
+# Apple ships a login policy built on pam_opendirectory, which asks a directory service about the
+# account. There is no directory service in this container. Without a policy of its own, openpam
+# falls back to /etc/pam.d/other, which is pam_deny for every facility, so login printed
+# "Login incorrect" for a name that getpwnam resolves perfectly well. That is what iTerm2 hit:
+# it opens a session with login -fp $USER and never got a shell.
+#
+# There is nothing here for authentication to protect. The container has one account, root, whose
+# home is the prefix; cider shell already runs anything in it without a password; and the guest as
+# a whole runs with the privileges of the host user who started it. A policy that pretended to
+# authenticate would be theatre, and a policy that denies is what we had.
+#
+# So: succeed for the container account and say so plainly. pam_rootok covers the normal case,
+# which is the session that login itself starts as root, and the permit lines below it keep the
+# remaining facilities from falling through to the deny in other.
+auth       sufficient     pam_rootok.so
+auth       required       pam_permit.so
+account    required       pam_permit.so
+password   required       pam_permit.so
+# NO pam_launchd.so HERE, and optional would not have saved it. openpam reports
+# "no pam_launchd.so found" and then pam_start fails outright with a system error, so naming a
+# module that cannot be loaded breaks the whole policy however it is marked. login then exits 1
+# with nothing on stderr, because it reports that failure to syslog.
+session    required       pam_permit.so

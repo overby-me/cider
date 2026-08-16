@@ -1,0 +1,174 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the commoncrypto pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: commonCrypto_obj
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) commonCrypto_obj   -- review before committing.
+# cmake target: commonCrypto_obj  ->  src/external/commoncrypto/commonCrypto_obj
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "commonCrypto_inc_commoncrypto",
+    headers = glob([
+        "include/*.h",
+        "include/**/*.h",
+        "libcn/*.h",
+        "libcn/**/*.h",
+        "lib/*.h",
+        "lib/**/*.h",
+    ]),
+    root = "",
+    include_subdirs = [
+        "include",
+        "libcn",
+        "lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "commonCrypto_obj",
+    srcs = [
+        "lib/CommonBigNum.c",
+        "lib/CommonCMAC.c",
+        "lib/CommonCollabKeyGen.c",
+        "lib/CommonCryptor.c",
+        "lib/CommonCryptorChaCha20.c",
+        "lib/CommonCryptorChaCha20Poly1305.c",
+        "lib/CommonCryptorDES.c",
+        "lib/CommonCryptorGCM.c",
+        "lib/CommonDH.c",
+        "lib/CommonDigest.c",
+        "lib/CommonECCryptor.c",
+        "lib/CommonHMAC.c",
+        "lib/CommonKeyDerivation.c",
+        "lib/CommonKeyDerivationSPI.c",
+        "lib/CommonRSACryptor.c",
+        "lib/CommonRandom.c",
+        "lib/CommonSymmetricKeywrap.c",
+        "lib/ccDispatch.c",
+        "lib/ccGlobals.c",
+        "lib/corecryptoSymmetricBridge.c",
+        "libcn/CommonBaseXX.c",
+        "libcn/CommonBuffering.c",
+        "libcn/CommonCRC.c",
+        "libcn/adler32.c",
+        "libcn/crc16-a.c",
+        "libcn/crc16-b.c",
+        "libcn/crc16-ccitt-false.c",
+        "libcn/crc16-ccitt-true.c",
+        "libcn/crc16-dect-r.c",
+        "libcn/crc16-dect-x.c",
+        "libcn/crc16-icode.c",
+        "libcn/crc16-usb.c",
+        "libcn/crc16-verifone.c",
+        "libcn/crc16-xmodem.c",
+        "libcn/crc16.c",
+        "libcn/crc32-bzip2.c",
+        "libcn/crc32-castagnoli.c",
+        "libcn/crc32-mpeg-2.c",
+        "libcn/crc32-posix.c",
+        "libcn/crc32-xfer.c",
+        "libcn/crc32.c",
+        "libcn/crc64-ecma-182.c",
+        "libcn/crc8-icode.c",
+        "libcn/crc8-itu.c",
+        "libcn/crc8-rohc.c",
+        "libcn/crc8-wcdma.c",
+        "libcn/crc8.c",
+        "libcn/gen_std_crc_table.c",
+        "libcn/normal_crc.c",
+        "libcn/reflect.c",
+        "libcn/reverse_crc.c",
+        "libcn/reverse_poly.c",
+    ],
+    compiler_flags = [
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION",
+        "-DNDEBUG",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-Wno-unused-command-line-argument",
+        "-Wl,-exported_symbols_list,vendor/pins/commoncrypto/exports.exp-in",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":commonCrypto_inc_commoncrypto",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: commonCrypto_obj
+
+# BEGIN generated: commonCrypto dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs commonCrypto   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "commonCrypto_firstpass",
+    dylib_name = "libcommonCrypto_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libcommonCrypto.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "60092.50.5",
+    objs = [
+        # commonCrypto_obj
+        ":commonCrypto_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "commonCrypto_final",
+    dylib_name = "libcommonCrypto.dylib",
+    install_name = "/usr/lib/system/libcommonCrypto.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "60092.50.5",
+    objs = [
+        # commonCrypto_obj
+        ":commonCrypto_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_dyld_firstpass",
+        "//vendor/src:compiler_rt_firstpass",
+        "//vendor/src/xnu:system_kernel_firstpass",
+        "//vendor/src:system_malloc_firstpass",
+        "//vendor/src/libc:system_c_firstpass",
+        "//vendor/src:system_blocks_firstpass",
+        "//vendor/src:system_pthread_firstpass",
+        "//vendor/src:macho_firstpass",
+        "//vendor/src/libdispatch:libdispatch_shared_firstpass",
+        "//vendor/src/corecrypto:corecrypto_firstpass",
+        "//vendor/pins/libtrace:system_trace_firstpass",
+        "//vendor/src/libplatform:platform_firstpass",
+    ],
+    link_flag_files = {
+        "-Wl,-exported_symbols_list": "exports.exp-in",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: commonCrypto dylibs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_commoncrypto.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

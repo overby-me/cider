@@ -1,0 +1,221 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the libunwind pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: unwind_obj
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) unwind_obj   -- review before committing.
+# cmake target: unwind_obj  ->  src/external/libunwind/unwind_obj
+# 9 sources in 3 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "unwind_inc_libunwind_libunwind",
+    headers = glob([
+        "libunwind/src/*.h",
+        "libunwind/src/**/*.h",
+        "libunwind/include/*.h",
+        "libunwind/include/**/*.h",
+    ]),
+    root = "libunwind",
+    include_subdirs = [
+        "src",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_obj",
+    srcs = [
+        "libunwind/src/Unwind-EHABI.cpp",
+        "libunwind/src/Unwind-seh.cpp",
+        "libunwind/src/Unwind_AppleExtras.cpp",
+        "libunwind/src/libunwind.cpp",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_LIBUNWIND_IS_NATIVE_ONLY",
+        "-nostdinc",
+        "-nostdinc++",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-funwind-tables",
+        "-ggdb",
+        "-O0",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":unwind_inc_libunwind_libunwind",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_obj2",
+    srcs = [
+        "libunwind/src/Unwind-sjlj.c",
+        "libunwind/src/UnwindLevel1-gcc-ext.c",
+        "libunwind/src/UnwindLevel1.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-fno-rtti",
+        "-funwind-tables",
+        "-ggdb",
+        "-O0",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":unwind_inc_libunwind_libunwind",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_obj3",
+    srcs = [
+        "libunwind/src/UnwindRegistersRestore.S",
+        "libunwind/src/UnwindRegistersSave.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":unwind_inc_libunwind_libunwind",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: unwind_obj
+
+# BEGIN generated: unwind_static
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) unwind_static   -- review before committing.
+# cmake target: unwind_static  ->  src/external/libunwind/libunwind_static.a
+# 9 sources in 3 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "unwind_static_inc_libunwind_libunwind_src",
+    headers = glob(["libunwind/src/*.h", "libunwind/src/**/*.h"]),
+    root = "libunwind/src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "unwind_static_inc_libunwind_libunwind_include",
+    headers = glob(["libunwind/include/*.h", "libunwind/include/**/*.h"]),
+    root = "libunwind/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_static_obj",
+    srcs = [
+        "libunwind/src/Unwind-EHABI.cpp",
+        "libunwind/src/Unwind-seh.cpp",
+        "libunwind/src/Unwind_AppleExtras.cpp",
+        "libunwind/src/libunwind.cpp",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_LIBUNWIND_IS_NATIVE_ONLY",
+        "-nostdinc",
+        "-nostdinc++",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-funwind-tables",
+        "-ggdb",
+        "-O0",
+        "-DNDEBUG=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":unwind_static_inc_libunwind_libunwind_src",
+        ":unwind_static_inc_libunwind_libunwind_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_static_obj2",
+    srcs = [
+        "libunwind/src/Unwind-sjlj.c",
+        "libunwind/src/UnwindLevel1-gcc-ext.c",
+        "libunwind/src/UnwindLevel1.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-fno-rtti",
+        "-funwind-tables",
+        "-ggdb",
+        "-O0",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-DNDEBUG=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":unwind_static_inc_libunwind_libunwind_src",
+        ":unwind_static_inc_libunwind_libunwind_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_static_obj3",
+    srcs = [
+        "libunwind/src/UnwindRegistersRestore.S",
+        "libunwind/src/UnwindRegistersSave.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-DNDEBUG=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":unwind_static_inc_libunwind_libunwind_src",
+        ":unwind_static_inc_libunwind_libunwind_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: unwind_static
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_libunwind.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

@@ -1,0 +1,20 @@
+--- a/src/constants.m	2026-08-15 22:30:46.089618997 +0200
++++ b/src/constants.m	2026-08-15 22:30:46.090619002 +0200
+@@ -18,3 +18,17 @@
+ NSString * const NSURLProtectionSpaceHTTPS = @"https";
+ NSString * const NSURLProtectionSpaceHTTPSProxy = @"https";
+ NSString * const NSURLProtectionSpaceSOCKSProxy = @"SOCKS";
++
++/*
++ * THE TWO TLS PROPERTIES OF A STREAM, which an application reads to look at the connection it is
++ * about to trust. MoneyMoney reads both: it talks to banks, and checking the certificate chain is
++ * the whole point of it.
++ *
++ * They are STRINGS and referencing them is a link edit: without them dyld refuses to load the
++ * process at all, before any window exists. That is where MoneyMoney stopped.
++ *
++ * The names are the documented ones, so a stream implementation that grows these properties later
++ * will answer to the same keys.
++ */
++const CFStringRef kCFStreamPropertySSLContext = CFSTR("kCFStreamPropertySSLContext");
++const CFStringRef kCFStreamPropertySSLPeerTrust = CFSTR("kCFStreamPropertySSLPeerTrust");

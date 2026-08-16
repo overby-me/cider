@@ -1,0 +1,70 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the removefile pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: removefile
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) removefile   -- review before committing.
+# cmake target: removefile  ->  src/external/removefile/libremovefile.dylib
+
+cc_header_root(
+    name = "removefile_inc_removefile",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "removefile_obj",
+    srcs = [
+        "removefile.c",
+        "removefile_random.c",
+        "removefile_rename_unlink.c",
+        "removefile_sunlink.c",
+        "removefile_tree_walker.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dremovefile_EXPORTS",
+        "-fblocks",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":removefile_inc_removefile",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "removefile_firstpass",
+    dylib_name = "libremovefile_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libremovefile.dylib",
+    objs = [
+        ":removefile_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: removefile
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_removefile.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

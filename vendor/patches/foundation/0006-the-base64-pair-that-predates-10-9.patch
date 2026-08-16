@@ -1,0 +1,45 @@
+--- a/src/NSData.m
++++ b/src/NSData.m
+@@ -1093,6 +1093,28 @@
+     return [[NSString alloc] initWithData:[self base64EncodedDataWithOptions:options] encoding:NSASCIIStringEncoding];
+ }
+ 
++/*
++ * THE PAIR THAT PREDATES 10.9, WHICH IS DEPRECATED AND NOT GONE.
++ *
++ * -initWithBase64Encoding: and -base64Encoding were the only base64 in Foundation until 10.9, they
++ * still work on macOS today, and an application built against a current SDK is free to call them
++ * because deprecation is not removal. iTerm2 does, while it builds its terminal window, and the
++ * unrecognized selector was ending the process.
++ *
++ * The old decoder IGNORES characters it does not know rather than failing, which is what callers of
++ * this spelling expect: it was routinely handed base64 with line breaks in it. The old encoder emits
++ * one unbroken line.
++ */
++- (id)initWithBase64Encoding:(NSString *)base64String
++{
++    return [self initWithBase64EncodedString:base64String
++                                     options:NSDataBase64DecodingIgnoreUnknownCharacters];
++}
++
++- (NSString *)base64Encoding
++{
++    return [[self base64EncodedStringWithOptions:0] autorelease];
++}
+ 
+ #define xx 65 // xx is used to mark invalid Base64 characters
+ #define EQ 66 // 66 is the sentinel value for the padding '=' character
+--- a/include/Foundation/NSData.h
++++ b/include/Foundation/NSData.h
+@@ -97,6 +97,11 @@
+ 
+ @interface NSData (NSDeprecated)
+ 
++/* THE PRE 10.9 BASE64 PAIR. Deprecated is not gone: a shipping application still calls these, and
++ * the modern pair under them does the work. */
++- (id)initWithBase64Encoding:(NSString *)base64String;
++- (NSString *)base64Encoding;
++
+ + (id)dataWithContentsOfMappedFile:(NSString *)path;
+ - (void)getBytes:(void *)buffer;
+ - (id)initWithContentsOfMappedFile:(NSString *)path;

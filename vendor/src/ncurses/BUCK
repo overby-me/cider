@@ -1,0 +1,915 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
+
+# Targets over the ncurses pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: ncurses
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) ncurses   -- review before committing.
+# cmake target: ncurses  ->  src/external/ncurses/ncurses/ncurses/libncurses.5.4.dylib
+
+cc_header_root(
+    name = "ncurses_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/include/*.h", "ncurses/include/**/*.h", "ncurses/include/*.c"]),
+    root = "ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "ncurses_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/*.h", "ncurses/ncurses/**/*.h", "ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "ncurses_inc_ncurses_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ncurses_obj",
+    srcs = [
+        "gen/codes.c",
+        "gen/comp_captab.c",
+        "gen/expanded.c",
+        "gen/fallback.c",
+        "gen/lib_gen.c",
+        "gen/lib_keyname.c",
+        "gen/names.c",
+        "gen/unctrl.c",
+        "ncurses/ncurses/base/define_key.c",
+        "ncurses/ncurses/base/key_defined.c",
+        "ncurses/ncurses/base/keybound.c",
+        "ncurses/ncurses/base/keyok.c",
+        "ncurses/ncurses/base/legacy_coding.c",
+        "ncurses/ncurses/base/lib_addch.c",
+        "ncurses/ncurses/base/lib_addstr.c",
+        "ncurses/ncurses/base/lib_beep.c",
+        "ncurses/ncurses/base/lib_bkgd.c",
+        "ncurses/ncurses/base/lib_box.c",
+        "ncurses/ncurses/base/lib_chgat.c",
+        "ncurses/ncurses/base/lib_clear.c",
+        "ncurses/ncurses/base/lib_clearok.c",
+        "ncurses/ncurses/base/lib_clrbot.c",
+        "ncurses/ncurses/base/lib_clreol.c",
+        "ncurses/ncurses/base/lib_color.c",
+        "ncurses/ncurses/base/lib_colorset.c",
+        "ncurses/ncurses/base/lib_delch.c",
+        "ncurses/ncurses/base/lib_delwin.c",
+        "ncurses/ncurses/base/lib_dft_fgbg.c",
+        "ncurses/ncurses/base/lib_echo.c",
+        "ncurses/ncurses/base/lib_endwin.c",
+        "ncurses/ncurses/base/lib_erase.c",
+        "ncurses/ncurses/base/lib_flash.c",
+        "ncurses/ncurses/base/lib_freeall.c",
+        "ncurses/ncurses/base/lib_getch.c",
+        "ncurses/ncurses/base/lib_getstr.c",
+        "ncurses/ncurses/base/lib_hline.c",
+        "ncurses/ncurses/base/lib_immedok.c",
+        "ncurses/ncurses/base/lib_inchstr.c",
+        "ncurses/ncurses/base/lib_initscr.c",
+        "ncurses/ncurses/base/lib_insch.c",
+        "ncurses/ncurses/base/lib_insdel.c",
+        "ncurses/ncurses/base/lib_insnstr.c",
+        "ncurses/ncurses/base/lib_instr.c",
+        "ncurses/ncurses/base/lib_isendwin.c",
+        "ncurses/ncurses/base/lib_leaveok.c",
+        "ncurses/ncurses/base/lib_mouse.c",
+        "ncurses/ncurses/base/lib_move.c",
+        "ncurses/ncurses/base/lib_mvwin.c",
+        "ncurses/ncurses/base/lib_newterm.c",
+        "ncurses/ncurses/base/lib_newwin.c",
+        "ncurses/ncurses/base/lib_nl.c",
+        "ncurses/ncurses/base/lib_overlay.c",
+        "ncurses/ncurses/base/lib_pad.c",
+        "ncurses/ncurses/base/lib_printw.c",
+        "ncurses/ncurses/base/lib_redrawln.c",
+        "ncurses/ncurses/base/lib_refresh.c",
+        "ncurses/ncurses/base/lib_restart.c",
+        "ncurses/ncurses/base/lib_scanw.c",
+        "ncurses/ncurses/base/lib_screen.c",
+        "ncurses/ncurses/base/lib_scroll.c",
+        "ncurses/ncurses/base/lib_scrollok.c",
+        "ncurses/ncurses/base/lib_scrreg.c",
+        "ncurses/ncurses/base/lib_set_term.c",
+        "ncurses/ncurses/base/lib_slk.c",
+        "ncurses/ncurses/base/lib_slkatr_set.c",
+        "ncurses/ncurses/base/lib_slkatrof.c",
+        "ncurses/ncurses/base/lib_slkatron.c",
+        "ncurses/ncurses/base/lib_slkatrset.c",
+        "ncurses/ncurses/base/lib_slkattr.c",
+        "ncurses/ncurses/base/lib_slkclear.c",
+        "ncurses/ncurses/base/lib_slkcolor.c",
+        "ncurses/ncurses/base/lib_slkinit.c",
+        "ncurses/ncurses/base/lib_slklab.c",
+        "ncurses/ncurses/base/lib_slkrefr.c",
+        "ncurses/ncurses/base/lib_slkset.c",
+        "ncurses/ncurses/base/lib_slktouch.c",
+        "ncurses/ncurses/base/lib_touch.c",
+        "ncurses/ncurses/base/lib_ungetch.c",
+        "ncurses/ncurses/base/lib_vline.c",
+        "ncurses/ncurses/base/lib_wattroff.c",
+        "ncurses/ncurses/base/lib_wattron.c",
+        "ncurses/ncurses/base/lib_winch.c",
+        "ncurses/ncurses/base/lib_window.c",
+        "ncurses/ncurses/base/nc_panel.c",
+        "ncurses/ncurses/base/resizeterm.c",
+        "ncurses/ncurses/base/safe_sprintf.c",
+        "ncurses/ncurses/base/tries.c",
+        "ncurses/ncurses/base/use_window.c",
+        "ncurses/ncurses/base/version.c",
+        "ncurses/ncurses/base/wresize.c",
+        "ncurses/ncurses/tinfo/access.c",
+        "ncurses/ncurses/tinfo/add_tries.c",
+        "ncurses/ncurses/tinfo/alloc_entry.c",
+        "ncurses/ncurses/tinfo/alloc_ttype.c",
+        "ncurses/ncurses/tinfo/captoinfo.c",
+        "ncurses/ncurses/tinfo/comp_error.c",
+        "ncurses/ncurses/tinfo/comp_expand.c",
+        "ncurses/ncurses/tinfo/comp_hash.c",
+        "ncurses/ncurses/tinfo/comp_parse.c",
+        "ncurses/ncurses/tinfo/comp_scan.c",
+        "ncurses/ncurses/tinfo/db_iterator.c",
+        "ncurses/ncurses/tinfo/doalloc.c",
+        "ncurses/ncurses/tinfo/entries.c",
+        "ncurses/ncurses/tinfo/free_ttype.c",
+        "ncurses/ncurses/tinfo/getenv_num.c",
+        "ncurses/ncurses/tinfo/home_terminfo.c",
+        "ncurses/ncurses/tinfo/init_keytry.c",
+        "ncurses/ncurses/tinfo/lib_acs.c",
+        "ncurses/ncurses/tinfo/lib_baudrate.c",
+        "ncurses/ncurses/tinfo/lib_cur_term.c",
+        "ncurses/ncurses/tinfo/lib_data.c",
+        "ncurses/ncurses/tinfo/lib_has_cap.c",
+        "ncurses/ncurses/tinfo/lib_kernel.c",
+        "ncurses/ncurses/tinfo/lib_longname.c",
+        "ncurses/ncurses/tinfo/lib_napms.c",
+        "ncurses/ncurses/tinfo/lib_options.c",
+        "ncurses/ncurses/tinfo/lib_print.c",
+        "ncurses/ncurses/tinfo/lib_raw.c",
+        "ncurses/ncurses/tinfo/lib_setup.c",
+        "ncurses/ncurses/tinfo/lib_termcap.c",
+        "ncurses/ncurses/tinfo/lib_termname.c",
+        "ncurses/ncurses/tinfo/lib_tgoto.c",
+        "ncurses/ncurses/tinfo/lib_ti.c",
+        "ncurses/ncurses/tinfo/lib_tparm.c",
+        "ncurses/ncurses/tinfo/lib_tputs.c",
+        "ncurses/ncurses/tinfo/lib_ttyflags.c",
+        "ncurses/ncurses/tinfo/name_match.c",
+        "ncurses/ncurses/tinfo/parse_entry.c",
+        "ncurses/ncurses/tinfo/read_entry.c",
+        "ncurses/ncurses/tinfo/read_termcap.c",
+        "ncurses/ncurses/tinfo/setbuf.c",
+        "ncurses/ncurses/tinfo/strings.c",
+        "ncurses/ncurses/tinfo/trim_sgr0.c",
+        "ncurses/ncurses/tinfo/use_screen.c",
+        "ncurses/ncurses/tinfo/write_entry.c",
+        "ncurses/ncurses/trace/lib_trace.c",
+        "ncurses/ncurses/trace/visbuf.c",
+        "ncurses/ncurses/tty/hardscroll.c",
+        "ncurses/ncurses/tty/hashmap.c",
+        "ncurses/ncurses/tty/lib_mvcur.c",
+        "ncurses/ncurses/tty/lib_tstp.c",
+        "ncurses/ncurses/tty/lib_twait.c",
+        "ncurses/ncurses/tty/lib_vidattr.c",
+        "ncurses/ncurses/tty/tty_update.c",
+        "ncurses/ncurses/widechar/charable.c",
+        "ncurses/ncurses/widechar/lib_add_wch.c",
+        "ncurses/ncurses/widechar/lib_box_set.c",
+        "ncurses/ncurses/widechar/lib_cchar.c",
+        "ncurses/ncurses/widechar/lib_erasewchar.c",
+        "ncurses/ncurses/widechar/lib_get_wch.c",
+        "ncurses/ncurses/widechar/lib_get_wstr.c",
+        "ncurses/ncurses/widechar/lib_hline_set.c",
+        "ncurses/ncurses/widechar/lib_in_wch.c",
+        "ncurses/ncurses/widechar/lib_in_wchnstr.c",
+        "ncurses/ncurses/widechar/lib_ins_wch.c",
+        "ncurses/ncurses/widechar/lib_inwstr.c",
+        "ncurses/ncurses/widechar/lib_key_name.c",
+        "ncurses/ncurses/widechar/lib_pecho_wchar.c",
+        "ncurses/ncurses/widechar/lib_slk_wset.c",
+        "ncurses/ncurses/widechar/lib_unget_wch.c",
+        "ncurses/ncurses/widechar/lib_vid_attr.c",
+        "ncurses/ncurses/widechar/lib_vline_set.c",
+        "ncurses/ncurses/widechar/lib_wacs.c",
+        "ncurses/ncurses/widechar/lib_wunctrl.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dncurses_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":ncurses_inc_ncurses_ncurses_include",
+        ":ncurses_inc_ncurses_ncurses_ncurses",
+        ":ncurses_inc_ncurses_gen",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "ncurses_firstpass",
+    dylib_name = "libncurses_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libncurses.5.4.dylib",
+    objs = [
+        ":ncurses_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: ncurses
+
+# BEGIN generated: clear
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) clear   -- review before committing.
+# cmake target: clear  ->  src/external/ncurses/clear
+
+cc_header_root(
+    name = "clear_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/include/*.h", "ncurses/include/**/*.h", "ncurses/include/*.c"]),
+    root = "ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clear_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/*.h", "ncurses/ncurses/**/*.h", "ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clear_inc_ncurses_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clear_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/progs/*.h", "ncurses/progs/**/*.h", "ncurses/progs/*.c"]),
+    root = "ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "clear_obj",
+    srcs = [
+        "ncurses/progs/clear.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":clear_inc_ncurses_ncurses_include",
+        ":clear_inc_ncurses_ncurses_ncurses",
+        ":clear_inc_ncurses_gen",
+        ":clear_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: clear
+
+# BEGIN generated: nc_dump_entry
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) nc_dump_entry   -- review before committing.
+# cmake target: nc_dump_entry  ->  src/external/ncurses/nc_dump_entry
+
+cc_header_root(
+    name = "nc_dump_entry_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/include/*.h", "ncurses/include/**/*.h", "ncurses/include/*.c"]),
+    root = "ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "nc_dump_entry_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/*.h", "ncurses/ncurses/**/*.h", "ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "nc_dump_entry_inc_ncurses_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "nc_dump_entry_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/progs/*.h", "ncurses/progs/**/*.h", "ncurses/progs/*.c"]),
+    root = "ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "nc_dump_entry_obj",
+    srcs = [
+        "ncurses/progs/dump_entry.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":nc_dump_entry_inc_ncurses_ncurses_include",
+        ":nc_dump_entry_inc_ncurses_ncurses_ncurses",
+        ":nc_dump_entry_inc_ncurses_gen",
+        ":nc_dump_entry_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: nc_dump_entry
+
+# BEGIN generated: infocmp
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) infocmp   -- review before committing.
+# cmake target: infocmp  ->  src/external/ncurses/infocmp
+
+cc_header_root(
+    name = "infocmp_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/include/*.h", "ncurses/include/**/*.h", "ncurses/include/*.c"]),
+    root = "ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "infocmp_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/*.h", "ncurses/ncurses/**/*.h", "ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "infocmp_inc_ncurses_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "infocmp_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/progs/*.h", "ncurses/progs/**/*.h", "ncurses/progs/*.c"]),
+    root = "ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "infocmp_obj",
+    srcs = [
+        "ncurses/progs/infocmp.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":infocmp_inc_ncurses_ncurses_include",
+        ":infocmp_inc_ncurses_ncurses_ncurses",
+        ":infocmp_inc_ncurses_gen",
+        ":infocmp_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: infocmp
+
+# BEGIN generated: tic
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) tic   -- review before committing.
+# cmake target: tic  ->  src/external/ncurses/tic
+
+cc_header_root(
+    name = "tic_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/include/*.h", "ncurses/include/**/*.h", "ncurses/include/*.c"]),
+    root = "ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tic_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/*.h", "ncurses/ncurses/**/*.h", "ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tic_inc_ncurses_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tic_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/progs/*.h", "ncurses/progs/**/*.h", "ncurses/progs/*.c"]),
+    root = "ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tic_obj",
+    srcs = [
+        "ncurses/progs/tic.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":tic_inc_ncurses_ncurses_include",
+        ":tic_inc_ncurses_ncurses_ncurses",
+        ":tic_inc_ncurses_gen",
+        ":tic_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tic
+
+# BEGIN generated: toe
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) toe   -- review before committing.
+# cmake target: toe  ->  src/external/ncurses/toe
+
+cc_header_root(
+    name = "toe_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/include/*.h", "ncurses/include/**/*.h", "ncurses/include/*.c"]),
+    root = "ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "toe_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/*.h", "ncurses/ncurses/**/*.h", "ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "toe_inc_ncurses_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "toe_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/progs/*.h", "ncurses/progs/**/*.h", "ncurses/progs/*.c"]),
+    root = "ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "toe_obj",
+    srcs = [
+        "ncurses/progs/toe.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":toe_inc_ncurses_ncurses_include",
+        ":toe_inc_ncurses_ncurses_ncurses",
+        ":toe_inc_ncurses_gen",
+        ":toe_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: toe
+
+# BEGIN generated: tput
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) tput   -- review before committing.
+# cmake target: tput  ->  src/external/ncurses/tput
+
+cc_header_root(
+    name = "tput_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/include/*.h", "ncurses/include/**/*.h", "ncurses/include/*.c"]),
+    root = "ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tput_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/*.h", "ncurses/ncurses/**/*.h", "ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tput_inc_ncurses_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tput_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/progs/*.h", "ncurses/progs/**/*.h", "ncurses/progs/*.c"]),
+    root = "ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tput_obj",
+    srcs = [
+        "ncurses/progs/tput.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":tput_inc_ncurses_ncurses_include",
+        ":tput_inc_ncurses_ncurses_ncurses",
+        ":tput_inc_ncurses_gen",
+        ":tput_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tput
+
+# BEGIN generated: tset
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) tset   -- review before committing.
+# cmake target: tset  ->  src/external/ncurses/tset
+
+cc_header_root(
+    name = "tset_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/include/*.h", "ncurses/include/**/*.h", "ncurses/include/*.c"]),
+    root = "ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tset_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/*.h", "ncurses/ncurses/**/*.h", "ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tset_inc_ncurses_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tset_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/progs/*.h", "ncurses/progs/**/*.h", "ncurses/progs/*.c"]),
+    root = "ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tset_obj",
+    srcs = [
+        "ncurses/progs/tset.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":tset_inc_ncurses_ncurses_include",
+        ":tset_inc_ncurses_ncurses_ncurses",
+        ":tset_inc_ncurses_gen",
+        ":tset_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tset
+
+# BEGIN generated: form
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) form   -- review before committing.
+# cmake target: form  ->  src/external/ncurses/ncurses/form/libform.5.4.dylib
+
+cc_header_root(
+    name = "form_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/include/*.h", "ncurses/include/**/*.h", "ncurses/include/*.c"]),
+    root = "ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "form_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/*.h", "ncurses/ncurses/**/*.h", "ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "form_inc_ncurses_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "form_inc_ncurses_ncurses_form",
+    headers = glob(["ncurses/form/*.h", "ncurses/form/**/*.h", "ncurses/form/*.c"]),
+    root = "ncurses/form",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "form_inc_ncurses_ncurses_menu",
+    headers = glob(["ncurses/menu/*.h", "ncurses/menu/**/*.h", "ncurses/menu/*.c"]),
+    root = "ncurses/menu",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "form_obj",
+    srcs = [
+        "ncurses/form/fld_arg.c",
+        "ncurses/form/fld_attr.c",
+        "ncurses/form/fld_current.c",
+        "ncurses/form/fld_def.c",
+        "ncurses/form/fld_dup.c",
+        "ncurses/form/fld_ftchoice.c",
+        "ncurses/form/fld_ftlink.c",
+        "ncurses/form/fld_info.c",
+        "ncurses/form/fld_just.c",
+        "ncurses/form/fld_link.c",
+        "ncurses/form/fld_max.c",
+        "ncurses/form/fld_move.c",
+        "ncurses/form/fld_newftyp.c",
+        "ncurses/form/fld_opts.c",
+        "ncurses/form/fld_pad.c",
+        "ncurses/form/fld_page.c",
+        "ncurses/form/fld_stat.c",
+        "ncurses/form/fld_type.c",
+        "ncurses/form/fld_user.c",
+        "ncurses/form/frm_cursor.c",
+        "ncurses/form/frm_data.c",
+        "ncurses/form/frm_def.c",
+        "ncurses/form/frm_driver.c",
+        "ncurses/form/frm_hook.c",
+        "ncurses/form/frm_opts.c",
+        "ncurses/form/frm_page.c",
+        "ncurses/form/frm_post.c",
+        "ncurses/form/frm_req_name.c",
+        "ncurses/form/frm_scale.c",
+        "ncurses/form/frm_sub.c",
+        "ncurses/form/frm_user.c",
+        "ncurses/form/frm_win.c",
+        "ncurses/form/fty_alnum.c",
+        "ncurses/form/fty_alpha.c",
+        "ncurses/form/fty_enum.c",
+        "ncurses/form/fty_int.c",
+        "ncurses/form/fty_ipv4.c",
+        "ncurses/form/fty_num.c",
+        "ncurses/form/fty_regex.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dform_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":form_inc_ncurses_ncurses_include",
+        ":form_inc_ncurses_ncurses_ncurses",
+        ":form_inc_ncurses_gen",
+        ":form_inc_ncurses_ncurses_form",
+        ":form_inc_ncurses_ncurses_menu",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: form
+
+# BEGIN generated: menu
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) menu   -- review before committing.
+# cmake target: menu  ->  src/external/ncurses/ncurses/menu/libmenu.5.4.dylib
+
+cc_header_root(
+    name = "menu_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/include/*.h", "ncurses/include/**/*.h", "ncurses/include/*.c"]),
+    root = "ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "menu_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/*.h", "ncurses/ncurses/**/*.h", "ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "menu_inc_ncurses_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "menu_inc_ncurses_ncurses_menu",
+    headers = glob(["ncurses/menu/*.h", "ncurses/menu/**/*.h", "ncurses/menu/*.c"]),
+    root = "ncurses/menu",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "menu_obj",
+    srcs = [
+        "ncurses/menu/m_attribs.c",
+        "ncurses/menu/m_cursor.c",
+        "ncurses/menu/m_driver.c",
+        "ncurses/menu/m_format.c",
+        "ncurses/menu/m_global.c",
+        "ncurses/menu/m_hook.c",
+        "ncurses/menu/m_item_cur.c",
+        "ncurses/menu/m_item_nam.c",
+        "ncurses/menu/m_item_new.c",
+        "ncurses/menu/m_item_opt.c",
+        "ncurses/menu/m_item_top.c",
+        "ncurses/menu/m_item_use.c",
+        "ncurses/menu/m_item_val.c",
+        "ncurses/menu/m_item_vis.c",
+        "ncurses/menu/m_items.c",
+        "ncurses/menu/m_new.c",
+        "ncurses/menu/m_opts.c",
+        "ncurses/menu/m_pad.c",
+        "ncurses/menu/m_pattern.c",
+        "ncurses/menu/m_post.c",
+        "ncurses/menu/m_req_name.c",
+        "ncurses/menu/m_scale.c",
+        "ncurses/menu/m_spacing.c",
+        "ncurses/menu/m_sub.c",
+        "ncurses/menu/m_userptr.c",
+        "ncurses/menu/m_win.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dmenu_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":menu_inc_ncurses_ncurses_include",
+        ":menu_inc_ncurses_ncurses_ncurses",
+        ":menu_inc_ncurses_gen",
+        ":menu_inc_ncurses_ncurses_menu",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: menu
+
+# BEGIN generated: panel
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) panel   -- review before committing.
+# cmake target: panel  ->  src/external/ncurses/ncurses/panel/libpanel.5.4.dylib
+
+cc_header_root(
+    name = "panel_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/include/*.h", "ncurses/include/**/*.h", "ncurses/include/*.c"]),
+    root = "ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "panel_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/*.h", "ncurses/ncurses/**/*.h", "ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "panel_inc_ncurses_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "panel_obj",
+    srcs = [
+        "ncurses/panel/p_above.c",
+        "ncurses/panel/p_below.c",
+        "ncurses/panel/p_bottom.c",
+        "ncurses/panel/p_delete.c",
+        "ncurses/panel/p_hidden.c",
+        "ncurses/panel/p_hide.c",
+        "ncurses/panel/p_move.c",
+        "ncurses/panel/p_new.c",
+        "ncurses/panel/p_replace.c",
+        "ncurses/panel/p_show.c",
+        "ncurses/panel/p_top.c",
+        "ncurses/panel/p_update.c",
+        "ncurses/panel/p_user.c",
+        "ncurses/panel/p_win.c",
+        "ncurses/panel/panel.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpanel_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":panel_inc_ncurses_ncurses_include",
+        ":panel_inc_ncurses_ncurses_ncurses",
+        ":panel_inc_ncurses_gen",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: panel
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_ncurses.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+prefix_dir(
+    name = "prefix_gen_usr_share_terminfo",
+    srcs = glob(
+        ["gen/usr/share/terminfo/**"],
+        exclude = [],
+    ),
+    strip = "gen/usr/share/terminfo",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs

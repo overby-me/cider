@@ -1,0 +1,93 @@
+/* Copyright (c) 2006-2007 Christopher J. W. Lloyd <cjwl@objc.net>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+#import <AppKit/NSPopUpView.h>
+#import <AppKit/NSPopUpWindow.h>
+
+@implementation NSPopUpWindow
+
+- initWithFrame: (NSRect) frame {
+    [self initWithContentRect: frame
+                    styleMask: NSBorderlessWindowMask
+                      backing: NSBackingStoreBuffered
+                        defer: NO];
+    [self setLevel: NSPopUpMenuWindowLevel];
+    _releaseWhenClosed = YES;
+
+    _view = [[NSPopUpView alloc]
+            initWithFrame: NSMakeRect(0, 0, frame.size.width,
+                                      frame.size.height)];
+    [[self contentView] addSubview: _view];
+
+    return self;
+}
+
+- (void) dealloc {
+    [_view release];
+    [super dealloc];
+}
+
+- (void) setMenu: (NSMenu *) menu {
+    [_view setMenu: menu];
+}
+
+- (void) setFont: (NSFont *) font {
+    [_view setFont: font];
+}
+
+- (void) setPullsDown: (BOOL) pullsDown {
+    [_view setPullsDown: pullsDown];
+}
+
+- (void) selectItemAtIndex: (NSInteger) index {
+    [_view selectItemAtIndex: index];
+}
+
+- (NSInteger) runTrackingWithEvent: (NSEvent *) event {
+    NSSize size = [_view sizeForContents];
+    NSRect selectedRect = [_view rectForSelectedItem];
+    NSRect frame;
+
+    frame = [self frame];
+    frame.size = size;
+    frame.origin.y -=
+            (size.height - selectedRect.origin.y) - selectedRect.size.height;
+    [self setFrame: frame display: NO];
+
+    [_view setFrameSize: size];
+    [_view setFrameOrigin: NSMakePoint(0, 0)];
+
+    [_view setNeedsDisplay: YES];
+
+    [self orderFront: nil];
+
+    /*
+     * DRAW IT NOW, AT THE SIZE IT ENDED UP.
+     *
+     * The view is created at the size of the CELL, which for a menu asked for at a point is 167 by
+     * 0, and resized here to the size of its contents. Marking it as needing display is not enough:
+     * the only background this menu ever drew was at 148 by 49, measured, so the panel that reached
+     * the screen was the backend clear value with items painted on it. No rounded corner, no border,
+     * no translucent fill: the whole macOS look of a menu comes from that one draw.
+     */
+    [self display];
+
+    return [_view runTrackingWithEvent: event];
+}
+
+@end

@@ -1,12 +1,29 @@
+# CI for Cider.
+#
+# THIS FILE WAS DISCONNECTED IN TWO INDEPENDENT WAYS UNTIL 2026-08-12, and that is why two
+# breaks in the flake DEFAULT output sat unnoticed until someone evaluated it by hand:
+#
+#   it triggered on `main` only, and main is 22 tasks behind the branch the work is on, so
+#     it had never run on any of it;
+#   it built .#cider and .#cider-sdk, and NEITHER was defined in flake.nix, so even if it had
+#     fired it would have failed on a missing attribute.
+#
+# .#cider exists now (it is the product). .#cider-sdk never came back: there is no SDK output
+# in this flake, only cider-buck2-probe-sdkenv, which is a probe, so asking for it would be
+# asking for something that was never there.
+#
+# THE ORDER BELOW IS DELIBERATE: cheapest first, and each step is allowed to be the one that
+# fails. Evaluation alone would have caught both of the breaks above, and it costs minutes
+# rather than hours, so it runs before anything is built.
 when:
   - event: ["push", "pull_request"]
-    branch: main
+    branch: ["main", "buck2-port"]
 
 engine: nixery
 
 environment:
   USER: root
-  CACHIX_NAME: darling-nix
+  CACHIX_NAME: cider-nix
 
 steps:
   - name: "Setup Cachix"
@@ -16,16 +33,20 @@ steps:
       echo -e "experimental-features = nix-command flakes\nmax-jobs = auto" > /tangled/home/.config/nix/nix.conf
       cachix use $CACHIX_NAME
 
-  - name: "Nix flake check"
+  # EVERY ADVERTISED OUTPUT MUST EVALUATE. This is the step that would have caught both 2026-08-12
+  # breaks: one died in buck2 analysis and one on a builtins.readDir of a directory #87 deleted,
+  # and neither needed a single compile to surface. `nix flake show` walks the outputs, and
+  # --all-systems is off because this flake is x86_64-linux only until the aarch64 release.
+  - name: "Flake outputs evaluate"
     command: |
       rm -rf /homeless-shelter
-      ulimit -n 65536
-      cachix watch-exec $CACHIX_NAME -- nix flake check --max-jobs 1
+      nix flake show --json > /dev/null
 
-  - name: "Build Darling"
-    command: |
-      cachix watch-exec $CACHIX_NAME -- nix build .#darling -L --no-link --print-out-paths
-
-  - name: "Build Darling SDK"
-    command: |
-      cachix watch-exec $CACHIX_NAME -- nix build .#darling-sdk -L --no-link --print-out-paths
+  # NO BUILD STEPS, AND THAT IS THE POINT RATHER THAN A GAP. Darling is too large for a hosted
+  # runner to finish; a CI that attempts it is a CI that always fails and is therefore ignored,
+  # which is worse than one that checks less and is believed. Building is what a developer
+  # machine is for.
+  #
+  # What survives is the half that is cheap AND caught the real bugs: both breaks that motivated
+  # this file, a buck2 analysis failure and a builtins.readDir of a directory #87 deleted, were
+  # EVAL errors. Neither needed a compile. The step above would have caught both in seconds.

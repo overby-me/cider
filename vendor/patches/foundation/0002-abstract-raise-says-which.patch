@@ -1,0 +1,27 @@
+diff -u --recursive a/include/Foundation/NSRaise.h b/include/Foundation/NSRaise.h
+--- a/include/Foundation/NSRaise.h	2026-08-13 23:15:59.982742698 +0200
++++ b/include/Foundation/NSRaise.h	2026-08-13 23:16:00.001977006 +0200
+@@ -20,11 +20,23 @@
+ // *** FOR INTERNAL COCOTRON USE ONLY
+ 
+ #import <Foundation/NSException.h>
++#import <objc/runtime.h>
++#include <stdio.h>
+ #import <Foundation/NSString.h>
+ 
+ static inline void _NSInvalidAbstractInvocation(SEL selector, id object,
+                                                 const char *file, int line)
+ {
++    /*
++     * SAY IT BEFORE RAISING. The exception below carries a perfect message and it is worth
++     * nothing when the caller catches it: LibreOffice catches ObjC exceptions during startup and
++     * reports its own "Unspecified Application Error", so an abstract method it happened to call
++     * left no trace at all. One line of stderr costs nothing on a path that is already about to
++     * throw, and it is the difference between a name and a guess.
++     */
++    fprintf(stderr, "cider: ABSTRACT -[%s %s] at %s:%d\n",
++            class_getName([object class]), sel_getName(selector), file, line);
++    fflush(stderr);
+     [NSException raise: NSInvalidArgumentException
+                 format: @"-%s only defined for abstract class. Define -[%@ %s] "
+                         @"in %s:%d!",

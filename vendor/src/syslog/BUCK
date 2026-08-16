@@ -1,0 +1,277 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the syslog pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: system_asl_obj
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) system_asl_obj   -- review before committing.
+# cmake target: system_asl_obj  ->  src/external/syslog/libsystem_asl.tproj/system_asl_obj
+
+cc_header_root(
+    name = "system_asl_inc_syslog_libsystem_asl_tproj_include",
+    headers = glob(["libsystem_asl.tproj/include/*.h", "libsystem_asl.tproj/include/**/*.h"]),
+    root = "libsystem_asl.tproj/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_asl_obj",
+    srcs = [
+        "libsystem_asl.tproj/src/asl.c",
+        "libsystem_asl.tproj/src/asl_client.c",
+        "libsystem_asl.tproj/src/asl_core.c",
+        "libsystem_asl.tproj/src/asl_fd.c",
+        "libsystem_asl.tproj/src/asl_file.c",
+        "libsystem_asl.tproj/src/asl_legacy1.c",
+        "libsystem_asl.tproj/src/asl_msg.c",
+        "libsystem_asl.tproj/src/asl_msg_list.c",
+        "libsystem_asl.tproj/src/asl_mt_shim.c",
+        "libsystem_asl.tproj/src/asl_object.c",
+        "libsystem_asl.tproj/src/asl_store.c",
+        "libsystem_asl.tproj/src/asl_string.c",
+        "libsystem_asl.tproj/src/asl_util.c",
+        "libsystem_asl.tproj/src/syslog.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:asl_ipc_mig",
+        ":system_asl_inc_syslog_libsystem_asl_tproj_include",
+    ],
+    gen_srcs = [
+        "//vendor/src:asl_ipc_mig",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_asl_obj
+
+# BEGIN generated: aslcommon
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) aslcommon   -- review before committing.
+# cmake target: aslcommon  ->  src/external/syslog/aslcommon/aslcommon
+
+cc_header_root(
+    name = "aslcommon_inc_syslog_libsystem_asl_tproj_include",
+    headers = glob(["libsystem_asl.tproj/include/*.h", "libsystem_asl.tproj/include/**/*.h", "libsystem_asl.tproj/include/*.c"]),
+    root = "libsystem_asl.tproj/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "aslcommon_obj",
+    srcs = [
+        "aslcommon/asl_common.c",
+        "aslcommon/asl_memory.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":aslcommon_inc_syslog_libsystem_asl_tproj_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: aslcommon
+
+# BEGIN generated: syslog
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) syslog   -- review before committing.
+# cmake target: syslog  ->  src/external/syslog/util.tproj/syslog
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/syslog/aslcommon
+
+cc_header_root(
+    name = "syslog_inc_syslog_libsystem_asl_tproj_include",
+    headers = glob(["libsystem_asl.tproj/include/*.h", "libsystem_asl.tproj/include/**/*.h"]),
+    root = "libsystem_asl.tproj/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "syslog_inc_syslog_aslcommon",
+    headers = glob(["aslcommon/*.h", "aslcommon/**/*.h"]),
+    root = "aslcommon",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "syslog_obj",
+    srcs = [
+        "util.tproj/syslog.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-Wno-error=incompatible-function-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:asl_ipc_mig",
+        ":syslog_inc_syslog_libsystem_asl_tproj_include",
+        ":syslog_inc_syslog_aslcommon",
+    ],
+    gen_srcs = [
+        "//vendor/src:asl_ipc_mig",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: syslog
+
+# BEGIN generated: aslmanager
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) aslmanager   -- review before committing.
+# cmake target: aslmanager  ->  src/external/syslog/aslmanager.tproj/aslmanager
+
+cc_header_root(
+    name = "aslmanager_inc_syslog_libsystem_asl_tproj_include",
+    headers = glob(["libsystem_asl.tproj/include/*.h", "libsystem_asl.tproj/include/**/*.h", "libsystem_asl.tproj/include/*.c"]),
+    root = "libsystem_asl.tproj/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "aslmanager_inc_syslog_aslcommon",
+    headers = glob(["aslcommon/*.h", "aslcommon/**/*.h", "aslcommon/*.c"]),
+    root = "aslcommon",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "aslmanager_obj",
+    srcs = [
+        "aslmanager.tproj/aslmanager.c",
+        "aslmanager.tproj/daemon.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:asl_ipc_mig",
+        ":aslmanager_inc_syslog_libsystem_asl_tproj_include",
+        ":aslmanager_inc_syslog_aslcommon",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: aslmanager
+
+# BEGIN generated: syslogd
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) syslogd   -- review before committing.
+# cmake target: syslogd  ->  src/external/syslog/syslogd.tproj/syslogd
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/syslog/aslcommon
+
+cc_header_root(
+    name = "syslogd_inc_syslog_libsystem_asl_tproj_include",
+    headers = glob(["libsystem_asl.tproj/include/*.h", "libsystem_asl.tproj/include/**/*.h", "libsystem_asl.tproj/include/*.c"]),
+    root = "libsystem_asl.tproj/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "syslogd_inc_syslog_aslcommon",
+    headers = glob(["aslcommon/*.h", "aslcommon/**/*.h", "aslcommon/*.c"]),
+    root = "aslcommon",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "syslogd_obj",
+    srcs = [
+        "syslogd.tproj/asl_action.c",
+        "syslogd.tproj/bsd_in.c",
+        "syslogd.tproj/bsd_out.c",
+        "syslogd.tproj/daemon.c",
+        "syslogd.tproj/dbserver.c",
+        "syslogd.tproj/klog_in.c",
+        "syslogd.tproj/remote.c",
+        "syslogd.tproj/syslogd.c",
+        "syslogd.tproj/udp_in.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:asl_ipc_mig",
+        "//vendor/src:asl_ipc_server_mig",
+        ":syslogd_inc_syslog_libsystem_asl_tproj_include",
+        ":syslogd_inc_syslog_aslcommon",
+    ],
+    gen_srcs = [
+        "//vendor/src:asl_ipc_server_mig",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: syslogd
+
+# BEGIN generated: asl_ipc_xtrace_mig
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) asl_ipc_xtrace_mig   -- review before committing.
+# cmake target: asl_ipc_xtrace_mig  ->  src/external/syslog/libasl_ipc_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/syslog/aslcommon/asl_ipcXtraceMig.c
+
+cc_header_root(
+    name = "asl_ipc_xtrace_mig_inc_syslog_libsystem_asl_tproj_include",
+    headers = glob(["libsystem_asl.tproj/include/*.h", "libsystem_asl.tproj/include/**/*.h", "libsystem_asl.tproj/include/*.c"]),
+    root = "libsystem_asl.tproj/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "asl_ipc_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dasl_ipc_xtrace_mig_EXPORTS",
+        "-fPIC",
+        "-I",
+        "src/darwin/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//src/darwin/xtrace:xtrace_headers",
+        ":asl_ipc_xtrace_mig_inc_syslog_libsystem_asl_tproj_include",
+    ],
+    gen_srcs = [
+        "//vendor/src:asl_ipc_mig[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: asl_ipc_xtrace_mig
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_syslog.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

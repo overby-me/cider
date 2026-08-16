@@ -1,0 +1,202 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the coretls pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: system_coretls_obj
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) system_coretls_obj   -- review before committing.
+# cmake target: system_coretls_obj  ->  src/external/coretls/system_coretls_obj
+
+cc_header_root(
+    name = "system_coretls_inc_lib",
+    headers = glob(["lib/*.h", "lib/**/*.h"]),
+    root = "lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_coretls_obj",
+    srcs = [
+        "lib/appleSession.c",
+        "lib/ssl3Callouts.c",
+        "lib/sslAesGcmCipher.c",
+        "lib/sslAlertMessage.c",
+        "lib/sslCert.c",
+        "lib/sslChangeCipher.c",
+        "lib/sslCipherSpecs.c",
+        "lib/sslCrypto.c",
+        "lib/sslDecode.c",
+        "lib/sslDigests.c",
+        "lib/sslHandshake.c",
+        "lib/sslHandshakeFinish.c",
+        "lib/sslHandshakeHello.c",
+        "lib/sslKeyExchange.c",
+        "lib/sslMemory.c",
+        "lib/sslNullCipher.c",
+        "lib/sslRc4Cipher.c",
+        "lib/sslSession.c",
+        "lib/sslUtils.c",
+        "lib/symCipher.c",
+        "lib/symCipherParams.c",
+        "lib/tls1Callouts.c",
+        "lib/tls_cache.c",
+        "lib/tls_ciphersuites.c",
+        "lib/tls_digest.c",
+        "lib/tls_handshake.c",
+        "lib/tls_hmac.c",
+        "lib/tls_metrics.c",
+        "lib/tls_record.c",
+        "lib/tls_record_crypto.c",
+        "lib/tls_stream_parser.c",
+    ],
+    compiler_flags = [
+        "-DCCCBC_RETURN_INT",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=gnu99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_Security",
+        "//vendor/src:fw_CoreFoundation",
+        ":system_coretls_inc_lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_coretls_obj
+
+# BEGIN generated: coretls
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) coretls   -- review before committing.
+# cmake target: coretls  ->  src/external/coretls/libcoretls.dylib
+
+cc_header_root(
+    name = "coretls_inc_coretls_lib",
+    headers = glob(["lib/*.h", "lib/**/*.h", "lib/*.c"]),
+    root = "lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "coretls_obj",
+    srcs = [
+        "dummy.c",
+    ],
+    compiler_flags = [
+        "-DCCCBC_RETURN_INT",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dcoretls_EXPORTS",
+        "-std=gnu99",
+        "-fPIC",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":coretls_inc_coretls_lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: coretls
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_coretls.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports
+
+# BEGIN generated: coretls_cfhelpers_obj
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) coretls_cfhelpers_obj   -- review before committing.
+# cmake target: coretls_cfhelpers_obj  ->  src/external/coretls/coretls_cfhelpers_obj
+
+cc_header_root(
+    name = "coretls_cfhelpers_inc_coretls_lib",
+    headers = glob(["lib/*.h", "lib/**/*.h", "lib/*.c"]),
+    root = "lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "coretls_cfhelpers_obj",
+    srcs = [
+        "coretls_cfhelpers/tls_helpers.c",
+        "coretls_cfhelpers/tls_helpers_identity.c",
+        "lib/sslMemory.c",
+    ],
+    compiler_flags = [
+        "-DCCCBC_RETURN_INT",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=gnu99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Security",
+        ":coretls_cfhelpers_inc_coretls_lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: coretls_cfhelpers_obj
+
+# BEGIN generated: coretls_cfhelpers_obj dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs coretls_cfhelpers_obj   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "coretls_cfhelpers_firstpass",
+    dylib_name = "libcoretls_cfhelpers_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libcoretls_cfhelpers.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "167.0.0",
+    objs = [
+        # coretls_cfhelpers_obj
+        ":coretls_cfhelpers_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "coretls_cfhelpers_final",
+    dylib_name = "libcoretls_cfhelpers.dylib",
+    install_name = "/usr/lib/libcoretls_cfhelpers.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "167.0.0",
+    objs = [
+        # coretls_cfhelpers_obj
+        ":coretls_cfhelpers_obj",
+    ],
+    siblings = [
+        "//vendor/src:coretls_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Security_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: coretls_cfhelpers_obj dylibs

@@ -1,0 +1,115 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the tcsh pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: tcsh
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) tcsh   -- review before committing.
+# cmake target: tcsh  ->  src/external/tcsh/tcsh
+
+cc_header_root(
+    name = "tcsh_inc_tcsh_tcsh",
+    headers = glob(["tcsh/*.h", "tcsh/**/*.h", "tcsh/*.c"]),
+    root = "tcsh",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tcsh_inc_tcsh_gen",
+    headers = glob(["gen/*.h", "gen/**/*.h", "gen/*.c"]),
+    root = "gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tcsh_obj",
+    srcs = [
+        "gen/tc.defs.c",
+        "tcsh/dotlock.c",
+        "tcsh/ed.chared.c",
+        "tcsh/ed.defns.c",
+        "tcsh/ed.init.c",
+        "tcsh/ed.inputl.c",
+        "tcsh/ed.refresh.c",
+        "tcsh/ed.screen.c",
+        "tcsh/ed.term.c",
+        "tcsh/ed.xmap.c",
+        "tcsh/glob.c",
+        "tcsh/ma.setp.c",
+        "tcsh/mi.termios.c",
+        "tcsh/sh.c",
+        "tcsh/sh.char.c",
+        "tcsh/sh.dir.c",
+        "tcsh/sh.dol.c",
+        "tcsh/sh.err.c",
+        "tcsh/sh.exec.c",
+        "tcsh/sh.exp.c",
+        "tcsh/sh.file.c",
+        "tcsh/sh.func.c",
+        "tcsh/sh.glob.c",
+        "tcsh/sh.hist.c",
+        "tcsh/sh.init.c",
+        "tcsh/sh.lex.c",
+        "tcsh/sh.misc.c",
+        "tcsh/sh.parse.c",
+        "tcsh/sh.print.c",
+        "tcsh/sh.proc.c",
+        "tcsh/sh.sem.c",
+        "tcsh/sh.set.c",
+        "tcsh/sh.time.c",
+        "tcsh/tc.alloc.c",
+        "tcsh/tc.bind.c",
+        "tcsh/tc.const.c",
+        "tcsh/tc.disc.c",
+        "tcsh/tc.func.c",
+        "tcsh/tc.nls.c",
+        "tcsh/tc.os.c",
+        "tcsh/tc.printf.c",
+        "tcsh/tc.prompt.c",
+        "tcsh/tc.sched.c",
+        "tcsh/tc.sig.c",
+        "tcsh/tc.str.c",
+        "tcsh/tc.vers.c",
+        "tcsh/tc.who.c",
+        "tcsh/tw.color.c",
+        "tcsh/tw.comp.c",
+        "tcsh/tw.help.c",
+        "tcsh/tw.init.c",
+        "tcsh/tw.parse.c",
+        "tcsh/tw.spell.c",
+        "tcsh/vms.termcap.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_PATH_TCSHELL=\"/bin/tcsh\"",
+        "-nostdinc",
+        "-no-cpp-precomp",
+        "-mdynamic-no-picc",
+        "-fstack-protector-all",
+        "-fPIC",
+        "-Wno-everything",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":tcsh_inc_tcsh_tcsh",
+        ":tcsh_inc_tcsh_gen",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tcsh
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_tcsh.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

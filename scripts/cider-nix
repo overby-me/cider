@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# cider-nix — run Nix commands inside a Darling prefix from the Linux host
+#
+# This is a convenience wrapper that sources the Nix profile inside a
+# Darling shell and then exec's the given command.  It saves users from
+# having to remember the long `cider shell bash -lc '...'` incantation
+# every time.
+#
+# Usage:
+#   cider-nix <command> [arguments ...]
+#
+# Examples:
+#   cider-nix nix --version
+#   cider-nix nix-instantiate --eval -E '1 + 1'
+#   cider-nix nix eval --expr 'builtins.currentSystem'
+#   cider-nix nix-build --expr 'derivation { name = "test"; builder = "/bin/bash"; args = ["-c" "echo ok > $out"]; system = "x86_64-darwin"; }'
+#   cider-nix nix-env -qa hello
+#   cider-nix nix repl
+#
+# Options:
+#   --prefix <path>   Use a non-default Darling prefix
+#   --help            Show this help message
+#
+# Environment:
+#   CIDERPREFIX           Override the default Darling prefix (~/.cider)
+#   CIDER_NIX_VERBOSE Set to 1 for debug output (DARLING_NIX_VERBOSE still honoured)
+#
+# See: docs/changelog.md (Task 3.4)
+
+set -euo pipefail
+
+# ── Defaults ────────────────────────────────────────────────────────────────
+
+# CIDER_PREFIX is script local: it is seeded from CIDERPREFIX and set by --prefix, and nothing
+# ever reads a variable of this name out of the environment, so there is no fallback to keep.
+CIDER_PREFIX="${CIDERPREFIX:-}"
+# CIDER_NIX_VERBOSE is the opposite: a real environment knob, so DARLING_ still works.
+VERBOSE="${CIDER_NIX_VERBOSE:-${DARLING_NIX_VERBOSE:-0}}"
+
+# ── Helpers ─────────────────────────────────────────────────────────────────
+
+die() {
+    echo "cider-nix: error: $*" >&2
+    exit 1
+}
+
+debug() {
+    if [ "$VERBOSE" = "1" ]; then
+        echo "cider-nix: debug: $*" >&2
+    fi
+}
+
+usage() {
+    cat <<'EOF'
+Usage: cider-nix [--prefix <path>] <command> [arguments ...]
+
+Run Nix commands inside a Darling (macOS compatibility) prefix.
+
+Options:
+  --prefix <path>   Use a non-default Darling prefix (default: ~/.cider)
+  --help            Show this help message
+
+Environment:
+  CIDERPREFIX                Override the default Darling prefix
+  CIDER_NIX_VERBOSE      Set to 1 for debug output
+                         (DARLING_NIX_VERBOSE is still honoured)
+
+Examples:
+  cider-nix nix --version
+  cider-nix nix-instantiate --eval -E '1 + 1'
+  cider-nix nix eval --expr 'builtins.currentSystem'
+  cider-nix nix-env -qa hello
+  cider-nix nix repl
+EOF
+    exit 0
+}
+
+# ── Argument Parsing ────────────────────────────────────────────────────────
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --prefix)
+            [ $# -ge 2 ] || die "--prefix requires an argument"
+            CIDER_PREFIX="$2"
+            shift 2
+            ;;
+        --help|-h)
+            usage
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            # Could be a flag for the inner command (e.g. `cider-nix nix --version`)
+            # so stop parsing our flags and treat everything as the command.
+            break
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [ $# -eq 0 ]; then
+    die "no command specified (try --help)"
+fi
+
+# ── Preflight ───────────────────────────────────────────────────────────────
+
+if ! command -v cider &>/dev/null; then
+    die "cider is not installed or not in PATH"
+fi
+
+# Build the cider command with optional --prefix
+CIDER_CMD=(cider)
+if [ -n "$CIDER_PREFIX" ]; then
+    CIDER_CMD+=(--prefix "$CIDER_PREFIX")
+    debug "using prefix: $CIDER_PREFIX"
+fi
+
+# ── Build the inner command ─────────────────────────────────────────────────
+
+# We need to carefully quote the user's arguments so they survive the
+# bash -lc layer.  We use printf %q to produce shell-escaped versions
+# of each argument.
+ESCAPED_ARGS=""
+for arg in "$@"; do
+    ESCAPED_ARGS+=" $(printf '%q' "$arg")"
+done
+
+debug "inner command:${ESCAPED_ARGS}"
+debug "cider cmd: ${CIDER_CMD[*]}"
+
+# The inner script:
+#   1. Sources the Nix profile so nix/nix-env/etc. are on PATH.
+#   2. exec's the user's command (preserving exit code).
+INNER_SCRIPT="
+# Source Nix profile
+if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
+    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
+elif [ -e \"\\\$HOME/.nix-profile/etc/profile.d/nix.sh\" ]; then
+    . \"\\\$HOME/.nix-profile/etc/profile.d/nix.sh\"
+elif [ -e '/etc/profile.d/nix-cider.sh' ]; then
+    . '/etc/profile.d/nix-cider.sh'
+fi
+
+# Verify nix is available
+if ! command -v nix &>/dev/null && ! command -v nix-env &>/dev/null; then
+    echo 'cider-nix: Nix does not appear to be installed in this prefix.' >&2
+    echo 'cider-nix: Run ./scripts/install-nix-in-cider.nu first.' >&2
+    exit 127
+fi
+
+exec${ESCAPED_ARGS}
+"
+
+# ── Execute ─────────────────────────────────────────────────────────────────
+
+# Run the command inside Darling, forwarding the exit code.
+# We use `bash -lc` to get a login shell (which sources /etc/profile.d/*).
+exec "${CIDER_CMD[@]}" shell bash -lc "$INNER_SCRIPT"

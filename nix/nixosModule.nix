@@ -2,7 +2,7 @@
 #
 # This module:
 #   - Installs the Darling package
-#   - Configures darlingserver (userspace-only mode, no kernel module)
+#   - Configures ciderd (userspace-only mode, no kernel module)
 #   - Optionally sets up a persistent prefix via a systemd service
 #   - Ensures required kernel features (overlayfs, user namespaces) are enabled
 {
@@ -12,20 +12,20 @@
   ...
 }:
 let
-  cfg = config.programs.darling;
+  cfg = config.programs.cider;
 in
 {
-  options.programs.darling = {
+  options.programs.cider = {
     enable = lib.mkEnableOption "Darling, the macOS compatibility layer for Linux";
 
-    package = lib.mkPackageOption pkgs "darling" { };
+    package = lib.mkPackageOption pkgs "cider" { };
 
     prefix = {
       enable = lib.mkEnableOption "persistent Darling prefix via systemd service";
 
       path = lib.mkOption {
         type = lib.types.path;
-        default = "/var/lib/darling";
+        default = "/var/lib/cider";
         description = ''
           Path where the persistent Darling prefix is stored.
           This directory holds the macOS-like filesystem tree that
@@ -37,7 +37,7 @@ in
         type = lib.types.str;
         default = "root";
         description = ''
-          User under which the darling-prefix service runs.
+          User under which the cider-prefix service runs.
           The prefix is per-user in Darling, so this determines
           which user's prefix is initialised at boot.
         '';
@@ -51,17 +51,17 @@ in
         description = ''
           Whether to enable unprivileged user namespaces
           (`kernel.unprivileged_userns_clone`).  Required for
-          darlingserver to operate without a kernel module.
+          ciderd to operate without a kernel module.
         '';
       };
     };
   };
 
   config = lib.mkIf cfg.enable {
-    # Install the darling package system-wide.
+    # Install the cider package system-wide.
     environment.systemPackages = [ cfg.package ];
 
-    # darlingserver needs overlayfs and user namespaces to work
+    # ciderd needs overlayfs and user namespaces to work
     # without its (deprecated) kernel module.
     boot.kernel.sysctl = lib.mkIf cfg.settings.unprivilegedUserNamespaces {
       "kernel.unprivileged_userns_clone" = 1;
@@ -73,8 +73,8 @@ in
     '';
 
     # Optional persistent prefix service.
-    systemd.services.darling-prefix = lib.mkIf cfg.prefix.enable {
-      description = "Initialise persistent Darling prefix";
+    systemd.services.cider-prefix = lib.mkIf cfg.prefix.enable {
+      description = "Initialise persistent Cider prefix";
       wantedBy = [ "multi-user.target" ];
       after = [ "local-fs.target" ];
 
@@ -82,8 +82,8 @@ in
         Type = "oneshot";
         RemainAfterExit = true;
         User = cfg.prefix.user;
-        ExecStart = "${cfg.package}/bin/darling --prefix ${cfg.prefix.path} shell true";
-        ExecStop = "${cfg.package}/bin/darling --prefix ${cfg.prefix.path} shutdown";
+        ExecStart = "${cfg.package}/bin/cider --prefix ${cfg.prefix.path} shell true";
+        ExecStop = "${cfg.package}/bin/cider --prefix ${cfg.prefix.path} shutdown";
       };
     };
 

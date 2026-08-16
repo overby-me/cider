@@ -1,72 +1,143 @@
-# Darling
+<img src="docs/cider.svg" alt="" width="88" align="right">
 
-![Darling logo](https://darlinghq.org/img/darling250.png)
+# Cider
 
-Darling is a runtime environment for macOS applications.
+**Cider Isn't Darwin Emulation, Really.**
 
-Please note that most GUI applications will not run at the moment.
+Cider is a runtime environment for macOS applications on Linux. It runs Mach-O binaries directly
+on the Linux kernel through its own dyld, libSystem and kernel-emulation layer. There is no
+virtual machine and no Apple kernel.
 
-## Download
+Cider is a fork of [Darling](https://github.com/darlinghq/darling) and is licensed under the
+GPL, version 3 or later. See [LICENSE](LICENSE).
 
-Packages for some distributions are available for download
-under [releases](https://github.com/darlinghq/darling/releases).
+## Status
 
-## Build Instructions
+**Early. Command line software works; most GUI applications do not.**
 
-For build instructions, visit [Darling Docs](https://docs.darlinghq.org/build-instructions.html).
+What follows is what an automated check in this repository actually exercises, not a wish list.
+Each one boots a container and runs a real program:
 
-### Prefixes
+| Works | Checked by |
+|---|---|
+| A shell: `cider shell` and bash inside it | `scripts/checks/buck-bash-check.nu` |
+| Booting through launchd | `scripts/checks/buck-launchd-check.nu` |
+| Nix, running inside the container | `scripts/checks/buck-nix-bash-check.nu` |
+| JavaScriptCore running a script | `scripts/checks/buck-jsc-check.nu` |
+| libdispatch, Security, CoreAudio, scripting bridges | `buck-{dispatch,security,audio,scripting}-check.nu` |
+| A trivial AppKit window on Wayland | `scripts/checks/buck-appkit-check.nu` |
+| A guest binary reaching a Wayland compositor | `scripts/checks/buck-wayland-check.nu` |
 
-Darling has support for DPREFIXes, which are very similar to WINEPREFIXes. They are virtual “chroot” environments with an macOS-like filesystem structure, where you can install software safely. The default DPREFIX location is `~/.darling`, but this can be changed by exporting an identically named environment variable. A prefix is automatically created and initialized on first use.
+Anything not in that table is unverified here. In particular Cider has **not** been shown to
+install `.pkg` files, mount Xcode disk images, or run Xcode or its toolchain. Darling documents
+those; this fork does not currently test them, so it does not claim them.
 
-Please note that we use `overlayfs` for creating prefixes, and so we cannot support putting prefix on a filesystem like NFS or eCryptfs. In particular, the default prefix location won't work if you have an encrypted home directory.
+The GUI backend is Wayland. The X11 one it replaced is gone, and there is no `DISPLAY` fallback: a
+window is an `xdg_surface` on a compositor, drawn into shared memory by Onyx2D. What that currently
+carries is LibreOffice, which renders, takes keyboard and mouse, resizes with the compositor, opens
+its menus and its file dialogs, and inserts a picture through one. That is driven by hand rather
+than by a check in the table above, and every step of it, with the screenshots, is in
+`docs/wayland-port.md`.
 
-### Hello world
+## Build
 
-Let's start with a Hello world:
-
-````
-$ darling shell echo Hello world
-Hello world
-````
-
-Congratulations, you have printed Hello world through Darling's OS X system call emulation and runtime libraries.
-
-### Installing software
-
-You can install `.pkg` packages with the installer tool available inside shell. It is a somewhat limited cousin of OS X's installer:
-
-````
-$ darling shell
-Darling [~]$ installer -pkg mc-4.8.7-0.pkg -target /
-````
-
-The Midnight Commander package from the above example is [available for download](https://darling-misc.s3.eu-central-1.amazonaws.com/mc-4.8.7-0.pkg).
-
-You can uninstall and list packages with the `uninstaller` command.
-
-### Working with DMG images
-
-DMG images can be attached and detached from inside `darling shell` with `hdiutil`. This is how you can install Xcode along with its toolchain and SDKs (note that Xcode itself doesn't run yet):
-
-````
-Darling [~]$ hdiutil attach Xcode_7.2.dmg
-/Volumes/Xcode_7.2
-Darling [~]$ cp -r /Volumes/Xcode_7.2/Xcode.app /Applications
-Darling [~]$ export SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk
-Darling [~]$ echo 'void main() { puts("Hello world"); }' > helloworld.c
-Darling [~]$ /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang helloworld.c -o helloworld
-Darling [~]$ ./helloworld
-Hello world
-````
-
-Congratulations, you have just compiled and run your own Hello world application with Apple's toolchain.
-
-### Working with XIP archives
-
-Xcode is now distributed in `.xip` files. These can be installed using `unxip`:
+Cider builds with [Nix](https://nixos.org) and [Buck2](https://buck2.build). Nix is the only
+supported packaging: there is no distribution package, and no tarball.
 
 ```
-cd /Applications
-unxip Xcode_11.3.xip
+nix build .#cider
 ```
+
+That is the full build and it is large. On a machine that cannot finish it, the minimal build
+drops the GUI frameworks, the private frameworks and the scripting languages, which is about 42
+percent of the work, and still boots, runs a shell and runs Nix:
+
+```
+nix build .#cider-min
+```
+
+Everything else in `flake.nix` is internal: the graph, the lowering, the prefixes and the
+`cider-buck2-*` attributes are stages of the build rather than things to install.
+
+## Install and run
+
+On NixOS, through the module:
+
+```nix
+{
+  inputs.cider.url = "git+https://tangled.org/overby.me/cider";
+  # ...
+  programs.cider.enable = true;
+}
+```
+
+Otherwise install the package and use the entry point it provides:
+
+```
+nix profile install .#cider
+cider shell echo Hello world
+```
+
+## Prefixes
+
+Cider has CIDERPREFIXes, which are close to WINEPREFIXes: virtual chroot-like environments with a
+macOS-shaped filesystem, where software can be installed safely. The default is `~/.cider`,
+changed by exporting `CIDERPREFIX`. A prefix is created and initialized on first use.
+
+Prefixes use `overlayfs`, so a prefix cannot live on NFS or eCryptfs. The default location will
+not work with an encrypted home directory.
+
+## Development
+
+Where things live:
+
+```
+src/darwin/     the guest side: frameworks, dylibs and tools that run INSIDE the container
+src/linux/      the host side: the ciderd daemon, the launcher, the Mach-O loader, build tools
+buck/       our Buck2 rules, toolchains and the prefix definition
+vendor/     everything that is not ours, in three parts:
+              src/   upstream C sources, materialized from pins rather than committed
+              rust/  vendored Rust crates, materialized the same way
+              pins/  upstream components committed on purpose, each with VENDORED.md
+nix/        the Nix side: the flake library, the graph and lowering, the NixOS module
+scripts/    the developer loop, in nushell, split three ways:
+              checks/  41 checks, the ones buck-test.nu and buck-runtime-check.nu run
+              gen/     3 generators
+              build/   5 build drivers
+            the 42 that stay flat are tools, plus the 8 shell scripts that have to be bash
+```
+
+`vendor/src/` and `vendor/rust/` hold about 260,000 and 3,000 files respectively and are almost
+entirely gitignored; only their generated `BUCK` files are committed. Only 4 of the 148 pins are
+materialized on a working checkout: `scripts/buck-src.nu` fetches what the port currently needs,
+not the whole 3.8 GB.
+
+### Building without Nix, which is how you should iterate
+
+**Nix is the packaging, not the build.** The build is Buck2, and you can drive it directly. A
+Nix-built prefix takes an hour; a Buck2 rebuild after editing one file takes seconds, and this is
+the loop to use while working.
+
+```
+nix develop                 # the toolchain only: clang, rustc, buck2, nushell
+scripts/buck-setup.nu       # writes .buckconfig.local with the store paths of those tools
+buck2 build //...           # or a single target, which is the point
+```
+
+`scripts/buck-setup.nu` is what connects the two: it resolves the compiler, the guest toolchain,
+the host library directories that `wrapgen` dlopens, and the guest Rust toolchain, and writes
+them into a machine-local `.buckconfig.local` that is gitignored. Rerun it after a nixpkgs bump
+moves any of those store paths.
+
+You still need Nix to GET the toolchain, and to produce an installable package. You do not need
+it to compile, link, or run the checks.
+
+Run the checks with:
+
+```
+scripts/buck-test.nu
+```
+
+[docs/changelog.md](docs/changelog.md) is the working record: what is being done, what was measured, and what was
+tried and rejected. [docs/release-readiness.md](docs/release-readiness.md) is what stands between
+this and a first release.

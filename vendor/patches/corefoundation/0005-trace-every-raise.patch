@@ -1,0 +1,36 @@
+diff -u --recursive a/NSException.m b/NSException.m
+--- a/NSException.m	2026-08-13 23:23:44.589532868 +0200
++++ b/NSException.m	2026-08-13 23:23:57.838432264 +0200
+@@ -6,6 +6,8 @@
+ //
+ 
+ #import <Foundation/NSException.h>
++#include <stdio.h>
++#include <stdlib.h>
+ #import <Foundation/NSDictionary.h>
+ #import <Foundation/NSString.h>
+ #import <Foundation/NSArray.h>
+@@ -91,6 +93,23 @@
+ }
+ 
+ - (void) raise {
++    /*
++     * EVERY RAISE, NAMED, when CIDER_TRACE_EXCEPTIONS is set.
++     *
++     * An exception carries its name and reason and both are worth nothing once something
++     * catches it. LibreOffice catches ObjC exceptions during startup and reports its own
++     * "Unspecified Application Error", so a raise from anywhere in AppKit left NO trace: the GUI
++     * died in six lines of log with nothing to search for.
++     *
++     * Behind an env var rather than always on, because raising is a legitimate control flow and
++     * a program that raises in a loop would drown its own output.
++     */
++    if (getenv("CIDER_TRACE_EXCEPTIONS") != NULL) {
++        fprintf(stderr, "cider: RAISE %s: %s\n",
++                [[self name] UTF8String] ?: "?",
++                [[self reason] UTF8String] ?: "?");
++        fflush(stderr);
++    }
+     @throw self;
+ }
+ 

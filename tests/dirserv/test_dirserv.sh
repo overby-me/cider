@@ -12,7 +12,7 @@
 #   0 — all tests passed
 #   1 — one or more tests failed
 #
-# See: plan/07-phase5-daemon.md (Task 5.1)
+# See: docs/changelog.md (Task 5.1)
 
 set -eu
 

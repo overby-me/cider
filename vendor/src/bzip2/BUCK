@@ -1,0 +1,125 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the bzip2 pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: bz2
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) bz2   -- review before committing.
+# cmake target: bz2  ->  src/external/bzip2/libbz2.1.0.dylib
+
+cc_objects(
+    name = "bz2_obj",
+    srcs = [
+        "bzip2/blocksort.c",
+        "bzip2/bzlib.c",
+        "bzip2/compress.c",
+        "bzip2/crctable.c",
+        "bzip2/decompress.c",
+        "bzip2/huffman.c",
+        "bzip2/randtable.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FILE_OFFSET_BITS=64",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dbz2_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "bz2_firstpass",
+    dylib_name = "libbz2_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libbz2.1.0.dylib",
+    objs = [
+        ":bz2_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: bz2
+
+# BEGIN generated: bz264
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) bz264   -- review before committing.
+# cmake target: bz264  ->  src/external/bzip2/bz264
+
+cc_objects(
+    name = "bz264_obj",
+    srcs = [
+        "bzip2/x86_64/crc32vec.S",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FILE_OFFSET_BITS=64",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bz264
+
+# BEGIN generated: bzip2
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) bzip2   -- review before committing.
+# cmake target: bzip2  ->  src/external/bzip2/bzip2
+
+cc_objects(
+    name = "bzip2_obj",
+    srcs = [
+        "bzip2/bzip2.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FILE_OFFSET_BITS=64",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bzip2
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_bzip2.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

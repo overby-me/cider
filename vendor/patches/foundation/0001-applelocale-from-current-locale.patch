@@ -1,0 +1,21 @@
+diff -u --recursive a/src/NSUserDefaults.m b/src/NSUserDefaults.m
+--- a/src/NSUserDefaults.m	2026-08-13 17:46:25.569298828 +0200
++++ b/src/NSUserDefaults.m	2026-08-13 17:46:25.584691119 +0200
+@@ -50,7 +50,16 @@
+     {
+         standardDefaults = [[NSUserDefaults alloc] init];
+         [standardDefaults setObject:[NSLocale preferredLanguages] forKey:@"AppleLanguages"];
+-        [standardDefaults setObject:[[NSLocale systemLocale] languageCode] forKey:@"AppleLocale"];
++        // THE USER'S LOCALE, NOT THE SYSTEM ONE. +systemLocale is CFLocaleGetSystem, the ROOT
++        // locale, whose identifier is the empty string and whose -languageCode is therefore nil.
++        // Registering nil registers nothing, so AppleLocale was never set at all, and anything
++        // reading it saw a missing key rather than a language.
++        //
++        // AppleLocale on macOS is the user's current locale IDENTIFIER, which is what
++        // +currentLocale answers and what a reader expects: LibreOffice's macOS configuration
++        // backend hands the value to CFLocaleCreateCanonicalLocaleIdentifierFromString, which
++        // wants an identifier such as en_US rather than a bare language code.
++        [standardDefaults setObject:[[NSLocale currentLocale] localeIdentifier] forKey:@"AppleLocale"];
+     }
+     pthread_mutex_unlock(&defaultsLock);
+     return standardDefaults;

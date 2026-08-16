@@ -1,0 +1,292 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:codegen.bzl", "wayland_protocol")
+load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
+load("//buck/rules:rust.bzl", "darwin_rust_staticlib")
+
+# THE WAYLAND GUI BACKEND (#112). CoreGraphics loads *.backend bundles at runtime and takes the
+# first whose principal class answers isAvailable, which is how Cocotron's X11.backend plugs in
+# today. This package is the Wayland one, and it is FIRST PARTY: Cocotron is dead upstream, so a
+# feature-sized patch to a pin would be the wrong place for it.
+#
+# The core wl_ interfaces are exported by libwayland-client itself, which reaches this process as
+# a Mach-O forwarding stub (//src/linux/native:wayland-client_dylib). Only EXTENSIONS have to be
+# generated, and xdg-shell is the one that makes a surface into a window.
+wayland_protocol(
+    name = "xdg_shell_protocol",
+    out_c = "xdg-shell-protocol.c",
+    out_h = "xdg-shell-client-protocol.h",
+    protocol = "stable/xdg-shell/xdg-shell.xml",
+    visibility = ["PUBLIC"],
+)
+
+# THE CORE PROTOCOL, GENERATED LOCALLY, and the reason is measured rather than stylistic. The
+# forwarding stub for libwayland-client exports its FUNCTIONS (wl_display_connect,
+# wl_proxy_marshal_flags, wl_proxy_add_listener) and none of its DATA: wl_registry_interface and
+# wl_compositor_interface come back 0 from llvm-nm. Every protocol call needs one of those
+# interface structs, so they are generated from the same XML upstream uses. See
+# nix/wayland-core-protocol.nix for where the XML comes from, since nixpkgs ships it nowhere.
+wayland_protocol(
+    name = "core_protocol",
+    core = True,
+    out_c = "wayland-protocol.c",
+    out_h = "wayland-client-protocol.h",
+    protocol = "wayland.xml",
+    visibility = ["PUBLIC"],
+)
+
+# The inline layer and the generated interfaces, compiled as guest C. shim.c says why it has to
+# exist: a forwarding stub carries real symbols, and libwayland's per-object calls are static
+# inline while its wl_interface objects are data.
+cc_objects(
+    name = "wayland_glue_obj",
+    srcs = ["shim.c"],
+    # GENERATED .c FILES COME THROUGH gen_srcs, not srcs: a codegen target's default outputs are
+    # the .c AND the .h, so listing it in srcs asks the compiler to build the header as a
+    # translation unit. gen_srcs takes GeneratedSourcesInfo, which is only the sources.
+    gen_srcs = [
+        ":core_protocol",
+        ":xdg_shell_protocol",
+    ],
+    compiler_flags = [
+        "-Wno-unused-parameter",
+    ],
+    # THE GUEST TOOLCHAIN. Without this the objects are built for the host and the link says
+    # "ignoring file ... building for macOS-x86_64", which reads like an architecture problem and
+    # is really a toolchain one.
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        # BOTH in srcs and in deps, and that is not redundant: srcs takes the generated .c
+        # through GeneratedSourcesInfo, deps takes the generated .h through the include root the
+        # codegen rule stages. A consumer that lists only srcs cannot find the header.
+        ":core_protocol",
+        ":xdg_shell_protocol",
+        "//src/darwin:sdk_env",
+        "//src/linux/native:host_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# THREE FILES, which is only possible since the endpoint learned to stage a guest crate's
+# directory. probe.rs is the crate root, wl.rs is the FFI, and both would vanish from the Nix
+# build if that regressed.
+darwin_rust_staticlib(
+    name = "wayland_probe_lib",
+    crate_root = "probe.rs",
+    srcs = ["wl.rs"],
+    visibility = ["PUBLIC"],
+)
+
+# THE PROBE, and it is not the backend. It proves at RUNTIME that a Mach-O binary under Cider can
+# reach the host compositor: connect, sweep the registry, name what is there. Run it against the
+# headless weston the checks use, or against a real session.
+darwin_binary(
+    name = "cider-wayland-probe",
+    objs = [
+        # crt1 FIRST, for the same reason as every other guest binary here: it is what references
+        # _main and the archive that defines it is loaded lazily.
+        "//vendor/src/csu:crt1.10.6_obj2",
+        ":wayland_probe_lib",
+        ":wayland_glue_obj",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//src/linux/native:wayland-client_dylib",
+    ],
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# THE BACKEND BUNDLE'S CODE. Same glue as the probe plus the load-time constructor, which lives
+# in its own file because shim.c is shared with the probe and the probe has no backend in it.
+cc_objects(
+    name = "backend_init_obj",
+    srcs = ["backend_init.c"],
+    deps = [
+        "//src/darwin:sdk_env",
+        "//src/linux/native:host_headers",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+
+# FOUR FILES, which the endpoint only learned to stage on 2026-08-13. backend.rs is the crate
+# root; objc.rs is the runtime glue that makes an ObjC class hierarchy out of Rust functions;
+# wl.rs is the client FFI.
+darwin_rust_staticlib(
+    name = "wayland_backend_lib",
+    crate_root = "backend.rs",
+    srcs = [
+        "objc.rs",
+        "wl.rs",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# THE BUNDLE BINARY. It installs as
+#   CoreGraphics.framework/Versions/C/Resources/Backends/Wayland.backend/Contents/MacOS/Wayland
+# next to the X11 one, and _CGSLoadBackend picks between them by NSPriority and isAvailable.
+darwin_dylib(
+    name = "wayland_cgbackend_dylib",
+    dylib_name = "Wayland",
+    install_name = "/System/Library/Frameworks/CoreGraphics.framework/Versions/C/Resources/Backends/Wayland.backend/Contents/MacOS/Wayland",
+    objs = [
+        ":wayland_backend_lib",
+        ":wayland_glue_obj",
+        ":backend_init_obj",
+    ],
+    # THE SAME SIBLINGS THE X11 BACKEND HAS, minus the X libraries: a backend bundle is loaded
+    # into a process that already has CoreGraphics, Foundation, CoreFoundation and the ObjC
+    # runtime, and it must link against those rather than carry copies.
+    siblings = [
+        "//src/linux/native:wayland-client_dylib",
+        "//vendor/src:CoreGraphics_dylib",
+        "//vendor/src:Foundation_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+    ],
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# The bundle's Info.plist, which is what carries NSPrincipalClass and NSPriority. CoreGraphics
+# reads those two keys and nothing else about us.
+export_file(
+    name = "wayland_backend_plist",
+    src = "Info.plist",
+    visibility = ["PUBLIC"],
+)
+
+# ---------------------------------------------------------------------------------------------
+# THE APPKIT BACKEND, which is the one AppKit actually loads. See docs/wayland-port.md for why the
+# CoreGraphics mechanism is dead in this prefix.
+cc_objects(
+    name = "appkit_init_obj",
+    srcs = ["appkit_init.c"],
+    deps = ["//src/darwin:sdk_env"],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+
+# THE ONE OBJECTIVE-C FILE IN THIS BACKEND, and it is Objective-C for a reason rather than by
+# habit: a pasteboard is a subclass of an AppKit class holding two dictionaries, and expressing
+# that through the runtime glue in objc.rs would be several hundred lines of msg_send declarations
+# to say what @implementation says directly.
+cc_objects(
+    name = "wayland_pasteboard_obj",
+    srcs = [
+        "WaylandEvents.m",
+        "WaylandPasteboard.m",
+        "watch.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    deps = [
+        "//src/darwin:sdk_env",
+        # The whole surface AppKit's HEADERS reach, not what the probe calls.
+        # Taken from xpc_obj, the widest AppKit consumer the port already builds,
+        # because chasing this cascade one #include at a time is what
+        # buck-port.py exists to automate and this target is hand-written.
+        "//vendor/src:fw_AppKit",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreData",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_CoreText",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_IOKit",
+        "//vendor/src:fw_Metal",
+        "//vendor/src:fw_Onyx2D",
+        "//vendor/src:fw_QuartzCore",
+        "//vendor/src:fw_Security",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_ATS",
+        "//src/darwin/frameworks:fw_ApplicationServices",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_ColorSync",
+        "//src/darwin/frameworks:fw_ColorSyncLegacy",
+        "//src/darwin/frameworks:fw_CoreImage",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_CoreVideo",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_HIServices",
+        "//src/darwin/frameworks:fw_HIToolbox",
+        "//src/darwin/frameworks:fw_IOSurface",
+        "//src/darwin/frameworks:fw_ImageIO",
+        "//src/darwin/frameworks:fw_LangAnalysis",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_LocalAuthentication",
+        "//src/darwin/frameworks:fw_OpenGL",
+        "//src/darwin/frameworks:fw_PrintCore",
+        "//src/darwin/frameworks:fw_QD",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/frameworks:fw_SpeechSynthesis",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+
+darwin_rust_staticlib(
+    name = "wayland_appkit_lib",
+    crate_root = "appkit_backend.rs",
+    srcs = [
+        # EVERY MODULE, and this list is the only thing buck2 watches. A module that is missing
+        # here still COMPILES, because rustc reads it from the source directory, and the archive is
+        # then never rebuilt when it changes: an edit to it silently keeps the previous object.
+        # That cost a link error naming a function that was plainly in the file.
+        "clipboard.rs",
+        "colors.rs",
+        "display.rs",
+        "input.rs",
+        "fonts.rs",
+        "objc.rs",
+        "session.rs",
+        "wl.rs",
+        "window.rs",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "wayland_appkit_dylib",
+    dylib_name = "Wayland",
+    install_name = "/System/Library/Frameworks/AppKit.framework/Resources/Backends/Wayland.backend/Contents/MacOS/Wayland",
+    objs = [
+        ":wayland_appkit_lib",
+        ":wayland_glue_obj",
+        ":appkit_init_obj",
+        ":wayland_pasteboard_obj",
+    ],
+    siblings = [
+        "//src/linux/native:wayland-client_dylib",
+        # xkbcommon, for the KEYMAP. A compositor sends the layout rather than naming it, so
+        # turning a key into a character needs the library that parses that keymap.
+        "//src/linux/native:xkbcommon_dylib",
+        # fontconfig, for the font methods this backend implements itself rather than inheriting.
+        "//src/linux/native:fontconfig_dylib",
+        "//vendor/src:AppKit_dylib",
+        # Onyx2D IS CoreGraphics here: the CoreGraphics dylib in the prefix is a re-export shim
+        # whose symbols are all undefined, so the drawing context comes from this one.
+        "//vendor/src:Onyx2D_dylib",
+        "//vendor/src:Foundation_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+    ],
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "wayland_appkit_plist",
+    src = "Info-appkit.plist",
+    visibility = ["PUBLIC"],
+)

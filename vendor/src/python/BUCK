@@ -1,0 +1,5741 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:codegen.bzl", "configure_file")
+load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
+
+# Targets over the python pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate.
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_python.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports
+
+# HAND-WRITTEN, deliberately outside the generated blocks so --write does not drop it.
+#
+# versions.h for the `python` wrapper, the same configure_file() perl needs: cmake writes
+# it at CONFIGURE time from versioner(python "2.7" "2.7"), so no ninja edge produces it.
+# One version here, hence NVERSIONS 1 and a VERSIONS list of one entry.
+configure_file(
+    name = "python_versions_h",
+    out = "versions.h",
+    src = "//vendor/src/perl:versions_h_in",
+    values = {
+        "DEFAULTVERSION": "2.7",
+        "NVERSIONS": "1",
+        "PROJECT": "python",
+        "UPROJECT": "PYTHON",
+        "VERSIONS": " \"2.7\",",
+    },
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: Python
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) Python   -- review before committing.
+# cmake target: Python  ->  src/external/python/2.7/Python-2.7.16/Python
+# 113 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "Python_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "Python_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_codecsmodule.c",
+        "2.7/Python-2.7.16/Modules/_sre.c",
+        "2.7/Python-2.7.16/Modules/_weakref.c",
+        "2.7/Python-2.7.16/Modules/config.c",
+        "2.7/Python-2.7.16/Modules/errnomodule.c",
+        "2.7/Python-2.7.16/Modules/gcmodule.c",
+        "2.7/Python-2.7.16/Modules/getbuildinfo.c",
+        "2.7/Python-2.7.16/Modules/getpath.c",
+        "2.7/Python-2.7.16/Modules/posixmodule.c",
+        "2.7/Python-2.7.16/Modules/pwdmodule.c",
+        "2.7/Python-2.7.16/Modules/signalmodule.c",
+        "2.7/Python-2.7.16/Modules/symtablemodule.c",
+        "2.7/Python-2.7.16/Modules/threadmodule.c",
+        "2.7/Python-2.7.16/Modules/xxsubtype.c",
+        "2.7/Python-2.7.16/Modules/zipimport.c",
+        "2.7/Python-2.7.16/Objects/abstract.c",
+        "2.7/Python-2.7.16/Objects/boolobject.c",
+        "2.7/Python-2.7.16/Objects/bufferobject.c",
+        "2.7/Python-2.7.16/Objects/bytearrayobject.c",
+        "2.7/Python-2.7.16/Objects/bytes_methods.c",
+        "2.7/Python-2.7.16/Objects/capsule.c",
+        "2.7/Python-2.7.16/Objects/cellobject.c",
+        "2.7/Python-2.7.16/Objects/classobject.c",
+        "2.7/Python-2.7.16/Objects/cobject.c",
+        "2.7/Python-2.7.16/Objects/codeobject.c",
+        "2.7/Python-2.7.16/Objects/complexobject.c",
+        "2.7/Python-2.7.16/Objects/descrobject.c",
+        "2.7/Python-2.7.16/Objects/dictobject.c",
+        "2.7/Python-2.7.16/Objects/enumobject.c",
+        "2.7/Python-2.7.16/Objects/exceptions.c",
+        "2.7/Python-2.7.16/Objects/fileobject.c",
+        "2.7/Python-2.7.16/Objects/floatobject.c",
+        "2.7/Python-2.7.16/Objects/frameobject.c",
+        "2.7/Python-2.7.16/Objects/funcobject.c",
+        "2.7/Python-2.7.16/Objects/genobject.c",
+        "2.7/Python-2.7.16/Objects/intobject.c",
+        "2.7/Python-2.7.16/Objects/iterobject.c",
+        "2.7/Python-2.7.16/Objects/listobject.c",
+        "2.7/Python-2.7.16/Objects/longobject.c",
+        "2.7/Python-2.7.16/Objects/memoryobject.c",
+        "2.7/Python-2.7.16/Objects/methodobject.c",
+        "2.7/Python-2.7.16/Objects/moduleobject.c",
+        "2.7/Python-2.7.16/Objects/object.c",
+        "2.7/Python-2.7.16/Objects/obmalloc.c",
+        "2.7/Python-2.7.16/Objects/rangeobject.c",
+        "2.7/Python-2.7.16/Objects/setobject.c",
+        "2.7/Python-2.7.16/Objects/sliceobject.c",
+        "2.7/Python-2.7.16/Objects/stringobject.c",
+        "2.7/Python-2.7.16/Objects/structseq.c",
+        "2.7/Python-2.7.16/Objects/tupleobject.c",
+        "2.7/Python-2.7.16/Objects/typeobject.c",
+        "2.7/Python-2.7.16/Objects/unicodectype.c",
+        "2.7/Python-2.7.16/Objects/unicodeobject.c",
+        "2.7/Python-2.7.16/Objects/weakrefobject.c",
+        "2.7/Python-2.7.16/Parser/acceler.c",
+        "2.7/Python-2.7.16/Parser/bitset.c",
+        "2.7/Python-2.7.16/Parser/firstsets.c",
+        "2.7/Python-2.7.16/Parser/grammar.c",
+        "2.7/Python-2.7.16/Parser/grammar1.c",
+        "2.7/Python-2.7.16/Parser/listnode.c",
+        "2.7/Python-2.7.16/Parser/metagrammar.c",
+        "2.7/Python-2.7.16/Parser/myreadline.c",
+        "2.7/Python-2.7.16/Parser/node.c",
+        "2.7/Python-2.7.16/Parser/parser.c",
+        "2.7/Python-2.7.16/Parser/parsetok.c",
+        "2.7/Python-2.7.16/Parser/pgen.c",
+        "2.7/Python-2.7.16/Parser/tokenizer.c",
+        "2.7/Python-2.7.16/Python/Python-ast.c",
+        "2.7/Python-2.7.16/Python/_warnings.c",
+        "2.7/Python-2.7.16/Python/asdl.c",
+        "2.7/Python-2.7.16/Python/ast.c",
+        "2.7/Python-2.7.16/Python/bltinmodule.c",
+        "2.7/Python-2.7.16/Python/ceval.c",
+        "2.7/Python-2.7.16/Python/codecs.c",
+        "2.7/Python-2.7.16/Python/compile.c",
+        "2.7/Python-2.7.16/Python/dtoa.c",
+        "2.7/Python-2.7.16/Python/dynload_shlib.c",
+        "2.7/Python-2.7.16/Python/errors.c",
+        "2.7/Python-2.7.16/Python/formatter_string.c",
+        "2.7/Python-2.7.16/Python/formatter_unicode.c",
+        "2.7/Python-2.7.16/Python/frozen.c",
+        "2.7/Python-2.7.16/Python/frozenmain.c",
+        "2.7/Python-2.7.16/Python/future.c",
+        "2.7/Python-2.7.16/Python/getargs.c",
+        "2.7/Python-2.7.16/Python/getcompiler.c",
+        "2.7/Python-2.7.16/Python/getcopyright.c",
+        "2.7/Python-2.7.16/Python/getopt.c",
+        "2.7/Python-2.7.16/Python/getplatform.c",
+        "2.7/Python-2.7.16/Python/getversion.c",
+        "2.7/Python-2.7.16/Python/graminit.c",
+        "2.7/Python-2.7.16/Python/import.c",
+        "2.7/Python-2.7.16/Python/importdl.c",
+        "2.7/Python-2.7.16/Python/mactoolboxglue.c",
+        "2.7/Python-2.7.16/Python/marshal.c",
+        "2.7/Python-2.7.16/Python/modsupport.c",
+        "2.7/Python-2.7.16/Python/mysnprintf.c",
+        "2.7/Python-2.7.16/Python/mystrtoul.c",
+        "2.7/Python-2.7.16/Python/peephole.c",
+        "2.7/Python-2.7.16/Python/pyarena.c",
+        "2.7/Python-2.7.16/Python/pyctype.c",
+        "2.7/Python-2.7.16/Python/pyfpe.c",
+        "2.7/Python-2.7.16/Python/pymath.c",
+        "2.7/Python-2.7.16/Python/pystate.c",
+        "2.7/Python-2.7.16/Python/pystrcmp.c",
+        "2.7/Python-2.7.16/Python/pystrtod.c",
+        "2.7/Python-2.7.16/Python/pythonrun.c",
+        "2.7/Python-2.7.16/Python/random.c",
+        "2.7/Python-2.7.16/Python/structmember.c",
+        "2.7/Python-2.7.16/Python/symtable.c",
+        "2.7/Python-2.7.16/Python/sysmodule.c",
+        "2.7/Python-2.7.16/Python/thread.c",
+        "2.7/Python-2.7.16/Python/traceback.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DPython_EXPORTS",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_Carbon",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_HIToolbox",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_QD",
+        "//src/darwin/frameworks:fw_SearchKit",
+        ":Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "Python_obj2",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/main.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DPython_EXPORTS",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+        "-DOPEN_SOURCE",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_Carbon",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_HIToolbox",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_QD",
+        "//src/darwin/frameworks:fw_SearchKit",
+        ":Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Python
+
+# BEGIN generated: Python dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs Python   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/Python = Python_dylib
+
+darwin_dylib(
+    name = "Python_dylib",
+    dylib_name = "Python",
+    install_name = "/System/Library/Frameworks/Python.framework/Versions/2.7/Python",
+    compatibility_version = "2.7.0",
+    current_version = "2.7.16",
+    objs = [
+        # Python
+        ":Python_obj",
+        ":Python_obj2",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Python dylibs
+
+# BEGIN generated: py27_zlib
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_zlib   -- review before committing.
+# cmake target: py27_zlib  ->  py27_zlib
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_zlib_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_zlib_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/zlibmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_zlib_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_zlib_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_zlib
+
+# BEGIN generated: py27_zlib dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_zlib   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/zlib.so = py27_zlib_dylib
+
+darwin_dylib(
+    name = "py27_zlib_dylib",
+    dylib_name = "zlib.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_zlib
+        ":py27_zlib_obj",
+    ],
+    siblings = [
+        "//vendor/src:z_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_zlib dylibs
+
+# BEGIN generated: py27_unicodedata
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_unicodedata   -- review before committing.
+# cmake target: py27_unicodedata  ->  py27_unicodedata
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_unicodedata_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_unicodedata_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/unicodedata.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_unicodedata_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_unicodedata_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_unicodedata
+
+# BEGIN generated: py27_unicodedata dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_unicodedata   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/unicodedata.so = py27_unicodedata_dylib
+
+darwin_dylib(
+    name = "py27_unicodedata_dylib",
+    dylib_name = "unicodedata.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_unicodedata
+        ":py27_unicodedata_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_unicodedata dylibs
+
+# BEGIN generated: py27_time
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_time   -- review before committing.
+# cmake target: py27_time  ->  py27_time
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_time_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_time_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/timemodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_time_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_time_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_time
+
+# BEGIN generated: py27_time dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_time   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/time.so = py27_time_dylib
+
+darwin_dylib(
+    name = "py27_time_dylib",
+    dylib_name = "time.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_time
+        ":py27_time_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_time dylibs
+
+# BEGIN generated: py27_termios
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_termios   -- review before committing.
+# cmake target: py27_termios  ->  py27_termios
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_termios_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_termios_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/termios.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_termios_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_termios_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_termios
+
+# BEGIN generated: py27_termios dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_termios   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/termios.so = py27_termios_dylib
+
+darwin_dylib(
+    name = "py27_termios_dylib",
+    dylib_name = "termios.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_termios
+        ":py27_termios_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_termios dylibs
+
+# BEGIN generated: py27_syslog
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_syslog   -- review before committing.
+# cmake target: py27_syslog  ->  py27_syslog
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_syslog_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_syslog_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/syslogmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_syslog_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_syslog_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_syslog
+
+# BEGIN generated: py27_syslog dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_syslog   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/syslog.so = py27_syslog_dylib
+
+darwin_dylib(
+    name = "py27_syslog_dylib",
+    dylib_name = "syslog.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_syslog
+        ":py27_syslog_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_syslog dylibs
+
+# BEGIN generated: py27_strop
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_strop   -- review before committing.
+# cmake target: py27_strop  ->  py27_strop
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_strop_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_strop_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/stropmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_strop_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_strop_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_strop
+
+# BEGIN generated: py27_strop dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_strop   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/strop.so = py27_strop_dylib
+
+darwin_dylib(
+    name = "py27_strop_dylib",
+    dylib_name = "strop.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_strop
+        ":py27_strop_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_strop dylibs
+
+# BEGIN generated: py27_select
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_select   -- review before committing.
+# cmake target: py27_select  ->  py27_select
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_select_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_select_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/selectmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_select_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_select_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_select
+
+# BEGIN generated: py27_select dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_select   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/select.so = py27_select_dylib
+
+darwin_dylib(
+    name = "py27_select_dylib",
+    dylib_name = "select.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_select
+        ":py27_select_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_select dylibs
+
+# BEGIN generated: py27_resource
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_resource   -- review before committing.
+# cmake target: py27_resource  ->  py27_resource
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_resource_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_resource_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/resource.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_resource_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_resource_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_resource
+
+# BEGIN generated: py27_resource dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_resource   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/resource.so = py27_resource_dylib
+
+darwin_dylib(
+    name = "py27_resource_dylib",
+    dylib_name = "resource.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_resource
+        ":py27_resource_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_resource dylibs
+
+# BEGIN generated: py27_readline
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_readline   -- review before committing.
+# cmake target: py27_readline  ->  py27_readline
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_readline_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_readline_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/readline.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_readline_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_readline_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_readline
+
+# BEGIN generated: py27_readline dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_readline   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/readline.so = py27_readline_dylib
+
+darwin_dylib(
+    name = "py27_readline_dylib",
+    dylib_name = "readline.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_readline
+        ":py27_readline_obj",
+    ],
+    siblings = [
+        "//vendor/src:edit_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_readline dylibs
+
+# BEGIN generated: py27_pyexpat
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_pyexpat   -- review before committing.
+# cmake target: py27_pyexpat  ->  py27_pyexpat
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_pyexpat_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_pyexpat_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/pyexpat.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_pyexpat_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_pyexpat_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_pyexpat
+
+# BEGIN generated: py27_pyexpat dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_pyexpat   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/pyexpat.so = py27_pyexpat_dylib
+
+darwin_dylib(
+    name = "py27_pyexpat_dylib",
+    dylib_name = "pyexpat.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_pyexpat
+        ":py27_pyexpat_obj",
+    ],
+    siblings = [
+        "//vendor/src:expat_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_pyexpat dylibs
+
+# BEGIN generated: py27_parser
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_parser   -- review before committing.
+# cmake target: py27_parser  ->  py27_parser
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_parser_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_parser_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/parsermodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_parser_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_parser_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_parser
+
+# BEGIN generated: py27_parser dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_parser   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/parser.so = py27_parser_dylib
+
+darwin_dylib(
+    name = "py27_parser_dylib",
+    dylib_name = "parser.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_parser
+        ":py27_parser_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_parser dylibs
+
+# BEGIN generated: py27_operator
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_operator   -- review before committing.
+# cmake target: py27_operator  ->  py27_operator
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_operator_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_operator_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/operator.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_operator_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_operator_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_operator
+
+# BEGIN generated: py27_operator dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_operator   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/operator.so = py27_operator_dylib
+
+darwin_dylib(
+    name = "py27_operator_dylib",
+    dylib_name = "operator.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_operator
+        ":py27_operator_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_operator dylibs
+
+# BEGIN generated: py27_mmap
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_mmap   -- review before committing.
+# cmake target: py27_mmap  ->  py27_mmap
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_mmap_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_mmap_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/mmapmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_mmap_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_mmap_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_mmap
+
+# BEGIN generated: py27_mmap dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_mmap   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/mmap.so = py27_mmap_dylib
+
+darwin_dylib(
+    name = "py27_mmap_dylib",
+    dylib_name = "mmap.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_mmap
+        ":py27_mmap_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_mmap dylibs
+
+# BEGIN generated: py27_math
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_math   -- review before committing.
+# cmake target: py27_math  ->  py27_math
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_math_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_math_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_math.c",
+        "2.7/Python-2.7.16/Modules/mathmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_math_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_math_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_math
+
+# BEGIN generated: py27_math dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_math   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/math.so = py27_math_dylib
+
+darwin_dylib(
+    name = "py27_math_dylib",
+    dylib_name = "math.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_math
+        ":py27_math_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_math dylibs
+
+# BEGIN generated: py27_itertools
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_itertools   -- review before committing.
+# cmake target: py27_itertools  ->  py27_itertools
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_itertools_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_itertools_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/itertoolsmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_itertools_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_itertools_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_itertools
+
+# BEGIN generated: py27_itertools dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_itertools   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/itertools.so = py27_itertools_dylib
+
+darwin_dylib(
+    name = "py27_itertools_dylib",
+    dylib_name = "itertools.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_itertools
+        ":py27_itertools_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_itertools dylibs
+
+# BEGIN generated: py27_imageop
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_imageop   -- review before committing.
+# cmake target: py27_imageop  ->  py27_imageop
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_imageop_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_imageop_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/imageop.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_imageop_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_imageop_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_imageop
+
+# BEGIN generated: py27_imageop dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_imageop   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/imageop.so = py27_imageop_dylib
+
+darwin_dylib(
+    name = "py27_imageop_dylib",
+    dylib_name = "imageop.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_imageop
+        ":py27_imageop_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_imageop dylibs
+
+# BEGIN generated: py27_grp
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_grp   -- review before committing.
+# cmake target: py27_grp  ->  py27_grp
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_grp_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_grp_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/grpmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_grp_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_grp_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_grp
+
+# BEGIN generated: py27_grp dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_grp   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/grp.so = py27_grp_dylib
+
+darwin_dylib(
+    name = "py27_grp_dylib",
+    dylib_name = "grp.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_grp
+        ":py27_grp_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_grp dylibs
+
+# BEGIN generated: py27_future_builtins
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_future_builtins   -- review before committing.
+# cmake target: py27_future_builtins  ->  py27_future_builtins
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_future_builtins_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_future_builtins_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/future_builtins.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_future_builtins_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_future_builtins_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_future_builtins
+
+# BEGIN generated: py27_future_builtins dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_future_builtins   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/future_builtins.so = py27_future_builtins_dylib
+
+darwin_dylib(
+    name = "py27_future_builtins_dylib",
+    dylib_name = "future_builtins.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_future_builtins
+        ":py27_future_builtins_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_future_builtins dylibs
+
+# BEGIN generated: py27_fcntl
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_fcntl   -- review before committing.
+# cmake target: py27_fcntl  ->  py27_fcntl
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_fcntl_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_fcntl_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/fcntlmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_fcntl_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_fcntl_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_fcntl
+
+# BEGIN generated: py27_fcntl dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_fcntl   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/fcntl.so = py27_fcntl_dylib
+
+darwin_dylib(
+    name = "py27_fcntl_dylib",
+    dylib_name = "fcntl.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_fcntl
+        ":py27_fcntl_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_fcntl dylibs
+
+# BEGIN generated: py27_dl
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_dl   -- review before committing.
+# cmake target: py27_dl  ->  py27_dl
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_dl_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_dl_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/dlmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_dl_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_dl_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_dl
+
+# BEGIN generated: py27_dl dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_dl   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/dl.so = py27_dl_dylib
+
+darwin_dylib(
+    name = "py27_dl_dylib",
+    dylib_name = "dl.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_dl
+        ":py27_dl_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_dl dylibs
+
+# BEGIN generated: py27_crypt
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_crypt   -- review before committing.
+# cmake target: py27_crypt  ->  py27_crypt
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_crypt_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_crypt_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/cryptmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_crypt_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_crypt_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_crypt
+
+# BEGIN generated: py27_crypt dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_crypt   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/crypt.so = py27_crypt_dylib
+
+darwin_dylib(
+    name = "py27_crypt_dylib",
+    dylib_name = "crypt.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_crypt
+        ":py27_crypt_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_crypt dylibs
+
+# BEGIN generated: py27_cmath
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_cmath   -- review before committing.
+# cmake target: py27_cmath  ->  py27_cmath
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_cmath_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_cmath_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_math.c",
+        "2.7/Python-2.7.16/Modules/cmathmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_cmath_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_cmath_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_cmath
+
+# BEGIN generated: py27_cmath dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_cmath   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/cmath.so = py27_cmath_dylib
+
+darwin_dylib(
+    name = "py27_cmath_dylib",
+    dylib_name = "cmath.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_cmath
+        ":py27_cmath_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_cmath dylibs
+
+# BEGIN generated: py27_cStringIO
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_cStringIO   -- review before committing.
+# cmake target: py27_cStringIO  ->  py27_cStringIO
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_cStringIO_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_cStringIO_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/cStringIO.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_cStringIO_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_cStringIO_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_cStringIO
+
+# BEGIN generated: py27_cStringIO dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_cStringIO   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/cStringIO.so = py27_cStringIO_dylib
+
+darwin_dylib(
+    name = "py27_cStringIO_dylib",
+    dylib_name = "cStringIO.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_cStringIO
+        ":py27_cStringIO_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_cStringIO dylibs
+
+# BEGIN generated: py27_cPickle
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_cPickle   -- review before committing.
+# cmake target: py27_cPickle  ->  py27_cPickle
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_cPickle_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_cPickle_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/cPickle.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_cPickle_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_cPickle_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_cPickle
+
+# BEGIN generated: py27_cPickle dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_cPickle   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/cPickle.so = py27_cPickle_dylib
+
+darwin_dylib(
+    name = "py27_cPickle_dylib",
+    dylib_name = "cPickle.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_cPickle
+        ":py27_cPickle_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_cPickle dylibs
+
+# BEGIN generated: py27_bz2
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_bz2   -- review before committing.
+# cmake target: py27_bz2  ->  py27_bz2
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_bz2_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_bz2_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/bz2module.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_bz2_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_bz2_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_bz2
+
+# BEGIN generated: py27_bz2 dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_bz2   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/bz2.so = py27_bz2_dylib
+
+darwin_dylib(
+    name = "py27_bz2_dylib",
+    dylib_name = "bz2.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_bz2
+        ":py27_bz2_obj",
+    ],
+    siblings = [
+        "//vendor/src:bz2_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_bz2 dylibs
+
+# BEGIN generated: py27_bsddb185
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_bsddb185   -- review before committing.
+# cmake target: py27_bsddb185  ->  py27_bsddb185
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_bsddb185_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_bsddb185_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/bsddbmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_bsddb185_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_bsddb185_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_bsddb185
+
+# BEGIN generated: py27_bsddb185 dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_bsddb185   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/bsddb185.so = py27_bsddb185_dylib
+
+darwin_dylib(
+    name = "py27_bsddb185_dylib",
+    dylib_name = "bsddb185.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_bsddb185
+        ":py27_bsddb185_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_bsddb185 dylibs
+
+# BEGIN generated: py27_binascii
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_binascii   -- review before committing.
+# cmake target: py27_binascii  ->  py27_binascii
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_binascii_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_binascii_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/binascii.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_binascii_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_binascii_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_binascii
+
+# BEGIN generated: py27_binascii dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_binascii   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/binascii.so = py27_binascii_dylib
+
+darwin_dylib(
+    name = "py27_binascii_dylib",
+    dylib_name = "binascii.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_binascii
+        ":py27_binascii_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_binascii dylibs
+
+# BEGIN generated: py27_audioop
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_audioop   -- review before committing.
+# cmake target: py27_audioop  ->  py27_audioop
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_audioop_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_audioop_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/audioop.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_audioop_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_audioop_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_audioop
+
+# BEGIN generated: py27_audioop dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_audioop   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/audioop.so = py27_audioop_dylib
+
+darwin_dylib(
+    name = "py27_audioop_dylib",
+    dylib_name = "audioop.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_audioop
+        ":py27_audioop_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_audioop dylibs
+
+# BEGIN generated: py27_array
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_array   -- review before committing.
+# cmake target: py27_array  ->  py27_array
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_array_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_array_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/arraymodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_array_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_array_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_array
+
+# BEGIN generated: py27_array dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_array   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/array.so = py27_array_dylib
+
+darwin_dylib(
+    name = "py27_array_dylib",
+    dylib_name = "array.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_array
+        ":py27_array_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_array dylibs
+
+# BEGIN generated: python27exe
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) python27exe   -- review before committing.
+# cmake target: python27exe  ->  python27exe
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "python27exe_own_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "python27exe_own_obj",
+    srcs = [
+        "2.7/Python-2.7.16/dummy.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":python27exe_own_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: python27exe
+
+# BEGIN generated: python27exe binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries python27exe   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/python2.7 = python27exe
+
+darwin_binary(
+    name = "python27exe",
+    exe_name = "python2.7",
+    objs = [
+        # python27exe_obj
+        ":python27exe_obj",
+        # python27exe
+        ":python27exe_own_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/python:Python_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: python27exe binary
+
+# BEGIN generated: python27exe_obj
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) python27exe_obj   -- review before committing.
+# cmake target: python27exe_obj  ->  src/external/python/2.7/Python-2.7.16/python27exe_obj
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "python27exe_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "python27exe_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/python.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":python27exe_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: python27exe_obj
+
+# BEGIN generated: py27__bisect
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__bisect   -- review before committing.
+# cmake target: py27__bisect  ->  py27__bisect
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__bisect_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__bisect_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_bisectmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__bisect_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__bisect_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__bisect
+
+# BEGIN generated: py27__bisect dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__bisect   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_bisect.so = py27__bisect_dylib
+
+darwin_dylib(
+    name = "py27__bisect_dylib",
+    dylib_name = "_bisect.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__bisect
+        ":py27__bisect_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__bisect dylibs
+
+# BEGIN generated: py27__collections
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__collections   -- review before committing.
+# cmake target: py27__collections  ->  py27__collections
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__collections_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__collections_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_collectionsmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__collections_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__collections_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__collections
+
+# BEGIN generated: py27__collections dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__collections   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_collections.so = py27__collections_dylib
+
+darwin_dylib(
+    name = "py27__collections_dylib",
+    dylib_name = "_collections.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__collections
+        ":py27__collections_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__collections dylibs
+
+# BEGIN generated: py27__csv
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__csv   -- review before committing.
+# cmake target: py27__csv  ->  py27__csv
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__csv_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__csv_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_csv.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__csv_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__csv_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__csv
+
+# BEGIN generated: py27__csv dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__csv   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_csv.so = py27__csv_dylib
+
+darwin_dylib(
+    name = "py27__csv_dylib",
+    dylib_name = "_csv.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__csv
+        ":py27__csv_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__csv dylibs
+
+# BEGIN generated: py27__ctypes
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__ctypes   -- review before committing.
+# cmake target: py27__ctypes  ->  py27__ctypes
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__ctypes_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__ctypes_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_ctypes/_ctypes.c",
+        "2.7/Python-2.7.16/Modules/_ctypes/callbacks.c",
+        "2.7/Python-2.7.16/Modules/_ctypes/callproc.c",
+        "2.7/Python-2.7.16/Modules/_ctypes/cfield.c",
+        "2.7/Python-2.7.16/Modules/_ctypes/darwin/dlfcn_simple.c",
+        "2.7/Python-2.7.16/Modules/_ctypes/malloc_closure.c",
+        "2.7/Python-2.7.16/Modules/_ctypes/stgdict.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__ctypes_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__ctypes_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__ctypes
+
+# BEGIN generated: py27__ctypes dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__ctypes   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_ctypes.so = py27__ctypes_dylib
+
+darwin_dylib(
+    name = "py27__ctypes_dylib",
+    dylib_name = "_ctypes.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__ctypes
+        ":py27__ctypes_obj",
+    ],
+    siblings = [
+        "//vendor/src:ffi_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__ctypes dylibs
+
+# BEGIN generated: py27__ctypes_test
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__ctypes_test   -- review before committing.
+# cmake target: py27__ctypes_test  ->  py27__ctypes_test
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__ctypes_test_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__ctypes_test_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_ctypes/_ctypes_test.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__ctypes_test_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__ctypes_test_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__ctypes_test
+
+# BEGIN generated: py27__ctypes_test dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__ctypes_test   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_ctypes_test.so = py27__ctypes_test_dylib
+
+darwin_dylib(
+    name = "py27__ctypes_test_dylib",
+    dylib_name = "_ctypes_test.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__ctypes_test
+        ":py27__ctypes_test_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__ctypes_test dylibs
+
+# HAND-WRITTEN, and a deliberate divergence from the reference, which builds _curses_panel
+# but not _curses. CPython's panel module does `import _curses` when it initialises, so the
+# _curses_panel.so the reference installs has never been loadable: it fails with "No module
+# named _curses" on upstream Darling exactly as it did here.
+#
+# Everything needed was already in the tree. Modules/_cursesmodule.c ships in the same pin,
+# ncurses_dylib is already built and already linked by _curses_panel below, and curses.h and
+# term.h sit in the same SDK include farm that resolves panel.h today. So this is the
+# _sqlite3.so case -- a small divergence that makes an artifact the reference ships actually
+# work -- rather than a new cone.
+#
+# The include root is _curses_panel's own: same pin, same root, same globs, and staging the
+# 2.7 tree a second time would buy nothing but build time.
+cc_objects(
+    name = "py27__curses_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_cursesmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__curses_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__curses_panel_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "py27__curses_dylib",
+    dylib_name = "_curses.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        ":py27__curses_obj",
+    ],
+    # No panel_dylib: this is the layer BELOW panel, and linking it would be a cycle in
+    # spirit if not in the linker.
+    siblings = [
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: py27__curses_panel
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__curses_panel   -- review before committing.
+# cmake target: py27__curses_panel  ->  py27__curses_panel
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__curses_panel_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__curses_panel_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_curses_panel.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__curses_panel_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__curses_panel_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__curses_panel
+
+# BEGIN generated: py27__curses_panel dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__curses_panel   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_curses_panel.so = py27__curses_panel_dylib
+
+darwin_dylib(
+    name = "py27__curses_panel_dylib",
+    dylib_name = "_curses_panel.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__curses_panel
+        ":py27__curses_panel_obj",
+    ],
+    siblings = [
+        "//vendor/src:panel_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__curses_panel dylibs
+
+# BEGIN generated: py27__elementtree
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__elementtree   -- review before committing.
+# cmake target: py27__elementtree  ->  py27__elementtree
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__elementtree_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__elementtree_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_elementtree.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DUSE_PYEXPAT_CAPI",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__elementtree_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__elementtree_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__elementtree
+
+# BEGIN generated: py27__elementtree dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__elementtree   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_elementtree.so = py27__elementtree_dylib
+
+darwin_dylib(
+    name = "py27__elementtree_dylib",
+    dylib_name = "_elementtree.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__elementtree
+        ":py27__elementtree_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__elementtree dylibs
+
+# BEGIN generated: py27__functools
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__functools   -- review before committing.
+# cmake target: py27__functools  ->  py27__functools
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__functools_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__functools_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_functoolsmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__functools_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__functools_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__functools
+
+# BEGIN generated: py27__functools dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__functools   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_functools.so = py27__functools_dylib
+
+darwin_dylib(
+    name = "py27__functools_dylib",
+    dylib_name = "_functools.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__functools
+        ":py27__functools_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__functools dylibs
+
+# BEGIN generated: py27__hashlib
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__hashlib   -- review before committing.
+# cmake target: py27__hashlib  ->  py27__hashlib
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__hashlib_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__hashlib_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_hashopenssl.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__hashlib_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__hashlib_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__hashlib
+
+# BEGIN generated: py27__hashlib dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__hashlib   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_hashlib.so = py27__hashlib_dylib
+
+darwin_dylib(
+    name = "py27__hashlib_dylib",
+    dylib_name = "_hashlib.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__hashlib
+        ":py27__hashlib_obj",
+    ],
+    siblings = [
+        "//vendor/src:ssl46_dylib",
+        "//vendor/src:crypto44_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__hashlib dylibs
+
+# BEGIN generated: py27__heapq
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__heapq   -- review before committing.
+# cmake target: py27__heapq  ->  py27__heapq
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__heapq_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__heapq_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_heapqmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__heapq_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__heapq_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__heapq
+
+# BEGIN generated: py27__heapq dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__heapq   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_heapq.so = py27__heapq_dylib
+
+darwin_dylib(
+    name = "py27__heapq_dylib",
+    dylib_name = "_heapq.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__heapq
+        ":py27__heapq_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__heapq dylibs
+
+# BEGIN generated: py27__hotshot
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__hotshot   -- review before committing.
+# cmake target: py27__hotshot  ->  py27__hotshot
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__hotshot_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__hotshot_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_hotshot.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__hotshot_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__hotshot_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__hotshot
+
+# BEGIN generated: py27__hotshot dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__hotshot   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_hotshot.so = py27__hotshot_dylib
+
+darwin_dylib(
+    name = "py27__hotshot_dylib",
+    dylib_name = "_hotshot.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__hotshot
+        ":py27__hotshot_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__hotshot dylibs
+
+# BEGIN generated: py27__io
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__io   -- review before committing.
+# cmake target: py27__io  ->  py27__io
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__io_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__io_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_io/_iomodule.c",
+        "2.7/Python-2.7.16/Modules/_io/bufferedio.c",
+        "2.7/Python-2.7.16/Modules/_io/bytesio.c",
+        "2.7/Python-2.7.16/Modules/_io/fileio.c",
+        "2.7/Python-2.7.16/Modules/_io/iobase.c",
+        "2.7/Python-2.7.16/Modules/_io/stringio.c",
+        "2.7/Python-2.7.16/Modules/_io/textio.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__io_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__io_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__io
+
+# BEGIN generated: py27__io dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__io   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_io.so = py27__io_dylib
+
+darwin_dylib(
+    name = "py27__io_dylib",
+    dylib_name = "_io.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__io
+        ":py27__io_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__io dylibs
+
+# BEGIN generated: py27__json
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__json   -- review before committing.
+# cmake target: py27__json  ->  py27__json
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__json_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__json_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_json.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__json_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__json_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__json
+
+# BEGIN generated: py27__json dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__json   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_json.so = py27__json_dylib
+
+darwin_dylib(
+    name = "py27__json_dylib",
+    dylib_name = "_json.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__json
+        ":py27__json_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__json dylibs
+
+# BEGIN generated: py27__locale
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__locale   -- review before committing.
+# cmake target: py27__locale  ->  py27__locale
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__locale_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__locale_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_localemodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__locale_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__locale_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__locale
+
+# BEGIN generated: py27__locale dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__locale   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_locale.so = py27__locale_dylib
+
+darwin_dylib(
+    name = "py27__locale_dylib",
+    dylib_name = "_locale.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__locale
+        ":py27__locale_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__locale dylibs
+
+# BEGIN generated: py27__lsprof
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__lsprof   -- review before committing.
+# cmake target: py27__lsprof  ->  py27__lsprof
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__lsprof_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__lsprof_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_lsprof.c",
+        "2.7/Python-2.7.16/Modules/rotatingtree.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__lsprof_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__lsprof_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__lsprof
+
+# BEGIN generated: py27__lsprof dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__lsprof   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_lsprof.so = py27__lsprof_dylib
+
+darwin_dylib(
+    name = "py27__lsprof_dylib",
+    dylib_name = "_lsprof.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__lsprof
+        ":py27__lsprof_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__lsprof dylibs
+
+# BEGIN generated: py27__multiprocessing
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__multiprocessing   -- review before committing.
+# cmake target: py27__multiprocessing  ->  py27__multiprocessing
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__multiprocessing_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__multiprocessing_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_multiprocessing/multiprocessing.c",
+        "2.7/Python-2.7.16/Modules/_multiprocessing/semaphore.c",
+        "2.7/Python-2.7.16/Modules/_multiprocessing/socket_connection.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__multiprocessing_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__multiprocessing_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__multiprocessing
+
+# BEGIN generated: py27__multiprocessing dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__multiprocessing   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_multiprocessing.so = py27__multiprocessing_dylib
+
+darwin_dylib(
+    name = "py27__multiprocessing_dylib",
+    dylib_name = "_multiprocessing.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__multiprocessing
+        ":py27__multiprocessing_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__multiprocessing dylibs
+
+# BEGIN generated: py27__random
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__random   -- review before committing.
+# cmake target: py27__random  ->  py27__random
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__random_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__random_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_randommodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__random_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__random_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__random
+
+# BEGIN generated: py27__random dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__random   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_random.so = py27__random_dylib
+
+darwin_dylib(
+    name = "py27__random_dylib",
+    dylib_name = "_random.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__random
+        ":py27__random_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__random dylibs
+
+# BEGIN generated: py27__scproxy
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__scproxy   -- review before committing.
+# cmake target: py27__scproxy  ->  py27__scproxy
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__scproxy_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__scproxy_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Mac/Modules/_scproxy.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__scproxy_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Security",
+        "//vendor/src:fw_SystemConfiguration",
+        ":py27__scproxy_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__scproxy
+
+# BEGIN generated: py27__scproxy dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__scproxy   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_scproxy.so = py27__scproxy_dylib
+
+darwin_dylib(
+    name = "py27__scproxy_dylib",
+    dylib_name = "_scproxy.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__scproxy
+        ":py27__scproxy_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+        "//src/darwin/frameworks:SystemConfiguration_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__scproxy dylibs
+
+# BEGIN generated: py27__socket
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__socket   -- review before committing.
+# cmake target: py27__socket  ->  py27__socket
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__socket_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__socket_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/socketmodule.c",
+        "2.7/Python-2.7.16/Modules/timemodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__socket_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__socket_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__socket
+
+# BEGIN generated: py27__socket dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__socket   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_socket.so = py27__socket_dylib
+
+darwin_dylib(
+    name = "py27__socket_dylib",
+    dylib_name = "_socket.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__socket
+        ":py27__socket_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__socket dylibs
+
+# BEGIN generated: py27__sqlite
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__sqlite   -- review before committing.
+# cmake target: py27__sqlite  ->  py27__sqlite
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__sqlite_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__sqlite_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_sqlite/cache.c",
+        "2.7/Python-2.7.16/Modules/_sqlite/connection.c",
+        "2.7/Python-2.7.16/Modules/_sqlite/cursor.c",
+        "2.7/Python-2.7.16/Modules/_sqlite/microprotocols.c",
+        "2.7/Python-2.7.16/Modules/_sqlite/module.c",
+        "2.7/Python-2.7.16/Modules/_sqlite/prepare_protocol.c",
+        "2.7/Python-2.7.16/Modules/_sqlite/row.c",
+        "2.7/Python-2.7.16/Modules/_sqlite/statement.c",
+        "2.7/Python-2.7.16/Modules/_sqlite/util.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DMODULE_NAME=\"sqlite3\"",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__sqlite_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__sqlite_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__sqlite
+
+# BEGIN generated: py27__sqlite dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__sqlite   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_sqlite.so = py27__sqlite_dylib
+
+darwin_dylib(
+    name = "py27__sqlite_dylib",
+    dylib_name = "_sqlite.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__sqlite
+        ":py27__sqlite_obj",
+    ],
+    siblings = [
+        "//vendor/src:sqlite3_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__sqlite dylibs
+
+# BEGIN generated: py27__ssl
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__ssl   -- review before committing.
+# cmake target: py27__ssl  ->  py27__ssl
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__ssl_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__ssl_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_ssl.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__ssl_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__ssl_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__ssl
+
+# BEGIN generated: py27__ssl dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__ssl   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_ssl.so = py27__ssl_dylib
+
+darwin_dylib(
+    name = "py27__ssl_dylib",
+    dylib_name = "_ssl.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__ssl
+        ":py27__ssl_obj",
+    ],
+    siblings = [
+        "//vendor/src:ssl46_dylib",
+        "//vendor/src:crypto44_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__ssl dylibs
+
+# BEGIN generated: py27__struct
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__struct   -- review before committing.
+# cmake target: py27__struct  ->  py27__struct
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__struct_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__struct_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_struct.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__struct_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__struct_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__struct
+
+# BEGIN generated: py27__struct dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__struct   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_struct.so = py27__struct_dylib
+
+darwin_dylib(
+    name = "py27__struct_dylib",
+    dylib_name = "_struct.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__struct
+        ":py27__struct_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__struct dylibs
+
+# BEGIN generated: py27__testcapi
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27__testcapi   -- review before committing.
+# cmake target: py27__testcapi  ->  py27__testcapi
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27__testcapi_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27__testcapi_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_testcapimodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__testcapi_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27__testcapi_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__testcapi
+
+# BEGIN generated: py27__testcapi dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27__testcapi   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/_testcapi.so = py27__testcapi_dylib
+
+darwin_dylib(
+    name = "py27__testcapi_dylib",
+    dylib_name = "_testcapi.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27__testcapi
+        ":py27__testcapi_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27__testcapi dylibs
+
+# BEGIN generated: py27_dbm
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_dbm   -- review before committing.
+# cmake target: py27_dbm  ->  py27_dbm
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_dbm_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_dbm_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/dbmmodule.c",
+    ],
+    compiler_flags = [
+        "-DDB_DBM_HSEARCH",
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DHAVE_BERKDB_H",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_dbm_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//vendor/src:berkeley_db_inc_BerkeleyDB_db",
+        "//src/darwin:sdk_env",
+        ":py27_dbm_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_dbm
+
+# BEGIN generated: py27_dbm dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_dbm   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/dbm.so = py27_dbm_dylib
+
+darwin_dylib(
+    name = "py27_dbm_dylib",
+    dylib_name = "dbm.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_dbm
+        ":py27_dbm_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:berkeley_db",
+        "//vendor/src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_dbm dylibs
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+prefix_dir(
+    name = "prefix_2_7_Python_2_7_16_Include",
+    srcs = glob(
+        ["2.7/Python-2.7.16/Include/**"],
+        exclude = [],
+    ),
+    strip = "2.7/Python-2.7.16/Include",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs
+
+# BEGIN generated: py27_datetime
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) py27_datetime   -- review before committing.
+# cmake target: py27_datetime  ->  py27_datetime
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_datetime_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_datetime_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/datetimemodule.c",
+        "2.7/Python-2.7.16/Modules/timemodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_datetime_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":py27_datetime_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_datetime
+
+# BEGIN generated: py27_datetime dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs py27_datetime   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/datetime.so = py27_datetime_dylib
+
+darwin_dylib(
+    name = "py27_datetime_dylib",
+    dylib_name = "datetime.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_datetime
+        ":py27_datetime_obj",
+    ],
+    siblings = [
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//vendor/src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src/python:Python_dylib",
+        "//src/darwin/frameworks:HIServices_dylib",
+        "//src/darwin/frameworks:ApplicationServices_dylib",
+        "//vendor/src:CoreGraphics_dylib",
+        "//vendor/src:CoreText_dylib",
+        "//src/darwin/frameworks:ImageIO_dylib",
+        "//src/darwin/frameworks:CoreVideo_dylib",
+        "//vendor/src:CoreData_dylib",
+        "//vendor/src:QuartzCore_dylib",
+        "//src/darwin/frameworks:OpenGL_dylib",
+        "//vendor/src:Onyx2D_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_datetime dylibs
+
+# python-config, which cmake writes at CONFIGURE time rather than building:
+# `configure_file(Misc/python-config.in python-config)` in the pin's CMakeLists, installed
+# as usr/bin/python2.7-config. There is no ninja edge for it, which is why the install
+# entry read as a build output with no target -- nothing builds it, cmake just writes it.
+configure_file(
+    name = "python_config",
+    src = "2.7/Python-2.7.16/Misc/python-config.in",
+    out = "python-config",
+    values = {
+        "EXENAME": "/System/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7",
+    },
+    visibility = ["PUBLIC"],
+)

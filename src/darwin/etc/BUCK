@@ -1,0 +1,49 @@
+load("//buck/rules:files.bzl", "export_file")
+
+# The user and group databases, which this prefix did not have at all.
+#
+# They live here rather than in the files pin because they are CIDER configuration, not an Apple
+# file: the home directory in master.passwd is the one this container actually uses. See the
+# comment at the top of each file for why /etc/passwd alone was not enough.
+
+export_file(
+    name = "master_passwd",
+    src = "master.passwd",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "group",
+    src = "group",
+    visibility = ["PUBLIC"],
+)
+
+# THE RESOLVER CONFIGURATION, which both prefixes install and no rule exported.
+#
+# buck/prefix/BUCK and buck/prefix-min/BUCK have referenced //src/darwin/etc:resolv.conf since the
+# file was added, and the target did not exist, so every graph query over either prefix failed with
+# "Unknown target resolv.conf" and took the whole nix endpoint down with it. The file was there the
+# whole time; only the three lines that export it were missing.
+
+export_file(
+    name = "resolv.conf",
+    src = "resolv.conf",
+    visibility = ["PUBLIC"],
+)
+
+# THE LOGIN POLICY, which is why iTerm2 could not start a shell.
+#
+# Without it openpam falls back to /etc/pam.d/other, which denies everything. The file says why it
+# does not simply copy Apple's, which needs a directory service this container does not have.
+
+export_file(
+    name = "pam_d_login",
+    src = "pam.d/login",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "pam_d_login_term",
+    src = "pam.d/login.term",
+    visibility = ["PUBLIC"],
+)

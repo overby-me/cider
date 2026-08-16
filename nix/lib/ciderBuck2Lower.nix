@@ -1,0 +1,1734 @@
+# Lower a dumped buck2 action graph to one Nix derivation per TARGET.
+#
+# The second half of "graph then lower" (plan/buck2-port.md phase 3). The first half
+# (nix/lib/ciderBuck2Graph.nix) runs real buck2 in a pure derivation and writes
+# graph.json; reading that file HERE is the one opt-in import-from-derivation, the same
+# shape overby's nix/lib/cargo uses for crate metadata.
+#
+# PER TARGET, not per action. One derivation per action is the finer cache and was tried
+# first, but the port has on the order of 15,000 actions, and Nix's per-derivation overhead
+# -- an instantiation, a sandbox and a store round trip each -- is too much at that count.
+# Targets number a couple of hundred, which Nix handles comfortably, and a target is the
+# unit a person reasons about anyway. The trade is granularity: touching one source
+# rebuilds its whole target rather than a single object file. That trade is cheap here,
+# because the great majority of these targets are pinned upstream trees nobody edits.
+#
+# Every action arrives as the argv buck2 actually ran, so nothing about the port's flags,
+# link order or MIG plumbing is re-derived. A target derivation only has to put the inputs
+# where the argv expects them -- at their buck-out paths, relative to the working directory
+# -- and run that target's actions in the order buck2 ran them.
+{
+  pkgs,
+  graph,
+  # The project, for the SOURCE paths an argv names (src/darwin/libsimple/src/lock.c and such).
+  # FILTERED, the same way the graph derivation filters its own source. Unfiltered, every
+  # lowered target took the whole project as an input, so editing a line of plan/ or of the
+  # Nix that CONSUMES this graph invalidated all 259 derivations and rebuilt the port. For an
+  # endpoint whose entire purpose is that people do not rebuild what they did not touch,
+  # that was the most expensive bug in it -- and it cost a full relower after every commit
+  # made while working on it.
+  #
+  # This is the coarse half of the fix. The precise version is to give each target only the
+  # sources it reads, and cider-lower-srcdeps computes that set and measures it:
+  # 306,019 project files today for EVERY target, against a median of 4,032 per target, or
+  # 1.32%. CoreFoundation_obj, one of the two big header cones, comes to 5,317 files of which
+  # 5,088 are headers.
+  #
+  # It does NOT come from staging-action argvs, which is what the task originally recorded.
+  # A staging action arrives from aquery as kind `symlinkeddir` carrying four attributes and
+  # no cmd at all, so there is no argv for a header to appear in; anything built that way
+  # would have staged no headers and failed at compile time. The header cones come from the
+  # stagedTrees link MAP below, which the dumper gets from BXL.
+  #
+  # Naming files is only safe because every include root is a staged tree whose contents that
+  # map records exactly: 236,528 staged against 32 pointing into the project, and those 32
+  # are two directories holding 26 files between them, which have to be taken wholesale.
+  # Merge each vendor/src pin's targets into ONE derivation (#53).
+  #
+  # ON BY DEFAULT SINCE 2026-08-12, and `false` is no longer a configuration that can work.
+  # This defaulted to false so the default path stayed byte-comparable against an already
+  # verified prefix, and that rationale died when the lowering moved into the generator (#66,
+  # #99): cider-graph-specs calls group_of(..., true) at ALL FOUR call sites, main.rs lines
+  # 215, 317, 647 and 769, with no way to ask for anything else. So needs.json ALWAYS names
+  # synthetic root//vendor/src:pin-<name> groups, while a lowering with coarsePins = false keys
+  # `targets` by real labels and never creates them.
+  #
+  # THE TWO SIDES THEN DISAGREE SILENTLY UNTIL EVALUATION DIES:
+  #   error: attribute '"root//vendor/src:pin-bootstrap_cmds"' missing
+  # which is what .#cider-buck2-prefix did, while .#cider-buck2-prefix-min was fine purely
+  # because it happens to set coarsePins = true itself. The full prefix simply never had the
+  # line, and nothing noticed because nothing had built it since the generator changed.
+  coarsePins ? true,
+  # Stage each target from the SOURCE GROUPS it reads instead of one shared tree (#54). OFF
+  # so the default path stays byte-comparable; the rule is in graph-specs/src/srcset.rs.
+  sourceGroups ? false,
+  srcRaw ? ../..,
+  src ?
+    builtins.path {
+      name = "cider-buck2-lower-project";
+      path = srcRaw;
+      filter = path: _type: let
+        rel = pkgs.lib.removePrefix (toString srcRaw + "/") (toString path);
+        top = pkgs.lib.head (pkgs.lib.splitString "/" rel);
+      in
+        # tests/ cannot go wholesale -- buck2 has real targets under tests/buck2 -- but the
+        # NixOS VM tests in there are Nix that buck2 never reads, and editing one of them
+        # was relowering all 259 derivations.
+        !(top == "tests" && pkgs.lib.hasSuffix ".nix" rel)
+        && !(builtins.elem top [
+          "plan"
+          "docs"
+          "nix"
+          # The generators. They run BEFORE buck2 and write the BUCK files; buck2 itself
+          # never opens one, and no action's argv names one -- the only mentions across
+          # every BUCK and .bzl in the tree are comments saying which generator wrote the
+          # block. (The scripts/*.exp symbol lists that DO get read are inside pins, at
+          # vendor/src/<pin>/scripts/, which arrive through `pins` rather than through here.)
+          # Without this, editing any generator relowers all 259 derivations, and this port
+          # is largely a matter of editing generators.
+          "scripts"
+          # Documentation and editor/tool state. docs/changelog.md is the one that matters: it is
+          # 137K, it is edited in essentially every increment of this port, and until now
+          # every one of those edits relowered all 259 derivations. Nothing reads any of
+          # these -- the only mentions of docs/changelog.md across every BUCK and .bzl in the tree
+          # are comments pointing a reader at it, there is no BUCK package at the repo
+          # root, and a buck2 glob cannot escape its own package.
+          # NOT "docs/changelog.md": this list holds TOP LEVEL names, matched against the first
+          # path component, so a name with a slash in it can never match anything. It got that
+          # way when a mechanical PLAN.md to docs/changelog.md sweep rewrote the entry, and it
+          # was inert rather than harmful only because "docs" above already covers it. The same
+          # sweep left CONTRIBUTORS.md pointing at a file that has since been deleted. Both are
+          # gone now, which is the treatment a stale exclusion deserves: this file already
+          # warns, at the src/ staging, that a name for something that no longer exists is
+          # inert rather than protective, and that is exactly how a class of bug hides.
+          "README.md"
+          "CHANGELOG.md"
+          "LICENSE"
+          ".claude"
+          ".tangled"
+          ".git"
+          ".jj"
+          ".direnv"
+          "buck-out"
+          "result-graph-ref"
+          "flake.nix"
+          "flake.lock"
+        ]);
+    },
+  # The pins, exactly as the graph derivation staged them: an argv that names
+  # vendor/src/<pin>/... has to find it here too.
+  ciderSrc ? null,
+  allPins ? false,
+  pins ? [],
+  # OPT-IN content addressing, the way nix/lib/cargo treats its one IFD exception: off by
+  # default, because it needs `experimental-features = ca-derivations` on every machine that
+  # builds OR substitutes these, and a binary cache that serves CA outputs -- and a cache
+  # that cannot is fatal to the point of this endpoint, which is other people not rebuilding.
+  #
+  # What it buys, when it is on: early cutoff BETWEEN targets. A header edit that leaves a
+  # target's output bit-identical stops propagating to that target's dependents, instead of
+  # relinking the world. That is independent of how the graph itself is consumed.
+  #
+  # What it does NOT do on its own: make a source edit cheap. That needs the GRAPH
+  # derivation to be content-addressed too, which is the CA-plus-IFD pairing of NixOS/nix
+  # issue 5805 -- closed, but still tracked under the ca-derivations stabilisation milestone,
+  # which sat at 65% in March 2026. `graphContentAddressed` is separate for that reason: take
+  # the safe half without the experimental pairing.
+  contentAddressed ? false,
+  # Tools an argv names by ABSOLUTE store path -- Darling's own ld64, above all. The path
+  # travels through graph.json as plain text, so its string context is gone and Nix cannot
+  # see the dependency: it has to be declared, or the sandbox will not have it.
+  extraTools ? [],
+  # Darling's ld64, needed here by PATH as well as by name: the graph records it as a
+  # placeholder, and this is what fills it back in.
+  ld64 ? null,
+}: let
+  inherit (pkgs) lib;
+
+  # The graph is portable, so the store paths an argv needs are named rather than baked in
+  # (see cider-graph-dump). Filling them back in is the consumer's job, from
+  # ITS own inputs -- which is what lets one graph serve any machine.
+  placeholders =
+    {
+      "@CLANG@" = "${pkgs.llvmPackages.clang-unwrapped}";
+      "@RESOURCE_DIR@" = "${pkgs.clang}/resource-root";
+    }
+    // lib.optionalAttrs (ld64 != null) {"@LD64@" = "${ld64}";};
+
+  # The context has to come off before parsing: an argv names its tools by absolute store
+  # path, so the file's text refers to store paths, and fromJSON refuses a string that
+  # does. Nothing is lost -- the dependency is re-declared as nativeBuildInputs below.
+  g = builtins.fromJSON (
+    builtins.unsafeDiscardStringContext (builtins.readFile "${graph}/graph.json")
+  );
+
+  # A SECOND import-from-derivation, deliberately (#56). Which project files a target reads
+  # is the one answer that depends on file CONTENTS rather than on the build definition,
+  # because a quoted include is found by parsing #include "..." out of the file. Leaving it
+  # in the graph forced the graph derivation to take the whole project, so editing one .c
+  # cost a 30 to 47 minute buck2 rerun before any compile could start. It is now its own
+  # derivation over the real tree, a 125 second python walk, and it is content addressed: a
+  # .c edit changes no file NAME, so this output is byte identical and nothing here moves.
+  #
+  # Only the UNION is read here. The per-target breakdown is 10.5 million entries and sits
+  # in target-sources.json beside it, parsed only when narrowing asks for it.
+  srcClosure = builtins.fromJSON (
+    builtins.unsafeDiscardStringContext
+    (builtins.readFile "${graph.sources}/sources.json")
+  );
+
+  # THE ARGV ESCAPE CACHE LIVED HERE and is gone with #66. It memoised
+  # `escapeShellArg (fill x)` over the 208,515 argv entries, of which 5,193 were distinct,
+  # and an eval profile still put 12 percent of the evaluation on that one map. Escaping now
+  # happens once, inside the graph derivation, in cider-graph-specs -- so the
+  # cache has nothing left to memoise and neither does the map it was hiding.
+  #
+  # `fill` goes with it. The placeholders are no longer substituted into the text at all;
+  # they survive as ${CIDER_PH_*} shell variables the builder exports. See the action-script
+  # block below.
+
+  # THE scripts.json READ IS GONE. It held each group's ACTION SEQUENCE, and full.json below
+  # contains that same text inside the whole builder script, so reading both meant parsing the
+  # actions twice: 59 MB of JSON for something already present in the 77 MB. The generator
+  # still writes scripts.json, because it is the input the full script is built FROM and other
+  # things read it; this consumer simply no longer needs it.
+  #
+  # WHAT THAT READ TAUGHT, kept because it still applies to full.json: one readFile beats 1,474
+  # by 19.6 s of a 32.6 s evaluation. These come from a derivation OUTPUT which is DEFERRED,
+  # because the graph it reads is content addressed, so the real path is unknown until it is
+  # realised and every readFile resolves that again. Hoisting the path into a let does not help,
+  # because what gets hoisted is the placeholder; making the specs derivation input addressed
+  # does not help either, because the deferral comes from its input. Both were measured.
+
+  # #66, AND THIS IS THE WHOLE SCRIPT rather than just the action sequence: the staging call,
+  # the dependency copies, the staged tree restores and the output copies as well. Everything
+  # builderScriptWith used to assemble HERE, on every evaluation, for all 1,474 groups.
+  #
+  # WHAT IS LEFT FOR THIS FILE TO DO IS SUBSTITUTION. The generator runs inside the graph
+  # derivation and cannot name a single path this consumer owns, so it writes shell variables
+  # and a marker, and the four values below get put back. That division is what makes the text
+  # portable: the same full.json serves any consumer, and this one fills it from its own inputs.
+  #
+  # PROVEN BYTE FOR BYTE BEFORE THIS SWITCHED OVER, which is why it can be trusted at all:
+  # scripts/checks/buck-script-check.nu hashes the substituted text against the builderScript this
+  # file used to assemble, for every label, and reads full.json out of the STORE rather than
+  # re-rendering it. 1,474 of 1,474 identical, with three controls firing.
+  fullScripts = builtins.fromJSON (
+    builtins.unsafeDiscardStringContext (builtins.readFile "${graph.specs}/full.json")
+  );
+
+  # #66. WHAT EACH GROUP NEEDS, ALSO PRECOMPUTED. needsOf is still below, because it is the
+  # definition this file is checked against and scripts/checks/buck-needs-check.nu compares the two,
+  # but the BUILD PATH reads this instead: it was 3.3 s of a 12 s evaluation, the largest
+  # single chunk, and it is a function of the graph alone.
+  #
+  # `trees` IS EMITTED RATHER THAN DERIVED HERE, deliberately. It is the subset of `s` with a
+  # link map, in order, and it is what the template's CIDER_TREE_<i> numbering counts. Deriving
+  # it a second way here is exactly how that numbering drifted before, silently, for 744 of
+  # 1,474 labels.
+  precomputedNeeds = builtins.fromJSON (
+    builtins.unsafeDiscardStringContext (builtins.readFile "${graph.specs}/needs.json")
+  );
+
+  needsFor = label:
+    precomputedNeeds.${specName label}
+    or (throw "buck2 lower: no precomputed needs for ${label} (looked for ${specName label} in ${graph.specs}/needs.json). Rebuild the graph derivation; scripts/checks/buck-needs-check.nu compares this against needsOf.");
+
+  # MIRRORS dep_var IN cider-graph-specs, composed after specName. That one maps every
+  # NON-ALPHANUMERIC character to an underscore, and specName has already restricted the
+  # alphabet to [A-Za-z0-9_.-], so only the dot and the dash are left to map. Getting this
+  # wrong does not fail: the variable simply never matches, and the emitted script copies from
+  # an unexpanded string.
+  depVar = d: "DYN_DEP_" + builtins.replaceStrings ["." "-"] ["_" "_"] (specName d);
+
+  # The placeholder exports, as one block, in the position the marker holds. Uniform across
+  # groups, so it is computed once here rather than per label.
+  phExports =
+    lib.concatStringsSep "\n" (lib.mapAttrsToList
+      (k: v: "export ${phVar k}=${lib.escapeShellArg v}")
+      placeholders)
+    + "\n";
+
+  # #66. THESE TWO MUST MATCH cider-graph-specs EXACTLY, and they are the only
+  # coupling between this file and the generator, so they are stated together here rather
+  # than being spread out. A mismatch is silent in the worst way: specName picks the wrong
+  # file and the target runs another target's actions.
+  #
+  # phVar mirrors ph_var: @CLANG@ becomes CIDER_PH_CLANG.
+  phVar = k: "CIDER_PH_" + (lib.removeSuffix "@" (lib.removePrefix "@" k));
+
+  # specName mirrors safe_name: every character outside [A-Za-z0-9_.-] becomes an underscore.
+  # The generator asserts this mapping is INJECTIVE over the real group set, because two
+  # groups colliding here would silently share one script.
+  specSafeChars =
+    lib.stringToCharacters
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-";
+  specName = label:
+    lib.stringAsChars (c:
+      if lib.elem c specSafeChars
+      then c
+      else "_")
+    label;
+
+  # The same crate sources the graph derivation analysed against, from the same lock files.
+  rustVendor = import ./rust-vendor.nix {inherit pkgs;};
+
+  manifest = builtins.fromJSON (builtins.readFile ../submodules.json);
+  wantedPins =
+    if allPins
+    then map (e: e.path) (builtins.filter (e: lib.hasPrefix "vendor/pins/" e.path) manifest)
+    else pins;
+
+  # WHERE A PIN COMES FROM (#54). Its own store path when cider-src offers one, and only
+  # then the assembled tree. This is the difference between a target depending on 147 frozen
+  # pin paths and depending on ONE path that holds the whole project.
+  #
+  # It is what made source groups worth switching on. Measured on libsimple_ciderd
+  # before this: editing one unrelated ObjC file changed 588 of the 601 lines in its grouped
+  # staging script, every changed line a cider-src path, while the two source groups it
+  # actually reads did not move at all. Splitting the first-party side bought nothing while
+  # the pins kept the shared path alive.
+  #
+  # The per-pin stores are byte identical to what the assembled tree holds, by NAR hash for
+  # all 147, and scripts/checks/buck-pin-store-check.nu is that check. The fallback is kept for a
+  # caller that passes a ciderSrc without the attribute.
+  # THROUGH A FARM, not 147 paths per script, and that distinction is measured. Naming each
+  # pin store directly gives every staging script 147 inputs, and with source groups there is
+  # one staging script PER TARGET rather than one shared: 3,225 scripts times 147 is close to
+  # half a million path references. The endpoint build then sat for 35 minutes with the
+  # nix-daemon worker growing 230 MB a minute, zero builders started and not one .drv written,
+  # which is #48 again. A farm is ONE input per script and moves only when a pin does.
+  # ONE DEFINITION FOR BOTH STAGING SITES, because they were copies and the copies broke.
+  # A pin is staged twice: as vendor/src/<basename>, which is where vendor/src/BUCK expects it,
+  # and at its own path, which is where the SDK symlink farm resolves to. Both assumptions
+  # hold ONLY for a pin sitting directly under pins, and both fail for a nested one:
+  #
+  #   vendor/src/<basename> IS NOT UNIQUE. vendor/pins/ciderd/xnu-sys/xnu ends in xnu just
+  #   like vendor/pins/xnu, so the nested pin OVERWROTE vendor/src/xnu and every consumer of
+  #   the guest xnu tree silently got the duct-tape subset instead. That is what surfaced as
+  #   "redeclaration of __dso_handle with a different type" in the Security cone, an error
+  #   naming headers that have nothing to do with xnu.
+  #
+  #   rm -f CANNOT REMOVE A DIRECTORY. The nested path is a real directory by the time this
+  #   runs, so the rm failed with "Is a directory" and the ln that followed created the link
+  #   INSIDE it as xnu/xnu rather than replacing it.
+  #
+  # A nested pin therefore takes NEITHER: no vendor/src alias, and a removal that copes with a
+  # directory. Measured 2026-08-10: with the old code the endpoint reached 64 errors and 10
+  # "cannot remove" lines before being stopped.
+  pinStageLines = p: let
+    parts = lib.splitString "/" p;
+    # DIRECTLY UNDER THE PIN ROOT. Derived from pinRoot rather than written as a number, for
+    # the reason the identical block in ciderBuck2Graph.nix gives: `== 3` was the depth of
+    # vendor/pins/<pin>, and hardcoding `== 2` for vendor/pins/ only moves the trap along by one
+    # rename. These two copies must agree, and now they agree by construction.
+    pinRoot = "vendor/pins";
+    rootParts = lib.splitString "/" pinRoot;
+    underPinRoot =
+      builtins.length parts == builtins.length rootParts + 1
+      && lib.take (builtins.length rootParts) parts == rootParts;
+  in
+    (lib.optionalString underPinRoot ''
+      ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg "vendor/src/${builtins.baseNameOf p}"}
+    '')
+    + ''
+      mkdir -p ${builtins.dirOf p}
+      rm -rf ${lib.escapeShellArg p}
+      ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg p}
+    '';
+
+  pinsWithStores = lib.filter (p: (ciderSrc.pinPaths or {}) ? ${p}) wantedPins;
+  pinsFarm = pkgs.linkFarm "cider-pins" (map (p: {
+    name = lib.strings.sanitizeDerivationName p;
+    path = ciderSrc.pinPaths.${p};
+  }) pinsWithStores);
+
+  # NOT YET. Staging a pin from its own store path breaks 21 relative symlinks that reach OUT
+  # of the pin, and it broke the endpoint: AppKit_obj died on IOKit/IOTypes.h, reached through
+  # a staged farm whose link ran into vendor/pins/IOKitUser/darling/submodules/xnu, which is a
+  # link to ../../../xnu/ and resolves only when the pins share a root.
+  #
+  # SCRIPTS/BUCK-PIN-STORE-CHECK.NU PASSED ANYWAY, and that is the lesson. It compares a pin
+  # store to the assembled tree by NAR hash, and a NAR hash records a symlink TARGET as a
+  # string. Two identical strings, resolving to different places because the root moved, are
+  # identical to that check. It could not fail on this, which makes it worth exactly nothing
+  # for this question, whatever it is worth for patches and the SDK repoint.
+  #
+  # The 21, measured, in two classes:
+  #   14 point at a SIBLING pin (IOKitUser -> IONetworkingFamily, IOStorageFamily, xnu;
+  #      JavaScriptCore -> WTF; vim -> ruby; glut and iokitd -> IOKitUser; ...). Laying the
+  #      farm out as <farm>/<pin> rather than by sanitised name fixes every one of these,
+  #      because the number of ../ from the link up to pins is preserved.
+  #    7 leave pins entirely: 6 from bootstrap_cmds and libnotify into
+  #      src/darwin/Developer/Platforms/.../usr/include, and security -> ciderd/xnu-sys/
+  #      xnu, which is first-party vendored and not a pin at all. Those need rewriting to an
+  #      absolute store path, the same treatment #54 needs for group escapes.
+  #
+  # Until both classes are handled the pins come from the assembled tree, which is what they
+  # always did. With sourceGroups off this costs nothing: stageProject already embeds the whole
+  # projectSrc, so the pins are not what keeps that path shared.
+  # PER PIN, NOT OUT OF THE ASSEMBLED TREE. This was "${ciderSrc}/${p}", and ciderSrc is
+  # the whole project, so every staging script that named a pin embedded a path that moves on
+  # ANY tracked edit. That is the last shared input in the grouped staging: with sourceGroups
+  # on and the groups mirrored, editing one .m in src/darwin/frameworks still rebuilt
+  # buck2-stage-project-grouped and the target, 6 builders, because of this expression and
+  # nothing else. The groups themselves were already unaffected.
+  #
+  # cider-src.nix exposes pinPaths, and nix/lib/ciderBuck2Graph.nix has taken its pins
+  # from there since the per-pin split; only the lowering was left behind. Same throw as the
+  # graph, so a missing pin is loud rather than silently falling back to the assembled tree.
+  # BACK TO THE ASSEMBLED TREE, because the per-pin stores are INCOMPLETE. Seven pins carry
+  # NESTED submodules under vendor/src/<pin>/darling/submodules, and a per-pin store does not
+  # populate them: vendor/src/IOKitUser/darling/submodules/xnu has 24 entries in the repo and 1
+  # in the store. The pin's own link
+  #   darling/include/IOKit/IOReturn.h -> ../../../darling/submodules/xnu/iokit/IOKit/IOReturn.h
+  # therefore dangles INSIDE the store, and SecItemShimOSX_obj fails on IOKit/IOReturn.h.
+  #
+  # I had switched this to ciderSrc.pinPaths and called the cascade cut, verified on
+  # libsimple_ciderd and pin-apr. Neither reads through a nested submodule, so the
+  # check could not fail. It regressed the DEFAULT endpoint too, since stageProject uses this
+  # as well, and that endpoint had built green with a matching prefix hash before.
+  #
+  # scripts/checks/buck-pin-store-check.nu compares the stores by NAR HASH and passes, which is the
+  # trap buck-escape-check.nu already documents: a NAR hash records a symlink TARGET as a
+  # STRING, so two identical strings that resolve to different places look identical.
+  # ALL PINS IN ONE MIRRORED TREE (#74), which is the only shape that works here.
+  #
+  # A per-pin store cannot be planted as a directory symlink, because a pin's own relative link
+  # can point at a SIBLING pin: vendor/pins/IOKitUser/darling/submodules/xnu is a link to
+  # ../../../xnu/, and once a traversal crosses the plant link the kernel resolves that against
+  # the STORE, where there is no sibling. scripts/checks/buck-escape-check.nu documents exactly this
+  # case, and pointing pinPath at the per-pin stores broke the DEFAULT endpoint on
+  # SecItemShimOSX_obj because stageProject uses pinPath too.
+  #
+  # Assembled ONCE, mirrored the same way a source group is: real directories and one symlink
+  # per file, then each source symlink RE-CREATED with its own target string. That makes the
+  # tree SELF CONTAINED, so a sibling escape resolves inside it, and only then is a single
+  # directory link to it safe for a consumer.
+  #
+  # 261,939 files, 3,865 symlinks and 35,969 directories, built from the 147 per-pin stores. Its
+  # inputs are frozen pins, so unlike "${ciderSrc}/${p}" it does NOT move when a first-party
+  # source is edited, which is the whole point.
+  # THE ESCAPE DESTINATIONS, EACH FROM ITS OWN STORE PATH. pinsTree used to resolve them against
+  # ${src}, the whole filtered project, which made it move on EVERY source edit and took
+  # stage-project and every target with it: 4 builders for an unrelated .m, and the target output
+  # moved. One shared moving input traded for another.
+  #
+  # The pins are frozen; only the escape destinations dragged the project back in, and they are
+  # few. src/darwin/Developer/Platforms is the SDK, and the rest are the non-pin pins
+  # directories. Given their own paths, pinsTree moves only when the SDK or those directories do.
+  # THE NARROWING APPLIES HERE AND ONLY HERE (#79). nonPinExternal has two consumers and they
+  # want different things. This one is the set of escape DESTINATIONS copied into pinsTree, so
+  # narrowing it is what stops pinsTree moving on a xnu-sys edit. The other consumer, the
+  # per-target `groups` further down, is the set of directories STAGED for every target, and
+  # narrowing that one deleted vendor/pins/ciderd/scripts from the staged tree and broke
+  # dserver_rpc with the very error the comment there warns about. Measured before re-narrowing:
+  # of the 2,080 symlinks that resolve into vendor/pins/ciderd, 2,078 land inside
+  # xnu-sys/xnu; the other 2 are internal to xnu-sys/pthread, which is in neither tree, so
+  # nothing dangles.
+  escapeRoots =
+    ["src/darwin/Developer/Platforms"] ++ map (r: escapeNarrow.${r} or r) nonPinExternal;
+
+  # AN ESCAPE ROOT CAN BE A PIN NOW, AND THE pathExists GUARD BELOW HID THAT IN SILENCE.
+  #
+  # This used to read every escape root out of srcRaw, the project source, guarded by
+  # pathExists so a missing one was simply skipped. #83 de-vendored
+  # vendor/pins/ciderd/xnu-sys/xnu: it left the repo and became a pin. The guard therefore
+  # went false, the carry was dropped without a word, and the security pin link
+  # darling/submodules/xnu -> ../../../darlingserver/duct-tape/xnu stayed dangling, so
+  # security_codesigning_obj died on "security/mac.h file not found" an hour into the gate.
+  # Nothing evaluated wrong, nothing warned; a source that no longer exists just contributes
+  # nothing. That is the class the rules call out: an eval diff cannot catch it.
+  #
+  # So an escape root is now taken from the REPO when it is there and from its PIN STORE when
+  # it is not. The pin store is the PATCHED one, which is what the consumers expect. If a root
+  # is in neither, it is still skipped, because a few escapes are genuinely dangling in the
+  # reference tree too and the bar is parity with that tree rather than zero.
+  escapeSrc = pkgs.runCommand "cider-pin-escape-roots" {} (''
+    mkdir -p "$out"
+  ''
+  + lib.concatMapStrings (r: let
+      inRepo = builtins.pathExists (srcRaw + ("/" + r));
+      fromPin = ciderSrc.pinPaths.${r} or null;
+      store =
+        if inRepo
+        then
+          builtins.path {
+            name = "cider-escape-" + lib.strings.sanitizeDerivationName r;
+            path = srcRaw + ("/" + r);
+          }
+        else fromPin;
+    in
+      lib.optionalString (store != null) ''
+        mkdir -p "$out"/${lib.escapeShellArg (builtins.dirOf r)}
+        cp -a --no-preserve=ownership ${store} "$out"/${lib.escapeShellArg r}
+      '')
+    escapeRoots);
+
+  pinsTree = pkgs.runCommand "cider-pins-tree" {
+    __contentAddressed = true;
+    outputHashMode = "recursive";
+    outputHashAlgo = "sha256";
+  } (''
+    mkdir -p "$out"
+  ''
+  + lib.concatMapStrings (p: let
+      store = ciderSrc.pinPaths.${p} or null;
+    in
+      lib.optionalString (store != null) ''
+        _d="$out"/${lib.escapeShellArg p}
+        mkdir -p "$_d"
+        cp -Rsf --no-preserve=all ${store}/. "$_d"/
+        (cd ${store} && find . -mindepth 1 -type l -printf '%P
+') | while read -r _l; do
+          ln -sfn "$(readlink ${store}/"$_l")" "$_d/$_l"
+        done
+      '')
+    wantedPins
+  + ''
+    # AND THE DESTINATIONS THE PINS ESCAPE TO, or the tree is not self contained and a single
+    # directory link to it dangles. Measured before this pass: 17 dangling against 6 in the
+    # assembled tree, and all 11 extra were one class, links leaving pins altogether.
+    # Eight are bootstrap_cmds/darling/include/{mach,machine,libkern,i386,sys/...} reaching into
+    # src/darwin/Developer/Platforms, and one is security/darling/submodules/xnu pointing at
+    # vendor/pins/ciderd, which is a NON-PIN external and so is in no pin store.
+    #
+    # Resolved rather than listed, so a new escape is carried instead of failing a build weeks
+    # later. The pre-existing 6 stay dangling on purpose: they dangle in the assembled tree too
+    # (two documented dtrace links, a homebrew absolute path, libcxx/test/std/pstl), and the bar
+    # is PARITY with that tree, not zero.
+    ${pkgs.python3}/bin/python3 - "$out" ${escapeSrc} <<'PYEOF'
+    import os, shutil, sys
+    out, src = sys.argv[1], sys.argv[2]
+
+    # A pin records the path it was written against, and the Cider rename moved ours. The
+    # security pin ships darling/submodules/xnu -> ../../../darlingserver/duct-tape/xnu/,
+    # which resolves to vendor/pins/darlingserver/duct-tape/xnu. Nothing is there any more,
+    # so the lexists test below failed, the carry was skipped IN SILENCE, the link stayed
+    # dangling and security_codesigning_obj could not find security/mac.h. The same table
+    # cider-src-normalise uses, longest prefix first.
+    #
+    # The DESTINATION keeps the name the dangling link actually points at; only the SOURCE
+    # is translated. Rewriting the destination would leave the link dangling all the same.
+    RENAMES = [("vendor/pins/darlingserver/duct-tape", "vendor/pins/ciderd/xnu-sys"),
+               ("vendor/pins/darlingserver",           "vendor/pins/ciderd")]
+
+    def translate(rel):
+        for old, new in RENAMES:
+            if rel == old or rel.startswith(old + "/"):
+                return new + rel[len(old):]
+        return rel
+
+    def carry(rel, depth=0):
+        if depth > 8:
+            return
+        dst = os.path.join(out, rel)
+        s = os.path.join(src, translate(rel))
+        if os.path.lexists(dst) or not os.path.lexists(s):
+            return
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        if os.path.islink(s):
+            os.symlink(os.readlink(s), dst)
+        elif os.path.isdir(s):
+            shutil.copytree(s, dst, symlinks=True)
+        else:
+            shutil.copy2(s, dst, follow_symlinks=False)
+
+    for _ in range(4):
+        pending = []
+        for dp, dn, fn in os.walk(out):
+            for name in list(dn) + list(fn):
+                p = os.path.join(dp, name)
+                if not os.path.islink(p) or os.path.exists(p):
+                    continue
+                t = os.readlink(p)
+                if t.startswith("/"):
+                    continue
+                d = os.path.normpath(os.path.join(os.path.dirname(p), t))
+                rel = os.path.relpath(d, out)
+                if rel.startswith("..") or not os.path.lexists(os.path.join(src, translate(rel))):
+                    continue
+                pending.append(rel)
+        if not pending:
+            break
+        for rel in pending:
+            carry(rel)
+    PYEOF
+  '');
+
+  # FROM pinsTree (#74). Not the assembled tree, which moves on every first-party edit, and not
+  # the per-pin stores, which cannot satisfy a pin's link to a SIBLING pin. pinsTree is mirrored
+  # and self contained, so a plant link into it resolves escapes INSIDE it, and its inputs are
+  # the frozen pins, so it does not move when a source is edited.
+  pinPath = p: "${pinsTree}/${p}";
+
+  # ---- the graph, grouped the way this lowers it -------------------------
+
+  # "root//vendor/src:migcom (<unspecified>) (c_compile foo.c)" -> "root//vendor/src:migcom"
+  targetOf = a: lib.head (lib.splitString " (" a.identity);
+
+  # ---- coarse pins (#53) --------------------------------------------------
+  #
+  # GRANULARITY SHOULD FOLLOW CHANGE FREQUENCY. vendor/src is 16,255 of the 27,591 actions,
+  # 58.9 percent, and nobody edits a file in there: it moves when a submodule pin is bumped,
+  # as a whole new upstream release, and then it moves entirely. One derivation per target
+  # buys nothing for code like that, and costs plenty -- evaluation scales with the action
+  # count, the nix-daemon grows 8 to 9 MB per derivation built (#48), and each target
+  # derivation pays a STAGING pass before it runs anything, which is what actually limits a
+  # full rebuild.
+  #
+  # WHICH pins may be merged is decided in the DUMP, not here, because CONTRACTING A DAG CAN
+  # CREATE CYCLES and this graph has them: 43 of 157 pins fall into one strongly connected
+  # component covering the system cone (Libinfo, cctools, commoncrypto, compiler-rt, configd,
+  # copyfile, corecrypto, corefoundation), mutually dependent at target level even though the
+  # target graph itself is acyclic. Merging those is not suboptimal, it is invalid, and in Nix
+  # it surfaces as a bare infinite recursion from the dependency staging line. coarse_pin_map
+  # in cider-graph-dump runs Tarjan over the contracted graph and offers only the
+  # 114 pins that are in no cycle, JavaScriptCore among them.
+  #
+  # Regrouping is SAFE only because g.actions is globally topological, and that is measured
+  # rather than assumed: walking the list while accumulating produced outputs finds 0 inputs
+  # read before they are written, across all 27,591 actions and 27,619 artifacts, while the
+  # same walk over the reversed list finds 112,213. lib.groupBy keeps the order of elements
+  # within a group, so every group stays topological and the #52 concurrency stays correct.
+  # A GUARD RATHER THAN A COMMENT, because the failure mode above is a missing attribute
+  # thousands of lines from the cause. If someone reintroduces coarsePins = false, they get told
+  # why it cannot work instead of an attribute error naming a label they never wrote.
+  coarsePinsOk =
+    if coarsePins
+    then true
+    else throw ("ciderBuck2Lower: coarsePins = false is not supported. cider-graph-specs writes "
+      + "needs.json with coarse pin groups unconditionally (group_of(..., true) at main.rs:215, "
+      + ":317, :647, :769), so the lowering must fold the same way or it will look for a "
+      + "derivation named root//vendor/src:pin-<name> that it never created. Teach the generator "
+      + "a flag first if this configuration is wanted again.");
+
+  groupOfLabel = label:
+    assert coarsePinsOk;
+    let
+    pin =
+      if coarsePins
+      then (g.coarsePinOf or {}).${label} or null
+      else null;
+  in
+    if pin == null
+    then label
+    else "root//vendor/src:pin-" + pin;
+
+  groupOf = a: groupOfLabel (targetOf a);
+
+  targets = lib.groupBy groupOf g.actions;
+
+  # Which GROUP writes which artifact, so a consumer resolves to the derivation that
+  # actually contains it. This has to use the same key as `targets` above or a coarse
+  # build looks up a derivation that no longer exists.
+  producerTarget = lib.listToAttrs (lib.concatMap (a:
+    map (o: {
+      name = o;
+      value = groupOf a;
+    })
+    a.outputs)
+  g.actions);
+
+  known = producerTarget // (g.staged or {}) // (g.stagedTrees or {});
+
+  # Recreating a staged farm, from the table the dump wrote beside the graph. The link
+  # VALUES are verbatim from buck2, so they resolve here exactly as they did there: the
+  # directory sits at the same place in this working tree.
+  #
+  # NOTHING HERE IS PROPORTIONAL TO THE LINK COUNT, and that is the point. This used to
+  # emit two escaped shell lines per link, across 5,282 trees holding 3,581,461 links, and
+  # the eval profiler put about 40 percent of a 58 second evaluation on building those
+  # strings. The script is now fixed size and reads a tab separated table, so the cost moved
+  # to the dump, which writes it once.
+  #
+  # mapAttrs is lazy per attribute, so a tree nobody consumes is never scripted.
+  stagedTreeScripts = lib.mapAttrs stagedTreeScriptFor (g.stagedTrees or {});
+  stagedTreeScript = path: meta: stagedTreeScripts.${path} or (stagedTreeScriptFor path meta);
+
+  # CONTENT ADDRESSED, and this is the whole of #55 (#50 finished the producer, not the
+  # consumers). These scripts embed ${graph.data}/<table>, which under content addressing is a
+  # DEFERRED PLACEHOLDER keyed on the producing DERIVATION rather than on its output. So any
+  # edit anywhere moves the graph drv, moves every one of these scripts, and moves everything
+  # downstream of them -- measured, a one line edit rebuilt all 6,490 derivations of the
+  # minimal endpoint while the graph output was byte identical.
+  #
+  # Made CA, the resolved script text is the same text (the data path did not change), so it
+  # collapses to the SAME output path and the consumers stop moving. The scripts still rerun;
+  # what stops is the 1,188 compiles behind them.
+  #
+  # writeTextFile rather than writeShellScript because only the former takes derivationArgs.
+  # The shebang is added by hand, which is all writeShellScript adds over it here.
+  caShellScript = name: text:
+    pkgs.writeTextFile {
+      inherit name;
+      executable = true;
+      text = "#!" + pkgs.runtimeShell + "\n" + text;
+      derivationArgs = {
+        __contentAddressed = true;
+        outputHashMode = "recursive";
+        outputHashAlgo = "sha256";
+      };
+    };
+
+  # `meta` is {n, table, dirs} from the graph, not a link map. A graph dumped before the
+  # tables existed carried the links inline, and lowering one of those with this code would
+  # silently stage an EMPTY farm, which surfaces an hour later as a header not found. So it
+  # is a hard error, named.
+  stagedTreeScriptFor = path: meta:
+    if !(meta ? n)
+    then throw ("buck2 lower: this graph carries staged tree links inline, which this "
+      + "lowering no longer reads. Rebuild the graph derivation. Tree: " + path)
+    else
+      caShellScript "buck2-stage-tree" (''
+        tree=${lib.escapeShellArg path}
+        mkdir -p "$tree"
+      '' + lib.optionalString (meta.n > 0) ''
+        # The directories first and only once, so the link loop below runs no subshell at
+        # all: a dirname per link is 3.5 million of them across the graph, paid at BUILD
+        # time, and the dump already knows the answer.
+        while IFS= read -r d; do
+          mkdir -p "$tree/$d"
+        done < ${graph.data}/${meta.dirs}
+      '' + lib.optionalString (meta.n > 0 && meta ? k) ''
+        # DERIVED TARGETS. The dump found this farm's targets to be exactly
+        # ("../" * (k + the name's own depth)) + prefix + name, for every link, so the table
+        # holds NAMES ONLY and the target is rebuilt here. Storing the target as well made
+        # treelinks 467 MB when the names in it are 33 percent of that, and every staged
+        # tree derivation references the whole thing to read one table out of it.
+        #
+        # The ../ runs are cached in an array rather than rebuilt per link, so this stays a
+        # few parameter expansions per link, with no subshell, exactly as the two column
+        # loop below is.
+        pre=${lib.escapeShellArg meta.prefix}
+        up=("");
+        while IFS= read -r rel; do
+          slashes=''${rel//[!\/]/}
+          n=$(( ${toString meta.k} + ''${#slashes} ))
+          while [ ''${#up[@]} -le "$n" ]; do up+=( "''${up[$(( ''${#up[@]} - 1 ))]}../" ); done
+          ln -sfn "''${up[$n]}$pre$rel" "$tree/$rel"
+        done < ${graph.data}/${meta.table}
+      '' + lib.optionalString (meta.n > 0 && !(meta ? k)) ''
+        # The fallback form, for a farm whose targets are NOT derivable from their names.
+        # IFS= with an explicit split, NOT `IFS=$tab read rel target`: a tab is whitespace
+        # to read, so a leading one would be swallowed and an EMPTY link name (which the
+        # dump does emit, for a dangling symlink artifact) would take the target as its
+        # name and stage the farm wrong.
+        tab=$(printf '\t')
+        while IFS= read -r line; do
+          rel=''${line%%"$tab"*}
+          ln -sfn "''${line#*"$tab"}" "$tree/$rel"
+        done < ${graph.data}/${meta.table}
+      '');
+
+  # By walking the path's own prefixes, NOT by scanning every known artifact: an action's
+  # output is often a DIRECTORY (mig writes a whole tree of generated sources) and a
+  # consumer names a file inside it, so the owner is the longest known prefix. Scanning
+  # every artifact per input is quadratic, which is the class of evaluation cost this
+  # whole design exists to get away from.
+  ownerOf = path: let
+    segs = lib.splitString "/" path;
+    prefixes =
+      map (n: lib.concatStringsSep "/" (lib.take n segs))
+      (lib.reverseList (lib.range 1 (lib.length segs)));
+    hits = lib.filter (p: known ? ${p}) prefixes;
+  in
+    if hits == []
+    then null
+    else lib.head hits;
+
+  # Every artifact the graph says exists, so a consumer that stops ASKING for one is caught.
+  # Moving the staged farms from copies to link maps produced no error and no work: the
+  # selector still tested the old field, so nothing was staged and a header simply went
+  # missing at compile time. A gap of that shape should fail loudly at evaluation.
+  unstageable = lib.filter (o:
+    !((g.staged or {}) ? ${o} || (g.stagedTrees or {}) ? ${o} || producerTarget ? ${o}))
+  (lib.attrNames (g.staged or {}) ++ lib.attrNames (g.stagedTrees or {}));
+
+  # Where a staged farm's links POINT. Dereferencing used to hide this: a link can aim at
+  # another buck2 output (rtsig_header's gen_include holds rtsig.h -> ../rtsig.h, and that
+  # file is written by a command in another target), and recreating the link without staging
+  # what it aims at leaves it dangling, which surfaces as a header not found.
+  # PRECOMPUTED by the dump (stagedTreeDeps), not resolved here.
+  #
+  # This used to normalise every link value in Nix -- split on "/", fold "..") away with
+  # lib.init, join back -- and it was the single most expensive thing in the evaluation:
+  # roughly a quarter of it directly, plus most of the 21% that the profiler attributed to
+  # primop isString, since lib.splitString is filter isString over builtins.split. The fold
+  # was quadratic too, because lib.init copies. In the dumper the same thing is one
+  # os.path.normpath per link.
+  linkTargets = path: _links: (g.stagedTreeDeps or {}).${path} or [];
+
+  # {producing target: [staged paths it owns]}, built once so needsOf can look up instead
+  # of scanning every staged path per target.
+  stagedByTarget =
+    lib.groupBy (o: producerTarget.${o} or "")
+    (lib.attrNames (g.staged or {}) ++ lib.attrNames (g.stagedTrees or {}));
+
+  # What a target consumes from OUTSIDE itself.
+  needsOf = label: let
+    # THE INNER unique IS LOAD BEARING. It looks redundant, since `ins` is used for nothing but
+    # the line below and the outer unique would collapse the duplicates anyway. Folding the two
+    # together, `unique (filter ... (map ownerOf (concatMap ...)))`, was tried and measured
+    # INTERLEAVED so machine load could not explain it:
+    #
+    #   with the inner unique      12.11  11.62  11.85 s
+    #   without it                 19.96  18.91 s
+    #
+    # About 60 percent SLOWER, and the reason is the MAP rather than the dedup. Dropping the
+    # inner pass makes `map ownerOf` run over 389,452 elements instead of 63,058, six times as
+    # many calls, because the dedup is what shrinks the list first.
+    #
+    # lib.unique IS NOT QUADRATIC HERE, and it was claimed to be before anyone checked. It folds with
+    # elem over the ACCUMULATOR, so it costs n times DISTINCT, and the distinct counts on this
+    # graph are tiny: the worst group hands it 37,616 inputs of which 100 are distinct, and no
+    # group anywhere exceeds 586. Summed properly that is 42.3 million comparisons, not the
+    # 3.55 billion an n squared model predicts, so there is no algorithmic win sitting here.
+    # An n log n order-preserving replacement was written and measured: no improvement, which
+    # is what the corrected model says to expect.
+    #
+    # The output was byte identical for both experiments, verified by hashing the builderScript
+    # of all 1,474 labels, so only timing distinguished them. needsOf is about 3.3 s of a 12 s
+    # endpoint evaluation and is the largest single remaining chunk; neither of these is the
+    # way to get it back.
+    ins = lib.unique (lib.concatMap (a: a.inputs) targets.${label});
+    directOwners = lib.unique (lib.filter (o: o != null) (map ownerOf ins));
+    # Anything those farms link to, one level of indirection out.
+    viaLinks = lib.unique (lib.concatMap (o: let
+      links = (g.stagedTrees or {}).${o} or {};
+    in
+      map ownerOf (linkTargets o links))
+    directOwners);
+    owners = lib.unique (directOwners ++ lib.filter (x: x != null) viaLinks);
+    # Targets the actions DECLARE as inputs, which the argv-derived owners above cannot
+    # always find: an action that reads its inputs from a file names none of them on the
+    # command line. The prefix is the case that needs it -- one manifest argument standing
+    # for 5,537 inputs -- and aquery is where the declaration comes from.
+    # THROUGH THE SAME GROUPING, which is not optional. These arrive from aquery as raw
+    # target labels, while `targets` and `stagedByTarget` below are keyed by GROUP, so under
+    # coarsePins an unmapped label matches NOTHING and the dependency disappears in silence.
+    # That is exactly how the first coarse build died: the prefix declares its 5,537 inputs
+    # rather than naming them in argv, so this is the only path that carries them, and it
+    # failed with "cp: cannot stat .../python27exe_obj/.../python.c.o" an hour in.
+    declared = lib.unique (map groupOfLabel
+      (lib.concatMap (a: a.input_targets or []) targets.${label}));
+    # Only the ones that RUN something. A declared input can be a target with no actions at
+    # all -- a header root, a staged include tree -- and there is no derivation to copy for
+    # those; what they own travels as staged data instead, picked up just below.
+    declaredWithActions = lib.filter (t: targets ? ${t}) declared;
+    # A lookup, not a scan. This used to test every one of the ~1,230 staged paths against
+    # the declared list for every target; stagedByTarget inverts it once.
+    declaredStaged = lib.concatMap (t: stagedByTarget.${t} or []) declared;
+  in {
+    fromTargets =
+      lib.unique (lib.filter (t: t != null && t != label)
+        (map (o: producerTarget.${o} or null) owners ++ declaredWithActions));
+    # Either kind: a farm recorded as a link MAP, or content buck2 generated and the dump
+    # copied out. Filtering on `staged` alone silently produced no farms at all once the
+    # maps replaced the copies.
+    fromStaged =
+      lib.unique (
+        lib.filter (o: (g.staged or {}) ? ${o} || (g.stagedTrees or {}) ? ${o}) owners
+        ++ declaredStaged
+      );
+  };
+
+  # HOISTED OUT OF THE PER-TARGET let, where it was computed 1,474 times for ONE answer. It is
+  # a fixed list plus extraTools plus an optional ld64, and none of those depends on the label,
+  # which is not obvious from where it used to sit. MEASURED rather than assumed: dumping
+  # passthru.tools for every label gives exactly ONE distinct 33-package set across all 1,474.
+  #
+  # Same shape as #94, where the staging derivation was computed 1,474 times for 65 distinct
+  # results. The value is unchanged, so scripts/checks/buck-lowering-invariance-check.nu must report
+  # zero moved fingerprints, and that is the check this hoist is verified by.
+  targetTools =
+    [
+      pkgs.clang
+      # The guest compiler the graph derivation selected, named by absolute path in the
+      # argv: its store path has no string context by the time it arrives here, so the
+      # dependency has to be declared or the sandbox will not have it.
+      pkgs.llvmPackages.clang-unwrapped
+      pkgs.llvmPackages.bintools
+      pkgs.python3
+      pkgs.bison
+      pkgs.flex
+      pkgs.coreutils
+      pkgs.bash
+      # The Rust side: rustc compiles the daemon, launcher and loader, and bindgen
+      # generates the daemon's xnu_sys vtable. Both appear in the recorded argv as bare
+      # command names, exactly as on the daemon path, so they have to be on PATH here.
+      pkgs.rustc
+      pkgs.rust-bindgen
+      # THE GUEST RUST TOOLCHAIN (#102), and it is here for a DIFFERENT reason than the two
+      # above. Those are bare command names in the recorded argv, so they need PATH. This one
+      # appears as an ABSOLUTE store path, from [cider] darwin_rustc, so PATH is irrelevant: it
+      # has to be an INPUT or the sandbox simply does not have the file. Without it the two Rust
+      # guest tools die with
+      #   /nix/store/...-cider-darwin-rust-1.95.0/bin/rustc: No such file or directory
+      # which is exactly what happened once B0's stall stopped hiding it.
+      (pkgs.callPackage ../darwinRust.nix { })
+    ]
+    ++ extraTools
+    ++ lib.optional (ld64 != null) ld64;
+
+  # ---- the working tree an action runs in --------------------------------
+
+  # As SYMLINKS, and as a SHARED script: an action only reads project files, and copying
+  # the repo (let alone 4 GB of pins) into every derivation would cost more than the build
+  # being replaced. The script assumes the builder has already entered the working tree.
+  # The one shared staged tree. Every target that does NOT go through sourceGroups (#54)
+  # stages this, so a byte changing anywhere in it moves the path and all 3,225 targets
+  # rebuild. That is what #54 fixes, and it is why narrowSources was deleted: it shrank this
+  # path from 306,019 files to about 131,048 and left it SHARED, so it cut no cascade. It was
+  # measured inert for the shipping endpoint, identical drvPath with the flag either way,
+  # because prefix-min sets sourceGroups and never reads this. The evidence it did produce is
+  # kept in docs/changelog.md rather than here.
+  projectSrc = src;
+
+  # ---- per-component source groups (#54) ----------------------------------
+  #
+  # projectSrc is ONE store path that every target stages, so a byte changing anywhere in it
+  # moves the path and all 3,225 targets rebuild. The deleted narrowSources did not fix that:
+  # it shrank the path from 306,019 files to about 131,048 and left it STILL shared. This
+  # splits the part that people actually edit so a target only depends on the groups it reads.
+  #
+  # MEASURED, which is what makes the split worth it: of 27,591 actions, 16,255 are pinned
+  # upstream code, and NOT ONE of them reads src/darwin/frameworks. The 1,326 pin targets that
+  # touch first-party files at all read only the SDK headers under src/darwin/Developer plus
+  # about ten stable compatibility headers -- src/darwin/basic-headers, src/darwin/sandbox,
+  # src/libsysmon. So editing a framework should leave every pin target cached, and today it
+  # rebuilds all of them.
+  #
+  # vendor/src/ and vendor/pins/ are deliberately NOT grouped. 98,933 of the 123,343 declared
+  # files are pins, already staged wholesale from ciderSrc by the pins section below and
+  # keyed by pin revision; grouping them would collide with those symlinks. pins is
+  # where the pins are PLANTED, so a group there (vendor/pins/ciderd is 1,720 files)
+  # would fight the same symlink.
+  #
+  # Three components, not two: src/darwin/frameworks alone is 17,223 files, so two would leave
+  # every framework in one blob. Three gives 208 groups with none nested inside another,
+  # plus 68 shallow files that belong to no group and travel individually.
+  # WHICH GROUPS a target reads, precomputed. This used to read target-sources.json and work
+  # the groups out here, and that file is 588 MB of 10.5 million entries for 124,055 distinct
+  # files: it cost eval 21.4s to 75.6s and heap 1.76 to 3.40 GB, which is what kept source
+  # groups switched off. The lowering never wanted the files, only the groups, so the closure
+  # pass emits them directly. Measured: 2.06 MB against 588 MB, 285 times smaller, holding
+  # 41,896 target-to-group edges over 195 groups plus 69 files that belong to none.
+  targetGroups =
+    if sourceGroups
+    then
+      builtins.fromJSON (builtins.unsafeDiscardStringContext
+        (builtins.readFile "${graph.sources}/target-groups.json"))
+    else {};
+
+  # The grouping RULE itself lives in graph-specs/src/srcset.rs now, beside the map it
+  # is applied to, rather than being reimplemented here over a 588 MB file. That is also
+  # where the three ungrouped prefixes are justified: vendor/src and pins are pins
+  # staged wholesale by revision, and vendor/rust is gitignored and comes from the vendor
+  # derivation, so a builtins.path at one would fail with "not tracked by Git".
+
+  # One store path per group, so the group is what moves when a file in it changes.
+  groupStore = g:
+    builtins.path {
+      name = "cider-src-" + lib.strings.sanitizeDerivationName g;
+      path = srcRaw + ("/" + g);
+    };
+
+  # And per FILE for the 68 that sit in no group; a whole-directory path would drag in
+  # siblings the target does not read, which is the coupling this exists to remove.
+  fileStore = p:
+    builtins.path {
+      name = "cider-srcfile-" + lib.strings.sanitizeDerivationName p;
+      path = srcRaw + ("/" + p);
+    };
+
+  # A COARSE PIN IS NOT A BUCK2 TARGET, so it has no entry of its own. target-groups.json is
+  # keyed by REAL labels (root//vendor/src:apr_obj, apr_dylib); groupOfLabel folds those into
+  # root//vendor/src:pin-apr when coarsePins is on, and that synthetic label is in no such file.
+  # `targetGroups.${label} or {}` therefore quietly gave a coarse pin ZERO groups and ZERO
+  # shallow files, so it staged an EMPTY tree and every compile in it lost the SDK.
+  #
+  # Measured before this existed: 90 root failures on the minimal grouped endpoint, dominated
+  # by buck2-pin-* (pin-IOKitTools, pin-adv_cmds, pin-apr, pin-BerkeleyDB), 53 of them
+  # 'sys/_symbol_aliasing.h' file not found plus Availability.h, os/log_private.h and
+  # TargetConditionals.h. Ordinary targets passed, which is exactly the shape of a lookup that
+  # misses only synthetic labels.
+  #
+  # groupOfLabel is the identity for a label with no pin, so this is also correct, and a
+  # single-element union, for every ordinary target.
+  membersOf = lib.groupBy groupOfLabel (builtins.attrNames targetGroups);
+
+  # THE SDK CANNOT BE DISCOVERED FROM AN ARGV, so it is a rule rather than a finding.
+  # //src/darwin:sdk_env contributes the include flags, and a dep contributes them at ANALYSIS
+  # time: the recorded compile for root//src/linux/server:dserver_fast_context is six tokens,
+  # `clang -DDSERVER_FAST_CONTEXT=1 -c <src> -o <obj>`, with no -I and an empty env. So the
+  # closure cannot see the SDK for such a target, and 1,265 of 2,339 targets list the SDK group
+  # only because their generated argv happens to name it explicitly.
+  #
+  # Measured: with the coarse-pin union fixed, the endpoint went 90 root failures to 9, and
+  # every one of the 9 was this, 10 os/log_private.h and 1 IOKit/IOReturn.h, both SDK headers
+  # under src/darwin/Developer/Platforms.
+  #
+  # Given to every target that COMPILES anything rather than to all of them, since a link or a
+  # rust crate has no use for it. Cheap: the group is 44 files, 2,633 symlinks and 11 MB, and
+  # it is a frozen vendored tree, so the coupling it adds costs a rebuild only when someone
+  # edits the SDK itself.
+  sdkGroup = "src/darwin/Developer/Platforms";
+
+  # AND THE FOUR pins DIRECTORIES THAT ARE NOT PINS. The SDK is nothing but links out
+  # of itself, and some of them land here:
+  #   .../MacOSX.sdk/usr/include/os/log_private.h
+  #     -> ../../../../../../../../../../src/external/libtrace/include/os/log_private.h
+  # pins is _UNGROUPED in the closure because pins are staged wholesale by revision,
+  # and these are in NO pin manifest, so they fall through both mechanisms and nothing stages
+  # them. Ran the real staging script into a scratch tree to see it: the link is staged and
+  # correct, vendor/pins/libtrace is absent, and it dangles. 442 pins plantings in
+  # that script, zero of them libtrace.
+  #
+  # The repo holds real content for exactly these four, because the 147 pins are EMPTY MOUNT
+  # POINTS here and cider-src.nix fills them. Derived rather than hardcoded, so a fifth one
+  # appearing is picked up instead of failing a build weeks later.
+  pinNames = map builtins.baseNameOf wantedPins;
+
+  # NARROWED, because the whole point of the escape tree is that it does not move.
+  #
+  # An escape root is only ever READ THROUGH: it exists so a pin's relative `../` link resolves
+  # to something. Taking a whole directory is therefore free ONLY while that directory is
+  # frozen, and one of these is not: vendor/pins/ciderd is where xnu-sys lives, which
+  # is edited every increment. gate10 measured the cost of that: a change confined to
+  # src/linux/server and xnu-sys rebuilt 706 GUEST framework objects (AddressBook, AppleAccount,
+  # ApplicationServices ...), none of which use xnu-sys. nix-diff named the chain exactly:
+  # buck2-AddressBook_obj -> buck2-stage-project -> cider-pins-tree -> cider-pin-escape-roots,
+  # whose buildCommand copies cider-escape-src-external-ciderd.
+  #
+  # So each root is narrowed to the subtree that is actually escaped INTO. Measured on the
+  # working tree, counting relative links from OUTSIDE each directory: every one of the 2,077
+  # escapes into ciderd lands in `xnu-sys/xnu` and nowhere else, and XNU is frozen by
+  # policy. libtrace (4) and libpthread_workqueue (2) are escaped into at their root and are
+  # vendored, so they stay whole.
+  #
+  # Narrowing rather than dropping is deliberate: #74 and buck-escape-check.nu record that
+  # getting this tree wrong broke groups, pins and the SDK, and that comparing NAR hashes does
+  # NOT catch it, because a symlink target is recorded as a string.
+  #
+  # MEASURED, both ways, by appending one comment line to xnu-sys/src/xnu_sys_rs_shims.c and
+  # evaluating cider-buck2-prefix-min.pinsTree.drvPath either side of it:
+  #
+  #   wide root, vendor/pins/ciderd     knklrz6g... -> bdbznvsi...   MOVED
+  #   narrow root, the table below              y06vi4ym... -> y06vi4ym...   UNCHANGED
+  #
+  # The negative control was produced by emptying this table, and it landed on knklrz6g, which
+  # is one of the two pins-tree derivations in gate10s own log. So the control is not a
+  # synthetic construction, it reproduces the exact prior state.
+  #
+  # That is the whole cascade in one number. pinPath below is "${pinsTree}/${p}", so pinsTree
+  # is embedded in every target that stages a pin; when it moved, they all moved, which is why
+  # gate10 rebuilt 1,464 guest objects for a change confined to xnu-sys. Now it does not
+  # move, so the cascade cannot start rather than merely happening not to.
+  #
+  # WHAT THE DRVPATH MEASUREMENT ABOVE DOES NOT SHOW, AND IT SHIPPED A REGRESSION. Those two
+  # hashes prove the cascade was CUT. They say nothing about whether the result still BUILDS,
+  # and the first version of this table was applied to nonPinExternal itself, which fed the
+  # staged per-target groups as well as the escape roots. The endpoint then failed on
+  # root//vendor/pins/ciderd:dserver_rpc with
+  #   python3: can't open file .../src/external/ciderd/scripts/generate-rpc-wrappers.py
+  # which is verbatim the failure the groups comment further down already warns about, so this
+  # reintroduced a fixed bug. A hash that moves the way you predicted is only half the check;
+  # the other half is that the tree it names still works.
+  #
+  # AND THE PAYOFF ABOVE IS MEASURED ON THE WRONG ARTIFACT, so treat it as unproven. pinsTree is
+  # not the only route from a xnu-sys edit to a target. nonPinExternal is ALSO added to the
+  # per-target `groups` for every target, groupStore is a builtins.path over the whole directory,
+  # and its store path is interpolated into that target's stage script as _g. builtins.path is
+  # content addressed, so editing vendor/pins/ciderd/xnu-sys moves
+  # groupStore "vendor/pins/ciderd", which moves every stage script that names it, which
+  # moves every target. Narrowing escapeRoots closed the pinsTree route and left this one open,
+  # and it was open before #79 too, so #79 fixed one of two.
+  #
+  # NOW MEASURED, on .#cider-buck2-one, counting builders that RAN:
+  #   baseline                    3 buck2 builders
+  #   no-op                       0            <- the control can fail, so the test means something
+  #   one xnu-sys/src edit      6, and root//src/darwin/libsimple:libsimple_ciderd RECOMPILED
+  #                               src/lock.c, which has no business rebuilding for a xnu-sys edit
+  # nix-diff named the single cause in buck2-stage-project-grouped, and it was neither the graph
+  # nor the sources output, both of which were byte identical:
+  #   - _g=/nix/store/4ab45bn9...-cider-src-src-external-ciderd
+  #   + _g=/nix/store/nmj2s0wk...-cider-src-src-external-ciderd
+  # So the groups route is confirmed, and #79 cut one of two.
+  #
+  # AND THE OBVIOUS FIX DOES NOT WORK. Expanding this root into siblings with xnu-sys/src left
+  # out does cut the cascade (the same edit then rebuilds only skeleton, graph and sources, and
+  # libsimple stays put) but it STARVES the xnu-sys compiles:
+  #   clang: error: no such file or directory:
+  #     vendor/pins/ciderd/xnu-sys/src/xnu_sys_rs_shims.c
+  # because pins is deliberately outside the per-target union mechanism. The grouping
+  # rule in graph-specs/src/srcset.rs excludes vendor/src and pins as pins staged
+  # wholesale by revision, so for these four directories the WHOLE-DIRECTORY GROUP IS THE ONLY
+  # SUPPLIER. A blanket cut therefore cannot work; the answer is groupSplit further down, which
+  # gives every target the headers and the scripts but hands xnu-sys/src only to the targets
+  # that compile it.
+  escapeNarrow = {
+    "vendor/pins/ciderd" = "vendor/pins/ciderd/xnu-sys/xnu";
+  };
+
+  # THE FIX FOR THE 100 PERCENT ROW (#79), and it is CONDITIONAL rather than a blanket cut.
+  #
+  # Dropping xnu-sys/src from the groups outright does cut the cascade but starves the
+  # compiles, because pins is outside the per-target union mechanism and the group is
+  # the only supplier. The way through is that the two consumers want different sets: EVERY
+  # target needs the headers and the generator scripts, but only ciderd OWN targets need
+  # xnu-sys/src. Checked before splitting: xnu-sys/src is 20 .c files and NO headers, and
+  # nothing outside ciderd references the path except two comments in src/linux/server. So
+  # every other target was staging 20 C files it cannot use and paying the whole endpoint for a
+  # xnu-sys edit.
+  #
+  # `shared` goes to everyone, which keeps scripts/generate-rpc-wrappers.py in reach of
+  # dserver_rpc. `owned` is added only when the label sits under ownerPrefix, which is what
+  # keeps dt_objects compiling.
+  #
+  # MEASURED on the endpoint, builders that RAN, with a settle and a restore either side:
+  #   settle after this change   1,551, exit 0, 0 errors   <- correctness, dt_objects and
+  #                                                           dserver_rpc both build
+  #   no-op control                  0                     <- so the probe can fail
+  #   one xnu-sys/src edit       657 in 22 min            <- was 1,558 in 61 min
+  #   restore                        0, back to the settled output
+  # then, with ownerPrefix narrowed to the xnu-sys package:
+  #   settle                       650, exit 0, 0 errors
+  #   no-op control                  0
+  #   one xnu-sys/src edit        44 in 154 s
+  #   restore                        0, back to the settled output
+  #
+  # SO: 1,558 builders and 61 minutes, to 44 and 2.5 minutes. 35 times fewer builders, 24 times
+  # faster. An ordinary leaf edit costs 7, and the 44 left ARE the xnu-sys cone and should
+  # rebuild: dt_objects, dt_mig_objects, dt_pthread_objects, ciderd_xnu_sys, the mig_*
+  # set, xnu_sys_bindings, ciderd, cider and the prefix.
+  #
+  # Counted with `^building`, never with the "these N will be built" list. dserver_rpc is the
+  # reason that matters: narrowing ownerPrefix moved its drv, so nix LISTED it, and it produced
+  # no builder line either in the settle or the probe. That is CA early cutoff visible in the
+  # one place it was easy to misread.
+  groupSplit = {
+    "vendor/pins/ciderd" = {
+      shared = [
+        "vendor/pins/ciderd/include"
+        "vendor/pins/ciderd/scripts"
+        "vendor/pins/ciderd/src"
+        "vendor/pins/ciderd/tools"
+        "vendor/pins/ciderd/xnu-sys/defines"
+        "vendor/pins/ciderd/xnu-sys/include"
+        "vendor/pins/ciderd/xnu-sys/internal-include"
+        "vendor/pins/ciderd/xnu-sys/pthread"
+        "vendor/pins/ciderd/xnu-sys/xnu"
+      ];
+      # THE DUCT-TAPE PACKAGE, not all of ciderd. The wider prefix also matched
+      # root//vendor/pins/ciderd:dserver_rpc, which compiles none of xnu-sys/src (it
+      # runs scripts/generate-rpc-wrappers.py) but does regenerate rpc.h, so a xnu-sys edit
+      # dragged its whole consumer cone along. That is the 657 above rather than the ~7 an
+      # ordinary leaf edit costs.
+      ownerPrefix = "root//vendor/pins/ciderd/xnu-sys";
+      owned = ["vendor/pins/ciderd/xnu-sys/src"];
+    };
+  };
+
+  # groupOfLabel is the identity for a label with no pin, and ciderd is a non-pin
+  # external, so `label` here really is the buck2 label and the prefix test is sound.
+  nonPinExternalFor = label:
+    lib.concatMap (r:
+      let sp = groupSplit.${r} or null;
+      in
+        if sp == null
+        then [r]
+        else sp.shared ++ lib.optionals (lib.hasPrefix sp.ownerPrefix label) sp.owned)
+    nonPinExternal;
+
+  nonPinExternal = let
+    dir = srcRaw + "/vendor/pins";
+  in
+    if !builtins.pathExists dir
+    then []
+    else
+      map (n: "vendor/pins/" + n)
+        (builtins.filter (n: !(builtins.elem n pinNames))
+          (builtins.attrNames (lib.filterAttrs (_: t: t == "directory") (builtins.readDir dir))));
+
+  compiles = lib.listToAttrs (map (a: {
+      name = groupOf a;
+      value = true;
+    })
+    (lib.filter (a: lib.hasInfix "_compile " a.identity) g.actions));
+
+  stageGroupsDataFor = label: let
+    members = membersOf.${label} or [label];
+    entries = map (m: targetGroups.${m} or {}) members;
+    groups = lib.unique (
+      (lib.concatMap (e: e.groups or []) entries)
+      # THE SDK ONLY FOR A COMPILE, but the non-pin externals for EVERY target. Gating both on
+      # `compiles` was too narrow: root//vendor/pins/ciderd:dserver_rpc is a script_gen,
+      # not a compile, and it runs
+      # vendor/pins/ciderd/scripts/generate-rpc-wrappers.py out of one of those four
+      # directories. It failed with `python3: can't open file ... No such file or directory`,
+      # the last root failure of the grouped endpoint. They are four directories, so giving them
+      # to every target costs almost nothing; the SDK is bigger and a link or a rust crate has
+      # no use for it.
+      ++ lib.optionals (compiles ? ${label})
+        (lib.optional (builtins.pathExists (srcRaw + ("/" + sdkGroup))) sdkGroup)
+      # PER LABEL, not the flat list: ciderd is expanded into siblings and the churny
+      # xnu-sys/src is added only for its own targets, which is the cascade route nix-diff
+      # named. escapeRoots above still takes the unexpanded list.
+      ++ (builtins.filter (r: builtins.pathExists (srcRaw + ("/" + r))) (nonPinExternalFor label))
+    );
+    shallow = lib.unique (lib.concatMap (e: e.shallow or []) entries);
+  in {inherit groups shallow;};
+
+  # THE TEXT, as a function of the DATA rather than of the label. Two labels with the same
+  # groups and shallow list produce byte-identical text: every term below is a pure function of
+  # an element of one of those lists. Splitting them is what lets the text be built 94 times
+  # instead of 1,474 without the result changing.
+  stageGroupsTextOf = {
+    groups,
+    shallow,
+  }: ''
+    ${lib.concatMapStrings (g: ''
+      # A GROUP IS MIRRORED, NOT LINKED. `ln -sfn <groupStore> <g>` is what killed source
+      # groups: the group arrives as one symlink to a DIRECTORY, so a relative parent inside
+      # it is resolved by the kernel against the REAL parent in the store and leaves our tree.
+      # 2,306 of the 2,970 symlinks under darwin, src and linux are relative and cross a group
+      # boundary, so this is the common case, not a corner.
+      #
+      # Mirroring with REAL directories and one link per FILE fixes it, because the containing
+      # directory is real and inside our own tree. Two steps, and the second one is not
+      # optional:
+      #   cp -Rsf --no-preserve=all is the fast bulk pass, C rather than shell, and it is why
+      #            this is not a per-file loop over 17,223 files for src/darwin/frameworks alone.
+      #            --no-preserve=all IS LOAD BEARING AND WAS NOT THERE FIRST. With -a (or any
+      #            preserve at all) cp applies the source mode to the symlink it just created,
+      #            and chmod FOLLOWS a symlink, so it walks back through the link and changes
+      #            THE SOURCE. Caught because a scratch test left three tracked files at 755:
+      #            src/darwin/basic-headers/MacTypes.h and two CoreServices headers, all of them
+      #            targets of links. Against a group store the same call would try to chmod
+      #            inside /nix/store. Measured: -a, -Rs and -rs all move a link target 644 to
+      #            755; only --no-preserve=all leaves it alone.
+      #   the loop RE-CREATES each source symlink with its own target string. cp -as points our
+      #            link AT the store's symlink, which then resolves inside the STORE, so a
+      #            target in another group store dangles. Measured with clang on the exact
+      #            cross-group case: cp -as alone fails with `'rel.h' file not found`, the
+      #            fixup gives exit 0, and dropping the fixup again fails. It is a real
+      #            negative control, so the pass means something.
+      _g=${groupStore g}
+      _d=${lib.escapeShellArg g}
+      mkdir -p "$_d"
+      cp -Rsf --no-preserve=all "$_g/." "$_d/"
+      (cd "$_g" && find . -mindepth 1 -type l -printf '%P\n') | while read -r _l; do
+        ln -sfn "$(readlink "$_g/$_l")" "$_d/$_l"
+      done
+    '')
+    groups}
+    ${lib.concatMapStrings (p: ''
+      mkdir -p ${lib.escapeShellArg (builtins.dirOf p)}
+      ln -sfn ${fileStore p} ${lib.escapeShellArg p}
+    '')
+    shallow}
+  '';
+
+  # Under #54 a target stages ONLY its groups plus the pins. It deliberately references no
+  # shared project path at all -- that is the whole point, since one shared input is what
+  # makes every edit rebuild everything. The pins still come from ciderSrc, keyed by pin
+  # revision, and pins and vendor/rust stay REAL directories because the pins are
+  # planted inside them; the comment on stageProject records that losing that cost a whole
+  # endpoint build.
+  # ONE TEXT PER DISTINCT (groups, shallow), not one per label. The per-group body carries a
+  # long comment block, so concatMapStrings over a label's groups is the bulk of the staging
+  # cost: measured, the whole staging reference is ~5.7 s of a ~15 s endpoint evaluation, of
+  # which the derivation is 0.4 s and this text is most of the rest.
+  #
+  # THE DATA IS STILL COMPUTED PER LABEL, and that part (~2 s) is untouched: members, the group
+  # union and its pathExists probes all genuinely depend on the label. Only the FORMATTING is
+  # shared, and it is shared on the data it formats, so it cannot be shared wrongly.
+  #
+  # VERIFY BY STORE PATH, NEVER BY LADDER. Whether this changed anything is decided by
+  # comparing passthru.stageScript across all 1,474 labels; a hoist that looked equally free
+  # moved every one of them by whitespace alone, and a green ladder said nothing.
+  stageDataByLabel = lib.mapAttrs (label: _: stageGroupsDataFor label) targets;
+  stageDataKeyByLabel = lib.mapAttrs (_: d: builtins.toJSON d) stageDataByLabel;
+  stageGroupsTextByKey = builtins.listToAttrs (lib.mapAttrsToList (label: k:
+    lib.nameValuePair k (stageGroupsTextOf stageDataByLabel.${label}))
+  stageDataKeyByLabel);
+
+  stageGroupsFor = label: stageGroupsTextByKey.${stageDataKeyByLabel.${label}};
+
+  # THE STAGING SCRIPT TEXT for one label. Split out from the derivation below so the
+  # derivation can be shared between labels that produce the same text (#94).
+  stageTextFor = label: ''
+    ${stageGroupsFor label}
+    mkdir -p vendor/rust pins vendor/src
+    for _c in ${rustVendor}/*/; do
+      ln -sfn "$_c" "vendor/rust/$(basename "$_c")"
+    done
+    ${lib.concatMapStrings (p: pinStageLines p)
+    wantedPins}
+  '';
+
+  # ONE DERIVATION PER DISTINCT SCRIPT, not one per label. Measured 2026-08-11: 1,474 labels
+  # produce 94 distinct staging scripts, 15.7x redundancy, and one script serves 711 of them.
+  # Building the derivation per label cost about 5.7 s of a 15 s endpoint evaluation, the
+  # largest single remaining chunk.
+  #
+  # THE KEY IS THE CONTENT, deliberately. Keying on what the script is DERIVED from -- the
+  # label's source groups and shallow list -- would be faster to compute and would risk the one
+  # failure that matters: a key missing something the text depends on makes two groups SHARE a
+  # script that should differ, which does not fail at eval and surfaces much later as a missing
+  # file in someone else's compile. Hashing the text cannot be wrong about the text.
+  #
+  # listToAttrs COLLAPSES THE DUPLICATES FOR FREE. Values are lazy, so the 1,380 entries that
+  # lose the name collision are never forced and their derivations are never built.
+  stageTextByLabel = lib.mapAttrs (label: _: stageTextFor label) targets;
+  stageKeyByLabel = lib.mapAttrs (_: text: builtins.hashString "sha256" text) stageTextByLabel;
+  stageDrvByKey = builtins.listToAttrs (lib.mapAttrsToList (label: text:
+    lib.nameValuePair stageKeyByLabel.${label}
+    (caShellScript "buck2-stage-project-grouped" text))
+  stageTextByLabel);
+
+  stageProjectFor = label: stageDrvByKey.${stageKeyByLabel.${label}};
+
+  # CA for the same reason the stage-tree scripts are, though MEASURED it buys nothing while
+  # #54 is off, and why is worth keeping. This script embeds ${projectSrc}, NOT ${graph.data}
+  # as this comment used to claim. With sourceGroups off, projectSrc is the whole filtered
+  # project, so a source edit genuinely changes this script's TEXT; its content address
+  # moves with it, and every target that stages the project rebuilds. Content addressing
+  # collapses a text that came out the same, and this one did not.
+  #
+  # The probe, on the minimal endpoint with one first-party source edited and reverted:
+  # 0 of 4,159 stage-trees ran, 1 stage-project ran, and 323 compiles ran and were still
+  # climbing when it was stopped. So #55 cut the graph to stage-tree to compile path, and
+  # #54, the ONE shared projectSrc, is what still holds the compiles.
+  #
+  # THAT LAST SENTENCE IS NOW OUT OF DATE, and the 323 with it. #54 has since landed, and the
+  # same probe re-run on 2026-08-09 shows the compiles no longer cascade either:
+  #
+  #   nix build .#cider-buck2-one          baseline, 3 buck2 derivations ran
+  #   edit src/linux/startup/rtsig.c, rebuild      ZERO buck2 derivations ran
+  #   output path both times                 kq3fjmpkyv7scgfdwvqfg1dg1v5dynqc, byte identical
+  #
+  # SMALLER PROBE THAN THE 323 ONE, and the difference matters when comparing the numbers. That
+  # measurement swept the whole minimal endpoint; this one builds ONE target through it, which
+  # is what #55 asked for. Zero here means nothing downstream of the graph rebuilt for that
+  # target. It does not re-measure the other 4,158 stage-trees or the rest of the compiles, so
+  # do not read it as a full-endpoint 323 to 0.
+  #
+  # nix still PRINTED "these 3 derivations will be built" and named all three targets, because
+  # their drv paths moved, which a CA placeholder always does. None produced a building line.
+  stageProject = caShellScript "buck2-stage-project" ''
+    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
+        ln -s ${lib.escapeShellArg "${projectSrc}/${name}"} ${lib.escapeShellArg name}
+      # "pins" belongs in this list and cost a whole endpoint build when its predecessor fell
+      # out of it: the section below plants the pins at vendor/pins/<pin>, which is only possible if
+      # vendor/pins/ is a real directory here rather than a symlink into the store. There is no
+      # entry called "projectSrc" -- that was a rename of the exclusion into a Nix BINDING
+      # name, and it silently turned every lowered target into a permission error.
+      #
+      # THIS LINE SAID "src" UNTIL #87 STAGE 2, and the same failure was available by simply
+      # deleting it instead of renaming it. src/ no longer exists at all, so an entry for it
+      # would be inert rather than protective, which is exactly how this class of bug hides.
+      '') (lib.filterAttrs (name: _:
+        name != "vendor" && name != "buck-out")
+        (builtins.readDir projectSrc)))}
+
+    # vendor/rust/ is a REAL directory for the same reason src/ is: its BUCK file is
+    # committed and travels in `projectSrc`, while the crate sources are gitignored and come from
+    # the vendor derivation, so the two have to be planted side by side. Without it rustc
+    # opens vendor/rust/libc-0.2.189/src/lib.rs and finds nothing there.
+    mkdir -p vendor/rust
+    ${lib.optionalString (builtins.pathExists (projectSrc + "/vendor/rust")) (
+      lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
+          ln -s ${lib.escapeShellArg "${projectSrc}/vendor/rust/${name}"} ${lib.escapeShellArg "vendor/rust/${name}"}
+        '') (builtins.readDir (projectSrc + "/vendor/rust")))
+    )}
+    for _c in ${rustVendor}/*/; do
+      ln -sfn "$_c" "vendor/rust/$(basename "$_c")"
+    done
+
+    # vendor/pins/ is a REAL directory here, not a symlink into the store: the pins get planted at
+    # vendor/pins/<pin> so the SDK's symlink farm resolves, and planting anything inside a store path
+    # is a permission error.
+    #
+    # THERE WAS A src/ LOOP HERE AND IT WAS DEAD SINCE #87 STAGE 2, which emptied src/ into
+    # src/darwin/ and src/linux/. builtins.readDir on a directory that does not exist is not a no-op,
+    # it is an EVAL ERROR, so the flake default died with
+    #   opening directory '/nix/store/...-cider-buck2-lower-project/src': No such file
+    # This is the second instance of exactly the class the comment above warns about, where a
+    # stale name is inert rather than protective. Found 2026-08-12 by evaluating the default
+    # output, which nothing else does.
+    mkdir -p pins
+    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: let
+        # A PIN CAN LIVE INSIDE ANOTHER vendor/pins/ ENTRY, and then that entry cannot be a symlink.
+        #
+        # pinStageLines plants each pin at its own path, and one of them is nested:
+        # vendor/pins/ciderd/xnu-sys/xnu, which .gitignore excludes from the source precisely so it
+        # arrives from its own store path. If vendor/pins/ciderd is staged as a symlink INTO the store,
+        # planting anything underneath it is a write into /nix/store, and the build dies with
+        #   ln: failed to create symbolic link 'vendor/pins/ciderd/xnu-sys/xnu': Permission denied
+        # That is 412 identical failures and 340 cascading "Cannot build" errors on the full
+        # prefix, from one line.
+        #
+        # THE RULE THIS REPO HAS NOW LEARNED THREE TIMES: never stage a subtree as a directory
+        # symlink when something has to be planted inside it. Mirror it with REAL directories and
+        # per-file links instead. It is the same lesson as the relative-escape rule and as the
+        # src/ staging comment above; this is the third instance, so the test is general rather
+        # than a special case for ciderd.
+        hasNested = lib.any (q: lib.hasPrefix ("vendor/pins/" + name + "/") q) wantedPins;
+      in
+        if hasNested
+        then ''
+          # cp -Rs gives real directories and a symlink per file, which is exactly the shape
+          # needed: the tree is writable where a pin must be planted, and no file is copied.
+          # The store's own mode is r-xr-xr-x, so the mirrored directories need u+w or the
+          # plant fails one line later for the same reason in a different disguise.
+          mkdir -p ${lib.escapeShellArg "vendor/pins/${name}"}
+          cp -Rs ${lib.escapeShellArg "${projectSrc}/vendor/pins/${name}/."} ${lib.escapeShellArg "vendor/pins/${name}/"}
+          chmod -R u+w ${lib.escapeShellArg "vendor/pins/${name}"}
+        ''
+        else ''
+          ln -s ${lib.escapeShellArg "${projectSrc}/vendor/pins/${name}"} ${lib.escapeShellArg "vendor/pins/${name}"}
+        '')
+      (builtins.readDir (projectSrc + "/vendor/pins")))}
+    ${lib.optionalString (builtins.pathExists (projectSrc + "/vendor/src")) ''
+      mkdir -p vendor/src
+      ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
+          ln -s ${lib.escapeShellArg "${projectSrc}/vendor/src/${name}"} ${lib.escapeShellArg "vendor/src/${name}"}
+        '') (builtins.readDir (projectSrc + "/vendor/src")))}
+    ''}
+    ${lib.concatMapStrings (p: pinStageLines p) wantedPins}
+  '';
+
+  # THE SCRIPT A LOWERED TARGET ACTUALLY RUNS, which is not always stageProject. Line 1215
+  # picks between the two on sourceGroups, and every endpoint that gets gated has it ON, so
+  # exposing only stageProject let scripts/checks/buck-lowering-stage-check.nu inspect a script the
+  # gated endpoint never executes. Measured 2026-08-10: the green run built 65
+  # buck2-stage-project-grouped derivations and zero buck2-stage-project ones.
+  #
+  # The label is the first one the graph names rather than a hand-picked target, because a
+  # hardcoded label is a rename away from an evaluation error and this is a CHECK: it has to
+  # keep working when the thing it checks moves. Any label does, since the pin section that
+  # the check asserts on is identical for all of them, being wantedPins verbatim.
+  stageProjectUsed =
+    if sourceGroups
+    then stageProjectFor (lib.head (lib.attrNames targets))
+    else stageProject;
+
+  # ---- one derivation per target -----------------------------------------
+
+  drvName = label:
+    "buck2-" + lib.strings.sanitizeDerivationName (lib.last (lib.splitString ":" label));
+
+  drvs = lib.mapAttrs (label: actions: let
+    # FROM THE FILE, not from needsOf. Same shape, one extra field: `trees`.
+    needs = let
+      n = needsFor label;
+    in {
+      fromTargets = n.t;
+      fromStaged = n.s;
+      trees = n.trees;
+    };
+    outs = lib.unique (lib.concatMap (a: a.outputs) actions);
+    # WHICH ACTIONS MAY RUN CONCURRENTLY is now decided in the generator (#66), and the rule
+    # is unchanged, so it is recorded here where the reason for it lives. JavaScriptCore_obj
+    # is 1,088 cxx_compile actions in one derivation and ran them one at a time, 54 minutes
+    # with 21 cores idle, a quarter of the whole endpoint build for one target.
+    #
+    # The test is a set membership and needs no ordering pass: the actions are in buck2's
+    # topological order, so an input produced by THIS target necessarily comes from an
+    # earlier action. An action that reads none of its siblings' outputs therefore depends on
+    # nothing already launched and is safe to run in the background; one that does reads
+    # something a sibling wrote, so everything outstanding has to land first.
+    #
+    # Conservative in the safe direction: such an action waits for ALL outstanding work, not
+    # just for the sibling it actually needs. For the shape this targets, many compiles and
+    # then one archive or link, that costs nothing.
+    #
+    # cider-graph-specs emits _spawn or _drain per action from exactly that rule.
+    # Verified against a re-derivation of it over all 1,474 groups: 0 scripts with a
+    # misplaced _drain, and a control that deletes one _drain is caught.
+    # THE TOOLS, hoisted out of the attrset so passthru can name them too: a Nix attrset is
+    # not recursive, so `tools = nativeBuildInputs` written beside it does not resolve.
+
+    # THE BUILDER SCRIPT AS A VALUE (#66). Bound here rather than written inline at the
+    # runCommand call so the ADAPTER can reach it: feeding a group through
+    # nix/lib/dyn-actions.nix needs exactly this text, and a second assembly of it
+    # somewhere else would be a copy to keep in step. Moving it changed no bytes, which
+    # was verified the only way that counts: the endpoint rebuilt NOTHING afterwards.
+    # PARAMETERISED ON WHERE A DEPENDENCY LIVES, which is the one thing an adapter has to
+    # change. The lowered derivation resolves a dependency to another lowered derivation; an
+    # adapter emitting the whole cone resolves it to the EMITTED output instead. That is the
+    # only place a dependency path enters this script, so it is the only knob needed.
+    # #66. READ AND SUBSTITUTED, NOT ASSEMBLED. This used to be seventy lines of Nix building
+    # the whole builder script per group at evaluation time: the staging call, a copy plus a
+    # chmod per dependency, a restore per staged tree, the concurrency harness, the action
+    # sequence and a copy per output. cider-graph-specs renders all of that inside the
+    # graph derivation now, which already runs, once, instead of on every `nix build`.
+    #
+    # FIVE THINGS THE GENERATOR CANNOT NAME, and they are exactly the consumer-owned ones:
+    #   "$CIDER_STAGE"        this group's staging script, one store path
+    #   "$CIDER_DATA"         the tree of artifacts buck2 produced in-process
+    #   "$CIDER_TREE_<i>"     the staged tree scripts, positional, counting scripts EMITTED
+    #   "$DYN_DEP_<name>"     each dependency, through depPathOf, which is what lets an
+    #                         emitted action bind to another emitted output instead of a
+    #                         lowered one
+    #   the exports marker    the placeholder values, in the middle of the script rather than
+    #                         at the top, because moving them would change the text
+    #
+    # THE VARIABLE NAMES ARE THE BRIDGE'S, not this file's invention. DYN_DEP_ is what
+    # nix/lib/dyn-actions.nix sets, so the same rendered text works whether the consumer is
+    # this lowering or an emitted derivation. That is the point of #66 and not a coincidence.
+    #
+    # AN ALTERNATING TEMPLATE IS WHAT IS READ, and that shape was chosen by measurement.
+    # full.json used to hold finished text with "$VAR" in it, which meant substituting with
+    # builtins.replaceStrings: a scan of every byte of every script against every pattern, over
+    # 77 MB and up to 130 patterns. Interleaved, on the endpoint drvPath:
+    #
+    #   the lowering assembling the script itself      11.5 s
+    #   reading full.json and substituting             28.0 s
+    #   reading full.json, lists built, no scan         5.2 s
+    #
+    # THE 5.2 s LINE IS NOT A WORKING LOWERING and was read as one for about ten minutes. It
+    # used builtins.seq, which forces a list to WHNF and NOT its elements, so the staging
+    # script, the tree scripts and the dependency paths were never evaluated. What it isolates
+    # is the SCAN, honestly: same reads, same lists, 23 s cheaper without replaceStrings.
+    #
+    # MEASURED AGAIN WITH THE TEMPLATE, interleaved: 12.3 s against the old 12.0 s. So removing
+    # the scan bought back exactly what reading full.json cost, and no more. The remaining
+    # evaluation is needsOf and the JSON parses, which is where the next cut has to come from.
+    # Even index literal, odd index a variable name, always odd length: joining is linear in
+    # the output with no matching in it.
+    builderScriptWith = depPathOf: let
+      raw =
+        fullScripts.${specName label}
+        or (throw "buck2 lower: no rendered builder script for ${label} (looked for ${specName label} in ${graph.specs}/full.json). The lowering and cider-graph-specs disagree about grouping or naming; scripts/checks/buck-script-check.nu compares the two.");
+
+      # The same list, in the same order, that the renderer numbered its references by: only
+      # the staged entries that actually have links emit a script.
+      treeScripts = map (o: stagedTreeScript o (g.stagedTrees or {}).${o}) needs.trees;
+
+      # A DEPENDENCY RESOLVES THROUGH depPathOf, which is the one knob that lets an emitted
+      # action bind to another EMITTED output instead of a lowered derivation. Everything else
+      # is a value only this consumer has.
+      byTree = lib.listToAttrs (lib.imap0 (i: s:
+        lib.nameValuePair ("CIDER_TREE_" + toString i) "${s}")
+      treeScripts);
+      byDep = lib.listToAttrs (map (d:
+        lib.nameValuePair (depVar d) (depPathOf d))
+      needs.fromTargets);
+      values =
+        {
+          CIDER_STAGE =
+            if sourceGroups
+            then "${stageProjectFor label}"
+            else "${stageProject}";
+          CIDER_DATA = "${graph.data}";
+          EXPORTS = phExports;
+        }
+        // byTree
+        // byDep;
+      resolve = v:
+        values.${v}
+        or (throw "buck2 lower: ${label}'s builder template names ${v}, which this consumer does not supply. The lowering and cider-graph-specs disagree about the variable set.");
+    in
+      lib.concatStrings (lib.imap0 (i: p:
+        if lib.mod i 2 == 0
+        then p
+        else resolve p)
+      raw);
+
+    # What the lowered derivation itself runs: a dependency is the lowered derivation for it.
+    builderScript = builderScriptWith (d: "${drvs.${d}}");
+
+  in
+    pkgs.runCommand (drvName label) {
+      nativeBuildInputs = targetTools;
+      # Same reason as the graph derivation: the argv is buck2's, and the wrapper's
+      # hardening flags are not in it. -D_FORTIFY_SOURCE alone turns libc's own sprintf
+      # into a macro over its own definition.
+      hardeningDisable = ["all"];
+      # Content addressing is per derivation, so it is one attribute here rather than a
+      # different lowering.
+      #
+      # MEASURED END TO END, 2026-08-09, and this is the verification the CA conversion owed.
+      # Build ONE target through the endpoint, edit ONE first-party source in a DIFFERENT
+      # component, rebuild the same target, and count builders that RAN:
+      #
+      #   baseline                     3 buck2 derivations ran
+      #                                stage-project-grouped, libsimple_ciderd, and -out
+      #   after editing src/linux/startup/rtsig.c
+      #                                ZERO buck2 derivations ran
+      #   output path, both runs       kq3fjmpkyv7scgfdwvqfg1dg1v5dynqc, byte identical
+      #
+      # The graph DID rebuild, as it must: projectSrc contains that file. Everything downstream
+      # of it stayed put anyway, which is the whole point of the conversion.
+      #
+      # READ THE BUILDERS, NOT THE PLAN. nix printed "these 3 derivations will be built" and
+      # named all three targets, because their drv paths moved; a CA placeholder always does.
+      # Not one of them produced a `building` line. Judging by drvPath would have reported a
+      # total cascade where nothing at all was rebuilt.
+      #
+      # SCOPE, so nobody quotes this as more than it is: one target through
+      # cider-buck2-prefix-min, which is what the task asked for (build ONE compile target,
+      # not the prefix). It says the mechanism works; it does not say every one of the 3,225
+      # targets behaves the same way.
+      __contentAddressed = contentAddressed;
+      outputHashMode =
+        if contentAddressed
+        then "recursive"
+        else null;
+      outputHashAlgo =
+        if contentAddressed
+        then "sha256"
+        else null;
+      passthru = {
+        inherit label outs;
+        deps = needs.fromTargets;
+        # THE OTHER HALF OF needsOf, exposed for the same reason `deps` is: #66 is porting
+        # needsOf into cider-graph-specs, and the only honest way to check a port
+        # of it is to dump BOTH answers for all 1,474 labels and require them to agree.
+        # Comparing fromTargets alone would leave the farms untested, and they are the half
+        # that fails late and quietly. scripts/checks/buck-needs-check.nu does the comparison.
+        stagedNeeds = needs.fromStaged;
+
+        # THE DEFINITION, NOT THE FILE, and this attribute exists precisely so the check does
+        # not become circular. `deps` and `stagedNeeds` above now come from needs.json, which
+        # cider-graph-specs wrote, so comparing THOSE against the python would compare
+        # the python against itself and pass no matter what either believed. needsOf is still
+        # the definition; this calls it, and scripts/checks/buck-needs-check.nu reads this one.
+        #
+        # It costs nothing unless asked: passthru is lazy and nixpkgs strips it before building.
+        definitionNeeds = needsOf label;
+        # THE STAGED TREE SCRIPTS THIS GROUP RUNS, in the order builderScriptWith runs them.
+        # Each is a store path to a CA shell script, which is why the python port does not have
+        # to reproduce the script BODY: it emits a reference and the consumer supplies the path.
+        # Exposed so the port can be compared against this script byte for byte, which needs
+        # the same paths substituted back in the same order.
+        treeScripts = map (o: stagedTreeScript o (g.stagedTrees or {}).${o}) needs.trees;
+        actionCount = lib.length actions;
+
+        # WHAT THE ADAPTER NEEDS TO FEED THIS GROUP THROUGH nix/lib/dyn-actions.nix (#66): the
+        # exact text this derivation runs, and the tools it runs it with. Through passthru
+        # because nixpkgs strips passthru before building, so this costs nothing and cannot
+        # move a hash, and it is LAZY, so a consumer that never asks pays nothing. That matters
+        # at 1,474 groups. Verified rather than assumed: cider-buck2-one stayed at the same out
+        # path with ZERO builders after adding it.
+        #
+        # AN EMITTED ACTION IS NOT A runCommand, and the gaps are the adapter's job rather than
+        # defects here. It gets no stdenv: no PATH (hence `tools`), no `set -e`, and its output
+        # variable is whatever dyn-actions names it rather than `out`.
+        inherit builderScript builderScriptWith;
+        tools = targetTools;
+
+        # THE STAGING SCRIPT THIS GROUP USES (#94). Exposed so a change to how it is computed
+        # can be checked the only way that is safe: capture the store path for all 1,474 labels
+        # before and after, and require every one to be unchanged.
+        #
+        # WHY A GREEN LADDER IS NOT ENOUGH THERE. Two groups wrongly SHARING a staging script
+        # does not fail at eval and need not fail the probe targets either; it fails much later
+        # as a missing file in some other target's compile, which is how the first coarse build
+        # died an hour in. The per-label path is the thing that actually distinguishes them.
+        stageScript =
+          if sourceGroups
+          then stageProjectFor label
+          else stageProject;
+      };
+    }
+    builderScript)
+  targets;
+
+  # A target's DEFAULT outputs under their own names, which is what a person wants: the
+  # derivations above keep everything at buck-out paths, which is what a consumer needs.
+  named = lib.mapAttrs (label: outs:
+    pkgs.runCommand "${drvName label}-out" {passthru = {inherit label outs;};} (''
+        mkdir -p "$out"
+      ''
+      + lib.concatMapStrings (o: let
+        # The same resolution the rest of the lowering uses. A target's DEFAULT output is
+        # not always written by a command: some are produced in-process by buck2 (a staged
+        # lib directory, say), and some are a file inside a directory another action wrote.
+        owner = ownerOf o;
+        prod =
+          if owner == null
+          then null
+          else producerTarget.${owner} or null;
+        st =
+          if owner == null
+          then null
+          else (g.staged or {}).${owner} or null;
+      in
+        if prod != null
+        then ''
+          cp -a ${drvs.${prod}}/${o} "$out/${builtins.baseNameOf o}"
+        ''
+        else if st != null
+        then ''
+          cp -aT ${graph.data}/${st} "$out/${builtins.baseNameOf o}"
+        ''
+        else if owner != null && (g.stagedTrees or {}) ? ${owner}
+        then ''
+          ${stagedTreeScript (builtins.baseNameOf o) (g.stagedTrees.${owner})}
+        ''
+        else throw "buck2 lower: nothing produces ${label}'s output ${o}")
+      outs))
+  (g.targetOutputs or {});
+in
+  assert unstageable == [] || throw "buck2 lower: unstageable artifacts: ${toString unstageable}"; {
+  inherit drvs named g pinsTree;
+
+  # The staging script on its own, so it can be checked without building anything that uses
+  # it. scripts/checks/buck-lowering-stage-check.nu reads it: a one-word regression here (src falling
+  # out of the top-level exclusion list) failed all 1798 lowered targets and was only visible
+  # 90 minutes into a build.
+  inherit stageProject stageProjectUsed;
+
+  # The tree of artifacts buck2 produced in-process. Exposed for the same reason stageProject
+  # is: the python port of the builder script names it as a variable rather than containing it,
+  # so the check has to substitute the real path back before comparing.
+  graphData = graph.data;
+
+  # THE TWO NAME MAPPINGS, exposed so a consumer does not write a SIXTH copy of them. There are
+  # already several: the generator's safe_name, buck_lowering's, buck-specs-check's, this one,
+  # and dep_var in two places. A mismatch between any pair is silent in the worst way, since a
+  # wrong name simply does not match and the variable expands to empty.
+  # scripts/checks/buck-names-check.nu compares them all on the real 1,474 labels.
+  inherit specName depVar;
+
+  # WHAT A CONSUMER NEEDS PER GROUP, WITHOUT FORCING THE LOWERED DERIVATION FOR IT.
+  #
+  # nix/lib/cider-dyn-gen.nix used to read these from drvs.<label>.passthru, and accessing any
+  # attribute of a mkDerivation result forces the derivation itself. So the emitted route was
+  # instantiating BOTH a producer and a lowered derivation per group, which is why three
+  # separate eval comparisons between the two routes came out level: the emitted one was the
+  # lowered one PLUS the producers, never instead of it.
+  #
+  # These are the same values by construction, from the same top-level bindings the per-target
+  # code uses, so a consumer switching to them must see byte-identical emitted derivations.
+  # That is the check, not an argument.
+  toolsAll = targetTools;
+  stageScriptFor = stageProjectFor;
+  treeScriptsFor = label:
+    map (o: stagedTreeScript o (g.stagedTrees or {}).${o}) (needsFor label).trees;
+  depsFor = label: (needsFor label).t;
+
+  # The spec dir, so a consumer can reach ${graph.specs}/dyn: the bridge-shaped specs the
+  # generator wrote. nix/lib/cider-dyn-gen.nix feeds those to nix/lib/dyn-actions.nix, which is
+  # the arrangement #66 is for, with nothing serialised in the evaluator.
+  graphSpecs = graph.specs;
+
+  # The placeholder values under the names the rendered scripts use. The lowering EXPORTS these
+  # in the middle of the script because a runCommand had no other way to receive them; an
+  # emitted action takes them as env, so the generator leaves that slot empty and a consumer
+  # passes this straight to the bridge's extraEnv.
+  placeholderEnv =
+    lib.mapAttrs' (k: v: lib.nameValuePair (phVar k) v) placeholders;
+
+  # The single target's output, for the common case of asking for one thing.
+  final = let
+    all = lib.attrValues named;
+  in
+    if all != []
+    then lib.head all
+    else throw "buck2 lower: the graph names no target outputs";
+}

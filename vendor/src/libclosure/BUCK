@@ -1,0 +1,133 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the libclosure pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: system_blocks_obj
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) system_blocks_obj   -- review before committing.
+# cmake target: system_blocks_obj  ->  src/external/libclosure/system_blocks_obj
+# 3 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "system_blocks_inc_libclosure",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_blocks_obj",
+    srcs = [
+        "data.c",
+        "data.m",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":system_blocks_inc_libclosure",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_blocks_obj2",
+    srcs = [
+        "runtime.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":system_blocks_inc_libclosure",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_blocks_obj
+
+# BEGIN generated: system_blocks_static
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) system_blocks_static   -- review before committing.
+# cmake target: system_blocks_static  ->  src/external/libclosure/libsystem_blocks_static.a
+# 3 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "system_blocks_static_inc_libclosure",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_blocks_static_obj",
+    srcs = [
+        "data.c",
+        "data.m",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fno-stack-check",
+        "-fno-stack-protector",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":system_blocks_static_inc_libclosure",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_blocks_static_obj2",
+    srcs = [
+        "runtime.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-fno-stack-check",
+        "-fno-stack-protector",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":system_blocks_static_inc_libclosure",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_blocks_static
+
+cc_header_root(
+    name = "blocks_headers",
+    headers = glob(["*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_libclosure.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

@@ -1,0 +1,2692 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+prefix_dir(
+    name = "prefix_login_tproj_pam_d",
+    srcs = glob(
+        ["login.tproj/pam.d/**"],
+        exclude = [],
+    ),
+    strip = "login.tproj/pam.d",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_system_cmds.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports
+
+# BEGIN generated: ac
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) ac   -- review before committing.
+# cmake target: ac  ->  src/external/system_cmds/ac.tproj/ac
+
+cc_objects(
+    name = "ac_obj",
+    srcs = [
+        "ac.tproj/ac.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ac
+
+# BEGIN generated: ac binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries ac   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "ac",
+    objs = [
+        # ac
+        ":ac_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ac binary
+
+# BEGIN generated: accton
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) accton   -- review before committing.
+# cmake target: accton  ->  src/external/system_cmds/accton.tproj/accton
+
+cc_objects(
+    name = "accton_obj",
+    srcs = [
+        "accton.tproj/accton.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: accton
+
+# BEGIN generated: accton binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries accton   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "accton",
+    objs = [
+        # accton
+        ":accton_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: accton binary
+
+# BEGIN generated: arch
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) arch   -- review before committing.
+# cmake target: arch  ->  src/external/libarchive/libarchive/libarchive.2.dylib
+
+cc_objects(
+    name = "arch_obj",
+    srcs = [
+        "arch.tproj/arch.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: arch
+
+# BEGIN generated: arch binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries arch   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "arch",
+    objs = [
+        # arch
+        ":arch_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: arch binary
+
+# BEGIN generated: at
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) at   -- review before committing.
+# cmake target: at  ->  src/external/system_cmds/at.tproj/at
+
+cc_objects(
+    name = "at_obj",
+    srcs = [
+        "at.tproj/at.c",
+        "at.tproj/panic.c",
+        "at.tproj/parsetime.c",
+        "at.tproj/perm.c",
+    ],
+    compiler_flags = [
+        "-DDAEMON_GID=1",
+        "-DDAEMON_UID=1",
+        "-DDEFAULT_AT_QUEUE='a'",
+        "-DDEFAULT_BATCH_QUEUE='b'",
+        "-DPERM_PATH=\"/usr/lib/cron/\"",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: at
+
+# BEGIN generated: at binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries at   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "at",
+    objs = [
+        # at
+        ":at_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: at binary
+
+# BEGIN generated: atrun
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) atrun   -- review before committing.
+# cmake target: atrun  ->  src/external/system_cmds/atrun.tproj/atrun
+
+cc_header_root(
+    name = "atrun_inc_system_cmds_at_tproj",
+    headers = glob(["at.tproj/**/*"]),
+    root = "at.tproj",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "atrun_obj",
+    srcs = [
+        "atrun.tproj/atrun.c",
+    ],
+    compiler_flags = [
+        "-DDAEMON_GID=1",
+        "-DDAEMON_UID=1",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":atrun_inc_system_cmds_at_tproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: atrun
+
+# BEGIN generated: atrun binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries atrun   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "atrun",
+    objs = [
+        # atrun
+        ":atrun_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: atrun binary
+
+# BEGIN generated: cpuctl
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) cpuctl   -- review before committing.
+# cmake target: cpuctl  ->  src/external/system_cmds/cpuctl.tproj/cpuctl
+
+cc_objects(
+    name = "cpuctl_obj",
+    srcs = [
+        "cpuctl.tproj/cpuctl.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cpuctl
+
+# BEGIN generated: cpuctl binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries cpuctl   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "cpuctl",
+    objs = [
+        # cpuctl
+        ":cpuctl_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cpuctl binary
+
+# BEGIN generated: getconf
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) getconf   -- review before committing.
+# cmake target: getconf  ->  src/external/system_cmds/getconf.tproj/getconf
+
+cc_header_root(
+    name = "getconf_inc_system_cmds_getconf_tproj",
+    headers = glob(["getconf.tproj/*.h", "getconf.tproj/**/*.h", "getconf.tproj/*.c"]),
+    root = "getconf.tproj",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "getconf_obj",
+    srcs = [
+        "gen/getconf.tproj/confstr.c",
+        "gen/getconf.tproj/limits.c",
+        "gen/getconf.tproj/pathconf.c",
+        "gen/getconf.tproj/progenv.c",
+        "gen/getconf.tproj/sysconf.c",
+        "getconf.tproj/getconf.c",
+    ],
+    compiler_flags = [
+        "-DAPPLE_GETCONF_SPEC",
+        "-DAPPLE_GETCONF_UNDERSCORE",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":getconf_inc_system_cmds_getconf_tproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: getconf
+
+# BEGIN generated: getconf binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries getconf   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "getconf",
+    objs = [
+        # getconf
+        ":getconf_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: getconf binary
+
+# BEGIN generated: getty
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) getty   -- review before committing.
+# cmake target: getty  ->  src/external/system_cmds/getty.tproj/getty
+
+cc_objects(
+    name = "getty_obj",
+    srcs = [
+        "getty.tproj/chat.c",
+        "getty.tproj/init.c",
+        "getty.tproj/main.c",
+        "getty.tproj/subr.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: getty
+
+# BEGIN generated: getty binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries getty   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "getty",
+    objs = [
+        # getty
+        ":getty_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: getty binary
+
+# BEGIN generated: hostinfo
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) hostinfo   -- review before committing.
+# cmake target: hostinfo  ->  src/external/system_cmds/hostinfo.tproj/hostinfo
+
+cc_objects(
+    name = "hostinfo_obj",
+    srcs = [
+        "hostinfo.tproj/hostinfo.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: hostinfo
+
+# BEGIN generated: hostinfo binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries hostinfo   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "hostinfo",
+    objs = [
+        # hostinfo
+        ":hostinfo_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: hostinfo binary
+
+# BEGIN generated: iosim
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) iosim   -- review before committing.
+# cmake target: iosim  ->  src/external/system_cmds/iosim.tproj/iosim
+
+cc_header_root(
+    name = "iosim_inc_system_cmds_at_tproj",
+    headers = glob(["at.tproj/**/*"]),
+    root = "at.tproj",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "iosim_obj",
+    srcs = [
+        "iosim.tproj/iosim.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        ":iosim_inc_system_cmds_at_tproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: iosim
+
+# BEGIN generated: iosim binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries iosim   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "iosim",
+    objs = [
+        # iosim
+        ":iosim_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:util_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src:IOKit_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: iosim binary
+
+# BEGIN generated: iostat
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) iostat   -- review before committing.
+# cmake target: iostat  ->  src/external/system_cmds/iostat.tproj/iostat
+
+cc_objects(
+    name = "iostat_obj",
+    srcs = [
+        "iostat.tproj/iostat.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: iostat
+
+# BEGIN generated: iostat binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries iostat   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "iostat",
+    objs = [
+        # iostat
+        ":iostat_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src:IOKit_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: iostat binary
+
+# BEGIN generated: kpgo
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) kpgo   -- review before committing.
+# cmake target: kpgo  ->  src/external/system_cmds/kpgo.tproj/kpgo
+
+cc_objects(
+    name = "kpgo_obj",
+    srcs = [
+        "kpgo.tproj/kpgo.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: kpgo
+
+# BEGIN generated: kpgo binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries kpgo   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "kpgo",
+    objs = [
+        # kpgo
+        ":kpgo_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: kpgo binary
+
+# BEGIN generated: latency
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) latency   -- review before committing.
+# cmake target: latency  ->  src/external/system_cmds/latency.tproj/latency
+
+cc_objects(
+    name = "latency_obj",
+    srcs = [
+        "latency.tproj/latency.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: latency
+
+# BEGIN generated: latency binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries latency   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "latency",
+    objs = [
+        # latency
+        ":latency_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:util_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: latency binary
+
+# BEGIN generated: login binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries login   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "login",
+    objs = [
+        # login-exe
+        ":login-exe_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:bsm.0_dylib",
+        "//vendor/src/openpam:pam.2_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: login binary
+
+# BEGIN generated: login-exe
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) login-exe   -- review before committing.
+# cmake target: login-exe  ->  login-exe
+
+cc_objects(
+    name = "login-exe_obj",
+    srcs = [
+        "login.tproj/login.c",
+        "login.tproj/login_audit.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-DUSE_BSM_AUDIT",
+        "-DUSE_PAM",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: login-exe
+
+# BEGIN generated: lsmp
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) lsmp   -- review before committing.
+# cmake target: lsmp  ->  src/external/system_cmds/lsmp.tproj/lsmp
+
+cc_objects(
+    name = "lsmp_obj",
+    srcs = [
+        "lsmp.tproj/lsmp.c",
+        "lsmp.tproj/port_details.c",
+        "lsmp.tproj/task_details.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lsmp
+
+# BEGIN generated: lsmp binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries lsmp   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "lsmp",
+    objs = [
+        # lsmp
+        ":lsmp_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:util_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lsmp binary
+
+# BEGIN generated: ltop
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) ltop   -- review before committing.
+# cmake target: ltop  ->  src/external/system_cmds/ltop.tproj/ltop
+
+cc_objects(
+    name = "ltop_obj",
+    srcs = [
+        "ltop.tproj/ltop.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_Kernel",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ltop
+
+# BEGIN generated: ltop binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries ltop   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "ltop",
+    objs = [
+        # ltop
+        ":ltop_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:util_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ltop binary
+
+# BEGIN generated: mean
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) mean   -- review before committing.
+# cmake target: mean  ->  src/external/system_cmds/mean.tproj/mean
+
+cc_objects(
+    name = "mean_obj",
+    srcs = [
+        "mean.tproj/mean.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mean
+
+# BEGIN generated: mean binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries mean   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "mean",
+    objs = [
+        # mean
+        ":mean_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:util_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mean binary
+
+# BEGIN generated: memory_pressure
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) memory_pressure   -- review before committing.
+# cmake target: memory_pressure  ->  src/external/system_cmds/memory_pressure.tproj/memory_pressure
+
+cc_objects(
+    name = "memory_pressure_obj",
+    srcs = [
+        "memory_pressure.tproj/memory_pressure.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: memory_pressure
+
+# BEGIN generated: memory_pressure binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries memory_pressure   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "memory_pressure",
+    objs = [
+        # memory_pressure
+        ":memory_pressure_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:util_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: memory_pressure binary
+
+# BEGIN generated: mkfile
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) mkfile   -- review before committing.
+# cmake target: mkfile  ->  src/external/system_cmds/mkfile.tproj/mkfile
+
+cc_objects(
+    name = "mkfile_obj",
+    srcs = [
+        "mkfile.tproj/mkfile.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mkfile
+
+# BEGIN generated: mkfile binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries mkfile   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "mkfile",
+    objs = [
+        # mkfile
+        ":mkfile_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mkfile binary
+
+# BEGIN generated: mslutil
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) mslutil   -- review before committing.
+# cmake target: mslutil  ->  src/external/system_cmds/mslutil/mslutil
+
+cc_objects(
+    name = "mslutil_obj",
+    srcs = [
+        "mslutil/mslutil.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mslutil
+
+# BEGIN generated: mslutil binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries mslutil   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "mslutil",
+    objs = [
+        # mslutil
+        ":mslutil_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mslutil binary
+
+# BEGIN generated: newgrp
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) newgrp   -- review before committing.
+# cmake target: newgrp  ->  src/external/system_cmds/newgrp.tproj/newgrp
+
+cc_objects(
+    name = "newgrp_obj",
+    srcs = [
+        "newgrp.tproj/newgrp.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: newgrp
+
+# BEGIN generated: newgrp binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries newgrp   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "newgrp",
+    objs = [
+        # newgrp
+        ":newgrp_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: newgrp binary
+
+# BEGIN generated: nvram
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) nvram   -- review before committing.
+# cmake target: nvram  ->  src/external/system_cmds/nvram.tproj/nvram
+
+cc_objects(
+    name = "nvram_obj",
+    srcs = [
+        "nvram.tproj/nvram.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: nvram
+
+# BEGIN generated: nvram binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries nvram   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "nvram",
+    objs = [
+        # nvram
+        ":nvram_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src:IOKit_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: nvram binary
+
+# BEGIN generated: proc_uuid_policy
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) proc_uuid_policy   -- review before committing.
+# cmake target: proc_uuid_policy  ->  src/external/system_cmds/proc_uuid_policy.tproj/proc_uuid_policy
+
+cc_objects(
+    name = "proc_uuid_policy_obj",
+    srcs = [
+        "proc_uuid_policy.tproj/proc_uuid_policy.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: proc_uuid_policy
+
+# BEGIN generated: proc_uuid_policy binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries proc_uuid_policy   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "proc_uuid_policy",
+    objs = [
+        # proc_uuid_policy
+        ":proc_uuid_policy_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: proc_uuid_policy binary
+
+# BEGIN generated: purge
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) purge   -- review before committing.
+# cmake target: purge  ->  src/external/system_cmds/purge.tproj/purge
+
+cc_objects(
+    name = "purge_obj",
+    srcs = [
+        "purge.tproj/purge.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: purge
+
+# BEGIN generated: purge binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries purge   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "purge",
+    objs = [
+        # purge
+        ":purge_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: purge binary
+
+# BEGIN generated: pwd_mkdb
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) pwd_mkdb   -- review before committing.
+# cmake target: pwd_mkdb  ->  src/external/system_cmds/pwd_mkdb.tproj/pwd_mkdb
+
+cc_objects(
+    name = "pwd_mkdb_obj",
+    srcs = [
+        "pwd_mkdb.tproj/pw_scan.c",
+        "pwd_mkdb.tproj/pwd_mkdb.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_PW_NAME_LEN=MAXLOGNAME",
+        "-D_PW_YPTOKEN=\"__YP!\"",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pwd_mkdb
+
+# BEGIN generated: pwd_mkdb binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries pwd_mkdb   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "pwd_mkdb",
+    objs = [
+        # pwd_mkdb
+        ":pwd_mkdb_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pwd_mkdb binary
+
+# BEGIN generated: sa
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) sa   -- review before committing.
+# cmake target: sa  ->  src/external/passwordserver_sasl/libsasl2.2.dylib
+
+cc_objects(
+    name = "sa_obj",
+    srcs = [
+        "sa.tproj/db.c",
+        "sa.tproj/main.c",
+        "sa.tproj/pdb.c",
+        "sa.tproj/usrdb.c",
+    ],
+    compiler_flags = [
+        "-DAHZV1=64",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sa
+
+# BEGIN generated: sa binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries sa   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "sa",
+    objs = [
+        # sa
+        ":sa_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sa binary
+
+# BEGIN generated: sc_usage
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) sc_usage   -- review before committing.
+# cmake target: sc_usage  ->  src/external/system_cmds/sc_usage.tproj/sc_usage
+
+cc_objects(
+    name = "sc_usage_obj",
+    srcs = [
+        "sc_usage.tproj/sc_usage.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sc_usage
+
+# BEGIN generated: sc_usage binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries sc_usage   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "sc_usage",
+    objs = [
+        # sc_usage
+        ":sc_usage_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:util_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sc_usage binary
+
+# BEGIN generated: stackshot
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) stackshot   -- review before committing.
+# cmake target: stackshot  ->  src/external/system_cmds/stackshot.tproj/stackshot
+
+cc_objects(
+    name = "stackshot_obj",
+    srcs = [
+        "stackshot.tproj/stackshot.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: stackshot
+
+# BEGIN generated: stackshot binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries stackshot   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "stackshot",
+    objs = [
+        # stackshot
+        ":stackshot_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: stackshot binary
+
+# BEGIN generated: sync
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) sync   -- review before committing.
+# cmake target: sync  ->  src/external/system_cmds/sync.tproj/sync
+
+cc_objects(
+    name = "sync_obj",
+    srcs = [
+        "sync.tproj/sync.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sync
+
+# BEGIN generated: sync binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries sync   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "sync",
+    objs = [
+        # sync
+        ":sync_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sync binary
+
+# BEGIN generated: sysctl
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) sysctl   -- review before committing.
+# cmake target: sysctl  ->  src/external/system_cmds/sysctl.tproj/sysctl
+
+cc_objects(
+    name = "sysctl_obj",
+    srcs = [
+        "sysctl.tproj/sysctl.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sysctl
+
+# BEGIN generated: sysctl binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries sysctl   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "sysctl",
+    objs = [
+        # sysctl
+        ":sysctl_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sysctl binary
+
+# BEGIN generated: taskpolicy
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) taskpolicy   -- review before committing.
+# cmake target: taskpolicy  ->  src/external/system_cmds/taskpolicy.tproj/taskpolicy
+
+cc_objects(
+    name = "taskpolicy_obj",
+    srcs = [
+        "taskpolicy.tproj/taskpolicy.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: taskpolicy
+
+# BEGIN generated: taskpolicy binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries taskpolicy   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "taskpolicy",
+    objs = [
+        # taskpolicy
+        ":taskpolicy_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: taskpolicy binary
+
+# BEGIN generated: trace
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) trace   -- review before committing.
+# cmake target: trace  ->  src/external/system_cmds/trace.tproj/trace
+
+cc_objects(
+    name = "trace_obj",
+    srcs = [
+        "trace.tproj/trace.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: trace
+
+# BEGIN generated: trace binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries trace   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "trace",
+    objs = [
+        # trace
+        ":trace_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:util_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: trace binary
+
+# BEGIN generated: vipw
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) vipw   -- review before committing.
+# cmake target: vipw  ->  src/external/system_cmds/vipw.tproj/vipw
+
+cc_objects(
+    name = "vipw_obj",
+    srcs = [
+        "vipw.tproj/pw_util.c",
+        "vipw.tproj/vipw.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vipw
+
+# BEGIN generated: vipw binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries vipw   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "vipw",
+    objs = [
+        # vipw
+        ":vipw_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vipw binary
+
+# BEGIN generated: vm_purgeable_stat
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) vm_purgeable_stat   -- review before committing.
+# cmake target: vm_purgeable_stat  ->  src/external/system_cmds/vm_purgeable_stat.tproj/vm_purgeable_stat
+
+cc_objects(
+    name = "vm_purgeable_stat_obj",
+    srcs = [
+        "vm_purgeable_stat.tproj/vm_purgeable_stat.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vm_purgeable_stat
+
+# BEGIN generated: vm_purgeable_stat binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries vm_purgeable_stat   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "vm_purgeable_stat",
+    objs = [
+        # vm_purgeable_stat
+        ":vm_purgeable_stat_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:util_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vm_purgeable_stat binary
+
+# BEGIN generated: vm_stat
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) vm_stat   -- review before committing.
+# cmake target: vm_stat  ->  src/external/system_cmds/vm_stat.tproj/vm_stat
+
+cc_objects(
+    name = "vm_stat_obj",
+    srcs = [
+        "vm_stat.tproj/vm_stat.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vm_stat
+
+# BEGIN generated: vm_stat binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries vm_stat   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "vm_stat",
+    objs = [
+        # vm_stat
+        ":vm_stat_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vm_stat binary
+
+# BEGIN generated: wait4path
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) wait4path   -- review before committing.
+# cmake target: wait4path  ->  src/external/system_cmds/wait4path/wait4path
+
+cc_objects(
+    name = "wait4path_obj",
+    srcs = [
+        "gen/wait4path/x86_64/darwin_version.c",
+        "wait4path/wait4path.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: wait4path
+
+# BEGIN generated: wait4path binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries wait4path   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "wait4path",
+    objs = [
+        # wait4path
+        ":wait4path_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: wait4path binary
+
+# BEGIN generated: zdump
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zdump   -- review before committing.
+# cmake target: zdump  ->  src/external/system_cmds/zdump.tproj/zdump
+
+cc_objects(
+    name = "zdump_obj",
+    srcs = [
+        "zdump.tproj/zdump.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zdump
+
+# BEGIN generated: zdump binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries zdump   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "zdump",
+    objs = [
+        # zdump
+        ":zdump_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zdump binary
+
+# BEGIN generated: zic
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zic   -- review before committing.
+# cmake target: zic  ->  src/external/system_cmds/zic.tproj/zic
+
+cc_objects(
+    name = "zic_obj",
+    srcs = [
+        "zic.tproj/ialloc.c",
+        "zic.tproj/scheck.c",
+        "zic.tproj/zic.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zic
+
+# BEGIN generated: zic binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries zic   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "zic",
+    objs = [
+        # zic
+        ":zic_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zic binary
+
+# BEGIN generated: wordexp-helper
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) wordexp-helper   -- review before committing.
+# cmake target: wordexp-helper  ->  src/external/system_cmds/wordexp-helper.tproj/wordexp-helper
+
+cc_objects(
+    name = "wordexp-helper_obj",
+    srcs = [
+        "wordexp-helper.tproj/wordexp-helper.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: wordexp-helper
+
+# BEGIN generated: wordexp-helper binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries wordexp-helper   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "wordexp-helper",
+    objs = [
+        # wordexp-helper
+        ":wordexp-helper_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: wordexp-helper binary
+
+# BEGIN generated: reboot
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) reboot   -- review before committing.
+# cmake target: reboot  ->  src/external/system_cmds/reboot.tproj/reboot
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/system_cmds/reboot.tproj/kextmanagerUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/system_cmds/reboot.tproj
+
+cc_objects(
+    name = "reboot_obj",
+    srcs = [
+        "reboot.tproj/reboot.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Security",
+    ],
+    gen_srcs = [
+        "//vendor/src:rebootmig_kextmanager",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: reboot
+
+# BEGIN generated: shutdown
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) shutdown   -- review before committing.
+# cmake target: shutdown  ->  src/external/system_cmds/shutdown.tproj/shutdown
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/system_cmds/shutdown.tproj/kextmanagerUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/system_cmds/shutdown.tproj
+
+cc_objects(
+    name = "shutdown_obj",
+    srcs = [
+        "shutdown.tproj/shutdown.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Security",
+    ],
+    gen_srcs = [
+        "//vendor/src:rebootmig_kextmanager",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: shutdown
+
+# BEGIN generated: nologin
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) nologin   -- review before committing.
+# cmake target: nologin  ->  src/external/system_cmds/nologin.tproj/nologin
+
+cc_objects(
+    name = "nologin_obj",
+    srcs = [
+        "nologin.tproj/nologin.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: nologin
+
+# BEGIN generated: nologin binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries nologin   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "nologin",
+    objs = [
+        # nologin
+        ":nologin_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: nologin binary
+
+# BEGIN generated: dmesg
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) dmesg   -- review before committing.
+# cmake target: dmesg  ->  src/external/system_cmds/dmesg.tproj/dmesg
+
+cc_objects(
+    name = "dmesg_obj",
+    srcs = [
+        "dmesg.tproj/dmesg.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dmesg
+
+# BEGIN generated: dmesg binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries dmesg   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "dmesg",
+    objs = [
+        # dmesg
+        ":dmesg_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dmesg binary
+
+# BEGIN generated: dynamic_pager
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) dynamic_pager   -- review before committing.
+# cmake target: dynamic_pager  ->  src/external/system_cmds/dynamic_pager.tproj/dynamic_pager
+
+cc_objects(
+    name = "dynamic_pager_obj",
+    srcs = [
+        "dynamic_pager.tproj/dynamic_pager.c",
+    ],
+    compiler_flags = [
+        "-DNO_DIRECT_RPC",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dynamic_pager
+
+# BEGIN generated: dynamic_pager binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries dynamic_pager   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "dynamic_pager",
+    objs = [
+        # dynamic_pager
+        ":dynamic_pager_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//src/darwin/frameworks:SystemConfiguration_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dynamic_pager binary
+
+# BEGIN generated: chpass
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) chpass   -- review before committing.
+# cmake target: chpass  ->  src/external/system_cmds/chpass.tproj/chpass
+
+cc_header_root(
+    name = "chpass_inc_system_cmds_vipw_tproj",
+    headers = glob(["vipw.tproj/*.h", "vipw.tproj/**/*.h", "vipw.tproj/*.c"]),
+    root = "vipw.tproj",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "chpass_obj",
+    srcs = [
+        "chpass.tproj/chpass.c",
+        "chpass.tproj/edit.c",
+        "chpass.tproj/field.c",
+        "chpass.tproj/open_directory.c",
+        "chpass.tproj/pw_copy.c",
+        "chpass.tproj/table.c",
+        "chpass.tproj/util.c",
+        "vipw.tproj/pw_util.c",
+    ],
+    compiler_flags = [
+        "-DOPEN_DIRECTORY",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_DirectoryService",
+        "//src/darwin/frameworks:fw_CFOpenDirectory",
+        "//src/darwin/frameworks:fw_OpenDirectory",
+        ":chpass_inc_system_cmds_vipw_tproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: chpass
+
+# BEGIN generated: gcore
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) gcore   -- review before committing.
+# cmake target: gcore  ->  src/external/system_cmds/gcore.tproj/gcore
+
+cc_objects(
+    name = "gcore_obj",
+    srcs = [
+        "gcore.tproj/convert.c",
+        "gcore.tproj/corefile.c",
+        "gcore.tproj/dyld.c",
+        "gcore.tproj/dyld_shared_cache.c",
+        "gcore.tproj/main.c",
+        "gcore.tproj/sparse.c",
+        "gcore.tproj/threads.c",
+        "gcore.tproj/utils.c",
+        "gcore.tproj/vanilla.c",
+        "gcore.tproj/vm.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gcore
+
+# BEGIN generated: gcore binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries gcore   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "gcore",
+    objs = [
+        # gcore
+        ":gcore_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:util_dylib",
+        "//src/darwin/libcompression:compression_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gcore binary
+
+# BEGIN generated: zlog
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zlog   -- review before committing.
+# cmake target: zlog  ->  src/external/system_cmds/zlog.tproj/zlog
+
+cc_objects(
+    name = "zlog_obj",
+    srcs = [
+        "zlog.tproj/SymbolicationHelper.c",
+        "zlog.tproj/zlog.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/private-frameworks:fw_CoreSymbolication",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zlog
+
+# BEGIN generated: chpass binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries chpass   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "chpass",
+    objs = [
+        # chpass
+        ":chpass_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//src/darwin/frameworks:OpenDirectory_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: chpass binary
+
+# BEGIN generated: reboot binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries reboot   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "reboot",
+    objs = [
+        # reboot
+        ":reboot_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: reboot binary
+
+# BEGIN generated: shutdown binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries shutdown   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "shutdown",
+    objs = [
+        # shutdown
+        ":shutdown_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:bsm.0_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src:IOKit_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: shutdown binary
+
+# zlog links on _mach_zone_get_zlog_zones and _mach_zone_get_btlog_records, which are
+# `#ifdef PRIVATE` routines in xnu/osfmk/mach/mach_host.defs. It was held back until the
+# libsyscall ksmig targets started passing the reference's -DPRIVATE=1, because until then
+# libsystem_kernel simply did not export them. See the mig_flags on the ksmig_* blocks in
+# vendor/src/BUCK.
+
+# BEGIN generated: zlog binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries zlog   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "zlog",
+    objs = [
+        # zlog
+        ":zlog_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//src/darwin/private-frameworks:CoreSymbolication_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zlog binary
+
+# BEGIN generated: zprint
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zprint   -- review before committing.
+# cmake target: zprint  ->  src/external/system_cmds/zprint.tproj/zprint
+
+cc_objects(
+    name = "zprint_obj",
+    srcs = [
+        "zprint.tproj/zprint.c",
+    ],
+    compiler_flags = [
+        "-DKERNEL_PRIVATE",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Kernel",
+        "//src/darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:fw_Kernel",
+        "//src/darwin/private-frameworks:fw_CoreSymbolication",
+        "//vendor/src:sdk_include_mach",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zprint
+
+# BEGIN generated: zprint binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries zprint   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "zprint",
+    objs = [
+        # zprint
+        ":zprint_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:util_dylib",
+        "//vendor/src:system_final",
+        "//vendor/src:IOKit_dylib",
+        "//src/darwin/private-frameworks:CoreSymbolication_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zprint binary
+
+# BEGIN generated: vifs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) vifs   -- review before committing.
+# cmake target: vifs  ->  src/external/system_cmds/vifs.tproj/vifs
+
+cc_objects(
+    name = "vifs_obj",
+    srcs = [
+        "vifs.tproj/vifs.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vifs
+
+# BEGIN generated: vifs binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries vifs   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/system_cmds/vifs.tproj/vifs = vifs
+
+darwin_binary(
+    name = "vifs",
+    objs = [
+        # vifs
+        ":vifs_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vifs binary

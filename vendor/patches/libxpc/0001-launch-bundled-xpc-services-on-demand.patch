@@ -1,0 +1,129 @@
+--- a/src/connection.m
++++ b/src/connection.m
+@@ -25,6 +25,15 @@
+ #import <xpc/connection.h>
+ #include <pthread/pthread.h>
+ #include <bootstrap.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <spawn.h>
++#import <xpc/objects/bundle.h>
++#import <xpc/objects/array.h>
++#import <xpc/objects/string.h>
++#import <xpc/objects/dictionary.h>
++#include <crt_externs.h>
+ #include <xpc/serialization.h>
+ #import <objc/runtime.h>
+ #include <Block.h>
+@@ -613,6 +622,85 @@
+ }
+ 
+ // init helper/common init
++
++/*
++ * LAUNCH A BUNDLED XPC SERVICE ON DEMAND, which is the half of this that was missing.
++ *
++ * libxpc already DISCOVERS them: -[bundle resolve] walks Contents/XPCServices and builds a bundle
++ * for each .xpc it finds. Nothing ever started one. On macOS that is launchd's job, and our launchd
++ * has no notion of XPCServices at all, so a client connecting to a bundled service looked its name
++ * up, found nothing, and gave up silently.
++ *
++ * iTerm2 decodes inline images in exactly such a service, com.iterm2.sandboxed-worker, which is why
++ * imgcat drew nothing and said nothing.
++ *
++ * Spawning is all that is needed: xpc_main in the service reads its OWN bundle, checks the package
++ * type is XPC and takes CFBundleIdentifier as the name it checks in under, so there is no handshake
++ * to arrange and no environment to pass.
++ */
++static bool cider_spawn_bundled_service(const char* serviceName)
++{
++	XPC_CLASS(bundle)* mainBundle = nil;
++	bool spawned = false;
++
++	/*
++	 * OFF BY DEFAULT, and the reason is measured rather than cautious. Starting the service works,
++	 * and it moves the failure one step later into NSXPCConnection, which crashes sending the first
++	 * message:
++	 *
++	 *     _Block_signature + 24
++	 *     -[NSXPCConnection _sendInvocation:orArguments:count:methodSignature:selector:withProxy:]
++	 *     -[iTermSlowOperationGateway asyncGetInfoForProcess:...]
++	 *
++	 * Before this, the lookup failed and the application carried on without the service. With it,
++	 * iTerm2 gets a connection it cannot use and dies, which is worse than the feature being
++	 * absent. So the discovery and spawning live here, ready, behind a switch, until
++	 * NSXPCConnection can carry a call.
++	 */
++	if (!getenv("CIDER_XPC_LAUNCH_SERVICES")) {
++		return false;
++	}
++
++	mainBundle = [XPC_CLASS(bundle) mainBundle];
++
++	if (!mainBundle || !serviceName) {
++		return false;
++	}
++
++	[mainBundle resolve];
++
++	for (XPC_CLASS(bundle)* service in ((struct xpc_bundle_s*)mainBundle)->services) {
++		XPC_CLASS(string)* identifier = [service.infoDictionary stringForKey: "CFBundleIdentifier"];
++
++		if (!identifier || strcmp(identifier.CString, serviceName) != 0) {
++			continue;
++		}
++
++		XPC_CLASS(string)* executable = service.executablePath;
++		if (!executable) {
++			break;
++		}
++
++		{
++			const char* path = executable.CString;
++			char* const argv[] = { (char*)path, NULL };
++			pid_t pid = 0;
++
++			if (posix_spawn(&pid, path, NULL, NULL, argv, *_NSGetEnviron()) == 0) {
++				spawned = true;
++			}
++			if (getenv("CIDER_TRACE_XPC") != NULL) {
++				fprintf(stderr, "CIDER_XPC %s bundled service %s at %s\n",
++					spawned ? "spawned" : "failed to spawn", serviceName, path);
++				fflush(stderr);
++			}
++		}
++		break;
++	}
++
++	return spawned;
++}
++
+ - (instancetype)initForService: (const char*)serviceName queue: (dispatch_queue_t)queue asServer: (BOOL)asServer
+ {
+ 	if (self = [super init]) {
+@@ -743,8 +831,24 @@
+ 	} else if (this->service_name) {
+ 		// client for named server
+ 		status = bootstrap_look_up(bootstrap_port, this->service_name, &this->checkin_port);
++		if (status != KERN_SUCCESS && cider_spawn_bundled_service(this->service_name)) {
++			/* It has to register itself before the name resolves, so wait for it rather than
++			 * failing the connection that just started it. Five seconds, checked every fifty
++			 * milliseconds, which is long enough for a cold start and short enough that a service
++			 * that dies immediately does not hang the caller. */
++			for (int attempt = 0; attempt < 100 && status != KERN_SUCCESS; attempt++) {
++				usleep(50000);
++				status = bootstrap_look_up(bootstrap_port, this->service_name, &this->checkin_port);
++			}
++		}
+ 		if (status != KERN_SUCCESS) {
+ 			xpc_log_error(connection, "failed to lookup service with name \"%s\"", this->service_name);
++			/* os_log goes to syslog and there is no syslog socket here, so without this a failed
++			 * lookup is completely silent on every channel. */
++			if (getenv("CIDER_TRACE_XPC") != NULL) {
++				fprintf(stderr, "CIDER_XPC lookup failed for service %s\n", this->service_name);
++				fflush(stderr);
++			}
+ 			goto error_out;
+ 		}
+ 	} else if (this->is_server_peer) {

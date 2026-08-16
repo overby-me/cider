@@ -1,0 +1,35 @@
+load("//buck/rules:files.bzl", "export_file")
+
+# Directory Services command-line stubs (dscl, dseditgroup, sysadminctl).
+#
+# Shell scripts, not compiled targets: they translate the macOS Directory Services
+# commands into direct /etc/passwd and /etc/group edits inside the prefix. The
+# reference installs them with install(FILES ... PERMISSIONS ...), so all this
+# package has to do is exist -- scripts/buck-exports.py fills in the export_file
+# rules that name them, and the prefix picks them up from there.
+#
+# tests/cider-smoke.nix stage 7 drives all three.
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+export_file(
+    name = "dscl",
+    src = "dscl",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "dseditgroup",
+    src = "dseditgroup",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "sysadminctl",
+    src = "sysadminctl",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports

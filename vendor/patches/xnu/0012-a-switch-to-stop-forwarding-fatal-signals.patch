@@ -1,0 +1,122 @@
+An application crash handler hides the crash from everything outside the process.
+
+A fatal signal goes to the handler the application installed, which is correct,
+and is also the end of any hope of debugging it: the handler prints its own
+message and exits cleanly, so there is no core, coredumpctl has nothing, and
+scripts/core-guest-stack.py has nothing to read.
+
+LibreOffice does exactly this. Its FIRST run against a new profile dies with
+"Unspecified Application Error" and zero windows, and every instrument in the
+tree was silent: no exception, no unrecognised selector, and SAL_LOG produces
+nothing at all because nixpkgs ships the release build with logging compiled
+out. The only trace of what happened was one line in the daemon log,
+
+    sigexc: will forward signal to app handler (0x7334D03B41A0)
+
+CIDER_SIGNAL_NO_APP_HANDLER=1 takes the DEFAULT effect for the four signals
+that mean the process is broken (SEGV, BUS, ILL, FPE), so the kernel writes a
+core and the stack can be resolved. With it set, the same run produced a core
+and one line of answer:
+
+    tid 3  libskialo.dylib+0x49936b
+           skwindow::internal::MetalWindowContext::checkDestroyShared (+43)
+
+The switch changes nothing unless it is set, and it is read ONCE at setup
+rather than in the handler, where opening a file would be a new way to crash.
+The environment is read through /proc/self/environ rather than getenv, because
+this file is below libc and there is no environ pointer here yet.
+
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c	2026-08-16 03:05:31.135655519 +0200
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c	2026-08-16 03:05:31.118028103 +0200
+@@ -68,6 +68,70 @@
+ #define kern_printf(...)
+ #endif
+ 
++/*
++ * AN APPLICATION CRASH HANDLER HIDES THE CRASH FROM EVERYTHING OUTSIDE THE PROCESS.
++ *
++ * A fatal signal is delivered to the handler the application installed, which is right, and it is
++ * also the end of any hope of debugging: the handler prints its own message and exits cleanly, so
++ * there is no core, coredumpctl has nothing, and scripts/core-guest-stack.py has nothing to read.
++ * LibreOffice does exactly this. Its first run with no profile dies with Unspecified Application
++ * Error and no more, and what is underneath is a SIGSEGV this file dutifully forwarded.
++ *
++ * CIDER_SIGNAL_NO_APP_HANDLER=1 takes the DEFAULT effect for the four signals that mean the process
++ * is broken, so the kernel writes a core and the stack can be read. It changes nothing unless it is
++ * set, and it is read ONCE at setup rather than in the handler, where opening a file would be a new
++ * way to crash.
++ *
++ * The environment is read through /proc/self/environ rather than getenv, because this file is below
++ * libc: there is no environ pointer here yet at the time this runs.
++ */
++static int cider_no_app_handler = 0;
++
++static void cider_read_no_app_handler(void)
++{
++	char buf[8192];
++	long fd = LINUX_SYSCALL(__NR_openat, -100 /* AT_FDCWD */, "/proc/self/environ", 0 /* O_RDONLY */, 0);
++
++	if (fd < 0)
++		return;
++
++	long len = LINUX_SYSCALL(__NR_read, fd, buf, sizeof(buf) - 1);
++
++	LINUX_SYSCALL(__NR_close, fd);
++	if (len <= 0)
++		return;
++	buf[len] = '\0';
++
++	static const char key[] = "CIDER_SIGNAL_NO_APP_HANDLER=";
++	long i = 0;
++
++	while (i < len)
++	{
++		const char* entry = &buf[i];
++		long j = 0;
++
++		while (entry[j] != '\0' && key[j] != '\0' && entry[j] == key[j])
++			j++;
++		if (key[j] == '\0')
++		{
++			/* Present but empty is OFF, which is what a shell writes for VAR= and is not what
++			 * anyone means by it. */
++			cider_no_app_handler = (entry[j] != '\0');
++			return;
++		}
++		while (i < len && buf[i] != '\0')
++			i++;
++		i++;
++	}
++}
++
++/* The four that mean the process is broken rather than being asked to stop. */
++static int cider_signal_is_fatal(int bsd_signum)
++{
++	return bsd_signum == SIGSEGV || bsd_signum == SIGBUS || bsd_signum == SIGILL
++		|| bsd_signum == SIGFPE;
++}
++
+ void sigexc_setup1(void)
+ {
+ 	handle_rt_signal(SIGNAL_SIGEXC_SUSPEND);
+@@ -114,6 +178,7 @@
+ 
+ void sigexc_setup(void)
+ {
++	cider_read_no_app_handler();
+ 	darling_sigexc_self();
+ 	sigexc_setup1();
+ 	sigexc_setup2();
+@@ -339,6 +404,12 @@
+ 
+ 	if (sig_handlers[linux_signum] != SIG_IGN)
+ 	{
++		if (sig_handlers[linux_signum] && cider_no_app_handler && cider_signal_is_fatal(bsd_signum))
++		{
++			kern_printf("sigexc: NOT forwarding fatal signal %d, CIDER_SIGNAL_NO_APP_HANDLER\n",
++				bsd_signum);
++			sig_handlers[linux_signum] = NULL;
++		}
+ 		if (sig_handlers[linux_signum])
+ 		{
+ 			kern_printf("sigexc: will forward signal to app handler (%p)\n", sig_handlers[linux_signum]);

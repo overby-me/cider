@@ -1,0 +1,80 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the bsm pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: bsm.0
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) bsm.0   -- review before committing.
+# cmake target: bsm.0  ->  src/external/bsm/libbsm.0.dylib
+
+cc_header_root(
+    name = "bsm.0_inc_bsm_openbsm",
+    headers = glob(["openbsm/*.h", "openbsm/**/*.h"]),
+    root = "openbsm",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "bsm.0_obj",
+    srcs = [
+        "openbsm/libbsm/bsm_audit.c",
+        "openbsm/libbsm/bsm_class.c",
+        "openbsm/libbsm/bsm_control.c",
+        "openbsm/libbsm/bsm_domain.c",
+        "openbsm/libbsm/bsm_errno.c",
+        "openbsm/libbsm/bsm_event.c",
+        "openbsm/libbsm/bsm_fcntl.c",
+        "openbsm/libbsm/bsm_flags.c",
+        "openbsm/libbsm/bsm_io.c",
+        "openbsm/libbsm/bsm_mask.c",
+        "openbsm/libbsm/bsm_notify.c",
+        "openbsm/libbsm/bsm_socket_type.c",
+        "openbsm/libbsm/bsm_token.c",
+        "openbsm/libbsm/bsm_user.c",
+        "openbsm/libbsm/bsm_wrappers.c",
+        "stub.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dbsm_0_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-std=c99",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":bsm.0_inc_bsm_openbsm",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "bsm.0_firstpass",
+    dylib_name = "libbsm.0_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libbsm.0.dylib",
+    objs = [
+        ":bsm.0_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: bsm.0
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_bsm.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

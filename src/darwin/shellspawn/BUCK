@@ -1,0 +1,64 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:files.bzl", "export_file")
+
+# BEGIN generated: shellspawn
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) shellspawn   -- review before committing.
+# cmake target: shellspawn  ->  src/shellspawn/shellspawn
+
+cc_objects(
+    name = "shellspawn_obj",
+    srcs = [
+        "duct_signals.c",
+        "shellspawn.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: shellspawn
+
+# BEGIN generated: shellspawn binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries shellspawn   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "shellspawn",
+    objs = [
+        # shellspawn
+        ":shellspawn_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: shellspawn binary
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+export_file(
+    name = "me.overby.cider.shellspawn.plist",
+    src = "me.overby.cider.shellspawn.plist",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports

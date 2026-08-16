@@ -1,0 +1,342 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+# BEGIN generated: sw_vers
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) sw_vers   -- review before committing.
+# cmake target: sw_vers  ->  src/tools/sw_vers
+
+cc_objects(
+    name = "sw_vers_obj",
+    srcs = [
+        "sw_vers.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sw_vers
+
+# BEGIN generated: sw_vers binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries sw_vers   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "sw_vers",
+    objs = [
+        # sw_vers
+        ":sw_vers_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sw_vers binary
+
+# BEGIN generated: codesign
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) codesign   -- review before committing.
+# cmake target: codesign  ->  src/tools/codesign
+
+cc_objects(
+    name = "codesign_obj",
+    srcs = [
+        "codesign.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: codesign
+
+# BEGIN generated: codesign binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries codesign   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "codesign",
+    objs = [
+        # codesign
+        ":codesign_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: codesign binary
+
+# BEGIN generated: dsmemberutil
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) dsmemberutil   -- review before committing.
+# cmake target: dsmemberutil  ->  src/tools/dsmemberutil
+
+cc_objects(
+    name = "dsmemberutil_obj",
+    srcs = [
+        "dsmemberutil.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dsmemberutil
+
+# BEGIN generated: dsmemberutil binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries dsmemberutil   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "dsmemberutil",
+    objs = [
+        # dsmemberutil
+        ":dsmemberutil_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dsmemberutil binary
+
+# BEGIN generated: softwareupdate
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) softwareupdate   -- review before committing.
+# cmake target: softwareupdate  ->  src/tools/softwareupdate
+
+cc_objects(
+    name = "softwareupdate_obj",
+    srcs = [
+        "softwareupdate.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: softwareupdate
+
+# BEGIN generated: softwareupdate binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries softwareupdate   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "softwareupdate",
+    objs = [
+        # softwareupdate
+        ":softwareupdate_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: softwareupdate binary
+
+# BEGIN generated: spctl
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) spctl   -- review before committing.
+# cmake target: spctl  ->  src/tools/spctl
+
+cc_objects(
+    name = "spctl_obj",
+    srcs = [
+        "spctl.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: spctl
+
+# BEGIN generated: spctl binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries spctl   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "spctl",
+    objs = [
+        # spctl
+        ":spctl_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: spctl binary
+
+# BEGIN generated: sudo
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) sudo   -- review before committing.
+# cmake target: sudo  ->  src/tools/sudo
+
+cc_objects(
+    name = "sudo_obj",
+    srcs = [
+        "sudo.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sudo
+
+# BEGIN generated: sudo binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries sudo   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "sudo",
+    objs = [
+        # sudo
+        ":sudo_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sudo binary
+
+# BEGIN generated: open
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) open   -- review before committing.
+# cmake target: open  ->  src/tools/open
+
+cc_objects(
+    name = "open_obj",
+    srcs = [
+        "open.m",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_AppKit",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_Security",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_SearchKit",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: open
+
+# BEGIN generated: open binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries open   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/tools/open = open
+
+darwin_binary(
+    name = "open",
+    objs = [
+        # open
+        ":open_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src:AppKit_dylib",
+        "//src/darwin/frameworks:CoreServices_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: open binary

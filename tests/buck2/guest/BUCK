@@ -1,0 +1,162 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+# Guest probes that measure the C library rather than a framework. Like tests/buck2/gui,
+# these have no counterpart in the reference build.ninja, which is why they live under
+# tests/ -- nothing installs them and the coverage metric never sees them.
+
+cc_objects(
+    name = "stack_probe_obj",
+    srcs = ["stack_probe.c"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "stack_probe",
+    objs = [
+        ":stack_probe_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "sec_probe_obj",
+    srcs = ["sec_probe.c"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_Security",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CFNetwork",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "sec_probe",
+    objs = [
+        ":sec_probe_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Security_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "audio_probe_obj",
+    srcs = ["audio_probe.cpp"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//src/darwin/CoreAudio:fw_AudioToolbox",
+        "//src/darwin/CoreAudio:fw_CoreAudio",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_AE",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "audio_probe",
+    objs = [
+        ":audio_probe_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    # AudioToolbox's own headers are C++ (AudioQueue.h declares classes), so the probe is a
+    # .cpp and the link needs libc++ alongside the frameworks.
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//src/darwin/CoreAudio:AudioToolbox_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "dispatch_probe_obj",
+    srcs = ["dispatch_probe.c"],
+    # -fblocks: dispatch's whole API is blocks, and the guest clang needs telling.
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "dispatch_probe",
+    objs = [
+        ":dispatch_probe_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "loadall_probe_obj",
+    srcs = ["loadall_probe.c"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "loadall_probe",
+    objs = [
+        ":loadall_probe_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

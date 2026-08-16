@@ -1,0 +1,110 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+prefix_dir(
+    name = "prefix_screen_utf8encodings",
+    srcs = glob(
+        ["screen/utf8encodings/**"],
+        exclude = [],
+    ),
+    strip = "screen/utf8encodings",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_screen.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports
+
+# BEGIN generated: screen
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) screen   -- review before committing.
+# cmake target: screen  ->  src/external/screen/screen/screen
+
+cc_objects(
+    name = "screen_obj",
+    srcs = [
+        "screen/acls.c",
+        "screen/ansi.c",
+        "screen/attacher.c",
+        "screen/braille.c",
+        "screen/braille_tsi.c",
+        "screen/comm.c",
+        "screen/display.c",
+        "screen/encoding.c",
+        "screen/fileio.c",
+        "screen/help.c",
+        "screen/input.c",
+        "screen/kmapdef.c",
+        "screen/layer.c",
+        "screen/loadav.c",
+        "screen/logfile.c",
+        "screen/mark.c",
+        "screen/misc.c",
+        "screen/nethack.c",
+        "screen/process.c",
+        "screen/pty.c",
+        "screen/putenv.c",
+        "screen/resize.c",
+        "screen/sched.c",
+        "screen/screen.c",
+        "screen/search.c",
+        "screen/socket.c",
+        "screen/teln.c",
+        "screen/term.c",
+        "screen/termcap.c",
+        "screen/tty.c",
+        "screen/utmp.c",
+        "screen/window.c",
+    ],
+    compiler_flags = [
+        "-DRUN_LOGIN",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: screen
+
+# BEGIN generated: screen binary
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --binaries screen   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "screen",
+    objs = [
+        # screen
+        ":screen_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: screen binary

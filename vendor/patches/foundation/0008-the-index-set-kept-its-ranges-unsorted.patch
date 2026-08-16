@@ -1,0 +1,132 @@
+--- a/src/NSIndexSet.m
++++ b/src/NSIndexSet.m
+@@ -73,13 +73,19 @@
+     SET_EMPTY(set, YES); \
+ }
+ 
+-#define BUILD_CACHE(set) ({ \
+-    if (!HAS_SINGLE_RANGE(set) && !CACHE_VALID(set)) { \
+-        NSIndexSetBuildCache(&CACHE(set), MULTIPLE_RANGE_DATA(set)); \
+-    } \
+-    BOOL __valid = !HAS_SINGLE_RANGE(set) && CACHE_VALID(set); \
+-    __valid; \
+-})
++/* THE CACHE IS NOT BUILT, AND IT NEVER WAS USED: NSIndexSetBuildCache does not set _cacheValid and
++ * nothing else does either, so every reader below has ALWAYS taken the linear DL_FOREACH path and
++ * the fast branches beside them have never run once. What the old macro did do was call the builder
++ * on EVERY -count, -rangeCount and -indexGreaterThanIndex:, which past 32 ranges wrote off the end
++ * of two buffers, and which leaked a NSIndexSetCache and a CFArray each time, since the purge is
++ * itself guarded by the flag that is never set.
++ *
++ * RE-ENABLING IT NEEDS THREE THINGS, none of which is true today, so it is a separate change with
++ * its own test: the builder must store cache->count (it computes the sum and drops it); the fast
++ * branches must be exercised; and the INVALIDATION has to be moved, because addIndexesInRange
++ * clears the cache and THEN calls -_pointerToRangeBeforeOrContainingIndex:, which would rebuild it,
++ * before appending to the list, so the cache would be stale the moment it worked. */
++#define BUILD_CACHE(set) (NO)
+ 
+ 
+ @implementation NSIndexSet
+@@ -111,35 +117,50 @@
+     RangeList *entry = NULL;
+     NSUInteger rangeCount = 0;
+     NSUInteger count = 0;
+-    NSUInteger capacity = 0;
+-    
++    NSUInteger capacity = STACK_SIZE;
++
+     DL_FOREACH(ranges, entry)
+     {
+-        if (rangeCount > STACK_SIZE && values == &stack_values[0])
++        /* GROW BEFORE THE WRITE, AND CARRY THE STACK CONTENTS OVER. The old growth ran at
++         * rangeCount > STACK_SIZE, one entry after the stack array was full, with capacity still
++         * 0, so it wrote past stack_values, then malloc(0), then wrote through that, and the 33
++         * entries already gathered were never copied into the new buffer. */
++        if (rangeCount == capacity)
+         {
+-            values = malloc(capacity * sizeof(RangeList *));
+-            if (values == NULL)
++            NSUInteger grown = capacity * 2;
++            RangeList **bigger;
++
++            if (values == &stack_values[0])
+             {
+-                free(*cache);
+-                *cache = NULL;
+-                return;
++                bigger = malloc(grown * sizeof(RangeList *));
++                if (bigger != NULL)
++                {
++                    memcpy(bigger, stack_values, capacity * sizeof(RangeList *));
++                }
+             }
+-        }
+-        else if (rangeCount > STACK_SIZE && rangeCount + 1 > capacity)
+-        {
+-            capacity *= 2;
+-            values = reallocf(values, capacity * sizeof(RangeList *));
+-            if (values == NULL) // prev values cleaned up by reallocf
++            else
+             {
++                bigger = reallocf(values, grown * sizeof(RangeList *)); // frees values on failure
++            }
++
++            if (bigger == NULL)
++            {
++                if (values != &stack_values[0])
++                {
++                    values = NULL; // reallocf already freed it
++                }
+                 free(*cache);
+                 *cache = NULL;
+                 return;
+             }
++
++            values = bigger;
++            capacity = grown;
+         }
+-        
++
+         values[rangeCount] = entry;
+         count += entry->range.length;
+-        
++
+         rangeCount++;
+     }
+     
+@@ -150,6 +171,7 @@
+     
+     (*cache)->ranges = CFArrayCreate(kCFAllocatorDefault, (const void **)values, rangeCount, &callbacks);
+     (*cache)->rangeCount = rangeCount;
++    (*cache)->count = count; // summed above and then dropped, which left -count reading garbage
+     
+     if (values != &stack_values[0] && values != NULL)
+     {
+@@ -232,9 +254,15 @@
+         }
+         else
+         {
+-            DL_INSERT(MULTIPLE_RANGE_DATA(self), ptr, newRange);
++            /* AFTER ptr, WHICH MEANS BEFORE ptr->next. DL_INSERT inserts BEFORE the node it is
++             * given, while ptr is by construction the range that must PRECEDE the new one, so
++             * passing ptr put every new range on the wrong side and left the list unsorted:
++             * adding 0, 4, 13 in ascending order produced 0 -- 13 -- 4. Everything downstream
++             * assumes sorted order, so -indexGreaterThanIndex: then stopped at 13 and reported
++             * NSNotFound while -count still said 3. ptr->next of NULL appends, which is right. */
++            DL_INSERT(MULTIPLE_RANGE_DATA(self), ptr->next, newRange);
+         }
+-        
++
+         [self _mergeOverlappingRangesStartingAtIndex:(ptr ?: MULTIPLE_RANGE_DATA(self))];
+     }
+ }
+@@ -2106,7 +2134,8 @@
+                 second->range.location = end + 1;
+                 second->range.length = rangeEnd - end;
+                 
+-                DL_INSERT(MULTIPLE_RANGE_DATA(self), ptr, second);
++                // the upper half of a split range belongs AFTER ptr, so before ptr->next
++                DL_INSERT(MULTIPLE_RANGE_DATA(self), ptr->next, second);
+                 break;
+             }
+         }

@@ -1,0 +1,8 @@
+# The group database. Same file module, same reason as master.passwd next to it: a system that
+# can name its users and not its groups is a half answer, and getgrgid is asked by the same code
+# paths that ask getpwuid.
+#
+#   name:password:gid:members
+wheel:*:0:root
+nobody:*:-2:
+staff:*:20:root

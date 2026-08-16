@@ -1,0 +1,45 @@
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/workq_kernreturn.c	2026-08-14 13:43:51.982525403 +0200
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/workq_kernreturn.c	2026-08-14 13:43:51.982630741 +0200
+@@ -11,6 +11,7 @@
+ 
+ #include <darling/emulation/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/bsdthread/bsdthread_create.h>
++#include <stdlib.h>
+ #include <darling/emulation/common/base.h>
+ #include <darling/emulation/conversion/errno.h>
+ #include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
+@@ -125,6 +126,20 @@
+ 	return flags;
+ };
+ 
++// How long a parked workqueue thread waits before giving up and exiting. Diagnostic knob; the
++// default is what it always was.
++static int __cider_workq_park_seconds(void) {
++	static int cached = 0;
++	if (cached == 0) {
++		const char* value = getenv("CIDER_WORKQ_PARK_SECONDS");
++		cached = (value != NULL) ? atoi(value) : 15;
++		if (cached <= 0) {
++			cached = 15;
++		}
++	}
++	return cached;
++}
++
+ long sys_workq_kernreturn(int options, void* item, int affinity, int prio)
+ {
+ #ifndef VARIANT_DYLD
+@@ -189,7 +204,12 @@
+ 
+ 			// Wait until someone calls WQOPS_QUEUE_REQTHREADS
+ 			// and wakes us up
+-			if (!sem_down(&me.sem, 15))
++			// THE IDLE TIMEOUT IS AN EXPERIMENT KNOB. A parked worker that waits this long gives
++			// up and takes the terminate path, and LibreOffice was dying between eighteen and
++			// twenty seconds every run, which is suspiciously close to fifteen plus startup. The
++			// environment variable exists so the two can be told apart in one run instead of
++			// argued about.
++			if (!sem_down(&me.sem, __cider_workq_park_seconds()))
+ 			{
+ 				// Make sure we haven't just been woken up before locking the queue
+ 				// and remove us from the queue if not.

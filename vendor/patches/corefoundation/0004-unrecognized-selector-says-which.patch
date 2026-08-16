@@ -1,0 +1,37 @@
+diff -u --recursive a/NSObject.m b/NSObject.m
+--- a/NSObject.m	2026-08-13 23:18:33.749633454 +0200
++++ b/NSObject.m	2026-08-13 23:18:33.815564938 +0200
+@@ -85,6 +85,16 @@
+     }
+     else
+     {
++        /*
++         * SAY WHICH, BEFORE RAISING. The exception carries the class and the selector and that
++         * is worth nothing when the caller catches it: LibreOffice catches ObjC exceptions
++         * during startup and reports its own "Unspecified Application Error", so a selector we
++         * do not implement left NO TRACE AT ALL. One line of stderr on a path that is already
++         * about to throw is the difference between a name and a guess.
++         */
++        fprintf(stderr, "cider: UNRECOGNIZED -[%s %s]\n",
++                class_getName([self class]), sel_getName(sel));
++        fflush(stderr);
+         // DONT EVEN THINK ABOUT REMOVING/HACKING AROUND THIS!
+         // EVER!
+         // ...
+@@ -102,6 +112,16 @@
+     }
+     else
+     {
++        /*
++         * SAY WHICH, BEFORE RAISING. The exception carries the class and the selector and that
++         * is worth nothing when the caller catches it: LibreOffice catches ObjC exceptions
++         * during startup and reports its own "Unspecified Application Error", so a selector we
++         * do not implement left NO TRACE AT ALL. One line of stderr on a path that is already
++         * about to throw is the difference between a name and a guess.
++         */
++        fprintf(stderr, "cider: UNRECOGNIZED -[%s %s]\n",
++                class_getName([self class]), sel_getName(sel));
++        fflush(stderr);
+         // DONT EVEN THINK ABOUT REMOVING/HACKING AROUND THIS!
+         // EVER!
+         // ...

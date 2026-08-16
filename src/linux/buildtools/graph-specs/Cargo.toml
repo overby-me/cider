@@ -1,0 +1,132 @@
+# cider-graph-specs: the Rust rewrite of scripts/buck-graph-to-specs.py and its shared half
+# scripts/buck_lowering.py, task #99.
+#
+# BUILT BY NIX, NOT BY BUCK2. It runs inside the graph derivation, which is the tree buck2 was
+# just run on, so buck2 building it would be circular. Same route as nix/skeleton.nix.
+#
+# serde_json WITH preserve_order, and both halves of that are load bearing. The generator reads a
+# 147 MB graph.json and writes JSON whose OBJECT KEY ORDER IS PART OF THE OUTPUT: python dicts
+# are insertion ordered and json.dump writes them in that order, so a serialiser that sorted or
+# reordered keys would produce a correct-looking tree with a different hash, which throws away
+# the content addressing this port depends on. Hand rolling a parser for 147 MB of JSON was the
+# alternative and was rejected: it is exactly the kind of code that is subtly wrong.
+[package]
+name = "cider-graph-specs"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# FOUR BINARIES, ONE CRATE, so src/pyjson.rs and src/sha256.rs are SHARED rather than copied. Both tools have to
+# write python-compatible JSON, and a second copy of that serialiser is exactly the drift risk
+# this port has been careful about everywhere else: the two would diverge and one output would
+# silently stop matching. autobins is off so the set is explicit rather than discovered.
+autobins = false
+
+[[bin]]
+name = "cider-graph-specs"
+path = "src/main.rs"
+
+[[bin]]
+name = "cider-graph-sources"
+path = "src/sources.rs"
+
+# THE THIRD BINARY, and the one that PRODUCES what the other two read. It shares pyjson (the
+# python compatible JSON writer), pat, pypath and sha256 with them, which is the whole reason it
+# is a binary of this crate rather than a crate of its own.
+[[bin]]
+name = "cider-graph-dump"
+path = "src/dump.rs"
+
+# THE FOURTH BINARY, the Rust rewrite of scripts/buck-graph-equiv.py (#98). It is in this crate
+# because it reads the same graph.json and shares sha256 with the dump and the sources pass; a
+# crate of its own would mean a second copy of that hash.
+[[bin]]
+name = "cider-graph-equiv"
+path = "src/equiv.rs"
+
+# THE FIFTH BINARY, the Rust rewrite of scripts/buck-codegen-closure.py (#98). Same reason as
+# the fourth: it is a hash join over the graph, and it shares the farm table reader.
+[[bin]]
+name = "cider-codegen-closure"
+path = "src/closure.rs"
+
+# THE SIXTH BINARY, the Rust rewrite of scripts/buck-declaration-gap.py (#98). It calls
+# src/srcset.rs for the truth it checks against, which is the whole point: the python imported
+# the generator for the same reason.
+[[bin]]
+name = "cider-declaration-gap"
+path = "src/declgap.rs"
+
+# THE SEVENTH BINARY, the Rust rewrite of scripts/buck-lower-srcdeps.py (#98). It is the AUDIT of
+# the narrowing rather than the rule: it shares the farm table reader and normpath, and keeps its
+# own two argv scrapers on purpose, because it reproduces the python it replaces byte for byte
+# and the shipped rule in src/srcset.rs has moved on since.
+[[bin]]
+name = "cider-lower-srcdeps"
+path = "src/srcdeps.rs"
+
+# THE EIGHTH BINARY, the Rust rewrite of scripts/buck-prefix-cost.py (#98). Same crate for the
+# same reason as the others: it reads graph.json and follows the same two conventions, that an
+# action identity is <label> (<cfg>) (<action>) and that input_targets is the target level edge
+# set. Its own crate would mean a second lock file and a second nix package for one file.
+[[bin]]
+name = "cider-prefix-cost"
+path = "src/prefixcost.rs"
+
+# THE NINTH BINARY, the Rust rewrite of scripts/buck-specs-check.py (#98). Its own header argued
+# it could not leave python, and that argument was about NUSHELL: the verdict rests on tokenising
+# 59 MB of script text, which a nushell character loop does at about 25 KB/s. None of it applies
+# to Rust. It shares sha256 with the dump for --dump-canon, and DELIBERATELY shares nothing else:
+# a check that calls the generator cannot fail.
+[[bin]]
+name = "cider-specs-check"
+path = "src/specscheck.rs"
+
+# THE TENTH BINARY, the Rust rewrite of scripts/buck-fix-link-model.py (#98). It reads the frozen
+# 131 MB build.ninja through src/ninjaref.rs, which is the LIVE SURFACE of the 2,508 line
+# gen-buck-from-ninja.py that several tools imported: the edges, the two registries and the
+# upward-dependency rule. One copy of that, shared, is the point.
+[[bin]]
+name = "cider-fix-link-model"
+path = "src/linkmodel.rs"
+
+# THE TWELFTH BINARY, the Rust rewrite of scripts/buck-exports.py (#98). It joins a flattened-name
+# index over a materialized pin, which can be tens of thousands of files, against every label
+# anything in the tree names, which is the shape that goes to Rust.
+[[bin]]
+name = "cider-exports"
+path = "src/exports.rs"
+
+# THE THIRTEENTH BINARY, the Rust rewrite of scripts/gen-sdk-header-roots.py (#98). It is Rust
+# for os.path.realpath: the SDK farm has links whose PARENT is a link into a pin, and only a
+# TEXTUAL resolution that does not require the target to exist can follow those.
+[[bin]]
+name = "cider-sdk-header-roots"
+path = "src/sdkroots.rs"
+
+# THE FIFTEENTH BINARY, the Rust rewrite of scripts/tbd-diff.py (#98). The real Apple SDK is not
+# realised in this store, so it is gated on a FIXTURE SDK that exercises every branch of the two
+# .tbd parsers rather than on the real one.
+[[bin]]
+name = "cider-tbd-diff"
+path = "src/tbddiff.rs"
+
+# THE SIXTEENTH BINARY, the Rust rewrite of scripts/gen-install-from-manifests.py (#98), and the
+# last python buck-test.nu ran: the UNMAPPED gate is a live check, which is why this one is
+# ported rather than deleted like the frozen generators beside it.
+[[bin]]
+name = "cider-install-from-manifests"
+path = "src/installgen.rs"
+
+# THE LAST BINARY, the Rust rewrite of scripts/buck-split-pins.py (#98), which was the last python
+# in scripts/. It works on the buck2 tree rather than on the cmake reference, which is why it is
+# ported and not deleted the way the frozen generators were.
+[[bin]]
+name = "cider-split-pins"
+path = "src/splitpins.rs"
+
+[dependencies]
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[profile.release]
+opt-level = 2

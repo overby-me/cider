@@ -1,0 +1,5 @@
+@protocol NSTextInputClient
+
+// TODO
+
+@end

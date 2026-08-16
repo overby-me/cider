@@ -1,0 +1,149 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the OpenDirectory pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: opendirectoryd
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) opendirectoryd   -- review before committing.
+# cmake target: opendirectoryd  ->  src/external/OpenDirectory/opendirectoryd/opendirectoryd
+
+cc_header_root(
+    name = "opendirectoryd_inc_OpenDirectory_opendirectoryd_include",
+    headers = glob(["opendirectoryd/include/*.h", "opendirectoryd/include/**/*.h"]),
+    root = "opendirectoryd/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "opendirectoryd_obj",
+    srcs = [
+        "opendirectoryd/src/main.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":opendirectoryd_inc_OpenDirectory_opendirectoryd_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: opendirectoryd
+
+# BEGIN generated: memberd
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) memberd   -- review before committing.
+# cmake target: memberd  ->  src/external/OpenDirectory/memberd-21.1/memberd
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/OpenDirectory/memberd-21.1/memberdServer.c
+#   src/external/OpenDirectory/memberd-21.1/memberdUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/OpenDirectory/memberd-21.1
+
+cc_header_root(
+    name = "memberd_inc_OpenDirectory_memberd_21_1",
+    headers = glob(["memberd-21.1/*.h", "memberd-21.1/**/*.h"]),
+    root = "memberd-21.1",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "memberd_obj",
+    srcs = [
+        "memberd-21.1/HashTable.c",
+        "memberd-21.1/Listener.c",
+        "memberd-21.1/MembershipResolver.c",
+        "memberd-21.1/UDaemonHelpers.c",
+        "memberd-21.1/UserGroup.c",
+        "memberd-21.1/main.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-includestdio.h",
+        "-includeobjc/objc.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:odmig_memberd",
+        "//src/darwin/frameworks:fw_AE",
+        "//vendor/src:fw_CFNetwork",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//vendor/src:fw_DirectoryService",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_IOKit",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_LocalAuthentication",
+        "//vendor/src:fw_Onyx2D",
+        "//src/darwin/frameworks:fw_OpenGL",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//vendor/src:fw_Security",
+        ":memberd_inc_OpenDirectory_memberd_21_1",
+    ],
+    gen_srcs = [
+        "//vendor/src:odmig_memberd",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: memberd
+
+# BEGIN generated: memberd_xtrace_mig
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) memberd_xtrace_mig   -- review before committing.
+# cmake target: memberd_xtrace_mig  ->  src/external/OpenDirectory/memberd-21.1/libmemberd_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/OpenDirectory/memberd-21.1/memberdXtraceMig.c
+
+cc_header_root(
+    name = "memberd_xtrace_mig_inc_OpenDirectory_memberd_21_1",
+    headers = glob(["memberd-21.1/*.h", "memberd-21.1/**/*.h", "memberd-21.1/*.c"]),
+    root = "memberd-21.1",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "memberd_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dmemberd_xtrace_mig_EXPORTS",
+        "-fPIC",
+        "-includestdio.h",
+        "-includeobjc/objc.h",
+        "-I",
+        "src/darwin/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//src/darwin/xtrace:xtrace_headers",
+        ":memberd_xtrace_mig_inc_OpenDirectory_memberd_21_1",
+    ],
+    gen_srcs = [
+        "//vendor/src:odmig_memberd[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: memberd_xtrace_mig
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_OpenDirectory.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

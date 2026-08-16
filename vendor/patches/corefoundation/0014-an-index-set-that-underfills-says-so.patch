@@ -1,0 +1,20 @@
+--- a/NSArray.m
++++ b/NSArray.m
+@@ -1272,6 +1272,17 @@
+             currentIndex = [indices indexGreaterThanIndex:currentIndex];
+             idx++;
+         }
++        if (idx < count)
++        {
++            fprintf(stderr,
++                    "CIDER_IDXSET objectsAtIndexes UNDERFILLED count=%lu filled=%lu ranges=%lu "
++                    "first=%lu last=%lu set=%s\n",
++                    (unsigned long) count, (unsigned long) idx,
++                    (unsigned long) [indices rangeCount], (unsigned long) [indices firstIndex],
++                    (unsigned long) [indices lastIndex], [[indices description] UTF8String]);
++            fflush(stderr);
++            count = idx; // the tail is uninitialised malloc, so do not hand it to anybody
++        }
+     }
+     NSArray *array = [[NSArray alloc] initWithObjects:objects count:count];
+     if (objects != NULL)

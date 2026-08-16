@@ -1,0 +1,24 @@
+--- a/migcom.tproj/mig.c
++++ b/migcom.tproj/mig.c
+@@ -321,7 +321,20 @@
+   }
+   init_global();
+   init_type();
+-  loc = time((time_t *)0);
++  /* REPRODUCIBILITY: honour SOURCE_DATE_EPOCH, which every build system that cares about
++     reproducible output already exports and which nixpkgs stdenv sets by default.
++
++     Without this migcom stamps the wall clock into every generated stub, so two builds of the
++     same inputs at different times produce different bytes. Under a content addressed store
++     that defeats early cutoff for everything downstream of a mig group: the group re-runs for
++     any reason, emits new bytes although nothing meaningful changed, and the cascade continues
++     rather than stopping there. */
++  {
++    const char *source_date_epoch = getenv("SOURCE_DATE_EPOCH");
++    loc = (source_date_epoch != NULL && *source_date_epoch != '\0')
++      ? (time_t) strtoll(source_date_epoch, NULL, 10)
++      : time((time_t *)0);
++  }
+   GenerationDate = ctime(&loc);
+ 
+   LookNormal();

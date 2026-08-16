@@ -1,0 +1,57 @@
+load("//buck/rules:install.bzl", "prefix_dir")
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+prefix_dir(
+    name = "prefix_Library",
+    srcs = glob(
+        ["Library/**"],
+        exclude = [
+            "**/Makefile",
+        ],
+    ),
+    strip = "Library",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_private",
+    srcs = glob(
+        ["private/**"],
+        exclude = [
+            "**/Makefile",
+            "**/*.iPhone",
+        ],
+    ),
+    strip = "private",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_System",
+    srcs = glob(
+        ["System/**"],
+        exclude = [
+            "**/Makefile",
+            "**/*.py",
+        ],
+    ),
+    strip = "System",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_usr",
+    srcs = glob(
+        ["usr/**"],
+        exclude = [
+            "**/Makefile",
+            "**/firmlinks",
+        ],
+    ),
+    strip = "usr",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs

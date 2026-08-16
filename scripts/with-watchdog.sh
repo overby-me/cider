@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # with-watchdog.sh - run a command under a timeout, and on expiry capture
-# stack traces of the guest process tree and darlingserver before killing it.
+# stack traces of the guest process tree and ciderd before killing it.
 #
 # Stalls (not crashes) are the signature failure mode of a subtly-wrong kernel
 # shim under Darling - typically kqueue/kevent, poll/select edge semantics, or
 # a Mach IPC wait that never wakes. When a build or test hangs, a plain timeout
 # tells us nothing; this wrapper attaches gdb to every relevant process on
 # timeout and dumps backtraces so the stall can be triaged
-# (see plan/stall-triage.md).
+# (see docs/changelog.md).
 #
 # Usage:
 #   scripts/with-watchdog.sh [--timeout SECONDS] [--label NAME]
@@ -18,7 +18,16 @@
 #
 # Example:
 #   scripts/with-watchdog.sh --timeout 1800 --label hello-build -- \
-#     ./scripts/darling-nix nix build nixpkgs#hello
+#     ./scripts/cider-nix nix build nixpkgs#hello
+#
+# STAYS BASH (task #40). This forwards ARBITRARY argv to another program, and a nushell
+# script cannot receive that: nu parses a script's arguments against main's signature, so the
+# first argument starting with a dash becomes an unknown flag and the script exits 1 before
+# running. `--` does not help, in either `script.nu -- -la` or `nu script.nu -- -la` form; both
+# are parsed as a flag with an empty name. Measured, not assumed.
+#
+# It also needs a process GROUP: setsid, then SIGTERM and SIGKILL to -PID after the stacks are
+# captured. nushell has no primitive for either half.
 
 set -uo pipefail
 
@@ -56,12 +65,12 @@ capture_stacks() {
 
     # Everything that looks like a Darling guest or the server.
     local pids
-    pids=$(pgrep -a -f 'darlingserver|mldr|/usr/libexec/darling|darling ' 2>/dev/null \
+    pids=$(pgrep -a -f 'ciderd|mldr|/usr/libexec/cider|cider ' 2>/dev/null \
       | awk '{print $1}' | sort -un)
 
     if [[ -z "$pids" ]]; then
-      echo "(no darlingserver/mldr/guest processes found via pgrep)"
-      pids=$(pgrep -f darling 2>/dev/null | sort -un)
+      echo "(no ciderd/mldr/guest processes found via pgrep)"
+      pids=$(pgrep -f cider 2>/dev/null | sort -un)
     fi
 
     for pid in $pids; do

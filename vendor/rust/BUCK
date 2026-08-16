@@ -1,0 +1,172 @@
+load("//buck/rules:rust.bzl", "rust_library")
+
+# Third-party crates, pinned by the three Cargo.lock files (linux/server, linux/launcher,
+# darwin/loader), unpacked by nix/devShell.nix and materialized here by
+# scripts/buck-rust-vendor.nu. The tree is gitignored, this file is committed -- the same
+# arrangement vendor/src/ has for the pinned C sources.
+#
+# One target per crate, with the features cargo would resolve. Features are stated rather
+# than derived: a crate compiled with the wrong set fails at its first cfg-gated item, which
+# is a clearer failure than anything a guess would produce.
+
+rust_library(
+    name = "libc",
+    cap_lints = "allow",
+    crate_root = "libc-0.2.189/src/lib.rs",
+    srcs = glob(["libc-0.2.189/src/**/*.rs"]),
+    # libc's default. Its build script only sets cfgs for exotic targets (freebsd11,
+    # espidf, musl time64); on x86_64-linux-gnu none of them applies, which is why this
+    # compiles without one.
+    features = [
+        "default",
+        "std",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# ---------------------------------------------------------------------------
+# goblin and its closure, for darwin/loader (mldr): the Mach-O parse.
+#
+# Features are the ones cargo resolves from darwin/loader/Cargo.lock. goblin's default
+# pulls in archive/endian_fd/mach*, each of which implies `alloc`, which in turn implies
+# scroll/derive and the optional log dependency -- so the closure is wider than the two
+# crates the manifest names.
+# ---------------------------------------------------------------------------
+
+rust_library(
+    name = "unicode-ident",
+    cap_lints = "allow",
+    crate_name = "unicode_ident",
+    crate_root = "unicode-ident-1.0.24/src/lib.rs",
+    srcs = glob(["unicode-ident-1.0.24/src/**/*.rs", "unicode-ident-1.0.24/src/**/*.bin"]),
+    visibility = ["PUBLIC"],
+)
+
+rust_library(
+    name = "proc-macro2",
+    cap_lints = "allow",
+    crate_name = "proc_macro2",
+    crate_root = "proc-macro2-1.0.107/src/lib.rs",
+    srcs = glob(["proc-macro2-1.0.107/src/**/*.rs"]),
+    features = [
+        "default",
+        "proc-macro",
+    ],
+    # proc-macro2 wraps the compiler's own proc_macro crate, which is only linkable from a
+    # proc-macro build; its build script sets this cfg to say the wrapper is available.
+    rustc_flags = ["--cfg=wrap_proc_macro"],
+    deps = [":unicode-ident"],
+    visibility = ["PUBLIC"],
+)
+
+rust_library(
+    name = "quote",
+    cap_lints = "allow",
+    crate_root = "quote-1.0.47/src/lib.rs",
+    srcs = glob(["quote-1.0.47/src/**/*.rs"]),
+    features = [
+        "default",
+        "proc-macro",
+    ],
+    deps = [":proc-macro2"],
+    visibility = ["PUBLIC"],
+)
+
+rust_library(
+    name = "syn",
+    cap_lints = "allow",
+    crate_root = "syn-2.0.119/src/lib.rs",
+    srcs = glob(["syn-2.0.119/src/**/*.rs"]),
+    features = [
+        "clone-impls",
+        "default",
+        "derive",
+        "parsing",
+        "printing",
+        "proc-macro",
+    ],
+    deps = [
+        ":proc-macro2",
+        ":quote",
+        ":unicode-ident",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_library(
+    name = "scroll_derive",
+    cap_lints = "allow",
+    edition = "2018",
+    crate_root = "scroll_derive-0.12.1/src/lib.rs",
+    srcs = glob(["scroll_derive-0.12.1/src/**/*.rs"]),
+    proc_macro = True,
+    deps = [
+        ":proc-macro2",
+        ":quote",
+        ":syn",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_library(
+    name = "scroll",
+    cap_lints = "allow",
+    crate_root = "scroll-0.12.0/src/lib.rs",
+    srcs = glob(["scroll-0.12.0/src/**/*.rs"]),
+    # goblin takes scroll with default-features = false and then turns on derive (through
+    # `alloc`) and std (through `std`), which lands on the same pair.
+    features = [
+        "derive",
+        "std",
+    ],
+    deps = [":scroll_derive"],
+    visibility = ["PUBLIC"],
+)
+
+rust_library(
+    name = "log",
+    cap_lints = "allow",
+    crate_root = "log-0.4.33/src/lib.rs",
+    srcs = glob(["log-0.4.33/src/**/*.rs"]),
+    features = ["std"],
+    visibility = ["PUBLIC"],
+)
+
+rust_library(
+    name = "plain",
+    cap_lints = "allow",
+    # plain predates editions: its Cargo.toml names none, which means 2015, and it uses
+    # 2015 path syntax that later editions reject.
+    edition = "2015",
+    crate_root = "plain-0.2.3/src/lib.rs",
+    srcs = glob(["plain-0.2.3/src/**/*.rs"]),
+    visibility = ["PUBLIC"],
+)
+
+rust_library(
+    name = "goblin",
+    cap_lints = "allow",
+    crate_root = "goblin-0.9.3/src/lib.rs",
+    srcs = glob(["goblin-0.9.3/src/**/*.rs"]),
+    features = [
+        "alloc",
+        "archive",
+        "default",
+        "elf32",
+        "elf64",
+        "endian_fd",
+        "log",
+        "mach32",
+        "mach64",
+        "pe32",
+        "pe64",
+        "std",
+        "te",
+    ],
+    deps = [
+        ":log",
+        ":plain",
+        ":scroll",
+    ],
+    visibility = ["PUBLIC"],
+)

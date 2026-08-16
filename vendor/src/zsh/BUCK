@@ -1,0 +1,3744 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
+
+# Targets over the zsh pin, materialized by scripts/buck-src.nu. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: zsh
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zsh   -- review before committing.
+# cmake target: zsh  ->  src/external/zsh/zsh
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zsh_inc_zsh_gen",
+    headers = glob([
+        "gen/**/*",
+        "gen/Src/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        ".",
+        "Src",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zsh_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/**/*",
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        ".",
+        "Zle",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zsh_obj",
+    srcs = [
+        "gen/Src/signames.c",
+        "zsh/Src/builtin.c",
+        "zsh/Src/compat.c",
+        "zsh/Src/cond.c",
+        "zsh/Src/context.c",
+        "zsh/Src/exec.c",
+        "zsh/Src/glob.c",
+        "zsh/Src/hashnameddir.c",
+        "zsh/Src/hashtable.c",
+        "zsh/Src/hist.c",
+        "zsh/Src/init.c",
+        "zsh/Src/input.c",
+        "zsh/Src/jobs.c",
+        "zsh/Src/lex.c",
+        "zsh/Src/linklist.c",
+        "zsh/Src/loop.c",
+        "zsh/Src/main.c",
+        "zsh/Src/math.c",
+        "zsh/Src/mem.c",
+        "zsh/Src/module.c",
+        "zsh/Src/options.c",
+        "zsh/Src/params.c",
+        "zsh/Src/parse.c",
+        "zsh/Src/pattern.c",
+        "zsh/Src/prompt.c",
+        "zsh/Src/signals.c",
+        "zsh/Src/sort.c",
+        "zsh/Src/string.c",
+        "zsh/Src/subst.c",
+        "zsh/Src/text.c",
+        "zsh/Src/utils.c",
+        "zsh/Src/watch.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-no-cpp-precomp",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zsh_inc_zsh_zsh_Src",
+        ":zsh_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zsh
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# cider-install-from-manifests -- review before committing.
+
+prefix_dir(
+    name = "prefix_zsh_Doc_help",
+    srcs = glob(
+        ["zsh/Doc/help/**"],
+        exclude = [
+            "**/.*",
+        ],
+    ),
+    strip = "zsh/Doc/help",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_gen_install_this",
+    srcs = glob(
+        ["gen/install-this/**"],
+        exclude = [],
+    ),
+    strip = "gen/install-this",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs
+
+# BEGIN generated: zmod_zutil
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_zutil   -- review before committing.
+# cmake target: zmod_zutil  ->  zmod_zutil
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zutil_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zutil_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_zutil_obj",
+    srcs = [
+        "zsh/Src/Modules/zutil.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_zutil_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_zutil_inc_zsh_zsh_Src",
+        ":zmod_zutil_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zutil
+
+# BEGIN generated: zmod_zutil dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_zutil   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_zutil_dylib",
+    dylib_name = "zutil.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_zutil
+        ":zmod_zutil_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zutil dylibs
+
+# BEGIN generated: zmod_complist
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_complist   -- review before committing.
+# cmake target: zmod_complist  ->  zmod_complist
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_complist_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Zle/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Zle",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_complist_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_complist_obj",
+    srcs = [
+        "zsh/Src/Zle/complist.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_complist_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_complist_inc_zsh_zsh_Src",
+        ":zmod_complist_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_complist
+
+# BEGIN generated: zmod_complist dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_complist   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_complist_dylib",
+    dylib_name = "complist.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_complist
+        ":zmod_complist_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_complist dylibs
+
+# BEGIN generated: zmod_attr
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_attr   -- review before committing.
+# cmake target: zmod_attr  ->  zmod_attr
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_attr_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_attr_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_attr_obj",
+    srcs = [
+        "zsh/Src/Modules/attr.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_attr_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_attr_inc_zsh_zsh_Src",
+        ":zmod_attr_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_attr
+
+# BEGIN generated: zmod_attr dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_attr   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_attr_dylib",
+    dylib_name = "attr.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_attr
+        ":zmod_attr_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_attr dylibs
+
+# BEGIN generated: zmod_cap
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_cap   -- review before committing.
+# cmake target: zmod_cap  ->  zmod_cap
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_cap_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_cap_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_cap_obj",
+    srcs = [
+        "zsh/Src/Modules/cap.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_cap_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_cap_inc_zsh_zsh_Src",
+        ":zmod_cap_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_cap
+
+# BEGIN generated: zmod_cap dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_cap   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_cap_dylib",
+    dylib_name = "cap.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_cap
+        ":zmod_cap_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_cap dylibs
+
+# BEGIN generated: zmod_clone
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_clone   -- review before committing.
+# cmake target: zmod_clone  ->  zmod_clone
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_clone_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_clone_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_clone_obj",
+    srcs = [
+        "zsh/Src/Modules/clone.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_clone_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_clone_inc_zsh_zsh_Src",
+        ":zmod_clone_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_clone
+
+# BEGIN generated: zmod_clone dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_clone   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_clone_dylib",
+    dylib_name = "clone.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_clone
+        ":zmod_clone_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_clone dylibs
+
+# BEGIN generated: zmod_compctl
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_compctl   -- review before committing.
+# cmake target: zmod_compctl  ->  zmod_compctl
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_compctl_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Zle/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Zle",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_compctl_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_compctl_obj",
+    srcs = [
+        "zsh/Src/Zle/compctl.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_compctl_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_compctl_inc_zsh_zsh_Src",
+        ":zmod_compctl_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_compctl
+
+# BEGIN generated: zmod_compctl dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_compctl   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_compctl_dylib",
+    dylib_name = "compctl.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_compctl
+        ":zmod_compctl_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_compctl dylibs
+
+# BEGIN generated: zmod_complete
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_complete   -- review before committing.
+# cmake target: zmod_complete  ->  zmod_complete
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_complete_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Zle/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Zle",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_complete_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_complete_obj",
+    srcs = [
+        "zsh/Src/Zle/compcore.c",
+        "zsh/Src/Zle/complete.c",
+        "zsh/Src/Zle/compmatch.c",
+        "zsh/Src/Zle/compresult.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_complete_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_complete_inc_zsh_zsh_Src",
+        ":zmod_complete_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_complete
+
+# BEGIN generated: zmod_complete dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_complete   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_complete_dylib",
+    dylib_name = "complete.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_complete
+        ":zmod_complete_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_complete dylibs
+
+# BEGIN generated: zmod_curses
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_curses   -- review before committing.
+# cmake target: zmod_curses  ->  zmod_curses
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_curses_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_curses_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_curses_obj",
+    srcs = [
+        "zsh/Src/Modules/curses.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_curses_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_curses_inc_zsh_zsh_Src",
+        ":zmod_curses_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_curses
+
+# BEGIN generated: zmod_curses dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_curses   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_curses_dylib",
+    dylib_name = "curses.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_curses
+        ":zmod_curses_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_curses dylibs
+
+# BEGIN generated: zmod_datetime
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_datetime   -- review before committing.
+# cmake target: zmod_datetime  ->  zmod_datetime
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_datetime_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_datetime_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_datetime_obj",
+    srcs = [
+        "zsh/Src/Modules/datetime.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_datetime_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_datetime_inc_zsh_zsh_Src",
+        ":zmod_datetime_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_datetime
+
+# BEGIN generated: zmod_datetime dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_datetime   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+# buck-registry: src/external/zsh/datetime.so = zmod_datetime_dylib
+darwin_dylib(
+    name = "zmod_datetime_dylib",
+    dylib_name = "datetime.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_datetime
+        ":zmod_datetime_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_datetime dylibs
+
+# BEGIN generated: zmod_deltochar
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_deltochar   -- review before committing.
+# cmake target: zmod_deltochar  ->  zmod_deltochar
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_deltochar_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Zle/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Zle",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_deltochar_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_deltochar_obj",
+    srcs = [
+        "zsh/Src/Zle/deltochar.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_deltochar_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_deltochar_inc_zsh_zsh_Src",
+        ":zmod_deltochar_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_deltochar
+
+# BEGIN generated: zmod_deltochar dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_deltochar   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_deltochar_dylib",
+    dylib_name = "deltochar.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_deltochar
+        ":zmod_deltochar_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_deltochar dylibs
+
+# BEGIN generated: zmod_example
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_example   -- review before committing.
+# cmake target: zmod_example  ->  zmod_example
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_example_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_example_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_example_obj",
+    srcs = [
+        "zsh/Src/Modules/example.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_example_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_example_inc_zsh_zsh_Src",
+        ":zmod_example_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_example
+
+# BEGIN generated: zmod_example dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_example   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_example_dylib",
+    dylib_name = "example.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_example
+        ":zmod_example_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_example dylibs
+
+# BEGIN generated: zmod_files
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_files   -- review before committing.
+# cmake target: zmod_files  ->  zmod_files
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_files_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_files_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_files_obj",
+    srcs = [
+        "zsh/Src/Modules/files.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_files_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_files_inc_zsh_zsh_Src",
+        ":zmod_files_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_files
+
+# BEGIN generated: zmod_files dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_files   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_files_dylib",
+    dylib_name = "files.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_files
+        ":zmod_files_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_files dylibs
+
+# BEGIN generated: zmod_langinfo
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_langinfo   -- review before committing.
+# cmake target: zmod_langinfo  ->  zmod_langinfo
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_langinfo_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_langinfo_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_langinfo_obj",
+    srcs = [
+        "zsh/Src/Modules/langinfo.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_langinfo_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_langinfo_inc_zsh_zsh_Src",
+        ":zmod_langinfo_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_langinfo
+
+# BEGIN generated: zmod_langinfo dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_langinfo   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_langinfo_dylib",
+    dylib_name = "langinfo.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_langinfo
+        ":zmod_langinfo_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_langinfo dylibs
+
+# BEGIN generated: zmod_mapfile
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_mapfile   -- review before committing.
+# cmake target: zmod_mapfile  ->  zmod_mapfile
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_mapfile_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_mapfile_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_mapfile_obj",
+    srcs = [
+        "zsh/Src/Modules/mapfile.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_mapfile_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_mapfile_inc_zsh_zsh_Src",
+        ":zmod_mapfile_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_mapfile
+
+# BEGIN generated: zmod_mapfile dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_mapfile   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_mapfile_dylib",
+    dylib_name = "mapfile.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_mapfile
+        ":zmod_mapfile_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_mapfile dylibs
+
+# BEGIN generated: zmod_mathfunc
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_mathfunc   -- review before committing.
+# cmake target: zmod_mathfunc  ->  zmod_mathfunc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_mathfunc_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_mathfunc_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_mathfunc_obj",
+    srcs = [
+        "zsh/Src/Modules/mathfunc.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_mathfunc_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_mathfunc_inc_zsh_zsh_Src",
+        ":zmod_mathfunc_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_mathfunc
+
+# BEGIN generated: zmod_mathfunc dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_mathfunc   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_mathfunc_dylib",
+    dylib_name = "mathfunc.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_mathfunc
+        ":zmod_mathfunc_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_mathfunc dylibs
+
+# BEGIN generated: zmod_nearcolor
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_nearcolor   -- review before committing.
+# cmake target: zmod_nearcolor  ->  zmod_nearcolor
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_nearcolor_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_nearcolor_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_nearcolor_obj",
+    srcs = [
+        "zsh/Src/Modules/nearcolor.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_nearcolor_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_nearcolor_inc_zsh_zsh_Src",
+        ":zmod_nearcolor_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_nearcolor
+
+# BEGIN generated: zmod_nearcolor dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_nearcolor   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_nearcolor_dylib",
+    dylib_name = "nearcolor.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_nearcolor
+        ":zmod_nearcolor_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_nearcolor dylibs
+
+# BEGIN generated: zmod_newuser
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_newuser   -- review before committing.
+# cmake target: zmod_newuser  ->  zmod_newuser
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_newuser_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_newuser_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_newuser_obj",
+    srcs = [
+        "zsh/Src/Modules/newuser.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_newuser_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_newuser_inc_zsh_zsh_Src",
+        ":zmod_newuser_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_newuser
+
+# BEGIN generated: zmod_newuser dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_newuser   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_newuser_dylib",
+    dylib_name = "newuser.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_newuser
+        ":zmod_newuser_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_newuser dylibs
+
+# BEGIN generated: zmod_param_private
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_param_private   -- review before committing.
+# cmake target: zmod_param_private  ->  zmod_param_private
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_param_private_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_param_private_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_param_private_obj",
+    srcs = [
+        "zsh/Src/Modules/param_private.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_param_private_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_param_private_inc_zsh_zsh_Src",
+        ":zmod_param_private_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_param_private
+
+# BEGIN generated: zmod_param_private dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_param_private   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_param_private_dylib",
+    dylib_name = "private.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_param_private
+        ":zmod_param_private_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_param_private dylibs
+
+# BEGIN generated: zmod_parameter
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_parameter   -- review before committing.
+# cmake target: zmod_parameter  ->  zmod_parameter
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_parameter_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_parameter_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_parameter_obj",
+    srcs = [
+        "zsh/Src/Modules/parameter.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_parameter_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_parameter_inc_zsh_zsh_Src",
+        ":zmod_parameter_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_parameter
+
+# BEGIN generated: zmod_parameter dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_parameter   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_parameter_dylib",
+    dylib_name = "parameter.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_parameter
+        ":zmod_parameter_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_parameter dylibs
+
+# BEGIN generated: zmod_regex
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_regex   -- review before committing.
+# cmake target: zmod_regex  ->  zmod_regex
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_regex_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_regex_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_regex_obj",
+    srcs = [
+        "zsh/Src/Modules/regex.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_regex_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_regex_inc_zsh_zsh_Src",
+        ":zmod_regex_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_regex
+
+# BEGIN generated: zmod_regex dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_regex   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_regex_dylib",
+    dylib_name = "regex.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_regex
+        ":zmod_regex_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_regex dylibs
+
+# BEGIN generated: zmod_rlimits
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_rlimits   -- review before committing.
+# cmake target: zmod_rlimits  ->  zmod_rlimits
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_rlimits_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Builtins/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Builtins",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_rlimits_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "zmod_rlimits_inc_zsh_zsh_Src_Builtins",
+    headers = glob(["zsh/Src/Builtins/*.h", "zsh/Src/Builtins/**/*.h", "zsh/Src/Builtins/*.c"]),
+    root = "zsh/Src/Builtins",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_rlimits_obj",
+    srcs = [
+        "zsh/Src/Builtins/rlimits.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_rlimits_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_rlimits_inc_zsh_zsh_Src",
+        ":zmod_rlimits_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+        ":zmod_rlimits_inc_zsh_zsh_Src_Builtins",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_rlimits
+
+# BEGIN generated: zmod_rlimits dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_rlimits   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_rlimits_dylib",
+    dylib_name = "rlimits.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_rlimits
+        ":zmod_rlimits_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_rlimits dylibs
+
+# BEGIN generated: zmod_sched
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_sched   -- review before committing.
+# cmake target: zmod_sched  ->  zmod_sched
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_sched_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Builtins/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Builtins",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_sched_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "zmod_sched_inc_zsh_zsh_Src_Builtins",
+    headers = glob(["zsh/Src/Builtins/*.h", "zsh/Src/Builtins/**/*.h", "zsh/Src/Builtins/*.c"]),
+    root = "zsh/Src/Builtins",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_sched_obj",
+    srcs = [
+        "zsh/Src/Builtins/sched.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_sched_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_sched_inc_zsh_zsh_Src",
+        ":zmod_sched_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+        ":zmod_sched_inc_zsh_zsh_Src_Builtins",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_sched
+
+# BEGIN generated: zmod_sched dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_sched   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_sched_dylib",
+    dylib_name = "sched.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_sched
+        ":zmod_sched_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_sched dylibs
+
+# BEGIN generated: zmod_socket
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_socket   -- review before committing.
+# cmake target: zmod_socket  ->  zmod_socket
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_socket_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_socket_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_socket_obj",
+    srcs = [
+        "zsh/Src/Modules/socket.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_socket_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_socket_inc_zsh_zsh_Src",
+        ":zmod_socket_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_socket
+
+# BEGIN generated: zmod_socket dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_socket   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_socket_dylib",
+    dylib_name = "socket.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_socket
+        ":zmod_socket_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_socket dylibs
+
+# BEGIN generated: zmod_stat
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_stat   -- review before committing.
+# cmake target: zmod_stat  ->  zmod_stat
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_stat_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_stat_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_stat_obj",
+    srcs = [
+        "zsh/Src/Modules/stat.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_stat_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_stat_inc_zsh_zsh_Src",
+        ":zmod_stat_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_stat
+
+# BEGIN generated: zmod_stat dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_stat   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_stat_dylib",
+    dylib_name = "stat.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_stat
+        ":zmod_stat_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_stat dylibs
+
+# BEGIN generated: zmod_system
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_system   -- review before committing.
+# cmake target: zmod_system  ->  zmod_system
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_system_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_system_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_system_obj",
+    srcs = [
+        "gen/Src/Modules/errnames.c",
+        "zsh/Src/Modules/system.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_system_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_system_inc_zsh_zsh_Src",
+        ":zmod_system_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_system
+
+# BEGIN generated: zmod_system dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_system   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_system_dylib",
+    dylib_name = "system.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_system
+        ":zmod_system_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_system dylibs
+
+# BEGIN generated: zmod_tcp
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_tcp   -- review before committing.
+# cmake target: zmod_tcp  ->  zmod_tcp
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_tcp_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_tcp_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_tcp_obj",
+    srcs = [
+        "zsh/Src/Modules/tcp.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_tcp_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_tcp_inc_zsh_zsh_Src",
+        ":zmod_tcp_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_tcp
+
+# BEGIN generated: zmod_tcp dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_tcp   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_tcp_dylib",
+    dylib_name = "tcp.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_tcp
+        ":zmod_tcp_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_tcp dylibs
+
+# BEGIN generated: zmod_termcap
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_termcap   -- review before committing.
+# cmake target: zmod_termcap  ->  zmod_termcap
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_termcap_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_termcap_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_termcap_obj",
+    srcs = [
+        "zsh/Src/Modules/termcap.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_termcap_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_termcap_inc_zsh_zsh_Src",
+        ":zmod_termcap_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_termcap
+
+# BEGIN generated: zmod_termcap dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_termcap   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_termcap_dylib",
+    dylib_name = "termcap.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_termcap
+        ":zmod_termcap_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_termcap dylibs
+
+# BEGIN generated: zmod_terminfo
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_terminfo   -- review before committing.
+# cmake target: zmod_terminfo  ->  zmod_terminfo
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_terminfo_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_terminfo_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_terminfo_obj",
+    srcs = [
+        "zsh/Src/Modules/terminfo.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_terminfo_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_terminfo_inc_zsh_zsh_Src",
+        ":zmod_terminfo_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_terminfo
+
+# BEGIN generated: zmod_terminfo dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_terminfo   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_terminfo_dylib",
+    dylib_name = "terminfo.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_terminfo
+        ":zmod_terminfo_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_terminfo dylibs
+
+# BEGIN generated: zmod_zftp
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_zftp   -- review before committing.
+# cmake target: zmod_zftp  ->  zmod_zftp
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zftp_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zftp_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_zftp_obj",
+    srcs = [
+        "zsh/Src/Modules/zftp.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_zftp_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_zftp_inc_zsh_zsh_Src",
+        ":zmod_zftp_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zftp
+
+# BEGIN generated: zmod_zftp dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_zftp   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_zftp_dylib",
+    dylib_name = "zftp.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_zftp
+        ":zmod_zftp_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zftp dylibs
+
+# BEGIN generated: zmod_zle
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_zle   -- review before committing.
+# cmake target: zmod_zle  ->  zmod_zle
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zle_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Zle/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Zle",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zle_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_zle_obj",
+    srcs = [
+        "zsh/Src/Zle/textobjects.c",
+        "zsh/Src/Zle/zle_bindings.c",
+        "zsh/Src/Zle/zle_hist.c",
+        "zsh/Src/Zle/zle_keymap.c",
+        "zsh/Src/Zle/zle_main.c",
+        "zsh/Src/Zle/zle_misc.c",
+        "zsh/Src/Zle/zle_move.c",
+        "zsh/Src/Zle/zle_params.c",
+        "zsh/Src/Zle/zle_refresh.c",
+        "zsh/Src/Zle/zle_thingy.c",
+        "zsh/Src/Zle/zle_tricky.c",
+        "zsh/Src/Zle/zle_utils.c",
+        "zsh/Src/Zle/zle_vi.c",
+        "zsh/Src/Zle/zle_word.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_zle_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_zle_inc_zsh_zsh_Src",
+        ":zmod_zle_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zle
+
+# BEGIN generated: zmod_zle dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_zle   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_zle_dylib",
+    dylib_name = "zle.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_zle
+        ":zmod_zle_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zle dylibs
+
+# BEGIN generated: zmod_zleparameter
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_zleparameter   -- review before committing.
+# cmake target: zmod_zleparameter  ->  zmod_zleparameter
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zleparameter_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Zle/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Zle",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zleparameter_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_zleparameter_obj",
+    srcs = [
+        "zsh/Src/Zle/zleparameter.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_zleparameter_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_zleparameter_inc_zsh_zsh_Src",
+        ":zmod_zleparameter_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zleparameter
+
+# BEGIN generated: zmod_zleparameter dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_zleparameter   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_zleparameter_dylib",
+    dylib_name = "zleparameter.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_zleparameter
+        ":zmod_zleparameter_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zleparameter dylibs
+
+# BEGIN generated: zmod_zprof
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_zprof   -- review before committing.
+# cmake target: zmod_zprof  ->  zmod_zprof
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zprof_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zprof_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_zprof_obj",
+    srcs = [
+        "zsh/Src/Modules/zprof.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_zprof_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_zprof_inc_zsh_zsh_Src",
+        ":zmod_zprof_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zprof
+
+# BEGIN generated: zmod_zprof dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_zprof   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_zprof_dylib",
+    dylib_name = "zprof.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_zprof
+        ":zmod_zprof_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zprof dylibs
+
+# BEGIN generated: zmod_zpty
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_zpty   -- review before committing.
+# cmake target: zmod_zpty  ->  zmod_zpty
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zpty_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zpty_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_zpty_obj",
+    srcs = [
+        "zsh/Src/Modules/zpty.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_zpty_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_zpty_inc_zsh_zsh_Src",
+        ":zmod_zpty_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zpty
+
+# BEGIN generated: zmod_zpty dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_zpty   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_zpty_dylib",
+    dylib_name = "zpty.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_zpty
+        ":zmod_zpty_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zpty dylibs
+
+# BEGIN generated: zmod_zselect
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_zselect   -- review before committing.
+# cmake target: zmod_zselect  ->  zmod_zselect
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zselect_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Modules/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_zselect_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+        "zsh/Src/Modules/*.h",
+        "zsh/Src/Modules/**/*.h",
+        "zsh/Src/Modules/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+        "Modules",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_zselect_obj",
+    srcs = [
+        "zsh/Src/Modules/zselect.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_zselect_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_zselect_inc_zsh_zsh_Src",
+        ":zmod_zselect_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zselect
+
+# BEGIN generated: zmod_zselect dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_zselect   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_zselect_dylib",
+    dylib_name = "zselect.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_zselect
+        ":zmod_zselect_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_zselect dylibs
+
+# BEGIN generated: zmod_computil
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) zmod_computil   -- review before committing.
+# cmake target: zmod_computil  ->  zmod_computil
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_computil_inc_zsh_gen",
+    headers = glob([
+        "gen/Src/**/*",
+        "gen/**/*",
+        "gen/Src/Zle/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        "Src",
+        ".",
+        "Src/Zle",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zmod_computil_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+        "zsh/Src/**/*",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        "Zle",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zmod_computil_obj",
+    srcs = [
+        "zsh/Src/Zle/computil.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DMODULE",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dzmod_computil_EXPORTS",
+        "-fPIC",
+        "-no-cpp-precomp",
+        "-nostdinc",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zmod_computil_inc_zsh_zsh_Src",
+        ":zmod_computil_inc_zsh_gen",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_computil
+
+# BEGIN generated: zmod_computil dylibs
+# GENERATED from the reference build.ninja by
+# gen-buck-from-ninja (deleted) --dylibs zmod_computil   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "zmod_computil_dylib",
+    dylib_name = "computil.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # zmod_computil
+        ":zmod_computil_obj",
+    ],
+    siblings = [
+        "//vendor/src:iconv_dylib",
+        "//vendor/src:ncurses_dylib",
+        "//vendor/src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+        "-Wl,-undefined,suppress",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: zmod_computil dylibs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_zsh.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# cider-exports keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

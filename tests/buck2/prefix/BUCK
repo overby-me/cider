@@ -1,0 +1,13 @@
+load("//buck/rules:install.bzl", "prefix_tree")
+
+# Smallest real prefix: bash where the reference installs it. The manifests
+# (nix/lib/cider-graph.nix ships them) say libexec/cider/bin, as an EXECUTABLE plus a
+# second entry named sh. Proves the rule stages a built target at a destination path before
+# the generator starts emitting hundreds of them.
+prefix_tree(
+    name = "bash_only",
+    entries = {
+        "libexec/cider/bin/bash": "//vendor/src:bash",
+    },
+    visibility = ["PUBLIC"],
+)

@@ -1,0 +1,23 @@
+load("//buck/rules:codegen.bzl", "configure_file")
+
+# darling-config.h, cmake's configure_file output. UPSTREAM's name: the syscall
+# emulation layer in the xnu pin includes <darling-config.h>, so the file keeps it. The syscall emulation layer
+# includes it for LIB_PATH / LIBEXEC_PATH / SYSTEM_ROOT.
+#
+# The values mirror nix/package.nix's install layout. GIT_BRANCH and
+# GIT_COMMIT_HASH are deliberately left empty rather than shelling out to git:
+# baking VCS state into a header would make every commit invalidate every object
+# that includes it.
+configure_file(
+    name = "cider_config",
+    out = "darling-config.h",
+    src = "darling-config.h.in",
+    values = {
+        "CMAKE_INSTALL_PREFIX": "/usr/libexec/cider",
+        "CMAKE_INSTALL_LIBDIR": "lib",
+        "SUFFIX": "",
+        "GIT_BRANCH": "",
+        "GIT_COMMIT_HASH": "",
+    },
+    visibility = ["PUBLIC"],
+)

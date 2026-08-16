@@ -1,0 +1,294 @@
+--- /dev/null
++++ b/src/NSConstantNumbers.m
+@@ -0,0 +1,291 @@
++/*
++ * THE CONSTANT LITERAL CLASSES, WHICH THE COMPILER CREATES INSTANCES OF AND NOBODY ELSE DOES.
++ *
++ * A current SDK compiles @42, @3.5, @[a, b] and @{k: v} in a file with no dynamic parts into STATIC
++ * objects in __DATA, whose isa fields point at these five classes. The instances are laid out by the
++ * compiler, so this file does not create any: it declares the same fields in the same order and
++ * answers the ordinary NSNumber, NSArray and NSDictionary questions about memory it did not
++ * allocate.
++ *
++ * Two consequences follow from the instances being static, and both are implemented below. They can
++ * never be deallocated, so retain answers self and release does nothing, which is what every
++ * immortal object in this runtime does. And they can never be MUTATED, so nothing here writes.
++ *
++ * The symbols are what stops a modern application at load time: iTerm2 3.6.10 stops on
++ * _OBJC_CLASS_$_NSConstantDoubleNumber before it runs a single instruction.
++ */
++
++#import <Foundation/NSValue.h>
++#import <Foundation/NSString.h>
++#import <Foundation/NSException.h>
++#import <Foundation/NSEnumerator.h>
++
++/* The layouts clang emits. The value always follows the isa, which is the field that matters.
++ *
++ * EVERY WIDTH IS ANSWERED, not just the natural one. A caller asks an NSNumber for whichever width
++ * it wants and the class converts: iTerm2 asked a constant integer for shortValue and the missing
++ * accessor was an unrecognized selector that terminated the application on its main nib. */
++
++@interface NSConstantIntegerNumber : NSNumber {
++@public
++    long long _value;
++    const char *_encoding;
++}
++@end
++
++@interface NSConstantDoubleNumber : NSNumber {
++@public
++    double _value;
++}
++@end
++
++@interface NSConstantFloatNumber : NSNumber {
++@public
++    float _value;
++}
++@end
++
++#define CIDER_IMMORTAL                                                                             \
++    -(id) retain { return self; }                                                                  \
++    -(oneway void) release {}                                                                      \
++    -(id) autorelease { return self; }                                                             \
++    -(NSUInteger) retainCount { return NSUIntegerMax; }
++
++@implementation NSConstantIntegerNumber
++
++CIDER_IMMORTAL
++
++- (const char *) objCType {
++    return _encoding != NULL ? _encoding : "q";
++}
++
++- (long long) longLongValue {
++    return _value;
++}
++
++- (unsigned long long) unsignedLongLongValue {
++    return (unsigned long long) _value;
++}
++
++- (NSInteger) integerValue {
++    return (NSInteger) _value;
++}
++
++- (int) intValue {
++    return (int) _value;
++}
++
++- (double) doubleValue {
++    return (double) _value;
++}
++
++- (float) floatValue {
++    return (float) _value;
++}
++
++- (BOOL) boolValue {
++    return _value != 0;
++}
++
++- (short) shortValue {
++    return (short) _value;
++}
++
++- (unsigned short) unsignedShortValue {
++    return (unsigned short) _value;
++}
++
++- (char) charValue {
++    return (char) _value;
++}
++
++- (unsigned char) unsignedCharValue {
++    return (unsigned char) _value;
++}
++
++- (unsigned int) unsignedIntValue {
++    return (unsigned int) _value;
++}
++
++- (long) longValue {
++    return (long) _value;
++}
++
++- (unsigned long) unsignedLongValue {
++    return (unsigned long) _value;
++}
++
++- (NSUInteger) unsignedIntegerValue {
++    return (NSUInteger) _value;
++}
++
++- (void) getValue: (void *) buffer {
++    *(long long *) buffer = _value;
++}
++
++- (NSString *) stringValue {
++    return [NSString stringWithFormat: @"%lld", _value];
++}
++
++- (NSString *) descriptionWithLocale: (id) locale {
++    return [self stringValue];
++}
++
++@end
++
++@implementation NSConstantDoubleNumber
++
++CIDER_IMMORTAL
++
++- (const char *) objCType {
++    return "d";
++}
++
++- (double) doubleValue {
++    return _value;
++}
++
++- (float) floatValue {
++    return (float) _value;
++}
++
++- (long long) longLongValue {
++    return (long long) _value;
++}
++
++- (NSInteger) integerValue {
++    return (NSInteger) _value;
++}
++
++- (int) intValue {
++    return (int) _value;
++}
++
++- (BOOL) boolValue {
++    return _value != 0.0;
++}
++
++- (short) shortValue {
++    return (short) _value;
++}
++
++- (unsigned short) unsignedShortValue {
++    return (unsigned short) _value;
++}
++
++- (char) charValue {
++    return (char) _value;
++}
++
++- (unsigned char) unsignedCharValue {
++    return (unsigned char) _value;
++}
++
++- (unsigned int) unsignedIntValue {
++    return (unsigned int) _value;
++}
++
++- (long) longValue {
++    return (long) _value;
++}
++
++- (unsigned long) unsignedLongValue {
++    return (unsigned long) _value;
++}
++
++- (NSUInteger) unsignedIntegerValue {
++    return (NSUInteger) _value;
++}
++
++- (void) getValue: (void *) buffer {
++    *(double *) buffer = _value;
++}
++
++- (NSString *) stringValue {
++    return [NSString stringWithFormat: @"%g", _value];
++}
++
++- (NSString *) descriptionWithLocale: (id) locale {
++    return [self stringValue];
++}
++
++@end
++
++@implementation NSConstantFloatNumber
++
++CIDER_IMMORTAL
++
++- (const char *) objCType {
++    return "f";
++}
++
++- (float) floatValue {
++    return _value;
++}
++
++- (double) doubleValue {
++    return (double) _value;
++}
++
++- (long long) longLongValue {
++    return (long long) _value;
++}
++
++- (NSInteger) integerValue {
++    return (NSInteger) _value;
++}
++
++- (int) intValue {
++    return (int) _value;
++}
++
++- (BOOL) boolValue {
++    return _value != 0.0f;
++}
++
++- (short) shortValue {
++    return (short) _value;
++}
++
++- (unsigned short) unsignedShortValue {
++    return (unsigned short) _value;
++}
++
++- (char) charValue {
++    return (char) _value;
++}
++
++- (unsigned char) unsignedCharValue {
++    return (unsigned char) _value;
++}
++
++- (unsigned int) unsignedIntValue {
++    return (unsigned int) _value;
++}
++
++- (long) longValue {
++    return (long) _value;
++}
++
++- (unsigned long) unsignedLongValue {
++    return (unsigned long) _value;
++}
++
++- (NSUInteger) unsignedIntegerValue {
++    return (NSUInteger) _value;
++}
++
++- (void) getValue: (void *) buffer {
++    *(float *) buffer = _value;
++}
++
++- (NSString *) stringValue {
++    return [NSString stringWithFormat: @"%g", (double) _value];
++}
++
++- (NSString *) descriptionWithLocale: (id) locale {
++    return [self stringValue];
++}
++
++@end
++

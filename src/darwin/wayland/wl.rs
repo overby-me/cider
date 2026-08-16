@@ -1,0 +1,537 @@
+// The Wayland client FFI, in its own file BECAUSE IT CAN BE.
+//
+// A guest Rust crate had to be a single file until 2026-08-13: the Nix endpoint stages what an
+// action's argv names, and a `mod` in its own file appears in no argv and in no buck2 aquery
+// attribute, so it simply was not there when the endpoint replayed the compile. srcset.rs stages
+// the whole crate DIRECTORY now, for the guest rule as well as the host one. This file and
+// src/darwin/rustprobe are the two places that would fail loudly if that regressed.
+//
+// Everything here is declared against the FORWARDING STUB (//src/linux/native:wayland-client_dylib),
+// which carries libwayland's real functions, plus shim.c for the inline layer and the interface
+// data. Nothing is reimplemented.
+use std::os::raw::{c_char, c_int, c_void};
+
+pub enum WlDisplay {}
+pub enum WlRegistry {}
+pub enum WlInterface {}
+pub enum WlCompositor {}
+pub enum WlShm {}
+pub enum WlSurface {}
+pub enum XdgWmBase {}
+pub enum XdgSurface {}
+pub enum XdgToplevel {}
+pub enum WlShmPool {}
+pub enum WlBuffer {}
+pub enum WlCallback {}
+pub enum WlOutput {}
+
+/// libwayland's intrusive list head: two pointers, and wl_list_init makes both point at it.
+#[repr(C)]
+pub struct WlList {
+    pub prev: *mut WlList,
+    pub next: *mut WlList,
+}
+
+unsafe extern "C" {
+    // Real symbols in libwayland-client, verified present in the generated stub with llvm-nm.
+    pub fn wl_display_connect(name: *const c_char) -> *mut WlDisplay;
+    pub fn wl_display_disconnect(display: *mut WlDisplay);
+    /// TAKES AN ALREADY CONNECTED FD, which is the interesting alternative: the GUEST can create
+    /// and connect a unix socket with its own emulated syscalls, and this hands the result to
+    /// libwayland. It is also the answer to whether a guest fd is a real host fd, which the
+    /// backend needs to know regardless.
+    pub fn wl_display_connect_to_fd(fd: c_int) -> *mut WlDisplay;
+    pub fn wl_display_roundtrip(display: *mut WlDisplay) -> c_int;
+    /// THE BRIDGE TEST. It writes prev and next to point at the list itself, which is an effect
+    /// this side can verify without a compositor, a socket or an environment. If this does not
+    /// happen, the forwarding stub never reached libwayland and everything else is noise.
+    pub fn wl_list_init(list: *mut WlList);
+
+    // shim.c, because these are static inline upstream and cannot cross the bridge.
+    pub fn cider_wl_display_get_registry(display: *mut WlDisplay) -> *mut WlRegistry;
+    /// The connection file descriptor, for POLLING ONLY. The main thread does the reading.
+    pub fn cider_wl_display_get_fd(display: *mut WlDisplay) -> i32;
+    pub fn cider_wl_registry_add_listener(
+        registry: *mut WlRegistry,
+        listener: *const RegistryListener,
+        data: *mut c_void,
+    ) -> c_int;
+    pub fn cider_wl_compositor_interface() -> *const WlInterface;
+    pub fn cider_xdg_wm_base_interface() -> *const WlInterface;
+
+    // Surface and window, all of it inline upstream and therefore living in shim.c here.
+    pub fn cider_wl_registry_bind_compositor(r: *mut WlRegistry, name: u32, version: u32) -> *mut WlCompositor;
+    pub fn cider_wl_registry_bind_shm(r: *mut WlRegistry, name: u32, version: u32) -> *mut WlShm;
+    pub fn cider_wl_registry_bind_xdg_wm_base(r: *mut WlRegistry, name: u32, version: u32) -> *mut XdgWmBase;
+    pub fn cider_wl_compositor_create_surface(c: *mut WlCompositor) -> *mut WlSurface;
+    pub fn cider_xdg_wm_base_get_xdg_surface(b: *mut XdgWmBase, s: *mut WlSurface) -> *mut XdgSurface;
+    pub fn cider_xdg_surface_get_toplevel(s: *mut XdgSurface) -> *mut XdgToplevel;
+    pub fn cider_xdg_toplevel_set_title(t: *mut XdgToplevel, title: *const c_char);
+    pub fn cider_xdg_toplevel_set_app_id(t: *mut XdgToplevel, app_id: *const c_char);
+    pub fn cider_xdg_toplevel_set_parent(t: *mut XdgToplevel, parent: *mut XdgToplevel);
+    /// The requests a title bar needs: a client asks the compositor to move or restack it, and the
+    /// ask carries the serial of the input event that caused it.
+    pub fn cider_xdg_toplevel_move(t: *mut XdgToplevel, seat: *mut WlSeat, serial: u32);
+    pub fn cider_xdg_toplevel_set_minimized(t: *mut XdgToplevel);
+    pub fn cider_xdg_toplevel_set_maximized(t: *mut XdgToplevel);
+    pub fn cider_xdg_toplevel_unset_maximized(t: *mut XdgToplevel);
+    pub fn cider_xdg_toplevel_add_listener(t: *mut XdgToplevel, l: *const XdgToplevelListener, data: *mut c_void) -> c_int;
+    pub fn cider_wl_registry_bind_output(r: *mut WlRegistry, name: u32, version: u32) -> *mut WlOutput;
+    pub fn cider_wl_output_add_listener(o: *mut WlOutput, l: *const WlOutputListener, data: *mut c_void) -> c_int;
+
+    /// THE NON-BLOCKING PUMP. roundtrip is the wrong shape for an event loop: it waits for the
+    /// server to answer a sync, so an application that pumps per iteration would block on every
+    /// idle pass. prepare_read, read_events and dispatch_pending are the sequence libwayland
+    /// documents for a client that has its own loop.
+    pub fn wl_display_dispatch_pending(display: *mut WlDisplay) -> c_int;
+    pub fn wl_display_prepare_read(display: *mut WlDisplay) -> c_int;
+    pub fn wl_display_read_events(display: *mut WlDisplay) -> c_int;
+    pub fn wl_display_cancel_read(display: *mut WlDisplay);
+    pub fn cider_xdg_surface_ack_configure(s: *mut XdgSurface, serial: u32);
+    pub fn cider_xdg_surface_set_window_geometry(
+        s: *mut XdgSurface,
+        x: i32,
+        y: i32,
+        width: i32,
+        height: i32,
+    );
+    pub fn cider_wl_surface_commit(s: *mut WlSurface);
+    pub fn cider_xdg_surface_add_listener(s: *mut XdgSurface, l: *const XdgSurfaceListener, data: *mut c_void) -> c_int;
+    pub fn cider_xdg_wm_base_pong(b: *mut XdgWmBase, serial: u32);
+    pub fn cider_xdg_wm_base_add_listener(b: *mut XdgWmBase, l: *const XdgWmBaseListener, data: *mut c_void) -> c_int;
+
+    // Pixels.
+    pub fn cider_wl_shm_create_pool(shm: *mut WlShm, fd: c_int, size: i32) -> *mut WlShmPool;
+    pub fn cider_wl_shm_pool_create_buffer(pool: *mut WlShmPool, offset: i32, width: i32, height: i32, stride: i32, format: u32) -> *mut WlBuffer;
+    pub fn cider_wl_shm_pool_destroy(pool: *mut WlShmPool);
+    pub fn cider_wl_surface_attach(s: *mut WlSurface, b: *mut WlBuffer, x: i32, y: i32);
+    pub fn cider_wl_surface_damage(s: *mut WlSurface, x: i32, y: i32, w: i32, h: i32);
+    pub fn cider_wl_buffer_add_listener(b: *mut WlBuffer, l: *const WlBufferListener, data: *mut c_void) -> c_int;
+    pub fn cider_wl_shm_format_xrgb8888() -> u32;
+    pub fn cider_wl_shm_format_argb8888() -> u32;
+
+    /// Nonzero once the connection has failed. A protocol error kills the connection silently
+    /// from the client's point of view, so without asking, a missing event and a dead socket look
+    /// the same.
+    pub fn wl_display_get_error(display: *mut WlDisplay) -> c_int;
+    pub fn wl_display_flush(display: *mut WlDisplay) -> c_int;
+    pub fn cider_wl_surface_frame(s: *mut WlSurface) -> *mut WlCallback;
+    pub fn cider_wl_callback_add_listener(c: *mut WlCallback, l: *const WlCallbackListener, data: *mut c_void) -> c_int;
+}
+
+/// The layout libwayland expects: two function pointers, in this order. It is passed by pointer
+/// and read by the C side, so the order is ABI and not style.
+#[repr(C)]
+pub struct RegistryListener {
+    pub global: extern "C" fn(
+        data: *mut c_void,
+        registry: *mut WlRegistry,
+        name: u32,
+        interface: *const c_char,
+        version: u32,
+    ),
+    pub global_remove: extern "C" fn(data: *mut c_void, registry: *mut WlRegistry, name: u32),
+}
+
+/// What one registry sweep found. Counting is not the point; NAMING the globals is, because a
+/// backend that cannot find wl_compositor, wl_shm and xdg_wm_base cannot open a window, and the
+/// failure should say which one is missing rather than "it did not work".
+#[derive(Default)]
+pub struct Globals {
+    pub bound: Bound,
+    pub total: u32,
+    pub compositor: bool,
+    pub shm: bool,
+    pub xdg_wm_base: bool,
+    pub seat: bool,
+    pub output: bool,
+    pub data_device_manager: bool,
+}
+
+impl Globals {
+    /// The registry hands out a NAME and a VERSION per global, and both are needed later: binding
+    /// takes the name, and asking for a version the compositor does not have is a protocol error
+    /// that kills the connection rather than returning null.
+    pub fn note(&mut self, interface: &str, name: u32, version: u32) {
+        self.total += 1;
+        match interface {
+            "wl_compositor" => {
+                self.compositor = true;
+                self.bound.compositor_name = name;
+                self.bound.compositor_version = version.min(4);
+            }
+            "wl_data_device_manager" => {
+                self.data_device_manager = true;
+                self.bound.data_device_manager_name = name;
+                self.bound.data_device_manager_version = version.min(3);
+            }
+            "wl_shm" => {
+                self.shm = true;
+                self.bound.shm_name = name;
+                self.bound.shm_version = version.min(1);
+            }
+            "xdg_wm_base" => {
+                self.xdg_wm_base = true;
+                self.bound.xdg_name = name;
+                // VERSION 3, because that is where xdg_popup.reposition arrives, and without it a
+                // popup can never be moved after it is created: its position is whatever the
+                // positioner said at the moment it was made. LibreOffice builds its dropdown list
+                // windows during startup and moves each one into place just before showing it, so
+                // bound at version 1 every list appeared at the left edge of the screen rather than
+                // under its own field. The listeners already declare the events of 4 and 5, but
+                // there is nothing to gain from them yet.
+                self.bound.xdg_version = version.min(3);
+            }
+            "wl_seat" => {
+                self.seat = true;
+                self.bound.seat_name = name;
+                // Version 5 brings the pointer frame event, which every modern compositor sends.
+                // Binding lower does not avoid it: the INTERFACE still declares it, so the
+                // listener has to carry it either way.
+                self.bound.seat_version = version.min(5);
+            }
+            "wl_output" => {
+                self.output = true;
+                self.bound.output_name = name;
+                // Version 2 is where wl_output.done arrives, which is what says a burst of
+                // properties is complete. Below that the values are used as they come.
+                self.bound.output_version = version.min(2);
+            }
+            _ => {}
+        }
+    }
+
+    /// Everything a window needs. wl_seat is deliberately NOT required: weston's headless backend
+    /// advertises no seat at all, which is a fact about the test compositor and not about us.
+    pub fn can_open_a_window(&self) -> bool {
+        self.compositor && self.shm && self.xdg_wm_base
+    }
+}
+
+/// One callback: the compositor says "this configuration is yours now", and the client must
+/// acknowledge the serial before its surface is considered ready.
+#[repr(C)]
+pub struct XdgSurfaceListener {
+    pub configure: extern "C" fn(data: *mut c_void, surface: *mut XdgSurface, serial: u32),
+}
+
+/// THE PING MATTERS. A client that never pongs is treated as hung, and the symptom is a window
+/// that simply never appears rather than an error anyone can see.
+#[repr(C)]
+pub struct XdgWmBaseListener {
+    pub ping: extern "C" fn(data: *mut c_void, base: *mut XdgWmBase, serial: u32),
+}
+
+/// What the registry sweep kept, so a second pass can bind without re-reading the names.
+#[derive(Default)]
+pub struct Bound {
+    pub compositor_name: u32,
+    pub compositor_version: u32,
+    pub shm_name: u32,
+    pub shm_version: u32,
+    pub xdg_name: u32,
+    pub xdg_version: u32,
+    pub output_name: u32,
+    pub output_version: u32,
+    pub seat_name: u32,
+    pub seat_version: u32,
+    pub data_device_manager_name: u32,
+    pub data_device_manager_version: u32,
+}
+
+/// One callback: the compositor has finished with the buffer. That event is the only honest
+/// evidence from the client side that the pixels were CONSUMED and not merely handed over.
+#[repr(C)]
+pub struct WlBufferListener {
+    pub release: extern "C" fn(data: *mut c_void, buffer: *mut WlBuffer),
+}
+
+/// The compositor calls this once it has PRESENTED the surface. Independent of buffer lifetime,
+/// so it distinguishes "never drawn" from "drawn but the buffer is still held".
+#[repr(C)]
+pub struct WlCallbackListener {
+    pub done: extern "C" fn(data: *mut c_void, callback: *mut WlCallback, time: u32),
+}
+
+/// FOUR MEMBERS, NOT TWO, and the last two are why. libwayland dispatches an event by INDEXING
+/// this struct with the opcode, so a struct shorter than the interface's event list calls whatever
+/// follows it in memory. configure_bounds and wm_capabilities only arrive at versions 4 and 5 and
+/// this binds version 1, so they cannot fire today; declaring them costs two pointers and removes
+/// the question entirely.
+#[repr(C)]
+pub struct XdgToplevelListener {
+    pub configure: extern "C" fn(
+        data: *mut c_void,
+        toplevel: *mut XdgToplevel,
+        width: i32,
+        height: i32,
+        states: *mut c_void,
+    ),
+    pub close: extern "C" fn(data: *mut c_void, toplevel: *mut XdgToplevel),
+    pub configure_bounds:
+        extern "C" fn(data: *mut c_void, toplevel: *mut XdgToplevel, width: i32, height: i32),
+    pub wm_capabilities:
+        extern "C" fn(data: *mut c_void, toplevel: *mut XdgToplevel, capabilities: *mut c_void),
+}
+
+/// SIX MEMBERS, for the same reason the toplevel listener has four: libwayland indexes this with
+/// the event opcode. name and description are version 4 and this binds version 2, so they cannot
+/// fire, and declaring them settles it rather than leaving a shorter struct to be read past.
+#[repr(C)]
+pub struct WlOutputListener {
+    pub geometry: extern "C" fn(
+        data: *mut c_void,
+        output: *mut WlOutput,
+        x: i32,
+        y: i32,
+        physical_width: i32,
+        physical_height: i32,
+        subpixel: i32,
+        make: *const c_char,
+        model: *const c_char,
+        transform: i32,
+    ),
+    pub mode: extern "C" fn(
+        data: *mut c_void,
+        output: *mut WlOutput,
+        flags: u32,
+        width: i32,
+        height: i32,
+        refresh: i32,
+    ),
+    pub done: extern "C" fn(data: *mut c_void, output: *mut WlOutput),
+    pub scale: extern "C" fn(data: *mut c_void, output: *mut WlOutput, factor: i32),
+    pub name: extern "C" fn(data: *mut c_void, output: *mut WlOutput, name: *const c_char),
+    pub description: extern "C" fn(data: *mut c_void, output: *mut WlOutput, description: *const c_char),
+}
+
+/// wl_output.mode flags. Only "current" matters: a compositor lists every mode it supports and
+/// exactly one of them is the one in use, so taking the last mode seen would pick an arbitrary
+/// resolution the screen is not actually running at.
+pub const WL_OUTPUT_MODE_CURRENT: u32 = 0x1;
+
+// -------------------------------------------------------------------------------------------
+// INPUT: the seat, and the pointer and keyboard it hands out.
+
+/// Opaque proxies, same as the rest.
+pub enum WlSeat {}
+pub enum WlPointer {}
+pub enum WlKeyboard {}
+
+unsafe extern "C" {
+    pub fn cider_wl_registry_bind_seat(r: *mut WlRegistry, name: u32, version: u32) -> *mut WlSeat;
+    pub fn cider_wl_seat_add_listener(s: *mut WlSeat, l: *const WlSeatListener, data: *mut c_void) -> c_int;
+    pub fn cider_wl_seat_get_pointer(s: *mut WlSeat) -> *mut WlPointer;
+    pub fn cider_wl_seat_get_keyboard(s: *mut WlSeat) -> *mut WlKeyboard;
+    pub fn cider_wl_pointer_add_listener(p: *mut WlPointer, l: *const WlPointerListener, data: *mut c_void) -> c_int;
+    pub fn cider_wl_keyboard_add_listener(k: *mut WlKeyboard, l: *const WlKeyboardListener, data: *mut c_void) -> c_int;
+    pub fn cider_wl_pointer_release(p: *mut WlPointer);
+    pub fn cider_wl_keyboard_release(k: *mut WlKeyboard);
+    pub fn cider_wl_seat_capability_pointer() -> u32;
+    pub fn cider_wl_seat_capability_keyboard() -> u32;
+    pub fn cider_wl_pointer_button_state_pressed() -> u32;
+    pub fn cider_wl_keyboard_key_state_pressed() -> u32;
+    pub fn cider_wl_keyboard_keymap_format_xkb_v1() -> u32;
+    /// wl_fixed_t is 24.8 FIXED POINT. Casting it to an integer loses the fraction and still
+    /// produces a plausible coordinate, which is the kind of wrong that survives review.
+    pub fn cider_wl_fixed_to_double(f: i32) -> f64;
+}
+
+#[repr(C)]
+pub struct WlSeatListener {
+    pub capabilities: extern "C" fn(data: *mut c_void, seat: *mut WlSeat, capabilities: u32),
+    pub name: extern "C" fn(data: *mut c_void, seat: *mut WlSeat, name: *const c_char),
+}
+
+/// EVERY EVENT THE INTERFACE DECLARES, not every event this client cares about.
+///
+/// libwayland dispatches by INDEXING this struct with the event opcode, so a struct shorter than
+/// the interface is read past the end the first time a compositor sends a later event. wl_pointer
+/// has eleven; a client that binds version 1 and declares five is one axis event away from calling
+/// whatever follows the struct in memory.
+#[repr(C)]
+pub struct WlPointerListener {
+    pub enter: extern "C" fn(
+        data: *mut c_void,
+        pointer: *mut WlPointer,
+        serial: u32,
+        surface: *mut WlSurface,
+        surface_x: i32,
+        surface_y: i32,
+    ),
+    pub leave: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, serial: u32, surface: *mut WlSurface),
+    pub motion: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, surface_x: i32, surface_y: i32),
+    pub button: extern "C" fn(
+        data: *mut c_void,
+        pointer: *mut WlPointer,
+        serial: u32,
+        time: u32,
+        button: u32,
+        state: u32,
+    ),
+    pub axis: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, axis: u32, value: i32),
+    pub frame: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer),
+    pub axis_source: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, axis_source: u32),
+    pub axis_stop: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, time: u32, axis: u32),
+    pub axis_discrete: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, axis: u32, discrete: i32),
+    pub axis_value120: extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, axis: u32, value120: i32),
+    pub axis_relative_direction:
+        extern "C" fn(data: *mut c_void, pointer: *mut WlPointer, axis: u32, direction: u32),
+}
+
+#[repr(C)]
+pub struct WlKeyboardListener {
+    /// THE KEYMAP ARRIVES AS A FILE DESCRIPTOR, not as a name. The compositor decides the layout
+    /// and hands over an xkb keymap to mmap; a client that assumes a layout gets the wrong
+    /// characters for every non-US keyboard and looks correct on the developer's machine.
+    pub keymap: extern "C" fn(data: *mut c_void, keyboard: *mut WlKeyboard, format: u32, fd: i32, size: u32),
+    pub enter: extern "C" fn(
+        data: *mut c_void,
+        keyboard: *mut WlKeyboard,
+        serial: u32,
+        surface: *mut WlSurface,
+        keys: *mut c_void,
+    ),
+    pub leave: extern "C" fn(data: *mut c_void, keyboard: *mut WlKeyboard, serial: u32, surface: *mut WlSurface),
+    pub key: extern "C" fn(
+        data: *mut c_void,
+        keyboard: *mut WlKeyboard,
+        serial: u32,
+        time: u32,
+        key: u32,
+        state: u32,
+    ),
+    pub modifiers: extern "C" fn(
+        data: *mut c_void,
+        keyboard: *mut WlKeyboard,
+        serial: u32,
+        mods_depressed: u32,
+        mods_latched: u32,
+        mods_locked: u32,
+        group: u32,
+    ),
+    pub repeat_info: extern "C" fn(data: *mut c_void, keyboard: *mut WlKeyboard, rate: i32, delay: i32),
+}
+
+// -------------------------------------------------------------------------------------------
+// POPUPS: menus and tooltips, which belong to a parent surface rather than to the desktop.
+
+pub enum XdgPositioner {}
+pub enum XdgPopup {}
+
+unsafe extern "C" {
+    pub fn cider_xdg_wm_base_create_positioner(base: *mut XdgWmBase) -> *mut XdgPositioner;
+    pub fn cider_xdg_positioner_set_size(p: *mut XdgPositioner, w: i32, h: i32);
+    pub fn cider_xdg_positioner_set_anchor_rect(p: *mut XdgPositioner, x: i32, y: i32, w: i32, h: i32);
+    pub fn cider_xdg_positioner_set_anchor(p: *mut XdgPositioner, anchor: u32);
+    pub fn cider_xdg_positioner_set_gravity(p: *mut XdgPositioner, gravity: u32);
+    pub fn cider_xdg_positioner_set_constraint_adjustment(p: *mut XdgPositioner, adjust: u32);
+    pub fn cider_xdg_positioner_destroy(p: *mut XdgPositioner);
+    pub fn cider_xdg_surface_get_popup(
+        surface: *mut XdgSurface,
+        parent: *mut XdgSurface,
+        positioner: *mut XdgPositioner,
+    ) -> *mut XdgPopup;
+    pub fn cider_xdg_popup_add_listener(popup: *mut XdgPopup, l: *const XdgPopupListener, data: *mut c_void) -> c_int;
+    pub fn cider_xdg_popup_destroy(popup: *mut XdgPopup);
+    /// Role first, then the xdg_surface, then the wl_surface. See the shim for why this exists.
+    pub fn cider_xdg_toplevel_destroy(toplevel: *mut XdgToplevel);
+    pub fn cider_xdg_surface_destroy(surface: *mut XdgSurface);
+    pub fn cider_wl_surface_destroy(surface: *mut WlSurface);
+    /// Whether this compositor speaks xdg_shell 3 or later, which is where reposition arrived.
+    /// Asking an older one is a protocol error and takes the connection down with it.
+    pub fn cider_xdg_popup_can_reposition(popup: *mut XdgPopup) -> c_int;
+    pub fn cider_xdg_popup_reposition(
+        popup: *mut XdgPopup,
+        positioner: *mut XdgPositioner,
+        token: u32,
+    );
+    pub fn cider_xdg_positioner_anchor_bottom_left() -> u32;
+    pub fn cider_xdg_positioner_gravity_bottom_right() -> u32;
+    pub fn cider_xdg_positioner_constraint_slide_flip() -> u32;
+}
+
+/// THREE EVENTS, because the interface declares three. repositioned is version 3 and cannot fire
+/// on a version 1 binding, but a listener shorter than the interface is read past the end the first
+/// time a compositor sends a later event.
+#[repr(C)]
+pub struct XdgPopupListener {
+    pub configure: extern "C" fn(data: *mut c_void, popup: *mut XdgPopup, x: i32, y: i32, width: i32, height: i32),
+    /// THE COMPOSITOR DISMISSED IT, which is how a menu closes on Wayland: not by the client
+    /// deciding, but by a click elsewhere or a focus change. Ignoring this leaves a menu on screen
+    /// that nothing can remove.
+    pub popup_done: extern "C" fn(data: *mut c_void, popup: *mut XdgPopup),
+    pub repositioned: extern "C" fn(data: *mut c_void, popup: *mut XdgPopup, token: u32),
+}
+
+// -------------------------------------------------------------------------------------------
+// THE CLIPBOARD BETWEEN APPLICATIONS: wl_data_device and the source and offer it trades in.
+//
+// The model is not a store. A client that copies OWNS the selection: it advertises MIME types and
+// is asked, later and possibly never, to write the bytes into a pipe the other client opened. A
+// client that pastes is handed an OFFER, picks a type from the ones advertised, and reads.
+
+pub enum WlDataDeviceManager {}
+pub enum WlDataDevice {}
+pub enum WlDataSource {}
+pub enum WlDataOffer {}
+
+unsafe extern "C" {
+    pub fn cider_wl_registry_bind_data_device_manager(
+        r: *mut WlRegistry, name: u32, version: u32,
+    ) -> *mut WlDataDeviceManager;
+    pub fn cider_wl_data_device_manager_get_data_device(
+        m: *mut WlDataDeviceManager, seat: *mut WlSeat,
+    ) -> *mut WlDataDevice;
+    pub fn cider_wl_data_device_manager_create_data_source(
+        m: *mut WlDataDeviceManager,
+    ) -> *mut WlDataSource;
+    pub fn cider_wl_data_device_add_listener(
+        d: *mut WlDataDevice, l: *const WlDataDeviceListener, data: *mut c_void,
+    ) -> c_int;
+    pub fn cider_wl_data_source_add_listener(
+        s: *mut WlDataSource, l: *const WlDataSourceListener, data: *mut c_void,
+    ) -> c_int;
+    pub fn cider_wl_data_source_offer(s: *mut WlDataSource, mime: *const c_char);
+    pub fn cider_wl_data_source_destroy(s: *mut WlDataSource);
+    pub fn cider_wl_data_device_set_selection(
+        d: *mut WlDataDevice, s: *mut WlDataSource, serial: u32,
+    );
+    pub fn cider_wl_data_offer_receive(o: *mut WlDataOffer, mime: *const c_char, fd: i32);
+    pub fn cider_wl_data_offer_destroy(o: *mut WlDataOffer);
+    pub fn cider_wl_data_offer_add_listener(
+        o: *mut WlDataOffer, l: *const WlDataOfferListener, data: *mut c_void,
+    ) -> c_int;
+}
+
+/// EVERY EVENT THE INTERFACE DECLARES, for the reason spelled out above wl_pointer: libwayland
+/// indexes this struct by opcode, so a short struct is read past its end.
+#[repr(C)]
+pub struct WlDataDeviceListener {
+    pub data_offer: extern "C" fn(data: *mut c_void, d: *mut WlDataDevice, offer: *mut WlDataOffer),
+    pub enter: extern "C" fn(
+        data: *mut c_void, d: *mut WlDataDevice, serial: u32, surface: *mut WlSurface,
+        x: i32, y: i32, offer: *mut WlDataOffer,
+    ),
+    pub leave: extern "C" fn(data: *mut c_void, d: *mut WlDataDevice),
+    pub motion: extern "C" fn(data: *mut c_void, d: *mut WlDataDevice, time: u32, x: i32, y: i32),
+    pub drop: extern "C" fn(data: *mut c_void, d: *mut WlDataDevice),
+    pub selection: extern "C" fn(data: *mut c_void, d: *mut WlDataDevice, offer: *mut WlDataOffer),
+}
+
+#[repr(C)]
+pub struct WlDataSourceListener {
+    pub target: extern "C" fn(data: *mut c_void, s: *mut WlDataSource, mime: *const c_char),
+    pub send: extern "C" fn(data: *mut c_void, s: *mut WlDataSource, mime: *const c_char, fd: i32),
+    pub cancelled: extern "C" fn(data: *mut c_void, s: *mut WlDataSource),
+    pub dnd_drop_performed: extern "C" fn(data: *mut c_void, s: *mut WlDataSource),
+    pub dnd_finished: extern "C" fn(data: *mut c_void, s: *mut WlDataSource),
+    pub action: extern "C" fn(data: *mut c_void, s: *mut WlDataSource, action: u32),
+}
+
+#[repr(C)]
+pub struct WlDataOfferListener {
+    pub offer: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, mime: *const c_char),
+    pub source_actions: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, actions: u32),
+    pub action: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, action: u32),
+}

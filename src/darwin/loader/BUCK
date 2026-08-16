@@ -1,0 +1,20 @@
+load("//buck/rules:rust.bzl", "rust_binary")
+
+# mldr, the guest-side Mach-O loader (task #65): parses a Mach-O, maps its segments and dyld
+# at their Mach-O addresses, builds the macOS start stack, sets up the commpage, checks in
+# with ciderd and jumps into dyld. An ordinary Linux ELF despite being the Darwin
+# side, which is why it builds with the host toolchain here.
+#
+# One constraint that does not show up in the build but governs the code: the guest calls
+# back into elfcalls on an 8-byte-misaligned stack, so anything reachable from an elfcall
+# must be movaps-free. Nothing here enforces it -- it is a property of the source.
+rust_binary(
+    name = "mldr",
+    crate_root = "src/main.rs",
+    srcs = glob(["src/**/*.rs"]),
+    deps = [
+        "//vendor/rust:goblin",
+        "//vendor/rust:libc",
+    ],
+    visibility = ["PUBLIC"],
+)

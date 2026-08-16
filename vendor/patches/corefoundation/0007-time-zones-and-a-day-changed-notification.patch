@@ -1,0 +1,131 @@
+--- a/NSCalendar.m	2026-08-15 22:30:54.524661481 +0200
++++ b/NSCalendar.m	2026-08-15 22:30:54.525661485 +0200
+@@ -10,6 +10,23 @@
+ #import "NSCalendarInternal.h"
+ #import "NSObjectInternal.h"
+ 
++/*
++ * THE NOTIFICATION SENT WHEN THE DAY ROLLS OVER, and it lives HERE rather than in Foundation
++ * because that is where an application looks for it. The dyld error says so in one line:
++ *
++ *     Symbol not found: _NSCalendarDayChangedNotification
++ *     Expected in: /System/Library/Frameworks/CoreFoundation.framework
++ *
++ * Defining it in Foundation, which is what its header says, changed nothing: a two level namespace
++ * import names the library, and this is the library named. MoneyMoney observes it, because a
++ * banking application redraws its dates at midnight, and without the symbol dyld refuses to load
++ * the process at all.
++ *
++ * Nothing posts it yet. An observer that never fires is a stale date; a process that cannot load is
++ * nothing at all.
++ */
++NSString *const NSCalendarDayChangedNotification = @"NSCalendarDayChangedNotification";
++
+ extern void CFCalendarSetGregorianStartDate(CFCalendarRef calendar, CFDateRef date);
+ extern CFDateRef CFCalendarCopyGregorianStartDate(CFCalendarRef calendar);
+ extern Boolean _CFCalendarDecomposeAbsoluteTimeV(CFCalendarRef calendar, CFAbsoluteTime at, const char *componentDesc, int **componentVector, int count);
+--- a/CFTimeZone.c	2026-08-15 22:30:54.526661491 +0200
++++ b/CFTimeZone.c	2026-08-15 22:31:25.413817670 +0200
+@@ -834,6 +834,21 @@
+     }
+     tz = __CFTimeZoneDefault ? (CFTimeZoneRef)CFRetain(__CFTimeZoneDefault) : NULL;
+     __CFTimeZoneUnlockGlobal();
++    /*
++     * NEVER NULL, because a caller puts the answer straight into a dictionary.
++     *
++     * The container had NO zone database at all, so the system zone could not be worked out, a nil
++     * zone reached kCFDateFormatterTimeZoneKey, and the dictionary threw: MoneyMoney died during
++     * startup on Cannot set nil objects nor nil keys, with nothing in the message about time zones.
++     *
++     * WHAT ACTUALLY FIXED THAT was the zone database, in the packaging. This is the floor under it
++     * rather than the fix: the nil that was observed came through another call, so returning GMT
++     * here changed nothing on its own, and it is still wrong for this function to answer NULL when
++     * every caller puts the answer somewhere that refuses one.
++     */
++    if (NULL == tz) {
++	tz = CFTimeZoneCreateWithTimeIntervalFromGMT(kCFAllocatorSystemDefault, 0.0);
++    }
+     return tz;
+ }
+ 
+--- a/NSDictionary.m	2026-08-15 22:30:54.529661506 +0200
++++ b/NSDictionary.m	2026-08-15 22:50:31.459576945 +0200
+@@ -1199,6 +1199,20 @@
+ 
+ - (void)setObject:(id)obj forKeyedSubscript:(id <NSCopying>)key
+ {
++    /*
++     * NIL REMOVES THE KEY, it does not throw. That is what the subscript is DOCUMENTED to do, and
++     * the difference is not academic: dict[key] = something-that-might-be-nil is ordinary code, and
++     * forwarding it straight to setObject:forKey: turns every one of those into a fatal
++     * NSInvalidArgumentException.
++     *
++     * MoneyMoney dies in exactly that way during startup: -[NSDateFormatter setDateFormat:] stores
++     * its argument with _attributes[@"dateFormat"] = string, the application passes nil to clear it,
++     * and the process is killed with Cannot set nil objects nor nil keys.
++     */
++    if (obj == nil) {
++        [self removeObjectForKey:key];
++        return;
++    }
+     [self setObject:obj forKey:key];
+ }
+ 
+@@ -1253,6 +1267,19 @@
+     {
+         if ((obj == nil) || (key == nil))
+         {
++            /* WHICH SIDE WAS NIL AND WHO ASKED. This throw is fatal to whatever application hit
++             * it and the message says neither. MoneyMoney dies here during startup, and one line
++             * with the key in it is the difference between a guess and a fix. */
++            if (getenv("CIDER_TRACE_EXCEPTIONS") != NULL) {
++                fprintf(stderr, "CIDER_DICT_NIL object=%s key=%s keytext=%s dict=%s\n",
++                        obj ? object_getClassName(obj) : "(nil)",
++                        key ? object_getClassName(key) : "(nil)",
++                        (key != nil) ? CFStringGetCStringPtr((CFStringRef) key,
++                                                             kCFStringEncodingUTF8)
++                                     : "(nil)",
++                        object_getClassName(self));
++                fflush(stderr);
++            }
+             @throw [NSException exceptionWithName:NSInvalidArgumentException reason:@"Cannot set nil objects nor nil keys" userInfo:nil];
+             return;
+         }
+--- a/NSTimeZone.m	2026-08-15 22:56:02.744757442 +0200
++++ b/NSTimeZone.m	2026-08-15 22:56:02.746757454 +0200
+@@ -118,10 +118,32 @@
+     static NSTimeZone *localTZ = nil;
+     static dispatch_once_t once = 0L;
+     dispatch_once(&once, ^{
+-        CFStringRef zoneName = CFStringCreateWithCString(kCFAllocatorDefault, getenv("TZ"), kCFStringEncodingUTF8);
+-        localTZ = (NSTimeZone *)CFTimeZoneCreateWithName(NULL, zoneName, false);
++        /*
++         * TZ IS USUALLY NOT SET, and this read it unconditionally: getenv returns NULL, the string
++         * is built from a null pointer, and the zone comes back nil. Every NSTimeZone method then
++         * lands on the ABSTRACT base class, which raises, and an application that retries around
++         * that raise recurses until the stack ends. That is how MoneyMoney died: fifteen identical
++         * frames of its own code over one NSRequestConcreteImplementation, and no message at all,
++         * because a stack overflow has nothing to print.
++         *
++         * The system zone is the answer when the environment has nothing to say, which is what
++         * every other Unix program does with /etc/localtime.
++         */
++        const char *tz = getenv("TZ");
++
++        if (tz != NULL && *tz != '\0') {
++            CFStringRef zoneName = CFStringCreateWithCString(kCFAllocatorDefault, tz,
++                                                             kCFStringEncodingUTF8);
++
++            if (zoneName != NULL) {
++                localTZ = (NSTimeZone *)CFTimeZoneCreateWithName(NULL, zoneName, false);
++                CFRelease(zoneName);
++            }
++        }
++        if (localTZ == nil) {
++            localTZ = (NSTimeZone *)CFTimeZoneCopyDefault();
++        }
+         [localTZ retain];
+-        CFRelease(zoneName);
+     });
+     return localTZ;
+ }

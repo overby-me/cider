@@ -69,26 +69,26 @@ NixOS configuration:
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    darling-nix = {
-      url = "github:user/darling-nix";       # adjust to actual repo
+    cider-nix = {
+      url = "github:user/cider-nix";       # adjust to actual repo
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { nixpkgs, darling-nix, ... }: {
+  outputs = { nixpkgs, cider-nix, ... }: {
     nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
         ./configuration.nix
 
-        # Base Darling support (programs.darling)
-        darling-nix.nixosModules.nixos
+        # Base Darling support (programs.cider)
+        cider-nix.nixosModules.nixos
 
-        # Darling builder service (services.darling-builder)
-        darling-nix.nixosModules.darling-builder
+        # Darling builder service (services.cider-builder)
+        cider-nix.nixosModules.cider-builder
 
         {
-          services.darling-builder = {
+          services.cider-builder = {
             enable = true;
             maxJobs = 4;
             shareStore = true;    # share /nix/store between host and Darling
@@ -107,7 +107,7 @@ Then rebuild and test:
 sudo nixos-rebuild switch
 
 # Test connectivity to the Darling builder
-darling-builder-test
+cider-builder-test
 
 # Build a Darwin package from your Linux host!
 nix build nixpkgs#hello --system x86_64-darwin
@@ -118,13 +118,13 @@ nix build nixpkgs#hello --system x86_64-darwin
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enable` | bool | `false` | Enable the Darling builder service |
-| `package` | package | `pkgs.darling` | Darling package to use |
+| `package` | package | `pkgs.cider` | Darling package to use |
 | `port` | int | `2222` | SSH port for the builder (inside Darling) |
 | `maxJobs` | int | `1` | Maximum concurrent build jobs |
 | `speedFactor` | int | `1` | Nix speed factor (lower = deprioritised vs native builders) |
 | `shareStore` | bool | `false` | Share `/nix/store` between host and Darling via `/Volumes/SystemRoot` |
-| `sshKeyPath` | path | `/etc/nix/darling-builder-key` | Path to the SSH private key for the Nix daemon |
-| `prefixPath` | path | `/var/lib/darling-builder` | Path to the Darling prefix directory |
+| `sshKeyPath` | path | `/etc/nix/cider-builder-key` | Path to the SSH private key for the Nix daemon |
+| `prefixPath` | path | `/var/lib/cider-builder` | Path to the Darling prefix directory |
 | `supportedFeatures` | list of str | `[]` | Nix supported features for this builder |
 | `mandatoryFeatures` | list of str | `[]` | Nix mandatory features for this builder |
 | `installNix` | bool | `true` | Automatically install Nix inside the Darling prefix |
@@ -140,11 +140,11 @@ If you're not on NixOS or prefer manual control, follow these steps.
 
 ```bash
 # Using the flake
-nix profile install github:user/darling-nix
+nix profile install github:user/cider-nix
 
 # Or build from source
-git clone https://github.com/user/darling-nix
-cd darling-nix
+git clone https://github.com/user/cider-nix
+cd cider-nix
 nix build
 export PATH="$(pwd)/result/bin:$PATH"
 ```
@@ -152,12 +152,12 @@ export PATH="$(pwd)/result/bin:$PATH"
 ### 2. Initialise the Darling Prefix
 
 ```bash
-# Boot Darling (creates the prefix at ~/.darling by default)
-darling shell echo "Darling is working"
+# Boot Darling (creates the prefix at ~/.cider by default)
+cider shell echo "Darling is working"
 
 # Verify macOS identity
-darling shell uname -s    # → Darwin
-darling shell sw_vers      # → macOS 14.4.1 (Sonoma), build 23E224
+cider shell uname -s    # → Darwin
+cider shell sw_vers      # → macOS 14.4.1 (Sonoma), build 23E224
 ```
 
 ### 3. Install Nix Inside Darling
@@ -165,14 +165,14 @@ darling shell sw_vers      # → macOS 14.4.1 (Sonoma), build 23E224
 Use the automated installer script:
 
 ```bash
-./scripts/install-nix-in-darling.sh
+./scripts/install-nix-in-cider.nu
 ```
 
 Or install manually:
 
 ```bash
 # Download the Nix installer inside Darling
-darling shell bash -lc '
+cider shell bash -lc '
   curl -L https://nixos.org/nix/install -o /tmp/install-nix
   chmod +x /tmp/install-nix
   /tmp/install-nix --no-daemon
@@ -182,11 +182,11 @@ darling shell bash -lc '
 Verify:
 
 ```bash
-./scripts/verify-nix.sh
+./scripts/verify-nix.nu
 
 # Or manually:
-darling shell bash -lc "nix --version"
-darling shell bash -lc "nix eval --raw --expr 'builtins.currentSystem'"
+cider shell bash -lc "nix --version"
+cider shell bash -lc "nix eval --raw --expr 'builtins.currentSystem'"
 # → x86_64-darwin
 ```
 
@@ -194,10 +194,10 @@ darling shell bash -lc "nix eval --raw --expr 'builtins.currentSystem'"
 
 ```bash
 # Generate host keys
-darling shell ssh-keygen -A
+cider shell ssh-keygen -A
 
 # Write sshd config
-darling shell tee /etc/ssh/sshd_config << 'EOF'
+cider shell tee /etc/ssh/sshd_config << 'EOF'
 Port 2222
 ListenAddress 127.0.0.1
 PermitRootLogin yes
@@ -210,19 +210,19 @@ Subsystem sftp /usr/libexec/sftp-server
 EOF
 
 # Generate an SSH keypair for the Nix daemon
-sudo ssh-keygen -t ed25519 -N "" -f /etc/nix/darling-builder-key
+sudo ssh-keygen -t ed25519 -N "" -f /etc/nix/cider-builder-key
 
 # Install the public key inside Darling
-darling shell mkdir -p /var/root/.ssh
-sudo cat /etc/nix/darling-builder-key.pub | darling shell tee /var/root/.ssh/authorized_keys
-darling shell chmod 700 /var/root/.ssh
-darling shell chmod 600 /var/root/.ssh/authorized_keys
+cider shell mkdir -p /var/root/.ssh
+sudo cat /etc/nix/cider-builder-key.pub | cider shell tee /var/root/.ssh/authorized_keys
+cider shell chmod 700 /var/root/.ssh
+cider shell chmod 600 /var/root/.ssh/authorized_keys
 
 # Start sshd
-darling shell /usr/sbin/sshd -f /etc/ssh/sshd_config
+cider shell /usr/sbin/sshd -f /etc/ssh/sshd_config
 
 # Verify connectivity
-ssh -i /etc/nix/darling-builder-key -p 2222 -o StrictHostKeyChecking=no root@127.0.0.1 echo ok
+ssh -i /etc/nix/cider-builder-key -p 2222 -o StrictHostKeyChecking=no root@127.0.0.1 echo ok
 # → ok
 ```
 
@@ -231,7 +231,7 @@ ssh -i /etc/nix/darling-builder-key -p 2222 -o StrictHostKeyChecking=no root@127
 Add to `/etc/nix/machines` (or use `nix.buildMachines` on NixOS):
 
 ```
-ssh://root@127.0.0.1 x86_64-darwin /etc/nix/darling-builder-key 4 1 - - -
+ssh://root@127.0.0.1 x86_64-darwin /etc/nix/cider-builder-key 4 1 - - -
 ```
 
 The fields are: `store-uri system ssh-key max-jobs speed-factor supported-features mandatory-features public-host-key`
@@ -239,7 +239,7 @@ The fields are: `store-uri system ssh-key max-jobs speed-factor supported-featur
 Or in `nix.conf`:
 
 ```ini
-builders = ssh://root@127.0.0.1:2222 x86_64-darwin /etc/nix/darling-builder-key 4 1 - - -
+builders = ssh://root@127.0.0.1:2222 x86_64-darwin /etc/nix/cider-builder-key 4 1 - - -
 ```
 
 Enable distributed builds:
@@ -285,14 +285,14 @@ prefix. This means the host's `/nix/store` is accessible at
 
 ```bash
 # Inside Darling, symlink /nix to the host's /nix
-darling shell ln -sf /Volumes/SystemRoot/nix /nix
+cider shell ln -sf /Volumes/SystemRoot/nix /nix
 ```
 
 Or, if there's a conflict with Darling's overlay filesystem:
 
 ```bash
 # Bind mount the host's /nix into the prefix
-sudo mount --bind /nix ~/.darling/nix
+sudo mount --bind /nix ~/.cider/nix
 ```
 
 ### Important Caveats
@@ -322,7 +322,7 @@ sudo mount --bind /nix ~/.darling/nix
 If you're using the NixOS module, just set:
 
 ```nix
-services.darling-builder.shareStore = true;
+services.cider-builder.shareStore = true;
 ```
 
 The module handles the symlink and state directory separation automatically.
@@ -335,14 +335,14 @@ The module handles the symlink and state directory separation automatically.
 
 ```bash
 # NixOS module: use the built-in connectivity test
-darling-builder-test
+cider-builder-test
 
 # Manual setup: use the build hook check
-./scripts/darling-build-hook --check
+./scripts/cider-build-hook --check
 
 # Standalone Nix health-check
-./scripts/verify-nix.sh
-./scripts/verify-nix.sh --online   # also test network/cache access
+./scripts/verify-nix.nu
+./scripts/verify-nix.nu --online   # also test network/cache access
 
 # Run the compatibility matrix (after Nix builds work)
 ./tests/nix/compatibility-matrix.sh --tier 1
@@ -350,15 +350,15 @@ darling-builder-test
 
 ### Progressive Build Tests
 
-The `build-trivial.sh` script tests derivation building at five increasing
+The `build-trivial.nu` script tests derivation building at five increasing
 levels of complexity:
 
 ```bash
 # Run all five levels
-./scripts/build-trivial.sh
+./scripts/build/build-trivial.nu
 
 # Target a specific level with debug output
-./scripts/build-trivial.sh --level 1 --debug
+./scripts/build/build-trivial.nu --level 1 --debug
 
 # Levels:
 #   1. Echo to $out — minimal: sandbox-exec → bash → file creation
@@ -374,13 +374,13 @@ Run the full test suite without needing a live Darling instance:
 
 ```bash
 # Smoke test (no network, fast)
-nix build .#checks.x86_64-linux.darling-smoke -L
+nix build .#checks.x86_64-linux.cider-smoke -L
 
 # Full Nix integration test (needs network)
-nix build .#checks.x86_64-linux.nix-in-darling -L
+nix build .#checks.x86_64-linux.nix-in-cider -L
 
 # Remote builder test (sshd, SSH auth, service lifecycle)
-nix build .#checks.x86_64-linux.darling-builder -L
+nix build .#checks.x86_64-linux.cider-builder -L
 
 # Directory Services stubs (pure shell, no Darling needed)
 nix build .#checks.x86_64-linux.dirserv-stubs -L
@@ -394,19 +394,19 @@ nix flake check
 ## Alternative: Custom Build Hook (No SSH)
 
 If you don't want to run sshd inside Darling, you can use the custom build
-hook. This invokes `darling shell` directly instead of going through SSH.
+hook. This invokes `cider shell` directly instead of going through SSH.
 
 ### Setup
 
 ```bash
 # Verify the hook environment is ready
-./scripts/darling-build-hook --check
+./scripts/cider-build-hook --check
 
 # Build a single derivation directly
-./scripts/darling-build-hook --build /nix/store/...-foo.drv
+./scripts/cider-build-hook --build /nix/store/...-foo.drv
 
 # Print the machine spec line
-./scripts/darling-build-hook --machine-spec
+./scripts/cider-build-hook --machine-spec
 ```
 
 ### Configure Nix to Use the Hook
@@ -414,14 +414,14 @@ hook. This invokes `darling shell` directly instead of going through SSH.
 In `nix.conf`:
 
 ```ini
-builders = /path/to/darling-build-hook x86_64-darwin - 4 1 - - -
+builders = /path/to/cider-build-hook x86_64-darwin - 4 1 - - -
 ```
 
 Or on NixOS:
 
 ```nix
 nix.settings.builders = [
-  "/path/to/darling-build-hook x86_64-darwin - 4 1 - - -"
+  "/path/to/cider-build-hook x86_64-darwin - 4 1 - - -"
 ];
 ```
 
@@ -429,12 +429,12 @@ nix.settings.builders = [
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DARLING_BUILD_HOOK_DARLING` | `darling` | Path to the darling binary |
-| `DARLING_BUILD_HOOK_PREFIX` | auto | Darling prefix path |
-| `DARLING_BUILD_HOOK_NIX_PROFILE` | `/Users/root/.nix-profile/etc/profile.d/nix.sh` | Nix profile to source inside Darling |
-| `DARLING_BUILD_HOOK_MAX_JOBS` | `4` | Maximum concurrent jobs |
-| `DARLING_BUILD_HOOK_VERBOSE` | `0` | Verbosity level (0=quiet, 1=debug) |
-| `DPREFIX` | auto | Fallback for prefix path |
+| `CIDER_BUILD_HOOK_CIDER` | `cider` | Path to the cider binary |
+| `CIDER_BUILD_HOOK_PREFIX` | auto | Darling prefix path |
+| `CIDER_BUILD_HOOK_NIX_PROFILE` | `/Users/root/.nix-profile/etc/profile.d/nix.sh` | Nix profile to source inside Darling |
+| `CIDER_BUILD_HOOK_MAX_JOBS` | `4` | Maximum concurrent jobs |
+| `CIDER_BUILD_HOOK_VERBOSE` | `0` | Verbosity level (0=quiet, 1=debug) |
+| `CIDERPREFIX` | auto | Fallback for prefix path |
 
 ---
 
@@ -465,7 +465,7 @@ cache, instead of building everything from source.
 ### Job Parallelism
 
 ```nix
-services.darling-builder = {
+services.cider-builder = {
   maxJobs = 4;       # concurrent derivations
 };
 ```
@@ -485,7 +485,7 @@ If you're building many packages, enable store sharing to eliminate the
 SSH copy overhead:
 
 ```nix
-services.darling-builder.shareStore = true;
+services.cider-builder.shareStore = true;
 ```
 
 This makes build outputs instantly available on the host without any
@@ -502,7 +502,7 @@ If you have native Darwin builders (e.g., a Mac mini), set the Darling
 builder's speed factor lower so Nix prefers the native machine:
 
 ```nix
-services.darling-builder.speedFactor = 1;
+services.cider-builder.speedFactor = 1;
 # Native builder would be speedFactor = 10 or higher
 ```
 
@@ -520,13 +520,13 @@ on a different port.
 ss -tlnp | grep 2222
 
 # Check if the Darling prefix is running
-darling shell echo ok
+cider shell echo ok
 
 # Restart sshd inside Darling
-darling shell /usr/sbin/sshd -f /etc/ssh/sshd_config
+cider shell /usr/sbin/sshd -f /etc/ssh/sshd_config
 
 # Check sshd logs
-darling shell cat /var/log/sshd.log 2>/dev/null
+cider shell cat /var/log/sshd.log 2>/dev/null
 ```
 
 ### "Permission denied (publickey)"
@@ -535,17 +535,17 @@ darling shell cat /var/log/sshd.log 2>/dev/null
 
 ```bash
 # Verify the key exists
-ls -la /etc/nix/darling-builder-key
+ls -la /etc/nix/cider-builder-key
 
 # Verify the public key is installed in Darling
-darling shell cat /var/root/.ssh/authorized_keys
+cider shell cat /var/root/.ssh/authorized_keys
 
 # Regenerate keys
-sudo ssh-keygen -t ed25519 -N "" -f /etc/nix/darling-builder-key
-sudo cat /etc/nix/darling-builder-key.pub | darling shell tee /var/root/.ssh/authorized_keys
+sudo ssh-keygen -t ed25519 -N "" -f /etc/nix/cider-builder-key
+sudo cat /etc/nix/cider-builder-key.pub | cider shell tee /var/root/.ssh/authorized_keys
 
 # Test manually
-ssh -vvv -i /etc/nix/darling-builder-key -p 2222 root@127.0.0.1 echo ok
+ssh -vvv -i /etc/nix/cider-builder-key -p 2222 root@127.0.0.1 echo ok
 ```
 
 ### "builder for '...' failed with exit code 1"
@@ -560,7 +560,7 @@ nix log /nix/store/...-failed.drv
 nix build ... -L --keep-failed
 
 # Check for unimplemented syscalls
-darling shell bash -lc 'nix-build ...' 2>&1 | grep -i "unimplemented\|STUB"
+cider shell bash -lc 'nix-build ...' 2>&1 | grep -i "unimplemented\|STUB"
 ```
 
 ### "Unimplemented syscall" errors
@@ -569,10 +569,10 @@ darling shell bash -lc 'nix-build ...' 2>&1 | grep -i "unimplemented\|STUB"
 
 ```bash
 # Run the syscall triage tool to identify the issue
-./scripts/triage-syscalls.sh --output /tmp/triage.md
+./scripts/triage-syscalls.nu --output /tmp/triage.md
 
 # Check the known triage table
-cat plan/syscall-triage.md
+cat changelog.md
 ```
 
 If you discover a new unimplemented syscall, please
@@ -589,13 +589,13 @@ may have different database states.
 
 ```bash
 # Verify the store inside Darling
-darling shell bash -lc 'nix-store --verify --check-contents'
+cider shell bash -lc 'nix-store --verify --check-contents'
 
 # Re-register a missing path
-darling shell bash -lc 'nix-store --register-validity <<< "..."'
+cider shell bash -lc 'nix-store --register-validity <<< "..."'
 
 # If all else fails, repair the store
-darling shell bash -lc 'nix-store --verify --repair'
+cider shell bash -lc 'nix-store --verify --repair'
 ```
 
 ### "sandbox-exec: not found" or sandbox errors
@@ -604,21 +604,21 @@ darling shell bash -lc 'nix-store --verify --repair'
 
 ```bash
 # Check if sandbox-exec is present
-darling shell test -x /usr/bin/sandbox-exec && echo ok || echo missing
+cider shell test -x /usr/bin/sandbox-exec && echo ok || echo missing
 
 # Rebuild Darling with sandbox stubs
-nix build .#darling
+nix build .#cider
 ```
 
 ### Darling prefix won't start / crashes
 
 ```bash
-# Check if darlingserver is running
-pgrep darlingserver
+# Check if ciderd is running
+pgrep ciderd
 
 # Try shutting down and re-initialising
-darling shutdown
-darling shell echo ok
+cider shutdown
+cider shell echo ok
 
 # Check system requirements
 sysctl kernel.unprivileged_userns_clone  # must be 1
@@ -682,8 +682,8 @@ See [Performance Tuning](#performance-tuning) above. The most common causes are:
 │  │             │                           │          │ │
 │  └─────────────┘                           └──────────┘ │
 │                      Darling Prefix                      │
-│                    (~/.darling or                         │
-│                     /var/lib/darling-builder)             │
+│                    (~/.cider or                         │
+│                     /var/lib/cider-builder)             │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -691,23 +691,21 @@ See [Performance Tuning](#performance-tuning) above. The most common causes are:
 
 | Component | Role |
 |-----------|------|
-| **darlingserver** | Userspace daemon that translates macOS syscalls to Linux |
+| **ciderd** | Userspace daemon that translates macOS syscalls to Linux |
 | **Darling prefix** | Virtual macOS filesystem tree (overlayfs-based) |
 | **sandbox-exec stub** | Passes through commands without sandboxing (Darling provides Linux-level isolation) |
 | **Directory Services stubs** | `dscl`, `dseditgroup`, `sysadminctl` — translate macOS user/group commands to `/etc/passwd` + `/etc/group` |
 | **diskutil stub** | Returns expected filesystem info for the Nix installer |
-| **darling-build-hook** | Alternative to SSH — invokes `darling shell` directly |
-| **darlingBuilderModule.nix** | NixOS module that wires everything together declaratively |
+| **cider-build-hook** | Alternative to SSH — invokes `cider shell` directly |
+| **ciderBuilderModule.nix** | NixOS module that wires everything together declaratively |
 
-For more technical details, see [plan/11-architecture.md](../plan/11-architecture.md).
+For more technical details, see [changelog.md](../changelog.md).
 
 ---
 
 ## Further Reading
 
-- [Project plan](../plan/README.md) — full development plan with phases and tasks
-- [Known blockers](../plan/01-blockers.md) — detailed analysis of blocking issues
-- [Syscall triage](../plan/syscall-triage.md) — tracking table for unimplemented syscalls
+- [Project plan](../changelog.md) — development plan, known blockers and the syscall triage table
 - [Darling documentation](https://docs.darlinghq.org/) — upstream Darling docs
 - [Nix remote builders](https://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html) — Nix manual on distributed builds
 - [Blog: Nix All The Way Down](https://ersei.net/en/blog/nix-all-the-way-down) — early exploration of Nix-in-Darling

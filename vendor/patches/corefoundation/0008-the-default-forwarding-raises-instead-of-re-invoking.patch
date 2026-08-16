@@ -1,0 +1,42 @@
+--- a/NSObject.m
++++ b/NSObject.m
+@@ -228,16 +228,35 @@
+     return class_getMethodImplementation(self, selector) != (IMP)&_objc_msgForward;
+ }
+ 
++/*
++ * THE DEFAULT FORWARDING RAISES. IT MUST NOT RE-INVOKE.
++ *
++ * What stood here set the invocation target to self and invoked it, which dispatches THE SAME
++ * SELECTOR ON THE SAME OBJECT. Where forwarding is reached because the lookup failed that is merely
++ * pointless. Where it is reached because of a SUPER CALL to a method the superclass does not have,
++ * it is an infinite recursion: the invocation resolves the selector on the receiver class, finds the
++ * subclass override that made the super call, and calls it again.
++ *
++ * What that looks like from outside is not a missing method at all. iTerm2 overrides
++ * -invalidateRestorableState and calls super; NSResponder here does not have it; the process then
++ * runs
++ *
++ *     -[iTermApplication invalidateRestorableState] -> _CF_forwarding_prep_0 -> ___forwarding___
++ *     -> -[NSInvocation _invokeUsingIMP:withFrame:] -> -[iTermApplication invalidateRestorableState]
++ *
++ * about a hundred and thirty thousand times and dies of a STACK OVERFLOW eight bytes past the bottom
++ * of the main stack, with no exception, no message and a core in which every thread is parked in the
++ * kernel. macOS raises doesNotRecognizeSelector here, which names the selector in one line, and that
++ * is what this does now.
++ */
+ + (void)forwardInvocation:(NSInvocation *)inv
+ {
+-    [inv setTarget:self];
+-    [inv invoke];
++    [self doesNotRecognizeSelector: [inv selector]];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)inv
+ {
+-    [inv setTarget:self];
+-    [inv invoke];
++    [self doesNotRecognizeSelector: [inv selector]];
+ }
+ 
+ - (void)__dealloc_zombie

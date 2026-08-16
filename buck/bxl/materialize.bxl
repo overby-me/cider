@@ -1,0 +1,69 @@
+# Materialize the artifacts the Nix endpoint has to carry as DATA.
+#
+# The graph dump (src/linux/buildtools/graph-specs/src/dump.rs) reads every command from aquery, at analysis
+# time, so nothing has to be compiled to learn what the build would run. But some artifacts
+# are not produced by a command at all -- buck2 makes them in-process (a staged include
+# root, a generated header) -- and no recorded argv can recreate them. Those have to be
+# built once and travel with the graph.
+#
+# `buck2 build <target>` cannot be used for that: it produces a target's DEFAULT output and
+# nothing else, and these artifacts hang off other providers. darling-config.h is the case
+# that proved it -- produced by action id 2 of //src/darwin/include:cider_config, reachable
+# through no subtarget, and simply absent when a consumer came to include it.
+#
+# So this asks for them by PROVIDER, which works because the port's rules are its own:
+# CcLibInfo carries the include dirs, and ensuring those materializes exactly the trees the
+# recorded commands will point -I at, without running a single compile.
+#
+#   buck2 bxl //buck/bxl/materialize.bxl:main -- --targets //vendor/src:system_blocks_final
+
+load("//buck/rules:cc.bzl", "CcLibInfo")
+load("//buck/rules:inproc.bzl", "InProcInfo")
+
+def _impl(ctx):
+    # The whole closure, since an include root is usually owned by a dependency rather than
+    # by the target that was asked for.
+    # Configured first: cquery works on the configured graph, and a label straight off the
+    # command line is unconfigured.
+    configured = ctx.configured_targets(ctx.cli_args.targets)
+    universe = ctx.cquery().deps(configured)
+
+    wanted = []
+    for node in universe:
+        analysis = ctx.analysis(node.label)
+        if analysis == None:
+            continue
+        providers = analysis.providers()
+        info = providers.get(CcLibInfo)
+        if info != None:
+            wanted += info.include_dirs
+
+        # Artifacts a rule made WITHOUT running a command, declared by the rule itself. A
+        # written rustc runner and a symlinked dependency farm live here: they were reached
+        # only as a side effect of ensuring the default output, so dropping that silently
+        # lost 18 staged artifacts and 11 farms, all Rust, and the graph still exited 0.
+        inproc = providers.get(InProcInfo)
+        if inproc != None:
+            wanted += inproc.artifacts
+
+        # NOT the default output. Taking it for every node in the closure is what made this
+        # BUILD the port: a compile target's default output IS its object file, so ensuring
+        # it compiled, and a binary's is the linked binary, so ensuring it linked. That was
+        # invisible while the graph derivation got the real project -- the compiles simply
+        # succeeded -- and it surfaced the moment the derivation was given a skeleton, as
+        # failures on src/darwin/loader:mldr and a long list of _obj targets.
+        #
+        # Nothing here needs a compiled artifact. What has to travel is the in-process
+        # artifacts, and those come from the include dirs above, so the default output is
+        # pure cost. Measured over the endpoint target list: 98,455 artifacts are still
+        # ensured without it.
+
+    ctx.output.print("ensuring %s artifact(s)" % len(wanted))
+    ctx.output.ensure_multiple(wanted)
+
+main = bxl_main(
+    impl = _impl,
+    cli_args = {
+        "targets": cli_args.list(cli_args.target_label()),
+    },
+)

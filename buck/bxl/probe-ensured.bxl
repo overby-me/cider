@@ -1,0 +1,87 @@
+# WHICH TARGET OWNS EACH ARTIFACT materialize.bxl ENSURES? (#56)
+#
+# materialize.bxl ensures CcLibInfo.include_dirs and InProcInfo.artifacts over the whole
+# configured closure, and deliberately NOT default outputs, because a compile target's default
+# output is its object file. Its comment says so and that part of its code is right. Yet the
+# dump demonstrably runs compiles: with a skeleton source tree buck2 reports
+#
+#   Waiting on //src/linux/hosttools:cider-coredump -- action (cxx_compile src/coredump/main.cpp)
+#   Action failed: //vendor/src:libtrustd_obj (c_compile .../TrustURLSessionCache.m)
+#
+# This computes the SAME wanted set and prints who owns it, instead of ensuring it. Nothing is
+# built, so it is safe to run on any tree and answers the question in one pass.
+#
+#   buck2 bxl //buck/bxl/probe-ensured.bxl:main -- --targets //buck/prefix-min:cider_prefix_min
+#
+# THE ANSWER, measured on the minimal prefix 2026-08-07:
+#
+#   ensured artifacts: 65206 from include_dirs, 28 from InProcInfo
+#   owners that look like a compile or link: exactly ONE, and it is not one:
+#     include_dirs 1 root//src/linux/hosttools:coredump_headers
+#   the 28 InProcInfo artifacts belong to the rust crates, ciderd, cider, mldr and
+#   the prefix itself, which is staging rather than object code.
+#
+# SO OWNERSHIP IS NOT THE MECHANISM, and the obvious hypothesis is DISPROVEN: nothing ensured
+# is owned by libtrustd_obj or cider-coredump, the two the skeleton run showed compiling.
+# materialize.bxl is not asking for an object.
+#
+# WHAT REMAINS is that ensuring an artifact builds its ACTION, and that action's INPUTS may
+# themselves be built artifacts. A symlinked_dir whose links point at build outputs would pull
+# them in without ever owning them. That is the next thing to print: for each ensured artifact,
+# whether its action has inputs that are themselves outputs of another action.
+
+load("//buck/rules:cc.bzl", "CcLibInfo")
+load("//buck/rules:inproc.bzl", "InProcInfo")
+
+def _impl(ctx):
+    configured = ctx.configured_targets(ctx.cli_args.targets)
+    universe = ctx.cquery().deps(configured)
+
+    from_includes = {}
+    from_inproc = {}
+    n_inc = 0
+    n_proc = 0
+    for node in universe:
+        analysis = ctx.analysis(node.label)
+        if analysis == None:
+            continue
+        providers = analysis.providers()
+
+        info = providers.get(CcLibInfo)
+        if info != None:
+            for a in info.include_dirs:
+                owner = str(a.owner)
+                from_includes[owner] = from_includes.get(owner, 0) + 1
+                n_inc += 1
+
+        inproc = providers.get(InProcInfo)
+        if inproc != None:
+            for a in inproc.artifacts:
+                owner = str(a.owner)
+                from_inproc[owner] = from_inproc.get(owner, 0) + 1
+                n_proc += 1
+
+    ctx.output.print("ensured artifacts: %s from include_dirs, %s from InProcInfo" %
+                     (n_inc, n_proc))
+
+    # The question: does anything ensured belong to a target whose name says it is a compile
+    # or a link? Those are the ones that cannot be produced without running one.
+    ctx.output.print("--- owners whose name looks like a compile or link ---")
+    for owner in sorted(from_includes.keys()):
+        if owner.endswith("_obj") or owner.endswith("_final") or "coredump" in owner:
+            ctx.output.print("  include_dirs %s %s" % (from_includes[owner], owner))
+    for owner in sorted(from_inproc.keys()):
+        if owner.endswith("_obj") or owner.endswith("_final") or "coredump" in owner:
+            ctx.output.print("  InProcInfo %s %s" % (from_inproc[owner], owner))
+
+    ctx.output.print("--- top 25 InProcInfo owners overall ---")
+    pairs = [(v, k) for k, v in from_inproc.items()]
+    for v, k in sorted(pairs, reverse = True)[:25]:
+        ctx.output.print("  %s  %s" % (v, k))
+
+main = bxl_main(
+    impl = _impl,
+    cli_args = {
+        "targets": cli_args.list(cli_args.target_label()),
+    },
+)

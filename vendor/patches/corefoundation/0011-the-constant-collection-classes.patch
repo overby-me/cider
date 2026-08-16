@@ -1,0 +1,164 @@
+--- /dev/null
++++ b/NSConstantLiterals.m
+@@ -0,0 +1,161 @@
++/*
++ * THE CONSTANT LITERAL CLASSES, WHICH THE COMPILER CREATES INSTANCES OF AND NOBODY ELSE DOES.
++ *
++ * A current SDK compiles @42, @3.5, @[a, b] and @{k: v} in a file with no dynamic parts into STATIC
++ * objects in __DATA, whose isa fields point at these five classes. The instances are laid out by the
++ * compiler, so this file does not create any: it declares the same fields in the same order and
++ * answers the ordinary NSNumber, NSArray and NSDictionary questions about memory it did not
++ * allocate.
++ *
++ * Two consequences follow from the instances being static, and both are implemented below. They can
++ * never be deallocated, so retain answers self and release does nothing, which is what every
++ * immortal object in this runtime does. And they can never be MUTATED, so nothing here writes.
++ *
++ * The symbols are what stops a modern application at load time: iTerm2 3.6.10 stops on
++ * _OBJC_CLASS_$_NSConstantDoubleNumber before it runs a single instruction.
++ */
++
++#import <Foundation/NSArray.h>
++#import <Foundation/NSDictionary.h>
++#import <Foundation/NSString.h>
++#import <Foundation/NSException.h>
++#import <Foundation/NSEnumerator.h>
++
++/* The layouts clang emits.
++ *
++ * THE TWO COLLECTIONS DO NOT AGREE ABOUT WHERE THE COUNT GOES, and both orders were established
++ * from the fault address rather than from a document. A dictionary with the count first died in
++ * -[NSConstantDictionary keyEnumerator] dereferencing 1, and it works with the count last. An array
++ * with the count LAST then died in -[NSConstantArray objectAtIndex:] dereferencing 5, which is a
++ * count being used as a pointer, so the array keeps the count first.
++ *
++ * That is evidence, not understanding, and it is worth saying so: the reliable way to settle both is
++ * to read a constant instance out of the __DATA section of a binary that has one and look at the
++ * words. Until that is done, treat these two layouts as measured guesses. */
++
++@interface NSConstantArray : NSArray {
++@public
++    unsigned long _count;
++    const id *_objects;
++}
++@end
++
++@interface NSConstantDictionary : NSDictionary {
++@public
++    const id *_keys;
++    const id *_objects;
++    unsigned long _count;
++}
++@end
++
++#define CIDER_IMMORTAL                                                                             \
++    -(id) retain { return self; }                                                                  \
++    -(oneway void) release {}                                                                      \
++    -(id) autorelease { return self; }                                                             \
++    -(NSUInteger) retainCount { return NSUIntegerMax; }
++
++@implementation NSConstantArray
++
++CIDER_IMMORTAL
++
++- (NSUInteger) count {
++    return (NSUInteger) _count;
++}
++
++- (id) objectAtIndex: (NSUInteger) index {
++    if (index >= (NSUInteger) _count) {
++        [NSException raise: NSRangeException
++                    format: @"index (%lu) beyond array bounds (%lu)", (unsigned long) index,
++                            (unsigned long) _count];
++        return nil;
++    }
++    return _objects[index];
++}
++
++@end
++
++@implementation NSConstantDictionary
++
++CIDER_IMMORTAL
++
++- (NSUInteger) count {
++    return (NSUInteger) _count;
++}
++
++/* Linear, because a constant dictionary is written out by hand and is short. */
++- (id) objectForKey: (id) key {
++    unsigned long i;
++
++    for (i = 0; i < _count; i++) {
++        if (_keys[i] == key || [_keys[i] isEqual: key]) {
++            return _objects[i];
++        }
++    }
++    return nil;
++}
++
++- (NSEnumerator *) keyEnumerator {
++    NSMutableArray *keys = [NSMutableArray arrayWithCapacity: (NSUInteger) _count];
++    unsigned long i;
++
++    for (i = 0; i < _count; i++) {
++        [keys addObject: _keys[i]];
++    }
++    return [keys objectEnumerator];
++}
++
++@end
++
++
++/*
++ * THE EMPTY SINGLETONS NEED A CONCRETE CLASS, and that is what these two are.
++ *
++ * __NSDictionary0__struct and __NSArray0__struct are STORAGE, so the object has to be built inside
++ * them with objc_constructInstance, and that call takes the class it is given literally: handing it
++ * NSDictionary produces an instance of the ABSTRACT class, whose -count raises
++ *
++ *     NSDictionary count requires a subclass implementation
++ *
++ * the first time anything asks. iTerm2 raised exactly that while registering a built in function
++ * with an empty dictionary literal in it. These two subclasses implement the primitives an empty
++ * collection needs and nothing else, which is all the singletons ever have to answer.
++ */
++@interface __CiderEmptyDictionary : NSDictionary
++@end
++
++@interface __CiderEmptyArray : NSArray
++@end
++
++@implementation __CiderEmptyDictionary
++
++CIDER_IMMORTAL
++
++- (NSUInteger) count {
++    return 0;
++}
++
++- (id) objectForKey: (id) key {
++    return nil;
++}
++
++- (NSEnumerator *) keyEnumerator {
++    return [[NSArray array] objectEnumerator];
++}
++
++@end
++
++@implementation __CiderEmptyArray
++
++CIDER_IMMORTAL
++
++- (NSUInteger) count {
++    return 0;
++}
++
++- (id) objectAtIndex: (NSUInteger) index {
++    [NSException raise: NSRangeException
++                format: @"index (%lu) beyond array bounds (0)", (unsigned long) index];
++    return nil;
++}
++
++@end
