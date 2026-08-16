@@ -5006,3 +5006,30 @@ build. What is in the tree is everything a framework this port owns had to gain:
 empty collection storage, the constant literal classes, the modern AppKit symbols, the CoreGraphics
 screen capture answers, the AVFoundation, CoreLocation, CoreMedia and CoreVideo constants, and the
 two metal patches.
+
+
+## A crash handler that can be inserted, and the reason it does not reach the application
+
+2026-08-16. src/darwin/crashtrace is a dylib whose only job is to be there before anything else:
+a constructor installs handlers for SIGSEGV, SIGBUS, SIGILL, SIGFPE and SIGTRAP, and an inserted
+library is initialised before the main executable and every framework it links, which is what the
+backend copy of this handler cannot do for a fault during image initialisation.
+
+TWO THINGS IT LEARNED THE HARD WAY, both now in the code. It CHAINS to the handler that was there
+before instead of restoring the default: Darling delivers some faults through SIGSEGV on purpose,
+and the first version turned the shell helper own kevent wait into a kill. And it can be limited to
+one process, because an inserted library is inserted into everything the prefix runs: bash,
+path_helper and shellspawn all load it, and CIDER_TRACE_CRASH can name a substring of the
+executable path instead of 1.
+
+IT WORKS, and it does not reach iTerm2. The handler installs in /bin/bash and /usr/libexec/path_helper,
+prints a chained trace for the shell helper fault in kevent, and the application never appears in
+the list at all, while the same run shows the application own initializers running. So
+DYLD_INSERT_LIBRARIES is not reaching that process. The most likely reason is the one macOS has:
+dyld PRUNES the DYLD_ environment for a restricted binary, and iTerm2 is signed with library
+validation. That is the next thing to establish, and the alternatives if it holds are to install the
+handler from an image the application already loads early, or to run the check that prunes and see
+what it decides.
+
+So the SIGSEGV in an image initialiser is still unexplained: what is known is that it happens after
+libc++ initialisers, before AppKit, with the loader fully satisfied.
