@@ -2574,6 +2574,7 @@ cc_objects(
     name = "AVFoundation_obj",
     srcs = [
         "AVFoundation/constants.m",
+        "AVFoundation/src/AVCiderConstants.m",
         "AVFoundation/src/AVAIFCOutputSettingsValidator.m",
         "AVFoundation/src/AVAIFFOutputSettingsValidator.m",
         "AVFoundation/src/AVAVAudioSettingsAudioOutputSettings.m",
@@ -6640,6 +6641,7 @@ darwin_dylib(
 cc_objects(
     name = "CoreLocation_obj",
     srcs = [
+        "CoreLocation/src/CLCiderConstants.m",
         "CoreLocation/src/CLAssertion.m",
         "CoreLocation/src/CLBeacon.m",
         "CoreLocation/src/CLBeaconInternal.m",

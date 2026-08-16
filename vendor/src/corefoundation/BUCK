@@ -247,6 +247,7 @@ cc_objects(
         "NSNull.m",
         "NSNumber.m",
         "NSObjCRuntime.m",
+        "NSConstantLiterals.m",
         "NSObject.m",
         "NSOrderedSet.m",
         "NSOutputStream.m",

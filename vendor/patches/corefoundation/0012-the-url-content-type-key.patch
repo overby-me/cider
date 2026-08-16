@@ -1,0 +1,12 @@
+--- a/NSURL.m
++++ b/NSURL.m
+@@ -38,6 +38,9 @@
+ NSString *const NSURLCreationDateKey = @"NSURLCreationDateKey";
+ NSString *const NSURLContentAccessDateKey = @"NSURLContentAccessDateKey";
+ NSString *const NSURLContentModificationDateKey = @"NSURLContentModificationDateKey";
++/* The 10.10 spelling of the file type, which replaced NSURLTypeIdentifierKey. A current binary links
++ * it, and the VALUE is what a resource lookup keys on, so it is the one macOS uses. */
++NSString *const NSURLContentTypeKey = @"NSURLContentTypeKey";
+ NSString *const NSURLAttributeModificationDateKey = @"NSURLAttributeModificationDateKey";
+ NSString *const NSURLLinkCountKey = @"NSURLLinkCountKey";
+ NSString *const NSURLParentDirectoryURLKey = @"NSURLParentDirectoryURLKey";

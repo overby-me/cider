@@ -4848,3 +4848,34 @@ the same way, of symbols missing from frameworks this tree DOES have:
 About ninety symbols, most of them CONSTANTS. NOTHING OF THIS IS IN THE TREE YET: the stubs and the
 shim live in the prefix and in scratchpad/swiftstubs, so this section is a measurement and a method,
 not a build. Putting them in means BUCK targets and packaging entries, which is the next rung.
+
+
+## Working the load chain: the constant literal classes, and the constants under them
+
+2026-08-16, continuing the nixpkgs iTerm2. Each round is one line from dyld, one implementation, one
+run. Since the last entry the chain has moved from CryptoKit through eight more symbols.
+
+THE CONSTANT LITERAL CLASSES are the interesting ones. A current SDK compiles @42, @3.5, @[a, b] and
+@{k: v} in a file with no dynamic parts into STATIC objects in __DATA, whose isa fields point at
+NSConstantIntegerNumber, NSConstantDoubleNumber, NSConstantFloatNumber, NSConstantArray and
+NSConstantDictionary. The compiler lays the instances out, so the implementation declares the same
+fields in the same order and answers the ordinary questions about memory it did not allocate. Two
+things follow from the instances being static and both are implemented: they can never be
+deallocated, so retain answers self and release does nothing, and they can never be mutated, so
+nothing writes.
+
+WHERE THEY HAD TO GO is not obvious and the linker settles it. The three number classes are in
+FOUNDATION, because that is where NSNumber is a real class in this tree, and CoreFoundation has only
+__NSCFNumber, so a static subclass cannot even link there. The two collection classes are in
+CoreFoundation, where NSArray and NSDictionary are. That also matches the imports: dyld expects the
+numbers in Foundation and the collections in CoreFoundation, and Foundation re-exports
+CoreFoundation rather than the other way round.
+
+THE CONSTANTS, each one a string or a number whose VALUE has to be the one macOS uses, since a key
+that differs by a character is a setting that silently does nothing: AVVideoCodecTypeH264 and the
+three H264 profile levels, AVVideoProfileLevelKey, AVMetadataKeySpaceQuickTimeMetadata,
+NSURLContentTypeKey, kCLErrorDomain and the six CoreLocation accuracies.
+
+WHERE THE CHAIN IS NOW: _kCMMetadataBaseDataType_RawData in CoreMedia, with the CoreServices
+quarantine keys, the Carbon TIS input source keys, CoreVideo, MetalKit and two classes behind it.
+Every one of them is in the measured list in the section above.
