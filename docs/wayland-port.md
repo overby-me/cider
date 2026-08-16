@@ -5742,3 +5742,40 @@ WHAT WORKS AS OF TONIGHT: iTerm2 opens its window, draws the traffic lights, the
 80x25 title, runs a full 45 second harness run without crashing or raising, spawns its pty helper,
 and reaches its text drawing path. The terminal area is BLACK and there is NO SHELL, for the reason
 above.
+
+
+## The three criteria, re-verified after a day of runtime changes
+
+2026-08-16, end of the day. Today changed the signal emulation, the exec environment, the loader
+path, the descriptor limit and task creation in the daemon. All of those sit under every guest
+process, so the three DONE criteria were re-verified from scratch rather than assumed, by LOOKING
+at every image.
+
+RENDERS. LibreOffice Writer, checked after each change: title bar, menu bar, both toolbar rows,
+ruler, page with its text, right sidebar and the full status bar. Zero raises, zero unrecognized
+selectors, and no too-many-open-files after the descriptor limit changed.
+
+INTERACTIVE, from scratch/run-lo-drag2.sh, six screenshots and every one of them looked at:
+  a mouse DRAG selected exactly the run it crossed, and the status bar agrees: Selected: 7 words,
+    38 characters;
+  the KEYBOARD typed two paragraphs into the document, which are in the picture;
+  Command A and Command B took, and the text is bold with the B button lit;
+  a mouse CLICK on the application menu opened it: About LibreOffice, Preferences with its Command
+    comma, Services with its submenu arrow, Hide LibreOffice, Hide Others, Show All, Quit
+    LibreOffice with Command Q.
+
+RESIZABLE, from scratch/run-lo-resize.sh, the compositor changing the output resolution under a
+running application:
+
+    cider-wayland-window resized number=2 size=1600x900
+    cider-wayland-window resized number=2 size=1000x620
+
+and at 1000x620 the application has RELAID OUT rather than scaled: the toolbar has grown an
+overflow chevron, the ruler is shorter, the page is narrower and the status bar has dropped fields.
+
+A HARNESS NOTE WORTH KEEPING. scratch/run-lo-click.sh drives the pointer with wlrctl, and it does
+NOT work: wlrctl makes a virtual pointer, sends the click and destroys the device, so the press and
+release arrive at the device origin rather than where swaymsg put the compositor cursor. Three
+screenshots came out byte identical and the menu never opened. scratch/vptr/cider-vptr holds ONE
+device open for the whole script and takes abs/press/release on stdin, which is what run-lo-drag2.sh
+uses and why its clicks land.
