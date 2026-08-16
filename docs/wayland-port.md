@@ -5534,3 +5534,35 @@ reproduce at all, which makes it a timing dependent one. That is the next rung.
 
 LibreOffice is unaffected by the signal change: Writer draws its title bar, menu bar, both toolbar
 rows, ruler, page, sidebar and status bar, with zero raises.
+
+
+## The host loader path now survives an exec, and iTerm2 stops losing its helper
+
+2026-08-16, night. The helper aborted because it could not load libGL.so.1. Proved by running it
+both ways:
+
+    without LD_LIBRARY_PATH   cider mldr: FATAL dlopen failed: libGL.so.1: cannot open shared object
+    with it                   no fatal
+
+Every Mach-O image that wraps a host ELF library dlopens that library from a CONSTRUCTOR and aborts
+if it is missing, so a process that loses the loader path dies before it runs a line of its own
+code. iTerm2 spawns iTermServer with an EMPTY ENVIRONMENT, measured from /proc, so it lost it.
+
+THE PATH TRAVELS UNDER TWO NAMES NOW. The private __mldr_elf_path goes in unconditionally, because
+an application that curates an environment has no reason to strip a name only this runtime knows;
+LD_LIBRARY_PATH goes in only when the caller did not bring its own. mldr retries a failed dlopen
+against the directories in the private one, because the dynamic loader reads its search path once
+at process start and a value that arrives later changes nothing.
+
+THREE MISTAKES ON THE WAY, all of them silent, and each looked like the fix not working:
+  a 16 KB automatic buffer for /proc/self/environ does not fit on the stack this code runs on, and
+    the read produced nothing;
+  ONE read of 16 KB is not the environment. A shell session carries far more, LD_LIBRARY_PATH sat
+    past the cut, and the lookup answered not-present for the one process that mattered;
+  the injected strings were block locals, so by the time execve read envp they were dead stack and
+    the child received an empty entry. They are alloca now, like the buffer beside them.
+
+MEASURED: abort cores in a 40 second run went from six to ZERO, and the application ran the whole
+run. LOOKED AT the screenshots at 12, 18 and 20 seconds: menu bar, traffic lights, black terminal
+area, and STILL NO PROMPT AND NO TEXT. One brokenPipe remains in the log, so the session child
+still ends; it is no longer the loader that kills it. That is the next rung.

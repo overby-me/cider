@@ -1,0 +1,170 @@
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
+@@ -39,6 +39,102 @@
+ }
+ 
+ 
++/*
++ * THE HOST LOADER PATH HAS TO SURVIVE AN EXEC, and no application is going to carry it.
++ *
++ * Every Mach-O image that wraps a host ELF library dlopens that library from a CONSTRUCTOR and
++ * ABORTS if it is missing (wrapgen writes that constructor; the elfcall is dlopen_fatal). The
++ * library is found through LD_LIBRARY_PATH, which points into the nix store. An application that
++ * builds a fresh environment for a helper it spawns drops it, and the helper dies before it runs a
++ * line of its own code:
++ *
++ *     cider mldr: FATAL dlopen failed: libGL.so.1: cannot open shared object file
++ *
++ * iTerm2 spawns iTermServer to own its pty and does exactly this. So take the value from the
++ * CURRENT process HOST environment, which is mldr own and always has it, rather than from the
++ * guest environment, which is whatever the application decided to pass.
++ *
++ * The value travels under a PRIVATE NAME as well. An application that builds a fresh environment
++ * for a helper drops LD_LIBRARY_PATH deliberately, and would drop it again however many times it
++ * is re-injected, but it has no reason to strip __mldr_elf_path, which nothing but this runtime
++ * knows about. mldr falls back to that name when a dlopen by soname fails.
++ *
++ * Returns a pointer to a static buffer holding the VALUE (no name, no equals), or NULL.
++ */
++static const char* host_loader_path(void)
++{
++	static char entry[8192];
++	static bool looked = false;
++	static bool have = false;
++
++	if (looked)
++		return have ? entry : NULL;
++
++	looked = true;
++
++	int fd = LINUX_SYSCALL(__NR_open, "/proc/self/environ", LINUX_O_RDONLY, 0);
++	if (fd < 0)
++	{
++		__simple_kprintf("loader path: open /proc/self/environ failed %d", fd);
++		return NULL;
++	}
++
++	/* READ THE WHOLE THING, in a loop, into a STATIC buffer.
++	 *
++	 * Two mistakes are easy here and both were made. A 16 KB automatic buffer does not fit on the
++	 * stack this runs on, and the read silently produced nothing. And ONE read of 16 KB is not the
++	 * environment: a shell session carries far more than that, LD_LIBRARY_PATH sat past the cut,
++	 * and the lookup answered "not present" for the one process that mattered. */
++	static char buf[262144];
++	long len = 0;
++
++	for (;;)
++	{
++		long chunk = LINUX_SYSCALL(__NR_read, fd, buf + len, sizeof(buf) - 1 - len);
++
++		if (chunk <= 0)
++			break;
++		len += chunk;
++		if (len >= (long) sizeof(buf) - 1)
++			break;
++	}
++
++	LINUX_SYSCALL(__NR_close, fd);
++
++	if (len <= 0)
++		return NULL;
++	buf[len] = '\0';
++
++	/* The private name wins, because it is the one that survived the last exec. */
++	for (int pass = 0; pass < 2 && !have; pass++)
++	{
++		const char* want = (pass == 0) ? "__mldr_elf_path=" : "LD_LIBRARY_PATH=";
++		long wantlen = strlen(want);
++
++		for (long i = 0; i < len; )
++		{
++			const char* var = &buf[i];
++			long varlen = strlen(var);
++
++			if (strncmp(var, want, wantlen) == 0)
++			{
++				const char* value = var + wantlen;
++
++				if (varlen - wantlen < (long) sizeof(entry) && *value != '\0')
++				{
++					memcpy(entry, value, varlen - wantlen + 1);
++					have = true;
++				}
++				break;
++			}
++
++			i += varlen + 1;
++		}
++	}
++
++	return have ? entry : NULL;
++}
++
+ long sys_execve(const char* fname, const char** argvp, const char** envp)
+ {
+ 	int ret;
+@@ -193,7 +289,52 @@
+ 		// count original env vars
+ 		while (envp[len++]);
+ 
+-		const int new_env_count = 2;
++		/*
++		 * THE LOADER PATH TRAVELS UNDER BOTH NAMES. The private one goes in unconditionally, so
++		 * it survives an application that hands its helper a curated environment. The public one
++		 * goes in only when the caller did not bring its own, so an application that deliberately
++		 * points at other libraries keeps its choice.
++		 */
++		const char* loader_path = host_loader_path();
++		bool caller_has_public = false;
++
++		for (int i = 0; envp[i] != NULL; i++)
++		{
++			if (strncmp(envp[i], "LD_LIBRARY_PATH=", sizeof("LD_LIBRARY_PATH=") - 1) == 0)
++			{
++				caller_has_public = true;
++				break;
++			}
++		}
++
++		/* ALLOCA, NOT A BLOCK LOCAL. These strings have to still be there when the execve at the
++		 * end of the function reads envp, and a plain array declared in this block does not
++		 * outlive the block: the first version passed a pointer into dead stack and the child
++		 * received an EMPTY environment entry. alloca is what the buffer above it uses, for the
++		 * same reason. */
++		char* private_env = NULL;
++		char* public_env = NULL;
++		int loader_env_count = 0;
++
++		if (loader_path != NULL)
++		{
++			size_t value_len = strlen(loader_path);
++
++			private_env = __builtin_alloca(value_len + sizeof("__mldr_elf_path="));
++			strcpy(private_env, "__mldr_elf_path=");
++			strcat(private_env, loader_path);
++			loader_env_count = 1;
++
++			if (!caller_has_public)
++			{
++				public_env = __builtin_alloca(value_len + sizeof("LD_LIBRARY_PATH="));
++				strcpy(public_env, "LD_LIBRARY_PATH=");
++				strcat(public_env, loader_path);
++				loader_env_count = 2;
++			}
++		}
++
++		const int new_env_count = 2 + loader_env_count;
+ 
+ 		// allocate a new envp and env0, env1
+ 		modenvp = (const char**)__builtin_alloca(sizeof(void*) * (len + new_env_count));
+@@ -204,6 +345,10 @@
+ 		strcat(buf, server_socket_path);
+ 		modenvp[0] = buf;
+ 		modenvp[1] = mldr_lifetime_pipe_env;
++		if (loader_env_count >= 1)
++			modenvp[2] = private_env;
++		if (loader_env_count >= 2)
++			modenvp[3] = public_env;
+ 
+ 		// append original env vars
+ 		for (int i = new_env_count; i < len + new_env_count; i++)

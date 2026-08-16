@@ -56,7 +56,13 @@ pub struct ElfCalls {
 
 // ---- real primitives ----
 extern "C" fn ec_dlopen(n: *const c_char) -> *mut c_void {
-    unsafe { libc::dlopen(n, libc::RTLD_LAZY) }
+    unsafe {
+        let h = libc::dlopen(n, libc::RTLD_LAZY);
+        if h.is_null() {
+            return dlopen_from_runtime_path(n);
+        }
+        h
+    }
 }
 extern "C" fn ec_dlclose(l: *mut c_void) -> c_int {
     unsafe { libc::dlclose(l) }
@@ -117,8 +123,66 @@ unsafe fn say_cstr(p: *const c_char) {
     }
 }
 
+/// Try again with the runtime ELF directories when a plain soname does not resolve.
+///
+/// The dynamic loader reads LD_LIBRARY_PATH ONCE, at process start, so a value that arrives later
+/// changes nothing. A guest application that hands a helper a curated environment therefore leaves
+/// that helper unable to find any host library, and every wrapper dylib aborts in its constructor.
+/// The runtime carries the directory list under __mldr_elf_path, which survives that curation
+/// because nothing outside this runtime knows the name, and this joins it to the soname by hand.
+unsafe fn dlopen_from_runtime_path(name: *const c_char) -> *mut c_void {
+    if name.is_null() || libc::strchr(name, b'/' as c_int) != ptr::null_mut() {
+        return ptr::null_mut(); // an absolute or relative path was already tried as given
+    }
+
+    let list = libc::getenv(b"__mldr_elf_path\0".as_ptr() as *const c_char);
+    if list.is_null() || *list == 0 {
+        return ptr::null_mut();
+    }
+
+    let name_len = libc::strlen(name);
+    let mut dir = list;
+
+    loop {
+        let end = libc::strchr(dir, b':' as c_int);
+        let dir_len = if end.is_null() {
+            libc::strlen(dir)
+        } else {
+            end as usize - dir as usize
+        };
+
+        if dir_len > 0 && dir_len + 1 + name_len < 4096 {
+            let mut joined = [0u8; 4096];
+            libc::memcpy(
+                joined.as_mut_ptr() as *mut c_void,
+                dir as *const c_void,
+                dir_len,
+            );
+            joined[dir_len] = b'/';
+            libc::memcpy(
+                joined.as_mut_ptr().add(dir_len + 1) as *mut c_void,
+                name as *const c_void,
+                name_len,
+            );
+
+            let h = libc::dlopen(joined.as_ptr() as *const c_char, libc::RTLD_LAZY);
+            if !h.is_null() {
+                return h;
+            }
+        }
+
+        if end.is_null() {
+            return ptr::null_mut();
+        }
+        dir = end.add(1);
+    }
+}
+
 extern "C" fn ec_dlopen_fatal(n: *const c_char) -> *mut c_void {
-    let h = unsafe { libc::dlopen(n, libc::RTLD_LAZY) };
+    let mut h = unsafe { libc::dlopen(n, libc::RTLD_LAZY) };
+    if h.is_null() {
+        h = unsafe { dlopen_from_runtime_path(n) };
+    }
     if h.is_null() {
         unsafe {
             say_bytes(b"cider mldr: FATAL dlopen failed: ");
