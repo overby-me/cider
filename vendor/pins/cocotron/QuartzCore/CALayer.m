@@ -22,6 +22,16 @@ NSString *const kCAGravityBottomLeft = @"bottomLeft";
 NSString *const kCAGravityBottomRight = @"bottomRight";
 NSString *const kCAGravityResize = @"resize";
 
+/*
+ * HOW A ROUNDED CORNER IS ROUNDED. A circular corner is an arc; a CONTINUOUS one is the squircle
+ * Apple has used for every rounded rectangle since iOS 7, and an application that wants its panels
+ * to look like the system asks for it by name. Nothing here draws the difference yet, but the names
+ * have to exist: they are strings, and referencing one stops the process loading. iA Writer names
+ * the continuous one inside its own InterfaceFoundation framework.
+ */
+NSString *const kCACornerCurveCircular = @"circular";
+NSString *const kCACornerCurveContinuous = @"continuous";
+
 NSString *const kCAOnOrderIn = @"onOrderIn";
 NSString *const kCAOnOrderOut = @"onOrderOut";
 NSString *const kCATransition = @"transition";

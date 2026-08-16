@@ -19922,6 +19922,7 @@ cc_objects(
         "foundation/src/NSFalsePredicate.m",
         "foundation/src/NSFileAttributes.m",
         "foundation/src/NSFileCoordinator.m",
+        "foundation/src/NSFileVersion.m",
         "foundation/src/NSFileHandle.m",
         "foundation/src/NSFileManager.m",
         "foundation/src/NSFileWrapper.m",

@@ -35,6 +35,10 @@ CA_EXPORT NSString *const kCAGravityBottomRight;
 CA_EXPORT NSString *const kCAGravityResize;
 
 CA_EXPORT NSString *const kCAOnOrderIn;
+typedef NSString *CACornerCurve;
+extern NSString *const kCACornerCurveCircular;
+extern NSString *const kCACornerCurveContinuous;
+
 CA_EXPORT NSString *const kCAOnOrderOut;
 CA_EXPORT NSString *const kCATransition;
 

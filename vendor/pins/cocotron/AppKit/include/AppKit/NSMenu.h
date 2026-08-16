@@ -29,6 +29,9 @@ APPKIT_EXPORT const NSNotificationName NSMenuWillSendActionNotification;
 APPKIT_EXPORT const NSNotificationName NSMenuDidSendActionNotification;
 APPKIT_EXPORT const NSNotificationName NSMenuDidBeginTrackingNotification;
 APPKIT_EXPORT const NSNotificationName NSMenuDidEndTrackingNotification;
+APPKIT_EXPORT const NSNotificationName NSMenuDidAddItemNotification;
+APPKIT_EXPORT const NSNotificationName NSMenuDidRemoveItemNotification;
+APPKIT_EXPORT const NSNotificationName NSMenuDidChangeItemNotification;
 
 @interface NSMenu : NSObject <NSCopying, NSUserInterfaceItemIdentification> {
     NSMenu *_supermenu;

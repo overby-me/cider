@@ -1,0 +1,98 @@
+--- /dev/null
++++ b/src/NSFileVersion.m
+@@ -0,0 +1,95 @@
++//
++//  NSFileVersion.m
++//  Foundation
++//
++//  THERE IS NO VERSION STORE HERE, and this class says so rather than pretending.
++//
++//  On macOS every saved document keeps a history that Time Machine and the version browser read.
++//  Nothing on this system keeps one. The class exists because it is a CLASS: an application that
++//  names NSFileVersion anywhere cannot be loaded without it, whatever it does with it afterwards.
++//  iA Writer names it inside its own FoundationAdditions framework and stopped there.
++//
++//  So every query answers EMPTY, which is the same answer macOS gives for a file that has never
++//  been versioned, and an application that walks the result finds nothing rather than something
++//  wrong. The two methods that would MODIFY a store fail with an error instead of reporting a
++//  success that did not happen.
++//
++
++#import <Foundation/NSFileVersion.h>
++#import <Foundation/NSArray.h>
++#import <Foundation/NSDictionary.h>
++#import <Foundation/NSError.h>
++#import <Foundation/NSString.h>
++#import <Foundation/NSURL.h>
++
++@implementation NSFileVersion
++
+++ (NSFileVersion *)currentVersionOfItemAtURL:(NSURL *)url
++{
++    return nil;
++}
++
+++ (NSArray *)otherVersionsOfItemAtURL:(NSURL *)url
++{
++    return [NSArray array];
++}
++
+++ (NSArray *)unresolvedConflictVersionsOfItemAtURL:(NSURL *)url
++{
++    return [NSArray array];
++}
++
+++ (NSFileVersion *)versionOfItemAtURL:(NSURL *)url forPersistentIdentifier:(id)persistentIdentifier
++{
++    return nil;
++}
++
++static NSError *noVersionStore(void)
++{
++    return [NSError errorWithDomain:NSCocoaErrorDomain
++                               code:512 /* NSFileWriteUnknownError */
++                           userInfo:@{
++                               NSLocalizedDescriptionKey:
++                                       @"This system keeps no file version history."
++                           }];
++}
++
+++ (NSFileVersion *)addVersionOfItemAtURL:(NSURL *)url withContentsOfURL:(NSURL *)contentsURL options:(NSFileVersionAddingOptions)options error:(NSError **)outError
++{
++    if (outError != NULL)
++    {
++        *outError = noVersionStore();
++    }
++    return nil;
++}
++
+++ (NSURL *)temporaryDirectoryURLForNewVersionOfItemAtURL:(NSURL *)url
++{
++    return nil;
++}
++
+++ (BOOL)removeOtherVersionsOfItemAtURL:(NSURL *)url error:(NSError **)outError
++{
++    // Nothing to remove, and nothing failed in not removing it.
++    return YES;
++}
++
++- (NSURL *)replaceItemAtURL:(NSURL *)url options:(NSFileVersionReplacingOptions)options error:(NSError **)error
++{
++    if (error != NULL)
++    {
++        *error = noVersionStore();
++    }
++    return nil;
++}
++
++- (BOOL)removeAndReturnError:(NSError **)outError
++{
++    if (outError != NULL)
++    {
++        *outError = noVersionStore();
++    }
++    return NO;
++}
++
++@end

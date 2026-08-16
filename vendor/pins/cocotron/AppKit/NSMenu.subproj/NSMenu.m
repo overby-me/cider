@@ -30,6 +30,19 @@ const NSNotificationName NSMenuWillSendActionNotification = @"NSMenuWillSendActi
 const NSNotificationName NSMenuDidSendActionNotification = @"NSMenuDidSendActionNotification";
 const NSNotificationName NSMenuDidBeginTrackingNotification = @"NSMenuDidBeginTrackingNotification";
 const NSNotificationName NSMenuDidEndTrackingNotification = @"NSMenuDidEndTrackingNotification";
+
+/*
+ * THE THREE A MENU POSTS WHEN ITS ITEMS CHANGE, which this framework did not have. An application
+ * that keeps something in step with a menu observes these rather than polling it, and referencing
+ * one that does not exist stops the process loading: iA Writer names the first of them inside its
+ * own AppKitAdditions framework.
+ *
+ * The index goes in the userInfo under NSMenuItemIndex, which is the key macOS uses and therefore
+ * the key an observer written for macOS reads.
+ */
+const NSNotificationName NSMenuDidAddItemNotification = @"NSMenuDidAddItemNotification";
+const NSNotificationName NSMenuDidRemoveItemNotification = @"NSMenuDidRemoveItemNotification";
+const NSNotificationName NSMenuDidChangeItemNotification = @"NSMenuDidChangeItemNotification";
 NSString *const _NSFontMenuName = @"Font";
 NSString *const _NSHelpMenuName = @"Help";
 NSString *const _NSMainMenuName = @"Application";
@@ -352,6 +365,13 @@ static BOOL _ciderMenuBarVisible = YES;
  * framework, so the views are invalidated directly. It costs a walk of the window list per menu
  * mutation, which happens while an application builds its menus and essentially never afterwards.
  */
+static void NSMenuPostItemChange(NSMenu *menu, NSNotificationName name, NSInteger index) {
+    [[NSNotificationCenter defaultCenter]
+            postNotificationName: name
+                          object: menu
+                        userInfo: @{@"NSMenuItemIndex": [NSNumber numberWithInteger: index]}];
+}
+
 static void NSMenuMainMenuDidChange(NSMenu *menu) {
     NSApplication *application = NSApp;
 
@@ -372,6 +392,7 @@ static void NSMenuMainMenuDidChange(NSMenu *menu) {
 - (void) addItem: (NSMenuItem *) item {
     [item performSelector: @selector(_setMenu:) withObject: self];
     [_itemArray addObject: item];
+    NSMenuPostItemChange(self, NSMenuDidAddItemNotification, [_itemArray count] - 1);
     NSMenuMainMenuDidChange(self);
 }
 
@@ -395,8 +416,12 @@ static void NSMenuMainMenuDidChange(NSMenu *menu) {
 }
 
 - (void) removeItem: (NSMenuItem *) item {
+    NSInteger index = [_itemArray indexOfObjectIdenticalTo: item];
+
     [item performSelector: @selector(_setMenu:) withObject: nil];
     [_itemArray removeObjectIdenticalTo: item];
+    NSMenuPostItemChange(self, NSMenuDidRemoveItemNotification,
+                         (index == NSNotFound) ? -1 : index);
     NSMenuMainMenuDidChange(self);
 }
 
@@ -407,6 +432,7 @@ static void NSMenuMainMenuDidChange(NSMenu *menu) {
 - (void) insertItem: (NSMenuItem *) item atIndex: (NSInteger) index {
     [item performSelector: @selector(_setMenu:) withObject: self];
     [_itemArray insertObject: item atIndex: index];
+    NSMenuPostItemChange(self, NSMenuDidAddItemNotification, index);
     NSMenuMainMenuDidChange(self);
 }
 
