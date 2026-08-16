@@ -4257,3 +4257,41 @@ AND THE BUG THIS UNCOVERS. The masked bitmap path now draws, and it draws VERTIC
 font dropdown in the toolbar comes out mirrored, text and all, and so does the strip along the
 bottom of the window. That path could not draw at all before, so it is newly visible rather than
 newly broken, and it is the next rung.
+
+
+## The icons came back, and what is known about the flip
+
+2026-08-16, commit d5b25f48. -[O2Image copyWithMask:] was O2UnimplementedMethod, so
+CGImageCreateWithMask returned nil for every caller. The rasteriser has supported a soft mask all
+along: drawImage:inRect: asks the image for its mask and builds an O2Paint_image with both. Only the
+way to attach one was missing. LibreOffice draws every toolbar and sidebar icon that way, through
+drawAlphaBitmap, so with the mask step failing the icons were not there at all. Looked at, same
+harness and same frame, before and after: the sidebar icons return and the toolbars keep their
+colour icons, dropdown arrows and separators.
+
+An instrument came out of it, because this took four wrong guesses. CIDER_TRACE_DRAWIMAGE names
+every image draw with its size, its destination, whether it carries a mask, and the frames that
+asked for it. Its first useful answer was not about masks at all:
+
+    CIDER_DRAWIMAGE 1256x634 -> 0,0 1256x634 mask=0 <- AquaSalGraphics::UpdateWindow
+
+THE WHOLE WINDOW ARRIVES AS ONE BLIT of the bitmap LibreOffice renders into. Nothing in a
+LibreOffice window is drawn straight into the window surface, which is worth knowing before
+attributing anything drawn wrong to the window path.
+
+THE FLIPPED DROPDOWN IS NOT FIXED. What is established, so the next attempt does not start over:
+
+- It is in the BUFFER, not the presentation. The CIDER_WAYLAND_DUMP of the popup window is itself
+  upside down and agrees with the screenshot, which rules out a stride, format or alpha bug.
+- Masked icon draws are not flipped. They came back the right way up, so the image draw path and
+  its image-to-surface transform, which does carry the standard Core Graphics flip, are right.
+- A window context and a bitmap context are created the same way, initWithSurface:flipped:NO, so
+  they share one vertical convention.
+- What is flipped: the popup window content, and the status bar strip in the main window. Both are
+  places LibreOffice renders through a VirtualDevice and blits.
+
+What is not established is where the flip enters. The next experiment is already designed: the
+raw-pixel dump written and removed in this session captured the FIRST four big draws, which are all
+early and nearly empty. Capture the LAST instead, one file overwritten per draw, with the dropdown
+open, and compare that source bitmap against the screen. If the source is already upside down the
+fault is in what we drew into it; if it is not, the fault is in the blit.
