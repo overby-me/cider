@@ -1309,9 +1309,20 @@ void O2ContextShowGlyphs(O2ContextRef self, const O2Glyph *glyphs,
             }
 
             printed++;
-            fprintf(stderr, "CIDER_TEXTCTM ctm=[%.2f %.2f %.2f %.2f %.1f %.1f] surface=%.0fx%.0f\n",
+            void *frames[8];
+            int depth = backtrace(frames, 8);
+
+            fprintf(stderr, "CIDER_TEXTCTM ctm=[%.2f %.2f %.2f %.2f %.1f %.1f] surface=%.0fx%.0f",
                     (double) ctm.a, (double) ctm.b, (double) ctm.c, (double) ctm.d,
                     (double) ctm.tx, (double) ctm.ty, (double) sz.width, (double) sz.height);
+            for (int i = 1; i < depth; i++) {
+                Dl_info info;
+
+                if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+                    fprintf(stderr, " <- %s", info.dli_sname);
+                }
+            }
+            fprintf(stderr, "\n");
             fflush(stderr);
         }
     }
