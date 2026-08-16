@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <Onyx2D/O2ColorSpace.h>
 #import <Onyx2D/O2ClipState.h>
 #import <Onyx2D/O2Context.h>
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <dlfcn.h>
 #include <execinfo.h>
@@ -1392,6 +1392,32 @@ void O2ContextDrawShading(O2ContextRef self, O2ShadingRef shading) {
 void O2ContextDrawImage(O2ContextRef self, O2Rect rect, O2ImageRef image) {
     if (self == nil)
         return;
+
+    /* CIDER_TRACE_DRAWIMAGE names every image draw with its size, its destination and the frames
+     * that asked for it, which is the only way to tell one blit from another when some come out
+     * upside down and the rest do not. */
+    if (getenv("CIDER_TRACE_DRAWIMAGE") != NULL) {
+        static int printed;
+
+        if (printed < 40) {
+            void *frames[8];
+            int depth = backtrace(frames, 8);
+
+            printed++;
+            fprintf(stderr, "CIDER_DRAWIMAGE %zux%zu -> %.0f,%.0f %.0fx%.0f mask=%d",
+                    O2ImageGetWidth(image), O2ImageGetHeight(image), rect.origin.x, rect.origin.y,
+                    rect.size.width, rect.size.height, (int) (O2ImageGetMask(image) != NULL));
+            for (int i = 1; i < depth; i++) {
+                Dl_info info;
+
+                if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+                    fprintf(stderr, " <- %s", info.dli_sname);
+                }
+            }
+            fprintf(stderr, "\n");
+            fflush(stderr);
+        }
+    }
 
     [self drawImage: image inRect: rect];
 }

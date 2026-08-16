@@ -463,9 +463,38 @@ ONYX2D_STATIC BOOL initFunctionsForParameters(O2Image *self,
     _mask = image;
 }
 
+/*
+ * AN IMAGE WITH A MASK, which is what CGImageCreateWithMask makes and what this returned nil for.
+ *
+ * The rasteriser has supported a soft mask all along: -[O2Context_builtin drawImage:inRect:] asks
+ * the image for its mask and builds an O2Paint_image with both. Only the way to ATTACH one was
+ * missing, so every caller of CGImageCreateWithMask got nil back. LibreOffice draws every toolbar
+ * and sidebar icon that way, through drawAlphaBitmap, and they simply did not appear.
+ *
+ * The copy shares the pixels rather than duplicating them, which is what Core Graphics does too: a
+ * masked image is the same image seen through a mask, and both are immutable.
+ */
 - copyWithMask: (O2Image *) image {
-    O2UnimplementedMethod();
-    return nil;
+    O2Image *result = [[O2Image alloc] initWithWidth: _width
+                                              height: _height
+                                    bitsPerComponent: _bitsPerComponent
+                                        bitsPerPixel: _bitsPerPixel
+                                         bytesPerRow: _bytesPerRow
+                                          colorSpace: _colorSpace
+                                          bitmapInfo: _bitmapInfo
+                                             decoder: _decoder
+                                            provider: _provider
+                                              decode: _decode
+                                         interpolate: _interpolate
+                                     renderingIntent: _renderingIntent];
+
+    if (result == nil) {
+        return nil;
+    }
+
+    [result setMask: image];
+
+    return result;
 }
 
 - copyWithMaskingColors: (const O2Float *) components {
