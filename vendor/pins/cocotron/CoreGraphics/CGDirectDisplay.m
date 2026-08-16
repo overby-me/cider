@@ -500,3 +500,31 @@ CFDictionaryRef CGDisplayCurrentMode(CGDirectDisplayID display) {
 size_t CGDisplayModeGetPixelWidth(CGDisplayModeRef mode) {
     return 0;
 }
+
+
+/*
+ * SCREEN CAPTURE, ANSWERED HONESTLY: this system cannot do it.
+ *
+ * CGDisplayCreateImage hands back a picture of a display, and the two access calls are the macOS
+ * permission gate in front of it. There is no capture path here at all, so the image is NULL and
+ * the permission is NO, which is exactly what an application sees on macOS when the user has not
+ * granted screen recording. That is a state every caller of these already handles.
+ *
+ * They exist because the SYMBOLS stop a modern application at load time: iTerm2 3.6.10 links all
+ * three and dyld refuses to start without them.
+ */
+CGImageRef CGDisplayCreateImage(CGDirectDisplayID display) {
+    return NULL;
+}
+
+CGImageRef CGDisplayCreateImageForRect(CGDirectDisplayID display, CGRect rect) {
+    return NULL;
+}
+
+bool CGPreflightScreenCaptureAccess(void) {
+    return false;
+}
+
+bool CGRequestScreenCaptureAccess(void) {
+    return false;
+}

@@ -13270,6 +13270,7 @@ cc_objects(
     name = "WebKit_obj",
     srcs = [
         "WebKit/src/DOMNode.m",
+        "WebKit/src/WKContentWorld.m",
         "WebKit/src/DOMObject.m",
         "WebKit/src/WKAccessibilitySettingsObserver.m",
         "WebKit/src/WKAccessibilityWebPageObject.m",

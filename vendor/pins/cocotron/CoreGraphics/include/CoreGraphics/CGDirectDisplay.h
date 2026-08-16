@@ -1,5 +1,6 @@
 
 #import <CoreGraphics/CGError.h>
+#import <CoreGraphics/CGImage.h>
 #import <CoreGraphics/CGGeometry.h>
 #import <CoreGraphics/CoreGraphicsExport.h>
 #import <mach/boolean.h>
@@ -74,3 +75,10 @@ COREGRAPHICS_EXPORT CGError CGDisplaySwitchToMode(CGDirectDisplayID display,
                                                   CFDictionaryRef mode);
 COREGRAPHICS_EXPORT size_t CGDisplayModeGetPixelWidth(CGDisplayModeRef mode);
 COREGRAPHICS_EXPORT CGSize CGDisplayScreenSize(CGDirectDisplayID display);
+
+/* Screen capture and its permission gate. See the note in CGDirectDisplay.m: this system answers
+ * NULL and NO, which is what macOS answers when screen recording has not been granted. */
+COREGRAPHICS_EXPORT CGImageRef CGDisplayCreateImage(CGDirectDisplayID display);
+COREGRAPHICS_EXPORT CGImageRef CGDisplayCreateImageForRect(CGDirectDisplayID display, CGRect rect);
+COREGRAPHICS_EXPORT bool CGPreflightScreenCaptureAccess(void);
+COREGRAPHICS_EXPORT bool CGRequestScreenCaptureAccess(void);

@@ -9381,6 +9381,7 @@ FRAMEWORKS = {
         "WebKit/WKWebProcessPlugInRangeHandle.h": "WebKit/include/WebKit/WKWebProcessPlugInRangeHandle.h",
         "WebKit/WKWebProcessPlugInScriptWorld.h": "WebKit/include/WebKit/WKWebProcessPlugInScriptWorld.h",
         "WebKit/WKWebView.h": "WebKit/include/WebKit/WKWebView.h",
+        "WebKit/WKContentWorld.h": "WebKit/include/WebKit/WKContentWorld.h",
         "WebKit/WKWebViewConfiguration.h": "WebKit/include/WebKit/WKWebViewConfiguration.h",
         "WebKit/WKWebsiteDataRecord.h": "WebKit/include/WebKit/WKWebsiteDataRecord.h",
         "WebKit/WKWebsiteDataStore.h": "WebKit/include/WebKit/WKWebsiteDataStore.h",

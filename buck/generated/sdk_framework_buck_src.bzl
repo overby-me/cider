@@ -210,6 +210,7 @@ FRAMEWORKS = {
         "AppKit/NSTextTable.h": "cocotron/AppKit/include/AppKit/NSTextTable.h",
         "AppKit/NSTextTableBlock.h": "cocotron/AppKit/include/AppKit/NSTextTableBlock.h",
         "AppKit/NSTextView.h": "cocotron/AppKit/include/AppKit/NSTextView.h",
+        "AppKit/NSModernAppKitAdditions.h": "cocotron/AppKit/include/AppKit/NSModernAppKitAdditions.h",
         "AppKit/NSTitlebarAccessoryViewController.h": "cocotron/AppKit/include/AppKit/NSTitlebarAccessoryViewController.h",
         "AppKit/NSTokenAttachment.h": "cocotron/AppKit/include/AppKit/NSTokenAttachment.h",
         "AppKit/NSTokenField.h": "cocotron/AppKit/include/AppKit/NSTokenField.h",
