@@ -5480,3 +5480,25 @@ display updates, and the last thing on the wire in the newest runs is duct-tape 
 
 repeatedly, which is what a thread that duct-tape does not know about looks like: the shape of a
 process that has forked. That is the next rung. Still NO WINDOW ON SCREEN.
+
+
+## iTerm2 on screen
+
+docs/wayland-iterm2-first-window.png, taken one second after launch in headless weston, LOOKED AT:
+the traffic lights, the iTerm2 menu bar with its real menus (iTerm2, Shell, Edit, View, Session,
+Scripts, Profiles, Toolbelt, Window, Help) and the black terminal area filling the window. The
+backend agrees with the picture:
+
+    cider-wayland-window create=ok number=4 size=585x405 at=131,45 level=0 style=0x10f
+    cider-wayland-window mapped=yes number=4 size=585x405 t=0.40
+    cider-wayland-window resized number=4 size=1280x720
+    cider-wayland-window pixels=drawn number=4 changed=1005802/1019904 colours=64+ centre=ff000000
+
+WHAT IT DOES NOT SHOW, and this is the honest half: there is NO PROMPT and no text in the terminal,
+because the session behind it never runs. The window survives about a second and then the whole
+process group goes down. The tab bar is not drawn either. So iTerm2 renders its chrome and its
+window, and it is not yet a terminal.
+
+The screenshot had to be taken at one second because that is all the time there is; the earlier
+runs took theirs at fifty and caught nothing, which is why this looked like an application that
+never opened a window at all.
