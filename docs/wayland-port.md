@@ -6194,3 +6194,46 @@ iTerm2 recomputing its grid from the initial 80x25. But the numbers disagree wit
 A smaller window reporting a LARGER grid is not a stale title, it is a cell width that changed
 between the two resizes, and the glyphs on screen do not change size to match. So resize is
 delivered and acted on, and the metrics it is acted on with are wrong.
+
+### iTerm2 menus open, and it was the clipboard
+
+Answering the previous section, which had ruled out the harness, a coordinate flip and the
+LaunchServices abort, and left the question of which window the menu bar lives in. Wrong question:
+the menu bar is in the terminal window and the click was arriving at the right view all along. A
+mouseDown entry trace on NSMenuView, added because the exit trace alone cannot tell a track that
+found nothing from a click that never arrived, showed the click landing on NSMainMenuView at 88,14
+in a 1280x28 view with ten items. Tracking started. No menu appeared.
+
+The next lines of the log had it:
+
+    -[NSMenuView trackForEvent:]
+    -[NSMenu update]                      validate the items before showing them
+    -[PTYTextView validateMenuItem:]       should Paste be enabled
+    -[WaylandPasteboard pasteboardItems]   UNRECOGNIZED, raises
+
+The raise unwinds out of the tracking loop, so every menu in the application was dead, by mouse and
+keyboard alike, because the clipboard could not answer a question about itself.
+
+WaylandPasteboard now implements pasteboardItems. A clipboard holds one item with several
+representations of the same thing, so it answers one item carrying the types the board already
+reports and asking the board for the bytes, and an empty array rather than nil when empty, since
+callers iterate it. Upstream NSPasteboardItem is a stub that logs unknown selectors instead of
+raising, so a subclass overriding the three that carry data is enough.
+
+Looked at: the Shell menu opens with New Window and its Command N, the four split commands with
+their shortcuts, Broadcast Input and tmux with submenu arrows, and Save Selected Text, Close and
+Undo Close correctly greyed.
+
+### The iTerm2 grid after a resize is told the wrong width, and the number says by how much
+
+Unchanged by the menu fix, so it is its own bug. The window relayouts and keeps drawing, and iTerm2
+recomputes its grid, but the two sizes disagree:
+
+    1600 wide  ->  179 columns
+    1000 wide  ->  225 columns
+
+The cell width implied by the first is 1600 / 179, about 8.9 pixels, which is right for this font.
+Applying that same cell to the second gives 225 * 8.9, which is about 2000, or EXACTLY TWICE the
+1000 pixel output. So the font metrics are fine and the application is being told its content is
+twice as wide as it is, on the second resize only. That is the shape of a scale factor applied where
+it should not be, and it is the next thing to look at in the backend resize path.
