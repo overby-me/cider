@@ -5590,3 +5590,32 @@ what starts it, and why it does not, is the next thing to measure.
 A NOTE FOR WHOEVER LOOKS NEXT: the applications own log is the best instrument here. It records
 every exception iTerm2 catches, including the ones it swallows, and it is a plain text file in the
 prefix.
+
+
+## SHELL pointed at a host path, and the terminal got a session
+
+2026-08-16, last rung of the night. The launcher rewrites PATH, TMPDIR and HOME for the guest and
+then copies every other host variable verbatim. SHELL is a PATH, and on a nix host it is
+
+    SHELL=/nix/store/fmmhdx9k95s8iqag7zip533mbl3f27sw-bash-5.3p9/bin/bash
+
+which does not exist inside the container. Measured from inside the guest: that path is No such
+file or directory, while /bin/bash is right there. Every application that launches "the user shell"
+from SHELL therefore fails to exec, and reports nothing more useful than a broken pipe.
+
+SHELL is /bin/bash for the guest now, alongside the other three the launcher already rewrites.
+
+WHAT CHANGED ON SCREEN, LOOKED AT: the iTerm2 title bar reads
+
+    -- 80x25
+
+which is the terminal grid, and it only appears when a session exists. Before this it was empty.
+No brokenPipe in the log either.
+
+WHAT STILL DOES NOT WORK: the terminal area is still black with no prompt and no text. A process
+watch shows iTerm2 FORKING roughly every five seconds and the child never reaching exec, so the
+session child is started and dies before it runs a shell. Under strace the fork does not happen at
+all, which makes it timing dependent and means the next measurement has to be taken without it.
+
+LibreOffice is unaffected by the launcher change: Writer draws its title bar, menu bar, both
+toolbar rows, ruler, page, sidebar and status bar, with zero raises.

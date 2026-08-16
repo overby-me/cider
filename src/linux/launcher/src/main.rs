@@ -669,8 +669,13 @@ fn setup_shellspawn_env(fd: c_int) {
     push_env(fd, "PATH", "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin");
     push_env(fd, "TMPDIR", "/private/tmp");
     push_env(fd, "HOME", &format!("/Users/{}", get_login()));
+    // SHELL IS A PATH, AND A HOST PATH MEANS NOTHING IN HERE. On a nix host it is something like
+    // /nix/store/...-bash-5.3p9/bin/bash, which does not exist inside the container, so every
+    // application that launches "the user shell" from it fails to exec and reports a broken pipe
+    // with no other explanation. iTerm2 opens a session that way. The guest ships /bin/bash.
+    push_env(fd, "SHELL", "/bin/bash");
     for (k, v) in std::env::vars() {
-        if k == "PATH" || k == "TMPDIR" || k == "HOME" {
+        if k == "PATH" || k == "TMPDIR" || k == "HOME" || k == "SHELL" {
             continue;
         }
         push_env(fd, &k, &v);
