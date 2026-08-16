@@ -18,6 +18,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSBitmapImageRep-Private.h>
+#include <stdio.h>
+#include <stdlib.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSGraphicsContextFunctions.h>
 #import <AppKit/NSPasteboard.h>
@@ -173,6 +175,16 @@ NSBitmapImageRepPropertyKey NSImageCurrentFrame = @"NSImageCurrentFrame";
 
     CFRelease(imageSource);
 
+    /* HOW MANY REPS CAME OUT, because an empty array here and a decoder that was never asked look
+     * the same to the caller, and an application that receives no representation quietly draws
+     * nothing. See the iTermImage note: its dataForImage: returns EMPTY data, with no error, when
+     * the first representation is not an NSBitmapImageRep. */
+    if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL && getenv("CIDER_TRACE_IMAGESOURCE")[0] != '\0') {
+        fprintf(stderr, "CIDER_IMAGESOURCE imageRepsWithData frames=%lu reps=%lu\n",
+                (unsigned long) count, (unsigned long) [result count]);
+        fflush(stderr);
+    }
+
     return result;
 }
 
@@ -193,6 +205,17 @@ NSBitmapImageRepPropertyKey NSImageCurrentFrame = @"NSImageCurrentFrame";
               bitsPerPixel: (int) bitsPerPixel
 {
     int i, numberOfPlanes = isPlanar ? samplesPerPixel : 1;
+
+    /* THE OTHER WAY A REP IS BUILT, and the one an application uses when it already holds raw
+     * pixels rather than an encoded file. Traced because a caller that never reaches here and one
+     * that reaches here and gets nothing back look identical from the outside. */
+    if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL && getenv("CIDER_TRACE_IMAGESOURCE")[0] != '\0') {
+        fprintf(stderr,
+                "CIDER_IMAGESOURCE initWithBitmapDataPlanes %dx%d bps=%d spp=%d alpha=%d planar=%d bpr=%d bpp=%d planes=%p\n",
+                width, height, bitsPerSample, samplesPerPixel, (int) hasAlpha, (int) isPlanar,
+                bytesPerRow, bitsPerPixel, (void *) planes);
+        fflush(stderr);
+    }
 
     _size = NSMakeSize(width, height);
     _colorSpaceName = [colorSpaceName copy];

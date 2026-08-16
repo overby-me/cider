@@ -18,6 +18,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSBitmapImageRep.h>
+#import <objc/runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
 #import <AppKit/NSCachedImageRep.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSCustomImageRep.h>
@@ -466,6 +469,16 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
 
         if (rep != nil)
             reps = [NSArray arrayWithObject: rep];
+    }
+
+    /* WHICH CLASS CLAIMED THE DATA AND WHAT IT PRODUCED. A nil returned here goes to a caller that
+     * usually does not check it, and the picture simply never appears. */
+    if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL && getenv("CIDER_TRACE_IMAGESOURCE")[0] != '\0') {
+        fprintf(stderr, "CIDER_IMAGESOURCE NSImage initWithData bytes=%lu repClass=%s reps=%lu\n",
+                (unsigned long) [data length],
+                repClass ? class_getName(repClass) : "(nil)",
+                (unsigned long) [reps count]);
+        fflush(stderr);
     }
 
     if ([reps count] == 0) {

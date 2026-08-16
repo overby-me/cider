@@ -18,6 +18,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <Onyx2D/O2BitmapContext.h>
+#include <stdio.h>
+#include <stdlib.h>
 #import <Onyx2D/O2ColorSpace.h>
 #import <Onyx2D/O2DataProvider.h>
 #import <Onyx2D/O2Exceptions.h>
@@ -98,9 +100,24 @@ O2ContextRef O2BitmapContextCreate(void *data, size_t width, size_t height,
                                    O2ColorSpaceRef colorSpace,
                                    O2BitmapInfo bitmapInfo)
 {
-    return O2BitmapContextCreateWithData(data, width, height, bitsPerComponent,
-                                         bytesPerRow, colorSpace, bitmapInfo,
-                                         NULL, NULL);
+    O2ContextRef result = O2BitmapContextCreateWithData(
+            data, width, height, bitsPerComponent, bytesPerRow, colorSpace,
+            bitmapInfo, NULL, NULL);
+
+    /* A CALLER DRAWING INTO SOMEONE ELSE BUFFER CANNOT TELL A FAILURE FROM AN EMPTY PICTURE.
+     * iTermImage builds one of these over the bytes of an NSMutableData and then draws the decoded
+     * image into it; if this answers NULL the draw is a no-op, the data stays as setLength: left it,
+     * and what arrives at the terminal is a blank rectangle rather than an error. */
+    if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL &&
+        getenv("CIDER_TRACE_IMAGESOURCE")[0] != '\0') {
+        fprintf(stderr,
+                "CIDER_IMAGESOURCE O2BitmapContextCreate %lux%lu bpc=%lu bpr=%lu data=%p info=0x%lx -> %s\n",
+                (unsigned long) width, (unsigned long) height,
+                (unsigned long) bitsPerComponent, (unsigned long) bytesPerRow, data,
+                (unsigned long) bitmapInfo, result ? "ok" : "NULL");
+        fflush(stderr);
+    }
+    return result;
 }
 
 void *O2BitmapContextGetData(O2ContextRef selfX) {

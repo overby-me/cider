@@ -1,0 +1,52 @@
+--- a/src/runtime.m
++++ b/src/runtime.m
+@@ -33,6 +33,24 @@
+ #import <dlfcn.h>
+ #import <AppKit/NSApplication.h>
+ #import <crt_externs.h>
++#import <stdio.h>
++#import <stdlib.h>
++#import <unistd.h>
++
++/*
++ * Two points on the service side, so a bundled XPC service that answers nothing can say how far it
++ * got. See the note in Foundation NSXPCConnection.m for the whole chain; these are the first two
++ * links, and they double as PROOF THAT THE SERVICE CAN SPEAK AT ALL. A spawned service inherits
++ * stderr from the application, and until one of these lines appears, silence from the worker is not
++ * evidence of anything.
++ *
++ * Empty means off: a gate written as getenv() != NULL treats a variable that is set but empty as on.
++ */
++static bool cider_trace_xpc(void) {
++	const char* value = getenv("CIDER_TRACE_XPC");
++
++	return value != NULL && value[0] != '\0';
++}
+ 
+ #define INFO_DICT_IDENTIFIER_KEY "CFBundleIdentifier"
+ #define INFO_DICT_PACKAGE_TYPE_KEY "CFBundlePackageType"
+@@ -111,6 +129,11 @@
+ 			xpc_abort("failed to determine main bundle identifier");
+ 		}
+ 
++		if (cider_trace_xpc()) {
++			fprintf(stderr, "CIDER_XPCMAIN pid=%d service=%s\n", (int)getpid(), identifier.CString);
++			fflush(stderr);
++		}
++
+ 		server = [[XPC_CLASS(connection) alloc] initAsServerForService: identifier.CString queue: NULL];
+ 		if (!server) {
+ 			xpc_abort("failed to create server connection");
+@@ -118,6 +141,12 @@
+ 
+ 		server.eventHandler = ^(xpc_object_t object) {
+ 			xpc_type_t type = xpc_get_type(object);
++			if (cider_trace_xpc()) {
++				fprintf(stderr, "CIDER_XPCSERVER pid=%d type=%s\n", (int)getpid(),
++					(type == (xpc_type_t)XPC_TYPE_CONNECTION) ? "connection"
++						: (type == (xpc_type_t)XPC_TYPE_ERROR) ? "error" : "other");
++				fflush(stderr);
++			}
+ 			if (type == (xpc_type_t)XPC_TYPE_CONNECTION) {
+ 				handler(XPC_CAST(connection, object));
+ 			} else if (type == (xpc_type_t)XPC_TYPE_ERROR) {

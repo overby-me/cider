@@ -1,0 +1,186 @@
+--- a/src/NSXPCConnection.m
++++ b/src/NSXPCConnection.m
+@@ -1,5 +1,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <stdbool.h>
++#include <unistd.h>
+ /*
+  This file is part of Darling.
+ 
+@@ -52,6 +54,33 @@
+     return logger;
+ };
+ 
++/*
++ * THE RECEIVING HALF, TRACED, because everything about the sending half already checks out.
++ *
++ * iTerm2 asks a bundled service to decode an inline image. The service is spawned, the lookup
++ * succeeds, the worker is alive, the request goes out with a valid reply block, and nothing ever
++ * comes back: no reply, no decode, no error, no invalidation. That is a question about what the far
++ * side does with the message rather than a question about images, and os_log_debug answers it to
++ * nobody, since nothing here is wired to show debug level logging.
++ *
++ * So the chain is traced at every point it could stop, and the points are named so the FIRST line
++ * that fails to appear is the answer:
++ *
++ *   CIDER_XPCMAIN     the service reached xpc_main and knows its own name;
++ *   CIDER_XPCSERVER   a connection object arrived at the server event handler;
++ *   CIDER_XPCPEER     a peer connection was built and the delegate was asked to accept it;
++ *   CIDER_XPCRECV     a message arrived on a connection, either side;
++ *   CIDER_XPCINVOKE   the message was decoded far enough to name a selector.
++ *
++ * NON EMPTY IS REQUIRED. A gate written as getenv() != NULL reads an env var that is SET BUT EMPTY
++ * as on, which has already cost a run here, so an empty value means off.
++ */
++static bool cider_trace_xpc(void) {
++    const char *value = getenv("CIDER_TRACE_XPC");
++
++    return value != NULL && value[0] != '\0';
++}
++
+ @implementation _NSXPCConnectionExportInfo
+ @synthesize exportedObject = _exportedObject;
+ @synthesize exportedInterface = _exportedInterface;
+@@ -215,6 +244,14 @@
+         xpc_type_t type = xpc_get_type(message);
+ 
+         os_log_debug(nsxpc_get_log(), "Received message from peer: %@", message);
++
++        if (cider_trace_xpc()) {
++            fprintf(stderr, "CIDER_XPCRECV pid=%d service=%s type=%s\n", (int) getpid(),
++                    [_serviceName UTF8String] ?: "(none)",
++                    (type == XPC_TYPE_DICTIONARY) ? "dictionary"
++                            : (type == XPC_TYPE_ERROR) ? "error" : "other");
++            fflush(stderr);
++        }
+ 
+         if (type == XPC_TYPE_DICTIONARY) {
+             NSXPCConnectionMessageOptions flags = xpc_dictionary_get_uint64(message, "f");
+@@ -610,7 +647,7 @@
+                      * not a block, and the nil check above cannot catch that. Say what the
+                      * signature claims and what was actually fetched, since a misread parameter
+                      * type turns an integer argument into a block. */
+-                    if (getenv("CIDER_TRACE_XPC") != NULL) {
++                    if (cider_trace_xpc()) {
+                         fprintf(stderr, "CIDER_XPCSEND sel=%s params=%lu idx=%lu type=%s block=%p frameLen=%lu\n",
+                                 sel_getName(selector), (unsigned long) parameterCount,
+                                 (unsigned long) (i + 2), paramType, (void *) block,
+@@ -799,6 +836,17 @@
+             xpc_type_t type = xpc_get_type(reply);
+ 
+             os_log_debug(nsxpc_get_log(), "recevied reply for sequence %lu with raw XPC content: %@", (unsigned long)sequence, reply);
++
++            /* A REPLY DOES NOT COME THROUGH THE EVENT HANDLER, which is why CIDER_XPCRECV is silent
++             * on the sending side even when everything works: this is send_message_with_reply, and
++             * the answer arrives here instead. Traced separately so that silence can be read. */
++            if (cider_trace_xpc()) {
++                fprintf(stderr, "CIDER_XPCREPLY pid=%d seq=%lu type=%s\n", (int) getpid(),
++                        (unsigned long) sequence,
++                        (type == XPC_TYPE_DICTIONARY) ? "dictionary"
++                                : (type == XPC_TYPE_ERROR) ? "error" : "other");
++                fflush(stderr);
++            }
+ 
+             // alright, we're done with this reply sequence
+             [_expectedReplies removeProgressSequence: sequence];
+@@ -923,6 +971,14 @@
+ 
+     os_log_debug(nsxpc_get_log(), "decoding and invoking message with flags %lu and raw XPC content %@", (unsigned long)flags, event);
+ 
++    if (cider_trace_xpc()) {
++        fprintf(stderr, "CIDER_XPCINVOKE pid=%d proxynum=%lu exported=%s interface=%s\n",
++                (int) getpid(), (unsigned long) proxyNumber,
++                exportedObject ? object_getClassName(exportedObject) : "(nil)",
++                interface ? "yes" : "(nil)");
++        fflush(stderr);
++    }
++
+     if (!exportedObject || !interface) {
+         // bad proxy number; invalidate this connection (the peer probably has outdated info)
+         os_log_fault(nsxpc_get_log(), "no exported interface or object was found for the given proxy number (%lu)", (unsigned long)proxyNumber);
+@@ -940,6 +996,12 @@
+                                interface: interface];
+ 
+     os_log_debug(nsxpc_get_log(), "decoded invocation %@ with signature %@ and selector %s", invocation, signature, sel_getName(selector));
++
++    if (cider_trace_xpc()) {
++        fprintf(stderr, "CIDER_XPCINVOKE pid=%d decoded sel=%s invocation=%p\n", (int) getpid(),
++                selector ? sel_getName(selector) : "(nil)", (void *) invocation);
++        fflush(stderr);
++    }
+ 
+     // if they expect a reply, there's more work
+     if (flags & NSXPCConnectionMessageOptionsExpectsReply) {
+@@ -1039,6 +1101,12 @@
+                                     [encoder release];
+                                 }
+ 
++                                if (cider_trace_xpc()) {
++                                    fprintf(stderr, "CIDER_XPCREPLYSEND pid=%d sel=%s\n",
++                                            (int) getpid(), sel_getName(selector));
++                                    fflush(stderr);
++                                }
++
+                                 xpc_connection_send_message(_xpcConnection, reply);
+                             }];
+                         }) autorelease];
+@@ -1097,6 +1165,33 @@
+ 
+     if (!invocation) {
+         [NSException raise: NSInvalidArgumentException format: @"Failed to decode incoming reply invocation"];
++    }
++
++    /* WHAT SURVIVED THE ROUND TRIP. The reply arriving proves only that a dictionary came back; it
++     * says nothing about whether the object inside it decoded into anything usable, which is
++     * exactly the difference between an image and a grey placeholder. */
++    if (cider_trace_xpc()) {
++        NSMethodSignature *replySignature = [invocation methodSignature];
++        NSUInteger count = [replySignature numberOfArguments];
++        NSUInteger index;
++
++        fprintf(stderr, "CIDER_XPCREPLYARGS pid=%d sel=%s args=%lu:", (int) getpid(),
++                sel_getName(replyInfo.selector), (unsigned long) count);
++        for (index = 1; index < count; index++) {
++            const char *type = [replySignature getArgumentTypeAtIndex: index];
++
++            if (type != NULL && type[0] == '@') {
++                id object = nil;
++
++                [invocation getArgument: &object atIndex: index];
++                fprintf(stderr, " [%lu]=%s", (unsigned long) index,
++                        object ? object_getClassName(object) : "(nil)");
++            } else {
++                fprintf(stderr, " [%lu]=%s", (unsigned long) index, type ? type : "?");
++            }
++        }
++        fprintf(stderr, "\n");
++        fflush(stderr);
+     }
+ 
+     invocation.target = replyInfo.replyBlock;
+@@ -1259,9 +1354,22 @@
+     NSXPCConnection* peer = [[NSXPCConnection alloc] _initWithPeerConnection: connection name: self->_serviceName options: 0];
+     id<NSXPCListenerDelegate> delegate = self.delegate;
+     BOOL acceptIt = NO;
+-    os_log_debug(nsxpc_get_log(), "received new peer connection from PID %u, EUID %u, EGID %u", peer.processIdentifier, peer.effectiveUserIdentifier, peer.effectiveGroupIdentifier);    if (delegate && [delegate respondsToSelector: @selector(listener:shouldAcceptNewConnection:)]) {
++    os_log_debug(nsxpc_get_log(), "received new peer connection from PID %u, EUID %u, EGID %u", peer.processIdentifier, peer.effectiveUserIdentifier, peer.effectiveGroupIdentifier);
++    if (cider_trace_xpc()) {
++        fprintf(stderr, "CIDER_XPCPEER pid=%d service=%s delegate=%s responds=%d\n", (int) getpid(),
++                [self->_serviceName UTF8String] ?: "(none)",
++                delegate ? object_getClassName(delegate) : "(nil)",
++                (int) [delegate respondsToSelector: @selector(listener:shouldAcceptNewConnection:)]);
++        fflush(stderr);
++    }
++    if (delegate && [delegate respondsToSelector: @selector(listener:shouldAcceptNewConnection:)]) {
+         acceptIt = [delegate listener: self shouldAcceptNewConnection: peer];
+-    }    if (!acceptIt) {
++    }
++    if (cider_trace_xpc()) {
++        fprintf(stderr, "CIDER_XPCPEER pid=%d accepted=%d\n", (int) getpid(), (int) acceptIt);
++        fflush(stderr);
++    }
++    if (!acceptIt) {
+         os_log_debug(nsxpc_get_log(), "delegate refused connection (or lacked the necessary method to make that decision); invalidating peer connection");
+         [peer invalidate];
+     }

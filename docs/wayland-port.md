@@ -6580,3 +6580,53 @@ the connection event handler. Traced properly, both halves are there:
 So the request is decoded by the worker, a reply is sent, and the application receives it. What is
 still unknown is what survives inside that reply: whether the iTermImage decodes back into an object
 with pixels in it.
+
+### The round trip is whole, and the application still does not draw the picture
+
+Following the image rather than the connection, in the order the bytes travel. Everything below is
+from traced runs, not from reading code.
+
+    worker   PNG decoder asked, imageRepsWithData frames=1 reps=1
+    worker   NSImage initWithData bytes=493 repClass=NSBitmapImageRep reps=1
+    worker   O2BitmapContextCreate 240x120 bpc=8 bpr=960 data=0x771bd1628000 info=0x1 -> ok
+    worker   CIDER_PAINT image 240x120 <- O2ContextDrawImage <- -[iTermImage dataForImage:]
+                                       <- -[iTermImage encodeWithCoder:] <- NSXPCEncoder
+    app      CIDER_XPCREPLYARGS sel=decodeImageFromData:withReply: args=2: [1]=iTermImage
+    app      initWithBitmapDataPlanes 240x120 bps=8 spp=4 alpha=1 planar=0 bpr=960 bpp=32 planes=0x0
+
+So the worker decodes the file, builds a bitmap context over the bytes of the NSMutableData that
+iTermImage hands it, DRAWS the image into that context while encoding the reply, and the application
+receives a reply whose argument decodes into a real iTermImage rather than nil. On the far side it
+builds a 240x120 32 bit rep with a NULL planes pointer, which is the ordinary way to make an empty
+rep and then copy pixels into bitmapData, and bitmapData here is implemented.
+
+WHAT IS STILL MISSING is the last step: the application never draws that image. Six image draws
+happen in the whole run and the 240x120 one is the WORKER encoding its reply. The others are a 12x12
+icon three times and the 32x32 alert icon twice, all in the application, which is what makes this
+readable at all: the instrument plainly works in that process and would have caught a 240x120 draw.
+
+AND A CORRECTION ABOUT HOW THAT WAS READ. An earlier pass concluded the application never draws any
+image. That was an artefact of the trace RECTANGLE, which was 60x30 and too small; widening it to
+300x200 produced the five application draws above. A rect filtered trace can only ever prove what it
+saw, so the rect belongs in the claim.
+
+### A run that produces no output at all is a startup fault, not a result
+
+Two of three consecutive runs ended with the application printing NOTHING, the harness log seven
+lines long, PROBE_EXIT=137 from the timeout kill, and captures that were uniformly black. The
+markers were present in the installed binaries and the following run of the SAME build worked, so
+this is the startup fault already recorded here rather than a broken change. Re-run before drawing
+anything from a silent log; a build that never reached the run has already been written into a
+commit message once as a fact.
+
+### The XPC chain instrument is now a patch rather than a local edit
+
+The five point trace lives in two MATERIALISED pins, foundation and libxpc, where an edit is
+invisible to nix and is lost the moment the tree is re-materialised. It is now captured as
+vendor/patches/foundation/0011 and vendor/patches/libxpc/0002.
+
+The pristine pin could not be refetched to diff against, since the manifest hash does not match a
+plain fetchFromGitHub, so the patches were built by reconstructing the pre-edit file from the added
+blocks. That would be worth nothing on trust, so the generator applies its own output to the
+reconstruction and fails unless the result is byte identical to the file on disk. Both passed, and
+buck-pin-patches-check.nu agrees each set reaches the pin it was written for.
