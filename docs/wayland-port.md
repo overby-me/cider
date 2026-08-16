@@ -5945,3 +5945,64 @@ CF-in-NS mixing where an object that is not really an object gets retained and r
 
 LibreOffice after the CoreText change: Writer draws its title bar, menu bar, both toolbar rows,
 ruler, page, sidebar and status bar, with zero raises and no not-an-object lines.
+
+## The font was not a font because a glyph had been written on top of it, and the terminal is
+## still black for a different reason
+
+2026-08-16, commits b723842f and bb80562e.
+
+THE ANSWER TO THE PREVIOUS SECTION. The attributes dictionary was innocent. A probe on our own
+objectForKeyedSubscript: printed on the happy path and never once on a bad value, which is what
+turned the question around: the value was not READ wrong, it was WRITTEN over afterwards.
+
+Two classes answer -getGlyphs:forCharacters:length: and they disagree about the width of what they
+write. KTFont writes CGGlyph, which is uint16_t. NSFont writes NSGlyph, which is NSUInteger, so
+eight bytes on this target. CTFontGetGlyphsForCharacters forwarded the caller buffer to whichever
+object it was handed, so an NSFont overran that buffer by a factor of four.
+
+iTerm2 does exactly that. It allocates the buffer with alloca immediately below its locals and takes
+the font straight out of its attributes dictionary, where it is an NSFont. The overrun runs up the
+stack and over the saved font pointer, two instructions after it is stored. The value that came back
+was 0x47, which is glyph index 71.
+
+The function now decides by the argument type encoding of the method it is about to send, and
+narrows through a bounce buffer when the receiver writes wide. NSControlGlyph, 0xFFFFFF, does not
+fit in a CGGlyph, so it answers 0, which is what CoreText answers for an unmappable character.
+
+HOW IT WAS FOUND, after three wrong guesses (the NSFont cache, convertFont:toHaveTrait:, and the
+dictionary literal, all of which were either correct already or a real but unrelated bug):
+
+  1. backtrace_symbols_fd inside the guard. It named the caller as iTerm2 rather than our own code,
+     which is what made the application binary the thing to read.
+  2. llvm-objdump on the x86_64 slice of the fat binary. The font arrives from a stack slot; the
+     slot is filled from objectForKeyedSubscript:; and alloca(length * 2) happens two instructions
+     later. That is the whole bug, visible in twenty instructions.
+  3. A probe on our side of the lookup, printing unconditionally for its first few calls so that
+     silence on the bad case could not be confused with the code not running.
+
+AND THE TERMINAL IS STILL BLACK, for a reason that was hiding behind the crash.
+CGContextShowGlyphsAtPositions was a STUB. iTerm2 called it 97 times in one launch: that is its
+whole fast text path. It is implemented now, transforming each position through the text matrix,
+whose translation is the current text position, and drawing through the same Onyx2D entry point
+KTFont drawGlyphs uses.
+
+That is not enough, and the following is measured rather than argued (CIDER_TRACE_GLYPHRUN):
+
+    each run reaches the FreeType rasteriser once per glyph
+    with a real O2Font_freetype and a real FT_Face, at pointSize 12
+    no glyph fails FT_Load_Glyph
+    every glyph blits UNCLIPPED, for example a 7x10 bitmap at 5,96 against a viewport 0,51 1265x669
+    CIDER_GLYPH_RED=1 repaints every glyph red and the screen does not change
+
+So the pixels are written into the window surface and are never seen. The next question is whether
+that surface is the one presented, or whether something repaints over it after the text.
+
+A TRAP WORTH THE PARAGRAPH. Every one of these traces is capped, and the menu bar draws first. It
+ate the whole budget three separate times, so the terminal looked untraced and the natural reading
+was that the code never ran. Compare the line number of the LAST trace line against the FIRST line
+of the thing being studied before believing any silence.
+
+Still open, both seen in the same runs: CTLineCreateWithAttributedString is a stub called 759 times,
+and +[QLPreviewPanel sharedPreviewPanelExists] is unrecognized, raising through
+wayland_appkit_lib::input::on_keyboard_enter, which is extern C and cannot unwind, so the process
+aborts on keyboard focus in about half of runs.
