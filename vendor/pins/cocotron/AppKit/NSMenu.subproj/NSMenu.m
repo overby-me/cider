@@ -20,6 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSEvent.h>
 #import <AppKit/NSMenu.h>
+#include <stdio.h>
+#include <stdlib.h>
 #import <AppKit/NSMenuItem.h>
 #import <AppKit/NSMenuView.h>
 #import <AppKit/NSMenuWindow.h>
@@ -517,11 +519,32 @@ BOOL itemIsEnabled(NSMenuItem *item) {
     if (_autoenablesItems)
         [self update];
 
+    /*
+     * CIDER_TRACE_KEYEQ names what a shortcut was matched against. A key equivalent that does
+     * nothing has four possible reasons and they are indistinguishable from outside: the menu is
+     * not reached at all, the item is not there, the modifiers do not match, or the item is there
+     * and disabled. This prints the event once per menu and then every item that carries a key.
+     */
+    BOOL trace = getenv("CIDER_TRACE_KEYEQ") != NULL;
+
+    if (trace) {
+        fprintf(stderr, "CIDER_KEYEQ menu=%s items=%ld chars=%s mods=%#x\n",
+                [[self title] UTF8String] ?: "(none)", (long) count,
+                [characters UTF8String] ?: "(none)", modifiers);
+    }
+
     for (i = 0; i < count; i++) {
         NSMenuItem *item = [_itemArray objectAtIndex: i];
         unsigned itemModifiers = [item keyEquivalentModifierMask] &
                                  (NSCommandKeyMask | NSAlternateKeyMask);
         NSString *key = [item keyEquivalent];
+
+        if (trace && [key length] > 0) {
+            fprintf(stderr, "CIDER_KEYEQ   item=%s key=%s mods=%#x enabled=%d action=%s\n",
+                    [[item title] UTF8String] ?: "(none)", [key UTF8String] ?: "(none)",
+                    itemModifiers, itemIsEnabled(item) ? 1 : 0,
+                    [item action] != NULL ? sel_getName([item action]) : "(none)");
+        }
 
         if ((modifiers & (NSCommandKeyMask | NSAlternateKeyMask)) ==
             itemModifiers) {

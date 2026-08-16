@@ -4527,3 +4527,61 @@ positions, 7 through 446. Nothing about spacing or item size changed, the row si
 the next step is on the LibreOffice side of the boundary: what does it ask us for between the second
 and third pass. The icons in the missing part are drawn and then dropped, which also means this is
 not a missing image or a failed reader.
+
+
+## Interactive, checked headlessly at last, and what it took to make a virtual keyboard tell the truth
+
+2026-08-16. Keyboard and mouse have been checked before in the nested harness, which borrows a real
+keyboard from the compositor it runs inside. This is the same check with NO real input device
+anywhere: headless sway, a virtual pointer and a virtual keyboard, run-lo-interact.sh.
+
+WHAT IT DOES AND WHAT CAME BACK, all of it looked at:
+
+    types two paragraphs        both appear, correct glyphs, correct wrap, second paragraph after
+                                a Return, and the status bar counts the words
+    double clicks a word        the word is selected, pale blue band with the text still black,
+                                and the status bar says Selected: 1 word, 6 characters
+                                docs/wayland-interact-word.png
+    Command A then Command B    the whole document is selected and then EMBOLDENED, which means the
+                                key equivalent found the menu item and LibreOffice acted on it
+                                docs/wayland-interact-bold.png
+    clicks the menu bar         the application menu opens with its shortcut glyphs, its separator,
+                                its submenu chevron and its shadow
+                                docs/wayland-interact-menu.png
+
+THE SHORTCUT PATH IS WHOLE, and it was worth proving because it has four places to fail silently.
+CIDER_TRACE_KEYEQ prints the event as NSApplication sees it, then every menu it walks and every item
+carrying a key equivalent with its modifiers and its enabled state. For Command B it prints
+
+    CIDER_KEYEQ sendEvent chars=b mods=0x100000 keyWindow=yes mainMenu=yes
+    CIDER_KEYEQ   item=Bold key=b mods=0x100000 enabled=1 action=menuItemTriggered:
+
+and then STOPS WALKING, which is how you know the item matched and the action was sent rather than
+falling through to the next menu. The whole chain is ours: xkb reports Mod4, the modifiers become
+NSCommandKeyMask, the key event carries them, NSApplication sends it to the main menu first, the
+menu matches on charactersIgnoringModifiers, and LibreOffice does the rest.
+
+FOUR HARNESS TRAPS, all of them capable of looking exactly like a broken keyboard.
+
+    ONE DEVICE FOR THE WHOLE TEST. wtype makes a virtual keyboard, does what its arguments say and
+    destroys it. A client is told a keyboard exists only when the device appears, and binding one,
+    receiving the keymap and being given focus is a round trip through the application main loop.
+    Seventy characters sent as four short invocations arrived as nine, and a Command B sent on its
+    own never arrived at all. Everything the keyboard does now goes in ONE invocation.
+
+    A KEEP ALIVE DEVICE IS WORSE THAN NONE. Holding a second keyboard open does keep the capability
+    up, but wl_keyboard is per SEAT: the keep alive modifiers event lands on the same seat and
+    clears the Command the other device is holding. Command F opened nothing while a shift was
+    being pressed every two seconds beside it.
+
+    -d IS THE DELAY BETWEEN KEYSTROKES AND -s IS A ONE SHOT SLEEP. Typing with -s 60 does not pace
+    anything, it sleeps once. The pauses that let the mouse steps run beside the keyboard script
+    are -s, and they are what makes one process able to drive both.
+
+    THE POINTER MUST OUTLIVE THE GESTURE, which vptr/cider-vptr already existed for. A click sent
+    through wlrctl or sway IPC creates a device that is gone before the application has bound a
+    wl_pointer to it.
+
+WHAT IS NOT PROVEN HERE. Command F was sent in an earlier pass and the find bar was not in the shot,
+but the shot and the Escape that closes it were half a second apart, so that is a harness timing
+question and not a finding. Drag and drop is still untested.

@@ -829,6 +829,12 @@ static void cider_ensure_finish_launching(NSApplication *self)
     if ([event type] == NSKeyDown) {
         unsigned modifierFlags = [event modifierFlags];
 
+        if (getenv("CIDER_TRACE_KEYEQ") != NULL) {
+            fprintf(stderr, "CIDER_KEYEQ sendEvent chars=%s mods=%#x keyWindow=%s mainMenu=%s\n",
+                    [[event charactersIgnoringModifiers] UTF8String] ?: "(none)", modifierFlags,
+                    [self keyWindow] != nil ? "yes" : "no",
+                    [self mainMenu] != nil ? "yes" : "no");
+        }
         if (modifierFlags & (NSCommandKeyMask | NSAlternateKeyMask))
             if ([self _performKeyEquivalent: event])
                 return;
