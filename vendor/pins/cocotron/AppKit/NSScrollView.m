@@ -688,8 +688,19 @@ static Class _rulerViewClass = nil;
     [self tile];
 }
 
+/*
+ * THE CONTENT VIEW HAS TO BE TOLD, and not telling it is why the iTerm2 terminal was black.
+ *
+ * macOS documents this: turning a scroll view background off turns its content view background off
+ * as well. Here only the scroll view remembered, and NSClipView keeps its own flag, which defaults
+ * to YES. So a terminal that asks for no background got one anyway: -[NSClipView drawRect:] filled
+ * the whole document area with opaque black AFTER the text view had drawn into it, and the last
+ * write wins. Every earlier instrument agreed the glyphs were rasterised, positioned and blended
+ * into the right surface, because they were. They were then painted over.
+ */
 - (void) setDrawsBackground: (BOOL) value {
     _drawsBackground = value;
+    [_clipView setDrawsBackground: value];
     if (!_drawsBackground)
         [_clipView setCopiesOnScroll: NO];
 }

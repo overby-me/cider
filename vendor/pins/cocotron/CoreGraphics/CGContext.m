@@ -663,7 +663,12 @@ static BOOL ciderGlyphEnv(const char *name)
         static int red = -1;
 
         if (red < 0) {
-            red = (getenv("CIDER_GLYPH_RED") != NULL) ? 1 : 0;
+            const char *value = getenv("CIDER_GLYPH_RED");
+
+            /* A harness that forwards every switch writes VAR= for the unset ones, and getenv answers
+             * an EMPTY STRING for that, which is not NULL. Treating it as on painted every glyph
+             * red in a run nobody asked to be red, and the screenshot read as a colour bug. */
+            red = (value != NULL && value[0] != '\0') ? 1 : 0;
         }
         return red ? YES : NO;
     }
@@ -671,7 +676,9 @@ static BOOL ciderGlyphEnv(const char *name)
         static int run = -1;
 
         if (run < 0) {
-            run = (getenv("CIDER_TRACE_GLYPHRUN") != NULL) ? 1 : 0;
+            const char *value = getenv("CIDER_TRACE_GLYPHRUN");
+
+            run = (value != NULL && value[0] != '\0') ? 1 : 0;
         }
         return run ? YES : NO;
     }

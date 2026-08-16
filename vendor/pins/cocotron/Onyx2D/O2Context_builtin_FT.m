@@ -103,7 +103,10 @@ static BOOL ciderTraceGlyphRun(void)
     static int cached = -1;
 
     if (cached < 0) {
-        cached = (getenv("CIDER_TRACE_GLYPHRUN") != NULL) ? 1 : 0;
+        const char *value = getenv("CIDER_TRACE_GLYPHRUN");
+
+        /* Empty is OFF: a harness forwarding unset switches writes VAR= and getenv answers "". */
+        cached = (value != NULL && value[0] != '\0') ? 1 : 0;
     }
     return cached ? YES : NO;
 }
