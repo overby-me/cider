@@ -198,6 +198,28 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
             dst += chunk;
         }
     }
+
+    /* READ THE PIXEL BACK. Everything above says the glyph was submitted; this says whether it
+     * landed. A blit that is unclipped, unskipped and still invisible is either going to a surface
+     * nobody presents or being painted over, and those two are told apart by looking again later,
+     * not by looking harder here. */
+    if (ciderTraceGlyphRun()) {
+        static int printedBack;
+
+        if (printedBack < 200) {
+            O2argb8u probe[1];
+            O2argb8u *got = surface->_read_argb8u(surface, minX, minY, probe, 1);
+
+            printedBack++;
+            fprintf(stderr, "CIDER_GLYPHBACK at=%ld,%ld direct=%s rgba=%u,%u,%u,%u\n",
+                    (long) minX, (long) minY, got ? "yes" : "no",
+                    (unsigned) (got ? got[0].r : probe[0].r),
+                    (unsigned) (got ? got[0].g : probe[0].g),
+                    (unsigned) (got ? got[0].b : probe[0].b),
+                    (unsigned) (got ? got[0].a : probe[0].a));
+            fflush(stderr);
+        }
+    }
 }
 
 - (void) showGlyphs: (const O2Glyph *) glyphs

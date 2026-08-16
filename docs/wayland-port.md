@@ -6006,3 +6006,23 @@ Still open, both seen in the same runs: CTLineCreateWithAttributedString is a st
 and +[QLPreviewPanel sharedPreviewPanelExists] is unrecognized, raising through
 wayland_appkit_lib::input::on_keyboard_enter, which is extern C and cannot unwind, so the process
 aborts on keyboard focus in about half of runs.
+
+### The buffer has the text in it
+
+Same day, and it took one more instrument: read the pixel back out of the surface immediately after
+the blit (CIDER_GLYPHBACK, added alongside the traces above).
+
+With CIDER_GLYPH_RED=1 the surface holds bright red glyph pixels: rgba 219,0,0,219 and 223,0,0,223,
+96 and 93 samples of each, which is red at 86 percent coverage. The screen at those coordinates is
+pure black. So the write is not the problem and neither is the colour.
+
+The detail that says where to go next is the ALPHA. On every sample the alpha equals the red
+channel. These are premultiplied, so that only happens when the DESTINATION WAS FULLY TRANSPARENT
+before the glyph was blended onto it. iTerm2 fills its terminal background opaque black before it
+draws any text. That fill is not in this buffer.
+
+So the black rectangle on screen is not this surface at all, and the drawing is going somewhere that
+is never presented. Look for where the view backing store and the committed wl_buffer diverge: a
+resize that allocates a new surface while drawing still holds the old one, or a back buffer that is
+never swapped. CIDER_WAYLAND_DUMP writes no files even with the variable passed through the harness,
+which is consistent with the same split and is the cheapest thing to check first.
