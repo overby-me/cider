@@ -6118,3 +6118,38 @@ on it.
 
 Still untested for iTerm2: mouse and menus, and resize. auditon, syscall 351, is still
 unimplemented and prints one line into the scrollback per session.
+
+### The three criteria, re-verified after the AppKit changes
+
+2026-08-16. The clip view, scroll view and sheet changes of the last few days all touch drawing and
+window behaviour that LibreOffice leans on, and the criteria had only been checked for RENDERING
+since. All three were re-run and every claim below is something that was LOOKED AT.
+
+RENDERS CORRECTLY. The tall Writer render is unchanged through every change in this series: title
+bar, menu bar, both toolbar rows, ruler, page with its text, sidebar, status bar.
+
+INTERACTIVE, and this is the one with new evidence:
+
+  - Clicking Format in the menu bar OPENS THE MENU. The dropdown draws its separators, its submenu
+    arrows, its keyboard shortcuts and its disabled items in grey.
+  - Dragging across text SELECTS IT. The selection is drawn and the status bar reads
+    Selected: 7 words, 38 characters.
+  - Clicking in the body and typing INSERTS CHARACTERS. BBB appears at the caret and the count goes
+    from 47 to 50 characters, with undo becoming available.
+
+  ONE APPARENT BUG WAS NOT ONE. Typing straight after Escape goes to the MENU BAR rather than the
+  document, and the letters navigate menus. That looks wrong and is not: CIDER_TRACE_MENU shows a
+  SINGLE tracking session for the whole sequence, because Escape with a submenu open pops back to
+  the menu bar rather than exiting, which is what macOS does. A second Escape leaves. The instrument
+  is what stopped a correct behaviour from being changed.
+
+RESIZABLE. The output resolution was changed under a running Writer, twice:
+
+  1256x684 to 1600x1000: the window fills the larger output, the toolbars span it, the ruler
+  extends, and the page recentres.
+  1600x1000 to 1000x620: the window shrinks and the toolbars grow OVERFLOW CHEVRONS at both rows,
+  which is LibreOffice genuinely relaying out rather than being scaled or clipped.
+
+TWO CLAIMS IN THE LOOP PROMPT ARE STALE and this contradicts them with evidence: wl_seat is bound
+and input works, and resize is delivered and acted on. STATUS has said the three criteria are a
+floor rather than the goal for some time; this is the check behind that.
