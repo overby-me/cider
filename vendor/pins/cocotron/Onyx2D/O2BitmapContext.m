@@ -193,6 +193,11 @@ O2BitmapInfo O2BitmapContextGetBitmapInfo(O2ContextRef selfX) {
 O2ImageRef O2BitmapContextCreateImage(O2ContextRef selfX) {
     O2BitmapContextRef self = (O2BitmapContextRef) selfX;
 
+    /* Same rule as O2SurfaceCreateImage: a null context is answered, not dereferenced. */
+    if (self == NULL) {
+        return NULL;
+    }
+
     return O2SurfaceCreateImage(self->_surface);
 }
 

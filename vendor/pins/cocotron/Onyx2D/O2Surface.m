@@ -760,6 +760,24 @@ size_t O2SurfaceGetBytesPerRow(O2Surface *surface) {
 }
 
 O2ImageRef O2SurfaceCreateImage(O2Surface *self) {
+    /*
+     * A CORE GRAPHICS FUNCTION ANSWERS NULL FOR A NULL ARGUMENT, it does not fault.
+     *
+     * On macOS every CG entry point checks: it writes something like invalid context 0x0 to the log
+     * and returns NULL, so a caller whose earlier CGBitmapContextCreate failed limps rather than
+     * dies. This one dereferenced immediately, and LibreOffice dies on it during the graphics work
+     * it does once per profile, which is why its FIRST run against a new profile ended with
+     * Unspecified Application Error and no windows at all.
+     *
+     *     tid 3  Onyx2D+0x42634  O2SurfaceCreateImage (+36)
+     *
+     * The surface is null there because the context it belongs to has none, which is a real
+     * failure earlier; answering NULL reports it the way the caller expects to hear it.
+     */
+    if (self == NULL) {
+        return NULL;
+    }
+
     NSData *data =
             [[NSData alloc] initWithBytes: self->_pixelBytes
                                    length: self->_bytesPerRow * self->_height];
