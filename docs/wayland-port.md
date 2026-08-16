@@ -6343,3 +6343,43 @@ read only, so the change is vendor/patches/bash rather than an edit.
 imgcat runs with no error and draws no image. The badge is accepted, measured without crashing, and
 not drawn. So iTerm2 inline drawing needs something beyond text measurement, and that is the next
 rung rather than a claim of success.
+
+### imgcat: what was in the way, and what is actually broken
+
+Three things stood between imgcat and a picture, and only the third is ours to fix.
+
+FIRST, there was no base64 (fixed, see above). SECOND, a permission dialog. iTerm2 asks
+"Allow Terminal-Initiated Display?", naming the file and its size, with No and a default Yes, and it
+WAITS. Six frames captured six seconds apart are byte identical while it is up. That dialog is why
+nothing appeared, and it is not a bug: it is the feature working.
+
+The dialog itself is drawn correctly, which is worth stating as a positive result for the alert
+path: warning triangle, title, body naming imgtest.png and its 699 bytes, No and a highlighted Yes.
+Clicking Yes dismisses it, so alert buttons respond to a real pointer click.
+
+THIRD, AND THIS IS THE REAL GAP: with the dialog answered, NO IMAGE IS DRAWN. The cursor moves to
+the next line and the terminal is unchanged. So iTerm2 inline image display does not work here, and
+that is a rendering gap rather than a missing dependency or a prompt.
+
+Honest limit on that last claim: both buttons dismiss the dialog, and while the click was aimed at
+the Yes position measured off a full frame, this run cannot by itself prove it did not hit No.
+
+TWO WAYS THIS INVESTIGATION WENT WRONG, both worth not repeating.
+
+Reading a CROP instead of the frame. The conclusion "no dialog and no image" came from a crop whose
+bottom edge stopped about thirty pixels above the dialog. LOOK AT THE WHOLE WINDOW.
+
+Presetting the preference does not work. iTerm2 REWRITES com.googlecode.iterm2.plist when it exits,
+so a hand added AlwaysAllowTerminalInitiatedDisplay, or the NoSync spelling, is gone by the next
+run and the dialog comes back.
+
+### Stale containers make a run render nothing
+
+Several runs produced completely black frames with no crash and no error. The cause was accumulated
+state: dozens of leftover launchd, securityd and iTermServer processes from earlier runs of the same
+prefix, plus a stale nested compositor socket. A new iTerm2 attaches to the OLD session, whose
+windows belong to a compositor that is gone, so the new screenshot is black.
+
+Before believing a black frame, list what is still running for that prefix and clear it. And note
+the trap when doing so: pgrep matches YOUR OWN command line if it contains the prefix name, so a
+kill loop over its output kills the shell running it.
