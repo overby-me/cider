@@ -5857,3 +5857,49 @@ necessary rather than as a fix.
 
 LibreOffice after the launcher change: Writer draws its title bar, menu bar, both toolbar rows,
 ruler, page, sidebar and status bar, with zero raises.
+
+
+## Launchd works: the blocker was one missing directory, and a prefix that could never gain it
+
+2026-08-16. launchd comes up as the container init now, and the chain that got there is worth
+keeping because every step of it was measured and two of my earlier readings were wrong.
+
+WHAT IT ACTUALLY WAS. A trace of the syscalls rather than the logs:
+
+    mkdirat(AT_FDCWD, "<prefix>/var/tmp/launchd", 0700) = -1 ENOENT
+
+launchd as PID 1 puts its client socket in _PATH_VARTMP/launchd/sock. mkdir does not create
+parents, <prefix>/var/tmp did not exist, so ipc_server_init gave up, job_mig_getsocket answered
+BOOTSTRAP_NO_MEMORY, and launchctl reported the ENOTCONN that reads as "Socket is not connected".
+
+TWO WRONG READINGS ALONG THE WAY, both corrected by measuring:
+  the -111 ECONNREFUSED lines were teardown, thirty nine seconds after the failure;
+  "the MIG message never reached launchd" was wrong too. Instrumenting _vprocmgr_getsocket showed
+    bootstrap_port=0x507 kr=0x451, and 0x451 is 1105, which is BOOTSTRAP_NO_MEMORY: the message got
+    through, launchd ran ipc_server_init, and IT is what failed.
+
+AND THE REASON THE DIRECTORY COULD NOT COME BACK: setup_prefix runs only when a prefix is first
+created, so a prefix made by an older build never gains a directory the runtime later needs. The
+directory list is idempotent now and runs on every launch. Verified by deleting <prefix>/var/tmp,
+running again, and watching the launcher recreate it and launchd create its socket inside it.
+
+WHAT THAT UNBLOCKS, and this is the part that matters: with launchd as init there IS a bootstrap
+port, and iTerm2 gets much further. It now reaches
+
+    -[iTermTextDrawingHelper constructAndDrawRunsForLine:...]
+    -[iTermTextDrawingHelper drawFastPathString...]
+    -[iTermTextDrawingHelper selectFont:inContext:]
+    CTFontCopyGraphicsFont
+
+which is the terminal DRAWING ITS LINES. It crashes there in objc_msgSend with a receiver of 0x18,
+so the font it hands over is not an object. Two lines earlier in the same log:
+
+    convertFont:toHaveTrait: failed, Monaco 1
+    convertFont:toHaveTrait: failed, Helvetica 2
+
+which is our own AppKit saying it could not apply a trait. That is the next rung, and it is a small
+one: -[NSFontManager convertFont:toHaveTrait:] must answer the original font when it cannot apply
+the trait, which is what macOS does, rather than something the caller then draws with.
+
+LibreOffice after the launcher change: Writer draws its title bar, menu bar, both toolbar rows,
+ruler, page, sidebar and status bar, with zero raises.

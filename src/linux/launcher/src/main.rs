@@ -104,6 +104,9 @@ fn main() {
     if !check_prefix_dir(&ctx.prefix) {
         setup_prefix(&ctx);
         ctx.fix_permissions = true;
+    } else {
+        // An existing prefix may predate a directory the runtime now needs; see ensure_prefix_dirs.
+        ensure_prefix_dirs(&ctx);
     }
     check_prefix_owner(&ctx);
 
@@ -295,11 +298,17 @@ fn create_dir(path: &str) {
     die(&format!("Cannot stat {path}"));
 }
 
-fn setup_prefix(ctx: &Ctx) {
-    unsafe {
-        libc::seteuid(ctx.orig_uid);
-        libc::setegid(ctx.orig_gid);
-    }
+/// The directories the runtime needs, made on EVERY launch rather than only at creation.
+///
+/// setup_prefix runs once, when a prefix is first made, so a prefix created by an older build never
+/// gains a directory added later. That is not theoretical: a prefix here was missing /var/tmp, and
+/// launchd puts its client socket in /var/tmp/launchd, so mkdir failed with ENOENT, ipc_server_init
+/// gave up, job_mig_getsocket answered BOOTSTRAP_NO_MEMORY, and every launchctl reported
+/// "launch_msg(): Socket is not connected". The container never came up, and nothing said why.
+///
+/// Making the list idempotent costs a handful of stat calls per launch and repairs such a prefix
+/// in place.
+fn ensure_prefix_dirs(ctx: &Ctx) {
     create_dir(&ctx.prefix);
     for d in [
         "/Volumes",
@@ -329,6 +338,14 @@ fn setup_prefix(ctx: &Ctx) {
     ] {
         create_dir(&format!("{}{}", ctx.prefix, d));
     }
+}
+
+fn setup_prefix(ctx: &Ctx) {
+    unsafe {
+        libc::seteuid(ctx.orig_uid);
+        libc::setegid(ctx.orig_gid);
+    }
+    ensure_prefix_dirs(ctx);
     let (name, uid, gid) = get_user_info(ctx.orig_uid);
     write_prefix_file(
         ctx,
