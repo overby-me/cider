@@ -648,15 +648,45 @@ static NSDictionary *cider_key_symbol_attributes(void) {
     else
         color = [NSColor disabledControlTextColor];
 
-    checkMark = [[NSInterfacePartAttributedString alloc]
-            initWithCharacter: 0x61
-                     fontName: @"Marlett"
-                    pointSize: 10
-                        color: color];
-    rect.origin.x += margins.left;
-    rect.origin.y += margins.top;
+    /*
+     * A STROKED CHECK, NOT THE LETTER a.
+     *
+     * This drew character 0x61 from MARLETT, the Windows interface font, in which 0x61 is a check
+     * mark. Marlett is not on this system and nothing substitutes for it, so every ticked menu item
+     * had a lower case a in its gutter: View showed one beside Formatting Marks, Boundaries, Images
+     * and Charts, Whitespace, Field Shadings and Sidebar, which is how this was found.
+     *
+     * Two strokes, the same weight and colour as the text beside them, in the same style as the
+     * submenu chevron. THE VERTICAL DIRECTION IS ASKED FOR rather than assumed: a menu view is
+     * FLIPPED, so the point of the check is at the LARGER y there and at the smaller y everywhere
+     * else, and getting that wrong draws a tick standing on its head.
+     */
+    CGContextRef context = [[NSGraphicsContext currentContext] graphicsPort];
+    NSRect box = rect;
 
-    [checkMark drawAtPoint: rect.origin];
+    box.origin.x += margins.left;
+    box.origin.y += margins.top;
+    box.size.width -= (margins.left + margins.right);
+    box.size.height -= (margins.top + margins.bottom);
+
+    CGFloat w = box.size.width;
+    CGFloat h = box.size.height;
+    BOOL flipped = [_view isFlipped];
+    CGFloat top = flipped ? NSMinY(box) : NSMaxY(box);
+    CGFloat bottom = flipped ? NSMaxY(box) : NSMinY(box);
+    CGFloat rise = (top - bottom);
+
+    [color set];
+    CGContextSetLineWidth(context, 1.6);
+    CGContextSetLineCap(context, kCGLineCapRound);
+    CGContextSetLineJoin(context, kCGLineJoinRound);
+    CGContextBeginPath(context);
+    CGContextMoveToPoint(context, NSMinX(box) + w * 0.10, bottom + rise * 0.52);
+    CGContextAddLineToPoint(context, NSMinX(box) + w * 0.38, bottom + rise * 0.20);
+    CGContextAddLineToPoint(context, NSMinX(box) + w * 0.92, bottom + rise * 0.82);
+    CGContextStrokePath(context);
+
+    (void) checkMark;
 }
 
 - (void) drawMenuBranchArrowInRect: (NSRect) rect
