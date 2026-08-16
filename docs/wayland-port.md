@@ -5437,3 +5437,46 @@ WHERE IT IS NOW: the application runs. It creates its window, lays out its tab b
 session, and exits with status 1 during the first display updates, with no exception and no fault.
 The next rung is that exit: the likely candidate is the PTY and the shell behind the session.
 Still NO WINDOW ON SCREEN.
+
+
+## A method with no return statement, and the helper that took the application with it
+
+2026-08-16, night. Two findings, and the second one changes what "the application exits" means here.
+
+A METHOD THAT RETURNS NOTHING IS NOT A STUB. +[NSScrollView
+contentSizeForFrameSize:horizontalScrollerClass:verticalScrollerClass:borderType:controlSize:scrollerStyle:]
+had a body of one line, NSUnimplementedMethod(), and NO RETURN STATEMENT. That macro only logs, so
+the caller read whatever was in the return registers and used it as a size. iTerm2 divides it by
+its character cell to choose how many columns its first session gets, which is how a terminal came
+to say
+
+    WARNING: Session has -1 width
+
+and give up before showing a window. Both the content and frame directions are implemented now,
+with the two rules the modern signature carries: a NIL scroller class means no scroller, and an
+OVERLAY scroller floats above the content and takes no space.
+
+A SWEEP FOR THE SAME SHAPE found twelve methods across cocotron whose body is an unimplemented
+raise with no return and a non void return type. Nine of them raise (NSInvalidAbstractInvocation
+does not return, so those are fine). THREE ARE THE REAL THING, and one was on this path:
++[NSScroller preferredScrollerStyle], which decides whether a scroller takes space at all;
+-[NSWorkspace isFilePackageAtPath:], now a real answer from the standard package extensions; and
+-[NSPersistentStore loadMetadata:].
+
+THE APPLICATION WAS NOT THE ONE THAT DIED. With SIGABRT added to the crash handler and a core dump
+read, the abort turned out to be in a DIFFERENT PROCESS: iTermServer, the helper iTerm2 spawns to
+own its pty. It aborted inside mldr in ec_dlopen_fatal, and the guest signal emulation turned that
+into kill(0, SIGABRT), which killed the whole process group, application included. From the outside
+that looks exactly like the application quietly exiting with status 1.
+
+The fatal elfcalls now SAY WHAT FAILED before aborting, straight to fd 2 with write, since they run
+on the elfcall path where the guest arrives on a misaligned stack and Rust formatting machinery
+cannot be used. Two lines of output would have replaced a core dump.
+
+WHERE IT IS NOW: the session width warning is gone. The application still ends during its first
+display updates, and the last thing on the wire in the newest runs is duct-tape reporting
+
+    [xnu_sys] Trying to lock mutex without an active thread!
+
+repeatedly, which is what a thread that duct-tape does not know about looks like: the shape of a
+process that has forked. That is the next rung. Still NO WINDOW ON SCREEN.

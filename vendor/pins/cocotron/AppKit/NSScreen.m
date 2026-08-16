@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSDisplay.h>
 #import <AppKit/NSScreen.h>
+#include <stdio.h>
+#include <stdlib.h>
 #import <AppKit/NSWindow.h>
 
 NSNotificationName const NSScreenColorSpaceDidChangeNotification = @"NSScreenColorSpaceDidChangeNotification";
@@ -75,6 +77,23 @@ NSNotificationName const NSScreenColorSpaceDidChangeNotification = @"NSScreenCol
 }
 
 - (NSRect) visibleFrame {
+    /* WHAT A WINDOW IS SIZED AGAINST. An application that computes its first window from the
+     * visible frame gets whatever this says, and a zero here is a window with no content area,
+     * which is how a terminal ends up reporting a width of minus one. */
+    /* NON EMPTY, not merely set: a harness that forwards CIDER_TRACE_SCREEN=${CIDER_TRACE_SCREEN:-}
+     * passes an EMPTY STRING when it is unset, and getenv answers "" for that, which is not NULL. */
+    const char *trace = getenv("CIDER_TRACE_SCREEN");
+    if (trace != NULL && *trace != '\0') {
+        static int spoken = 0;
+        if (spoken < 4) {
+            spoken++;
+            fprintf(stderr, "CIDER_SCREEN frame=%gx%g+%g+%g visible=%gx%g+%g+%g\n",
+                    _frame.size.width, _frame.size.height, _frame.origin.x, _frame.origin.y,
+                    _visibleFrame.size.width, _visibleFrame.size.height, _visibleFrame.origin.x,
+                    _visibleFrame.origin.y);
+            fflush(stderr);
+        }
+    }
     return _visibleFrame;
 }
 

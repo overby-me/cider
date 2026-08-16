@@ -155,6 +155,10 @@ __attribute__((constructor)) static void cider_crashtrace_install(void)
 	sigaction(SIGILL, &sa, &cider_previous[SIGILL]);
 	sigaction(SIGFPE, &sa, &cider_previous[SIGFPE]);
 	sigaction(SIGTRAP, &sa, &cider_previous[SIGTRAP]);
+	/* ABORT TOO, because an application that calls abort leaves exactly the same trace as one that
+	 * was killed from outside: no message, no exception, and a shell status that says nothing about
+	 * which of the two it was. The frames say it in one line. */
+	sigaction(SIGABRT, &sa, &cider_previous[SIGABRT]);
 
 	char me[4096];
 	uint32_t mysize = sizeof me;

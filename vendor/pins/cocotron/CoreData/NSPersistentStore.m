@@ -104,7 +104,14 @@
 }
 
 - (BOOL) loadMetadata: (NSError **) error {
+    /* NO, WITH NO ERROR, which is the answer a store that keeps no metadata gives. It had no
+     * return statement, so callers took a register as the result and some of them believed it. */
     NSUnimplementedMethod();
+
+    if (error != NULL) {
+        *error = nil;
+    }
+    return NO;
 }
 
 - (void) willRemoveFromPersistentStoreCoordinator:

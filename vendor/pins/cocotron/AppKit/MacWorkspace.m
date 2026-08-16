@@ -195,7 +195,25 @@
 }
 
 - (BOOL) isFilePackageAtPath: (NSString *) path {
-    NSUnimplementedMethod();
+    /* A PACKAGE IS A DIRECTORY THE USER SHOULD SEE AS ONE FILE, which is decided by its extension.
+     * This is the short list every Cocoa application relies on; the alternative was no return
+     * statement at all, so the caller read a random byte as a BOOL. */
+    static NSArray *packageExtensions = nil;
+    BOOL isDirectory = NO;
+
+    if (![[NSFileManager defaultManager] fileExistsAtPath: path isDirectory: &isDirectory] ||
+        !isDirectory) {
+        return NO;
+    }
+
+    if (packageExtensions == nil) {
+        packageExtensions = [[NSArray alloc]
+                initWithObjects: @"app", @"bundle", @"framework", @"plugin", @"kext", @"prefPane",
+                                 @"rtfd", @"pkg", @"mpkg", @"component", @"qlgenerator",
+                                 @"saver", @"scptd", @"wdgt", @"xpc", nil];
+    }
+
+    return [packageExtensions containsObject: [[path pathExtension] lowercaseString]];
 }
 
 - (NSString *) absolutePathForAppBundleWithIdentifier: (NSString *) identifier {

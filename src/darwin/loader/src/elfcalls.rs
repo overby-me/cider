@@ -67,24 +67,64 @@ extern "C" fn ec_dlsym(l: *mut c_void, n: *const c_char) -> *mut c_void {
 extern "C" fn ec_dlerror() -> *mut c_char {
     unsafe { libc::dlerror() }
 }
+/// Say what went wrong before aborting, straight to fd 2.
+///
+/// A FATAL ELFCALL THAT SAYS NOTHING is indistinguishable from a process that was killed: no
+/// message, no exception, and a status the shell reports as a plain failure. iTerm2 spawns a
+/// helper to own its pty, the helper aborted here, the abort took the whole process group with it,
+/// and the application looked like it had quietly exited. Finding that took a core dump; the two
+/// lines below would have said it outright.
+///
+/// WRITE, NOT format!, and no Rust formatting machinery of any kind: this runs on the ELFCALL
+/// path, where the guest calls in on an eight byte misaligned stack, and anything that touches a
+/// wide register there faults on the instruction rather than the argument.
+unsafe fn say_bytes(bytes: &[u8]) {
+    libc::write(2, bytes.as_ptr() as *const c_void, bytes.len());
+}
+
+unsafe fn say_cstr(p: *const c_char) {
+    if !p.is_null() {
+        libc::write(2, p as *const c_void, libc::strlen(p));
+    }
+}
+
 extern "C" fn ec_dlopen_fatal(n: *const c_char) -> *mut c_void {
     let h = unsafe { libc::dlopen(n, libc::RTLD_LAZY) };
     if h.is_null() {
-        unsafe { libc::abort() }
+        unsafe {
+            say_bytes(b"cider mldr: FATAL dlopen failed: ");
+            say_cstr(n);
+            say_bytes(b": ");
+            say_cstr(libc::dlerror());
+            say_bytes(b"\n");
+            libc::abort()
+        }
     }
     h
 }
 extern "C" fn ec_dlclose_fatal(l: *mut c_void) -> c_int {
     let r = unsafe { libc::dlclose(l) };
     if r != 0 {
-        unsafe { libc::abort() }
+        unsafe {
+            say_bytes(b"cider mldr: FATAL dlclose failed: ");
+            say_cstr(libc::dlerror());
+            say_bytes(b"\n");
+            libc::abort()
+        }
     }
     r
 }
 extern "C" fn ec_dlsym_fatal(l: *mut c_void, n: *const c_char) -> *mut c_void {
     let s = unsafe { libc::dlsym(l, n) };
     if s.is_null() {
-        unsafe { libc::abort() }
+        unsafe {
+            say_bytes(b"cider mldr: FATAL dlsym failed: ");
+            say_cstr(n);
+            say_bytes(b": ");
+            say_cstr(libc::dlerror());
+            say_bytes(b"\n");
+            libc::abort()
+        }
     }
     s
 }

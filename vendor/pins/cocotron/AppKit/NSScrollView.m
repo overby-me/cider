@@ -86,6 +86,10 @@ static Class _rulerViewClass = nil;
     return contentSize;
 }
 
+/* THE MODERN PAIR, 10.7 and later, and the only ones anything current calls. A NIL scroller class
+ * means there is no scroller of that orientation, and an OVERLAY scroller floats above the content
+ * and takes no space at all, so neither of those may be charged for. The old spelling below asked
+ * for both scrollers unconditionally, which was wrong in the same direction every time. */
 + (NSSize) frameSizeForContentSize: (NSSize) cSize
            horizontalScrollerClass: (Class) horizontalScrollerClass
              verticalScrollerClass: (Class) verticalScrollerClass
@@ -93,10 +97,11 @@ static Class _rulerViewClass = nil;
                        controlSize: (NSControlSize) controlSize
                      scrollerStyle: (NSScrollerStyle) scrollerStyle
 {
-    NSUnimplementedMethod();
+    BOOL takesSpace = (scrollerStyle != NSScrollerStyleOverlay);
+
     return [self frameSizeForContentSize: cSize
-                   hasHorizontalScroller: YES
-                     hasVerticalScroller: YES
+                   hasHorizontalScroller: (takesSpace && horizontalScrollerClass != Nil)
+                     hasVerticalScroller: (takesSpace && verticalScrollerClass != Nil)
                               borderType: type];
 }
 
@@ -134,6 +139,14 @@ static Class _rulerViewClass = nil;
     return frameSize;
 }
 
+/* THIS ONE RETURNED NOTHING AT ALL, and that is not a stub, it is undefined behaviour: the caller
+ * reads whatever happened to be in the return registers and treats it as a size. iTerm2 divides
+ * that by its character cell to choose how many columns its first session has, which is how a
+ * terminal came to report
+ *
+ *     WARNING: Session has -1 width
+ *
+ * and give up before showing a window. */
 + (NSSize) contentSizeForFrameSize: (NSSize) fSize
            horizontalScrollerClass: (Class) horizontalScrollerClass
              verticalScrollerClass: (Class) verticalScrollerClass
@@ -141,7 +154,12 @@ static Class _rulerViewClass = nil;
                        controlSize: (NSControlSize) controlSize
                      scrollerStyle: (NSScrollerStyle) scrollerStyle
 {
-    NSUnimplementedMethod();
+    BOOL takesSpace = (scrollerStyle != NSScrollerStyleOverlay);
+
+    return [self contentSizeForFrameSize: fSize
+                   hasHorizontalScroller: (takesSpace && horizontalScrollerClass != Nil)
+                     hasVerticalScroller: (takesSpace && verticalScrollerClass != Nil)
+                              borderType: type];
 }
 
 + (void) setRulerViewClass: (Class) class {

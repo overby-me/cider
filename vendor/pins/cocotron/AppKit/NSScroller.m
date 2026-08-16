@@ -63,7 +63,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 + (NSScrollerStyle) preferredScrollerStyle {
-    NSUnimplementedMethod();
+    /* LEGACY, because that is what this backend draws: a scroller that sits beside the content and
+     * takes space from it. Saying so matters beyond appearance, since NSScrollView subtracts the
+     * scroller width for a legacy style and nothing for an overlay one; with no return statement
+     * at all the caller read whatever was in the return register and sized itself from it. */
+    return NSScrollerStyleLegacy;
 }
 /* OS X has a global default "AppleScrollBarVariant" with the values: Single,
  DoubleMin, DoubleMax, and DoubleBoth This controls the default position of the

@@ -493,6 +493,22 @@ BOOL O2FontGetGlyphAdvances(O2FontRef self, const O2Glyph *glyphs, size_t count,
     if (self->_advances == NULL)
         [self fetchAdvances];
 
+    /* WHAT A CALLER MEASURING A CHARACTER CELL ACTUALLY GETS. An application divides the advance
+     * by the units per em, so a zero in either place is the difference between a terminal with a
+     * sensible grid and one that reports a width of minus one. */
+    const char *trace = getenv("CIDER_TRACE_FONTMETRICS");
+    if (trace != NULL && *trace != '\0') {
+        fprintf(stderr,
+                "CIDER_FONTMETRICS font=%p glyphs=%lu first=%u advance=%d unitsPerEm=%d "
+                "ascent=%d descent=%d numberOfGlyphs=%d\n",
+                (void *) self, (unsigned long) count, (unsigned) glyphs[0],
+                (count > 0 && glyphs[0] < self->_numberOfGlyphs && self->_advances != NULL)
+                        ? self->_advances[glyphs[0]]
+                        : -12345,
+                self->_unitsPerEm, self->_ascent, self->_descent, (int) self->_numberOfGlyphs);
+        fflush(stderr);
+    }
+
     for (i = 0; i < count; i++) {
         O2Glyph glyph = glyphs[i];
 
