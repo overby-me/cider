@@ -37,11 +37,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) _rollbackLatestFragment;
 @end
 
-@interface NSTypesetter_concrete (forward)
+@interface NSATSTypesetter (forward)
 - (void) _updateBidiLevelsForRange: (NSRange) range;
 @end
 
-@implementation NSTypesetter_concrete
+@implementation NSATSTypesetter
 
 - init {
     [super init];
@@ -68,7 +68,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [super dealloc];
 }
 
-static void loadGlyphAndCharacterCacheForLocation(NSTypesetter_concrete *self,
+static void loadGlyphAndCharacterCacheForLocation(NSATSTypesetter *self,
                                                   NSUInteger location)
 {
     NSUInteger length = MIN(self->_glyphCacheCapacity,

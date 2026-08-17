@@ -8400,3 +8400,68 @@ one. If CFTTextExt::textContainer answers nil then [nil layoutManager] is nil as
 container back pointer is irrelevant. Nothing measured so far distinguishes the two, and the next
 rung is exactly that: a trace on -[NSTextContainer layoutManager] returning nil, which says whether
 a container was asked at all.
+
+## The layout manager was never joined to its container, and what that unblocked
+
+THE BUG, end to end. Swift Publisher builds every text block the same way, straight from the
+disassembly of CDDTextBlock::CDDTextBlock(double, double):
+
+    initWithNewTextStorage()
+    container = [[CCTextExtContainer alloc] initWithContainerSize: w h]
+    [[[storage layoutManagers] objectAtIndexedSubscript: 0] addTextContainer: container]
+
+Its storage is CCTokenizedTextStorage, an application subclass of NSTextStorage which supplies its
+own primitives and so calls [super init], not -initWithString:. NSTextStorage had no -init, so that
+went to NSObject and _layoutManagers stayed nil. Every step after that was a message to nil and
+said nothing: addObject: to nil, layoutManagers answering nil, objectAtIndexedSubscript: on nil,
+addTextContainer: on nil. The container was joined to nothing, and much later
+CFTTextExt::layoutManager, which is [[self textContainer] layoutManager], answered nil and the
+document read died putting it into an NSMutableSet.
+
+Fixed by adding -init, and by creating the array on demand in -addLayoutManager: and
+-layoutManagers. Measured: layout managers held 0 always to 1, containers answering nil 2566 to 0,
+containers answering a real one 0 to 5 which is the trace cap, nil into set raises 10 to 0.
+
+HOW TO FIND THIS KIND OF THING. The accessor had two ways to answer nil, a real container holding
+nothing or a nil container, so put the trace where only one of them can reach and give it a positive
+control, otherwise silence proves nothing. Then intersect pointer sets: 41 containers were wired and
+never asked, 285 were asked and never wired, and the two sets did not overlap at all. dladdr on
+__builtin_return_address named the application function that built the unwired ones.
+
+## Three things behind it, and the platform wall they hit
+
+Fixing the above let text layout actually run, and it immediately found the next three.
+
+1. NSATSTypesetter WAS AN EMPTY STUB. The whole implementation lived in a sibling called
+   NSTypesetter_concrete, so an application subclass of NSATSTypesetter, which is what CCATSTypesetter
+   is, inherited only the abstract raise from NSTypesetter. On the real system NSATSTypesetter is the
+   concrete typesetter. Merging the implementation into it removed all 26 raises of
+   layoutGlyphsInLayoutManager only defined for abstract class, and layout ran for the first time.
+
+2. FREETYPE FACES ARE SHARED AND WERE NOT PROTECTED. O2Font_freetype caches faces and already locks
+   the cache, but nothing covered use of a face afterwards, and FT_Set_Pixel_Sizes and FT_Load_Glyph
+   both write into the shared face and its single glyph slot. This is not theory: a contention
+   counter recorded five real waits in one run, because the application lays text out on the main
+   thread while an operation queue generates document previews.
+
+3. THE BEST FONT CACHE IS A BARE STATIC. -[NSMutableAttributedString _bestFontForCharacter:...] keeps
+   a static NSMutableDictionary with no lock, and the same two threads mutate it through
+   -fixFontAttributeInRange:. That arrives as an abort inside __CFStringHash with no message and no
+   address of ours, nowhere near the font code that caused it.
+
+THE WALL. The obvious fix for 2 and 3 is a pthread mutex, and that is where the guest itself gives
+out. Under real contention the run prints
+
+    psynch_mutexwait failed internally: -111
+    psynch_mutexdrop failed internally: -111
+
+so a contended pthread mutex in guest code does not currently work. Uncontended trylock is fine,
+which is why the contention counter reported happily while the abort continued. Anything that needs
+mutual exclusion in guest code is blocked behind that until psynch is fixed.
+
+WHERE THIS LEAVES THE APPLICATION. Worse than before, so the three changes above are reverted in the
+commit that follows the one carrying them, and stay in history to be reapplied once psynch works.
+With them the process aborts during the welcome window and captures nothing. Without them the
+template gallery renders correctly and relayouts on a compositor resize, and the document window
+still does not open.
+
