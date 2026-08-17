@@ -100,9 +100,21 @@ void cider_wayland_post_key(int isDown, unsigned long modifiers, long windowNumb
 										 isARepeat: isRepeat ? YES : NO
 										   keyCode: (unsigned short) keyCode];
 		if (getenv("CIDER_TRACE_KEYS") != NULL) {
-			NSLog(@"CIDER_POSTKEY built=%s type=%d windowNumber=%ld display=%p",
+			/*
+			 * WHO IS GOING TO RECEIVE THIS. A key that is posted and a key that is acted on look
+			 * identical from here, and after a resize iTerm2 keeps receiving keys and stops showing
+			 * them, so the interesting part is not the event but the responder chain it lands in:
+			 * a key window that is nil, or one whose first responder is not the text view, eats
+			 * every keystroke in silence.
+			 */
+			NSWindow *keyWindow = [NSApp keyWindow];
+			id responder = [keyWindow firstResponder];
+
+			NSLog(@"CIDER_POSTKEY built=%s type=%d windowNumber=%ld keyWindow=%ld(%s) responder=%s",
 				event ? "yes" : "NIL", isDown ? 10 : 11, windowNumber,
-				[NSDisplay currentDisplay]);
+				keyWindow ? (long) [keyWindow windowNumber] : -1L,
+				keyWindow ? object_getClassName(keyWindow) : "(nil)",
+				responder ? object_getClassName(responder) : "(nil)");
 		}
 		if (event != nil) {
 			[[NSDisplay currentDisplay] postEvent: event atStart: NO];

@@ -6671,3 +6671,29 @@ resample from 120 rows to 126. This is the gradient in the file, not a plausible
 STILL IMPERFECT: a light grey border, 238,238,238, about five pixels wide down the right edge and
 four along the bottom, where the reserved cell box is larger than the drawn image. Cosmetic, and
 noted rather than fixed.
+
+### Keys after a resize work now, and what is actually broken is the scrollback
+
+The recorded failure was that after a resize keystrokes still arrive and the session no longer shows
+them. It NO LONGER REPRODUCES. A harness that types on both sides of the resize, rather than only
+after it, gives:
+
+    before one resize     echo before_resize -> before_resize -> prompt
+    after one resize      echo after_resize  -> after_resize  -> prompt
+    after three resizes   echo after_resize  -> after_resize  -> prompt
+
+Three, because three is what the original failure was seen after, and a single resize would have
+been a weaker test than the one that found it. The responder trace agrees across the whole run:
+every one of the thirty six key downs went to windowNumber=4, keyWindow=4(iTermWindow),
+responder=PTYTextView, before and after.
+
+The likely cause of the old failure is the dangling key window pointer fixed earlier tonight, since
+that static is on the focus path and a resize is exactly when windows are deactivated and
+reactivated. That is a plausible attribution and not a demonstration: the old build was not re-run
+to confirm it, so it is written down as the likeliest explanation rather than a proven one.
+
+WHAT IS BROKEN INSTEAD, and it is a better specified defect than the one it replaces: a resize
+BLANKS THE SCROLLBACK. Immediately after resizing, and before anything is typed, the terminal shows
+only the prompt, sitting at the row it had reached, with every line above it empty. The two lines
+that were there, a command and its output, are gone. macOS reflows that content instead of
+discarding it. The cursor row survives the resize; the text above it does not.
