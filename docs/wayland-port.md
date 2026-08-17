@@ -6630,3 +6630,44 @@ plain fetchFromGitHub, so the patches were built by reconstructing the pre-edit 
 blocks. That would be worth nothing on trust, so the generator applies its own output to the
 reconstruction and fails unless the result is byte identical to the file on disk. Both passed, and
 buck-pin-patches-check.nu agrees each set reaches the pin it was written for.
+
+### imgcat works: isValid answered NO to everything
+
+The last link was four lines of cocotron, and it was not in any of the places this chase spent its
+time. -[NSImage isValid] was
+
+    - (BOOL) isValid {
+        NSUnimplementedMethod();
+        return 0;
+    }
+
+and 0 is NO. An application asks isValid before it uses an image and skips the drawing entirely when
+the answer is no, so the picture was decoded, drawn into a bitmap by the worker, encoded, carried
+back over NSXPCConnection, rebuilt into a 240x120 representation in the application, and then simply
+never drawn. Eleven of those log lines sat in the run the whole time saying so.
+
+That is why every earlier measurement looked healthy. Each one was: the connection is accepted, the
+decoder is asked, the reply carries a real iTermImage, the rep is built. All true, and none of them
+was the question, which was whether anything ever asked to DRAW it.
+
+Valid now means there is something to draw, measured as a representation with a real size. An image
+that has not loaded yet still answers NO, which is what it answered before, so nothing that worked
+can regress.
+
+MEASURED AFTER, not asserted:
+
+    isValid complaints            11 -> 0
+    NSImage drawInRect 240x120     0 -> 1        the inline image itself
+    NSImage drawInRect 245x14      0 -> 27       iTerm2 painting it one terminal row at a time
+
+and the pixels on screen, sampled down the middle of the drawn image against the source file:
+
+    y  72  (244,0,11)      source top    (244,0,11)
+    y 183  (  6,0,249)     source bottom (  9,0,246)
+
+green zero throughout and monotonic in between, the three point difference at the bottom being the
+resample from 120 rows to 126. This is the gradient in the file, not a plausible looking rectangle.
+
+STILL IMPERFECT: a light grey border, 238,238,238, about five pixels wide down the right edge and
+four along the bottom, where the reserved cell box is larger than the drawn image. Cosmetic, and
+noted rather than fixed.

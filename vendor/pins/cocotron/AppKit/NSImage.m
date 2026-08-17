@@ -713,9 +713,33 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
     _delegate = delegate;
 }
 
+/*
+ * ANSWERING NO TO THIS IS NOT A HARMLESS STUB, it is a refusal to draw.
+ *
+ * This returned 0 unconditionally, and 0 is NO. Applications ask isValid before they use an image
+ * and skip the drawing entirely when it says no, so every such image became a correctly sized,
+ * correctly placed, completely empty rectangle, with no error anywhere to say why.
+ *
+ * That is precisely what an iTerm2 inline image was. The picture was decoded by the sandboxed
+ * worker, drawn into a bitmap, encoded, carried back over NSXPCConnection, and rebuilt into a
+ * 240x120 rep in the application, and then nothing ever drew it: no drawInRect, no
+ * O2ContextDrawImage, just a grey placeholder and eleven of these lines in the log.
+ *
+ * Valid means there is something to draw, so that is what is measured: a representation with a
+ * real size. An image that has not loaded yet has no representation and is honestly not drawable
+ * yet, which is the same answer this gave before and so cannot be a regression.
+ */
 - (BOOL) isValid {
-    NSUnimplementedMethod();
-    return 0;
+    NSInteger i, count = [_representations count];
+
+    for (i = 0; i < count; i++) {
+        NSSize size = [[_representations objectAtIndex: i] size];
+
+        if (size.width > 0 && size.height > 0) {
+            return YES;
+        }
+    }
+    return NO;
 }
 
 - (NSArray *) representations {
@@ -1188,6 +1212,21 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
             _bestUncachedFallbackCachedRepresentationForDevice: nil
                                                           size: rect.size]
             retain] autorelease];
+
+    /* DID THE APPLICATION EVEN ASK. An image that is never drawn and an image that is drawn and
+     * comes out blank are the same rectangle from outside, and that is exactly the open question
+     * about iTerm2 inline images: the picture is decoded, transported and rebuilt, and no draw of
+     * it ever reaches the window. */
+    if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL && getenv("CIDER_TRACE_IMAGESOURCE")[0] != '\0') {
+        NSSize mine = [self size];
+
+        fprintf(stderr,
+                "CIDER_IMAGESOURCE NSImage drawInRect %gx%g at %g,%g size=%gx%g reps=%lu best=%s\n",
+                rect.size.width, rect.size.height, rect.origin.x, rect.origin.y,
+                mine.width, mine.height, (unsigned long) [_representations count],
+                any ? class_getName([any class]) : "(nil)");
+        fflush(stderr);
+    }
     NSImageRep *cachedRep = nil;
     CGContextRef context;
     NSRect fullRect = {.origin = NSZeroPoint, .size = self.size};
