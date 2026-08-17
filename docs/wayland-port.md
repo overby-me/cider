@@ -7734,3 +7734,42 @@ rsyncing a freshly built prefix over it is what surfaced it.
 
 Checking every patched pin the same way, by trying to reverse-apply its latest patch against the
 materialised tree, says bash is the ONLY stale one of the thirteen. That check is worth keeping.
+
+
+## The three criteria, re-verified on the build that has all of tonight in it
+
+The runtime changed a great deal in a few hours: system Swift precedence in dyld, a real Swift
+runtime where 44 LFS pointers had been, NSMatrix, RTFD, view capture, a Foundation that answers
+operatingSystemVersion. All three criteria were re-checked by LOOKING, on that build, not carried
+forward from an earlier claim.
+
+RENDERS. The menu bar, the terminal text, an inline image from imgcat, and the Shell menu opened
+with its key equivalents right aligned, its separators, its greyed out items and its submenu
+arrows. The prompt reads Cider again.
+
+INTERACTIVE, keyboard AND mouse. echo before_resize runs and prints; the Shell menu opens on a
+press at 87,36 and CIDER_MENU reports mouseDown on NSMainMenuView at 87,14 with a 290x627
+NSSubmenuView behind it.
+
+RESIZABLE, and this is the part that had a claim attached to it. Keystrokes DO still reach the
+session after a resize: echo after_resize runs and prints, so the old "keystrokes stop reaching the
+session after a resize" does not reproduce. The pty follows the window, measured with the app
+itself rather than inferred:
+
+    before   stty size -> 44 175      window 1256x684, 1256/175 = 7.2 px per column
+    after    stty size -> 33 125      window  900x520,  900/125 = 7.2 px per column
+
+and 7 px per column is what the capture measures directly, from glyph runs starting at x = 6, 13,
+20. So the grid, the pty and the drawn cell all agree.
+
+A CORRECTION I MADE MID-CHECK. The title bar reads 165x46 after the resize and I read that as the
+grid failing to follow, on the arithmetic that 1256/165 and 637/46 land on the drawn cell size.
+stty says otherwise, so that was wrong. 165x46 is the grid for 1180x700, the SECOND of the three
+resizes the driver performs, so the indicator is one step stale while the session is correct.
+
+WHAT IS STILL WRONG, and it is the reflow, not the size:
+  a resize does not rewrap the scrollback. The old lines stay where they were and the shell draws
+  its prompt below them, so each resize leaves a blank band and another prompt. Nothing is lost,
+  scrolling back shows every line and the earlier stty output; macOS iTerm2 rewraps instead.
+  The title bar size indicator lags one resize behind.
+  A light grey edge, 238,238,238, about five pixels right and four bottom of an inline image.
