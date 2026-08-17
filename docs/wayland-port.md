@@ -9012,3 +9012,31 @@ WHAT TO DO NEXT, and it is a smaller step than another theory: make the tracer p
 SPACE and the gState alpha alongside the components, so a line like c=0,0,0,0 can be read without
 guessing. Every reading above rests on that field and it has now produced a contradiction.
 
+## Half the contradiction resolved: the fill really is transparent, so black is not painted at all
+
+The plan was to make the tracer print the alpha beside the components. Reading O2Color first killed
+that idea, which is the useful part:
+
+    O2Float O2ColorGetAlpha(O2ColorRef self) {
+        return self->_components[self->_numberOfComponents - 1];
+    }
+
+The alpha IS the last component. Printing it would have printed the same number again, so that
+change was written, seen to be worthless, and reverted rather than shipped.
+
+WHAT IT SETTLES. The fill that covers the terminal genuinely has alpha 0. It is a TRANSPARENT fill,
+by the colour own accounting, so the earlier reading was right and there is no colour bug here. And
+that means nothing paints the terminal black at all: the black on screen is what a transparent
+region looks like once the window buffer reaches the compositor, because that buffer is presented as
+opaque and an alpha of zero is simply not carried through.
+
+WHICH REFRAMES THE WHOLE THREAD, and makes the grey the odd one out rather than the black. The
+question is no longer why the strip is not painted black, since nothing is. It is why the strip is
+NOT transparent like the rest of the terminal, when the window background under it was painted the
+same 0.930 grey everywhere. Something clears the terminal area to transparent and does not clear the
+image block remainder.
+
+NEXT: find the clear. It is the fill printed as path 985x549 at 0,0 with c=0,0,0,0 through
+O2ContextFillRects, and what matters is its blend mode, which the path trace does not print. The
+image trace prints one now and the path trace does not, which is the asymmetry to close.
+
