@@ -49,6 +49,43 @@ static struct sigaction cider_previous[NSIG];
  * atexit runs on exit() and on a normal return from main, and NOT on _exit or abort, so a silent
  * exit after this is registered narrows to those two. The frames name the caller either way.
  */
+/*
+ * A STACK FROM INSIDE THE WAIT, on demand, without killing anything.
+ *
+ * The crash handler answers where a process DIED and the atexit handler answers who asked it to
+ * leave. Neither can answer the question left over from Swift Publisher: a method that has not
+ * returned after a minute, on a thread that is parked in recvmsg rather than spinning, with no
+ * exception escaping and no service lookup outstanding. For that the only honest instrument is the
+ * stack of the thread while it is still stuck.
+ *
+ * SIGUSR1 is handled and RESUMED, unlike every other signal here, so the process carries on and can
+ * be sampled again a second later. Two samples a few seconds apart separate a slow walk through a
+ * long list from a wait that will never end, which no single sample can do.
+ */
+static void cider_crashtrace_sample(int sig, siginfo_t *info, void *uap)
+{
+    void *frames[64];
+    int count = backtrace(frames, 64);
+
+    (void) sig;
+    (void) info;
+    (void) uap;
+
+    fprintf(stderr, "\ncider SAMPLE frames=%d\n", count);
+    for (int i = 0; i < count; i++) {
+        Dl_info where;
+
+        if (dladdr(frames[i], &where) != 0 && where.dli_sname != NULL) {
+            const char *image = where.dli_fname ? strrchr(where.dli_fname, '/') : NULL;
+
+            fprintf(stderr, "%-3d %-34s %s\n", i, image ? image + 1 : "?", where.dli_sname);
+        } else {
+            fprintf(stderr, "%-3d %-34s %p\n", i, "???", frames[i]);
+        }
+    }
+    fflush(stderr);
+}
+
 static void cider_crashtrace_atexit(void)
 {
     void *frames[64];
@@ -202,4 +239,13 @@ __attribute__((constructor)) static void cider_crashtrace_install(void)
 	fflush(stderr);
 
 	atexit(cider_crashtrace_atexit);
+
+	{
+		struct sigaction sample = { 0 };
+
+		sample.sa_sigaction = cider_crashtrace_sample;
+		sample.sa_flags = SA_SIGINFO | SA_RESTART;
+		sigemptyset(&sample.sa_mask);
+		sigaction(SIGUSR1, &sample, NULL);
+	}
 }

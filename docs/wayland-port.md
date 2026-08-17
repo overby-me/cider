@@ -8133,3 +8133,50 @@ window never appears. It is not an exception storm, it is not spinning, it is no
 next thing to try is a different instrument rather than another API gap: the seven remaining raises
 are worth reading in full, and if none of them unwinds the load then the wait needs finding with a
 stack from inside the wait, not from the frames of an exception.
+
+
+## It was never a hang: an uncaught exception on a worker thread was killing the process
+
+Four rungs ended on the same sentence, that -[InspectorViewController awakeFromNib] reaches object 0
+of 958 and does not return. That sentence was true and the conclusion drawn from it was wrong twice.
+
+FIRST WRONG READING, corrected here: I said six of the seven remaining raises unwind the nib load,
+on the evidence that their frames run through instantiateNibWithExternalNameTable:. They do not
+prove that. CIDER_TRACE_EXCEPTIONS prints the backtrace AT THE RAISE, and writeDestinationToSource
+wraps that set in a @try, so those frames show where an exception started, not where it ended.
+
+WHAT WAS ACTUALLY HAPPENING. The instrument that settled it was a new one: cider-crashtrace now
+handles SIGUSR1 and prints a stack WITHOUT killing the process, so a thread can be sampled while it
+is stuck. Before it was ever used, its sibling caught the answer:
+
+    cider CRASHTRACE signal=6
+    abort <- abort_message <- demangling_terminate_handler <- _objc_terminate
+          <- std::terminate <- _dispatch_client_callout <- _dispatch_root_queue_drain
+          <- _dispatch_worker_thread2 <- _pthread_wqthread <- start_wqthread
+
+An Objective C exception reaching the top of a libdispatch block is caught by nobody: terminate
+aborts the WHOLE PROCESS. The main thread was not hanging, it was being killed mid method, and from
+the main thread that is indistinguishable from a method that never returns.
+
+The exception was -[NSURL startAccessingSecurityScopedResource], declared in NSURL.h and implemented
+in neither NSURL.m. It is the security scoped bookmark pair, and on a system with no sandbox the
+truthful answer is YES, the file is already reachable; NO would mean access refused and a careful
+caller would skip the work. Implemented with its partner, stopAccessingSecurityScopedResource.
+
+THE DIFFERENCE, measured on the same harness:
+
+    before   inspector nib awakens object 0 of 958, 11 windows, process aborts
+    after    inspector nib awakens 957 of 958, awakeFromNib LEAVES, 145 windows, no abort at all
+
+A second abort of the same shape followed immediately, -[NSMenuItem setView:] from
+-[ImagePopUpButton menu] on an NSOperation, and is fixed the same way: the view is stored and
+answered. THE MENU DRAWING STILL IGNORES IT, so an item with a view set draws empty; that is written
+in the source rather than left to be discovered.
+
+WHERE IT STANDS. The document window is STILL NOT ON SCREEN, and the gallery is what the capture
+shows. But the failure is no longer a mystery with no stack: the application now survives to the end
+of the run, idle in its event loop, having built 145 windows, and the remaining raises are a long
+tail of binding keys on its own view classes, selectedIdentifier on NSTabView and content,
+contentObjects, contentValues and selectedObject on an NSMatrix subclass, plus
+-[NSView adjustSubviews], which is a consequence of MY nib-less view controller fallback handing
+back a plain NSView where a split view controller wanted an NSSplitView.

@@ -1,0 +1,38 @@
+--- a/src/NSURL.m
++++ b/src/NSURL.m
+@@ -155,6 +155,35 @@
+ - (BOOL)isFileURL
+ {
+     return _CFURLIsFileURL([self _cfurl]);
++}
++
++/*
++ * NO SANDBOX MEANS ACCESS IS ALREADY GRANTED, and saying YES is the truth here rather than a stub.
++ *
++ * These two are the security scoped bookmark pair: an application that resolved a bookmark brackets
++ * its use of the file with them, and on a sandboxed system the first one asks the kernel to extend
++ * the sandbox to that path. There is no sandbox behind this runtime, so the file is already
++ * reachable and YES is the correct answer; NO would mean access was refused and a careful caller
++ * would then skip the work it was about to do.
++ *
++ * THIS ONE COST FOUR RUNGS OF CHASING THE WRONG THING. It is declared in NSURL.h and implemented in
++ * neither NSURL.m, so it was an unrecognized selector, and Swift Publisher calls it from a
++ * libdispatch worker. An ObjC exception that reaches the top of a dispatch block is not caught by
++ * anybody: _objc_terminate calls std::terminate, which aborts, and the WHOLE PROCESS dies with
++ * SIGABRT while the main thread is still inside -[InspectorViewController awakeFromNib]. From the
++ * main thread that looks exactly like a method that never returns, which is what I reported four
++ * times. The stack that settled it came from the crash handler on the worker thread:
++ *
++ *   abort <- abort_message <- _objc_terminate <- std::terminate
++ *         <- _dispatch_client_callout <- _dispatch_root_queue_drain <- _pthread_wqthread
++ */
++- (BOOL)startAccessingSecurityScopedResource
++{
++    return YES;
++}
++
++- (void)stopAccessingSecurityScopedResource
++{
+ }
+ 
+ - (NSString *)fragment

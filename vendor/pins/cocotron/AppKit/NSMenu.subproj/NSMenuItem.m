@@ -354,6 +354,32 @@ static char CiderMenuItemObjectValueKey;
     _image = image;
 }
 
+/*
+ * A MENU ITEM CAN HOST A VIEW, and this one could not even be asked.
+ *
+ * setView: is how a menu item carries a custom view instead of a title and image, and it is set
+ * long before anything draws. It did not exist at all here, so Swift Publisher raised
+ *
+ *   -[NSMenuItem setView:]: unrecognized selector
+ *
+ * from -[ImagePopUpButton menu] on an NSOperation worker thread, and an ObjC exception that reaches
+ * the top of an operation is caught by nobody: _objc_terminate aborts the entire process.
+ *
+ * STORED AND ANSWERED, WITH THE DRAWING STILL TO COME. The menu drawing code here lays out a title,
+ * an image and a key equivalent and knows nothing about a hosted view, so an item with a view set
+ * will still draw as an empty item. That is a gap and it is written here rather than left for
+ * someone to discover; what this fixes is the process dying for asking.
+ */
+- (NSView *) view {
+    return _view;
+}
+
+- (void) setView: (NSView *) view {
+    view = [view retain];
+    [_view release];
+    _view = view;
+}
+
 - (void) setOnStateImage: (NSImage *) image {
     [_onStateImage release];
     _onStateImage = [image retain];

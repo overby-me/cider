@@ -48,6 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     BOOL _alternate;
     BOOL _allowsKeyEquivalentWhenHidden;
     NSUserInterfaceItemIdentifier _identifier;
+    NSView *_view;
 }
 
 @property(getter=isAlternate) BOOL alternate;
@@ -104,6 +105,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) setKeyEquivalent: (NSString *) keyEquivalent;
 - (void) setKeyEquivalentModifierMask: (unsigned) mask;
 - (void) setImage: (NSImage *) image;
+
+- (NSView *) view;
+- (void) setView: (NSView *) view;
 - (void) setOnStateImage: (NSImage *) image;
 - (void) setOffStateImage: (NSImage *) image;
 - (void) setMixedStateImage: (NSImage *) image;
