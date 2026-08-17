@@ -8595,3 +8595,47 @@ survives building its process collection, and the bar still reads "  - 96x38" wi
 the dash. So the missing name needs more than the process list, and what that is has not been
 established yet. Do not read the fixed crash as a fixed title bar.
 
+## CORRECTION: a guest pid is NOT the Linux pid, and proc_listpids answers in the wrong pid space
+
+The commit that added proc_listpids said "a guest pid IS the Linux pid in this emulation, which the
+rest of proc_info.c already assumes when it reads /proc/<pid>/stat". THAT IS WRONG, and the rest of
+proc_info.c is wrong in the same way.
+
+src/linux/server/src/container.rs:214 clones the container into a NEW PID NAMESPACE and mounts a
+procfs for it at <prefix>/proc. So the pids an application holds are namespace local and small,
+while proc_info.c sits BELOW vchroot where a bare /proc is the HOST procfs. Reading /proc/<pid> for
+a guest pid therefore lands on an unrelated system process.
+
+PROVEN, not argued. iTerm2 asked for the working directory of pid 25 and 26:
+
+    PROCINFO cwd pid=25 readlink failed -13      EACCES, a host process we may not read
+    PROCINFO cwd pid=29 path=[/Users/root]       the same call once the path goes through vchroot
+
+So proc_listpids as committed hands out HOST pids, which an application can never match against its
+own, and every pidinfo flavour that reads /proc/<pid> answers about the wrong process. It is not
+harmful in the sense of a crash and iTerm2 behaves exactly as before, but the data is wrong and
+nothing should be built on it until the pid space is fixed.
+
+## And every guest process is called mldr
+
+The second half of the same question. Field two of /proc/<pid>/stat is the LINUX executable, and
+every guest process runs under the loader, so a whole run answers:
+
+    2022 comm=[mldr]
+
+plus mldr:sh0 and mldr:disk$0, where the loader squeezed a hint of the real program into the fifteen
+characters Linux allows. Nothing in that tree is called sh, so an application looking for the job
+running in its terminal finds nothing it recognises. The guest program IS available: the loader is
+exec'd as "<loader>!<host path of the program>" with the GUEST path as the next argument, so
+/proc/<pid>/cmdline has it.
+
+## What was tried and is NOT committed
+
+Routing every /proc read in proc_info.c through vchroot_expand, enumerating <prefix>/proc for the
+listing, and taking the name from the guest command line. iTerm2 then exits 1 during startup before
+opening a window, so it is reverted and NOT in the tree. The suspect is the vchroot_expand_args
+buffer, a whole MAXPATHLEN, put on the stack of a helper called for every process in the tree; the
+next attempt should not do that. The single cwd call, which is on a cold path, worked perfectly.
+
+THE TITLE BAR NAME IS STILL EMPTY. Two real causes are now named and proven and neither is fixed.
+
