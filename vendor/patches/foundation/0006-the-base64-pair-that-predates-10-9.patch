@@ -1,7 +1,7 @@
 --- a/src/NSData.m
 +++ b/src/NSData.m
-@@ -1093,6 +1093,28 @@
-     return [[NSString alloc] initWithData:[self base64EncodedDataWithOptions:options] encoding:NSASCIIStringEncoding];
+@@ -1260,6 +1260,29 @@
+     return result;
  }
  
 +/*
@@ -26,9 +26,10 @@
 +{
 +    return [[self base64EncodedStringWithOptions:0] autorelease];
 +}
++
+ @end
  
- #define xx 65 // xx is used to mark invalid Base64 characters
- #define EQ 66 // 66 is the sentinel value for the padding '=' character
+ @implementation NSSubrangeData
 --- a/include/Foundation/NSData.h
 +++ b/include/Foundation/NSData.h
 @@ -97,6 +97,11 @@

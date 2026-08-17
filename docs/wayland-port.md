@@ -8545,3 +8545,53 @@ FILE rather than on a command line, because a pgrep whose pattern is in its own 
 shell running it. run-iterm-rewrap.sh calls it before every run. Zero crashes and five captures is
 not evidence: look at one.
 
+## DL_INSERT read its argument four times, and the second read changed it
+
+The abort that kept the process listing switched off is a plain macro bug, and the trace named it in
+four lines. Every RangeList birth and death was printed, and the tail read:
+
+    IDXSET alloc p=0x...a6cf0 site=243
+    IDXSET free  p=0x...a6cf0 site=1918
+    IDXSET free  p=0x...a6cf0 site=1918     the same pointer, twice, with no allocation between
+
+DL_INSERT(head, next_node, add) is called as DL_INSERT(head, ptr->next, newRange). Written out with
+the argument substituted:
+
+    (add)->prev = (ptr->next)->prev;
+    (ptr->next)->prev->next = (add);      this ASSIGNS ptr->next = add
+    (add)->next = (ptr->next);            so this reads add, and add points at ITSELF
+    (ptr->next)->prev = (add);            and so does its prev
+
+The inserted node came out as a one element circular list. DL_DELETE then saw del->prev == del, took
+its only-element branch, set the head to NULL and unlinked nothing, so the merge loop read the same
+next pointer again and freed it a second time. That is the malloc report under
+-[NSIndexSet _mergeOverlappingRangesStartingAtIndex:]. The macro now reads next_node once, into a
+local.
+
+MEASURED, same harness: the run went from aborting after FOUR index set operations to 11,913 of them
+with no crash and iTerm2 alive throughout, so proc_listpids is on by default now and the gate is
+gone. Two frees in that run were of something not currently live, out of 11,913, which is most
+likely addresses colliding across the several iTerm2 processes the log merges rather than a second
+bug, and it is NOT claimed as clean until the trace carries a pid.
+
+## A fresh materialisation did not build, and only a FORCE showed it
+
+Re-materialising foundation to pick up the new patch broke the build:
+
+    NSData.m:1277: error: missing context for method declaration
+
+vendor/patches/foundation/0006 adds -initWithBase64Encoding: and -base64Encoding, and its hunk
+anchored on context loose enough that patch placed both methods AFTER the @end that closes the
+implementation. They belonged to no class and the file did not compile. The tree in vendor/src had
+been correct only because it was materialised from a different starting point, which is exactly the
+hazard of an untracked materialised tree: buck2 was building something nix could never reproduce.
+0006 now anchors on the @end and the @implementation NSSubrangeData that follows it, and a forced
+re-materialisation puts the pair inside the implementation and builds.
+
+## What the title bar still does not say
+
+The name is STILL empty. The listing works, nothing is refused, no complaint is printed, iTerm2
+survives building its process collection, and the bar still reads "  - 96x38" with nothing before
+the dash. So the missing name needs more than the process list, and what that is has not been
+established yet. Do not read the fixed crash as a fixed title bar.
+

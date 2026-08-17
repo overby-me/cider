@@ -1,0 +1,40 @@
+--- a/src/utlist.h
++++ b/src/utlist.h
+@@ -537,17 +537,31 @@
+   }                                                                                            \
+ } while (0) 
+ 
++/* NEXT_NODE IS READ ONCE, because the caller passes ptr->next and the body used to WRITE to that
++ * very expression halfway through. Written out, DL_INSERT(head, ptr->next, add) was:
++ *
++ *     (add)->prev = (ptr->next)->prev;
++ *     (ptr->next)->prev->next = (add);   this assigns ptr->next = add
++ *     (add)->next = (ptr->next);         so this reads add, and add points at ITSELF
++ *     (ptr->next)->prev = (add);         and so does its prev
++ *
++ * The inserted node came out as a one element circular list and the rest of the chain after it was
++ * unreachable. DL_DELETE then saw del->prev == del, took its only-element branch, set the head to
++ * NULL and never unlinked anything, so the caller read the same next pointer again and freed it a
++ * second time. That is the abort inside malloc under -[NSIndexSet _mergeOverlappingRangesStartingAtIndex:]
++ * which kept iTerm2 from ever naming the job in its title bar. */
+ #define DL_INSERT(head, next_node, add)                                        \
+ 	do {                                                                   \
+-		if (head == next_node)                                         \
++		LDECLTYPE(head) _dl_ins_next = (next_node);                    \
++		if ((head) == _dl_ins_next)                                    \
+ 			DL_PREPEND(head, add);                                 \
+-		else if (next_node == NULL) {                                  \
++		else if (_dl_ins_next == NULL) {                               \
+ 			DL_APPEND(head, add);                                  \
+ 		} else {                                                       \
+-			(add)->prev = (next_node)->prev;                       \
+-			(next_node)->prev->next = (add);                       \
+-			(add)->next = (next_node);                             \
+-			(next_node)->prev = (add);                             \
++			(add)->prev = _dl_ins_next->prev;                      \
++			_dl_ins_next->prev->next = (add);                      \
++			(add)->next = _dl_ins_next;                            \
++			_dl_ins_next->prev = (add);                            \
+ 		}                                                              \
+ 	} while (0)
+ 

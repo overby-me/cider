@@ -8,7 +8,7 @@
  #include <darling/emulation/conversion/errno.h>
  #include <darling/emulation/conversion/fcntl/open.h>
  #include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
-@@ -35,8 +36,11 @@
+@@ -35,6 +36,8 @@
  #define LINUX_PR_SET_NAME 15
  
  static long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int32_t bufsize);
@@ -16,11 +16,8 @@
 +static long _proc_pidinfo_vnodepathinfo(int32_t pid, void* buffer, int32_t bufsize);
  
  extern __SIZE_TYPE__ strlen(const char *s);
-+extern char *getenv(const char *name);
  extern void *memset(void *s, int c, __SIZE_TYPE__ n);
- extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
- extern char *strcpy(char *dest, const char *src);
-@@ -82,8 +86,11 @@
+@@ -82,8 +85,11 @@
  			return 0;
  		case 2: // proc_pidinfo
  			return _proc_pidinfo(pid, flavor, arg, buffer, bufsize);
@@ -33,7 +30,7 @@
  		default:
  			__simple_printf("sys_proc_info(): Unsupported callnum: %d\n",
  					callnum);
-@@ -161,6 +168,10 @@
+@@ -161,6 +167,10 @@
  		{
  			return _proc_pidinfo_listthreads(pid, buffer, bufsize);
  		}
@@ -44,7 +41,7 @@
  		default:
  		{
  			__simple_printf("sys_proc_info(): Unsupported pidinfo flavor: %d\n",
-@@ -170,6 +181,162 @@
+@@ -170,6 +180,144 @@
  	}
  }
  
@@ -107,24 +104,6 @@
 +	{
 +		__simple_printf("sys_proc_info(): Unsupported listpids type: %d\n", type);
 +		return -ENOTSUP;
-+	}
-+
-+	/*
-+	 * OFF UNTIL THE THING IT UNCOVERS IS FIXED, and the switch is here so that is one word away.
-+	 *
-+	 * Answering this call is correct and it works: with it on, every proc_info complaint in an
-+	 * iTerm2 run disappears. But iTerm2 only asks because it wants to build a process tree, and
-+	 * the moment it gets one it walks straight into a heap abort of ours, in
-+	 * -[NSIndexSet _mergeOverlappingRangesStartingAtIndex:] under -[iTermProcessCollection commit],
-+	 * which is a corruption whose guilty write is somewhere else entirely. Refusing the call leaves
-+	 * iTerm2 with an empty session name in its title bar. Serving it makes iTerm2 abort at startup,
-+	 * which is worse, so the default has to be the first one until NSIndexSet is sound.
-+	 */
-+	{
-+		const char* enabled = getenv("CIDER_PROC_LISTPIDS");
-+
-+		if (enabled == NULL || enabled[0] == '\0')
-+			return -ENOTSUP;
 +	}
 +
 +	fd = LINUX_SYSCALL(__NR_openat, LINUX_AT_FDCWD, "/proc",
