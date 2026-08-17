@@ -7125,3 +7125,31 @@ The four exceptions that remain in the run are all ONE cause, which the quieter 
 obvious: NSWindowServerCommunicationException out of -[NSDisplay init], reached through
 NSThreadSharedInstance on a BACKGROUND thread, once from +[NSFontFamily addFontFamilyWithName:] and
 once from -[NSWindow initWithContentRect:styleMask:backing:defer:].
+
+### One display per process, not one per thread, and a flake that nearly caused a wrong revert
+
++[NSDisplay currentDisplay] answered NSThreadSharedInstance, so EVERY THREAD that asked for the
+display tried to build one, and building one opens a connection to the window server. On any thread
+but the first that fails, and it fails as an exception rather than a nil:
+
+    NSWindowServerCommunicationException: Failed to connect to a window server
+      -[NSDisplay init]
+      NSThreadSharedInstance
+      +[NSFontFamily addFontFamilyWithName:]      font lookup on a worker thread
+      -[NSWindow initWithContentRect:...]         and window creation on one
+
+Swift Publisher builds document previews on an NSOperationQueue and does both there. There is ONE
+connection to the compositor in this process, so there is one display. NSApplication creates it from
+the main thread during init, which is what makes the first caller the right one.
+
+Swift Publisher now runs with NO EXCEPTIONS AT ALL: 4 to 0, and its total raise count is zero.
+
+AND THE REGRESSION CHECK LIED ONCE, which is the part worth recording. The first iTerm2 run after
+this change reported no image and NO KEYS reaching PTYTextView, which reads exactly like a display
+singleton breaking a second process. It was not: the log was 8,416 lines with windows presented, so
+not the usual startup fault either, and re-running the SAME build gave image drawn, 38 keys
+delivered, no crash, and the picture on screen. A revert on the strength of the first run would have
+thrown away a correct change.
+
+The rule that saved it is the one already in this file: re-run before believing a single run.
+LibreOffice was checked alongside and is unaffected.

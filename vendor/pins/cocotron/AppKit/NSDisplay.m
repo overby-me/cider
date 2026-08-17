@@ -18,6 +18,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSDisplay.h>
+#import <dispatch/dispatch.h>
 #import <AppKit/NSErrors.h>
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSColorList.h>
@@ -39,8 +40,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     }
 }
 
+/*
+ * ONE DISPLAY PER PROCESS, NOT ONE PER THREAD.
+ *
+ * This answered NSThreadSharedInstance, so every thread that asked for the display tried to BUILD
+ * ONE, and building one opens a connection to the window server. On any thread but the first that
+ * fails, and the failure is an exception rather than a nil:
+ *
+ *     NSWindowServerCommunicationException: Failed to connect to a window server
+ *       -[NSDisplay init]
+ *       NSThreadSharedInstance
+ *       +[NSFontFamily addFontFamilyWithName:]      <- font lookup on a worker thread
+ *       -[NSWindow initWithContentRect:...]         <- and window creation on one
+ *
+ * Swift Publisher builds document previews on an NSOperationQueue and does both there. There is one
+ * connection to the compositor in this process, so there is one display; NSApplication creates it
+ * from the main thread during init, which is what makes the first caller the right one.
+ */
 + (NSDisplay *) currentDisplay {
-    return NSThreadSharedInstance(@"NSDisplay");
+    static NSDisplay *shared = nil;
+    static dispatch_once_t once;
+
+    dispatch_once(&once, ^{
+        shared = [NSThreadSharedInstance(@"NSDisplay") retain];
+    });
+    return shared;
 }
 
 - (instancetype) init {
