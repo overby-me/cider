@@ -21,6 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <stdio.h>
 
 #import <AppKit/NSApplication.h>
+#include <objc/runtime.h>
+#include <dlfcn.h>
+#include <execinfo.h>
 #import <AppKit/NSColorPanel.h>
 #import <AppKit/NSDisplay.h>
 #import <AppKit/NSDockTile.h>
@@ -818,6 +821,12 @@ static void cider_ensure_finish_launching(NSApplication *self)
 
         [pool release];
     } while (_isRunning);
+
+    /* THE LOOP ENDED, which means main is about to return and the process is about to leave with
+     * status 0. Said out loud because a clean exit is otherwise indistinguishable from a process
+     * that was killed quietly. */
+    fprintf(stderr, "CIDER_APP run loop ended, _isRunning=%d\n", (int) _isRunning);
+    fflush(stderr);
 }
 
 - (BOOL) _performKeyEquivalent: (NSEvent *) event {
@@ -1398,6 +1407,34 @@ static void cider_ensure_finish_launching(NSApplication *self)
 }
 
 - (void) stop: sender {
+    /*
+     * THE OTHER WAY OUT, and the one left after terminate: was ruled out.
+     *
+     * -stop: clears _isRunning, -run falls out of its loop, main returns and the process leaves
+     * with status 0 and no crash. That is exactly the shape of the Swift Publisher exit a few
+     * seconds after Choose, and terminate: was proven not to be the path: its trace is in the
+     * deployed binary and never printed.
+     */
+    {
+        void *frames[24];
+        int count = backtrace(frames, 24);
+
+        fprintf(stderr, "CIDER_APP stop: sender=%s modal=%d\n",
+                sender != nil ? object_getClassName(sender) : "(nil)",
+                (int) ([_modalStack lastObject] != nil));
+        for (int i = 1; i < count; i++) {
+            Dl_info info;
+
+            if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+                const char *image = info.dli_fname ? strrchr(info.dli_fname, '/') : NULL;
+
+                fprintf(stderr, "CIDER_APP   %-26s %s\n",
+                        image ? image + 1 : "?", info.dli_sname);
+            }
+        }
+        fflush(stderr);
+    }
+
     if ([_modalStack lastObject] != nil) {
         [self stopModal];
         return;
@@ -1407,6 +1444,37 @@ static void cider_ensure_finish_launching(NSApplication *self)
 }
 
 - (void) terminate: sender {
+    /*
+     * WHO ASKED TO QUIT, always, not behind a gate.
+     *
+     * Swift Publisher exits cleanly with status 0 a few seconds after Choose, in the middle of
+     * building its inspector, with no crash and no signal. A clean exit from an application that
+     * was in the middle of opening a document is a DECISION, and the only paths to status 0 here
+     * are this method and the exit(0) in replyToApplicationShouldTerminate: below it. The count of
+     * calls says nothing; the frames name the caller.
+     *
+     * Not gated on an env var because a process that is about to leave has one chance to say so,
+     * and this costs a dozen lines once per lifetime.
+     */
+    {
+        void *frames[24];
+        int count = backtrace(frames, 24);
+
+        fprintf(stderr, "CIDER_APP terminate: sender=%s\n",
+                sender != nil ? object_getClassName(sender) : "(nil)");
+        for (int i = 1; i < count; i++) {
+            Dl_info info;
+
+            if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+                const char *image = info.dli_fname ? strrchr(info.dli_fname, '/') : NULL;
+
+                fprintf(stderr, "CIDER_APP   %-26s %s\n",
+                        image ? image + 1 : "?", info.dli_sname);
+            }
+        }
+        fflush(stderr);
+    }
+
     [[NSDocumentController sharedDocumentController]
             closeAllDocumentsWithDelegate: self
                       didCloseAllSelector: @selector
@@ -1431,6 +1499,9 @@ static void cider_ensure_finish_launching(NSApplication *self)
 }
 
 - (void) replyToApplicationShouldTerminate: (BOOL) terminate {
+    fprintf(stderr, "CIDER_APP replyToApplicationShouldTerminate: %d\n", (int) terminate);
+    fflush(stderr);
+
     if (terminate == YES) {
         [[NSNotificationCenter defaultCenter]
                 postNotificationName: NSApplicationWillTerminateNotification

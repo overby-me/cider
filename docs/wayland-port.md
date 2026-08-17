@@ -7995,3 +7995,57 @@ THE WINDOW STILL DOES NOT APPEAR, and the failure has CHANGED shape: the applica
 cleanly, status 0, a few seconds after Choose, with no crash and no signal, while building the
 inspector. That is not the exception unwind that was there before, and it is the next thing to
 chase.
+
+
+## A stub that returns NULL is returning SUCCESS, and it cost a SIGSEGV
+
+The clean exit turned out not to be an exit at all. Ruling that out took three instruments and two
+of them printed nothing, which was the useful part:
+
+  -[NSApplication terminate:] and -stop: were traced with backtraces, and the run loop was traced
+  where it falls out of its do while. NONE of the three ever printed, and the markers were verified
+  present in the deployed binary first, so the silence is evidence rather than absence.
+
+  cider-crashtrace grew an atexit handler. It prints who called exit, which a crash handler never
+  sees, and it immediately named two container helpers, path_helper and bash, exiting normally.
+
+With those ruled out the real thing was already in the log, from the crash handler:
+
+    cider CRASH signal=11 code=1 addr=0x0
+    0  CoreFoundation      CFArrayGetCount + 44
+    1  Swift Publisher 5   +[CCEnvironment fillPageSizeMenuWithDelegate:] + 192
+    2  Swift Publisher 5   -[InspectorViewController awakeFromNib] + 7638
+    ... -[NSWindowController loadWindow] ... -[NSDocument showWindows]
+
+SIGSEGV at address zero. The application had not exited cleanly; it had died, and the status 0 came
+from the container shell around it.
+
+WHAT IT WAS. Disassembling the caller shows the shape exactly:
+
+    lea rsi, [rbp-0x50]        an out parameter
+    xor edi, edi               a NULL printer
+    call PMPrinterGetPaperList
+    test eax, eax / jne        an error would have branched away
+    mov rdi, [rbp-0x50]
+    call CFArrayGetCount       on whatever the out parameter holds
+
+and our PMPrinterGetPaperList was declared void* f(void) returning NULL, like every other stub in
+PrintCore.m. NULL in the return register is 0, 0 is noErr, so the application was told the call
+SUCCEEDED and then read an out parameter nobody had written.
+
+THE GENERAL SHAPE, worth more than this one function: for any OSStatus API, returning NULL is not a
+neutral placeholder, it is the success code. A stub that cannot do the work must answer an ERROR, or
+the caller proceeds on data that does not exist. PMPrinterGetPaperList, PMCreateSession and
+PMServerCreatePrinterList now have their real signatures, clear their out parameters and return -50,
+paramErr, which is the truth: there is no print system behind this framework.
+
+VERIFIED: the SIGSEGV is gone, no crash dump at all, and the application survives the whole run
+where it used to die a few seconds after Choose. All six captures exist now, including the ones
+after the resize.
+
+THE WINDOW IS STILL NOT ON SCREEN. The inspector nib, 958 objects, is still working through them
+when the run ends, raising exceptions it survives: -[__NSCFDictionary isEqualToString:],
+__NSCFArray does not support addObserver:forKeyPath:, and NSUnknownKeyException on selectedObject
+and on an NSPopUpButton, repeating per popup. loadNibFile has still not returned by the end of the
+run. Whether that is slowness or another stop is the next thing to establish, and the honest answer
+today is that it is not known.

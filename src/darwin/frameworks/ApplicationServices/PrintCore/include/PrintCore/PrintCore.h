@@ -133,7 +133,7 @@ void* PMCreatePaperInfoTicketFromPPDPaperName(void);
 void* PMCreatePrintSettings(void);
 void* PMCreatePrinter(void);
 void* PMCreateProxy(void);
-void* PMCreateSession(void);
+
 void* PMDebugSet_Boolean(void);
 void* PMDebugSet_CFTypeRef(void);
 void* PMDebugSet_PMObject(void);
@@ -248,7 +248,23 @@ void* PMPrinterGetMarkerChangeTime(void);
 void* PMPrinterGetMimeTypes(void);
 void* PMPrinterGetName(void);
 void* PMPrinterGetOutputResolution(void);
-void* PMPrinterGetPaperList(void);
+/*
+ * REAL SIGNATURES, because for an OSStatus function the stub return value IS an answer.
+ *
+ * These were declared void* f(void) and returned NULL like every other stub in this file. NULL in
+ * the return register is 0, 0 is noErr, and the caller reads that as SUCCESS and then trusts an
+ * out parameter that was never written. Swift Publisher does exactly that:
+ *
+ *   PMPrinterGetPaperList(NULL, &paperList);   answered noErr, paperList untouched
+ *   CFArrayGetCount(paperList);                SIGSEGV at address 0
+ *
+ * inside -[InspectorViewController awakeFromNib], which unwound the document window it was
+ * building. Spelling the signatures out lets them answer an ERROR, which is the truth here: there
+ * is no print system behind this framework.
+ */
+int PMPrinterGetPaperList(void *printer, void **paperList);
+int PMCreateSession(void **session);
+int PMServerCreatePrinterList(void *server, void **printerList);
 void* PMPrinterGetPrinterResolutionCount(void);
 void* PMPrinterGetPrinterValue(void);
 void* PMPrinterGetState(void);
@@ -296,7 +312,7 @@ void* PMRelease(void);
 void* PMRetain(void);
 void* PMServerCopyJobLog(void);
 void* PMServerCreateDeviceList(void);
-void* PMServerCreatePrinterList(void);
+
 void* PMServerFavoritesListHasChanged(void);
 void* PMServerLaunchPrinterBrowser(void);
 void* PMServerPrinterListHasChanged(void);

@@ -23,6 +23,7 @@
  * pointer yet (objc_msgSend, most of libc) would otherwise be missing from the chain.
  */
 
+#include <dlfcn.h>
 #include <execinfo.h>
 #include <signal.h>
 #include <stdint.h>
@@ -36,6 +37,37 @@
 /* The handler that was there before this one, per signal, so a runtime that USES a signal keeps
  * working. Darling delivers some faults through SIGSEGV on purpose. */
 static struct sigaction cider_previous[NSIG];
+
+/*
+ * WHO CALLED EXIT, which a crash handler never sees.
+ *
+ * A process that leaves with status 0 has not crashed, so no signal handler fires and the log ends
+ * mid sentence. Swift Publisher does exactly that a few seconds after Choose, and the two AppKit
+ * ways out were both ruled out by tracing them: -[NSApplication terminate:] and -stop: are in the
+ * deployed binary with prints at the top and neither ever printed.
+ *
+ * atexit runs on exit() and on a normal return from main, and NOT on _exit or abort, so a silent
+ * exit after this is registered narrows to those two. The frames name the caller either way.
+ */
+static void cider_crashtrace_atexit(void)
+{
+    void *frames[64];
+    int count = backtrace(frames, 64);
+
+    fprintf(stderr, "\ncider CRASHTRACE exit frames=%d\n", count);
+    for (int i = 0; i < count; i++) {
+        Dl_info info;
+
+        if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+            const char *image = info.dli_fname ? strrchr(info.dli_fname, '/') : NULL;
+
+            fprintf(stderr, "%-3d %-34s %s\n", i, image ? image + 1 : "?", info.dli_sname);
+        } else {
+            fprintf(stderr, "%-3d %-34s %p\n", i, "???", frames[i]);
+        }
+    }
+    fflush(stderr);
+}
 
 static void cider_crashtrace_handler(int sig, siginfo_t *info, void *uap)
 {
@@ -168,4 +200,6 @@ __attribute__((constructor)) static void cider_crashtrace_install(void)
 	}
 	fprintf(stderr, "cider-crashtrace installed in %s\n", me);
 	fflush(stderr);
+
+	atexit(cider_crashtrace_atexit);
 }

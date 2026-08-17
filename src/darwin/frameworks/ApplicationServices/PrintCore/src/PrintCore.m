@@ -683,10 +683,13 @@ void* PMCreateProxy(void)
     return NULL;
 }
 
-void* PMCreateSession(void)
+int PMCreateSession(void **session)
 {
     if (verbose) puts("STUB: PMCreateSession called");
-    return NULL;
+    if (session != NULL) {
+        *session = NULL;
+    }
+    return -50;
 }
 
 void* PMDebugSet_Boolean(void)
@@ -1373,10 +1376,20 @@ void* PMPrinterGetOutputResolution(void)
     return NULL;
 }
 
-void* PMPrinterGetPaperList(void)
+/*
+ * AN ERROR, NOT A ZERO. See the header for why this one is not shaped like its neighbours.
+ *
+ * -50 is paramErr, which is what Carbon returns for a bad argument, and a NULL printer is exactly
+ * that. The out parameter is cleared as well, so a caller that ignores the status and reads it
+ * anyway gets a NULL it can test rather than a stale stack value it cannot.
+ */
+int PMPrinterGetPaperList(void *printer, void **paperList)
 {
     if (verbose) puts("STUB: PMPrinterGetPaperList called");
-    return NULL;
+    if (paperList != NULL) {
+        *paperList = NULL;
+    }
+    return -50;
 }
 
 void* PMPrinterGetPrinterResolutionCount(void)
@@ -1661,10 +1674,13 @@ void* PMServerCreateDeviceList(void)
     return NULL;
 }
 
-void* PMServerCreatePrinterList(void)
+int PMServerCreatePrinterList(void *server, void **printerList)
 {
     if (verbose) puts("STUB: PMServerCreatePrinterList called");
-    return NULL;
+    if (printerList != NULL) {
+        *printerList = NULL;
+    }
+    return -50;
 }
 
 void* PMServerFavoritesListHasChanged(void)
