@@ -7261,3 +7261,41 @@ abstract O2Context, URLQueryAllowedCharacterSet and disableAutomaticTermination:
 
 iTerm2 re-run afterwards, because NSColor is reached by everything: picture drawn, no crash, 38 keys
 delivered.
+
+### Swift Publisher does not stay up, and it is Sparkle that kills it
+
+A CORRECTION TO HOW I HAVE BEEN REPORTING THIS. The welcome window and the template gallery are
+real and the captures of them are real, but the application ABORTS ABOUT 1.2 SECONDS AFTER LAUNCH,
+having drawn both. That is why the harness for it shoots a burst from t=0 rather than settling
+first: there is nothing to settle to. Writing that the window opens without writing that it then
+disappears was half the truth.
+
+It was found by trying to CLICK something. A click harness that waits sixteen seconds and then
+presses Close produced an empty capture directory and no driver output at all, because by then
+there was no process. The log says the same thing plainly once looked at:
+
+    present number=2 count=3 size=910x590 t=1.20
+    Uncaught exception: ...
+    PROBE_EXIT=0
+
+and systemd has a SIGABRT core for it. An uncaught Objective-C exception on a dispatch queue does
+not unwind to anything, it aborts, and the harness still reports 0.
+
+WHAT RAISES IT IS THE UPDATER. Swift Publisher ships Sparkle, and Sparkle starts an update download
+about a second after launch:
+
+    -[SPUDownloaderSession startTemporaryDownloadWithRequest:]
+      -[NSProcessInfo disableAutomaticTermination:]   <- missing, now implemented
+
+NSProcessInfo had neither the sudden nor the automatic termination pairs. They are counts rather
+than flags, because macOS documents them as nesting and an application may hold several reasons at
+once; nothing here can act on the count, and that is said in the source rather than implied.
+
+THAT MOVED THE ABORT RATHER THAN REMOVING IT. Sparkle now gets one step further and dies on
+
+    -[NSURLSessionDownloadTask initWithCompletionHandler:]: unrecognized selector
+
+and NSURLSessionDownloadTask exists ONLY as a declaration in NSURLSession.h: there is no
+implementation anywhere. So the remaining blocker for this application is a working NSURLSession
+download stack, which is a project rather than a rung, and it is the auto updater phoning home
+rather than anything the application itself needs to run.
