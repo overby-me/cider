@@ -8666,3 +8666,39 @@ guest paths to host paths itself, so <prefix>/proc is an ordinary host path. Get
 without calling vchroot_expand on the early path, and opening that directly, avoids the early
 vchroot call altogether. That is the thing to try next, not another variation on the buffer.
 
+## Four eliminations on the guest procfs, and the bisect that made them worth having
+
+The change is still not in. What IS now settled is where it is not, and the method that settles it.
+
+THE BISECT, which is the useful part. Two files were in play, proc_info.c and vchroot_userspace.c,
+and each was tested against the committed version of the other:
+
+    committed kernel                      iTerm2 lives, 35 window lines
+    vchroot accessor only                 iTerm2 lives, 42 window lines
+    my proc_info.c                        iTerm2 exits 1 before drawing anything
+
+So the fault is inside proc_info.c and the vchroot accessor is innocent. That accessor,
+vchroot_prefix_if_known, answers the prefix only when it is already there and never initialises,
+which matters because vchroot_expand initialises on demand and init_vchroot_path ABORTS if its RPC
+fails.
+
+FOUR THINGS IT IS NOT, each tried and each still failing:
+  the multi kilobyte stack frame        rebuilt with nothing over 512 bytes on the path
+  vchroot_expand called early           replaced by the non initialising accessor
+  a descriptor held from early startup  replaced by open and close per read
+  the undefined strrchr symbol          replaced by a hand written scan, symbol gone from the dylib
+
+AND A MEASUREMENT THAT CONTRADICTS THE OBVIOUS READING. A probe on the FIRST line of
+_proc_pidinfo_shortbsdinfo never fires, and neither does the one in proc_listpids, so with that
+kernel iTerm2 dies before it calls proc_info at all. Yet the same kernel runs /bin/echo and /bin/ps
+to completion, so it is not a load failure either. Those two facts together are the thing to explain
+next, and they were only visible because the probe was moved to the first line of the function
+rather than left after the code under suspicion.
+
+A CHEAPER LOOP FOR NEXT TIME. cider shell /bin/ps answers in about thirty seconds and exercises the
+same layer, against six minutes for the GUI harness. Note while using it that ps prints only its
+header and no processes AT ALL, on the committed kernel as much as on any other, so that is a
+pre-existing gap and not a symptom of this work.
+
+STILL NOT WORKING: the title bar name, for the two proven reasons already recorded.
+
