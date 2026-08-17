@@ -8255,3 +8255,42 @@ WHAT THIS MAKES THE NEXT RUNG. Not a wait, not a hang, not a missing API: an exc
 cannot say which exception escapes, because most of them are caught. The way to name it is to catch
 it where it leaves: wrap the awakeFromNib loop in -[NSNib instantiateNibWithExternalNameTable:] in a
 handler that PRINTS and RE-RAISES.
+
+
+## The escape catcher, and the failure moving earlier than the nib
+
+The instrument the last entry asked for is in: the awakeFromNib loop in
+-[NSNib instantiateNibWithExternalNameTable:] is wrapped in a handler that PRINTS the exception and
+RE-RAISES it, so it fires only for an exception that has already walked out of awakeFromNib and it
+changes no behaviour.
+
+IT HAS NOT SPOKEN YET, and that is reported as nothing rather than as a result. Two runs in a row
+did not reach Document2.nib at all, so the catcher had nothing to catch. The marker is present in
+the deployed AppKit, checked, so the silence is about the runs and not about the build; an
+instrument that has never fired proves nothing either way, which is the same rule that has already
+cost time twice in this document.
+
+WHY THOSE RUNS DID NOT GET THERE, and it is a different failure from the one being chased:
+
+    NSInvalidArgumentException: attempt to insert nil object into NSMutableSet
+      CFTCoreDoc::rearrangeWrappingPath()
+      CFTCoreDoc::Serialize(CDDArchive const&, NSError **)
+      -[CCDesignElement serialize:error:]
+      -[CCDocument serialize:error:]
+      -[CCDocument readFromData:ofType:error:]
+      -[CCDocument readFromFileWrapper:ofType:error:]
+      -[CCDocument readFromURL:ofType:error:]
+      -[CCAssistantController createWizardDocument]
+
+Reading the template now throws inside the application own serialiser, before any window nib is
+loaded. The same exception has been visible on the preview worker threads for several rungs; this is
+the first time it has been seen on the path the Choose button takes.
+
+A nil going into a set means something we handed back nil where macOS hands back an object, and
+rearrangeWrappingPath is about text wrapping around a shape. That is the next thing to name, and it
+is worth naming with a real instrument rather than a guess: the frames stop at the C++ boundary, so
+the next step is to find which of our calls inside that function can answer nil.
+
+WHAT IS ALSO TRUE, and it explains the run to run variance in this document: whether a run reaches
+the document nib at all depends on this exception, so several earlier runs that looked like harness
+flakiness may have been this instead.

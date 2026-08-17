@@ -311,7 +311,19 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
 
         count = [_allObjects count];
 
+        /*
+         * CATCH IT WHERE IT LEAVES, then let it go on leaving.
+         *
+         * The frames CIDER_TRACE_EXCEPTIONS prints are captured AT THE RAISE, and most raises here
+         * are caught a frame or two up, so that trace cannot say which exception escapes the nib
+         * load. This one can: it only ever fires for an exception that has already walked out of
+         * awakeFromNib, and it re-raises so the behaviour is unchanged.
+         *
+         * Swift Publisher needs it. Its document nib stops with no leave marker while the main
+         * thread is back in the event loop, which is the signature of an unwind and not of a hang.
+         */
         CIDER_NIB_PHASE("awakeFromNib enter");
+        @try {
         for (i = 0; i < count; i++) {
             id object = [_allObjects objectAtIndex: i];
 
@@ -328,6 +340,16 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
                 [object awakeFromNib];
             }
         }
+        } @catch (id exception) {
+            if (getenv("CIDER_TRACE_NIB") != NULL) {
+                fprintf(stderr, "CIDER_NIB ESCAPED at object %d/%d: %s: %s\n", i, count,
+                        [[exception name] UTF8String] ?: "?",
+                        [[exception reason] UTF8String] ?: "?");
+                fflush(stderr);
+            }
+            @throw;
+        }
+
         CIDER_NIB_PHASE("awakeFromNib leave");
 
         for (i = 0; i < count; i++) {
