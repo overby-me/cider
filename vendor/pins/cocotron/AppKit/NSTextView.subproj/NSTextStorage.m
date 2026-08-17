@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSAttributedString.h>
 #import <AppKit/NSLayoutManager.h>
 #import <AppKit/NSTextStorage.h>
+#import <objc/runtime.h>
 #import <Foundation/NSKeyedArchiver.h>
 
 NSString *const NSTextStorageWillProcessEditingNotification =
@@ -56,6 +57,20 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     return NSAllocateObject(self, 0, zone);
 }
 
+- init {
+    /* A SUBCLASS GETS HERE AND USED TO GET NOTHING. NSTextStorage is meant to be subclassed, and a
+     * subclass that supplies its own primitives calls [super init] rather than -initWithString:.
+     * There was no -init on this class, so that call fell through to NSObject and left
+     * _layoutManagers nil. Nothing complained: -addLayoutManager: then sent addObject: to nil and
+     * -layoutManagers answered nil, so the layout manager was silently dropped and every text
+     * container the application wired through [[storage layoutManagers] objectAtIndexedSubscript: 0]
+     * was joined to nothing. */
+    if (_layoutManagers == nil) {
+        _layoutManagers = [NSMutableArray new];
+    }
+    return self;
+}
+
 - initWithCoder: (NSCoder *) coder {
     _layoutManagers = [NSMutableArray new];
     return self;
@@ -79,6 +94,18 @@ NSString *const NSTextStorageDidProcessEditingNotification =
 }
 
 - (NSArray *) layoutManagers {
+    /* IS THE STORAGE THERE AT ALL. CDDTextBlock wires its container to
+     * [[textStorage layoutManagers] objectAtIndexedSubscript: 0], so a nil storage makes that whole
+     * chain a silent nil and the container is never joined to anything. This line firing says the
+     * storage exists and gives the count; it staying silent says the storage was nil. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_LM storage=%p layoutManagers count=%lu\n", self,
+                (unsigned long) [_layoutManagers count]);
+        fflush(stderr);
+    }
+    if (_layoutManagers == nil) {
+        _layoutManagers = [NSMutableArray new];
+    }
     return _layoutManagers;
 }
 
@@ -99,6 +126,16 @@ NSString *const NSTextStorageDidProcessEditingNotification =
 }
 
 - (void) addLayoutManager: (NSLayoutManager *) layoutManager {
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_LM storage=%p class=%s addLayoutManager=%p\n", self,
+                object_getClassName(self), layoutManager);
+        fflush(stderr);
+    }
+    /* BELT AND BRACES. Any initialiser that skipped the array would otherwise drop this on the
+     * floor without a word, which is the failure this whole trail was chasing. */
+    if (_layoutManagers == nil) {
+        _layoutManagers = [NSMutableArray new];
+    }
     [_layoutManagers addObject: layoutManager];
     [layoutManager setTextStorage: self];
 }

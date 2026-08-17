@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSTextStorage.h>
 #import <AppKit/NSTextView.h>
 #import <Foundation/NSKeyedArchiver.h>
+#import <dlfcn.h>
 
 @implementation NSTextContainer
 
@@ -34,6 +35,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         _size.height = 1e7;
         _textView = [keyed decodeObjectForKey: @"NSTextView"];
         _layoutManager = [keyed decodeObjectForKey: @"NSLayoutManager"];
+        if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+            fprintf(stderr, "CIDER_LM container=%p made by initWithCoder lm=%p tv=%p\n", self,
+                    _layoutManager, _textView);
+            fflush(stderr);
+        }
         _lineFragmentPadding = 0;
 
         int flags = [coder decodeIntForKey: @"NSTCFlags"];
@@ -49,6 +55,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - initWithContainerSize: (NSSize) size {
+    /* WHERE THE UNATTACHED ONES COME FROM. 168 containers answer nil for their layout manager and
+     * exactly 168 layout managers are made, one apiece, so something builds both halves and never
+     * joins them. This says which of the two inits built a given container, and the nil trace in
+     * -layoutManager gives the pointer to match it against. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        /* NAME THE CREATOR. The only cocotron caller is -[NSTextView initWithFrame:], which wires
+         * what it makes, so the unwired ones come from the application and dladdr on the return
+         * address says which of its functions. */
+        void *ret = __builtin_return_address(0);
+        Dl_info info;
+        const char *who = "?";
+        if (dladdr(ret, &info) != 0 && info.dli_sname != NULL) {
+            who = info.dli_sname;
+        }
+        fprintf(stderr, "CIDER_LM container=%p made by initWithContainerSize from %p %s\n", self,
+                ret, who);
+        fflush(stderr);
+    }
     _size = size;
     _textView = nil;
     _layoutManager = nil;
@@ -80,6 +104,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (NSLayoutManager *) layoutManager {
+    /* WHICH NIL IS IT. CFTTextExt::layoutManager is [[self textContainer] layoutManager], and that
+     * answers nil two ways: a real container holding no layout manager, or a nil container, since
+     * a message to nil answers nil and never arrives here. So this line firing means the first and
+     * this line staying silent means the second. Do not read the silence as proof on its own; the
+     * trace must be seen speaking on the loaded path before absence means anything. */
+    const char *gate = getenv("CIDER_TRACE_CONTROL");
+    if (gate != NULL && gate[0] != '\0') {
+        static int spoke = 0;
+        if (_layoutManager == nil) {
+            fprintf(stderr, "CIDER_LM container=%p answers nil layoutManager textView=%p\n", self,
+                    _textView);
+            fflush(stderr);
+        } else if (spoke < 5) {
+            /* THE POSITIVE CONTROL. Five ordinary answers, so that a run with no nil line is a
+             * measurement rather than a build that never reached this accessor. */
+            spoke++;
+            fprintf(stderr, "CIDER_LM container=%p answers layoutManager=%p\n", self,
+                    _layoutManager);
+            fflush(stderr);
+        }
+    }
     return _layoutManager;
 }
 
@@ -188,6 +233,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) setLayoutManager: (NSLayoutManager *) layoutManager {
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_LM container=%p setLayoutManager=%p\n", self, layoutManager);
+        fflush(stderr);
+    }
     _layoutManager = layoutManager;
     [_textView _setTextStorage: [_layoutManager textStorage]];
 }
