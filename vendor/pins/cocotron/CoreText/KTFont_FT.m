@@ -21,7 +21,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #import <CoreText/KTFont_FT.h>
-#import <pthread.h>
 #import <Onyx2D/O2Font_freetype.h>
 #import FT_TRUETYPE_TABLES_H
 #import FT_OUTLINE_H
@@ -135,59 +134,7 @@ static int _CiderCubicTo(const FT_Vector *c1, const FT_Vector *c2, const FT_Vect
     return 0;
 }
 
-/* ONE FACE, MANY THREADS. O2Font_freetype caches faces and hands the same FT_Face to every caller,
- * which is why it already locks its cache. What it does not cover is the use of a face afterwards,
- * and FT_Set_Pixel_Sizes and FT_Load_Glyph both write into the shared face and its single glyph
- * slot, allocating and freeing as they go. Two threads in there at once corrupt the allocator, and
- * that arrives as an abort inside malloc with no message and no bad address of ours. Swift
- * Publisher does exactly this: it lays text out on the main thread while an operation queue
- * generates document previews.
- *
- * The counter is the evidence. If contention never happens the abort is something else, so the
- * trace prints the first few times a thread actually has to wait. */
-static pthread_mutex_t cider_ft_lock_obj;
-static pthread_once_t cider_ft_lock_once = PTHREAD_ONCE_INIT;
-static int cider_ft_contended = 0;
-
-static void cider_ft_lock_init(void) {
-    pthread_mutexattr_t attr;
-
-    pthread_mutexattr_init(&attr);
-    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&cider_ft_lock_obj, &attr);
-    pthread_mutexattr_destroy(&attr);
-}
-
-static void cider_ft_lock(void) {
-    pthread_once(&cider_ft_lock_once, cider_ft_lock_init);
-    if (pthread_mutex_trylock(&cider_ft_lock_obj) == 0) {
-        return;
-    }
-    cider_ft_contended++;
-    if (cider_ft_contended <= 5 && getenv("CIDER_TRACE_FONTS") != NULL) {
-        fprintf(stderr, "CIDER_FT two threads wanted the same face, waits=%d\n",
-                cider_ft_contended);
-        fflush(stderr);
-    }
-    pthread_mutex_lock(&cider_ft_lock_obj);
-}
-
-static void cider_ft_unlock(void) {
-    pthread_mutex_unlock(&cider_ft_lock_obj);
-}
-
 - (CGPathRef) createPathForGlyph: (CGGlyph) glyph transform: (CGAffineTransform *) xform {
-    CGPathRef path;
-
-    cider_ft_lock();
-    path = [self _createPathForGlyphLocked: glyph transform: xform];
-    cider_ft_unlock();
-    return path;
-}
-
-- (CGPathRef) _createPathForGlyphLocked: (CGGlyph) glyph
-                              transform: (CGAffineTransform *) xform
-{
     FT_Face face = [self _face];
     if (face == NULL) {
         return NULL;
@@ -422,7 +369,6 @@ static void cider_ft_unlock(void) {
     FT_Face face = [o2Font face];
 
     int i;
-    cider_ft_lock();
     for (i = 0; i < length; i++) {
         glyphs[i] = FT_Get_Char_Index(face, characters[i]);
         /* A CHARACTER THE FACE CANNOT DRAW, and WHICH face that was. A missing glyph is invisible
@@ -441,7 +387,6 @@ static void cider_ft_unlock(void) {
             }
         }
     }
-    cider_ft_unlock();
 }
 
 - (void) getAdvancements: (CGSize *) advancements
@@ -452,7 +397,6 @@ static void cider_ft_unlock(void) {
     FT_Face face = [o2Font face];
 
     int i;
-    cider_ft_lock();
     FT_Set_Pixel_Sizes(face, _size, _size);
 
     for (i = 0; i < count; i++) {
@@ -460,7 +404,6 @@ static void cider_ft_unlock(void) {
         advancements[i] = CGSizeMake(face->glyph->advance.x / (O2Float)(2 << 5),
                        face->glyph->advance.y / (O2Float)(2 << 5));
     }
-    cider_ft_unlock();
 }
 
 - (CGPoint) positionOfGlyph: (CGGlyph) current
@@ -475,14 +418,11 @@ static void cider_ft_unlock(void) {
     if (!current)
         return NSZeroPoint;
 
-    cider_ft_lock();
     FT_Set_Pixel_Sizes(face, _size, _size);
 
     FT_Load_Glyph(face, current, FT_LOAD_DEFAULT);
-    CGPoint position = NSMakePoint(face->glyph->advance.x / (O2Float)(2 << 5),
-                                   face->glyph->advance.y / (O2Float)(2 << 5));
-    cider_ft_unlock();
-    return position;
+    return NSMakePoint(face->glyph->advance.x / (O2Float)(2 << 5),
+                       face->glyph->advance.y / (O2Float)(2 << 5));
 }
 
 @end

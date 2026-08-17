@@ -19,6 +19,16 @@
 
 #import <AppKit/NSATSTypesetter.h>
 
-/* The implementation is in NSTextView.subproj/NSTypesetter_concrete.m, which is compiled into this
- * class. What used to be here was a forwardInvocation: that logged every call and returned, which
- * is why nothing ever reported that typesetting was not happening. */
+@implementation NSATSTypesetter
+
+- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+{
+    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+}
+
+- (void)forwardInvocation:(NSInvocation *)anInvocation
+{
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+}
+
+@end

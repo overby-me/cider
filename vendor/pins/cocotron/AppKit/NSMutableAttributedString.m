@@ -21,18 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSFont.h>
 #import <AppKit/NSFontManager.h>
 #import <AppKit/NSMutableAttributedString.h>
-#import <pthread.h>
-
-static pthread_mutex_t sCacheLockStorage;
-
-static void _CiderInitBestFontCache(void) {
-    pthread_mutexattr_t attr;
-
-    pthread_mutexattr_init(&attr);
-    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&sCacheLockStorage, &attr);
-    pthread_mutexattr_destroy(&attr);
-}
 
 @implementation NSMutableAttributedString (NSMutableAttributedString_AppKit)
 
@@ -43,16 +31,7 @@ static void _CiderInitBestFontCache(void) {
 {
     // We are caching the fontName->charset info, to prevent the
     // creation/conversion of plenty of fonts
-    /* A SHARED CACHE WITH NO LOCK, AND THIS RUNS ON MORE THAN ONE THREAD. Swift Publisher draws
-     * document previews on an operation queue while the main thread draws the window, and both
-     * arrive here through -fixFontAttributeInRange:. Two threads mutating one NSMutableDictionary
-     * corrupt its hash, which surfaces as an abort deep inside __CFStringHash with no message and
-     * no address of ours, nowhere near the font code that caused it. */
     static NSMutableDictionary *sNameToCharacterSetCache = nil;
-    static pthread_once_t sCacheOnce = PTHREAD_ONCE_INIT;
-
-    pthread_once(&sCacheOnce, _CiderInitBestFontCache);
-    pthread_mutex_lock(&sCacheLockStorage);
     if (sNameToCharacterSetCache == nil) {
         sNameToCharacterSetCache = [[NSMutableDictionary alloc] init];
     }
@@ -90,7 +69,6 @@ static void _CiderInitBestFontCache(void) {
             break;
         }
     }
-    pthread_mutex_unlock(&sCacheLockStorage);
     return substitute;
 }
 

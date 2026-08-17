@@ -1,4 +1,4 @@
-#import <AppKit/NSATSTypesetter.h>
+#import "NSTypesetter_concrete.h"
 #import <AppKit/NSAttributedString.h>
 #import <AppKit/NSParagraphStyle.h>
 #import <AppKit/NSRaise.h>
@@ -11,7 +11,7 @@
 
 + allocWithZone: (NSZone *) zone {
     if (self == [NSTypesetter class])
-        return NSAllocateObject([NSATSTypesetter class], 0, zone);
+        return NSAllocateObject([NSTypesetter_concrete class], 0, zone);
 
     return [super allocWithZone: zone];
 }
