@@ -337,10 +337,13 @@ static NSMutableDictionary *cellClassDictionary = nil;
 
 - (void) setEnabled: (BOOL) flag {
     if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
-        NSLog(@"CIDER_CONTROL setEnabled class=%s title=%@ flag=%d",
-              object_getClassName(self),
+        /* THE POINTER MATTERS. Four setEnabled:YES on something titled Choose and a click that
+         * finds it disabled can be one button changing its mind or two different buttons, and the
+         * title alone cannot tell them apart. */
+        NSLog(@"CIDER_CONTROL setEnabled self=%p class=%s title=%@ flag=%d was=%d",
+              (void *) self, object_getClassName(self),
               [self respondsToSelector: @selector(title)] ? [(id) self title] : @"(none)",
-              (int) flag);
+              (int) flag, (int) [self isEnabled]);
     }
 
     [_cell setEnabled: flag];
@@ -683,8 +686,8 @@ static NSMutableDictionary *cellClassDictionary = nil;
      * -[NSControl sendAction:to:] here. mouseDown IS the entry point, so a control that never
      * prints never got the click, and one that prints but does nothing is a different bug. */
     if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
-        NSLog(@"CIDER_CONTROL mouseDown class=%s title=%@ enabled=%d frame=%@",
-              object_getClassName(self),
+        NSLog(@"CIDER_CONTROL mouseDown self=%p class=%s title=%@ enabled=%d frame=%@",
+              (void *) self, object_getClassName(self),
               [self respondsToSelector: @selector(title)] ? [(id) self title] : @"(none)",
               (int) [self isEnabled], NSStringFromRect([self frame]));
     }

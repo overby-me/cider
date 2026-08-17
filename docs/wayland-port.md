@@ -7398,3 +7398,42 @@ says every method takes no arguments, so the first one that took an argument pro
 
 The signature is now built from the selector by counting its colons. Four such errors in a run
 became zero.
+
+### Two real URL gaps closed, and the theory they were built on was wrong
+
+The Choose button is disabled at the moment it is clicked, which the pointer in the trace settles:
+one button, 0x...9cd0, enabled when a template is picked and DISABLED again before the click.
+
+    setEnabled flag=0 was=1      disabled
+    setEnabled flag=1 was=0      enabled when the template is selected
+    setEnabled flag=1 was=1      (three more)
+    setEnabled flag=0 was=1      DISABLED again
+    mouseDown  enabled=0         the click lands on a disabled button
+
+That also corrects an earlier note here: the button is not enabled-but-drawn-dim, it is genuinely
+disabled when clicked, and the grey title is therefore correct.
+
+THE THEORY. The disable came immediately after an exception thrown out of closing the welcome
+window, and the path was exact:
+
+    -[NSControl mouseDown:] -> performClose: -> -[NSWindow close]
+      -> -[CCWellcomeWindowController sendRequestToLoadMainPage] -> parametersString()
+         -> +[NSCharacterSet URLQueryAllowedCharacterSet]                    unrecognized
+
+so the theory was that the throw left the gallery in a half-configured state and disabled Choose.
+
+TWO REAL GAPS WERE CLOSED FOLLOWING IT, and both were worth closing on their own:
+
+  +[NSCharacterSet URL*AllowedCharacterSet], all six, contents from RFC 3986 as Apple documents
+    them, ASCII only and written out rather than composed from alphanumericCharacterSet which
+    reaches far outside ASCII;
+  -[NSString stringByAddingPercentEncodingWithAllowedCharacters:], whose sibling
+    stringByRemovingPercentEncoding was already there, encoding the UTF-8 BYTES of any character
+    outside the set so a multi byte character survives the round trip.
+
+Raises in a run went 8 to 4 and both of those selectors are gone from the log.
+
+AND THE BUTTON IS STILL DISABLED. Removing both exceptions from that exact path changed nothing
+about Choose, so the theory was wrong: the throw was not what disabled it. What disables it is still
+unknown, and the next step is to find who calls setEnabled:NO rather than to guess again, which
+means a backtrace at the setter rather than a line count.
