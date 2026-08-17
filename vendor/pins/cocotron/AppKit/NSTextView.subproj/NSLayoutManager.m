@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSGraphicsContextFunctions.h>
 #import <AppKit/NSImage.h>
 #import <AppKit/NSLayoutManager.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <objc/runtime.h>
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSTextAttachment.h>
 #import <AppKit/NSTextContainer.h>
@@ -132,6 +135,14 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
 }
 
 - init {
+    /* WAS ONE EVER MADE. CFTTextExt::layoutManager answers nil for a text element and the document
+     * read dies putting that nil into a set, so the question is whether a layout manager is never
+     * created or created and lost. This says which, and setTextStorage: and addTextContainer:
+     * below say what it was attached to. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_LM init self=%p class=%s\n", self, object_getClassName(self));
+        fflush(stderr);
+    }
     _typesetter = [NSTypesetter new];
     _glyphGenerator = [[NSGlyphGenerator sharedGlyphGenerator] retain];
     _textContainers = [NSMutableArray new];
@@ -202,6 +213,11 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
 }
 
 - (void) setTextStorage: (NSTextStorage *) textStorage {
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_LM setTextStorage self=%p storage=%p\n", self, textStorage);
+        fflush(stderr);
+    }
+
 
     if (textStorage == _textStorage) {
         return;
@@ -248,6 +264,11 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
 }
 
 - (void) addTextContainer: (NSTextContainer *) container {
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_LM addTextContainer self=%p container=%p\n", self, container);
+        fflush(stderr);
+    }
+
     [_textContainers addObject: container];
     [container setLayoutManager: self];
 }

@@ -8332,3 +8332,39 @@ to, would say whether one was never made or one was made and lost.
 The three selectors this function uses that are ours, textContainers and
 textContainerChangedGeometry: on NSLayoutManager, are both implemented; I checked after a regex
 first told me they were not, which is worth saying because that regex nearly became a claim.
+
+
+## Layout managers ARE made: three hypotheses killed, and what the counts say
+
+The rung was to catch the layout manager where it is created rather than where it is missing.
+-[NSLayoutManager init], -setTextStorage: and -addTextContainer: now trace under
+CIDER_TRACE_CONTROL, and one run says:
+
+    init              371
+    setTextStorage    371
+    addTextContainer   45
+
+WHAT THAT KILLS.
+
+1. "The layout manager is never created." It is: 371 of them, and the trace names the class, so
+   CCLayoutManager instances exist by name. The application subclass initialises fine.
+
+2. "-[CCLayoutManager setBackgroundLayoutEnabled:] is still failing and leaving a nil." Already
+   ruled out by its absence from three logs, and now positively contradicted: those objects reach
+   -init and get a text storage.
+
+3. "The container back pointer is not set, so [container layoutManager] answers nil."
+   -addTextContainer: does [container setLayoutManager: self] and -layoutManager returns the ivar.
+   That mechanism is correct where it runs.
+
+WHAT IS LEFT, stated as a fact and not a theory: 371 layout managers are created and given a text
+storage, and only 45 are ever given a text container. Whether that asymmetry is normal for this
+application or is the defect is NOT established here, and the number on its own does not decide it.
+
+AND ONE MORE FACT WORTH HAVING: the first "attempt to insert nil object into NSMutableSet" of a run
+happens with ZERO raises before it, during the preview generation at startup, not on the Choose
+path. So the nil is structural rather than the aftermath of some earlier caught exception, which is
+what a chain of failures would have looked like. It fires twelve times in a run.
+
+The document window is still not on screen. This rung bought three eliminations and two numbers, and
+no fix; that is what it bought.
