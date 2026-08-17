@@ -7860,3 +7860,45 @@ CORRECTING MYSELF ONCE MORE: earlier in this document I wrote that -[NSWindowCon
 was never entered, on the evidence that its trace did not print. It IS entered. The trace called
 [self window] before printing, so the print was downstream of the call that hangs. A trace that
 depends on the thing it is measuring cannot report on it.
+
+
+## The document window: -[CCMainWindowController awakeFromNib] never returns, and the process is fine
+
+Bracketing narrowed it one step at a time, and each step needed the previous one to be wrong about
+something.
+
+    CIDER_WC loadWindow            CAMainWindowController
+    CIDER_WC loadNibFile enter     CAMainWindowController     <- no leave
+    CIDER_NIB phase buildConnections enter / leave
+    CIDER_NIB phase mainMenu leave
+    CIDER_NIB phase awakeFromNib enter
+    CIDER_NIB awake 0/14 CAMainWindowController               <- no leave
+
+The welcome window runs the same five steps and all three inner calls to completion, so this is
+specific to Document2.nib. The object that does not come back is the FIRST of fourteen, and it is
+the application own -[CCMainWindowController awakeFromNib].
+
+TWO OF MY OWN READINGS WERE WRONG ON THE WAY, and the corrections are the useful part.
+
+FIRST, I sampled the guest threads and found the main thread parked in syscall 47, recvmsg, on
+__skb_wait_for_more_packets, and read that as blocked on an unanswered RPC to the daemon. It is not.
+That is what an idle Cocoa event loop looks like here, because the event wait IS a socket read.
+
+SECOND, I then checked the completion markers with a plain search over the whole log and found
+loadNibFile leave, synchronizeWindowTitle leave and cascade leave all present, which would have
+meant loadWindow completes. Those lines belong to the WELCOME window, which loads earlier and
+prints the same strings. Scoped to the lines after Document2.nib opens, none of them appear. A
+marker that is not scoped to the thing it is measuring is not evidence.
+
+WHAT IS ACTUALLY HAPPENING, and it fits both observations at once: awakeFromNib does not return AND
+the event loop keeps running, cider-wayland-appkit nextevent climbing past two thousand calls at
+t=112. A method that never returns while its own application keeps pumping events is a method that
+has entered a NESTED RUN LOOP. So the document window is not blocked on anything of ours; the
+application is waiting inside awakeFromNib for something that never arrives, and pumping events
+while it waits.
+
+The 56 selectors in that method are mostly window furniture, toolbar, boxes, split view, tab view.
+The next rung is to find what it waits FOR: the candidates worth checking first are the notification
+handlers it registers just before the wait, handlerFTSelectionOfObjectsChanged:,
+handlerFTDocViewBoundsMayBeChanged: and handlerFTNextStepForCheckSpelling:, and whether the
+application is waiting on an operation queue that our side never completes.

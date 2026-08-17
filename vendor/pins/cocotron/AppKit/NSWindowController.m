@@ -183,18 +183,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                                               _topLevelObjects,
                                               NSNibTopLevelObjects, nil];
 
+        /* THREE CALLS, EACH BRACKETED. loadWindow is known not to return for the Swift Publisher
+         * document window while the same method finishes for two other controllers, and these are
+         * the only three things in it. */
+        CIDER_WC_STEP("loadNibFile enter");
         if (![NSBundle loadNibFile: path
                     externalNameTable: nameTable
                              withZone: NULL]) {
             NSLog(@"%s: unable to load nib from file '%@'", __PRETTY_FUNCTION__,
                   path);
         }
+        CIDER_WC_STEP("loadNibFile leave");
 
         [self synchronizeWindowTitleWithDocumentName];
+        CIDER_WC_STEP("synchronizeWindowTitle leave");
 
         if (_shouldCascadeWindows)
             cascadeTopLeftSavedPoint =
                     [_window cascadeTopLeftFromPoint: cascadeTopLeftSavedPoint];
+        CIDER_WC_STEP("cascade leave");
     }
 }
 

@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <stdio.h>
 
 #import <AppKit/NSNib.h>
+#include <objc/runtime.h>
+#include <stdlib.h>
 #import "NSNIBArchiveUnarchiver.h"
 #import <AppKit/NSNibLoading.h>
 #import <AppKit/NSRaise.h>
@@ -258,7 +260,21 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
             fflush(stderr);
         }
 
+        /* THE FOUR PHASES AFTER THE DECODE, each announced. The decode is known to finish, the
+         * trace says objectData=decoded, and loadNibFile still does not return for the Swift
+         * Publisher document window, so the phase that holds it is one of these. */
+        #define CIDER_NIB_PHASE(name)                                          \
+            do {                                                               \
+                if (getenv("CIDER_TRACE_NIB") != NULL) {                       \
+                    fprintf(stderr, "CIDER_NIB phase %s\n", (name));           \
+                    fflush(stderr);                                            \
+                }                                                              \
+            } while (0)
+
+        CIDER_NIB_PHASE("buildConnections enter");
         [objectData buildConnectionsWithNameTable: _nameTable];
+        CIDER_NIB_PHASE("buildConnections leave");
+
         if ((menu = [objectData mainMenu]) != nil) {
             // Rename the first item to have the application name.
             if ([menu numberOfItems] > 0) {
@@ -270,6 +286,8 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
             }
             [NSApp setMainMenu: menu];
         }
+
+        CIDER_NIB_PHASE("mainMenu leave");
 
         topLevelObjects = [objectData topLevelObjects];
 
@@ -291,12 +309,20 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
 
         count = [_allObjects count];
 
+        CIDER_NIB_PHASE("awakeFromNib enter");
         for (i = 0; i < count; i++) {
             id object = [_allObjects objectAtIndex: i];
 
-            if ([object respondsToSelector: @selector(awakeFromNib)])
+            if ([object respondsToSelector: @selector(awakeFromNib)]) {
+                if (getenv("CIDER_TRACE_NIB") != NULL) {
+                    fprintf(stderr, "CIDER_NIB awake %d/%d %s\n", i, count,
+                            class_getName([object class]));
+                    fflush(stderr);
+                }
                 [object awakeFromNib];
+            }
         }
+        CIDER_NIB_PHASE("awakeFromNib leave");
 
         for (i = 0; i < count; i++) {
             id object = [_allObjects objectAtIndex: i];
