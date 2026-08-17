@@ -6922,3 +6922,15 @@ So the decision was traced instead of the pixels, which is a question a capture 
 The alert now takes the same 24 point margin a window does. What is verified is that the code
 decides to draw one and reserves the surface for it; what is NOT verified is how it looks, and it
 will not be until an alert appears over something lighter than a black terminal.
+
+### The panel changes were checked against LibreOffice, not just iTerm2
+
+Rounding panels, giving them an alpha channel and giving them a shadow are changes to AppKit and to
+the backend, so they reach every application. LibreOffice was run afterwards on its dialogs harness:
+no crash, the document renders, the menus open, and the Tip of the Day dialog draws correctly with
+its title bar, its three lights and its buttons.
+
+That run also answers, indirectly, the question the iTerm2 capture could not: the LibreOffice dialog
+sits on a LIGHT document rather than a black terminal, and its shadow is plainly visible there. That
+is the same shadow code, on a titled window rather than a panel, so it confirms the mechanism draws
+something real even though it does not confirm the panel case specifically.
