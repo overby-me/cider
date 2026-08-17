@@ -6724,3 +6724,25 @@ a much smaller and more accurate one about layout.
 
 What remains, stated narrowly: a resize should reflow the existing rows, and instead it advances the
 cursor past a run of empty rows and reprints the prompt there.
+
+### The grey edge on an inline image is not the cached rep, and that was tested rather than argued
+
+The picture draws correctly and carries a light grey edge, 238,238,238, about five pixels down the
+right side and four along the bottom, where the cell aligned box iTerm2 reserves is slightly larger
+than the 240x120 picture scaled to 245x126.
+
+238 is 0.93 of 255, and 0.93 grey is the cocotron WINDOW BACKGROUND, which made an obvious suspect:
+NSCachedImageRep is backed by a real NSWindow, so a cache begins filled with that colour and
+anything the drawn image does not cover would show it. The fix would then be that a cache asked for
+alpha starts clear.
+
+IT WAS TRIED AND IT CHANGED NOTHING. Setting the backing window opaque NO with a clear background
+colour, verified present in the tree buck2 reads and in a rebuilt AppKit, left the edge at exactly
+238,238,238. The change was reverted rather than kept, because a change that does not do what its
+comment says is worse than no change.
+
+What that rules out, and it is worth having: the edge does not come from the cache background by
+this route, and both cache creation sites already pass alpha YES so the guard was not the reason.
+The 240x120 draw also reports best=NSBitmapImageRep, meaning it draws straight from the bitmap and
+builds no cached rep at all, so the remaining candidate is whatever produces the SCALED 245x126
+image that iTerm2 actually paints in row slices.
