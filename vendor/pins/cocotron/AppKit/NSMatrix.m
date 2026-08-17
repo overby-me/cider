@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSFont.h>
 #import <AppKit/NSGraphics.h>
 #import <AppKit/NSMatrix.h>
+#include <objc/runtime.h>
+#include <stdlib.h>
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSWindow.h>
 #import <Foundation/NSKeyedArchiver.h>
@@ -481,6 +483,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - selectedCell {
+    /*
+     * WHY THIS ANSWERS NIL, which is the whole Choose button in Swift Publisher.
+     *
+     * -[CCAssistantController updateNextButton] reduces, read out of the shipping binary, to
+     * [nextButton setEnabled: [designController isDesignSelected]], and isDesignSelected is
+     * [templateView selectedCell] != nil on an NSMatrix subclass. So a nil here is a disabled
+     * button, and nothing in between reports it.
+     */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_MATRIX selectedCell self=%p class=%s index=%ld cells=%lu mode=%ld\n",
+                self, class_getName([self class]), (long) _selectedIndex,
+                (unsigned long) [_cells count], (long) _mode);
+        fflush(stderr);
+    }
+
     if (_selectedIndex < 0)
         return nil;
 
@@ -569,6 +586,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) renewRows: (NSInteger) rows columns: (NSInteger) columns {
+    NSCell *selected = nil;
+
+    if (_selectedIndex >= 0 && _selectedIndex < (NSInteger) [_cells count]) {
+        selected = [[_cells objectAtIndex: _selectedIndex] retain];
+    }
+
     while (_numberOfRows < rows)
         [self addRow];
     while (_numberOfRows > rows)
@@ -578,7 +601,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     while (_numberOfColumns > columns)
         [self removeColumn: _numberOfColumns - 1];
 
+    /*
+     * THE SELECTION SURVIVES A RELAYOUT. macOS does not clear it here, and an application that
+     * lays its matrix out in response to a resize has every right to expect the cell the user
+     * chose to still be chosen afterwards. Cocotron deselected unconditionally, so in Swift
+     * Publisher the remembered template was selected at startup, index 1, and lost again the
+     * moment the gallery fitted itself to its scroll view.
+     *
+     * The cell states are still cleared, because a renew genuinely rebuilds the grid; what is
+     * restored is the one cell that was selected, and only if it is still in the matrix.
+     */
     [self _deselectAllCells];
+
+    if (selected != nil) {
+        if ([_cells indexOfObjectIdenticalTo: selected] != NSNotFound) {
+            [self _selectCell: selected deselectOthers: NO];
+        }
+        [selected release];
+    }
 }
 
 - (NSCell *) makeCellAtRow: (NSInteger) row column: (NSInteger) column {
@@ -651,10 +691,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) removeColumn: (NSInteger) col {
-    NSInteger i;
+    NSInteger row;
 
-    for (i = _numberOfRows; i >= 1; i--)
-        [_cells removeObjectAtIndex: (i * col)];
+    /*
+     * i * col IS NOT AN INDEX INTO A ROW MAJOR ARRAY. The cell at row r, column c lives at
+     * r * _numberOfColumns + c, so the old loop removed a scatter of unrelated cells, and for
+     * column zero it removed index zero over and over, which is the first row and not the first
+     * column at all. Everything after the removal then belonged to a different row and column
+     * than the one it was drawn at.
+     *
+     * Swift Publisher is where this showed. Its template gallery relays out on every resize and
+     * goes through 2 columns, 3 columns and back, so the cell array was reordered twice before
+     * the first click; -[CCAssistantTemplateView mouseDown:] then asked the cell it got from
+     * cellAtRow:column: whether isImageLoading, got the answer for some other cell, and returned
+     * without selecting anything. From outside that is a tile that highlights and a Choose
+     * button that stays disabled.
+     *
+     * Backwards by row so the earlier indices stay valid while removing.
+     */
+    if (col < 0 || col >= _numberOfColumns) {
+        return;
+    }
+
+    for (row = _numberOfRows - 1; row >= 0; row--) {
+        NSUInteger index = (NSUInteger)(row * _numberOfColumns + col);
+
+        if (index < [_cells count]) {
+            [_cells removeObjectAtIndex: index];
+        }
+    }
 
     _numberOfColumns--;
 }
@@ -723,6 +788,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) selectCellAtRow: (NSInteger) row column: (NSInteger) column {
     NSCell *cell;
 
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_MATRIX selectCellAtRow self=%p row=%ld col=%ld rows=%ld cols=%ld cells=%lu\n",
+                self, (long) row, (long) column, (long) _numberOfRows, (long) _numberOfColumns,
+                (unsigned long) [_cells count]);
+        fflush(stderr);
+    }
+
     if (row < 0 || row >= _numberOfRows)
         cell = nil;
     else if (column < 0 || column >= _numberOfColumns)
@@ -738,8 +810,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [self willChangeValueForKey: @"selectedIndex"];
     if (select == nil)
         _selectedIndex = -1;
-    else
-        _selectedIndex = [_cells indexOfObjectIdenticalTo: select];
+    else {
+        NSUInteger found = [_cells indexOfObjectIdenticalTo: select];
+
+        /* NSNotFound is NSIntegerMax here, which is POSITIVE, so it walked straight past the
+         * < 0 test in -selectedCell and was caught only by the count check below it. Say -1. */
+        _selectedIndex = (found == NSNotFound) ? -1 : (NSInteger) found;
+    }
+
+    /*
+     * A CELL THAT IS NOT IN _cells LEAVES NSNotFound HERE, which is NSIntegerMax and not a
+     * negative number, so -selectedCell falls through the < 0 test and is caught only by the
+     * count check below it, the one whose comment says it should not be needed. Saying so out
+     * loud is the difference between a nil selection that was asked for and one that is a bug.
+     */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_MATRIX setSelectedIndex self=%p cell=%p index=%ld cells=%lu%s\n",
+                self, select, (long) _selectedIndex, (unsigned long) [_cells count],
+                (select != nil && _selectedIndex == (NSInteger) NSNotFound) ? " NOT_IN_CELLS" : "");
+        fflush(stderr);
+    }
 
     _keyCellIndex = _selectedIndex;
     [self didChangeValueForKey: @"selectedIndex"];
@@ -1262,6 +1352,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                 [self _editTextCell: cell row: row column: column event: event];
             return;
         }
+    }
+
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        NSInteger hitRow = -1, hitColumn = -1;
+        BOOL hit = [self getRow: &hitRow column: &hitColumn forPoint: point];
+        NSCell *hitCell = hit ? [self cellAtRow: hitRow column: hitColumn] : nil;
+
+        fprintf(stderr,
+                "CIDER_MATRIX mouseDown self=%p class=%s mode=%ld at=%.0f,%.0f hit=%d row=%ld col=%ld cell=%s enabled=%d\n",
+                self, class_getName([self class]), (long) _mode, point.x, point.y, (int) hit,
+                (long) hitRow, (long) hitColumn,
+                hitCell ? class_getName([hitCell class]) : "nil",
+                hitCell ? (int) [hitCell isEnabled] : -1);
+        fflush(stderr);
     }
 
     [NSEvent startPeriodicEventsAfterDelay: 0.1 withPeriod: 0.2];

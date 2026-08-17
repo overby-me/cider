@@ -7559,3 +7559,65 @@ is, and the chain says which in one line:
 That is vendor/patches/corefoundation/0018. The CCLayoutManager raise has not recurred since the
 capture fix, so which of the two NSLayoutManagers wins on a given run is still unmeasured; the
 duplicate list above is the thing to act on regardless.
+
+
+## The Choose button: three bugs in NSMatrix, found by reading the application
+
+The button was disabled and nothing in our code was disabling it, so the only way forward was to
+read what the application asks. -[CCAssistantController updateNextButton], disassembled out of the
+shipping binary with the selectors resolved, is four selectors long:
+
+    [tabView selectedTabViewItem] -> [tabView indexOfTabViewItem:]  ; if index == 1, return
+    [nextButton setEnabled: [designController isDesignSelected]]
+
+and -[CCAssistantDesignController isDesignSelected] is six instructions:
+
+    cell = [templateView selectedCell]
+    return cell != nil
+
+templateView is a CCAssistantTemplateView, whose superclass in the objc metadata is NSMatrix. So the
+whole button is one question: does our NSMatrix have a selected cell. Tracing selectedCell,
+selectCellAtRow:column: and _setSelectedIndexFromCell: printed the answer as a sequence:
+
+    selectCellAtRow row=0 col=1 rows=284 cols=2 cells=568
+    setSelectedIndex index=1 cells=568         <- the remembered template, selected at startup
+    selectedCell index=1 cells=568
+    selectedCell index=-1 cells=570            <- gone, and the cell count changed
+    selectCellAtRow row=0 col=1 rows=190 cols=3 cells=570
+    setSelectedIndex index=1 cells=570
+    selectedCell index=-1 cells=568            <- gone again
+
+The count moving 568, 570, 568 is the gallery fitting itself to its scroll view, twice, before the
+user gets to click anything. Three bugs were behind that:
+
+1. renewRows:columns: called _deselectAllCells unconditionally. macOS does not clear the selection
+   there, and an application that relays out on resize expects the chosen cell to stay chosen. The
+   selected cell is now remembered across the rebuild and restored if it survived.
+
+2. removeColumn: removed the wrong objects. _cells is row major, so the cell at row r column c is at
+   r * _numberOfColumns + c, and the loop removed index i * col: a scatter of unrelated cells, and
+   for column zero, index zero over and over, which is the first ROW. After one relayout every cell
+   was at a different row and column than the one it was drawn at. That is why clicking a tile did
+   nothing: -[CCAssistantTemplateView mouseDown:] asks the cell from cellAtRow:column: whether
+   isImageLoading and returns immediately if it says yes, so it was asking a cell that was never
+   drawn and never loaded.
+
+3. _setSelectedIndexFromCell: stored NSNotFound when the cell was not in _cells. NSNotFound is
+   NSIntegerMax, which is positive, so it went straight past the _selectedIndex < 0 test in
+   selectedCell and was caught only by the count check under it, the one whose own comment says it
+   should not be needed. It stores -1 now.
+
+VERIFIED, on the run after the fixes: the selection holds at index 1 through 568, 570 and 568 again,
+and the click on the button reports
+
+    CIDER_CONTROL mouseDown class=NSButton title=Choose enabled=1
+
+against enabled=0 before. New NSMatrix objects with three and four cells appear immediately after,
+which is the application building document furniture.
+
+THE DOCUMENT STILL DOES NOT OPEN. One line after the click:
+
+    -[__NSPlaceholderAttributedString initWithRTFD:documentAttributes:] unimplemented
+
+so the template text cannot be read and the document build stops there. That is the next rung, and
+it is a real piece of work rather than a stub: RTFD is RTF with attachments.
