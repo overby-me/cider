@@ -64,26 +64,68 @@ static struct sigaction cider_previous[NSIG];
  */
 static void cider_crashtrace_sample(int sig, siginfo_t *info, void *uap)
 {
-    void *frames[64];
-    int count = backtrace(frames, 64);
+	/*
+	 * A STACK FROM INSIDE THE WAIT, on demand, without killing anything.
+	 *
+	 * The crash handler answers where a process DIED and the atexit handler answers who asked it
+	 * to leave. Neither can answer where a thread IS while it is still running, which is the
+	 * question left by Swift Publisher: -[CCMainWindowController awakeFromNib] does not return and
+	 * nothing crashes.
+	 *
+	 * IT WALKS RBP RATHER THAN CALLING backtrace(), for a measured reason: backtrace() answers 64
+	 * frames from a libdispatch worker here and ZERO from the main thread, so the first version of
+	 * this handler printed frames=0 three times and said nothing. The frame pointer walk below is
+	 * the same one the crash handler uses, and that one has been producing correct stacks all
+	 * along.
+	 *
+	 * SIGUSR1 is handled and RESUMED, unlike every other signal here, so the process carries on
+	 * and can be sampled again. Two samples a few seconds apart separate a slow walk through a
+	 * long list from a wait that will never end.
+	 */
+	void *frames[64];
+	int count = 0;
+	ucontext_t *uc = (ucontext_t *) uap;
+	uint64_t rip = 0, rbp = 0, rsp = 0;
 
-    (void) sig;
-    (void) info;
-    (void) uap;
+	(void) sig;
+	(void) info;
 
-    fprintf(stderr, "\ncider SAMPLE frames=%d\n", count);
-    for (int i = 0; i < count; i++) {
-        Dl_info where;
+	if (uc != NULL && uc->uc_mcontext != NULL) {
+		rip = uc->uc_mcontext->__ss.__rip;
+		rbp = uc->uc_mcontext->__ss.__rbp;
+		rsp = uc->uc_mcontext->__ss.__rsp;
+	}
+	if (rip != 0) {
+		frames[count++] = (void *) rip;
+	}
+	if (rsp != 0 && (rsp & 7) == 0) {
+		uint64_t top = *(uint64_t *) rsp;
 
-        if (dladdr(frames[i], &where) != 0 && where.dli_sname != NULL) {
-            const char *image = where.dli_fname ? strrchr(where.dli_fname, '/') : NULL;
+		if (top > 0x1000 && top != rip) {
+			frames[count++] = (void *) top;
+		}
+	}
 
-            fprintf(stderr, "%-3d %-34s %s\n", i, image ? image + 1 : "?", where.dli_sname);
-        } else {
-            fprintf(stderr, "%-3d %-34s %p\n", i, "???", frames[i]);
-        }
-    }
-    fflush(stderr);
+	uint64_t previous = 0;
+
+	while (count < 64 && rbp != 0 && rbp > previous && (rbp & 7) == 0) {
+		uint64_t next = ((uint64_t *) rbp)[0];
+		uint64_t ret = ((uint64_t *) rbp)[1];
+
+		if (ret == 0) {
+			break;
+		}
+		frames[count++] = (void *) ret;
+		previous = rbp;
+		rbp = next;
+	}
+
+	char head[160];
+	int len = snprintf(head, sizeof head, "\ncider SAMPLE rip=%p rsp=%p frames=%d\n",
+		(void *) rip, (void *) rsp, count);
+
+	write(2, head, (size_t) len);
+	backtrace_symbols_fd(frames, count, 2);
 }
 
 static void cider_crashtrace_atexit(void)

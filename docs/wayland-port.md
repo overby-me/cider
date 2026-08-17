@@ -8214,3 +8214,44 @@ A HARNESS CAVEAT THAT STILL BITES: the run that produced this capture came out 1
 the re-pin before every click, because the parent compositor can resize the nested output between a
 click and the shot that follows it. The measurement above comes from the LOG, which is not affected
 by that; a claim about the picture from that run would be.
+
+
+## The main thread is in the event loop, and has been all along
+
+The sampler built last rung finally ran, and the answer overturns the framing I had been using for
+five rungs. Sampled twice, twelve seconds apart, while the document window was supposedly being
+built, the main thread is:
+
+    NSApplicationMain -> -[NSApplication run] -> nextEventMatchingMask: -> display_next_event
+      -> -[NSRunLoop runMode:beforeDate:] -> CFRunLoopRunSpecific -> __CFRunLoopServiceMachPort
+      -> mach_msg -> dserver receive
+
+There is no awakeFromNib on that stack, no nib loading, no showWindow. THE METHOD RETURNED. What
+never happened was the printing of its leave markers, and an exception unwinding past them explains
+that exactly, as it did for the earlier abort.
+
+TWO CORRECTIONS TO MY OWN LAST TWO ENTRIES:
+
+1. I wrote that the document nib load COMPLETES, on the strength of CIDER_WC loadNibFile leave
+   appearing. Scoped to the controller that matters it does NOT appear: CAMainWindowController stops
+   at loadNibFile enter, and the leave belonged to CCWellcomeWindowController and CCAssistantController,
+   which load their own nibs earlier and print the same words. This is the SECOND time an unscoped
+   marker has fooled me in this document, having already been written down as a lesson once.
+
+2. The nib phase markers have the same defect: CIDER_NIB phase awakeFromNib leave says nothing about
+   WHICH nib. In order, the sequence is Document2.nib open, awake 0/14 CAMainWindowController,
+   Inspector.nib open, awake 0/958 InspectorViewController, awakeFromNib LEAVE. The leave is the
+   INSPECTOR nib finishing. The document nib never finishes.
+
+THE INSTRUMENT ITSELF NEEDED FIXING, and that is worth recording. The first sampler called
+backtrace() and printed frames=0 three times. backtrace() answers 64 frames from a libdispatch
+worker here and ZERO from the main thread, which is a property of that stack rather than of the code
+being sampled. Walking rbp out of the Darwin ucontext, which is what the crash handler has been
+doing all along, gives the seventeen frames above. An instrument that returns nothing is not
+evidence of nothing.
+
+WHAT THIS MAKES THE NEXT RUNG. Not a wait, not a hang, not a missing API: an exception that escapes
+-[CCMainWindowController awakeFromNib] and leaves the window unbuilt. Frames printed AT THE RAISE
+cannot say which exception escapes, because most of them are caught. The way to name it is to catch
+it where it leaves: wrap the awakeFromNib loop in -[NSNib instantiateNibWithExternalNameTable:] in a
+handler that PRINTS and RE-RAISES.
