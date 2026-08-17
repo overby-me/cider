@@ -116,10 +116,35 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
         _typesetter = [NSTypesetter new];
         _glyphGenerator = [[NSGlyphGenerator sharedGlyphGenerator] retain];
         _delegate = [keyed decodeObjectForKey: @"NSDelegate"];
+        /*
+         * THE BACK POINTER, which adding to the array does not set.
+         *
+         * -addTextContainer: does two things, it appends to _textContainers AND it does
+         * [container setLayoutManager: self]. Decoding went straight to the array, so every text
+         * container restored from an archive answered nil to -layoutManager while looking
+         * perfectly attached from this side.
+         *
+         * Swift Publisher dies on precisely that. CFTTextExt::layoutManager, read out of the
+         * binary, is [[self textContainer] layoutManager], and the nil it returns goes unchecked
+         * into an NSMutableSet inside CFTCoreDoc::rearrangeWrappingPath, which raises and takes
+         * the whole document read with it, so Choose never produces a window. The counts said the
+         * same thing before the cause was known: 371 layout managers created in a run and only 45
+         * calls to addTextContainer, because only the programmatic path went through it.
+         *
+         * Set rather than re-added, so the array contents and their order stay exactly as the
+         * archive had them, and skipping a container that already names a layout manager leaves a
+         * shared container alone.
+         */
         _textContainers = [NSMutableArray new];
         [_textContainers
                 addObjectsFromArray:
                         [keyed decodeObjectForKey: @"NSTextContainers"]];
+
+        for (NSTextContainer *container in _textContainers) {
+            if ([container layoutManager] == nil) {
+                [container setLayoutManager: self];
+            }
+        }
         _glyphFragments = NSCreateRangeToOwnedPointerEntries(2);
         _invalidFragments = NSCreateRangeToOwnedPointerEntries(2);
         _layoutInvalid = YES;

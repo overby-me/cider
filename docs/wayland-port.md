@@ -8368,3 +8368,35 @@ what a chain of failures would have looked like. It fires twelve times in a run.
 
 The document window is still not on screen. This rung bought three eliminations and two numbers, and
 no fix; that is what it bought.
+
+
+## The accessor is [[self textContainer] layoutManager], and my fix for it changed nothing
+
+Reading CFTTextExt::layoutManager out of the binary finishes the sentence the last entry started. It
+is not a member read:
+
+    CFTTextExt::layoutManager()  ==  [ CFTTextExt::textContainer() layoutManager ]
+
+one call to CFTTextExt::textContainer, one objc_msgSend of the selector layoutManager, and the
+result is what goes unchecked into the set.
+
+THAT POINTED AT A REAL DEFECT, and it is fixed: -[NSLayoutManager initWithCoder:] restored its
+containers with
+
+    [_textContainers addObjectsFromArray: [keyed decodeObjectForKey: @"NSTextContainers"]]
+
+which appends to the array but never does what -addTextContainer: also does, namely
+[container setLayoutManager: self]. Every text container decoded from an archive therefore answered
+nil to -layoutManager while looking attached from the layout manager side. The decode now sets the
+back pointer for any container that does not already name one.
+
+AND IT CHANGED NOTHING. Same run, same harness, same count: twelve raises of attempt to insert nil
+object into NSMutableSet, in the same frames. The fix is kept because the defect is real and the
+asymmetry is plain from the counts, 371 layout managers created against 45 calls to
+addTextContainer, but IT IS NOT THE CAUSE OF THE SYMPTOM and is not claimed as one.
+
+WHAT I ASSUMED AND SHOULD NOT HAVE. That expression has two ways to answer nil, and I only pursued
+one. If CFTTextExt::textContainer answers nil then [nil layoutManager] is nil as well, and the
+container back pointer is irrelevant. Nothing measured so far distinguishes the two, and the next
+rung is exactly that: a trace on -[NSTextContainer layoutManager] returning nil, which says whether
+a container was asked at all.
