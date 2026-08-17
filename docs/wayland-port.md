@@ -7224,3 +7224,40 @@ placeholder and nothing here renders HTML.
 WHAT THE RUN NOW REACHES, having got past the crash: 1,298 exceptions, every one of them
 -[NSColor_CGColor CGColorRef] unrecognized. That is the next thing rather than a regression; the log
 went from 810 lines to 30,707 because the application is doing far more than it could before.
+
+### NSShadow has always asked for a CGColorRef that no colour class answered
+
+With the WebView crash gone the run reached the drawing, and 1,298 of its 1,298 exceptions were one
+selector:
+
+    NSInvalidArgumentException: -[NSColor_CGColor CGColorRef]: unrecognized selector
+
+This is not the application being unusual. It is cocotron asking itself. -[NSShadow set] is
+
+    CGColorRef color = [_color CGColorRef];
+    CGContextSetShadowWithColor(context, _offset, _blurRadius, color);
+    CGColorRelease(color);
+
+and that accessor exists nowhere, so EVERY shadow in every application raised. There is exactly one
+caller in the whole tree, which is what made it safe to add.
+
+Two implementations, because NSShadow asks whatever colour it was handed. NSColor_CGColor returns
+its own ref, and the base NSColor builds one by converting to calibrated RGB, so a catalog colour or
+any other subclass answers as well; a colour that cannot convert answers NULL rather than raising,
+which CGContextSetShadowWithColor reads as no shadow.
+
+OWNED, NOT AUTORELEASED. The caller above releases what it gets, so returning the ivar unretained
+would hand NSShadow a colour it then over-releases. That is the sort of detail that turns a fix into
+a crash two frames later.
+
+Measured, before and after, on the same harness:
+
+    raises        1298 -> 6
+    CGColorRef    3880 mentions -> 0
+    log          30,707 lines -> 1,002
+
+The six that remain are four distinct small gaps: setUsesFindPanel:, captureBitmapInRect: on the
+abstract O2Context, URLQueryAllowedCharacterSet and disableAutomaticTermination:.
+
+iTerm2 re-run afterwards, because NSColor is reached by everything: picture drawn, no crash, 38 keys
+delivered.

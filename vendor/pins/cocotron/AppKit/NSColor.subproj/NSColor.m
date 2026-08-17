@@ -762,6 +762,42 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
     return [NSColorSpace sRGBColorSpace];
 }
 
+/*
+ * AND EVERY OTHER COLOUR CLASS ANSWERS IT TOO, not only NSColor_CGColor.
+ *
+ * NSShadow asks any colour it was given, and a catalog colour or a pattern is just as likely to be
+ * the one set. Converting through the calibrated RGB space is what this backend can draw, and a
+ * colour that cannot convert answers NULL rather than raising, which CGContextSetShadowWithColor
+ * treats as no shadow.
+ *
+ * OWNED, to match the accessor on NSColor_CGColor and the CGColorRelease in -[NSShadow set].
+ */
+- (CGColorRef) CGColorRef {
+    NSColor *rgb = [self colorUsingColorSpaceName: NSCalibratedRGBColorSpace];
+
+    if (rgb == nil) {
+        return NULL;
+    }
+
+    CGFloat components[4] = {0.0, 0.0, 0.0, 1.0};
+
+    [rgb getRed: &components[0]
+          green: &components[1]
+           blue: &components[2]
+          alpha: &components[3]];
+
+    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+
+    if (space == NULL) {
+        return NULL;
+    }
+
+    CGColorRef ref = CGColorCreate(space, components);
+
+    CGColorSpaceRelease(space);
+    return ref;
+}
+
 /* A COLOUR IN AN ARBITRARY SPACE, components first and alpha last, which is how an application
  * hands over a colour it built itself. The count tells the space apart: 2 is white plus alpha,
  * 5 is CMYK plus alpha, anything else is treated as RGB, which is what this backend can draw. */

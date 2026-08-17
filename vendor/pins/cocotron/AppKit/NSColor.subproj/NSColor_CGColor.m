@@ -475,6 +475,25 @@ static inline CGFloat calibratedWhiteFromRGB(CGFloat r, CGFloat g, CGFloat b) {
     return nil;
 }
 
+/*
+ * THE CGColorRef ACCESSOR NSShadow HAS ALWAYS CALLED AND NOTHING EVER IMPLEMENTED.
+ *
+ * -[NSShadow set] does
+ *
+ *     CGColorRef color = [_color CGColorRef];
+ *     CGContextSetShadowWithColor(context, _offset, _blurRadius, color);
+ *     CGColorRelease(color);
+ *
+ * and no colour class answered that selector, so EVERY shadow raised an unrecognized selector.
+ * Swift Publisher raised it 1,298 times in one launch once it got as far as drawing its windows.
+ *
+ * OWNED, NOT AUTORELEASED, because the caller above releases what it gets. Returning the ivar
+ * unretained would hand NSShadow a colour it then over-releases.
+ */
+- (CGColorRef) CGColorRef {
+    return (CGColorRef) CGColorRetain(_colorRef);
+}
+
 - (NSString *) colorSpaceName {
     return _colorSpaceName;
 }
