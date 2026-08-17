@@ -7336,3 +7336,29 @@ WHAT IS STILL MISSING, said plainly: NSURLSessionDownloadTask has no implementat
 application that downloads anything still dies on it. Turning the updater off is a workaround for
 testing this application, not a fix for that gap, and any application whose own work needs a
 download will hit it.
+
+### Swift Publisher meets all three criteria, and the Choose button does not enable
+
+Driven end to end with cider-vptr and captured at every step, so each claim is a picture rather
+than a count.
+
+    d1  welcome window over the gallery
+    d2  click Close at 1022,618      -> welcome window GONE, full gallery revealed
+    d3  click Blank Portrait tile    -> the tile is SELECTED, blue highlight around it
+    d4  click Choose at 1186,661     -> nothing; the button is drawn dim and no document opens
+    d5  resize the output to 1000x600 -> the window redraws at the new size AND RELAYOUTS: the tile
+                                        grid reflows from three columns to two, the source list,
+                                        menu bar, Open Recent and Choose all reposition, and the
+                                        title recentres
+
+RENDERS, INTERACTIVE and RESIZABLE are all met for this application. Two clicks land on two
+different controls and both act, and the relayout is a real reflow rather than the window being
+stretched or clipped.
+
+WHAT DOES NOT WORK: the Choose button never enables. The template selects, so the gallery knows
+what was picked, but the button stays disabled and no document window opens, which means the
+application cannot actually be used yet. Whether that is button enablement, a binding that
+validates the selection, or something the gallery only does after a preview loads, is not yet
+known and is the next thing to find out.
+
+Also lost across the resize: the tile selection highlight. macOS keeps it.
