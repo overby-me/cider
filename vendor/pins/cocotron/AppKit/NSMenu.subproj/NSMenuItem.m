@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <stdio.h>
 #include <stdlib.h>
 #import <AppKit/NSMenuItem.h>
+#import <objc/runtime.h>
 #import <Foundation/NSKeyedArchiver.h>
 #import <AppKit/NSButtonCell.h>
 
@@ -240,6 +241,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (NSImage *) mixedStateImage {
     return _mixedStateImage;
+}
+
+/*
+ * objectValue, WHICH THIS CLASS NEVER HAD AND APPLICATIONS BIND TO ANYWAY.
+ *
+ * Swift Publisher builds its whole main menu through a helper that binds each item, and the binder
+ * reads the bound object with valueForKeyPath: at bind time. NSMenuItem answered nothing for
+ * objectValue, so every item raised
+ *
+ *     NSUnknownKeyException: <NSMenuItem: title: Delete ...> is not key value coding compliant
+ *     for the key objectValue
+ *
+ * 219 of them in one launch, and createMainMenu never finished, which is why the menu bar carried
+ * the application name and nothing else. macOS answers this key, so ours does now.
+ *
+ * AN ASSOCIATED OBJECT RATHER THAN AN IVAR, deliberately: NSMenuItem is a public class in a public
+ * header and applications here are PREBUILT, so leaving the ivar layout exactly as it is removes
+ * the question of what a compiled subclass expects to find and where.
+ */
+static char CiderMenuItemObjectValueKey;
+
+- (id) objectValue {
+    return objc_getAssociatedObject(self, &CiderMenuItemObjectValueKey);
+}
+
+- (void) setObjectValue: (id) value {
+    objc_setAssociatedObject(self, &CiderMenuItemObjectValueKey, value,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 - (id) representedObject {

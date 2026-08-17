@@ -78,6 +78,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - representedObject;
 
+/* KVC COMPLIANCE FOR objectValue. Applications bind against a menu item objectValue and macOS
+ * answers, most likely because AppKit carries a private ivar of that name and key value coding
+ * finds it. Cocotron has neither, so every such binding raised NSUnknownKeyException. Stored
+ * outside the ivar layout so no prebuilt subclass can be disturbed by it. */
+- (id) objectValue;
+- (void) setObjectValue: (id) value;
+
 - (BOOL) hasSubmenu;
 - (NSMenu *) submenu;
 

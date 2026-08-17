@@ -7003,3 +7003,47 @@ NSFontManager is reached by everything: picture still drawn, no crash, keys stil
 STILL OPEN on this application: the nib stops at NSConnections; the template grid is dark grey where
 macOS is light; the in-window menu bar has only the application name, because building the main menu
 binds items to objectValue which NSMenuItem does not have; and the heading is clipped at its top.
+
+### NSMenuItem answers objectValue now, and that did NOT restore the menu bar
+
+219 exceptions in one launch, all the same:
+
+    NSUnknownKeyException: <NSMenuItem: title: Delete ...> is not key value coding compliant
+    for the key objectValue
+
+The backtrace names the mechanism exactly, and it is not a missing property on the application side:
+
+    -[NSObject(NSKeyValueCoding) valueForUndefinedKey:]
+    -[_NSKVOBinder writeDestinationToSource]
+    -[_NSKVOBinder bind]
+    MenuItem(NSString*, id, NSString*, NSString*, ...)
+    -[CCDocumentController createMainMenu]
+
+Swift Publisher builds its menu through a helper that BINDS each item, and a binder reads the bound
+object with valueForKeyPath: the moment the binding is made. NSMenuItem answered nothing for
+objectValue. macOS answers it, most likely because AppKit carries a private ivar of that name and
+key value coding finds it, so ours answers it now. It is stored in an ASSOCIATED OBJECT rather than
+a new ivar, because NSMenuItem is public and the applications here are prebuilt, which takes any
+question about subclass layout off the table.
+
+    objectValue raises   219 -> 0
+    all raises           223 -> 4
+    log                  4247 lines -> 807
+
+AND IT DID NOT DO WHAT I EXPECTED, which the earlier note in this file predicted it would. The
+in-window menu bar still carries only the application name. The claim that these exceptions cut
+createMainMenu short and emptied the menu bar is WRONG: the menus come from MainMenu.nib, which
+loads, and the menu bar was empty for some other reason. What the fix did is remove 219 real
+exceptions from menu construction, which is worth having on its own and is all that is claimed.
+
+WHAT THE QUIETER LOG NOW SHOWS, having been buried under those 219:
+
+  NSWindowServerCommunicationException from -[NSDisplay init], reached from
+    +[NSFontFamily addFontFamilyWithName:] on a BACKGROUND thread during preview building;
+  -[__NSPlaceholderAttributedString initWithCoder:] unrecognized, so an attributed string cannot be
+    read back out of a keyed archive, which is what -[CCDocument readFromURL:ofType:error:] needs;
+  -[NSApplication setAppleMenu:] unimplemented, which is a menu bar lead worth following;
+  and a nib decode reporting objectpair key=NSMenuItem wants=NSMenuItem value=NSMenu.
+
+Both of the exceptions above were present BEFORE this change, in the four that were not about
+objectValue, so none of them is a consequence of it.
