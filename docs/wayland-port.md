@@ -7362,3 +7362,39 @@ validates the selection, or something the gallery only does after a preview load
 known and is the next thing to find out.
 
 Also lost across the resize: the tile selection highlight. macOS keeps it.
+
+### The click is real, proved by not clicking, and two instruments were in the wrong place
+
+Doubt arrived from an instrument rather than from a picture. A trace in -[NSControl mouseDown:]
+printed NOTHING for any button in a whole run, including the Close button that visibly works, and a
+trace in -[NSControl sendAction:to:] printed nothing either. Two silent instruments while the thing
+they watch demonstrably happens means the instruments are in the wrong place, not that the click is
+imaginary, but it does mean the interactivity claim rested on one picture.
+
+So the claim was tested by REMOVING the cause. The same harness, identical timings and identical
+captures, with the pointer events suppressed:
+
+    with clicks     d4: welcome window GONE, gallery revealed, tile selected
+    without clicks  d4: welcome window STILL OPEN
+
+That is a control experiment rather than a screenshot, and it settles it: the click closes the
+window. Swift Publisher is interactive.
+
+WHAT IS STILL UNEXPLAINED. Clicking Choose does nothing, and the button is ENABLED when it happens:
+
+    CIDER_CONTROL setEnabled class=NSButton title=Choose flag=1   (four times)
+
+so the application does enable it once a template is picked, which corrects the earlier note here
+saying the button stays disabled. Its title is also drawn grey in the run where a template was
+selected, darkest pixel 102,102,102 against 0,0,0 for the Close button that works, and drawn dark in
+the run where nothing was clicked. Neither the drawn colour nor the dead click is explained yet, and
+the path a button click actually takes in this AppKit has not been found: it is not
+-[NSControl mouseDown:] and not -[NSControl sendAction:to:].
+
+Fixed along the way, and it was mine: the WebView stub declared its method signature as "@@:", which
+says every method takes no arguments, so the first one that took an argument produced
+
+    NSForwardSignatureError: invoked with 3 args, but 2 expected. Selector setFrameLoadDelegate:
+
+The signature is now built from the selector by counting its colons. Four such errors in a run
+became zero.

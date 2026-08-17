@@ -48,8 +48,27 @@
  * that nobody wrote. A caller that gets garbage back where it expected an object crashes far away
  * from here, which is the whole reason this file was hard to blame.
  */
+/*
+ * THE SIGNATURE HAS TO MATCH THE ARGUMENT COUNT, and a fixed one does not.
+ *
+ * Declaring "@@:" said every method takes no arguments, and the forwarding machinery said so out
+ * loud on the first one that did:
+ *
+ *     NSForwardSignatureError: invoked with 3 args, but 2 expected.
+ *     Selector setFrameLoadDelegate:, class WebView
+ *
+ * The colons in the selector are the count, so the signature is built from the name.
+ */
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [NSMethodSignature signatureWithObjCTypes: "@@:"];
+    const char *name = sel_getName(aSelector);
+    NSMutableString *types = [NSMutableString stringWithString: @"@@:"];
+
+    for (const char *c = name; *c != '\0'; c++) {
+        if (*c == ':') {
+            [types appendString: @"@"];
+        }
+    }
+    return [NSMethodSignature signatureWithObjCTypes: [types UTF8String]];
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation {
@@ -69,8 +88,27 @@
 @implementation WebPreferences
 
 /* The same object return as WebView above, and for the same reason. */
+/*
+ * THE SIGNATURE HAS TO MATCH THE ARGUMENT COUNT, and a fixed one does not.
+ *
+ * Declaring "@@:" said every method takes no arguments, and the forwarding machinery said so out
+ * loud on the first one that did:
+ *
+ *     NSForwardSignatureError: invoked with 3 args, but 2 expected.
+ *     Selector setFrameLoadDelegate:, class WebView
+ *
+ * The colons in the selector are the count, so the signature is built from the name.
+ */
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [NSMethodSignature signatureWithObjCTypes: "@@:"];
+    const char *name = sel_getName(aSelector);
+    NSMutableString *types = [NSMutableString stringWithString: @"@@:"];
+
+    for (const char *c = name; *c != '\0'; c++) {
+        if (*c == ':') {
+            [types appendString: @"@"];
+        }
+    }
+    return [NSMethodSignature signatureWithObjCTypes: [types UTF8String]];
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation {

@@ -336,6 +336,13 @@ static NSMutableDictionary *cellClassDictionary = nil;
 }
 
 - (void) setEnabled: (BOOL) flag {
+    if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
+        NSLog(@"CIDER_CONTROL setEnabled class=%s title=%@ flag=%d",
+              object_getClassName(self),
+              [self respondsToSelector: @selector(title)] ? [(id) self title] : @"(none)",
+              (int) flag);
+    }
+
     [_cell setEnabled: flag];
     [self setNeedsDisplay: YES];
 }
@@ -497,6 +504,15 @@ static NSMutableDictionary *cellClassDictionary = nil;
 }
 
 - (BOOL) sendAction: (SEL) action to: target {
+    /* DID THE CLICK REACH A CONTROL AT ALL, which a screenshot cannot answer. A button that is
+     * disabled never gets here, and a click that misses never gets here either, so this separates
+     * the two. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
+        NSLog(@"CIDER_CONTROL send class=%s action=%s target=%s enabled=%d",
+              object_getClassName(self), action ? sel_getName(action) : "(nil)",
+              target ? object_getClassName(target) : "(nil)", (int) [self isEnabled]);
+    }
+
     return [NSApp sendAction: action to: target from: self];
 }
 
@@ -662,6 +678,17 @@ static NSMutableDictionary *cellClassDictionary = nil;
 }
 
 - (void) mouseDown: (NSEvent *) event {
+    /* DID THIS CONTROL SEE THE CLICK. sendAction: is the wrong place to ask, as an earlier run
+     * proved: the Close button worked and printed nothing there, so buttons do not fire through
+     * -[NSControl sendAction:to:] here. mouseDown IS the entry point, so a control that never
+     * prints never got the click, and one that prints but does nothing is a different bug. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
+        NSLog(@"CIDER_CONTROL mouseDown class=%s title=%@ enabled=%d frame=%@",
+              object_getClassName(self),
+              [self respondsToSelector: @selector(title)] ? [(id) self title] : @"(none)",
+              (int) [self isEnabled], NSStringFromRect([self frame]));
+    }
+
     BOOL sendAction = NO;
 
     if (![self isEnabled])
