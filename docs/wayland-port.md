@@ -6813,3 +6813,33 @@ The checkbox appears in the right place. What still differs from the reference: 
 and title is tighter than macOS, the panel has square corners where macOS is rounded, the buttons
 are small rectangles where macOS uses tall pills, and we draw a yellow warning triangle where the
 macOS alert has NO icon at all.
+
+### Every alert wore a critical icon, including the ones that are not critical
+
+The comment at the top of NSAlert has always said what the icon should be:
+
+    NSWarningAlertStyle       - app icon
+    NSInformationalAlertStyle - app icon
+    NSCriticalAlertStyle      - large yellow /!\ triangle w/ small app icon
+
+and init set the yellow triangle unconditionally, contradicting it. So every alert in every
+application wore a critical-alert icon. iTerm2 raises its permission alert with style=0, which is
+NSWarningAlertStyle, and the macOS reference for that exact alert has no triangle on it.
+
+The default now follows the style, and setAlertStyle moves it if the application has not chosen an
+icon of its own, compared by identity because imageNamed and applicationIconImage both answer a
+shared instance. When there is no application icon it answers nil rather than falling back to the
+triangle: no icon is what macOS shows here, and a wrong icon misleads more than none does. In this
+container the trace goes from
+
+    icon=yes iconSize=32x32   ->   icon=(nil) iconSize=0x0
+
+and the alert now matches the reference in structure: no icon, bold title, informative text, the
+Remember my choice checkbox, and No and Yes at the bottom right with Yes blue.
+
+Verified not to regress what the alert is FOR: the same harness that answers the dialog still ends
+with the picture drawn, no crash, keys still reaching PTYTextView.
+
+WHAT STILL DIFFERS from the reference: square panel corners where macOS is rounded, no drop shadow,
+small rectangular buttons where macOS uses tall pills, and a tighter gap between the checkbox and
+its title.

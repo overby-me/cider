@@ -79,9 +79,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
  NSCriticalAlertStyle - large yellow /!\ triangle w/ small app icon
  */
 
+/*
+ * THE DEFAULT ICON FOLLOWS THE STYLE, which is what the comment above this has always said and what
+ * the code did not do. It set the yellow exclamation triangle unconditionally, so EVERY alert wore
+ * a critical-alert icon, including the plain warning that iTerm2 raises to ask about displaying an
+ * image. The macOS reference for that alert has no triangle on it at all.
+ *
+ * Returning nil when there is no application icon is deliberate rather than a fallback to the
+ * triangle: an alert with no icon is what macOS shows here, and a wrong icon is more misleading
+ * than none.
+ */
+static NSImage *cider_default_alert_icon(NSAlertStyle style)
+{
+    if (style == NSCriticalAlertStyle) {
+        return [NSImage imageNamed: @"NSAlertPanelExclamation"];
+    }
+    return [NSApp applicationIconImage];
+}
+
 - init {
     _style = NSWarningAlertStyle;
-    _icon = [[NSImage imageNamed: @"NSAlertPanelExclamation"] retain];
+    _icon = [cider_default_alert_icon(NSWarningAlertStyle) retain];
     _messageText = [NSLocalizedStringFromTableInBundle(
             @"Alert", nil, [NSBundle bundleForClass: [NSAlert class]],
             @"Default message text for NSAlert") copy];
@@ -248,6 +266,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) setAlertStyle: (NSAlertStyle) style {
+    /* If the icon is still whatever the OLD style implied, it follows the new one. An icon the
+     * application set explicitly is left alone, which is why this compares rather than overwrites:
+     * imageNamed and applicationIconImage both answer a shared instance, so identity is the test. */
+    if (_icon == cider_default_alert_icon(_style)) {
+        NSImage *replacement = [cider_default_alert_icon(style) retain];
+
+        [_icon release];
+        _icon = replacement;
+    }
     _style = style;
     _needsLayout = YES;
 }
