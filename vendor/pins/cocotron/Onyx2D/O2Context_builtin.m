@@ -691,7 +691,14 @@ createImageToSurfaceTransform(O2ImageRef image, O2Rect rect,
             o.y += z.height;
             z.height = -z.height;
         }
-        cider_paint_box(self, O2RectMake(o.x, o.y, z.width, z.height), "image", 0, NULL);
+        /* WITH THE BLEND MODE, because the question left is whether a row of an inline image is
+         * blended over what is under it or copied over it. A transparent remainder blended leaves
+         * the black underneath alone, which is what the real system shows; copied, it erases that
+         * black and the window background comes through, which is what we see. */
+        char what[48];
+
+        snprintf(what, sizeof(what), "image blend=%d", (int) gState->_blendMode);
+        cider_paint_box(self, O2RectMake(o.x, o.y, z.width, z.height), what, 0, NULL);
     }
     O2ImageRef softMask = O2ImageGetMask(image);
 

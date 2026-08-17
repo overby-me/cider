@@ -8953,3 +8953,31 @@ through, which is what we see.
 THE NEXT MEASUREMENT: the blend operation used when a row bitmap is composited into the view. The
 image trace prints no blend mode today, so it needs one line more before it can answer.
 
+## The blend modes, measured, and they kill the copy theory
+
+The image trace now prints the blend mode, and one run answers the question the last entry asked:
+
+    blend=17  240x120 -> on=245x126    the picture into the block bitmap, 17 is Copy
+    blend=0   245x126 -> on=245x14     the block into each row slice, 0 is source over
+    blend=0   245x14  -> on=1000x600   each row slice into the window, source over
+
+SO THE COPY THEORY IS WRONG. I proposed that the row is copied over the view and its transparent
+remainder therefore erases the black underneath. The composite into the window is SOURCE OVER, which
+leaves whatever is underneath alone. Copy appears exactly once, where iTerm2 draws the picture into
+its own block bitmap, which is correct and is not the problem.
+
+WHAT THAT LEAVES. The remainder is transparent, it is composited source over, and what shows through
+it is the window background at 0.930. So there is simply nothing black underneath: the terminal
+paints its row backgrounds AROUND the image block and the block does not cover its own remainder.
+On the real system the same arrangement shows black, so on the real system something IS black under
+there, and the only candidate left is the window itself.
+
+WHICH IS CHECKABLE, and the earlier check was too weak. CIDER_TRACE_WINDOWBG recorded five
+setBackgroundColor calls, all controlColor, all on ONE window, and I never established whether that
+window was the terminal or the alert. If iTerm2 sets the terminal window black through some other
+route, a layer colour or setOpaque, we would miss it entirely and this is exactly the difference
+that would produce the grey.
+
+NEXT: identify the terminal window in that trace, by number or by size, and find out whether it ever
+receives a background colour at all.
+
