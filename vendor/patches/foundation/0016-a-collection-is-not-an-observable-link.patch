@@ -1,0 +1,100 @@
+--- a/src/NSKeyValueNestedProperty.m
++++ b/src/NSKeyValueNestedProperty.m
+@@ -5,6 +5,9 @@
+ //  Copyright (c) 2014 Apportable. All rights reserved.
+ //
+ 
++#include <objc/runtime.h>
++#include <stdlib.h>
++#include <stdio.h>
+ #import "NSKeyValueNestedProperty.h"
+ 
+ #import "NSKeyValueUnnestedProperty.h"
+@@ -66,7 +69,17 @@
+         lastImplicitRemovalInfo->keyPath = self.keyPathFromRelatedObject;
+         lastImplicitRemovalInfo->originalObservable = object;
+         lastImplicitRemovalInfo->isRecursing = YES;
+-        [nextObject removeObserver:observance forKeyPath:self.keyPathFromRelatedObject];
++        /* THE SAME COLLECTION LINK AS ON THE ADD SIDE. NSArray, NSSet and NSOrderedSet raise from
++         * -removeObserver:forKeyPath: exactly as they do from the add, so a path that was skipped on
++         * the way in has to be skipped on the way out or the teardown throws instead. Swift Publisher
++         * showed this second half only after the first was fixed: __NSArrayI does not support
++         * -removeObserver:forKeyPath:. */
++        if (![nextObject isKindOfClass:[NSArray class]] &&
++            ![nextObject isKindOfClass:[NSSet class]] &&
++            ![nextObject isKindOfClass:[NSOrderedSet class]])
++        {
++            [nextObject removeObserver:observance forKeyPath:self.keyPathFromRelatedObject];
++        }
+         *lastImplicitRemovalInfo = saved;
+ 
+         NSKeyValueImplicitObservanceAdditionInfo *additionInfoPtr = _NSKeyValueGetImplicitObservanceAdditionInfo();
+@@ -124,7 +137,17 @@
+         {
+             lastImplicitRemovalInfo->property = self;
+         }
+-        [nextObject removeObserver:observance forKeyPath:self.keyPathFromRelatedObject];
++        /* THE SAME COLLECTION LINK AS ON THE ADD SIDE. NSArray, NSSet and NSOrderedSet raise from
++         * -removeObserver:forKeyPath: exactly as they do from the add, so a path that was skipped on
++         * the way in has to be skipped on the way out or the teardown throws instead. Swift Publisher
++         * showed this second half only after the first was fixed: __NSArrayI does not support
++         * -removeObserver:forKeyPath:. */
++        if (![nextObject isKindOfClass:[NSArray class]] &&
++            ![nextObject isKindOfClass:[NSSet class]] &&
++            ![nextObject isKindOfClass:[NSOrderedSet class]])
++        {
++            [nextObject removeObserver:observance forKeyPath:self.keyPathFromRelatedObject];
++        }
+         *lastImplicitRemovalInfo = saved;
+     }
+     [self.relationshipProperty object:object didRemoveObservance:observance recurse:shouldRecurse];
+@@ -152,7 +175,48 @@
+ 
+         NSObject *nextObject = [object valueForKey:self.relationshipKey];
+ 
+-        [nextObject addObserver:observance forKeyPath:self.keyPathFromRelatedObject options:newOptions context:newContext];
++        /*
++         * A COLLECTION IN THE MIDDLE OF A KEY PATH IS NOT A LINK YOU CAN OBSERVE.
++         *
++         * NSArray, NSSet and NSOrderedSet answer -addObserver:forKeyPath:options:context: by
++         * raising, on macOS as much as here, because observing a collection object itself is not
++         * what a to-many relationship means. This code took whatever valueForKey: returned and
++         * registered on it regardless, so any binding whose path ran through a to-many key threw
++         * NSInvalidArgumentException from inside the KVO machinery.
++         *
++         * Swift Publisher hit it while building its inspector:
++         *
++         *   __NSArrayI does not support -addObserver:forKeyPath:options:context:
++         *   -[NSKeyValueNestedProperty object:didAddObservance:recurse:]
++         *   -[NSObjectController addObserver:forKeyPath:options:context:]
++         *   -[_NSTextFieldBinder startObservingChanges]
++         *   +[GUIBinder bindTo:withKeyPath:...]
++         *   -[InspectorViewController awakeFromNib]
++         *   -[NSNib instantiateNibWithExternalNameTable:]
++         *
++         * and the exception unwound the entire document window nib load. Skipping the link leaves
++         * that one hop unobserved, which is what it already is on a system where the collection
++         * refuses to register; it does not silence a real error, because a caller observing a
++         * collection DIRECTLY still gets the exception from the collection itself.
++         */
++        BOOL isCollection = [nextObject isKindOfClass:[NSArray class]] ||
++                            [nextObject isKindOfClass:[NSSet class]] ||
++                            [nextObject isKindOfClass:[NSOrderedSet class]];
++
++        if (isCollection)
++        {
++            if (getenv("CIDER_TRACE_CONTROL") != NULL)
++            {
++                fprintf(stderr, "CIDER_KVO nested path stops at a %s for key %s\n",
++                        object_getClassName(nextObject),
++                        [self.relationshipKey UTF8String] ?: "?");
++                fflush(stderr);
++            }
++        }
++        else
++        {
++            [nextObject addObserver:observance forKeyPath:self.keyPathFromRelatedObject options:newOptions context:newContext];
++        }
+         *additionInfoPtr = saved;
+     }
+     [self.relationshipProperty object:object didAddObservance:observance recurse:shouldRecurse];

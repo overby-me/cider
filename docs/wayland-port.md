@@ -8049,3 +8049,48 @@ __NSCFArray does not support addObserver:forKeyPath:, and NSUnknownKeyException 
 and on an NSPopUpButton, repeating per popup. loadNibFile has still not returned by the end of the
 run. Whether that is slowness or another stop is the next thing to establish, and the honest answer
 today is that it is not known.
+
+
+## A collection is not an observable link, and the harness was lying about clicks
+
+TWO THINGS THIS RUNG, one in the runtime and one in the measurement, and the second explains a
+string of runs I had been reading wrong.
+
+THE RUNTIME. -[NSKeyValueNestedProperty object:didAddObservance:recurse:] took whatever
+valueForKey: returned for the next link of a key path and called addObserver: on it. When that value
+is a collection, NSArray, NSSet or NSOrderedSet answer by RAISING, here and on macOS both, because
+observing the collection object itself is not what a to-many relationship means. So any binding
+whose path ran through a to-many key threw from inside the KVO machinery:
+
+    __NSArrayI does not support -addObserver:forKeyPath:options:context:
+    -[NSKeyValueNestedProperty object:didAddObservance:recurse:]
+    -[NSObjectController addObserver:forKeyPath:options:context:]
+    -[_NSTextFieldBinder startObservingChanges]
+    +[GUIBinder bindTo:withKeyPath:...]
+    -[InspectorViewController awakeFromNib]
+    -[NSNib instantiateNibWithExternalNameTable:]
+
+and the exception unwound the document window nib load. The link is skipped now, on the add side and
+on BOTH removal sites, because a path skipped on the way in has to be skipped on the way out or the
+teardown throws instead. That second half only appeared after the first was fixed. 79 skips in a
+run, and both exception kinds are gone from the log.
+
+THE MEASUREMENT, and this one is a lesson about the harness rather than the port. Captures from one
+run came out 1256x684, 1690x1388, 1690x1388: the nested output is a window inside the user own
+compositor and that compositor RESIZES IT WHILE THE RUN IS GOING. Every driver coordinate is
+absolute, so a resize between two clicks sends the next one somewhere else entirely. Runs where
+Choose never fired, which I had been reading as the application ignoring a click, were the driver
+clicking the wrong tile. The output is now re-pinned before EVERY click and the tile is clicked
+twice, because the first click can also be swallowed by isImageLoading. Both changes together make
+the run reproducible: three runs in a row now reach the document nib.
+
+WHERE IT STANDS, measured rather than summarised: the inspector nib reaches object 0 of 958 and
+-[InspectorViewController awakeFromNib] still does not return. It is not an exception storm, 31
+raises in the whole stretch, and the main thread is parked in recvmsg rather than spinning, so it is
+WAITING. It is not an XPC lookup either: CIDER_TRACE_XPC prints nothing after that point.
+
+WHAT IS STILL RAISING THERE, all survived by the application: -[__NSCFDictionary isEqualToString:]
+and the same on __NSCFNumber, NSUnknownKeyException for the key selectedObject on an NSPopUpButton,
+-[NSTextField setNilValueForKey:] unrecognized, and -[NSURL startAccessingSecurityScopedResource]
+unrecognized. selectedObject is a real NSPopUpButton binding and setNilValueForKey: is a documented
+KVC hook, so both are honest gaps to close next.
