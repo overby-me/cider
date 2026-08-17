@@ -8981,3 +8981,34 @@ that would produce the grey.
 NEXT: identify the terminal window in that trace, by number or by size, and find out whether it ever
 receives a background colour at all.
 
+## Two measurements that cannot both be right, stated rather than reconciled
+
+Tracing the middle of the black terminal area, window rect 400,300,10,10, the only things that touch
+it are:
+
+    path 985x549 at 0,0 clip=985x549@0,0 on=1000x600 n=4 c=0.000,0.000,0.000,0.000  O2ContextFillRects
+    path 973x532 at 5,15 clip=985x549@0,0 on=1000x600 n=4 c=0.000,0.000,0.000,0.000  O2ContextFillRects
+    path 1000x600 and 1000x550 at 0,0 on=1000x600 n=2 c=0.930,1.000                  O2ContextFillRect
+
+The tracer prints up to four components in order, so n=4 with 0.000 last reads as a TRANSPARENT
+black fill, and n=2 with 1.000 last reads as opaque grey. Those two readings are in direct conflict
+with the screen:
+
+  - If the 985x549 fill is transparent, nothing in that list paints the terminal black, and yet the
+    middle of the terminal IS black.
+  - If it is opaque black, it covers the whole view INCLUDING the image block remainder, so the
+    strip should be black too, and the strip IS grey.
+
+Either the fourth component is not the alpha for this path, or something outside this rectangle is
+involved. I do not know which, and the honest state of this investigation is that the last two
+measurements disagree.
+
+WHAT IS STILL SOLID, because it does not depend on this: the defect measurement itself (5 grey
+pixels right, 6 below, the picture pixel exact), the disassembly showing iTerm2 never fills the
+block bitmap, the pipeline (picture into a 245x126 block, block into one 245x14 bitmap per row),
+and the blend modes (Copy once into the block, source over for both composites).
+
+WHAT TO DO NEXT, and it is a smaller step than another theory: make the tracer print the colour
+SPACE and the gState alpha alongside the components, so a line like c=0,0,0,0 can be read without
+guessing. Every reading above rests on that field and it has now produced a contradiction.
+
