@@ -8294,3 +8294,41 @@ the next step is to find which of our calls inside that function can answer nil.
 WHAT IS ALSO TRUE, and it explains the run to run variance in this document: whether a run reaches
 the document nib at all depends on this exception, so several earlier runs that looked like harness
 flakiness may have been this instead.
+
+
+## The nil that stops the document has a name: CFTTextExt::layoutManager
+
+The exception that ends document reading is
+
+    NSInvalidArgumentException: attempt to insert nil object into NSMutableSet
+    CFTCoreDoc::rearrangeWrappingPath()
+
+and the frames stop at the C++ boundary, so the function was read instead. It uses six selectors,
+set, addObject:, two fast enumerations, textContainers and textContainerChangedGeometry:, and the
+loop around the addObject: reads:
+
+    for each element of a C++ container
+        if (element == NULL) continue                  <- checked
+        casted = __dynamic_cast(element, ...)          <- a stub, resolved through its jmp
+        if (casted == NULL) continue                   <- checked
+        id lm = CFTTextExt::layoutManager(casted)      <- NOT checked
+        [set addObject: lm]                            <- nil arrives here
+
+So the application null checks the container element and the dynamic_cast and then trusts
+CFTTextExt::layoutManager to answer an object. It answered nil.
+
+WHAT I DO NOT KNOW, and will not assert: WHY it is nil. The obvious candidate was the very first
+exception of this whole investigation, -[CCLayoutManager setBackgroundLayoutEnabled:] unrecognized
+inside -[CCLayoutManager init], which would leave a text element with no layout manager. That would
+close the chain neatly, and it is NOT SUPPORTED: CCLayoutManager appears zero times in each of the
+last three runs. A tidy story is not evidence.
+
+HOW TO NAME IT NEXT, since the frames end at the C++ boundary and that boundary has now been read
+twice: the layout manager is an ObjC object held by a C++ wrapper, so the place to catch it is where
+it is CREATED rather than where it is missing. -[NSLayoutManager init] and the text container and
+text storage it is attached to are ours; a trace on those, printing which text element they belong
+to, would say whether one was never made or one was made and lost.
+
+The three selectors this function uses that are ours, textContainers and
+textContainerChangedGeometry: on NSLayoutManager, are both implemented; I checked after a regex
+first told me they were not, which is worth saying because that regex nearly became a claim.
