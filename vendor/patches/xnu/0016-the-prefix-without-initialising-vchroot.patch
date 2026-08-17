@@ -1,0 +1,38 @@
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c
+@@ -168,6 +168,25 @@
+ #endif
+ }
+ 
++/*
++ * THE PREFIX, BUT ONLY IF IT IS ALREADY KNOWN.
++ *
++ * -vchroot_expand() initialises the prefix on demand, and init_vchroot_path() ABORTS the process if
++ * its RPC to the daemon fails. That is fine for ordinary path work, which happens long after the
++ * daemon is there, and fatal for anything on an early startup path: routing the process info reads
++ * through vchroot_expand() killed iTerm2 during startup with no output at all, because the abort
++ * came before any of its traces could speak.
++ *
++ * This answers NULL rather than initialising anything, so a caller that is merely trying to do
++ * better when it can, and is happy with the old behaviour when it cannot, has a way to ask.
++ */
++const char* vchroot_prefix_if_known(void)
++{
++	if (prefix_path_len <= 0)
++		return NULL;
++	return prefix_path;
++}
++
+ int vchroot_expand(struct vchroot_expand_args* args)
+ {
+ 	struct context ctxt;
+--- a/darling/src/libsystem_kernel/emulation/include/linux_premigration/vchroot_expand.h
++++ b/darling/src/libsystem_kernel/emulation/include/linux_premigration/vchroot_expand.h
+@@ -22,6 +22,7 @@
+ };
+ 
+ int vchroot_expand(struct vchroot_expand_args* args);
++const char* vchroot_prefix_if_known(void);
+ int vchroot_unexpand(struct vchroot_unexpand_args* args);
+ int vchroot_fdpath(struct vchroot_fdpath_args* args);
+ 

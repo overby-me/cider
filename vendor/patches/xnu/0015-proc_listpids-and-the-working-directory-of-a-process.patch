@@ -8,16 +8,20 @@
  #include <darling/emulation/conversion/errno.h>
  #include <darling/emulation/conversion/fcntl/open.h>
  #include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
-@@ -35,6 +36,8 @@
+@@ -35,8 +36,12 @@
  #define LINUX_PR_SET_NAME 15
  
  static long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int32_t bufsize);
++static int _cider_read_guest_proc(const char* rel, char* dst, int maxlen);
 +static long _proc_listpids(uint32_t type, uint32_t typeinfo, void* buffer, int32_t bufsize);
 +static long _proc_pidinfo_vnodepathinfo(int32_t pid, void* buffer, int32_t bufsize);
  
  extern __SIZE_TYPE__ strlen(const char *s);
++extern char *getenv(const char *name);
  extern void *memset(void *s, int c, __SIZE_TYPE__ n);
-@@ -82,8 +85,11 @@
+ extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
+ extern char *strcpy(char *dest, const char *src);
+@@ -82,8 +87,11 @@
  			return 0;
  		case 2: // proc_pidinfo
  			return _proc_pidinfo(pid, flavor, arg, buffer, bufsize);
@@ -30,7 +34,7 @@
  		default:
  			__simple_printf("sys_proc_info(): Unsupported callnum: %d\n",
  					callnum);
-@@ -161,6 +167,10 @@
+@@ -161,6 +169,10 @@
  		{
  			return _proc_pidinfo_listthreads(pid, buffer, bufsize);
  		}
@@ -41,7 +45,7 @@
  		default:
  		{
  			__simple_printf("sys_proc_info(): Unsupported pidinfo flavor: %d\n",
-@@ -170,6 +180,144 @@
+@@ -170,6 +182,216 @@
  	}
  }
  
@@ -87,6 +91,66 @@
 +	return __simple_atoi(elem, NULL);
 +}
 +
++/*
++ * THE GUEST procfs, WHICH IS NOT THE ONE AT /proc.
++ *
++ * The container clones into a NEW PID NAMESPACE and mounts a procfs for it at <prefix>/proc, so
++ * every pid an application holds is namespace local and small, while a bare /proc down here is the
++ * HOST procfs. Reading /proc/<guest pid> answers about an unrelated system process: iTerm2 asking
++ * for the working directory of pid 25 got EACCES, and the identical read under the prefix answered
++ * /Users/root.
++ *
++ * TWO THINGS THIS DELIBERATELY DOES NOT DO, both of which killed iTerm2 during startup with no
++ * output at all. It does not call vchroot_expand, which initialises on demand and ABORTS if its RPC
++ * fails. And it does not HOLD a descriptor: opening one early and keeping it changes which numbers
++ * the rest of the process gets, and a guest runtime that expects particular descriptors does not
++ * survive that. Paths are built and opened per read, exactly as read_string always did, and every
++ * caller falls back to the host procfs while the prefix is still unknown.
++ */
++static bool _cider_guest_proc_path(char* out, int outlen, const char* rel)
++{
++	const char* prefix = vchroot_prefix_if_known();
++	int plen;
++
++	if (prefix == NULL)
++		return false;
++
++	/* SMALL FRAMES ONLY. Every attempt that put a multi kilobyte buffer on this path killed the
++	 * process during early startup, before a single trace could print, while the one that kept to
++	 * a late path survived: guest startup runs on a small stack and a four kilobyte frame does not
++	 * fit. A prefix longer than this is refused rather than accommodated, and the caller then does
++	 * what it always did and reads the host procfs. */
++	plen = strlen(prefix);
++	if (plen + (int) strlen(rel) + 8 > outlen)
++		return false;
++
++	__simple_sprintf(out, "%s/proc/%s", prefix, rel);
++	return true;
++}
++
++/* The LENGTH is returned because a command line is a run of NUL separated strings, where strlen
++ * stops at the first of them. */
++static int _cider_read_guest_proc(const char* rel, char* dst, int maxlen)
++{
++	char path[512];
++	int fd, len;
++
++	if (!_cider_guest_proc_path(path, sizeof(path), rel))
++		return -1;
++
++	fd = LINUX_SYSCALL(__NR_openat, LINUX_AT_FDCWD, path, LINUX_O_RDONLY, 0);
++	if (fd < 0)
++		return -1;
++
++	len = LINUX_SYSCALL(__NR_read, fd, dst, maxlen - 1);
++	LINUX_SYSCALL(__NR_close, fd);
++	if (len < 0)
++		return -1;
++
++	dst[len] = '\0';
++	return len;
++}
++
 +static long _proc_listpids(uint32_t type, uint32_t typeinfo, void* buffer, int32_t bufsize)
 +{
 +	char dirents[4096];
@@ -106,8 +170,14 @@
 +		return -ENOTSUP;
 +	}
 +
-+	fd = LINUX_SYSCALL(__NR_openat, LINUX_AT_FDCWD, "/proc",
-+			LINUX_O_RDONLY | LINUX_O_DIRECTORY, 0);
++	{
++		char dir[512];
++
++		if (!_cider_guest_proc_path(dir, sizeof(dir), ""))
++			__simple_sprintf(dir, "/proc");
++		fd = LINUX_SYSCALL(__NR_openat, LINUX_AT_FDCWD, dir,
++				LINUX_O_RDONLY | LINUX_O_DIRECTORY, 0);
++	}
 +	if (fd < 0)
 +		return errno_linux_to_bsd(fd);
 +
@@ -167,9 +237,15 @@
 +	memset(buffer, 0, sizeof(struct proc_vnodepathinfo));
 +	vpi = (struct proc_vnodepathinfo*) buffer;
 +
-+	__simple_sprintf(link, "/proc/%d/cwd", pid);
-+	rv = LINUX_SYSCALL(__NR_readlinkat, LINUX_AT_FDCWD, link, args.path,
-+			sizeof(args.path) - 1);
++	{
++		char rel[64];
++
++		__simple_sprintf(rel, "%d/cwd", pid);
++		if (!_cider_guest_proc_path(link, sizeof(link), rel))
++			__simple_sprintf(link, "/proc/%d/cwd", pid);
++		rv = LINUX_SYSCALL(__NR_readlinkat, LINUX_AT_FDCWD, link, args.path,
++				sizeof(args.path) - 1);
++	}
 +	if (rv < 0)
 +		return errno_linux_to_bsd(rv);
 +	args.path[rv] = '\0';
@@ -186,3 +262,101 @@
  static char fakeuuid[16];
  
  static long _proc_pidonfo_uniqinfo(int32_t pid, void* buffer, int32_t bufsize)
+@@ -199,6 +421,7 @@
+ 	if (!read_string(path, stat, sizeof(stat)))
+ 		return -ESRCH;
+ 
++
+ 	statptr = stat;
+ 	skip_stat_elems(&statptr, 3); // skip until ppid
+ 
+@@ -365,6 +588,11 @@
+ 
+ static long _proc_pidinfo_shortbsdinfo(int32_t pid, void* buffer, int32_t bufsize)
+ {
++	/* ENTRY, BEFORE ANYTHING OF MINE. Zero trace lines told me this function died in its first
++	 * call, but that trace sits after my code, so it could equally mean the call never happened.
++	 * This one cannot be confused: if it prints, the function was entered. */
++	if (getenv("CIDER_TRACE_PROCINFO") != NULL)
++		__simple_printf("PROCINFO enter short pid=%d\n", pid);
+ 	char path[64], stat[1024];
+ 	char *statptr;
+ 	const char* elem;
+@@ -377,9 +605,15 @@
+ 
+ 	memset(buffer, 0, bufsize);
+ 
+-	__simple_sprintf(path, "/proc/%d/stat", pid);
+-	if (!read_string(path, stat, sizeof(stat)))
+-		return -ESRCH;
++	/* The guest procfs when it is reachable, the host one until then, which is what this
++	 * always did. */
++	__simple_sprintf(path, "%d/stat", pid);
++	if (_cider_read_guest_proc(path, stat, sizeof(stat)) < 0)
++	{
++		__simple_sprintf(path, "/proc/%d/stat", pid);
++		if (!read_string(path, stat, sizeof(stat)))
++			return -ESRCH;
++	}
+ 
+ 	info->pbsi_pid = pid;
+ 
+@@ -392,6 +626,58 @@
+ 	READELEM();
+ 	strncpy(info->pbsi_comm, elem, sizeof(info->pbsi_comm));
+ 
++	/*
++	 * AND THE NAME THE APPLICATION IS LOOKING FOR. Field two of stat is the LINUX executable, and
++	 * every guest process runs under the loader, so a whole iTerm2 run answered comm=[mldr] 2022
++	 * times and nothing else. An application hunting for the job running in its terminal finds
++	 * nothing it recognises. The loader is exec'd as "<loader>!<host path of the program>" with the
++	 * GUEST path as the next argument, so the command line carries the real name. A process with
++	 * neither keeps its Linux name, which is right for a host process.
++	 */
++	{
++		char cmd[512];
++		char cmdpath[64];
++		int cmdlen;
++
++		__simple_sprintf(cmdpath, "%d/cmdline", pid);
++		cmdlen = _cider_read_guest_proc(cmdpath, cmd, sizeof(cmd));
++		if (cmdlen > 0)
++		{
++			const char* guest = NULL;
++			int first = strlen(cmd);
++
++			if (first + 1 < cmdlen && cmd[first + 1] != '\0')
++				guest = cmd + first + 1;
++			else
++			{
++				char* bang = strchr(cmd, '!');
++
++				if (bang != NULL && bang[1] != '\0')
++					guest = bang + 1;
++			}
++			if (guest != NULL && guest[0] != '\0')
++			{
++				const char* leaf = guest;
++				const char* scan;
++
++				for (scan = guest; *scan != '\0'; scan++)
++				{
++					if (*scan == '/')
++						leaf = scan + 1;
++				}
++				if (leaf[0] != '\0')
++					strncpy(info->pbsi_comm, leaf, sizeof(info->pbsi_comm));
++			}
++		}
++	}
++	info->pbsi_comm[sizeof(info->pbsi_comm) - 1] = '\0';
++
++	if (getenv("CIDER_TRACE_PROCINFO") != NULL)
++	{
++		__simple_printf("PROCINFO short pid=%d ppid=%d comm=[%s]\n", info->pbsi_pid,
++				info->pbsi_ppid, info->pbsi_comm);
++	}
++
+ 	// process state
+ 	READELEM();
+ 	switch (*elem)

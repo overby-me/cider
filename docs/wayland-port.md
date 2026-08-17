@@ -8740,3 +8740,49 @@ and exercises this whole path, against six minutes for the GUI harness. The comm
 there (alive at the timeout), which is the healthy baseline to compare against. Use it to find which
 of the three parts, the listing, the stat read or the name, is the one that makes startup fragile.
 
+## The flaky startup was my own cleaner, and with it fixed the change lands
+
+CORRECTING THE TWO ENTRIES ABOVE, and they were both wrong for the same reason. The startup failure
+I called intermittent, and then used to reject this change on a 2-of-11 pass rate, was
+scratchpad/kill-stale-prefix.sh killing the very container it was clearing for.
+
+It matched /proc/<pid>/cmdline against the prefix and then against mldr. EVERY hand run of the
+container names both on its command line, because it passes CIDERPREFIX and DSERVER_MLDR_PATH there,
+so the script matched itself, its own shell, and anything else in the middle of starting. That is
+the trap this document already records, arriving inside a script written to avoid it. It now matches
+/proc/<pid>/exe, which is what a process IS rather than what it was asked to do: a guest process
+execs mldr and matches, a shell that merely mentions mldr does not.
+
+MEASURED, same kernel, only the cleaner different:
+
+    broken cleaner    iTerm2 alive 1 of 6
+    fixed cleaner     iTerm2 alive 6 of 6
+
+and with the proc_info change in as well, 6 of 6 again. So the change never destabilised anything,
+and every startup conclusion drawn earlier today rests on a broken instrument.
+
+WHAT IS NOW IN. Process info reads the procfs mounted for the container PID namespace rather than
+the host one, and the process name comes from the guest command line, so the names an application
+sees are real for the first time:
+
+    488 comm=[mldr]        host processes, correctly keeping their Linux name
+    328 comm=[shellspawn]
+    164 comm=[securityd]
+    164 comm=[launchd]
+    164 comm=[iTerm2]
+    163 comm=[-sh]
+    163 comm=[login]
+
+Verified from a FORCED re-materialisation, so nix and buck2 build the same source: patches 0015 and
+0016 apply from pristine, the build is green, startup is 6 of 6, and the harness runs with no crash.
+
+AND THE TITLE BAR IS STILL NAMELESS. With every process correctly named it still reads a size with
+nothing before it, so the name was NOT the last piece and the theory behind this whole line of work
+is disproved rather than confirmed. What it did buy is correct process information, which is worth
+having on its own.
+
+A NOTE ON READING CAPTURES FROM A TRACED RUN: with CIDER_TRACE_PROCINFO on, startup is slow enough
+that the harness types before the session is ready and the first characters of a line are lost, so
+the shell reports command not found. That is the harness being early, not the terminal dropping
+input; the untraced runs show the whole line.
+
