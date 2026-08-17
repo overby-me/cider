@@ -1131,6 +1131,18 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) setTitle: (NSString *) title {
+    /* WHEN IS THE SIZE INDICATOR COMPUTED. iTerm2 puts the grid in the title, and the title it
+     * shows is always one resize behind the window. Printing the title beside the frame the window
+     * holds AT THAT MOMENT says whether the application computed it from a stale frame, in which
+     * case the frame here is already new and the string is old, or whether it computed it correctly
+     * and we then failed to tell it again after the frame settled, in which case both are old. */
+    if (getenv("CIDER_TRACE_TITLE") != NULL) {
+        fprintf(stderr, "CIDER_TITLE set=%s frame=%.0fx%.0f content=%.0fx%.0f\n",
+                [title UTF8String] ? [title UTF8String] : "(nil)", _frame.size.width,
+                _frame.size.height, [[self contentView] frame].size.width,
+                [[self contentView] frame].size.height);
+        fflush(stderr);
+    }
     title = [title copy];
     [_title release];
     _title = title;

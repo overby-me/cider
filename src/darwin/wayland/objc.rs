@@ -119,6 +119,15 @@ unsafe extern "C-unwind" {
     /// AppKit. The rect goes by value, so the declaration has to say so.
     #[link_name = "objc_msgSend"]
     pub fn msg_send_frame_changed(receiver: Object, sel: Sel, window: Object, frame: NsRect, did_size: ObjcBool);
+    /// -platformWindow:frameSizeWillChange:, the step BEFORE a resize is applied. NSWindow turns
+    /// it into the delegate call -windowWillResize:toSize:, which is where an application decides
+    /// what size it will accept and updates whatever it shows about its own size. A compositor
+    /// resize used to skip straight to the frame change, so that delegate method was never called
+    /// at all and iTerm2 painted a size indicator computed from the grid it had BEFORE the resize.
+    /// NSSize is two doubles, sixteen bytes of SSE class, so it comes back in registers and not
+    /// through the stret entry point the way NSRect does.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_size_will_change(receiver: Object, sel: Sel, window: Object, size: NsSize) -> NsSize;
     /// A STRUCT LARGER THAN 16 BYTES COMES BACK THROUGH objc_msgSend_stret ON x86-64, not
     /// objc_msgSend. NSRect is 32 bytes, so calling -frame through the ordinary entry point would
     /// read the return value from the wrong place and produce a rectangle made of whatever was in

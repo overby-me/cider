@@ -8465,3 +8465,44 @@ With them the process aborts during the welcome window and captures nothing. Wit
 template gallery renders correctly and relayouts on a compositor resize, and the document window
 still does not open.
 
+## iTerm2 resize: the scrollback DOES rewrap, and the size indicator is a different bug
+
+CORRECTING AN EARLIER CLAIM. The standing note said a resize does not rewrap the scrollback and
+leaves a blank band and a second prompt. That is not what happens on the current build. Printed one
+line of 200 W between two markers at 1000 px wide, where it occupies two rows, then narrowed to
+700 px: it reflowed onto three rows with AAA1 and AAA2 still bracketing it, no blank band and no
+duplicate prompt, and widening back reproduced the original layout exactly. Verified by looking at
+the captures, not by a statistic.
+
+The earlier run that suggested otherwise had failed before it began: the nested output came up at
+1690x1388 because the resolution line in the sway CONFIG FILE does not take, the window never drew,
+and the typing meant to happen before the resize went nowhere. Pin the output with swaymsg after the
+socket appears, with a retry, and confirm it against get_outputs. run-iterm-rewrap.sh does this.
+
+WHAT IS REAL is the size indicator in the title bar, and it is exactly one resize behind. Measured
+twice in one run: at 700 px the title read 139x38, which is the 1000 px grid, and back at 1000 px it
+read 96x38, which is the 700 px grid.
+
+MECHANISM, so far as it is established. The title is set twice for three sizes, and the trace prints
+the frame at the moment of the call:
+
+    resized 700x600      no setTitle at all
+    resized 1000x600
+    CIDER_TITLE 96x38 frame=1000x600
+
+iTerm2 computes the string from a grid it has not yet updated for the new frame, and only calls
+setTitle when the string differs, which is why the narrowing produced no call at all. Neither
+waiting eleven seconds nor typing makes it recompute, so this is not deferred work that never runs.
+
+WHAT IT IS NOT. We were never calling -platformWindow:frameSizeWillChange:, so the delegate method
+-windowWillResize:toSize: was never delivered for a compositor resize at all, which the real system
+always does before applying one. That is now fixed and the call arrives once per resize. IT DID NOT
+CHANGE THE INDICATOR: iTerm2 answers with the size unchanged and sets no title there. The fix is
+kept as fidelity, not as a remedy, and is not claimed as one.
+
+THE NEXT RUNG IS BETTER THAN THE INDICATOR. The macOS reference in Downloads/macos-images shows the
+title bar reading a session name, ~/Downloads, with no size indicator at all. Ours reads
+"  - 139x38" with an EMPTY name, so the leading authenticity gap in that title bar is not the stale
+number but the missing name: iTerm2 gets the foreground job of the tty from process information,
+and that is what to check next.
+

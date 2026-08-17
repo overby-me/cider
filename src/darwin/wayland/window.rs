@@ -494,6 +494,36 @@ pub fn deliver_pending_configures() {
         let has_delegate = !st.delegate.is_null();
         if has_delegate {
             unsafe {
+                /*
+                 * ASK BEFORE TELLING. On the real system every resize goes through the delegate
+                 * first: NSWindow turns -platformWindow:frameSizeWillChange: into
+                 * -windowWillResize:toSize:, and an application uses that call to settle what it
+                 * will show about its own size. We went straight to the frame change, so that
+                 * delegate method was never called at all, and iTerm2 painted a size indicator
+                 * computed from the grid it still had from BEFORE the resize. Measured: at 700 px
+                 * the title read the 1000 px grid, and going back to 1000 px it read the 700 px
+                 * one, always exactly one resize behind.
+                 *
+                 * The answer is deliberately NOT used as the new size. A compositor hands us a
+                 * surface and does not take no for an answer, so honouring a smaller reply would
+                 * leave part of that surface unpainted. What the call is for is the notification.
+                 */
+                let will = objc::sel_registerName(cstr!("platformWindow:frameSizeWillChange:"));
+                if objc::msg_send_sel_bool(
+                    st.delegate,
+                    objc::sel_registerName(cstr!("respondsToSelector:")),
+                    will,
+                ) != objc::NO
+                {
+                    let asked = st.frame.size;
+                    let got = objc::msg_send_size_will_change(st.delegate, will, st.owner, asked);
+                    if crate::env_flag!("CIDER_WAYLAND_TRACE_GEOMETRY") {
+                        println!(
+                            "cider-wayland-willresize number={} asked={}x{} answered={}x{}",
+                            st.number, asked.width, asked.height, got.width, got.height
+                        );
+                    }
+                }
                 let sel = objc::sel_registerName(cstr!("platformWindow:frameChanged:didSize:"));
                 objc::msg_send_frame_changed(st.delegate, sel, st.owner, st.frame, objc::YES);
                 /*
