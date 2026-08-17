@@ -109,6 +109,8 @@ static NSDictionary *sBoldSelectedMenuTextAttributes = nil;
 #define MENU_GUTTER_WIDTH 12
 #define MENU_GUTTER_GAP 6
 #define MENU_SELECTION_INSET 2
+/* An ordinary push button. An alert button is a pill and passes half its height instead. */
+#define PUSH_BUTTON_RADIUS 4.0
 #define MENU_SELECTION_RADIUS 4
 #define MENU_BAR_SELECTION_INSET 2
 #define MENU_CORNER_RADIUS 10
@@ -821,7 +823,28 @@ static NSDictionary *cider_key_symbol_attributes(void) {
     }
 }
 
+/*
+ * THE SHAPE IS THE ONLY DIFFERENCE between an ordinary push button and an alert button, so the
+ * radius is a parameter rather than two copies of the drawing. macOS draws a push button as a
+ * rounded rectangle and an ALERT button as a pill, which is a radius of half the height.
+ *
+ * The old two argument versions are kept and forward to these, because they are what everything
+ * except NSButtonCell calls and what a subclass may already override.
+ */
 - (void) drawPushButtonNormalInRect: (NSRect) rect defaulted: (BOOL) defaulted {
+    [self drawPushButtonNormalInRect: rect
+                          defaulted: defaulted
+                       cornerRadius: PUSH_BUTTON_RADIUS];
+}
+
+- (void) drawPushButtonPressedInRect: (NSRect) rect {
+    [self drawPushButtonPressedInRect: rect cornerRadius: PUSH_BUTTON_RADIUS];
+}
+
+- (void) drawPushButtonNormalInRect: (NSRect) rect
+                          defaulted: (BOOL) defaulted
+                       cornerRadius: (CGFloat) radius
+{
     /*
      * WHO DRAWS LAST, which decides whether a missing button label is the wrong COLOUR or the wrong
      * ORDER. Set CIDER_BEZEL_ALPHA and this bezel becomes half transparent: a label drawn BEFORE it
@@ -838,24 +861,28 @@ static NSDictionary *cider_key_symbol_attributes(void) {
      */
     if (defaulted) {
         [[NSColor colorWithCalibratedRed: 0.0 green: 0.48 blue: 1.0 alpha: alpha] set];
-        [[NSBezierPath bezierPathWithRoundedRect: rect xRadius: 4 yRadius: 4] fill];
+        [[NSBezierPath bezierPathWithRoundedRect: rect xRadius: radius yRadius: radius] fill];
         return;
     }
 
     [[NSColor colorWithCalibratedWhite: 0.78 alpha: alpha] set];
-    [[NSBezierPath bezierPathWithRoundedRect: rect xRadius: 4 yRadius: 4] fill];
+    [[NSBezierPath bezierPathWithRoundedRect: rect xRadius: radius yRadius: radius] fill];
     rect = NSInsetRect(rect, 1, 1);
     [[NSColor colorWithCalibratedWhite: 1.0 alpha: alpha] set];
-    [[NSBezierPath bezierPathWithRoundedRect: rect xRadius: 4 yRadius: 4] fill];
+    [[NSBezierPath bezierPathWithRoundedRect: rect
+                                     xRadius: MAX(radius - 1.0, 0.0)
+                                     yRadius: MAX(radius - 1.0, 0.0)] fill];
 }
 
-- (void) drawPushButtonPressedInRect: (NSRect) rect {
+- (void) drawPushButtonPressedInRect: (NSRect) rect cornerRadius: (CGFloat) radius {
     [[NSColor colorWithCalibratedWhite: 0.78 alpha: 1.0] set];
-    [[NSBezierPath bezierPathWithRoundedRect: rect xRadius: 4 yRadius: 4] fill];
+    [[NSBezierPath bezierPathWithRoundedRect: rect xRadius: radius yRadius: radius] fill];
     rect = NSInsetRect(rect, 1, 1);
     [[NSColor colorWithCalibratedRed: 0.0 green: 0.58 blue: 0.97
                                alpha: 1.0] set];
-    [[NSBezierPath bezierPathWithRoundedRect: rect xRadius: 4 yRadius: 4] fill];
+    [[NSBezierPath bezierPathWithRoundedRect: rect
+                                     xRadius: MAX(radius - 1.0, 0.0)
+                                     yRadius: MAX(radius - 1.0, 0.0)] fill];
 }
 
 - (void) drawPushButtonHighlightedInRect: (NSRect) rect {

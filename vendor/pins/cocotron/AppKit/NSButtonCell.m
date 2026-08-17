@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <stdlib.h>
 
 #import <AppKit/NSButtonCell.h>
+#import <AppKit/NSAlert.h>
 #import <AppKit/NSButtonImageSource.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSComboBoxCell.h>
@@ -1280,17 +1281,37 @@ static void drawRoundedBezel(CGContextRef context, CGRect frame) {
                     drawUnborderedButtonInRect: frame
                                      defaulted: defaulted];
         } else {
+            /*
+             * AN ALERT BUTTON IS A PILL, and every other push button is a rounded rectangle.
+             *
+             * macOS draws the buttons in an alert with fully rounded ends, which is a radius of
+             * half the height, and the difference against the reference capture is immediate. The
+             * shape is the ONLY thing that changes, so the radius is passed rather than the drawing
+             * duplicated.
+             *
+             * How an alert button is recognised: NSAlert sets itself as the TARGET of every button
+             * it builds, so the target is the alert. That is exact, unlike guessing from the size
+             * or from the window class, and it costs one message.
+             */
+            CGFloat radius = 4.0;
+
+            if ([[_controlView target] isKindOfClass: [NSAlert class]]) {
+                radius = frame.size.height / 2.0;
+            }
+
             if (([self highlightsBy] & NSPushInCellMask) &&
                 [self isHighlighted])
                 [NSGraphicsStyleForView(_controlView)
-                        drawPushButtonPressedInRect: frame];
+                        drawPushButtonPressedInRect: frame
+                                       cornerRadius: radius];
             else if ([self isVisuallyHighlighted])
                 [NSGraphicsStyleForView(_controlView)
                         drawPushButtonHighlightedInRect: frame];
             else
                 [NSGraphicsStyleForView(_controlView)
                         drawPushButtonNormalInRect: frame
-                                         defaulted: defaulted];
+                                         defaulted: defaulted
+                                      cornerRadius: radius];
         }
         break;
     }

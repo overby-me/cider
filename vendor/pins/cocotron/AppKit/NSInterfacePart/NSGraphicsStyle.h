@@ -89,6 +89,12 @@ typedef struct _Margins {
 - (void) drawUnborderedButtonInRect: (NSRect) rect defaulted: (BOOL) defaulted;
 - (void) drawPushButtonNormalInRect: (NSRect) rect defaulted: (BOOL) defaulted;
 - (void) drawPushButtonPressedInRect: (NSRect) rect;
+/* The same two with the corner radius named. An ALERT button is a pill on macOS while an
+ * ordinary push button is a rounded rectangle, and the shape is the only difference. */
+- (void) drawPushButtonNormalInRect: (NSRect) rect
+                          defaulted: (BOOL) defaulted
+                       cornerRadius: (CGFloat) radius;
+- (void) drawPushButtonPressedInRect: (NSRect) rect cornerRadius: (CGFloat) radius;
 - (void) drawPushButtonHighlightedInRect: (NSRect) rect;
 - (NSSize) sizeOfButtonImage: (NSImage *) image
                      enabled: (BOOL) enabled

@@ -6934,3 +6934,28 @@ That run also answers, indirectly, the question the iTerm2 capture could not: th
 sits on a LIGHT document rather than a black terminal, and its shadow is plainly visible there. That
 is the same shadow code, on a titled window rather than a panel, so it confirms the mechanism draws
 something real even though it does not confirm the panel case specifically.
+
+### An alert button is a pill, and every other push button is not
+
+The last chrome difference against the reference. macOS draws the buttons in an alert with fully
+rounded ends and ours were rounded rectangles.
+
+The drawing method never knew which kind of button it had: NSButtonCell calls
+drawPushButtonNormalInRect:defaulted: and the radius was the literal 4 inside it. Both push button
+methods now take the radius, the old two argument forms remain and forward with 4, so anything that
+overrides or calls them is unaffected.
+
+HOW AN ALERT BUTTON IS RECOGNISED, and this is the part worth keeping: NSAlert sets ITSELF as the
+target of every button it builds, so the target is the alert. That is exact. Guessing from the
+window class would catch every button in a panel, and guessing from the size would catch anything
+that happened to be that tall.
+
+The result, looked at: No and Yes are now pills, and the alert as a whole now matches the reference
+in icon, title, text wrapping, checkbox, button shape, panel corners and width.
+
+WHAT WAS NOT VERIFIED, stated rather than glossed: no ORDINARY push button could be got on screen to
+confirm it still draws as a rounded rectangle. The LibreOffice dialogs harness stopped showing its
+Tip of the Day dialog, which is where its two push buttons were, and wiping the profile did not
+bring it back. What is known is that the default radius is unchanged at 4, that the only difference
+for a non-alert button is the inner highlight going from radius 4 to 3, and that LibreOffice runs
+through its whole harness with no crash and its chrome intact.
