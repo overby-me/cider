@@ -8924,3 +8924,32 @@ THE NEXT MEASUREMENT, stated so it cannot be got wrong again: trace the surface 
 1256x633, with the rectangle in THAT surface coordinates, and look for the background fill on the
 rows the image block occupies. That is the one thing still unknown.
 
+## The whole image pipeline, traced on the right surfaces
+
+Pointing the tracer at the surfaces the terminal actually draws into, with the rectangle in their
+coordinates, shows the entire path. Distinct surfaces receiving writes in one run:
+
+    on=245x126   the image block bitmap
+    on=245x14    one bitmap per CELL ROW
+    on=1000x600, on=1256x684, on=585x405, on=292x185   windows
+
+and the writes themselves:
+
+    image 240x120 at 0,0   clip=245x126@0,-6  on=245x126    the picture, and the ONLY write into it
+    image 245x126 at 0,0   clip=0x0@0,0       on=245x14     the block, blitted into row one
+    image 245x126 at 0,-14                    on=245x14     row two, and so on down the block
+
+So: the picture is drawn once into a 245x126 bitmap and the remainder of that bitmap is NEVER
+touched, which is exactly what the disassembly said to expect. The block is then blitted into a
+fresh 245x14 bitmap per cell row. NOTHING fills a background into either of them, here or on macOS.
+
+WHICH MOVES THE QUESTION ONE STEP FURTHER, and it is now about compositing rather than painting. The
+black on the real system cannot come from the block or from the row bitmaps, because nothing paints
+it there, so it must come from what lies UNDER the row when the row is composited into the view. If
+that composite blends, a transparent remainder leaves the black underneath alone, which is macOS. If
+it copies, the transparent remainder ERASES what was under it, and the window background shows
+through, which is what we see.
+
+THE NEXT MEASUREMENT: the blend operation used when a row bitmap is composited into the view. The
+image trace prints no blend mode today, so it needs one line more before it can answer.
+
