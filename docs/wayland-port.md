@@ -8786,3 +8786,31 @@ that the harness types before the session is ready and the first characters of a
 the shell reports command not found. That is the harness being early, not the terminal dropping
 input; the untraced runs show the whole line.
 
+## The title bar is not broken: nothing was setting it
+
+Typed one escape into the session by hand:
+
+    printf "\033]0;CIDERTITLE\007"
+
+and the bar reads CIDERTITLE - 139x38, in the trace and in the capture, which I looked at. So the
+whole title path works: iTerm2 receives the escape, sets the title, and our window chrome draws it.
+
+WHICH MEANS THE EMPTY NAME IS NOTHING SAYING ANYTHING, not something being lost. The bar reads two
+spaces, a dash and a size because the name component is an empty string. On the real system that
+name is put there by the shell: the macOS reference reads ~/Downloads because a default macOS shell
+emits this escape from its prompt. Our guest shell emits nothing, so there is nothing to draw.
+
+WHAT IS STILL OPEN, and it is a smaller question than it was. On macOS a session with no title
+escape at all still shows the JOB name rather than an empty string, and iTerm2 now has the job name
+available, since process info reports -sh and login correctly. Whether iTerm2 needs shell
+integration for that fallback, or whether we are still missing something it wants, is not
+established. What IS established is that this was never a rendering or a chrome bug.
+
+TWO HARNESS TRAPS HIT WHILE ESTABLISHING IT, both mine:
+  A driver block spliced with an off by one left ") &&" where ") &" belonged, so the driver ran
+    SYNCHRONOUSLY BEFORE the application started: it typed into nothing and captured an empty
+    screen, and the run looked like the escape had been ignored.
+  That capture was also 1690x1388 rather than the pinned 1000x600, which is the same signature as
+    the unpinned output trap, and would have sent me after the wrong thing if I had not read the
+    generated script.
+
