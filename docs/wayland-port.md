@@ -7664,3 +7664,73 @@ and the application goes on to load fonts and the colour panel nib, so it is doi
 -[NSDocument readFromURL:ofType:error:], -[NSDocumentController addDocument:] and
 -[NSDocument makeWindowControllers] is what says which of the three bails, and those traces are in
 this commit.
+
+
+## iTerm2 stopped starting, and the cause was a more correct Foundation
+
+A fresh run of iTerm2 died six lines in, before any window, with
+
+    This copy of libswiftCore.dylib requires an OS version prior to 10.14.4.
+
+and cider-crashtrace named the frame: libswiftCore checkVersion -> swift::fatalError -> abort.
+Disassembling the bundled library says what that check is:
+
+    __swift_isBackDeploying:
+        version = <cached OS version>
+        if major <  10   -> 1
+        if major != 10   -> 0
+        if minor <  14   -> 1
+        return (minor == 14) && (patch < 4)
+
+    checkVersion:
+        if (__swift_isBackDeploying()) return;
+        fatalError("This copy of libswiftCore.dylib requires an OS version prior to 10.14.4.")
+
+so on anything at or after 10.14.4 the bundled copy refuses to run, ON PURPOSE. We report 14.4.1,
+so the abort is CORRECT. It used to pass only because the cached version comes from
+-[NSProcessInfo operatingSystemVersion], which our Foundation could not answer; the selectors the
+initialiser uses are operatingSystemVersion, instancesRespondToSelector:, and failing that
+dictionaryWithContentsOfFile: on SystemVersion.plist. A more correct Foundation is what turned
+iTerm2 from working to dead, which is worth saying plainly.
+
+macOS never reaches this because the OS provides Swift and dyld prefers it over an application
+back-deployment copy. Cider is supposed to ship it too, and here is the part that had gone unseen:
+
+    44 git-lfs POINTER files in the runtime, all of them /usr/lib/swift
+
+The whole system Swift runtime was 132 byte text files. NOT a fetch bug: the pin already declares
+lfs = true and both fetched store paths hold the real 6.4 MB libswiftCore.dylib. The stale copy was
+vendor/src/swift, MATERIALISED before the flag was added, and scripts/buck-src.nu skips a tree whose
+rev stamp already matches. FORCE=1 re-materialises it.
+
+TWO FIXES, and both were needed:
+  1. vendor/patches/dyld/0001: the system Swift wins over a bundled copy, keyed on the BASENAME
+     before any prefix is expanded, because iTerm2 asks for
+     @executable_path/../Frameworks/libswiftCore.dylib and the @rpath form is just as common. An
+     @rpath-only version of this rule was written first and never fired once.
+  2. FORCE=1 scripts/buck-src.nu vendor/pins/swift, so there is something to prefer.
+
+VERIFIED by looking: iTerm2 comes up, ./imgcat imgtest8.png draws the gradient inline and the prompt
+returns under it, on a capture taken after both fixes.
+
+TWO TRAPS THIS COST TIME ON, both already in this document and both re-learned anyway:
+  a stale container from an earlier run makes a fresh run render nothing, and it has to be cleared
+  before EVERY run, not once; and the imgcat path needs CIDER_XPC_LAUNCH_SERVICES=1, which is in
+  run-iterm-xpc.sh and not in run-iterm-visible.sh, so the wrong harness reports
+  "CIDER_XPC lookup failed for service com.iterm2.sandboxed-worker" and draws nothing.
+
+ALSO SELF INFLICTED: rsync -a --delete from the prefix artifact onto the runtime tree removes
+usr/lib/cider-crashtrace.dylib, which //buck/prefix:cider_prefix does not ship. Without it
+CIDER_TRACE_CRASH prints "cider-crashtrace did not open" and every crash is silent. Copy it back
+after syncing.
+
+## The prompt said Darling because a patch never reached the tree buck2 builds
+
+/private/etc/bashrc sets PS1, and vendor/patches/bash/0001-prompt-and-comment-say-cider.patch is
+the rename. vendor/src/bash was materialised before that patch existed, and buck-src.nu skips a
+tree whose rev stamp matches, so the patch was never applied to what buck2 compiles. It stayed
+invisible while the runtime tree still held an older bashrc built when the tree was current;
+rsyncing a freshly built prefix over it is what surfaced it.
+
+Checking every patched pin the same way, by trying to reverse-apply its latest patch against the
+materialised tree, says bash is the ONLY stale one of the thirteen. That check is worth keeping.

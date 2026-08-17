@@ -344,8 +344,28 @@ static int untitled_document_number = 0;
 }
 
 - (void) showWindows {
-    [_windowControllers makeObjectsPerformSelector: @selector(showWindow:)
-                                        withObject: self];
+    NSInteger i, count = [_windowControllers count];
+
+    /*
+     * AN EXPLICIT LOOP, not makeObjectsPerformSelector:withObject:.
+     *
+     * Swift Publisher reached here with exactly one window controller in the array and its window
+     * never appeared: the trace said showWindows doc=CADocument controllers=1 and
+     * -[NSWindowController showWindow:] was never entered. Whatever swallowed it, the loop is
+     * what this method means, it is one line longer, and it can say which controller it is
+     * talking to.
+     */
+    for (i = 0; i < count; i++) {
+        NSWindowController *controller = [_windowControllers objectAtIndex: i];
+
+        if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+            fprintf(stderr, "CIDER_DOC   showWindows[%ld] controller=%s %p\n",
+                    (long) i, class_getName([controller class]), controller);
+            fflush(stderr);
+        }
+
+        [controller showWindow: self];
+    }
 }
 
 - (void) makeWindowControllers {
@@ -376,7 +396,23 @@ static int untitled_document_number = 0;
 }
 
 - (void) addWindowController: (NSWindowController *) controller {
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC addWindowController doc=%s controller=%s\n",
+                class_getName([self class]), class_getName([controller class]));
+        fflush(stderr);
+    }
+
     [_windowControllers addObject: controller];
+
+    /* AFTER the add, because _windowControllers is only allocated in -init and a document built
+     * through some other initialiser would have nil here, where addObject: is a silent no-op and
+     * showWindows then finds nothing to show. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC   controllers now=%lu array=%p\n",
+                (unsigned long) [_windowControllers count], _windowControllers);
+        fflush(stderr);
+    }
+
     if ([controller document] == nil)
         [controller setDocument: self];
 }

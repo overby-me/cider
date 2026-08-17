@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSNibLoading.h>
 #import <AppKit/NSWindow.h>
 #import <AppKit/NSWindowController.h>
+#include <objc/runtime.h>
+#include <stdlib.h>
 
 @implementation NSWindowController
 
@@ -179,6 +181,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) showWindow: sender {
+    /*
+     * A NIL WINDOW HERE IS SILENT, and that is the whole of a document that does not open.
+     * Swift Publisher gets as far as loading Document2.nib and then nothing appears; a controller
+     * whose window outlet was never connected sends makeKeyAndOrderFront: to nil and returns
+     * without a word, which from outside is identical to a window that opened offscreen.
+     */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        NSWindow *window = [self window];
+
+        fprintf(stderr, "CIDER_DOC showWindow controller=%s window=%p nib=%s\n",
+                class_getName([self class]), window,
+                [self windowNibName] != nil ? [[self windowNibName] UTF8String] : "(nil)");
+        fflush(stderr);
+    }
+
     [[self window] makeKeyAndOrderFront: sender];
 }
 

@@ -1,0 +1,41 @@
+--- a/src/dyld2.cpp
++++ b/src/dyld2.cpp
+@@ -3779,6 +3779,38 @@
+ {
+ 	//dyld::log("%s(%s, %p)\n", __func__ , path, exceptions);
+ 	ImageLoader* image = NULL;
++
++	// THE SYSTEM SWIFT WINS OVER A BACK DEPLOYED COPY, which is what macOS has done since 10.14.4,
++	// when the Swift runtime became part of the OS.
++	//
++	// An application built for older systems carries libswift*.dylib inside its own bundle. On a
++	// modern system those copies must NOT be used, and Apple enforces it inside the library:
++	// __swift_isBackDeploying answers false for anything at or after 10.14.4 and checkVersion then
++	// calls fatalError, printing
++	//
++	//   This copy of libswiftCore.dylib requires an OS version prior to 10.14.4.
++	//
++	// iTerm2 died on exactly that, six lines into startup with no window, because we report 14.4.1
++	// and still handed it the bundle copy.
++	//
++	// ON THE BASENAME, and before any prefix is expanded, because the request arrives in more than
++	// one shape: iTerm2 asks for @executable_path/../Frameworks/libswiftCore.dylib, and an @rpath
++	// form is just as common. Keying on the leaf covers both, and a bundled Swift is always the
++	// same file under a different route. If the system has no such library the open fails and the
++	// normal search continues, so this can only add a load that macOS would also have made.
++	{
++		const char* leaf = strrchr(path, '/');
++		leaf = (leaf != NULL) ? leaf + 1 : path;
++
++		if ( (strncmp(leaf, "libswift", 8) == 0) && (strncmp(path, "/usr/lib/swift/", 15) != 0) ) {
++			char osSwiftPath[strlen(leaf) + 16];
++			strcpy(osSwiftPath, "/usr/lib/swift/");
++			strcat(osSwiftPath, leaf);
++			image = loadPhase4(osSwiftPath, orgPath, context, cacheIndex, exceptions);
++			if ( image != NULL )
++				return image;
++		}
++	}
+ 
+ 	if ( strncmp(path, "@executable_path/", 17) == 0 ) {
+ 		// executable_path cannot be in used in any binary in a setuid process rdar://problem/4589305
