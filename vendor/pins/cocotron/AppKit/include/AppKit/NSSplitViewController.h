@@ -21,6 +21,11 @@
 #import <Foundation/Foundation.h>
 #import <AppKit/NSViewController.h>
 
+@class NSSplitView;
+
 @interface NSSplitViewController : NSViewController
+
+- (NSSplitView *) splitView;
+- (void) setSplitView: (NSSplitView *) splitView;
 
 @end

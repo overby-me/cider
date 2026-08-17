@@ -17,9 +17,45 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#import <AppKit/NSSplitView.h>
 #import <AppKit/NSSplitViewController.h>
 
 @implementation NSSplitViewController
+
+/*
+ * A SPLIT VIEW CONTROLLER MAKES A SPLIT VIEW, which is the whole reason the class exists.
+ *
+ * -[NSViewController loadView] now hands back a plain NSView when there is no nib, which is what
+ * AppKit documents and what let Swift Publisher get past the exception this class used to cause.
+ * But a plain NSView is not what a split view controller is for: the application then sent
+ *
+ *   -[NSView adjustSubviews]: unrecognized selector
+ *
+ * because adjustSubviews lives on NSSplitView. That was a consequence of the fallback, not of the
+ * application doing anything unusual, and the place to fix it is here rather than by special casing
+ * classes inside NSViewController: a subclass that wants a particular view overrides loadView, and
+ * this is that subclass.
+ *
+ * WHAT IS STILL MISSING is the split view ITEM machinery, addSplitViewItem: and splitViewItems, so
+ * a controller built this way has a real split view with no children in it yet. The forwarding
+ * stubs below still catch those and log them.
+ */
+- (void) loadView {
+    NSSplitView *splitView = [[[NSSplitView alloc]
+            initWithFrame: NSMakeRect(0, 0, 0, 0)] autorelease];
+
+    [self setView: splitView];
+}
+
+- (NSSplitView *) splitView {
+    NSView *view = [self view];
+
+    return [view isKindOfClass: [NSSplitView class]] ? (NSSplitView *) view : nil;
+}
+
+- (void) setSplitView: (NSSplitView *) splitView {
+    [self setView: splitView];
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

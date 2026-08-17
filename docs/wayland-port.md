@@ -8180,3 +8180,37 @@ tail of binding keys on its own view classes, selectedIdentifier on NSTabView an
 contentObjects, contentValues and selectedObject on an NSMatrix subclass, plus
 -[NSView adjustSubviews], which is a consequence of MY nib-less view controller fallback handing
 back a plain NSView where a split view controller wanted an NSSplitView.
+
+
+## A split view controller now builds a split view, and the document nib load completes
+
+The nib-less fallback added earlier hands a view controller a plain NSView, which is what AppKit
+documents. For NSSplitViewController that is the wrong view, and the application said so:
+
+    -[NSView adjustSubviews]: unrecognized selector
+
+adjustSubviews lives on NSSplitView, so this was a consequence of my own fallback rather than
+anything unusual in the application. The place to fix it is the subclass, not a special case inside
+NSViewController: a controller that wants a particular view overrides loadView, and
+NSSplitViewController is that controller. It makes an NSSplitView now and answers splitView.
+
+WHAT IS STILL MISSING THERE is the split view ITEM machinery, addSplitViewItem: and splitViewItems,
+so such a controller has a real split view with no children in it. The forwarding stubs still catch
+those and log them, which is the honest state rather than a silent nothing.
+
+MEASURED, and it is the first time this line has changed:
+
+    CIDER_WC loadNibFile leave        YES
+
+The document window nib load COMPLETES now. It has never done that before; every earlier run ended
+inside it, first on an exception, then on a process abort from a worker thread.
+
+STILL NOT ON SCREEN, and the capture shows the gallery. After loadWindow the remaining steps of
+-[NSWindowController window] are windowDidLoad, windowControllerDidLoadNib: and done, and none of
+them printed before the run was killed at its limit, so the next question is whether those are
+slow or stopped, exactly the question that was answered once already for loadWindow.
+
+A HARNESS CAVEAT THAT STILL BITES: the run that produced this capture came out 1690x1388 even with
+the re-pin before every click, because the parent compositor can resize the nested output between a
+click and the shot that follows it. The measurement above comes from the LOG, which is not affected
+by that; a claim about the picture from that run would be.
