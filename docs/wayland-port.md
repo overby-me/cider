@@ -8639,3 +8639,30 @@ next attempt should not do that. The single cwd call, which is on a cold path, w
 
 THE TITLE BAR NAME IS STILL EMPTY. Two real causes are now named and proven and neither is fixed.
 
+## CORRECTION: the startup failure was not the stack buffer, it is vchroot_expand called too early
+
+The previous entry blamed the vchroot_expand_args buffer, a whole MAXPATHLEN, on the stack of a
+helper called once per process. THAT WAS A GUESS AND IT IS WRONG. The buffer is gone entirely in the
+second attempt, which resolves the guest procfs ONCE into a directory fd and then reads relative
+paths through it, so nothing large sits on any hot stack. iTerm2 still exits 1 during startup.
+
+WHAT THE RUN SAYS. With -[PROC_PIDT_SHORTBSDINFO] routed to the guest procfs, the log has ZERO
+PROCINFO lines, where the same gate printed thousands in earlier runs. The trace sits AFTER the
+guest read in that function, so the process dies inside the very first call, before it can speak.
+The only new thing on that path is vchroot_expand, and shortbsdinfo is called during early startup,
+long before the listing is. Which is consistent with the one part that DOES work.
+
+WHAT WORKS, verified: the LISTING alone may use the guest procfs. proc_listpids resolving
+<prefix>/proc lazily on its first call left iTerm2 perfectly healthy, 45 window lines and a live
+window, and the trace showed the directory fd resolved. The listing simply runs late enough.
+
+WHY THAT IS NOT COMMITTED ON ITS OWN. It would make things WORSE, not better. The listing would hand
+out namespace pids while every reader still reads the HOST procfs for them, so the two halves of the
+answer would disagree with each other. Today both halves are wrong together, which at least is
+consistent. This is a change that only helps once it is complete.
+
+THE NEXT APPROACH, and the reason to think it will hold: the emulation is NOT chrooted, it maps
+guest paths to host paths itself, so <prefix>/proc is an ordinary host path. Getting the prefix
+without calling vchroot_expand on the early path, and opening that directly, avoids the early
+vchroot call altogether. That is the thing to try next, not another variation on the buffer.
+
