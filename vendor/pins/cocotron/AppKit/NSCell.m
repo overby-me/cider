@@ -885,6 +885,28 @@ NSNotificationName NSControlTintDidChangeNotification = @"NSControlTintDidChange
     _isContinuous = flag;
 }
 
+/*
+ * WHICH EVENTS SHOULD FIRE THE ACTION, stored and answered, with the old mask returned.
+ *
+ * sendActionOn: is how a cell says it wants its action sent on drags or on mouse up as well as on
+ * mouse down, and it is what setContinuous: is defined in terms of: continuous means the periodic
+ * and dragged bits are in the mask. It did not exist here at all, and Swift Publisher calls it on
+ * a slider cell inside -[CCMainWindowController awakeFromNib], where an unrecognized selector
+ * unwinds the document nib load and the window never appears.
+ *
+ * Storing the mask and keeping isContinuous in step with it is the property contract. Tracking
+ * code that consults the mask to decide when to send is a separate piece of work: nothing here
+ * reads it yet, and that is stated rather than implied.
+ */
+- (NSInteger) sendActionOn: (NSInteger) mask {
+    NSInteger previous = _sendActionMask;
+
+    _sendActionMask = mask;
+    _isContinuous = (mask & (NSPeriodicMask | NSLeftMouseDraggedMask)) ? YES : NO;
+
+    return previous;
+}
+
 - (void) setShowsFirstResponder: (BOOL) value {
     _showsFirstResponder = value;
 }

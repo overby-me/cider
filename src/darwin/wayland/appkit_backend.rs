@@ -16,6 +16,7 @@
 // mouse, and resizes on this backend, which is what the variable was waiting for.
 //
 // CIDER_WAYLAND_BACKEND=0 declines on purpose, for comparing against X11 without rebuilding.
+use std::os::raw::c_char;
 use std::os::raw::c_void;
 
 mod clipboard;
@@ -462,6 +463,67 @@ extern "C-unwind" fn display_new_window(_this: Object, _cmd: Sel, delegate: Obje
 /// carries information.
 static SCREENS: std::sync::Mutex<Option<(f64, f64, usize)>> = std::sync::Mutex::new(None);
 
+/// THE SCREEN MODE, which NSDisplay declares and only the X11 backend answered.
+///
+/// -[NSDisplay currentModeForScreen:] and -modesForScreen: are how CGDirectDisplay reports a
+/// display resolution, and X11Display builds a dictionary of Width, Height and Depth from XRandR.
+/// The Wayland backend had neither, so +[NSScreen ...] worked but anything asking for the MODE got
+/// an unrecognized selector. Swift Publisher asks inside -[CCMainWindowController awakeFromNib],
+/// where an exception unwinds the whole document nib load and the window never appears.
+///
+/// The numbers are the ones the compositor already gave us, the same source display_screens uses,
+/// so the mode cannot disagree with the screen. Depth is 32: that is what the surfaces are.
+unsafe fn mode_dictionary() -> Object {
+    unsafe {
+        let (width, height) = match session::output_size() {
+            Some((w, h)) => (w, h),
+            None => (1024.0, 768.0),
+        };
+        let dict_cls = objc::objc_getClass(cstr!("NSMutableDictionary"));
+        let number_cls = objc::objc_getClass(cstr!("NSNumber"));
+        let string_cls = objc::objc_getClass(cstr!("NSString"));
+        if dict_cls.is_null() || number_cls.is_null() || string_cls.is_null() {
+            return std::ptr::null_mut();
+        }
+
+        let dict = objc::msg_send0(dict_cls, objc::sel_registerName(cstr!("dictionary")));
+        let with_int = objc::sel_registerName(cstr!("numberWithInteger:"));
+        let with_utf8 = objc::sel_registerName(cstr!("stringWithUTF8String:"));
+        let set_for_key = objc::sel_registerName(cstr!("setObject:forKey:"));
+
+        let entries: [(*const c_char, i64); 3] = [
+            (cstr!("Width"), width as i64),
+            (cstr!("Height"), height as i64),
+            (cstr!("Depth"), 32),
+        ];
+        for (key, value) in entries {
+            let k = objc::msg_send_cstr(string_cls, with_utf8, key);
+            let v = objc::msg_send_i64(number_cls, with_int, value);
+            if !k.is_null() && !v.is_null() {
+                objc::msg_send_obj2(dict, set_for_key, v, k);
+            }
+        }
+        dict
+    }
+}
+
+extern "C-unwind" fn display_current_mode(_this: Object, _cmd: Sel, _screen: i32) -> Object {
+    unsafe { mode_dictionary() }
+}
+
+extern "C-unwind" fn display_modes(_this: Object, _cmd: Sel, _screen: i32) -> Object {
+    unsafe {
+        let array_cls = objc::objc_getClass(cstr!("NSArray"));
+        let mode = mode_dictionary();
+        if array_cls.is_null() || mode.is_null() {
+            return std::ptr::null_mut();
+        }
+        let with_objs = objc::sel_registerName(cstr!("arrayWithObjects:count:"));
+        let one = [mode];
+        objc::msg_send_ptr_len(array_cls, with_objs, one.as_ptr(), 1)
+    }
+}
+
 extern "C-unwind" fn display_screens(_this: Object, _cmd: Sel) -> Object {
     unsafe {
         let screen_cls = objc::objc_getClass(cstr!("NSScreen"));
@@ -666,6 +728,17 @@ pub extern "C-unwind" fn cider_wayland_appkit_register() {
                 sel: cstr!("screens"),
                 types: cstr!("@@:"),
                 imp: display_screens as *const c_void,
+            },
+            // Both take a C int, which is what NSDisplay declares, hence "i" and not "q".
+            objc::MethodDef {
+                sel: cstr!("currentModeForScreen:"),
+                types: cstr!("@@:i"),
+                imp: display_current_mode as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("modesForScreen:"),
+                types: cstr!("@@:i"),
+                imp: display_modes as *const c_void,
             },
             // The encodings below describe a CGRect return and a CGRect plus NSUInteger argument.
             // They matter for introspection and forwarding; the CALL itself goes through the IMP,

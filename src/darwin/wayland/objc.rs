@@ -75,6 +75,9 @@ unsafe extern "C-unwind" {
     pub fn msg_send_cstr(receiver: Object, sel: Sel, s: *const c_char) -> Object;
     #[link_name = "objc_msgSend"]
     pub fn msg_send_obj(receiver: Object, sel: Sel, obj: Object) -> Object;
+    /// Two objects, which is setObject:forKey: and nothing else so far.
+    #[link_name = "objc_msgSend"]
+    pub fn msg_send_obj2(receiver: Object, sel: Sel, a: Object, b: Object) -> Object;
     #[link_name = "objc_msgSend"]
     pub fn msg_send_f64_2(receiver: Object, sel: Sel, a: f64, b: f64) -> Object;
     /// Counting and indexing an NSArray, which is the whole of what walking one needs.

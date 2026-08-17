@@ -7955,3 +7955,43 @@ for the current mode, and an array holding it for the list. The geometry is alre
 what display_screens hands out from session::output_size. What is missing is the Rust side plumbing
 to build an NSDictionary, since the backend today only has message sends for zero arguments, a
 rect pair, and a pointer with a length.
+
+
+## Three more, and the document nib now reaches the inspector
+
+Continuing down the same path, each fix uncovering the next raise inside
+-[CCMainWindowController awakeFromNib]:
+
+6. -[NSDisplayWayland currentModeForScreen:] unrecognized, and this one was OURS. NSDisplay
+   declares modesForScreen: and currentModeForScreen:, X11Display answers both from XRandR, and the
+   Wayland backend answered neither. Both are implemented now from session::output_size, the same
+   source display_screens uses, so the mode cannot disagree with the screen; Depth is 32 because
+   that is what the surfaces are. It needed one new message send signature, msg_send_obj2, for
+   setObject:forKey:.
+
+7. -[NSCell sendActionOn:] unrecognized. The mask is stored, the old one returned, and isContinuous
+   is kept in step with it, which is how the two are defined against each other. NOTHING READS THE
+   MASK YET: tracking code that consults it to decide when to send the action is separate work and
+   is not claimed.
+
+8. -[NSNumberFormatter setLocalizesFormat:], then setMinimum:, and the legacy family around them.
+   localizesFormat predates CFNumberFormatter and has no kCFNumberFormatter key, so it lives in the
+   same attributes dictionary as the rest of the state. minimum, maximum, format,
+   thousandSeparator and hasThousandSeparators were DECLARED IN THE HEADER and never implemented.
+   Stored and answered, not enforced: nothing clamps a formatted value to the range, and that is
+   said in the source rather than implied.
+
+A COST WORTH RECORDING: adding two declarations to Foundation/NSNumberFormatter.h rebuilt
+JavaScriptCore and a thousand other actions, about twenty five minutes. The implementation file
+alone is seconds. An application reaches these through the runtime, so where our own header is not
+the caller, the method can go in the .m and the header can be left alone.
+
+WHERE IT STANDS NOW. The document nib load gets FAR further than object 0 of 14: it now loads the
+inspector nib, 958 objects, and works through it. The remaining raises there are different in kind,
+-[__NSCFDictionary isEqualToString:], __NSCFArray does not support addObserver:forKeyPath:, and an
+NSUnknownKeyException on an NSPopUpButton, and the application carries on past them.
+
+THE WINDOW STILL DOES NOT APPEAR, and the failure has CHANGED shape: the application now exits
+cleanly, status 0, a few seconds after Choose, with no crash and no signal, while building the
+inspector. That is not the exception unwind that was there before, and it is the next thing to
+chase.

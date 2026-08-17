@@ -1,0 +1,126 @@
+--- a/src/NSNumberFormatter.m
++++ b/src/NSNumberFormatter.m
+@@ -634,6 +634,29 @@
+     SET_ID(kCFNumberFormatterCurrencyGroupingSeparator, string);
+ }
+ 
++/*
++ * THE OLD STYLE SWITCH, WITH NO CORE FOUNDATION KEY BEHIND IT.
++ *
++ * localizesFormat predates the CFNumberFormatter era and has no kCFNumberFormatter counterpart, so
++ * it cannot go through the SET_BOOL macros like everything else here. It is kept in the same
++ * attributes dictionary under its own name, which is where the rest of this object state lives.
++ *
++ * Swift Publisher calls it on a formatter while building its inspector, and an unrecognized
++ * selector there unwound an entire nib load and cost the document window. Storing and answering it
++ * is the property contract; nothing in this formatter consults it when formatting, and that is
++ * said here rather than implied, because the modern behaviour IS localised and setting NO would
++ * not turn that off.
++ */
++- (BOOL)localizesFormat
++{
++    return [_attributes[@"NSLocalizesFormat"] boolValue];
++}
++
++- (void)setLocalizesFormat:(BOOL)flag
++{
++    _attributes[@"NSLocalizesFormat"] = @(flag);
++}
++
+ - (BOOL)isLenient
+ {
+     return GET_BOOL(kCFNumberFormatterIsLenient);
+@@ -863,4 +886,82 @@
+ }
+ 
+ 
++/*
++ * THE LEGACY BOUNDS AND FORMAT, which the header declares and nothing implemented.
++ *
++ * minimum, maximum, format, thousandSeparator and hasThousandSeparators are the pre
++ * CFNumberFormatter surface. Swift Publisher sets them on its measurement units formatter while
++ * building the inspector, and each missing one raised an unrecognized selector that unwound the
++ * whole nib load and left the document window unbuilt.
++ *
++ * STORED AND ANSWERED, not enforced: minimum and maximum are kept but nothing here clamps a value
++ * to them when formatting. Saying that plainly is better than a comment implying the range works.
++ */
++- (NSNumber *)minimum
++{
++    return _attributes[@"NSMinimum"];
++}
++
++- (void)setMinimum:(NSNumber *)number
++{
++    if (number != nil) {
++        _attributes[@"NSMinimum"] = number;
++    } else {
++        [_attributes removeObjectForKey:@"NSMinimum"];
++    }
++}
++
++- (NSNumber *)maximum
++{
++    return _attributes[@"NSMaximum"];
++}
++
++- (void)setMaximum:(NSNumber *)number
++{
++    if (number != nil) {
++        _attributes[@"NSMaximum"] = number;
++    } else {
++        [_attributes removeObjectForKey:@"NSMaximum"];
++    }
++}
++
++- (NSString *)format
++{
++    return [self positiveFormat];
++}
++
++- (void)setFormat:(NSString *)format
++{
++    /* The old single string carried positive;negative;zero separated by semicolons. Only the
++     * positive part has a modern equivalent that this object already implements. */
++    NSArray *parts = [format componentsSeparatedByString:@";"];
++
++    if ([parts count] > 0) {
++        [self setPositiveFormat:[parts objectAtIndex:0]];
++    }
++    if ([parts count] > 1) {
++        [self setNegativeFormat:[parts objectAtIndex:1]];
++    }
++}
++
++- (BOOL)hasThousandSeparators
++{
++    return [self usesGroupingSeparator];
++}
++
++- (void)setHasThousandSeparators:(BOOL)flag
++{
++    [self setUsesGroupingSeparator:flag];
++}
++
++- (NSString *)thousandSeparator
++{
++    return [self groupingSeparator];
++}
++
++- (void)setThousandSeparator:(NSString *)separator
++{
++    [self setGroupingSeparator:separator];
++}
++
+ @end
+--- a/include/Foundation/NSNumberFormatter.h
++++ b/include/Foundation/NSNumberFormatter.h
+@@ -151,6 +151,8 @@
+ - (void)setMaximum:(NSNumber *)number;
+ - (NSString *)currencyGroupingSeparator;
+ - (void)setCurrencyGroupingSeparator:(NSString *)string;
++- (BOOL)localizesFormat;
++- (void)setLocalizesFormat:(BOOL)flag;
+ - (BOOL)isLenient;
+ - (void)setLenient:(BOOL)b;
+ - (BOOL)usesSignificantDigits;
