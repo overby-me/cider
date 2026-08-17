@@ -6779,3 +6779,37 @@ not regress: the inline image still draws, no crash, keys still reach PTYTextVie
 The remaining forty odd are listed by this scan and are worth re-running whenever an application
 does something invisible for no reason. The pattern to remember: a stub returning 0 from a QUESTION
 is a policy answer, and the policy is always no.
+
+### The alert checkbox was placed with an uninitialised variable
+
+macOS shows a Remember my choice checkbox in the iTerm2 permission alert and ours showed none. The
+application was not the reason. A trace of what it actually asks for says:
+
+    CIDER_ALERT style=0 icon=yes iconSize=32x32 suppression=1 accessory=(nil) buttons=2
+                msg=Allow Terminal-Initiated Display?
+
+suppression=1, so iTerm2 does call setShowsSuppressionButton, and NSAlert does have code to place
+it. That code was:
+
+    NSRect frame;
+
+    frame.origin.x = LEFT_MARGIN + iconSize.width + ICON_MAIN_GAP;
+    frame.origin.y = panelSize.height - TOP_MARGIN - messageSize.height -
+                     messageInformativeGap - informativeSize.height -
+                     informativeSuppressionGap - frame.size.height;   <- read here
+    frame.size = supressionSize;                                      <- assigned here
+
+frame.size.height is READ ONE LINE BEFORE IT IS ASSIGNED, so the vertical position came from an
+uninitialised stack value and the checkbox landed at a garbage offset, off the panel. Assigning the
+size first fixes it. The accessory view block immediately below is written the other way round,
+taking its frame from the view first, which is why only this one was wrong.
+
+Two smaller things went with it. setButtonType:NSSwitchButton was COMMENTED OUT, so even placed
+correctly the control would have been a push button rather than a checkbox; it is enabled. And the
+suppression size was measured from the title text alone, which leaves no room for the box glyph, so
+it now adds that width.
+
+The checkbox appears in the right place. What still differs from the reference: the gap between box
+and title is tighter than macOS, the panel has square corners where macOS is rounded, the buttons
+are small rectangles where macOS uses tall pills, and we draw a yellow warning triangle where the
+macOS alert has NO icon at all.

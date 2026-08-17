@@ -19,6 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSAlert.h>
+#import <objc/runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
 #import <AppKit/NSAttributedString.h>
 #import <AppKit/NSButton.h>
 #import <AppKit/NSFont.h>
@@ -93,7 +96,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                                            backing: NSBackingStoreBuffered
                                              defer: NO];
     _suppressionButton = [[NSButton alloc] init];
-    //  [_suppressionButton setButtonType:NSSwitchButton];
+    /* A SWITCH, because that is what this control IS. The line below was commented out, so the
+     * suppression control was a push button rather than a checkbox; macOS draws Remember my choice
+     * with a box beside it. */
+    [_suppressionButton setButtonType: NSSwitchButton];
     [_suppressionButton
             setTitle: NSLocalizedStringFromTableInBundle(
                               @"Do not show this message again", nil,
@@ -313,11 +319,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #define OTHER_GAP 20
 #define ICON_MAIN_GAP 20
 #define MAIN_BUTTON_GAP 20
+/* The checkbox glyph plus the gap between it and its title. */
+#define SUPPRESSION_BOX_WIDTH 20
 
     NSSize screenSize = [[NSScreen mainScreen] visibleFrame].size;
     NSSize textSize = NSZeroSize;
     NSStringDrawer *drawer = [NSStringDrawer sharedStringDrawer];
     NSSize iconSize = (_icon != nil) ? [_icon size] : NSZeroSize;
+
+    /* WHAT THE APPLICATION ACTUALLY ASKED THIS ALERT FOR. Our permission dialog has no checkbox
+     * where macOS shows Remember my choice, and iTerm2 does call setShowsSuppressionButton, so the
+     * question is whether the request reaches the layout or is lost before it. */
+    if (getenv("CIDER_TRACE_ALERT") != NULL && getenv("CIDER_TRACE_ALERT")[0] != '\0') {
+        fprintf(stderr,
+                "CIDER_ALERT style=%d icon=%s iconSize=%gx%g suppression=%d accessory=%s buttons=%lu msg=%s\n",
+                (int) _style, _icon ? "yes" : "(nil)", iconSize.width, iconSize.height,
+                (int) _showsSuppressionButton,
+                _accessoryView ? object_getClassName(_accessoryView) : "(nil)",
+                (unsigned long) [_buttons count],
+                [_messageText UTF8String] ?: "(nil)");
+        fflush(stderr);
+    }
     NSDictionary *messageAttributes = [NSDictionary
             dictionaryWithObjectsAndKeys: [NSFont boldSystemFontOfSize: 0],
                                           NSFontAttributeName, nil];
@@ -410,10 +432,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     if (_messageText != nil && _informativeText != nil)
         messageInformativeGap = INTERTEXT_GAP;
 
-    if (_showsSuppressionButton)
+    if (_showsSuppressionButton) {
         supressionSize = [drawer sizeOfString: [_suppressionButton title]
                                withAttributes: suppressionAttributes
                                        inSize: textSize];
+        /* Room for the box itself and the gap before the title, which a text measurement alone does
+         * not account for; without it the switch is sized to the words and clips its own box. */
+        supressionSize.width += SUPPRESSION_BOX_WIDTH;
+        supressionSize.height = MAX(supressionSize.height, SUPPRESSION_BOX_WIDTH);
+    }
 
     if (_informativeText != nil && _showsSuppressionButton)
         informativeSuppressionGap = INTERTEXT_GAP;
@@ -486,11 +513,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     if (_showsSuppressionButton) {
         NSRect frame;
 
+        /*
+         * THE SIZE IS ASSIGNED FIRST, and it was not.
+         *
+         * This block read frame.size.height while computing origin.y and only assigned frame.size
+         * on the NEXT line, so the vertical position came from an UNINITIALISED stack value. The
+         * checkbox was placed at a garbage offset, off the panel, and never appeared: iTerm2 asks
+         * for it, the trace shows suppression=1, and macOS puts a Remember my choice checkbox
+         * exactly there.
+         */
+        frame.size = supressionSize;
         frame.origin.x = LEFT_MARGIN + iconSize.width + ICON_MAIN_GAP;
         frame.origin.y = panelSize.height - TOP_MARGIN - messageSize.height -
                          messageInformativeGap - informativeSize.height -
                          informativeSuppressionGap - frame.size.height;
-        frame.size = supressionSize;
         [_suppressionButton setFrame: frame];
         [[_window contentView] addSubview: _suppressionButton];
     }
