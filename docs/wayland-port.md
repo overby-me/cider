@@ -7047,3 +7047,45 @@ WHAT THE QUIETER LOG NOW SHOWS, having been buried under those 219:
 
 Both of the exceptions above were present BEFORE this change, in the four that were not about
 objectValue, so none of them is a consequence of it.
+
+### The menu bar was never empty, it was drawing eight blank items
+
+Swift Publisher showed a menu bar with the application name and nothing else. Two theories were
+tested and BOTH WERE WRONG before the right one turned up, which is the useful part of this.
+
+WRONG ONE. The plan said the objectValue exceptions cut createMainMenu short. Fixing them removed
+219 exceptions and changed the menu bar not at all.
+
+WRONG TWO. setMainMenu: only gives the menu to windows that exist when it is called, and this
+application builds its menu in applicationWillFinishLaunching: before any window exists, so a window
+created later could never receive it. That reasoning is sound and the conclusion is still wrong; the
+trace says so:
+
+    CIDER_MAINMENU set items=9 windows=0
+    CIDER_MAINMENU addWindow class=NSWindow panel=0 mainMenu=9 windowMenu=9
+
+The window already HAS the nine item menu by the time it is added. The code written for that theory
+never fired, so it was removed rather than left in with a comment claiming a fix.
+
+THE ACTUAL CAUSE came from printing the titles rather than the count:
+
+    titles=[Apple sub=1] [ sub=1] [ sub=1] [ sub=1] [ sub=1] [ sub=1] [ sub=1] [ sub=1] [ sub=1]
+
+Nine items, every one with a submenu, and EIGHT WITH AN EMPTY TITLE. The bar was drawing all nine
+and eight of them were blank. That is the ordinary Cocoa idiom for building a menu bar in code:
+
+    NSMenu *fileMenu = [[NSMenu alloc] initWithTitle: @"File"];
+    NSMenuItem *item = [[NSMenuItem alloc] init];      // no title of its own
+    [item setSubmenu: fileMenu];
+
+and macOS draws File, taking the name from the submenu when the item has none. Ours drew nothing.
+The main menu view now falls back to the submenu title, in the DISPLAY path so that nothing an
+application can read back is changed.
+
+    Swift Publisher 5  File  Edit  Insert  View  Format  Arrange  Window  Help
+
+iTerm2 re-run afterwards and its bar is unchanged, which is the case that matters: it titles its
+items, so the fallback must not touch it.
+
+METHOD, worth keeping: a count told me nine items existed and hid the whole problem. The titles told
+me eight were blank. Print the CONTENT, not the size.

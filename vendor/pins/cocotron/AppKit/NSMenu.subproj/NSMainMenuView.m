@@ -132,7 +132,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
             return name;
         }
     }
-    return [item title];
+
+    /*
+     * AN UNTITLED ITEM SHOWS THE TITLE OF ITS SUBMENU, which is how a menu bar built in code gets
+     * its names. The ordinary Cocoa idiom is
+     *
+     *     NSMenu *fileMenu = [[NSMenu alloc] initWithTitle: @"File"];
+     *     NSMenuItem *item = [[NSMenuItem alloc] init];      // no title of its own
+     *     [item setSubmenu: fileMenu];
+     *
+     * and macOS draws File. Returning the item title alone drew NOTHING. Swift Publisher builds its
+     * whole menu bar this way: nine items, all with submenus, and eight of them with an empty
+     * title, which is why the bar appeared to hold only the application name. The bar was drawing
+     * all nine and eight of them were blank.
+     *
+     * The DISPLAY falls back rather than the item being retitled, so nothing an application can
+     * read back changes.
+     */
+    NSString *title = [item title];
+
+    if ([title length] == 0 && [item submenu] != nil) {
+        NSString *submenuTitle = [[item submenu] title];
+
+        if ([submenuTitle length] > 0) {
+            return submenuTitle;
+        }
+    }
+    return title;
 }
 
 /* The FIRST title in the bar is the application name, and macOS draws that one bold. Everything

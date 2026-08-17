@@ -428,6 +428,17 @@ static NSAppearance *_ciderApplicationAppearance = nil;
 - (void) setMainMenu: (NSMenu *) menu {
     int i, count = [_windows count];
 
+    if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != '\0') {
+        NSMutableString *titles = [NSMutableString string];
+
+        for (NSMenuItem *item in [menu itemArray]) {
+            [titles appendFormat: @"[%@ sub=%d] ", [item title],
+                                  (int) ([item submenu] != nil)];
+        }
+        NSLog(@"CIDER_MAINMENU set items=%ld windows=%d titles=%@",
+              (long) [[menu itemArray] count], count, titles);
+    }
+
     [_mainMenu autorelease];
     _mainMenu = [menu retain];
 
@@ -1622,6 +1633,22 @@ static void cider_ensure_finish_launching(NSApplication *self)
 
 - (void) _addWindow: (NSWindow *) window {
     [_windows addObject: window];
+
+    /*
+     * WHO HAS THE MENU, traced because the obvious theory about the empty menu bar was wrong.
+     *
+     * setMainMenu: does run before any window exists, items=9 windows=0, so a window created
+     * afterwards looked like it could never receive the menu. It receives it anyway: this trace
+     * reports windowMenu=9 the moment the window is added. The menu is installed and the menu bar
+     * still draws one item, so the fault is in DRAWING it, not in installing it.
+     */
+    if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != '\0') {
+        NSLog(@"CIDER_MAINMENU addWindow class=%s panel=%d mainMenu=%ld windowMenu=%ld",
+              object_getClassName(window), (int) [window isKindOfClass: [NSPanel class]],
+              _mainMenu ? (long) [[_mainMenu itemArray] count] : -1L,
+              [window menu] ? (long) [[[window menu] itemArray] count] : -1L);
+    }
+
 }
 
 - (void) _windowWillBecomeActive: (NSWindow *) window {
