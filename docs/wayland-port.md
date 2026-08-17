@@ -8903,3 +8903,24 @@ rows an image block occupies.
 WHAT IS NOT ESTABLISHED: whether the window in that trace is the terminal window or the alert panel.
 The trace does not say, and I did not assume it either way.
 
+## CORRECTION: nothing writes into the strip IN THE WINDOW, which is not the same statement
+
+Two entries above say CIDER_TRACE_PAINT records no write into the grey strip and treat that as
+proof that nothing paints it. The measurement is real and the reading was too strong.
+
+The tracer is hooked in three places in O2Context_builtin, for paths, for shadings and for images,
+so it does see blits and not only fills; that part is fine. What it reports is writes into ONE
+SURFACE, in that surface own coordinates. And iTerm2 does not draw the terminal into the window: the
+image trace shows O2BitmapContextCreate 1256x633, the size of the text view, so the terminal renders
+into its own bitmap and that bitmap is composited into the window afterwards.
+
+So a rectangle given in WINDOW coordinates cannot select anything the text view does to its own
+bitmap. Nothing writing into the strip in the window is exactly what a composited view looks like,
+and it says nothing about whether the background was painted inside the bitmap. What the window
+traces DO show is the window background at 0.930 and transparent black window paths, which is
+consistent with either explanation.
+
+THE NEXT MEASUREMENT, stated so it cannot be got wrong again: trace the surface whose size is
+1256x633, with the rectangle in THAT surface coordinates, and look for the background fill on the
+rows the image block occupies. That is the one thing still unknown.
+
