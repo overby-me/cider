@@ -27,6 +27,17 @@ image: nixos
 dependencies:
   - git
 
+# THE FEATURES GO IN THE ENVIRONMENT RATHER THAN ON THE COMMAND, and the difference is not
+# cosmetic. Naming them with --extra-experimental-features configures THAT nix invocation, and the
+# run still died on
+#
+#   error: experimental Nix feature 'ca-derivations' is disabled
+#
+# because evaluating this flake starts further nix processes, which inherit the environment and not
+# the argument list. NIX_CONFIG reaches all of them.
+environment:
+  NIX_CONFIG: "experimental-features = nix-command flakes ca-derivations"
+
 steps:
   # THERE IS NO CACHIX STEP, because there is no cachix cache. This file asked for one named
   # cider-nix from the day it was written, and the first run that ever reported a result answered
@@ -46,20 +57,10 @@ steps:
   # and neither needed a single compile to surface. `nix flake show` walks the outputs, and
   # --all-systems is off because this flake is x86_64-linux only until the aarch64 release.
   #
-  # The features are named on the command line rather than written into a nix.conf, because where
-  # that file has to go is a property of the engine and this is a property of the command.
-  #
-  # ca-derivations is in that list because this flake USES content addressed derivations, which the
-  # first run to get this far proved by dying on
-  #
-  #   error: experimental Nix feature 'ca-derivations' is disabled
-  #
-  # Reaching that error was itself the progress: every earlier run failed in the cachix step and
-  # never evaluated anything at all.
+  # The features come from NIX_CONFIG above, which every nix process this starts inherits.
   - name: "Flake outputs evaluate"
     command: |
-      nix --extra-experimental-features "nix-command flakes ca-derivations" \
-        flake show --json > /dev/null
+      nix flake show --json > /dev/null
 
   # NO BUILD STEPS, AND THAT IS THE POINT RATHER THAN A GAP. Darling is too large for a hosted
   # runner to finish; a CI that attempts it is a CI that always fails and is therefore ignored,
