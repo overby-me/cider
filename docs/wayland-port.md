@@ -7089,3 +7089,39 @@ items, so the fallback must not touch it.
 
 METHOD, worth keeping: a count told me nine items existed and hid the whole problem. The titles told
 me eight were blank. Print the CONTENT, not the size.
+
+### An attributed string could not be read out of a keyed archive, and the run format was derived
+
+-[__NSPlaceholderAttributedString initWithCoder:] was an unrecognized selector, so ANY archive
+holding an attributed string failed to decode. Swift Publisher hits it opening its own documents in
+-[CCDocument readFromURL:ofType:error:], which is why no template preview could be built.
+
+THE FORMAT WAS MEASURED, NOT GUESSED, which matters because inventing a byte layout here produces
+text with silently wrong attributes rather than an error. Apple writes:
+
+    NSString         the characters
+    NSAttributes     ONE dictionary when the whole string shares its attributes, an ARRAY otherwise
+    NSAttributeInfo  the runs, present only in the array case
+
+The runs are repeated pairs of (length, index into NSAttributes). Reading each as a single byte
+explains many archives and fails on the rest:
+
+    strlen 702 attrs 3 info [16, 0, 1, 1, 173, 5, 2]     seven bytes, not pairs at all
+
+Reading them as ULEB128 varints explains it exactly: 16, then 1, then (173 & 0x7f) + (5 << 7) = 685,
+and 16 + 1 + 685 = 702, the string length. Checked across the Swift Publisher template set by
+requiring that run lengths sum EXACTLY to the string length and every index is inside the array:
+
+    1-byte pairs   456 of 628 archives, 172 unexplained
+    ULEB128 pairs  628 of 628 archives, 0 unexplained
+
+3,840 of the 4,468 archives in those templates are the uniform single-dictionary case and 628 carry
+runs, so both halves are worth having.
+
+Measured after: the initWithCoder exception goes from 4 to 0. ENCODING IS STILL ABSENT, said plainly:
+an application that archives an attributed string has nothing to call, and this fixes reading only.
+
+The four exceptions that remain in the run are all ONE cause, which the quieter log now makes
+obvious: NSWindowServerCommunicationException out of -[NSDisplay init], reached through
+NSThreadSharedInstance on a BACKGROUND thread, once from +[NSFontFamily addFontFamilyWithName:] and
+once from -[NSWindow initWithContentRect:styleMask:backing:defer:].
