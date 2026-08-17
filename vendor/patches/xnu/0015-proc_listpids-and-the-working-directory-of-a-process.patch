@@ -1,0 +1,209 @@
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/proc_info.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/proc_info.c
+@@ -11,6 +11,7 @@
+ 
+ #include <darling/emulation/common/base.h>
+ #include <darling/emulation/conversion/dirent/getdirentries.h>
++#include <darling/emulation/conversion/common_at.h>
+ #include <darling/emulation/conversion/errno.h>
+ #include <darling/emulation/conversion/fcntl/open.h>
+ #include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
+@@ -35,8 +36,11 @@
+ #define LINUX_PR_SET_NAME 15
+ 
+ static long _proc_pidinfo(int32_t pid, uint32_t flavor, uint64_t arg, void* buffer, int32_t bufsize);
++static long _proc_listpids(uint32_t type, uint32_t typeinfo, void* buffer, int32_t bufsize);
++static long _proc_pidinfo_vnodepathinfo(int32_t pid, void* buffer, int32_t bufsize);
+ 
+ extern __SIZE_TYPE__ strlen(const char *s);
++extern char *getenv(const char *name);
+ extern void *memset(void *s, int c, __SIZE_TYPE__ n);
+ extern void *memcpy(void *dest, const void *src, __SIZE_TYPE__ n);
+ extern char *strcpy(char *dest, const char *src);
+@@ -82,8 +86,11 @@
+ 			return 0;
+ 		case 2: // proc_pidinfo
+ 			return _proc_pidinfo(pid, flavor, arg, buffer, bufsize);
+-		case 3: // proc_pidfdinfo
+ 		case 1: // proc_listpids
++			// The type is passed in the pid slot and the type argument in the flavor
++			// slot, which is how the libproc wrapper packs proc_listpids().
++			return _proc_listpids((uint32_t) pid, flavor, buffer, bufsize);
++		case 3: // proc_pidfdinfo
+ 		default:
+ 			__simple_printf("sys_proc_info(): Unsupported callnum: %d\n",
+ 					callnum);
+@@ -161,6 +168,10 @@
+ 		{
+ 			return _proc_pidinfo_listthreads(pid, buffer, bufsize);
+ 		}
++		case PROC_PIDVNODEPATHINFO:
++		{
++			return _proc_pidinfo_vnodepathinfo(pid, buffer, bufsize);
++		}
+ 		default:
+ 		{
+ 			__simple_printf("sys_proc_info(): Unsupported pidinfo flavor: %d\n",
+@@ -170,6 +181,162 @@
+ 	}
+ }
+ 
++/*
++ * THE WORKING DIRECTORY OF A PROCESS, and THE LIST OF PROCESSES.
++ *
++ * Both were answered with ENOTSUP, and the cost is visible in the iTerm2 title bar. On the real
++ * system that bar reads the directory the session is in; here it read an empty name followed by a
++ * size, because iTerm2 asks proc_listpids for the processes under the shell and then asks the one
++ * it finds for its working directory. Measured in one run: 265 calls to proc_listpids and one to
++ * PROC_PIDVNODEPATHINFO, every one of them refused.
++ *
++ * A guest pid IS the Linux pid in this emulation, which is what the rest of this file already
++ * assumes when it reads /proc/<pid>/stat, so both come straight out of /proc.
++ */
++
++struct cider_linux_dirent64
++{
++	uint64_t d_ino;
++	int64_t d_off;
++	unsigned short d_reclen;
++	unsigned char d_type;
++	char d_name[];
++};
++
++// The parent of a pid, out of field four of /proc/<pid>/stat, or -1 if it cannot be read.
++static int32_t _cider_ppid_of(int32_t pid)
++{
++	char path[64], stat[1024];
++	char* statptr;
++	const char* elem;
++
++	__simple_sprintf(path, "/proc/%d/stat", pid);
++	if (!read_string(path, stat, sizeof(stat)))
++		return -1;
++
++	statptr = stat;
++	skip_stat_elems(&statptr, 3); // pid, comm, state
++	elem = next_stat_elem(&statptr);
++	if (!elem)
++		return -1;
++
++	return __simple_atoi(elem, NULL);
++}
++
++static long _proc_listpids(uint32_t type, uint32_t typeinfo, void* buffer, int32_t bufsize)
++{
++	char dirents[4096];
++	int32_t* out = (int32_t*) buffer;
++	int32_t capacity = (buffer != NULL) ? (bufsize / (int32_t) sizeof(int32_t)) : 0;
++	int32_t count = 0;
++	int fd, len;
++
++	/*
++	 * ONLY THE TWO KINDS THAT CAN BE ANSWERED HONESTLY. Everything under /proc is every process,
++	 * so answering a uid or tty filter with the whole list would be worse than refusing: the
++	 * caller cannot tell the difference between a filter that ran and one that did nothing.
++	 */
++	if (type != 1 /*PROC_ALL_PIDS*/ && type != 6 /*PROC_PPID_ONLY*/)
++	{
++		__simple_printf("sys_proc_info(): Unsupported listpids type: %d\n", type);
++		return -ENOTSUP;
++	}
++
++	/*
++	 * OFF UNTIL THE THING IT UNCOVERS IS FIXED, and the switch is here so that is one word away.
++	 *
++	 * Answering this call is correct and it works: with it on, every proc_info complaint in an
++	 * iTerm2 run disappears. But iTerm2 only asks because it wants to build a process tree, and
++	 * the moment it gets one it walks straight into a heap abort of ours, in
++	 * -[NSIndexSet _mergeOverlappingRangesStartingAtIndex:] under -[iTermProcessCollection commit],
++	 * which is a corruption whose guilty write is somewhere else entirely. Refusing the call leaves
++	 * iTerm2 with an empty session name in its title bar. Serving it makes iTerm2 abort at startup,
++	 * which is worse, so the default has to be the first one until NSIndexSet is sound.
++	 */
++	{
++		const char* enabled = getenv("CIDER_PROC_LISTPIDS");
++
++		if (enabled == NULL || enabled[0] == '\0')
++			return -ENOTSUP;
++	}
++
++	fd = LINUX_SYSCALL(__NR_openat, LINUX_AT_FDCWD, "/proc",
++			LINUX_O_RDONLY | LINUX_O_DIRECTORY, 0);
++	if (fd < 0)
++		return errno_linux_to_bsd(fd);
++
++	while ((len = LINUX_SYSCALL(__NR_getdents64, fd, dirents, sizeof(dirents))) > 0)
++	{
++		int off = 0;
++
++		while (off < len)
++		{
++			struct cider_linux_dirent64* de = (struct cider_linux_dirent64*) (dirents + off);
++			const char* name = de->d_name;
++			bool numeric = name[0] >= '1' && name[0] <= '9';
++			int32_t pid;
++			const char* p;
++
++			off += de->d_reclen;
++
++			for (p = name; numeric && *p != '\0'; p++)
++			{
++				if (*p < '0' || *p > '9')
++					numeric = false;
++			}
++			if (!numeric)
++				continue;
++
++			pid = __simple_atoi(name, NULL);
++			if (type == 6 /*PROC_PPID_ONLY*/ && _cider_ppid_of(pid) != (int32_t) typeinfo)
++				continue;
++
++			// A NULL buffer is a request for the size, which is what the wrapper does first.
++			if (buffer != NULL)
++			{
++				if (count >= capacity)
++					break;
++				out[count] = pid;
++			}
++			count++;
++		}
++	}
++
++	LINUX_SYSCALL(__NR_close, fd);
++	return count * (long) sizeof(int32_t);
++}
++
++static long _proc_pidinfo_vnodepathinfo(int32_t pid, void* buffer, int32_t bufsize)
++{
++	struct vchroot_unexpand_args args;
++	struct proc_vnodepathinfo* vpi;
++	char link[64];
++	int rv;
++
++	if (!buffer)
++		return -EFAULT;
++	if (bufsize < (int32_t) sizeof(struct proc_vnodepathinfo))
++		return -ENOSPC;
++
++	memset(buffer, 0, sizeof(struct proc_vnodepathinfo));
++	vpi = (struct proc_vnodepathinfo*) buffer;
++
++	__simple_sprintf(link, "/proc/%d/cwd", pid);
++	rv = LINUX_SYSCALL(__NR_readlinkat, LINUX_AT_FDCWD, link, args.path,
++			sizeof(args.path) - 1);
++	if (rv < 0)
++		return errno_linux_to_bsd(rv);
++	args.path[rv] = '\0';
++
++	// The answer has to be in the guest view of the filesystem, not the host one.
++	rv = vchroot_unexpand(&args);
++	if (rv != 0)
++		return rv;
++
++	strncpy(vpi->pvi_cdir.vip_path, args.path, sizeof(vpi->pvi_cdir.vip_path) - 1);
++	return sizeof(struct proc_vnodepathinfo);
++}
++
+ static char fakeuuid[16];
+ 
+ static long _proc_pidonfo_uniqinfo(int32_t pid, void* buffer, int32_t bufsize)

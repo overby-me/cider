@@ -8506,3 +8506,42 @@ title bar reading a session name, ~/Downloads, with no size indicator at all. Ou
 number but the missing name: iTerm2 gets the foreground job of the tty from process information,
 and that is what to check next.
 
+## The empty session name: proc_listpids and the working directory were both refused
+
+The title bar reads "  - 139x38" with nothing before the dash because iTerm2 cannot find out what is
+running in the session. It asks the kernel twice and was refused both times:
+
+    sys_proc_info(): Unsupported callnum: 1          proc_listpids, 265 times in one run
+    sys_proc_info(): Unsupported pidinfo flavor: 9   PROC_PIDVNODEPATHINFO, once
+
+That is exactly the pair the macOS reference implies: it enumerates the processes under the shell,
+then asks the one it finds for its working directory, which is what ~/Downloads in the reference
+screenshot is. A guest pid IS the Linux pid in this emulation, which the rest of proc_info.c already
+assumes when it reads /proc/<pid>/stat, so both come straight out of /proc. Implemented in
+vendor/patches/xnu/0015, PROC_ALL_PIDS and PROC_PPID_ONLY for the listing and readlink of
+/proc/<pid>/cwd through vchroot_unexpand for the directory.
+
+WITH IT ON, every proc_info complaint in an iTerm2 run disappears. And then iTerm2 walks into the
+next thing: getting a real process list, it builds an iTermProcessCollection and aborts inside OUR
+NSIndexSet, in -[NSIndexSet _mergeOverlappingRangesStartingAtIndex:] under -[iTermProcessCollection
+commit], through malloc_report, which is heap corruption whose guilty write is somewhere else. The
+list macros in utlist.h and the merge itself read correctly, so this needs dynamic work, not
+another reading.
+
+SO THE LISTING IS OFF BY DEFAULT, behind CIDER_PROC_LISTPIDS, and one word turns it on. Refusing it
+costs an empty name in a title bar. Serving it makes iTerm2 abort at startup, which is worse. The
+working directory flavour is on, because nothing depends on it yet and it cannot make anything
+crash.
+
+## A crashed run poisons the next one, and the statistics do not say so
+
+The run that checked the gated build came back with zero crashes, five captures and no complaints,
+and every frame was solid black. The previous run had crashed and left launchd, memberd and
+shellspawn alive under the same prefix; the harness only ever killed ciderd. Nothing errors in that
+state, the application simply never draws.
+
+kill-stale-prefix.sh kills every guest process of a prefix by PID, with the match pattern in the
+FILE rather than on a command line, because a pgrep whose pattern is in its own argv matches the
+shell running it. run-iterm-rewrap.sh calls it before every run. Zero crashes and five captures is
+not evidence: look at one.
+
