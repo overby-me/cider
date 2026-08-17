@@ -6843,3 +6843,25 @@ with the picture drawn, no crash, keys still reaching PTYTextView.
 WHAT STILL DIFFERS from the reference: square panel corners where macOS is rounded, no drop shadow,
 small rectangular buttons where macOS uses tall pills, and a tighter gap between the checkbox and
 its title.
+
+### An alert was a third of the screen wide, because that is literally what it asked for
+
+    mainSize.width = MAX(screenSize.width / 3., ...)
+
+So the text column of every alert grew with the display: 419 points on the 1256 pixel output used
+for testing, and far worse on a real monitor. macOS sizes an alert to a CONSTANT, which is why the
+reference panel is about 257 points while ours measured 487.
+
+It is a constant here now, 240 points for the text column, measured off the reference rather than
+invented, with the screen kept as a ceiling so a small display cannot overflow. The alert button
+minimum went from 40 points wide to 90, which is what an alert button looks like on macOS and what
+the reference shows at about 110.
+
+The result, looked at rather than summarised: the panel is 292 pixels instead of 487, the informative
+text wraps into three lines exactly as the macOS one does, and No and Yes are proper alert buttons
+instead of two small squares. Verified not to break what the dialog is for, since the harness that
+answers it still ends with the picture drawn and no crash.
+
+Left over, and all of it is chrome rather than layout: square panel corners where macOS is rounded,
+no drop shadow, buttons that are rounded rectangles rather than pills, and a tight gap between the
+checkbox and its title.

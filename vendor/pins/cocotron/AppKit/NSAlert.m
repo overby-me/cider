@@ -348,6 +348,10 @@ static NSImage *cider_default_alert_icon(NSAlertStyle style)
 #define MAIN_BUTTON_GAP 20
 /* The checkbox glyph plus the gap between it and its title. */
 #define SUPPRESSION_BOX_WIDTH 20
+/* Measured off the macOS reference capture in Downloads/macos-images: the panel there is about 257
+ * points wide and its buttons about 110 each. These are the text column and the button minimum. */
+#define ALERT_TEXT_WIDTH 240.
+#define ALERT_BUTTON_MIN_WIDTH 90.
 
     NSSize screenSize = [[NSScreen mainScreen] visibleFrame].size;
     NSSize textSize = NSZeroSize;
@@ -387,7 +391,7 @@ static NSImage *cider_default_alert_icon(NSAlertStyle style)
     NSSize mainSize = NSZeroSize;
     NSSize panelSize = NSZeroSize;
     NSUInteger i, count = [_buttons count];
-    NSSize okCancelButtonSize = NSMakeSize(40, 24);
+    NSSize okCancelButtonSize = NSMakeSize(ALERT_BUTTON_MIN_WIDTH, 24);
     NSSize otherButtonSize = okCancelButtonSize;
     NSSize allButtonsSize = NSZeroSize;
 
@@ -430,10 +434,20 @@ static NSImage *cider_default_alert_icon(NSAlertStyle style)
             allButtonsSize.width += OTHER_GAP;
     }
 
-    // Size the main reasonable and at least wide enough to make all buttons
-    // fit.
-    mainSize.width = MAX(screenSize.width / 3.,
+    /*
+     * AN ALERT IS A FIXED WIDTH, NOT A FRACTION OF THE SCREEN.
+     *
+     * This was screenSize.width / 3, so the text column grew with the display: 419 points on the
+     * 1256 pixel output used for testing, and half a metre of text on a wide monitor. macOS sizes an
+     * alert to a constant, and the difference is plain against the reference capture, where the
+     * whole macOS panel is about 257 points and ours was 487.
+     *
+     * The number below is measured off that reference rather than invented, and the screen is still
+     * a ceiling so a small display cannot be overflowed.
+     */
+    mainSize.width = MAX(ALERT_TEXT_WIDTH,
                          allButtonsSize.width - iconSize.width - ICON_MAIN_GAP);
+    mainSize.width = MIN(mainSize.width, screenSize.width / 2.);
     mainSize.width = MAX(mainSize.width, accessorySize.width);
 
     // Size the texts.
