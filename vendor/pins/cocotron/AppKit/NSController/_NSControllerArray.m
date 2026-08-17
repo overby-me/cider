@@ -1,4 +1,5 @@
 #import "_NSControllerArray.h"
+#include <stdlib.h>
 #import "NSObservationProxy.h"
 #import <Foundation/NSException.h>
 #import <Foundation/NSIndexSet.h>
@@ -26,12 +27,46 @@
 }
 
 - (void) dealloc {
-    if ([_observationProxies count] > 0)
-        [NSException
-                 raise: NSInvalidArgumentException
-                format: @"_NSControllerArray still being observed by %@ on %@",
-                        [[_observationProxies objectAtIndex: 0] observer],
-                        [[_observationProxies objectAtIndex: 0] keyPath]];
+    /*
+     * UNWIND WHAT IS LEFT INSTEAD OF RAISING, and say so when it happens.
+     *
+     * The exception here is the Cocoa diagnostic for deallocating an object that still has key
+     * value observers, and it is aimed at whoever registered them. That is the wrong party in this
+     * class. _NSControllerArray is not an object an application ever holds: it is the TRANSIENT
+     * value a controller hands back for selection or arrangedObjects, and it is replaced whenever
+     * the content changes. An observer of selection.someKey ends up registered on whichever array
+     * was current at the time, so the controller destroying that array is normal, and raising
+     * takes the caller down with it.
+     *
+     * Swift Publisher is the caller. The exception came out of
+     *
+     *   -[_NSControllerArray dealloc]
+     *   -[NSControllerSelectionProxy controllerWillChange]
+     *   -[NSObjectController setContent:]
+     *   -[CCMainWindowController awakeFromNib]
+     *   -[NSNib instantiateNibWithExternalNameTable:]
+     *   ... -[NSWindowController showWindow:] -[NSDocument showWindows]
+     *
+     * so an internal array being replaced during window setup unwound the whole nib load and the
+     * document window never appeared. Once on paperFormat, once on visibleRightView, which is why
+     * fixing one observation path did not end it.
+     *
+     * What is left to do is exactly what -removeObserver:forKeyPath: does: this array forwards
+     * observation to its ELEMENTS, so the forwards have to come off them or they outlive the
+     * array. Leaving them attached would be the real bug.
+     */
+    while ([_observationProxies count] > 0) {
+        _NSObservationProxy *proxy = [[_observationProxies lastObject] retain];
+
+        if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+            fprintf(stderr, "CIDER_CARRAY dealloc unwinding observer on %s\n",
+                    [[proxy keyPath] UTF8String] ?: "?");
+            fflush(stderr);
+        }
+
+        [self removeObserver: [proxy observer] forKeyPath: [proxy keyPath]];
+        [proxy release];
+    }
 
     [_observationProxies release];
     [_array release];
@@ -97,8 +132,34 @@
             [[_NSObservationProxy alloc] initWithKeyPath: keyPath
                                                 observer: observer
                                                   object: self];
-    int idx = [_observationProxies indexOfObject: proxy];
+    /*
+     * NSNotFound IS NOT -1, and an int said it was.
+     *
+     * indexOfObject: answers NSNotFound, which is NSUIntegerMax; stored in an int that becomes -1,
+     * and objectAtIndex: -1 raises
+     *
+     *   NSRangeException: index (-1) beyond array bounds (0)
+     *
+     * so removing an observer that is not registered blew up instead of doing nothing. It reached
+     * Swift Publisher through -[NSKeyValueNestedProperty object:withObservance:...], which removes
+     * an observation the array had already dropped, and the exception unwound the document window
+     * nib load exactly like the one above it did.
+     *
+     * Nothing registered means nothing to remove. The operator branch below still runs, because a
+     * key path starting with @ is observed on super as well as on the elements.
+     */
+    NSUInteger idx = [_observationProxies indexOfObject: proxy];
     [proxy release];
+
+    if (idx == NSNotFound) {
+        if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+            fprintf(stderr, "CIDER_CARRAY removeObserver: %s was not registered\n",
+                    [keyPath UTF8String] ?: "?");
+            fflush(stderr);
+        }
+        return;
+    }
+
     proxy = [[[_observationProxies objectAtIndex: idx] retain] autorelease];
     [_observationProxies removeObjectAtIndex: idx];
 

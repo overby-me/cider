@@ -289,6 +289,38 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
     return [self imageUnfilteredFileTypes];
 }
 
+/*
+ * THE UTIs WE CAN ACTUALLY READ, which is a real answer rather than a placeholder.
+ *
+ * imageTypes is the modern form of imageFileTypes and applications use it to decide what to accept
+ * in an open panel or a drag. It did not exist here at all, and +[NSImage imageTypes] raised an
+ * unrecognized selector out of -[CCMainWindowController awakeFromNib], which unwound the document
+ * nib load and left Swift Publisher with no window.
+ *
+ * The list mirrors the decoders registered in O2ImageSource, PNG, TIFF, JPEG, BMP, GIF and ICNS,
+ * so it is neither a guess nor an empty array claiming we can read nothing. If a decoder is added
+ * there this list is what has to grow with it.
+ */
++ (NSArray *) imageUnfilteredTypes {
+    static NSArray *types = nil;
+
+    if (types == nil) {
+        types = [[NSArray alloc] initWithObjects:
+                @"public.png",
+                @"public.tiff",
+                @"public.jpeg",
+                @"com.microsoft.bmp",
+                @"com.compuserve.gif",
+                @"com.apple.icns",
+                nil];
+    }
+    return types;
+}
+
++ (NSArray *) imageTypes {
+    return [self imageUnfilteredTypes];
+}
+
 + (NSArray *) imageUnfilteredFileTypes {
     NSMutableArray *result = [NSMutableArray array];
     NSArray *allClasses = [NSImageRep registeredImageRepClasses];

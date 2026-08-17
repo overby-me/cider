@@ -7902,3 +7902,56 @@ The next rung is to find what it waits FOR: the candidates worth checking first 
 handlers it registers just before the wait, handlerFTSelectionOfObjectsChanged:,
 handlerFTDocViewBoundsMayBeChanged: and handlerFTNextStepForCheckSpelling:, and whether the
 application is waiting on an operation queue that our side never completes.
+
+
+## The document window, five more exceptions down, and a correction about the nested run loop
+
+The last entry said awakeFromNib had entered a nested run loop, because it never returned while the
+event loop kept pumping. THAT WAS WRONG, and the thing that showed it was adding the thread identity
+and then reading the raises after the marker rather than only the markers themselves:
+
+    CIDER_NIB awake 0/14 CAMainWindowController main=1 thread=0x74c18182ee40
+    cider: RAISE ... -[_NSControllerArray dealloc] ... -[CCMainWindowController awakeFromNib]
+
+An EXCEPTION unwinding out of awakeFromNib explains both observations at once and needs no nested
+loop: the stack is torn back past every leave print, which is why none of them appeared, and control
+lands in the application handler and then in the ordinary event loop, which is why nextevent kept
+climbing. A trace that only prints on the happy path cannot tell a hang from an unwind.
+
+FIVE EXCEPTIONS ON THAT ONE PATH, each uncovered by fixing the one before it, all inside
+-[CCMainWindowController awakeFromNib] during the document nib load:
+
+1. _NSControllerArray still being observed, on paperFormat and later on visibleRightView. The
+   earlier fix to NSControllerSelectionProxy was not enough because the observers are registered on
+   the ARRAY itself, not on its elements. -[_NSControllerArray dealloc] now UNWINDS what is left
+   instead of raising: this array is not an object an application holds, it is the transient value
+   a controller hands back and replaces whenever the content changes, so the controller destroying
+   it is normal. The forwards to its elements are removed, which is what removeObserver: would have
+   done, because leaving them attached would be the real bug.
+
+2. NSRangeException: index (-1) beyond array bounds (0), from
+   -[_NSControllerArray removeObserver:forKeyPath:]. indexOfObject: answers NSNotFound, the code
+   stored it in an int, and NSUIntegerMax in an int is -1. Removing an observer that is not
+   registered now does nothing, which is what it means.
+
+3. -[CCSplitView setAutosaveName:] unrecognized. NSSplitView had no autosaveName at all. The name is
+   stored and answered; persisting divider positions is separate work and is not claimed.
+
+4. -[CCCanvasesPreviewAndDocumentSplitViewController loadView] nibName is nil. AppKit says a view
+   controller with no nib gets a plain NSView and that a subclass overrides loadView; ours raised
+   instead. It makes the empty view now.
+
+5. +[NSImage imageTypes] unrecognized. It did not exist. It answers the UTIs that match the decoders
+   registered in O2ImageSource, PNG, TIFF, JPEG, BMP, GIF and ICNS, so it is a real answer and not
+   an empty array claiming we can read nothing.
+
+WHERE IT STOPS NOW, and it is ours:
+
+    -[NSDisplayWayland currentModeForScreen:]: unrecognized selector
+
+NSDisplay declares modesForScreen: and currentModeForScreen:, X11Display implements both, and the
+Wayland backend implements neither. The contract is small: a dictionary of Width, Height and Depth
+for the current mode, and an array holding it for the list. The geometry is already there, it is
+what display_screens hands out from session::output_size. What is missing is the Rust side plumbing
+to build an NSDictionary, since the backend today only has message sends for zero arguments, a
+rect pair, and a pointer with a length.

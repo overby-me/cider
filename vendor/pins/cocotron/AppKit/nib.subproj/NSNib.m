@@ -26,6 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSNib.h>
 #include <objc/runtime.h>
+#include <pthread.h>
+#import <Foundation/NSThread.h>
 #include <stdlib.h>
 #import "NSNIBArchiveUnarchiver.h"
 #import <AppKit/NSNibLoading.h>
@@ -315,8 +317,12 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
 
             if ([object respondsToSelector: @selector(awakeFromNib)]) {
                 if (getenv("CIDER_TRACE_NIB") != NULL) {
-                    fprintf(stderr, "CIDER_NIB awake %d/%d %s\n", i, count,
-                            class_getName([object class]));
+                    /* WHICH THREAD, because a method that does not return while the application
+                     * keeps pumping events is either a nested run loop on the main thread or an
+                     * ordinary block on some other one, and those need different answers. */
+                    fprintf(stderr, "CIDER_NIB awake %d/%d %s main=%d thread=%p\n", i, count,
+                            class_getName([object class]), (int) [NSThread isMainThread],
+                            (void *) pthread_self());
                     fflush(stderr);
                 }
                 [object awakeFromNib];

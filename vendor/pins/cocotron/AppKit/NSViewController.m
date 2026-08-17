@@ -77,10 +77,24 @@
     NSString *name = [self nibName];
     NSBundle *bundle = [self nibBundle];
 
+    /*
+     * NO NIB IS NOT AN ERROR. AppKit says so: a view controller with no nib gets a plain NSView,
+     * and a controller built in code is expected either to take that view or to override this
+     * method, which is what NSSplitViewController and friends do.
+     *
+     * Raising here instead cost Swift Publisher its document window. The application creates a
+     * CCCanvasesPreviewAndDocumentSplitViewController in code, asks it for its view inside
+     * -[CCMainWindowController awakeFromNib], and the exception unwound the whole nib load through
+     * -[NSWindowController showWindow:], so nothing appeared and nothing said why.
+     *
+     * An empty view is honest: the controller has no nib, so it has no contents yet, and a caller
+     * that wanted contents will have overridden loadView.
+     */
     if (name == nil) {
-        // should pathForResource assert name for non-nil?
-        [NSException raise: NSInvalidArgumentException
-                    format: @"-[%@ %s] nibName is nil", [self class], _cmd];
+        NSView *view = [[[NSView alloc]
+                initWithFrame: NSMakeRect(0, 0, 0, 0)] autorelease];
+
+        [self setView: view];
         return;
     }
 

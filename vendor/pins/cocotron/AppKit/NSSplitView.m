@@ -664,4 +664,24 @@ static CGFloat constrainTo(CGFloat value, CGFloat min, CGFloat max) {
     return YES;
 }
 
+/*
+ * THE NAME IS STORED, THE POSITIONS ARE NOT SAVED YET, and that split is deliberate.
+ *
+ * autosaveName is how a split view remembers its divider positions across launches, and it is set
+ * from a nib or in code before anything is laid out. Swift Publisher sets it inside
+ * -[CCMainWindowController awakeFromNib], the selector did not exist, and the unrecognized
+ * selector exception unwound the whole document nib load, so the window never appeared. Answering
+ * the property is what stops that; persisting the positions is a separate piece of work, and an
+ * application that asks for the name back gets what it set.
+ */
+- (NSString *) autosaveName {
+    return _autosaveName;
+}
+
+- (void) setAutosaveName: (NSString *) name {
+    name = [name copy];
+    [_autosaveName release];
+    _autosaveName = name;
+}
+
 @end

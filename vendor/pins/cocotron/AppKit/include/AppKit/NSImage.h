@@ -49,6 +49,8 @@ typedef enum {
 }
 
 + (NSArray *) imageFileTypes;
++ (NSArray *) imageTypes;
++ (NSArray *) imageUnfilteredTypes;
 + (NSArray *) imageUnfilteredFileTypes;
 + (NSArray *) imagePasteboardTypes;
 + (NSArray *) imageUnfilteredPasteboardTypes;
