@@ -6959,3 +6959,47 @@ Tip of the Day dialog, which is where its two push buttons were, and wiping the 
 bring it back. What is known is that the default radius is unchanged at 4, that the only difference
 for a non-alert button is the inner highlight going from radius 4 to 3, and that LibreOffice runs
 through its whole harness with no crash and its chrome intact.
+
+## Task 116, Swift Publisher 5: a font conversion that answered nil killed every document preview
+
+Picked up where it stopped, and the first thing a re-run said is that the state has changed: the
+application no longer CRASHES. It presents its Template Gallery, opens
+CCWellcomeWindowController.nib, reaches NSConnections in the keyed unarchiver, and then exits with
+status 0 rather than faulting on a 0xFFCECECEFFCECECE receiver. The nib is still where it stops.
+
+WHAT THE RUN SHOWED THAT WAS NEW, three times over, in a background operation building previews:
+
+    CIDER_DICT_NIL object=(nil) key=__NSCFConstantString keytext=NSFontAttributeName
+    cider: RAISE NSInvalidArgumentException: Cannot set nil objects nor nil keys
+      -[NSRichTextReader processControlWithArgValue:]
+      ... -[CCDocument initWithDocumentType:andOptions:]
+      -[CCCreatingDocumentPreviewOperation main]
+
+The RTF reader does this for every bold, italic and font size control word:
+
+    font = [manager convertFont: font toHaveTrait: NSBoldFontMask];
+    [_currentAttributes setObject: font forKey: NSFontAttributeName];
+
+with no nil check, so a nil from the conversion is not a degraded font, it is an exception that ends
+the parse and therefore the preview.
+
+THE FIRST FIX WAS THE WRONG ONE AND THE COUNT SAID SO. convertFont:toHaveTrait: could return nil
+when a typeface was found but fontWithName could not build a font from its name, so that was
+repaired first. The exception count before and after was 3 and 3: the guess was wrong, and a count
+is what caught it rather than an argument about the code.
+
+The nil came from the other two converters. convertFont:toSize: ended in a bare
+
+    return [NSFont fontWithName: [font fontName] size: size];
+
+with no fallback and no nil-font guard at all, and convertFont:toFamily: returned whatever
+fontWithFamily gave it. Apple returns the font it was handed when a conversion fails, which
+convertFont:toFace: in this same file already does with a comment saying exactly that. All four
+converters now agree. Exceptions 3 to 0, and the rich text frames in the log fall from 4 to 2.
+
+This is a fix for any application that reads RTF, not only this one. iTerm2 re-run afterwards, since
+NSFontManager is reached by everything: picture still drawn, no crash, keys still delivered.
+
+STILL OPEN on this application: the nib stops at NSConnections; the template grid is dark grey where
+macOS is light; the in-window menu bar has only the application name, because building the main menu
+binds items to objectValue which NSMenuItem does not have; and the heading is clipped at its top.

@@ -422,10 +422,21 @@ static Class _fontPanelFactory;
 }
 
 - (NSFont *) convertFont: (NSFont *) font toSize: (CGFloat) size {
+    /* The nil guard every other converter in this file has, and this one did not. */
+    if (font == nil) {
+        return nil;
+    }
+
     if (size == [font pointSize])
         return font;
 
-    return [NSFont fontWithName: [font fontName] size: size];
+    /* AND THE ORIGINAL WHEN THE NEW SIZE CANNOT BE BUILT. fontWithName answers nil for a name it
+     * cannot resolve, and that nil used to be the return value; Apple answers the font it was
+     * given. The RTF reader stores this straight into an attributes dictionary, where a nil is not
+     * a degraded font but an exception that ends the parse. */
+    NSFont *converted = [NSFont fontWithName: [font fontName] size: size];
+
+    return (converted != nil) ? converted : font;
 }
 
 - (BOOL) _canConvertFont: (NSFont *) font
@@ -480,8 +491,26 @@ static Class _fontPanelFactory;
 
     newface = [family typefaceWithTraits: traits];
 
+    /*
+     * A FACE THAT CANNOT BE MADE INTO A FONT IS STILL A FAILURE, and this returned nil for it.
+     *
+     * Finding a typeface with the traits does not guarantee that fontWithName can build an NSFont
+     * from its name, and when it could not the nil went straight back to the caller. Apple never
+     * answers nil here for a non nil font, and convertFont:toFace: in this same file already says so
+     * in its own comment. The cost of the missing check: the RTF reader does
+     *
+     *     font = [manager convertFont: font toHaveTrait: NSBoldFontMask];
+     *     [attributes setObject: font forKey: NSFontAttributeName];
+     *
+     * so a nil became "Cannot set nil objects nor nil keys" and took out the whole parse, which is
+     * how Swift Publisher failed to build any document preview.
+     */
     if (newface != nil) {
-        return [NSFont fontWithName: [newface name] size: [font pointSize]];
+        NSFont *converted = [NSFont fontWithName: [newface name] size: [font pointSize]];
+
+        if (converted != nil) {
+            return converted;
+        }
     }
     NSLog(@"%s failed, %@ %d", sel_getName(_cmd), [font fontName], addTraits);
     return font;
@@ -502,8 +531,13 @@ static Class _fontPanelFactory;
 
     newface = [family typefaceWithTraits: traits];
 
+    /* The same failure as convertFont:toHaveTrait: above, for the same reason. */
     if (newface != nil) {
-        return [NSFont fontWithName: [newface name] size: [font pointSize]];
+        NSFont *converted = [NSFont fontWithName: [newface name] size: [font pointSize]];
+
+        if (converted != nil) {
+            return converted;
+        }
     }
     NSLog(@"%s failed, %@ %d", sel_getName(_cmd), [font fontName], trait);
     return font;
@@ -534,10 +568,13 @@ static Class _fontPanelFactory;
             [NSFontFamily fontFamilyWithName: [font familyName]];
     NSFontTypeface *typeface = [fontFamily typefaceWithName: [font fontName]];
     NSFontTraitMask traits = [typeface traits];
-    return [self fontWithFamily: family
-                         traits: traits
-                         weight: 5
-                           size: [font pointSize]];
+    NSFont *converted = [self fontWithFamily: family
+                                      traits: traits
+                                      weight: 5
+                                        size: [font pointSize]];
+
+    /* The original rather than nil when the family is not available, as above. */
+    return (converted != nil) ? converted : font;
 }
 
 - (NSFont *) convertWeight: (BOOL) heavierNotLighter ofFont: (NSFont *) font {
