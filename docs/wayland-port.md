@@ -7153,3 +7153,35 @@ thrown away a correct change.
 
 The rule that saved it is the one already in this file: re-run before believing a single run.
 LibreOffice was checked alongside and is unaffected.
+
+### Correcting the Swift Publisher exit: it does not exit cleanly, it SEGFAULTS
+
+Everything written here so far about this application stopping said it reaches NSConnections in
+CCWellcomeWindowController.nib and EXITS WITH STATUS 0. The status is real and the conclusion drawn
+from it was wrong.
+
+Two things say so. The log ends MID-WRITE, in the middle of an NSLog:
+
+    -[CCDocumentController setAutosavingDelay:] unimplemented ...
+    -[NSButton setCanDrawConcurrently:] unimplePROBE_EXIT=0
+
+A process that calls exit finishes the line it is writing. And systemd has a core for that run, timed
+to the second at 05:11:43, 15.5 MB, SIGSEGV, from the container mldr. So the process is killed by a
+segmentation fault and the harness reports 0 anyway, which is why no amount of reading the log was
+ever going to find a terminate call.
+
+WHERE IT FAULTS, from core-guest-stack.py --threads, which is the tool for this because
+systemd-coredump shows ONE thread and it is not the one that died:
+
+    10 threads
+    tid 3   libobjc.A.dylib+0x3d4d7   <- the only one not in a kernel wait
+    tid 6..14  libsystem_kernel.dylib+0x3d36d
+
+So it dies in a message send. Naming the receiver needs the stack words walked out of the core and
+resolved, which is the next step rather than a finished one.
+
+AND IT GETS MUCH FURTHER THAN THE RECORD SAYS. The nib is no longer where it stops: NSConnections is
+the last nib KEY logged, but decoding the connections pulls in the connected objects, and the run
+now goes on through hundreds of font decodes, NSButton, NSScroller, NSTabView, NSOutlineView and
+NSSplitView setup, and into CCDocumentController. The attributed string decoder and the process wide
+display are what moved it, and the remaining fault is somewhere past all of that.
