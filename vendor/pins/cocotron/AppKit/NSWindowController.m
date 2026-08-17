@@ -87,15 +87,41 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [super dealloc];
 }
 
+/*
+ * FIVE STEPS, EACH ANNOUNCED, because the method as a whole was known not to return and that says
+ * nothing about which step is holding it.
+ *
+ * Swift Publisher enters -showWindow: for CAMainWindowController, Document2.nib decodes, its
+ * toolbar images load, and the caller never sees a window. Any of these five can be the one that
+ * does not come back: three of them are the application overriding a hook.
+ */
+#define CIDER_WC_STEP(name)                                                    \
+    do {                                                                       \
+        if (getenv("CIDER_TRACE_CONTROL") != NULL) {                           \
+            fprintf(stderr, "CIDER_WC %s %s\n", class_getName([self class]),   \
+                    (name));                                                   \
+            fflush(stderr);                                                    \
+        }                                                                      \
+    } while (0)
+
 - (NSWindow *) window {
     if (_window == nil && [self windowNibPath] != nil) {
+        CIDER_WC_STEP("windowWillLoad");
         [self windowWillLoad];
+
+        CIDER_WC_STEP("windowControllerWillLoadNib");
         [_document windowControllerWillLoadNib: self];
 
+        CIDER_WC_STEP("loadWindow");
         [self loadWindow];
 
+        CIDER_WC_STEP("windowDidLoad");
         [self windowDidLoad];
+
+        CIDER_WC_STEP("windowControllerDidLoadNib");
         [_document windowControllerDidLoadNib: self];
+
+        CIDER_WC_STEP("done");
     }
 
     return _window;
@@ -187,16 +213,36 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
      * whose window outlet was never connected sends makeKeyAndOrderFront: to nil and returns
      * without a word, which from outside is identical to a window that opened offscreen.
      */
+    /*
+     * BEFORE AND AFTER, because one print cannot tell the two failures apart.
+     *
+     * A single line after [self window] is silent both when showWindow: was never called and when
+     * it was called and the window never came back. Swift Publisher is the second: the enter line
+     * prints, Document2.nib loads, its toolbar builds, and the leave line never arrives, so
+     * -[NSWindowController window] does not return and makeKeyAndOrderFront: below is never
+     * reached. That is why the document window is not on screen.
+     */
     if (getenv("CIDER_TRACE_CONTROL") != NULL) {
-        NSWindow *window = [self window];
-
-        fprintf(stderr, "CIDER_DOC showWindow controller=%s window=%p nib=%s\n",
-                class_getName([self class]), window,
-                [self windowNibName] != nil ? [[self windowNibName] UTF8String] : "(nil)");
+        fprintf(stderr, "CIDER_DOC showWindow ENTER controller=%s\n",
+                class_getName([self class]));
         fflush(stderr);
     }
 
-    [[self window] makeKeyAndOrderFront: sender];
+    NSWindow *window = [self window];
+
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC showWindow HAVE-WINDOW controller=%s window=%p\n",
+                class_getName([self class]), window);
+        fflush(stderr);
+    }
+
+    [window makeKeyAndOrderFront: sender];
+
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC showWindow ORDERED controller=%s\n",
+                class_getName([self class]));
+        fflush(stderr);
+    }
 }
 
 - (void) setDocument: (NSDocument *) document {

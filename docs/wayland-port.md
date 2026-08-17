@@ -7824,3 +7824,39 @@ THE DOCUMENT WINDOW HAS STILL NOT BEEN SEEN. The run that proved the previews al
 the nested output came up at a different size, so the driver clicked where the welcome window was
 not, and the sequence never reached Choose. The harness needs to fix its output resolution before
 that run means anything.
+
+
+## Where the document window actually stops: loadWindow does not return
+
+The three exceptions above are gone and the window still does not appear, so the question became
+which call never comes back. One print could not answer it: a single line after [self window] is
+silent both when showWindow: was never reached and when it was reached and never returned. Printing
+on entry as well separates them, and then the five steps of -[NSWindowController window] separate it
+further. The answer, from one run:
+
+    showWindow ENTER            CCWellcomeWindowController
+    CIDER_WC windowWillLoad     CCWellcomeWindowController
+    CIDER_WC loadWindow         CCWellcomeWindowController
+    CIDER_WC done               CCWellcomeWindowController
+    showWindow HAVE-WINDOW      CCWellcomeWindowController
+    showWindow ORDERED          CCWellcomeWindowController
+
+    showWindows[0]              CAMainWindowController
+    showWindow ENTER            CAMainWindowController
+    CIDER_WC windowWillLoad     CAMainWindowController
+    CIDER_WC windowControllerWillLoadNib CAMainWindowController
+    CIDER_WC loadWindow         CAMainWindowController        <- entered, never returns
+
+CCAssistantController and CCWellcomeWindowController run all five steps and finish. The document
+window enters loadWindow and stops there. Inside it are exactly three things: NSBundle
+loadNibFile:externalNameTable:withZone:, synchronizeWindowTitleWithDocumentName, and the optional
+cascade. The nib itself is known to DECODE, the trace shows Document2.nib read, its three object
+pairs resolved and its toolbar images claimed by the TIFF decoder, so the stop is after the decode
+and inside instantiation, connection or the title synchronisation.
+
+That is the next rung, and it is a narrow one: bracket those three calls the same way.
+
+CORRECTING MYSELF ONCE MORE: earlier in this document I wrote that -[NSWindowController showWindow:]
+was never entered, on the evidence that its trace did not print. It IS entered. The trace called
+[self window] before printing, so the print was downstream of the call that hangs. A trace that
+depends on the thing it is measuring cannot report on it.
