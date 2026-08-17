@@ -7299,3 +7299,40 @@ and NSURLSessionDownloadTask exists ONLY as a declaration in NSURLSession.h: the
 implementation anywhere. So the remaining blocker for this application is a working NSURLSession
 download stack, which is a project rather than a rung, and it is the auto updater phoning home
 rather than anything the application itself needs to run.
+
+### Swift Publisher stays up and answers a click, once its updater is switched off
+
+The abort chain was Sparkle, and the next link after disableAutomaticTermination was a whole
+NSURLSession download stack that does not exist. Rather than build one for an auto updater, the
+check was turned off THE WAY A USER WOULD: Sparkle reads SUEnableAutomaticChecks from user defaults
+before the Info.plist, so setting it false in the application own preferences stops the check. No
+application code is modified and nothing in Cider is faked.
+
+WHERE THE PREFERENCES ACTUALLY LIVE, which cost a run to find. Writing the plist under
+/Users/root/Library/Preferences did nothing at all. The guest HOME is /var/root, and the file the
+application really reads and writes is
+
+    <prefix>/var/root/Library/Preferences/com.belightsoft.SwiftPublisher5.plist
+
+It already held SUHasLaunchedBefore, written by Sparkle itself, which is what proves CFPreferences
+works here and that the first attempt had simply been put in the wrong directory.
+
+WITH THAT SET, MEASURED:
+
+    uncaught exceptions   1 -> 0
+    process lifetime      aborts at 1.2 s -> runs the full 60 s of the harness
+
+and the second criterion can finally be tested at all. Driving cider-vptr to press the welcome
+window Close button:
+
+    before   welcome window over the gallery, Close at 1022,618
+    after    welcome window GONE, the full Template Gallery revealed, six tiles with captions,
+             New Document, Blank Portrait, Blank Landscape, Facing Pages, Half-Fold, Tri-Fold
+
+So a real pointer event reaches a real control and the application acts on it. RENDERS and
+INTERACTIVE are both met for this application now. RESIZABLE is untested.
+
+WHAT IS STILL MISSING, said plainly: NSURLSessionDownloadTask has no implementation, so an
+application that downloads anything still dies on it. Turning the updater off is a workaround for
+testing this application, not a fix for that gap, and any application whose own work needs a
+download will hit it.
