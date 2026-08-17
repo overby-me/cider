@@ -8814,3 +8814,43 @@ TWO HARNESS TRAPS HIT WHILE ESTABLISHING IT, both mine:
     the unpinned output trap, and would have sent me after the wrong thing if I had not read the
     generated script.
 
+## The grey edge on an inline image is the window background, not a wrong colour
+
+Measured properly for the first time, with a solid red 240x120 image so that any pixel which is not
+pure red came from us. The image draws EXACTLY right, 28800 pure red pixels which is 240 times 120
+with the bounding box the same, so nothing is scaled, cropped or tinted. The defect is beside it:
+
+    right of the image   FF0000 FF0000 | EEEEEE x5 | 000000 ...
+    below the image      FF0000 x3     | EEEEEE x6 | 000000 ...
+
+AND THE ARITHMETIC NAMES THE SHAPE. 240 plus 5 is 245, which is exactly 35 cells of 7 pixels, and
+120 plus 6 is 126, exactly 9 rows of 14. So iTerm2 reserves a whole number of CELLS for an image and
+the leftover strip is the remainder of that block.
+
+THE COLOUR IS NOT A CHOICE ANYONE MADE. CIDER_TRACE_PAINT over the strip records no write into it at
+all, only the big window fills at c=0.930, and 0.930 of 255 is 237, which is the EEEEEE being seen.
+So the strip is not painted the wrong colour: it is NEVER PAINTED, and what shows through is the
+window background. On the real system that remainder carries the session background, which is black.
+
+That is a different bug from the one in the note it replaces, and a smaller one: find why the
+terminal view does not paint the remainder of a cell block it has claimed.
+
+## Two things about the test rig, one of them from the user
+
+THE NESTED COMPOSITOR IS A WINDOW IN A TILING MANAGER, so it is resized whenever that manager likes.
+Captures coming back 1690x1388 with the output pinned to 1000x600 are that, not a broken pin, and I
+had blamed my own scripts for it more than once. Run HEADLESS when a fixed size matters.
+
+BUT HEADLESS HAS NO SEAT KEYBOARD. Run that way the window never gets focus, wtype types into no
+surface, and the capture comes back with a bare prompt and grey title buttons, which reads exactly
+like the application ignoring input. Focusing by IPC reports success and changes nothing. So:
+headless for anything about SIZE or pure rendering, nested for anything that needs INPUT.
+
+## The permission alert next to the macOS reference
+
+imgcat raises "Allow Terminal-Initiated Display?" here exactly as it does on macOS, which is why an
+image never drew in these runs until Return accepted it. Ours is recognisably the same alert with
+the same words, and differs in: corner radius, much smaller here; no drop shadow; buttons that are
+rounded rectangles rather than full pills, and much narrower; an unchecked checkbox drawn as a white
+box with a thin border where macOS fills it grey; and smaller text throughout.
+
