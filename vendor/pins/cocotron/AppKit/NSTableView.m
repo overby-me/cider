@@ -959,7 +959,22 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
         [self _setSelectedRowIndexes: newIndexes];
 }
 
+/* WHAT THE APPLICATION READS BACK. Swift Publisher decides whether its Choose button is usable in
+ * updateNextButton, reached from outlineViewSelectionDidChange:, and the row it sees there is the
+ * question: a highlight drawn on screen and a selectedRow of -1 are the same picture from outside. */
 - (NSInteger) selectedRow {
+    if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
+        static int budget = 40;
+
+        if (budget-- > 0) {
+            fprintf(stderr, "CIDER_TABLE selectedRow class=%s rows=%ld selected=%ld count=%ld\n",
+                    object_getClassName(self), (long) [self numberOfRows],
+                    (long) [_selectedRowIndexes firstIndex],
+                    (long) [_selectedRowIndexes count]);
+            fflush(stderr);
+        }
+    }
+
     NSInteger row = [_selectedRowIndexes firstIndex];
 
     if (row == NSNotFound)

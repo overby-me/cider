@@ -124,7 +124,20 @@ NSBitmapImageRepPropertyKey NSImageCurrentFrame = @"NSImageCurrentFrame";
     CGImageSourceRef imageSource =
             CGImageSourceCreateWithData((CFDataRef) data, nil);
     BOOL result = (imageSource != NULL) ? YES : NO;
-    CFRelease(imageSource);
+
+    /*
+     * ONLY RELEASE WHAT WAS CREATED. CFRelease(NULL) is a halt, not a no-op, so the branch that
+     * answers NO used to take the process down with it: the method exists precisely to be asked
+     * about data that might not be an image, and every honest NO was fatal. Seen as
+     *
+     *   CoreFoundation HALT at CFRuntime.c:574 in CFRelease, called from
+     *   +[NSBitmapImageRep canInitWithData:]
+     *
+     * the moment a capture path started handing it data no decoder claimed.
+     */
+    if (imageSource != NULL) {
+        CFRelease(imageSource);
+    }
     return result;
 }
 

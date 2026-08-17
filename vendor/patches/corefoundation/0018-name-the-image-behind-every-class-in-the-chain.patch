@@ -1,0 +1,46 @@
+--- a/NSObject.m
++++ b/NSObject.m
+@@ -121,6 +121,43 @@
+          */
+         fprintf(stderr, "cider: UNRECOGNIZED -[%s %s]\n",
+                 class_getName([self class]), sel_getName(sel));
++
++        /*
++         * AND THE WHOLE SUPERCLASS CHAIN, because the class name alone can be a lie about where
++         * the method was supposed to come from.
++         *
++         * Swift Publisher raises -[CCLayoutManager setBackgroundLayoutEnabled:] unrecognized, and
++         * the setter is plainly present in the AppKit we ship: the string is in the built dylib and
++         * in the deployed one. A name and a selector cannot separate the two explanations, which
++         * are that the subclass does not descend from our NSLayoutManager at all, or that it does
++         * and the method is missing anyway. The chain separates them in one line, and it costs
++         * nothing on a path that is already throwing.
++         */
++        Class walk = [self class];
++        while (walk != Nil) {
++            const char *image = class_getImageName(walk);
++            const char *tail = image;
++
++            /* The last two path components are enough to tell two frameworks apart and short
++             * enough to read; a full store path per class would bury the answer. */
++            if (image != NULL) {
++                int slashes = 0;
++                for (const char *c = image + strlen(image); c > image; c--) {
++                    if (*(c - 1) == '/' && ++slashes == 2) {
++                        tail = c;
++                        break;
++                    }
++                }
++            }
++            fprintf(stderr, "cider:   chain %-32s %s\n",
++                    class_getName(walk), tail ?: "?");
++
++            Class next = class_getSuperclass(walk);
++            if (next == walk) {
++                break;
++            }
++            walk = next;
++        }
+         fflush(stderr);
+         // DONT EVEN THINK ABOUT REMOVING/HACKING AROUND THIS!
+         // EVER!

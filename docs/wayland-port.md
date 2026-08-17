@@ -7470,3 +7470,92 @@ The instrument is worth keeping. CIDER_TRACE_CONTROL now prints, per control, th
 object POINTER, the mouseDown with the enabled state at click time, and a symbolised backtrace for
 every disable. The pointer is what proved this is one button changing its mind rather than two
 buttons with the same title.
+
+
+## A view could not screenshot itself, which is why every template tile was empty
+
+-[O2Context captureBitmapInRect:] was O2InvalidAbstractInvocation on this backend. Only the two
+Windows contexts ever implemented it, so on Linux every caller got an exception instead of pixels.
+The caller that matters is -[NSBitmapImageRep initWithFocusedViewRect:], which is how an application
+screenshots its own view, and Swift Publisher builds every template preview that way.
+
+THE FORMAT IS NOT NEGOTIABLE. initWithFocusedViewRect: hands the result straight to
+CGImageSourceCreateWithData, so raw pixels are useless: it has to be a file some decoder recognises.
+The Windows implementation returns a BMP file and O2ImageSource_BMP is in the registry, so this one
+does too. The surface is 32 bit little endian ARGB, which is BGRA in memory, which is exactly what a
+32 bit BI_RGB BMP wants, so the rows copy across without swizzling; the only transformation is that
+BMP stores the last row first. bmp_test accepts biSize 12, 40, 56 or 108, and this writes 40.
+
+THE FIX EXPOSED THE NEXT BUG IMMEDIATELY, which is the useful part. With capture returning data the
+app went one step further and the process died:
+
+    CoreFoundation HALT at CFRuntime.c:574 in CFRelease,
+    called from +[NSBitmapImageRep canInitWithData:]
+
++[NSBitmapImageRep canInitWithData:] released the image source unconditionally, and CFRelease(NULL)
+is a halt, not a no-op. The method exists precisely to be asked about data that might not be an
+image, so every honest NO took the process down with it. It had never fired before because nothing
+had ever handed it data that no decoder claimed.
+
+EVIDENCE, on the run after both fixes. CIDER_TRACE_IMAGESOURCE now prints the capture as well as the
+decoder that claimed it:
+
+    cider-capture rect=0,0 440x340 surface=440x340 out=440x340 bytes=598454
+    CIDER_IMAGESOURCE matched O2ImageSource_BMP
+    cider-capture rect=0,0 340x440 surface=340x440 out=340x440 bytes=598454
+    CIDER_IMAGESOURCE matched O2ImageSource_BMP
+    CIDER_IMAGESOURCE imageRepsWithData frames=1 reps=1
+
+598454 is 440 x 340 x 4 plus the 54 byte header, so the geometry is right, and the tiles that used to
+be empty dashed placeholders now show real page thumbnails. The comparison is against a capture from
+an earlier build of the same gallery, not against a memory of one.
+
+WHAT THIS DID NOT FIX is the Choose button, and the pixels lied to me about that. In one run the
+button was drawn with black text and a border and I read that as enabled; the control trace on the
+next run says otherwise:
+
+    CIDER_CONTROL mouseDown self=0x7276418764b0 class=NSButton title=Choose enabled=0
+
+So the click still lands on a disabled button. The trace also shows the shape of it: Choose is
+enabled at startup, and -[CCAssistantController updateNextButton] disables it about 150 ms after the
+welcome window closes, then never re-enables it when a template tile is clicked. The two runs
+disagreed about how many tiles had previews, so the preview work is asynchronous and racing, and a
+statement about this button is only worth making with the trace next to it.
+
+## Two definitions of the same class, twenty six times
+
+Chasing the preview failure turned up a raise that named a class we do implement:
+
+    -[CCLayoutManager setBackgroundLayoutEnabled:]: unrecognized selector
+
+CCLayoutManager is the application subclass, and llvm-objdump --macho --objc-meta-data on the
+application says its superclass is _OBJC_CLASS_$_NSLayoutManager. The same dump on our AppKit says
+NSLayoutManager there has 112 methods including setBackgroundLayoutEnabled:, from a category called
+CiderTypesettingSwitches. So the method exists and the subclass descends from the class that has it,
+and it was still not found.
+
+The dump answers why: UIFoundation ships its OWN NSLayoutManager, a 34 line stub whose superclass is
+NSObject and whose entire method list is methodSignatureForSelector: and forwardInvocation:.
+Intersecting the two class lists gives TWENTY SIX classes defined in both images:
+
+    NSATSTypesetter, NSCollectionViewFlowLayout, NSCollectionViewLayout,
+    NSCollectionViewLayoutAttributes, NSCollectionViewLayoutInvalidationContext, NSFont,
+    NSFontDescriptor, NSGlyphGenerator, NSGlyphInfo, NSLayoutManager, NSMethodSignature,
+    NSMutableParagraphStyle, NSParagraphStyle, NSShadow, NSTextAttachment, NSTextBlock,
+    NSTextContainer, NSTextList, NSTextStorage, NSTextTab, NSTextTable, NSTextTableBlock,
+    NSTypesetter, UINibEncoder, _NSAttributeRun, _NSAttributes
+
+NSFont and NSMethodSignature are on that list, which is not a small thing.
+
+THE INSTRUMENT FOR THIS, and the reason it is worth keeping: -[NSObject doesNotRecognizeSelector:]
+now prints the whole superclass chain with the IMAGE each class came from, via class_getImageName.
+A class name on its own cannot tell a missing method from a class that is not the one you think it
+is, and the chain says which in one line:
+
+    cider:   chain CCTextView                       MacOS/Swift Publisher 5
+    cider:   chain NSTextView                       C/AppKit
+    cider:   chain NSObject                         lib/libobjc.A.dylib
+
+That is vendor/patches/corefoundation/0018. The CCLayoutManager raise has not recurred since the
+capture fix, so which of the two NSLayoutManagers wins on a given run is still unmeasured; the
+duplicate list above is the thing to act on regardless.

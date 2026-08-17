@@ -24,6 +24,8 @@
 #import <Onyx2D/O2ClipState.h>
 #import <Onyx2D/O2Color.h>
 #import <Onyx2D/O2Context_builtin.h>
+#include <math.h>
+#include <string.h>
 #include <execinfo.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,6 +122,99 @@ void O2DContextClipAndFillEdges(O2Context_builtin *self, int fillRuleMask);
         NSZoneFree(NULL, samplesX);
 
     [super dealloc];
+}
+
+/*
+ * CAPTURING WHAT HAS BEEN DRAWN, which only the Windows contexts could do.
+ *
+ * -[O2Context captureBitmapInRect:] is an abstract invocation, so on this backend every caller got
+ * an exception instead of pixels. The caller that matters is -[NSBitmapImageRep
+ * initWithFocusedViewRect:], reached from -[NSImage TIFFRepresentationUsingCompression:factor:],
+ * which is how an application screenshots its own view: Swift Publisher builds every template
+ * preview that way and got nothing for all of them.
+ *
+ * A BMP FILE, not raw pixels, because initWithFocusedViewRect: hands the result straight to
+ * CGImageSourceCreateWithData and a decoder has to recognise it. O2ImageSource_BMP is present, and
+ * the surface is 32 bit little endian ARGB, which is BGRA in memory and therefore exactly what a
+ * 32 bit BI_RGB BMP wants, so the rows copy across without swizzling.
+ *
+ * BOTTOM UP, since a BMP with a positive height is stored last row first, and the surface is top
+ * down. The rect is clamped to the surface: a caller asking for more than exists gets what exists
+ * rather than a read past the end.
+ */
+- (NSData *) captureBitmapInRect: (NSRect) rect {
+    if (_surface == nil) {
+        return nil;
+    }
+
+    size_t surfaceWidth = O2ImageGetWidth(_surface);
+    size_t surfaceHeight = O2ImageGetHeight(_surface);
+    size_t sourceStride = O2ImageGetBytesPerRow(_surface);
+    const unsigned char *pixels = (const unsigned char *) [_surface pixelBytes];
+
+    if (pixels == NULL || surfaceWidth == 0 || surfaceHeight == 0) {
+        return nil;
+    }
+
+    long left = (long) floor(rect.origin.x);
+    long top = (long) floor(rect.origin.y);
+    long width = (long) ceil(rect.size.width);
+    long height = (long) ceil(rect.size.height);
+
+    if (left < 0) { width += left; left = 0; }
+    if (top < 0) { height += top; top = 0; }
+    if (left + width > (long) surfaceWidth) { width = (long) surfaceWidth - left; }
+    if (top + height > (long) surfaceHeight) { height = (long) surfaceHeight - top; }
+    if (width <= 0 || height <= 0) {
+        return nil;
+    }
+
+    const uint32_t headerSize = 14 + 40;
+    const uint32_t imageSize = (uint32_t)(width * height * 4);
+    NSMutableData *result = [NSMutableData dataWithLength: headerSize + imageSize];
+    unsigned char *out = (unsigned char *) [result mutableBytes];
+
+    /* BITMAPFILEHEADER, written byte by byte because the struct is packed to 14 and a compiler is
+     * free to pad it. */
+    out[0] = 'B'; out[1] = 'M';
+    uint32_t fileSize = headerSize + imageSize;
+    memcpy(out + 2, &fileSize, 4);
+    memset(out + 6, 0, 4);
+    memcpy(out + 10, &headerSize, 4);
+
+    /* BITMAPINFOHEADER */
+    uint32_t infoSize = 40;
+    int32_t w32 = (int32_t) width, h32 = (int32_t) height;
+    uint16_t planes = 1, bits = 32;
+    uint32_t zero = 0;
+    memcpy(out + 14, &infoSize, 4);
+    memcpy(out + 18, &w32, 4);
+    memcpy(out + 22, &h32, 4);
+    memcpy(out + 26, &planes, 2);
+    memcpy(out + 28, &bits, 2);
+    memcpy(out + 30, &zero, 4);            /* BI_RGB */
+    memcpy(out + 34, &imageSize, 4);
+    memcpy(out + 38, &zero, 4);
+    memcpy(out + 42, &zero, 4);
+    memcpy(out + 46, &zero, 4);
+    memcpy(out + 50, &zero, 4);
+
+    if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL) {
+        fprintf(stderr,
+                "cider-capture rect=%.0f,%.0f %.0fx%.0f surface=%zux%zu out=%ldx%ld bytes=%u\n",
+                rect.origin.x, rect.origin.y, rect.size.width, rect.size.height,
+                surfaceWidth, surfaceHeight, width, height, headerSize + imageSize);
+        fflush(stderr);
+    }
+
+    unsigned char *rows = out + headerSize;
+    for (long y = 0; y < height; y++) {
+        const unsigned char *source = pixels + (size_t)(top + y) * sourceStride + (size_t) left * 4;
+        unsigned char *destination = rows + (size_t)(height - 1 - y) * (size_t)(width * 4);
+
+        memcpy(destination, source, (size_t)(width * 4));
+    }
+    return result;
 }
 
 - (O2Surface *) surface {
