@@ -64,10 +64,25 @@ steps:
   # and neither needed a single compile to surface. `nix flake show` walks the outputs, and
   # --all-systems is off because this flake is x86_64-linux only until the aarch64 release.
   #
-  # The features come from NIX_CONFIG above, which every nix process this starts inherits.
-  - name: "Flake outputs evaluate"
+  # NOT `nix flake show`, AND THAT IS THE WHOLE POINT OF THIS STEP.
+  #
+  # With the daemon out of the way the evaluation finally ran, walked checks.x86_64-linux one by one
+  # and died on packages-cider-buck2-all. Reproduced locally, that failure is not a broken output at
+  # all: this flake uses IMPORT FROM DERIVATION, so evaluating that attribute has to BUILD
+  # materialize-pins first. `nix flake show` therefore cannot finish without building, which
+  # contradicts the premise this file is written on and stated below, that CI never builds.
+  #
+  # So the outputs are listed instead of shown. This still catches what motivated the file, an
+  # advertised attribute that does not exist, and it completes in seconds without building anything.
+  # WHAT IT DOES NOT CATCH, said plainly rather than left to be discovered: attrNames does not force
+  # the values, so a package whose definition is broken inside still passes here. Catching that needs
+  # a builder, which is a developer machine rather than a hosted runner.
+  - name: "Flake outputs exist"
     command: |
-      nix flake show --json > /dev/null
+      for out in packages checks devShells; do
+        echo "--- $out"
+        nix eval --json ".#$out.x86_64-linux" --apply builtins.attrNames
+      done
 
   # NO BUILD STEPS, AND THAT IS THE POINT RATHER THAN A GAP. Darling is too large for a hosted
   # runner to finish; a CI that attempts it is a CI that always fails and is therefore ignored,
