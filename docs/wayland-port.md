@@ -8702,3 +8702,41 @@ pre-existing gap and not a symptom of this work.
 
 STILL NOT WORKING: the title bar name, for the two proven reasons already recorded.
 
+## The names come out right, and the same build starts only two times in eleven
+
+CORRECTING THE ENTRY ABOVE. It said the bisect put the fault inside proc_info.c because the
+committed kernel lived and mine exited 1. That reading was wrong: THE FAILURE IS NOT
+DETERMINISTIC. The identical binary that had failed six times in a row then ran the harness twice
+successfully, 42 and 45 window lines, so no amount of bisecting against a single run was ever going
+to be sound.
+
+WHAT THE CHANGE ACTUALLY DOES, when it starts, and this is the thing worth keeping. Reading
+/proc under the prefix rather than at /proc, and taking the process name from the guest command
+line, gives real names for the first time:
+
+    508 comm=[mldr]        host processes, which correctly keep their Linux name
+    354 comm=[shellspawn]
+    177 comm=[launchd]
+    177 comm=[iTerm2]
+    176 comm=[-sh]
+    176 comm=[login]
+    176 comm=[iTermServer-3.4]
+
+against comm=[mldr] and nothing else before it. Headless, the same kernel runs iTerm2 to a 45 second
+timeout and prints pid=30 comm=[login] and pid=31 comm=[-sh], which is exactly what an application
+looking for the job in its terminal needs.
+
+WHY IT IS STILL NOT COMMITTED. Counting every run of each: the committed kernel started 3 times out
+of 3, and this one 2 times out of 11. That is not a coincidence to argue away even though no single
+run proves anything, so the change makes startup unreliable and stays out until that is understood.
+
+AND THE TITLE BAR IS STILL NAMELESS ANYWAY. On the runs that do start, with every process correctly
+named, the bar still reads "  - 96x38" with nothing before the dash. So the missing name needs
+something beyond correct process names too, and the theory that the names were the last piece is
+disproved rather than confirmed.
+
+A FAST LOOP EXISTS NOW: cider shell on the iTerm2 binary with no compositor answers in 45 seconds
+and exercises this whole path, against six minutes for the GUI harness. The committed kernel HANGS
+there (alive at the timeout), which is the healthy baseline to compare against. Use it to find which
+of the three parts, the listing, the stat read or the name, is the one that makes startup fragile.
+
