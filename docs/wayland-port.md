@@ -8854,3 +8854,26 @@ the same words, and differs in: corner radius, much smaller here; no drop shadow
 rounded rectangles rather than full pills, and much narrower; an unchecked checkbox drawn as a white
 box with a thin border where macOS fills it grey; and smaller text throughout.
 
+## CORRECTION: the remainder is transparent inside iTerm2 own bitmap
+
+The entry above said the strip is never painted and concluded the terminal view fails to paint the
+remainder of its cell block. The first half is right and the conclusion is wrong. The image trace
+says what actually happens:
+
+    CIDER_IMAGESOURCE initWithBitmapDataPlanes 245x126 bps=8 spp=4 alpha=1
+    CIDER_IMAGESOURCE NSImage drawInRect 245x14 at 0,0 size=245x126 reps=1 best=NSBitmapImageRep
+
+iTerm2 allocates a bitmap that is ALREADY the whole cell block, 245x126 with an alpha channel, draws
+the 240x120 picture into it, and blits it back one 14 pixel row at a time. So there is no scaling
+question and nothing skips a fill: the remainder INSIDE that bitmap is simply transparent, and a
+transparent blit reveals whatever is under it, which here is the window background at 0.930 grey.
+
+That relocates the bug. Either the bitmap should have been cleared to the session background before
+the picture went in, or what sits under an image block should be the session background rather than
+the window background. Which of those macOS does is the thing to settle next, and it is worth
+settling with the disassembly rather than another guess, because both are plausible.
+
+NOT ESTABLISHED: the confirming run, with the image resized to exactly one cell block so that a
+remainder cannot exist, RENDERED NOTHING AT ALL, a wholly black capture. It proves neither way and
+is not counted.
+
