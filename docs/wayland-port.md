@@ -7437,3 +7437,36 @@ AND THE BUTTON IS STILL DISABLED. Removing both exceptions from that exact path 
 about Choose, so the theory was wrong: the throw was not what disabled it. What disables it is still
 unknown, and the next step is to find who calls setEnabled:NO rather than to guess again, which
 means a backtrace at the setter rather than a line count.
+
+### Who disables Choose: the application does, on every window update
+
+A backtrace on the way DOWN through -[NSControl setEnabled:] answers the question three guesses
+could not. Only on a disable, since an enable was never the puzzle, and symbols only, the same way
+-[NSException raise] prints its frames. Four distinct backtraces in a run, and the one that matters
+appears twice:
+
+    -[CCAssistantController updateNextButton]
+      -[NSNotificationCenter postNotification:]
+      -[CCAssistantController windowDidUpdate:]
+
+and once more through
+
+    -[CCAssistantController updateNextButton]
+      -[CCAssistantDesignController outlineViewSelectionDidChange:]
+
+So nothing in AppKit is disabling this button. The APPLICATION is, from its own updateNextButton,
+called from windowDidUpdate:, which -[NSWindow update] posts on every pass of the event loop. That
+also corrects the shape of the earlier note: this is not a single disable following the welcome
+window close, it is a decision re-made continuously, which is why removing two exceptions from the
+close path changed nothing.
+
+WHAT IS LEFT TO FIND is what updateNextButton reads. It concludes that nothing is chosen while the
+tile is visibly selected, so the application view of the selection differs from what is drawn. The
+second backtrace is the hint worth following: outlineViewSelectionDidChange: means the SOURCE LIST
+is part of that decision, and an NSOutlineView whose selectedRow does not agree with its highlight
+would produce exactly this.
+
+The instrument is worth keeping. CIDER_TRACE_CONTROL now prints, per control, the setter with the
+object POINTER, the mouseDown with the enabled state at click time, and a symbolised backtrace for
+every disable. The pointer is what proved this is one button changing its mind rather than two
+buttons with the same title.

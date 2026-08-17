@@ -31,6 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <Foundation/NSKeyedArchiver.h>
 //#import <AppKit/NSObject+BindingSupport.h>
 #import <AppKit/NSKeyValueBinding.h>
+#include <execinfo.h>
+#include <dlfcn.h>
+#include <string.h>
+#include <stdio.h>
 #import <objc/runtime.h>
 
 NSString *const NSControlTextDidBeginEditingNotification =
@@ -344,6 +348,29 @@ static NSMutableDictionary *cellClassDictionary = nil;
               (void *) self, object_getClassName(self),
               [self respondsToSelector: @selector(title)] ? [(id) self title] : @"(none)",
               (int) flag, (int) [self isEnabled]);
+
+        /*
+         * AND WHO TURNED IT OFF. A control that is enabled and then disabled again before the user
+         * can click it is a decision made somewhere, and the count of calls cannot say where. Only
+         * on the way DOWN, since an enable is not the puzzle, and symbols only, the same way
+         * -[NSException raise] prints its frames.
+         */
+        if (!flag) {
+            void *frames[16];
+            int count = backtrace(frames, 16);
+
+            for (int i = 1; i < count; i++) {
+                Dl_info info;
+
+                if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+                    const char *image = info.dli_fname ? strrchr(info.dli_fname, '/') : NULL;
+
+                    fprintf(stderr, "CIDER_CONTROL_OFF   %-26s %s\n",
+                            image ? image + 1 : "?", info.dli_sname);
+                }
+            }
+            fflush(stderr);
+        }
     }
 
     [_cell setEnabled: flag];
