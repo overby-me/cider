@@ -1,0 +1,92 @@
+--- a/src/NSProcessInfo.m
++++ b/src/NSProcessInfo.m
+@@ -7,6 +7,7 @@
+ //
+ 
+ #import <Foundation/NSProcessInfo.h>
++#include <libkern/OSAtomic.h>
+ #import <Foundation/NSString.h>
+ #import <Foundation/NSArray.h>
+ #import <Foundation/NSDictionary.h>
+@@ -34,6 +35,10 @@
+  guaranteed to be stable across all threads; ala setenv etc.
+  */
+ 
++static volatile int32_t _ciderSuddenTerminationDisableCount = 0;
++static volatile int32_t _ciderAutomaticTerminationDisableCount = 0;
++static BOOL _ciderAutomaticTerminationSupported = NO;
++
+ @implementation NSProcessInfo
+ 
+ + (NSProcessInfo *)processInfo
+@@ -352,6 +357,53 @@
+ 	}
+ }
+ 
++/*
++ * SUDDEN AND AUTOMATIC TERMINATION, WHICH THIS CLASS DID NOT HAVE AT ALL.
++ *
++ * An uncaught exception on a dispatch queue does not unwind to anything: it aborts the process. So
++ * a missing method here is not a degraded feature, it is the whole application dying. Swift
++ * Publisher ships Sparkle, Sparkle starts its update download about a second after launch and does
++ *
++ *     [[NSProcessInfo processInfo] disableAutomaticTermination: reason];
++ *
++ * from a dispatch block, and the process took SIGABRT roughly 1.2 seconds into every run, having
++ * drawn both of its windows first. That is why the harness had to shoot in a burst to catch them.
++ *
++ * A COUNT, NOT A FLAG, because macOS documents these as nesting pairs and an application may hold
++ * several reasons at once. Nothing here can act on the count: this container has no process
++ * lifecycle manager to tell, and terminating early was never a risk. Keeping it is still worth more
++ * than ignoring the call, because a caller that reads the balance back gets an honest answer.
++ */
++- (void)disableSuddenTermination
++{
++    OSAtomicIncrement32(&_ciderSuddenTerminationDisableCount);
++}
++
++- (void)enableSuddenTermination
++{
++    OSAtomicDecrement32(&_ciderSuddenTerminationDisableCount);
++}
++
++- (void)disableAutomaticTermination:(NSString *)reason
++{
++    OSAtomicIncrement32(&_ciderAutomaticTerminationDisableCount);
++}
++
++- (void)enableAutomaticTermination:(NSString *)reason
++{
++    OSAtomicDecrement32(&_ciderAutomaticTerminationDisableCount);
++}
++
++- (BOOL)automaticTerminationSupportEnabled
++{
++    return _ciderAutomaticTerminationSupported;
++}
++
++- (void)setAutomaticTerminationSupportEnabled:(BOOL)enabled
++{
++    _ciderAutomaticTerminationSupported = enabled;
++}
++
+ @end
+ 
+ @implementation NSProcessInfo (NSProcessInfoPlatform)
+--- a/include/Foundation/NSProcessInfo.h
++++ b/include/Foundation/NSProcessInfo.h
+@@ -50,6 +50,14 @@
+ - (NSOperatingSystemVersion)operatingSystemVersion;
+ - (BOOL)isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion)version;
+ 
++/* SUDDEN AND AUTOMATIC TERMINATION. A process asks not to be killed while it is doing something,
++ * and macOS keeps a COUNT rather than a flag, so the pairs nest. */
++- (void)disableSuddenTermination;
++- (void)enableSuddenTermination;
++- (void)disableAutomaticTermination:(NSString *)reason;
++- (void)enableAutomaticTermination:(NSString *)reason;
++@property BOOL automaticTerminationSupportEnabled;
++
+ @end
+ 
+ @interface NSProcessInfo (NSProcessInfoPlatform)
