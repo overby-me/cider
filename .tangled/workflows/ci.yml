@@ -37,6 +37,13 @@ dependencies:
 # the argument list. NIX_CONFIG reaches all of them.
 environment:
   NIX_CONFIG: "experimental-features = nix-command flakes ca-derivations"
+  # AND THE DAEMON HAS TO BE OUT OF THE WAY, which NIX_CONFIG alone does not achieve. Setting the
+  # features in the environment reached every nix process and the run STILL died on the same line,
+  # because experimental features governing store operations are a TRUSTED setting: the daemon
+  # decides, and a client cannot talk it into anything. An empty NIX_REMOTE makes nix work on the
+  # store directly instead of asking a daemon, which is allowed here because each workflow gets its
+  # own microVM and runs as root in it.
+  NIX_REMOTE: ""
 
 steps:
   # THERE IS NO CACHIX STEP, because there is no cachix cache. This file asked for one named
