@@ -22,8 +22,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSNibLoading.h>
 #import <AppKit/NSWindow.h>
 #import <AppKit/NSWindowController.h>
+#import <objc/runtime.h>
 #include <objc/runtime.h>
 #include <stdlib.h>
+
+/*
+ * THE NIB IS READ ONCE, WHATEVER IT PRODUCED.
+ *
+ * -window reloads whenever _window is still nil, so a nib that loads WITHOUT connecting the File
+ * Owner window outlet is read again on every call, for ever: MoneyMoney ran 19,931 of those cycles
+ * in a single run and never got past its main window.
+ *
+ * The flag is an ASSOCIATED OBJECT, and both of the obvious alternatives were tried and measured.
+ * An ivar changes instanceSize, and an application subclass compiled against the real AppKit has
+ * its own ivars laid out after ours: adding one BOOL here stopped MoneyMoney reaching its window
+ * controller at all, which looked nothing like a layout problem. Clearing our own _nibPath does not
+ * work either, because a subclass that overrides -windowNibName, the ordinary way to write one,
+ * recomputes the path and loads again regardless.
+ */
+static const void *kCiderNibLoadedKey = &kCiderNibLoadedKey;
 
 @implementation NSWindowController
 
@@ -105,7 +122,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     } while (0)
 
 - (NSWindow *) window {
-    if (_window == nil && [self windowNibPath] != nil) {
+    if (_window == nil && objc_getAssociatedObject(self, kCiderNibLoadedKey) == nil &&
+        [self windowNibPath] != nil) {
         CIDER_WC_STEP("windowWillLoad");
         [self windowWillLoad];
 
@@ -174,6 +192,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) loadWindow {
     if (![self isWindowLoaded]) {
         static NSPoint cascadeTopLeftSavedPoint = {0.0, 0.0};
+
+        /* Marked BEFORE the nib is read, so that anything the load itself asks for does not start
+         * another load underneath this one. */
+        objc_setAssociatedObject(self, kCiderNibLoadedKey, self, OBJC_ASSOCIATION_ASSIGN);
         NSString *path = [self windowNibPath];
         NSDictionary *nameTable;
 

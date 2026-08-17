@@ -9192,3 +9192,31 @@ That path is its OWN entry in nix/submodules.json, and re-materialising the pare
 the children back. Materialise the nested pin too, by its full path, or the tree is incomplete in a
 way that only shows up at the next build.
 
+## A window controller now reads its nib once, and MoneyMoney still shows nothing
+
+-[NSWindowController window] reloaded the nib every time _window was still nil, and nothing ever set
+a flag, so a nib that loads WITHOUT connecting the File Owner window outlet is read again on every
+call for ever. MoneyMoney ran 19,931 of those cycles in one run. It reads it once now, measured
+twice: 19,931 loadWindow to 1, no crash, and the application stays alive to the timeout instead of
+dying.
+
+TWO OBVIOUS IMPLEMENTATIONS ARE WRONG, and both were tried and measured rather than reasoned about.
+
+  AN IVAR CHANGES instanceSize. Adding one BOOL to NSWindowController stopped MoneyMoney reaching
+  its window controller AT ALL: zero CIDER_WC lines where there had been thousands, with the gate
+  explicitly on. An application subclass compiled against the real AppKit has its own ivars laid out
+  after ours, and that is what moving them does. It looks nothing like a layout problem from the
+  outside, which is why it is written down here.
+
+  CLEARING OUR OWN _nibPath DOES NOT WORK. A subclass that overrides -windowNibName, which is the
+  ordinary way to write one, recomputes the path and loads again regardless: the cycles stayed at
+  19,931 while the nib FILE was opened only twice, because the nib itself is cached.
+
+So the flag is an associated object, which changes no layout and does not depend on where the path
+came from.
+
+AND MONEYMONEY STILL DOES NOT WORK. The captures are solid black: no window is drawn at all. The
+loop is gone and the cause of the loop is not: the nib load produces no window, so the File Owner
+window outlet is not being connected when we decode MainWindow.nib. THAT is the next thing, and it
+is now reachable because the application no longer thrashes.
+
