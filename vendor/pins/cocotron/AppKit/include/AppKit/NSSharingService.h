@@ -35,6 +35,8 @@ APPKIT_EXPORT NSSharingServiceName const NSSharingServiceNamePostOnTencentWeibo;
 APPKIT_EXPORT NSSharingServiceName const NSSharingServiceNamePostOnTwitter;
 
 @interface NSSharingService : NSObject
+
++ (NSSharingService *) sharingServiceNamed: (NSSharingServiceName) serviceName;
 @end
 
 @interface NSSharingServicePicker : NSObject

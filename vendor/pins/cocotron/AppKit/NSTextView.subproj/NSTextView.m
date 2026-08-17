@@ -3996,6 +3996,30 @@ NSString *const NSAllRomanInputSourcesLocaleIdentifier =
     return _incrementalSearchingEnabled;
 }
 
+/*
+ * THE OLDER OF THE TWO FIND SWITCHES, and the one that was missing.
+ *
+ * usesFindBar and usesInspectorBar were both here; usesFindPanel, which predates them and is what
+ * a nib built against an older SDK sets, was not. Swift Publisher raised
+ *
+ *   -[CCTextView setUsesFindPanel:]: unrecognized selector
+ *
+ * while its document nib was being instantiated, which is inside -[NSWindowController window], so
+ * the window was never finished and never ordered front. A missing BOOL property took the whole
+ * document window with it.
+ *
+ * Stored and answered rather than NSUnimplementedMethod, because storing it IS the whole contract
+ * of the property; what is unimplemented is the find UI it would switch on, and neither of the
+ * neighbours here implements that either.
+ */
+- (BOOL) usesFindPanel {
+    return _usesFindPanel;
+}
+
+- (void) setUsesFindPanel: (BOOL) value {
+    _usesFindPanel = value;
+}
+
 - (BOOL) usesFindBar {
     NSUnimplementedMethod();
     return _usesFindBar;

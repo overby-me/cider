@@ -7773,3 +7773,54 @@ WHAT IS STILL WRONG, and it is the reflow, not the size:
   scrolling back shows every line and the earlier stty output; macOS iTerm2 rewraps instead.
   The title bar size indicator lags one resize behind.
   A light grey edge, 238,238,238, about five pixels right and four bottom of an inline image.
+
+
+## Three exceptions on the way to a document window, and one of them was ours
+
+-[CCAssistantController buttonNext:] gets all the way to addDocument: and makeWindowControllers,
+and no window appears. Three raises sat on that path, each one aborting the window setup silently
+because the application catches them:
+
+1. -[CCTextView setUsesFindPanel:] unrecognized. usesFindBar and usesInspectorBar were both
+   present in NSTextView; usesFindPanel, the older switch that a nib built against an older SDK
+   sets, was not. It is stored and answered now rather than NSUnimplementedMethod, because storing
+   it IS the property; what is unimplemented is the find UI, which neither neighbour implements
+   either. Raised while the document nib was being instantiated, which happens inside
+   -[NSWindowController window], so the window was never finished.
+
+2. +[NSSharingService sharingServiceNamed:] unrecognized, from
+
+     -[CCMainWindowController shareToolbarItemMenu]
+     -[CCMainWindowController toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:]
+     -[NSToolbar loadDefaultItemsIfNeeded]
+
+   NSSharingService had instance forwarding stubs, but a CLASS method has no such fallback: the
+   metaclass forwards nowhere. It answers nil now, which is not a placeholder but the true answer,
+   since none of those services exist here and nil is what macOS returns for one that is
+   unavailable. A share button nobody asked for was taking the whole document with it.
+
+3. OURS, and the interesting one:
+
+     _NSControllerArray still being observed by <NSKeyValueObservance> on key path paperFormat
+     -[_NSControllerArray dealloc]
+     -[NSControllerSelectionProxy controllerWillChange]
+     -[NSObjectController setContent:]
+     -[_NSKVOBinder bind]
+     -[CCMainWindowController setDocument:]
+     -[CCDocument makeWindowControllers]
+
+   -[NSControllerSelectionProxy _stopObservingSelectedObjects] asked [_controller selectedObjects]
+   for the list to remove observers from. That is the same list it added them to only while nothing
+   is changing, and controllerWillChange runs precisely when something is: the controller can
+   already be answering the NEW selection, so the removal ran over objects that were never observed
+   and left the observers standing on the old ones, which then raised on dealloc. It now keeps the
+   objects AND the keys it registered and removes exactly those pairs.
+
+WHAT CHANGED, and it is not a summary statistic: before the third fix the application generated two
+template previews and stopped; after it, it reads template after template, Tri-fold, Z-Fold, Gate,
+Accordion, Roll, Rack, and the gallery shows the whole category tree with many previews drawn.
+
+THE DOCUMENT WINDOW HAS STILL NOT BEEN SEEN. The run that proved the previews also went off script:
+the nested output came up at a different size, so the driver clicked where the welcome window was
+not, and the sequence never reached Choose. The harness needs to fix its output resolution before
+that run means anything.

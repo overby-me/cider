@@ -27,6 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     id _observableSelection;
     NSMutableArray *_observationProxies;
     id _cachedKeysForKVO;
+    NSArray *_observedObjects; // exactly what _startObservingSelectedObjects registered
+    NSArray *_observedKeys;    // on, so the removal cannot drift
+
     NSUInteger _respondingToSelectionChanges; // use to make sure we don't keep
                                               // talking to the controller while
                                               // it's making changes

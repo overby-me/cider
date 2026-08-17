@@ -173,23 +173,49 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return [NSString stringWithFormat: @"%@ <0x%x>", [self class], self];
 }
 
+/*
+ * REMOVE FROM WHAT WAS ADDED TO, not from whatever the controller answers later.
+ *
+ * Both halves used to ask [_controller selectedObjects] afresh. That is the same list only while
+ * nothing is changing, and -controllerWillChange runs precisely when something is: by then the
+ * controller can already be answering the NEW selection, so the removal ran over objects that were
+ * never observed and left the observers standing on the old ones. The old collection then hit
+ *
+ *   _NSControllerArray still being observed by <NSKeyValueObservance> on key path paperFormat
+ *
+ * in -[_NSControllerArray dealloc], which raises. Swift Publisher took that exception out through
+ * -[CCMainWindowController setDocument:], called from -[CCDocument makeWindowControllers], so the
+ * document window was never finished and the application simply showed nothing.
+ *
+ * Keeping the objects AND the keys removes the guesswork: the pairs that were registered are the
+ * pairs that get removed, whatever the controller says in between.
+ */
 - (void) _stopObservingSelectedObjects {
-    // Stop observing all the current selectedObjects for the keys we're
-    // interested in
-    NSArray *selectedObjects = [_controller selectedObjects];
-    for (id obj in selectedObjects) {
-        for (id key in _cachedKeysForKVO) {
+    for (id obj in _observedObjects) {
+        for (id key in _observedKeys) {
             [obj removeObserver: self forKeyPath: key];
         }
     }
+
+    [_observedObjects release];
+    _observedObjects = nil;
+    [_observedKeys release];
+    _observedKeys = nil;
 }
 
 - (void) _startObservingSelectedObjects {
     // Start observing all the current selectedObjects for the keys we're
     // interested in
-    NSArray *selectedObjects = [_controller selectedObjects];
-    for (id obj in selectedObjects) {
-        for (id key in _cachedKeysForKVO) {
+    NSArray *selectedObjects = [[_controller selectedObjects] copy];
+    NSArray *keys = [_cachedKeysForKVO copy];
+
+    [_observedObjects release];
+    _observedObjects = selectedObjects;
+    [_observedKeys release];
+    _observedKeys = keys;
+
+    for (id obj in _observedObjects) {
+        for (id key in _observedKeys) {
             [obj addObserver: self
                     forKeyPath: key
                        options: NSKeyValueObservingOptionOld |

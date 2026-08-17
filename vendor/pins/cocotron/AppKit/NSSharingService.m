@@ -20,6 +20,31 @@ NSSharingServiceName const NSSharingServiceNamePostOnLinkedIn = @"com.apple.shar
 
 @implementation NSSharingService
 
+/*
+ * NIL IS THE TRUE ANSWER HERE, not a placeholder.
+ *
+ * +sharingServiceNamed: answers nil on macOS when the named service is not available, and on this
+ * system none of them are: there is no Mail, no Messages, no Twitter account behind any of the
+ * names declared above. So nil is what the method means, and a caller that checks it will do the
+ * right thing.
+ *
+ * It has to be said in code rather than left to the forwarding stubs below, because those are
+ * INSTANCE methods. A class method has no such fallback: the metaclass forwards nowhere, so
+ * +sharingServiceNamed: raised, and Swift Publisher raised it from
+ *
+ *   -[CCMainWindowController shareToolbarItemMenu]
+ *   -[CCMainWindowController toolbar:itemForItemIdentifier:willBeInsertedIntoToolbar:]
+ *   -[NSToolbar loadDefaultItemsIfNeeded]
+ *
+ * which is the document window building its toolbar. The exception came out through
+ * -[NSWindowController window] and the window was never finished, so a share button nobody asked
+ * for took the whole document with it.
+ */
++ (NSSharingService *) sharingServiceNamed: (NSSharingServiceName) serviceName
+{
+    return nil;
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
