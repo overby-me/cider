@@ -6697,3 +6697,30 @@ BLANKS THE SCROLLBACK. Immediately after resizing, and before anything is typed,
 only the prompt, sitting at the row it had reached, with every line above it empty. The two lines
 that were there, a command and its output, are gone. macOS reflows that content instead of
 discarding it. The cursor row survives the resize; the text above it does not.
+
+### Correcting that: the scrollback is not blanked, the resize inserts blank rows and a new prompt
+
+The section above says a resize BLANKS THE SCROLLBACK. That is wrong, and this replaces it. It was
+written from the visible screen alone, which after a resize does show a lone prompt with empty rows
+above it. Scrolling back shows the content is all still there:
+
+    Cider [~]# echo before_resize
+    before_resize
+    Cider [~]#
+        (blank rows)
+    Cider [~]#
+        (blank rows)
+    Cider [~]#
+
+So nothing was lost and nothing needs recovering. What each resize actually does is leave a BLOCK OF
+BLANK ROWS and a fresh prompt, three resizes giving three prompts, and the newest prompt is far
+enough down that the earlier content is off the top of the view. From the visible screen that is
+indistinguishable from having been cleared, which is exactly how it was misread.
+
+The lesson is the same one this document keeps recording in different clothes: a screenshot shows
+what is VISIBLE, and on a terminal the visible region is a window onto a model that outlives it.
+Scrolling back cost one extra key press in the harness and turned a wrong claim about lost data into
+a much smaller and more accurate one about layout.
+
+What remains, stated narrowly: a resize should reflow the existing rows, and instead it advances the
+cursor past a run of empty rows and reprints the prompt there.
