@@ -102,9 +102,26 @@
     NSUnimplementedMethod();
 }
 
+/*
+ * NO HERE ABORTS THE CALLER, which is not what an unimplemented method should do.
+ *
+ * commitEditing means "were you able to commit any edit you had pending", and its callers treat NO
+ * as a refusal and stop. -[NSController commitEditing] is literally
+ *
+ *     if ([editor commitEditing] == NO)
+ *         return NO;
+ *
+ * and NSDocument asks its editors the same question before saving. A view controller that tracks no
+ * editors at all has nothing pending, so the truthful answer is YES: there was nothing to commit and
+ * committing it did not fail. Answering NO said the opposite and silently blocked saves.
+ *
+ * Found by auditing for the shape that cost this project a night on iTerm2 inline images, where
+ * -[NSImage isValid] returned 0 and every image was skipped. NOT VERIFIED AT RUNTIME yet, because
+ * no application in the queue reaches a save; it is a reasoned fix, unlike the isValid one which was
+ * measured before and after.
+ */
 - (BOOL) commitEditing {
-    NSUnimplementedMethod();
-    return NO;
+    return YES;
 }
 
 - (void) commitEditingWithDelegate: delegate

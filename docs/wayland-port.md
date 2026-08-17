@@ -6746,3 +6746,36 @@ this route, and both cache creation sites already pass alpha YES so the guard wa
 The 240x120 draw also reports best=NSBitmapImageRep, meaning it draws straight from the bitmap and
 builds no cached rep at all, so the remaining candidate is whatever produces the SCALED 245x126
 image that iTerm2 actually paints in row slices.
+
+### Auditing for the shape that cost a night: BOOL predicates stubbed to NO
+
+-[NSImage isValid] returning 0 disabled every image in the application, so the obvious next question
+is how many more of those there are. Scanning cocotron for a BOOL method whose whole body is
+NSUnimplementedMethod followed by return 0 or NO finds FORTY FOUR.
+
+Most are harmless, either because nothing consults them or because NO is genuinely the macOS default
+(acceptsFirstMouse, canDrawConcurrently, isRotatedFromBase). Two things separate the dangerous ones:
+the correct default is YES, and something in the tree actually reads the answer. Checking callers
+rather than guessing:
+
+    wantsDefaultClipping          default YES, but NO CALLERS anywhere here, so changing it is a
+                                  no-op and it was left alone
+    NSWindow isMovable            default YES, but the callers found are NSRulerMarker and
+                                  isMovableByWindowBackground, not this, so low impact
+    NSViewController commitEditing  default YES, and it IS read, by
+                                      -[NSController commitEditing]: if ([editor commitEditing] == NO) return NO;
+                                    and by NSDocument before saving
+
+So commitEditing was the one worth changing. It means "were you able to commit any pending edit",
+its callers treat NO as a refusal and stop, and a view controller that tracks no editors has nothing
+pending. The truthful answer is YES. Answering NO silently blocked saves, which matters for every
+application in the queue, since iA Writer, Swift Publisher and MoneyMoney are all document or form
+applications.
+
+STATED HONESTLY: this one is REASONED, not measured. No application in the queue reaches a save yet,
+so unlike isValid there is no before and after to show. What was verified is only that iTerm2 does
+not regress: the inline image still draws, no crash, keys still reach PTYTextView.
+
+The remaining forty odd are listed by this scan and are worth re-running whenever an application
+does something invisible for no reason. The pattern to remember: a stub returning 0 from a QUESTION
+is a policy answer, and the policy is always no.
