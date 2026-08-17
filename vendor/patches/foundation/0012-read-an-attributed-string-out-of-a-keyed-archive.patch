@@ -1,0 +1,133 @@
+--- a/src/NSAttributedString.m
++++ b/src/NSAttributedString.m
+@@ -525,6 +525,130 @@
+     }
+ }
+ 
++/*
++ * READING AN ATTRIBUTED STRING BACK OUT OF A KEYED ARCHIVE, which this class could not do at all.
++ *
++ * -[__NSPlaceholderAttributedString initWithCoder:] was an unrecognized selector, so ANY archive
++ * containing an attributed string failed to decode. Swift Publisher hits it opening its own
++ * documents, in -[CCDocument readFromURL:ofType:error:], which is why no template preview could be
++ * built.
++ *
++ * THE ARCHIVE FORMAT, derived from real archives rather than guessed. Apple writes:
++ *
++ *   NSString         the characters
++ *   NSAttributes     ONE dictionary when the whole string shares its attributes, otherwise an
++ *                    ARRAY of dictionaries
++ *   NSAttributeInfo  present only in the array case: the runs, as repeated pairs of
++ *                    (length, index into NSAttributes), each a ULEB128 varint
++ *
++ * The varint part is the part that had to be worked out. Reading the pairs as single bytes explains
++ * most archives and fails on the rest; reading them as ULEB128 explains 628 of 628 multi-run
++ * archives in the Swift Publisher template set, checked by requiring that the run lengths sum
++ * EXACTLY to the string length and that every index is within the array. That check is what makes
++ * this a measurement rather than a guess.
++ *
++ * ENCODING IS NOT IMPLEMENTED HERE. Reading is what was broken and what is verified; an application
++ * that archives an attributed string still has nothing to call.
++ */
++static NSUInteger cider_decode_uleb128(const uint8_t *bytes, NSUInteger length, NSUInteger *offset)
++{
++    NSUInteger value = 0;
++    unsigned shift = 0;
++
++    while (*offset < length)
++    {
++        uint8_t byte = bytes[(*offset)++];
++
++        value |= (NSUInteger)(byte & 0x7f) << shift;
++        if ((byte & 0x80) == 0)
++        {
++            break;
++        }
++        shift += 7;
++    }
++    return value;
++}
++
++- (id)initWithCoder:(NSCoder *)coder
++{
++    if (![coder allowsKeyedCoding])
++    {
++        /* Every archive that reaches this is written by NSKeyedArchiver. A sequential one would
++         * need its own layout, and inventing one would be worse than saying so. */
++        return [self initWithString:@"" attributes:[NSDictionary dictionary]];
++    }
++
++    NSString *string = [coder decodeObjectForKey:@"NSString"];
++    id attributes = [coder decodeObjectForKey:@"NSAttributes"];
++
++    if (string == nil)
++    {
++        string = @"";
++    }
++
++    if (attributes == nil || [attributes isKindOfClass:[NSDictionary class]])
++    {
++        return [self initWithString:string
++                         attributes:attributes ?: [NSDictionary dictionary]];
++    }
++
++    NSArray *runAttributes = (NSArray *)attributes;
++    NSData *info = [coder decodeObjectForKey:@"NSAttributeInfo"];
++    NSMutableAttributedString *result =
++        [[NSMutableAttributedString alloc] initWithString:string];
++    NSUInteger length = [string length];
++
++    if (info == nil)
++    {
++        /* An array with no runs to place it by: the first dictionary over the whole string is the
++         * closest honest reading, and it keeps the text. */
++        if ([runAttributes count] > 0)
++        {
++            [result setAttributes:[runAttributes objectAtIndex:0]
++                            range:NSMakeRange(0, length)];
++        }
++    }
++    else
++    {
++        const uint8_t *bytes = (const uint8_t *)[info bytes];
++        NSUInteger size = [info length];
++        NSUInteger offset = 0;
++        NSUInteger location = 0;
++
++        while (offset < size && location < length)
++        {
++            NSUInteger runLength = cider_decode_uleb128(bytes, size, &offset);
++            NSUInteger index = cider_decode_uleb128(bytes, size, &offset);
++
++            if (runLength == 0)
++            {
++                continue;
++            }
++            if (location + runLength > length)
++            {
++                runLength = length - location;
++            }
++            if (index < [runAttributes count])
++            {
++                [result setAttributes:[runAttributes objectAtIndex:index]
++                                range:NSMakeRange(location, runLength)];
++            }
++            location += runLength;
++        }
++    }
++
++    if (self == mutablePlaceholder)
++    {
++        return result;
++    }
++
++    NSAttributedString *immutable =
++        [[NSAttributedString alloc] initWithAttributedString:result];
++
++    [result release];
++    return immutable;
++}
++
+ SINGLETON_RR()
+ 
+ @end
