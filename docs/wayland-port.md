@@ -9151,3 +9151,44 @@ guess is how a whole framework goes wrong quietly.
 Unchanged from the entry above: the typesetter stub is the blocker, making it concrete lets layout
 run and the application then dies through a trapping stub reached only during real layout.
 
+## MoneyMoney: the abstract NSDate was driving creation, and a subclass recursed into itself
+
+FIXED, and measured. MoneyMoney has its own NSDate subclass, a class it calls Date, whose
+DESIGNATED INITIALISER calls [super init]. Read out of the binary rather than guessed: the method at
+imp 0x10047da60 is initWithTimeIntervalSinceReferenceDate:, the repeating return address 0x10047da95
+sits immediately after -[[super] init] inside it, and the class record says
+superclass _OBJC_CLASS_$_NSDate.
+
+Our abstract NSDate answered that [super init] with
+
+    - (id)init { return [self initWithTimeIntervalSinceReferenceDate:CFAbsoluteTimeGetCurrent()]; }
+
+which dispatches DYNAMICALLY, so it went straight back into the subclass override, round and round
+until the guard page: signal 11 with the fault address eight bytes below the stack pointer and sixty
+of sixty four frames one address.
+
+THE ABSTRACT CLASS SHOULD NOT DRIVE CREATION AT ALL. NSDate here is a proper class cluster: +alloc
+answers __NSPlaceholderDate, which has its OWN -init and turns into a __NSDate, so
+[[NSDate alloc] init] never reaches the abstract method. The only caller that can is a subclass
+saying [super init], and what that must get is NSObject behaviour. It does now
+(vendor/patches/corefoundation/0019).
+
+MEASURED, three runs before and three after: crash every time before, no crash at all after, and the
+application now gets much further, all the way to its MainWindowController.
+
+AND THE NEXT BLOCKER IS ALREADY VISIBLE, so this does not make MoneyMoney work. It now loads its
+main window FOREVER: 19,930 windowDidLoad and 19,931 opens of MainWindow.nib in one run, with no
+exception raised. That is the shape of -[NSWindowController window] finding _window still nil after
+the nib has loaded and asking for it again, which means the File Owner window outlet is not being
+connected when we decode that nib.
+
+## An operational trap: FORCE on a pin with nested submodule pins
+
+FORCE=1 re-materialising vendor/pins/corefoundation left the build broken:
+
+    File not found: .../corefoundation/submodules/swift-corelibs-foundation/.../CFAttributedString.h
+
+That path is its OWN entry in nix/submodules.json, and re-materialising the parent does not bring
+the children back. Materialise the nested pin too, by its full path, or the tree is incomplete in a
+way that only shows up at the next build.
+

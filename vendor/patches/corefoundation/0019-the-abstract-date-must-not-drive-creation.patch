@@ -1,0 +1,23 @@
+--- a/NSDate.m
++++ b/NSDate.m
+@@ -290,7 +290,19 @@
+ 
+ - (id)init
+ {
+-    return [self initWithTimeIntervalSinceReferenceDate:CFAbsoluteTimeGetCurrent()];
++    /*
++     * THE ABSTRACT CLASS MUST NOT DRIVE CREATION, because the only caller that can reach this is a
++     * SUBCLASS saying [super init]. NSDate is a class cluster: +alloc answers __NSPlaceholderDate,
++     * which has its own -init and turns into a __NSDate, so [[NSDate alloc] init] never arrives
++     * here at all.
++     *
++     * It used to answer [self initWithTimeIntervalSinceReferenceDate:...], which dispatches
++     * DYNAMICALLY, so an application subclass whose designated initialiser calls [super init] went
++     * straight back into its own override. MoneyMoney has exactly that shape, in a class of its own
++     * called Date, and it recursed until the guard page: signal 11 with the fault address eight
++     * bytes below the stack pointer and sixty of sixty four frames the same address.
++     */
++    return [super init];
+ }
+ 
+ - (id)initWithTimeIntervalSinceNow:(NSTimeInterval)ti
