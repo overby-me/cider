@@ -8094,3 +8094,42 @@ and the same on __NSCFNumber, NSUnknownKeyException for the key selectedObject o
 -[NSTextField setNilValueForKey:] unrecognized, and -[NSURL startAccessingSecurityScopedResource]
 unrecognized. selectedObject is a real NSPopUpButton binding and setNilValueForKey: is a documented
 KVC hook, so both are honest gaps to close next.
+
+
+## Three more gaps on the binding path, and the exception load falls 33 to 7
+
+All three were things the code already promised and never delivered, which is a different kind of
+bug from a missing feature: the class advertises a key or a hook and then does not answer it.
+
+-[NSObject setNilValueForKey:] was DECLARED in NSKeyValueCoding.h and CALLED from six places in
+NSKeyValueAccessor.m, every one of them the path where nil is set for a scalar key, and implemented
+nowhere. The call therefore became doesNotRecognizeSelector, so instead of the documented
+NSInvalidArgumentException a caller got an unrecognized selector, which reads as a missing class
+rather than a rejected value. The chain trace made that plain: NSTextField, NSControl, NSView,
+NSResponder, NSObject from libobjc, and nowhere for the selector to land. It raises now, with the
+message Cocoa uses, because raising IS the documented default; an object that accepts nil for a
+scalar overrides this hook, which is why the hook exists.
+
+NSPopUpButton posts willChange and didChange for selectedIndex, selectedValue, selectedObject and
+selectedTag whenever the selection moves, and had an accessor for exactly one of them. A class that
+notifies about a key it is not key value coding compliant for is a contradiction, and binding to
+selectedObject raised NSUnknownKeyException six times per run. selectedObject is the represented
+object of the selected item, selectedValue is its title, and setting either selects the item that
+carries it; an object no item carries clears the selection rather than inventing one.
+
+-[NSPopUpButton(BindingSupport) _setItemValues:forKey:] passed the content array straight into
+addItemsWithTitles:. Content bindings routinely hold objects that are not strings, and the first
+thing -[NSMenu itemWithTitle:] does is send isEqualToString: to compare with existing items, so a
+popup bound to dictionaries or numbers raised once per item. Values are coerced with description
+now, which is what Cocoa shows for a value with no display key or transformer, and nil becomes an
+empty string so the item count still matches the content array.
+
+MEASURED: raises inside the inspector nib load fall from 33 to 19 to 7 across the three fixes, each
+one confirmed by its own exception disappearing from the log rather than by the total.
+
+STILL NOT DONE, and this is the fourth rung in a row where it is the same sentence:
+-[InspectorViewController awakeFromNib] reaches object 0 of 958 and does not return, so the document
+window never appears. It is not an exception storm, it is not spinning, it is not an XPC lookup. The
+next thing to try is a different instrument rather than another API gap: the seven remaining raises
+are worth reading in full, and if none of them unwinds the load then the wait needs finding with a
+stack from inside the wait, not from the frames of an exception.

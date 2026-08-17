@@ -1,0 +1,33 @@
+--- a/src/NSKeyValueCoding.m
++++ b/src/NSKeyValueCoding.m
+@@ -53,6 +53,30 @@
+     [NSException raise:NSUnknownKeyException format:@"%@ is not key value coding compliant for the key %@", self, key];
+ }
+ 
++/*
++ * THE OTHER KVC HOOK, DECLARED AND CALLED AND NEVER IMPLEMENTED.
++ *
++ * NSKeyValueCoding.h declares setNilValueForKey: and NSKeyValueAccessor.m calls it from six places,
++ * every one of them the path where nil is being set for a key whose value is a scalar. With no
++ * implementation anywhere in the hierarchy the call became doesNotRecognizeSelector, so instead of
++ * the documented NSInvalidArgumentException a caller got an unrecognized selector, which is a
++ * different and more alarming failure and reads as a missing class rather than a rejected value.
++ *
++ * Swift Publisher reaches it through -[_NSKVOBinder writeDestinationToSource] while its inspector
++ * binds a text field, and the chain printed underneath it, NSTextField, NSControl, NSView,
++ * NSResponder, NSObject from libobjc, showed there was nowhere for the selector to land.
++ *
++ * RAISING IS THE CORRECT DEFAULT and not a stub: Cocoa raises here too, and the message is the one
++ * Cocoa uses. An object that wants to accept nil for a scalar overrides this method, which is the
++ * whole reason the hook exists.
++ */
++- (void)setNilValueForKey:(NSString *)key
++{
++    [NSException raise:NSInvalidArgumentException
++                format:@"[<%s %p> setNilValueForKey:]: could not set nil as the value for the key %@.",
++                       object_getClassName(self), self, key];
++}
++
+ - (id)valueForKey:(id)key
+ {
+     Class cls = object_getClass(self);

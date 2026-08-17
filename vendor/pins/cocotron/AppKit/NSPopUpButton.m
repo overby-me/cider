@@ -169,6 +169,61 @@ static NSString *const NSPopUpButtonBindingObservationContext =
     [self setNeedsDisplay: YES];
 }
 
+/*
+ * THE FOUR KEYS THIS CLASS ALREADY PROMISES, and only one of which it answered.
+ *
+ * The KVO block below posts willChange and didChange for selectedIndex, selectedValue,
+ * selectedObject and selectedTag whenever the selection moves, so the class advertises all four as
+ * observable. Three of them had no accessor at all, which means the class is not key value coding
+ * compliant for a key it is actively notifying about, and binding to any of them raises:
+ *
+ *   NSUnknownKeyException: <NSPopUpButton ...> is not key value coding compliant for the key
+ *   selectedObject
+ *
+ * Swift Publisher binds exactly that, six times, while building its inspector.
+ *
+ * selectedObject is the represented object of the selected item, which is what the Cocoa binding of
+ * that name means; setting it selects the item carrying that object, and an object no item carries
+ * clears the selection rather than inventing one. selectedValue is the title, the string form used
+ * by the content values binding. Identity is tried before isEqual: so an item whose represented
+ * object does not implement equality still matches itself.
+ */
+- (id) selectedObject {
+    return [[self selectedItem] representedObject];
+}
+
+- (void) setSelectedObject: (id) object {
+    NSInteger i, count = [self numberOfItems];
+
+    for (i = 0; i < count; i++) {
+        NSMenuItem *item = [self itemAtIndex: i];
+        id represented = [item representedObject];
+
+        if (represented == object || [represented isEqual: object]) {
+            [self selectItem: item];
+            return;
+        }
+    }
+
+    [self selectItem: nil];
+}
+
+- (id) selectedValue {
+    return [[self selectedItem] title];
+}
+
+- (void) setSelectedValue: (id) value {
+    [self selectItemWithTitle: value];
+}
+
+- (NSInteger) selectedIndex {
+    return [self indexOfSelectedItem];
+}
+
+- (void) setSelectedIndex: (NSInteger) index {
+    [self selectItemAtIndex: index];
+}
+
 - (void) selectItem: (NSMenuItem *) item {
     [_cell selectItem: item];
     [self setNeedsDisplay: YES];
@@ -307,9 +362,40 @@ static NSString *const NSPopUpButtonBindingObservationContext =
 @implementation NSPopUpButton (BindingSupport)
 
 - (void) _setItemValues: (NSArray *) values forKey: (NSString *) key {
+    /*
+     * A MENU ITEM TITLE IS A STRING, whatever the content binding is bound to.
+     *
+     * The content and contentValues bindings hand over whatever the controller holds, and that is
+     * routinely not a string: Swift Publisher binds arrays of dictionaries and of numbers. Those
+     * went straight into addItemsWithTitles:, and the first thing -[NSMenu itemWithTitle:] does is
+     * send isEqualToString: to compare against the existing items, so every one of them raised
+     *
+     *   -[__NSCFDictionary isEqualToString:]: unrecognized selector
+     *
+     * out of -[_NSKVOBinder bind] and through the application binding helper. Cocoa shows
+     * description for a value that is not already a string, which is exactly what a popup bound to
+     * a list of arbitrary objects displays when no display key or value transformer is set.
+     *
+     * nil becomes an empty string rather than being dropped, so the item count still matches the
+     * content array and selectedIndex keeps meaning what the binding thinks it means.
+     */
+    NSMutableArray *titles = [NSMutableArray arrayWithCapacity: [values count]];
+    NSInteger i, count = [values count];
+
+    for (i = 0; i < count; i++) {
+        id value = [values objectAtIndex: i];
+
+        if (value == nil || value == [NSNull null]) {
+            [titles addObject: @""];
+        } else if ([value isKindOfClass: [NSString class]]) {
+            [titles addObject: value];
+        } else {
+            [titles addObject: [value description]];
+        }
+    }
 
     [_cell removeAllItems];
-    [_cell addItemsWithTitles: values];
+    [_cell addItemsWithTitles: titles];
 
     if ([self indexOfSelectedItem] >= values.count) {
         [self selectItem: nil];
