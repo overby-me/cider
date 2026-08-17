@@ -18,6 +18,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSAttributedString.h>
+#include <string.h>
+#include <stdlib.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSFont.h>
 #import <AppKit/NSParagraphStyle.h>
@@ -284,16 +286,86 @@ NSUInteger NSUnderlineByWordMask = 0x8000;
     return [self initWithAttributedString: string];
 }
 
+/*
+ * RTFD IS RTF PLUS ATTACHMENTS, and the text is the part that matters here.
+ *
+ * Swift Publisher reads its templates through this method, and a nil return is why pressing Choose
+ * built no document: one line after the click the log said
+ *
+ *   -[__NSPlaceholderAttributedString initWithRTFD:documentAttributes:] unimplemented
+ *
+ * TWO SHAPES ARRIVE HERE. Plain RTF, which applications pass to the RTFD entry point all the time
+ * and which the RTF reader below already handles; and flat RTFD, which wraps the same RTF in a
+ * serialised file wrapper along with its attachments. The wrapper format is not documented, so
+ * rather than guess at its table this looks for the RTF inside it. That IS a heuristic and is
+ * written down as one: the attachments are dropped, and text that arrives with none is exact.
+ *
+ * A NULL attributes pointer is handled here even though -initWithRTF: writes through it
+ * unconditionally, because a caller that does not want the dictionary is entitled not to pass one.
+ */
 - initWithRTFD: (NSData *) rtfd
         documentAttributes: (NSDictionary **) attributes
 {
-    NSUnimplementedMethod();
-    return nil;
+    static const char rtfMagic[] = "{\\rtf";
+    const unsigned char *bytes = (const unsigned char *) [rtfd bytes];
+    NSUInteger length = [rtfd length];
+    NSUInteger start = NSNotFound;
+    NSUInteger i;
+    NSDictionary *ignored = nil;
+
+    if (bytes == NULL || length < sizeof(rtfMagic) - 1) {
+        [self release];
+        return nil;
+    }
+
+    for (i = 0; i + sizeof(rtfMagic) - 1 <= length; i++) {
+        if (memcmp(bytes + i, rtfMagic, sizeof(rtfMagic) - 1) == 0) {
+            start = i;
+            break;
+        }
+    }
+
+    if (start == NSNotFound) {
+        if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL) {
+            fprintf(stderr, "cider-rtfd no RTF found in %lu bytes, first eight %02x %02x %02x %02x %02x %02x %02x %02x\n",
+                    (unsigned long) length,
+                    length > 0 ? bytes[0] : 0, length > 1 ? bytes[1] : 0,
+                    length > 2 ? bytes[2] : 0, length > 3 ? bytes[3] : 0,
+                    length > 4 ? bytes[4] : 0, length > 5 ? bytes[5] : 0,
+                    length > 6 ? bytes[6] : 0, length > 7 ? bytes[7] : 0);
+            fflush(stderr);
+        }
+        [self release];
+        return nil;
+    }
+
+    NSData *rtf = (start == 0) ? rtfd
+                               : [rtfd subdataWithRange: NSMakeRange(start, length - start)];
+
+    return [self initWithRTF: rtf
+          documentAttributes: (attributes != NULL) ? attributes : &ignored];
 }
 
+/*
+ * THE DIRECTORY FORM OF THE SAME THING. An RTFD bundle is a directory whose text is TXT.rtf and
+ * whose other entries are the attachments, so the text is one lookup away.
+ */
 - initWithRTFDFileWrapper: (NSFileWrapper *) wrapper
         documentAttributes: (NSDictionary **) attributes
 {
+    if ([wrapper isDirectory]) {
+        NSFileWrapper *text = [[wrapper fileWrappers] objectForKey: @"TXT.rtf"];
+        NSDictionary *ignored = nil;
+
+        if (text != nil) {
+            return [self initWithRTF: [text regularFileContents]
+                  documentAttributes: (attributes != NULL) ? attributes : &ignored];
+        }
+    } else if ([wrapper isRegularFile]) {
+        return [self initWithRTFD: [wrapper regularFileContents]
+               documentAttributes: attributes];
+    }
+
     NSUnimplementedMethod();
     return nil;
 }

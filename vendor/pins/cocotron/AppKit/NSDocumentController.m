@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSDocument.h>
 #import <AppKit/NSDocumentController.h>
+#include <objc/runtime.h>
+#include <stdlib.h>
 #import <AppKit/NSMenu.h>
 #import <AppKit/NSMenuItem.h>
 #import <AppKit/NSOpenPanel.h>
@@ -231,6 +233,11 @@ static NSDocumentController *shared = nil;
 }
 
 - (void) addDocument: (NSDocument *) document {
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC addDocument doc=%s\n", class_getName([document class]));
+        fflush(stderr);
+    }
+
     [_documents addObject: document];
 }
 

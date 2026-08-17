@@ -7621,3 +7621,46 @@ THE DOCUMENT STILL DOES NOT OPEN. One line after the click:
 
 so the template text cannot be read and the document build stops there. That is the next rung, and
 it is a real piece of work rather than a stub: RTFD is RTF with attachments.
+
+
+## RTFD, and the rest of the road to a document
+
+With Choose working, the first thing the click hit was
+
+    -[__NSPlaceholderAttributedString initWithRTFD:documentAttributes:] unimplemented
+
+initWithRTF: has been implemented all along, through NSRichTextReader; only the two RTFD entry
+points were stubs. RTFD is RTF plus attachments, and two shapes arrive at that method: plain RTF,
+which applications pass to the RTFD entry point all the time, and flat RTFD, which wraps the same
+RTF in a serialised file wrapper. The wrapper format is not documented, so rather than guess at its
+table this finds the RTF inside it and reads that. THAT IS A HEURISTIC and is written down as one in
+the source: the attachments are dropped, and text that arrives with none is exact. The directory
+form, initWithRTFDFileWrapper:, is a lookup of TXT.rtf and needs no guessing.
+
+Both entry points also handle a NULL documentAttributes pointer, which initWithRTF: writes through
+unconditionally.
+
+MEASURED, not assumed: after the change the unimplemented line is gone and the fallback trace that
+fires when no RTF can be found in the data did not fire, so an RTF payload was located and handed to
+the reader. Whether the reader liked it is not proven by that, and is not claimed.
+
+WHERE THE DOCUMENT ACTUALLY STOPS, read out of -[CCAssistantController buttonNext:]:
+
+    idx = [tabView indexOfTabViewItem: [tabView selectedTabViewItem]]
+    path = [designController getCurrentDocPath]          ; nil BAILS
+    doc  = [[CCDocument new] initWithDocumentType:andOptions:]   ; nil BAILS
+    ok   = [doc readFromURL: url ofType: type error: &err]       ; NO BAILS
+    [doc setFileURL:] [doc setShowLayoutElements:]
+    [[NSDocumentController sharedDocumentController] addDocument: doc]
+    [doc updateChangeCount:]
+    [doc makeWindowControllers]                          ; the window comes from here
+
+Three silent bail-outs before anything is visible, which is why pressing the button looks like it
+does nothing at all. The action itself is confirmed to fire:
+
+    CIDER_CONTROL send class=NSButton action=buttonNext: target=CCAssistantController enabled=1
+
+and the application goes on to load fonts and the colour panel nib, so it is doing work. Tracing
+-[NSDocument readFromURL:ofType:error:], -[NSDocumentController addDocument:] and
+-[NSDocument makeWindowControllers] is what says which of the three bails, and those traces are in
+this commit.

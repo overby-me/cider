@@ -20,6 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import "NSKeyValueBinding/NSObject+BindingSupport.h"
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSDocument.h>
+#include <objc/runtime.h>
+#include <stdlib.h>
 #import <AppKit/NSDocumentController.h>
 #import <AppKit/NSFileWrapper.h>
 #import <AppKit/NSMenuItem.h>
@@ -349,6 +351,17 @@ static int untitled_document_number = 0;
 - (void) makeWindowControllers {
     NSString *nibName = [self windowNibName];
 
+    /* HOW FAR THE OPEN GOT. -[CCAssistantController buttonNext:] reads, out of the binary, as
+     * getCurrentDocPath, then alloc, then readFromURL:ofType:error:, then addDocument: and then
+     * this, with a silent bail after each of the first three. Tracing the last two says which
+     * of them returned nothing, and none of it is visible from outside otherwise. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC makeWindowControllers doc=%s nib=%s\n",
+                class_getName([self class]),
+                nibName != nil ? [nibName UTF8String] : "(nil)");
+        fflush(stderr);
+    }
+
     if (nibName != nil) {
         NSWindowController *controller = [[[NSWindowController alloc]
                 initWithWindowNibName: nibName
@@ -467,6 +480,14 @@ static int untitled_document_number = 0;
               ofType: (NSString *) type
                error: (NSError **) error
 {
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC readFromURL doc=%s url=%s type=%s\n",
+                class_getName([self class]),
+                url != nil ? [[url absoluteString] UTF8String] : "(nil)",
+                type != nil ? [type UTF8String] : "(nil)");
+        fflush(stderr);
+    }
+
     if ([url isFileURL]) {
         if ([self _isSelectorOverridden: @selector(readFromFile:ofType:)]) {
             return [self readFromFile: [url path] ofType: type];
