@@ -7185,3 +7185,42 @@ the last nib KEY logged, but decoding the connections pulls in the connected obj
 now goes on through hundreds of font decodes, NSButton, NSScroller, NSTabView, NSOutlineView and
 NSSplitView setup, and into CCDocumentController. The attributed string decoder and the process wide
 display are what moved it, and the remaining fault is somewhere past all of that.
+
+### A WebView was declared on NSObject, and a nib puts one in a view hierarchy
+
+The segfault named in the previous entry is solved, and the core is what named it. Walking the
+faulting thread stack out of the dump, rather than reading the log:
+
+    tid 3: rip in libobjc
+      [    0] Foundation   __decodeObjectBinary
+      [   10] WebKit       _OBJC_CLASS_$_WebView      <- the class itself, ten words in
+      [  288] libobjc      _objc_msgSend
+      [  306] Foundation   __decodeObjectBinary
+      [  328] Foundation   __decodeObject
+
+So it dies decoding a WebView out of the nib. The declaration says why:
+
+    @interface WebView : NSObject
+
+A nib puts a WebView IN THE WINDOW VIEW HIERARCHY, so decoding one sends -initWithCoder:, and
+NSObject has no such method. It went to the catch-all forwardInvocation stub, whose method signature
+says the return is VOID, so the return register was never written and the unarchiver took whatever
+was in it as the new view. AppKit then sent view messages to that value.
+
+Two changes. WebView now inherits NSView, which gives it initWithCoder:, a frame, a superview and
+drawing, and is what a placeholder for a web view has to be: an empty rectangle in the right place
+rather than an object of the wrong shape. And both stubs here now answer NIL rather than a register
+nobody wrote, by declaring an object return and setting it, because garbage returned to a caller
+crashes far away from the stub that produced it.
+
+The link then needed AppKit as a WebKit sibling, since a class needs its superclass at link time.
+macOS WebKit links AppKit for exactly the same reason.
+
+LOOKED AT, and this is the result: THE WELCOME WINDOW OPENS. Title bar with three lights, its
+Show this window when Swift Publisher 5 opens checkbox, and a Close button. Six window presents
+where there were three. The body of the window is EMPTY, which is honest: the WebView is a
+placeholder and nothing here renders HTML.
+
+WHAT THE RUN NOW REACHES, having got past the crash: 1,298 exceptions, every one of them
+-[NSColor_CGColor CGColorRef] unrecognized. That is the next thing rather than a regression; the log
+went from 810 lines to 30,707 because the application is doing far more than it could before.

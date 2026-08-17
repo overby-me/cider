@@ -13476,6 +13476,11 @@ darwin_dylib(
         "//vendor/src:system_final",
         "//vendor/src:Foundation_dylib",
         "//vendor/src:CFNetwork_final",
+        # AppKit, because a WebView IS AN NSVIEW and its class needs its superclass at link time.
+        # The generated list came from a reference build where WebView was declared on NSObject,
+        # which is the bug this links against: a nib puts a WebView in a view hierarchy, so it has
+        # to be a view. macOS WebKit links AppKit for the same reason.
+        "//vendor/src:AppKit_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [

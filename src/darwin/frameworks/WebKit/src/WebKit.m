@@ -22,17 +22,43 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-@interface WebView : NSObject
+/*
+ * A WebView IS A VIEW, and this said NSObject.
+ *
+ * That is not a detail of taste. A nib puts a WebView in the window view hierarchy, so decoding one
+ * sends -initWithCoder:, and NSObject has no such method: it went to the catch-all below, whose
+ * signature says the return is VOID, so the return register was never written and the caller took
+ * whatever happened to be in it as the new view. AppKit then sent view messages to that. Swift
+ * Publisher died exactly there, in objc_msgSend under __decodeObjectBinary, with the WebView class
+ * on the stack, opening the nib for its welcome window.
+ *
+ * Inheriting from NSView gives it initWithCoder:, a frame, a superview and drawing for free, which
+ * is what a placeholder for a web view actually needs to be: an empty rectangle in the right place
+ * rather than an object of the wrong shape.
+ *
+ * IT STILL DOES NOT BROWSE ANYTHING. Everything WebKit specific goes to the stub and says so.
+ */
+@interface WebView : NSView
 @end
 
 @implementation WebView
 
+/*
+ * AN OBJECT RETURN RATHER THAN VOID, so an unimplemented method answers NIL instead of a register
+ * that nobody wrote. A caller that gets garbage back where it expected an object crashes far away
+ * from here, which is the whole reason this file was hard to blame.
+ */
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return [NSMethodSignature signatureWithObjCTypes: "@@:"];
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation {
+    id nothing = nil;
+
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    if ([[anInvocation methodSignature] methodReturnLength] >= sizeof(id)) {
+        [anInvocation setReturnValue: &nothing];
+    }
 }
 
 @end
@@ -42,12 +68,18 @@
 
 @implementation WebPreferences
 
+/* The same object return as WebView above, and for the same reason. */
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return [NSMethodSignature signatureWithObjCTypes: "@@:"];
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation {
+    id nothing = nil;
+
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    if ([[anInvocation methodSignature] methodReturnLength] >= sizeof(id)) {
+        [anInvocation setReturnValue: &nothing];
+    }
 }
 
 @end
