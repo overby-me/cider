@@ -8877,3 +8877,29 @@ NOT ESTABLISHED: the confirming run, with the image resized to exactly one cell 
 remainder cannot exist, RENDERED NOTHING AT ALL, a wholly black capture. It proves neither way and
 is not counted.
 
+## Settled from the disassembly: iTerm2 never fills that bitmap, so macOS paints underneath
+
+The fork was whether macOS clears the image block bitmap to the session background, or paints the
+session background under the block. The disassembly of
+-[NSImage(iTerm) safelyResizedImageWithSize:destinationRect:scale:] answers it outright. The whole
+body is:
+
+    NSBitmapImageRep alloc -> initWithBitmapDataPlanes:... -> setSize:
+    saveGraphicsState -> graphicsContextWithBitmapImageRep: -> setCurrentContext:
+    drawInRect:fromRect:operation:fraction:
+    restoreGraphicsState -> NSImage initWithSize: -> addRepresentation:
+
+There is NO fill, NO clear and NO colour set anywhere between allocating the bitmap and drawing into
+it. So the remainder is transparent on macOS as much as here, and what macOS shows through it is
+whatever lies UNDER the image block. Which means the terminal view there paints the session
+background across the rows an image occupies, and ours does not.
+
+AND IT IS NOT THE WINDOW COLOUR EITHER. Tracing -[NSWindow setBackgroundColor:] through a whole run
+records five calls, all on ONE window, and every one of them asks for controlColor at 0.930 grey.
+Nothing ever asks for black. So the black under the text cannot be coming from the window, it is
+painted by the view, and the remaining question is precisely why that painting does not cover the
+rows an image block occupies.
+
+WHAT IS NOT ESTABLISHED: whether the window in that trace is the terminal window or the alert panel.
+The trace does not say, and I did not assume it either way.
+

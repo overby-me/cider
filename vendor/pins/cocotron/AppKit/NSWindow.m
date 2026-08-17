@@ -1366,6 +1366,21 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) setBackgroundColor: (NSColor *) color {
+    /* DOES THE APPLICATION EVER ASK FOR ONE. The remainder of an inline image block is transparent
+     * in iTerm2 own bitmap, proved from its disassembly: it allocates the bitmap, makes a context
+     * on it, draws, and never fills. So on the real system what shows through that remainder is
+     * whatever lies under the image, and here that is the window background at 0.930 grey. Either
+     * iTerm2 asks for a black window and we ignore it, or it never asks and something else paints
+     * the black. This says which. */
+    if (getenv("CIDER_TRACE_WINDOWBG") != NULL) {
+        NSColor *rgb = [color colorUsingColorSpaceName: NSCalibratedRGBColorSpace];
+
+        fprintf(stderr, "CIDER_WINDOWBG setBackgroundColor window=%p color=%s r=%.3f g=%.3f b=%.3f\n",
+                self, color ? [[color description] UTF8String] : "(nil)",
+                rgb ? [rgb redComponent] : -1.0, rgb ? [rgb greenComponent] : -1.0,
+                rgb ? [rgb blueComponent] : -1.0);
+        fflush(stderr);
+    }
     if (color == nil)
         color = [NSColor windowBackgroundColor];
     color = [color copy];
