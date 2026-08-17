@@ -6901,3 +6901,24 @@ Measured on the same corner, before and after:
 
 a clean quarter circle. Verified not to regress the opaque case: the terminal window still renders,
 the picture still draws, no crash, keys still reach PTYTextView.
+
+### A panel had no shadow, and a black terminal cannot tell you whether it does now
+
+macOS floats every alert on a soft shadow. shadow_margin gave ours none, because a toplevel only
+qualified with the titled style bit and an alert carries 0x40, which has no titled bit and is not a
+popup either. Panels are included now, the same way they were for the alpha channel.
+
+THE SCREENSHOT CANNOT CONFIRM THIS AND SAYING SO IS THE POINT. A shadow is dark, the terminal behind
+this alert is black, and dark composited over black is black: the pixels outside the panel measured
+0 before the change and 0 after it, which is exactly what no shadow ALSO looks like. That is a
+measurement that cannot fail and therefore proves nothing.
+
+So the decision was traced instead of the pixels, which is a question a capture can answer:
+
+    shadow number=4 margin=24 style=0x10f  panel=false popup=false   the terminal window
+    shadow number=5 margin=14 style=0x5f   panel=true  popup=true    a menu, already had one
+    shadow number=7 margin=24 style=0x40   panel=true  popup=false   the alert, was 0
+
+The alert now takes the same 24 point margin a window does. What is verified is that the code
+decides to draw one and reserves the surface for it; what is NOT verified is how it looks, and it
+will not be until an alert appears over something lighter than a black terminal.

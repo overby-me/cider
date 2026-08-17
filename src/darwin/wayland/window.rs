@@ -940,6 +940,19 @@ fn create_surface(st: &mut WindowState) -> bool {
          * because the size is part of it.
          */
         let margin = shadow_margin(st);
+        // WHETHER THIS WINDOW FLOATS. A shadow is dark and the terminal behind this alert is black,
+        // so dark on black is indistinguishable from no shadow at all in a capture. The margin says
+        // what the code decided, which a screenshot here cannot.
+        if crate::env_flag!("CIDER_TRACE_ALERT") {
+            eprintln!(
+                "cider-wayland-window shadow number={} margin={} style={:#x} panel={} popup={}",
+                st.number,
+                margin,
+                st.style_mask,
+                st.is_panel,
+                !st.popup.is_null()
+            );
+        }
         if margin > 0 && !st.xdg.is_null() {
             wl::cider_xdg_surface_set_window_geometry(
                 st.xdg,
@@ -1047,7 +1060,10 @@ fn shadow_margin(st: &WindowState) -> i32 {
         // helpers at level 0 with no alpha, and a shadow around one of those is a grey smear.
         return if wants_alpha(st) { MENU_SHADOW_MARGIN } else { 0 };
     }
-    if st.style_mask & 0x1 != 0 && wants_alpha(st) {
+    // A PANEL FLOATS TOO. An alert carries style 0x40, which has no titled bit, so it fell through
+    // to no shadow at all and sat flat on the document. macOS puts a soft shadow under every alert,
+    // and the reference capture shows one.
+    if (st.style_mask & 0x1 != 0 || st.is_panel) && wants_alpha(st) {
         SHADOW_MARGIN
     } else {
         0
