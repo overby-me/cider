@@ -9099,3 +9099,55 @@ REVERTED, and verified back at six captures with no crash. A lock was never an o
 race either: a contended pthread mutex fails in this guest with psynch -111, which is why the fix
 attempted was per thread state rather than a mutex.
 
+## Where the three queued applications actually stand
+
+Breadth first, because two of them had never been run this session and the priority is applications
+working rather than one application polished.
+
+### iA Writer (#115): blocked on Combine, which is an empty stub
+
+It does not launch. dyld says so precisely:
+
+    dyld: Symbol not found: _$s7Combine10PublishersO3MapVMn
+      Referenced from: .../AccountCore.framework
+      Expected in: /System/Library/Frameworks/Combine.framework
+
+Our Combine.framework is 8,368 bytes with ZERO exported text symbols: a placeholder, not a partial
+implementation. The repo builds it from a hand written section of the frameworks BUCK.
+
+The obvious remedy, building OpenCombine (a complete MIT reimplementation in Swift), is out of reach
+today: there is NO swiftc in the toolchain, only a swiftc_shim. So this is an infrastructure gap,
+not a bug, and nothing short of a Swift compiler plus a Combine implementation moves it.
+
+### MoneyMoney (#117): launches, then overflows the stack in NSDate
+
+It gets much further: the main nib loads and is decoded (NSUserDefaultsController, NewsCheck,
+Locale, Realtime), and then it dies:
+
+    cider CRASHTRACE signal=11 addr=0x7fffff5ffff8 rsp=0x7fffff600000 frames=64
+
+The fault address is EIGHT BYTES BELOW the stack pointer, which is the guard page and therefore a
+stack overflow, and sixty of the sixty four frames are the same address in MoneyMoney. The main
+thread already gets the 8 MB macOS gives, so this is unbounded recursion and not a small stack.
+
+The disassembly names it. The repeating return address sits immediately after
+-[[%rdi super] init] in a MoneyMoney method that also references
+initWithTimeIntervalSinceReferenceDate:. So the application has an NSDate subclass whose initialiser
+calls [super init]; that reaches -[NSDate(NSDateCreation) init] in our CoreFoundation, which is
+
+    - (id)init { return [self initWithTimeIntervalSinceReferenceDate:CFAbsoluteTimeGetCurrent()]; }
+
+and self is the subclass, so it dispatches straight back into the override. Round and round until
+the guard page.
+
+NOT YET ESTABLISHED, and it decides the fix: Apple documents exactly this implementation for the
+abstract class, so the same shape ought to recurse on macOS too. Either the application overrides
+something we do not expect it to, or macOS NSDate resolves the cluster before dispatching. Read the
+subclass out of the binary before changing NSDate, because changing a class cluster initialiser on a
+guess is how a whole framework goes wrong quietly.
+
+### Swift Publisher (#116)
+
+Unchanged from the entry above: the typesetter stub is the blocker, making it concrete lets layout
+run and the application then dies through a trapping stub reached only during real layout.
+
