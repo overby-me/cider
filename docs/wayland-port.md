@@ -9040,3 +9040,26 @@ NEXT: find the clear. It is the fill printed as path 985x549 at 0,0 with c=0,0,0
 O2ContextFillRects, and what matters is its blend mode, which the path trace does not print. The
 image trace prints one now and the path trace does not, which is the asymmetry to close.
 
+## The fills are all Copy, which is what makes a transparent fill visible
+
+Counting the Onyx2D enum, Clear is 16 and Copy is 17, and the path trace now prints the mode:
+
+    path blend=17 985x549  at 0,0  on=1000x600 n=4 c=0.000,0.000,0.000,0.000   the terminal area
+    path blend=17 1241x633 at 0,0  on=1256x684 n=4 c=0.000,0.000,0.000,0.000
+    path blend=17 585x405  at 0,0  on=585x405  n=2 c=0.930,1.000               a window background
+
+EVERY path fill goes through Copy, which is why a transparent fill is not a no-op: copying
+transparent black CLEARS the destination. So the terminal is a cleared region presented through an
+opaque buffer, which is the black on screen, and this half of the account holds together.
+
+WHAT STILL DOES NOT ADD UP, and it is recorded rather than explained away: that clear covers
+985x549 at 0,0, which INCLUDES the image block remainder, so the remainder should be cleared too and
+should read black like the rest. It reads grey. Either the clear happens before something that puts
+grey back in just that strip, or the rect that reaches the surface is not the rect the trace prints.
+Ordering is what would settle it and the trace has no timestamps.
+
+PARKED HERE. The user has redirected the work to the application queue, and this is a cosmetic five
+pixel edge on an app whose three criteria are met. The account so far, all measured: the picture is
+pixel exact, iTerm2 never fills the block remainder (disassembly and trace agree), the block is
+blitted per cell row source over, every fill is Copy, and the terminal black is a cleared region.
+

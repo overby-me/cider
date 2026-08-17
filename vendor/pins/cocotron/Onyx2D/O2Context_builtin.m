@@ -509,7 +509,15 @@ static int cider_paint_box(O2Context_builtin *self, O2Rect r, const char *what, 
         O2Rect bb = O2ContextGetPathBoundingBox(self);
         O2ColorRef fc = gState->_fillColor;
 
-        cider_paint_box(self, bb, drawingMode == kO2PathStroke ? "stroke" : "path",
+        /* WITH THE BLEND MODE, the same way the image trace carries one. The fill that covers the
+         * terminal prints as c=0,0,0,0, which is transparent, and a transparent fill only changes
+         * anything if it is COPIED rather than blended. That distinction is the whole question and
+         * the path trace could not say it. */
+        char what[48];
+
+        snprintf(what, sizeof(what), "%s blend=%d",
+                 drawingMode == kO2PathStroke ? "stroke" : "path", (int) gState->_blendMode);
+        cider_paint_box(self, bb, what,
                         fc ? O2ColorGetNumberOfComponents(fc) : 0,
                         fc ? O2ColorGetComponents(fc) : NULL);
     }
