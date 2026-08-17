@@ -6865,3 +6865,39 @@ answers it still ends with the picture drawn and no crash.
 Left over, and all of it is chrome rather than layout: square panel corners where macOS is rounded,
 no drop shadow, buttons that are rounded rectangles rather than pills, and a tight gap between the
 checkbox and its title.
+
+### A rounded panel needs an alpha channel, and the alert did not have one
+
+Rounding NSThemeFrame was not enough on its own, and the reason is worth writing down because the
+first attempt looked like it had simply not run.
+
+Filling the frame with a rounded rectangle instead of NSRectFill changed nothing visible. A trace
+proved the code WAS running on the right window:
+
+    CIDER_THEMEFRAME draw class=NSPanel rounded=1 style=0x40 bounds=292x185
+
+So the corners were being left unpainted and something else was filling them. That something is the
+backend. It clears a surface to one of two values, and picks between them with
+
+    st.level > 0 || st.style_mask & 0x1 != 0
+
+An alert panel has style 0x40, which carries neither the titled bit nor a level, so it was cleared to
+CLEAR_PIXEL, which is 0xffeeeeee, an OPAQUE light grey. The rounded fill therefore revealed grey
+rather than nothing, and grey against a grey panel is invisible: the corner measured 238,238,238
+before and after, which is also why the panel background at 0.93 white could not be told apart from
+it by eye or by a threshold.
+
+The backend already computes whether a window is an NSPanel, by asking the delegate, but only to
+decide a role and only as a local. It is kept on the window state now and wants_alpha consults it.
+Measured on the same corner, before and after:
+
+    ##############        .......#######
+    ##############        .....#########
+    ##############        ....##########
+    ##############   ->   ...###########
+    ##############        ..############
+    ##############        .#############
+    ##############        ##############
+
+a clean quarter circle. Verified not to regress the opaque case: the terminal window still renders,
+the picture still draws, no crash, keys still reach PTYTextView.

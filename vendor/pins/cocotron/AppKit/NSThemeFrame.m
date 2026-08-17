@@ -26,6 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSParagraphStyle.h>
 #import <AppKit/NSStringDrawing.h>
 #import <AppKit/NSThemeFrame.h>
+#import <AppKit/NSPanel.h>
+
+/* Measured off the macOS alert in Downloads/macos-images. */
+#define CIDER_PANEL_CORNER_RADIUS 10.0
 #import <objc/runtime.h>
 #import <AppKit/NSToolbarView.h>
 #import <AppKit/NSWindow-Private.h>
@@ -171,8 +175,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
               (double) a, bounds.size.width, bounds.size.height);
     }
 
+    /*
+     * A PANEL IS ROUNDED, and a square one is one of the last things that says this is not a Mac.
+     *
+     * The backend already clears these surfaces to nothing and only fills what the application
+     * paints, which is how a menu gets its rounded shape: the corners are simply never drawn. This
+     * fill covered the whole rectangle, so an alert came out square against the macOS reference,
+     * which is rounded at about ten points.
+     *
+     * SCOPED TO PANELS ON PURPOSE. macOS rounds document windows too, but their content view paints
+     * to the edge and would square the corners straight back, so rounding them here would be a
+     * change with no visible effect and some risk. Panels are what alerts and sheets are.
+     */
+    BOOL rounded = [[self window] isKindOfClass: [NSPanel class]];
+
+    if (getenv("CIDER_TRACE_ALERT") != NULL && getenv("CIDER_TRACE_ALERT")[0] != '\0') {
+        NSLog(@"CIDER_THEMEFRAME draw class=%s rounded=%d style=0x%lx bounds=%.0fx%.0f",
+              object_getClassName([self window]), (int) rounded,
+              (unsigned long) [[self window] styleMask], bounds.size.width, bounds.size.height);
+    }
+
     [[[self window] backgroundColor] setFill];
-    NSRectFill(bounds);
+    if (rounded) {
+        [[NSBezierPath bezierPathWithRoundedRect: bounds
+                                         xRadius: CIDER_PANEL_CORNER_RADIUS
+                                         yRadius: CIDER_PANEL_CORNER_RADIUS] fill];
+    } else {
+        NSRectFill(bounds);
+    }
 
     [self _ciderDrawTitleBarInBounds: bounds];
 
@@ -197,8 +227,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     if ([[self window] isSheet])
         bounds.size.height += cheatSheet;
 
-    [[[self window] backgroundColor] setFill];
-    NSRectFill([[[self window] contentView] frame]);
+    /* The rounded fill above already covers this, and repeating it as a plain rectangle would put
+     * the square corners straight back. */
+    if (!rounded) {
+        [[[self window] backgroundColor] setFill];
+        NSRectFill([[[self window] contentView] frame]);
+    }
 }
 
 - (void) resizeSubviewsWithOldSize: (NSSize) oldSize {

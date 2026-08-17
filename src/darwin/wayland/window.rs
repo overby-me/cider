@@ -59,6 +59,11 @@ pub struct WindowState {
     pub mapped: bool,
     pub style_mask: usize,
     pub level: c_int,
+    /// Whether the delegate is an NSPanel: alerts, sheets and the save and open panels. Kept here
+    /// rather than recomputed because it decides whether the surface carries an ALPHA CHANNEL, and
+    /// a panel that is drawn with rounded corners needs one or the corners come out as the opaque
+    /// colour the surface was cleared to.
+    pub is_panel: bool,
     pub miniaturized: bool,
     /// Nesting count, not a flag: AppKit disables and enables around nested drawing, and treating
     /// it as a boolean re-enables one level too early.
@@ -155,6 +160,7 @@ impl WindowState {
             mapped: false,
             style_mask: 0,
             level: 0,
+            is_panel: false,
             miniaturized: false,
             flush_disabled: 0,
             number: NEXT_WINDOW_NUMBER.fetch_add(1, Ordering::Relaxed),
@@ -864,6 +870,7 @@ fn create_surface(st: &mut WindowState) -> bool {
                     cls,
                 ) != objc::NO
         };
+        st.is_panel = is_panel;
         /*
          * AND A TITLED WINDOW WITH NO MINIMISE BUTTON IS A DIALOG, which catches the ones an
          * application builds itself rather than through NSPanel.
@@ -1006,7 +1013,10 @@ fn wants_alpha(st: &WindowState) -> bool {
     // AND THE WINDOWS WE DRAW A FRAME FOR, which get rounded corners punched out of the same
     // channel. A window with a title bar is one this backend decorates, and macOS rounds all four
     // of its corners.
-    st.level > 0 || st.style_mask & 0x1 != 0
+    // AND A PANEL, which an alert is. Its style mask carries neither the titled bit nor a level,
+    // so it fell through to the opaque clear colour and its rounded corners were filled with that
+    // grey instead of being left empty.
+    st.level > 0 || st.style_mask & 0x1 != 0 || st.is_panel
 }
 
 /// HOW WIDE THE SHADOW IS, in surface pixels around the window.
