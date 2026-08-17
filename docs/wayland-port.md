@@ -9063,3 +9063,39 @@ pixel edge on an app whose three criteria are met. The account so far, all measu
 pixel exact, iTerm2 never fills the block remainder (disassembly and trace agree), the block is
 blitted per cell row source over, every fill is Copy, and the terminal black is a cleared region.
 
+## Swift Publisher: the typesetter stub is the blocker, and making it concrete is not enough
+
+WHAT IS BETTER, and it was not the target. A template preview now RENDERS in the gallery, the Book
+Shop tile drawing its artwork where every tile used to be an empty dashed placeholder. That comes
+from the accumulated fixes, NSTextStorage getting an init and DL_INSERT reading its argument once,
+not from anything done in this rung.
+
+THE DOCUMENT WINDOW STILL DOES NOT OPEN, and the blocker is now named. Choosing a template raises,
+seven times in a run:
+
+    NSInvalidArgumentException: -layoutGlyphsInLayoutManager:... only defined for abstract class.
+    Define -[CCATSTypesetter ...]
+
+which is our NSATSTypesetter stub: the whole implementation lives in a sibling called
+NSTypesetter_concrete, so CCATSTypesetter, the application subclass, inherits only the abstract
+raise.
+
+MAKING IT CONCRETE REMOVES THAT RAISE, seven to zero, and text layout runs for the first time:
+14,381 glyph positions in one run, every one with a valid face, a sane pixel size and a glyph index
+inside num_glyphs. And Swift Publisher then dies, 3 runs of 3, with no captures at all.
+
+WHAT THE DEATH IS NOT. The first crashes were a SIGSEGV inside FreeType on the PREVIEW WORKER thread
+while the main thread laid text out, which is the shared FT_Face race proved earlier by a contention
+counter. So faces were made per thread, and then FreeType libraries per thread as well, since
+FT_New_Face allocates through the library and FreeType does not serialise that. NEITHER CHANGED THE
+RATE: 3 of 3 before, 3 of 3 after. The FT concurrency is real and is NOT what blocks this.
+
+WHAT IT LOOKS LIKE INSTEAD: SIGILL with rip equal to the faulting address, reached through
+dyld_stub_binder from the application, which is the shape of a deliberately trapping stub rather
+than corruption. Something the application only calls once text layout actually runs is not
+implemented. DYLD_BIND_AT_LAUNCH printed nothing, so naming it needs another route.
+
+REVERTED, and verified back at six captures with no crash. A lock was never an option for the FT
+race either: a contended pthread mutex fails in this guest with psynch -111, which is why the fix
+attempted was per thread state rather than a mutex.
+
