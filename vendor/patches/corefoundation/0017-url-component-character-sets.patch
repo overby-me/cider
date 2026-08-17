@@ -1,0 +1,90 @@
+--- a/NSCharacterSet.m
++++ b/NSCharacterSet.m
+@@ -105,6 +105,87 @@
+     return [(NSCharacterSet *)CFCharacterSetCreateWithCharactersInString(kCFAllocatorDefault, (CFStringRef)string) autorelease];
+ }
+ 
++/*
++ * THE URL COMPONENT CHARACTER SETS, which this class did not have at all.
++ *
++ * +[NSCharacterSet URLQueryAllowedCharacterSet] was an unrecognized selector, and the cost was not
++ * a missing feature. Swift Publisher builds a query string when its welcome window CLOSES:
++ *
++ *     -[NSControl mouseDown:] -> performClose: -> -[NSWindow close]
++ *       -> -[CCWellcomeWindowController sendRequestToLoadMainPage] -> parametersString()
++ *          -> +[NSCharacterSet URLQueryAllowedCharacterSet]        <- raised here
++ *
++ * The exception came out through the close, and the very next line in the log is the Choose button
++ * being disabled. So one missing class method took out the template gallery: the button that opens
++ * a document went dead because closing a DIFFERENT window threw.
++ *
++ * THE CONTENTS ARE RFC 3986, which is how Apple documents these. unreserved is ALPHA DIGIT - . _ ~
++ * and sub-delims is ! $ & ( ) * + , ; = and the apostrophe; pchar adds : and @; query and fragment
++ * add / and ?; path adds /; host adds : [ ] for IPv6 literals. ASCII only, as Apple has them, and
++ * written out rather than composed from alphanumericCharacterSet, which includes letters far
++ * outside ASCII and would let through bytes that must be percent encoded.
++ */
++#define CIDER_URL_UNRESERVED \
++    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
++#define CIDER_URL_SUBDELIMS "!$&'()*+,;="
++
++/* Built with plain C and CFString rather than +[NSString stringWithFormat:], because this file is
++ * part of CoreFoundation and must not need Foundation to link. */
++static NSCharacterSet *cider_url_set(const char *extra, NSCharacterSet **cache)
++{
++    if (*cache == nil) {
++        char allowed[256];
++
++        strlcpy(allowed, CIDER_URL_UNRESERVED, sizeof(allowed));
++        strlcat(allowed, CIDER_URL_SUBDELIMS, sizeof(allowed));
++        strlcat(allowed, extra, sizeof(allowed));
++
++        CFStringRef text = CFStringCreateWithCString(kCFAllocatorDefault, allowed,
++                                                     kCFStringEncodingASCII);
++
++        *cache = (NSCharacterSet *) CFCharacterSetCreateWithCharactersInString(
++                kCFAllocatorDefault, text);
++        CFRelease(text);
++    }
++    return *cache;
++}
++
+++ (NSCharacterSet *)URLUserAllowedCharacterSet
++{
++    static NSCharacterSet *cache = nil;
++    return cider_url_set("", &cache);
++}
++
+++ (NSCharacterSet *)URLPasswordAllowedCharacterSet
++{
++    static NSCharacterSet *cache = nil;
++    return cider_url_set("", &cache);
++}
++
+++ (NSCharacterSet *)URLHostAllowedCharacterSet
++{
++    static NSCharacterSet *cache = nil;
++    return cider_url_set(":[]", &cache);
++}
++
+++ (NSCharacterSet *)URLPathAllowedCharacterSet
++{
++    static NSCharacterSet *cache = nil;
++    return cider_url_set(":@/", &cache);
++}
++
+++ (NSCharacterSet *)URLQueryAllowedCharacterSet
++{
++    static NSCharacterSet *cache = nil;
++    return cider_url_set(":@/?", &cache);
++}
++
+++ (NSCharacterSet *)URLFragmentAllowedCharacterSet
++{
++    static NSCharacterSet *cache = nil;
++    return cider_url_set(":@/?", &cache);
++}
++
+ + (id)characterSetWithBitmapRepresentation:(NSData *)data
+ {
+     return [(NSCharacterSet *)CFCharacterSetCreateWithBitmapRepresentation(kCFAllocatorDefault, (CFDataRef)data) autorelease];

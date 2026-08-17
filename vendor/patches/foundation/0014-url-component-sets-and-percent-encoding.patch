@@ -1,0 +1,72 @@
+--- a/include/Foundation/NSCharacterSet.h
++++ b/include/Foundation/NSCharacterSet.h
+@@ -38,6 +38,14 @@
+ - (BOOL)isSupersetOfSet:(NSCharacterSet *)other;
+ - (BOOL)hasMemberInPlane:(uint8_t)plane;
+ 
++/* THE URL COMPONENT SETS, used by stringByAddingPercentEncodingWithAllowedCharacters:. */
+++ (NSCharacterSet *)URLUserAllowedCharacterSet;
+++ (NSCharacterSet *)URLPasswordAllowedCharacterSet;
+++ (NSCharacterSet *)URLHostAllowedCharacterSet;
+++ (NSCharacterSet *)URLPathAllowedCharacterSet;
+++ (NSCharacterSet *)URLQueryAllowedCharacterSet;
+++ (NSCharacterSet *)URLFragmentAllowedCharacterSet;
++
+ @end
+ 
+ @interface NSMutableCharacterSet : NSCharacterSet <NSCopying, NSMutableCopying>
+--- a/src/NSString.m
++++ b/src/NSString.m
+@@ -2486,6 +2486,52 @@
+     return [self stringByReplacingPercentEscapesUsingEncoding: NSUTF8StringEncoding];
+ }
+ 
++/*
++ * THE OTHER HALF OF PERCENT ENCODING, which was missing while stringByRemovingPercentEncoding
++ * right above it was not.
++ *
++ * The cost was not a missing feature. Swift Publisher builds a query string when its WELCOME
++ * WINDOW CLOSES, and the unrecognized selector came out through the close:
++ *
++ *     -[NSControl mouseDown:] -> performClose: -> -[NSWindow close]
++ *       -> -[CCWellcomeWindowController sendRequestToLoadMainPage] -> parametersString()
++ *
++ * and the next thing in the log was the Choose button being disabled, which is how one missing
++ * string method left the template gallery unable to open a document.
++ *
++ * ENCODED FROM THE UTF-8 BYTES, not from the characters. A character outside the allowed set has
++ * every one of its bytes escaped, which is what makes a multi-byte character survive the round
++ * trip; testing membership per byte would ask the set about halves of a character.
++ */
++- (NSString *) stringByAddingPercentEncodingWithAllowedCharacters: (NSCharacterSet *) allowed
++{
++    NSMutableString *result = [NSMutableString stringWithCapacity: [self length]];
++    NSUInteger i, length = [self length];
++    static const char *hex = "0123456789ABCDEF";
++
++    for (i = 0; i < length; i++) {
++        unichar c = [self characterAtIndex: i];
++
++        if (c < 0x80 && [allowed characterIsMember: c]) {
++            [result appendFormat: @"%C", c];
++            continue;
++        }
++
++        /* One character at a time so a surrogate pair is encoded as the whole code point. */
++        NSRange range = [self rangeOfComposedCharacterSequenceAtIndex: i];
++        NSData *utf8 = [[self substringWithRange: range]
++                dataUsingEncoding: NSUTF8StringEncoding];
++        const unsigned char *bytes = (const unsigned char *) [utf8 bytes];
++        NSUInteger j, count = [utf8 length];
++
++        for (j = 0; j < count; j++) {
++            [result appendFormat: @"%%%c%c", hex[(bytes[j] >> 4) & 0xf], hex[bytes[j] & 0xf]];
++        }
++        i += range.length - 1;
++    }
++    return result;
++}
++
+ - (NSString *)stringByAddingPercentEscapesUsingEncoding:(NSStringEncoding)enc
+ {
+     CFStringEncoding cfEnc = CFStringConvertNSStringEncodingToEncoding(enc);
