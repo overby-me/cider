@@ -27,6 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSEPSImageRep.h>
 #import <AppKit/NSGraphicsContextFunctions.h>
 #import <AppKit/NSImage.h>
+#import <string.h>
+#import <dlfcn.h>
 #import <AppKit/NSImageRep.h>
 #import <AppKit/NSPDFImageRep.h>
 #import <AppKit/NSPasteboard.h>
@@ -283,6 +285,526 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
 }
 @end
 
+/*
+ * READING A COMPILED ASSET CATALOG.
+ *
+ * +[NSImage imageNamed:] below searches loose resource files only, so every image an application
+ * ships inside Contents/Resources/Assets.car came back nil. Measured on Swift Publisher that is 143
+ * lookups in one run, and a button with no image draws its title, which is why its whole toolbar
+ * reads Button.
+ *
+ * The format, established by parsing a real catalog rather than from documentation:
+ *
+ *   The container is a BOM store: a big endian header, a block table of offset and length pairs,
+ *   and a variable table naming the interesting blocks. CARHEADER, RENDITIONS, FACETKEYS and
+ *   KEYFORMAT are the ones needed here. Everything INSIDE the blocks is little endian.
+ *
+ *   FACETKEYS is a tree whose key is the name an application asks for and whose value is a PARTIAL
+ *   rendition key: a count followed by attribute and value pairs.
+ *
+ *   RENDITIONS is a tree whose key is a FULL rendition key, one uint16 per attribute in the order
+ *   KEYFORMAT lists them, and whose value starts with ISTC and carries width, height, scale and
+ *   pixel format.
+ *
+ *   Most named renditions are only a few hundred bytes because they are LINKS. A chunk tagged KLNI
+ *   holds a rectangle and the key of another rendition, a PACKED SHEET holding many pieces of
+ *   artwork, and the named image is that rectangle cropped out of the sheet.
+ *
+ *   A sheet body is SEVERAL LZFSE streams laid end to end, each ending with the bvx$ marker, and
+ *   the decoded bytes are rows at a padded stride, so the stride is the decoded size divided by the
+ *   height rather than width times four.
+ *
+ * ONE TRAP: a link key can name an attribute that KEYFORMAT does not list at all, attribute 16 in
+ * the catalog this was written against. Requiring every attribute to be present matches nothing, so
+ * an attribute absent from KEYFORMAT counts as satisfied.
+ *
+ * Only BGRA renditions are turned into images here. GA8 exists in these catalogs too and is not
+ * handled yet, so a name that only has grey renditions still comes back nil.
+ */
+
+static uint32_t _CiderBE32(const uint8_t *p) {
+    return ((uint32_t) p[0] << 24) | ((uint32_t) p[1] << 16) | ((uint32_t) p[2] << 8) | (uint32_t) p[3];
+}
+
+static uint32_t _CiderLE32(const uint8_t *p) {
+    return ((uint32_t) p[3] << 24) | ((uint32_t) p[2] << 16) | ((uint32_t) p[1] << 8) | (uint32_t) p[0];
+}
+
+static uint16_t _CiderLE16(const uint8_t *p) {
+    return (uint16_t) (((uint16_t) p[1] << 8) | (uint16_t) p[0]);
+}
+
+typedef struct {
+    const uint8_t *bytes;
+    size_t length;
+    uint32_t blockCount;
+    uint32_t indexOffset;
+    uint32_t varsOffset;
+} _CiderCar;
+
+static BOOL _CiderCarOpen(NSData *data, _CiderCar *car) {
+    const uint8_t *b = [data bytes];
+
+    if (data == nil || [data length] < 32 || memcmp(b, "BOMStore", 8) != 0)
+        return NO;
+
+    car->bytes = b;
+    car->length = [data length];
+    car->blockCount = _CiderBE32(b + 12);
+    car->indexOffset = _CiderBE32(b + 16);
+    car->varsOffset = _CiderBE32(b + 24);
+
+    return car->indexOffset + 4 <= car->length && car->varsOffset + 4 <= car->length;
+}
+
+static const uint8_t *_CiderCarBlock(_CiderCar *car, uint32_t index, uint32_t *lengthOut) {
+    const uint8_t *table = car->bytes + car->indexOffset;
+    uint32_t count = _CiderBE32(table);
+
+    if (index == 0 || index >= count)
+        return NULL;
+
+    uint32_t offset = _CiderBE32(table + 4 + 8 * index);
+    uint32_t length = _CiderBE32(table + 4 + 8 * index + 4);
+
+    if ((size_t) offset + length > car->length)
+        return NULL;
+    if (lengthOut != NULL)
+        *lengthOut = length;
+
+    return car->bytes + offset;
+}
+
+static uint32_t _CiderCarVariable(_CiderCar *car, const char *wanted) {
+    const uint8_t *p = car->bytes + car->varsOffset;
+    uint32_t count = _CiderBE32(p);
+    size_t namelen = strlen(wanted);
+
+    p += 4;
+    for (uint32_t i = 0; i < count; i++) {
+        uint32_t index = _CiderBE32(p);
+        uint8_t len = p[4];
+        const char *name = (const char *) (p + 5);
+
+        if (len == namelen && memcmp(name, wanted, len) == 0)
+            return index;
+
+        p += 5 + len;
+    }
+
+    return 0;
+}
+
+/* The leaf of a BOM tree, which is where the key and value block indexes live. */
+static const uint8_t *_CiderCarLeaf(_CiderCar *car, const char *variable, uint32_t *countOut) {
+    uint32_t index = _CiderCarVariable(car, variable);
+    uint32_t length = 0;
+    const uint8_t *tree = _CiderCarBlock(car, index, &length);
+
+    if (tree == NULL || length < 21 || memcmp(tree, "tree", 4) != 0)
+        return NULL;
+
+    const uint8_t *path = _CiderCarBlock(car, _CiderBE32(tree + 8), &length);
+
+    if (path == NULL || length < 12)
+        return NULL;
+
+    *countOut = (uint32_t) ((path[2] << 8) | path[3]);
+
+    return path + 12;
+}
+
+static void _CiderCarLeafEntry(const uint8_t *leaf, uint32_t i, uint32_t *valueIndex, uint32_t *keyIndex) {
+    *valueIndex = _CiderBE32(leaf + 8 * i);
+    *keyIndex = _CiderBE32(leaf + 8 * i + 4);
+}
+
+/* The attribute order every full rendition key is written in. */
+static uint32_t _CiderCarKeyFormat(_CiderCar *car, uint32_t *attrs, uint32_t max) {
+    uint32_t length = 0;
+    const uint8_t *kf = _CiderCarBlock(car, _CiderCarVariable(car, "KEYFORMAT"), &length);
+
+    if (kf == NULL || length < 12)
+        return 0;
+
+    uint32_t count = _CiderLE32(kf + 8);
+
+    if (count > max || 12 + 4 * count > length)
+        return 0;
+
+    for (uint32_t i = 0; i < count; i++)
+        attrs[i] = _CiderLE32(kf + 12 + 4 * i);
+
+    return count;
+}
+
+/* Does a full rendition key satisfy a partial one. An attribute the key format does not list at all
+ * cannot be checked and is therefore treated as satisfied; requiring it matches nothing. */
+static BOOL _CiderCarKeyMatches(const uint8_t *key, const uint32_t *attrs, uint32_t attrCount,
+                                const uint16_t *wantAttr, const uint16_t *wantValue, uint32_t wantCount) {
+    for (uint32_t w = 0; w < wantCount; w++) {
+        BOOL found = NO;
+
+        for (uint32_t a = 0; a < attrCount; a++) {
+            if (attrs[a] != wantAttr[w])
+                continue;
+            found = YES;
+            if (_CiderLE16(key + 2 * a) != wantValue[w])
+                return NO;
+            break;
+        }
+
+        (void) found;
+    }
+
+    return YES;
+}
+
+/* Every LZFSE stream in a rendition body, decoded and joined. The streams are laid end to end and
+ * each ends with bvx$, so one decode call over the whole body returns only the first. */
+static NSMutableData *_CiderCarDecodePayload(const uint8_t *csi, uint32_t csiLength) {
+    /* SIX ARGUMENTS, and the last one is the whole point: without the algorithm the callee reads
+     * whatever happened to be in that register, never matches COMPRESSION_LZFSE, and returns zero,
+     * which is indistinguishable from a corrupt stream. */
+    static size_t (*decode)(uint8_t *, size_t, const uint8_t *, size_t, void *, int) = NULL;
+    static size_t (*scratchSize)(int) = NULL;
+    static void *scratch = NULL;
+    static BOOL looked = NO;
+
+    if (!looked) {
+        void *lib = dlopen("/usr/lib/libcompression.dylib", RTLD_LAZY);
+
+        if (lib != NULL) {
+            decode = dlsym(lib, "compression_decode_buffer");
+            scratchSize = dlsym(lib, "compression_decode_scratch_buffer_size");
+        }
+        looked = YES;
+
+        /* A SCRATCH BUFFER OF OUR OWN. Passing NULL is legal and makes lzfse allocate one itself,
+         * which is one more thing that can quietly fail inside a guest; asking for the size and
+         * providing it removes that variable. 0x801 is COMPRESSION_LZFSE. */
+        if (scratchSize != NULL) {
+            size_t need = scratchSize(0x801);
+
+            if (need > 0)
+                scratch = malloc(need);
+        }
+
+        if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL)
+            fprintf(stderr, "CIDER_CAR libcompression %s, decode %s, scratch %p\n",
+                    lib != NULL ? "opened" : "NOT OPENED",
+                    decode != NULL ? "found" : "MISSING", scratch);
+    }
+
+    if (decode == NULL)
+        return nil;
+
+    NSMutableData *out = [NSMutableData data];
+    uint32_t i = 0;
+    uint32_t start = 0;
+    BOOL open = NO;
+
+    while (i + 4 <= csiLength) {
+        const uint8_t *p = csi + i;
+
+        if (p[0] == 'b' && p[1] == 'v' && p[2] == 'x' &&
+            (p[3] == '2' || p[3] == '1' || p[3] == 'n' || p[3] == '-')) {
+            start = i;
+            open = YES;
+        } else if (open && p[0] == 'b' && p[1] == 'v' && p[2] == 'x' && p[3] == '$') {
+            uint32_t length = i + 4 - start;
+            size_t capacity = (size_t) length * 64 + 65536;
+            NSMutableData *chunk = [NSMutableData dataWithLength: capacity];
+            size_t got = decode([chunk mutableBytes], capacity, csi + start, length, scratch, 0x801);
+
+            if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL) {
+                static int said;
+
+                if (said < 4) {
+                    said++;
+                    fprintf(stderr, "CIDER_CAR stream at %u len %u -> %lu bytes\n", start, length,
+                            (unsigned long) got);
+                }
+            }
+            if (got > 0) {
+                [chunk setLength: got];
+                [out appendData: chunk];
+            }
+            open = NO;
+        }
+        i++;
+    }
+
+    return [out length] > 0 ? out : nil;
+}
+
+/* A rendition that is a link says where in a packed sheet its artwork sits, and which sheet. */
+typedef struct {
+    BOOL isLink;
+    uint32_t x, y, width, height;
+    uint16_t attr[16];
+    uint16_t value[16];
+    uint32_t count;
+} _CiderCarLink;
+
+static void _CiderCarReadLink(const uint8_t *csi, uint32_t csiLength, _CiderCarLink *link) {
+    memset(link, 0, sizeof(*link));
+
+    for (uint32_t i = 0; i + 24 <= csiLength; i++) {
+        if (memcmp(csi + i, "KLNI", 4) != 0)
+            continue;
+
+        const uint8_t *p = csi + i;
+
+        link->isLink = YES;
+        link->x = _CiderLE32(p + 8);
+        link->y = _CiderLE32(p + 12);
+        link->width = _CiderLE32(p + 16);
+        link->height = _CiderLE32(p + 20);
+
+        const uint8_t *pairs = p + 26;
+        uint32_t room = csiLength - i - 26;
+
+        while (link->count < 16 && room >= 4) {
+            uint16_t a = _CiderLE16(pairs);
+            uint16_t v = _CiderLE16(pairs + 2);
+
+            if (a == 0)
+                break;
+            link->attr[link->count] = a;
+            link->value[link->count] = v;
+            link->count++;
+            pairs += 4;
+            room -= 4;
+        }
+        return;
+    }
+}
+
+
+/* Find the rendition a key points at, follow a link into its sheet if there is one, and hand back
+ * the artwork as an image. Scale 100 is preferred, since that is what an unscaled screen wants. */
+static NSImage *_CiderCarArtwork(_CiderCar *car, const uint32_t *attrs, uint32_t attrCount,
+                                 const uint8_t *rends, uint32_t rendCount,
+                                 const uint16_t *wantAttr, const uint16_t *wantValue, uint32_t wantCount) {
+    const uint8_t *best = NULL;
+    uint32_t bestLength = 0;
+
+    for (uint32_t i = 0; i < rendCount; i++) {
+        uint32_t vi, ki, klen = 0, vlen = 0;
+
+        _CiderCarLeafEntry(rends, i, &vi, &ki);
+
+        const uint8_t *key = _CiderCarBlock(car, ki, &klen);
+        const uint8_t *val = _CiderCarBlock(car, vi, &vlen);
+
+        if (key == NULL || val == NULL || vlen < 32 || klen < 2 * attrCount)
+            continue;
+        if (memcmp(val, "ISTC", 4) != 0)
+            continue;
+        if (!_CiderCarKeyMatches(key, attrs, attrCount, wantAttr, wantValue, wantCount))
+            continue;
+        if (memcmp(val + 24, "BGRA", 4) != 0)
+            continue;
+
+        uint32_t scale = _CiderLE32(val + 20);
+
+        if (best == NULL || scale == 100) {
+            best = val;
+            bestLength = vlen;
+            if (scale == 100)
+                break;
+        }
+    }
+
+    if (best == NULL) {
+        if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL)
+            fprintf(stderr, "CIDER_CAR no BGRA rendition matched\n");
+        return nil;
+    }
+
+    uint32_t width = _CiderLE32(best + 12);
+    uint32_t height = _CiderLE32(best + 16);
+    uint32_t cropX = 0, cropY = 0;
+    _CiderCarLink link;
+
+    _CiderCarReadLink(best, bestLength, &link);
+
+    const uint8_t *sheet = best;
+    uint32_t sheetLength = bestLength;
+
+    if (link.isLink) {
+        sheet = NULL;
+        for (uint32_t i = 0; i < rendCount; i++) {
+            uint32_t vi, ki, klen = 0, vlen = 0;
+
+            _CiderCarLeafEntry(rends, i, &vi, &ki);
+
+            const uint8_t *key = _CiderCarBlock(car, ki, &klen);
+            const uint8_t *val = _CiderCarBlock(car, vi, &vlen);
+
+            if (key == NULL || val == NULL || vlen < 32 || klen < 2 * attrCount)
+                continue;
+            if (memcmp(val, "ISTC", 4) != 0 || memcmp(val + 24, "BGRA", 4) != 0)
+                continue;
+            if (!_CiderCarKeyMatches(key, attrs, attrCount, link.attr, link.value, link.count))
+                continue;
+
+            sheet = val;
+            sheetLength = vlen;
+            break;
+        }
+
+        if (sheet == NULL)
+            return nil;
+
+        cropX = link.x;
+        cropY = link.y;
+        width = link.width;
+        height = link.height;
+    }
+
+    uint32_t sheetHeight = _CiderLE32(sheet + 16);
+    NSMutableData *pixels = _CiderCarDecodePayload(sheet, sheetLength);
+
+    if (pixels == nil || sheetHeight == 0) {
+        if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL)
+            fprintf(stderr, "CIDER_CAR payload decode failed (link=%d sheetH=%u)\n",
+                    link.isLink, sheetHeight);
+        return nil;
+    }
+
+    /* Rows are padded, so the stride comes from the decoded size rather than from the width. */
+    uint32_t stride = (uint32_t) ([pixels length] / sheetHeight);
+
+    if (stride < (cropX + width) * 4 || (cropY + height) > sheetHeight)
+        return nil;
+
+    NSBitmapImageRep *rep = [[[NSBitmapImageRep alloc]
+            initWithBitmapDataPlanes: NULL
+                          pixelsWide: width
+                          pixelsHigh: height
+                       bitsPerSample: 8
+                     samplesPerPixel: 4
+                            hasAlpha: YES
+                            isPlanar: NO
+                      colorSpaceName: NSDeviceRGBColorSpace
+                         bytesPerRow: width * 4
+                        bitsPerPixel: 32] autorelease];
+
+    if (rep == nil)
+        return nil;
+
+    const uint8_t *src = [pixels bytes];
+    uint8_t *dst = [rep bitmapData];
+
+    for (uint32_t y = 0; y < height; y++) {
+        const uint8_t *in = src + (size_t) (cropY + y) * stride + (size_t) cropX * 4;
+        uint8_t *out = dst + (size_t) y * width * 4;
+
+        for (uint32_t x = 0; x < width; x++) {
+            out[0] = in[2];
+            out[1] = in[1];
+            out[2] = in[0];
+            out[3] = in[3];
+            in += 4;
+            out += 4;
+        }
+    }
+
+    NSImage *image = [[[NSImage alloc] initWithSize: NSMakeSize(width, height)] autorelease];
+
+    [image addRepresentation: rep];
+
+    return image;
+}
+
+/* The whole walk: a name, then the artwork it stands for. */
+static NSImage *_CiderImageFromAssetCatalog(NSString *name) {
+    static NSData *catalog = nil;
+    static BOOL tried = NO;
+
+    if (!tried) {
+        NSString *path = [[NSBundle mainBundle] pathForResource: @"Assets" ofType: @"car"];
+
+        tried = YES;
+        if (path != nil)
+            catalog = [[NSData alloc] initWithContentsOfFile: path];
+    }
+
+    _CiderCar car;
+    BOOL trace = getenv("CIDER_TRACE_IMAGESOURCE") != NULL;
+
+    if (catalog == nil || !_CiderCarOpen(catalog, &car)) {
+        if (trace) {
+            static int said;
+            if (!said++) fprintf(stderr, "CIDER_CAR no catalog (data %s)\n", catalog ? "loaded" : "nil");
+        }
+        return nil;
+    }
+
+    uint32_t attrs[32];
+    uint32_t attrCount = _CiderCarKeyFormat(&car, attrs, 32);
+
+    if (attrCount == 0)
+        return nil;
+
+    uint32_t facetCount = 0;
+    const uint8_t *facets = _CiderCarLeaf(&car, "FACETKEYS", &facetCount);
+    uint32_t rendCount = 0;
+    const uint8_t *rends = _CiderCarLeaf(&car, "RENDITIONS", &rendCount);
+
+    if (facets == NULL || rends == NULL) {
+        if (trace) {
+            static int said;
+            if (!said++) fprintf(stderr, "CIDER_CAR trees facets=%p rends=%p attrs=%u\n",
+                                 (void *) facets, (void *) rends, attrCount);
+        }
+        return nil;
+    }
+    if (trace) {
+        static int said;
+        if (!said++) fprintf(stderr, "CIDER_CAR opened, %u facets, %u renditions, %u attrs\n",
+                             facetCount, rendCount, attrCount);
+    }
+
+    const char *wantName = [name UTF8String];
+    size_t wantLen = strlen(wantName);
+    uint16_t wantAttr[16], wantValue[16];
+    uint32_t wantCount = 0;
+
+    for (uint32_t i = 0; i < facetCount; i++) {
+        uint32_t vi, ki, klen = 0, vlen = 0;
+
+        _CiderCarLeafEntry(facets, i, &vi, &ki);
+
+        const uint8_t *key = _CiderCarBlock(&car, ki, &klen);
+        const uint8_t *val = _CiderCarBlock(&car, vi, &vlen);
+
+        if (key == NULL || val == NULL || vlen < 6)
+            continue;
+        if (klen < wantLen || memcmp(key, wantName, wantLen) != 0 || (klen > wantLen && key[wantLen] != 0))
+            continue;
+
+        uint32_t pairs = _CiderLE16(val + 4);
+
+        for (uint32_t p = 0; p < pairs && wantCount < 16 && 6 + 4 * p + 4 <= vlen; p++) {
+            wantAttr[wantCount] = _CiderLE16(val + 6 + 4 * p);
+            wantValue[wantCount] = _CiderLE16(val + 6 + 4 * p + 2);
+            wantCount++;
+        }
+        break;
+    }
+
+    if (wantCount == 0) {
+        if (trace) fprintf(stderr, "CIDER_CAR no facet named %s\n", wantName);
+        return nil;
+    }
+    if (trace) fprintf(stderr, "CIDER_CAR facet %s has %u attributes\n", wantName, wantCount);
+
+    return _CiderCarArtwork(&car, attrs, attrCount, rends, rendCount, wantAttr, wantValue, wantCount);
+}
+
 @implementation NSImage
 
 + (NSArray *) imageFileTypes {
@@ -404,14 +926,44 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
         }
     }
 
-    /* WHICH NAMES COME BACK EMPTY. A button whose image is nil draws its title instead, so a
-     * toolbar full of the word Button is a list of lookups that failed, and only the names say
-     * where they were supposed to come from. This search reads LOOSE resource files only: an image
-     * that lives in a compiled Assets.car is not found here at all. */
+    /* NOTHING LOOSE ON DISK, SO TRY THE COMPILED CATALOG. Everything above reads resource FILES,
+     * and a modern application ships its artwork in Contents/Resources/Assets.car instead. */
+    /* A ONE SHOT SELF TEST. Whether an application asks for a catalog name at all varies from run
+     * to run, so waiting for one to prove the reader works is waiting on the wrong thing. With the
+     * trace on, ask for a name that is known to be in the Swift Publisher catalog and say what came
+     * back. CIDER_CAR_SELFTEST names it. */
+    if (getenv("CIDER_CAR_SELFTEST") != NULL) {
+        static int ran;
+
+        if (!ran++) {
+            NSString *probeName = [NSString stringWithUTF8String: getenv("CIDER_CAR_SELFTEST")];
+            NSImage *probe = _CiderImageFromAssetCatalog(probeName);
+            NSSize size = probe != nil ? [probe size] : NSMakeSize(0, 0);
+
+            fprintf(stderr, "CIDER_CAR selftest %s -> %s %.0fx%.0f\n", [probeName UTF8String],
+                    probe != nil ? "IMAGE" : "nil", size.width, size.height);
+            fflush(stderr);
+        }
+    }
+
+    BOOL fromCatalog = NO;
+
+    if (image == nil) {
+        image = _CiderImageFromAssetCatalog(name);
+        if (image != nil) {
+            [image setName: name];
+            fromCatalog = YES;
+        }
+    }
+
+    /* WHICH NAMES COME BACK EMPTY, and where the ones that do not came from. A button whose image
+     * is nil draws its title, so a toolbar full of the word Button is a list of lookups that
+     * failed. The three outcomes are worth telling apart: a loose resource file, the compiled asset
+     * catalog, or nothing at all. */
     if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL && getenv("CIDER_TRACE_IMAGESOURCE")[0] != (char) 0) {
         fprintf(stderr, "CIDER_IMAGESOURCE imageNamed %s -> %s\n", [name UTF8String],
-                image != nil ? "found"
-                             : (foundAFile ? "FILE BUT NO DECODER" : "NO FILE AT ALL"));
+                image == nil ? (foundAFile ? "FILE BUT NO DECODER" : "NOTHING")
+                             : (fromCatalog ? "CATALOG" : (foundAFile ? "loose file" : "cache")));
         fflush(stderr);
     }
 
