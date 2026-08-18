@@ -214,6 +214,32 @@ NSInteger NSBitsPerPixelFromDepth(NSWindowDepth depth) {
  * reached. */
 /* THE WHOLE CHAIN AT ONCE. Walking up one frame per run costs a run each time and the app only
  * reaches this point in about half of them, so print every caller above this one in one go. */
+/* WHAT IS ACTUALLY IN THE WINDOW. A screenshot shows a black rectangle and nothing about which
+ * view drew it; this walks the tree once the window is displayed and names every view, its frame,
+ * and any string it can be asked for. CIDER_TRACE_VIEWS. */
+static void _CiderDumpViewTree(NSView *view, int depth)
+{
+    if (view == nil || depth > 12)
+        return;
+
+    NSRect frame = [view frame];
+    NSString *text = nil;
+
+    if ([view respondsToSelector: @selector(stringValue)])
+        text = [(id) view stringValue];
+    else if ([view respondsToSelector: @selector(string)])
+        text = [(id) view string];
+
+    fprintf(stderr, "CIDER_VIEW %*s%s %.0fx%.0f at %.0f,%.0f%s%s\n", depth * 2, "",
+            object_getClassName(view), frame.size.width, frame.size.height,
+            frame.origin.x, frame.origin.y,
+            (text != nil && [text length] > 0) ? " text: " : "",
+            (text != nil && [text length] > 0) ? [text UTF8String] : "");
+
+    for (NSView *child in [view subviews])
+        _CiderDumpViewTree(child, depth + 1);
+}
+
 static void _CiderWindowStack(const char *what)
 {
     if (getenv("CIDER_TRACE_APP") == NULL)
@@ -2363,6 +2389,11 @@ static BOOL _allowsAutomaticWindowTabbing;
 
 - (void) display {
     _CiderWindowNote("display", self);
+    if (getenv("CIDER_TRACE_VIEWS") != NULL) {
+        fprintf(stderr, "CIDER_VIEW tree of %s\n", object_getClassName(self));
+        _CiderDumpViewTree(_backgroundView, 1);
+        fflush(stderr);
+    }
     // FIXME: See Issue #405, display when the window is not visible causes
     // layout problems (maybe the underlying Win32 window doesn't exist and
     // we're not getting resize feedback messages?), so there is a problem. The

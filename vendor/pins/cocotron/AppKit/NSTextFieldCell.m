@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSStringDrawing.h>
 #include <stdlib.h>
 #import <AppKit/NSTextFieldCell.h>
+#import <objc/runtime.h>
 #import <Foundation/NSKeyedArchiver.h>
 
 @implementation NSTextFieldCell
@@ -381,6 +382,18 @@ static void cider_field_editor_is_transparent(NSText *editor) {
 }
 
 - (void) drawInteriorWithFrame: (NSRect) frame inView: (NSView *) control {
+    /* WHAT DOES IT ACTUALLY SAY. A field that paints as a black rectangle cannot be read off a
+     * screenshot, and the string is right here at the moment it is drawn. CIDER_TRACE_TEXT. */
+    if (getenv("CIDER_TRACE_TEXT") != NULL) {
+        NSString *shown = [self stringValue];
+
+        fprintf(stderr, "CIDER_TEXT %s at %.0f,%.0f %.0fx%.0f draws: %s\n",
+                object_getClassName(control), frame.origin.x, frame.origin.y,
+                frame.size.width, frame.size.height,
+                shown != nil ? [shown UTF8String] : "(nil)");
+        fflush(stderr);
+    }
+
     NSRect titleRect = [self titleRectForBounds: frame];
 
     NSAttributedString *drawValue = [self attributedStringValue];
