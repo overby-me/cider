@@ -9646,3 +9646,36 @@ That makes task 118 a sequence rather than a fix: get an LZFSE decoder into the 
 compression_decode_buffer on top of it, then write the CAR reader and hang it off
 +[NSImage imageNamed:] where the loose-file search currently gives up. The parsing half is the easy
 half and is now written down.
+
+### The rendition body, decoded and looked at
+
+The LZFSE decoder from the previous step is enough to get a picture out of a compiled asset catalog,
+and doing that by hand settled the last unknown: what the bytes after the header actually are.
+
+A rendition body is NOT one compressed stream. It is several, laid end to end, each a complete LZFSE
+stream ending in the bvx$ marker, which is why a single lzfse_decode_buffer call over the whole body
+returns only the first chunk and looks wrong. The Swift Publisher rendition that was used as the
+example has four: three of 36,096 bytes decoded and one of 768.
+
+Concatenated they come to 109,056 bytes for an image the header calls 180 by 142 in BGRA, where a
+raw buffer would be 102,240. The difference is the ROW STRIDE: 109,056 is exactly 768 times 142, and
+768 is 180 times 4 rounded up from 720. Each chunk holds whole rows, 47 of them (36,096 divided by
+768), and 47 plus 47 plus 47 plus 1 is the 142 rows of the image. The MLEC header says as much
+before any of this: the field that reads 0x2f is 47, the rows per chunk, and the one after it is the
+first chunk compressed length.
+
+Assembling those rows, taking the first 720 bytes of each and swapping BGRA to RGBA, produces a real
+picture: a grid of grey and white rounded rectangles with green icons down the side, which is Swift
+Publisher artwork. That is the proof that the whole chain is understood, and it was looked at rather
+than checksummed.
+
+FACETKEYS parses the same way and is where the names live: 47 named facets in this catalog,
+including InspectorCornerRadius, ToolbarButtonSingle and ToolbarButtonCentral, three of the names
+that +[NSImage imageNamed:] reports as having no file at all. So the names an application asks for
+really are in there and really do map to renditions.
+
+What is left for the reader is therefore mechanical rather than exploratory: walk FACETKEYS for the
+name, follow it into RENDITIONS, read the ISTC header for width, height and pixel format, decode the
+chunk streams with compression_decode_buffer, and lay the rows out at the stride. Two formats appear
+here, BGRA and GA8, and only 21 of the 205 renditions carry a compressed payload at all; the other
+184 are 334 bytes each whatever their stated size and are not bitmaps.
