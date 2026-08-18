@@ -4,7 +4,7 @@ load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:install.bzl", "prefix_dir", "prefix_gen_dir")
 
-load("//buck/generated:sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
+load("//buck/generated:sdk_headers.bzl", "SDK_ARM", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
 
 # Targets over the nix-pinned upstream trees materialized by
 # scripts/buck-src.nu. The trees themselves are gitignored (content is pinned in
@@ -43,6 +43,11 @@ MIGCOM_FLAGS = [
     "-D__uint16_t=uint16_t",
     "-D__uint64_t=uint64_t",
     "-D_BSD_I386__TYPES_H_",
+    # The arm twin of the line above (task A4): on an aarch64 host the SDK dispatch lands on
+    # arm/_types.h, whose fixed-width typedefs collide with the -D__int64_t glibc mappings
+    # here exactly as i386/_types.h would. Suppress it the same way; both defines are inert
+    # on the arch whose header is never reached.
+    "-D_BSD_ARM__TYPES_H_",
 ]
 
 cc_header_root(
@@ -86,7 +91,9 @@ cc_header_root(
 
 cc_header_root(
     name = "sdk_darling_include",
-    header_map = SDK_MACH | SDK_I386 | SDK_MACHINE | SDK_LIBKERN | SDK_SYS_FOR_MIGCOM,
+    # SDK_ARM beside SDK_I386 (task A6): mach/arm/vm_types.h includes <arm/_types.h>,
+    # so the arm namespace has to be visible wherever the i386 one is.
+    header_map = SDK_MACH | SDK_I386 | SDK_ARM | SDK_MACHINE | SDK_LIBKERN | SDK_SYS_FOR_MIGCOM,
     visibility = ["PUBLIC"],
 )
 
