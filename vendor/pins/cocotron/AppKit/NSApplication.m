@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <stdio.h>
 
 #import <AppKit/NSApplication.h>
+#import <objc/runtime.h>
 #include <objc/runtime.h>
 #include <dlfcn.h>
 #include <execinfo.h>
@@ -782,7 +783,20 @@ static void cider_ensure_finish_launching(NSApplication *self)
     }
 }
 
+/* WHO ENDED THE APPLICATION. MoneyMoney exits cleanly, status 0, right after windowDidLoad, with no
+ * crash and no exception, so either something called -terminate: or -stop:, or the run loop simply
+ * came back. These three lines tell which, and -stop: and -terminate: print who asked. */
+static void _CiderAppNote(const char *what, id sender)
+{
+    if (getenv("CIDER_TRACE_APP") == NULL)
+        return;
+    fprintf(stderr, "CIDER_APP %s sender=%s\n", what,
+            sender ? class_getName([sender class]) : "(nil)");
+    fflush(stderr);
+}
+
 - (void) run {
+    _CiderAppNote("run enter", nil);
     NSAutoreleasePool *pool;
 
     /* WHO STARTED THE LOOP, and whether the delegate was ever told. An application that pumps
@@ -1407,6 +1421,7 @@ static void cider_ensure_finish_launching(NSApplication *self)
 }
 
 - (void) stop: sender {
+    _CiderAppNote("stop", sender);
     /*
      * THE OTHER WAY OUT, and the one left after terminate: was ruled out.
      *
@@ -1444,6 +1459,7 @@ static void cider_ensure_finish_launching(NSApplication *self)
 }
 
 - (void) terminate: sender {
+    _CiderAppNote("terminate", sender);
     /*
      * WHO ASKED TO QUIT, always, not behind a gate.
      *
@@ -1927,12 +1943,19 @@ int NSApplicationMain(int argc, const char *argv[]) {
 
     nibFile = [nibFile stringByDeletingPathExtension];
 
+    /* BRACKETED, because -run is never entered and the application ends with no crash, no exception
+     * and status 0. Either the main nib load does not come back or something after it ends the
+     * process, and only a line on each side can tell those apart. */
+    _CiderAppNote("main nib load enter", nil);
     if (![NSBundle loadNibNamed: nibFile owner: NSApp])
         NSLog(@"Unable to load main nib file %@", nibFile);
+    _CiderAppNote("main nib load leave", nil);
 
     [pool release];
 
+    _CiderAppNote("calling run", nil);
     [NSApp run];
+    _CiderAppNote("run returned", nil);
 
     return 0;
 }

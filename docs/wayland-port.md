@@ -9261,3 +9261,37 @@ The captures are solid black and the application exits cleanly, status 0, right 
 and a pair of TIFF icons. Every fix in this rung moved it further along the same path and none of
 them put a window on the screen, which is what the criteria ask for. That is where it stands.
 
+## CORRECTION: crash=0 from our own tracer was not evidence of no crash
+
+The previous entry reported three runs with no crash after implementing NSMenu minimumWidth, and
+used that as the measurement. It was wrong, and the way it was wrong is worth more than the claim.
+
+cider-crashtrace IS installed in every one of those runs, the log says so, and it DID report the
+earlier failure. It reports nothing now. The kernel disagrees:
+
+    coredumpctl: SIGSEGV present /tmp/cider-appkit-1000/rt/libexec/cider/usr/libexec/cider/mldr
+    Command Line: mldr!/tmp/cider-mm-1000/.../MoneyMoney.app/Contents/MacOS/MoneyMoney
+
+There is a core dump for each of those runs. So MoneyMoney still dies of a segmentation fault, and
+our in-process tracer simply cannot see this one. What the NSMenu fix genuinely did is remove the
+unrecognized selector, which is gone from the logs; it did not stop the application dying.
+
+ASK THE KERNEL, NOT ONLY THE PROCESS. coredumpctl list is the check that would have caught this, and
+it costs nothing.
+
+## Where MoneyMoney actually dies: inside the main nib load
+
+Bracketing the two calls at the end of NSApplicationMain says it outright:
+
+    CIDER_APP main nib load enter        prints
+    CIDER_APP main nib load leave        NEVER prints
+    CIDER_APP calling run                never prints
+
+So [NSBundle loadNibNamed: MainMenu owner: NSApp] does not come back, which is why -run is never
+entered and why nothing ever finishes launching. The window controller work, windowDidLoad and the
+TIFF icons all happen INSIDE that load, and the process is gone before it returns.
+
+gdb on the core cannot name the site: the frames are guest Mach-O and it symbolises none of them.
+That is the next thing to solve, and the honest state is that the application still does not open a
+window and now fails in a way our own instrument does not report.
+
