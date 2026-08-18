@@ -10734,3 +10734,35 @@ the responder chain the same way, so that item is very likely grey there too.
 scripts note: scratchpad/objc-callers.py lists every call site of a selector and names the method
 that contains it, by finding the selref loads rather than disassembling eight megabytes. That is how
 the chain above was read in three commands.
+
+## darling-testsuite as a nix check: yes, and what it would take (task #123)
+
+The upstream suite at github.com/darlinghq/darling-testsuite (rev 82fcb690) is exactly the kind of
+yardstick this port has been missing: about a hundred small programs, one per behaviour, grouped by
+framework, each registered with CTest through add_test, and written to run BOTH on macOS and on a
+compatibility layer so the same case proves the same thing on either side. The harness is MPL-2.0
+and the cases are MIT-0.
+
+Two things make it practical here rather than aspirational.
+
+The cases are plain Objective-C and C for Darwin, which is what our darwin_cc toolchain compiles all
+day. A hand-rolled clang line got one of them through the Foundation headers and stopped only on the
+SDK include ORDER, which the cc_objects macro already gets right; wiring them through BUCK is the
+normal path, not new work.
+
+And running guest binaries under nix already has a home: tests/cider-buck2-smoke.nix boots a NixOS
+VM, starts the container and runs commands in it. That harness exists because the container needs
+privileges a build sandbox does not grant, so a testsuite check reuses it rather than inventing
+anything.
+
+The work is then:
+
+  1. vendor the suite as a pin in nix/submodules.json, materialising into vendor/src like the others
+  2. generate one cc_binary per case from its CMakeLists add_test lines, plus its lib/ harness
+  3. a runner that executes each case in the guest and reports pass/fail by exit code
+  4. begin with the cases needing only libobjc, libc and Foundation, since the MINIMAL prefix is the
+     one that finishes on this machine; add the AppKit cases when the full prefix builds
+
+The reason to want it is that every conclusion in this document so far rests on one application
+behaving or not. A suite that says which APIs match Apple, case by case, is a different and better
+kind of evidence.

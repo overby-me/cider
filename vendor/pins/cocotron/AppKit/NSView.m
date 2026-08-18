@@ -843,6 +843,16 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 }
 
 - (NSScrollView *) enclosingScrollView {
+    /* WHO ASKS FOR THE ENCLOSING SCROLL VIEW. Swift Publisher only ever sizes its document scroll
+     * view inside -[CCMainWindowController updateViews], and that method reaches it through this
+     * call. The caller address therefore says whether updateViews ran at all, which no other
+     * instrument can: every other method it touches belongs to the application. */
+    if (getenv("CIDER_TRACE_ENCLOSING") != NULL) {
+        fprintf(stderr, "CIDER_ENCLOSING %s asked by %p\n", object_getClassName(self),
+                __builtin_return_address(0));
+        fflush(stderr);
+    }
+
     id result = [self superview];
 
     for (; result != nil; result = [result superview])
