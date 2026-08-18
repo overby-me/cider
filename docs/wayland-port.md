@@ -10072,3 +10072,27 @@ out of our own autoresizing, so that is where to look next, and it is a differen
 one this section started with.
 
 MoneyMoney and the iTerm2 session were both re-run on all of these changes and are unchanged.
+
+### After the selection: a scroll view that nobody ever sized
+
+With a page selected the application runs geometry code it had never reached, and it now reports the
+failure itself, with its own file and line:
+
+    *** Warning in class:'CCDocView' selector:'setupGeometryForDisplayCurrentCanvasAndSave
+        PreviouseScrollPosition:' file:'CCDocView.m:1851' - '[[self docView] frame] content NAN'
+
+and the Undefined document type warnings are gone, because the document type is in the page that is
+now selected. The disassembly of that method shows what it computes from: the document view frame,
+the visible rect, and [[self enclosingScrollView] contentSize].
+
+The frame trace explains the NaN one step further back. CCDocScrollView is born 0x0 from
+-[NSScrollView initWithFrame:] and NOTHING EVER SETS ITS FRAME: there is not one setFrame line for
+it in a whole run, only DISPLAY lines that still say frame 0x0. Our scroll view then tiles a
+document view out of a zero content size minus the scroller width, which is where the document view
+got -15x15; autoresizing is now clamped so it comes out 0x15 instead, which is honest and still
+useless, and the application divides by it and gets a size that is not a number.
+
+So the clamp is right and it is not the fix. The question for the next rung is why the document
+scroll view never receives a frame: it is created in code at zero size, and something has to give it
+the room, either the application through a layout method or our own split view and autoresizing
+after it is added.

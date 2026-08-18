@@ -1872,6 +1872,19 @@ static inline void buildTransformsIfNeeded(NSView *self) {
         sizeChanged = YES;
     }
 
+    /*
+     * A FRAME FROM AUTORESIZING IS NEVER NEGATIVE. Each branch above adds a delta, and a superview
+     * that is smaller than the old size it is given makes that delta negative, so a view with a
+     * small or zero width comes out with a negative one: the Swift Publisher document view was
+     * measured going from 0x0 to -15x15 here. macOS clamps instead, and the application then
+     * computes with what it is told, which is how a negative width became a frame of nan by nan
+     * one step later and a canvas that could not paint at all.
+     */
+    if (frame.size.width < 0.0)
+        frame.size.width = 0.0;
+    if (frame.size.height < 0.0)
+        frame.size.height = 0.0;
+
     if (originChanged || sizeChanged)
         [self setFrame: frame];
 }
