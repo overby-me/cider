@@ -182,6 +182,77 @@ NSColor *NSColorGetCatalogColor(NSColorListName catalogName,
     return [self CGColor];
 }
 
+/*
+ * A NAMED COLOUR HAS TO ANSWER WHAT IT IS MADE OF, and this class answered nothing.
+ *
+ * NSColor_catalog implemented conversion, -setFill and -setStroke, and left every component
+ * accessor to the abstract superclass, where -getRed:green:blue:alpha: and -getWhite:alpha: call
+ * NSInvalidAbstractInvocation and RAISE. So an application that reads a system colour apart, which
+ * is an ordinary thing to do when mixing one colour with another, got an exception instead of a
+ * number, and an application that catches it is left with whatever its variables held.
+ *
+ * MoneyMoney reads textBackgroundColor, disabledControlTextColor and windowBackgroundColor and then
+ * builds a colour with colorWithCalibratedRed:green:blue:alpha:; the band it fills came out solid
+ * black, which is what those components are when nothing filled them in.
+ *
+ * Each of these converts first, which is exactly what the colour means: a name resolved through its
+ * catalog and then expressed in the space being asked about.
+ */
+- (void) getRed: (CGFloat *) red
+          green: (CGFloat *) green
+           blue: (CGFloat *) blue
+          alpha: (CGFloat *) alpha
+{
+    if (getenv("CIDER_TRACE_COLOR") != NULL) {
+        static int printed;
+
+        if (printed < 6) {
+            printed++;
+            fprintf(stderr, "CIDER_COLOR catalog %s asked for its components\n",
+                    _colorName != nil ? [_colorName UTF8String] : "(nil)");
+            fflush(stderr);
+        }
+    }
+
+    [[self colorUsingColorSpaceName: NSCalibratedRGBColorSpace] getRed: red
+                                                                 green: green
+                                                                  blue: blue
+                                                                 alpha: alpha];
+}
+
+- (void) getWhite: (CGFloat *) white alpha: (CGFloat *) alpha {
+    [[self colorUsingColorSpaceName: NSCalibratedWhiteColorSpace] getWhite: white
+                                                                    alpha: alpha];
+}
+
+- (void) getHue: (CGFloat *) hue
+     saturation: (CGFloat *) saturation
+     brightness: (CGFloat *) brightness
+          alpha: (CGFloat *) alpha
+{
+    [[self colorUsingColorSpaceName: NSCalibratedRGBColorSpace] getHue: hue
+                                                            saturation: saturation
+                                                            brightness: brightness
+                                                                 alpha: alpha];
+}
+
+- (void) getCyan: (CGFloat *) cyan
+         magenta: (CGFloat *) magenta
+          yellow: (CGFloat *) yellow
+           black: (CGFloat *) black
+           alpha: (CGFloat *) alpha
+{
+    [[self colorUsingColorSpaceName: NSDeviceCMYKColorSpace] getCyan: cyan
+                                                            magenta: magenta
+                                                             yellow: yellow
+                                                              black: black
+                                                              alpha: alpha];
+}
+
+- (CGFloat) alphaComponent {
+    return [_color alphaComponent];
+}
+
 - (void) setFill {
     [_color setFill];
 }

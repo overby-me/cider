@@ -640,8 +640,25 @@ NSUInteger NSUnderlineByWordMask = 0x8000;
 - (NSRect) boundingRectWithSize: (NSSize) size
                         options: (NSStringDrawingOptions) options
 {
-    NSUnimplementedMethod();
-    return NSMakeRect(0, 0, 0, 0);
+    /*
+     * A ZERO RECT HERE IS A LABEL WITH NO HEIGHT, and that is a message nobody ever reads.
+     *
+     * This answered NSZeroRect for every string. An application that sizes a label from its text,
+     * which is the ordinary way to lay out a wrapping message, therefore gave it height zero and
+     * drew nothing, while the box behind it still painted. MoneyMoney shows exactly that: a solid
+     * band with an MMLabel of 327x0 inside it whose text reads that the application file seems to
+     * be damaged.
+     *
+     * -size already measures through NSStringDrawer, so the only thing missing was the constraining
+     * size, which is what makes the difference between one long line and a wrapped paragraph. The
+     * OPTIONS are not honoured: line fragment origin, truncation and the rest change where the
+     * origin sits and how the last line is treated, and this returns a rect at the origin with the
+     * measured size, which is what the common case asks for.
+     */
+    NSStringDrawer *drawer = [NSStringDrawer sharedStringDrawer];
+    NSSize measured = [drawer sizeOfAttributedString: self inSize: size];
+
+    return NSMakeRect(0, 0, measured.width, measured.height);
 }
 
 #pragma mark -
