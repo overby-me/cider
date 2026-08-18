@@ -85,3 +85,7 @@ size_t CGColorSpaceGetNumberOfComponents(CGColorSpaceRef self) {
 CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name) {
     return (CGColorSpaceRef) O2ColorSpaceCreateWithName(name);
 }
+
+CFStringRef CGColorSpaceGetName(CGColorSpaceRef colorSpace) {
+    return O2ColorSpaceGetName((O2ColorSpaceRef)colorSpace);
+}

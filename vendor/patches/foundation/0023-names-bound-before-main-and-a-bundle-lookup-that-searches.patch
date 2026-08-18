@@ -1,0 +1,153 @@
+The names a modern application binds before main, and a bundle lookup that searches.
+
+iA Writer is refused by the loader over five Foundation names it never calls at startup, because
+dyld binds every one of them before the first instruction runs: the three
+NSMetadataQueryDidUpdateNotification userInfo keys, NSUserActivityDocumentURLKey and
+NSMultipleUnderlyingErrorsKey (declared here, defined in the CoreFoundation pin next to
+NSUnderlyingErrorKey). NSEdgeInsetsEqual is a different case: declared in NSGeometry.h since 10.10
+and never defined, so comparing two insets was a link error.
+
+AND ONE REAL BUG, which is what actually got the application past its own +load: +[NSBundle
+bundleWithIdentifier:] only looked in a table of bundles somebody had already created, with a TODO
+saying it should search. A framework asking for ITSELF by identifier is ordinary -- iA Writer does
+it from a +load through +[NSBundle(InterfaceFoundation) interfaceFoundationBundle], which is
+[NSBundle bundleWithIdentifier: @"net.ia.InterfaceFoundation"] -- and it got nil, then inserted that
+nil into an NSMutableSet, which raised before any window existed. +allFrameworks already walks every
+loaded image and registers each framework it finds, so asking it once and looking again answers.
+
+--- a/include/Foundation/NSError.h
++++ b/include/Foundation/NSError.h
+@@ -9,6 +9,7 @@
+ FOUNDATION_EXPORT NSString *const NSOSStatusErrorDomain;
+ FOUNDATION_EXPORT NSString *const NSMachErrorDomain;
+ FOUNDATION_EXPORT NSString *const NSUnderlyingErrorKey;
++FOUNDATION_EXPORT NSString *const NSMultipleUnderlyingErrorsKey;
+ FOUNDATION_EXPORT NSString *const NSLocalizedDescriptionKey;
+ FOUNDATION_EXPORT NSString *const NSLocalizedFailureReasonErrorKey;
+ FOUNDATION_EXPORT NSString *const NSLocalizedRecoverySuggestionErrorKey;
+@@ -32,6 +33,8 @@
+ }
+ 
+ + (id)errorWithDomain:(NSString *)domain code:(NSInteger)code userInfo:(NSDictionary *)dict;
+++ (void)setUserInfoValueProviderForDomain:(NSString *)errorDomain provider:(id (^)(NSError *err, NSString *userInfoKey))provider;
+++ (id (^)(NSError *err, NSString *userInfoKey))userInfoValueProviderForDomain:(NSString *)errorDomain;
+ - (id)initWithDomain:(NSString *)domain code:(NSInteger)code userInfo:(NSDictionary *)dict;
+ - (NSString *)domain;
+ - (NSInteger)code;
+--- a/include/Foundation/NSMetadata.h
++++ b/include/Foundation/NSMetadata.h
+@@ -27,6 +27,9 @@
+ FOUNDATION_EXPORT NSString * const NSMetadataUbiquitousItemPercentDownloadedKey;
+ FOUNDATION_EXPORT NSString * const NSMetadataUbiquitousItemPercentUploadedKey;
+ FOUNDATION_EXPORT NSString * const NSMetadataQueryLocalComputerScope;
++FOUNDATION_EXPORT NSString * const NSMetadataQueryUpdateAddedItemsKey;
++FOUNDATION_EXPORT NSString * const NSMetadataQueryUpdateChangedItemsKey;
++FOUNDATION_EXPORT NSString * const NSMetadataQueryUpdateRemovedItemsKey;
+ 
+ @protocol NSMetadataQueryDelegate <NSObject>
+ @optional
+--- a/include/Foundation/NSUserActivity.h
++++ b/include/Foundation/NSUserActivity.h
+@@ -19,5 +19,9 @@
+ 
+ #import <Foundation/Foundation.h>
+ 
++// The userInfo key an application uses to carry the document a continued activity refers to.
++// Nothing here continues an activity, but the name is bound before main.
++FOUNDATION_EXPORT NSString * const NSUserActivityDocumentURLKey;
++
+ @interface NSUserActivity : NSObject
+ @end
+--- a/src/NSBundle.m
++++ b/src/NSBundle.m
+@@ -254,12 +254,42 @@
+ 
+ + (NSBundle *)bundleWithIdentifier:(NSString *)identifier
+ {
++    if (identifier == nil) {
++        return nil;
++    }
++
+     NSBundle *bundle = nil;
+     @synchronized(bundlesByIdentifier)
+     {
+         bundle = [bundlesByIdentifier[identifier] retain];
+-        // TODO: we should be doing some searching if the bundle is nil
+     }
++
++    if (bundle != nil) {
++        return [bundle autorelease];
++    }
++
++    /*
++     * NOW SEARCH, which the TODO here asked for and which is the difference between an application
++     * starting and not. The table only holds bundles somebody has already created, so an identifier
++     * belonging to a framework the loader mapped but nobody has asked about yet came back nil. A
++     * framework asking for ITSELF this way is ordinary: iA Writer does it from a +load, gets nil,
++     * and inserts that nil into a set, which raises before its first window exists.
++     *
++     * +allFrameworks walks every loaded image and creates a bundle for each framework path, and
++     * each of those registers its own identifier on the way, so the table is complete afterwards
++     * and one repeated lookup answers.
++     */
++    (void)[self allFrameworks];
++
++    @synchronized(bundlesByIdentifier)
++    {
++        bundle = [bundlesByIdentifier[identifier] retain];
++    }
++
++    if (bundle == nil && [[[self mainBundle] bundleIdentifier] isEqualToString: identifier]) {
++        bundle = [[self mainBundle] retain];
++    }
++
+     return [bundle autorelease];
+ }
+ 
+--- a/src/NSGeometry.m
++++ b/src/NSGeometry.m
+@@ -168,6 +168,16 @@
+ 			&& (aSize.height == bSize.height)) ? YES : NO;
+ }
+ 
++/** Returns 'YES' iff all four insets are the same. Declared in NSGeometry.h since 10.10 and
++ * never defined here, which is a link error in any application that compares two insets. */
++BOOL NSEdgeInsetsEqual(NSEdgeInsets aInsets, NSEdgeInsets bInsets)
++{
++	return ((aInsets.top == bInsets.top)
++			&& (aInsets.left == bInsets.left)
++			&& (aInsets.bottom == bInsets.bottom)
++			&& (aInsets.right == bInsets.right)) ? YES : NO;
++}
++
+ /** Returns 'YES' iff aPoint's and bPoint's x- and y-coordinates
+  * are the same. */
+ BOOL NSEqualPoints(NSPoint aPoint, NSPoint bPoint)
+--- a/src/NSMetadata.m
++++ b/src/NSMetadata.m
+@@ -45,6 +45,14 @@
+ NSString * const NSMetadataUbiquitousItemPercentUploadedKey = @"NSMetadataUbiquitousItemPercentUploadedKey";
+ NSString * const NSMetadataQueryLocalComputerScope = @"kMDQueryScopeComputer";
+ 
++// The three userInfo keys of NSMetadataQueryDidUpdateNotification. Nothing posts that
++// notification here, but an application that so much as mentions one of these keys in a compiled
++// file is refused by the loader before main, so the names have to exist. The values are the
++// documented Spotlight ones.
++NSString * const NSMetadataQueryUpdateAddedItemsKey = @"kMDQueryUpdateAddedItems";
++NSString * const NSMetadataQueryUpdateChangedItemsKey = @"kMDQueryUpdateChangedItems";
++NSString * const NSMetadataQueryUpdateRemovedItemsKey = @"kMDQueryUpdateRemovedItems";
++
+ @implementation NSMetadataQuery
+ 
+ - (id)init
+--- a/src/NSUserActivity.m
++++ b/src/NSUserActivity.m
+@@ -21,6 +21,8 @@
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+ 
++NSString * const NSUserActivityDocumentURLKey = @"NSUserActivityDocumentURLKey";
++
+ @implementation NSUserActivity
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

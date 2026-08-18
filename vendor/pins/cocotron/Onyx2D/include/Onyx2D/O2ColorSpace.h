@@ -68,6 +68,7 @@ BOOL O2ColorSpaceIsPlatformRGB(O2ColorSpaceRef self);
 size_t O2ColorSpaceGetNumberOfComponents(O2ColorSpaceRef self);
 
 O2ColorSpaceModel O2ColorSpaceGetModel(O2ColorSpaceRef self);
+CFStringRef O2ColorSpaceGetName(O2ColorSpaceRef self);
 
 - initWithPlatformRGB;
 

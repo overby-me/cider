@@ -76,3 +76,16 @@ CGEventFlags CGEventSourceFlagsState(CGEventSourceStateID stateID) {
 void CGEventSourceSetLocalEventsSuppressionInterval(CGEventSourceRef source, CFTimeInterval seconds) {
     printf("STUB %s\n", __PRETTY_FUNCTION__);
 }
+
+/*
+ * IDLE TIME, WHICH THIS PORT CANNOT MEASURE, so it reports none rather than inventing an amount.
+ * Input arrives from the compositor straight into AppKit as NSEvents; nothing passes through a
+ * CGEvent source, so there is no per-type last-event clock to subtract from. Zero says an event of
+ * that type just happened, so an application that asks "has the user been idle for N seconds"
+ * concludes NO and takes no idle action. The opposite default would dim screens and log people out.
+ */
+CFTimeInterval CGEventSourceSecondsSinceLastEventType(CGEventSourceStateID stateID,
+                                                      CGEventType eventType)
+{
+    return 0.0;
+}

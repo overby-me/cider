@@ -844,6 +844,7 @@ darwin_dylib(
 cc_objects(
     name = "LaunchServices_obj",
     srcs = [
+        "CoreServices/src/LaunchServices/IconsCore.c",
         "CoreServices/src/LaunchServices/LSApplicationProxy.m",
         "CoreServices/src/LaunchServices/LSApplicationWorkspace.m",
         "CoreServices/src/LaunchServices/LSInfo.m",
@@ -3354,6 +3355,7 @@ cc_objects(
     name = "Accelerate_obj",
     srcs = [
         "Accelerate/src/Accelerate.c",
+        "Accelerate/src/vImage.c",
     ],
     compiler_flags = [
         "-DAccelerate_EXPORTS",
@@ -16995,6 +16997,7 @@ cc_objects(
     name = "Combine_obj",
     srcs = [
         "Combine/src/Combine.m",
+        "Combine/src/CombineSymbols.c",
     ],
     compiler_flags = [
         "-DCombine_EXPORTS",

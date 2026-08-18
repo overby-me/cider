@@ -21,6 +21,11 @@
 
 PDFDocumentAttribute const PDFDocumentAuthorAttribute = @"Author";
 PDFDocumentAttribute const PDFDocumentCreationDateAttribute = @"CreationDate";
+// The rest of the document info dictionary keys, spelled as the PDF spec spells them.
+PDFDocumentAttribute const PDFDocumentCreatorAttribute = @"Creator";
+PDFDocumentAttribute const PDFDocumentProducerAttribute = @"Producer";
+PDFDocumentAttribute const PDFDocumentSubjectAttribute = @"Subject";
+PDFDocumentAttribute const PDFDocumentModificationDateAttribute = @"ModDate";
 PDFDocumentAttribute const PDFDocumentKeywordsAttribute = @"Keywords";
 PDFDocumentAttribute const PDFDocumentTitleAttribute = @"Title";
 

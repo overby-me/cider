@@ -24,6 +24,10 @@ typedef NSString *PDFDocumentAttribute;
 
 PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentAuthorAttribute;
 PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentCreationDateAttribute;
+PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentCreatorAttribute;
+PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentProducerAttribute;
+PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentSubjectAttribute;
+PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentModificationDateAttribute;
 PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentKeywordsAttribute;
 PDFKIT_EXPORT PDFDocumentAttribute const PDFDocumentTitleAttribute;
 

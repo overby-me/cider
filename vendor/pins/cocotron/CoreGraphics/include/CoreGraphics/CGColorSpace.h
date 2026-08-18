@@ -67,5 +67,6 @@ COREGRAPHICS_EXPORT CGColorSpaceModel CGColorSpaceGetModel(CGColorSpaceRef self)
 COREGRAPHICS_EXPORT size_t CGColorSpaceGetNumberOfComponents(CGColorSpaceRef self);
 
 COREGRAPHICS_EXPORT CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name);
+COREGRAPHICS_EXPORT CFStringRef CGColorSpaceGetName(CGColorSpaceRef colorSpace);
 
 CF_IMPLICIT_BRIDGING_DISABLED

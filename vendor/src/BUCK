@@ -57606,6 +57606,7 @@ cc_objects(
         "cocotron/AppKit/NSVisualEffectView.m",
         "cocotron/AppKit/NSWindow-Drag.m",
         "cocotron/AppKit/NSModernAppKitAdditions.m",
+        "cocotron/AppKit/CiderModernAppKit.m",
         "cocotron/AppKit/NSWindow.m",
         "cocotron/AppKit/NSWindowAnimationContext.m",
         "cocotron/AppKit/NSWindowController.m",

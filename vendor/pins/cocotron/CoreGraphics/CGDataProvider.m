@@ -42,3 +42,39 @@ CGDataProviderCreateWithData(void *info, const void *data, size_t size,
 COREGRAPHICS_EXPORT CFDataRef CGDataProviderCopyData(CGDataProviderRef self) {
     return (CFDataRef) O2DataProviderCopyData((O2DataProviderRef)self);
 }
+
+/*
+ * A SEQUENTIAL PROVIDER, READ EAGERLY. O2DataProvider is backed by bytes or by an input stream and
+ * has no callback form, so the callbacks are drained here, at creation, into one buffer that the
+ * ordinary byte provider then serves. THE DIFFERENCE FROM APPLE IS THE TIMING, not the data: the
+ * client's getBytes runs during this call rather than while the consumer decodes. That matters
+ * only for a provider whose bytes are not ready yet, and it is stated here rather than hidden.
+ */
+COREGRAPHICS_EXPORT CGDataProviderRef
+CGDataProviderCreateSequential(void *info,
+                               const CGDataProviderSequentialCallbacks *callbacks)
+{
+    if (callbacks == NULL || callbacks->getBytes == NULL) {
+        return NULL;
+    }
+
+    NSMutableData *data = [NSMutableData data];
+    unsigned char chunk[64 * 1024];
+
+    for (;;) {
+        size_t got = callbacks->getBytes(info, chunk, sizeof(chunk));
+        if (got == 0) {
+            break;
+        }
+        if (got > sizeof(chunk)) { // a client that lies about the count would corrupt the heap
+            got = sizeof(chunk);
+        }
+        [data appendBytes: chunk length: got];
+    }
+
+    if (callbacks->releaseInfo != NULL) {
+        callbacks->releaseInfo(info);
+    }
+
+    return (CGDataProviderRef)O2DataProviderCreateWithCFData((CFDataRef)data);
+}

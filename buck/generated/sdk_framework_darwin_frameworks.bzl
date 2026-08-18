@@ -854,6 +854,7 @@ FRAMEWORKS = {
     },
     "Accelerate": {
         "Accelerate/Accelerate.h": "Accelerate/include/Accelerate/Accelerate.h",
+        "Accelerate/vImage.h": "Accelerate/include/Accelerate/vImage.h",
     },
     "Accounts": {
         "Accounts/ACAccount.h": "Accounts/include/Accounts/ACAccount.h",
@@ -5525,6 +5526,7 @@ FRAMEWORKS = {
         "LangAnalysis/LangAnalysis.h": "ApplicationServices/LangAnalysis/include/LangAnalysis/LangAnalysis.h",
     },
     "LaunchServices": {
+        "LaunchServices/IconsCore.h": "CoreServices/include/LaunchServices/IconsCore.h",
         "LaunchServices/LSInfo.h": "CoreServices/include/LaunchServices/LSInfo.h",
         "LaunchServices/LSInfoDeprecated.h": "CoreServices/include/LaunchServices/LSInfoDeprecated.h",
         "LaunchServices/LSOpen.h": "CoreServices/include/LaunchServices/LSOpen.h",

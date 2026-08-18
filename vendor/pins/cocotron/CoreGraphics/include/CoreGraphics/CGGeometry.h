@@ -115,6 +115,7 @@ COREGRAPHICS_EXPORT bool CGRectEqualToRect(CGRect a, CGRect b);
 COREGRAPHICS_EXPORT bool CGRectIsInfinite(CGRect rect);
 
 COREGRAPHICS_EXPORT bool CGRectIsNull(CGRect rect);
+COREGRAPHICS_EXPORT void CGRectDivide(CGRect rect, CGRect *slice, CGRect *remainder, CGFloat amount, CGRectEdge edge);
 
 COREGRAPHICS_EXPORT CGRect CGRectUnion(CGRect a, CGRect b);
 COREGRAPHICS_EXPORT CGRect CGRectIntersection(CGRect a, CGRect b);

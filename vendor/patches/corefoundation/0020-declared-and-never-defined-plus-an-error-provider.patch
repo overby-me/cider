@@ -1,0 +1,336 @@
+Three CoreFoundation functions that were declared and never defined, and an error provider.
+
+CFStringTokenizerCopyBestStringLanguage was COMMENTED OUT with a note that it needs a language
+model. It answers from Unicode script instead, which is a different and smaller question, said so in
+the code: a script that belongs to one language gives the right answer, Latin and Cyrillic get their
+most common one, and a string with no script at all answers NULL as the documentation allows.
+
+CFURLClearResourcePropertyCache and CFURLClearResourcePropertyCacheForKey were missing entirely,
+although the cache they clear is real: every resource property a CFURL answers is kept in its own
+resourceInfo dictionary, and CFURL.h says the client owns that lifetime.
+
+NSMultipleUnderlyingErrorsKey sits next to NSUnderlyingErrorKey, where its singular form already is.
+
+AND +[NSError setUserInfoValueProviderForDomain:provider:], which is not a name but a mechanism: a
+domain registers one block that is asked for a userInfo key when someone wants it, instead of filling
+a dictionary at the moment the error is made. It was an unrecognised selector, and iA Writer calls it
+from a +load, so the application died before its first window with no message beyond the selector.
+Registering is stored per domain under its own lock, and every accessor that reads a specific key now
+asks the provider when the dictionary does not already carry the value.
+
+--- a/CFStringTokenizer.c
++++ b/CFStringTokenizer.c
+@@ -9,6 +9,8 @@
+ #include "CFRuntime.h"
+ #include "CFStringTokenizer.h"
+ #include <unicode/ubrk.h>
++#include <unicode/uscript.h>
++#include <unicode/utf16.h>
+ 
+ #define TYPE_MASK 0x000000FF
+ 
+@@ -134,11 +136,114 @@
+ }
+ 
+ /*
+-This requires a fairly massive database and heuristic modeling of langauge.
++ * THE SCRIPT DECIDES, WHERE THE SCRIPT CAN DECIDE. Apple answers this from a large model of
++ * language; this answers it from Unicode script, which is not the same question and is stated as
++ * such rather than dressed up. Where a script belongs to one language the answer is right (Hangul
++ * is Korean, Thai is Thai, Hiragana is Japanese); where a script carries many languages there is
++ * no honest single answer, so Latin and Cyrillic get their most common one and a string of no
++ * script at all (digits, punctuation, symbols) gets NULL, which callers must already handle.
++ */
++static const char *__CFStringTokenizerLanguageForScript(UScriptCode script) {
++    switch (script) {
++        case USCRIPT_LATIN:       return "en";
++        case USCRIPT_CYRILLIC:    return "ru";
++        case USCRIPT_GREEK:       return "el";
++        case USCRIPT_HEBREW:      return "he";
++        case USCRIPT_ARABIC:      return "ar";
++        case USCRIPT_THAI:        return "th";
++        case USCRIPT_DEVANAGARI:  return "hi";
++        case USCRIPT_HAN:         return "zh";
++        case USCRIPT_HIRAGANA:    return "ja";
++        case USCRIPT_KATAKANA:    return "ja";
++        case USCRIPT_HANGUL:      return "ko";
++        case USCRIPT_ARMENIAN:    return "hy";
++        case USCRIPT_GEORGIAN:    return "ka";
++        case USCRIPT_BENGALI:     return "bn";
++        case USCRIPT_GURMUKHI:    return "pa";
++        case USCRIPT_GUJARATI:    return "gu";
++        case USCRIPT_ORIYA:       return "or";
++        case USCRIPT_TAMIL:       return "ta";
++        case USCRIPT_TELUGU:      return "te";
++        case USCRIPT_KANNADA:     return "kn";
++        case USCRIPT_MALAYALAM:   return "ml";
++        case USCRIPT_SINHALA:     return "si";
++        case USCRIPT_MYANMAR:     return "my";
++        case USCRIPT_KHMER:       return "km";
++        case USCRIPT_LAO:         return "lo";
++        case USCRIPT_TIBETAN:     return "bo";
++        case USCRIPT_ETHIOPIC:    return "am";
++        case USCRIPT_MONGOLIAN:   return "mn";
++        case USCRIPT_THAANA:      return "dv";
++        default:                  return NULL;
++    }
++}
++
+ CFStringRef CFStringTokenizerCopyBestStringLanguage(CFStringRef string, CFRange range) {
++    if (string == NULL) {
++        return NULL;
++    }
++
++    CFIndex length = CFStringGetLength(string);
++    if (range.location < 0 || range.length <= 0 || range.location >= length) {
++        return NULL;
++    }
++    if (range.location + range.length > length) {
++        range.length = length - range.location;
++    }
++
++    UChar stack_text[BUFFER_SIZE] = { 0 };
++    UChar *text = &stack_text[0];
++    if (range.length > BUFFER_SIZE) {
++        text = malloc(range.length * sizeof(UChar));
++        if (text == NULL) {
++            return NULL;
++        }
++    }
++    CFStringGetCharacters(string, range, (UniChar *)text);
++
++    // Count code points per script, then take the most frequent one that names a language. Common
++    // and inherited characters (spaces, digits, quotation marks) are deliberately not counted:
++    // they appear in every language and would otherwise win on any short string.
++    CFIndex counts[USCRIPT_CODE_LIMIT] = { 0 };
++    CFIndex i = 0;
++    while (i < range.length) {
++        UChar32 c = 0;
++        U16_NEXT(text, i, range.length, c);
++
++        UErrorCode err = U_ZERO_ERROR;
++        UScriptCode script = uscript_getScript(c, &err);
++        if (U_FAILURE(err) || script <= USCRIPT_INHERITED || script >= USCRIPT_CODE_LIMIT) {
++            continue;
++        }
++        counts[script]++;
++    }
++
++    if (text != &stack_text[0]) {
++        free(text);
++    }
++
++    // Japanese first: a Japanese sentence is mostly Han by count, so the plain maximum would call
++    // it Chinese. Any kana at all settles it.
++    if (counts[USCRIPT_HIRAGANA] > 0 || counts[USCRIPT_KATAKANA] > 0) {
++        return CFStringCreateWithCString(kCFAllocatorDefault, "ja", kCFStringEncodingASCII);
++    }
++
++    UScriptCode best = USCRIPT_INVALID_CODE;
++    CFIndex bestCount = 0;
++    for (UScriptCode script = (UScriptCode)(USCRIPT_INHERITED + 1); script < USCRIPT_CODE_LIMIT; script++) {
++        if (counts[script] > bestCount) {
++            best = script;
++            bestCount = counts[script];
++        }
++    }
++
++    const char *language = (bestCount > 0) ? __CFStringTokenizerLanguageForScript(best) : NULL;
++    if (language == NULL) {
++        return NULL;
++    }
+ 
++    return CFStringCreateWithCString(kCFAllocatorDefault, language, kCFStringEncodingASCII);
+ }
+-*/
+ 
+ void CFStringTokenizerSetString(CFStringTokenizerRef tokenizer, CFStringRef string, CFRange range) {
+ 
+--- a/NSError.m
++++ b/NSError.m
+@@ -9,6 +9,7 @@
+ #import <Foundation/NSError_Private.h>
+ 
+ #import <Foundation/NSDictionary.h>
++#import <pthread.h>
+ #import "ForFoundationOnly.h"
+ #import "NSObjectInternal.h"
+ 
+@@ -22,6 +23,9 @@
+ NSString *const NSOSStatusErrorDomain = @"NSOSStatusErrorDomain";
+ NSString *const NSMachErrorDomain = @"NSMachErrorDomain";
+ NSString *const NSUnderlyingErrorKey = @"NSUnderlyingError";
++// The plural form, for an error that wraps several: an array under one key instead of one error
++// under NSUnderlyingErrorKey. Nothing here populates it; the name is bound before main.
++NSString *const NSMultipleUnderlyingErrorsKey = @"NSMultipleUnderlyingErrorsKey";
+ NSString *const NSLocalizedDescriptionKey = @"NSLocalizedDescription";
+ NSString *const NSLocalizedFailureReasonErrorKey = @"NSLocalizedFailureReason";
+ NSString *const NSLocalizedRecoverySuggestionErrorKey = @"NSLocalizedRecoverySuggestion";
+@@ -36,6 +40,19 @@
+ 
+ static NSError *_outOfmemoryError = nil;
+ 
++/*
++ * USER INFO VALUE PROVIDERS, which iA Writer registers from a +load method and which every modern
++ * framework that defines an error domain uses: instead of filling a userInfo dictionary at the
++ * moment an error is made, a domain registers one block that is asked for a key when someone wants
++ * it. Registering was an unrecognised selector here, and an unrecognised selector in +load is a
++ * process that dies before its first window.
++ *
++ * The registry is a dictionary keyed by domain, guarded by its own lock because a provider can be
++ * registered from any thread while errors are being read on another.
++ */
++static NSMutableDictionary *_userInfoValueProviders = nil;
++static pthread_mutex_t _userInfoValueProviderLock = PTHREAD_MUTEX_INITIALIZER;
++
+ @implementation NSError
+ 
+ + (void)initialize
+@@ -51,6 +68,58 @@
+     return _outOfmemoryError;
+ }
+ 
+++ (void)setUserInfoValueProviderForDomain:(NSString *)errorDomain provider:(id (^)(NSError *err, NSString *userInfoKey))provider
++{
++    if (errorDomain == nil)
++    {
++        return;
++    }
++
++    pthread_mutex_lock(&_userInfoValueProviderLock);
++
++    if (_userInfoValueProviders == nil)
++    {
++        _userInfoValueProviders = [[NSMutableDictionary alloc] init];
++    }
++
++    if (provider != NULL)
++    {
++        // Copy the block: a stack block registered from +load is gone by the time anyone asks.
++        id copied = [(id)provider copy];
++        [_userInfoValueProviders setObject:copied forKey:errorDomain];
++        [copied release];
++    }
++    else
++    {
++        [_userInfoValueProviders removeObjectForKey:errorDomain];
++    }
++
++    pthread_mutex_unlock(&_userInfoValueProviderLock);
++}
++
+++ (id (^)(NSError *err, NSString *userInfoKey))userInfoValueProviderForDomain:(NSString *)errorDomain
++{
++    if (errorDomain == nil)
++    {
++        return NULL;
++    }
++
++    pthread_mutex_lock(&_userInfoValueProviderLock);
++    id provider = [[[_userInfoValueProviders objectForKey:errorDomain] retain] autorelease];
++    pthread_mutex_unlock(&_userInfoValueProviderLock);
++
++    return provider;
++}
++
++// Ask the domain's provider for one key. Every accessor below goes through this when the userInfo
++// dictionary does not already carry the value, which is the whole point of the mechanism.
++- (id)_ciderProvidedValueForKey:(NSString *)key
++{
++    id (^provider)(NSError *, NSString *) = [NSError userInfoValueProviderForDomain:[self domain]];
++
++    return (provider != NULL) ? provider(self, key) : nil;
++}
++
+ - (CFTypeID)_cfTypeID
+ {
+     return CFErrorGetTypeID();
+@@ -101,6 +170,11 @@
+ 
+     if (desc == nil)
+     {
++        desc = [[self _ciderProvidedValueForKey:NSLocalizedDescriptionKey] copy];
++    }
++
++    if (desc == nil)
++    {
+         desc = (NSString *)_CFErrorCreateLocalizedDescription((CFErrorRef)self);
+         if (desc == nil)
+         {
+@@ -113,27 +187,37 @@
+ 
+ - (NSString *)localizedFailureReason
+ {
+-    return [self userInfo][NSLocalizedFailureReasonErrorKey];
++    NSString *reason = [self userInfo][NSLocalizedFailureReasonErrorKey];
++
++    return (reason != nil) ? reason : [self _ciderProvidedValueForKey:NSLocalizedFailureReasonErrorKey];
+ }
+ 
+ - (NSString *)localizedRecoverySuggestion
+ {
+-    return [self userInfo][NSLocalizedRecoverySuggestionErrorKey];
++    NSString *suggestion = [self userInfo][NSLocalizedRecoverySuggestionErrorKey];
++
++    return (suggestion != nil) ? suggestion : [self _ciderProvidedValueForKey:NSLocalizedRecoverySuggestionErrorKey];
+ }
+ 
+ - (NSArray *)localizedRecoveryOptions
+ {
+-    return [self userInfo][NSLocalizedRecoveryOptionsErrorKey];
++    NSArray *options = [self userInfo][NSLocalizedRecoveryOptionsErrorKey];
++
++    return (options != nil) ? options : [self _ciderProvidedValueForKey:NSLocalizedRecoveryOptionsErrorKey];
+ }
+ 
+ - (id)recoveryAttempter
+ {
+-    return [self userInfo][NSRecoveryAttempterErrorKey];
++    id attempter = [self userInfo][NSRecoveryAttempterErrorKey];
++
++    return (attempter != nil) ? attempter : [self _ciderProvidedValueForKey:NSRecoveryAttempterErrorKey];
+ }
+ 
+ - (NSString *)helpAnchor
+ {
+-    return [self userInfo][NSHelpAnchorErrorKey];
++    NSString *anchor = [self userInfo][NSHelpAnchorErrorKey];
++
++    return (anchor != nil) ? anchor : [self _ciderProvidedValueForKey:NSHelpAnchorErrorKey];
+ }
+ 
+ - (id)copyWithZone:(NSZone *)zone
+--- a/NSURL.m
++++ b/NSURL.m
+@@ -965,6 +965,31 @@
+     return success;
+ }
+ 
++// THE CACHE IS REAL HERE, so clearing it is real too. Every resource property a CFURL answers is
++// kept in the per-URL resourceInfo dictionary until the client drops it, and CFURL.h says the
++// client has complete control over that lifetime. Both of these were declared and never defined.
++void CFURLClearResourcePropertyCacheForKey(CFURLRef url, CFStringRef key)
++{
++    CFMutableDictionaryRef resourceInfo = CFURLResourceInfo(url);
++
++    pthread_mutex_lock(&resInfoLock);
++    CFDictionaryRemoveValue(resourceInfo, key);
++    pthread_mutex_unlock(&resInfoLock);
++
++    CFURLResourceInfoRelease(resourceInfo);
++}
++
++void CFURLClearResourcePropertyCache(CFURLRef url)
++{
++    CFMutableDictionaryRef resourceInfo = CFURLResourceInfo(url);
++
++    pthread_mutex_lock(&resInfoLock);
++    CFDictionaryRemoveAllValues(resourceInfo);
++    pthread_mutex_unlock(&resInfoLock);
++
++    CFURLResourceInfoRelease(resourceInfo);
++}
++
+ CFDataRef CFURLCreateBookmarkDataFromFile(CFAllocatorRef allocator, CFURLRef fileURL, CFErrorRef *errorRef)
+ {
+ #warning TODO: FIXME

@@ -7,6 +7,7 @@ FRAMEWORKS = {
     "AppKit": {
         "AppKit/AppKit.h": "cocotron/AppKit/include/AppKit/AppKit.h",
         "AppKit/AppKitExport.h": "cocotron/AppKit/include/AppKit/AppKitExport.h",
+        "AppKit/CiderModernAppKit.h": "cocotron/AppKit/include/AppKit/CiderModernAppKit.h",
         "AppKit/NSATSTypesetter.h": "cocotron/AppKit/include/AppKit/NSATSTypesetter.h",
         "AppKit/NSAccessibility.h": "cocotron/AppKit/include/AppKit/NSAccessibility.h",
         "AppKit/NSAccessibilityConstants.h": "cocotron/AppKit/include/AppKit/NSAccessibilityConstants.h",

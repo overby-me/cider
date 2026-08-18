@@ -278,6 +278,83 @@ CGRect CGRectOffset(CGRect rect, CGFloat dx, CGFloat dy) {
     return rect;
 }
 
+/*
+ * SLICE A RECT OFF ONE EDGE. Both outputs are written even when the amount is larger than the rect
+ * or the rect is null, which is what the documentation promises and what a caller that passes two
+ * uninitialised rects depends on.
+ */
+void CGRectDivide(CGRect rect, CGRect *slice, CGRect *remainder, CGFloat amount,
+                  CGRectEdge edge)
+{
+    CGRect s = CGRectNull;
+    CGRect r = CGRectNull;
+
+    if (!CGRectIsNull(rect)) {
+        // Standardize by hand: a negative extent has to become a positive one before an edge means
+        // anything, and cocotron has no CGRectStandardize to call.
+        if (rect.size.width < 0.0) {
+            rect.origin.x += rect.size.width;
+            rect.size.width = -rect.size.width;
+        }
+        if (rect.size.height < 0.0) {
+            rect.origin.y += rect.size.height;
+            rect.size.height = -rect.size.height;
+        }
+
+        if (amount < 0.0) {
+            amount = 0.0;
+        }
+
+        switch (edge) {
+
+        case CGRectMinXEdge:
+            if (amount > rect.size.width) {
+                amount = rect.size.width;
+            }
+            s = CGRectMake(rect.origin.x, rect.origin.y, amount, rect.size.height);
+            r = CGRectMake(rect.origin.x + amount, rect.origin.y,
+                           rect.size.width - amount, rect.size.height);
+            break;
+
+        case CGRectMinYEdge:
+            if (amount > rect.size.height) {
+                amount = rect.size.height;
+            }
+            s = CGRectMake(rect.origin.x, rect.origin.y, rect.size.width, amount);
+            r = CGRectMake(rect.origin.x, rect.origin.y + amount,
+                           rect.size.width, rect.size.height - amount);
+            break;
+
+        case CGRectMaxXEdge:
+            if (amount > rect.size.width) {
+                amount = rect.size.width;
+            }
+            s = CGRectMake(rect.origin.x + rect.size.width - amount, rect.origin.y,
+                           amount, rect.size.height);
+            r = CGRectMake(rect.origin.x, rect.origin.y,
+                           rect.size.width - amount, rect.size.height);
+            break;
+
+        case CGRectMaxYEdge:
+            if (amount > rect.size.height) {
+                amount = rect.size.height;
+            }
+            s = CGRectMake(rect.origin.x, rect.origin.y + rect.size.height - amount,
+                           rect.size.width, amount);
+            r = CGRectMake(rect.origin.x, rect.origin.y,
+                           rect.size.width, rect.size.height - amount);
+            break;
+        }
+    }
+
+    if (slice != NULL) {
+        *slice = s;
+    }
+    if (remainder != NULL) {
+        *remainder = r;
+    }
+}
+
 bool CGRectIsEmpty(CGRect rect) {
     return ((rect.size.width == 0) && (rect.size.height == 0)) ? TRUE : FALSE;
 }

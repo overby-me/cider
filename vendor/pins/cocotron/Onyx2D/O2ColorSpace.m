@@ -141,6 +141,7 @@ O2ColorSpaceRef O2ColorSpaceCreateWithName(CFStringRef name) {
     if (CFStringCompare(name, kO2ColorSpaceDisplayP3, 0) == kCFCompareEqualTo) {
         O2ColorSpaceRef cs = [[O2ColorSpace alloc] init];
         cs->_type = kO2ColorSpaceModelRGB;
+        cs->_name = kO2ColorSpaceDisplayP3;
         return cs;
     }
     /*
@@ -158,15 +159,21 @@ O2ColorSpaceRef O2ColorSpaceCreateWithName(CFStringRef name) {
      */
     if (CFStringCompare(name, kO2ColorSpaceGenericGray, 0) == kCFCompareEqualTo ||
         CFStringCompare(name, kO2ColorSpaceGenericGrayGamma2_2, 0) == kCFCompareEqualTo) {
-        return [[O2ColorSpace alloc] initWithDeviceGray];
+        O2ColorSpaceRef cs = [[O2ColorSpace alloc] initWithDeviceGray];
+        cs->_name = (CFStringRef) [(id) name copy];
+        return cs;
     }
     if (CFStringCompare(name, kO2ColorSpaceGenericRGB, 0) == kCFCompareEqualTo ||
         CFStringCompare(name, kO2ColorSpaceGenericRGBLinear, 0) == kCFCompareEqualTo ||
         CFStringCompare(name, kO2ColorSpaceAdobeRGB1998, 0) == kCFCompareEqualTo) {
-        return [[O2ColorSpace alloc] initWithDeviceRGB];
+        O2ColorSpaceRef cs = [[O2ColorSpace alloc] initWithDeviceRGB];
+        cs->_name = (CFStringRef) [(id) name copy];
+        return cs;
     }
     if (CFStringCompare(name, kO2ColorSpaceGenericCMYK, 0) == kCFCompareEqualTo) {
-        return [[O2ColorSpace alloc] initWithDeviceCMYK];
+        O2ColorSpaceRef cs = [[O2ColorSpace alloc] initWithDeviceCMYK];
+        cs->_name = (CFStringRef) [(id) name copy];
+        return cs;
     }
 
     printf("unknown color space name\n");
@@ -203,6 +210,13 @@ size_t O2ColorSpaceGetNumberOfComponents(O2ColorSpaceRef self) {
 
 O2ColorSpaceModel O2ColorSpaceGetModel(O2ColorSpaceRef self) {
     return self->_type;
+}
+
+// THE NAME ONLY IF IT WAS CREATED FROM ONE. A device space made directly has no name and answers
+// NULL, which is what Apple documents; a named space now keeps the name it was asked for rather
+// than dropping it, so a caller can read back what it created.
+CFStringRef O2ColorSpaceGetName(O2ColorSpaceRef self) {
+    return (self != NULL) ? self->_name : NULL;
 }
 
 - (BOOL) isEqualToColorSpace: (O2ColorSpaceRef) other {

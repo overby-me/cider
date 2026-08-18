@@ -48,10 +48,10 @@
          *lastImplicitRemovalInfo = saved;
      }
      [self.relationshipProperty object:object didRemoveObservance:observance recurse:shouldRecurse];
-@@ -152,7 +175,48 @@
+@@ -151,7 +174,48 @@
+         additionInfoPtr->observance = observance;
  
          NSObject *nextObject = [object valueForKey:self.relationshipKey];
- 
 -        [nextObject addObserver:observance forKeyPath:self.keyPathFromRelatedObject options:newOptions context:newContext];
 +        /*
 +         * A COLLECTION IN THE MIDDLE OF A KEY PATH IS NOT A LINK YOU CAN OBSERVE.

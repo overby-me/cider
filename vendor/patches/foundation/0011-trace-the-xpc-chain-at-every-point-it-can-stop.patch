@@ -42,11 +42,10 @@
  @implementation _NSXPCConnectionExportInfo
  @synthesize exportedObject = _exportedObject;
  @synthesize exportedInterface = _exportedInterface;
-@@ -215,6 +244,14 @@
-         xpc_type_t type = xpc_get_type(message);
+@@ -216,6 +245,14 @@
  
          os_log_debug(nsxpc_get_log(), "Received message from peer: %@", message);
-+
+ 
 +        if (cider_trace_xpc()) {
 +            fprintf(stderr, "CIDER_XPCRECV pid=%d service=%s type=%s\n", (int) getpid(),
 +                    [_serviceName UTF8String] ?: "(none)",
@@ -54,9 +53,10 @@
 +                            : (type == XPC_TYPE_ERROR) ? "error" : "other");
 +            fflush(stderr);
 +        }
- 
++
          if (type == XPC_TYPE_DICTIONARY) {
              NSXPCConnectionMessageOptions flags = xpc_dictionary_get_uint64(message, "f");
+ 
 @@ -610,7 +647,7 @@
                       * not a block, and the nil check above cannot catch that. Say what the
                       * signature claims and what was actually fetched, since a misread parameter
@@ -66,11 +66,10 @@
                          fprintf(stderr, "CIDER_XPCSEND sel=%s params=%lu idx=%lu type=%s block=%p frameLen=%lu\n",
                                  sel_getName(selector), (unsigned long) parameterCount,
                                  (unsigned long) (i + 2), paramType, (void *) block,
-@@ -799,6 +836,17 @@
-             xpc_type_t type = xpc_get_type(reply);
+@@ -800,6 +837,17 @@
  
              os_log_debug(nsxpc_get_log(), "recevied reply for sequence %lu with raw XPC content: %@", (unsigned long)sequence, reply);
-+
+ 
 +            /* A REPLY DOES NOT COME THROUGH THE EVENT HANDLER, which is why CIDER_XPCRECV is silent
 +             * on the sending side even when everything works: this is send_message_with_reply, and
 +             * the answer arrives here instead. Traced separately so that silence can be read. */
@@ -81,9 +80,10 @@
 +                                : (type == XPC_TYPE_ERROR) ? "error" : "other");
 +                fflush(stderr);
 +            }
- 
++
              // alright, we're done with this reply sequence
              [_expectedReplies removeProgressSequence: sequence];
+ 
 @@ -923,6 +971,14 @@
  
      os_log_debug(nsxpc_get_log(), "decoding and invoking message with flags %lu and raw XPC content %@", (unsigned long)flags, event);
@@ -99,19 +99,19 @@
      if (!exportedObject || !interface) {
          // bad proxy number; invalidate this connection (the peer probably has outdated info)
          os_log_fault(nsxpc_get_log(), "no exported interface or object was found for the given proxy number (%lu)", (unsigned long)proxyNumber);
-@@ -940,6 +996,12 @@
-                                interface: interface];
+@@ -941,6 +997,12 @@
  
      os_log_debug(nsxpc_get_log(), "decoded invocation %@ with signature %@ and selector %s", invocation, signature, sel_getName(selector));
-+
+ 
 +    if (cider_trace_xpc()) {
 +        fprintf(stderr, "CIDER_XPCINVOKE pid=%d decoded sel=%s invocation=%p\n", (int) getpid(),
 +                selector ? sel_getName(selector) : "(nil)", (void *) invocation);
 +        fflush(stderr);
 +    }
- 
++
      // if they expect a reply, there's more work
      if (flags & NSXPCConnectionMessageOptionsExpectsReply) {
+         NSUInteger sequence = xpc_dictionary_get_uint64(event, "sequence");
 @@ -1039,6 +1101,12 @@
                                      [encoder release];
                                  }
@@ -125,12 +125,10 @@
                                  xpc_connection_send_message(_xpcConnection, reply);
                              }];
                          }) autorelease];
-@@ -1097,6 +1165,33 @@
- 
-     if (!invocation) {
+@@ -1099,6 +1167,33 @@
          [NSException raise: NSInvalidArgumentException format: @"Failed to decode incoming reply invocation"];
-+    }
-+
+     }
+ 
 +    /* WHAT SURVIVED THE ROUND TRIP. The reply arriving proves only that a dictionary came back; it
 +     * says nothing about whether the object inside it decoded into anything usable, which is
 +     * exactly the difference between an image and a grey placeholder. */
@@ -156,15 +154,15 @@
 +        }
 +        fprintf(stderr, "\n");
 +        fflush(stderr);
-     }
- 
++    }
++
      invocation.target = replyInfo.replyBlock;
-@@ -1259,9 +1354,22 @@
-     NSXPCConnection* peer = [[NSXPCConnection alloc] _initWithPeerConnection: connection name: self->_serviceName options: 0];
+ 
+     _CFSetTSD(__CFTSDKeyNSXPCCurrentConnection, self, NULL);
+@@ -1260,9 +1355,20 @@
      id<NSXPCListenerDelegate> delegate = self.delegate;
      BOOL acceptIt = NO;
--    os_log_debug(nsxpc_get_log(), "received new peer connection from PID %u, EUID %u, EGID %u", peer.processIdentifier, peer.effectiveUserIdentifier, peer.effectiveGroupIdentifier);    if (delegate && [delegate respondsToSelector: @selector(listener:shouldAcceptNewConnection:)]) {
-+    os_log_debug(nsxpc_get_log(), "received new peer connection from PID %u, EUID %u, EGID %u", peer.processIdentifier, peer.effectiveUserIdentifier, peer.effectiveGroupIdentifier);
+     os_log_debug(nsxpc_get_log(), "received new peer connection from PID %u, EUID %u, EGID %u", peer.processIdentifier, peer.effectiveUserIdentifier, peer.effectiveGroupIdentifier);
 +    if (cider_trace_xpc()) {
 +        fprintf(stderr, "CIDER_XPCPEER pid=%d service=%s delegate=%s responds=%d\n", (int) getpid(),
 +                [self->_serviceName UTF8String] ?: "(none)",
@@ -172,15 +170,13 @@
 +                (int) [delegate respondsToSelector: @selector(listener:shouldAcceptNewConnection:)]);
 +        fflush(stderr);
 +    }
-+    if (delegate && [delegate respondsToSelector: @selector(listener:shouldAcceptNewConnection:)]) {
+     if (delegate && [delegate respondsToSelector: @selector(listener:shouldAcceptNewConnection:)]) {
          acceptIt = [delegate listener: self shouldAcceptNewConnection: peer];
--    }    if (!acceptIt) {
-+    }
+     }
 +    if (cider_trace_xpc()) {
 +        fprintf(stderr, "CIDER_XPCPEER pid=%d accepted=%d\n", (int) getpid(), (int) acceptIt);
 +        fflush(stderr);
 +    }
-+    if (!acceptIt) {
+     if (!acceptIt) {
          os_log_debug(nsxpc_get_log(), "delegate refused connection (or lacked the necessary method to make that decision); invalidating peer connection");
          [peer invalidate];
-     }
