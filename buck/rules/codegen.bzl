@@ -8,7 +8,6 @@
 # which stays visible in `buck2 log what-ran`.
 
 load("//buck/rules:inproc.bzl", "InProcInfo")
-
 load(
     ":cc.bzl",
     "CcLibInfo",
@@ -19,6 +18,10 @@ load(
     "stage_include_root",
 )
 load("@toolchains//:cc.bzl", "CcToolchainInfo")
+
+# The guest arch (docs/plan-aarch64.md, D2): same key the toolchain reads, so MIG and the
+# preprocessor runs target the arch every guest compile does.
+_GUEST_TRIPLE = read_root_config("cider", "guest_arch", "x86_64") + "-apple-darwin20"
 
 # ---------------------------------------------------------------------------
 # bison / flex
@@ -293,7 +296,7 @@ mig_gen = rule(
         "alias_links": attrs.dict(attrs.string(), attrs.string(), default = {}),
         # Which of those alias_links are exported as SOURCES, through [alias] (see above).
         "alias_srcs": attrs.list(attrs.string(), default = []),
-        "arch": attrs.string(default = "x86_64"),
+        "arch": attrs.string(default = read_root_config("cider", "guest_arch", "x86_64")),
         "compiler_flags": attrs.list(attrs.string(), default = []),
         # Generated files (relative to the output dir) exported as sources, for
         # a consumer to compile via cc_objects(gen_srcs = ...).
@@ -315,7 +318,7 @@ mig_gen = rule(
         "server_srcs": attrs.list(attrs.string(), default = []),
         "server_suffix": attrs.string(default = "Server.c"),
         "sheader_suffix": attrs.string(default = "Server.h"),
-        "target": attrs.string(default = "x86_64-apple-darwin20"),
+        "target": attrs.string(default = _GUEST_TRIPLE),
         "user_suffix": attrs.string(default = "User.c"),
         # Generated files exported through the [xtrace] subtarget (see above).
         "xtrace_srcs": attrs.list(attrs.string(), default = []),
@@ -597,7 +600,7 @@ preprocess_gen = rule(
         "src": attrs.source(),
         # Files the input #includes.
         "srcs": attrs.list(attrs.source(), default = []),
-        "target": attrs.string(default = "x86_64-apple-darwin20"),
+        "target": attrs.string(default = _GUEST_TRIPLE),
         "toolchain": attrs.toolchain_dep(default = "toolchains//:darwin_cc"),
     },
 )

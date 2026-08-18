@@ -44,11 +44,17 @@ _LD64_DIR = read_root_config("cider", "ld64_dir", "result-ld64/bin")
 # scripts/buck-setup.nu, since it is a nix store path.
 _CLANG_RESOURCE_DIR = read_root_config("cider", "clang_resource_dir", "")
 
+# THE GUEST ARCHITECTURE (docs/plan-aarch64.md, D2). scripts/buck-setup.nu writes it into
+# .buckconfig.local from `uname -m`; the committed default stays x86_64 so an existing
+# x86_64 checkout is bit-identical until its owner reruns setup. darwin20 carries over
+# unchanged: macOS 11 is the first arm64 macOS, so the version floor is the same on both.
+GUEST_ARCH = read_root_config("cider", "guest_arch", "x86_64")
+
 _DARWIN_FLAGS = [
     "-target",
-    "x86_64-apple-darwin20",
+    GUEST_ARCH + "-apple-darwin20",
     "-arch",
-    "x86_64",
+    GUEST_ARCH,
     "-mmacosx-version-min=11.0",
     # -O2, AND THIS IS A CORRECTNESS FLAG BEFORE IT IS A SPEED ONE.
     #
