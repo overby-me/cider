@@ -22,6 +22,31 @@ cc_header_root(
 # gen-buck-from-ninja (deleted) compression   -- review before committing.
 # cmake target: compression  ->  src/libcompression/libcompression.dylib
 
+# NOT GENERATED. lzfse is bundled beside this library, the same treatment launchd and libm get,
+# because it is a dead upstream: Apples last release is 2017. Its own warnings are silenced rather
+# than patched, so the vendored copy stays byte for byte what upstream shipped.
+cc_objects(
+    name = "lzfse_obj",
+    srcs = [
+        "lzfse/lzfse_decode.c",
+        "lzfse/lzfse_decode_base.c",
+        "lzfse/lzfse_encode.c",
+        "lzfse/lzfse_encode_base.c",
+        "lzfse/lzfse_fse.c",
+        "lzfse/lzvn_decode_base.c",
+        "lzfse/lzvn_encode_base.c",
+    ],
+    compiler_flags = [
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 cc_objects(
     name = "compression_obj",
     srcs = [
@@ -54,6 +79,7 @@ darwin_dylib(
     objs = [
         # compression
         ":compression_obj",
+        ":lzfse_obj",
     ],
     siblings = [
         "//vendor/src:system_final",
