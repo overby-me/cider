@@ -131,15 +131,18 @@ ones on the critical path are `buck-setup.nu` (writes `.buckconfig.local`),
   `buck2 audit` / target hashing, since this host cannot boot the x86_64 runtime. Runtime
   verification on x86_64 waits for an x86_64 machine; that is accepted and recorded.
 - **D4, TSD/TLS on arm64.** Apple userspace reads TSD via TPIDRRO_EL0; Linux does not let
-  EL0 set it and the register does not trap, so there is no emulation fallback. Ladder, in
-  order: (a) probe this kernel (7.1.7) for a TPIDRRO mechanism (a prctl or ptrace regset;
-  mainline grew Rosetta-adjacent support after 6.x, measure rather than trust memory);
-  (b) if absent, compile ALL guest code with TSD via TPIDR_EL0 (a header-level change in our
-  libpthread/libsyscall patches), which is sound for milestone 1 because every Mach-O in the
-  prefix is built by us; (c) for stock binaries (milestone 2's nix closure) reassess: if the
-  kernel offers nothing, the nix closure is still fine as long as its binaries call through
-  our libSystem rather than inlining the TPIDRRO read; measure which of the two it does
-  before inventing machinery. Record the probe results here.
+  EL0 set it and the register does not trap, so there is no emulation fallback.
+  **RESOLVED 2026-08-19, no kernel mechanism needed.** Probed on this kernel (7.1.7):
+  TPIDRRO_EL0 reads as 0 from EL0 on every thread, no fault, and prctl.h (headers 6.18.7)
+  offers nothing to set it. The reference PR does not use the register at all: its
+  `libsyscall/os/tsd.h` routes `_os_tsd_get_base()` through `sys_thread_get_tsd_base()`, a
+  tid-keyed open-addressed hash table in the emulation layer (tls.c, TPIDR_EL0 value as the
+  thread identity, single-entry cache in front), because dyld links the static emulation
+  layer before TLV support exists. PTR_MUNGE becomes an XOR with a zero token in asm. TSD
+  writes go through `sys_thread_set_tsd_base()` exactly as x86_64's arch_prctl(SET_GS) path
+  does, so mldr's callback contract is unchanged. Stock-binary exposure (D4c) shrinks to
+  binaries that INLINE the TPIDRRO read; nix's closure calls through our libSystem, and the
+  PR ran stock PAC-signed Apple arm64e binaries with this scheme.
 - **D5, page size.** Host pages are 4K here, macOS arm64 uses 16K. Our own guest tier is
   compiled from source, so milestone 1 runs with 4K throughout (commpage user page shift 12,
   PAGE_SIZE from headers left dynamic where Apple's arm64 headers allow it). Stock
@@ -242,6 +245,30 @@ everything tests against it):
 - **A22** The Nix endpoint (`cider-buck2-prefix` and friends) evaluates and builds on
   aarch64-linux; NixOS module works on this host; README status table gains the arch column;
   x86_64 eval-parity check wired into `buck-test.nu` or a sibling.
+
+## Bring-up log (what M0 measured, 2026-08-19)
+
+- `nix develop` on aarch64-linux needed only the systems list and six `platforms` stamps;
+  the whole toolchain came from cache.nixos.org.
+- The dispatch-header disease has one shape and three homes: xnu (69 headers, patch 0019),
+  the duct-tape xnu (135 headers, xnu-sys-xnu patch 0003), cctools-port foreign/ (26
+  headers, patch 0002). All of them test `__arm64__`, which only Apple-target compilers
+  define; a host aarch64 clang says `__aarch64__`. Guest compiles define both, so the
+  patches are invisible on x86_64 and on the guest side.
+- The duct-tape kernel configures for arm64 with darling PR 1753's darlingserver set,
+  verbatim: `__arm64__ APPLE_ARM64_ARCH_FAMILY VMAPPLE ARM64_BOARD_CONFIG_VMAPPLE
+  __ARM_VMSA__=8 __ARM64_PMAP_SUBPAGE_L1__` (buck/generated/xnu_sys_flags.bzl, host-arch
+  keyed), plus its duct-tape header shims (xnu-sys-xnu patch 0004, include names rebased to
+  ciderd/xnu-sys) and its rtclock_arm64.c (CNTVCT instead of TSC).
+- Built green on this machine: `//vendor/pins/ciderd/xnu-sys:ciderd_xnu_sys` (the whole
+  duct-tape kernel as an aarch64 ELF archive), `//vendor/src:migcom`, and
+  `//vendor/src:x86_64-apple-darwin20-ld` (ld64 as an aarch64-linux host binary; arm64
+  output not yet exercised, that is A5's smoke test).
+- `//src/linux/server:ciderd` still does not build: wrapper.h exports the x86
+  MachineStateCount table as enum constants and xnu/thread.rs is x86-shaped. That is the
+  A18 state port, pulled forward to the front of the queue since M0 cannot finish without
+  a compiling daemon. The reference is darlingserver 0217769's duct-tape/src/thread.c
+  (+150 lines) and misc.c (+81), against ciderd's Rust twins.
 
 ## Risks, ranked
 
