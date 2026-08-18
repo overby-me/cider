@@ -476,6 +476,27 @@ BOOL itemIsEnabled(NSMenuItem *item) {
                                      to: [item target]
                                    from: nil];
 
+        /* WHY AN ITEM IS GREY. A disabled menu item and a missing one look the same to a user and
+         * nearly the same in a capture, and the reason is always one of three: no target found in
+         * the responder chain, a target that does not answer the action, or a validate method that
+         * said no. This names which. */
+        if (getenv("CIDER_TRACE_MENU") != NULL) {
+            fprintf(stderr,
+                    "CIDER_MENUITEM %s action=%s itemtarget=%s bound(enabled)=%d bound(title)=%d "
+                    "target=%s keyWindow=%s mainWindow=%s controller=%s\n",
+                    [[item title] UTF8String] ?: "(none)", sel_getName([item action]),
+                    [item target] ? object_getClassName([item target]) : "(nil)",
+                    (int) ([item _binderForBinding: @"enabled" create: NO] != nil),
+                    (int) ([item _binderForBinding: @"title" create: NO] != nil),
+                    target ? object_getClassName(target) : "(nil)",
+                    [[[NSApp keyWindow] title] UTF8String] ?: "(nil)",
+                    [[[NSApp mainWindow] title] UTF8String] ?: "(nil)",
+                    [[NSApp keyWindow] windowController]
+                            ? object_getClassName([[NSApp keyWindow] windowController])
+                            : "(nil)");
+            fflush(stderr);
+        }
+
         if ((target == nil) || ![target respondsToSelector: [item action]]) {
             enabled = NO;
         } else if ([target respondsToSelector: @selector(validateMenuItem:)]) {
@@ -495,6 +516,16 @@ BOOL itemIsEnabled(NSMenuItem *item) {
 - (void) update {
     if ([_delegate respondsToSelector: @selector(menuNeedsUpdate:)]) {
         [_delegate menuNeedsUpdate: self];
+    }
+
+    /* AUTOENABLING IS A PER MENU DECISION AND IT COMES FROM THE NIB. A menu that manages its own
+     * item states carries NSNoAutoenable, and getting that flag wrong greys out every item whose
+     * action is a placeholder, which is exactly what a bound menu item looks like. */
+    if (getenv("CIDER_TRACE_MENU") != NULL) {
+        fprintf(stderr, "CIDER_MENUUPDATE %s items=%ld autoenables=%d\n",
+                [[self title] UTF8String] ?: "(none)", (long) [_itemArray count],
+                (int) _autoenablesItems);
+        fflush(stderr);
     }
 
     NSInteger i, count = [_itemArray count];

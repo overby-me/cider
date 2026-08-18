@@ -80,6 +80,16 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
 }
 
 - (void) setDelegate: (id) delegate {
+    /* THE OBSERVER REGISTRATION LIVES IN THIS SETTER, so a delegate that arrives any other way
+     * (a nib connection that assigns the ivar, for instance) is a delegate that never hears the
+     * resize notifications. Naming every call tells the two apart. */
+    if (getenv("CIDER_TRACE_SPLIT") != NULL) {
+        fprintf(stderr, "CIDER_SPLIT setDelegate %s <- %s responds=%d\n",
+                object_getClassName(self), delegate ? object_getClassName(delegate) : "(nil)",
+                (int) [delegate respondsToSelector: @selector(splitViewDidResizeSubviews:)]);
+        fflush(stderr);
+    }
+
     if ([_delegate respondsToSelector: @selector(splitViewDidResizeSubviews:)])
         [[NSNotificationCenter defaultCenter]
                 removeObserver: _delegate
@@ -276,12 +286,14 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
 
         fprintf(stderr,
                 "CIDER_SPLIT adjustSubviews %s frame=%gx%g@%g,%g mask=%lu subviews=%lu "
-                "superview=%s %gx%g autoresizes=%d\n",
+                "superview=%s %gx%g autoresizes=%d delegate=%s responds=%d\n",
                 object_getClassName(self), f.size.width, f.size.height, f.origin.x, f.origin.y,
                 (unsigned long) [self autoresizingMask], (unsigned long) [_subviews count],
                 sup ? object_getClassName(sup) : "(none)",
                 sup ? [sup frame].size.width : 0.0, sup ? [sup frame].size.height : 0.0,
-                sup ? (int) [sup autoresizesSubviews] : -1);
+                sup ? (int) [sup autoresizesSubviews] : -1,
+                _delegate ? object_getClassName(_delegate) : "(nil)",
+                (int) [_delegate respondsToSelector: @selector(splitViewDidResizeSubviews:)]);
         fflush(stderr);
     }
 

@@ -2073,7 +2073,10 @@ pub fn frame_for_surface(surface: *mut wl::WlSurface) -> Option<(f64, f64, f64)>
     for &p in list.iter() {
         let st = unsafe { (p as *mut WindowState).as_ref() }?;
         if st.surface == surface {
-            return Some((st.frame.origin.x, st.frame.origin.y, st.frame.size.height));
+            // The same rule as window_for_surface: flip by what AppKit draws into.
+            let height = if st.draw_h > 0 { st.draw_h as f64 } else { st.frame.size.height };
+
+            return Some((st.frame.origin.x, st.frame.origin.y, height));
         }
     }
     None
@@ -2405,12 +2408,27 @@ pub fn margin_for_surface(surface: *mut wl::WlSurface) -> f64 {
     0.0
 }
 
+/// The window behind a surface, with THE HEIGHT AN EVENT MUST BE FLIPPED BY.
+///
+/// That height is the BITMAP height, not the buffer height, and the difference is a real defect
+/// when they differ. A window whose application refuses to shrink below a size keeps drawing at
+/// that size while the compositor is shown a smaller buffer taken from the TOP of it (see
+/// ensure_backing and insist_w/insist_h). Wayland reports the pointer in surface coordinates from
+/// the top, AppKit wants them from the bottom of ITS window, so flipping by the buffer height puts
+/// every click short by exactly the amount the window overhangs.
+///
+/// Measured on Swift Publisher 5, whose document window insists on 753 and is configured 684: a
+/// click on the menu bar arrived 69 points low, landing on the toolbar or the document pane, and
+/// the menu never opened. From outside that is indistinguishable from an application ignoring the
+/// mouse.
 pub fn window_for_surface(surface: *mut wl::WlSurface) -> Option<(Object, Object, f64, i64)> {
     let list = WINDOWS.lock().ok()?;
     for &p in list.iter() {
         let st = unsafe { (p as *mut WindowState).as_ref() }?;
         if st.surface == surface {
-            return Some((st.owner, st.delegate, st.frame.size.height, st.number));
+            let height = if st.draw_h > 0 { st.draw_h as f64 } else { st.frame.size.height };
+
+            return Some((st.owner, st.delegate, height, st.number));
         }
     }
     None
