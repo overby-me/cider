@@ -10140,3 +10140,30 @@ setVisibleCanvasesPreview:, which called adjustSubviews and let the NSView fallb
 zero sized pane; with a selected page the application takes a different path and never calls it.
 The application does not use Auto Layout at all, checked: no NSLayoutConstraint, no anchors, no
 addConstraint:, so nothing else was ever going to size that view.
+
+### The ancestry of the view that never gets a size
+
+The insertion trace prints the whole chain now, because the immediate container is rarely the one
+that decides:
+
+    CCDocScrollView ADDED own 0x0 mask=0x0, chain:
+      0 NSView 759x725 mask=0x0 subviews=3
+      1 NSKVONotifying_CCSplitView 1000x725 mask=0x12 subviews=2
+      2 NSBox 1000x725 mask=0x12 subviews=2
+      3 NSThemeFrame 1000x829 mask=0x12 subviews=3
+
+Everything above the pane is healthy: the window frame, the box and the applications own split view
+all have real sizes and real masks, and our split view tiles the pane to 759x725. The scroll view is
+one of three children of that pane, at zero size, with no mask, and nothing in the application or in
+us ever gives it a frame.
+
+Two facts found while chasing the container tell the next rung where to go. The application creates
+the split view of its canvases-and-document controller in code, with new, and calls setView: with
+it, so a controller sending adjustSubviews to its own view is sending it to a real split view rather
+than to a plain one. And CCDocScrollView OVERRIDES -tile, which is the NSScrollView method that
+lays out the clip view, the scrollers and the rulers. A scroll view that is never given a frame
+never tiles, so an override that would have arranged the document view never runs.
+
+So the question is now: what gives a code-created scroll view its first frame, on a plain view pane,
+in an application that uses no constraints and sets no autoresizing mask on it. That is a much
+smaller question than the one this whole thread started with.

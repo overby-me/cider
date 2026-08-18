@@ -1420,14 +1420,23 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 
         if (watchAdd != NULL && watchAdd[0] != (char) 0 &&
             strstr(object_getClassName(view), watchAdd) != NULL) {
-            fprintf(stderr,
-                    "CIDER_FRAME %s ADDED to %s %.0fx%.0f (siblings=%lu, in %s) own %.0fx%.0f "
-                    "mask=0x%x\n",
-                    object_getClassName(view), object_getClassName(self), _frame.size.width,
-                    _frame.size.height, (unsigned long) [_subviews count],
-                    _superview != nil ? object_getClassName(_superview) : "(no superview)",
-                    [view frame].size.width, [view frame].size.height,
+            NSView *ancestor = self;
+            int depth = 0;
+
+            fprintf(stderr, "CIDER_FRAME %s ADDED own %.0fx%.0f mask=0x%x, chain:\n",
+                    object_getClassName(view), [view frame].size.width, [view frame].size.height,
                     (unsigned) [view autoresizingMask]);
+            /* THE WHOLE CHAIN, because the immediate container is rarely the one that decides. A
+             * view added at zero size is only ever sized by something above it, so the classes and
+             * sizes on the way up are the question. */
+            while (ancestor != nil && depth < 8) {
+                fprintf(stderr, "CIDER_FRAME   %d %s %.0fx%.0f mask=0x%x subviews=%lu\n", depth,
+                        object_getClassName(ancestor), [ancestor frame].size.width,
+                        [ancestor frame].size.height, (unsigned) [ancestor autoresizingMask],
+                        (unsigned long) [[ancestor subviews] count]);
+                ancestor = [ancestor superview];
+                depth++;
+            }
             fflush(stderr);
         }
     }
