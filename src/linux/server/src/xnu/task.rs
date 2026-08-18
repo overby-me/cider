@@ -506,12 +506,10 @@ pub unsafe extern "C" fn task_info(
             &mut mem_info,
         );
 
-        crate::xnu::misc::log(
-            bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
-            "task_info: TODO: fetch utimeus and stimeus somehow",
-        );
-        let utimeus: u64 = 0;
-        let stimeus: u64 = 0;
+        // Real CPU time, from the host procfs entry for this task (task #120). It was hardcoded to
+        // zero with a TODO, which is what made every process in ps read 0:00.00 however long it
+        // had been running.
+        let (utimeus, stimeus) = crate::sched::task_ctx_cpu_times_us((*task).context);
         let usec = bindings::USEC_PER_SEC as u64;
 
         if flavor == bindings::TASK_BASIC_INFO_32 {
@@ -568,12 +566,10 @@ pub unsafe extern "C" fn task_info(
         }
         *task_info_count = TASK_THREAD_TIMES_INFO_COUNT as mach_msg_type_number_t;
 
-        crate::xnu::misc::log(
-            bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
-            "task_info: TODO: fetch utimeus and stimeus somehow",
-        );
-        let utimeus: u64 = 0;
-        let stimeus: u64 = 0;
+        // TASK_THREAD_TIMES_INFO asks for the time of the LIVE threads only; this reports the
+        // process totals, which is the same number until threads have exited. Stated rather than
+        // silently approximated: separating the two needs per-thread accounting we do not keep.
+        let (utimeus, stimeus) = crate::sched::task_ctx_cpu_times_us((*task).context);
         let usec = bindings::USEC_PER_SEC as u64;
 
         (*info).user_time.seconds = (utimeus / usec) as _;

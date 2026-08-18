@@ -636,6 +636,48 @@ pub struct TaskCtx {
     pub pid: libc::pid_t,
 }
 
+/// The user and system time a task has burned, in MICROSECONDS, read from
+/// /proc/<hostpid>/stat fields 14 and 15 (utime, stime, in clock ticks, summed over the
+/// process's threads). Returns (0, 0) for a task we cannot read, which is the same answer the
+/// caller had before and is correct for a task that has just gone away.
+///
+/// The parse starts AFTER the last ')' rather than splitting from the left: field 2 is the
+/// executable name in parentheses and it may contain both spaces and parentheses, so counting
+/// whitespace from the start of the line is wrong for any process whose name has a space in it.
+pub(crate) unsafe fn task_ctx_cpu_times_us(ctx: *mut std::os::raw::c_void) -> (u64, u64) {
+    if ctx.is_null() {
+        return (0, 0);
+    }
+
+    let host_pid = (*(ctx as *mut TaskCtx)).pid;
+    let stat = match std::fs::read_to_string(format!("/proc/{host_pid}/stat")) {
+        Ok(s) => s,
+        Err(_) => return (0, 0),
+    };
+    let tail = match stat.rfind(')') {
+        Some(i) => &stat[i + 1..],
+        None => return (0, 0),
+    };
+
+    // tail starts at field 3 (state), so utime is the 12th and stime the 13th entry here.
+    let mut it = tail.split_whitespace();
+    let utime: u64 = match it.nth(11).and_then(|v| v.parse().ok()) {
+        Some(v) => v,
+        None => return (0, 0),
+    };
+    let stime: u64 = match it.next().and_then(|v| v.parse().ok()) {
+        Some(v) => v,
+        None => return (0, 0),
+    };
+
+    let ticks = match libc::sysconf(libc::_SC_CLK_TCK) {
+        t if t > 0 => t as u64,
+        _ => 100,
+    };
+
+    (utime * 1_000_000 / ticks, stime * 1_000_000 / ticks)
+}
+
 /// The start address of the first /proc/<pid>/maps region strictly above `addr`, or 0 if
 /// none. The map is sorted ascending, so the first line whose start > addr is the answer.
 /// Each line begins "start-end perms ..."; only the start (hex) is needed. Pure host-side.

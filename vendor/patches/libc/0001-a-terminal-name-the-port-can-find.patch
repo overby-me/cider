@@ -1,0 +1,94 @@
+A terminal name that the port can actually find.
+
+devname_r() only ever read the top level of /dev, which is right on macOS, where a pty slave is
+/dev/ttys00N in that very directory. Under this port the terminal is a Linux pty and the slave is
+/dev/pts/N, one level down, so the scan never matched: ttyname() answered NULL for every terminal
+and tty(1) printed "not a tty" although isatty() was true, stty read the whole termios, and
+ls -l /dev/fd/0 showed the pty. ps(1) showed ?? in its TTY column for the same reason.
+
+The scan is now a helper called once per directory, and /dev/pts is searched when the first pass
+finds nothing. The name comes back with its subdirectory ("pts/3"), which is what every caller
+wants, because they all prepend /dev.
+
+--- a/gen/devname.c
++++ b/gen/devname.c
+@@ -67,31 +67,44 @@
+ #include <string.h>
+ #include <stdlib.h>
+ 
+-char *
+-devname_r(dev_t dev, mode_t type, char *buf, int len)
++/*
++ * Scan ONE directory of device nodes for the given number, writing the name a caller is to append
++ * to /dev. `prefix` is what stands between /dev and the entry, so a device found in a subdirectory
++ * comes back with that subdirectory attached and callers, which all prepend /dev, still get a path
++ * that opens.
++ */
++static char *
++devname_scan(const char *dir, const char *prefix, dev_t dev, mode_t type, char *buf, int len)
+ {
+ 	register DIR *dp;
+ 	register struct dirent *dirp;
+ 	struct stat sb;
+-	char _buf[sizeof(_PATH_DEV) + MAXNAMLEN];
++	char _buf[sizeof(_PATH_DEV) + MAXNAMLEN * 2];
++	size_t dirlen = strlen(dir);
++	size_t prefixlen = strlen(prefix);
++
++	if (dirlen + 1 + MAXNAMLEN + 1 > sizeof(_buf))
++		return (NULL);
+ 
+-	strcpy(_buf, _PATH_DEV);
++	strcpy(_buf, dir);
++	if (dirlen > 0 && _buf[dirlen - 1] != '/')
++		_buf[dirlen++] = '/';
+ 
+-	if ((dp = opendir(_PATH_DEV)) == NULL) 
++	if ((dp = opendir(dir)) == NULL)
+ 		return (NULL);
+ 
+ 	while ( (dirp = readdir(dp)) ) {
+-		bcopy(dirp->d_name, _buf + sizeof(_PATH_DEV) - 1,
+-		    dirp->d_namlen + 1);
++		bcopy(dirp->d_name, _buf + dirlen, dirp->d_namlen + 1);
+ 		if (lstat(_buf, &sb))
+ 			continue;
+ 		if (dev != sb.st_rdev)
+ 			continue;
+ 		if (type != (sb.st_mode & S_IFMT))
+ 			continue;
+-		if (dirp->d_namlen + 1 > len)
++		if (prefixlen + dirp->d_namlen + 1 > (size_t) len)
+ 			break;
+-		strcpy(buf, dirp->d_name);
++		strcpy(buf, prefix);
++		strcpy(buf + prefixlen, dirp->d_name);
+ 		(void)closedir(dp);
+ 		return (buf);
+ 	}
+@@ -100,6 +113,25 @@
+ }
+ 
+ char *
++devname_r(dev_t dev, mode_t type, char *buf, int len)
++{
++	char *name = devname_scan(_PATH_DEV, "", dev, type, buf, len);
++
++	/*
++	 * AND THEN /dev/pts, WHICH IS WHERE A PTY SLAVE LIVES HERE. This function only ever read the
++	 * top level of /dev, and on macOS that is enough, because a slave there is /dev/ttys00N, in
++	 * that very directory. Under this port a terminal is a Linux pty one level down, so
++	 * ttyname() answered NULL for every terminal and tty(1) printed "not a tty" although
++	 * isatty() was true and every termios ioctl worked. Looking here as well costs one opendir,
++	 * and only when the first scan found nothing.
++	 */
++	if (name == NULL)
++		name = devname_scan(_PATH_DEV "pts", "pts/", dev, type, buf, len);
++
++	return (name);
++}
++
++char *
+ devname(dev_t dev, mode_t type)
+ {
+ 	static char *buf = NULL;

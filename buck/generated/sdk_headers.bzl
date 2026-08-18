@@ -885,6 +885,7 @@ SDK_ROOT = {
     "darling/emulation/xnu_syscall/bsd/impl/misc/clonefile.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_clonefile.h",
     "darling/emulation/xnu_syscall/bsd/impl/misc/csops.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_csops.h",
     "darling/emulation/xnu_syscall/bsd/impl/misc/csrctl.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_csrctl.h",
+    "darling/emulation/xnu_syscall/bsd/impl/misc/task_read_for_pid.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_task_read_for_pid.h",
     "darling/emulation/xnu_syscall/bsd/impl/misc/fileport_makefd.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_fileport_makefd.h",
     "darling/emulation/xnu_syscall/bsd/impl/misc/fileport_makeport.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_fileport_makeport.h",
     "darling/emulation/xnu_syscall/bsd/impl/misc/fsgetpath.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_fsgetpath.h",

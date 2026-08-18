@@ -659,6 +659,7 @@ EXPORTS = {
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_clonefile.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/misc/clonefile.h",
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_csops.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/misc/csops.h",
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_csrctl.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/misc/csrctl.h",
+    "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_task_read_for_pid.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/misc/task_read_for_pid.h",
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_fileport_makefd.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/misc/fileport_makefd.h",
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_fileport_makeport.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/misc/fileport_makeport.h",
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_misc_fsgetpath.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/misc/fsgetpath.h",

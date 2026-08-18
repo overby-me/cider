@@ -1,0 +1,76 @@
+task_read_for_pid, so ps can ask about a process instead of printing ENOSYS.
+
+BSD syscall 539 was not in the table, so every ps(1) run printed "Unimplemented syscall (539)" once
+per process and reported 0:00.00 for all of them: ps asks for a task port per process and reads
+TASK_BASIC_INFO through it, and without the port it skips the read entirely.
+
+The port it gets back is the ordinary task port. macOS distinguishes control, read and inspect
+flavours so that a reader cannot write to the task it is measuring; this port has one kind of task
+port and nothing to weaken it with, so a read request is answered with the control port and the
+difference is written down in the implementation rather than hidden.
+
+Unlike the mach trap version, a failed RPC returns KERN_FAILURE instead of aborting: the caller is
+walking a process list and a process that exits between the listing and the question is ordinary.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
+@@ -35,6 +35,7 @@
+ #include <darling/emulation/xnu_syscall/bsd/impl/misc/clonefile.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/misc/csops.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/misc/csrctl.h>
++#include <darling/emulation/xnu_syscall/bsd/impl/misc/task_read_for_pid.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/misc/fileport_makefd.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/misc/fileport_makeport.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/misc/fsgetpath.h>
+@@ -490,6 +491,8 @@
+ 	[517] = sys_fclonefileat,
+ 	[521] = sys_abort_with_payload,
+ 	[524] = sys_setattrlistat,
++	// 538 task_inspect_for_pid has the same shape and no caller here yet.
++	[539] = sys_task_read_for_pid,
+ 	// Darling-private high slots for *at libc functions that macOS exports but
+ 	// which are not BSD syscalls (see gen/syscall.h SYS_mknodat/SYS_mkfifoat).
+ 	[546] = sys_mknodat,
+--- /dev/null
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/task_read_for_pid.c
+@@ -0,0 +1,31 @@
++#include <darling/emulation/xnu_syscall/bsd/impl/misc/task_read_for_pid.h>
++
++#include <stddef.h>
++
++#include <darling/emulation/common/base.h>
++#include <darlingserver/rpc.h>
++
++/*
++ * A READ PORT IS THE TASK PORT HERE, and that is a real difference from macOS rather than an
++ * oversight. macOS hands out three flavours for another task -- control, read and inspect -- so that
++ * a reader cannot write to the task it is measuring. This port has one kind of task port and no
++ * machinery to weaken it, so a read request answers with the same port task_for_pid answers with.
++ * A caller therefore gets more authority than macOS would grant it. Inside a single-user container
++ * whose processes are all the same user that costs nothing; it is written down because it is the
++ * kind of difference that matters the moment sandboxing does exist.
++ *
++ * ps(1) is what asks: it wants a port per process to read TASK_BASIC_INFO from, and without this
++ * every process it lists showed 0:00.00 and printed "Unimplemented syscall (539)" three times.
++ */
++long sys_task_read_for_pid(unsigned int target_tport, int pid, unsigned int* t)
++{
++	int code = dserver_rpc_task_for_pid(target_tport, pid, t);
++
++	// The mach trap version aborts the process when the RPC itself fails. A caller of this one is
++	// walking a process list and expects a failure it can skip, so report KERN_FAILURE instead of
++	// killing ps over a process that went away between listing and asking.
++	if (code < 0)
++		return 5; // KERN_FAILURE
++
++	return code;
++}
+--- /dev/null
++++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/misc/task_read_for_pid.h
+@@ -0,0 +1,6 @@
++#ifndef TASK_READ_FOR_PID_H
++#define TASK_READ_FOR_PID_H
++
++long sys_task_read_for_pid(unsigned int target_tport, int pid, unsigned int* t);
++
++#endif // TASK_READ_FOR_PID_H
