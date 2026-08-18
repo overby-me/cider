@@ -10226,3 +10226,77 @@ visible rect and the scroll view content size, which is the only place left wher
 happen. Our -[NSScrollView contentSize] and -[NSView visibleRect] are the values it reads, so the
 next instrument reports those at the moment the geometry runs. The diagnostic in NSAffineTransform
 was reverted, since that pin is materialised and it has answered its question.
+
+### Every number we give the canvas is right, and it still computes a NaN
+
+Two real defects of ours came out of looking for the NaN, and neither of them is it, which is worth
+stating before the finding itself.
+
+A view transform is built by dividing the frame by the bounds, to work out how much the bounds are
+stretched to fill the frame, and a view whose bounds are empty made that a division by zero. Zero
+over zero is NAN and anything over zero is infinity, and the result goes straight into the transform
+used by -convertRect:fromView:, -visibleRect and every other conversion through that view, so ONE
+empty view poisoned the geometry of everything beneath it. With no extent there is nothing to scale
+by, so the scale is one now.
+
+And -[NSScrollView clipViewFrame] only ever SUBTRACTS: a scroller width, a ruler, a header. A scroll
+view that has not been given a size therefore produced a NEGATIVE content rect, and -contentSize
+handed it straight out: the application was told its content was minus fifteen by zero. macOS
+reports an empty content rect for an empty scroll view, never a negative one, so that is clamped.
+
+Now the finding. With the document scroll view given a frame, by the gated probe, every value the
+application reads from us at the moment it computes the bad frame is correct:
+
+    CCDocView GOT NAN frame, was 759.0x725.0 bounds 759.0x725.0 visible 618.0x725.0 at 0.0,0.0
+        scrollView=CCDocScrollView content 759.0x725.0
+
+A sane frame, sane bounds, a sensible visible rect and a sensible content size, and it still sets a
+size that is not a number. So this is not our arithmetic and it is not a division by one of our
+zeroes: it is the application computing with something of its own. The transform is identity and its
+rect is a correct 2376 by 612 spread, checked earlier, so what is left in that method is the fit
+mode, the spread flag, the current canvas index and the state model behind them.
+
+The next step is to read the arithmetic rather than the inputs: disassemble the stretch of
+setupGeometryForDisplayCurrentCanvasAndSavePreviouseScrollPosition: between the transform and the
+setFrameSize:, and find which value it divides by. That is static work and needs no run.
+
+### Controllers created in code had none of their defaults, and the NaN has a named branch
+
+Reading the arithmetic rather than the inputs was the right move, and it took two steps.
+
+The stretch of setupGeometryForDisplayCurrentCanvasAndSavePreviouseScrollPosition: before the bad
+setFrameSize: is a divide, a clamp and a multiply by the same scale, so a zero there would give
+infinity and then infinity times zero. But the scale is not the problem. Further up there is a
+branch:
+
+    testq %rbx, %rbx        ; the transform from -[CCDesignElement transformForRotateView...]
+    je    ...               ; and if it is nil:
+    xorps %xmm0, %xmm0      ; the page width and height are set to ZERO
+
+and the fit then divides by that zero. So the NaN has one cause: the application asked its design
+element for a transform, got nil, and took the branch that zeroes the page. That also explains why
+our transform instrument only ever saw ONE rect transformed where the method transforms two.
+
+Chasing what was nil found a real defect of ours, though not that one. A controller created in code
+went through NSObject init and came up with EVERY flag zero: avoidsEmptySelection NO,
+preservesSelection NO, selectsInsertedObjects NO, where Cocoa documents all three as YES, and the
+object controller half never got its observed key set, its object class name, or isEditable. Only a
+controller decoded from a nib, or created with initWithContent:, was set up properly. Swift
+Publisher builds the controllers for its canvases in code, so they held their canvases and selected
+NOTHING: measured as arranged=2 selected=0 and arranged=1 selected=0, which is exactly the two
+content canvases and the one master page in the document.
+
+Both initialisers are fixed: init goes through initWithContent:, which is the designated one, and
+NSArrayController initWithContent: now calls its superclass designated initialiser rather than its
+init. After that every controller with content selects: arranged 2 selected 1, arranged 1 selected
+1, arranged 11 selected 1, and so on through the whole window.
+
+The canvas still does not draw, and the reason is now one method call wide. At the moment the bad
+frame is set the window controller is there and its current design element is a real object, so the
+receiver is not nil; the application still hands back a nil transform for it. What that method does
+with the canvas index and the master flag is the next thing to read.
+
+Two more of ours were fixed on the way, both found by looking for the NaN and neither of them it: a
+view transform divided the frame by the bounds, which is a division by zero for an empty view and
+poisons every conversion under it, and NSScrollView reported a NEGATIVE content size for a scroll
+view smaller than its scrollers.

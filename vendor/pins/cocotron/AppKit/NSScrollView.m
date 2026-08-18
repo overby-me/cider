@@ -24,6 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSRulerView.h>
 #import <AppKit/NSScrollView.h>
+#import <objc/runtime.h>
+#import <stdio.h>
+#import <stdlib.h>
 #import <AppKit/NSScroller.h>
 #import <AppKit/NSWindow.h>
 #import <Foundation/NSKeyedArchiver.h>
@@ -359,6 +362,22 @@ static Class _rulerViewClass = nil;
         result.size.height -= [self headerClipViewFrame].size.height;
     }
 
+    /*
+     * THE CONTENT OF A SCROLL VIEW IS NEVER SMALLER THAN NOTHING.
+     *
+     * Every line above SUBTRACTS: a scroller width, a ruler, a header. A scroll view that has not
+     * been given a size yet therefore ends up with a NEGATIVE content rect, and -contentSize hands
+     * that straight to whoever asks. Swift Publisher asks, while working out how to fit its page
+     * into the window, and was told minus fifteen by zero; the arithmetic it does with that
+     * produced a frame of nan by nan for its canvas, which then could not paint anything at all.
+     *
+     * macOS reports an empty content rect for an empty scroll view, not a negative one.
+     */
+    if (result.size.width < 0.0)
+        result.size.width = 0.0;
+    if (result.size.height < 0.0)
+        result.size.height = 0.0;
+
     return result;
 }
 
@@ -471,6 +490,23 @@ static Class _rulerViewClass = nil;
 }
 
 - (NSSize) contentSize {
+    /* The other half of what the canvas geometry divides by. Same gate and cap as the visible rect
+     * report in NSView. */
+    {
+        const char *watchContent = getenv("CIDER_TRACE_FRAMES");
+        static int printed;
+
+        if (watchContent != NULL && watchContent[0] != (char) 0 && printed < 10 &&
+            strstr(object_getClassName(self), watchContent) != NULL) {
+            printed++;
+            fprintf(stderr, "CIDER_GEOM %s contentSize %.1fx%.1f (own frame %.1fx%.1f)\n",
+                    object_getClassName(self), [_clipView frame].size.width,
+                    [_clipView frame].size.height, [self frame].size.width,
+                    [self frame].size.height);
+            fflush(stderr);
+        }
+    }
+
     return [_clipView frame].size;
 }
 

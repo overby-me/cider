@@ -607,10 +607,25 @@ static CGAffineTransform concatViewTransform(CGAffineTransform result,
         result = CGAffineTransformTranslate(result, frame.origin.x,
                                             frame.origin.y);
 
+    /*
+     * A VIEW WITH NO BOUNDS HAS NO SCALE, IT DOES NOT HAVE AN INFINITE ONE.
+     *
+     * This divides the frame by the bounds to find how much the bounds are stretched to fill the
+     * frame, and a view whose bounds are empty made that a division by zero: zero over zero is NAN
+     * and anything over zero is infinity. The result goes into the transform used by
+     * -convertRect:fromView:, -visibleRect and every other coordinate conversion through that view,
+     * so ONE empty view poisons the geometry of everything under it, silently, and the numbers come
+     * back out in application code that has no idea where they came from.
+     *
+     * Swift Publisher creates its document scroll view at zero size, and its canvas geometry then
+     * computed a frame of nan by nan from a visible rect that had come through this. With no extent
+     * to scale there is nothing to scale by, so the scale is one.
+     */
+    CGFloat ciderScaleX = (NSWidth(bounds) != 0.0) ? (NSWidth(frame) / NSWidth(bounds)) : 1.0;
+    CGFloat ciderScaleY = (NSHeight(bounds) != 0.0) ? (NSHeight(frame) / NSHeight(bounds)) : 1.0;
+
     // Apply bounds scaling to fit in the frame
-    CGAffineTransform scale =
-            CGAffineTransformMakeScale(NSWidth(frame) / NSWidth(bounds),
-                                       NSHeight(frame) / NSHeight(bounds));
+    CGAffineTransform scale = CGAffineTransformMakeScale(ciderScaleX, ciderScaleY);
     result = CGAffineTransformConcat(scale, result);
 
     if (flip) {
@@ -863,6 +878,24 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 
 - (NSRect) visibleRect {
     buildTransformsIfNeeded(self);
+
+    /* WHAT THE APPLICATION IS TOLD when it asks what of it is on screen. Its canvas geometry
+     * computes a frame from this and from the scroll view content size, so these are the two
+     * numbers to see. Capped, and gated on the class named by CIDER_TRACE_FRAMES. */
+    {
+        const char *watchVis = getenv("CIDER_TRACE_FRAMES");
+        static int printed;
+
+        if (watchVis != NULL && watchVis[0] != (char) 0 && printed < 10 &&
+            strstr(object_getClassName(self), watchVis) != NULL) {
+            printed++;
+            fprintf(stderr, "CIDER_GEOM %s visibleRect %.1fx%.1f at %.1f,%.1f (bounds %.1fx%.1f)\n",
+                    object_getClassName(self), _visibleRect.size.width, _visibleRect.size.height,
+                    _visibleRect.origin.x, _visibleRect.origin.y, _bounds.size.width,
+                    _bounds.size.height);
+            fflush(stderr);
+        }
+    }
 
     return _visibleRect;
 }
@@ -1244,6 +1277,41 @@ static inline void buildTransformsIfNeeded(NSView *self) {
         fflush(stderr);
     }
 
+    /* THE INPUTS AT THE MOMENT A FRAME GOES BAD. When an application sets a size that is not a
+     * number, what matters is what it was told just before, and for a document view that is its own
+     * visible rect and the content size of the scroll view it lives in. Printed here rather than
+     * from the accessors so that the values are the ones in play at exactly this call. */
+    if (!(frame.size.width == frame.size.width) || !(frame.size.height == frame.size.height)) {
+        const char *watchNaN = getenv("CIDER_TRACE_FRAMES");
+
+        if (watchNaN != NULL && watchNaN[0] != (char) 0) {
+            NSScrollView *enclosing = [self enclosingScrollView];
+            NSRect visible = [self visibleRect];
+            NSSize content = enclosing != nil ? [enclosing contentSize] : NSZeroSize;
+
+            /* AND WHAT THE APPLICATION HAS TO COMPUTE WITH. Its canvas geometry asks its window
+             * controller for the current design element and takes a branch that zeroes the page
+             * size when that, or the transform it provides, is nil. */
+            id wc = [[self window] windowController];
+            SEL currentSel = sel_getUid("currentDesignElement");
+            id current = (wc != nil && [wc respondsToSelector: currentSel])
+                    ? [wc performSelector: currentSel]
+                    : nil;
+
+            fprintf(stderr, "CIDER_GEOM   windowController=%s currentDesignElement=%p\n",
+                    wc != nil ? object_getClassName(wc) : "nil", (void *) current);
+            fprintf(stderr,
+                    "CIDER_GEOM %s GOT NAN frame, was %.1fx%.1f bounds %.1fx%.1f visible "
+                    "%.1fx%.1f at %.1f,%.1f scrollView=%s content %.1fx%.1f\n",
+                    object_getClassName(self), _frame.size.width, _frame.size.height,
+                    _bounds.size.width, _bounds.size.height, visible.size.width,
+                    visible.size.height, visible.origin.x, visible.origin.y,
+                    enclosing != nil ? object_getClassName(enclosing) : "nil", content.width,
+                    content.height);
+            fflush(stderr);
+        }
+    }
+
     // Cocoa does not post the notification if the frames are equal
     // Possible that resizeSubviewsWithOldSize is not called if the sizes are
     // equal
@@ -1411,6 +1479,7 @@ static inline void buildTransformsIfNeeded(NSView *self) {
     [view release];
 
     invalidateTransform(view);
+
 
 
     /* WHERE A WATCHED VIEW LANDS AND WHAT IT LANDS IN. A view added at zero size into a container

@@ -138,8 +138,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return self;
 }
 
+/*
+ * THE DEFAULTS ARE NOT OPTIONAL, AND THEY ARE WHAT MACOS DOCUMENTS.
+ *
+ * A controller created in code went through NSObject init and came up with every flag zero:
+ * avoidsEmptySelection NO, preservesSelection NO, selectsInsertedObjects NO, where Cocoa defaults
+ * all three to YES. Swift Publisher builds the controllers for its canvases that way, so they held
+ * their canvases and selected NOTHING. Its view then asked for the current canvas, got nil, got a
+ * nil transform for it, and took the branch that sets the page size to zero, which is where the
+ * canvas frame of nan by nan came from and why nothing was drawn.
+ */
+- (id) init {
+    return [self initWithContent: nil];
+}
+
 - (id) initWithContent: (id) content {
-    if ((self = [super init])) {
+    /* SUPER'S DESIGNATED INITIALISER, not its init: the object controller half needs its own
+     * defaults, and this used to skip them. */
+    if ((self = [super initWithContent: content])) {
         _flags.avoidsEmptySelection = YES;
         _flags.clearsFilterPredicateOnInsertion = YES;
         _flags.filterRestrictsInsertion = NO;

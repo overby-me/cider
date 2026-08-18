@@ -42,12 +42,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
             triggerChangeNotificationsForDependentKey: @"contentObject"];
 }
 
+/*
+ * A CONTROLLER MADE WITH init IS STILL A CONTROLLER, WITH ALL THE DEFAULTS.
+ *
+ * This used to make only the selection proxy, so a controller created in code had no observed key
+ * set, no object class name, and -isEditable answering NO, while one decoded from a nib had all
+ * three. -initWithContent: is the designated initialiser and it sets them, so go through it.
+ */
 - (id) init {
-    if ((self = [super init])) {
-        _selection =
-                [[NSControllerSelectionProxy alloc] initWithController: self];
-    }
-    return self;
+    return [self initWithContent: nil];
 }
 
 - (id) initWithContent: (id) content {
