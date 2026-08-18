@@ -431,6 +431,26 @@ const NSTimeInterval kMouseMovementThreshold = .001f;
 
         [event release];
 
+        /*
+         * SHOW WHAT THIS PASS CHANGED BEFORE WAITING FOR THE NEXT EVENT.
+         *
+         * This loop takes events itself instead of returning to NSApplication, and it was the
+         * application run loop that displayed dirty windows before blocking. So a selection change
+         * made here marked views for display and then the loop sat in nextEventMatchingMask with
+         * nothing to draw it: pressing Escape closed the menu and left the title highlighted until
+         * some unrelated event arrived. Measured on MoneyMoney: the bar redrew FIFTEEN SECONDS
+         * after the key, when the pointer moved.
+         *
+         * Every window, not just this one: closing a submenu dirties the window underneath it as
+         * much as the bar above it.
+         */
+        for (NSWindow *dirty in [NSApp windows]) {
+            if ([dirty isVisible]) {
+                [dirty displayIfNeeded];
+                [dirty flushWindowIfNeeded];
+            }
+        }
+
         // Let's take a look at what's come in on the event queue
         event = [[self window]
                 nextEventMatchingMask: NSLeftMouseUpMask | NSMouseMovedMask |
@@ -505,6 +525,24 @@ const NSTimeInterval kMouseMovementThreshold = .001f;
                     MENUDEBUG(@"popping cascading view: %@", view);
                     [[view window] close];
                     [viewStack removeLastObject];
+
+                    /*
+                     * AND IF THAT LEAVES THE MENU BAR, THE WHOLE MENU IS CLOSED.
+                     *
+                     * macOS ends the tracking session when Escape closes a menu opened from the
+                     * bar; only a SUBMENU pops one level. Popping one level here left the loop
+                     * running with the title still selected, and since the loop waits for the next
+                     * event before it does anything else, the title stayed highlighted until the
+                     * user happened to click or move the pointer. Measured on MoneyMoney: fifteen
+                     * seconds, and the bar was repainted correctly the moment anything woke the
+                     * loop, which is why it looked like a redraw fault and was not one.
+                     */
+                    if ([viewStack count] == 1 &&
+                        [[viewStack objectAtIndex: 0] isKindOfClass: [NSMainMenuView class]]) {
+                        MENUDEBUG(@"escape from a top level menu ends tracking");
+                        [[viewStack objectAtIndex: 0] setSelectedItemIndex: NSNotFound];
+                        cancelled = YES;
+                    }
                 } else {
                     MENUDEBUG(@"Cancelling");
                     cancelled = YES;

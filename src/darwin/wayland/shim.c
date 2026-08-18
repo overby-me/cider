@@ -156,6 +156,8 @@ int cider_wl_buffer_add_listener(struct wl_buffer *buffer, const struct wl_buffe
 	return wl_buffer_add_listener(buffer, listener, data);
 }
 
+void cider_wl_buffer_destroy(struct wl_buffer *buffer) { wl_buffer_destroy(buffer); }
+
 // WL_SHM_FORMAT_XRGB8888 is guaranteed by the protocol, unlike most formats, so the probe uses it
 // rather than asking which are supported.
 uint32_t cider_wl_shm_format_xrgb8888(void) { return WL_SHM_FORMAT_XRGB8888; }

@@ -107,6 +107,7 @@ unsafe extern "C" {
     pub fn cider_wl_surface_attach(s: *mut WlSurface, b: *mut WlBuffer, x: i32, y: i32);
     pub fn cider_wl_surface_damage(s: *mut WlSurface, x: i32, y: i32, w: i32, h: i32);
     pub fn cider_wl_buffer_add_listener(b: *mut WlBuffer, l: *const WlBufferListener, data: *mut c_void) -> c_int;
+    pub fn cider_wl_buffer_destroy(b: *mut WlBuffer);
     pub fn cider_wl_shm_format_xrgb8888() -> u32;
     pub fn cider_wl_shm_format_argb8888() -> u32;
 

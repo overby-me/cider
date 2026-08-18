@@ -90,10 +90,33 @@ pub struct WindowState {
     /// The frame the application refuses to shrink below, 0 when it has never refused one.
     pub insist_w: i32,
     pub insist_h: i32,
-    /// The shm pages, mapped. AppKit DRAWS DIRECTLY INTO THESE: the O2Surface is built over this
-    /// pointer, so there is no copy between what was drawn and what the compositor reads.
+    /// The shm pages AppKit DRAWS INTO. The O2Surface is built over this pointer and it never
+    /// moves, so a redraw always lands in the same place and AppKit never has to be told its
+    /// context changed.
+    ///
+    /// IT IS NOT WHAT THE COMPOSITOR READS. A client must not touch a buffer it has attached until
+    /// the compositor releases it, and AppKit draws whenever it likes, so this is a private
+    /// drawing page and the two pages below are what get attached. See present().
     pub pixels: *mut u8,
     pub map_len: usize,
+    /// THE TWO PRESENTATION BUFFERS, and whether the compositor still owns each one.
+    ///
+    /// One buffer attached over and over, while the application goes on drawing into it, is a
+    /// protocol violation that shows up as frames that never appear: measured on task #121, the
+    /// menu highlight left the drawing page at present 948 and the screen still had it sixty
+    /// presents later, until an unrelated pointer motion knocked it loose. Two buffers and a
+    /// release event fix the class, not just that symptom.
+    pub present_buf: [*mut wl::WlBuffer; 2],
+    pub present_pixels: [*mut u8; 2],
+    pub present_busy: [bool; 2],
+    /// Which slot to try first, so the two take turns rather than one carrying every frame.
+    pub present_next: usize,
+    /// Frames not presented because both buffers were still held. A number that keeps climbing
+    /// means the compositor is slower than the application draws, which is a different problem
+    /// from a frame that never appears.
+    pub presents_dropped: u64,
+    /// A dropped frame is waiting for a buffer to come back. Cleared by presenting it.
+    pub present_pending: bool,
     /// The O2Context, retained. AppKit asks for it repeatedly and expects the same one back.
     pub context: Object,
     /// Whether the drawn-pixel count has been printed. Once is enough: it answers a question about
@@ -175,6 +198,12 @@ impl WindowState {
             insist_h: 0,
             pixels: std::ptr::null_mut(),
             map_len: 0,
+            present_buf: [std::ptr::null_mut(); 2],
+            present_pixels: [std::ptr::null_mut(); 2],
+            present_busy: [false; 2],
+            present_next: 0,
+            presents_dropped: 0,
+            present_pending: false,
             context: std::ptr::null_mut(),
             reported_drawn: false,
             last_dump: None,
@@ -1477,6 +1506,11 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     let alloc_h = dh + margin * 2;
     let stride = alloc_w * 4;
     let size = (stride as usize) * (alloc_h as usize);
+    // THREE FRAMES IN ONE FILE: the first is where AppKit draws, the other two are what the
+    // compositor is given, alternately, so that nothing is written into a buffer the compositor
+    // has not released yet. The pool is one mapping, so a frame costs address space and no extra
+    // file descriptor.
+    let total = size * 3;
 
     // A PLAIN FILE, not shm_open: the compositor receives the DESCRIPTOR and mmaps that, so where
     // the file lives never travels with it and the guest needs no working /dev/shm.
@@ -1494,19 +1528,19 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     // Unlinked immediately: the descriptor keeps it alive and nothing is left behind.
     let _ = std::fs::remove_file(&path);
     let fd = file.as_raw_fd();
-    if unsafe { ftruncate(fd, size as i64) } != 0 {
+    if unsafe { ftruncate(fd, total as i64) } != 0 {
         println!("cider-wayland-window backing=FAILED reason=ftruncate");
         return false;
     }
     let map = unsafe {
-        mmap(std::ptr::null_mut(), size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)
+        mmap(std::ptr::null_mut(), total, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)
     };
     if map.is_null() || map as isize == -1 {
         println!("cider-wayland-window backing=FAILED reason=mmap");
         return false;
     }
     unsafe {
-        let words = std::slice::from_raw_parts_mut(map as *mut u32, size / 4);
+        let words = std::slice::from_raw_parts_mut(map as *mut u32, total / 4);
         words.fill(clear_value(st));
         // ARMED AFTER THE CLEAR, so the fill itself is not what faults. Diagnostic only, and it
         // does nothing unless CIDER_WAYLAND_WATCH is set. See watch.c for why a watchpoint rather
@@ -1515,10 +1549,10 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     }
 
     unsafe {
-        let pool = wl::cider_wl_shm_create_pool(shm, fd, size as i32);
+        let pool = wl::cider_wl_shm_create_pool(shm, fd, total as i32);
         if pool.is_null() {
             println!("cider-wayland-window backing=FAILED reason=no-pool");
-            munmap(map, size);
+            munmap(map, total);
             return false;
         }
         let format = if wants_alpha(st) {
@@ -1526,25 +1560,36 @@ fn ensure_backing(st: &mut WindowState) -> bool {
         } else {
             wl::cider_wl_shm_format_xrgb8888()
         };
-        // OFFSET ZERO AND THE DRAWING STRIDE. Zero is the first row of the bitmap, which an
-        // unflipped context makes the TOP of the window, and a stride wider than the buffer takes
-        // the left of each row: between them the compositor is shown the top left corner of a
-        // window that is larger than its surface, rather than the bottom right.
-        st.buffer =
-            wl::cider_wl_shm_pool_create_buffer(pool, 0, w + margin * 2, h + margin * 2, stride,
-                                                format);
-        // The pool may go as soon as the buffer exists: the buffer holds its own reference to the
+        // THE OFFSET PICKS THE FRAME, and the stride picks the corner. Frame 0 is where AppKit
+        // draws and is never attached; frames 1 and 2 are the presentation pair. A stride wider
+        // than the buffer takes the left of each row, so the compositor is shown the top left of a
+        // window larger than its surface rather than the bottom right.
+        for slot in 0..2 {
+            let offset = (size * (slot + 1)) as i32;
+            let buf = wl::cider_wl_shm_pool_create_buffer(pool, offset, w + margin * 2,
+                                                          h + margin * 2, stride, format);
+            if buf.is_null() {
+                println!("cider-wayland-window backing=FAILED reason=no-buffer");
+                wl::cider_wl_shm_pool_destroy(pool);
+                munmap(map, total);
+                return false;
+            }
+            // The listener carries the window, and the callback matches the pointer to a slot.
+            wl::cider_wl_buffer_add_listener(buf, &BUFFER_LISTENER,
+                                             st as *mut WindowState as *mut c_void);
+            st.present_buf[slot] = buf;
+            st.present_pixels[slot] = (map as *mut u8).add(size * (slot + 1));
+            st.present_busy[slot] = false;
+        }
+        st.buffer = st.present_buf[0];
+        // The pool may go as soon as the buffers exist: each holds its own reference to the
         // mapping, which is what makes a resize a new pool rather than a torn down surface.
         wl::cider_wl_shm_pool_destroy(pool);
-        if st.buffer.is_null() {
-            println!("cider-wayland-window backing=FAILED reason=no-buffer");
-            munmap(map, size);
-            return false;
-        }
     }
     st.backing = Some(file);
     st.pixels = map as *mut u8;
     st.map_len = size;
+    st.present_next = 0;
     st.buffer_w = w;
     st.buffer_h = h;
     st.draw_w = dw;
@@ -1560,6 +1605,37 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     true
 }
 
+/// THE COMPOSITOR HAS FINISHED WITH A BUFFER, so that slot may be drawn into again.
+///
+/// This is the event the window path never listened for, and not listening for it is what made a
+/// correctly drawn frame sit unseen: with one buffer there was nowhere else to put the next frame,
+/// so it was written into pages the compositor still owned.
+extern "C" fn on_buffer_release(data: *mut c_void, buffer: *mut wl::WlBuffer) {
+    if data.is_null() {
+        return;
+    }
+    let st = unsafe { &mut *(data as *mut WindowState) };
+    for slot in 0..2 {
+        if st.present_buf[slot] == buffer {
+            st.present_busy[slot] = false;
+            /*
+             * AND SHOW WHAT WAS DROPPED. A frame skipped because both buffers were held is only
+             * harmless while another present follows it; an application that draws once and goes
+             * quiet would leave the compositor on the previous frame forever, which is the very
+             * failure this whole change is about.
+             */
+            if st.present_pending {
+                st.present_pending = false;
+                present(st);
+            }
+            return;
+        }
+    }
+    // A buffer from a PREVIOUS size, released after the resize replaced it. Nothing to mark.
+}
+
+static BUFFER_LISTENER: wl::WlBufferListener = wl::WlBufferListener { release: on_buffer_release };
+
 /// Drop the mapping, the buffer and the context together, because all three describe one size.
 fn release_backing(st: &mut WindowState) {
     if !st.context.is_null() {
@@ -1568,8 +1644,19 @@ fn release_backing(st: &mut WindowState) {
         }
         st.context = std::ptr::null_mut();
     }
+    for slot in 0..2 {
+        if !st.present_buf[slot].is_null() {
+            unsafe { wl::cider_wl_buffer_destroy(st.present_buf[slot]) };
+        }
+        st.present_buf[slot] = std::ptr::null_mut();
+        st.present_pixels[slot] = std::ptr::null_mut();
+        // A destroyed buffer will never be released, so the flag goes with it. Leaving it set
+        // would strand the slot for the life of the window.
+        st.present_busy[slot] = false;
+    }
     if !st.pixels.is_null() {
-        unsafe { munmap(st.pixels as *mut c_void, st.map_len) };
+        // The mapping is three frames long: one drawn into and two presented from.
+        unsafe { munmap(st.pixels as *mut c_void, st.map_len * 3) };
         st.pixels = std::ptr::null_mut();
         st.map_len = 0;
     }
@@ -1646,6 +1733,47 @@ fn present(st: &mut WindowState) {
     }
     blur_backdrop(st);
     round_corners(st);
+    /*
+     * PICK A BUFFER THE COMPOSITOR IS NOT READING, and copy this frame into it.
+     *
+     * AppKit draws into its own frame continuously and asks to present whenever it likes, so the
+     * pages it draws into can never be the pages the compositor holds. The two presentation slots
+     * take turns; if both are still out, one roundtrip collects whatever releases are already on
+     * the wire, and if that is not enough the frame is dropped rather than written under the
+     * compositor's feet. A dropped frame is invisible here because the next present carries the
+     * same content: the drawing frame is cumulative, not a delta.
+     */
+    let mut slot = usize::MAX;
+    for attempt in 0..2 {
+        for i in 0..2 {
+            let candidate = (st.present_next + i) % 2;
+            if !st.present_busy[candidate] && !st.present_buf[candidate].is_null() {
+                slot = candidate;
+                break;
+            }
+        }
+        if slot != usize::MAX || attempt == 1 {
+            break;
+        }
+        session::roundtrip();
+    }
+    if slot == usize::MAX {
+        st.present_pending = true;
+        st.presents_dropped += 1;
+        if st.presents_dropped <= 3 || st.presents_dropped % 100 == 0 {
+            println!(
+                "cider-wayland-window present-dropped number={} count={} (both buffers still held)",
+                st.number, st.presents_dropped
+            );
+        }
+        return;
+    }
+    unsafe {
+        std::ptr::copy_nonoverlapping(st.pixels, st.present_pixels[slot], st.map_len);
+    }
+    st.present_next = (slot + 1) % 2;
+    st.present_busy[slot] = true;
+    st.buffer = st.present_buf[slot];
     unsafe {
         if st.margin > 0 && !st.xdg.is_null() {
             // The size is part of the geometry, so a resized window has to say so again.
@@ -1695,8 +1823,9 @@ fn present(st: &mut WindowState) {
             }
         }
         println!(
-            "cider-wayland-window barpixels number={} count={} buf={}x{} margin={} stride={} blue={} at={},{}",
-            st.number, st.presents + 1, st.buffer_w, st.buffer_h, st.margin, stride, blue, first.0, first.1
+            "cider-wayland-window barpixels number={} count={} buf={}x{} margin={} stride={} blue={} at={},{} t={:.2}",
+            st.number, st.presents + 1, st.buffer_w, st.buffer_h, st.margin, stride, blue, first.0, first.1,
+            elapsed()
         );
     }
     // HOW MANY TIMES A WINDOW IS PRESENTED separates two failures that look identical on screen:
