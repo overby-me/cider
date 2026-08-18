@@ -9559,3 +9559,29 @@ all, so CADocument overrides both.
 
 The diagnostics used to establish this in corefoundation and foundation were reverted afterwards: a
 materialised pin needs a patch file per edit, and these had already answered their question.
+
+### MoneyMoney: resize and menus verified
+
+Two of the three criteria had never actually been measured for this application, because the driver
+opened by clicking the button on the small dialog and that button ENDS THE PROCESS: every run
+stopped at the first capture. Resizing needs no click, so the driver now resizes first and clicks
+afterwards.
+
+With that order the window relayouts in both directions, 1256x684 to 1000x600 to 1400x900. The menu
+bar spans the new width, the toolbar items reposition, the search field moves to the far right and
+the content re-centres. Three runs of three produced the full set of captures.
+
+Clicking the menu bar opens a menu that draws correctly and dismisses cleanly. The application menu
+shows About, Check for Updates, Preferences, License Key, Privacy Policy, License Agreement,
+Imprint, Services with a submenu arrow, Lock MoneyMoney, Hide, Hide Others, Show All and Quit, with
+the command glyphs for Hide, Hide Others and Quit and the right entries greyed out. Another run
+opened the File menu instead, with Refresh All Accounts, Refresh Scheduled Payments, Cancel Refresh,
+Mark All Transactions as Checked, Mark All Statements as Read and Page Setup, every one disabled,
+which is what a locked application should show.
+
+One caution worth writing down. Comparing a crop mean between two runs reported them identical while
+those runs had in fact opened different menus. A summary statistic over a region can agree while the
+content differs completely, which is the whole reason the rule is to look at the capture.
+
+What is still wrong here is unchanged: the small dialog paints a black band where its message
+belongs, and the application sits at its lock screen, which no password will ever be typed into.
