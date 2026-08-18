@@ -10376,3 +10376,19 @@ clears it. So the keyboard path through menu tracking ends without restoring the
 
 What this does NOT prove is text entry into a field, and that is deliberate. The only text field
 reachable in that state is the password field of the lock screen, and it will not be typed into.
+
+### The menu title that stays highlighted, and one theory eliminated
+
+Closing a menu with Escape leaves the title highlighted in the menu bar, where closing the same menu
+with a click clears it. The obvious theory was stale pixels: the tracking loop ends by setting its
+selected index to NSNotFound and marking the view for display, and a mouse close is followed by more
+events that would carry that pending display along, while a keyboard cancel is followed by nothing.
+
+That theory is wrong, and the run says so. Forcing the work immediately, with displayIfNeeded and
+flushWindow at the end of tracking, changes nothing at all: the title is still blue in the capture
+two seconds after Escape. The change was reverted rather than left in as an unexplained line.
+
+So either the index is not actually cleared on the view that draws the bar, or the redraw does not
+reach the surface by that route. The next step is a trace of the index at the end of tracking, which
+tells the two apart in one run. It is a small cosmetic defect and it is written down rather than
+left as a vague impression.
