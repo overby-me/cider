@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSView.h>
 #import <dlfcn.h>
+#import <string.h>
 #import <execinfo.h>
 #import <AppKit/NSViewBackingLayer.h>
 #import <AppKit/NSWindow-Private.h>
@@ -97,6 +98,57 @@ const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPresentationOptio
                 fprintf(stderr, "CIDER_VIEW   #%d %s\n", i, info.dli_sname);
         }
         fflush(stderr);
+    }
+
+    /*
+     * A PANE WITH NO SIZE GETS THE ROOM THAT IS LEFT.
+     *
+     * Callers only send this to something they believe is a split view, and what they mean by it is
+     * lay your panes out again. Swift Publisher builds
+     * CCCanvasesPreviewAndDocumentSplitViewController in code: it creates its document scroll view
+     * with a ZERO frame, adds it, and calls this. Nothing else ever sizes that view, not the
+     * application (no setFrame at all, measured) and not autoresizing (it is added after the
+     * container already has its size), so with this doing nothing the canvas stayed 0x0 and the
+     * document window was empty.
+     *
+     * The rule here is deliberately narrow: a subview that has NO width or NO height is stretched
+     * to the room left over after the subviews that do have a size, and everything already sized is
+     * left exactly where it is. That is not what NSSplitView does with its dividers and its
+     * proportions, and it does not pretend to be; it is the smallest thing that answers what the
+     * caller asked for without moving views that were placed deliberately.
+     */
+    NSRect bounds = [self bounds];
+    CGFloat usedHeight = 0;
+    NSMutableArray *empty = [NSMutableArray array];
+
+    for (NSView *child in [self subviews]) {
+        NSRect childFrame = [child frame];
+
+        /*
+         * ZERO IN BOTH DIRECTIONS MEANS NEVER LAID OUT. A pane that has a width and no height was
+         * COLLAPSED on purpose, which is exactly what a hidden canvases preview looks like, and
+         * stretching it would undo the thing the caller just asked for. Only a view with no size at
+         * all is treated as waiting for one.
+         */
+        if (childFrame.size.width <= 0 && childFrame.size.height <= 0)
+            [empty addObject: child];
+        else
+            usedHeight += childFrame.size.height;
+    }
+
+    if ([empty count] > 0) {
+        CGFloat spare = bounds.size.height - usedHeight;
+
+        if (spare < 0)
+            spare = 0;
+
+        CGFloat each = spare / (CGFloat) [empty count];
+        CGFloat y = 0;
+
+        for (NSView *child in empty) {
+            [child setFrame: NSMakeRect(bounds.origin.x, y, bounds.size.width, each)];
+            y += each;
+        }
     }
 
     [self resizeSubviewsWithOldSize: [self frame].size];
@@ -450,6 +502,24 @@ typedef struct __VFlags {
 }
 
 - initWithFrame: (NSRect) frame {
+    /* WHAT SIZE IS IT BORN WITH. A view that is never resized afterwards is exactly as big as it
+     * was created, so for the Swift Publisher canvas this is the whole story. Same gate as the
+     * frame trace, CIDER_TRACE_FRAMES holding a substring of the class name. */
+    {
+        const char *watch = getenv("CIDER_TRACE_FRAMES");
+
+        if (watch != NULL && watch[0] != (char) 0 &&
+            strstr(object_getClassName(self), watch) != NULL) {
+            Dl_info info;
+            void *ret = __builtin_return_address(0);
+
+            fprintf(stderr, "CIDER_FRAME %s BORN %.0fx%.0f at %.0f,%.0f from %s\n",
+                    object_getClassName(self), frame.size.width, frame.size.height,
+                    frame.origin.x, frame.origin.y,
+                    (dladdr(ret, &info) != 0 && info.dli_sname != NULL) ? info.dli_sname : "?");
+            fflush(stderr);
+        }
+    }
     _frame = frame;
     _bounds.origin = NSMakePoint(0, 0);
     _bounds.size = frame.size;
@@ -1144,6 +1214,26 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 }
 
 - (void) setFrame: (NSRect) frame {
+    /*
+     * WHO SIZES A PARTICULAR VIEW, and whether anybody does. CIDER_TRACE_FRAMES holds a substring
+     * of a class name, so one view can be watched without drowning in every layout in the process.
+     * The Swift Publisher canvas sits at 0x0 forever and the question is whether the application
+     * ever asks for a size at all or whether something of ours drops it.
+     */
+    const char *watch = getenv("CIDER_TRACE_FRAMES");
+
+    if (watch != NULL && watch[0] != (char) 0 &&
+        strstr(object_getClassName(self), watch) != NULL) {
+        Dl_info info;
+        void *ret = __builtin_return_address(0);
+
+        fprintf(stderr, "CIDER_FRAME %s -> %.0fx%.0f at %.0f,%.0f (was %.0fx%.0f) from %s\n",
+                object_getClassName(self), frame.size.width, frame.size.height,
+                frame.origin.x, frame.origin.y, _frame.size.width, _frame.size.height,
+                (dladdr(ret, &info) != 0 && info.dli_sname != NULL) ? info.dli_sname : "?");
+        fflush(stderr);
+    }
+
     // Cocoa does not post the notification if the frames are equal
     // Possible that resizeSubviewsWithOldSize is not called if the sizes are
     // equal

@@ -1,4 +1,5 @@
 #import <Onyx2D/O2Font_freetype.h>
+#import <pthread.h>
 #include <pthread.h>
 #include <stdlib.h>
 #ifdef FREETYPE_PRESENT
@@ -35,13 +36,37 @@ O2FontRef O2FontCreateWithDataProvider_platform(O2DataProviderRef provider) {
  */
 static volatile int _CiderHostFontSpin = 0;
 
+/*
+ * AND IT HAS TO BE RECURSIVE, which the first version was not, and that cost a hang.
+ *
+ * The glyph run holds this lock while it works through face->glyph, and code under it can ask for a
+ * font again: a fallback for a missing glyph goes through +filenameForPattern:, which takes the
+ * same lock. A plain spin then waits for a lock its own thread is already holding, forever, with no
+ * message of any kind. MoneyMoney showed it as a process that printed main nib load enter and
+ * stopped there, having reached the window in every run the day before.
+ *
+ * The owner is recorded and re-entry counted, so the same thread passes straight through and only
+ * the outermost release opens it.
+ */
+static volatile uintptr_t _CiderHostFontOwner = 0;
+static volatile int _CiderHostFontDepth = 0;
+
 void O2FontHostLock(void) {
+    uintptr_t me = (uintptr_t) pthread_self();
     int spun = 0;
+
+    if (_CiderHostFontOwner == me) {
+        _CiderHostFontDepth++;
+        return;
+    }
 
     while (__sync_val_compare_and_swap(&_CiderHostFontSpin, 0, 1) != 0) {
         spun = 1;
         __builtin_ia32_pause();
     }
+
+    _CiderHostFontOwner = me;
+    _CiderHostFontDepth = 1;
 
     /* DOES THIS EVER ACTUALLY CONTEND. The lock was added on the theory that two guest threads meet
      * inside the host font libraries, and the theory is worth no more than the measurement: if this
@@ -58,6 +83,13 @@ void O2FontHostLock(void) {
 }
 
 void O2FontHostUnlock(void) {
+    if (_CiderHostFontDepth > 1) {
+        _CiderHostFontDepth--;
+        return;
+    }
+
+    _CiderHostFontDepth = 0;
+    _CiderHostFontOwner = 0;
     __sync_lock_release(&_CiderHostFontSpin);
 }
 
