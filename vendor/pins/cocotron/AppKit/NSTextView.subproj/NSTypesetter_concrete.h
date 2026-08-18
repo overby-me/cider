@@ -17,54 +17,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
-#import <AppKit/NSFont.h>
-#import <AppKit/NSParagraphStyle.h>
-#import <AppKit/NSTypesetter.h>
+#import <AppKit/NSATSTypesetter.h>
 
-@class NSTextContainer, NSRangeArray, NSParagraphStyle;
-
-@interface NSTypesetter_concrete : NSTypesetter {
-    IMP _layoutNextFragment;
-
-    NSUInteger _nextGlyphLocation;
-    NSUInteger _numberOfGlyphs;
-    NSRange _glyphCacheRange;
-    NSUInteger _glyphCacheCapacity;
-    NSGlyph *_glyphCache;
-    unichar *_characterCache;
-
-    NSUInteger _bidiLevelsCapacity;
-    uint8_t *_bidiLevels;
-    uint8_t _currentBidiLevel;
-    uint8_t _currentParagraphBidiLevel;
-
-    BOOL _paragraphBreak;
-
-    NSTextContainer *_container;
-    NSSize _containerSize;
-
-    NSDictionary *_attributes;
-    NSRange _attributesRange;
-    NSRange _attributesGlyphRange;
-    NSFont *_font;
-    CGFloat _fontAscender;
-    CGFloat _fontDefaultLineHeight;
-    NSPoint (*_positionOfGlyph)(NSFont *, SEL, NSGlyph, NSGlyph, BOOL *);
-    NSTextAlignment _alignment;
-    NSLineBreakMode _lineBreakMode;
-    CGFloat _whitespaceAdvancement;
-
-    NSRange _lineRange;
-    NSRangeArray *_glyphRangesInLine;
-    NSGlyph _previousGlyph;
-    NSRect _scanRect;
-    NSRect _wordWrapScanRect;
-    NSRect _fullLineRect;
-    CGFloat _maxAscender;
-
-    NSRange _wordWrapRange;
-    CGFloat _wordWrapWidth;
-    NSGlyph _wordWrapPreviousGlyph;
-}
-
-@end
+/* The class this header used to declare is now NSATSTypesetter, which is where the real system
+ * puts it. The name is kept only so the existing import keeps resolving. */
