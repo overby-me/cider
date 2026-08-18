@@ -52,6 +52,15 @@ NSString *const _NSRecentDocumentsMenuName = @"Recents";
 NSString *const _NSServicesMenuName = @"Services";
 NSString *const _NSWindowsMenuName = @"Window";
 
+#import <objc/runtime.h>
+
+/* NSMenu minimumWidth, which is real API since 10.6 and was missing entirely: MoneyMoney sets it
+ * while building its main window and died of an unrecognised selector, uncaught, taking the process
+ * with it. Kept in an associated object rather than an ivar, because an ivar changes instanceSize
+ * and an application subclass compiled against the real AppKit has its own laid out after ours. The
+ * value is stored and reported honestly; nothing here makes the menu honour it yet. */
+static const void *kCiderMenuMinimumWidthKey = &kCiderMenuMinimumWidthKey;
+
 @implementation NSMenu
 
 /*
@@ -603,5 +612,18 @@ BOOL itemIsEnabled(NSMenuItem *item) {
 
     return nil;
 }
+
+
+- (CGFloat) minimumWidth {
+    NSNumber *stored = objc_getAssociatedObject(self, kCiderMenuMinimumWidthKey);
+
+    return (stored != nil) ? [stored doubleValue] : 0.0;
+}
+
+- (void) setMinimumWidth: (CGFloat) width {
+    objc_setAssociatedObject(self, kCiderMenuMinimumWidthKey,
+                             [NSNumber numberWithDouble: width], OBJC_ASSOCIATION_RETAIN);
+}
+
 
 @end

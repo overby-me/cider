@@ -39,6 +39,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 NSString *const NSNibOwner = @"NSOwner";
 NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
 
+/* The running system as the digits a nib bundle uses, MMmmpp: 11.0.0 is 110000 and 10.13.0 is
+ * 101300. Read from NSProcessInfo so that it follows whatever version we report rather than a
+ * constant that has to be remembered when that changes. */
+static long _CiderSystemVersionForNib(void)
+{
+    NSOperatingSystemVersion v = [[NSProcessInfo processInfo] operatingSystemVersion];
+
+    return (long) v.majorVersion * 10000 + (long) v.minorVersion * 100 + (long) v.patchVersion;
+}
+
 @implementation NSNib
 
 - initWithCoder: (NSCoder *) coder {
@@ -95,9 +105,62 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
 
         if ([[NSFileManager defaultManager] fileExistsAtPath: objects])
             _flags._isKeyed = TRUE;
-        else
-            objects = [[path stringByAppendingPathComponent: @"objects"]
-                    stringByAppendingPathExtension: @"nib"];
+        else {
+            /*
+             * A MODERN NIB BUNDLE HAS NO keyedobjects.nib AT ALL. Interface Builder writes one file
+             * per deployment target instead, named keyedobjects-101300.nib, keyedobjects-110000.nib
+             * and so on, where the digits are the minimum system version as MMmmpp. MoneyMoney ships
+             * exactly those two and nothing else, so this fell through to objects.nib, found nothing,
+             * and NSNib init answered nil. Nobody upstream said a word: the window controller loaded
+             * a nib that decoded NOTHING, found its window still nil and asked again for ever.
+             *
+             * Pick the newest one the running system is old enough to use, which is what the real
+             * loader does, and fall back to the oldest if the system is older than all of them.
+             */
+            NSArray *entries = [[NSFileManager defaultManager]
+                    contentsOfDirectoryAtPath: path error: NULL];
+            NSString *bestName = nil;
+            long best = -1;
+            long oldest = -1;
+            NSString *oldestName = nil;
+            long systemVersion = _CiderSystemVersionForNib();
+
+            for (NSString *entry in entries) {
+                if (![entry hasPrefix: @"keyedobjects-"] ||
+                    ![[entry pathExtension] isEqualToString: @"nib"])
+                    continue;
+
+                NSString *digits = [[entry stringByDeletingPathExtension]
+                        substringFromIndex: [@"keyedobjects-" length]];
+                long value = [digits integerValue];
+
+                if (value <= 0)
+                    continue;
+                if (oldest < 0 || value < oldest) {
+                    oldest = value;
+                    oldestName = entry;
+                }
+                if (value <= systemVersion && value > best) {
+                    best = value;
+                    bestName = entry;
+                }
+            }
+            if (bestName == nil)
+                bestName = oldestName;
+
+            if (bestName != nil) {
+                objects = [path stringByAppendingPathComponent: bestName];
+                _flags._isKeyed = TRUE;
+                if (getenv("CIDER_TRACE_NIB") != NULL) {
+                    fprintf(stderr, "CIDER_NIB versioned %s for system %ld\n",
+                            [bestName UTF8String], systemVersion);
+                    fflush(stderr);
+                }
+            } else {
+                objects = [[path stringByAppendingPathComponent: @"objects"]
+                        stringByAppendingPathExtension: @"nib"];
+            }
+        }
     } else {
         // FIXME: Should we try to infer keyed-ness form the file itself in this
         // case?

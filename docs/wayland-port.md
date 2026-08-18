@@ -9220,3 +9220,44 @@ loop is gone and the cause of the loop is not: the nib load produces no window, 
 window outlet is not being connected when we decode MainWindow.nib. THAT is the next thing, and it
 is now reachable because the application no longer thrashes.
 
+## A modern nib bundle has no keyedobjects.nib, and we were reading nothing
+
+MoneyMoney main window nib is a DIRECTORY containing exactly two files:
+
+    keyedobjects-101300.nib
+    keyedobjects-110000.nib
+
+and no keyedobjects.nib at all. That is how Interface Builder writes a nib with more than one
+deployment target: one file per minimum system version, the digits being MMmmpp. Our loader looked
+for keyedobjects.nib, then objects.nib, found neither, and NSNib init answered nil.
+
+NOTHING UPSTREAM SAID A WORD. loadNibFile did not log its failure, the window controller carried on,
+found its window still nil and asked for it again, which is the 19,931 cycle loop from the previous
+entry. The loop was the symptom; this is the cause.
+
+The loader now picks the newest file the running system is old enough to use, and falls back to the
+oldest if the system is older than all of them. Verified in the trace:
+
+    CIDER_NIB versioned keyedobjects-110000.nib for system 140401
+
+and the nib decodes: MoneyMoney went from one window to three.
+
+## And then it asked for NSMenu minimumWidth, which we did not have
+
+With the nib decoding, MoneyMoney set a minimum width on a menu while building its main window:
+
+    -[NSKVONotifying_NSMenu setMinimumWidth:]: unrecognized selector
+
+uncaught, so objc_terminate took the process. That is real API since 10.6 and was missing entirely.
+Implemented, stored in an ASSOCIATED OBJECT rather than an ivar for the reason recorded above, and
+reported honestly by the getter; nothing makes the menu honour it yet, which is the same shape as
+the rest of the menu metrics.
+
+Measured three runs: no crash in any of them, three windows, windowDidLoad exactly once.
+
+## MoneyMoney STILL SHOWS NO WINDOW
+
+The captures are solid black and the application exits cleanly, status 0, right after windowDidLoad
+and a pair of TIFF icons. Every fix in this rung moved it further along the same path and none of
+them put a window on the screen, which is what the criteria ask for. That is where it stands.
+
