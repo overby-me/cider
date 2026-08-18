@@ -9585,3 +9585,35 @@ content differs completely, which is the whole reason the rule is to look at the
 
 What is still wrong here is unchanged: the small dialog paints a black band where its message
 belongs, and the application sits at its lock screen, which no password will ever be typed into.
+
+### MoneyMoney: the black band was two bugs, and the dialog now reads
+
+The band in the MoneyMoney dialog is gone, and what it was hiding is the application saying its own
+file seems to be damaged, which is its integrity check failing under Cider. Two separate faults had
+to be fixed for that sentence to appear.
+
+The first is that -[NSAttributedString boundingRectWithSize:options:] answered NSZeroRect for every
+string. An application that sizes a label from its text gave that label height zero, so it drew
+nothing while the box behind it still painted. The view tree named the situation exactly: MMBox
+370x69 with MMLabel 327x0 inside it, and the label already held the text. -size measured through
+NSStringDrawer all along, so the only missing piece was the constraining size, which is the
+difference between one long line and a wrapped paragraph. The options are still not honoured.
+
+The second is subtler. -[NSColor colorWithAlphaComponent:] on the abstract class answers self for
+alpha 1 and NIL for anything less, and NSColor_catalog never overrode it. So a system colour with an
+alpha applied came back nil, a caller sending set to nil set nothing at all, and the box drew with
+whatever colour the context already held, which was black. It converts to calibrated RGB first now.
+The same class also gained getRed, getWhite, getHue and getCyan, which had been left to the abstract
+superclass where they raise; MoneyMoney does not take that path, measured with a counter that never
+fired, so that part is a real gap closed rather than a fix for this bug.
+
+The method that found it is worth keeping. The fill was traced to one address inside the application
+binary, and the x86_64 slice was disassembled there by hand: FAT slice offset 0x4000, __TEXT vmaddr
+0x100000000, so the file offset is the virtual address minus 0x100000000 plus 0x4000. objdump -D -b
+binary -m i386:x86-64 --adjust-vma on the extracted bytes works, where llvm-objdump ignores
+--start-address on Mach-O. Selector references resolve by reading the pointer stored at the selref
+address and then the C string it points at, which turned the calls into textBackgroundColor,
+disabledControlTextColor, windowBackgroundColor, selectedTextBackgroundColor and set.
+
+One thing recorded rather than claimed: at 1400x900 the lock screen behind the dialog draws its
+wordmark as very large glyphs. It does not appear at 1000x600 and it sits behind the dialog.
