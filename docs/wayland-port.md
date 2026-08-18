@@ -9385,3 +9385,44 @@ needs its own sigaltstack, or its locals fault on the very stack whose exhaustio
 
 One operational note, because it made two earlier rate measurements meaningless: stale guest
 processes make every run after the first fail. kill-stale-prefix.sh has to run before EVERY run.
+
+### Swift Publisher (#116): the gallery draws, and the blocker was two threads in one FreeType
+
+Two separate faults were in the way, and the first one hid the second.
+
+The application died with SIGILL through dyld_stub_binder from its own code, which reads as a trap
+in the application. It is a lazy bind that cannot be resolved: those call sites are bound the first
+time a document layout reaches one, and dyld aborts when the symbol is not there. The name is only
+in the abort payload, Symbol not found: _CGImageSourceCreateThumbnailAtIndex, which the fatal signal
+handler surfaced. ImageIO shipped the thumbnail option keys and not the function; it now decodes and
+scales, honouring kCGImageSourceThumbnailMaxPixelSize.
+
+Behind it was the real one. Swift Publisher lays text out on the main thread while an operation
+queue builds document previews, and both arrive in the host font libraries. fontconfig and FreeType
+are host code reached through elfcalls, allocating on the HOST heap, so two guest threads inside
+them at once corrupt it. What that looked like was glibc reporting malloc(): unaligned tcache chunk
+detected, and faults inside FreeType reached from -[KTFont_FT positionOfGlyph:precededByGlyph:
+isNominal:] on the preview worker.
+
+The guard has to be a compare and swap spin rather than a mutex, because a CONTENDED pthread mutex
+still fails in this guest with psynch -111 and aborts; that is why an earlier attempt at locking
+this was reverted, taking the correct diagnosis with it. A spin never enters the kernel. It covers
+the fontconfig match, both face constructors, and the glyph paths, where one shared face and its
+single glyph slot are written by FT_Set_Pixel_Sizes and FT_Load_Glyph. The slot is read out inside
+the lock, since releasing before reading it would hand back another threads glyph.
+
+This corrects something written here earlier. The note that per thread FT faces and per thread FT
+libraries left the failure rate at 3 of 3, and that the FT race was therefore not the cause, was
+measured while the missing ImageIO symbol was aborting every run anyway. That experiment could not
+have shown a difference whatever it did, and the conclusion drawn from it was wrong.
+
+WHERE IT STANDS, from the captures rather than from a counter: three runs in four survive the whole
+driver and produce captures, against none at all in the twelve runs before. The Template Gallery
+draws its menu bar, its category sidebar and all four template previews with real content; a click
+selects a tile and it takes the blue focus ring; the window relayouts when the compositor resizes it
+to 1000x600.
+
+STILL BROKEN: one run in four dies. Pressing Choose does not open a document: CAMainWindowController
+prints loadWindow and loadNibFile enter, and never the leave, which is the shape MoneyMoney had
+before its own nib was fixed. One preview tile draws bands of colour noise where a photograph
+belongs.
