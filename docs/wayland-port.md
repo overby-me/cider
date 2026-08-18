@@ -9707,3 +9707,33 @@ rendition key finds nothing. Attributes absent from KEYFORMAT have to be treated
 
 So nothing about the format is unknown any more. The reader is mechanical: name, partial key, full
 key, link, sheet, chunks, rows, crop.
+
+### The catalog reader, in the application at last
+
+The reader is in NSImage.m and runs from +[NSImage imageNamed:] when the loose-file search fails.
+Both pixel formats these catalogs use are handled now: BGRA, and GA8, which is eight bits of grey
+and eight of alpha and is how a template icon is stored. Accepting only BGRA left half the catalog
+invisible.
+
+Two things cost most of the time, and both were mine rather than the format's.
+compression_decode_buffer takes SIX arguments and the function pointer declared five, so the
+algorithm argument was whatever happened to be in the register, never matched COMPRESSION_LZFSE, and
+every stream returned zero, which is indistinguishable from a corrupt payload. And a trace that
+inferred a catalog hit from the absence of a loose file counted in-memory CACHE hits as catalog hits
+and cheerfully reported 93 successes when the real number was zero. Record what happened; do not
+infer it from what did not.
+
+The third obstacle was the harness. The application had never been seen using the reader because the
+driver rarely reached the document window: the template gallery scrolls between runs, so the click
+that should pick a tile lands elsewhere and Choose stays disabled. Passing a template document as an
+ARGUMENT opens it directly, skips the gallery, and builds the toolbar every time.
+
+What that shows on screen: the toolbar buttons now have their BEZELS, each label sitting in a
+rounded frame, where before they were bare words on a grey strip. Nineteen lookups per run come from
+the catalog, the same nineteen in two runs of two, with no crashes, and the twelve distinct names
+are exactly the ones that used to fail, the ToolbarButton set and the six Inspector ones.
+
+What is still wrong: the buttons continue to read Button. That word is the button TITLE, so the
+glyphs that belong on top of these bezels are not coming through imageNamed at all and have another
+source. Four names the application asks for, verticalSplitHandler, tab_background, tab_foreground
+and splash, are not facets in this catalog, so there is nothing here to read for them.
