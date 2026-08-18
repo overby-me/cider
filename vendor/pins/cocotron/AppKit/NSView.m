@@ -1412,6 +1412,7 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 
     invalidateTransform(view);
 
+
     /* WHERE A WATCHED VIEW LANDS AND WHAT IT LANDS IN. A view added at zero size into a container
      * that already has its size is never reached by autoresizing, so this names the container that
      * ought to give it room. Same gate as the rest of the frame trace. */
@@ -1422,10 +1423,21 @@ static inline void buildTransformsIfNeeded(NSView *self) {
             strstr(object_getClassName(view), watchAdd) != NULL) {
             NSView *ancestor = self;
             int depth = 0;
+            Dl_info addInfo, addInfoUp;
+            void *addRet = __builtin_return_address(0);
+            void *addRetUp = __builtin_return_address(1);
 
-            fprintf(stderr, "CIDER_FRAME %s ADDED own %.0fx%.0f mask=0x%x, chain:\n",
+            /* WHO ADDS IT. The nearest caller is our own -addSubview:, so the one above it is the
+             * application method, which is the thing worth disassembling. */
+            fprintf(stderr, "CIDER_FRAME %s ADDED own %.0fx%.0f mask=0x%x by %s <- %s, chain:\n",
                     object_getClassName(view), [view frame].size.width, [view frame].size.height,
-                    (unsigned) [view autoresizingMask]);
+                    (unsigned) [view autoresizingMask],
+                    (dladdr(addRet, &addInfo) != 0 && addInfo.dli_sname != NULL) ? addInfo.dli_sname
+                                                                                : "?",
+                    (addRetUp != NULL && dladdr(addRetUp, &addInfoUp) != 0 &&
+                     addInfoUp.dli_sname != NULL)
+                            ? addInfoUp.dli_sname
+                            : "?");
             /* THE WHOLE CHAIN, because the immediate container is rarely the one that decides. A
              * view added at zero size is only ever sized by something above it, so the classes and
              * sizes on the way up are the question. */

@@ -10167,3 +10167,42 @@ never tiles, so an override that would have arranged the document view never run
 So the question is now: what gives a code-created scroll view its first frame, on a plain view pane,
 in an application that uses no constraints and sets no autoresizing mask on it. That is a much
 smaller question than the one this whole thread started with.
+
+### CORRECTION: the scroll view with no frame is not what makes the canvas NaN
+
+The last section left the canvas at a scroll view that nobody sizes, and implied that finding it a
+frame was the fix. It is not, and the experiment that settled it took one run.
+
+The application creates that view with new, which is a zero frame, in
+-[CCMainWindowController awakeFromNib], adds it to a pane, sets its scrollers and its document view,
+gives the DOCUMENT view a mask of 0x12 and gives the scroll view none, and never sets its frame
+again. That much is confirmed from the instructions themselves, and every automatic route that could
+have sized it is ruled out: the application uses no Auto Layout at all, implements no
+windowDidResize:, no windowDidLoad, no layout method, and uses no frame change notifications, and
+its only calls to adjustSubviews are the two pane toggles.
+
+So the suspect was mutated rather than argued about. Behind a gate, a view added at zero size into a
+container that has one was given the container bounds. The scroll view came out 759x725, the
+document view 759x710 and then 759x725 through ordinary autoresizing, and the application still did
+this:
+
+    CCDocView -> nanxnan (was 759x725) from -[NSView setFrameSize:]
+        <- -[CCDocView setupGeometryForDisplayCurrentCanvasAndSavePreviouseScrollPosition:]
+
+with its own warning about a NAN in the document view frame, three times, exactly as before. The
+probe was removed afterwards.
+
+That is worth stating plainly: the missing frame is a real gap and it is NOT the cause of the blank
+canvas. The NaN survives a fully sized scroll view.
+
+Where it does come from is now named. That geometry method builds a transform through
+-[CCDesignElement transformForRotateViewForCanvas:master:] and then calls two categories the
+application adds to OUR NSAffineTransform, transformRect: and transformAndNormalizeRect:. The first
+is four instructions of glue: it sends -transformPoint: for the origin and -transformSize: for the
+size, both ours. Neither can create a NaN, because both are matrix multiplies with no division at
+all, so they can only carry one that already exists in the matrix or in the rect. Our -invert is not
+the source either; it checks the determinant and refuses.
+
+So the next question is which side is already NaN, the transform the application built or the rect
+it fed in, and the instrument for it is small: report from -transformPoint: and -transformSize: when
+the matrix or the argument is not a number. That is one run away.
