@@ -10329,3 +10329,28 @@ when that view was given one by the gated probe, so that the frame, the bounds, 
 and the content size were all sane, the application STILL produced a NaN. Both measurements are
 real and they do not fit together yet, so the next rung starts by re-running the fill probe with the
 transform trace on, which is the one combination not yet measured.
+
+### The measurement that closes our side of the canvas
+
+The one combination never run was the fill probe and the transform trace together, and it settles
+the contradiction the last section left open. With the document scroll view given a frame:
+
+    CIDER_XFORM point (-792,0)
+    CIDER_XFORM size (2376,612)
+    CIDER_GEOM CCDocView GOT NAN frame, was 759.0x725.0 bounds 759.0x725.0
+        visible 618.0x725.0 at 0.0,0.0 scrollView=CCDocScrollView content 759.0x725.0
+
+Four lines apart. The transform runs, carries the correct 2376 by 612 spread, and every value we
+hand the application is a sane number: its frame, its bounds, its visible rect and the content size
+of the scroll view it lives in. And it still sets a size that is not a number.
+
+So our side of this is done, and that is worth saying as plainly as the failures were. The zero or
+the NaN that the fit divides by is inside the application: the scale it keeps comes from a C++ call
+on its own core document, and everything Cocoa gives it on the way is correct. Nothing in the list
+of stubs the run reports touches document loading either; they are drawing and accessibility, and
+the one that appears 164 times is an NSImage draw variant whose sibling paths visibly work.
+
+What that leaves for Swift Publisher is a question about its own deserialisation, which is a much
+larger and more speculative piece of work than the gaps this thread has been closing, and it is not
+a Cocoa gap. The queue has an application whose keyboard has never been tested, and that is a
+criterion, so the next work goes there.

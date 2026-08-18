@@ -1482,6 +1482,7 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 
 
 
+
     /* WHERE A WATCHED VIEW LANDS AND WHAT IT LANDS IN. A view added at zero size into a container
      * that already has its size is never reached by autoresizing, so this names the container that
      * ought to give it room. Same gate as the rest of the frame trace. */
