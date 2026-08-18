@@ -253,7 +253,49 @@ NSColor *NSColorGetCatalogColor(NSColorListName catalogName,
     return [_color alphaComponent];
 }
 
+/*
+ * A NAMED COLOUR WITH AN ALPHA APPLIED MUST STILL BE A COLOUR.
+ *
+ * The abstract -colorWithAlphaComponent: answers SELF for alpha 1 and NIL for anything less, and
+ * this class did not override it. So [[NSColor textBackgroundColor] colorWithAlphaComponent: 0.5]
+ * was nil, and a caller that then sends -set to it sets nothing at all, leaving whatever colour the
+ * context already had. Converting first gives a real colour that can carry the alpha.
+ */
+- (NSColor *) colorWithAlphaComponent: (CGFloat) alpha {
+    NSColor *converted = [self colorUsingColorSpaceName: NSCalibratedRGBColorSpace];
+
+    if (getenv("CIDER_TRACE_COLOR") != NULL) {
+        static int printed;
+
+        if (printed < 12) {
+            CGFloat r = 0, g = 0, b = 0, a = 0;
+
+            printed++;
+            [converted getRed: &r green: &g blue: &b alpha: &a];
+            fprintf(stderr, "CIDER_COLOR catalog %s alpha %.2f over rgb %.3f %.3f %.3f\n",
+                    _colorName != nil ? [_colorName UTF8String] : "(nil)", (double) alpha,
+                    (double) r, (double) g, (double) b);
+            fflush(stderr);
+        }
+    }
+
+    return [converted colorWithAlphaComponent: alpha];
+}
+
 - (void) setFill {
+    /* WHICH NAMED COLOUR, not just which components. The components alone cannot say whether a
+     * black fill came from a system colour we get wrong or from the applications own choice. */
+    if (getenv("CIDER_TRACE_COLOR") != NULL) {
+        static int printed;
+
+        if (printed < 40) {
+            printed++;
+            fprintf(stderr, "CIDER_COLOR catalog setFill %s\n",
+                    _colorName != nil ? [_colorName UTF8String] : "(nil)");
+            fflush(stderr);
+        }
+    }
+
     [_color setFill];
 }
 
