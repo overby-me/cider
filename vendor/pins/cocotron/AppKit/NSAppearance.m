@@ -97,6 +97,12 @@ static NSAppearance *_ciderCurrentAppearance = nil;
  * appearance at all, which is worse than answering its first choice.
  */
 - (NSAppearanceName) bestMatchFromAppearancesWithNames: (NSArray *) names {
+    if (getenv("CIDER_TRACE_APPEARANCE") != NULL) {
+        fprintf(stderr, "CIDER_APPEARANCE mine=%s offered=%s\n",
+                _name != nil ? [_name UTF8String] : "(nil)",
+                names != nil ? [[names componentsJoinedByString: @","] UTF8String] : "(nil)");
+        fflush(stderr);
+    }
     if (names == nil || [names count] == 0) {
         return _name;
     }
