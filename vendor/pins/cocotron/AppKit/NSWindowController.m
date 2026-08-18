@@ -294,6 +294,23 @@ static const void *kCiderNibLoadedKey = &kCiderNibLoadedKey;
     if (getenv("CIDER_TRACE_CONTROL") != NULL) {
         fprintf(stderr, "CIDER_DOC showWindow ORDERED controller=%s\n",
                 class_getName([self class]));
+
+        /* THE SAME PROBE AS IN -[NSDocument addWindowController:], BUT LATER. The one there runs
+         * before the window is on screen, so a value that is filled in during the nib load or on
+         * first display would read as nil there and mislead. Pointers only: these answer C++
+         * objects, and object_getClassName on one of them segfaults. */
+        {
+            static const char *const probes[] = {"ftView", "currentDesignElement"};
+            size_t i;
+
+            for (i = 0; i < sizeof(probes) / sizeof(probes[0]); i++) {
+                SEL probe = sel_getUid(probes[i]);
+
+                if ([self respondsToSelector: probe])
+                    fprintf(stderr, "CIDER_DOC showWindow %s -> %p\n", probes[i],
+                            (void *) [self performSelector: probe]);
+            }
+        }
         fflush(stderr);
     }
 }

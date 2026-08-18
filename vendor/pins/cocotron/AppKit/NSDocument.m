@@ -436,6 +436,33 @@ static int untitled_document_number = 0;
         fflush(stderr);
     }
 
+    /* WHICH OF THE APPLICATION OWN GUARDS IS THE ONE THAT FIRES. Swift Publisher draws nothing in
+     * its canvas because -[CCDocView drawRect:] returns early when either [[self window]
+     * windowController] ftView or its current design element document is nil. The controller has
+     * just been built by the applications own makeWindowControllers, so this is the first moment we
+     * can ask it, and asking is all this does. Gate is CIDER_TRACE_CONTROL. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        static const char *const probes[] = {"ftView", "currentDesignElement", "ftDocument"};
+        size_t i;
+
+        for (i = 0; i < sizeof(probes) / sizeof(probes[0]); i++) {
+            SEL probe = sel_getUid(probes[i]);
+
+            if ([controller respondsToSelector: probe]) {
+                /* PRINT THE POINTER, NOT THE CLASS. These return C++ objects, not Objective-C ones:
+                 * object_getClassName on what -ftDocument answers walks into
+                 * objc_class::demangledName and segfaults, which is a probe crashing the
+                 * application it was measuring. Nil or not nil is the whole question anyway. */
+                id value = [controller performSelector: probe];
+
+                fprintf(stderr, "CIDER_DOC   controller %s -> %p\n", probes[i], (void *) value);
+            } else {
+                fprintf(stderr, "CIDER_DOC   controller %s -> (does not respond)\n", probes[i]);
+            }
+        }
+        fflush(stderr);
+    }
+
     if ([controller document] == nil)
         [controller setDocument: self];
 }

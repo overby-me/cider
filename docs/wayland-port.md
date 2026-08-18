@@ -9969,3 +9969,33 @@ The disassembly work is reusable: scratchpad/objc-dis.py disassembles a range of
 Mach-O and resolves selrefs, classrefs and cfstrings, which llvm-objdump will not do for a Mach-O
 with a start address. Extracting the thin slice from the FAT binary first is what makes the range
 options work at all.
+
+### Which of the two guards fires: the document has no design element
+
+-[CCDocView drawRect:] returns early on either of two nil values, so knowing which one it is halves
+the remaining search. The window controller is built by the applications own makeWindowControllers,
+which our NSDocument calls, so our NSDocument can ask the controller for those values the moment it
+receives it, and -[NSWindowController showWindow:] can ask again later in case something fills them
+in during the nib load.
+
+Both samples agree:
+
+    CIDER_DOC   controller ftView -> 0x7d1b1b40be20
+    CIDER_DOC   controller currentDesignElement -> 0x0
+    CIDER_DOC showWindow ftView -> 0x7d1b1b40be20
+    CIDER_DOC showWindow currentDesignElement -> 0x0
+
+So ftView is fine: the C++ core view is constructed and set. What is missing is the current design
+element, which is the page. The document parsed its property list, said the read succeeded, and
+ended up with nothing in its design element list.
+
+That puts the next question inside -[CCDocument serialize:error:], which walks
+countOfDesignElements, builds each element with initWithCCDocument:withDocumentType:andOptions: and
+inserts it. And that initialiser is one of the four places that logs 'Undefined document type', so
+the type warning is not the cosmetic thing it looked like: a design element built with no document
+type is the most likely reason the list stays empty. That is the thread to pull next.
+
+One trap from writing the probe, and it cost a run: -ftDocument and -ftView answer C++ objects, not
+Objective-C ones. Calling object_getClassName on one walks into objc_class::demangledName and
+segfaults, so the probe crashed the application it was there to measure. Print the pointer; nil or
+not nil was the whole question.
