@@ -9737,3 +9737,28 @@ What is still wrong: the buttons continue to read Button. That word is the butto
 glyphs that belong on top of these bezels are not coming through imageNamed at all and have another
 source. Four names the application asks for, verticalSplitHandler, tab_background, tab_foreground
 and splash, are not facets in this catalog, so there is nothing here to read for them.
+
+### The toolbar icons were never a catalog problem
+
+The bezels behind the Swift Publisher toolbar buttons came out of the asset catalog, and it was
+tempting to assume the glyphs on top of them would follow. They did not, and they never would have:
+those glyphs are LOOSE TIFF FILES beside the application, ToolbarZoomIn.tiff and ToolbarPrint.tiff
+and the rest, and they were being found all along.
+
+What stopped them was the image POSITION. A button cell keeps an image and a position, the position
+starts at NSNoImage, and AppKit promotes it to NSImageOnly when an image is set on a cell that had
+none. Ours did not, so a cell could hold a perfectly good picture and still draw only its title,
+which for a cell built in code is the word Interface Builder leaves behind: Button.
+
+The trace is what settled it, and only after being taught to print one more field. It already said
+img=image with a real name; adding imgpos to it turned a mystery into a one line fix, because
+imgpos=0 is NSNoImage and means do not draw the thing you are holding.
+
+The result is the whole toolbar: layout and dropdown under View, the dark rectangle and green T and
+green square under Editing Tools, both magnifiers under Zoom, the blue eye under Preview Mode, line
+and green upload and green printer for Insert and Share and Print, blue AA under Text Styles, a
+camera under Media Tracks, and the sidebar and inspector glyphs beside them. Two runs of two, no
+crashes.
+
+Switch and radio cells set their position before handing over an image, so they keep NSImageLeft and
+are untouched, and MoneyMoney was re-run afterwards and is unchanged.
