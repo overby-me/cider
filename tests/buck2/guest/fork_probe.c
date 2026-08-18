@@ -23,6 +23,9 @@
 #include <sys/un.h>
 #include <fcntl.h>
 #include <sys/uio.h>
+#include <sys/stat.h>
+#include <sys/event.h>
+#include <sys/time.h>
 
 extern char **environ;
 
@@ -233,7 +236,150 @@ static void flock_probe(const char *path) {
     unlink(path);
 }
 
-int main(void) {
+/* DOES A DESCRIPTOR SURVIVE EXEC. iTerm2 hands its helper a socket by NUMBER: it clears close on
+ * exec, forks, and execs iTermServer with that number as its only argument. If the descriptor does
+ * not survive the exec then the helper opens nothing, exits at once, and the application tries the
+ * next number, which is exactly the six numbered locks and no socket that a run leaves behind.
+ *
+ * The child here is this same binary, re-executed with checkfd and the number, because a stock tool
+ * cannot report what it inherited. */
+/* The same question for a LOW descriptor. An application that hands a helper a socket usually
+ * dup2s it to a small fixed number first, and a small number is exactly where a loader keeps its
+ * own descriptors, so surviving as fd 24 says nothing about surviving as fd 3. */
+static void inherit_low_probe(int want) {
+    int fd = open("/dev/null", O_RDONLY);
+
+    if (fd < 0)
+        return;
+
+    if (dup2(fd, want) < 0) {
+        fprintf(stderr, "FORK_PROBE dup2 to %d FAILED errno %d\n", want, errno);
+        fflush(stderr);
+        close(fd);
+        return;
+    }
+    close(fd);
+    fcntl(want, F_SETFD, fcntl(want, F_GETFD) & ~FD_CLOEXEC);
+
+    char number[16];
+
+    snprintf(number, sizeof(number), "%d", want);
+
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        char *argv[] = { "/fork_probe", "checkfd", number, NULL };
+
+        execv(argv[0], argv);
+        _exit(96);
+    }
+
+    int status = 0;
+
+    waitpid(pid, &status, 0);
+    fprintf(stderr, "FORK_PROBE low fd %d inherited across exec: %s\n", want,
+            (WIFEXITED(status) && WEXITSTATUS(status) == 0) ? "YES" : "NO");
+    fflush(stderr);
+    close(want);
+}
+
+static void inherit_probe(void) {
+    int fd = open("/dev/null", O_RDONLY);
+
+    if (fd < 0) {
+        fprintf(stderr, "FORK_PROBE inherit open FAILED errno %d\n", errno);
+        fflush(stderr);
+        return;
+    }
+
+    /* Explicitly clear close on exec, which is what the application does before handing it over. */
+    fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) & ~FD_CLOEXEC);
+
+    char number[16];
+
+    snprintf(number, sizeof(number), "%d", fd);
+
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        char *argv[] = { "/fork_probe", "checkfd", number, NULL };
+
+        execv(argv[0], argv);
+        fprintf(stderr, "FORK_PROBE inherit exec FAILED errno %d\n", errno);
+        _exit(96);
+    }
+
+    int status = 0;
+
+    waitpid(pid, &status, 0);
+    fprintf(stderr, "FORK_PROBE inherit child exited %d\n",
+            WIFEXITED(status) ? WEXITSTATUS(status) : -1);
+    fflush(stderr);
+    close(fd);
+}
+
+/* KQUEUE, which is what a serve loop waits on. A helper that cannot wait exits at once and says
+ * nothing, which is what iTermServer does here. */
+static void kqueue_probe(void) {
+    int kq = kqueue();
+
+    if (kq < 0) {
+        fprintf(stderr, "FORK_PROBE kqueue FAILED errno %d\n", errno);
+        fflush(stderr);
+        return;
+    }
+
+    int fds[2];
+
+    if (pipe(fds) != 0) {
+        fprintf(stderr, "FORK_PROBE pipe FAILED errno %d\n", errno);
+        fflush(stderr);
+        close(kq);
+        return;
+    }
+
+    struct kevent change;
+
+    EV_SET(&change, fds[0], EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+
+    if (kevent(kq, &change, 1, NULL, 0, NULL) < 0) {
+        fprintf(stderr, "FORK_PROBE kevent register FAILED errno %d\n", errno);
+        fflush(stderr);
+        close(kq);
+        return;
+    }
+
+    if (write(fds[1], "x", 1) != 1) {
+        fprintf(stderr, "FORK_PROBE pipe write FAILED errno %d\n", errno);
+        fflush(stderr);
+        close(kq);
+        return;
+    }
+
+    struct kevent event;
+    struct timespec timeout = { .tv_sec = 2, .tv_nsec = 0 };
+    int n = kevent(kq, NULL, 0, &event, 1, &timeout);
+
+    fprintf(stderr, "FORK_PROBE kqueue woke with %d event(s) (errno %d)\n", n, n < 0 ? errno : 0);
+    fflush(stderr);
+
+    close(fds[0]);
+    close(fds[1]);
+    close(kq);
+}
+
+int main(int argc, char **argv) {
+    if (argc == 3 && strcmp(argv[1], "checkfd") == 0) {
+        int fd = atoi(argv[2]);
+        struct stat st;
+        int ok = fstat(fd, &st) == 0;
+
+        fprintf(stderr, "FORK_PROBE checkfd %d inherited=%s (errno %d)\n", fd, ok ? "YES" : "NO",
+                ok ? 0 : errno);
+        fflush(stderr);
+        return ok ? 0 : 1;
+    }
+
     fprintf(stderr, "FORK_PROBE start\n");
     fflush(stderr);
 
@@ -260,6 +406,11 @@ int main(void) {
     unix_socket_probe("/tmp/probe-test.socket");
     fd_passing_probe();
     flock_probe("/tmp/probe-flock.lock");
+    inherit_probe();
+    kqueue_probe();
+    inherit_low_probe(3);
+    inherit_low_probe(4);
+    inherit_low_probe(5);
 
     fprintf(stderr, "FORK_PROBE done\n");
     fflush(stderr);
