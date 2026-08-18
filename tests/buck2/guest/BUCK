@@ -160,3 +160,28 @@ darwin_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+cc_objects(
+    name = "fork_probe_obj",
+    srcs = ["fork_probe.c"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "fork_probe",
+    objs = [
+        ":fork_probe_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
