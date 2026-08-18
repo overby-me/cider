@@ -276,6 +276,13 @@ static void drawSunkenBorder(NSRect rect) {
     NSUInteger i, count = [items count];
     NSRect previousBorderRect = NSMakeRect(0, 0, 0, 0);
     BOOL overflow = NO;
+
+    if (getenv("CIDER_TRACE_MENU") != NULL) {
+        fprintf(stderr, "CIDER_MENU bar drawRect %gx%g at %g,%g index=%ld\n",
+                rect.size.width, rect.size.height, rect.origin.x, rect.origin.y,
+                (long) _selectedItemIndex);
+        fflush(stderr);
+    }
     NSPoint mouseLoc = [[NSApp currentEvent] locationInWindow];
 
     mouseLoc = [self convertPoint: mouseLoc fromView: nil];

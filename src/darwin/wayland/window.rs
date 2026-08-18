@@ -1671,6 +1671,34 @@ fn present(st: &mut WindowState) {
         );
     }
     report_pixels(st);
+    // WHAT IS ACTUALLY IN THE BUFFER AT THE MENU BAR, sampled at present time. The compositor kept
+    // showing a highlighted menu title after Escape while every trace above said the bar had been
+    // repainted, and a summary cannot tell a stale buffer from a stale surface. This reads the
+    // pixels being committed, in the row the title sits in (task #121).
+    if crate::env_flag!("CIDER_TRACE_MENU") && !st.pixels.is_null() {
+        let stride = (st.buffer_w + st.margin * 2).max(1) as usize;
+        let y = (st.margin + 30) as usize;
+        let total = st.map_len / 4;
+        let words = unsafe { std::slice::from_raw_parts(st.pixels as *const u32, total) };
+        let _ = y;
+        // FIND the highlight rather than guess where it is: count the accent-blue pixels in the
+        // whole buffer and report the first one, with the geometry needed to place it.
+        let mut blue = 0usize;
+        let mut first = (0usize, 0usize);
+        for (i, &w) in words.iter().enumerate() {
+            let (r, g, b) = ((w >> 16) & 0xff, (w >> 8) & 0xff, w & 0xff);
+            if r < 40 && g > 90 && g < 160 && b > 220 {
+                if blue == 0 {
+                    first = (i % stride, i / stride);
+                }
+                blue += 1;
+            }
+        }
+        println!(
+            "cider-wayland-window barpixels number={} count={} buf={}x{} margin={} stride={} blue={} at={},{}",
+            st.number, st.presents + 1, st.buffer_w, st.buffer_h, st.margin, stride, blue, first.0, first.1
+        );
+    }
     // HOW MANY TIMES A WINDOW IS PRESENTED separates two failures that look identical on screen:
     // an application that draws nonsense, and one that draws correctly but never commits again, so
     // the compositor keeps showing an early frame forever. The dump below is taken at present time
@@ -1751,7 +1779,9 @@ fn dump_buffer(st: &mut WindowState) {
     // to answer by writing nothing at all.
     let dir = dir.to_string_lossy().to_string();
     let _ = std::fs::create_dir_all(&dir);
-    let path = format!("{dir}/window-{}.bmp", st.number);
+    // ONE FILE PER FRAME, not one per window: the question is what a PARTICULAR frame carried,
+    // and a single overwritten file only ever answers for the last one.
+    let path = format!("{dir}/window-{}-{:05}.bmp", st.number, st.presents);
     // Written whole then renamed, because a reader that opens a half written 12 MB file sees a
     // torn image and blames the renderer.
     let tmp = format!("{path}.tmp");

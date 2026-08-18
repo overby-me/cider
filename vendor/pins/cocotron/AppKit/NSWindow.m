@@ -2339,6 +2339,12 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) flushWindow {
+    if (getenv("CIDER_TRACE_MENU") != NULL) {
+        fprintf(stderr, "CIDER_FLUSH window=%p disabled=%d needed=%d visible=%d viewsNeed=%d\n",
+                self, (int) _flushDisabled, (int) _flushNeeded, (int) [self isVisible],
+                (int) [self viewsNeedDisplay]);
+        fflush(stderr);
+    }
     if (_flushDisabled > 0) {
         _flushNeeded = YES;
         return;

@@ -493,6 +493,13 @@ const NSTimeInterval kMouseMovementThreshold = .001f;
                     [typing _resizeForCurrentItems];
                     break;
                 }
+                if (getenv("CIDER_TRACE_MENU") != NULL) {
+                    fprintf(stderr, "CIDER_MENU escape depth=%d bottom=%s top=%s\n",
+                            (int) [viewStack count],
+                            ([viewStack count] > 0) ? object_getClassName([viewStack objectAtIndex: 0]) : "none",
+                            ([viewStack count] > 0) ? object_getClassName([viewStack lastObject]) : "none");
+                    fflush(stderr);
+                }
                 if ([viewStack count] > 1) {
                     NSView *view = [viewStack lastObject];
                     MENUDEBUG(@"popping cascading view: %@", view);
@@ -858,9 +865,23 @@ const NSTimeInterval kMouseMovementThreshold = .001f;
     }
     [viewStack removeLastObject];
 
+    if (getenv("CIDER_TRACE_MENU") != NULL) {
+        fprintf(stderr, "CIDER_MENU cleanup self=%s index=%lu window=%p\n",
+                object_getClassName(self), (unsigned long) _selectedItemIndex, [self window]);
+        fflush(stderr);
+    }
     _selectedItemIndex = NSNotFound;
     [[self window] setAcceptsMouseMovedEvents: oldAcceptsMouseMovedEvents];
     [self setNeedsDisplay: YES];
+
+    /*
+     * NO FORCED PRESENT HERE, and that is a measurement rather than an omission. Displaying and
+     * flushing the window at this point was tried twice and changed nothing on screen: by the time
+     * this runs the bar has ALREADY been repainted without the highlight, the window buffer that
+     * gets committed no longer contains it (checked pixel by pixel, present by present), and the
+     * compositor goes on showing the old frame until the next input event arrives. Whatever is
+     * stale is downstream of this line, so a flush added here is a line nobody can explain later.
+     */
 
     /* WHAT THE TRACK ENDED WITH, and whether it is about to be thrown away. Choosing a menu item
      * does nothing at all in this port, by mouse or by Return, and the whole difference between a
