@@ -10681,3 +10681,56 @@ every run, including the ones meant as controls.
 
 With the gate fixed, the pair is unambiguous on one build: probe off, flat grey canvas; probe on, a
 page with rulers and a page edge.
+
+## Swift Publisher answers the mouse now, and the click was landing 69 points low
+
+Its menus never opened. The input trace showed every click arriving, the hit trace showed a view
+being found, and from outside that is indistinguishable from an application that ignores the mouse.
+What was wrong is a coordinate flip using the wrong height.
+
+A window whose application refuses to shrink below a size keeps DRAWING at that size while the
+compositor is handed a smaller buffer taken from the top of the bitmap. ensure_backing says so:
+
+    cider-wayland-window backing=oversize number=36 buffer=1256x684 bitmap=1256x753
+
+Wayland reports the pointer in surface coordinates from the top and AppKit wants them from the
+bottom of its own window, so the event path needs a height to flip by, and window_for_surface was
+handing it the BUFFER height. Every click in that window therefore arrived 69 points low, which is
+exactly the overhang:
+
+    before   CIDER_HIT at=281,649 view=NSView              the document pane, one point below the bar
+             CIDER_HIT at=281,658 view=NSToolbarItemView
+    after    CIDER_HIT at=281,718 view=NSMainMenuView frame={{0, 703}, {1256, 28}}
+             CIDER_MENU mouseDown on NSMainMenuView at 281,13 bounds=1256x28 items=9
+
+The flip now uses the bitmap height, which is what AppKit lays out in, and the View menu opens with
+its real contents. Five runs out of five reached mouseDown on the menu bar. Neither MoneyMoney nor
+iTerm2 has an oversize window, so neither changes, and both were re-run and looked at.
+
+### And the canvas chain, mapped end to end
+
+With menus working, the remaining canvas question got a precise answer about WHERE the missing size
+comes from, read out of the application binary rather than guessed:
+
+    -[CCMainWindowController updateViews]   the ONLY code that ever sizes the document scroll view;
+                                            it moves [[self docView] enclosingScrollView] corner to
+                                            the inspector view
+    updateViews                             has exactly one caller: setInspectorVisible:
+    setInspectorVisible:                    has exactly one caller in code: toggleInspectorVisible
+    toggleInspectorVisible                  is never sent from code at all
+    inspectorVisible                        is a declared BOOL property, so a binding drives it
+
+So on macOS something pushes that property while the window is being set up, and the scroll view
+gets its frame as a side effect of the inspector layout. Here nothing pushes it, the scroll view
+keeps the zero frame it was created with, and the canvas stays grey. The next measurement is our own
+binding machinery: whether a binding to inspectorVisible exists once the nib has loaded, and whether
+it ever pushes an initial value.
+
+The Hide Inspector menu item is a red herring worth writing down so it is not chased twice: its
+action is literally `fake`, it has no target, and its title is bound. A class named fakeClass
+implements `fake` and is not in the responder chain, so autoenabling greys the item. macOS searches
+the responder chain the same way, so that item is very likely grey there too.
+
+scripts note: scratchpad/objc-callers.py lists every call site of a selector and names the method
+that contains it, by finding the selref loads rather than disassembling eight megabytes. That is how
+the chain above was read in three commands.
