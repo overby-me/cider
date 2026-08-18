@@ -10300,3 +10300,32 @@ Two more of ours were fixed on the way, both found by looking for the NaN and ne
 view transform divided the frame by the bounds, which is a division by zero for an empty view and
 poisons every conversion under it, and NSScrollView reported a NEGATIVE content size for a scroll
 view smaller than its scrollers.
+
+### CORRECTION: the transform is not nil, and the fit is the arithmetic that matters
+
+Earlier in this thread I wrote that the application asks its design element for a transform, gets
+nil, and takes the branch that zeroes the page. The first half of that is wrong and the trace says
+so plainly. With every transform logged rather than only the first few, the run reads:
+
+    CIDER_XFORM point (-792,0) matrix a=1 d=1
+    CIDER_XFORM size (2376,612) matrix a=1 d=1
+    CIDER_GEOM CCDocView GOT NAN frame ...
+
+three lines apart. The transform happens immediately before the bad frame, with the identity matrix
+and the correct 2376 by 612 spread, so the nil branch is NOT taken. The reasoning that got it wrong
+was sound in isolation and untested: a nil transform would explain the zeroes, and I never checked
+whether that branch was actually reached. It was not, and two independent facts now say the receiver
+cannot be nil either, since the same method dereferences it through a C++ call that would fault, and
+our own +[NSAffineTransform transform] cannot answer nil.
+
+What the arithmetic actually does, read instruction by instruction: the fit divides a size by the
+page width, compares, and keeps a scale in one slot; at the end that same scale is used as a
+divisor, a clamp is subtracted from it, and the page size is multiplied by the result. A zero scale
+there gives a division by zero and then infinity times zero, which is the NaN.
+
+And here the honest part. The scale is fed by a size that IS zero in the ordinary run, because the
+document scroll view has never been given a frame, which is the gap this thread started with. But
+when that view was given one by the gated probe, so that the frame, the bounds, the visible rect
+and the content size were all sane, the application STILL produced a NaN. Both measurements are
+real and they do not fit together yet, so the next rung starts by re-running the fill probe with the
+transform trace on, which is the one combination not yet measured.
