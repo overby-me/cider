@@ -9850,3 +9850,48 @@ What is still wrong inside the session, both small and both new: tty prints "not
 ?? in the TTY column for every process, where macOS names the pty, and ps prints "Unimplemented
 syscall (539)" three times. 539 is task_read_for_pid, from the xnu syscalls.master already in the
 tree, which is also why every TIME column reads 0:00.00.
+
+### Swift Publisher: the canvas draws nothing because the application asks for nothing
+
+The document window comes up with its rulers, its panels and its toolbar, and the page area in the
+middle stays empty. The last note here left it at "the application draws nothing" with the parse
+unaccounted for, and guessed that chasing it meant disassembling the application's own parser.
+Measuring first was cheaper.
+
+Three questions were answered, each with an instrument that was made to speak before its silence
+was believed.
+
+Does the application get its document? Yes, all of it. A trace on NSFileWrapper says the
+application asks a directory wrapper for its children twice, then asks for doc.thread and receives
+420,727 bytes, which is the whole file.
+
+Does it parse that through us? No, and now this is measured rather than inferred. doc.thread is an
+XML property list. The application binds NSXMLDocument and NSPropertyListSerialization from
+Foundation and CFXMLTreeCreateFromData from CoreFoundation, so every candidate was instrumented at
+once: NSXMLDocument initWithData, NSXMLParser parse, CFXMLTreeCreateFromData, and
+_CFPropertyListCreateWithData, which every public property list read funnels through, including the
+stream one. A run does 27 property list reads, the largest 273,567 bytes, and NONE of them is the
+document. The XML entry points are never called at all. Nor is a scanner: the application's own
+parser uses NSScanner, which is why scanUnsignedLongLong had to be added, but no scanner is ever
+created over a string longer than ten thousand characters, so the document is not scanned either.
+
+The reason that silence can be trusted this time is a constructor in each library that prints once
+when the gate is on. Both announced. A gate that never fired and a library that was never rebuilt
+look exactly alike without it, and that has cost a rung here before.
+
+Does its view draw anything? No, and this is the useful one. Onyx2D now counts drawing operations
+in its five primitives, fills, paths, glyphs, images and shadings, and the drawRect bracket in
+NSView reports the count for the watched class. -[CCDocView drawRect:] is called ten times in a run
+and every one of them reports ops=0. Not one fill, not one path, not one glyph. The coverage is
+not a guess either: the application imports CGContextFillPath, CGContextStrokePath,
+CGContextStrokeRect, CGContextDrawImage, CGContextDrawShading and the text calls, and no CGLayer or
+CGPDF entry point at all, so there is no drawing route that the counter would miss.
+
+So the application reads its document, tells NSDocument that reading succeeded, and then has
+nothing to draw. What is left is between the bytes and the model, inside its own code, and the next
+instrument for it is message send logging around the document open rather than more elimination
+from our side.
+
+The counter stays. It costs an increment on five paths, prints only when CIDER_TRACE_FRAMES names a
+class, and it answers a question that read-only tracing could not: zero drawing operations inside a
+drawRect that is definitely running means an empty model, never a clip or a colour.

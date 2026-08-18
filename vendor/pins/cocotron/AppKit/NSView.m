@@ -74,6 +74,8 @@ const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPresentationOptio
 - (void) _trackingAreasChanged;
 @end
 
+extern unsigned long cider_o2_draw_ops;
+
 @implementation NSView
 
 /*
@@ -2710,13 +2712,19 @@ static NSView *viewBeingPrinted = nil;
                     fflush(stderr);
                 }
             }
+            /* HOW MANY DRAWING OPERATIONS THE APPLICATION ISSUES INSIDE ITS OWN drawRect:.
+             * Zero here means an empty model, not a clipped or misplaced one. */
+            unsigned long ciderDrawOpsBefore = cider_o2_draw_ops;
+
             [self drawRect: rect];
             {
                 const char *watchDone = getenv("CIDER_TRACE_FRAMES");
 
                 if (watchDone != NULL && watchDone[0] != (char) 0 &&
                     strstr(object_getClassName(self), watchDone) != NULL) {
-                    fprintf(stderr, "CIDER_FRAME %s drawRect LEAVE\n", object_getClassName(self));
+                    fprintf(stderr, "CIDER_FRAME %s drawRect LEAVE ops=%lu\n",
+                            object_getClassName(self),
+                            cider_o2_draw_ops - ciderDrawOpsBefore);
                     fflush(stderr);
                 }
             }

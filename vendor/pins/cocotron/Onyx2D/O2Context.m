@@ -1249,9 +1249,16 @@ void O2ContextFillRect(O2ContextRef self, O2Rect rect) {
     O2ContextFillRects(self, &rect, 1);
 }
 
+/* CIDER_TRACE_FRAMES uses this to answer a question elimination could not: when a view is asked to
+ * draw and NOTHING appears, did the application issue any drawing at all? A count that stays put
+ * across drawRect means an empty model; a count that climbs while the window stays blank means the
+ * drawing went somewhere else. Plain counter, no gate, so reading it costs nothing. */
+unsigned long cider_o2_draw_ops = 0;
+
 void O2ContextFillRects(O2ContextRef self, const O2Rect *rects,
                         NSUInteger count)
 {
+    cider_o2_draw_ops++;
     if (self == nil)
         return;
 
@@ -1330,6 +1337,7 @@ void O2ContextFillEllipseInRect(O2ContextRef self, O2Rect rect) {
 }
 
 void O2ContextDrawPath(O2ContextRef self, O2PathDrawingMode pathMode) {
+    cider_o2_draw_ops++;
     if (self == nil)
         return;
 
@@ -1406,6 +1414,7 @@ void O2ContextClearRect(O2ContextRef self, O2Rect rect) {
 void O2ContextShowGlyphs(O2ContextRef self, const O2Glyph *glyphs,
                          NSUInteger count)
 {
+    cider_o2_draw_ops++;
     if (self == nil)
         return;
 
@@ -1536,6 +1545,7 @@ void O2ContextShowTextAtPoint(O2ContextRef self, O2Float x, O2Float y,
 }
 
 void O2ContextDrawShading(O2ContextRef self, O2ShadingRef shading) {
+    cider_o2_draw_ops++;
     if (self == nil)
         return;
 
@@ -1543,6 +1553,7 @@ void O2ContextDrawShading(O2ContextRef self, O2ShadingRef shading) {
 }
 
 void O2ContextDrawImage(O2ContextRef self, O2Rect rect, O2ImageRef image) {
+    cider_o2_draw_ops++;
     if (self == nil)
         return;
 
