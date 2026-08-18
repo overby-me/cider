@@ -382,6 +382,8 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
         return nil;
 
     NSImage *image = [[self allImages] objectForKey: name];
+    BOOL foundAFile = NO;
+
     if (image == nil) {
         NSArray *bundles = [self _checkBundles];
         int i, count = [bundles count];
@@ -391,6 +393,7 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
             NSString *path = [bundle pathForImageResource: name];
 
             if (path != nil) {
+                foundAFile = YES;
                 image = [[[NSImage alloc] initWithContentsOfFile: path]
                         autorelease];
                 [image setName: name];
@@ -399,6 +402,17 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
                 }
             }
         }
+    }
+
+    /* WHICH NAMES COME BACK EMPTY. A button whose image is nil draws its title instead, so a
+     * toolbar full of the word Button is a list of lookups that failed, and only the names say
+     * where they were supposed to come from. This search reads LOOSE resource files only: an image
+     * that lives in a compiled Assets.car is not found here at all. */
+    if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL && getenv("CIDER_TRACE_IMAGESOURCE")[0] != (char) 0) {
+        fprintf(stderr, "CIDER_IMAGESOURCE imageNamed %s -> %s\n", [name UTF8String],
+                image != nil ? "found"
+                             : (foundAFile ? "FILE BUT NO DECODER" : "NO FILE AT ALL"));
+        fflush(stderr);
     }
 
     // Cocoa AppKit always returns the same shared cached image

@@ -9426,3 +9426,55 @@ STILL BROKEN: one run in four dies. Pressing Choose does not open a document: CA
 prints loadWindow and loadNibFile enter, and never the leave, which is the shape MoneyMoney had
 before its own nib was fixed. One preview tile draws bands of colour noise where a photograph
 belongs.
+
+### Swift Publisher: the document window, and why the toolbar says Button
+
+Pressing Choose did nothing, and behind that were three faults, each one only visible once the one
+in front of it was gone.
+
+The first was `-[NSView adjustSubviews]`, sent by
+`-[CCCanvasesPreviewAndDocumentSplitViewController setVisibleCanvasesPreview:]` to a view that is a
+plain NSView here. It escaped the nib load and took the whole document window with it. NSView
+answers it now by laying its subviews out again at the size it already has, which is the only thing
+the name can honestly mean for a view that is not a split view.
+
+The second killed the process inside a KVO notification, in `-[_NSKVOBinder
+writeDestinationToSource]`, messaging freed memory. Binders are kept in a STATIC dictionary keyed by
+a NON RETAINED pointer, so nothing in it is reachable from the object it describes and nothing
+removes it when that object dies. NSView and NSControl call `_unbindAllBindings` from their dealloc.
+NSMenuItem does not, and Swift Publisher binds menu items. The log had been saying so for a while:
+an instance of NSKVONotifying_NSMenuItem was deallocated while key value observers were still
+registered with it. An associated object now reaps the entry when its owner is destroyed, whatever
+the class, and tells each binder to FORGET its source rather than to unbind, because by that point
+the source must not be messaged at all.
+
+Worth recording as a failed attempt before that: a guard using `malloc_zone_from_ptr` to ask whether
+the source was still alive. It is not a liveness test, because a freed block still belongs to its
+zone, so it never fired; and returning an empty array from `peerBinders` made the caller read an
+uninitialised stack array, which produced a NEW crash that looked like the old one.
+
+The third was a jump to address zero while drawing toolbar text.
+`O2ContextSetupPaintAndBlendMode` clears `_blend_argb8u_PRE` and fills it in for six blend modes
+only. The general rasteriser knows this and tests the pointer, falling back to the float blend; the
+glyph run called it without looking. Guarded, falling back to the normal 8 bit blend, which means
+text under an unsupported blend mode composites normally instead. That is an approximation, and a
+glyph run that draws with the wrong blend beats one that ends the process.
+
+WHERE IT STANDS: three runs of three now survive the whole driver with zero crashes and six captures
+each, against one crash and three captures in every run before. The window is titled Untitled -
+Swift Publisher 5 and carries the menu bar, a toolbar whose groups read View, Editing Tools, Zoom,
+Preview Mode, Insert, Share, Print, Text Styles, Fonts, Media Tracks and Inspector, a sidebar and an
+inspector panel. It relayouts on resize, collapsing the toolbar into an overflow chevron. The mouse
+works, since every step of the path to that window was a click.
+
+WHY THE TOOLBAR READS BUTTON, exactly rather than approximately. `+[NSImage imageNamed:]` now
+reports three outcomes rather than two, and over one run: 226 found, 143 lookups with no file at
+all, and one with a file we cannot decode, AppIcon.icns. The 143 are 29 distinct names, 27 of them
+the application's own, and they are inside Contents/Resources/Assets.car; strings on that file lists
+InspectorCornerRadius.png, its @2x and Drk variants, the ToolbarButton set and tab_background. We
+have no reader for a compiled asset catalog, an NSButton with no image draws its title, and the
+title is the Interface Builder default, the literal word Button. This is not a small fix: renditions
+in a modern car file are not stored as PNG files, so it needs a BOM reader and a rendition decoder.
+It belongs in its own task.
+
+The canvas in the middle of the document window is still blank.
