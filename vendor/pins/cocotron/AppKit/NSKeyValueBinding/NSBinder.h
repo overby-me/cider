@@ -56,6 +56,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (id) bindingPath;
 
 - (NSArray *) peerBinders;
+- (void) _ciderForgetSource;
 
 - (void) startObservingChanges;
 - (void) stopObservingChanges;

@@ -312,6 +312,7 @@ typedef NS_OPTIONS(NSUInteger, NSTouchTypeMask) {
 - (BOOL) shouldDelayWindowOrderingForEvent: (NSEvent *) event;
 
 - (void) resizeSubviewsWithOldSize: (NSSize) oldSize;
+- (void) adjustSubviews;
 - (void) resizeWithOldSuperviewSize: (NSSize) oldSize;
 
 - (BOOL) inLiveResize;

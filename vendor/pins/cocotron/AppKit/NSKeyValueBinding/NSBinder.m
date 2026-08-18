@@ -293,6 +293,28 @@ static void *NSBinderChangeContext;
 
 // Returns all of the source binders sharing the same binding (or fake binding -
 // like enabled, enabled2...)
+
+/*
+ * THE SOURCE IS GONE AND THIS BINDER MUST STOP LISTENING.
+ *
+ * _source is deliberately not retained: the source is supposed to own its binders. It does not.
+ * They live in a static dictionary keyed by a NON RETAINED pointer, so a source that deallocates
+ * leaves its binders behind, still registered as observers of their destination. The next change to
+ * that destination then arrives at a binder whose _source points at freed memory, and the write back
+ * messages it. Swift Publisher died there restoring its document window, from
+ * -[_NSKVOBinder writeDestinationToSource] under _NSKeyValueDidChange, with NSMenuItem the source
+ * that had gone: NSView and NSControl call _unbindAllBindings when they deallocate and NSMenuItem
+ * does not.
+ *
+ * Called while the source is being destroyed, so it must NOT message it. Clearing _source first
+ * makes the removal below safe: what it sends to the source goes to nil, while the subclass still
+ * removes itself from the destination, which is the registration that outlives everything.
+ */
+- (void) _ciderForgetSource {
+    _source = nil;
+    [self stopObservingChanges];
+}
+
 - (NSArray *) peerBinders {
     NSArray *allUsedBinders = [_source _allUsedBinders];
 

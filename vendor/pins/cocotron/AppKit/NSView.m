@@ -41,6 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <stdlib.h>
 
 #import <AppKit/NSView.h>
+#import <dlfcn.h>
+#import <execinfo.h>
 #import <AppKit/NSViewBackingLayer.h>
 #import <AppKit/NSWindow-Private.h>
 #import <CoreGraphics/CGWindow.h>
@@ -72,6 +74,33 @@ const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPresentationOptio
 @end
 
 @implementation NSView
+
+/*
+ * WHO ASKS A PLAIN VIEW TO ADJUST ITS SUBVIEWS. adjustSubviews is NSSplitView API, so a send of it
+ * to an NSView means some view that should have been a split view is not one. The raise unwound the
+ * whole Swift Publisher document nib, and the class alone does not say which view it is. This names
+ * the caller, then does the one thing the name can honestly mean for a plain view: lay the subviews
+ * out again for the size it already has. CIDER_TRACE_VIEWS prints the chain.
+ */
+- (void) adjustSubviews {
+    if (getenv("CIDER_TRACE_VIEWS") != NULL) {
+        void *frames[14];
+        int count = backtrace(frames, 14);
+
+        fprintf(stderr, "CIDER_VIEW adjustSubviews on %s frame %.0fx%.0f subviews=%lu\n",
+                object_getClassName(self), [self frame].size.width, [self frame].size.height,
+                (unsigned long) [[self subviews] count]);
+        for (int i = 0; i < count; i++) {
+            Dl_info info;
+
+            if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL)
+                fprintf(stderr, "CIDER_VIEW   #%d %s\n", i, info.dli_sname);
+        }
+        fflush(stderr);
+    }
+
+    [self resizeSubviewsWithOldSize: [self frame].size];
+}
 
 @synthesize identifier = _identifier;
 @synthesize translatesAutoresizingMaskIntoConstraints = _translatesAutoresizingMaskIntoConstraints;

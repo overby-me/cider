@@ -184,7 +184,27 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
                 chunk = -chunk;
                 // Skip this much pixels.
             } else {
-                self->_blend_argb8u_PRE(src, dst, chunk);
+                /*
+                 * A NULL BLEND FUNCTION IS A JUMP TO ZERO, and this path called it without looking.
+                 *
+                 * O2ContextSetupPaintAndBlendMode clears _blend_argb8u_PRE and then fills it in for
+                 * a handful of modes only: normal, clear, copy, source in, XOR and plus lighter.
+                 * Every other mode leaves it NULL, and the general rasteriser knows that, which is
+                 * why it tests the pointer and falls back to the float blend. This glyph run did
+                 * not test it. Swift Publisher drew a toolbar item with one of the other modes and
+                 * the process died with rip=0, deterministically, in three runs of three.
+                 *
+                 * There is no 8 bit variant to fall back to, so text under an unsupported mode is
+                 * composited NORMALLY rather than in that mode. It is an approximation and it is
+                 * visible in principle; a glyph run that draws with the wrong blend beats one that
+                 * ends the process.
+                 */
+                O2BlendSpan_argb8u blendSpan = self->_blend_argb8u_PRE;
+
+                if (blendSpan == NULL)
+                    blendSpan = O2BlendSpanNormal_8888;
+
+                blendSpan(src, dst, chunk);
 
                 applyCoverageToSpan_lRGBA8888_PRE(dst, coverage, src, chunk);
 
@@ -293,11 +313,22 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
         return;
     }
 
+    /*
+     * THE SAME ONE THREAD AT A TIME AS THE MEASURING PATHS, and for the same shared thing. This
+     * whole run works through face->glyph, ONE slot that FT_Set_Char_Size, FT_Load_Glyph and
+     * FT_Render_Glyph all write, and the bitmap is read out of it afterwards. Swift Publisher draws
+     * previews on an operation queue while the main thread draws the window, and without this the
+     * two met here: rip=0 inside renderFreeTypeBitmap, a call through a pointer another thread had
+     * already replaced.
+     */
+    O2FontHostLock();
+
     FT_GlyphSlot slot = face->glyph;
 
     if ((ftError =
                  FT_Set_Char_Size(face, 0, fontSize.height * 64, 72.0, 72.0))) {
         NSLog(@"FT_Set_Char_Size returned %d", ftError);
+        O2FontHostUnlock();
         O2SurfaceUnlock(_surface);
         return;
     }
@@ -396,6 +427,7 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
 
     total = (total / O2FontGetUnitsPerEm(font)) * gState->_pointSize;
 
+    O2FontHostUnlock();
     O2SurfaceUnlock(_surface);
 }
 

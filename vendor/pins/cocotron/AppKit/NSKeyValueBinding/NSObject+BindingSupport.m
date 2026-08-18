@@ -64,6 +64,58 @@ Do not change.
 
 int NSBindingDebugLogLevel = 0; // Defaults to no logging
 
+/*
+ * WHO CLEANS UP AFTER A SOURCE THAT NEVER SAYS GOODBYE.
+ *
+ * bindersForObjects is a static dictionary keyed by a NON RETAINED pointer, so nothing in it is
+ * reachable from the object it belongs to and nothing removes it when that object dies. NSView and
+ * NSControl call -_unbindAllBindings from their dealloc; every other class that can be bound does
+ * not, and NSMenuItem is one Swift Publisher binds. Its entry outlived it, the binder inside stayed
+ * registered on its destination, and the next change reached a binder whose source was freed
+ * memory.
+ *
+ * An associated object is released when its owner is destroyed, whatever the class and without a
+ * dealloc of our own in it, so one attached here reaps the table entry. It must not message the
+ * source: by then the source is already gone, which is why the binders are told to forget it rather
+ * than to unbind.
+ */
+@interface _CiderBindingReaper : NSObject {
+    NSValue *_key;
+}
+- (instancetype) initWithKey: (NSValue *) key;
+@end
+
+@implementation _CiderBindingReaper
+
+- (instancetype) initWithKey: (NSValue *) key {
+    self = [super init];
+    if (self != nil)
+        _key = [key retain];
+
+    return self;
+}
+
+- (void) dealloc {
+    NSDictionary *ownBinders = [[bindersForObjects objectForKey: _key] retain];
+
+    [bindersForObjects removeObjectForKey: _key];
+
+    NSEnumerator *binders = [[ownBinders allValues] objectEnumerator];
+    _NSBinder *binder = nil;
+
+    while ((binder = [binders nextObject]) != nil)
+        [binder _ciderForgetSource];
+
+    [ownBinders release];
+    [_key release];
+    [super dealloc];
+}
+
+@end
+
+static const void *kCiderBindingReaperKey = &kCiderBindingReaperKey;
+
+
 @implementation NSObject (BindingSupport)
 
 void NSDetermineBindingDebugLoggingLevel(void) {
@@ -147,6 +199,13 @@ void NSDetermineBindingDebugLoggingLevel(void) {
     if (!ownBinders) {
         ownBinders = [NSMutableDictionary dictionary];
         [bindersForObjects setObject: ownBinders forKey: key];
+
+        /* Attached the moment this object gets a table entry, so the entry cannot outlive it. */
+        _CiderBindingReaper *reaper = [[_CiderBindingReaper alloc] initWithKey: key];
+
+        objc_setAssociatedObject(self, kCiderBindingReaperKey, reaper,
+                                 OBJC_ASSOCIATION_RETAIN);
+        [reaper release];
     }
 
     id binder = [ownBinders objectForKey: binding];
