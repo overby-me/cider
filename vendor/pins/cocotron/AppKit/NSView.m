@@ -1226,13 +1226,21 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 
     if (watch != NULL && watch[0] != (char) 0 &&
         strstr(object_getClassName(self), watch) != NULL) {
-        Dl_info info;
+        Dl_info info, infoUp;
         void *ret = __builtin_return_address(0);
+        /* TWO FRAMES, because one is not enough to name a source. -setFrameSize: calls this, so the
+         * nearest caller is almost always our own forwarding method and the interesting one is
+         * whoever called THAT. */
+        void *retUp = __builtin_return_address(1);
 
-        fprintf(stderr, "CIDER_FRAME %s -> %.0fx%.0f at %.0f,%.0f (was %.0fx%.0f) from %s\n",
+        fprintf(stderr,
+                "CIDER_FRAME %s -> %.0fx%.0f at %.0f,%.0f (was %.0fx%.0f) from %s <- %s\n",
                 object_getClassName(self), frame.size.width, frame.size.height,
                 frame.origin.x, frame.origin.y, _frame.size.width, _frame.size.height,
-                (dladdr(ret, &info) != 0 && info.dli_sname != NULL) ? info.dli_sname : "?");
+                (dladdr(ret, &info) != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
+                (retUp != NULL && dladdr(retUp, &infoUp) != 0 && infoUp.dli_sname != NULL)
+                        ? infoUp.dli_sname
+                        : "?");
         fflush(stderr);
     }
 
@@ -1404,6 +1412,26 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 
     invalidateTransform(view);
 
+    /* WHERE A WATCHED VIEW LANDS AND WHAT IT LANDS IN. A view added at zero size into a container
+     * that already has its size is never reached by autoresizing, so this names the container that
+     * ought to give it room. Same gate as the rest of the frame trace. */
+    {
+        const char *watchAdd = getenv("CIDER_TRACE_FRAMES");
+
+        if (watchAdd != NULL && watchAdd[0] != (char) 0 &&
+            strstr(object_getClassName(view), watchAdd) != NULL) {
+            fprintf(stderr,
+                    "CIDER_FRAME %s ADDED to %s %.0fx%.0f (siblings=%lu, in %s) own %.0fx%.0f "
+                    "mask=0x%x\n",
+                    object_getClassName(view), object_getClassName(self), _frame.size.width,
+                    _frame.size.height, (unsigned long) [_subviews count],
+                    _superview != nil ? object_getClassName(_superview) : "(no superview)",
+                    [view frame].size.width, [view frame].size.height,
+                    (unsigned) [view autoresizingMask]);
+            fflush(stderr);
+        }
+    }
+
     [self setNeedsDisplayInRect: [view frame]];
 
     [view viewDidMoveToSuperview];
@@ -1477,6 +1505,18 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 }
 
 - (void) setAutoresizingMask: (NSAutoresizingMaskOptions) mask {
+    /* A view added at zero size can only ever be grown by autoresizing if it has a mask, so when a
+     * watched view stays empty this says whether the application asked for one at all. Same gate as
+     * the rest of the frame trace. */
+    const char *watchMask = getenv("CIDER_TRACE_FRAMES");
+
+    if (watchMask != NULL && watchMask[0] != (char) 0 &&
+        strstr(object_getClassName(self), watchMask) != NULL) {
+        fprintf(stderr, "CIDER_FRAME %s mask 0x%x -> 0x%x\n", object_getClassName(self),
+                (unsigned) _autoresizingMask, (unsigned) mask);
+        fflush(stderr);
+    }
+
     _autoresizingMask = mask;
 }
 

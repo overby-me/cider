@@ -10096,3 +10096,47 @@ So the clamp is right and it is not the fix. The question for the next rung is w
 scroll view never receives a frame: it is created in code at zero size, and something has to give it
 the room, either the application through a layout method or our own split view and autoresizing
 after it is added.
+
+### The canvas view that nobody sizes, traced to the view it was added to
+
+The NaN has a source and it is not arithmetic of ours. The frame trace now names two callers rather
+than one, because the nearest caller of -setFrame: is almost always our own -setFrameSize:, and with
+that the line reads
+
+    CCDocView -> nanxnan (was 0x15) from -[NSView setFrameSize:]
+        <- -[CCDocView setupGeometryForDisplayCurrentCanvasAndSavePreviouseScrollPosition:]
+
+so the application computes it, from a scroll view that has no size, and then detects it and warns.
+Our own division was worth fixing anyway and was NOT this: NSSplitView divided the available space
+by the total width of its subviews, which is zero when they are created in code at zero size, so
+every proportional resize of a fresh split view produced infinity and then NAN. It now shares the
+room equally when there are no proportions to preserve, and clamps.
+
+Where the scroll view comes from, measured by tracing the insertion rather than guessing:
+
+    CCDocScrollView BORN 0x0 from -[NSScrollView initWithFrame:]
+    CCDocScrollView ADDED to NSView 759x725 (siblings=3, in NSKVONotifying_CCSplitView)
+        own 0x0 mask=0x0
+
+It is created at zero size and added as one of three children of a plain NSView pane which already
+has its size, and it is given NO autoresizing mask, so autoresizing can never reach it. It then
+never receives a frame for the rest of the run: not one setFrame line, and every DISPLAY still says
+frame 0x0, including after the compositor resizes the window. The document view inside it does get a
+mask, 0x12, and is the one thing in that subtree that our autoresizing can touch, which is where its
+0x15 comes from.
+
+What the application expects is now the open question, and there is good evidence for the answer.
+The only places it calls adjustSubviews are -[CCSplitView setVisibleLeftView:],
+-[CCSplitView setVisibleRightView:] and
+-[CCCanvasesPreviewAndDocumentSplitViewController setVisibleCanvasesPreview:], and that last one
+sends it to the controller OWN VIEW. A view controller that sends adjustSubviews to its own view
+believes that view is a split view. Ours is a plain NSView, which is why an earlier rung had to give
+NSView an adjustSubviews of its own. So the next question is a narrow one: is the pane container
+supposed to be an NSSplitView, and is it decoding as a plain NSView. That decides whether the fix is
+in nib decoding or in layout.
+
+It also explains why the canvas used to have a size and now does not. The earlier runs went through
+setVisibleCanvasesPreview:, which called adjustSubviews and let the NSView fallback stretch the
+zero sized pane; with a selected page the application takes a different path and never calls it.
+The application does not use Auto Layout at all, checked: no NSLayoutConstraint, no anchors, no
+addConstraint:, so nothing else was ever going to size that view.

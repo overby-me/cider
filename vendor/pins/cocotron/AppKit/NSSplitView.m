@@ -163,14 +163,37 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
         }
     }
 
-    CGFloat delta = totalWidthAfter / totalWidthBefore;
+    /*
+     * NOTHING TO SCALE FROM IS NOT A RATIO, AND A RATIO OF NOTHING IS NOT A NUMBER.
+     *
+     * Proportional resizing needs a total to divide by, and subviews created in code start at zero
+     * size, so this divided by zero: totalWidthAfter over nothing is infinity, the multiply below
+     * is then zero times infinity, and every subview got a width of NAN. Swift Publisher lays its
+     * document scroll view out this way, so the canvas ended up nan by nan and could not paint,
+     * and the application said so itself before we noticed: [[self docView] frame] content NAN.
+     *
+     * With no width to preserve there are no proportions to preserve either, so the room is shared
+     * equally, which is what a first layout wants and what leaves every frame a number.
+     */
+    int visibleCount = 0;
+
+    for (i = 0; i < count; i++) {
+        if ([self isSubviewCollapsed: [_subviews objectAtIndex: i]] == NO)
+            visibleCount++;
+    }
+
+    BOOL haveProportions = (totalWidthBefore > 0.0) && (visibleCount > 0);
+    CGFloat delta = haveProportions ? (totalWidthAfter / totalWidthBefore) : 0.0;
+    CGFloat equalShare = (visibleCount > 0) ? (totalWidthAfter / visibleCount) : 0.0;
 
     NSRect frame = [self bounds];
     for (i = 0; i < count; i++) {
         NSView *subview = [_subviews objectAtIndex: i];
         if ([self isSubviewCollapsed: subview] == NO) {
-            frame.size.width = NSWidth([subview frame]) * delta;
+            frame.size.width = haveProportions ? (NSWidth([subview frame]) * delta) : equalShare;
             frame.size.width = floor(frame.size.width);
+            if (!(frame.size.width >= 0.0)) /* also false for NAN */
+                frame.size.width = 0.0;
             frame.size.height = height;
 
             NSSize oldSize = [subview frame].size;
@@ -204,14 +227,27 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
         }
     }
 
-    CGFloat delta = totalHeightAfter / totalHeightBefore;
+    /* Same as the width case above: a total of zero makes the ratio infinite and every height NAN,
+     * so with nothing to preserve the room is shared equally. */
+    int visibleCount = 0;
+
+    for (i = 0; i < count; i++) {
+        if ([self isSubviewCollapsed: [_subviews objectAtIndex: i]] == NO)
+            visibleCount++;
+    }
+
+    BOOL haveProportions = (totalHeightBefore > 0.0) && (visibleCount > 0);
+    CGFloat delta = haveProportions ? (totalHeightAfter / totalHeightBefore) : 0.0;
+    CGFloat equalShare = (visibleCount > 0) ? (totalHeightAfter / visibleCount) : 0.0;
 
     NSRect frame = [self bounds];
     for (i = 0; i < count; i++) {
         NSView *subview = [_subviews objectAtIndex: i];
         if ([self isSubviewCollapsed: subview] == NO) {
-            frame.size.height = NSHeight([subview frame]) * delta;
+            frame.size.height = haveProportions ? (NSHeight([subview frame]) * delta) : equalShare;
             frame.size.height = floor(frame.size.height);
+            if (!(frame.size.height >= 0.0)) /* also false for NAN */
+                frame.size.height = 0.0;
             frame.size.width = width;
 
             NSSize oldSize = [subview frame].size;
