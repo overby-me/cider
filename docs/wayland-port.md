@@ -10206,3 +10206,23 @@ the source either; it checks the determinant and refuses.
 So the next question is which side is already NaN, the transform the application built or the rect
 it fed in, and the instrument for it is small: report from -transformPoint: and -transformSize: when
 the matrix or the argument is not a number. That is one run away.
+
+### The transform is clean, so the NaN is in the fit arithmetic
+
+The instrument for the transform primitives was made to speak on the happy path first, because
+silence from a probe that only reports failures cannot be told apart from a probe that is never
+reached. It spoke twice in a run, and both were clean:
+
+    CIDER_XFORM transformPoint matrix=ok [1 0 0 1 0 0] identity=1 flipY=0 arg=ok (-792,0)
+    CIDER_XFORM transformSize  matrix=ok [1 0 0 1 0 0] identity=1 flipY=0 arg=ok (2376,612)
+
+The transform is the IDENTITY and the rect it carries is sane: origin minus 792, size 2376 by 612,
+which is three pages of 792 across and one page of 612 down, exactly what a spread of a US Letter
+landscape document should be. So the application built a good transform, ours multiplied it
+correctly, and the NaN is neither in the matrix nor in the rect.
+
+That leaves the arithmetic after it, inside the same method: a fit, computed from fitSizeMode, the
+visible rect and the scroll view content size, which is the only place left where a division can
+happen. Our -[NSScrollView contentSize] and -[NSView visibleRect] are the values it reads, so the
+next instrument reports those at the moment the geometry runs. The diagnostic in NSAffineTransform
+was reverted, since that pin is materialised and it has answered its question.
