@@ -10392,3 +10392,84 @@ So either the index is not actually cleared on the view that draws the bar, or t
 reach the surface by that route. The next step is a trace of the index at the end of tracking, which
 tells the two apart in one run. It is a small cosmetic defect and it is written down rather than
 left as a vague impression.
+
+## iA Writer starts now, and the Combine verdict gets sharper rather than reversed
+
+The section above (blocked on Combine, no swiftc) was right about the ceiling and wrong about the
+floor. Thirty-one zero-valued placeholder symbols, written to the mangled names AccountCore imports,
+got the process past dyld; sixteen more C and Objective-C names got it past its own +load methods and
+into NSApplicationMain. It now reaches -[NSApplication finishLaunching], which posts
+NSApplicationWillFinishLaunching, and the app builds an AccountCore.Account from its observer. That
+faults at address -8 inside __swift_instantiateConcreteTypeFromMangledName, which is the runtime
+turning a mangled type name into metadata: it reads one of the placeholders, gets zero, and
+dereferences it.
+
+So the placeholder trick is a LOADER fix and nothing more, and that is worth writing down because it
+looks like progress of a kind it is not. A zero placeholder is correct exactly as long as nobody
+touches the type. AccountCore touches one in its first publisher.
+
+WHAT THE REMAINING GAP ACTUALLY IS, measured by subtracting both the runtime exports and what the
+application own 25 binaries define for each other, and excluding the Sparkle updater helpers that are
+separate processes we never launch: 57 symbols, not the 264 reported before that subtraction.
+
+    23  Swift stdlib     Int128 codable requirements, typed throws, coroutine frames,
+                         isolated deinit -- all newer than the runtime pin
+     5  __swift_FORCE_LOAD markers for overlays we do not ship (OSLog, QuickLookUI, Spatial,
+                         UniformTypeIdentifiers, Builtin_float)
+     3  Swift runtime    swift_coroFrameAlloc, swift_stdlib_isStackAllocationSafe,
+                         swift_willThrowTypedImpl
+    12  libc             NOT A GAP: memcpy, strlen and friends. MoneyMoney imports them too and
+                         runs, so the loader supplies them; a static nm union cannot see that
+    11  ours             all implemented this rung
+     1  vImage           implemented this rung
+     2  AppIntents       nothing: those 164 symbols are defined inside the app own frameworks
+
+The runtime pin dates itself: vendor/pins/swift ships PREBUILT dylibs, and its libswiftCore exports
+no task or concurrency symbols at all, so it predates Swift 5.5 while iA Writer is a Swift 6 era
+build. That single fact explains the 23 stdlib gaps and the 3 runtime gaps without any further
+measurement.
+
+Writing Combine by hand in C or Objective-C is not an alternative: generic value metadata and
+protocol conformance descriptors are compiler output, not something a header and a .m can produce.
+OpenCombine compiled with -module-name Combine would satisfy the names exactly, and needs a
+Darwin-targeting Swift compiler, which is the infrastructure gap already named above. iA Writer is
+therefore blocked in a different way from Swift Publisher: SP needs its own file format understood,
+this needs a toolchain that does not exist in this build.
+
+### The three real defects found on the way, which outlive iA Writer
+
+  +[NSBundle bundleWithIdentifier:] only searched a table of bundles somebody had already created,
+  with a TODO admitting it should search. Every framework that asks for ITSELF by identifier got nil.
+  It now asks +allFrameworks once, which walks every loaded image and registers each framework it
+  finds, then looks again. iA Writer put that nil straight into an NSMutableSet from a +load.
+
+  +[NSError setUserInfoValueProviderForDomain:provider:] did not exist. A domain registering a lazy
+  provider is how every modern framework fills userInfo, and the app registers one from a +load, so
+  the process died on an unrecognised selector with no other message. Implemented per domain under
+  its own lock, and every accessor that reads a single key now asks the provider when the dictionary
+  has no value for that key.
+
+  CFStringTokenizerCopyBestStringLanguage was commented out with a note that it needs a language
+  model. It answers from Unicode script now: right where a script belongs to one language, a most
+  common answer for Latin and Cyrillic, NULL where there is no script at all. The code says which
+  question it is answering.
+
+### Three patches that could never have applied, and the method that catches it
+
+foundation 0011 hunk 10, foundation 0016 hunk 4 and corefoundation 0009 hunk 1 carried context lines
+whose newlines had been collapsed (two statements joined by four spaces), so nix could not build
+either pin. They had been captured from a mangled copy and committed without a pin build to check
+them, which is exactly the failure mode the materialised-pin rule exists to prevent.
+
+The repeatable method, now used for all five patches this rung:
+
+    nix-build -E 'with import <nixpkgs> {}; fetchFromGitHub { owner=...; repo=...; rev=...; hash=...; }'
+    cp -r that store path, apply 0001..N-1, copy the tree, apply N (good hunks land, one rejects),
+    hand-apply the rejected hunk intent, diff -u the two trees, keep the prose header
+
+and then verify with the pin build itself rather than by eye:
+
+    nix-build scratchpad/pinpath.nix --argstr pin vendor/pins/foundation
+
+followed by a file-by-file diff of the built pin against vendor/src. Ten of ten identical here, which
+is what makes buck2 and nix the same program rather than two that merely look alike.
