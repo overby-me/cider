@@ -10566,3 +10566,56 @@ the real window path has none). A client that modifies a buffer the compositor s
 how some frames land and some do not, and how an unrelated event knocks the last one loose. Task
 #122 is to double buffer with a release listener; task #121 is blocked on it, and so, quite possibly,
 is a share of the redraw flakiness elsewhere.
+
+## CORRECTION: the menu highlight was never stale pixels, and the log order said otherwise
+
+The section above is wrong in its central claim and the way it went wrong is worth more than the
+defect was. It reported that the model cleared, the bar repainted, the committed buffer was clean
+and the compositor kept showing an old frame. The first two are read from a log in the order the
+lines appear, and those lines are not in the order things happened. With a clock on both sides, the
+wayland present line carrying t= and the driver stamping every capture with date +%s.%N, one run
+says:
+
+    t=58.4   the menu opens and the highlight enters the window buffer
+    t=65.8   Escape
+    t=81.3   the bar redraws and the highlight leaves the buffer
+
+Fifteen and a half seconds. The redraw and the tracking cleanup that looked adjacent to the escape
+belong to the NEXT tracking session, the one the driver's later click starts. Nothing about
+presentation was involved.
+
+What was involved is two things in NSMenuView's tracking loop, both of them ordinary AppKit
+behaviour that cocotron does not have:
+
+  Escape POPS ONE LEVEL there. Closing a menu opened from the menu bar therefore left the loop
+  running with the title still selected, which is exactly what the screen showed. macOS ends the
+  whole tracking session on Escape from a top level menu; only a submenu pops one level.
+
+  The loop takes its own events with nextEventMatchingMask instead of returning to NSApplication,
+  and it was NSApplication that displayed dirty windows before blocking. So even a selection change
+  the loop DID make sat undrawn until an unrelated event woke it. It now displays and flushes every
+  visible window before waiting, which also makes arrow-key navigation inside a menu appear as it
+  happens rather than one keystroke late.
+
+Measured three runs of three, captures looked at: 753 accent-blue pixels in the File cell with the
+menu open, 0 after Escape, every time, and the buffer loses the highlight 0.02 seconds after the key.
+
+### The double buffering was real, and it fixed nothing visible
+
+Task #122 came out of the wrong diagnosis and is worth keeping anyway. The window path attached ONE
+shm buffer on every present while AppKit drew into it whenever it liked, and nothing in window.rs
+listened for wl_buffer.release. That is a client modifying a buffer the compositor owns. The mapping
+is now three frames: AppKit draws into the first, which is never attached, and the other two take
+turns being handed over, each with a release listener; a frame that finds both busy is dropped and
+re-presented when one returns. The pointer AppKit draws through never moves, so there is no context
+invalidation and no resize churn. It changed nothing on screen, and that is the point of writing it
+down: it removes a real hazard and it was not this defect.
+
+### What actually settled it was a mutation, not another trace
+
+Five read-only instruments had each answered their own question and the answers still did not add
+up. What decided it was writing a block of colour into the menu bar strip that changed every
+present: it alternated on screen while the title stayed highlighted, so the strip was reaching the
+compositor and the compositor was not at fault. The probe was removed afterwards. It also caught the
+documented env trap first hand: the driver passed CIDER_WAYLAND_BARPROBE empty, env_flag treats SET
+BUT EMPTY as on, and the probe painted into three captures that were meant to be clean.
