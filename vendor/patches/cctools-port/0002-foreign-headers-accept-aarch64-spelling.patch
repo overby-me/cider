@@ -1,0 +1,183 @@
+foreign/ headers accept the aarch64 spelling (aarch64 port, task A4)
+
+Same fix as xnu patch 0019, for the cross-build headers ld64 compiles against on a
+Linux host: sixteen dispatch headers under cctools/include/foreign test __arm64__,
+which an aarch64-linux clang does not define. The arm targets they dispatch to are
+already in the tree (foreign/arm, foreign/mach/arm).
+
+--- a/cctools/include/foreign/mach/machine/boolean.h
++++ b/cctools/include/foreign/mach/machine/boolean.h
+@@ -33,7 +33,7 @@
+ #include "mach/ppc/boolean.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/boolean.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "mach/arm/boolean.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/mach/machine/exception.h
++++ b/cctools/include/foreign/mach/machine/exception.h
+@@ -33,7 +33,7 @@
+ #include "mach/ppc/exception.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/exception.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "mach/arm/exception.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/mach/machine/kern_return.h
++++ b/cctools/include/foreign/mach/machine/kern_return.h
+@@ -33,7 +33,7 @@
+ #include "mach/ppc/kern_return.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/kern_return.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "mach/arm/kern_return.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/mach/machine/processor_info.h
++++ b/cctools/include/foreign/mach/machine/processor_info.h
+@@ -33,7 +33,7 @@
+ #include "mach/ppc/processor_info.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/processor_info.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "mach/arm/processor_info.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/mach/machine/rpc.h
++++ b/cctools/include/foreign/mach/machine/rpc.h
+@@ -33,7 +33,7 @@
+ #include "mach/ppc/rpc.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/rpc.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "mach/arm/rpc.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/mach/machine/thread_state.h
++++ b/cctools/include/foreign/mach/machine/thread_state.h
+@@ -33,7 +33,7 @@
+ #include "mach/ppc/thread_state.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/thread_state.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "mach/arm/thread_state.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/mach/machine/thread_status.h
++++ b/cctools/include/foreign/mach/machine/thread_status.h
+@@ -33,7 +33,7 @@
+ #include "mach/ppc/thread_status.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/thread_status.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "mach/arm/thread_status.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/mach/machine/vm_param.h
++++ b/cctools/include/foreign/mach/machine/vm_param.h
+@@ -33,7 +33,7 @@
+ #include "mach/ppc/vm_param.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/vm_param.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "mach/arm/vm_param.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/mach/machine/vm_types.h
++++ b/cctools/include/foreign/mach/machine/vm_types.h
+@@ -33,7 +33,7 @@
+ #include "mach/ppc/vm_types.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/vm_types.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "mach/arm/vm_types.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/machine/_param.h
++++ b/cctools/include/foreign/machine/_param.h
+@@ -29,7 +29,7 @@
+ #include "ppc/_param.h"
+ #elif defined (__i386__) || defined (__x86_64__)
+ #include "i386/_param.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "arm/_param.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/machine/_types.h
++++ b/cctools/include/foreign/machine/_types.h
+@@ -35,7 +35,7 @@
+ #include "ppc/_types.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "i386/_types.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "arm/_types.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/machine/endian.h
++++ b/cctools/include/foreign/machine/endian.h
+@@ -39,7 +39,7 @@
+ #include "ppc/endian.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "i386/endian.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "arm/endian.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/machine/limits.h
++++ b/cctools/include/foreign/machine/limits.h
+@@ -6,7 +6,7 @@
+ #include <ppc/limits.h>
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include <i386/limits.h>
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include <arm/limits.h>
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/machine/param.h
++++ b/cctools/include/foreign/machine/param.h
+@@ -35,7 +35,7 @@
+ #include "ppc/param.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "i386/param.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "arm/param.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/machine/signal.h
++++ b/cctools/include/foreign/machine/signal.h
+@@ -32,7 +32,7 @@
+ #include "ppc/signal.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "i386/signal.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "arm/signal.h"
+ #else
+ #error architecture not supported
+--- a/cctools/include/foreign/machine/types.h
++++ b/cctools/include/foreign/machine/types.h
+@@ -38,7 +38,7 @@
+ #include "ppc/types.h"
+ #elif defined (__i386__) || defined(__x86_64__)
+ #include "i386/types.h"
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include "arm/types.h"
+ #else
+ #error architecture not supported

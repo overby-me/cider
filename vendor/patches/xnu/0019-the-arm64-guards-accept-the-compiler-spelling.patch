@@ -1,0 +1,839 @@
+The arm64 guards accept the compiler spelling too (aarch64 port, task A4)
+
+Sixty-nine dispatch headers test __arm64__, which Apple compilers define but an
+aarch64-linux host clang does not: it says __aarch64__. Every #if line that tests
+__arm64__ gains the second spelling. Guest compiles define both and do not change;
+host tools (migcom first, via mach/boolean.h) stop dying on "architecture not
+supported". Extends 0018, which fixed the one header darling PR 1753 had fixed.
+
+--- a/bsd/machine/_limits.h
++++ b/bsd/machine/_limits.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/_limits.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/_limits.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/_mcontext.h
++++ b/bsd/machine/_mcontext.h
+@@ -27,7 +27,7 @@
+  */
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/_mcontext.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/_mcontext.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/_param.h
++++ b/bsd/machine/_param.h
+@@ -27,7 +27,7 @@
+  */
+ #if defined (__i386__) || defined (__x86_64__)
+ #include <i386/_param.h>
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include <arm/_param.h>
+ #else
+ #error architecture not supported
+--- a/bsd/machine/_types.h
++++ b/bsd/machine/_types.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/_types.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/_types.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/disklabel.h
++++ b/bsd/machine/disklabel.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/disklabel.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/disklabel.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/endian.h
++++ b/bsd/machine/endian.h
+@@ -33,7 +33,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/endian.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/endian.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/fasttrap_isa.h
++++ b/bsd/machine/fasttrap_isa.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/fasttrap_isa.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/fasttrap_isa.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/limits.h
++++ b/bsd/machine/limits.h
+@@ -4,7 +4,7 @@
+  *  This file is public domain.  */
+ #if defined (__i386__) || defined(__x86_64__)
+ #include <i386/limits.h>
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include <arm/limits.h>
+ #else
+ #error architecture not supported
+--- a/bsd/machine/param.h
++++ b/bsd/machine/param.h
+@@ -33,7 +33,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include <i386/param.h>
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include <arm/param.h>
+ #else
+ #error architecture not supported
+--- a/bsd/machine/profile.h
++++ b/bsd/machine/profile.h
+@@ -35,7 +35,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/profile.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/profile.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/psl.h
++++ b/bsd/machine/psl.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/psl.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/psl.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/ptrace.h
++++ b/bsd/machine/ptrace.h
+@@ -33,7 +33,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/ptrace.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/ptrace.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/reg.h
++++ b/bsd/machine/reg.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/reg.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/reg.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/signal.h
++++ b/bsd/machine/signal.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/signal.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/signal.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/smp.h
++++ b/bsd/machine/smp.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/smp.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/smp.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/types.h
++++ b/bsd/machine/types.h
+@@ -33,7 +33,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/types.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/types.h"
+ #else
+ #error architecture not supported
+--- a/bsd/machine/vmparam.h
++++ b/bsd/machine/vmparam.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/vmparam.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/vmparam.h"
+ #else
+ #error architecture not supported
+--- a/bsd/sys/dtrace.h
++++ b/bsd/sys/dtrace.h
+@@ -2522,7 +2522,7 @@
+ #if defined (__i386__) || defined(__x86_64__)
+ extern int (*dtrace_pid_probe_ptr)(x86_saved_state_t *regs);
+ extern int (*dtrace_return_probe_ptr)(x86_saved_state_t* regs);
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ extern int (*dtrace_pid_probe_ptr)(arm_saved_state_t *regs);
+ extern int (*dtrace_return_probe_ptr)(arm_saved_state_t *regs);
+ #else
+@@ -2580,7 +2580,7 @@
+ #if defined(__arm__)
+ extern int dtrace_instr_size(uint32_t instr, int thumb_mode);
+ #endif
+-#if defined(__arm__) || defined(__arm64__)
++#if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
+ extern void dtrace_invop_add(int (*)(uintptr_t, uintptr_t *, uintptr_t));    
+ extern void dtrace_invop_remove(int (*)(uintptr_t, uintptr_t *, uintptr_t));
+ extern void *dtrace_invop_callsite_pre;
+@@ -2612,7 +2612,7 @@
+ 
+ #endif
+ 
+-#if defined(__arm__) || defined(__arm64__)
++#if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
+ 
+ #define DTRACE_INVOP_NOP                4
+ #define DTRACE_INVOP_RET                5
+--- a/bsd/sys/fasttrap_impl.h
++++ b/bsd/sys/fasttrap_impl.h
+@@ -199,7 +199,7 @@
+ #if defined(__x86_64__)
+ extern int fasttrap_pid_probe(x86_saved_state_t *regs);
+ extern int fasttrap_return_probe(x86_saved_state_t* regs);
+-#elif defined(__arm__) || defined(__arm64__)
++#elif defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
+ extern int fasttrap_pid_probe(arm_saved_state_t *rp);
+ extern int fasttrap_return_probe(arm_saved_state_t *regs);
+ #else
+--- a/osfmk/kern/copyout_shim.h
++++ b/osfmk/kern/copyout_shim.h
+@@ -33,7 +33,7 @@
+ // with sys/types.h
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/types.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ //XXX when ready to turn on for arm: #include "arm/types.h"
+ #error ARM/ARM64 not supported
+ #else
+--- a/osfmk/libsa/machine/types.h
++++ b/osfmk/libsa/machine/types.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "libsa/i386/types.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "libsa/arm/types.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/arm/vm_param.h
++++ b/osfmk/mach/arm/vm_param.h
+@@ -52,7 +52,7 @@
+ 
+ #ifdef  __arm__
+ #define PAGE_SHIFT_CONST        12
+-#elif defined(__arm64__)
++#elif defined(__arm64__) || defined(__aarch64__)
+ extern int PAGE_SHIFT_CONST;
+ #else
+ #error Unsupported arch
+@@ -128,7 +128,7 @@
+ #define KALLOC_MINSIZE          8       /* minimum allocation size */
+ #define KALLOC_LOG2_MINALIGN    3       /* log2 minimum alignment */
+ 
+-#elif defined(__arm64__)
++#elif defined(__arm64__) || defined(__aarch64__)
+ 
+ #define KALLOC_MINSIZE          16      /* minimum allocation size */
+ #define KALLOC_LOG2_MINALIGN    4       /* log2 minimum alignment */
+@@ -140,7 +140,7 @@
+ #if defined (__arm__)
+ /* existing zone map size limit moved from osfmk/vm/vm_init.c */
+ #define ZONE_MAP_MAX (1024 * 1024 * 1536) /* 1.5GB for 32bit systems */
+-#elif defined(__arm64__)
++#elif defined(__arm64__) || defined(__aarch64__)
+ /*
+  * Limits the physical pages in the zone map
+  */
+@@ -160,7 +160,7 @@
+ #define MACH_VM_MIN_ADDRESS     ((mach_vm_offset_t) 0)
+ #define MACH_VM_MAX_ADDRESS     ((mach_vm_offset_t) VM_MAX_ADDRESS)
+ 
+-#elif defined (__arm64__)
++#elif defined (__arm64__) || defined(__aarch64__)
+ 
+ #define VM_MIN_ADDRESS          ((vm_address_t) 0x0000000000000000ULL)
+ #define VM_MAX_ADDRESS          ((vm_address_t) 0x0000000080000000ULL)
+@@ -195,7 +195,7 @@
+ #define VM_MIN_KERNEL_ADDRESS   ((vm_address_t) 0x80000000)
+ #define VM_MAX_KERNEL_ADDRESS   ((vm_address_t) 0xFFFEFFFF)
+ #define VM_HIGH_KERNEL_WINDOW   ((vm_address_t) 0xFFFE0000)
+-#elif defined (__arm64__)
++#elif defined (__arm64__) || defined(__aarch64__)
+ /*
+  * The minimum and maximum kernel address; some configurations may
+  * constrain the address space further.
+@@ -327,7 +327,7 @@
+  */
+ #if defined (__arm__)
+ #define VM_KERNEL_LINK_ADDRESS  ((vm_address_t) 0x80000000)
+-#elif defined (__arm64__)
++#elif defined (__arm64__) || defined(__aarch64__)
+ /* VM_KERNEL_LINK_ADDRESS defined in makedefs/MakeInc.def for arm64 platforms */
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/_structs.h
++++ b/osfmk/mach/machine/_structs.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/_structs.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "mach/arm/_structs.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/asm.h
++++ b/osfmk/mach/machine/asm.h
+@@ -33,7 +33,7 @@
+ #include "mach/i386/asm.h"
+ #elif defined (__arm__) 
+ #include "mach/arm/asm.h"
+-#elif defined(__arm64__)
++#elif defined(__arm64__) || defined(__aarch64__)
+ #include "mach/arm64/asm.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/exception.h
++++ b/osfmk/mach/machine/exception.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/exception.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "mach/arm/exception.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/kern_return.h
++++ b/osfmk/mach/machine/kern_return.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/kern_return.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "mach/arm/kern_return.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/ndr_def.h
++++ b/osfmk/mach/machine/ndr_def.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/ndr_def.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "mach/arm/ndr_def.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/processor_info.h
++++ b/osfmk/mach/machine/processor_info.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/processor_info.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "mach/arm/processor_info.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/rpc.h
++++ b/osfmk/mach/machine/rpc.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/rpc.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "mach/arm/rpc.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/sdt_isa.h
++++ b/osfmk/mach/machine/sdt_isa.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include <mach/i386/sdt_isa.h>
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include <mach/arm/sdt_isa.h>
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/syscall_sw.h
++++ b/osfmk/mach/machine/syscall_sw.h
+@@ -33,7 +33,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/syscall_sw.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "mach/arm/syscall_sw.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/thread_state.h
++++ b/osfmk/mach/machine/thread_state.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/thread_state.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "mach/arm/thread_state.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/thread_status.h
++++ b/osfmk/mach/machine/thread_status.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/thread_status.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "mach/arm/thread_status.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/vm_param.h
++++ b/osfmk/mach/machine/vm_param.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/vm_param.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "mach/arm/vm_param.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/vm_types.h
++++ b/osfmk/mach/machine/vm_types.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/vm_types.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "mach/arm/vm_types.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/asm.h
++++ b/osfmk/machine/asm.h
+@@ -32,7 +32,7 @@
+ #include "i386/asm.h"
+ #elif defined (__arm__) 
+ #include "arm/asm.h"
+-#elif defined (__arm64__)
++#elif defined (__arm64__) || defined(__aarch64__)
+ #include "arm64/asm.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/atomic.h
++++ b/osfmk/machine/atomic.h
+@@ -33,7 +33,7 @@
+ 
+ #if defined (__x86_64__)
+ #include "i386/atomic.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/atomic.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/commpage.h
++++ b/osfmk/machine/commpage.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/commpage/commpage.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/commpage/commpage.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/config.h
++++ b/osfmk/machine/config.h
+@@ -31,7 +31,7 @@
+ #if defined (__i386__) || defined (__x86_64__)
+ #elif defined (__arm__)
+ #include <pexpert/arm/board_config.h>
+-#elif defined (__arm64__)
++#elif defined (__arm64__) || defined(__aarch64__)
+ #include <pexpert/arm64/board_config.h>
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/cpu_affinity.h
++++ b/osfmk/machine/cpu_affinity.h
+@@ -32,7 +32,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/cpu_affinity.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/cpu_affinity.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/cpu_capabilities.h
++++ b/osfmk/machine/cpu_capabilities.h
+@@ -33,7 +33,7 @@
+ #ifdef KERNEL_PRIVATE
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/cpu_capabilities.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/cpu_capabilities.h"
+ #else
+ #error architecture not supported
+@@ -42,7 +42,7 @@
+ #else /* !KERNEL_PRIVATE -- System Framework header */
+ #if defined (__i386__) || defined(__x86_64__)
+ #include <System/i386/cpu_capabilities.h>
+-#elif defined (__arm__) || defined(__arm64__)
++#elif defined (__arm__) || defined(__arm64__) || defined(__aarch64__)
+ #include <System/arm/cpu_capabilities.h>
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/cpu_data.h
++++ b/osfmk/machine/cpu_data.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/cpu_data.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/cpu_data.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/cpu_number.h
++++ b/osfmk/machine/cpu_number.h
+@@ -32,7 +32,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/cpu_number.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/cpu_number.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/endian.h
++++ b/osfmk/machine/endian.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/endian.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/endian.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/io_map_entries.h
++++ b/osfmk/machine/io_map_entries.h
+@@ -32,7 +32,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/io_map_entries.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/io_map_entries.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/lock.h
++++ b/osfmk/machine/lock.h
+@@ -32,7 +32,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/lock.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/lock.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/locks.h
++++ b/osfmk/machine/locks.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/locks.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/locks.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/lowglobals.h
++++ b/osfmk/machine/lowglobals.h
+@@ -32,7 +32,7 @@
+ #include "x86_64/lowglobals.h"
+ #elif defined (__arm__)
+ #include "arm/lowglobals.h"
+-#elif defined (__arm64__)
++#elif defined (__arm64__) || defined(__aarch64__)
+ #include "arm64/lowglobals.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/machine_cpu.h
++++ b/osfmk/machine/machine_cpu.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/machine_cpu.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/machine_cpu.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/machine_cpuid.h
++++ b/osfmk/machine/machine_cpuid.h
+@@ -32,7 +32,7 @@
+ 
+ #if defined (__arm__)
+ #include <arm/machine_cpuid.h>
+-#elif defined (__arm64__)
++#elif defined (__arm64__) || defined(__aarch64__)
+ #include <arm64/machine_cpuid.h>
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/machine_kpc.h
++++ b/osfmk/machine/machine_kpc.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__x86_64__)
+ #include "x86_64/machine_kpc.h"
+-#elif defined (__arm64__)
++#elif defined (__arm64__) || defined(__aarch64__)
+ #include "arm64/machine_kpc.h"
+ #elif defined (__arm__)
+ #include "arm/machine_kpc.h"
+--- a/osfmk/machine/machine_routines.h
++++ b/osfmk/machine/machine_routines.h
+@@ -32,7 +32,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/machine_routines.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/machine_routines.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/machine_rpc.h
++++ b/osfmk/machine/machine_rpc.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/machine_rpc.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/machine_rpc.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/machlimits.h
++++ b/osfmk/machine/machlimits.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/machlimits.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/machlimits.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/machparam.h
++++ b/osfmk/machine/machparam.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/machparam.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/machparam.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/memory_types.h
++++ b/osfmk/machine/memory_types.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/memory_types.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/memory_types.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/pal_hibernate.h
++++ b/osfmk/machine/pal_hibernate.h
+@@ -38,7 +38,7 @@
+ #include "i386/pal_hibernate.h"
+ #elif defined (__arm__)
+ //#include "arm/pal_hibernate.h"
+-#elif defined(__arm64__)
++#elif defined(__arm64__) || defined(__aarch64__)
+ #include "arm64/pal_hibernate.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/pal_routines.h
++++ b/osfmk/machine/pal_routines.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "i386/pal_routines.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/pal_routines.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/pmap.h
++++ b/osfmk/machine/pmap.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__x86_64__) || defined (__i386__)
+ #include "i386/pmap.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/pmap.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/sched_param.h
++++ b/osfmk/machine/sched_param.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/sched_param.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/sched_param.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/setjmp.h
++++ b/osfmk/machine/setjmp.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/setjmp.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/setjmp.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/simple_lock.h
++++ b/osfmk/machine/simple_lock.h
+@@ -32,7 +32,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/simple_lock.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/simple_lock.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/smp.h
++++ b/osfmk/machine/smp.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__x86_64__)
+ #include "i386/smp.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #ifdef KERNEL_PRIVATE
+ /* arm/smp.h isn't installed into the public SDK. */
+ #include "arm/smp.h"
+--- a/osfmk/machine/task.h
++++ b/osfmk/machine/task.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/task.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/task.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/thread.h
++++ b/osfmk/machine/thread.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/thread.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/thread.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/trap.h
++++ b/osfmk/machine/trap.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/trap.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/trap.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/machine/vm_tuning.h
++++ b/osfmk/machine/vm_tuning.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined (__x86_64__)
+ #include "i386/vm_tuning.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #include "arm/vm_tuning.h"
+ #else
+ #error architecture not supported
+--- a/pexpert/pexpert/machine/boot.h
++++ b/pexpert/pexpert/machine/boot.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "pexpert/i386/boot.h"
+-#elif defined (__arm64__)
++#elif defined (__arm64__) || defined(__aarch64__)
+ #ifdef PRIVATE
+ /* pexpert/arm64/boot.h isn't installed into the public SDK. */
+ #include "pexpert/arm64/boot.h"
+--- a/pexpert/pexpert/machine/protos.h
++++ b/pexpert/pexpert/machine/protos.h
+@@ -30,7 +30,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "pexpert/i386/protos.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined(__aarch64__)
+ #ifdef PRIVATE
+ /* pexpert/arm/protos.h isn't installed into the public SDK. */
+ #include "pexpert/arm/protos.h"

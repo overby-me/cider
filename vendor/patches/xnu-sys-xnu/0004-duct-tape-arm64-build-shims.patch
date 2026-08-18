@@ -1,0 +1,229 @@
+The duct-tape kernel headers gain their arm64 build shims (aarch64 port, task A4)
+
+Taken from darling PR 1753 darlingserver 0217769, duct-tape/xnu rebased one level up:
+arm cpu_data/locks/simple_lock/thread grow the fields and stubs the VMAPPLE arm64
+config compiles against, waitq/vm_map/libsa lose x86-only assumptions, and the
+VMAPPLE pexpert header stops requiring a real Apple interrupt controller.
+
+diff --git a/osfmk/arm/cpu_data.h b/osfmk/arm/cpu_data.h
+index 56d2a6e..34e0eb6 100644
+--- a/osfmk/arm/cpu_data.h
++++ b/osfmk/arm/cpu_data.h
+@@ -40,10 +40,13 @@
+ #include <kern/kern_types.h>
+ #include <kern/processor.h>
+ #include <pexpert/pexpert.h>
++#ifndef __DARLING__
+ #include <arm/thread.h>
++#endif
+ #include <arm/proc_reg.h>
+ 
+ #include <mach/mach_types.h>
++#ifndef __DARLING__
+ #include <machine/thread.h>
+ 
+ #define current_thread()        current_thread_fast()
+@@ -57,6 +60,10 @@ current_thread_fast(void)
+ 	return (thread_t)(__builtin_arm_mrc(15, 0, 13, 0, 4));  // TPIDRPRW
+ #endif
+ }
++#else /* __DARLING__ */
++// Darling provides its own current_thread() function
++extern thread_t current_thread(void);
++#endif /* !__DARLING__ */
+ 
+ /*
+  * The "volatile" flavor of current_thread() is intended for use by
+diff --git a/osfmk/arm/locks.h b/osfmk/arm/locks.h
+index f1f9fd5..3d3d278 100644
+--- a/osfmk/arm/locks.h
++++ b/osfmk/arm/locks.h
+@@ -34,6 +34,9 @@
+ #include <arm/hw_lock_types.h>
+ #endif
+ 
++#ifdef __DARLING__
++#include <ciderd/xnu-sys/locks.h>
++#endif // __DARLING__
+ 
+ #ifdef  MACH_KERNEL_PRIVATE
+ 
+@@ -54,10 +57,12 @@
+ #endif
+ 
+ #ifdef  MACH_KERNEL_PRIVATE
++#ifndef __DARLING__
+ typedef struct {
+ 	struct hslock   hwlock;
+ 	uintptr_t               type;
+ } lck_spin_t;
++#endif // __DARLING__
+ 
+ #define lck_spin_data hwlock.lock_data
+ 
+@@ -68,16 +73,21 @@ typedef struct {
+ #else
+ #ifdef  KERNEL_PRIVATE
+ 
++#ifndef __DARLING__
+ typedef struct {
+ 	uintptr_t               opaque[2];
+ } lck_spin_t;
++#endif // __DARLING__
+ 
+ #else
++#ifndef __DARLING__
+ typedef struct __lck_spin_t__   lck_spin_t;
++#endif // __DARLING__
+ #endif  // KERNEL_PRIVATE
+ #endif  // MACH_KERNEL_PRIVATE
+ 
+ #ifdef  MACH_KERNEL_PRIVATE
++#ifndef __DARLING__
+ typedef struct _lck_mtx_ {
+ 	union {
+ 		uintptr_t                                       lck_mtx_data;   /* Thread pointer plus lock bits */
+@@ -94,6 +104,7 @@ typedef struct _lck_mtx_ {
+ 		};
+ 	};                                                                                              /* arm: 4   arm64: 8 */
+ } lck_mtx_t;                                                                            /* arm: 8  arm64: 16 */
++#endif // __DARLING__
+ 
+ /* Shared between mutex and read-write locks */
+ #define LCK_ILOCK_BIT           0
+@@ -142,9 +153,11 @@ typedef struct _lck_mtx_ext_ {
+ 
+ #else
+ #ifdef  KERNEL_PRIVATE
++#ifndef __DARLING__
+ typedef struct {
+ 	uintptr_t        opaque[2];
+ } lck_mtx_t;
++#endif // __DARLING__
+ 
+ typedef struct {
+ #if defined(__arm64__)
+@@ -155,7 +168,9 @@ typedef struct {
+ } lck_mtx_ext_t;
+ 
+ #else
++#ifndef __DARLING__
+ typedef struct __lck_mtx_t__    lck_mtx_t;
++#endif // __DARLING__
+ #endif
+ #endif
+ 
+diff --git a/osfmk/arm/simple_lock.h b/osfmk/arm/simple_lock.h
+index b0dd0d9..dc7be79 100644
+--- a/osfmk/arm/simple_lock.h
++++ b/osfmk/arm/simple_lock.h
+@@ -76,7 +76,11 @@
+ extern uint32_t LockTimeOut;                    /* Number of hardware ticks of a lock timeout */
+ extern uint32_t LockTimeOutUsec;                /* Number of microseconds for lock timeout */
+ 
++#ifdef __DARLING__
++#include <ciderd/xnu-sys/simple_lock.h>
++#else
+ typedef lck_spin_t usimple_lock_data_t, *usimple_lock_t;
++#endif // __DARLING__
+ #else /* MACH_KERNEL_PRIVATE */
+ 
+ #if defined(__arm__)
+diff --git a/osfmk/arm/thread.h b/osfmk/arm/thread.h
+index ad33177..3c00dc2 100644
+--- a/osfmk/arm/thread.h
++++ b/osfmk/arm/thread.h
+@@ -85,8 +85,12 @@ typedef arm_kernel_context_t machine_thread_kernel_state;
+ #else
+ typedef struct arm_saved_state machine_thread_kernel_state;
+ #endif
+-#include <kern/thread_kernel_state.h>
+ 
++// NOTE: struct machine_thread must be defined BEFORE including
++// thread_kernel_state.h. On Darling, that header transitively pulls in
++// kern/task.h -> kern/thread.h, which embeds `struct machine_thread machine`
++// by value — so the struct must be complete at that point. (On upstream XNU
++// vm_kern.h does not include task.h, so the circular dependency doesn't arise.)
+ struct machine_thread {
+ #if __ARM_USER_PROTECT__
+ 	unsigned int              uptw_ttb;
+@@ -164,7 +168,9 @@ struct machine_thread {
+ 	uint64_t                  reserved10;
+ #endif
+ };
+-#endif
++
++#include <kern/thread_kernel_state.h>
++#endif /* MACH_KERNEL_PRIVATE */
+ 
+ extern struct arm_saved_state *    get_user_regs(thread_t);
+ extern struct arm_saved_state *    find_user_regs(thread_t);
+diff --git a/osfmk/kern/waitq.h b/osfmk/kern/waitq.h
+index fa9b4ce..2f1ff96 100644
+--- a/osfmk/kern/waitq.h
++++ b/osfmk/kern/waitq.h
+@@ -67,8 +67,17 @@ typedef enum e_waitq_lock_state {
+ 		#define WQ_OPAQUE_SIZE   32
+ 		#define WQS_OPAQUE_SIZE  48
+ 	#else
+-		#define WQ_OPAQUE_SIZE   40
+-		#define WQS_OPAQUE_SIZE  56
++		#ifdef __DARLING__
++			#undef WQ_OPAQUE_ALIGN
++			#undef WQS_OPAQUE_ALIGN
++			#define WQ_OPAQUE_ALIGN   8
++			#define WQS_OPAQUE_ALIGN  8
++			#define WQ_OPAQUE_SIZE   72
++			#define WQS_OPAQUE_SIZE  88
++		#else
++			#define WQ_OPAQUE_SIZE   40
++			#define WQS_OPAQUE_SIZE  56
++		#endif
+ 	#endif
+ #elif __x86_64__
+ 	#define WQ_OPAQUE_ALIGN   8
+diff --git a/osfmk/libsa/arm/types.h b/osfmk/libsa/arm/types.h
+index 532b4ce..da8a916 100644
+--- a/osfmk/libsa/arm/types.h
++++ b/osfmk/libsa/arm/types.h
+@@ -56,7 +56,7 @@
+ #ifndef _MACH_MACHINE_TYPES_H_
+ #define _MACH_MACHINE_TYPES_H_ 1
+ 
+-typedef long            dev_t;          /* device number (major+minor) */
++typedef int             dev_t;          /* device number (major+minor) */
+ 
+ typedef signed char     bit8_t;         /* signed 8-bit quantity */
+ typedef unsigned char   u_bit8_t;       /* unsigned 8-bit quantity */
+diff --git a/osfmk/vm/vm_map.h b/osfmk/vm/vm_map.h
+index 15fa8c8..2ba1dcb 100644
+--- a/osfmk/vm/vm_map.h
++++ b/osfmk/vm/vm_map.h
+@@ -1566,12 +1566,12 @@ static inline bool
+ VM_MAP_IS_EXOTIC(
+ 	vm_map_t map __unused)
+ {
+-#if __arm64__
++#if __arm64__ && !defined(__DARLING__)
+ 	if (VM_MAP_PAGE_SHIFT(map) < PAGE_SHIFT ||
+ 	    pmap_is_exotic(map->pmap)) {
+ 		return true;
+ 	}
+-#endif /* __arm64__ */
++#endif /* __arm64__ && !__DARLING__ */
+ 	return false;
+ }
+ 
+diff --git a/pexpert/pexpert/arm64/VMAPPLE.h b/pexpert/pexpert/arm64/VMAPPLE.h
+index ff4712d..2d0f67b 100644
+--- a/pexpert/pexpert/arm64/VMAPPLE.h
++++ b/pexpert/pexpert/arm64/VMAPPLE.h
+@@ -37,7 +37,7 @@
+ 
+ #define CPU_HAS_APPLE_PAC         1
+ #define HAS_PARAVIRTUALIZED_PAC   1
+-#define 1
++/* #define ??? 1 -- broken line in original XNU source */
+ #define HAS_GIC_V3                1
+ 
+ #define __ARM_PAN_AVAILABLE__     1

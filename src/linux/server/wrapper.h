@@ -109,8 +109,14 @@ extern void _pth_proc_hashdelete(proc_t p);
 #include <kern/ipc_host.h>
 #include <kern/sync_sema.h>
 #include <kern/zalloc.h>
-/* misc.c: the machine-state count table, the kmsg trace and the log entry points. */
+/* misc.c: the machine-state count table, the kmsg trace and the log entry points.
+ * Per arch: the i386 header does not parse without the x86 _STRUCT macros, which only
+ * exist under __x86_64__ (aarch64 port, task A4). */
+#if defined(__x86_64__)
 #include <mach/i386/thread_status.h>
+#elif defined(__aarch64__)
+#include <mach/arm/thread_status.h>
+#endif
 #include <ipc/ipc_kmsg.h>
 #include <ciderd/xnu-sys/log.h>
 /* task.c: the info flavors it fills and the IPC entry points it drives. */
@@ -131,7 +137,11 @@ extern void _pth_proc_hashdelete(proc_t p);
 #include <sys/ux_exception.h>
 #include <mach/thread_info.h>
 #include <rtsig.h>
+#if defined(__x86_64__)
 #include <mach/i386/thread_status.h>
+#elif defined(__aarch64__)
+#include <mach/arm/thread_status.h>
+#endif
 /* stubs.c: the globals XNU writes into and the parameter types of the stubs. */
 #include <ciderd/xnu-sys/stubs.h>
 #include <kern/policy_internal.h>

@@ -9,7 +9,21 @@
 # -fblocks in particular is load bearing -- osfmk/kern/priority_queue.h uses
 # blocks, so the headers do not parse at all without it.
 
-XNU_SYS_DEFINES = [
+# THE KERNEL CONFIG FOLLOWS THE HOST ARCH (aarch64 port, task A4). On aarch64 the duct-tape
+# kernel builds its arm64 machine layer, and that layer will not configure from the compiler's
+# __aarch64__ alone: xnu's arm headers want Apple's spelling plus a board config. The set is
+# darling PR 1753's darlingserver choice verbatim (duct-tape/CMakeLists.txt @ 0217769): the
+# VMAPPLE virtual platform, VMSA v8 translation, subpage L1 pmap.
+_ARM64_HOST_DEFINES = [
+    "-D__arm64__",
+    "-DAPPLE_ARM64_ARCH_FAMILY",
+    "-DVMAPPLE",
+    "-DARM64_BOARD_CONFIG_VMAPPLE",
+    "-D__ARM_VMSA__=8",
+    "-D__ARM64_PMAP_SUBPAGE_L1__",
+]
+
+XNU_SYS_DEFINES = (_ARM64_HOST_DEFINES if host_info().arch.is_aarch64 else []) + [
     "-DDARLING",
     "-DDSERVER_ASAN=0",
     "-DDSERVER_UBSAN=0",
