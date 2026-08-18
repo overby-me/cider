@@ -9529,3 +9529,33 @@ counts re-entry, and MoneyMoney is back to four of four.
 The lesson is worth more than the fix: after touching anything shared, re-run the other applications.
 A silent hang somewhere else is what a non-recursive lock looks like from outside, and nothing in
 the application it was written for ever showed it.
+
+### Swift Publisher: the canvas draws nothing because the application draws nothing
+
+The canvas has a size now and is asked to draw, and it still comes out empty. This rung eliminated
+everything on our side of that, by measurement rather than argument.
+
+The application's own -[CCDocView drawRect:] IS called, ten times in a run. Bracketing those calls
+and running the paint trace at the same time shows ZERO paints between the enter and the leave. So
+its drawing code runs and issues no drawing whatever. That rules out a clipped page, a page drawn
+off to one side, and a page drawn in the wrong colour, all at once: there is no page.
+
+The geometry is fine: CCDocScrollView 618x694, NSClipView 587x678 at 16,16, CCDocView 587x693, both
+scrollers where they belong. The document bytes are delivered in full, 420,727, which is the whole
+of doc.thread. There are no exceptions in the run and, since NSObjectController addObject: and
+NSScanner scanUnsignedLongLong: went in, no unrecognized selectors either. CCDocView is not layer
+backed, so the failing GL context has nothing to do with it.
+
+And the parse is not ours. A Swift Publisher document is an XML property list, which suggested our
+plist reader, so the trace went on _CFPropertyListCreateWithData, the one function every public
+entry point funnels through. No property list read of 420,727 bytes happens anywhere in the run.
+NSXMLParser -parse is never called either, and the application links no libxml or expat from us. It
+parses that XML in its own statically linked code.
+
+What is left is inside the application: it reads its document and builds nothing from it. Finding out
+why means disassembling its parser, which is more than a rung. Its Undefined document type warnings
+are its own bookkeeping as well, since -[NSDocument fileType] and setFileType: are never called at
+all, so CADocument overrides both.
+
+The diagnostics used to establish this in corefoundation and foundation were reverted afterwards: a
+materialised pin needs a patch file per edit, and these had already answered their question.

@@ -210,6 +210,21 @@ static int untitled_document_number = 0;
         result = [self writableTypesForSaveOperation: NSSaveOperation].firstObject;
     }
 
+    /* WHAT THE APPLICATION READS BACK. Swift Publisher warns Undefined document type from its own
+     * window controller while building the document window, and nothing ever calls setFileType: on
+     * this document, so what this fallback answers is what it sees. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        static int printed;
+
+        if (printed < 8) {
+            printed++;
+            fprintf(stderr, "CIDER_DOC fileType on %s -> %s (stored %s)\n",
+                    object_getClassName(self), result != nil ? [result UTF8String] : "(nil)",
+                    _fileType != nil ? "yes" : "no");
+            fflush(stderr);
+        }
+    }
+
     return [[result retain] autorelease];
 }
 

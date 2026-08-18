@@ -2696,7 +2696,30 @@ static NSView *viewBeingPrinted = nil;
             [[NSColor yellowColor] set];
             NSRectFill(rect);
         } else {
+            {
+                /* DID THE APPLICATION CODE ACTUALLY RUN. Being asked to display is not the same as
+                 * having drawRect: called: canDraw can decline, and an empty rect returns earlier
+                 * still. Same watch gate as the frame trace. */
+                const char *watchDraw = getenv("CIDER_TRACE_FRAMES");
+
+                if (watchDraw != NULL && watchDraw[0] != (char) 0 &&
+                    strstr(object_getClassName(self), watchDraw) != NULL) {
+                    fprintf(stderr, "CIDER_FRAME %s drawRect %.0fx%.0f at %.0f,%.0f\n",
+                            object_getClassName(self), rect.size.width, rect.size.height,
+                            rect.origin.x, rect.origin.y);
+                    fflush(stderr);
+                }
+            }
             [self drawRect: rect];
+            {
+                const char *watchDone = getenv("CIDER_TRACE_FRAMES");
+
+                if (watchDone != NULL && watchDone[0] != (char) 0 &&
+                    strstr(object_getClassName(self), watchDone) != NULL) {
+                    fprintf(stderr, "CIDER_FRAME %s drawRect LEAVE\n", object_getClassName(self));
+                    fflush(stderr);
+                }
+            }
             if (NSShowAllViews) {
                 [[self _borderColorForNSShowAllViews] set];
                 NSFrameRect(rect);
