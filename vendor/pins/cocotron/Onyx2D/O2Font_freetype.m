@@ -18,6 +18,49 @@ O2FontRef O2FontCreateWithDataProvider_platform(O2DataProviderRef provider) {
 
 #endif
 
+
+/*
+ * ONE GUEST THREAD AT A TIME IN THE HOST FONT LIBRARIES, and a SPINLOCK rather than a mutex.
+ *
+ * Swift Publisher lays text out on the main thread while an operation queue builds document
+ * previews, and both of them arrive here. fontconfig and FreeType are host code reached through
+ * elfcalls, and they allocate on the HOST heap, so two guest threads inside them at once corrupt
+ * it: every run ended in glibc reporting malloc(): unaligned tcache chunk detected, from
+ * +[O2Font_freetype filenameForPattern:] on the preview worker.
+ *
+ * It cannot be a pthread mutex. A CONTENDED one fails in this guest with psynch_mutexwait
+ * failed internally: -111 and aborts, which is the whole reason an earlier attempt at locking
+ * this was taken back out. A compare and swap spin never enters the kernel, so it has nothing to
+ * fail: the cost is a busy wait, bounded by how long one font match takes.
+ */
+static volatile int _CiderHostFontSpin = 0;
+
+void O2FontHostLock(void) {
+    int spun = 0;
+
+    while (__sync_val_compare_and_swap(&_CiderHostFontSpin, 0, 1) != 0) {
+        spun = 1;
+        __builtin_ia32_pause();
+    }
+
+    /* DOES THIS EVER ACTUALLY CONTEND. The lock was added on the theory that two guest threads meet
+     * inside the host font libraries, and the theory is worth no more than the measurement: if this
+     * line never prints, no two threads were ever in here at once and the corruption comes from
+     * somewhere else entirely. Printed once. */
+    if (spun) {
+        static int reported = 0;
+
+        if (__sync_val_compare_and_swap(&reported, 0, 1) == 0) {
+            fprintf(stderr, "CIDER_FONT host font region CONTENDED, two guest threads met in it\n");
+            fflush(stderr);
+        }
+    }
+}
+
+void O2FontHostUnlock(void) {
+    __sync_lock_release(&_CiderHostFontSpin);
+}
+
 FT_Library O2FontSharedFreeTypeLibrary() {
     static FT_Library library = NULL;
 
@@ -165,6 +208,7 @@ static NSString *_CiderPreferredFamilies(NSString *family)
                 : [preferred stringByAppendingString: [pattern substringFromIndex: colon.location]];
     }
 
+    O2FontHostLock();
     FcPattern *pat = FcNameParse((unsigned char *) [resolved UTF8String]);
 
     /*
@@ -192,6 +236,7 @@ static NSString *_CiderPreferredFamilies(NSString *family)
         NSString *direct = [NSString stringWithUTF8String: (char *) known];
 
         FcPatternDestroy(pat);
+        O2FontHostUnlock();
         pthread_mutex_lock(&cacheLock);
         if (cache == nil) {
             cache = [[NSMutableDictionary alloc] init];
@@ -208,6 +253,7 @@ static NSString *_CiderPreferredFamilies(NSString *family)
     FcPattern *match = FcFontMatch(config, pat, &fcResult);
     FcPatternDestroy(pat);
     if (match == NULL) {
+        O2FontHostUnlock();
         return nil;
     }
 
@@ -228,6 +274,7 @@ static NSString *_CiderPreferredFamilies(NSString *family)
     }
 
     FcPatternDestroy(match);
+    O2FontHostUnlock();
 
     pthread_mutex_lock(&cacheLock);
     if (cache == nil) {
@@ -248,8 +295,10 @@ static NSString *_CiderPreferredFamilies(NSString *family)
     size_t length = [provider length];
 
     FT_Face face;
+    O2FontHostLock();
     int error = FT_New_Memory_Face(O2FontSharedFreeTypeLibrary(), bytes, length,
                                    0, &face);
+    O2FontHostUnlock();
 
     if (error != 0) {
         NSLog(@"FT_New_Memory_Face() = %d", error);
@@ -274,8 +323,10 @@ static NSString *_CiderPreferredFamilies(NSString *family)
     }
 
     FT_Face face;
+    O2FontHostLock();
     FT_Error error = FT_New_Face(O2FontSharedFreeTypeLibrary(),
                                  [filename fileSystemRepresentation], 0, &face);
+    O2FontHostUnlock();
 
     if (error != 0) {
         NSLog(@"FT_New_Face() = %d", error);

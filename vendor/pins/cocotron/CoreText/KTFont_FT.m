@@ -139,7 +139,10 @@ static int _CiderCubicTo(const FT_Vector *c1, const FT_Vector *c2, const FT_Vect
     if (face == NULL) {
         return NULL;
     }
-    if (FT_Load_Glyph(face, (FT_UInt) glyph, FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP) != 0) {
+    O2FontHostLock();
+    FT_Error _ciderLoadError = FT_Load_Glyph(face, (FT_UInt) glyph, FT_LOAD_NO_SCALE | FT_LOAD_NO_BITMAP);
+    O2FontHostUnlock();
+    if (_ciderLoadError != 0) {
         return NULL;
     }
     if (face->glyph->format != FT_GLYPH_FORMAT_OUTLINE) {
@@ -370,7 +373,9 @@ static int _CiderCubicTo(const FT_Vector *c1, const FT_Vector *c2, const FT_Vect
 
     int i;
     for (i = 0; i < length; i++) {
+        O2FontHostLock();
         glyphs[i] = FT_Get_Char_Index(face, characters[i]);
+        O2FontHostUnlock();
         /* A CHARACTER THE FACE CANNOT DRAW, and WHICH face that was. A missing glyph is invisible
          * and zero width, so it looks like the string was never there: the Command symbol in every
          * menu shortcut measured zero and drew nothing. Naming the face separates a font without
@@ -397,6 +402,7 @@ static int _CiderCubicTo(const FT_Vector *c1, const FT_Vector *c2, const FT_Vect
     FT_Face face = [o2Font face];
 
     int i;
+    O2FontHostLock();
     FT_Set_Pixel_Sizes(face, _size, _size);
 
     for (i = 0; i < count; i++) {
@@ -404,6 +410,9 @@ static int _CiderCubicTo(const FT_Vector *c1, const FT_Vector *c2, const FT_Vect
         advancements[i] = CGSizeMake(face->glyph->advance.x / (O2Float)(2 << 5),
                        face->glyph->advance.y / (O2Float)(2 << 5));
     }
+    /* THE SLOT IS READ INSIDE THE LOCK. face->glyph is one shared buffer that every FT_Load_Glyph
+     * overwrites, so releasing before reading it out would hand back another threads glyph. */
+    O2FontHostUnlock();
 }
 
 - (CGPoint) positionOfGlyph: (CGGlyph) current
@@ -418,11 +427,17 @@ static int _CiderCubicTo(const FT_Vector *c1, const FT_Vector *c2, const FT_Vect
     if (!current)
         return NSZeroPoint;
 
+    O2FontHostLock();
     FT_Set_Pixel_Sizes(face, _size, _size);
 
     FT_Load_Glyph(face, current, FT_LOAD_DEFAULT);
-    return NSMakePoint(face->glyph->advance.x / (O2Float)(2 << 5),
-                       face->glyph->advance.y / (O2Float)(2 << 5));
+
+    NSPoint advance = NSMakePoint(face->glyph->advance.x / (O2Float)(2 << 5),
+                                  face->glyph->advance.y / (O2Float)(2 << 5));
+
+    O2FontHostUnlock();
+
+    return advance;
 }
 
 @end
