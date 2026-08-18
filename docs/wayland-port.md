@@ -9617,3 +9617,32 @@ disabledControlTextColor, windowBackgroundColor, selectedTextBackgroundColor and
 
 One thing recorded rather than claimed: at 1400x900 the lock screen behind the dialog draws its
 wordmark as very large glyphs. It does not appear at 1000x600 and it sits behind the dialog.
+
+### What is actually inside an Assets.car, and what reading one would cost
+
+Task 118 says the Swift Publisher toolbar reads Button because its icons live in a compiled asset
+catalog we cannot read. This is what that file turns out to be, established by parsing it rather
+than by reading about it.
+
+The container is a BOM store, and it parses cleanly with about forty lines of code: an eight byte
+BOMStore magic, a block table, and a variable table naming CARHEADER, RENDITIONS, FACETKEYS,
+APPEARANCEKEYS, KEYFORMAT, EXTENDED_METADATA and BITMAPKEYS. CARHEADER carries the tag RATC, CoreUI
+version 805, storage version 17 and a rendition count, 205 for this application. KEYFORMAT is tmfk
+with twenty attribute identifiers. RENDITIONS is a BOM tree whose leaf holds 205 key and value block
+pairs, and each value begins with ISTC and a header giving width, height, scale and pixel format.
+
+Two pixel formats appear here, BGRA for 83 renditions and GA8 for 122. The payloads are the problem.
+Scanning every rendition for compression markers finds bvx2, which is LZFSE, in 21 of them, and the
+remaining 184 are 334 bytes each REGARDLESS of their stated pixel size, 18x18 and 36x36 and 15x15
+all alike, so they are not raw bitmaps and not the icons either; the real images are the compressed
+ones.
+
+So the blocker is precisely an LZFSE decoder, and we have nothing to decode with:
+src/darwin/libcompression/src/compression.c is forty six lines in which every function returns zero,
+while the header does declare COMPRESSION_LZFSE. An application calling compression_decode_buffer
+gets a silent zero today.
+
+That makes task 118 a sequence rather than a fix: get an LZFSE decoder into the guest, implement
+compression_decode_buffer on top of it, then write the CAR reader and hang it off
++[NSImage imageNamed:] where the loose-file search currently gives up. The parsing half is the easy
+half and is now written down.
