@@ -270,6 +270,20 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
  * been added or removed, to reestablish the consistency of subview placement.
  */
 - (void) adjustSubviews {
+    if (getenv("CIDER_TRACE_SPLIT") != NULL) {
+        NSRect f = [self frame];
+        NSView *sup = [self superview];
+
+        fprintf(stderr,
+                "CIDER_SPLIT adjustSubviews %s frame=%gx%g@%g,%g mask=%lu subviews=%lu "
+                "superview=%s %gx%g autoresizes=%d\n",
+                object_getClassName(self), f.size.width, f.size.height, f.origin.x, f.origin.y,
+                (unsigned long) [self autoresizingMask], (unsigned long) [_subviews count],
+                sup ? object_getClassName(sup) : "(none)",
+                sup ? [sup frame].size.width : 0.0, sup ? [sup frame].size.height : 0.0,
+                sup ? (int) [sup autoresizesSubviews] : -1);
+        fflush(stderr);
+    }
 
     if ([_subviews count] < 2) {
         return;
@@ -337,6 +351,18 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
     NSSize size = [self bounds].size;
     NSPoint origin = [self bounds].origin;
     int i, count = [_subviews count];
+
+    /* WHETHER THE APPLICATION IS EVER ASKED TO LAY ITS PANES OUT. Swift Publisher implements
+     * splitView:resizeSubviewsWithOldSize: and puts a zero sized scroll view in a pane, so if this
+     * never runs, nothing ever sizes that scroll view and everything downstream divides by zero. */
+    if (getenv("CIDER_TRACE_SPLIT") != NULL) {
+        fprintf(stderr, "CIDER_SPLIT resize %s bounds=%gx%g old=%gx%g subviews=%d delegate=%s "
+                        "responds=%d\n",
+                object_getClassName(self), size.width, size.height, oldSize.width, oldSize.height,
+                count, _delegate ? object_getClassName(_delegate) : "(nil)",
+                (int) [_delegate respondsToSelector: @selector(splitView:resizeSubviewsWithOldSize:)]);
+        fflush(stderr);
+    }
 
     if (size.width < 1)
         size.width = 1;

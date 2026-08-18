@@ -1,0 +1,94 @@
+Two instruments: who used a transform, and who watches what.
+
+Both answer a question no value trace can. -[NSAffineTransform transformPoint:] and transformSize:
+now print the RETURN ADDRESS of the caller under CIDER_TRACE_XFORM, which is what proved that the
+transform calls seen in a Swift Publisher run come from a drawing path and NOT from the geometry
+method that computes a NaN: the two are hundreds of kilobytes apart in the binary, and reading them
+as adjacent because their log lines are adjacent is how a whole rung went to the wrong theory.
+
+-[NSObject addObserver:forKeyPath:options:context:] prints the observer, the key path and the
+observed class under CIDER_TRACE_KVO. An application that lays out in an observer callback is
+invisible otherwise: nothing draws, nothing raises, and a notification we never send looks exactly
+like layout code the application does not have.
+
+--- a/src/NSAffineTransform.m
++++ b/src/NSAffineTransform.m
+@@ -31,6 +31,8 @@
+ 
+ #import "common.h"
+ #include <math.h>
++#include <stdio.h>
++#include <stdlib.h>
+ 
+ #define	EXPOSE_NSAffineTransform_IVARS	1
+ 
+@@ -482,10 +484,25 @@
+  * Transforms a single point based on the transformation matrix.
+  * Returns the resulting point.
+  */
++
++
++
+ - (NSPoint) transformPoint: (NSPoint)aPoint
+ {
+   NSPoint new;
+ 
++  /* WHO ASKED, not just what was asked. A trace of the values alone cannot say which call site in
++   * the application used this transform, and the whole question for Swift Publisher is whether the
++   * transform its geometry code holds is the one we see being used. The return address names the
++   * caller; subtract the image base to read it against the disassembly. */
++  if (getenv("CIDER_TRACE_XFORM") != NULL)
++    {
++      fprintf(stderr, "CIDER_XFORM point (%g,%g) identity=%d caller=%p\n",
++              (double) aPoint.x, (double) aPoint.y, (int) _isIdentity,
++              __builtin_return_address(0));
++      fflush(stderr);
++    }
++
+   if (_isIdentity)
+     {
+       new.x = TX + aPoint.x;
+@@ -513,6 +530,14 @@
+  */
+ - (NSSize) transformSize: (NSSize)aSize
+ {
++  if (getenv("CIDER_TRACE_XFORM") != NULL)
++    {
++      fprintf(stderr, "CIDER_XFORM size (%g,%g) identity=%d caller=%p\n",
++              (double) aSize.width, (double) aSize.height, (int) _isIdentity,
++              __builtin_return_address(0));
++      fflush(stderr);
++    }
++
+   if (_isIdentity)
+     {
+       return aSize;
+--- a/src/NSKeyValueObserving.m
++++ b/src/NSKeyValueObserving.m
+@@ -561,6 +561,15 @@
+ 
+ - (void)addObserver:(NSObject *)observer forKeyPath:(NSString *)keyPath options:(NSKeyValueObservingOptions)options context:(void *)context
+ {
++    /* WHO WATCHES WHAT. An application that lays out in an observer callback is invisible to every
++     * other instrument: nothing is drawn, nothing raises, and the missing notification looks like
++     * missing layout code. Naming the pairs is one line per registration. */
++    if (getenv("CIDER_TRACE_KVO") != NULL) {
++        fprintf(stderr, "CIDER_KVO %s observes %s of %s\n", object_getClassName(observer),
++                [keyPath UTF8String] ?: "(nil)", object_getClassName(self));
++        fflush(stderr);
++    }
++
+     dispatch_once(&__NSKeyValueObserverRegistrationLockCreationToken, 
+     ^{
+         __NSKeyValueObserverRegisterationLock = [[NSRecursiveLock alloc] init];
+@@ -744,6 +753,10 @@
+ 
+ @end
+ 
++#import <execinfo.h>
++
++#import <dlfcn.h>
++
+ #pragma mark Collection KVO categories
+ 
+ @implementation NSArray (NSKeyValueObserving) // This is ugly, having this here, but perhaps not as ugly as exposing global variables. 

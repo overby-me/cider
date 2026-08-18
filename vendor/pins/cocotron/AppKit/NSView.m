@@ -1249,6 +1249,16 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 }
 
 - (void) setFrame: (NSRect) frame {
+    /* EVERY SIZE A SCROLL VIEW IS GIVEN, WITH THE CALLER. The document scroll view of Swift
+     * Publisher arrives at zero and nothing in AppKit can size it (no mask, plain superview), so
+     * the question is whether the application sizes it later and from where. Subtract the image
+     * base from the caller to read it against the disassembly. */
+    if (getenv("CIDER_TRACE_SVFRAME") != NULL && [self isKindOfClass: [NSScrollView class]]) {
+        fprintf(stderr, "CIDER_SVFRAME %s %s -> %gx%g caller=%p\n", object_getClassName(self),
+                "setFrame", frame.size.width, frame.size.height, __builtin_return_address(0));
+        fflush(stderr);
+    }
+
     /*
      * WHO SIZES A PARTICULAR VIEW, and whether anybody does. CIDER_TRACE_FRAMES holds a substring
      * of a class name, so one view can be watched without drowning in every layout in the process.
@@ -1358,6 +1368,16 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 }
 
 - (void) setFrameSize: (NSSize) size {
+    /* EVERY SIZE A SCROLL VIEW IS GIVEN, WITH THE CALLER. The document scroll view of Swift
+     * Publisher arrives at zero and nothing in AppKit can size it (no mask, plain superview), so
+     * the question is whether the application sizes it later and from where. Subtract the image
+     * base from the caller to read it against the disassembly. */
+    if (getenv("CIDER_TRACE_SVFRAME") != NULL && [self isKindOfClass: [NSScrollView class]]) {
+        fprintf(stderr, "CIDER_SVFRAME %s %s -> %gx%g caller=%p\n", object_getClassName(self),
+                "setFrameSize", size.width, size.height, __builtin_return_address(0));
+        fflush(stderr);
+    }
+
     NSRect frame = _frame;
 
     frame.size = size;
@@ -1534,6 +1554,41 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 - (void) addSubview: (NSView *) view {
     if (view == nil) // yes, this is silently ignored
         return;
+
+    /* WHO IS SUPPOSED TO SIZE A SCROLL VIEW THAT ARRIVES AT ZERO. Swift Publisher creates its
+     * document scroll view with new, adds it to a container and never sets its frame, and on macOS
+     * something in that container gives it one. Naming the container and its own size is the first
+     * step to knowing what that something is. */
+    if (getenv("CIDER_TRACE_ADDSUB") != NULL &&
+        [view isKindOfClass: [NSScrollView class]])
+    {
+        NSRect vf = [view frame], sf = [self frame];
+
+        fprintf(stderr,
+                "CIDER_ADDSUB scrollview %gx%g@%g,%g mask=%lu into %s %gx%g@%g,%g mask=%lu "
+                "superview=%s caller=%p\n",
+                vf.size.width, vf.size.height, vf.origin.x, vf.origin.y,
+                (unsigned long) [view autoresizingMask], object_getClassName(self),
+                sf.size.width, sf.size.height, sf.origin.x, sf.origin.y,
+                (unsigned long) [self autoresizingMask],
+                [self superview] ? object_getClassName([self superview]) : "(none)",
+                __builtin_return_address(0));
+        fflush(stderr);
+    }
+
+    /* A MUTATION PROBE, GATED AND TEMPORARY: give a scroll view that arrives with no size the
+     * bounds of the view it is being added to, and a mask that keeps it there. Swift Publisher
+     * adds its document scroll view at zero and nothing ever sizes it; the question this answers
+     * is whether that is the only thing standing between the application and a drawn page. */
+    if (getenv("CIDER_SVFILL") != NULL && [view isKindOfClass: [NSScrollView class]] &&
+        NSIsEmptyRect([view frame]) && !NSIsEmptyRect([self bounds]))
+    {
+        fprintf(stderr, "CIDER_SVFILL sizing %s to %gx%g inside %s\n", object_getClassName(view),
+                [self bounds].size.width, [self bounds].size.height, object_getClassName(self));
+        fflush(stderr);
+        [view setFrame: [self bounds]];
+        [view setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable];
+    }
 
     [self _insertSubview: view atIndex: NSNotFound];
 }
