@@ -397,6 +397,16 @@ static void NSMenuMainMenuDidChange(NSMenu *menu) {
 }
 
 - (void) setAutoenablesItems: (BOOL) flag {
+    /* A BOUND MENU ITEM IS ENABLED BY ITS BINDING, not by the responder chain, and an application
+     * that binds one usually turns autoenabling off for its menu. Swift Publisher does exactly that
+     * inside its own GUIBinder, so whether this call arrives decides whether half its View menu is
+     * grey. */
+    if (getenv("CIDER_TRACE_MENU") != NULL) {
+        fprintf(stderr, "CIDER_MENUAUTOEN %s <- %d\n", [[self title] UTF8String] ?: "(none)",
+                (int) flag);
+        fflush(stderr);
+    }
+
     _autoenablesItems = flag;
 }
 
