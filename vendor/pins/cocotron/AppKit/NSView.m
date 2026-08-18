@@ -774,8 +774,16 @@ static inline void buildTransformsIfNeeded(NSView *self) {
     return NO;
 }
 
+/*
+ * THE BOUNDS ORIGIN MOVES THE OPPOSITE WAY. Translating the coordinate system so that the origin
+ * lands on `point` means every existing coordinate shifts by minus that amount, which is why this
+ * subtracts rather than assigns. Documented since the first AppKit and used by anything that
+ * scrolls or pans by changing its own coordinates rather than its frame.
+ */
 - (void) translateOriginToPoint: (NSPoint) point {
-    NSUnimplementedMethod();
+    NSPoint origin = [self bounds].origin;
+
+    [self setBoundsOrigin: NSMakePoint(origin.x - point.x, origin.y - point.y)];
 }
 
 - (void) rotateByAngle: (CGFloat) angle {
@@ -790,8 +798,22 @@ static inline void buildTransformsIfNeeded(NSView *self) {
     return _postsNotificationOnBoundsChange;
 }
 
+/*
+ * THIS IS HOW A VIEW ZOOMS. The unit square of the coordinate system is scaled, so the BOUNDS get
+ * SMALLER as the scale grows: a view of 100 points showing at 2x covers 50 units of its own space.
+ * Swift Publisher calls it on its canvas, and with the method doing nothing the canvas kept a 1:1
+ * bounds however the document was zoomed.
+ *
+ * A zero or negative factor is refused rather than obeyed: it would collapse the bounds to nothing
+ * or invert them, and macOS treats it as meaningless too.
+ */
 - (void) scaleUnitSquareToSize: (NSSize) size {
-    NSUnimplementedMethod();
+    if (size.width <= 0.0 || size.height <= 0.0)
+        return;
+
+    NSSize bounds = [self bounds].size;
+
+    [self setBoundsSize: NSMakeSize(bounds.width / size.width, bounds.height / size.height)];
 }
 
 - (NSWindow *) window {
@@ -1580,7 +1602,12 @@ static inline void buildTransformsIfNeeded(NSView *self) {
      * bounds of the view it is being added to, and a mask that keeps it there. Swift Publisher
      * adds its document scroll view at zero and nothing ever sizes it; the question this answers
      * is whether that is the only thing standing between the application and a drawn page. */
-    if (getenv("CIDER_SVFILL") != NULL && [view isKindOfClass: [NSScrollView class]] &&
+    /* EMPTY IS OFF. A driver that exports the name with no value would otherwise turn a probe that
+     * CHANGES BEHAVIOUR on in every run, which is how a page appeared in a capture that was meant
+     * to be a control. */
+    const char *svfill = getenv("CIDER_SVFILL");
+
+    if (svfill != NULL && svfill[0] != '\0' && [view isKindOfClass: [NSScrollView class]] &&
         NSIsEmptyRect([view frame]) && !NSIsEmptyRect([self bounds]))
     {
         fprintf(stderr, "CIDER_SVFILL sizing %s to %gx%g inside %s\n", object_getClassName(view),
