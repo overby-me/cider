@@ -9497,3 +9497,35 @@ Combine, which means a Swift compiler first.
 So iA Writer is BLOCKED in the strict sense used here: it has never worked once, and the missing
 piece is a whole toolchain rather than plumbing. It should not be picked up again until a Swift
 compiler exists in the build.
+
+### Swift Publisher: the canvas draws, and a lock that could not be taken twice
+
+The canvas was blank because nothing ever gave it a size. CIDER_TRACE_FRAMES, which watches one
+class by substring and prints every setFrame and every birth with its caller, settled it in one run:
+CCDocScrollView is BORN 0x0 from -[NSScrollView initWithFrame:] and then receives no setFrame at all
+for the rest of the process. Not from the application, and not from autoresizing, which never
+reaches it because it is added after its container already has a size. The layout call the
+application makes is adjustSubviews, and ours did nothing.
+
+-[NSView adjustSubviews] now gives a subview with NO SIZE AT ALL the room left over after the
+subviews that do have one. The rule is narrow on purpose. A pane that has a width and no height was
+collapsed deliberately, which is exactly what a hidden canvases preview looks like, and stretching
+it would undo the thing the caller just asked for. The first attempt stretched anything zero in
+either dimension, and the capture showed the mistake immediately: the page got half the height and
+the hidden preview took the other half.
+
+What the window shows now is a white page with a working ruler, reading 1 through 8 inches, where
+there was a uniform grey void. Three runs of three, no crashes, the canvas sized 618x694 every time,
+and it relayouts when the compositor resizes the window.
+
+**And a regression of mine, found only by re-running the other application.** The host font spinlock
+introduced for Swift Publisher was not recursive. The glyph run holds it while code beneath it can
+ask for a font again, because a fallback for a missing glyph goes through +filenameForPattern:,
+which takes the same lock. A plain spin then waits on a lock its own thread is already holding,
+forever, and says nothing. MoneyMoney printed main nib load enter and stopped there in two runs of
+two, having opened its window in five of five the day before. The lock now records its owner and
+counts re-entry, and MoneyMoney is back to four of four.
+
+The lesson is worth more than the fix: after touching anything shared, re-run the other applications.
+A silent hang somewhere else is what a non-recursive lock looks like from outside, and nothing in
+the application it was written for ever showed it.
