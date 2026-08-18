@@ -10528,3 +10528,41 @@ discovered: separating the two needs per-thread accounting the server does not k
 
 An operational note that cost a detour: vendor/src/libc materialises READ-ONLY (444 files, 555
 directories), unlike the foundation and corefoundation pins, so an edit there needs chmod u+w first.
+
+## The menu title is stale on the screen, not in the window (task #121, and it opened task #122)
+
+The defect looked like a piece of state nobody cleared: open a menu from the bar, press Escape, and
+the title stays highlighted until something else is clicked. It is not that. Four instruments, one
+question each, and the chain is the answer:
+
+    CIDER_MENU cleanup self=NSMainMenuView index=NSNotFound     the model clears
+    CIDER_MENU bar drawRect 1400x28 index=NSNotFound            the bar redraws with it
+    CIDER_PAINT path blend=17 1400x28 at 0,850 c=0.960          and repaints the whole strip
+    (buffer scanned at present time)                            no accent blue anywhere near the bar
+    d4d +2s, d4e +6s, d4f +12s                                  the screen still shows it
+    d4g after pointer MOTION, no click                          and then it is gone
+
+Two details worth keeping from the instruments themselves. Onyx2D's blend mode numbering is NOT Core
+Graphics numbering: it swaps HardLight and SoftLight, so every index from 8 upward is off by one and
+17 is Copy here where Core Graphics calls 17 Clear. And the surface Onyx2D draws into is bottom-up
+relative to the capture, so a rect traced from a screenshot has to be mirrored before
+CIDER_TRACE_PAINT will match it; tracing the un-mirrored rect showed only NSThemeFrame writes and
+made it look as though the menu bar never painted at all.
+
+Dumping one BMP per frame instead of one per window makes the timing exact: 48 consecutive frames
+carry the highlight, the last of them is present 948, and the tracking cleanup is present 1008. The
+compositor was still showing it sixty presents later.
+
+Forcing a present at the end of tracking does not fix it. It was tried on two separate rungs and
+reverted both times. The first attempt did nothing for a reason the flushWindow trace names
+directly: flushing is disabled during a display pass, so -[NSWindow flushWindow] only sets the
+deferred flag. Sequenced so that it really flushes, the backend present runs and the screen still
+does not change.
+
+What that leaves is the presentation path itself, and there is a defect in plain sight there. The
+window path SINGLE BUFFERS: one shm buffer is attached on every present, AppKit draws into it
+whenever it likes, and nothing in window.rs listens for wl_buffer.release (probe.rs has a listener;
+the real window path has none). A client that modifies a buffer the compositor still owns is exactly
+how some frames land and some do not, and how an unrelated event knocks the last one loose. Task
+#122 is to double buffer with a release listener; task #121 is blocked on it, and so, quite possibly,
+is a share of the redraw flakiness elsewhere.
