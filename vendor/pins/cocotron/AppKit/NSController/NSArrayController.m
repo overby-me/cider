@@ -19,6 +19,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import "NSObservationProxy.h"
 #import "_NSControllerArray.h"
 #import <AppKit/NSArrayController.h>
+#import <objc/runtime.h>
+#import <stdio.h>
+#import <stdlib.h>
+#import <AppKit/NSKeyValueBinding.h>
+#import <AppKit/NSObject+BindingSupport.h>
 #import <AppKit/NSRaise.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSCoder.h>
@@ -105,6 +110,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                 [coder decodeBoolForKey: @"NSAlwaysUsesMultipleValuesMarker"];
 
         id declaredKeys = [coder decodeObjectForKey: @"NSDeclaredKeys"];
+
+        /* ARE THESE KEYS EVEN IN THE NIB? decodeBoolForKey: answers NO for a key that is absent,
+         * and Interface Builder omits a key whose value is the default, which for
+         * avoidsEmptySelection, preservesSelection and selectsInsertedObjects is YES. If they are
+         * absent then every controller decoded here comes up with the OPPOSITE of the intended
+         * setting, and nothing ever establishes a selection. CIDER_TRACE_CONTROL. */
+        if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+            fprintf(stderr,
+                    "CIDER_ACDEC %p avoidsEmpty=%d(present %d) preserves=%d(present %d) "
+                    "selectsInserted=%d(present %d)\n",
+                    (void *) self, (int) _flags.avoidsEmptySelection,
+                    (int) [coder containsValueForKey: @"NSAvoidsEmptySelection"],
+                    (int) _flags.preservesSelection,
+                    (int) [coder containsValueForKey: @"NSPreservesSelection"],
+                    (int) _flags.selectsInsertedObjects,
+                    (int) [coder containsValueForKey: @"NSSelectsInsertedObjects"]);
+            fflush(stderr);
+        }
 
         if ([self automaticallyPreparesContent]) {
             [self prepareContent];
@@ -209,6 +232,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         // restore the selection
         [self setSelectedObjects: selectedObjects];
     }
+
+    /*
+     * avoidsEmptySelection IS AN INVARIANT, NOT A RULE THAT ONLY APPLIES WHEN SOMEBODY CALLS
+     * -setSelectionIndexes:.
+     *
+     * It was enforced only inside that setter, so a controller whose content arrives without anyone
+     * touching the selection afterwards keeps an EMPTY selection over a non empty arrangement,
+     * which macOS never does. With preservesSelection off, nothing here called the setter at all.
+     *
+     * That is the whole of the blank Swift Publisher canvas: the page arrives in the controller
+     * bound to the document, the arrangement holds one object, the selection stays empty, so
+     * -selectedObjects answers nothing, the application reads its current page as the last of those
+     * and gets nil, and its view returns from -drawRect: without drawing. Measured as
+     * arranged=1 selected=0 avoidsEmpty=1, a hundred and fifteen times in one run.
+     */
+    if (_flags.avoidsEmptySelection && [_selectionIndexes count] == 0 &&
+        [arrangedObjects count] > 0) {
+        [self setSelectionIndexes: [NSIndexSet indexSetWithIndex: 0]];
+    }
+
     [self _selectionDidChange];
 }
 
@@ -398,10 +441,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (NSArray *) selectedObjects {
     id idxs = [self selectionIndexes];
-    if (idxs) {
-        return [[self arrangedObjects] objectsAtIndexes: idxs];
+    NSArray *result = idxs != nil
+            ? [[self arrangedObjects] objectsAtIndexes: idxs]
+            : [NSArray array];
+
+    /* CONTENT OR SELECTION, WHICH IS MISSING. Swift Publisher reads its current page as
+     * [[[self designElementsArrayController] selectedObjects] lastObject], so an empty answer here
+     * is an empty canvas, and the two causes need different fixes. Capped, and gated on
+     * CIDER_TRACE_CONTROL. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        static int printed;
+
+        if (printed < 400) {
+            printed++;
+            fprintf(stderr,
+                    "CIDER_AC selectedObjects self=%p arranged=%lu selected=%lu content=%s "
+                    "avoidsEmpty=%d preserves=%d\n",
+                    (void *) self, (unsigned long) [[self arrangedObjects] count],
+                    (unsigned long) [idxs count],
+                    [self content] != nil ? object_getClassName([self content]) : "nil",
+                    (int) [self avoidsEmptySelection], (int) [self preservesSelection]);
+            fflush(stderr);
+        }
     }
-    return [NSArray array];
+
+    return result;
 }
 
 - (BOOL) addSelectedObjects: (NSArray *) objects {

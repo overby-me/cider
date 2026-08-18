@@ -17,6 +17,9 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import "NSKVOBinder.h"
+#import <objc/runtime.h>
+#import <stdio.h>
+#import <stdlib.h>
 #import "NSObject+BindingSupport.h"
 #import <AppKit/NSControl.h>
 #import <AppKit/NSController.h>
@@ -288,8 +291,37 @@ NSString *NSFormatDisplayPattern(NSString *pattern, id *values,
                 }
             } else {
                 [_source setValue: value forKeyPath: bindingPath];
+
+                /* Did the write take? A set that neither raises nor changes anything is the worst
+                 * of the three outcomes to debug, so read it back. CIDER_TRACE_CONTROL, and only
+                 * for content bindings, which are the ones that carry a document. */
+                if (getenv("CIDER_TRACE_CONTROL") != NULL &&
+                    [_binding hasPrefix: @"content"]) {
+                    id readBack = [_source valueForKeyPath: bindingPath];
+
+                    fprintf(stderr, "CIDER_BIND WROTE %s on %s(%p) value=%s(%ld) readback=%s(%ld)\n",
+                            [_binding UTF8String], object_getClassName(_source), (void *) _source,
+                            object_getClassName(value),
+                            [value respondsToSelector: @selector(count)] ? (long) [value count] : -1,
+                            readBack != nil ? object_getClassName(readBack) : "nil",
+                            [readBack respondsToSelector: @selector(count)] ? (long) [readBack count]
+                                                                            : -1);
+                    fflush(stderr);
+                }
             }
         } @catch (id ex) {
+            /* A BINDING THAT CANNOT WRITE ITS VALUE FAILS IN COMPLETE SILENCE. raisesForNotApplicable
+             * Keys is off by default, so the exception is dropped here and the source keeps whatever
+             * it had, which for a controller means no content and for a window means no document.
+             * CIDER_TRACE_CONTROL names the binding that could not be written. */
+            if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+                fprintf(stderr, "CIDER_BIND SWALLOWED %s on %s(%p) path=%s: %s\n",
+                        [_binding UTF8String], object_getClassName(_source), (void *) _source,
+                        [bindingPath UTF8String],
+                        [[ex description] UTF8String]);
+                fflush(stderr);
+            }
+
             if ([self raisesForNotApplicableKeys]) {
                 for (int i = 0; i < count; ++i) {
                     [allBinders[i] startObservingChanges];

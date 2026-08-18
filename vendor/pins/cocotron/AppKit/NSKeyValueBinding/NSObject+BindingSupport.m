@@ -17,6 +17,9 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import "NSKVOBinder.h"
+#import <objc/runtime.h>
+#import <stdio.h>
+#import <stdlib.h>
 #import <AppKit/NSController.h>
 #import <AppKit/NSKeyValueBinding.h>
 #import <AppKit/NSObject+BindingSupport.h> // Remove soon
@@ -243,6 +246,21 @@ void NSDetermineBindingDebugLoggingLevel(void) {
             kNSBindingDebugLogLevel1,
             @"binding: %@\n   toObject: %@\n   withKeyPath: %@\n   options: %@",
             binding, destination, keyPath, options);
+
+    /* WHICH BINDINGS ARE ACTUALLY ESTABLISHED. A controller that never receives its content
+     * binding stays empty in silence, and an empty controller is an empty document window.
+     * Gated on CIDER_TRACE_CONTROL; source pointer included so a controller can be matched to the
+     * outlet that names it. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        id ciderValue = keyPath != nil ? [destination valueForKeyPath: keyPath] : nil;
+
+        fprintf(stderr, "CIDER_BIND %s(%p) %s -> %s.%s value=%s count=%ld\n",
+                object_getClassName(self), (void *) self, [binding UTF8String],
+                object_getClassName(destination), keyPath != nil ? [keyPath UTF8String] : "(nil)",
+                ciderValue != nil ? object_getClassName(ciderValue) : "nil",
+                [ciderValue respondsToSelector: @selector(count)] ? (long) [ciderValue count] : -1);
+        fflush(stderr);
+    }
 
     if (![[self class] _binderClassForBinding: binding]) {
         NSBindingDebugLog(kNSBindingDebugLogLevel1,

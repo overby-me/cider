@@ -300,7 +300,8 @@ static const void *kCiderNibLoadedKey = &kCiderNibLoadedKey;
          * first display would read as nil there and mislead. Pointers only: these answer C++
          * objects, and object_getClassName on one of them segfaults. */
         {
-            static const char *const probes[] = {"ftView", "currentDesignElement"};
+            static const char *const probes[] = {"ftView", "currentDesignElement",
+                                                 "designElementsArrayController"};
             size_t i;
 
             for (i = 0; i < sizeof(probes) / sizeof(probes[0]); i++) {

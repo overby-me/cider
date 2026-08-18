@@ -172,7 +172,7 @@ void cider_wayland_post_flags_changed(unsigned long modifiers, long windowNumber
  */
 static id cider_wayland_key_window = nil;
 
-void cider_wayland_set_keyboard_focus(id delegate, id platformWindow)
+static void cider_wayland_set_keyboard_focus_inner(id delegate, id platformWindow)
 {
 	if (cider_wayland_key_window == delegate) {
 		return;
@@ -228,6 +228,32 @@ void cider_wayland_set_keyboard_focus(id delegate, id platformWindow)
 			(int) [delegate isMainWindow], (int) [delegate canBecomeMainWindow],
 			(int) [NSApp isActive],
 			[delegate firstResponder] ? class_getName([[delegate firstResponder] class]) : "nil");
+	}
+}
+
+/*
+ * THE WHOLE BOUNDARY IS THE THING THAT HAS TO BE EXCEPTION PROOF, not one call inside it.
+ *
+ * Both of these are called from wayland_appkit_lib::input::on_keyboard_enter, which is extern C.
+ * An ObjC exception unwinding through that frame is not a Rust panic, catch_unwind cannot see it,
+ * and Rust aborts the process: the application dies the instant it is given keyboard focus, which
+ * from outside looks like a broken compositor.
+ *
+ * There was already a catch around the activation call, which is where iTerm2 raised. Swift
+ * Publisher then raised from a DIFFERENT call in the same function once its document had a
+ * selection, so the fix is moved out to the boundary, where it covers every call rather than the
+ * one that happened to fail first. macOS does not take an application down for an exception raised
+ * from a notification handler either: the run loop reports it and carries on.
+ */
+void cider_wayland_set_keyboard_focus(id delegate, id platformWindow)
+{
+	@try {
+		cider_wayland_set_keyboard_focus_inner(delegate, platformWindow);
+	} @catch (NSException *exception) {
+		NSLog(@"cider-wayland: keyboard focus raised %@: %@, continuing", [exception name],
+			  [exception reason]);
+	} @catch (id exception) {
+		NSLog(@"cider-wayland: keyboard focus raised a non NSException, continuing");
 	}
 }
 
@@ -442,11 +468,20 @@ static void cider_install_crash_handler_now(void)
 
 void cider_wayland_watch_focus_notifications(void)
 {
-	cider_install_crash_handler();
-	[CiderWaylandFocusWatch install];
-	/* THE SETTINGS ARE READ BEFORE THE FIRST EVENT. Installing the traces from the first keystroke
-	 * is far too late for anything that happens during startup, and the colours are read there. */
-	cider_wayland_trace_vcl();
+	/* Same boundary rule as cider_wayland_set_keyboard_focus: the caller cannot unwind. */
+	@try {
+		cider_install_crash_handler();
+		[CiderWaylandFocusWatch install];
+		/* THE SETTINGS ARE READ BEFORE THE FIRST EVENT. Installing the traces from the first
+		 * keystroke is far too late for anything that happens during startup, and the colours are
+		 * read there. */
+		cider_wayland_trace_vcl();
+	} @catch (NSException *exception) {
+		NSLog(@"cider-wayland: focus watch raised %@: %@, continuing", [exception name],
+			  [exception reason]);
+	} @catch (id exception) {
+		NSLog(@"cider-wayland: focus watch raised a non NSException, continuing");
+	}
 }
 
 /*

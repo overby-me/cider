@@ -9999,3 +9999,76 @@ One trap from writing the probe, and it cost a run: -ftDocument and -ftView answ
 Objective-C ones. Calling object_getClassName on one walks into objc_class::demangledName and
 segfaults, so the probe crashed the application it was there to measure. Print the pointer; nil or
 not nil was the whole question.
+
+### The page was never selected: avoidsEmptySelection was a rule, not an invariant
+
+The blank canvas has a cause, and it is ours. -[CCDocView drawRect:] reads the current page as
+
+    [[[[self window] windowController] currentDesignElement] ftDocument]
+
+and -[CCMainWindowController currentDesignElement] is
+
+    [[[self designElementsArrayController] selectedObjects] lastObject]
+
+so the whole document view depends on one NSArrayController having a selection. Measured, a hundred
+and fifteen times in one run:
+
+    CIDER_AC selectedObjects self=0x... arranged=1 selected=0 content=__NSCFArray avoidsEmpty=1
+
+The controller has the page. It is bound to CADocument.designElements, the binding is established,
+the destination holds one object at bind time, and the write goes through and reads back. Nothing is
+missing except a selection, and avoidsEmptySelection is on, which on macOS means a controller with
+content always has one.
+
+Ours enforced it only INSIDE -setSelectionIndexes:. A controller whose content arrives without
+anyone touching the selection afterwards therefore keeps an empty selection over a non empty
+arrangement, which macOS never does; with preservesSelection off, -rearrangeObjects did not call the
+setter at all. The fix restores the invariant where the arrangement changes.
+
+Everything before that was elimination, and it is worth recording what it cost: the binding
+machinery was suspected first (it works), then the binder class registry (it always answers), then
+whether the write raised (it does not, and the read back proves the content arrives), then the
+decoded controller flags (that application never decodes a controller from a nib at all). The one
+measurement that mattered was printing arranged, selected and the flags together.
+
+### Two failures that only appeared once the selection existed
+
+A fix that makes an application do work it has never done before will find whatever is broken in
+that work, and this one found two things immediately.
+
+The process began aborting on every run, 2 of 2, where nine runs before the change had not aborted
+once. The backtrace names it: wayland_appkit_lib::input::on_keyboard_enter. An ObjC exception raised
+under that callback is not a Rust panic, catch_unwind cannot see it, and Rust aborts the process
+rather than let a foreign exception cross an extern C frame. There was already a catch around the
+one call inside that function where iTerm2 had raised; Swift Publisher raised from a different call
+in the same function. The catch is now at the BOUNDARY, around the whole of
+cider_wayland_set_keyboard_focus and cider_wayland_watch_focus_notifications, which is the level the
+constraint actually applies at.
+
+With the abort gone the exception names itself:
+
+    cider-wayland: keyboard focus raised NSInvalidArgumentException:
+      CCMeasurementUnitsFormatter stringForObjectValue: requires a subclass implementation
+
+The application implements that method, and calls super from it through objc_msgSendSuper2, which
+the disassembly shows plainly. Our NSFormatter raised on the abstract primitive. An application
+that ships on macOS is not crashing while formatting a ruler, so the base class answers nil now
+(foundation patch 0022) and the caller decides.
+
+### Where Swift Publisher stands after all that
+
+The document window builds its inspector from the selection now: Simulate paper color with its
+swatch, Document Margins with four fields, and the Info group with Title, Author and Description,
+where before that whole panel was empty. That is the selection reaching the bindings.
+
+The canvas is still not drawing, and the reason has changed. The document view now gets a frame of
+
+    CIDER_FRAME CCDocView -> -15x15 at 0,0 (was 0x0) from -[NSView resizeWithOldSuperviewSize:]
+    CIDER_FRAME CCDocView -> nanxnan at 0,0 (was -15x15) from -[NSView setFrameSize:]
+    CIDER_FRAME CCDocView DISPLAY nanxnan at nan,nan frame nanxnan hidden=0
+
+A view whose size is not a number cannot paint anything. The negative width one step earlier comes
+out of our own autoresizing, so that is where to look next, and it is a different problem from the
+one this section started with.
+
+MoneyMoney and the iTerm2 session were both re-run on all of these changes and are unchanged.

@@ -1,0 +1,37 @@
+An abstract formatter primitive answers rather than raises.
+
+NSFormatter is abstract, but a subclass is entitled to call super for the cases it does not handle
+itself, and Swift Publisher does exactly that from -[CCMeasurementUnitsFormatter
+stringForObjectValue:], through objc_msgSendSuper2, while formatting the ruler of a document that
+has a selected page. Ours raised NSRequestConcreteImplementation there.
+
+The raise did not stay local. It happened under the Wayland keyboard focus callback, which is
+extern C and cannot unwind, so Rust aborted the whole process the instant the window was given
+focus. An application that ships on macOS is not crashing on this path, so the base class answers
+nil and lets the caller decide.
+
+--- a/src/NSFormatter.m
++++ b/src/NSFormatter.m
+@@ -13,9 +13,21 @@
+ 
+ @implementation NSFormatter
+ 
++/*
++ * NIL, NOT A RAISE.
++ *
++ * NSFormatter is abstract, but its primitives ANSWER rather than raise: a subclass is entitled to
++ * call super for the cases it does not handle itself. Swift Publisher does exactly that, from
++ * -[CCMeasurementUnitsFormatter stringForObjectValue:] through objc_msgSendSuper2, while formatting
++ * the ruler of a document that has a selected page.
++ *
++ * Raising there took the whole process down rather than the one call, because the exception was
++ * raised under the Wayland keyboard focus callback, which is extern C and cannot unwind, so Rust
++ * aborted. An application that ships on macOS is not crashing on this path, so the base class
++ * answers nil and the caller decides what to do about it.
++ */
+ - (NSString *)stringForObjectValue:(id)obj
+ {
+-    NSRequestConcreteImplementation();
+     return nil;
+ }
+ 
