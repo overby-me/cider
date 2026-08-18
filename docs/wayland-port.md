@@ -10354,3 +10354,25 @@ What that leaves for Swift Publisher is a question about its own deserialisation
 larger and more speculative piece of work than the gaps this thread has been closing, and it is not
 a Cocoa gap. The queue has an application whose keyboard has never been tested, and that is a
 criterion, so the next work goes there.
+
+### MoneyMoney: the keyboard, tested without typing anything
+
+The keyboard was the one criterion never checked for MoneyMoney, and it needs care rather than
+avoidance: the application talks to banks and the field on screen at that point is a credential
+field, so nothing is typed into it, ever. The test is arranged so that no text is entered at all.
+With the File menu open, two Down presses and then Escape: the menu is still open in the capture
+after the Downs and closed in the capture after Escape.
+
+Three runs of three, looked at as pairs each time, and a fourth ad hoc run before them. So keys
+reach the application and are acted on.
+
+The Down presses move no highlight, and that is correct rather than a failure: every item in that
+menu is disabled while the application sits at its lock screen, and there is nothing for an arrow
+key to land on.
+
+One real difference from macOS came out of it, small and worth recording: after Escape closes the
+menu the File title in the menu bar STAYS highlighted, where closing the same menu with a click
+clears it. So the keyboard path through menu tracking ends without restoring the title.
+
+What this does NOT prove is text entry into a field, and that is deliberate. The only text field
+reachable in that state is the password field of the lock screen, and it will not be typed into.
