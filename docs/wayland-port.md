@@ -10619,3 +10619,45 @@ present: it alternated on screen while the title stayed highlighted, so the stri
 compositor and the compositor was not at fault. The probe was removed afterwards. It also caught the
 documented env trap first hand: the driver passed CIDER_WAYLAND_BARPROBE empty, env_flag treats SET
 BUT EMPTY as on, and the probe painted into three captures that were meant to be clean.
+
+## Swift Publisher: the canvas is not the app's file format, it is a scroll view with no size
+
+Three things this plan recorded about task #116 were wrong, and each was wrong in the same way: a
+conclusion drawn from what the log put next to what, rather than from an identity.
+
+The transform was said to run immediately before the bad frame. Printing the CALLER return address
+in -[NSAffineTransform transformPoint:] and transformSize: ends that: a whole run makes exactly two
+transform calls and both come from 0x10025c0xx, while the geometry method that produces the NaN runs
+from 0x1002e7d34 to 0x1002e8130. Different functions, hundreds of kilobytes apart.
+
+The NaN was said to have one cause, a nil transform. The application's own code says otherwise:
+-[CCDesignElement transformForRotateViewForCanvas:master:] loads +[NSAffineTransform transform] into
+r14 in its first three instructions, and every exit, including the one taken when its document is nil
+and the one for an unrecognised orientation, returns that register. It cannot answer nil unless our
++transform does.
+
+And the remaining work was said to be the application's own deserialisation. A BLANK PORTRAIT
+document, built from the application's defaults with no template file to read, produces the same NaN
+and the same empty canvas. Whatever is missing is not a file format.
+
+What is missing is a size. The document scroll view is created with [CCDocScrollView new], added to
+a pane inside the document CCSplitView, and never given a frame: every setFrame: and setFrameSize:
+sent to any scroll view during a whole run was traced, and the inspector and gallery scroll views get
+theirs while this one never does. It has no autoresizing mask either. The 0x12 the application sets
+right after construction goes to the CCDocView INSIDE the scroll view, which the disassembly shows
+plainly (the receiver is r14, the document view, not r15, the scroll view). So nothing in AppKit can
+size it and the application does not.
+
+Give it the bounds of the view it is added to, behind a gate, and the canvas draws a page: white
+page area, rulers, a page edge, where every previous run showed flat grey. The NaN warnings still
+appear, so they are not the whole story, but the page is there and it was not before. That probe is
+CIDER_SVFILL and it stays off: sizing a subview on insertion is not AppKit behaviour and shipping it
+would change layout for every application.
+
+So the question is now narrow: what sizes that scroll view on macOS. Ruled out: the application
+never sets its frame; CCSplitView implements no layout methods at all; the only override on the
+scroll view is -tile, and that one only checks its own frame and bounds for NaN; the split view is
+masked 18 inside an NSBox that autoresizes its subviews; the panes themselves are sized by our
+adjustSubviews. What is left to examine is the nib (something we may not be decoding), the
+notification the application registers for on the clip view's bounds, and the initWithFrame: path a
+[Class new] takes through our NSView, which starts at 1x1 here and at zero on macOS.
