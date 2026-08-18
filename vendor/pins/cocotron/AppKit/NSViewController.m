@@ -2,6 +2,7 @@
 #import <AppKit/NSNibLoading.h>
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSViewController.h>
+#import <objc/runtime.h>
 
 @implementation NSViewController
 
@@ -68,6 +69,25 @@
 }
 
 - (void) setView: (NSView *) value {
+    /* WHICH CONTROLLER GOT WHICH VIEW, and what it inherits from. A controller named for a split
+     * view whose view is a plain NSView cannot lay anything out, and the class hierarchy is the
+     * only way to tell whether it IS an NSSplitViewController that we failed to give a split view,
+     * or a plain NSViewController that merely has the word in its name. CIDER_TRACE_VIEWS. */
+    if (getenv("CIDER_TRACE_VIEWS") != NULL) {
+        Class walk = [self class];
+
+        fprintf(stderr, "CIDER_VIEW setView controller=%s view=%s chain=", object_getClassName(self),
+                value != nil ? object_getClassName(value) : "(nil)");
+        while (walk != Nil) {
+            fprintf(stderr, "%s%s", class_getName(walk),
+                    class_getSuperclass(walk) != Nil ? " < " : "");
+            walk = class_getSuperclass(walk);
+        }
+        fprintf(stderr, " loadViewOverridden=%d\n",
+                class_getMethodImplementation([self class], @selector(loadView)) !=
+                        class_getMethodImplementation([NSViewController class], @selector(loadView)));
+        fflush(stderr);
+    }
     value = [value retain];
     [_view release];
     _view = value;
