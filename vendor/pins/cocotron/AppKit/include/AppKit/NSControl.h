@@ -84,6 +84,9 @@ APPKIT_EXPORT const NSNotificationName NSControlTextDidEndEditingNotification;
                            left: (NSUInteger) left
                           right: (NSUInteger) right;
 - (void) setEnabled: (BOOL) flag;
+
+- (BOOL) ignoresMultiClick;
+- (void) setIgnoresMultiClick: (BOOL) ignoresMultiClick;
 - (void) setEditable: (BOOL) flag;
 - (void) setSelectable: (BOOL) flag;
 - (void) setScrollable: (BOOL) flag;

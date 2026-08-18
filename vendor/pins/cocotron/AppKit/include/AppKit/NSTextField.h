@@ -35,6 +35,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (BOOL) drawsBackground;
 
 - (void) setBackgroundColor: (NSColor *) color;
+
+- (BOOL) allowsEditingTextAttributes;
+- (void) setAllowsEditingTextAttributes: (BOOL) allowsEditingTextAttributes;
 - (void) setTextColor: (NSColor *) color;
 - (void) setDrawsBackground: (BOOL) flag;
 

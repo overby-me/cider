@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSDragging.h>
 #import <AppKit/NSPasteboard.h>
 #import <AppKit/NSTextField.h>
+#import <objc/runtime.h>
 #import <AppKit/NSTextFieldCell.h>
 #import <AppKit/NSTextStorage.h>
 #import <AppKit/NSTextView.h>
@@ -45,6 +46,26 @@ NSString *const NSTextContentTypeUsername = @"NSTextContentTypeUsername";
 NSString *const NSTextContentTypePassword = @"NSTextContentTypePassword";
 
 @implementation NSTextField
+
+/*
+ * STORED, AND THE EDITOR DOES NOT READ IT YET. MoneyMoney sets this on its labels while the main
+ * nib is decoded, and the absent selector raised an uncaught exception that ended the process
+ * before any window was shown. Rich text editing in the field editor is a separate piece of work;
+ * what this restores is the property itself, which is what the application actually asked for.
+ *
+ * An associated object rather than an ivar, because applications subclass NSTextField, and an ivar
+ * added here would shift the ones they declare.
+ */
+static const void *kCiderAllowsEditingTextAttributesKey = &kCiderAllowsEditingTextAttributesKey;
+
+- (BOOL) allowsEditingTextAttributes {
+    return objc_getAssociatedObject(self, kCiderAllowsEditingTextAttributesKey) != nil;
+}
+
+- (void) setAllowsEditingTextAttributes: (BOOL) allowsEditingTextAttributes {
+    objc_setAssociatedObject(self, kCiderAllowsEditingTextAttributesKey,
+                             allowsEditingTextAttributes ? self : nil, OBJC_ASSOCIATION_ASSIGN);
+}
 
 @synthesize preferredMaxLayoutWidth = _preferredMaxLayoutWidth;
 

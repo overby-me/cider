@@ -43,6 +43,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSView.h>
 #import <AppKit/NSWindow-Private.h>
 #import <AppKit/NSWindow.h>
+#import <objc/runtime.h>
+#import <dlfcn.h>
+#import <execinfo.h>
 #import <AppKit/NSTitlebarAccessoryViewController.h>
 #import <AppKit/NSWindowAnimationContext.h>
 #import <ApplicationServices/ApplicationServices.h>
@@ -205,6 +208,39 @@ NSInteger NSBitsPerPixelFromDepth(NSWindowDepth depth) {
 }
 
 @end
+
+/* WHAT HAPPENS AFTER THE PLATFORM WINDOW EXISTS. MoneyMoney creates MMWindow, the compositor says
+ * create=ok, and the process is gone before anything is drawn. These probes say which step it
+ * reached. */
+/* THE WHOLE CHAIN AT ONCE. Walking up one frame per run costs a run each time and the app only
+ * reaches this point in about half of them, so print every caller above this one in one go. */
+static void _CiderWindowStack(const char *what)
+{
+    if (getenv("CIDER_TRACE_APP") == NULL)
+        return;
+
+    void *frames[24];
+    int count = backtrace(frames, 24);
+
+    fprintf(stderr, "CIDER_WIN stack at %s depth=%d\n", what, count);
+    for (int i = 0; i < count; i++) {
+        Dl_info info;
+
+        if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL)
+            fprintf(stderr, "CIDER_WIN   #%d %s\n", i, info.dli_sname);
+        else
+            fprintf(stderr, "CIDER_WIN   #%d %p\n", i, frames[i]);
+    }
+    fflush(stderr);
+}
+
+static void _CiderWindowNote(const char *what, NSWindow *self)
+{
+    if (getenv("CIDER_TRACE_APP") == NULL)
+        return;
+    fprintf(stderr, "CIDER_WIN %s class=%s\n", what, object_getClassName(self));
+    fflush(stderr);
+}
 
 @implementation NSWindow
 
@@ -467,10 +503,13 @@ static BOOL _allowsAutomaticWindowTabbing;
     if (_platformWindow != nil)
         return;
     _platformWindow = [[NSDisplay currentDisplay] newWindowWithDelegate: self];
+    _CiderWindowNote("platform created", self);
 
     [self _updatePlatformWindowTitle];
+    _CiderWindowNote("title set", self);
 
     [[NSDraggingManager draggingManager] registerWindow: self dragTypes: nil];
+    _CiderWindowNote("dragging registered", self);
 }
 
 - (CGContextRef) cgContext {
@@ -1017,10 +1056,13 @@ static BOOL _allowsAutomaticWindowTabbing;
     // thing to do, delay it.
     if (display) {
         [self platformWindow];
+        _CiderWindowNote("setFrame needsDisplay enter", self);
         [_backgroundView setNeedsDisplay: YES];
+        _CiderWindowNote("setFrame needsDisplay leave", self);
     }
 
     if (animate) {
+        _CiderWindowNote("setFrame animate enter", self);
         NSWindowAnimationContext *context;
         context = [NSWindowAnimationContext
                 contextToTransformWindow: self
@@ -1029,7 +1071,10 @@ static BOOL _allowsAutomaticWindowTabbing;
                               resizeTime: [self animationResizeTime: newFrame]
                                  display: display];
         [self _animateWithContext: context];
+        _CiderWindowNote("setFrame animate leave", self);
     }
+    _CiderWindowNote("setFrame leave", self);
+    _CiderWindowStack("setFrame leave");
 }
 
 - (void) setContentSize: (NSSize) size {
@@ -2317,6 +2362,7 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) display {
+    _CiderWindowNote("display", self);
     // FIXME: See Issue #405, display when the window is not visible causes
     // layout problems (maybe the underlying Win32 window doesn't exist and
     // we're not getting resize feedback messages?), so there is a problem. The
@@ -3844,11 +3890,28 @@ static BOOL _allowsAutomaticWindowTabbing;
 
 - (CGWindow *) platformWindow {
     if (_platformWindow == nil) {
+        /* THE CROSS THREAD HOP. Creation runs on the main thread while the caller waits, so which
+         * thread asked decides what resumes when it is done. */
+        _CiderWindowNote([NSThread isMainThread] ? "platformWindow ask (main thread)"
+                                                 : "platformWindow ask (secondary thread)", self);
         [self performSelectorOnMainThread: @selector
                 (_createPlatformWindowOnMainThread)
                                withObject: nil
                             waitUntilDone: YES
                                     modes: @[ NSDefaultRunLoopMode ]];
+        _CiderWindowNote("platformWindow perform returned", self);
+        if (getenv("CIDER_TRACE_APP") != NULL) {
+            /* WHO ASKED. The process dies the moment this getter returns, so name the caller rather
+             * than guess it: dladdr turns the return address into the symbol it lands in. */
+            Dl_info info;
+            void *ret = __builtin_return_address(0);
+            if (dladdr(ret, &info) != 0 && info.dli_sname != NULL)
+                fprintf(stderr, "CIDER_WIN platformWindow caller=%s in %s\n",
+                        info.dli_sname, info.dli_fname ? info.dli_fname : "?");
+            else
+                fprintf(stderr, "CIDER_WIN platformWindow caller=%p unresolved\n", ret);
+            fflush(stderr);
+        }
     }
 
     return _platformWindow;

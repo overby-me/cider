@@ -21,6 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <stdio.h>
 
 #import <AppKit/NSApplication.h>
+#import <signal.h>
+#import <unistd.h>
+#import <fcntl.h>
+#import <sys/mman.h>
+#import <sys/ucontext.h>
+#import <dlfcn.h>
+#import <execinfo.h>
 #import <objc/runtime.h>
 #include <objc/runtime.h>
 #include <dlfcn.h>
@@ -106,6 +113,204 @@ NSApplication *NSApp = nil;
 @interface NSDockTile (private)
 - initWithOwner: owner;
 @end
+
+
+/* WHICH DEATH IS IT. MoneyMoney ends silently mid nib load with no -terminate: and no core. A dylib
+ * destructor runs on a normal exit() and never on a fatal signal, so this one line separates a
+ * deliberate exit from a kill. */
+/* A CRASH STACK THAT WORKS. The injected crash reporter faults inside itself, so a process that
+ * dies in app code says nothing at all and no core is written. backtrace and dladdr do work in the
+ * guest, so a plain fatal signal handler prints the one thing that was missing: where it died. */
+/* ASK THE KERNEL WHETHER A PAGE IS THERE. Reading the stack of a process that has just hit its
+ * guard page faults again and takes the report with it. A write of the page to /dev/null answers
+ * the same question with EFAULT instead of a signal, so nothing in the scan can crash. */
+static int _CiderProbeFd = -1;
+
+static int _CiderPageReadable(const void *page)
+{
+    char resident = 0;
+
+    /* mincore ANSWERS WITHOUT READING. A write to /dev/null looked like a safe probe and is not:
+     * the buffer crosses the syscall emulation, which touches it, so probing an unmapped page with
+     * it faults exactly like the read it was meant to replace. mincore only consults the mapping
+     * tables and returns ENOMEM when there is nothing there. */
+    return mincore((void *) page, 4096, &resident) == 0;
+}
+
+static void _CiderAppFatalSignal(int signo, siginfo_t *info, void *ucontextIn)
+{
+    void *frames[32];
+    int count = backtrace(frames, 32);
+
+    /* THE PC IS THE ANSWER, not the walk. Signal delivery hands over a fresh stack with no frame
+     * chain to follow, so backtrace comes back empty here; the register state does not, and the
+     * program counter in it names the instruction that faulted. */
+    fprintf(stderr, "CIDER_APP fatal signal %d at address %p, depth=%d\n", signo,
+            info ? info->si_addr : NULL, count);
+
+    ucontext_t *uc = (ucontext_t *) ucontextIn;
+    if (uc != NULL && uc->uc_mcontext != NULL) {
+        void *pc = (void *) (uintptr_t) uc->uc_mcontext->__ss.__rip;
+        Dl_info pcinfo;
+
+        if (dladdr(pc, &pcinfo) != 0 && pcinfo.dli_sname != NULL)
+            fprintf(stderr, "CIDER_APP faulted at %s + %ld in %s\n", pcinfo.dli_sname,
+                    (long) ((char *) pc - (char *) pcinfo.dli_saddr),
+                    pcinfo.dli_fname ? pcinfo.dli_fname : "?");
+        else if (dladdr(pc, &pcinfo) != 0)
+            fprintf(stderr, "CIDER_APP faulted at %p, offset %ld into %s\n", pc,
+                    (long) ((char *) pc - (char *) pcinfo.dli_fbase),
+                    pcinfo.dli_fname ? pcinfo.dli_fname : "?");
+        else
+            fprintf(stderr, "CIDER_APP faulted at %p, unresolved\n", pc);
+
+        /* HISTOGRAM THE STACK INSTEAD OF WALKING IT. The frame pointer is omitted in the code
+         * that faulted, so there is no chain to follow; a stack that ran out of room is however
+         * full of the cycle that filled it, so count the code addresses lying in it and the
+         * repeating callers come out on top. */
+        uintptr_t sp = (uintptr_t) uc->uc_mcontext->__ss.__rsp;
+        uintptr_t scanned = 0;
+
+        fprintf(stderr, "CIDER_APP scan starting, rsp=%p probefd=%d\n", (void *) sp, _CiderProbeFd);
+        fflush(stderr);
+        /* STATIC ON PURPOSE. There is no stack left to put this on, which is the very condition
+         * being reported. */
+        static struct {
+            void *symbol;
+            const char *name;
+            int count;
+        } seen[24];
+        int distinct = 0;
+
+        memset(seen, 0, sizeof(seen));
+
+        for (uintptr_t slot = (sp + 7) & ~(uintptr_t) 7; scanned < (2 * 1024 * 1024); slot += 8) {
+            scanned += 8;
+
+            if ((slot & 0xFFF) < 8 || scanned == 8) {
+                if (!_CiderPageReadable((const void *) (slot & ~(uintptr_t) 0xFFF))) {
+                    slot = (slot | 0xFFF) - 7;
+                    continue;
+                }
+            }
+
+            void *candidate = *(void **) slot;
+            Dl_info slotinfo;
+
+            /* ONE CYCLE, IN ORDER. The counts say which frames repeat but not what sits between
+             * them, and a caller from the application itself would be dropped by the dedup below.
+             * The first few kilobytes hold a whole turn of the loop. */
+            if (scanned <= (12 * 1024) && candidate != NULL && (uintptr_t) candidate > 0x1000) {
+                Dl_info orderinfo;
+
+                if (dladdr(candidate, &orderinfo) != 0 && orderinfo.dli_sname != NULL) {
+                    const char *image = orderinfo.dli_fname ? strrchr(orderinfo.dli_fname, (int) 47) : NULL;
+
+                    fprintf(stderr, "CIDER_APP   order +%lu %s [%s]\n",
+                            (unsigned long) (slot - sp), orderinfo.dli_sname,
+                            image ? image + 1 : "?");
+                    fflush(stderr);
+                }
+            }
+
+            if (candidate == NULL || (uintptr_t) candidate < 0x1000)
+                continue;
+            if (dladdr(candidate, &slotinfo) == 0 || slotinfo.dli_sname == NULL)
+                continue;
+
+            int found = 0;
+            for (int i = 0; i < distinct; i++) {
+                if (seen[i].symbol == slotinfo.dli_saddr) {
+                    seen[i].count++;
+                    found = 1;
+                    break;
+                }
+            }
+            if (!found && distinct < 24) {
+                seen[distinct].symbol = slotinfo.dli_saddr;
+                seen[distinct].name = slotinfo.dli_sname;
+                seen[distinct].count = 1;
+                distinct++;
+                /* PRINTED THE MOMENT IT IS SEEN. Scanning a stack that has just hit its guard page
+                 * can fault again, and a summary printed at the end would then be lost, so each new
+                 * name goes out immediately. */
+                fprintf(stderr, "CIDER_APP   found %s at +%lu\n", slotinfo.dli_sname,
+                        (unsigned long) (slot - sp));
+                fflush(stderr);
+            }
+        }
+
+        fprintf(stderr, "CIDER_APP stack histogram over %lu bytes, %d distinct\n",
+                (unsigned long) scanned, distinct);
+        for (int shown = 0; shown < 12; shown++) {
+            int best = -1;
+
+            for (int i = 0; i < distinct; i++)
+                if (seen[i].count > 0 && (best < 0 || seen[i].count > seen[best].count))
+                    best = i;
+            if (best < 0)
+                break;
+            fprintf(stderr, "CIDER_APP   %6d x %s\n", seen[best].count, seen[best].name);
+            seen[best].count = 0;
+        }
+    }
+
+    for (int i = 0; i < count; i++) {
+        Dl_info info;
+
+        if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL)
+            fprintf(stderr, "CIDER_APP   #%d %s + %ld in %s\n", i, info.dli_sname,
+                    (long) ((char *) frames[i] - (char *) info.dli_saddr),
+                    info.dli_fname ? info.dli_fname : "?");
+        else
+            fprintf(stderr, "CIDER_APP   #%d %p\n", i, frames[i]);
+    }
+    fflush(stderr);
+    _exit(128 + signo);
+}
+
+__attribute__((constructor)) static void _CiderAppAtLoad(void)
+{
+    if (getenv("CIDER_TRACE_APP") == NULL)
+        return;
+
+    /* THE HANDLER NEEDS A STACK OF ITS OWN. The crash being caught is the stack running out, so a
+     * handler running on that same stack faults again before it can say anything useful. */
+    static char alternateStack[512 * 1024];
+    stack_t altstack;
+
+    altstack.ss_sp = alternateStack;
+    altstack.ss_size = sizeof(alternateStack);
+    altstack.ss_flags = 0;
+    sigaltstack(&altstack, NULL);
+
+    struct sigaction sa;
+
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = _CiderAppFatalSignal;
+    sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
+    sigemptyset(&sa.sa_mask);
+
+    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGBUS, &sa, NULL);
+    sigaction(SIGILL, &sa, NULL);
+    sigaction(SIGABRT, &sa, NULL);
+    sigaction(SIGFPE, &sa, NULL);
+    sigaction(SIGTRAP, &sa, NULL);
+
+    _CiderProbeFd = open("/dev/null", O_WRONLY);
+
+    fprintf(stderr, "CIDER_APP dylib constructor ran, fatal signal handlers installed\n");
+    fflush(stderr);
+}
+
+__attribute__((destructor)) static void _CiderAppAtExit(void)
+{
+    if (getenv("CIDER_TRACE_APP") == NULL)
+        return;
+    fprintf(stderr, "CIDER_APP dylib destructor ran, this was a normal exit\n");
+    fflush(stderr);
+}
 
 @implementation NSApplication
 

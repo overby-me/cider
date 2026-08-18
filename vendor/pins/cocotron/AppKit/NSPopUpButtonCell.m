@@ -23,9 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSImage.h>
 #import <AppKit/NSMenu.h>
 #import <AppKit/NSPopUpButtonCell.h>
+#import <objc/runtime.h>
 #import <AppKit/NSPopUpWindow.h>
 #import <AppKit/NSRaise.h>
 #import <Foundation/NSKeyedArchiver.h>
+
+static const void *kCiderSelectingItemKey = &kCiderSelectingItemKey;
 
 @implementation NSPopUpButtonCell
 
@@ -278,9 +281,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     }
 
     if (selectedIndex != _selectedIndex) {
-        [self willChangeValueForKey: @"selectedItem"];
-        _selectedIndex = selectedIndex;
-        [self didChangeValueForKey: @"selectedItem"];
+        /*
+         * THE NESTED CALL MUST NOT ANNOUNCE ANYTHING, and without that this method never returns.
+         *
+         * A bound popup button is observed by its own binder, so announcing a new selection calls
+         * the binder, which writes the value back to the view, which arrives here again. That round
+         * trip is supposed to settle at once because the second call finds the value it is being
+         * asked for already in place. It did not: _selectedIndex was assigned AFTER the willChange
+         * that starts the round trip, so the nested call still read the old index, decided the
+         * selection had changed, and started another round trip. MoneyMoney died in its window
+         * controller with a stack 1,180 of these deep and no message of any kind, because a stack
+         * that runs out takes the crash reporter with it.
+         *
+         * The flag lives in an associated object rather than an ivar: applications subclass this
+         * class and an ivar here would move theirs.
+         */
+        if (objc_getAssociatedObject(self, kCiderSelectingItemKey) != nil) {
+            _selectedIndex = selectedIndex;
+        } else {
+            objc_setAssociatedObject(self, kCiderSelectingItemKey, self,
+                                     OBJC_ASSOCIATION_ASSIGN);
+            @try {
+                [self willChangeValueForKey: @"selectedItem"];
+                _selectedIndex = selectedIndex;
+                [self didChangeValueForKey: @"selectedItem"];
+            } @finally {
+                objc_setAssociatedObject(self, kCiderSelectingItemKey, nil,
+                                         OBJC_ASSOCIATION_ASSIGN);
+            }
+        }
     }
     [self synchronizeTitleAndSelectedItem];
 }

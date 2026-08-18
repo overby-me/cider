@@ -46,6 +46,27 @@ NSString *const NSControlTextDidEndEditingNotification =
 
 @implementation NSControl
 
+/*
+ * STORED, AND NOTHING CONSULTS IT YET. MoneyMoney sends this to every button it builds and the
+ * missing selector took the whole application down with an uncaught exception. The property is a
+ * real one: what is set comes back out. The behaviour it gates, folding a double click into a
+ * single one, needs click counting that this control does not do at all yet, so a button that is
+ * told to ignore multi clicks still sees them; that is a smaller wrong than not launching.
+ *
+ * An associated object rather than an ivar, because applications subclass NSControl and an ivar
+ * added here would move theirs.
+ */
+static const void *kCiderIgnoresMultiClickKey = &kCiderIgnoresMultiClickKey;
+
+- (BOOL) ignoresMultiClick {
+    return objc_getAssociatedObject(self, kCiderIgnoresMultiClickKey) != nil;
+}
+
+- (void) setIgnoresMultiClick: (BOOL) ignoresMultiClick {
+    objc_setAssociatedObject(self, kCiderIgnoresMultiClickKey,
+                             ignoresMultiClick ? self : nil, OBJC_ASSOCIATION_ASSIGN);
+}
+
 @synthesize allowsExpansionToolTips = _allowsExpansionToolTips;
 @synthesize allowsLogicalLayoutDirection = _allowsLogicalLayoutDirection;
 
