@@ -9334,7 +9334,54 @@ loads, the window is still created and there is still a SIGSEGV core dump. So th
 real fault of its own and crashtrace has a second one on top of it, and the second was hiding the
 first.
 
-NEXT: the core taken without crashtrace puts the reported PC in libsystem_kernel, which is a thread
-sitting in a syscall rather than the one that faulted, so the faulting thread has to be picked out
-of the core before that address means anything.
+SUPERSEDED, see the section below: the core was never needed. A fatal signal handler compiled into
+AppKit named the faulting instruction and then the whole recursion cycle, in one run.
 
+
+### MoneyMoney (#117): it opens its window
+
+The core never had to be read. The faulting thread was found by asking the process itself, with a
+fatal signal handler compiled into AppKit behind CIDER_TRACE_APP, and what it printed ended the
+hunt in one run.
+
+The death was a stack overflow, and the cycle repeated every 1,776 bytes:
+
+    -[NSPopUpButton selectItem:] -> -[NSPopUpButtonCell selectItem:]
+      -> willChangeValueForKey: ... didChangeValueForKey:
+      -> -[NSKeyValueObservance observeValueForKeyPath:ofObject:change:context:]
+      -> -[NSPopUpButton selectItem:]   ... 1,180 times
+
+A popup button bound to a model is observed by its own binder, so announcing a new selection makes
+the binder write the value back into the view. That round trip is supposed to settle immediately,
+because the second call finds the value it is being asked for already in place. It did not:
+selectItem: assigned _selectedIndex AFTER the willChange that starts the round trip, so the nested
+call read the old index, concluded the selection had changed, and set off again. The guard was
+written for a caller that arrives afterwards and there is no such thing here.
+
+The fix is a re-entrancy flag in an associated object: a nested call applies the value and announces
+nothing, the outer call owns the notification. Not an ivar, because applications subclass
+NSPopUpButtonCell and an ivar added here would move the ones they declare.
+
+Two absent selectors raised uncaught exceptions immediately after, and both are ordinary AppKit
+properties: ignoresMultiClick on NSControl and allowsEditingTextAttributes on NSTextField. They
+store what they are given and hand it back. Neither behaviour is implemented, and each carries a
+comment saying which behaviour is missing, because a property that silently does nothing is exactly
+the kind of thing that reads later as a mystery.
+
+WHERE IT STANDS: main nib load leave prints in five runs of five. The window carries the full menu
+bar, the toolbar and the application logo, and it relayouts when the compositor resizes it. Of the
+three criteria, RENDERS is nearly met and RESIZES is met; INTERACTIVE is untested. One clear defect
+is visible: the alert message paints as a solid black rectangle rather than text.
+
+The instrument is worth more than the fix. The injected crashtrace dylib faults inside itself, so
+until now a process that died in application code said nothing at all. The handler in NSApplication
+prints the faulting program counter through dladdr, and when the stack is the thing that ran out it
+scans the stack and names what is lying in it. Three things had to be true before it worked:
+backtrace() reports depth 0 from a signal frame and the rbp chain is gone as well, so the frames
+have to be found by scanning rather than walking; a write to /dev/null is not a safe way to ask
+whether a page is mapped, because the syscall emulation touches the buffer and faults exactly like
+the read it was meant to replace, while mincore answers from the mapping tables; and the handler
+needs its own sigaltstack, or its locals fault on the very stack whose exhaustion it is reporting.
+
+One operational note, because it made two earlier rate measurements meaningless: stale guest
+processes make every run after the first fail. kill-stale-prefix.sh has to run before EVERY run.
