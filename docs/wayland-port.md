@@ -9295,3 +9295,46 @@ gdb on the core cannot name the site: the frames are guest Mach-O and it symboli
 That is the next thing to solve, and the honest state is that the application still does not open a
 window and now fails in a way our own instrument does not report.
 
+## MoneyMoney makes a real window now, and still dies inside the main nib load
+
+WHAT IS NEW AND GOOD: the window exists. With the versioned nib fix the trace says
+
+    cider-wayland-window role number=1 style=0xf titled=true class=MMWindow
+    cider-wayland-window create=ok number=1 size=1124x730 at=2,2 level=0
+
+so MMWindow is built and reaches the compositor. That is the first time MoneyMoney has produced a
+window at all.
+
+AND IT STILL DIES INSIDE THE MAIN NIB LOAD, which the bracket proves: main nib load enter prints,
+main nib load leave never does.
+
+CORRECTING A GUESS I MADE AN HOUR AGO: the last thing in the log was two TIFF decodes, and I said it
+died right after them. Bracketing the decoder shows both of them RETURN:
+
+    CIDER_IMAGESOURCE matched O2ImageSource_TIFF
+    CIDER_IMAGESOURCE built   O2ImageSource_TIFF -> 0x78429308fba0
+    CIDER_IMAGESOURCE matched O2ImageSource_TIFF
+    CIDER_IMAGESOURCE built   O2ImageSource_TIFF -> 0x78429308f740
+
+so TIFF is not the fault site. It was simply the last thing the instruments could see, which is not
+the same claim.
+
+## The crash handler was itself crashing
+
+Using the core dump NT_FILE mapping to place the faulting PC, in a run WITH cider-crashtrace
+inserted:
+
+    FAULT file: /usr/lib/cider-crashtrace.dylib   offset 0x990
+
+The instrument faults, which is exactly why it printed nothing while the kernel had a core dump for
+every run.
+
+IT IS NOT THE ROOT CAUSE THOUGH. Running with DYLD_INSERT_LIBRARIES unset, so crashtrace never
+loads, the window is still created and there is still a SIGSEGV core dump. So the application has a
+real fault of its own and crashtrace has a second one on top of it, and the second was hiding the
+first.
+
+NEXT: the core taken without crashtrace puts the reported PC in libsystem_kernel, which is a thread
+sitting in a syscall rather than the one that faulted, so the faulting thread has to be picked out
+of the core before that address means anything.
+

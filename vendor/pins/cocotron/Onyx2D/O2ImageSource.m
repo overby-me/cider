@@ -63,8 +63,18 @@ NSString *kO2ImagePropertyTIFFOrientation = @"Orientation";
                 fprintf(stderr, "CIDER_IMAGESOURCE matched %s\n", [classes[i] UTF8String]);
                 fflush(stderr);
             }
-            return [[cls alloc] initWithDataProvider: provider
-                                             options: (NSDictionary *) options];
+            /* BRACKETED, because the matched line prints BEFORE the decoder is built and a decoder
+             * that never returns looks exactly like one that was never asked. MoneyMoney dies with
+             * two of these matched lines as the last thing it ever says. */
+            id source = [[cls alloc] initWithDataProvider: provider
+                                                  options: (NSDictionary *) options];
+
+            if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL) {
+                fprintf(stderr, "CIDER_IMAGESOURCE built %s -> %p\n", [classes[i] UTF8String],
+                        (void *) source);
+                fflush(stderr);
+            }
+            return source;
         }
     }
 
