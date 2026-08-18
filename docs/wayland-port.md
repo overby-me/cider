@@ -10473,3 +10473,58 @@ and then verify with the pin build itself rather than by eye:
 
 followed by a file-by-file diff of the built pin against vendor/src. Ten of ten identical here, which
 is what makes buck2 and nix the same program rather than two that merely look alike.
+
+## The guest knows which terminal it is on, and ps stops lying about time (task #120)
+
+The task was written as "make the guest recognise its pty (tty, isatty, task_read_for_pid)" and one
+run showed that isatty had never been the problem:
+
+    Cider [~]# test -t 0 && echo T0_YES || echo T0_NO; stty -a | head -2
+    T0_YES
+    speed 0 baud; 44 rows; 175 columns;
+
+So the fd is a terminal, the termios ioctls work, and `ls -l /dev/fd/0` even shows it pointing at
+/dev/pts/3. What returned NULL was ttyname(), and tty(1) prints "not a tty" for exactly that.
+
+ttyname_r here is the FreeBSD one: fstat the fd, require a character device, then ask devname_r to
+turn the device NUMBER into a name. And devname_r opens /dev and reads only that directory. On macOS
+that is the whole answer, because a pty slave is /dev/ttys00N, in /dev itself. Under this port the
+terminal is a Linux pty and the slave lives in /dev/pts, one level down, so the loop walked 204
+host device nodes and matched none of them.
+
+The scan is now a helper called once per directory, and /dev/pts is searched when the first pass
+finds nothing. The name comes back carrying its subdirectory, "pts/3", which is what every caller
+wants because they all prepend /dev. Two visible things changed for one edit: tty(1) answers
+/dev/pts/3 with status 0, and ps(1) shows pts/3 in its TTY column where it had shown ??.
+
+BSD syscall 539, task_read_for_pid, was simply missing from the table, so ps printed
+"Unimplemented syscall (539)" once per process and skipped the task info it wanted. It is answered
+now with the ordinary task port. macOS distinguishes control, read and inspect flavours precisely so
+that a reader cannot write to the task it measures; this port has one kind of task port and nothing
+to weaken it with, so the implementation says that in a comment rather than implying a restriction
+that is not enforced.
+
+That still left every process reading 0:00.00, and the server said why itself: task_info carried the
+comment "TODO: fetch utimeus and stimeus somehow" and hardcoded zero for both TASK_BASIC_INFO and
+TASK_THREAD_TIMES_INFO. The times now come from /proc/<hostpid>/stat, which is the same route task
+#62 used to get real virtual and resident sizes out of /proc/<hostpid>/statm. The parse begins after
+the LAST ')' in the line, because field 2 is the executable name and may contain both spaces and
+parentheses; counting whitespace from the left is wrong for any process whose name has a space.
+
+Measured rather than asserted, with a burner running and then killed:
+
+     PID TTY         TIME CMD
+      30 pts/3      0:00.02 login -fp root
+      31 pts/3      0:00.04 sh -sh
+      37 pts/3      0:12.00 yes yes
+      39 pts/3      0:00.00 ps
+
+Twelve CPU seconds for a process that had been running about twelve wall seconds, and `kill %1`
+terminated it, which also exercises job control through the pty.
+
+TASK_THREAD_TIMES_INFO asks for the live threads only and gets the process totals here. That is the
+same number until a thread has exited, and it is written in the code rather than left to be
+discovered: separating the two needs per-thread accounting the server does not keep.
+
+An operational note that cost a detour: vendor/src/libc materialises READ-ONLY (444 files, 555
+directories), unlike the foundation and corefoundation pins, so an edit there needs chmod u+w first.
