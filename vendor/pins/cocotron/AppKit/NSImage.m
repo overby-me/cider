@@ -943,6 +943,29 @@ static NSImage *_CiderImageFromAssetCatalog(NSString *name) {
             fprintf(stderr, "CIDER_CAR selftest %s -> %s %.0fx%.0f\n", [probeName UTF8String],
                     probe != nil ? "IMAGE" : "nil", size.width, size.height);
             fflush(stderr);
+
+            /* WRITE THE PIXELS OUT SO THEY CAN BE LOOKED AT. A size is not a picture: the only way
+             * to know the reader produced the right artwork rather than the right dimensions is to
+             * see it. Raw RGBA, with the dimensions on the first line. */
+            const char *dumpPath = getenv("CIDER_CAR_SELFTEST_OUT");
+
+            if (probe != nil && dumpPath != NULL) {
+                NSArray *reps = [probe representations];
+                NSBitmapImageRep *rep = [reps count] > 0 ? [reps objectAtIndex: 0] : nil;
+
+                if (rep != nil && [rep isKindOfClass: [NSBitmapImageRep class]]) {
+                    FILE *out = fopen(dumpPath, "wb");
+
+                    if (out != NULL) {
+                        int w = (int) [rep pixelsWide];
+                        int h = (int) [rep pixelsHigh];
+
+                        fprintf(out, "%d %d\n", w, h);
+                        fwrite([rep bitmapData], 1, (size_t) w * h * 4, out);
+                        fclose(out);
+                    }
+                }
+            }
         }
     }
 
