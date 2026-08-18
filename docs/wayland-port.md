@@ -9895,3 +9895,77 @@ from our side.
 The counter stays. It costs an increment on five paths, prints only when CIDER_TRACE_FRAMES names a
 class, and it answers a question that read-only tracing could not: zero drawing operations inside a
 drawRect that is definitely running means an empty model, never a clip or a colour.
+
+### CORRECTION: Swift Publisher does parse its document through us, and the parse succeeds
+
+The previous section says the application parses doc.thread without us, on the strength of four
+instruments that never fired. Three of those four were right and the conclusion drawn from them was
+wrong, because the fourth was watching the wrong door.
+
+The application does this, and the disassembly of -[CCDocument readFromData:ofType:error:] says it
+in four instructions: it makes an NSString from the data with encoding 4, which is UTF-8, and sends
+it -propertyList. Our -[NSString propertyList] calls _CFPropertyListCreateFromXMLString, which goes
+to _CFPropertyListCreateFromUTF8Data. That is NOT _CFPropertyListCreateWithData, which is where the
+trace was, and which every data entry point does funnel through. A string entry point does not.
+
+Traced at the shared funnel instead, the answer arrives in one line:
+
+    CIDER_PLIST fromXMLString chars=420727 utf8=420727 result=plist
+
+The whole document parses, through our property list reader, successfully. So the earlier statement
+that no parse of ours is involved was doubly wrong: it is ours, and it works. The lesson is narrow
+and worth keeping: a funnel is only a funnel for the callers that reach it, and "every public entry
+point goes through here" has to be checked against the entry point the application actually calls,
+which the disassembly names for free.
+
+### The application had been telling us what was wrong for weeks
+
+Swift Publisher logs its own complaints, in this shape:
+
+    *** Warning in class:'%@' selector:'%@' file:'%@:%ld' - '%@'
+
+They go through NSLog, so they are already in every run log we have collected, 116 of them, and
+nobody had read them. Two distinct complaints, and one of them was ours.
+
+A hundred and eight of the 116 were this:
+
+    class:'MyPicture' selector:'updateOriginalImageSizeAndReturnFullImage:'
+      - 'key 'PixelWidth' for '.../BundleClipArtImages/AVQ_Royal Family 096.jpg' returns nil'
+
+macOS always reports PixelWidth and PixelHeight from CGImageSourceCopyPropertiesAtIndex, taken from
+the image and not from any metadata block. Ours reported the EXIF tags and nothing else for a JPEG,
+and an empty dictionary for everything else, so a plain JPEG with no EXIF answered nothing at all. A
+layout application asks for the pixel size of every picture before it can place one.
+
+Both are fixed. The base image source now decodes and measures, which is correct for every format,
+and JPEG overrides it by reading the frame header, which is where the size actually lives: markers
+from the start of the file, the SOFn ones carrying precision, height and width, with 0xC4, 0xC8 and
+0xCC excluded because they sit in the same numeric range and are not frame headers. After that the
+warning count for PixelWidth goes from 108 to zero in a run.
+
+### A nib loaded window did not know its own controller
+
+The remaining four warnings say 'Undefined document type', and chasing them led somewhere better.
+-[CCDocView drawRect:] opens by asking [[self window] windowController] for the document, and
+returns immediately, drawing nothing, when what comes back is nil. That is exactly the ops=0 the
+drawing counter measured.
+
+-[NSWindowController loadWindow] loads the nib, and the nib connects its window outlet straight into
+the _window ivar. -setWindow: therefore never runs, and it is -setWindow: and -initWithWindow: that
+call -[NSWindow setWindowController:]. So a window loaded the ordinary way, by a controller from a
+nib, answered nil to -windowController for its whole life. On macOS it always knows.
+
+One line in loadWindow fixes it, and the run says so:
+
+    CIDER_WC CAMainWindowController adopted window=0x7eb5f6ec50f0 controller=0x7eb7059ef390
+
+The canvas is still blank, and that is worth saying plainly: the fix is real and macOS faithful, and
+it was not sufficient. drawRect has two nil guards, not one, and the second is [windowController
+ftView], which the application sets from -[CCDocument makeWindowControllers] through
+performSelector. Which of the two guards still fires is the next measurement, and it is a question
+about one selector rather than about the document.
+
+The disassembly work is reusable: scratchpad/objc-dis.py disassembles a range of a thin x86_64
+Mach-O and resolves selrefs, classrefs and cfstrings, which llvm-objdump will not do for a Mach-O
+with a start address. Extracting the thin slice from the FAT binary first is what makes the range
+options work at all.

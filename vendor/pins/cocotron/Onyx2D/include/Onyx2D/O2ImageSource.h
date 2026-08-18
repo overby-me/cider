@@ -62,6 +62,10 @@ extern NSString *kO2ImagePropertyTIFFOrientation;
 
 - (CFDictionaryRef) copyPropertiesAtIndex: (NSUInteger) index
                                   options: (CFDictionaryRef) options;
+/* Adds PixelWidth and PixelHeight, which macOS always reports. The base implementation decodes the
+ * image to measure it; a subclass that can read its own header cheaply should override. */
+- (void) addPixelSizeAtIndex: (NSUInteger) index
+                toProperties: (NSMutableDictionary *) properties;
 - (O2ImageRef) createImageAtIndex: (NSUInteger) index
                           options: (CFDictionaryRef) options;
 

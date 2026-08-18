@@ -217,6 +217,30 @@ static const void *kCiderNibLoadedKey = &kCiderNibLoadedKey;
         }
         CIDER_WC_STEP("loadNibFile leave");
 
+        /*
+         * A NIB LOADED WINDOW NEVER LEARNED ITS CONTROLLER, and the omission is silent.
+         *
+         * The nib connects its window outlet straight into the _window ivar, so -setWindow: does
+         * not run and nothing calls -[NSWindow setWindowController:]. Every later
+         * -[NSWindow windowController] then answers nil. On macOS a window loaded by a controller
+         * always knows it.
+         *
+         * That nil is what kept the Swift Publisher canvas empty. -[CCDocView drawRect:] opens
+         * with [[self window] windowController], asks it for the document, and returns without
+         * drawing anything when it is nil, so the view was called ten times a run and issued zero
+         * drawing operations while looking, from every read only instrument, exactly like a
+         * document that had failed to load.
+         */
+        if (_window != nil)
+            [_window setWindowController: self];
+
+        if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+            fprintf(stderr, "CIDER_WC %s adopted window=%p controller=%p\n",
+                    class_getName([self class]), _window,
+                    _window != nil ? [_window windowController] : NULL);
+            fflush(stderr);
+        }
+
         [self synchronizeWindowTitleWithDocumentName];
         CIDER_WC_STEP("synchronizeWindowTitle leave");
 

@@ -106,6 +106,57 @@ NSData *O2DCTDecode(NSData *data, size_t *pBytesPerRow) {
     return 1;
 }
 
+/* The frame header carries the size, so there is no need to decode a whole JPEG to answer for it.
+ * Markers run 0xFF then a code; the SOFn ones hold precision, height and width in that order, and
+ * 0xC4 (huffman tables), 0xC8 and 0xCC are NOT frame headers even though they sit in the range.
+ * Returns NO if the file is not shaped like a JPEG, and the caller then falls back to decoding. */
+static BOOL O2JPEGFrameSize(const unsigned char *bytes, unsigned long length, size_t *width,
+                            size_t *height)
+{
+    unsigned long at = 2; /* past SOI */
+
+    if (bytes == NULL || length < 4 || bytes[0] != 0xFF || bytes[1] != 0xD8)
+        return NO;
+
+    while (at + 3 < length) {
+        unsigned char marker;
+        unsigned long segment;
+
+        if (bytes[at] != 0xFF) {
+            at++; /* fill byte or padding, resynchronise */
+            continue;
+        }
+        marker = bytes[at + 1];
+        if (marker == 0xFF) {
+            at++; /* run of fill bytes, the marker code is further along */
+            continue;
+        }
+        if (marker == 0xD8 || marker == 0x01 || (marker >= 0xD0 && marker <= 0xD7)) {
+            at += 2; /* no payload */
+            continue;
+        }
+        if (marker == 0xD9 || marker == 0xDA)
+            return NO; /* end of image, or entropy coded data with no frame header seen */
+
+        if (at + 3 >= length)
+            return NO;
+        segment = ((unsigned long) bytes[at + 2] << 8) | bytes[at + 3];
+        if (segment < 2)
+            return NO;
+
+        if (marker >= 0xC0 && marker <= 0xCF && marker != 0xC4 && marker != 0xC8 &&
+            marker != 0xCC) {
+            if (at + 9 >= length)
+                return NO;
+            *height = ((size_t) bytes[at + 5] << 8) | bytes[at + 6];
+            *width = ((size_t) bytes[at + 7] << 8) | bytes[at + 8];
+            return (*width > 0 && *height > 0) ? YES : NO;
+        }
+        at += 2 + segment;
+    }
+    return NO;
+}
+
 - (CFDictionaryRef) copyPropertiesAtIndex: (NSUInteger) idx
                                   options: (CFDictionaryRef) options
 {
@@ -117,7 +168,22 @@ NSData *O2DCTDecode(NSData *data, size_t *pBytesPerRow) {
     O2EXIFDecoder *exif =
             [[[O2EXIFDecoder alloc] initWithBytes: data
                                            length: length] autorelease];
-    return (CFDictionaryRef)[[exif tags] copy];
+    NSDictionary *tags = [exif tags];
+    NSMutableDictionary *properties =
+            tags != nil ? [tags mutableCopy] : [[NSMutableDictionary alloc] init];
+    size_t width = 0, height = 0;
+
+    /* EXIF is optional and most of these files have none, so the size has to come from the frame
+     * header. Without it every property dictionary here was just the tags, which for a plain JPEG
+     * means an EMPTY one. */
+    if (O2JPEGFrameSize(data, length, &width, &height)) {
+        [properties setObject: [NSNumber numberWithUnsignedLong: width] forKey: @"PixelWidth"];
+        [properties setObject: [NSNumber numberWithUnsignedLong: height] forKey: @"PixelHeight"];
+    } else if ([properties objectForKey: @"PixelWidth"] == nil) {
+        [self addPixelSizeAtIndex: idx toProperties: properties];
+    }
+
+    return (CFDictionaryRef) properties;
 }
 
 - (O2ImageRef) createImageAtIndex: (NSUInteger) index

@@ -22,7 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <Foundation/NSData.h>
 #import <Onyx2D/O2DataProvider.h>
 #import <Onyx2D/O2Exceptions.h>
+#import <Onyx2D/O2Image.h>
 #import <Onyx2D/O2ImageSource.h>
+#import <Foundation/NSDictionary.h>
+#import <Foundation/NSValue.h>
 
 NSString *kO2ImagePropertyDPIWidth = @"DPIWidth";
 NSString *kO2ImagePropertyDPIHeight = @"DPIHeight";
@@ -136,10 +139,37 @@ NSString *kO2ImagePropertyTIFFOrientation = @"Orientation";
     return 0;
 }
 
+/* macOS ALWAYS reports PixelWidth and PixelHeight here, from the image itself and not from any
+ * metadata block. Returning a dictionary without them is what made Swift Publisher log
+ *   key 'PixelWidth' for '<path>' returns nil
+ * a hundred times in one document load: a layout application asks for the pixel size of every
+ * picture before it can place it. The keys are plain strings, the same ones ImageIO exports as
+ * kCGImagePropertyPixelWidth and kCGImagePropertyPixelHeight. */
 - (CFDictionaryRef) copyPropertiesAtIndex: (NSUInteger) index
                                   options: (CFDictionaryRef) options
 {
-    return (CFDictionaryRef)[[NSDictionary alloc] init];
+    NSMutableDictionary *properties = [[NSMutableDictionary alloc] init];
+
+    [self addPixelSizeAtIndex: index toProperties: properties];
+
+    return (CFDictionaryRef) properties;
+}
+
+/* The general answer, correct for every format: decode and measure. A subclass that can read its
+ * own header cheaply should override this rather than pay for a decode. */
+- (void) addPixelSizeAtIndex: (NSUInteger) index
+                toProperties: (NSMutableDictionary *) properties
+{
+    O2Image *image = [self createImageAtIndex: index options: NULL];
+
+    if (image == nil)
+        return;
+
+    [properties setObject: [NSNumber numberWithUnsignedLong: O2ImageGetWidth((O2ImageRef) image)]
+                   forKey: @"PixelWidth"];
+    [properties setObject: [NSNumber numberWithUnsignedLong: O2ImageGetHeight((O2ImageRef) image)]
+                   forKey: @"PixelHeight"];
+    [image release];
 }
 
 - (O2Image *) createImageAtIndex: (NSUInteger) index
