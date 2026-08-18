@@ -496,6 +496,29 @@ static const CGFloat kImageMargin = 2.;
     return _keyEquivalent;
 }
 
+/*
+ * AN IMAGE NOBODY ASKED TO DRAW IS NOT DRAWN, and that is what an empty toolbar looks like.
+ *
+ * A button cell keeps an image and a position, and the position starts at NSNoImage. AppKit moves
+ * it to NSImageOnly when an image is given to a cell that had none, which is why setting an image
+ * on a plain cell shows it there. This did not, so a cell could hold a perfectly good picture and
+ * still draw only its title.
+ *
+ * Swift Publisher builds its toolbar that way, in code rather than in a nib: every item held a real
+ * image, ToolbarZoomIn and ToolbarPrint and the rest, loaded from the loose TIFFs beside the
+ * application, and every one of them drew the word Button instead, which is the title Interface
+ * Builder leaves behind.
+ *
+ * The switch and radio cases above set their position BEFORE handing over an image, so they keep
+ * NSImageLeft and are untouched by this.
+ */
+- (void) setImage: (NSImage *) image {
+    [super setImage: image];
+
+    if (image != nil && _imagePosition == NSNoImage)
+        _imagePosition = NSImageOnly;
+}
+
 - (NSCellImagePosition) imagePosition {
     return _imagePosition;
 }
@@ -1163,11 +1186,15 @@ static void drawRoundedBezel(CGContextRef context, CGRect frame) {
     /* WHICH BEZEL, AND WHETHER ONE IS DRAWN AT ALL. A button with no visible frame is either
      * unbordered, or has a bezel style nothing draws, and those two look identical on screen. */
     if (getenv("CIDER_TRACE_PANEL") != NULL) {
-        NSLog(@"CIDER_BUTTON cell=%s type=%d state=%d img=%s imgname=%@ title=%@ attr=%@ class=%s window=%@ bezel=%d bordered=%d "
+        NSLog(@"CIDER_BUTTON cell=%s type=%d state=%d img=%s imgname=%@ imgpos=%d title=%@ attr=%@ class=%s window=%@ bezel=%d bordered=%d "
                "defaulted=%d keychar=%u frame=%gx%g+%g+%g view=%gx%g",
               object_getClassName(self), (int) _highlightsBy, (int) [self state],
               // what it would draw INSIDE the bezel, which is the other half of an empty control
               ([self image] != nil) ? "image" : "noimage", [[self image] name],
+              /* WHETHER THE IMAGE IS EVEN MEANT TO BE DRAWN. A cell can hold an image and still
+               * draw only its title, because the position says NSNoImage, and from outside that is
+               * indistinguishable from an image that failed to load. */
+              (int) [self imagePosition],
               [self title], [[self attributedTitle] string],
               object_getClassName(controlView), [[controlView window] title],
               (int) _bezelStyle, (int) [self isBordered], (int) defaulted,
