@@ -10661,3 +10661,23 @@ masked 18 inside an NSBox that autoresizes its subviews; the panes themselves ar
 adjustSubviews. What is left to examine is the nib (something we may not be decoding), the
 notification the application registers for on the clip view's bounds, and the initWithFrame: path a
 [Class new] takes through our NSView, which starts at 1x1 here and at zero on macOS.
+
+### Two coordinate methods, and an env gate that turned a control into a probe run
+
+-[NSView scaleUnitSquareToSize:] and -[NSView translateOriginToPoint:] were both
+NSUnimplementedMethod, and the first is how a view zooms at all: scaling the unit square makes the
+BOUNDS smaller as the scale grows, so a canvas showing at 2x covers half as many units of its own
+space. Swift Publisher calls it on its canvas. Both are now implemented, both are documented
+arithmetic, and a zero or negative scale is refused rather than obeyed.
+
+They do not put a page on the canvas by themselves, and the way that became clear is worth keeping.
+A run described here as "with the two methods implemented" showed a page; it was not theirs. The
+CIDER_SVFILL probe was on, because the driver exports the name with an EMPTY value and the gate
+tested only getenv() != NULL. That is the trap this document already lists, and it caught two probes
+in one session: the menu bar colour block and this one. The rule that follows is sharper than the
+warning: a gate that only PRINTS may test for presence, but a gate that CHANGES BEHAVIOUR must test
+for a non-empty value, because a driver that passes every switch through will otherwise enable it in
+every run, including the ones meant as controls.
+
+With the gate fixed, the pair is unambiguous on one build: probe off, flat grey canvas; probe on, a
+page with rulers and a page edge.
