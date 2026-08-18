@@ -9679,3 +9679,31 @@ name, follow it into RENDITIONS, read the ISTC header for width, height and pixe
 chunk streams with compression_decode_buffer, and lay the rows out at the stride. Two formats appear
 here, BGRA and GA8, and only 21 of the 205 renditions carry a compressed payload at all; the other
 184 are 334 bytes each whatever their stated size and are not bitmaps.
+
+### The small renditions are LINKS into packed sheets, and the chain is now proven
+
+A correction to the previous entry, which said the 184 small renditions were 334 bytes each and
+therefore not the icons. They are not bitmaps, that part was right, but they are not junk either:
+each one is a LINK, and the icons are inside them by reference.
+
+Taking ToolbarButtonSingle, one of the names +[NSImage imageNamed:] cannot find, the chain runs:
+
+  FACETKEYS holds the name and a PARTIAL key, here attribute 1 = 85, attribute 2 = 181 and
+    attribute 17 = 19427, where 17 is an identifier derived from the name.
+  RENDITIONS holds full keys, twenty uint16 values in the order KEYFORMAT lists, and four of them
+    match that partial key: 1x and 2x, in BGRA and in GA8.
+  The matching rendition is 330 bytes and its name field reads ToolbarButtonSingle-1.png. Inside it
+    is a chunk tagged KLNI, which is INLK backwards, holding x 98, y 58, width 42, height 26 and a
+    key for ANOTHER rendition: attribute 1 = 9, attribute 2 = 181, attribute 12 = 1.
+  That other rendition is one of the twenty one with an LZFSE payload, 180 by 142 BGRA, whose
+    metadata calls itself PackedAsset. It is a SHEET with many small pieces of artwork on it.
+  Decoding its chunk streams and laying the rows out at the padded stride gives the sheet, and
+    cropping 42 by 26 at 98,58 gives a rounded rectangle with a light fill and a grey border, which
+    is exactly what a toolbar button bezel should look like.
+
+One trap worth writing down: the link key mentions attribute 16, and attribute 16 is NOT in this
+catalogs KEYFORMAT at all. A matcher that insists every attribute in the link be present in the
+rendition key finds nothing. Attributes absent from KEYFORMAT have to be treated as satisfied.
+
+So nothing about the format is unknown any more. The reader is mechanical: name, partial key, full
+key, link, sheet, chunks, rows, crop.
