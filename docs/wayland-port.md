@@ -9478,3 +9478,22 @@ in a modern car file are not stored as PNG files, so it needs a BOM reader and a
 It belongs in its own task.
 
 The canvas in the middle of the document window is still blank.
+
+### iA Writer (#115): still blocked on Combine, and now confirmed unfixable without a Swift compiler
+
+Re-checked 2026-08-18, because a run of font, binding and KVO fixes had landed since it was last
+looked at and any of them might have moved it. None did. It still aborts before any window:
+
+    abort_with_payload: reason: Symbol not found: _$s7Combine10PublishersO3MapVMn
+      Referenced from: .../iA Writer.app/Contents/Frameworks/AccountCore.framework/.../AccountCore
+      Expected in: /System/Library/Frameworks/Combine.framework/Versions/A/Combine
+
+That mangled name is Combine.Publishers.Map's nominal type descriptor. Our Combine is an empty stub,
+and this is the part that matters: there is no swiftc anywhere in the toolchain, and none in the nix
+expressions either. A nominal type descriptor is Swift metadata, not a C entry point, so it cannot be
+stubbed in Objective C the way a missing AppKit selector can. Filling it in means building a real
+Combine, which means a Swift compiler first.
+
+So iA Writer is BLOCKED in the strict sense used here: it has never worked once, and the missing
+piece is a whole toolchain rather than plumbing. It should not be picked up again until a Swift
+compiler exists in the build.
