@@ -9762,3 +9762,87 @@ crashes.
 
 Switch and radio cells set their position before handing over an image, so they keep NSImageLeft and
 are untouched, and MoneyMoney was re-run afterwards and is unchanged.
+
+### The iTerm2 session: a daemon that quit on purpose, and a launch request too big to decode
+
+The terminal had everything except a shell. The window drew, the menus opened, keys arrived, and the
+session never appeared. Six files called iterm2-daemon-1.socket.lock through -6 were left behind by
+every run, which reads like six failed attempts, and it is: the application starts a daemon, the
+daemon goes away, it starts the next one.
+
+The reason nothing explained itself is that the daemon does not write to stderr. iTermServer calls
+openlog and routes every one of its messages through CDLogImpl, which calls vsyslog. Under Cider
+that datagram goes nowhere and the send fails with EBADF, but strace prints the TEXT of a buffer it
+could not deliver, so
+
+    strace -f -tt -e trace=sendto,sendmsg
+
+recovers the whole log, with the source file and line number of each line, from a process that
+appears completely silent. That single change turned this from guesswork into reading.
+
+What the log says, without launchd:
+
+    MultiServer.c:952 Initialize: Server starting Initialize()
+    MultiServer.c:912 InitializeSignals: signals initialized
+    MultiServer.c:686 SelectLoop: Begin SelectLoop.
+    MultiServer.c:939 CheckIfBootstrapPortIsDead: Unable to get the type of the bootstrap port
+    MultiServer.c:922 QuitCleanly: QuitCleanly
+    MultiServer.c:998 CleanUp: Unlink .../iterm2-daemon-1.socket
+
+CheckIfBootstrapPortIsDead runs after every select. It asks task_get_special_port for
+TASK_BOOTSTRAP_PORT and then asks mach_port_type what that port is, and it treats a dead bootstrap
+port as proof that the user session is gone, so it quits. With DARLING_NO_LAUNCHD=1 there is no
+launchd, itk_bootstrap is IP_NULL for the root task and for everything that inherits from it, the
+port comes back as MACH_PORT_NULL, and mach_port_type answers KERN_INVALID_NAME. The daemon then
+removes its own socket and exits. Line 939 rather than 934 is what identifies the second call as the
+one that failed, and the line numbers come straight out of the binary: the two error branches load
+0x3a6 and 0x3ab into ecx before calling CDLogImpl.
+
+Run the same application through launchd and the same line reads
+
+    MultiServer.c:946 CheckIfBootstrapPortIsDead: Bootstrap port isn't dead yet.
+
+and there is ONE daemon instead of six. So the first cause is simply that iTerm2 needs a session:
+launchd is not optional for it, because a process with no bootstrap port looks to iTerm2 like a
+logged out user.
+
+The second cause was waiting behind the first. With the daemon alive, the handshake completes, the
+daemon writes its 8 and 64 byte replies, reports zero children, and then the connection drops and it
+exits because no children remain. The application side says why, and it is an assertion in iTerm2
+itself:
+
+    Assertion failed: (status == 0: On decode: status is 1 for encoded length 67951),
+    function -[iTermFileDescriptorMultiClient copyLaunchRequest:]
+
+copyLaunchRequest encodes the launch request and immediately decodes it to take a copy. The request
+carries the executable path, the argv, the working directory, the tty state and the ENVIRONMENT, and
+the message buffer is fixed. 67951 bytes is what our environment costs: the host environment
+measures 67560 bytes, so the request is the environment and almost nothing else. It is a nix
+devshell, and four variables are nearly all of it, NIX_CFLAGS_COMPILE at 21272 bytes, DIRENV_DIFF at
+10836, NIX_LDFLAGS at 6016 and PATH at 4871.
+
+Unset every variable over 400 bytes apart from PATH and LD_LIBRARY_PATH and the assertion is gone.
+This is our environment rather than a defect in Cider, and it is worth knowing anyway: an
+application can fail to start a child for no reason other than the size of the environment it
+inherited, and the failure surfaces as a decode error rather than as anything about size.
+
+With launchd and a trimmed environment the session comes up and works. Two commands typed into it
+run and print their output, and its own ps shows the real macOS session chain, login -fp root, then
+sh -sh, then the ps itself.
+
+A correction to what I wrote last time. I recorded that the helper calls exit_group(1). The binary
+contains exactly one _exit(1), and it is in iTermExec, on the forked child path after execvp fails,
+where it exits silently when there is no error descriptor to write to. The daemon's own exit is
+_exit(0) from QuitCleanly. Reading an exit status as a failure was wrong; the daemon was quitting
+deliberately, and the status said so.
+
+Three things about the harness came out of the same runs. A headless wlroots has no input devices,
+so its seat advertises no keyboard and typing goes nowhere: the nested wayland backend is what makes
+keystrokes arrive. wtype must be given the text and the Return in ONE invocation, because it creates
+a virtual keyboard for the duration of a run and destroys it afterwards. And
+DYLD_PRINT_INITIALIZERS was being passed through as empty but set, which reads as ON, which is why
+the terminal filled with dyld initializer lines.
+
+What is still wrong inside the session, both small and both new: tty prints "not a tty" and ps shows
+?? in the TTY column for every process, where macOS names the pty, and ps prints "Unimplemented
+syscall (539)" three times.
