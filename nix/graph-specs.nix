@@ -41,7 +41,10 @@ rustPlatform.buildRustPackage {
   meta = with lib; {
     description = "Dump the buck2 action graph and render it into per-group specs (#99)";
     license = licenses.gpl3Plus;
-    platforms = [ "x86_64-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     mainProgram = "cider-graph-specs";
   };
 }

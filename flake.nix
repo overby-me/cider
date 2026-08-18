@@ -23,7 +23,12 @@
     flakelight ./. {
       inherit inputs;
 
-      systems = [ "x86_64-linux" ];
+      # aarch64-linux: the aarch64 port (docs/plan-aarch64.md, task A1). The guest
+      # arch is chosen per machine by scripts/buck-setup.nu, not by this list.
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
 
       # NOT "cider", AND THE REASON IS A NAME COLLISION IN NIXPKGS. flakelight resolves
       # pkgs.${pname}, and nixpkgs already has a package called `cider`, an unrelated Apple Music

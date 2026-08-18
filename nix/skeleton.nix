@@ -29,7 +29,10 @@ rustPlatform.buildRustPackage {
   meta = with lib; {
     description = "Reduce the project to what the buck2 graph derivation reads (#99)";
     license = licenses.gpl3Plus;
-    platforms = [ "x86_64-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     mainProgram = "cider-skeleton";
   };
 }
