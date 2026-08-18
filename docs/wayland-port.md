@@ -9843,6 +9843,10 @@ a virtual keyboard for the duration of a run and destroys it afterwards. And
 DYLD_PRINT_INITIALIZERS was being passed through as empty but set, which reads as ON, which is why
 the terminal filled with dyld initializer lines.
 
+Three runs of three, each with different process ids, so they are genuinely three runs and not one
+picture looked at three times.
+
 What is still wrong inside the session, both small and both new: tty prints "not a tty" and ps shows
 ?? in the TTY column for every process, where macOS names the pty, and ps prints "Unimplemented
-syscall (539)" three times.
+syscall (539)" three times. 539 is task_read_for_pid, from the xnu syscalls.master already in the
+tree, which is also why every TIME column reads 0:00.00.
