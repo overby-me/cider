@@ -136,11 +136,24 @@ static NSDocumentController *shared = nil;
 }
 
 - (NSString *) defaultType {
-    if ([_fileTypes count] == 0)
+    if ([_fileTypes count] == 0) {
+        if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+            fprintf(stderr, "CIDER_DOC defaultType asked and there are NO file types at all\n");
+            fflush(stderr);
+        }
         return nil;
+    }
 
-    return [(NSDictionary *) [_fileTypes objectAtIndex: 0]
+    NSString *answer = [(NSDictionary *) [_fileTypes objectAtIndex: 0]
             objectForKey: @"CFBundleTypeName"];
+
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC defaultType -> %s (of %lu types)\n",
+                answer != nil ? [answer UTF8String] : "(nil)", (unsigned long) [_fileTypes count]);
+        fflush(stderr);
+    }
+
+    return answer;
 }
 
 - (NSArray *) documentClassNames {

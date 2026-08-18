@@ -253,6 +253,14 @@ static int untitled_document_number = 0;
 }
 
 - (void) setFileType: (NSString *) type {
+    /* WHICH TYPE A DOCUMENT ENDS UP WITH. Swift Publisher warns Undefined document type from its
+     * own window controller, and the only way to tell whether that is our answer or its own
+     * bookkeeping is to print what it was told. CIDER_TRACE_CONTROL. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC setFileType %s on %s\n",
+                type != nil ? [type UTF8String] : "(nil)", object_getClassName(self));
+        fflush(stderr);
+    }
     type = [type copy];
     [_fileType release];
     _fileType = type;
