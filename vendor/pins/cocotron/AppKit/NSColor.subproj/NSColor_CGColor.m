@@ -17,6 +17,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#import <dlfcn.h>
 #import <AppKit/NSColorSpace.h>
 #import <AppKit/NSColor_CGColor.h>
 #import <AppKit/NSGraphics.h>
@@ -620,6 +621,27 @@ static inline CGFloat calibratedWhiteFromRGB(CGFloat r, CGFloat g, CGFloat b) {
 }
 
 - (void) setFill {
+    /* WHICH COLOUR, AND WHO CHOSE IT. MoneyMoney fills a band of its alert black through
+     * -[NSBezierPath fill] from its own drawRect, and neither appearance matching nor a missing
+     * catalog entry explains it, so the remaining question is what colour object it set and from
+     * where. CIDER_TRACE_COLOR prints the components and the caller. */
+    if (getenv("CIDER_TRACE_COLOR") != NULL) {
+        size_t count = CGColorGetNumberOfComponents(_colorRef);
+        const CGFloat *parts = CGColorGetComponents(_colorRef);
+        Dl_info info;
+        void *ret = __builtin_return_address(0);
+
+        fprintf(stderr, "CIDER_COLOR setFill n=%lu", (unsigned long) count);
+        for (size_t i = 0; i < count && i < 5; i++)
+            fprintf(stderr, " %.3f", (double) parts[i]);
+        if (dladdr(ret, &info) != 0 && info.dli_sname != NULL)
+            fprintf(stderr, " from %s", info.dli_sname);
+        else
+            fprintf(stderr, " from %p", ret);
+        fprintf(stderr, "\n");
+        fflush(stderr);
+    }
+
     CGContextSetFillColorWithColor(NSCurrentGraphicsPort(), _colorRef);
 }
 
