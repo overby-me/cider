@@ -540,9 +540,27 @@ static int untitled_document_number = 0;
             NSFileWrapper *fileWrapper = [[[NSFileWrapper alloc]
                     initWithPath: [url path]] autorelease];
 
-            return [self readFromFileWrapper: fileWrapper
-                                      ofType: type
-                                       error: error];
+            /* WHAT THE APPLICATION IS ACTUALLY HANDED. A Swift Publisher template is a DIRECTORY
+             * bundle, so an empty or non directory wrapper here would explain a document that opens
+             * with nothing in it, and would do it silently. */
+            if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+                fprintf(stderr, "CIDER_DOC wrapper dir=%d children=%lu for %s\n",
+                        [fileWrapper isDirectory] ? 1 : 0,
+                        (unsigned long) [[fileWrapper fileWrappers] count],
+                        [[url path] UTF8String]);
+                fflush(stderr);
+            }
+
+            BOOL readOK = [self readFromFileWrapper: fileWrapper
+                                             ofType: type
+                                              error: error];
+
+            if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+                fprintf(stderr, "CIDER_DOC readFromFileWrapper -> %s\n", readOK ? "YES" : "NO");
+                fflush(stderr);
+            }
+
+            return readOK;
         }
     }
 

@@ -2087,6 +2087,15 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 }
 
 - (void) setWantsLayer: (BOOL) value {
+    if (getenv("CIDER_TRACE_FRAMES") != NULL) {
+        const char *watch = getenv("CIDER_TRACE_FRAMES");
+
+        if (watch[0] != (char) 0 && strstr(object_getClassName(self), watch) != NULL) {
+            fprintf(stderr, "CIDER_FRAME %s setWantsLayer %d\n", object_getClassName(self),
+                    value ? 1 : 0);
+            fflush(stderr);
+        }
+    }
     if (!value) {
         if (_wantsLayer) {
             _wantsLayer = NO;
@@ -2637,6 +2646,22 @@ static NSView *viewBeingPrinted = nil;
 }
 
 - (void) displayRectIgnoringOpacity: (NSRect) rect {
+    /* IS THE WATCHED VIEW EVER ASKED TO DRAW. Same gate as the frame trace: CIDER_TRACE_FRAMES
+     * holds a substring of a class name. A canvas that is never asked and a canvas that is asked
+     * and paints nothing are the same empty rectangle from outside. */
+    {
+        const char *watch = getenv("CIDER_TRACE_FRAMES");
+
+        if (watch != NULL && watch[0] != (char) 0 &&
+            strstr(object_getClassName(self), watch) != NULL) {
+            fprintf(stderr, "CIDER_FRAME %s DISPLAY %.0fx%.0f at %.0f,%.0f frame %.0fx%.0f hidden=%d\n",
+                    object_getClassName(self), rect.size.width, rect.size.height,
+                    rect.origin.x, rect.origin.y, _frame.size.width, _frame.size.height,
+                    [self isHidden] ? 1 : 0);
+            fflush(stderr);
+        }
+    }
+
     NSRect visibleRect = [self visibleRect];
 
     rect = NSIntersectionRect(rect, visibleRect);

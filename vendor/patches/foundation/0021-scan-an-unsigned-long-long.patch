@@ -1,0 +1,75 @@
+Scan an unsigned long long.
+
+NSScanner had scanLongLong: and scanHexLongLong: and not this one, so
+-[NSConcreteScanner scanUnsignedLongLong:] raised. A raise inside a parser is a document that does
+not load, and Swift Publisher hit it while reading its own template. Mirrors the signed version
+minus the sign, and clamps an overflow to ULLONG_MAX while still reporting success, which is what
+scanLongLong: does with LONG_LONG_MAX.
+
+--- a/src/NSScanner.m
++++ b/src/NSScanner.m
+@@ -695,6 +695,64 @@
+     return foundInt;
+ }
+ 
++/*
++ * SCANNING AN UNSIGNED LONG LONG, which was missing entirely.
++ *
++ * Swift Publisher raised -[NSConcreteScanner scanUnsignedLongLong:] while reading its document, and
++ * a raise inside a parser is a document that does not load. Mirrors scanLongLong: above, minus the
++ * sign: Apple documents no leading minus for this one, and an overflow clamps to ULLONG_MAX and
++ * still reports success, which is what the signed version does with LONG_LONG_MAX.
++ */
++- (BOOL)scanUnsignedLongLong:(unsigned long long *)value
++{
++    NSUInteger length = [scanString length] - scanLocation;
++    if (length == 0)
++    {
++        return NO;
++    }
++    unichar *buf = malloc((length+1) * sizeof(unichar));
++    buf[length] = (unichar)0x0;
++    unichar *ptr = buf;
++    [scanString getCharacters:ptr range:NSMakeRange(scanLocation, length)];
++
++    length -= skipLeading(&ptr, length, skipSet);
++    if (length == 0)
++    {
++        free(buf);
++        return NO;
++    }
++
++    unsigned long long counter = 0;
++    BOOL foundInt = NO;
++    BOOL overflow = NO;
++
++    while (*ptr >= '0' && *ptr <= '9')
++    {
++        if (!overflow)
++        {
++            foundInt = YES;
++            unsigned int increment = (unsigned int)(*ptr - '0');
++            if (counter > ULLONG_MAX / 10 ||
++                (counter == ULLONG_MAX / 10 && increment > ULLONG_MAX % 10))
++            {
++                overflow = YES;
++            }
++            counter = counter * 10 + increment;
++        }
++        ptr++;
++    }
++    if (foundInt)
++    {
++        scanLocation += (ptr - buf);
++        if (value)
++        {
++            *value = overflow ? ULLONG_MAX : counter;
++        }
++    }
++    free(buf);
++    return foundInt;
++}
++
+ - (BOOL)scanInt:(int *)value
+ {
+     NSUInteger length = [scanString length] - scanLocation;

@@ -150,6 +150,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [super dealloc];
 }
 
+/*
+ * THE MODEL ARRIVES THROUGH addObject:, and without it the controller never gets one.
+ *
+ * An NSObjectController holds ONE object, so adding to it is setting its content, and removing an
+ * object it is not holding does nothing. Apple documents both, and the undo registration that goes
+ * with them is not done here.
+ *
+ * Swift Publisher sends this while its document window is being activated. The missing selector
+ * raised NSInvalidArgumentException, the raise was swallowed, and everything bound through that
+ * controller simply had no content: an inspector with nothing in it and a document canvas that is
+ * asked to draw, is the right size, is not hidden, and paints nothing at all.
+ */
+- (void) addObject: (id) object {
+    [self setContent: object];
+}
+
+- (void) removeObject: (id) object {
+    id current = [self content];
+
+    if (object == current || (object != nil && [object isEqual: current]))
+        [self setContent: nil];
+}
+
 - (BOOL) canAdd; {
     return [self isEditable];
 }
