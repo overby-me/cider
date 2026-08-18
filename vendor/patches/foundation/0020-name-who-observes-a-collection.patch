@@ -1,0 +1,39 @@
+Name who is registering an observer on a collection.
+
+macOS raises from -[NSArray addObserver:forKeyPath:options:context:] exactly as this does, so an
+application that works there is being handed a collection where macOS hands it something else. The
+only way to tell what is to name the caller, and the answer for Swift Publisher was a whole chain:
+InspectorViewController awakeFromNib, GUIBinder, NSPopUpButton bind:toObject:withKeyPath:options:,
+_NSKVOBinder startObservingChanges, NSObjectController, NSKeyValueNestedProperty.
+
+Silent unless CIDER_TRACE_KVO is set.
+
+--- a/src/NSKeyValueObserving.m
++++ b/src/NSKeyValueObserving.m
+@@ -754,6 +754,26 @@
+ 
+ - (void)addObserver:(NSObject *)observer forKeyPath:(NSString *)keyPath options:(NSKeyValueObservingOptions)options context:(void *)context
+ {
++    /* WHO IS REGISTERING ON AN ARRAY. macOS raises here too, so an application that works there is
++     * being handed an array where macOS hands it something else, and the only way to tell what is
++     * to name the caller. CIDER_TRACE_KVO. */
++    if (getenv("CIDER_TRACE_KVO") != NULL) {
++        void *frames[12];
++        int count = backtrace(frames, 12);
++
++        fprintf(stderr, "CIDER_KVO array observe keyPath=%s observer=%s count=%lu first=%s\n",
++                keyPath != nil ? [keyPath UTF8String] : "(nil)",
++                observer != nil ? object_getClassName(observer) : "(nil)",
++                (unsigned long)[self count],
++                [self count] > 0 ? object_getClassName([self objectAtIndex: 0]) : "(empty)");
++        for (int i = 0; i < count; i++) {
++            Dl_info info;
++
++            if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL)
++                fprintf(stderr, "CIDER_KVO   #%d %s\n", i, info.dli_sname);
++        }
++        fflush(stderr);
++    }
+     [NSException raise:NSInvalidArgumentException format:@"%@: %p does not support -addObserver:forKeyPath:options:context:. Key path: %@. Use -addObserver:toObjectsAtIndexes:options:context: instead.", [self class], self, keyPath];
+ }
+ - (void)removeObserver:(NSObject *)observer forKeyPath:(NSString *)keyPath
