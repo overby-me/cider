@@ -604,7 +604,10 @@ static NSImage *_CiderCarArtwork(_CiderCar *car, const uint32_t *attrs, uint32_t
             continue;
         if (!_CiderCarKeyMatches(key, attrs, attrCount, wantAttr, wantValue, wantCount))
             continue;
-        if (memcmp(val + 24, "BGRA", 4) != 0)
+        /* BGRA and GA8 both appear in these catalogs. GA8 is eight bits of grey and eight of
+         * alpha, which is how a template icon is stored, and skipping it left every glyph missing
+         * while the bezels behind them came through. */
+        if (memcmp(val + 24, "BGRA", 4) != 0 && memcmp(val + 24, " 8AG", 4) != 0)
             continue;
 
         uint32_t scale = _CiderLE32(val + 20);
@@ -645,7 +648,9 @@ static NSImage *_CiderCarArtwork(_CiderCar *car, const uint32_t *attrs, uint32_t
 
             if (key == NULL || val == NULL || vlen < 32 || klen < 2 * attrCount)
                 continue;
-            if (memcmp(val, "ISTC", 4) != 0 || memcmp(val + 24, "BGRA", 4) != 0)
+            if (memcmp(val, "ISTC", 4) != 0)
+                continue;
+            if (memcmp(val + 24, "BGRA", 4) != 0 && memcmp(val + 24, " 8AG", 4) != 0)
                 continue;
             if (!_CiderCarKeyMatches(key, attrs, attrCount, link.attr, link.value, link.count))
                 continue;
@@ -676,8 +681,10 @@ static NSImage *_CiderCarArtwork(_CiderCar *car, const uint32_t *attrs, uint32_t
 
     /* Rows are padded, so the stride comes from the decoded size rather than from the width. */
     uint32_t stride = (uint32_t) ([pixels length] / sheetHeight);
+    BOOL grey = memcmp(sheet + 24, " 8AG", 4) == 0;
+    uint32_t bpp = grey ? 2 : 4;
 
-    if (stride < (cropX + width) * 4 || (cropY + height) > sheetHeight)
+    if (stride < (cropX + width) * bpp || (cropY + height) > sheetHeight)
         return nil;
 
     NSBitmapImageRep *rep = [[[NSBitmapImageRep alloc]
@@ -699,15 +706,22 @@ static NSImage *_CiderCarArtwork(_CiderCar *car, const uint32_t *attrs, uint32_t
     uint8_t *dst = [rep bitmapData];
 
     for (uint32_t y = 0; y < height; y++) {
-        const uint8_t *in = src + (size_t) (cropY + y) * stride + (size_t) cropX * 4;
+        const uint8_t *in = src + (size_t) (cropY + y) * stride + (size_t) cropX * bpp;
         uint8_t *out = dst + (size_t) y * width * 4;
 
         for (uint32_t x = 0; x < width; x++) {
-            out[0] = in[2];
-            out[1] = in[1];
-            out[2] = in[0];
-            out[3] = in[3];
-            in += 4;
+            if (grey) {
+                out[0] = in[0];
+                out[1] = in[0];
+                out[2] = in[0];
+                out[3] = in[1];
+            } else {
+                out[0] = in[2];
+                out[1] = in[1];
+                out[2] = in[0];
+                out[3] = in[3];
+            }
+            in += bpp;
             out += 4;
         }
     }
