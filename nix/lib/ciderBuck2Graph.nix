@@ -49,7 +49,13 @@
   targets,
 }: let
   inherit (pkgs) lib;
-  triplet = "x86_64-apple-darwin20";
+  # THE GUEST ARCH FOLLOWS THE BUILD MACHINE (docs/plan-aarch64.md, D2), exactly as
+  # scripts/buck-setup.nu derives it from `uname -m`: an aarch64 host lowers an arm64 Mach-O
+  # graph, an x86_64 host an x86_64 one. This is the nix-side of the [cider] guest_arch key;
+  # it is written into the generated .buckconfig.local below so the lowered build matches a
+  # direct `buck2 build` on the same machine.
+  guestArch = if pkgs.stdenv.hostPlatform.isAarch64 then "arm64" else "x86_64";
+  triplet = "${guestArch}-apple-darwin20";
 
   # The host ELF libraries wrapgen dlopen()s WHILE THE GRAPH IS BEING TAKEN. wrap_elf is the
   # one rule whose output depends on a file outside the build graph (buck/rules/codegen.bzl
@@ -466,6 +472,7 @@
       [buck2]
       file_watcher = notify
       [cider]
+      guest_arch = ${guestArch}
       ${lib.optionalString (ld64 != null) ''
         ld = ${ld64}/bin/${triplet}-ld
         ld64_dir = ${ld64}/bin
