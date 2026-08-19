@@ -10868,3 +10868,24 @@ The general rule this belongs to: **a framework getter that returns an empty col
 answer, not a placeholder.** Callers do not check; they subscript and send. The same shape appears
 in [[stub-return-is-a-policy-answer]] — a stub that returns nil or zero silently disables a whole
 feature, and the only way to see it is to ask what the application does with the answer.
+
+### What is left for Swift Publisher: the keyboard
+
+Three of the four things this port measures an application by now hold for Swift Publisher, and each
+was looked at rather than inferred. It renders: a page with rulers, the toolbar, the page-preview
+strip and the inspector. It resizes: at 1000×600 the toolbar collapses into an overflow chevron, the
+inspector moves and the page is still drawn. And the mouse works through the application's own
+logic, not merely as a landed click: two clicks on the toolbar's zoom-in took the zoom from 75 to
+125 percent, the page grew and the rulers rescaled.
+
+Typing does not insert. The evidence is unusually clean, and it rules out everything upstream:
+clicking the inspector's Title field draws a focus ring; the backend delivers all five keys
+(`key=1..5`, keysyms `0x43 0x69 0x64 0x65 0x72`, `text Some("C")`…`Some("r")`, `window=36`); AppKit
+builds each event and reports `keyWindow=36 responder=NSTextView`; and the field stays empty. A
+second run clicking the canvas toolbar's zoom field posted no key events at all, so that click did
+not take first responder in the first place. Typing works in iTerm2 through the same `wtype` and the
+same nested compositor, so neither the seat nor the backend is the gap.
+
+That leaves two candidates, and they are separable: either `insertText:`/`interpretKeyEvents:` runs
+on the field editor and the inserted text is not drawn, or the field editor is never connected to
+its `NSTextField`.
