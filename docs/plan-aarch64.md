@@ -956,6 +956,33 @@ SIGSEGV fault PC (instrument the sigexc path / mldr signal handler) and fix it. 
 raw-svc stub in `___vfork.S`; sys_vfork just calls sys_fork, so it needs the same treatment, but the
 current bash path uses fork+posix_spawn, not vfork.)
 
+**Post-fork crash chain (pass 24) -- three more arm64 defects, each one boot-step deeper.** With the
+fork working, the forked child then crashed in a sequence of distinct bugs, each fixed and each
+advancing the boot:
+  1. SIGSEGV in `___pipe` writing to libsystem_kernel __TEXT (`_sys_pipe`). The arm64 pipe stub
+     stashed the fildes pointer in x9 across the syscall, but patch 0027 routes bsd syscalls through
+     `bl __darling_bsd_syscall` (a real call that clobbers caller-saved x9-x15), unlike the
+     register-preserving `svc` the stub assumed. Fixed by stashing on the stack (patch 0032); audited
+     siblings and fixed the same bug in `___getpid` (patch 0033, re-derive &__current_pid after the
+     call). `___vfork` has the same x9-across-`svc` shape but still uses raw svc (the 0030 fork-class
+     bug) and is off the bash path.
+  2. The crash reports were themselves garbage until the arm64 signal struct layout was fixed: struct
+     linux_gregset had fault_address LAST (kernel: FIRST) and struct linux_ucontext put uc_mcontext
+     before uc_sigmask (arm64 kernel: sigmask + 1024-bit reservation, THEN mcontext). Every register
+     read from a signal came from the wrong offset. Fixed against this host's asm/sigcontext.h +
+     asm/ucontext.h (patch 0031); verified sigcontext.fault_address == siginfo.si_addr.
+  With pipe fixed, the boot now does the SECOND fork AND `execve /bin/bash` -- bash's own dyld runs
+  and loads its dylibs. bash then SIGSEGVs during libSystem startup in `__setjmp+0xc`
+  (libsystem_platform): `mrs x16, TPIDRRO_EL0 ; and x16,#~7 ; ldr x16,[x16,#0x38]` faults at 0x38
+  because TPIDRRO_EL0 reads as 0 -- the guest cannot use the hardware thread register (Linux owns
+  TPIDR_EL0; cider emulates Darwin TSD via the hash table of patch 0026). setjmp/longjmp/chkstk read
+  the TSD base straight from TPIDRRO_EL0 (offset 0x38 = the pointer-munge cookie), which cider does
+  not populate. This is the deferred "pthread_asm.S chkstk TPIDRRO read" item, now on the critical
+  path. NEXT: route those TSD-base reads through cider's arm64 TSD mechanism instead of TPIDRRO_EL0.
+  (Symbolication note: bash's dylib map differs from shellspawn's -- 0x100002C00000 is
+  libsystem_platform under bash but libsystem_asl under shellspawn -- so per-process maps matter;
+  DYLD_PRINT_SEGMENTS now on in fast-boot. Also: kern_printf has no %016llx.)
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the

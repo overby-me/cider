@@ -1,0 +1,24 @@
+aarch64: stash the pipe() fildes pointer on the stack, not in x9.
+
+Darling routes bsd syscalls through `bl __darling_bsd_syscall` (DO_SYSCALL in SYS.h, patch 0027),
+not a register-preserving `svc`. The arm64 ___pipe stub kept the fildes array pointer in x9 across
+the syscall; a `bl` clobbers caller-saved x9-x15, so `stp w0,w1,[x9]` stored the two fds through a
+garbage pointer -- observed as a SIGSEGV writing into libsystem_kernel __TEXT (_sys_pipe). Stash it
+on the stack instead. This is what blocked the forked shell child from progressing.
+--- a/gen/bsdsyscalls/___pipe.S
++++ b/gen/bsdsyscalls/___pipe.S
+@@ -59,8 +59,13 @@
+ #elif defined(__arm64__)
+ 
+ MI_ENTRY_POINT(___pipe)
+-	mov		x9, x0				// Stash FD array
++	// Stash the fildes array on the STACK, not in x9: darling routes the bsd syscall through
++	// `bl __darling_bsd_syscall` (see DO_SYSCALL in SYS.h), and a `bl` clobbers the caller-saved
++	// temporaries x9-x15. The upstream `mov x9,x0` relied on a register-preserving `svc`; with the
++	// call it left x9 holding garbage and `stp w0,w1,[x9]` wrote the fds to a wild address.
++	str		x0, [sp, #-16]!		// Stash FD array (keep sp 16-aligned)
+ 	SYSCALL_NONAME(pipe, 0, cerror_nocancel)
++	ldr		x9, [sp], #16		// Reload FD array (survived the call on the stack)
+ 	stp		w0, w1, [x9]		// Save results
+ 	mov		x0, #0				// Success
+ 	ret							// Done
