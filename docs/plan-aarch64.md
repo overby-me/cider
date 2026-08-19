@@ -413,6 +413,52 @@ endpoint materializes and lowers the graph correctly and resolves `notify.defs` 
 is building now** — the real M3 gate. When it lands, boot it with `scripts/checks/
 buck-bash-check.nu --prefix <result>` (M3), then the guest-nix goal (M4).
 
+**Update, seventh pass — the ObjC framework stack builds for arm64 (the prefix compiles):**
+
+The prefix-min nix build got past the bash tier and failed compiling the higher frameworks
+(CoreFoundation, Foundation, CFNetwork, IOKit, Security) that every prefix tool links (the CUPS
+`lp`/`lpr`/`ipp*` family were the visible roots; 463 derivations fell out of five root frameworks).
+`//vendor/src:lp` now builds and links end to end, and so does the framework stack under it. Six
+classes of arm64 breakage, all landed the disciplined way (arm64-guarded hunks, x86 untouched):
+
+- **CF message forwarding + NSInvocation** (corefoundation 0021, 0022): `CFForwardingPrep.S` and
+  `NSInvoke-x86.S` had i386/x86_64 only and `#error`-ed on every other arch. Added the arm64
+  trampolines — spill x0-x7 / d0-d7 into a 128-byte marg_list, call `___forwarding___` /
+  `__invoke__`, restart `objc_msgSend` on a forwarding target. Known runtime-only follow-up:
+  `NSMethodSignature._argInfo` still computes marg offsets with the x86_64 register file (0xe0
+  frame, 6 GP + 8 SSE), so 7+ register args and HFA returns are not yet correct on arm64. The
+  reference PR has the same limitation; scalar forwarding is fine (GP args land at index*8 in both).
+- **Uncast objc dispatch** (foundation 0025, cfnetwork 0004): arm64 forces
+  `OBJC_OLD_DISPATCH_PROTOTYPES` to 0 (objc-api.h), because the arm64 variadic ABI puts varargs on
+  the stack while the messenger reads registers — so every `objc_msgSend`/`objc_msgSendSuper`/
+  `method_invoke`/stored-IMP call MUST be cast to its real signature. Cast the sites in KVO, the
+  predicate operators, NSThread, NSKeyValueAccessor, and CFURLCache. Inert on x86.
+- **method_invoke_stret** (foundation 0025): `OBJC_ARM64_UNAVAILABLE`. arm64 has no stret
+  messenger (struct returns use the x8 indirect-result register, which `method_invoke` preserves),
+  so the NSValue struct getters route through `method_invoke` under an arm64 `#if`.
+- **PAGE_SHIFT_CONST** (IOKitUser 0001): the `-DKERNEL` userspace kext tools pull the arm64
+  kernel `extern int PAGE_SHIFT_CONST` (arm64 chooses 4K/16K at init) instead of the i386/x86_64
+  compile-time 12. Define it, fixed at 12, matching the host emulation shim (`xnu_sys_rs_shims.c`).
+- **Security _ios export** (security 0001): on arm64 macOS SecCertificate.c aliases the `_ios`
+  public-key impl to plain `_SecCertificateCopyPublicKey`, so exporting `_SecCertificateCopyPublicKey_ios`
+  fails to resolve. Guard that export with `!TARGET_CPU_ARM64`.
+- **`_DARWIN_NO_64_BIT_INODE`** (cc.bzl) and **bzip2 crc32** (bzip2/BUCK): arm64 has only 64-bit
+  inodes, so defining the macro is a hard `#error` in sys/cdefs.h — folded `-D_DARWIN_NO_64_BIT_INODE`
+  into the existing x86-only-flag drop filter so all framework groups lose it at once (libc keeps
+  handling its own noinode64 *variant* targets by emptying them, A12). bzip2's accelerated CRC has a
+  per-arch asm; `bz264_obj` now selects `bzip2/arm64/crc32vec.S` (from the upstream pin) so
+  `_crc32_vec` is defined.
+
+Method for the pin patches: cider's cfnetwork/security pins are byte-identical to the reference
+PR's *base*, so those hunks came straight from the PR head. **Trap worth remembering:** a pin patch
+that lands after other patches must be diffed against the *materialised* tree (pin + earlier
+patches), NOT the pristine pin — foundation 0025 first failed in nix because NSKeyValueObserving.m
+(also touched by 0020/0024) and NSKeyValueAccessor.m (0017) carried pristine context that collided.
+`scripts/gen`-style: reconstruct the materialised base by reverse-applying the edits, then diff.
+`nix build .#cider-src` is the fast patch-application smoke test (materialise only, no compile).
+
+`nix build .#cider-buck2-prefix-min` is re-running with all six fixes; next is the boot check.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
