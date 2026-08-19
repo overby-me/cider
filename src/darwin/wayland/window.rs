@@ -1498,6 +1498,33 @@ fn ensure_backing(st: &mut WindowState) -> bool {
         );
     }
     let had_backing = !st.pixels.is_null();
+    /*
+     * KEEP WHAT THE WINDOW ALREADY SHOWS, because a resize is not an erase.
+     *
+     * This used to throw the old pixels away and fill the new pages with the clear colour, so every
+     * resize handed AppKit a blank grey sheet and relied on it to repaint all of it. AppKit repaints
+     * what it thinks is dirty, and a view is entitled to leave parts of its own rectangle alone: the
+     * five by six pixel remainder beside an iTerm2 inline image is exactly such a part, painted by
+     * nobody, and it kept the clear colour and showed light grey in the middle of a black terminal.
+     * A window server preserves the backing store across a resize and so do we now, aligned on the
+     * INNER rectangle so the content stays where the user sees it, with only newly exposed area left
+     * at the clear colour.
+     */
+    let saved = if had_backing && st.map_len > 0 {
+        let old_stride = (st.draw_w + st.margin * 2) as usize;
+        let old_rows = (st.draw_h + st.margin * 2) as usize;
+        let want = old_stride * old_rows;
+
+        if want * 4 <= st.map_len {
+            let src = unsafe { std::slice::from_raw_parts(st.pixels as *const u32, want) };
+
+            Some((st.margin, st.draw_w, st.draw_h, old_stride, src.to_vec()))
+        } else {
+            None
+        }
+    } else {
+        None
+    };
     release_backing(st);
     /*
      * TELL APPKIT ITS CACHED CONTEXT IS GONE. NSWindow keeps the graphics context per thread in
@@ -1566,6 +1593,24 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     unsafe {
         let words = std::slice::from_raw_parts_mut(map as *mut u32, total / 4);
         words.fill(clear_value(st));
+        if let Some((old_margin, old_w, old_h, old_stride, ref data)) = saved {
+            // Aligned on the inner rectangle: the shadow margin can change with the window state,
+            // and it is the CONTENT that has to stay put, not the padding around it.
+            let copy_w = old_w.min(dw).max(0) as usize;
+            let copy_h = old_h.min(dh).max(0) as usize;
+            let new_stride = alloc_w as usize;
+
+            for y in 0..copy_h {
+                let src_off = (y + old_margin as usize) * old_stride + old_margin as usize;
+                let dst_off = (y + margin as usize) * new_stride + margin as usize;
+
+                if src_off + copy_w > data.len() || dst_off + copy_w > words.len() {
+                    break;
+                }
+                words[dst_off..dst_off + copy_w]
+                    .copy_from_slice(&data[src_off..src_off + copy_w]);
+            }
+        }
         // ARMED AFTER THE CLEAR, so the fill itself is not what faults. Diagnostic only, and it
         // does nothing unless CIDER_WAYLAND_WATCH is set. See watch.c for why a watchpoint rather
         // than another trace: every trace so far had to guess which layer to instrument.
