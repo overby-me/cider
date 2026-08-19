@@ -385,6 +385,34 @@ try the nix endpoint on aarch64 for the prefix, then run `buck-bash-check.nu --p
 against build and link for arm64 today (`//vendor/src:bash` → a fully-linked arm64 Mach-O).
 What remains is prefix *assembly* and *boot*, not guest-code compilation.
 
+**Update, sixth pass — the loader, wrapgen, and the nix endpoint (A16, A17):**
+
+- **mldr loader (A17 done for what compiles):** the host Rust loader builds as an aarch64 ELF.
+  `jump.rs` switches the guest stack with `mov sp` / `br`; `threads.rs` starts a Darwin thread
+  with the arm64 register ABI (x0-x5, same argument order as the x86 rdi/rsi/rdx/rcx/r8/r9);
+  `commpage.rs` maps the commpage at the arm64 macOS base `0xFFFFFC000`, packs the two
+  page-shift bytes at the arm offsets, and fills the capability word from `AT_HWCAP`
+  (NEON/VFP/FMA + crypto/atomics/crc) instead of cpuid; the fault reporter reads `mcontext.pc`.
+  The register ABI and commpage still need a *boot* to validate against — only compilation is
+  proven so far.
+- **wrapgen (A16):** it gated `e_machine` to `EM_X86_64` and rejected every aarch64 host `.so`
+  ("is not an ELF for x86-64"), which failed all `*_wrap` elf-stub targets (X11, wayland,
+  cairo, ffmpeg, …) on an arm64 host. Reading the dynamic symbol table is arch-independent, so
+  the gate now accepts `EM_X86_64` or `EM_AARCH64`. This was the blocker stopping the nix
+  endpoint.
+- **The nix endpoint follows the guest arch (A7/A16):** `ciderBuck2Graph.nix` derives
+  `guestArch` from the build machine and writes `[cider] guest_arch` into the config it
+  generates, so a nix-lowered build is arm64 on an aarch64 host. Validated: `nix build
+  .#cider-buck2-one` builds `libsimple_ciderd` through the arm64 lowering end to end.
+
+**The prefix path is the nix endpoint, not direct buck2.** A direct `buck2 build
+//buck/prefix:cider_prefix` hits latent broken pin symlinks (e.g. libnotify's `notify.defs`
+targeting `../darwin/…` where the repo has `src/darwin`) that exist on x86 too; the nix
+endpoint materializes and lowers the graph correctly and resolves `notify.defs` via the
+`//vendor/src/xnu:osfmk_mach_notify.defs` export label. **`nix build .#cider-buck2-prefix-min`
+is building now** — the real M3 gate. When it lands, boot it with `scripts/checks/
+buck-bash-check.nu --prefix <result>` (M3), then the guest-nix goal (M4).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
