@@ -11491,3 +11491,32 @@ the same root cause, since trust evaluation also goes through securityd:
 
 Ops note: with launchd enabled the container's `/tmp` is wiped at boot, so a probe staged there
 vanishes; stage it somewhere else (`/probe`).
+
+### Why securityd cannot start: it registers a name launchd owns (task #137)
+
+launchd **does** load `com.apple.securityd` — `RunAtLoad`, `ProgramArguments /usr/sbin/securityd -i`,
+`MachServices com.apple.SecurityServer` — and `launchctl list` shows it with **status 1 and no PID**:
+started, and gone. Run by hand with `-i` under launchd it aborts identically (exit 134, core dumped).
+
+`//src/darwin/probes:bootstrap-probe` (kept; the name is `argv[1]`) makes exactly the three calls a
+`ReceivePort` constructor makes and prints each result. **The name is the variable:**
+
+| name | launchd | `bootstrap_register` | `bootstrap_look_up` |
+|---|---|---|---|
+| a name of its own | yes | 0 | 0 |
+| `com.apple.SecurityServer` | yes | **1100 `BOOTSTRAP_NOT_PRIVILEGED`** | **0, returns a port** |
+| a name of its own | no | 268435459 `MACH_SEND_INVALID_DEST` (`bootstrap_port` is `0x0`) | — |
+
+So launchd owns that name from the plist and expects the job to **check in**, not to register; this
+securityd registers, is refused, and `MachPlusPlus::Error::check` turns the refusal into an uncaught
+C++ exception, which is the abort.
+
+**I had this wrong in the previous entry and said so in a commit:** "it fails identically with
+`DARLING_NO_LAUNCHD=0`, so launchd not running is *not* the explanation." Both configurations do
+abort — that part was observed — but for **different reasons**, and only the probe separated them.
+
+That also explains why the keychain **hangs** instead of failing: `bootstrap_look_up` succeeds, so the
+client gets a port from launchd and waits forever for a server that died. Two separable fixes:
+securityd should check in for its declared MachService (or our launchd should let the owning job
+register its own name), and the keychain client should answer `errSecNotAvailable` rather than block
+when nothing is there.
