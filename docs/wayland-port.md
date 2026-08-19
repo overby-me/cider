@@ -11727,3 +11727,34 @@ sweep of a non-appkit prefix reported "STALE KILLED 0" and killed nothing — an
 joined a container it thought it had killed (`Cannot join mnt namespace`). It needs **both**
 signals: the exe says what the process *is* (no shell can be `mldr`), the cmdline says which prefix
 it belongs to. Matching on cmdline alone kills the caller, which is the older trap.
+
+### What MoneyMoney waits for is not the keychain either
+
+With `CIDER_TRACE_SECITEM=1` and a `Security.framework` whose trace is **proven to speak** — the
+same binary prints the full chain for `/probe/keychain-probe` in the same prefix — a MoneyMoney run
+produces **zero** `CIDER_SECITEM` lines. It never reaches `SecItemCopyMatching`. So #136's
+conclusion, that it waits on the keychain after the code-sign check, does not survive.
+
+And it is not hung in the ordinary sense. The run log ends with **2,034 spinner repaints**
+(`cider-wayland-window barpixels count=2034`), so the main thread is turning its run loop and
+drawing. Whatever never finishes is on a **background** thread. That also settles the earlier 13%
+CPU reading: it is the spinner.
+
+**securityd's start rate, measured**, because it decides whether *any* keychain call in a container
+returns at all:
+
+| | up | of |
+|---|---|---|
+| securityd | 4, then 3 | 6, then 4 |
+| secd | 5, then 4 | 6, then 4 |
+
+`launchctl list` names the failure exactly — `-  1  com.apple.securityd`, no PID, last exit status
+**1**, with an empty `StandardErrorPath`. An uncaught C++ exception would abort with a signal, not
+exit 1, so the `registerAs` story recorded under #137 does not fit this failure and needs
+re-deriving.
+
+**Two harness traps of the same shape, one after the other.** `kill-stale-prefix.sh` matched only
+the exe and killed nothing; `sample-threads.sh` matched only the cmdline and sampled *its own
+shell*, whose command line quoted the script that mentions the app. Both need **both** signals: the
+exe says what a process *is* (no shell can be `mldr`), the cmdline says which prefix or app it
+belongs to.

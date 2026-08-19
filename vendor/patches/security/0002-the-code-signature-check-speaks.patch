@@ -1,0 +1,46 @@
+The code-signature check says whether it returned.
+
+MoneyMoney runs SecStaticCodeCheckValidity on a background thread while its main thread keeps
+animating a spinner, 2,034 repaints in one run, so a check that never comes back looks exactly like
+an application that is merely slow to start: the window is up, the run loop is turning, and no log
+anywhere says anything is wrong. The boundary has to speak for itself.
+
+One line in, one line out, with the flags and the executable path. A missing exit line IS the
+finding.
+
+--- a/OSX/libsecurity_codesigning/lib/SecStaticCode.cpp
++++ b/OSX/libsecurity_codesigning/lib/SecStaticCode.cpp
+@@ -31,6 +31,22 @@
+ #include <fcntl.h>
+ #include <dirent.h>
+ 
++/*
++ * CIDER_TRACE_SECITEM: the code-signature check, entry and exit.
++ *
++ * MoneyMoney runs this on a background thread while its main thread keeps animating a spinner, so
++ * a hung check looks exactly like an application that is merely slow to start: the window is up,
++ * the run loop is turning, and nothing is wrong on any log. A missing exit line is the finding.
++ */
++static bool CiderTraceSecItem(void) {
++	/* Non-EMPTY: our drivers export switches unset-as-empty. */
++	const char *v = getenv("CIDER_TRACE_SECITEM");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_CSAPI(fmt, ...) \
++	do { if (CiderTraceSecItem()) { fprintf(stderr, "CIDER_CSAPI " fmt "\n", ##__VA_ARGS__); fflush(stderr); } } while (0)
++
+ using namespace CodeSigning;
+ 
+ 
+@@ -142,7 +158,10 @@
+ 	code->setValidationFlags(flags);
+ 	const SecRequirement *req = SecRequirement::optional(requirementRef);
+ 	DTRACK(CODESIGN_EVAL_STATIC, code, (char*)code->mainExecutablePath().c_str());
++	CIDER_CSAPI("staticValidate call flags=0x%x req=%s %s", (unsigned) flags,
++		req ? "yes" : "no", code->mainExecutablePath().c_str());
+ 	code->staticValidate(flags, req);
++	CIDER_CSAPI("staticValidate back");
+ 
+     // Everything checked out correctly but we need to make sure that when
+     // we validated the code directory, we trusted the signer.  We defer this
