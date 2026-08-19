@@ -458,12 +458,20 @@ pub(crate) unsafe fn install_trap_diag() {
         for b in b" rip=0x" {
             buf[n] = *b; n += 1;
         }
-        // ucontext_t.uc_mcontext.gregs[REG_RIP]; REG_RIP is 16 on x86_64 Linux.
+        // The faulting PC, per arch (aarch64 port, task A17): x86_64 keeps it in
+        // uc_mcontext.gregs[REG_RIP] (16 on Linux), aarch64 in uc_mcontext.pc.
         let rip = if uc.is_null() {
             0u64
         } else {
             let ucp = uc as *const libc::ucontext_t;
-            (*ucp).uc_mcontext.gregs[16] as u64
+            #[cfg(target_arch = "x86_64")]
+            {
+                (*ucp).uc_mcontext.gregs[16] as u64
+            }
+            #[cfg(target_arch = "aarch64")]
+            {
+                (*ucp).uc_mcontext.pc as u64
+            }
         };
         for i in (0..16).rev() {
             let nib = ((rip >> (i * 4)) & 0xf) as u8;
