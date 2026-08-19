@@ -129,7 +129,14 @@ pub unsafe fn checkin_thread(fd: c_int, stack_hint: u64) -> i32 {
 }
 
 const CHECKIN: u32 = 1;
-const ARCH_X86_64: u32 = 2; // dserver_rpc_architecture_x86_64
+// dserver_rpc_architecture_t: invalid=0, i386=1, x86_64=2, arm32=3, arm64=4. The daemon keys its
+// thread-state and signal (sigprocess) machinery on the architecture the guest checks in with;
+// hardcoding x86_64 made it treat an arm64 guest as x86_64 and refuse to load thread state.
+// cider is native (guest arch == host arch), so mldr reports its own compile-time arch.
+#[cfg(target_arch = "x86_64")]
+const GUEST_ARCH: u32 = 2; // dserver_rpc_architecture_x86_64
+#[cfg(target_arch = "aarch64")]
+const GUEST_ARCH: u32 = 4; // dserver_rpc_architecture_arm64
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -219,7 +226,7 @@ pub unsafe fn vchroot_path(fd: c_int) -> Option<String> {
             number: VCHROOT_PATH,
             pid: libc::getpid(),
             tid: gettid(),
-            architecture: ARCH_X86_64,
+            architecture: GUEST_ARCH,
         },
         body: CallVchrootPath {
             buffer: buf.as_mut_ptr() as u64,
@@ -308,7 +315,7 @@ pub unsafe fn checkin(fd: c_int, sockpath: &str, stack_hint: u64) -> i32 {
             number: CHECKIN,
             pid: libc::getpid(),
             tid: gettid(),
-            architecture: ARCH_X86_64,
+            architecture: GUEST_ARCH,
         },
         body: CallCheckin {
             is_fork: false,
