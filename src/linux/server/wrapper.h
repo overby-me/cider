@@ -81,7 +81,11 @@ extern void bsd_exception(int exception, long long* codes, int code_count);
 extern void psynch_zoneinit(void);
 extern void _pth_proc_hashinit(proc_t p);
 extern void _pth_proc_hashdelete(proc_t p);
+#if defined(__x86_64__)
+/* The PAL nanotime hooks timer.rs implements for the i386 rtclock; the arm64 rtclock
+ * (xnu-sys/src/rtclock_arm64.c) reads CLOCK_MONOTONIC itself and needs neither. */
 #include <i386/rtclock_protos.h>
+#endif
 /* host.c fills three info structs by FIELD, so those three have to be real rather than opaque:
  * host_basic_info, host_priority_info and host_preferred_user_arch. The vm_statistics pair
  * stays opaque deliberately -- host_statistics and vm_stats only ever memset them to zero and
@@ -225,20 +229,31 @@ enum xnu_sys_rs_host_consts {
 	 * does not otherwise need, so they come across as values rather than reopening the type. */
 	XNU_SYS_RS_Z_WAITOK = Z_WAITOK,
 	XNU_SYS_RS_Z_ZERO = Z_ZERO,
-	/* thread.c: the leaf state counts, the wait result and the RT signal number. */
+	/* thread.c: the leaf state counts, the wait result and the RT signal number.
+	 * Per arch (aarch64 port, task A18): the counts are sizeof expressions over structs
+	 * that only exist for the arch whose thread_status.h is included above. */
+#if defined(__x86_64__)
 	XNU_SYS_RS_x86_THREAD_STATE32_COUNT = x86_THREAD_STATE32_COUNT,
 	XNU_SYS_RS_x86_THREAD_STATE64_COUNT = x86_THREAD_STATE64_COUNT,
 	XNU_SYS_RS_x86_FLOAT_STATE32_COUNT = x86_FLOAT_STATE32_COUNT,
 	XNU_SYS_RS_x86_FLOAT_STATE64_COUNT = x86_FLOAT_STATE64_COUNT,
+#elif defined(__aarch64__)
+	XNU_SYS_RS_ARM_THREAD_STATE64_COUNT = ARM_THREAD_STATE64_COUNT,
+	XNU_SYS_RS_ARM_NEON_STATE64_COUNT = ARM_NEON_STATE64_COUNT,
+#endif
 	XNU_SYS_RS_THREAD_WAITING = THREAD_WAITING,
 	XNU_SYS_RS_LINUX_SIGRTMIN = LINUX_SIGRTMIN,
 	/* thread.c: the composite state counts and the thread info counts, all sizeof
 	 * expressions, plus the exception code array bound. */
+#if defined(__x86_64__)
 	XNU_SYS_RS_x86_THREAD_STATE_COUNT = x86_THREAD_STATE_COUNT,
 	XNU_SYS_RS_x86_FLOAT_STATE_COUNT = x86_FLOAT_STATE_COUNT,
 	XNU_SYS_RS_x86_DEBUG_STATE_COUNT = x86_DEBUG_STATE_COUNT,
 	XNU_SYS_RS_x86_DEBUG_STATE32_COUNT = x86_DEBUG_STATE32_COUNT,
 	XNU_SYS_RS_x86_DEBUG_STATE64_COUNT = x86_DEBUG_STATE64_COUNT,
+#elif defined(__aarch64__)
+	XNU_SYS_RS_ARM_UNIFIED_THREAD_STATE_COUNT = ARM_UNIFIED_THREAD_STATE_COUNT,
+#endif
 	XNU_SYS_RS_THREAD_IDENTIFIER_INFO_COUNT = THREAD_IDENTIFIER_INFO_COUNT,
 	XNU_SYS_RS_THREAD_BASIC_INFO_COUNT = THREAD_BASIC_INFO_COUNT,
 	XNU_SYS_RS_EXCEPTION_CODE_MAX = EXCEPTION_CODE_MAX,
@@ -294,6 +309,7 @@ enum xnu_sys_rs_host_consts {
 	/* misc.c: the _MachineStateCount table. Both halves are macros, the flavor an integer
 	 * and the count a sizeof expression, so both are evaluated here rather than written
 	 * into Rust. The table is indexed BY the flavor, so a wrong index would be silent. */
+#if defined(__x86_64__)
 	XNU_SYS_RS_X86_THREAD_STATE32 = x86_THREAD_STATE32,
 	XNU_SYS_RS_X86_THREAD_STATE32_COUNT = x86_THREAD_STATE32_COUNT,
 	XNU_SYS_RS_X86_THREAD_STATE64 = x86_THREAD_STATE64,
@@ -334,4 +350,27 @@ enum xnu_sys_rs_host_consts {
 	XNU_SYS_RS_X86_AVX512_STATE_COUNT = x86_AVX512_STATE_COUNT,
 	XNU_SYS_RS_X86_PAGEIN_STATE = x86_PAGEIN_STATE,
 	XNU_SYS_RS_X86_PAGEIN_STATE_COUNT = x86_PAGEIN_STATE_COUNT,
+#elif defined(__aarch64__)
+	XNU_SYS_RS_ARM_THREAD_STATE = ARM_THREAD_STATE,
+	XNU_SYS_RS_ARM_THREAD_STATE_COUNT = ARM_THREAD_STATE_COUNT,
+	XNU_SYS_RS_ARM_VFP_STATE = ARM_VFP_STATE,
+	XNU_SYS_RS_ARM_VFP_STATE_COUNT = ARM_VFP_STATE_COUNT,
+	XNU_SYS_RS_ARM_EXCEPTION_STATE = ARM_EXCEPTION_STATE,
+	XNU_SYS_RS_ARM_EXCEPTION_STATE_COUNT = ARM_EXCEPTION_STATE_COUNT,
+	XNU_SYS_RS_ARM_DEBUG_STATE = ARM_DEBUG_STATE,
+	XNU_SYS_RS_ARM_DEBUG_STATE_COUNT = ARM_DEBUG_STATE_COUNT,
+	XNU_SYS_RS_ARM_THREAD_STATE64 = ARM_THREAD_STATE64,
+	XNU_SYS_RS_ARM_EXCEPTION_STATE64 = ARM_EXCEPTION_STATE64,
+	XNU_SYS_RS_ARM_EXCEPTION_STATE64_COUNT = ARM_EXCEPTION_STATE64_COUNT,
+	XNU_SYS_RS_ARM_THREAD_STATE32 = ARM_THREAD_STATE32,
+	XNU_SYS_RS_ARM_THREAD_STATE32_COUNT = ARM_THREAD_STATE32_COUNT,
+	XNU_SYS_RS_ARM_DEBUG_STATE32 = ARM_DEBUG_STATE32,
+	XNU_SYS_RS_ARM_DEBUG_STATE32_COUNT = ARM_DEBUG_STATE32_COUNT,
+	XNU_SYS_RS_ARM_DEBUG_STATE64 = ARM_DEBUG_STATE64,
+	XNU_SYS_RS_ARM_DEBUG_STATE64_COUNT = ARM_DEBUG_STATE64_COUNT,
+	XNU_SYS_RS_ARM_NEON_STATE = ARM_NEON_STATE,
+	XNU_SYS_RS_ARM_NEON_STATE_COUNT = ARM_NEON_STATE_COUNT,
+	XNU_SYS_RS_ARM_NEON_STATE64 = ARM_NEON_STATE64,
+	XNU_SYS_RS_ARM_CPMU_STATE64 = ARM_CPMU_STATE64,
+#endif
 };

@@ -398,82 +398,133 @@ pub unsafe extern "C" fn xnu_sys_thread_load_state_from_user(
     use bindings::dserver_rpc_architecture_t as Arch;
     let task = task_for_thread(thread);
 
-    if (*task).architecture == Arch::dserver_rpc_architecture_x86_64 {
-        let mut tstate: bindings::x86_thread_state64_t = std::mem::zeroed();
-        let mut fstate: bindings::x86_float_state64_t = std::mem::zeroed();
+    #[cfg(target_arch = "x86_64")]
+    {
+        if (*task).architecture == Arch::dserver_rpc_architecture_x86_64 {
+            let mut tstate: bindings::x86_thread_state64_t = std::mem::zeroed();
+            let mut fstate: bindings::x86_float_state64_t = std::mem::zeroed();
 
-        if crate::xnu::memory::copyin(
-            thread_state_address as bindings::user_addr_t,
-            &mut tstate as *mut _ as *mut c_void,
-            std::mem::size_of_val(&tstate) as bindings::vm_size_t,
-        ) != 0
-            || crate::xnu::memory::copyin(
-                float_state_address as bindings::user_addr_t,
-                &mut fstate as *mut _ as *mut c_void,
-                std::mem::size_of_val(&fstate) as bindings::vm_size_t,
+            if crate::xnu::memory::copyin(
+                thread_state_address as bindings::user_addr_t,
+                &mut tstate as *mut _ as *mut c_void,
+                std::mem::size_of_val(&tstate) as bindings::vm_size_t,
             ) != 0
-        {
-            return -LINUX_EFAULT;
-        }
+                || crate::xnu::memory::copyin(
+                    float_state_address as bindings::user_addr_t,
+                    &mut fstate as *mut _ as *mut c_void,
+                    std::mem::size_of_val(&fstate) as bindings::vm_size_t,
+                ) != 0
+            {
+                return -LINUX_EFAULT;
+            }
 
-        thread_set_state(
-            current_thread(),
-            bindings::x86_THREAD_STATE64 as c_int,
-            &mut tstate as *mut _ as thread_state_t,
-            bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_THREAD_STATE64_COUNT
-                as mach_msg_type_number_t,
-        );
-        thread_set_state(
-            current_thread(),
-            bindings::x86_FLOAT_STATE64 as c_int,
-            &mut fstate as *mut _ as thread_state_t,
-            bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_FLOAT_STATE64_COUNT
-                as mach_msg_type_number_t,
-        );
-    } else if (*task).architecture == Arch::dserver_rpc_architecture_i386 {
-        let mut tstate: bindings::x86_thread_state32_t = std::mem::zeroed();
-        let mut fstate: bindings::x86_float_state32_t = std::mem::zeroed();
+            thread_set_state(
+                current_thread(),
+                bindings::x86_THREAD_STATE64 as c_int,
+                &mut tstate as *mut _ as thread_state_t,
+                bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_THREAD_STATE64_COUNT
+                    as mach_msg_type_number_t,
+            );
+            thread_set_state(
+                current_thread(),
+                bindings::x86_FLOAT_STATE64 as c_int,
+                &mut fstate as *mut _ as thread_state_t,
+                bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_FLOAT_STATE64_COUNT
+                    as mach_msg_type_number_t,
+            );
+        } else if (*task).architecture == Arch::dserver_rpc_architecture_i386 {
+            let mut tstate: bindings::x86_thread_state32_t = std::mem::zeroed();
+            let mut fstate: bindings::x86_float_state32_t = std::mem::zeroed();
 
-        if crate::xnu::memory::copyin(
-            thread_state_address as bindings::user_addr_t,
-            &mut tstate as *mut _ as *mut c_void,
-            std::mem::size_of_val(&tstate) as bindings::vm_size_t,
-        ) != 0
-            || crate::xnu::memory::copyin(
-                float_state_address as bindings::user_addr_t,
-                &mut fstate as *mut _ as *mut c_void,
-                std::mem::size_of_val(&fstate) as bindings::vm_size_t,
+            if crate::xnu::memory::copyin(
+                thread_state_address as bindings::user_addr_t,
+                &mut tstate as *mut _ as *mut c_void,
+                std::mem::size_of_val(&tstate) as bindings::vm_size_t,
             ) != 0
-        {
-            return -LINUX_EFAULT;
-        }
+                || crate::xnu::memory::copyin(
+                    float_state_address as bindings::user_addr_t,
+                    &mut fstate as *mut _ as *mut c_void,
+                    std::mem::size_of_val(&fstate) as bindings::vm_size_t,
+                ) != 0
+            {
+                return -LINUX_EFAULT;
+            }
 
-        thread_set_state(
-            current_thread(),
-            bindings::x86_THREAD_STATE32 as c_int,
-            &mut tstate as *mut _ as thread_state_t,
-            bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_THREAD_STATE32_COUNT
-                as mach_msg_type_number_t,
-        );
-        thread_set_state(
-            current_thread(),
-            bindings::x86_FLOAT_STATE32 as c_int,
-            &mut fstate as *mut _ as thread_state_t,
-            bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_FLOAT_STATE32_COUNT
-                as mach_msg_type_number_t,
-        );
-    } else {
-        crate::xnu::misc::log(
-            bindings::xnu_sys_log_level_t::xnu_sys_log_level_error,
-            &format!(
-                "xnu_sys_thread_load_state_from_user() unimplemented for architecture: {:?}",
-                (*task).architecture
-            ),
-        );
-        return -LINUX_ENOSYS;
+            thread_set_state(
+                current_thread(),
+                bindings::x86_THREAD_STATE32 as c_int,
+                &mut tstate as *mut _ as thread_state_t,
+                bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_THREAD_STATE32_COUNT
+                    as mach_msg_type_number_t,
+            );
+            thread_set_state(
+                current_thread(),
+                bindings::x86_FLOAT_STATE32 as c_int,
+                &mut fstate as *mut _ as thread_state_t,
+                bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_FLOAT_STATE32_COUNT
+                    as mach_msg_type_number_t,
+            );
+        }
+        else {
+            crate::xnu::misc::log(
+                bindings::xnu_sys_log_level_t::xnu_sys_log_level_error,
+                &format!(
+                    "xnu_sys_thread_load_state_from_user() unimplemented for architecture: {:?}",
+                    (*task).architecture
+                ),
+            );
+            return -LINUX_ENOSYS;
+        }
+        return 0;
     }
 
-    0
+    // The arm64 side of the reference (darlingserver@0217769 thread.c): one 64-bit flavor
+    // pair, no 32-bit arm guests.
+    #[cfg(target_arch = "aarch64")]
+    {
+        if (*task).architecture != Arch::dserver_rpc_architecture_arm64 {
+            crate::xnu::misc::log(
+                bindings::xnu_sys_log_level_t::xnu_sys_log_level_error,
+                &format!(
+                    "xnu_sys_thread_load_state_from_user() unimplemented for architecture: {:?}",
+                    (*task).architecture
+                ),
+            );
+            return -LINUX_ENOSYS;
+        }
+        let mut tstate: bindings::arm_thread_state64_t = std::mem::zeroed();
+        let mut fstate: bindings::arm_neon_state64_t = std::mem::zeroed();
+
+        if crate::xnu::memory::copyin(
+            thread_state_address as bindings::user_addr_t,
+            &mut tstate as *mut _ as *mut c_void,
+            std::mem::size_of_val(&tstate) as bindings::vm_size_t,
+        ) != 0
+            || crate::xnu::memory::copyin(
+                float_state_address as bindings::user_addr_t,
+                &mut fstate as *mut _ as *mut c_void,
+                std::mem::size_of_val(&fstate) as bindings::vm_size_t,
+            ) != 0
+        {
+            return -LINUX_EFAULT;
+        }
+
+        thread_set_state(
+            current_thread(),
+            bindings::ARM_THREAD_STATE64 as c_int,
+            &mut tstate as *mut _ as thread_state_t,
+            bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE64_COUNT
+                as mach_msg_type_number_t,
+        );
+        thread_set_state(
+            current_thread(),
+            bindings::ARM_NEON_STATE64 as c_int,
+            &mut fstate as *mut _ as thread_state_t,
+            bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE64_COUNT
+                as mach_msg_type_number_t,
+        );
+        0
+    }
 }
 
 #[no_mangle]
@@ -485,88 +536,141 @@ pub unsafe extern "C" fn xnu_sys_thread_save_state_to_user(
     use bindings::dserver_rpc_architecture_t as Arch;
     let task = task_for_thread(thread);
 
-    if (*task).architecture == Arch::dserver_rpc_architecture_x86_64 {
-        let mut tstate: bindings::x86_thread_state64_t = std::mem::zeroed();
-        let mut fstate: bindings::x86_float_state64_t = std::mem::zeroed();
+    #[cfg(target_arch = "x86_64")]
+    {
+        if (*task).architecture == Arch::dserver_rpc_architecture_x86_64 {
+            let mut tstate: bindings::x86_thread_state64_t = std::mem::zeroed();
+            let mut fstate: bindings::x86_float_state64_t = std::mem::zeroed();
 
-        let mut count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_THREAD_STATE64_COUNT
-            as mach_msg_type_number_t;
-        thread_get_state(
-            current_thread(),
-            bindings::x86_THREAD_STATE64 as c_int,
-            &mut tstate as *mut _ as thread_state_t,
-            &mut count,
-        );
+            let mut count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_THREAD_STATE64_COUNT
+                as mach_msg_type_number_t;
+            thread_get_state(
+                current_thread(),
+                bindings::x86_THREAD_STATE64 as c_int,
+                &mut tstate as *mut _ as thread_state_t,
+                &mut count,
+            );
 
-        count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_FLOAT_STATE64_COUNT
-            as mach_msg_type_number_t;
-        thread_get_state(
-            current_thread(),
-            bindings::x86_FLOAT_STATE64 as c_int,
-            &mut fstate as *mut _ as thread_state_t,
-            &mut count,
-        );
+            count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_FLOAT_STATE64_COUNT
+                as mach_msg_type_number_t;
+            thread_get_state(
+                current_thread(),
+                bindings::x86_FLOAT_STATE64 as c_int,
+                &mut fstate as *mut _ as thread_state_t,
+                &mut count,
+            );
 
-        if crate::xnu::memory::copyout(
-            &tstate as *const _ as *const c_void,
-            thread_state_address as bindings::user_addr_t,
-            std::mem::size_of_val(&tstate) as bindings::vm_size_t,
-        ) != 0
-            || crate::xnu::memory::copyout(
-                &fstate as *const _ as *const c_void,
-                float_state_address as bindings::user_addr_t,
-                std::mem::size_of_val(&fstate) as bindings::vm_size_t,
+            if crate::xnu::memory::copyout(
+                &tstate as *const _ as *const c_void,
+                thread_state_address as bindings::user_addr_t,
+                std::mem::size_of_val(&tstate) as bindings::vm_size_t,
             ) != 0
-        {
-            return -LINUX_EFAULT;
-        }
-    } else if (*task).architecture == Arch::dserver_rpc_architecture_i386 {
-        let mut tstate: bindings::x86_thread_state32_t = std::mem::zeroed();
-        let mut fstate: bindings::x86_float_state32_t = std::mem::zeroed();
+                || crate::xnu::memory::copyout(
+                    &fstate as *const _ as *const c_void,
+                    float_state_address as bindings::user_addr_t,
+                    std::mem::size_of_val(&fstate) as bindings::vm_size_t,
+                ) != 0
+            {
+                return -LINUX_EFAULT;
+            }
+        } else if (*task).architecture == Arch::dserver_rpc_architecture_i386 {
+            let mut tstate: bindings::x86_thread_state32_t = std::mem::zeroed();
+            let mut fstate: bindings::x86_float_state32_t = std::mem::zeroed();
 
-        let mut count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_THREAD_STATE32_COUNT
-            as mach_msg_type_number_t;
-        thread_get_state(
-            current_thread(),
-            bindings::x86_THREAD_STATE32 as c_int,
-            &mut tstate as *mut _ as thread_state_t,
-            &mut count,
-        );
+            let mut count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_THREAD_STATE32_COUNT
+                as mach_msg_type_number_t;
+            thread_get_state(
+                current_thread(),
+                bindings::x86_THREAD_STATE32 as c_int,
+                &mut tstate as *mut _ as thread_state_t,
+                &mut count,
+            );
 
-        count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_FLOAT_STATE32_COUNT
-            as mach_msg_type_number_t;
-        thread_get_state(
-            current_thread(),
-            bindings::x86_FLOAT_STATE32 as c_int,
-            &mut fstate as *mut _ as thread_state_t,
-            &mut count,
-        );
+            count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_x86_FLOAT_STATE32_COUNT
+                as mach_msg_type_number_t;
+            thread_get_state(
+                current_thread(),
+                bindings::x86_FLOAT_STATE32 as c_int,
+                &mut fstate as *mut _ as thread_state_t,
+                &mut count,
+            );
 
-        if crate::xnu::memory::copyout(
-            &tstate as *const _ as *const c_void,
-            thread_state_address as bindings::user_addr_t,
-            std::mem::size_of_val(&tstate) as bindings::vm_size_t,
-        ) != 0
-            || crate::xnu::memory::copyout(
-                &fstate as *const _ as *const c_void,
-                float_state_address as bindings::user_addr_t,
-                std::mem::size_of_val(&fstate) as bindings::vm_size_t,
+            if crate::xnu::memory::copyout(
+                &tstate as *const _ as *const c_void,
+                thread_state_address as bindings::user_addr_t,
+                std::mem::size_of_val(&tstate) as bindings::vm_size_t,
             ) != 0
-        {
-            return -LINUX_EFAULT;
+                || crate::xnu::memory::copyout(
+                    &fstate as *const _ as *const c_void,
+                    float_state_address as bindings::user_addr_t,
+                    std::mem::size_of_val(&fstate) as bindings::vm_size_t,
+                ) != 0
+            {
+                return -LINUX_EFAULT;
+            }
         }
-    } else {
-        crate::xnu::misc::log(
-            bindings::xnu_sys_log_level_t::xnu_sys_log_level_error,
-            &format!(
-                "xnu_sys_thread_save_state_to_user() unimplemented for architecture: {:?}",
-                (*task).architecture
-            ),
-        );
-        return -LINUX_ENOSYS;
+        else {
+            crate::xnu::misc::log(
+                bindings::xnu_sys_log_level_t::xnu_sys_log_level_error,
+                &format!(
+                    "xnu_sys_thread_save_state_to_user() unimplemented for architecture: {:?}",
+                    (*task).architecture
+                ),
+            );
+            return -LINUX_ENOSYS;
+        }
+        return 0;
     }
 
-    0
+    // The arm64 side of the reference (darlingserver@0217769 thread.c).
+    #[cfg(target_arch = "aarch64")]
+    {
+        if (*task).architecture != Arch::dserver_rpc_architecture_arm64 {
+            crate::xnu::misc::log(
+                bindings::xnu_sys_log_level_t::xnu_sys_log_level_error,
+                &format!(
+                    "xnu_sys_thread_save_state_to_user() unimplemented for architecture: {:?}",
+                    (*task).architecture
+                ),
+            );
+            return -LINUX_ENOSYS;
+        }
+        let mut tstate: bindings::arm_thread_state64_t = std::mem::zeroed();
+        let mut fstate: bindings::arm_neon_state64_t = std::mem::zeroed();
+
+        let mut count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE64_COUNT
+            as mach_msg_type_number_t;
+        thread_get_state(
+            current_thread(),
+            bindings::ARM_THREAD_STATE64 as c_int,
+            &mut tstate as *mut _ as thread_state_t,
+            &mut count,
+        );
+
+        count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE64_COUNT
+            as mach_msg_type_number_t;
+        thread_get_state(
+            current_thread(),
+            bindings::ARM_NEON_STATE64 as c_int,
+            &mut fstate as *mut _ as thread_state_t,
+            &mut count,
+        );
+
+        if crate::xnu::memory::copyout(
+            &tstate as *const _ as *const c_void,
+            thread_state_address as bindings::user_addr_t,
+            std::mem::size_of_val(&tstate) as bindings::vm_size_t,
+        ) != 0
+            || crate::xnu::memory::copyout(
+                &fstate as *const _ as *const c_void,
+                float_state_address as bindings::user_addr_t,
+                std::mem::size_of_val(&fstate) as bindings::vm_size_t,
+            ) != 0
+        {
+            return -LINUX_EFAULT;
+        }
+        0
+    }
 }
 
 #[no_mangle]
@@ -607,20 +711,46 @@ pub unsafe extern "C" fn xnu_sys_thread_process_signal(
             codes[1] = signal_address as i64;
         } else if linux_signal_number == LINUX_SIGBUS {
             mach_exception = bindings::EXC_BAD_ACCESS as c_int;
-            codes[0] = bindings::EXC_I386_ALIGNFLT as i64;
+            // The subcode is the machine's alignment-fault exception (task A18): the reference
+            // maps SIGBUS to EXC_I386_ALIGNFLT on x86 and EXC_ARM_DA_ALIGN on arm64.
+            #[cfg(target_arch = "x86_64")]
+            {
+                codes[0] = bindings::EXC_I386_ALIGNFLT as i64;
+            }
+            #[cfg(target_arch = "aarch64")]
+            {
+                codes[0] = bindings::EXC_ARM_DA_ALIGN as i64;
+            }
         } else if linux_signal_number == LINUX_SIGILL {
             mach_exception = bindings::EXC_BAD_INSTRUCTION as c_int;
-            codes[0] = bindings::EXC_I386_INVOP as i64;
+            #[cfg(target_arch = "x86_64")]
+            {
+                codes[0] = bindings::EXC_I386_INVOP as i64;
+            }
+            #[cfg(target_arch = "aarch64")]
+            {
+                codes[0] = bindings::EXC_ARM_UNDEFINED as i64;
+            }
         } else if linux_signal_number == LINUX_SIGFPE {
             mach_exception = bindings::EXC_ARITHMETIC as c_int;
             codes[0] = code as i64;
         } else if linux_signal_number == LINUX_SIGTRAP {
             mach_exception = bindings::EXC_BREAKPOINT as c_int;
-            codes[0] = if code == LINUX_SI_KERNEL {
-                bindings::EXC_I386_BPT as i64
-            } else {
-                bindings::EXC_I386_SGL as i64
-            };
+            // arm64 has one breakpoint exception; x86 distinguishes a kernel-raised trap from
+            // a single-step.
+            #[cfg(target_arch = "x86_64")]
+            {
+                codes[0] = if code == LINUX_SI_KERNEL {
+                    bindings::EXC_I386_BPT as i64
+                } else {
+                    bindings::EXC_I386_SGL as i64
+                };
+            }
+            #[cfg(target_arch = "aarch64")]
+            {
+                let _ = code;
+                codes[0] = bindings::EXC_ARM_BREAKPOINT as i64;
+            }
 
             if code == LINUX_TRAP_HWBKPT {
                 crate::xnu_sys_stub!("LINUX_TRAP_HWBKPT");
@@ -1174,6 +1304,8 @@ pub unsafe extern "C" fn thread_set_state(
     state: thread_state_t,
     state_count: mach_msg_type_number_t,
 ) -> kern_return_t {
+    #[cfg(target_arch = "x86_64")]
+    {
     use bindings::dserver_rpc_architecture_t as Arch;
     let invalid = bindings::KERN_INVALID_ARGUMENT as kern_return_t;
     let success = bindings::KERN_SUCCESS as kern_return_t;
@@ -1339,6 +1471,47 @@ pub unsafe extern "C" fn thread_set_state(
     } else {
         invalid
     }
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    {
+        // arm64 (task A18, darlingserver@0217769 thread.c): a single 64-bit flavor switch,
+        // no 32-bit arm guests, ARM_THREAD_STATE aliased onto the 64-bit form.
+        use bindings::dserver_rpc_architecture_t as Arch;
+        let invalid = bindings::KERN_INVALID_ARGUMENT as kern_return_t;
+        let success = bindings::KERN_SUCCESS as kern_return_t;
+        let dthread = thread_for_xnu_thread(thread);
+        let dtask = task_for_thread(dthread);
+        let user_state = user_states_first(dthread);
+        if (*dtask).architecture != Arch::dserver_rpc_architecture_arm64 {
+            return bindings::KERN_FAILURE as kern_return_t;
+        }
+        let flavor = flavor as u32;
+        if flavor == bindings::ARM_THREAD_STATE64 || flavor == bindings::ARM_THREAD_STATE {
+            if state_count
+                < bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE64_COUNT
+                    as mach_msg_type_number_t
+            {
+                return invalid;
+            }
+            (*user_state).thread_state.uts.ts_64 = *(state as *const bindings::arm_thread_state64_t);
+            success
+        } else if flavor == bindings::ARM_NEON_STATE64 {
+            if state_count
+                < bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE64_COUNT
+                    as mach_msg_type_number_t
+            {
+                return invalid;
+            }
+            (*user_state).float_state = *(state as *const bindings::arm_neon_state64_t);
+            success
+        } else if flavor == bindings::ARM_DEBUG_STATE64 {
+            crate::xnu_sys_stub!("ARM64 debug state");
+            bindings::KERN_NOT_SUPPORTED as kern_return_t
+        } else {
+            invalid
+        }
+    }
 }
 
 #[no_mangle]
@@ -1349,6 +1522,8 @@ pub unsafe extern "C" fn thread_get_state_internal(
     state_count: *mut mach_msg_type_number_t,
     _to_user: boolean_t,
 ) -> kern_return_t {
+    #[cfg(target_arch = "x86_64")]
+    {
     use bindings::dserver_rpc_architecture_t as Arch;
     let invalid = bindings::KERN_INVALID_ARGUMENT as kern_return_t;
     let success = bindings::KERN_SUCCESS as kern_return_t;
@@ -1523,6 +1698,50 @@ pub unsafe extern "C" fn thread_get_state_internal(
         bindings::KERN_NOT_SUPPORTED as kern_return_t
     } else {
         invalid
+    }
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    {
+        // arm64 (task A18, darlingserver@0217769 thread.c). ARM_THREAD_STATE returns the
+        // 64-bit form for an arm64 task; debug state is not implemented.
+        use bindings::dserver_rpc_architecture_t as Arch;
+        let invalid = bindings::KERN_INVALID_ARGUMENT as kern_return_t;
+        let success = bindings::KERN_SUCCESS as kern_return_t;
+        let dthread = thread_for_xnu_thread(thread);
+        let dtask = task_for_thread(dthread);
+        let user_state = user_states_first(dthread);
+        if (*dtask).architecture != Arch::dserver_rpc_architecture_arm64 {
+            return bindings::KERN_FAILURE as kern_return_t;
+        }
+        let flavor = flavor as u32;
+        if flavor == bindings::ARM_THREAD_STATE64 || flavor == bindings::ARM_THREAD_STATE {
+            if *state_count
+                < bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE64_COUNT
+                    as mach_msg_type_number_t
+            {
+                return invalid;
+            }
+            *state_count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE64_COUNT
+                as mach_msg_type_number_t;
+            *(state as *mut bindings::arm_thread_state64_t) = (*user_state).thread_state.uts.ts_64;
+            success
+        } else if flavor == bindings::ARM_NEON_STATE64 {
+            if *state_count
+                < bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE64_COUNT
+                    as mach_msg_type_number_t
+            {
+                return invalid;
+            }
+            *state_count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE64_COUNT
+                as mach_msg_type_number_t;
+            *(state as *mut bindings::arm_neon_state64_t) = (*user_state).float_state;
+            success
+        } else if flavor == bindings::ARM_DEBUG_STATE64 {
+            bindings::KERN_NOT_SUPPORTED as kern_return_t
+        } else {
+            invalid
+        }
     }
 }
 

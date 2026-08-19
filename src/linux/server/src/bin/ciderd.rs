@@ -198,8 +198,13 @@ extern "C" fn crash_handler(sig: c_int, info: *mut libc::siginfo_t, ctx: *mut c_
         }
         if !ctx.is_null() {
             let uc = ctx as *mut libc::ucontext_t;
-            let rip = (*uc).uc_mcontext.gregs[libc::REG_RIP as usize] as u64;
-            write_labeled_hex(b"  rip ", rip);
+            // The crash PC, named per arch (task A18): x86_64 keeps it in gregs[REG_RIP],
+            // aarch64 in mcontext.pc. Same label so the two transcripts read alike.
+            #[cfg(target_arch = "x86_64")]
+            let pc = (*uc).uc_mcontext.gregs[libc::REG_RIP as usize] as u64;
+            #[cfg(target_arch = "aarch64")]
+            let pc = (*uc).uc_mcontext.pc as u64;
+            write_labeled_hex(b"  pc ", pc);
         }
         let mut bt: [*mut c_void; 40] = [std::ptr::null_mut(); 40];
         let n = backtrace(bt.as_mut_ptr(), 40);

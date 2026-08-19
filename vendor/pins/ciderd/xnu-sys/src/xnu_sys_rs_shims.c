@@ -324,3 +324,52 @@ int scnprintf(char* buffer, size_t buffer_size, const char* format, ...) {
 		return strnlen(buffer, buffer_size);
 	}
 };
+
+#if defined(__aarch64__)
+/* The arm64-only kernel symbols (aarch64 port, task A18), taken from darling PR 1753's
+ * darlingserver misc.c at 0217769. They sit here rather than in Rust because every one is a
+ * C-ABI symbol XNU's arm machine layer references, two walk fields of structs that are
+ * opaque on the Rust side, and this file already compiles with xnu-sys's exact defines. */
+
+/* PAGE_SHIFT_CONST is extern on ARM64 (variable page size support in XNU); this host runs
+ * 4K pages and so does the port (docs/plan-aarch64.md, D5). */
+int PAGE_SHIFT_CONST = 12;
+
+/* arm/simple_lock.h maps simple_lock_init(l, t) to this (normally arm/locks_arm.c);
+ * delegate to the port's usimple_lock_init, which initialises the embedded lck_spin_t. */
+void arm_usimple_lock_init(simple_lock_t l, unsigned short type) {
+	usimple_lock_init((usimple_lock_t)l, type);
+}
+
+/* Normally kern/bsd_kern.c, which the port does not compile. */
+task_t get_threadtask(thread_t th) {
+	return th->task;
+}
+
+/* Preemption control (normally arm/machine_routines.c): meaningless in a userspace daemon. */
+void _disable_preemption(void) {
+}
+
+void _enable_preemption(void) {
+}
+
+int get_preemption_level(void) {
+	return 0;
+}
+
+/* arm/proc_reg.h turns CONFIG_THREAD_GROUPS on for ARM64, so ipc_port.c references these.
+ * The port does not implement thread groups on any arch. */
+void machine_thread_group_blocked(void* tg_blocked, void* tg_blocking, uint32_t flags, thread_t blocked_thread) {
+	(void)tg_blocked;
+	(void)tg_blocking;
+	(void)flags;
+	(void)blocked_thread;
+}
+
+void machine_thread_group_unblocked(void* tg_unblocked, void* tg_unblocking, uint32_t flags, thread_t unblocked_thread) {
+	(void)tg_unblocked;
+	(void)tg_unblocking;
+	(void)flags;
+	(void)unblocked_thread;
+}
+#endif /* __aarch64__ */

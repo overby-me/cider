@@ -26,7 +26,14 @@ use std::os::raw::{c_char, c_int, c_uint, c_void};
 use std::ptr;
 
 use crate::bindings::{
-    self, xnu_sys_log_level_t, xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE,
+    self, xnu_sys_log_level_t, ipc_kmsg_t, ipc_port_t,
+    mach_msg_body_t, mach_msg_option_t, mach_msg_type_descriptor_t, waitq,
+    MACH_MSGH_BITS_COMPLEX,
+};
+
+#[cfg(target_arch = "x86_64")]
+use crate::bindings::{
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE,
     xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE32,
     xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE32_COUNT,
     xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE64,
@@ -64,9 +71,7 @@ use crate::bindings::{
     xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE32_COUNT,
     xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE64,
     xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE64_COUNT,
-    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE_COUNT, ipc_kmsg_t, ipc_port_t,
-    mach_msg_body_t, mach_msg_option_t, mach_msg_type_descriptor_t, waitq,
-    MACH_MSGH_BITS_COMPLEX,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE_COUNT,
 };
 
 extern "C" {
@@ -95,6 +100,7 @@ pub static mut version: [u8; 13] = *b"Darling 11.5\0";
 /// `x86_THREAD_FULL_STATE64` is 23. A hand-sized array would have been one short, and in C the
 /// designated initialiser sizes itself so the bug could not exist there. Const evaluation caught
 /// it here as an out-of-bounds write at compile time.
+#[cfg(target_arch = "x86_64")]
 const MACHINE_STATE_COUNT_LEN: usize = {
     let flavors = [
         xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE32 as usize,
@@ -133,6 +139,7 @@ const MACHINE_STATE_COUNT_LEN: usize = {
 /// it does not name at zero; a const block assembling the same array is the closest Rust has,
 /// and it keeps both the indices and the values coming from the macros rather than from here.
 /// `static mut` for the same reason `version` is: the C array is not const.
+#[cfg(target_arch = "x86_64")]
 #[no_mangle]
 pub static mut _MachineStateCount: [c_uint; MACHINE_STATE_COUNT_LEN] = {
     let mut c = [0 as c_uint; MACHINE_STATE_COUNT_LEN];
@@ -176,6 +183,101 @@ pub static mut _MachineStateCount: [c_uint; MACHINE_STATE_COUNT_LEN] = {
         xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE_COUNT as c_uint;
     c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_PAGEIN_STATE as usize] =
         xnu_sys_rs_host_consts_XNU_SYS_RS_X86_PAGEIN_STATE_COUNT as c_uint;
+    c
+};
+
+//
+// </copied>
+//
+
+//
+// <copied from="darling-pr1753://darlingserver@0217769/duct-tape/src/misc.c">
+//
+
+/// The arm64 table, same construction. The flavors and counts come from the derived-constants
+/// enum exactly as the x86 ones do; ARM_CPMU_STATE64 is the largest flavor and the reference
+/// leaves its count zero.
+#[cfg(target_arch = "aarch64")]
+use crate::bindings::{
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_CPMU_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE32,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE32_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_EXCEPTION_STATE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_EXCEPTION_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_EXCEPTION_STATE64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_EXCEPTION_STATE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE32,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE32_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_VFP_STATE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_VFP_STATE_COUNT,
+};
+
+#[cfg(target_arch = "aarch64")]
+const MACHINE_STATE_COUNT_LEN: usize = {
+    let flavors = [
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_VFP_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_EXCEPTION_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE64 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_EXCEPTION_STATE64 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE32 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE32 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE64 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE64 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_CPMU_STATE64 as usize,
+    ];
+    let mut max = 0;
+    let mut i = 0;
+    while i < flavors.len() {
+        if flavors[i] > max {
+            max = flavors[i];
+        }
+        i += 1;
+    }
+    max + 1
+};
+
+#[cfg(target_arch = "aarch64")]
+#[no_mangle]
+pub static mut _MachineStateCount: [c_uint; MACHINE_STATE_COUNT_LEN] = {
+    let mut c = [0 as c_uint; MACHINE_STATE_COUNT_LEN];
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_VFP_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_VFP_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_EXCEPTION_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_EXCEPTION_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE64 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE64_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_EXCEPTION_STATE64 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_EXCEPTION_STATE64_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE32 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_THREAD_STATE32_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE32 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE32_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE64 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_DEBUG_STATE64_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE64 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_ARM_NEON_STATE64_COUNT as c_uint;
+    // ARM_CPMU_STATE64 stays zero, as the reference leaves it.
     c
 };
 
