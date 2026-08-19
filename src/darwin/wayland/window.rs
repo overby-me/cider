@@ -1446,7 +1446,31 @@ fn round_corners(st: &mut WindowState) {
 
 /// The value this window clears to, which is not the same for the two formats.
 fn clear_value(st: &WindowState) -> u32 {
-    if wants_alpha(st) { CLEAR_ALPHA } else { CLEAR_PIXEL }
+    /*
+     * THE COLOUR A WINDOW BITMAP STARTS AS, and it is visible far more often than it looks.
+     *
+     * Any pixel no one draws keeps this value, and it is opaque, so it does not read as absent: it
+     * reads as a deliberate light grey. The inline image remainder in iTerm2 measured exactly
+     * 0xffeeeeee in the bitmap, which is this constant and not a background any application asked
+     * for, and no drawing trace can show it because the write happens here rather than in Onyx2D.
+     * CIDER_WAYLAND_CLEAR=0xAARRGGBB overrides it so that question can be settled by looking.
+     */
+    if wants_alpha(st) {
+        return CLEAR_ALPHA;
+    }
+
+    /* OPAQUE WINDOWS ONLY. A translucent one has to start at premultiplied zero whatever this says,
+     * and overriding that turns every menu into a solid rectangle. */
+    if let Ok(spec) = std::env::var("CIDER_WAYLAND_CLEAR") {
+        let t = spec.trim();
+        let t = t.strip_prefix("0x").unwrap_or(t);
+
+        if let Ok(v) = u32::from_str_radix(t, 16) {
+            return v;
+        }
+    }
+
+    CLEAR_PIXEL
 }
 
 /// Make sure the window has shm pages of the right size, mapped, with a wl_buffer over them.
@@ -1767,6 +1791,46 @@ fn present(st: &mut WindowState) {
             );
         }
         return;
+    }
+    /*
+     * WHAT IS ACTUALLY IN THE BITMAP, at the moment it becomes a frame.
+     *
+     * A drawing trace lists the writes that were ASKED for; it cannot say what the memory holds
+     * afterwards, and when the two disagree the memory is the one that reaches the screen. The
+     * inline image remainder is exactly that disagreement: every write into that strip is a copy of
+     * transparent black, the same as the terminal beside it, and the strip presents grey while the
+     * terminal presents black. CIDER_WAYLAND_SAMPLE=x,y[,x,y...] prints those pixels, in the
+     * bitmap own top-down coordinates, on every present.
+     */
+    if let Ok(spec) = std::env::var("CIDER_WAYLAND_SAMPLE") {
+        if !spec.is_empty() && !st.pixels.is_null() {
+            let nums: Vec<i32> = spec
+                .split(',')
+                .filter_map(|t| t.trim().parse::<i32>().ok())
+                .collect();
+            let stride = (st.buffer_w + st.margin * 2) as i32;
+            let mut out = String::new();
+
+            for pair in nums.chunks(2) {
+                if pair.len() != 2 {
+                    continue;
+                }
+                let (x, y) = (pair[0], pair[1]);
+                let off = (y as isize) * (stride as isize) + (x as isize);
+
+                if off < 0 || (off as usize) * 4 + 4 > st.map_len {
+                    out.push_str(&format!(" {},{}=oob", x, y));
+                    continue;
+                }
+                let v = unsafe { *(st.pixels as *const u32).offset(off) };
+
+                out.push_str(&format!(" {},{}=0x{:08x}", x, y, v));
+            }
+            eprintln!(
+                "cider-wayland-sample number={} stride={} buffer={}x{} bitmap={}x{}{}",
+                st.number, stride, st.buffer_w, st.buffer_h, st.draw_w, st.draw_h, out
+            );
+        }
     }
     unsafe {
         std::ptr::copy_nonoverlapping(st.pixels, st.present_pixels[slot], st.map_len);
