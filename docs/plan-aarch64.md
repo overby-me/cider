@@ -609,6 +609,25 @@ dlog (entry, slide, commpage, the argc it reads back from the stack) to a FILE, 
 the guest entry state directly -- then the wrong register/pointer is one comparison away. Boot
 debugging is iterative (fix -> ~30 min prefix rebuild -> retest), so it will span several passes.
 
+DIAGNOSTIC BREAKTHROUGH (same pass): run mldr DIRECTLY, outside ciderd/vchroot, with
+`MLDR_DEBUG=1 __mldr_DYLD_ROOT_PATH=<prefix> mldr <guest-bash> --version`. It stops before the jump
+(`test run; not jumping -- set __mldr_sockpath`) but prints everything up to it, un-swallowed, and it
+clears mldr of blame:
+
+- entry `0x100056e20`, commpage `@0xfffffc000` (ncpu=12), mach_header magic `0xfeedfacf`, and the
+  start stack `sp[0]=mach_header, sp[8]=argc=2` are all correct;
+- with the root set, dyld loads: `dyld mapped: slide=0x..., entry=<slide>+0x56038`, and
+  `FINAL entry` is that dyld `__dyld_start`;
+- disassembling the guest dyld: it is ARM64 / MH_MAGIC_64 / LC_UNIXTHREAD, and `__dyld_start` does
+  `mov x28,sp; and sp,...; ldr x0,[x28]; ldr x1,[x28,#8]; add x2,x28,#0x10` -- i.e. it reads
+  x0=sp[0]=mach_header, x1=sp[8]=argc, x2=&argv, which is EXACTLY the layout stack.rs builds.
+
+So mldr's setup and the entry ABI are both correct. The fault is therefore in the guest dyld's
+`start()` / libSystem bring-up on arm64 (chained-fixup application, the elf_calls bridge use, or the
+TSD/commpage read), not in the loader. NEXT: reproduce the jump by starting ciderd by hand and
+passing `__mldr_sockpath=<prefix>/.ciderd.sock` to a directly-run mldr so its (and dyld's) output is
+not swallowed, then read the dyld PC at the first fault; or trace dyld's start under the same harness.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
