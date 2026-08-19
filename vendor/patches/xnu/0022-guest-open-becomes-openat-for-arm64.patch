@@ -1,0 +1,52 @@
+arm64 has no open syscall: the guest uses openat (aarch64 port, task A8)
+
+The generic Linux ABI arm64 follows dropped the open(2) syscall, so __NR_open is
+undefined and execve.c, file_handle.c, vchroot_userspace.c and dserver-rpc-defs.c fail
+to compile. Rewrite each open call as openat(AT_FDCWD, ...), which is behaviourally
+identical on x86_64 too; darling PR 1753 makes the same change in dserver-rpc-defs.c
+with the literal -100 for AT_FDCWD, matched here for the other three.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c	2026-08-19 04:38:06.765578578 +0200
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c	2026-08-19 04:38:06.778823025 +0200
+@@ -71,7 +71,7 @@
+ 
+ 	looked = true;
+ 
+-	int fd = LINUX_SYSCALL(__NR_open, "/proc/self/environ", LINUX_O_RDONLY, 0);
++	int fd = LINUX_SYSCALL(__NR_openat, -100 /* AT_FDCWD */, "/proc/self/environ", LINUX_O_RDONLY, 0);
+ 	if (fd < 0)
+ 	{
+ 		__simple_kprintf("loader path: open /proc/self/environ failed %d", fd);
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/file_handle.c	2026-08-19 04:38:06.789577671 +0200
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/file_handle.c	2026-08-19 04:38:06.804345655 +0200
+@@ -139,7 +139,7 @@
+ 	
+ 	// We have the path of the mount, lets get a file descriptor
+ 	#if defined(__NR_open)
+-		fd_m = LINUX_SYSCALL(__NR_open, mount_path, LINUX_O_RDONLY, 0);
++		fd_m = LINUX_SYSCALL(__NR_openat, -100 /* AT_FDCWD */, mount_path, LINUX_O_RDONLY, 0);
+ 	#else
+ 		fd_m = LINUX_SYSCALL(__NR_openat, LINUX_AT_FDCWD, mount_path, LINUX_O_RDONLY, 0);
+ 	#endif
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c	2026-08-19 04:38:06.809576915 +0200
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c	2026-08-19 04:38:06.824138345 +0200
+@@ -360,7 +360,7 @@
+ 						ctxt->current_path[prevlen-1] = '\0';
+ 						
+ 						#if defined(__NR_open)
+-							int dfd = LINUX_SYSCALL(__NR_open, (prevlen > 1) ? ctxt->current_path : "/", LINUX_O_RDONLY);
++							int dfd = LINUX_SYSCALL(__NR_openat, -100 /* AT_FDCWD */, (prevlen > 1) ? ctxt->current_path : "/", LINUX_O_RDONLY);
+ 						#else
+ 							int dfd = LINUX_SYSCALL(__NR_openat, LINUX_AT_FDCWD, (prevlen > 1) ? ctxt->current_path : "/", LINUX_O_RDONLY);
+ 						#endif
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/resources/dserver-rpc-defs.c	2026-08-19 04:38:06.833576009 +0200
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/resources/dserver-rpc-defs.c	2026-08-19 04:38:06.849735346 +0200
+@@ -87,7 +87,7 @@
+ static libsimple_once_t printf_file_token = LIBSIMPLE_ONCE_INITIALIZER;
+ 
+ static void printf_file_init(void* context) {
+-	printf_file = LINUX_SYSCALL(__NR_open, "/tmp/dserver-client-rpc.log", LINUX_O_WRONLY | LINUX_O_CREAT | LINUX_O_APPEND, 0644);
++	printf_file = LINUX_SYSCALL(__NR_openat, -100 /* AT_FDCWD */, "/tmp/dserver-client-rpc.log", LINUX_O_WRONLY | LINUX_O_CREAT | LINUX_O_APPEND, 0644);
+ }
+ #endif
+ 
