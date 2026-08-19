@@ -306,12 +306,33 @@ Order the build surfaces the gaps, component by component. Landed so far:
 builds `//buck/prefix:cider_prefix`, so M2/M3 pull the **whole guest tier** including objc4,
 not just the minimal bash link the plan's D9 assumed. objc4 is therefore on the critical path.
 
-**Current blocker:** objc4's non-pointer-isa config. `objc-runtime-new.mm` static-asserts
-`ISA_MASK` against `MACH_VM_MAX_ADDRESS`; the arm64 ISA_MASK/config does not match cider's
-arm `MACH_VM_MAX_ADDRESS`. The PR's objc4 bump (a196f59) carries the arm64 isa.h config; that
-is the next task. After objc4: the guest syscall layer and its six .S files (A8), libpthread +
-the D4 TSD table (A11), the rest of the umbrella, the libSystem firstpass link (A15), and the
-prefix assembly (A16).
+**Update, third M2 pass — landed:**
+
+- **objc4 isa (A12 done):** a DARLING/macOS arm64 branch in isa.h (x86_64 layout, 44-bit
+  shiftcls) matches cider's arm64 MACH_VM_MAX_ADDRESS; patch.
+- **libc arch asm + legacy groups (A12 done):** libc-x86_64 builds empty.c on arm64 (no arm
+  mcount), and the eleven `*_legacy`/`*_pre1050` symbol-version groups compile nothing there
+  (the $UNIX2003/$1050 variants are i386-only; they duplicated `_daemon`/etc at link).
+- **The x86-flag filter (A4 done):** clears the ~30 `-msse` sites at once.
+- **libm/libc dylib links:** libm firstpass links once `fma_freeBSD.c` is dropped (fma comes
+  from arm64_builtins.c); libc firstpass links once the legacy groups are empty.
+- **Guest syscall asm (A8, patch 0020):** the six darling-authored trampolines
+  (bsd/mach/machdep syscall, linux-syscall thunk, sig_restorer, xtrace-hooks) gain arm64
+  blocks.
+- **Guest emulation conversions (A8/D4, patch 0021):** the arch-guarded half of the PR's
+  emulation delta — the tid-keyed TSD table (tls.c, the D4 mechanism), sigexc.c, the arm64
+  Linux stat layout, sigaction, the base.h fast-syscall gate, the open.h flag values. Every
+  hunk `__aarch64__`-guarded; x86 byte-identical. The PR's new-syscall/behavioral changes are
+  excluded (they alter the frozen x86 build and add un-globbed files).
+
+**Current blocker:** the rest of the xnu emulation, `emulation_obj`. Two known sub-issues, an
+arm64-Linux-ABI cluster: (1) arm64 dropped the `open` syscall, so `__NR_open` is undefined and
+`execve.c`, `vchroot_userspace.c`, `file_handle.c` must call `openat(AT_FDCWD, …)`; (2)
+`sysctl_machdep.c` has x86 cpuid inline asm (`=a` constraint) needing an arm64 arm. Then the
+PR's excluded emulation files (mremap_encrypted, the network/bsdthread pieces) need arm64-only
+splits, the bsdthread_register.c hunk must be merged against cider's workqueue patch 0010, and
+libpthread's own asm (A11) is still ahead — after which the libSystem umbrella link (A15) and
+the prefix assembly.
 
 ## Risks, ranked
 
