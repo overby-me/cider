@@ -28,8 +28,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSThemeFrame.h>
 #import <AppKit/NSPanel.h>
 
-/* Measured off the macOS alert in Downloads/macos-images. */
-#define CIDER_PANEL_CORNER_RADIUS 10.0
+/*
+ * MEASURED OFF THE macOS ALERT in Downloads/macos-images, and measured properly this time.
+ *
+ * The reference is a 2x capture: its alert is 520x372 pixels, so 260x186 points against our 289x182,
+ * which is the same dialog. Fitting a circle to the corner profile of both gives 56 pixels there,
+ * 28 points, against 7.6 here. Ten was a guess that looked close on a small screenshot and it is
+ * nearly square beside the real thing.
+ */
+#define CIDER_PANEL_CORNER_RADIUS 28.0
 #import <objc/runtime.h>
 #import <AppKit/NSToolbarView.h>
 #import <AppKit/NSWindow-Private.h>

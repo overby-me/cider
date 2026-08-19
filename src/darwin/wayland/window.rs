@@ -1374,6 +1374,24 @@ fn box_blur(v: &mut [u32], w: usize, h: usize, r: usize) {
 /// The radius macOS rounds a window and a menu with.
 const CORNER_RADIUS: i32 = 10;
 
+/// AND THE RADIUS AN ALERT IS ROUNDED WITH, which is nothing like a window.
+///
+/// Measured off the reference capture in Downloads/macos-images, which is a 2x screenshot: its
+/// alert is 520x372 pixels, so 260x186 points against our 289x182, the same dialog. Fitting a
+/// circle to the corner profile of each gives 56 pixels there, 28 points, against 10 here, and
+/// beside the real thing ours reads as nearly square.
+///
+/// It has to be applied HERE and not only in the panel background, because the visible corner of
+/// this window is the one this function punches: something in the alert content paints opaque out
+/// to the window rectangle, so a rounder background alone changed nothing on screen and the
+/// measurement stayed at 7.6.
+const PANEL_CORNER_RADIUS: i32 = 28;
+
+/// Which of the two a given window gets.
+fn corner_radius(st: &WindowState) -> i32 {
+    if st.is_panel { PANEL_CORNER_RADIUS } else { CORNER_RADIUS }
+}
+
 /// Punch the four corners out of the buffer, so a window is a rounded rectangle.
 ///
 /// DONE HERE RATHER THAN IN APPKIT because the corners of a window are not all drawn by the same
@@ -1390,7 +1408,7 @@ fn round_corners(st: &mut WindowState) {
     }
     let w = st.draw_w;
     let h = st.draw_h;
-    let r = CORNER_RADIUS;
+    let r = corner_radius(st);
     if w < r * 2 || h < r * 2 {
         return;
     }
@@ -1502,8 +1520,10 @@ fn ensure_backing(st: &mut WindowState) -> bool {
     }
     if crate::env_flag!("CIDER_WAYLAND_TRACE_GEOMETRY") {
         println!(
-            "cider-wayland-backing number={} was={}x{} now={}x{} bitmap={}x{} insist={}x{}",
-            st.number, st.buffer_w, st.buffer_h, w, h, dw, dh, st.insist_w, st.insist_h
+            "cider-wayland-backing number={} was={}x{} now={}x{} bitmap={}x{} insist={}x{} \
+style=0x{:x} panel={} level={} alpha={} margin={}",
+            st.number, st.buffer_w, st.buffer_h, w, h, dw, dh, st.insist_w, st.insist_h,
+            st.style_mask, st.is_panel as i32, st.level, wants_alpha(st) as i32, shadow_margin(st)
         );
     }
     let had_backing = !st.pixels.is_null();
