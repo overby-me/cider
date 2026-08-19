@@ -10766,3 +10766,59 @@ The work is then:
 The reason to want it is that every conclusion in this document so far rests on one application
 behaving or not. A suite that says which APIs match Apple, case by case, is a different and better
 kind of evidence.
+
+## The Swift Publisher canvas had no size, because new never reached the designated initialiser
+
+Every earlier reading of this window asked the same question the wrong way round: what draws the
+canvas grey. The question that answered it was what is supposed to give the canvas a size, and the
+answer turned out to be a class we build wrongly rather than anything about drawing.
+
+The document window is built entirely in code. No nib in that bundle names `CCDocScrollView`,
+`Toolbar2View`, `CCSplitView` or `CCMainWindowController`; the classes exist only in the main binary,
+so every frame in that pane is set by application code or by AppKit. Following it through:
+
+- `-[CCMainWindowController awakeFromNib]` creates the canvas with `[CCDocScrollView new]`, adds it
+  to `[[self canvasesPreviewAndDocumentSplitViewController] view]`, configures its scrollers and
+  gives it a document view. It never gives it a frame, and it never gives it an autoresizing mask.
+- Nothing else does either. The application's own frame helpers have two call sites between them and
+  neither targets the canvas, and a whole run shows no `setFrame:` or `setFrameSize:` reaching it.
+- `-[CCCanvasesPreviewAndDocumentSplitViewController initWithNibName:bundle:]` installs a
+  `CCPagePreviewSplitView` as its view, makes itself the delegate, and sets it non-vertical. So the
+  container is a split view and the canvas is a pane, which is exactly the AppKit mechanism that
+  sizes a subview carrying no mask.
+
+Two defects kept that from happening.
+
+`-[NSViewController init]` did not exist, so `[SomeController new]` ran `NSObject`'s. AppKit
+documents `init` as `initWithNibName:nil bundle:nil`, and that is the method a subclass overrides
+when it builds its view in code, because every other initialiser funnels through it. Without the
+funnel the override never ran, the controller had no view, and `loadView` handed back the empty
+`NSView` it correctly gives a controller with no nib.
+
+`-[NSSplitView adjustSubviews]` never asked `splitView:shouldAdjustSizeOfSubview:`, so every pane was
+elastic and the space was shared by ratio, which is meaningless for a pane that starts at zero. The
+application answers YES for the canvas alone and NO for the toolbar and preview strips above it. A
+refused pane now keeps its size and leaves the ratio entirely, in both directions.
+
+The same view across three builds of the same run:
+
+    CCDocScrollView 0x0 at 0,0        before
+    CCDocScrollView 766x0 at 0,694    with the initialiser fixed, a pane at last but no height
+    CCDocScrollView 841x568 at 0,127  with the delegate asked
+
+`-[NSTableView setColumnAutoresizingStyle:]` surfaced on the way, and only because of the first fix:
+once those controllers loaded their nibs at all, the unrecognised selector escaped the nib load,
+which is silent from outside and simply stops the window appearing.
+
+Three claims recorded earlier in this document and in commit messages are wrong and are corrected
+here. `updateViews` does not size the canvas scroll view; it moves the INSPECTOR view's corner and
+uses the scroll view only as the reference. The greyed Hide Inspector item and the blank canvas are
+therefore unrelated. And the transform calls at `0x10025c0xx` are not unrelated to the NaN: that
+address is `-[NSAffineTransform(transformRect) transformAndNormalizeRect:]`, which the geometry
+method calls, and it looked unrelated only because it is a separate function from its caller.
+
+What is left is the canvas document view, still `nan` by `nan`, which the application detects and
+reports itself at `CCDocView.m:1851`. The rect crossing our transform is good: point `(-612,0)`,
+size `(1836,792)`, a three page spread, identity transform. The NaN has the shape of infinity times
+zero, and there is exactly one branch that can produce it, the one that zeroes the spread rect when
+`transformForRotateViewForCanvas:master:` returns nil.

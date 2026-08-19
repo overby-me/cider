@@ -19,6 +19,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#import <objc/message.h>
 #import <objc/runtime.h>
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSClipView.h>
@@ -1361,6 +1362,30 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
 
             fprintf(stderr, "CIDER_GEOM   windowController=%s currentDesignElement=%p\n",
                     wc != nil ? object_getClassName(wc) : "nil", (void *) current);
+
+            /* THE APPLICATION ASKS ITS OWN CONTROLLER, NOT THE WINDOW'S. The view has a
+             * windowController of its own, and the geometry above reads the design element from
+             * that one, so a probe that goes through the window can agree while the real call
+             * returns nil. Ask exactly what it asks, including the transform, because a nil
+             * transform is what sends this method down the branch that zeroes the page size: the
+             * divide by that zero is an infinity and the multiply after it is the NAN. */
+            SEL wcSel = sel_getUid("windowController");
+            id ownWC = [self respondsToSelector: wcSel] ? [self performSelector: wcSel] : nil;
+            id ownCurrent = (ownWC != nil && [ownWC respondsToSelector: currentSel])
+                    ? [ownWC performSelector: currentSel]
+                    : nil;
+            SEL xformSel = sel_getUid("transformForRotateViewForCanvas:master:");
+            id xform = nil;
+
+            if (ownCurrent != nil && [ownCurrent respondsToSelector: xformSel]) {
+                id (*send)(id, SEL, NSInteger, BOOL) = (id (*)(id, SEL, NSInteger, BOOL)) objc_msgSend;
+
+                xform = send(ownCurrent, xformSel, 0, NO);
+            }
+            fprintf(stderr,
+                    "CIDER_GEOM   ownWindowController=%s ownCurrentDesignElement=%p transform=%s\n",
+                    ownWC != nil ? object_getClassName(ownWC) : "nil", (void *) ownCurrent,
+                    xform != nil ? object_getClassName(xform) : "NIL");
             fprintf(stderr,
                     "CIDER_GEOM %s GOT NAN frame, was %.1fx%.1f bounds %.1fx%.1f visible "
                     "%.1fx%.1f at %.1f,%.1f scrollView=%s content %.1fx%.1f\n",
