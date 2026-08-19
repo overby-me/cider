@@ -791,7 +791,15 @@ static CGFloat constrainTo(CGFloat value, CGFloat min, CGFloat max) {
     /* YES, and it is not unimplemented: a split view fills its bounds with the divider and its
      * subviews, and the answer was already correct. What the NSUnimplementedMethod line did was
      * log once PER DRAW: iTerm2 asks on every frame of its session, which buried the log under
-     * thousands of identical lines and made every other message impossible to find. */
+     * thousands of identical lines and made every other message impossible to find.
+     *
+     * NOT ALWAYS TRUE, and measured so 2026-08-19: Swift Publisher's inspector is a split view of
+     * two NSBoxes that draw no background at all, so the region neither box covers is not filled by
+     * anything here. Answering NO when the subviews are not opaque was tried and changed nothing
+     * about the hole that prompted it (that was NSTableView erasing its own background), and the
+     * cost to a terminal that asks on every frame is unmeasured, so the honest answer waits for a
+     * case where it is the difference.
+     */
     return YES;
 }
 

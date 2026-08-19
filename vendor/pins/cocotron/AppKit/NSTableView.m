@@ -1347,8 +1347,13 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
 
         if (row == _editedRow && drawThisColumn == _editedColumn &&
             _editingCell != nil) {
+            /* Same rule as drawBackgroundInClipRect: below the cell being edited. */
             [_backgroundColor setFill];
-            NSRectFill(_editingBorder);
+            if ([_backgroundColor alphaComponent] < 1.0) {
+                NSRectFillUsingOperation(_editingBorder, NSCompositeSourceOver);
+            } else {
+                NSRectFill(_editingBorder);
+            }
             [_editingCell setControlView: self];
             [_editingCell drawWithFrame: _editingFrame inView: self];
             if ([_editingCell focusRingType] != NSFocusRingTypeNone) {
@@ -1373,8 +1378,23 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
     NSInteger colorCount = [rowColors count];
 
     if (colorCount == 0 || !_alternatingRowBackground) {
+        /*
+         * A BACKGROUND THAT IS NOT OPAQUE MUST NOT BE COPIED, and NSRectFill is documented to
+         * composite with copy.
+         *
+         * Swift Publisher's layers table carries NSBackgroundColor = clear in its nib, which on a
+         * real system means "let what is behind me show through". Copied, it means the opposite:
+         * the fill REPLACES the backing with zeroes, and the window there became a transparent
+         * hole 220 by 56 through which the desktop was visible. It read as a solid black
+         * rectangle. The pixels really had been painted first, by the window background, and this
+         * fill erased them again.
+         */
         [_backgroundColor setFill];
-        NSRectFill(clipRect);
+        if ([_backgroundColor alphaComponent] < 1.0) {
+            NSRectFillUsingOperation(clipRect, NSCompositeSourceOver);
+        } else {
+            NSRectFill(clipRect);
+        }
     } else if (colorCount == 1) {
         [(NSColor *) [rowColors objectAtIndex: 0] setFill];
         NSRectFill(clipRect);

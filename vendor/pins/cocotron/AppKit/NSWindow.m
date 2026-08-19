@@ -2341,7 +2341,70 @@ static BOOL _allowsAutomaticWindowTabbing;
     [_platformWindow enableFlushWindow];
 }
 
+/*
+ * WHICH VIEW COVERS A GIVEN RECTANGLE, which is the question no instrument here could answer.
+ *
+ * A trace of drawing says what was asked for; a trace of frames needs the class name up front; and
+ * neither helps when the defect is a region NOTHING draws into. This walks the tree from the frame
+ * view and prints every view with its frame in WINDOW coordinates, so a rectangle read off a
+ * capture can be matched against the views that contain it and the one that stops short is visible
+ * as a gap in the numbers.
+ *
+ * CIDER_TRACE_TREE=<seconds> throttles it: layout settles late (a driver resizes the window near
+ * the end of a run) so the useful dump is the LAST one, not the first.
+ */
+static void CiderDumpViewTree(NSView *view, int depth, CGFloat windowHeight) {
+    NSRect frame = [view frame];
+    NSRect win = [view convertRect: [view bounds] toView: nil];
+    /* AND THE SAME RECTANGLE COUNTED FROM THE TOP, because every other instrument here is. The
+     * capture, the bitmap sampler and the drawing trace are all top-down while a view frame is
+     * bottom-up, and converting by hand each time is where three wrong conclusions came from. */
+    CGFloat top = windowHeight - (win.origin.y + win.size.height);
+    char indent[64];
+    int pad = depth * 2;
+
+    if (pad > 62)
+        pad = 62;
+    memset(indent, ' ', pad);
+    indent[pad] = (char) 0;
+
+    fprintf(stderr,
+            "CIDER_TREE %s%s %.0fx%.0f@%.0f,%.0f win %.0fx%.0f@%.0f,%.0f top %.0f..%.0f hidden=%d opaque=%d mask=%lu\n",
+            indent, object_getClassName(view), frame.size.width, frame.size.height,
+            frame.origin.x, frame.origin.y, win.size.width, win.size.height, win.origin.x,
+            win.origin.y, top, top + win.size.height, (int) [view isHidden], (int) [view isOpaque],
+            (unsigned long) [view autoresizingMask]);
+
+    for (NSView *child in [view subviews])
+        CiderDumpViewTree(child, depth + 1, windowHeight);
+}
+
+- (void) _ciderDumpViewTreeIfAsked {
+    const char *spec = getenv("CIDER_TRACE_TREE");
+
+    if (spec == NULL || spec[0] == (char) 0)
+        return;
+
+    static NSTimeInterval last = 0.0;
+    NSTimeInterval every = atof(spec);
+    NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
+
+    if (every <= 0.0)
+        every = 5.0;
+    if (last != 0.0 && now - last < every)
+        return;
+    last = now;
+
+    fprintf(stderr, "CIDER_TREE ==== window %ld %.0fx%.0f at %.0f,%.0f t=%.2f\n",
+            (long) [self windowNumber], _frame.size.width, _frame.size.height, _frame.origin.x,
+            _frame.origin.y, now);
+    CiderDumpViewTree(_backgroundView != nil ? _backgroundView : _contentView, 0,
+                      _frame.size.height);
+    fflush(stderr);
+}
+
 - (void) flushWindow {
+    [self _ciderDumpViewTreeIfAsked];
     if (getenv("CIDER_TRACE_MENU") != NULL) {
         fprintf(stderr, "CIDER_FLUSH window=%p disabled=%d needed=%d visible=%d viewsNeed=%d\n",
                 self, (int) _flushDisabled, (int) _flushNeeded, (int) [self isVisible],

@@ -11314,3 +11314,39 @@ What is established, so the next attempt does not repeat it:
 The missing tool is a view-tree dump with frames. `CIDER_TRACE_VIEWS` only traces `adjustSubviews`,
 and nothing prints "which view covers this rectangle", which is the question every step above was
 working around.
+
+### The hole was a table erasing its own background (task #134, closed)
+
+`NSRectFill` is documented to composite with **copy**, and Swift Publisher's layers table carries
+`NSBackgroundColor = clear` in its nib. On a real system a clear background means "let what is
+behind me show through"; copied, it means the opposite, and the fill replaced the window backing
+with zeroes. That is the 220 by 56 transparent hole, and what showed through it was the desktop.
+`-[NSTableView drawBackgroundInClipRect:]` and the edited-cell fill beside it now use source-over
+when the colour is not fully opaque.
+
+Measured on the same capture: the block held 12320 of 12320 dark pixels and now holds 48, all of
+them the edge of a control, with its interior at 237,237,237. Under a magenta desktop the whole
+window's unpainted count goes 12260 to 34, and those 34 are the corner punch. The fix also revealed
+application content that had never been visible: the layers list shows its row named **Background**,
+which had been sitting inside the erased region.
+
+**Two claims in the previous entry were wrong and are corrected here.** It said the region is
+"simply never painted rather than painted and cleared", and offered the absence of transparent fills
+as evidence. The pixel history from `CIDER_WAYLAND_SAMPLE` shows cleared, then `0xffe9e9e9` for two
+frames, then back to `0x00000000`: painted, then erased. And the fill that erased it was in the
+trace all along — the search that missed it was mine, but the deeper mistake was reading `blend=17`
+as decoration when it is `kCGBlendModeCopy`. A transparent fill is invisible under source-over and
+destructive under copy, so **the blend mode is not a detail beside the colour, it is the finding**.
+
+Two other suspects were tested by changing them and looking, and both are cleared. `NSSplitView`
+claims to be opaque while its `drawRect:` draws only dividers, so a region no subview covers is one
+AppKit will not draw behind; making that claim conditional on the subviews being opaque changed
+nothing here, and the cost to a terminal that asks on every frame is unmeasured, so it is reverted
+with the measurement recorded in the comment. `constrainFrameRect:toScreen:` only moves a window
+where macOS also clamps its height, which is true and also not this.
+
+**New instrument, and it is the one that was missing.** `CIDER_TRACE_TREE=<seconds>` dumps a
+window's view tree from its frame view on flush, throttled so the useful dump is the last one, with
+every frame in view coordinates **and counted from the top** — the capture, the bitmap sampler and
+the drawing trace are all top-down while a view frame is bottom-up, and converting by hand is where
+three wrong conclusions came from. It named the scroll view over the hole in one run.
