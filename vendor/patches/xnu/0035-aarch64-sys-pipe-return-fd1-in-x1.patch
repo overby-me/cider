@@ -1,0 +1,24 @@
+aarch64: return the second pipe fd in x1 from sys_pipe.
+
+sys_pipe (emulation) did the Linux pipe2 then, on x86, copied fd[1] into %edx so the Darwin ___pipe
+asm stub (which reads both result regs with `stp w0,w1,[fildes]`) sees fd[1]. The non-x86 path was
+just `#warning Missing assembly!`, so on arm64 fd[1] never reached x1 and fildes[1] got garbage. The
+guest then leaked the pipe write end: bash command substitution (eval $(path_helper -s) in the login
+profile) blocked forever reading a pipe that never saw EOF, hanging shell startup. Add the arm64
+analogue (ldr w1, fd[1]). This is the last fix that makes buck-bash-check pass: bash boots and runs.
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pipe.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pipe.c
+@@ -18,6 +18,13 @@
+ 
+ #if defined(__i386__) || defined(__x86_64__)
+ 	__asm__ __volatile__("movl %0, %%edx" :: "m"(fd[1]) : "edx");
++#elif defined(__arm64__) || defined(__aarch64__)
++	// Darwin's pipe() returns the two fds in the first TWO result registers; the ___pipe asm stub
++	// reads them with `stp w0,w1,[fildes]`. sys_pipe returns fd[0] in x0 (the C return), so it must
++	// also place fd[1] in x1 -- the arm64 analogue of the x86 `movl fd[1], %edx` above. Without this
++	// fildes[1] got garbage: the guest (e.g. bash command substitution) then leaked the pipe's write
++	// end and blocked forever reading a pipe that never sees EOF.
++	__asm__ __volatile__("ldr w1, %0" :: "m"(fd[1]) : "x1");
+ #else
+ #	warning Missing assembly!
+ #endif

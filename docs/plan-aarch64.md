@@ -999,6 +999,27 @@ supposed to send back never arrives (main.rs:852), and/or the login-profile subp
 under emulation. NEXT: check whether CIDER_SHELL_STARTUP_TIMEOUT=0 lets bash finish (slow vs hung),
 then fix the shellspawn->launcher started-marker handshake and/or avoid the login-profile path.
 
+**M3 DONE (pass 26) -- bash boots and runs on cider aarch64. buck-bash-check PASSES.**
+```
+BUCK2_BASH_OK 3.2.57(1)-release arm64-apple-darwin19
+PASS: the buck2-built Darling boots and runs bash
+```
+The last blocker was the command-substitution hang: fd tables showed bash holding BOTH ends of one
+pipe (fd 13 and fd 14 -> the same pipe:[...]), so its read never saw EOF. Root cause in pipe.c:
+sys_pipe ran the Linux pipe2 (filling fd[]) then, on x86 only, copied fd[1] into %edx so the Darwin
+___pipe asm stub (`stp w0,w1,[fildes]`) could store both fds; the non-x86 path was literally
+`#warning Missing assembly!`, so on arm64 fd[1] never reached x1 and fildes[1] was garbage -- bash
+closed the wrong fd, leaked the write end, and blocked in eval $(path_helper -s). Fix (patch 0035):
+the arm64 analogue `ldr w1, fd[1]`. With it bash finishes its --login profile (fork+exec+wait for
+/bin/cp and /usr/libexec/path_helper, benign "No such file" cp warnings and all) and runs the target
+`echo`. NOTE: run with CIDER_SHELL_STARTUP_TIMEOUT=0 because the shellspawn->launcher 1-byte
+"started" marker (main.rs:852) still is not delivered on arm64 -- a cosmetic launcher-watchdog fix
+for later (bash output reaches the captured fd directly regardless). Diagnostic instrumentation used
+during this bring-up (fork.c/sigexc.c kprintf, rpc_wire.rs eprintln) is in the materialized pins
+only, not captured as patches, so the nix re-materialization is clean; rpc_wire.rs (cider's own
+source) reverted. NEXT: M4 -- the full nix build (`buck-nix-bash-check`: guest Nix builds bash inside
+the arm64 container), which re-materializes every pin from patches 0001-0035.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
