@@ -10822,3 +10822,49 @@ reports itself at `CCDocView.m:1851`. The rect crossing our transform is good: p
 size `(1836,792)`, a three page spread, identity transform. The NaN has the shape of infinity times
 zero, and there is exactly one branch that can produce it, the one that zeroes the spread rect when
 `transformForRotateViewForCanvas:master:` returns nil.
+
+## An empty device description is a wrong answer, and it cost the canvas its page
+
+The Swift Publisher canvas was `nan` by `nan` for days, and the application said so itself, against
+its own view, at `CCDocView.m:1851`. The cause was one method of ours returning `@{}`.
+
+`-[NSScreen deviceDescription]` is documented to describe the device: its resolution in dots per
+inch, its size, that it is a screen, its colour space and its depth. Ours returned an empty
+dictionary, which is worse than raising, because of how the keys are read. An application writes
+
+```objc
+NSSize dpi = [[[NSScreen mainScreen] deviceDescription][NSDeviceResolution] sizeValue];
+```
+
+and a missing key makes that `[nil sizeValue]`, which answers a zero size with no error anywhere.
+Swift Publisher keeps that width in a function-local static inside its C++ view constructor and
+gives every canvas a zoom of `fk / 72`. A zoom of zero collapses the page to nothing, and the
+geometry that divides by the page size produces the NaN.
+
+Measured across the same build, before and after: the zoom stored in the view went from 0 to a real
+value and the zoom control went from blank to 75 percent; the application's own NaN warnings went
+from three to five per run to **zero**, and the seven warnings its scroll view's `tile` raises went
+to zero as well. Looked at: a white page on grey with rulers and tick marks, and after a resize to
+1000×600 the toolbar collapses to an overflow chevron, the inspector moves, and the page is still
+drawn.
+
+Two things about how this was found are worth keeping.
+
+The zoom is written in two places and both were eliminated by measurement rather than by reading.
+`-[CCMainWindowController restoreEmbeddedData]` writes `displayModeFactor * defaultZoom`, and a
+probe calling both exactly as the application does returned 1.5 and 0.75 — and that write is skipped
+regardless, because `embeddedViewPersistenceDesc` is nil for a document with no embedded state, for
+a blank document and a template alike. What remained was the constructor, and the constructor asks
+the screen.
+
+And one measurement of mine was wrong in a way worth naming: I reported `+[CCEnvironment
+defaultZoom]` as returning zero. It does not. My probe called a double-returning method through a
+float-typed function pointer, and 0.75 as a double is `0x3FE8000000000000`, whose low 32 bits are
+zero — so the probe printed exactly `0.0` and I read it as the application returning nothing. Our
+`NSUserDefaults` was correct throughout: `FTDefaultZoom` reads back as an `__NSCFNumber` of 0.75 on
+every read.
+
+The general rule this belongs to: **a framework getter that returns an empty collection is a policy
+answer, not a placeholder.** Callers do not check; they subscript and send. The same shape appears
+in [[stub-return-is-a-policy-answer]] — a stub that returns nil or zero silently disables a whole
+feature, and the only way to see it is to ask what the application does with the answer.
