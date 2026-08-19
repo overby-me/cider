@@ -573,6 +573,42 @@ Both are the FIRST patches for those pins (new `vendor/patches/{libffi,liblzma}/
 apply via `nix build .#cider-src`. The prefix build with both fixes is running; if it comes back
 green the arm64 prefix exists and M3 moves to the boot check.
 
+**Update, twelfth pass -- THE ARM64 PREFIX BUILDS GREEN, and the boot fault is diagnosed.**
+
+`nix build .#cider-buck2-prefix-min` returns NIX_EXIT=0 with a `result` symlink and zero failures
+(0 compile, 0 link, 0 builder, 0 dependency). The whole port -- host tier, guest toolchain, bash
+tier, loader/wrapgen, the ObjC framework stack, the nix-endpoint bundled-pin staging, and every pin
+/compile fix -- produces a complete ~5,500-entry arm64 prefix: `bin/ciderd`, `libexec/cider/bin/bash`
+(arm64 Mach-O), the guest dylibs, and `usr/libexec/cider/mldr`. That is the M3 BUILD gate.
+
+The M3 BOOT (`buck-bash-check.nu --prefix result/cider_prefix_min__prefix`) does NOT yet pass. What
+it does, from strace of the guest process (which runs mldr): mldr maps the guest correctly -- dyld
+at 0x100000000, libSystem, the 8 MB start stack at 0x7fffff600000, all mmaps succeed -- then jumps
+to dyld, and dyld immediately makes GARBAGE syscalls and fault-loops:
+
+    getxattr(NULL, "lf_calls=", 0xa, 0x7fffffdfd40f) = -1 EFAULT
+    syscall_0x2d2d8000(0xfff...f2, 0xf916..., ...)   = -1 ENOSYS
+    syscall_0xfff(0, ...)                            = -1 ENOSYS
+    rt_sigreturn({mask=[]})                          = -1 ENOSYS
+    then --- SIGSEGV {si_code=SEGV_MAPERR, si_addr=0x8} --- forever (a caught fault the handler
+    never resolves, ~360k/s).
+
+Reading of it: the maps are fine, so this is not the loader's mapping. dyld's code RAN but on wrong
+inputs -- the "lf_calls=" (the apple string is `elf_calls=<hex>`, the loader's ELF-call bridge, off
+by one char) plus the varying junk syscall numbers say dyld called through a BAD POINTER and is
+executing garbage. jump.rs (arm64 `mov sp; mov x29,xzr; br entry`) and stack.rs (the
+`[mach_header, argc, argv, 0, envp, 0, apple, 0]` layout, arch-independent, x86-identical) both look
+correct, and linux-syscall.S's arm64 stub (`mov x8, x6; svc #0`, number = 7th C arg = x6) is
+correct. So the suspect is the register/pointer state dyld receives at entry, or how the guest reads
+`elf_calls=`/the commpage -- A17/D-level runtime paths that were compile-only until this first boot.
+
+BLOCKER on pinning it exactly: the guest process is short-lived and namespaced under ciderd, so
+gdb/strace attach is racy; and `cider shell` swallows mldr/daemon stderr, so MLDR_DEBUG output never
+reaches the caller. NEXT STEP is a diagnostic harness, not more guesswork: teach mldr to write its
+dlog (entry, slide, commpage, the argc it reads back from the stack) to a FILE, rebuild, and read
+the guest entry state directly -- then the wrong register/pointer is one comparison away. Boot
+debugging is iterative (fix -> ~30 min prefix rebuild -> retest), so it will span several passes.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
