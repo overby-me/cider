@@ -11453,3 +11453,41 @@ run and it **fails**: `com.apple.security.syspolicy`, Gatekeeper's policy servic
 than hangs, so it is a clue rather than a proven cause. The app's own XPC service is an updater,
 which nothing normally blocks startup on, and the driver runs with `DARLING_NO_LAUNCHD=1` so it could
 not start anyway.
+
+### What MoneyMoney is actually waiting for: the keychain, and securityd (tasks #136, #137)
+
+With the code-signature check fixed the app reaches its own startup screen and stops there. It is
+**not** deadlocked and **not** computing: all six threads are asleep, the main thread sits in its run
+loop (the File menu still opens while it waits), there are **no TCP sockets at all**, and one thread
+has burned zero CPU while blocked in `recvmsg` on an abstract-namespace socket — the shape of a Mach
+reply that never comes.
+
+Disassembling the app named the step. `-[LockViewController applicationDidFinishLaunching:]` runs an
+OS-compatibility check (with `MMDisableOSCompatibilityCheck` and `MMDisableOS2026Check` as its own
+escape hatches), posts its lock notifications, and then calls **`readAutoLoginPassword`,
+`readTouchIdPassword`, `readIWatchPassword`** — keychain reads — immediately before the
+`FatalError.CodeSign` path we already fixed. `-[LockViewController loadView]` is where
+"Starting MoneyMoney…" is set, so the splash is simply what is on screen while that runs.
+
+A probe settles it. `//src/darwin/probes:keychain-probe` asks `SecItemCopyMatching` for a service
+name that cannot exist, requests no data, and prints only the OSStatus — **it talks to banks, so the
+probe never touches a real secret by construction.** It prints that it called and **never returns**:
+killed at 120 s, and again at 180 s.
+
+The reason is that **`/usr/sbin/securityd` aborts on startup**, with or without launchd.
+`scripts/core-guest-stack.py` on its core gives `__cxa_throw` → `failed_throw` → `_objc_terminate` →
+`abort`: an **uncaught C++ exception**. The throw is `MachPlusPlus::Error::throwMe(int)` from
+`Error::check(int)`, and walking the callers gives the chain
+`MachServer::MachServer` → `ReceivePort::ReceivePort(name, bootstrap)` → `Bootstrap::registerAs`.
+So securityd cannot register its service name. It fails identically with `DARLING_NO_LAUNCHD=0`, so
+"launchd is not running" is **not** the explanation — the registration itself fails, and Apple's
+securityd uses the old `bootstrap_register` rather than a launchd check-in.
+
+Two separable defects fall out, and #135 (`SecStaticCodeCheckValidity` never returning) is plausibly
+the same root cause, since trust evaluation also goes through securityd:
+
+1. securityd cannot start (task #137).
+2. The keychain client **blocks forever** where it should fail with `errSecNotAvailable`.
+
+Ops note: with launchd enabled the container's `/tmp` is wiped at boot, so a probe staged there
+vanishes; stage it somewhere else (`/probe`).
