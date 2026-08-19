@@ -11050,3 +11050,38 @@ which is what the note was reading. The reference shows one because its terminal
 
 What remains, measured and left for later: the buttons are 90×24 where macOS is 110×28, and the text
 is slightly smaller.
+
+## The testsuite is wired, and it found two gaps before running a single case
+
+`darling-testsuite` is pinned (`darlinghq/darling-testsuite` @ `82fcb690`, in `nix/submodules.json`
+beside the other 148), its twelve harness sources compile with `darwin_cc`, and one case —
+`test_NSString_stringByRemovingPercentEncoding` — builds as an ordinary guest binary and **exits 0 in
+the container**. For this harness that is the pass: assertions print only on failure and then abort,
+so a pass is silence and a zero. I read the failure path before trusting that.
+
+The value showed up immediately, and not from the case that ran. Two divergences turned up while
+merely getting things to compile:
+
+- **Our CoreFoundation does not provide `CGFloat`.** The smallest C case (`close(100)` must fail with
+  `EBADF`) will not compile: the harness header includes only `<CoreFoundation/CoreFoundation.h>`,
+  and on macOS that is where `CGFloat` comes from, via `CFCGTypes.h`. We have no such header. It is
+  not a one-line fix — our `CGBase.h` defines `CGFloat` unguarded, while macOS coordinates the two
+  definitions with a `CGFLOAT_DEFINED`-style guard. This blocks the 24 C cases; the 54 Objective-C
+  ones reach `CGFloat` through Foundation, which is why the first case wired here is one of those.
+- **`-[NSDictionary writeToURL:error:]` does not exist in our Foundation.** The second case tried
+  fails at compile time with "instance method not found", on an API documented since 10.13.
+
+Neither could have come from watching an application: nothing in Swift Publisher, MoneyMoney or
+iTerm2 happens to call them, so both would have sat there indefinitely. That is precisely the
+argument for the suite.
+
+Three things about the wiring cost a build each and are worth knowing. The pin's `include/` is a farm
+of **directory symlinks** into `lib/`, so the header roots point at the real directories — staging a
+directory symlink is a trap this repo has hit before. The header glob needs `**` or it silently
+misses `darling-testsuite/objc/NSCoder.h`. And a Foundation-using guest target needs the *whole*
+framework root set, not just `fw_Foundation`, or the headers cascade one missing framework per build.
+
+What remains for a nix check proper: build and run a list of cases and report pass/fail per case.
+`tests/cider-buck2-smoke.nix` already boots the container in a VM and is the harness to reuse, and
+the case list is mechanical to generate from the `add_executable` lines upstream. The blocker on
+breadth is the `CGFloat` gap, not the wiring.
