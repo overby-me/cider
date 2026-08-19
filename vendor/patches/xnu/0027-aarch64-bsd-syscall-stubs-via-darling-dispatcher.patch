@@ -1,0 +1,45 @@
+aarch64: route BSD syscall stubs through __darling_bsd_syscall, not `svc #0x80`.
+
+gen/bsdsyscalls/SYS.h DO_SYSCALL emitted the upstream `mov x16,#nr; svc #0x80` on arm64.
+On Linux arm64 that svc traps to the host kernel as `svc #0` with x8 unset and fails, so
+every guest BSD syscall (thread_selfid, mmap, stat, ...) returned garbage. The x86 DARLING
+paths already `call __darling_bsd_syscall`; do the same on arm64. Because `bl` clobbers
+x30/lr (unlike svc), the generated stubs get a self-contained frame. Non-DARLING keeps svc.
+--- a/gen/bsdsyscalls/SYS.h
++++ b/gen/bsdsyscalls/SYS.h
+@@ -475,6 +475,27 @@
+  * TBD
+  */
+ 
++#ifdef DARLING
++/* aarch64 darling: route the BSD syscall through the userspace emulation dispatcher
++ * instead of `svc #0x80`. On Linux arm64 `svc #0x80` traps to the host kernel as
++ * `svc #0` with x8 unset and fails; __darling_bsd_syscall reads the Darwin syscall
++ * number from x16, indexes ___bsd_syscall_table and calls the emulated sys_* handler,
++ * which returns a Linux-style result (negative -errno on failure) in x0. Unlike `svc`,
++ * `bl` clobbers x30/lr and the caller-saved temporaries, so bracket it with a frame.
++ * The generated bsd stubs are all `label: DO_SYSCALL; ret`, so a self-contained frame
++ * here keeps every stub correct without touching PSEUDO/SYSCALL_NONAME/__SYSCALL. */
++#define DO_SYSCALL(num, cerror)                 \
++	stp   x29, x30, [sp, #-16]!           %%\
++	mov   x29, sp                         %%\
++	mov   x16, #(num)                     %%\
++	bl    __darling_bsd_syscall           %%\
++	cmn   x0, #4095                       %%\
++	b.cc  2f                              %%\
++	neg   x0, x0                          %%\
++	bl    _##cerror                       %%\
++2:                                            %%\
++	ldp   x29, x30, [sp], #16
++#else
+ #define DO_SYSCALL(num, cerror)                 \
+ 	mov   x16, #(num)                     %%\
+ 	svc   #SWI_SYSCALL                    %%\
+@@ -485,6 +506,7 @@
+ 	POP_FRAME                             %%\
+ 	ARM64_STACK_EPILOG                    %%\
+ 2:
++#endif
+ 
+ #define MI_GET_ADDRESS(reg,var)  \
+    adrp	reg, var@page      %%\

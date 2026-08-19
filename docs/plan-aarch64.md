@@ -691,6 +691,47 @@ unset, so it fails. NEXT: fix the arm64 syscall-stub generation so `___thread_se
 through `__darling_bsd_syscall` (as x86 does) rather than emitting `svc #0x80`. That is the arm64
 guest syscall ABI -- likely the biggest remaining boot piece.
 
+**Update, fifteenth pass -- the arm64 guest syscall ABI: BSD stubs (0027) AND Mach traps (0028).**
+
+Two twin fixes, both the exact analog of what x86 darling already does, both landed as xnu patches
+(the working tree under vendor/src/xnu is a pin materialization -- `jj status` is clean after editing
+it -- so edits must be captured as patches to reach the nix build; buck2/fast-boot compiles the
+working tree directly).
+
+0027 (gen/bsdsyscalls/SYS.h): the arm64 `DO_SYSCALL` macro emitted `mov x16,#nr; svc #0x80`. Wrapped
+it in `#ifdef DARLING` -> `bl __darling_bsd_syscall` + a Linux-errno check (`cmn x0,#4095; b.cc ok;
+neg x0,x0; bl _cerror`). Unlike svc, `bl` clobbers x30/lr, so the stub gets a self-contained frame
+(`stp/ldp x29,x30`). One edit fixes all 490 generated BSD stubs (they are all clean `label:
+DO_SYSCALL; ret`). Verified in the built dylib: `___thread_selfid` disassembles to exactly the
+intended sequence and `__darling_bsd_syscall` resolves (local `t`). This got the guest PAST the
+thread_selfid brk.
+
+A scare that was actually progress: rebuilding dyld with 0027 grew it +240 KB and it began aborting
+early (`dyld: mkstringf, out of memory` / abort_with_payload). I first read this as a regression and
+proved it by building a raw-svc dyld + fixed dylib -- which faulted at the OLD thread_selfid brk,
+and the fault PC landed squarely inside dyld's mapping. That was the tell: dyld calls its OWN
+statically-linked thread_selfid, so the fixed dyld is STRICTLY better (past thread_selfid); the +240
+KB is just dyld now properly linking the bsd dispatcher so its static syscalls work. The mkstringf
+OOM was the NEXT obstacle, not a regression.
+
+That OOM was Mach traps. `_simple_salloc` (dyld's crash-safe allocator behind mkstringf) gets memory
+via `vm_allocate`, a MACH TRAP -- and the arm64 `kernel_trap` macro (osfmk/mach/arm/syscall_sw.h)
+still emitted raw `svc #0x80` (strace showed `syscall_0x<garbage> = ENOSYS`, x8 unset). 0028 does the
+same treatment: `#ifdef DARLING` -> `bl __darling_mach_syscall` + frame. `__darling_mach_syscall`
+ALREADY had a correct arm64 implementation (negates the trap number, indexes ___mach_syscall_table,
+blr) -- only the stubs needed to call it. With 0028 the boot leaps forward: dyld allocates fine, maps
+vchroot, and reaches DEPENDENCY LOADING.
+
+Current frontier (the fast loop, ~2 min/cycle, confirmed each step): dyld now fails loading vchroot's
+first dependency `/usr/lib/libSystem.B.dylib`. Two collected reasons: `mremap_encrypted() => -1,
+errno=78 (ENOSYS)` -- dyld (ImageLoaderMachOCompressed.cpp:2144) thinks a segment is FairPlay-
+encrypted (cryptid != 0) and calls a syscall the emulation does not implement -- and a path search
+that stats `/usr/lib`, `/usr/local/lib`, `$HOME/lib` (DYLD_FALLBACK_LIBRARY_PATH) all ENOENT. NEXT:
+figure out why libSystem is seen as encrypted (build cryptid, or an arm64 load-command misparse) and
+why the guest `/usr/lib` -> prefix mapping is not resolving for the loader's stat probes. Note: errno
+translation works (Linux ENOSYS 38 -> Darwin ENOSYS 78 is correct), so the emulation plumbing is
+sound; this is a dyld-loader / prefix-mapping layer.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
