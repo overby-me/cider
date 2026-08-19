@@ -1,0 +1,580 @@
+The guest emulation conversion layer gains its arm64 forms (aarch64 port, tasks A8, D4)
+
+The arch-guarded half of darling PR 1753`s xnu emulation delta: the tid-keyed TSD table
+(tls.c/.h, the D4 mechanism), the signal-exception conversion (sigexc.c), the arm64 Linux
+stat layout (stat/common.c/.h -- arm64 has no struct stat64 and a different asm-generic
+field order), the sigaction conversion, the fast syscall path gate (base.h), and the
+aarch64 O_DIRECTORY/O_NOFOLLOW/O_LARGEFILE values (open.h -- aarch64 overrides them in
+asm/fcntl.h). Every hunk is #if/#elif __aarch64__ guarded, so x86 preprocessing is
+unchanged. The PR`s new-syscall and behavioral changes (mremap_encrypted, sysctl_machdep,
+the network and bsdthread pieces) are deliberately excluded: they alter the frozen x86
+build and add files the generated header globs do not know.
+
+diff --git a/darling/src/libsystem_kernel/emulation/include/common/base.h b/darling/src/libsystem_kernel/emulation/include/common/base.h
+index 207dae6..b3e7591 100644
+--- a/darling/src/libsystem_kernel/emulation/include/common/base.h
++++ b/darling/src/libsystem_kernel/emulation/include/common/base.h
+@@ -34,7 +34,7 @@ int __linux_syscall(int nr, ...);
+ 
+ #endif /* BUILDING_BASE_C */
+ 
+-#ifdef __x86_64__
++#if defined(__x86_64__) || defined(__aarch64__)
+ #	define LL_ARG(x) (x)
+ #else
+ #	define LL_ARG(x) ((union { long long ll; long l[2]; }){ .ll = x }).l[0], \
+diff --git a/darling/src/libsystem_kernel/emulation/include/conversion/fcntl/open.h b/darling/src/libsystem_kernel/emulation/include/conversion/fcntl/open.h
+index 61fd673..adc53c1 100644
+--- a/darling/src/libsystem_kernel/emulation/include/conversion/fcntl/open.h
++++ b/darling/src/libsystem_kernel/emulation/include/conversion/fcntl/open.h
+@@ -13,9 +13,19 @@
+ #define LINUX_O_SYNC 04010000
+ #define LINUX_O_ASYNC 020000
+ #define LINUX_O_CLOEXEC 02000000
+-#define LINUX_O_LARGEFILE 0100000
+-#define LINUX_O_NOFOLLOW 0400000
+-#define LINUX_O_DIRECTORY 0200000
++// O_DIRECTORY/O_NOFOLLOW/O_LARGEFILE differ between x86_64 and aarch64 in the
++// Linux kernel uapi headers. aarch64 overrides them in <asm/fcntl.h> while
++// x86_64 inherits asm-generic values. Get this wrong and open(path, O_DIRECTORY)
++// becomes open(path, O_DIRECT) on aarch64 → EINVAL on regular directories.
++#if defined(__aarch64__) || defined(__arm64__)
++#  define LINUX_O_DIRECTORY 040000  /* aarch64: 0x4000 */
++#  define LINUX_O_NOFOLLOW 0100000  /* aarch64: 0x8000 */
++#  define LINUX_O_LARGEFILE 0400000 /* aarch64: 0x20000 */
++#else
++#  define LINUX_O_LARGEFILE 0100000
++#  define LINUX_O_NOFOLLOW 0400000
++#  define LINUX_O_DIRECTORY 0200000
++#endif
+ 
+ #define BSD_O_RDONLY 0
+ #define BSD_O_WRONLY 1
+diff --git a/darling/src/libsystem_kernel/emulation/include/conversion/signal/sigaction.h b/darling/src/libsystem_kernel/emulation/include/conversion/signal/sigaction.h
+index fcba08d..e164580 100644
+--- a/darling/src/libsystem_kernel/emulation/include/conversion/signal/sigaction.h
++++ b/darling/src/libsystem_kernel/emulation/include/conversion/signal/sigaction.h
+@@ -101,7 +101,7 @@ struct linux_sigaction
+ 	linux_sigset_t sa_mask;
+ };
+ 
+-#ifdef __x86_64__
++#if defined(__x86_64__)
+ typedef struct _fpstate {
+         unsigned short cwd, swd, ftw, fop;
+         unsigned long long rip, rdp;
+@@ -123,7 +123,7 @@ struct linux_gregset
+ 	long long err, trapno, oldmask, cr2;
+ };
+ 
+-#else // now the i386 version
++#elif defined(__i386__)
+ 
+ typedef struct _fpstate {
+         unsigned long cw, sw, tag, ipoff, cssel, dataoff, datasel;
+@@ -150,16 +150,51 @@ struct linux_gregset
+ 	int trapno, err, eip, cs, efl, uesp;
+ 	int ss;
+ };
++
++#elif defined(__aarch64__) || defined(__arm64__)
++
++// ARM64 Linux FPSIMD context header
++struct linux_aarch64_ctx {
++	unsigned int magic;
++	unsigned int size;
++};
++
++// ARM64 Linux FPSIMD state (embedded in sigcontext.__reserved)
++struct linux_fpsimd_context {
++	struct linux_aarch64_ctx head;
++	unsigned int fpsr;
++	unsigned int fpcr;
++	__uint128_t vregs[32];
++};
++
++typedef struct linux_fpsimd_context *linux_fpregset_t;
++
++// ARM64 Linux general-purpose registers (matches sigcontext layout)
++struct linux_gregset
++{
++	unsigned long long regs[31]; // x0-x30
++	unsigned long long sp;
++	unsigned long long pc;
++	unsigned long long pstate;
++	unsigned long long fault_address;
++};
++
+ #endif
+ 
+ struct linux_mcontext
+ {
++#if defined(__aarch64__) || defined(__arm64__)
++	struct linux_gregset gregs;
++	// On ARM64 Linux, fpsimd is in __reserved area of sigcontext
++	unsigned char __reserved[4096] __attribute__((__aligned__(16)));
++#else
+ 	struct linux_gregset gregs;
+ 	linux_fpregset_t fpregs;
+ #ifdef __x86_64__
+ 	unsigned long long __reserved[8];
+ #else
+ 	unsigned long oldmask, cr2;
++#endif
+ #endif
+ 	// +reserved
+ };
+@@ -184,12 +219,16 @@ struct bsd_exception_state
+ 
+ struct bsd_thread_state
+ {
+-#ifdef __x86_64__
++#if defined(__x86_64__)
+ 	long long rax, rbx, rcx, rdx, rdi, rsi, rbp, rsp, r8, r9, r10;
+ 	long long r11, r12, r13, r14, r15, rip, rflags, cs, fs, gs;
+-#else
++#elif defined(__i386__)
+ 	int eax, ebx, ecx, edx, edi, esi, ebp, esp, ss, eflags;
+ 	int eip, cs, ds, es, fs, gs;
++#elif defined(__aarch64__) || defined(__arm64__)
++	unsigned long long x[29];
++	unsigned long long fp, lr, sp, pc;
++	unsigned int cpsr;
+ #endif
+ };
+ 
+diff --git a/darling/src/libsystem_kernel/emulation/include/conversion/stat/common.h b/darling/src/libsystem_kernel/emulation/include/conversion/stat/common.h
+index e79d496..9e85cc8 100644
+--- a/darling/src/libsystem_kernel/emulation/include/conversion/stat/common.h
++++ b/darling/src/libsystem_kernel/emulation/include/conversion/stat/common.h
+@@ -42,6 +42,47 @@ struct linux_stat {
+ 	unsigned long long      st_ino;
+ };
+ 
++#elif defined(__aarch64__) || defined(__arm64__)
++
++/* Linux ARM64 follows the generic ABI; layout is different from x86_64:
++ *  - st_mode/uid/gid come right after dev/ino (no extra st_nlink upfront)
++ *  - st_blksize is `int` not `long`
++ *  - field order matches asm-generic/stat.h
++ */
++typedef unsigned long long __kernel_ulong_t;
++typedef long long __kernel_long_t;
++
++#ifdef st_atime
++#	undef st_atime
++#	undef st_mtime
++#	undef st_ctime
++#	undef __unused
++#endif
++
++struct linux_stat {
++	__kernel_ulong_t  st_dev;          /* 0 */
++	__kernel_ulong_t  st_ino;          /* 8 */
++	unsigned int      st_mode;         /* 16 */
++	unsigned int      st_nlink;        /* 20 */
++	unsigned int      st_uid;          /* 24 */
++	unsigned int      st_gid;          /* 28 */
++	__kernel_ulong_t  st_rdev;         /* 32 */
++	__kernel_ulong_t  __pad1;          /* 40 */
++	__kernel_long_t   st_size;         /* 48 */
++	int               st_blksize;      /* 56 */
++	int               __pad2;          /* 60 */
++	__kernel_long_t   st_blocks;       /* 64 */
++
++	__kernel_ulong_t  st_atime;        /* 72 */
++	__kernel_ulong_t  st_atime_nsec;   /* 80 */
++	__kernel_ulong_t  st_mtime;        /* 88 */
++	__kernel_ulong_t  st_mtime_nsec;   /* 96 */
++	__kernel_ulong_t  st_ctime;        /* 104 */
++	__kernel_ulong_t  st_ctime_nsec;   /* 112 */
++	unsigned int      __unused4;       /* 120 */
++	unsigned int      __unused5;       /* 124 */
++};
++
+ #else
+ 
+ typedef unsigned long long __kernel_ulong_t;
+@@ -142,10 +183,16 @@ struct linux_statfs64
+ };
+ 
+ struct stat;
++#if !defined(__aarch64__) && !defined(__arm64__)
+ struct stat64;
++#endif
+ 
+ void stat_linux_to_bsd(const struct linux_stat* lstat, struct stat* stat);
++#if defined(__aarch64__) || defined(__arm64__)
++void stat_linux_to_bsd64(const struct linux_stat* lstat, struct stat* stat);
++#else
+ void stat_linux_to_bsd64(const struct linux_stat* lstat, struct stat64* stat);
++#endif
+ void statfs_linux_to_bsd(const struct linux_statfs64* lstat, struct bsd_statfs* stat);
+ void statfs_linux_to_bsd64(const struct linux_statfs64* lstat, struct bsd_statfs64* stat);
+ 
+diff --git a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/machdep/impl/tls.h b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/machdep/impl/tls.h
+index b9ab3ac..df020b9 100644
+--- a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/machdep/impl/tls.h
++++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/machdep/impl/tls.h
+@@ -5,4 +5,8 @@
+ 
+ void sys_thread_set_tsd_base(void* ptr, int unk);
+ 
++#if defined(__aarch64__)
++void* sys_thread_get_tsd_base(void);
++#endif
++
+ #endif // LINUX_TLS_H
+diff --git a/darling/src/libsystem_kernel/emulation/src/conversion/signal/sigaction.c b/darling/src/libsystem_kernel/emulation/src/conversion/signal/sigaction.c
+index bb30b3f..6311dcf 100644
+--- a/darling/src/libsystem_kernel/emulation/src/conversion/signal/sigaction.c
++++ b/darling/src/libsystem_kernel/emulation/src/conversion/signal/sigaction.c
+@@ -90,6 +90,20 @@ static void ucontext_linux_to_bsd(const struct linux_ucontext* lc, struct bsd_uc
+ 	bc->uc_stack.ss_size = lc->uc_stack.ss_size;
+ 	bc->uc_stack.ss_sp = lc->uc_stack.ss_sp;
+ 	
++#if defined(__aarch64__) || defined(__arm64__)
++	bm->es.trapno = 0;
++	bm->es.cpu = 0;
++	bm->es.err = 0;
++	bm->es.faultvaddr = lc->uc_mcontext.gregs.fault_address;
++
++	for (int i = 0; i < 29; i++)
++		bm->ss.x[i] = lc->uc_mcontext.gregs.regs[i];
++	bm->ss.fp = lc->uc_mcontext.gregs.regs[29];
++	bm->ss.lr = lc->uc_mcontext.gregs.regs[30];
++	bm->ss.sp = lc->uc_mcontext.gregs.sp;
++	bm->ss.pc = lc->uc_mcontext.gregs.pc;
++	bm->ss.cpsr = (unsigned int)lc->uc_mcontext.gregs.pstate;
++#else
+ 	bm->es.trapno = lc->uc_mcontext.gregs.trapno;
+ 	bm->es.cpu = 0;
+ 	bm->es.err = lc->uc_mcontext.gregs.err;
+@@ -98,9 +112,9 @@ static void ucontext_linux_to_bsd(const struct linux_ucontext* lc, struct bsd_uc
+ #else
+ 	bm->es.faultvaddr = lc->uc_mcontext.gregs.eip;
+ #endif
+-	
++
+ #define copyreg(__name) bm->ss.__name = lc->uc_mcontext.gregs.__name
+-	
++
+ #ifdef __x86_64__
+ 	copyreg(rax); copyreg(rbx); copyreg(rcx); copyreg(rdx); copyreg(rdi); copyreg(rsi);
+ 	copyreg(rbp); copyreg(rsp); copyreg(r8); copyreg(r9); copyreg(r10);
+@@ -114,15 +128,23 @@ static void ucontext_linux_to_bsd(const struct linux_ucontext* lc, struct bsd_uc
+ 	copyreg(eip); copyreg(cs); copyreg(ds); copyreg(es); copyreg(fs); copyreg(gs);
+ 	bm->ss.eflags = lc->uc_mcontext.gregs.efl;
+ 	bm->ss.ss = 0;
+-#else
+-#	warning Missing code for current arch
+ #endif
+-	
++#endif /* __aarch64__ || __arm64__ */
++
+ #undef copyreg
+ }
+ 
+ static void mcontext_bsd_to_linux(const struct bsd_mcontext* bm, struct linux_mcontext* lm)
+ {
++#if defined(__aarch64__) || defined(__arm64__)
++	for (int i = 0; i < 29; i++)
++		lm->gregs.regs[i] = bm->ss.x[i];
++	lm->gregs.regs[29] = bm->ss.fp;
++	lm->gregs.regs[30] = bm->ss.lr;
++	lm->gregs.sp = bm->ss.sp;
++	lm->gregs.pc = bm->ss.pc;
++	lm->gregs.pstate = bm->ss.cpsr;
++#else
+ #define copyreg(__name) lm->gregs.__name = bm->ss.__name
+ 
+ #ifdef __x86_64__
+@@ -136,8 +158,7 @@ static void mcontext_bsd_to_linux(const struct bsd_mcontext* bm, struct linux_mc
+ 	copyreg(ebp); copyreg(esp);
+ 	copyreg(eip); copyreg(cs); copyreg(ds); copyreg(es); copyreg(fs); copyreg(gs);
+ 	lm->gregs.efl = bm->ss.eflags;
+-#else
+-#	warning Missing code for current arch
+ #endif
++#endif /* __aarch64__ || __arm64__ */
+ 
+ }
+diff --git a/darling/src/libsystem_kernel/emulation/src/conversion/stat/common.c b/darling/src/libsystem_kernel/emulation/src/conversion/stat/common.c
+index 4d1f437..ad1fada 100644
+--- a/darling/src/libsystem_kernel/emulation/src/conversion/stat/common.c
++++ b/darling/src/libsystem_kernel/emulation/src/conversion/stat/common.c
+@@ -1,5 +1,8 @@
+ // This is needed so stat is not stat64
++// On ARM64, only 64-bit inodes are available, so this is not needed/allowed
++#if !defined(__aarch64__) && !defined(__arm64__)
+ #define _DARWIN_NO_64_BIT_INODE
++#endif
+ 
+ // NOTE: in this case, platform-include/sys/stat.h is used
+ #include <sys/stat.h>
+@@ -29,7 +32,12 @@ void stat_linux_to_bsd(const struct linux_stat* lstat, struct stat* stat)
+ 	stat->st_flags = 0;
+ }
+ 
++// On ARM64, stat64 is the same as stat (only 64-bit inodes exist)
++#if defined(__aarch64__) || defined(__arm64__)
++void stat_linux_to_bsd64(const struct linux_stat* lstat, struct stat* stat)
++#else
+ void stat_linux_to_bsd64(const struct linux_stat* lstat, struct stat64* stat)
++#endif
+ {
+ 	stat->st_dev = lstat->st_dev;
+ 	stat->st_mode = lstat->st_mode;
+diff --git a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+index 206e92e..4feb4f2 100644
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+@@ -56,6 +56,13 @@ static void mcontext_to_thread_state(const struct linux_gregset* regs, x86_threa
+ static void mcontext_to_float_state(const linux_fpregset_t fx, x86_float_state32_t* s);
+ static void thread_state_to_mcontext(const x86_thread_state32_t* s, struct linux_gregset* regs);
+ static void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx);
++#elif defined(__aarch64__) || defined(__arm64__)
++#include <mach/arm/thread_status.h>
++typedef struct { unsigned int fpsr; unsigned int fpcr; __uint128_t vregs[32]; } arm_neon_state64_t_linux;
++static void mcontext_to_thread_state(const struct linux_gregset* regs, arm_thread_state64_t* s);
++static void mcontext_to_float_state(const unsigned char* reserved, arm_neon_state64_t_linux* s);
++static void thread_state_to_mcontext(const arm_thread_state64_t* s, struct linux_gregset* regs);
++static void float_state_to_mcontext(const arm_neon_state64_t_linux* s, unsigned char* reserved);
+ #endif
+ 
+ static void state_from_kernel(struct linux_ucontext* ctxt, const void* tstate, const void* fstate);
+@@ -162,6 +169,9 @@ void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext
+ #elif defined(__i386__)
+ 	x86_thread_state32_t tstate;
+ 	x86_float_state32_t fstate;
++#elif defined(__aarch64__) || defined(__arm64__)
++	arm_thread_state64_t tstate;
++	arm_neon_state64_t_linux fstate;
+ #endif
+ 
+ 	kern_printf("sigexc: sigrt_handler SUSPEND\n");
+@@ -248,6 +258,9 @@ static void state_to_kernel(struct linux_ucontext* ctxt, void* tstate, void* fst
+ #elif defined(__i386__)
+ 	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, (x86_thread_state32_t*) tstate);
+ 	mcontext_to_float_state(ctxt->uc_mcontext.fpregs, (x86_float_state32_t*) fstate);
++#elif defined(__aarch64__) || defined(__arm64__)
++	mcontext_to_thread_state(&ctxt->uc_mcontext.gregs, (arm_thread_state64_t*) tstate);
++	mcontext_to_float_state(ctxt->uc_mcontext.__reserved, (arm_neon_state64_t_linux*) fstate);
+ #endif
+ 
+ }
+@@ -264,6 +277,9 @@ static void state_from_kernel(struct linux_ucontext* ctxt, const void* tstate, c
+ #elif defined(__i386__)
+ 	thread_state_to_mcontext((const x86_thread_state32_t*) tstate, &ctxt->uc_mcontext.gregs);
+ 	float_state_to_mcontext((const x86_float_state32_t*) fstate, ctxt->uc_mcontext.fpregs);
++#elif defined(__aarch64__) || defined(__arm64__)
++	thread_state_to_mcontext((const arm_thread_state64_t*) tstate, &ctxt->uc_mcontext.gregs);
++	float_state_to_mcontext((const arm_neon_state64_t_linux*) fstate, ctxt->uc_mcontext.__reserved);
+ #endif
+ }
+ 
+@@ -301,6 +317,9 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
+ #elif defined(__i386__)
+ 	x86_thread_state32_t tstate;
+ 	x86_float_state32_t fstate;
++#elif defined(__aarch64__) || defined(__arm64__)
++	arm_thread_state64_t tstate;
++	arm_neon_state64_t_linux fstate;
+ #endif
+ 
+ 	state_to_kernel(ctxt, &tstate, &fstate);
+@@ -575,6 +594,80 @@ void float_state_to_mcontext(const x86_float_state32_t* s, linux_fpregset_t fx)
+ }
+ #endif
+ 
++#if defined(__aarch64__) || defined(__arm64__)
++
++#define FPSIMD_MAGIC 0x46508001
++
++void mcontext_to_thread_state(const struct linux_gregset* regs, arm_thread_state64_t* s)
++{
++	for (int i = 0; i < 29; i++)
++		s->__x[i] = regs->regs[i];
++	s->__fp = regs->regs[29];
++	s->__lr = regs->regs[30];
++	s->__sp = regs->sp;
++	s->__pc = regs->pc;
++	s->__cpsr = (uint32_t)regs->pstate;
++}
++
++void thread_state_to_mcontext(const arm_thread_state64_t* s, struct linux_gregset* regs)
++{
++	for (int i = 0; i < 29; i++)
++		regs->regs[i] = s->__x[i];
++	regs->regs[29] = s->__fp;
++	regs->regs[30] = s->__lr;
++	regs->sp = s->__sp;
++	regs->pc = s->__pc;
++	regs->pstate = s->__cpsr;
++}
++
++/* Bound for scanning the __reserved area; arbitrarily malformed `size`
++ * fields must not cause us to walk off the end. Linux fixed __reserved at
++ * 4096 bytes for ARM64. */
++#define LINUX_MCONTEXT_RESERVED_SIZE 4096
++
++void mcontext_to_float_state(const unsigned char* reserved, arm_neon_state64_t_linux* s)
++{
++	const unsigned char* end = reserved + LINUX_MCONTEXT_RESERVED_SIZE;
++	const struct linux_aarch64_ctx* ctx = (const struct linux_aarch64_ctx*)reserved;
++	while ((const unsigned char*)ctx + sizeof(*ctx) <= end && ctx->magic != 0) {
++		if (ctx->magic == FPSIMD_MAGIC) {
++			const struct linux_fpsimd_context* fpsimd = (const struct linux_fpsimd_context*)ctx;
++			if ((const unsigned char*)fpsimd + sizeof(*fpsimd) > end)
++				break;
++			s->fpsr = fpsimd->fpsr;
++			s->fpcr = fpsimd->fpcr;
++			memcpy(s->vregs, fpsimd->vregs, sizeof(s->vregs));
++			return;
++		}
++		if (ctx->size == 0)
++			break;
++		ctx = (const struct linux_aarch64_ctx*)((const unsigned char*)ctx + ctx->size);
++	}
++	memset(s, 0, sizeof(*s));
++}
++
++void float_state_to_mcontext(const arm_neon_state64_t_linux* s, unsigned char* reserved)
++{
++	unsigned char* end = reserved + LINUX_MCONTEXT_RESERVED_SIZE;
++	struct linux_aarch64_ctx* ctx = (struct linux_aarch64_ctx*)reserved;
++	while ((unsigned char*)ctx + sizeof(*ctx) <= end && ctx->magic != 0) {
++		if (ctx->magic == FPSIMD_MAGIC) {
++			struct linux_fpsimd_context* fpsimd = (struct linux_fpsimd_context*)ctx;
++			if ((unsigned char*)fpsimd + sizeof(*fpsimd) > end)
++				return;
++			fpsimd->fpsr = s->fpsr;
++			fpsimd->fpcr = s->fpcr;
++			memcpy(fpsimd->vregs, s->vregs, sizeof(s->vregs));
++			return;
++		}
++		if (ctx->size == 0)
++			return;
++		ctx = (struct linux_aarch64_ctx*)((unsigned char*)ctx + ctx->size);
++	}
++}
++
++#endif /* __aarch64__ || __arm64__ */
++
+ void sigexc_thread_setup(void)
+ {
+ 	struct bsd_stack newstack = {
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/impl/tls.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/impl/tls.c
+index 1e640e3..d63533b 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/impl/tls.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/impl/tls.c
+@@ -4,6 +4,101 @@
+ 
+ #define ARCH_SET_GS	0x1001
+ 
++#if defined(__aarch64__)
++// On ARM64 Linux, there's only one user TLS register (TPIDR_EL0), already
++// used by Linux pthreads. We cannot use a __thread variable here because:
++//   1. tls.c.o gets linked into dyld (the loader executable, via libsystem_kernel_static64.a)
++//   2. The dyld executable bootstraps before TLV support, so __thread variables
++//      compiled for Darwin emit unresolved __tlv_bootstrap references at link time.
++// Instead, we use a small open-addressed hash table keyed by Linux tid (from gettid).
++// This is slower than a register but works correctly without TLV.
++
++#define TSD_TABLE_SIZE 1024  /* power of two; > expected max thread count */
++
++struct tsd_entry {
++	long tid;       /* Linux tid; 0 means empty slot */
++	void* base;
++};
++
++static struct tsd_entry tsd_table[TSD_TABLE_SIZE];
++
++/* Fallback zero TSD page returned before pthread/dyld has set up a real one.
++ * Some early-init code in dyld (e.g. __os_once) dereferences offsets off the
++ * TSD base before _pthread_set_self_dyld() has called us. Returning NULL there
++ * causes a NULL-deref SIGSEGV; returning a zero page makes those reads return 0
++ * and lets initialization proceed until pthread installs the real TSD. The
++ * page is intentionally 4K-aligned and big enough for the largest TSD index. */
++static void* __attribute__((aligned(4096))) tsd_zero_page[4096 / sizeof(void*)];
++
++static inline unsigned int tsd_hash(long tid)
++{
++	/* Simple multiplicative hash; collisions resolved by linear probing. */
++	return (unsigned int)((tid * 2654435761u) & (TSD_TABLE_SIZE - 1));
++}
++
++/* Use the Linux thread pointer (TPIDR_EL0) as the thread identity. It's a
++ * unique address per pthread, readable without a syscall, and stable across
++ * the thread's lifetime. Using gettid() here would call __NR_gettid on every
++ * TSD access (~ tens of thousands per second), wasting CPU. */
++static inline long current_tid(void)
++{
++	return (long)__builtin_thread_pointer();
++}
++
++/* Single-entry cache. gettid() is a Linux syscall and we are called *very*
++ * frequently (every errno read, every pthread_self()), so an uncached path
++ * burns the process at ~100% CPU on a syscall trampoline. The cache is
++ * deliberately not __thread (we cannot rely on TLV in dyld) — it's a regular
++ * global. Concurrent readers/writers race harmlessly: a stale tid means we
++ * fall through to the slow path and refresh. */
++static volatile long  tsd_cache_tid;
++static void* volatile tsd_cache_base = (void*)0; /* unused before first set */
++
++__attribute__((visibility("default")))
++void* sys_thread_get_tsd_base(void)
++{
++	long tid = current_tid();
++	/* Fast path: hits when the same thread keeps calling us (common
++	 * during single-threaded dyld init and launchd setup). */
++	if (tid == tsd_cache_tid && tsd_cache_base != (void*)0)
++		return tsd_cache_base;
++
++	unsigned int i = tsd_hash(tid);
++	for (unsigned int step = 0; step < TSD_TABLE_SIZE; step++)
++	{
++		struct tsd_entry* e = &tsd_table[(i + step) & (TSD_TABLE_SIZE - 1)];
++		if (e->tid == tid) {
++			tsd_cache_tid = tid;
++			tsd_cache_base = e->base;
++			return e->base;
++		}
++		if (e->tid == 0)
++			break;
++	}
++	return tsd_zero_page;
++}
++
++static void tsd_set(long tid, void* base)
++{
++	unsigned int i = tsd_hash(tid);
++	for (unsigned int step = 0; step < TSD_TABLE_SIZE; step++)
++	{
++		struct tsd_entry* e = &tsd_table[(i + step) & (TSD_TABLE_SIZE - 1)];
++		if (e->tid == 0 || e->tid == tid)
++		{
++			e->base = base;
++			e->tid = tid;
++			/* Warm the fast path so the next get on this tid is O(1). */
++			tsd_cache_base = base;
++			tsd_cache_tid = tid;
++			return;
++		}
++	}
++	/* Table full; this would only happen with > 1024 concurrent threads.
++	 * Real Darwin TSD never spills, so behavior is undefined here. */
++}
++#endif
++
+ void sys_thread_set_tsd_base(void* ptr, int unk)
+ {
+ #ifdef __x86_64__
+@@ -39,5 +134,7 @@ void sys_thread_set_tsd_base(void* ptr, int unk)
+ 
+ 	entry_number = desc.entry_number;
+ 	__asm__ ("movl %0, %%fs" :: "r" (desc.entry_number*8 + 3));
++#elif defined(__aarch64__)
++	tsd_set(current_tid(), ptr);
+ #endif
+ }
