@@ -274,6 +274,31 @@ NSBitmapImageRepPropertyKey NSImageCurrentFrame = @"NSImageCurrentFrame";
                     NSZoneCalloc(NULL, _bytesPerRow * _pixelsHigh, 1);
     }
 
+    /* WHAT A FRESH BITMAP CONTAINS, AS A PROBE. An application that allocates a bitmap and draws
+     * only part of it leaves the rest at whatever the allocation gave, and the question for the
+     * inline image remainder is whether the grey there comes from such a bitmap or from the window
+     * underneath it. Zeroed is the correct default and is what macOS gives; setting
+     * CIDER_BITMAP_MAGENTA paints every fresh plane opaque magenta instead, so anything on screen
+     * that came from an unwritten part of a bitmap says so immediately. Small bitmaps only: painting
+     * every window sized surface as well is a lot of memory touched during startup and one run died
+     * in an unrelated guest RPC before it reached the image, which proves nothing either way. */
+    if (_freeWhenDone && _pixelsWide <= 400 && _pixelsHigh <= 400 &&
+        getenv("CIDER_BITMAP_MAGENTA") != NULL &&
+        getenv("CIDER_BITMAP_MAGENTA")[0] != (char) 0) {
+        for (i = 0; i < numberOfPlanes; i++) {
+            unsigned char *plane = _bitmapPlanes[i];
+            NSInteger total = _bytesPerRow * _pixelsHigh;
+            NSInteger b;
+
+            for (b = 0; b + 3 < total; b += 4) {
+                plane[b + 0] = 0xff;
+                plane[b + 1] = 0x00;
+                plane[b + 2] = 0xff;
+                plane[b + 3] = 0xff;
+            }
+        }
+    }
+
     return self;
 }
 
