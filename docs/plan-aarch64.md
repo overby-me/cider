@@ -877,6 +877,28 @@ container's shell launcher, so this is likely a Mach-IPC/handshake or a specific
 
 Committed this pass: xnu 0029 rewritten (force non-FIXED mappings low).
 
+**Update, twenty-first pass -- the boot reaches shellspawn; next wall is the post-fork checkin RPC.**
+
+With objc fixed the boot runs shellspawn (the container's shell launcher) and hangs. Probed the live
+process tree: `cider` (launcher) is in its proxy ppoll, `ciderd` idle in epoll_wait, and the guest
+`mldr`/shellspawn is blocked in `recvmsg` (syscall 212, wchan __skb_wait_for_more_packets) on fd 512
+-- the RPC socket, i.e. a Mach/darlingserver RPC to the daemon, NOT the command socket. Decisive
+socket evidence (`ss -xp`): the launcher already delivered the shell command --
+`/var/run/shellspawn.sock` is ESTAB with Recv-Q = 8890 bytes queued and UNREAD on the guest's fd 9.
+So shellspawn accepted the launcher's connection and forked to run the shell, but the fork's child is
+stuck in an RPC before it ever reads the command.
+
+fork.c pins it: sys_fork() does clone(SIGCHLD) on aarch64 (no SYS_fork), then the child closes the
+inherited RPC socket, makes a fresh per-thread socket, and calls `dserver_rpc_checkin(is_fork=true,
+..., newReadFd)` (fork.c:59) -- a blocking RPC. The child blocks in that checkin's recvmsg and the
+daemon never logs a matching task_create/checkin, so the CHECKIN either is not reaching ciderd or its
+handler is not replying. The emulation RPC uses the compile-time-correct arch (arm64), so this is not
+the mldr-rpc.rs arch bug from pass 17; it is the darlingserver fork-checkin path (new socket / lifetime
+pipe / child task registration) on arm64. NEXT: boot with CIDER_XNU_LOG=debug to see whether ciderd
+receives the fork CHECKIN, then read ciderd's checkin handler (src/linux/server) for the is_fork path
+and the per-thread-socket rendezvous. This is a HOST-side (Rust daemon) fork/IPC issue, the second
+after the pass-17 arch fix.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
