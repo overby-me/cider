@@ -24,31 +24,41 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #include <CoreGraphics/CGBase.h>
 
+#if !defined(CGPOINT_DEFINED)
+#define CGPOINT_DEFINED 1
 struct CGPoint {
     CGFloat x;
     CGFloat y;
 };
 typedef struct CGPoint CGPoint;
+#endif
 
+#if !defined(CGSIZE_DEFINED)
+#define CGSIZE_DEFINED 1
 struct CGSize {
     CGFloat width;
     CGFloat height;
 };
 typedef struct CGSize CGSize;
+#endif
 
+#if !defined(CGVECTOR_DEFINED)
 #define CGVECTOR_DEFINED 1
-
 struct CGVector {
     CGFloat dx;
     CGFloat dy;
 };
 typedef struct CGVector CGVector;
+#endif
 
+#if !defined(CGRECT_DEFINED)
+#define CGRECT_DEFINED 1
 struct CGRect {
     CGPoint origin;
     CGSize size;
 };
 typedef struct CGRect CGRect;
+#endif
 
 typedef CF_ENUM(uint32_t, CGRectEdge) {
     CGRectMinXEdge,

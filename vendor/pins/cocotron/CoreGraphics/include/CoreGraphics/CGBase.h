@@ -5,6 +5,10 @@
 
 // Moved over from our CoreFoundation
 
+/* GUARDED, because CoreFoundation defines these too, exactly as Apple does. Whichever header the
+ * translation unit sees first wins and the other stands down; without the guard a file that
+ * includes both gets a duplicate typedef. */
+#if !defined(CGFLOAT_DEFINED)
 #ifdef __LP64__
 typedef double CGFloat;
 #define CGFLOAT_MIN DBL_MIN
@@ -20,5 +24,6 @@ typedef float CGFloat;
 #endif
 
 #define CGFLOAT_DEFINED 1
+#endif /* CGFLOAT_DEFINED */
 
 #endif
