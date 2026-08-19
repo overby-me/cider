@@ -1088,7 +1088,16 @@ fn wants_alpha(st: &WindowState) -> bool {
     // AND A PANEL, which an alert is. Its style mask carries neither the titled bit nor a level,
     // so it fell through to the opaque clear colour and its rounded corners were filled with that
     // grey instead of being left empty.
-    st.level > 0 || st.style_mask & 0x1 != 0 || st.is_panel
+    // AND AN OFFSCREEN DRAWING SURFACE, which is not a window on the screen at all.
+    //
+    // NSCachedImageRep backs an image with a real NSWindow and marks it NSAppKitPrivateWindow
+    // (0x8000000). Everything drawn into an NSImage through lockFocus lands in one of those, and
+    // whatever the application does not draw has to stay EMPTY, because the result is composited
+    // somewhere else. Clearing it to the opaque grey a visible window starts at made the untouched
+    // part of such an image an opaque light rectangle: iTerm2 allocates a 245x126 block for an
+    // inline image, draws a 240x120 picture into it, and the five by six pixel remainder arrived in
+    // the terminal as our own clear colour, which read for days like a compositing defect.
+    st.level > 0 || st.style_mask & 0x1 != 0 || st.is_panel || st.style_mask & 0x0800_0000 != 0
 }
 
 /// HOW WIDE THE SHADOW IS, in surface pixels around the window.
