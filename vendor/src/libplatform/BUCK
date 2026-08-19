@@ -186,7 +186,17 @@ cc_header_root(
 
 cc_objects(
     name = "platform_64bit_obj",
-    srcs = [
+    # The 64-bit machine layer, per arch (aarch64 port, task A10). The pin already ships the
+    # arm64 asm; darling PR 1753's libplatform CMakeLists picks exactly these five on arm64
+    # (no pfz/OSAtomic .S: arm64's atomics and PFZ paths are inline builtins, and there is one
+    # setjmp.S rather than the x86 _setjmp/_sigtramp split).
+    srcs = ([
+        "src/cachecontrol/arm64/cache.S",
+        "src/setjmp/arm64/setjmp.S",
+        "src/ucontext/arm64/_ctx_start.S",
+        "src/ucontext/arm64/getcontext.S",
+        "src/ucontext/arm64/_setcontext.S",
+    ] if host_info().arch.is_aarch64 else [
         "src/atomics/x86_64/OSAtomic.S",
         "src/atomics/x86_64/pfz.S",
         "src/cachecontrol/x86_64/cache.S",
@@ -196,7 +206,7 @@ cc_objects(
         "src/ucontext/x86_64/_ctx_start.S",
         "src/ucontext/x86_64/_setcontext.S",
         "src/ucontext/x86_64/getcontext.S",
-    ],
+    ]),
     compiler_flags = [
         "-DPRIVATE",
     ],
