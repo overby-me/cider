@@ -11758,3 +11758,28 @@ the exe and killed nothing; `sample-threads.sh` matched only the cmdline and sam
 shell*, whose command line quoted the script that mentions the app. Both need **both** signals: the
 exe says what a process *is* (no shell can be `mldr`), the cmdline says which prefix or app it
 belongs to.
+
+### It is `staticValidate`, and the app is not even hung
+
+The same instrument, one layer down. `CIDER_CSAPI` in `SecStaticCodeCheckValidityWithErrors`:
+
+```
+CIDER_CSAPI staticValidate call flags=0x0 req=no /Applications/MoneyMoney.app/Contents/MacOS/MoneyMoney
+                                                                              <- no back line, ever
+```
+
+with **zero** `CIDER_SECITEM` lines in the same run. So `SecStaticCode::staticValidate` is what
+MoneyMoney's background thread waits for, and the keychain is downstream of a step it never
+reaches.
+
+The host thread sample says the rest. The **main** thread is `state=R`, ticks 9 → 231 → 577 → 924
+over 75 s — about 14% of a core, which is the spinner and finally explains the CPU figure. A
+background thread sits at **zero ticks** parked in syscall 47, `recvmsg`, on the dserver socket:
+one RPC issued, no reply. That is a guest thread inside a blocking kernel call.
+
+`scripts/sample-threads.sh` is the instrument, and it needs no guest build at all — `/proc/<pid>/
+task/<tid>/{syscall,wchan,stat}` names the syscall every thread is parked in.
+
+**Do not read a black capture as a blank app.** The captures from that run are fully black because
+a nested compositor from the previous run was still up and `grim` shot the wrong one. The app was
+demonstrably alive: 956 spinner frames.
