@@ -1413,8 +1413,73 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
 
             double zoom = ftView != NULL ? *(double *) ((char *) ftView + 0xd8) : 0.0;
 
-            fprintf(stderr, "CIDER_GEOM   ftView=%p zoomAt0xd8=%g isnan=%d\n", ftView, zoom,
-                    (int) (zoom != zoom));
+            /* THE TWO FACTORS THAT PRODUCE THAT ZOOM. The application stores
+             * displayModeFactor times defaultZoom into the ftView, so printing both says which one
+             * is missing rather than leaving the product to be guessed at. Both are plain getters
+             * on the application side; a double comes back in xmm0, so an ordinary objc_msgSend
+             * cast is right and objc_msgSend_fpret is not. */
+            SEL dmfSel = sel_getUid("displayModeFactor");
+            double dmf = -1.0;
+
+            if ([self respondsToSelector: dmfSel]) {
+                double (*sendD)(id, SEL) = (double (*)(id, SEL)) objc_msgSend;
+
+                dmf = sendD(self, dmfSel);
+            }
+
+            /* OUR SIDE OF THE SAME QUESTION. defaultZoom is nothing but a user default read, a
+             * write when it reads zero, and a re-read, so if it answers zero the round trip
+             * through NSUserDefaults is what to look at, not the application. */
+            NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
+            id raw = [defs objectForKey: @"FTDefaultZoom"];
+
+            fprintf(stderr, "CIDER_GEOM   FTDefaultZoom object=%s value=%s floatForKey=%g\n",
+                    raw != nil ? object_getClassName(raw) : "nil",
+                    raw != nil ? [[raw description] UTF8String] : "-",
+                    (double) [defs floatForKey: @"FTDefaultZoom"]);
+
+            /* A DOUBLE, NOT A FLOAT, and the difference is not academic: defaultZoom converts its
+             * float default to double and returns THAT, so calling it through a float typed
+             * pointer reads the low half of a double. 0.75 as a double is 0x3FE8000000000000,
+             * whose low 32 bits are zero, so the probe reported exactly 0.0 and I read that as the
+             * application returning nothing. Match the real return type. */
+            /* WHAT THE DOCUMENT BROUGHT WITH IT. The zoom is written inside the block that
+             * restores the embedded view state, so an empty or missing persistence dictionary
+             * means that write never runs and the canvas scales by whatever the C++ view was
+             * constructed with. Printing the dictionary says whether the document is the reason. */
+            SEL docSel = sel_getUid("document");
+            id doc = (ownWC != nil && [ownWC respondsToSelector: docSel])
+                    ? [ownWC performSelector: docSel]
+                    : nil;
+            SEL descSel = sel_getUid("embeddedViewPersistenceDesc");
+            id desc = (doc != nil && [doc respondsToSelector: descSel])
+                    ? [doc performSelector: descSel]
+                    : nil;
+
+            fprintf(stderr, "CIDER_GEOM   document=%s persistence=%s count=%ld divider=%s\n",
+                    doc != nil ? object_getClassName(doc) : "nil",
+                    desc != nil ? object_getClassName(desc) : "nil",
+                    (desc != nil && [desc respondsToSelector: @selector(count)])
+                            ? (long) [desc count]
+                            : -1,
+                    (desc != nil && [desc respondsToSelector: @selector(objectForKey:)] &&
+                     [desc objectForKey: @"embdInspectorSplitterDividerPosition"] != nil)
+                            ? "yes"
+                            : "no");
+
+            Class env = objc_getClass("CCEnvironment");
+            SEL dzSel = sel_getUid("defaultZoom");
+            double dz = -1.0;
+
+            if (env != Nil && [env respondsToSelector: dzSel]) {
+                double (*sendF)(Class, SEL) = (double (*)(Class, SEL)) objc_msgSend;
+
+                dz = sendF(env, dzSel);
+            }
+            fprintf(stderr,
+                    "CIDER_GEOM   ftView=%p zoomAt0xd8=%g isnan=%d displayModeFactor=%g "
+                    "defaultZoom=%g product=%g\n",
+                    ftView, zoom, (int) (zoom != zoom), dmf, dz, dmf * dz);
             fprintf(stderr,
                     "CIDER_GEOM   ownWindowController=%s ownCurrentDesignElement=%p transform=%s "
                     "fitSizeMode=%ld\n",

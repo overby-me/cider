@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 // Original - Christopher Lloyd <cjwl@objc.net>
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSDisplay.h>
+#import <AppKit/NSGraphics.h>
 #import <AppKit/NSScreen.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,8 +124,37 @@ NSNotificationName const NSScreenColorSpaceDidChangeNotification = @"NSScreenCol
                                        NSStringFromRect(_visibleFrame)];
 }
 
+/*
+ * AN EMPTY DICTIONARY IS A WRONG ANSWER, not a missing one. Every key here is documented, and an
+ * application reads them with objectForKeyedSubscript: and sends the result a message: a nil value
+ * then answers zero without any error at all, so the caller scales by nothing and shows nothing.
+ *
+ * Swift Publisher builds its canvas that way. Its view constructor keeps a static
+ *
+ *     fk = [[[NSScreen mainScreen] deviceDescription][NSDeviceResolution] sizeValue].width
+ *
+ * and gives every canvas a zoom of fk / 72. With no NSDeviceResolution that is a zoom of ZERO, so
+ * the page collapsed to nothing and the geometry that divides by it produced nan by nan, which the
+ * application reported against its own canvas and which read for days like a drawing fault.
+ *
+ * NSDeviceResolution is in dots per inch, and a point IS a seventy-second of an inch, so a screen
+ * whose frame is already in points reports 72 times its backing scale. The other keys are what a
+ * screen device is: it is a screen, and it draws eight bits per sample of calibrated RGB, which is
+ * what every surface this backend allocates actually is. NSBitsPerSampleFromDepth and
+ * NSColorSpaceFromDepth would be the general way to say that, and neither is declared in these
+ * headers, so an undeclared call would have compiled as returning int and gone into the dictionary
+ * as a non object.
+ */
 - (NSDictionary<NSDeviceDescriptionKey, id> *) deviceDescription {
-    return @{};
+    CGFloat dpi = 72.0 * [self backingScaleFactor];
+
+    return @{
+        NSDeviceResolution : [NSValue valueWithSize: NSMakeSize(dpi, dpi)],
+        NSDeviceSize : [NSValue valueWithSize: _frame.size],
+        NSDeviceIsScreen : @"YES",
+        NSDeviceBitsPerSample : [NSNumber numberWithInt: 8],
+        NSDeviceColorSpaceName : NSCalibratedRGBColorSpace,
+    };
 }
 
 @end

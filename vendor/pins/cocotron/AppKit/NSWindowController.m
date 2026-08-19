@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSNibLoading.h>
 #import <AppKit/NSWindow.h>
 #import <AppKit/NSWindowController.h>
+#import <objc/message.h>
 #import <objc/runtime.h>
 #include <objc/runtime.h>
 #include <stdlib.h>
@@ -124,6 +125,26 @@ static const void *kCiderNibLoadedKey = &kCiderNibLoadedKey;
 - (NSWindow *) window {
     if (_window == nil && objc_getAssociatedObject(self, kCiderNibLoadedKey) == nil &&
         [self windowNibPath] != nil) {
+        /* WHAT THE CONTROLLER ALREADY HOLDS WHEN ITS NIB LOADS. A nib load runs awakeFromNib, and
+         * an application that fills the controller in BEFORE handing it to the document expects
+         * its own state to be there by then. Swift Publisher writes the canvas zoom only when its
+         * ftView is set, so if the nib loads first that write is skipped and the canvas scales by
+         * zero. Printing the pointer at this exact step is what separates the two orders. */
+        if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+            SEL ftSel = sel_getUid("ftView");
+            void *ft = NULL;
+
+            if ([self respondsToSelector: ftSel]) {
+                void *(*send)(id, SEL) = (void *(*)(id, SEL)) objc_msgSend;
+
+                ft = send(self, ftSel);
+            }
+            fprintf(stderr, "CIDER_WC %s nibLoadBegins ftView=%p document=%s\n",
+                    class_getName([self class]), ft,
+                    _document != nil ? object_getClassName(_document) : "nil");
+            fflush(stderr);
+        }
+
         CIDER_WC_STEP("windowWillLoad");
         [self windowWillLoad];
 

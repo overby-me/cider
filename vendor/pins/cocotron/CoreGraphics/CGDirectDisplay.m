@@ -24,6 +24,8 @@
 #import <IOKit/graphics/IOGraphicsLib.h>
 #import <IOKit/graphics/IOGraphicsTypes.h>
 #include <dlfcn.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 // not sure what type or value this has
 unsigned int kCGDisplayPixelHeight = kCGDisplayHeight;
@@ -458,6 +460,48 @@ io_service_t CGDisplayIOServicePort(CGDirectDisplayID displayID) {
     }
 
     IOObjectRelease(iter);
+
+    /* WHAT THE DISPLAY REGISTRY ACTUALLY HOLDS. An application that wants the physical size of the
+     * screen walks IODisplayConnect exactly as this function does and then reads
+     * DisplayHorizontalImageSize and DisplayVerticalImageSize out of the same dictionary, so a
+     * registry entry that exists but carries no size is worse for it than no entry at all: the
+     * nil case usually has a documented fallback and the zero case silently scales everything by
+     * nothing. Swift Publisher multiplies its default zoom by a factor derived from those two
+     * keys, so a missing pair gave it a zoom of ZERO and a canvas of nan by nan.
+     * CIDER_TRACE_DISPLAY. */
+    {
+        const char *watch = getenv("CIDER_TRACE_DISPLAY");
+
+        if (watch != NULL && watch[0] != (char) 0) {
+            CFDictionaryRef info = servicePort != 0
+                    ? IODisplayCreateInfoDictionary(servicePort, kIODisplayOnlyPreferredName)
+                    : NULL;
+            long h = -1, v = -1;
+            CFNumberRef hRef = info != NULL
+                    ? CFDictionaryGetValue(info, CFSTR("DisplayHorizontalImageSize"))
+                    : NULL;
+            CFNumberRef vRef = info != NULL
+                    ? CFDictionaryGetValue(info, CFSTR("DisplayVerticalImageSize"))
+                    : NULL;
+
+            if (hRef != NULL)
+                CFNumberGetValue(hRef, kCFNumberLongType, &h);
+            if (vRef != NULL)
+                CFNumberGetValue(vRef, kCFNumberLongType, &v);
+
+            fprintf(stderr,
+                    "CIDER_DISPLAY servicePort=%u keys=%ld hSize=%ld vSize=%ld vendor=%u model=%u\n",
+                    (unsigned) servicePort,
+                    info != NULL ? (long) CFDictionaryGetCount(info) : -1, h, v,
+                    (unsigned) CGDisplayVendorNumber(displayID),
+                    (unsigned) CGDisplayModelNumber(displayID));
+            fflush(stderr);
+
+            if (info != NULL)
+                CFRelease(info);
+        }
+    }
+
     return servicePort;
 }
 
