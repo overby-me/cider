@@ -851,6 +851,32 @@ catch a MAP_FIXED/hinted high reservation, and read the guest default malloc zon
 region base. If it is a MAP_FIXED-high zone reservation, extend 0029 to also low-place hinted/FIXED
 mappings whose hint has bit 47 set.
 
+**Update, twentieth pass -- the objc fault SOLVED: libmalloc's zone hint, and the boot reaches
+shellspawn.**
+
+Instrumented objc (setData + realizeClassWithoutSwift, via a file-scope C-linkage helper writing to
+fd 2) and both emulation mmap paths (sys_mmap, _kernelrpc_mach_vm_map_trap_impl). The logs were
+conclusive: objc's class_rw comes from objc-zalloc.mm's `::calloc`, and every zone region reservation
+went `mach_vm_allocate(ANYWHERE) -> _kernelrpc_mach_vm_map_trap_impl -> sys_mmap` with
+`start=0x1000, flags=ANON|PRIVATE, NO MAP_FIXED`. That 0x1000 is libmalloc's minimum-address hint
+(allocate anywhere >= a page); on aarch64 Linux the kernel ignores a hint that low and places the
+mapping TOPDOWN (bit 47 set). My earlier 0029 only overrode `start==0` and bit-47-high hints, so a
+low-but-bogus 0x1000 hint sailed through -> high region -> high class_rw -> FAST_DATA_MASK fault.
+
+Fix (0029 rewritten): force EVERY non-MAP_FIXED mapping into the low bump arena, overriding the hint
+outright -- a Darwin guest never wants a bit-47 address and a non-fixed hint carries no guarantee.
+MAP_FIXED (exact addresses the guest derived from prior low reservations, e.g. dyld segment maps) is
+still honoured. Result: zero high mmaps, zero setData-high, the objc realizeClass fault is GONE.
+
+The boot LEAPS: vchroot finishes objc init, `execve`s /usr/libexec/shellspawn (ret 0), and shellspawn
+starts inside the vchroot (fd 2 now -> /ciderd.log). No crash, no core -- it TIMES OUT
+("cider: timed out waiting for the guest program to start"): shellspawn is up but has not spawned the
+shell yet. All the diagnostic instrumentation was reverted; objc4 and mach_traps.c are pristine again,
+only mman.c (0029) carries the fix. NEXT: debug why shellspawn hangs before running bash -- it is the
+container's shell launcher, so this is likely a Mach-IPC/handshake or a specific syscall it waits on.
+
+Committed this pass: xnu 0029 rewritten (force non-FIXED mappings low).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the

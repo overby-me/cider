@@ -1,14 +1,16 @@
 aarch64: keep guest mmap allocations below 2^47 for Darwin's 47-bit pointers.
 
 Darwin userspace pointers are 47-bit -- objc FAST_DATA_MASK (0x7ffffffffff8), tagged pointers and
-isa masking all assume bit 47 is clear. The aarch64 Linux mmap area hands back 48-bit addresses
-with bit 47 SET, so an objc class-data pointer masked to 47 bits becomes unmapped and readClass()
-faults. For a kernel-chosen mapping (start==0, no MAP_FIXED) hand the kernel a low bump hint so the
-guest's dylibs and heap land below 2^47; dyld and libSystem link separate copies of sys_mmap, so
-give them disjoint arenas via VARIANT_DYLD. x86_64 is unaffected (its mmap area is already low).
+isa masking all assume bit 47 is clear. The aarch64 Linux mmap area is 48-bit and the kernel places
+a non-fixed mapping topdown (bit 47 set) unless a hint lands it low. libmalloc reserves its zone
+regions via mach_vm_allocate(ANYWHERE) with a bogus minimum-address hint (0x1000) that the kernel
+ignores, so the region -- and every heap object in it, e.g. objc class_rw -- ends up above 2^47 and
+FAST_DATA_MASK corrupts it (readClass/realizeClass faults). Force every non-MAP_FIXED mapping into a
+low bump arena (dyld and libSystem get disjoint arenas via VARIANT_DYLD); MAP_FIXED (an exact
+address the guest derived from a prior low reservation) is honoured. x86_64 is unaffected.
 --- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/mman.c
 +++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/mman.c
-@@ -40,6 +40,28 @@
+@@ -40,6 +40,36 @@
  	// if (flags & MAP_STACK)
  	// 	linux_flags |= LINUX_MAP_STACK;
  
@@ -22,7 +24,15 @@ give them disjoint arenas via VARIANT_DYLD. x86_64 is unaffected (its mmap area 
 +	// requests (addresses the guest derived from these low reservations) pass through untouched.
 +	// dyld and the shared libSystem link separate copies of this handler, so give them disjoint
 +	// arenas (VARIANT_DYLD) to keep their bump pointers from colliding.
-+	if (!start && !(flags & MAP_FIXED))
++	// Force EVERY non-MAP_FIXED mapping into a low arena (below 2^47). On aarch64 Linux the mmap
++	// area is 48-bit and the kernel places a non-fixed mapping topdown (bit 47 set) unless the hint
++	// lands it low -- and libmalloc hints its zone regions with a bogus minimum-address value
++	// (0x1000, VM_FLAGS_ANYWHERE) that the kernel ignores, so the region (and every heap object in
++	// it: objc class_rw et al.) ends up above 2^47 where Darwin's 47-bit FAST_DATA_MASK corrupts it.
++	// A Darwin guest never legitimately wants a bit-47-set address and a non-fixed hint carries no
++	// guarantee, so we override the hint outright. MAP_FIXED (an exact address the guest derived
++	// from a prior low reservation) is always honoured.
++	if (!(flags & MAP_FIXED))
 +	{
 +#ifdef VARIANT_DYLD
 +		static unsigned long mmap_low_next = 0x0000100000000000UL; // 16 TiB (dyld)
