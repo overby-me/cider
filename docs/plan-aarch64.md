@@ -325,14 +325,30 @@ not just the minimal bash link the plan's D9 assumed. objc4 is therefore on the 
   hunk `__aarch64__`-guarded; x86 byte-identical. The PR's new-syscall/behavioral changes are
   excluded (they alter the frozen x86 build and add un-globbed files).
 
-**Current blocker:** the rest of the xnu emulation, `emulation_obj`. Two known sub-issues, an
-arm64-Linux-ABI cluster: (1) arm64 dropped the `open` syscall, so `__NR_open` is undefined and
-`execve.c`, `vchroot_userspace.c`, `file_handle.c` must call `openat(AT_FDCWD, …)`; (2)
-`sysctl_machdep.c` has x86 cpuid inline asm (`=a` constraint) needing an arm64 arm. Then the
-PR's excluded emulation files (mremap_encrypted, the network/bsdthread pieces) need arm64-only
-splits, the bsdthread_register.c hunk must be merged against cider's workqueue patch 0010, and
-libpthread's own asm (A11) is still ahead — after which the libSystem umbrella link (A15) and
-the prefix assembly.
+**Update, fourth M2 pass — the xnu guest kernel builds and links (A8 done):**
+
+- **open → openat (patch 0022):** arm64 dropped the `open` syscall, so `execve.c`,
+  `vchroot_userspace.c`, `file_handle.c`, `dserver-rpc-defs.c` call `openat(AT_FDCWD, …)`.
+- **sysctl_machdep (patch 0023):** the x86 cpuid asm is wrapped in `#else`; arm64 gets stub
+  cpu tables.
+- **bsdthread_register (patch 0024):** the pthread/workqueue thread-start trampolines gain
+  their arm64 arms (args in x0-x5, a `br` to the entry), hand-merged against cider's
+  workqueue patch 0010.
+- **The asm label collision (patch 0020 fix):** `.std_ret`/`.no_sys` were `.`-prefixed, which
+  is not a Mach-O local-label convention, so they went global and collided between
+  bsd_syscall.S and mach_syscall.S; renamed to `Lstd_ret`/`Lno_sys`.
+- **select-pre1050 (BUCK):** the pre-10.5 select/pselect variant emits a plain
+  `_select`/`_pselect` on arm64 (no `$UNIX2003` versioning) that duplicated the modern
+  wrapper; `libsyscall_obj5` is empty on arm64.
+
+`//vendor/src/xnu:system_kernel_final` — the guest libsystem_kernel dylib — now links for
+arm64. That is the largest single component of the port.
+
+**Current blocker:** libpthread (A11). `system_pthread_final` has one undefined symbol,
+`_getsectiondata`, referenced from pthread.c's JIT-write-protect image-load callback. It lives
+in cctools `libmacho/getsecbyname.c`; the fix is a link-dependency trace through the umbrella
+(which sibling dylib should export it on arm64). After libpthread: the libSystem umbrella
+firstpass link (A15), bash's own link (A16), and the prefix assembly, then M3 (boot).
 
 ## Risks, ranked
 
