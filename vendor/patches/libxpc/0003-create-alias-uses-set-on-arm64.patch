@@ -1,0 +1,23 @@
+libxpc: the symbol-alias macro uses .set on arm64 (aarch64 port, task A15)
+
+XPC creates its type symbols (_xpc_type_dictionary and the rest) as assembler aliases via
+_CREATE_ALIAS, using `.globl original; .globl alias; .equiv alias, original`. On arm64 Mach-O
+that .equiv form does not emit the alias, so every _xpc_type_* comes out undefined and
+libsystem_darwin (and everything reexporting XPC) fails to link. darling PR 1753 switches the
+arm64 path to `.globl alias; .set alias, original`, which the arm64 assembler honours; x86
+keeps the .equiv form.
+
+--- a/internal-include/xpc/objects/base.h
++++ b/internal-include/xpc/objects/base.h
+@@ -144,7 +144,11 @@
+ 	@end
+
+ // hack to create symbol aliases programmatically, because the `alias` attribute isn't supported on Darwin platforms
++#if defined(__arm64__) || defined(__aarch64__)
++#define _CREATE_ALIAS(original, alias) __asm__(".globl " alias "\n.set " alias ", " original)
++#else
+ #define _CREATE_ALIAS(original, alias) __asm__(".globl " original "; .globl " alias "; .equiv " alias ", " original)
++#endif
+
+ #define XPC_CLASS_SYMBOL(name) _xpc_type_ ## name
+ #define XPC_CLASS_SYMBOL_DECL(name) \
