@@ -11628,3 +11628,35 @@ path.
 from one where it blocks forever, and whether MoneyMoney's splash is that same block. The next step
 is an instrument that can tell "the server answered" from "the client answered locally" — the current
 one cannot, and every conclusion drawn from it needs that caveat.
+
+### A connection that cannot be made now says so (libxpc)
+
+The instrument the previous entry asked for exists: `//src/darwin/probes:xpc-probe` sends an XPC
+message with a reply handler, bounded by a semaphore timeout, and **carries its own control** — a
+second name that nothing can possibly serve. A probe with no control is how the keychain probe lied
+for two rungs.
+
+Its first run named a defect immediately: **the control TIMED OUT**, where macOS answers
+`XPC_ERROR_CONNECTION_INVALID` promptly. `xpc_connection_create_mach_service` against a name nothing
+serves produced a connection that looked alive and answered nothing. Activation looks the service up,
+fails, and jumps to `error_out`, which released the ports and set `activated = false` — and nothing
+else. The mach context is never connected on that path, so a later send never reaches libdispatch,
+libdispatch therefore never calls the async reply handler, and the caller waits forever.
+
+`com.apple.security.syspolicy` — the one service MoneyMoney looks up, and the one its XPC trace shows
+failing — behaved exactly like the control. Fixed in `vendor/src/libxpc/src/connection.m`: the
+failed-activation path records it, tells the event handler `XPC_ERROR_CONNECTION_INVALID`, and
+`sendMessage:queue:withReply:` answers with the same rather than sending into nothing.
+
+| | control | `com.apple.security.syspolicy` |
+|---|---|---|
+| before | TIMEOUT | TIMEOUT |
+| after | `ERROR(Connection invalid)` | `ERROR(Connection invalid)` |
+
+Captured as `vendor/patches/libxpc/0003-*.patch`, verified by applying it to the pre-edit baseline and
+comparing both files byte-for-byte.
+
+**MoneyMoney still sits on its splash with this fixed**, and Swift Publisher renders unchanged. So
+this is one defect on the way rather than the whole story — but a client that waits forever for a
+service that cannot exist is wrong on its own terms, and every app that talks to a missing service
+was hanging the same way.

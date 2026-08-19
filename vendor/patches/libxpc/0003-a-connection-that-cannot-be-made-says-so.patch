@@ -1,0 +1,82 @@
+A connection that could not be made says so, instead of leaving the caller waiting forever.
+
+xpc_connection_create_mach_service against a name nothing serves produced a connection that looked
+alive and answered nothing at all. Activation looks the service up, fails, and jumps to error_out,
+which released the ports and set activated to false. Nothing else. The mach context is never
+connected on that path, so a later send never reaches libdispatch, libdispatch therefore never calls
+the async reply handler, and a client that asked for a reply waits for a service that does not exist
+until something kills it.
+
+macOS answers XPC_ERROR_CONNECTION_INVALID, promptly, on both channels: the event handler hears it,
+and a send with reply completes with it.
+
+MEASURED with a probe that carries its own control, one name that nothing can possibly serve beside
+the name under test, because a probe with no control is how the previous instrument lied for two
+rungs:
+
+    before   control=TIMEOUT                     com.apple.security.syspolicy=TIMEOUT
+    after    control=ERROR(Connection invalid)   com.apple.security.syspolicy=ERROR(Connection invalid)
+
+MoneyMoney is the case that found it. Its only XPC lookup is com.apple.security.syspolicy, nothing
+in this prefix serves that name, and the application sat on its own startup screen. It STILL sits
+there with this fixed, so this is one defect on the way and not the whole story, but a client that
+waits forever for a service that cannot exist is wrong on its own terms.
+
+--- a/src/connection.m
++++ b/src/connection.m
+@@ -903,6 +903,22 @@
+ 	xpc_mach_port_release_send(this->send_port);
+ 	xpc_mach_port_release_receive(this->recv_port);
+ 	this->activated = false;
++	/*
++	 * A CONNECTION THAT COULD NOT BE MADE MUST SAY SO, and until now it said nothing at all.
++	 *
++	 * The mach context is never connected on this path, so a later send never reaches libdispatch
++	 * and libdispatch therefore never calls the async reply handler. A client that asked for a
++	 * reply from a service that does not exist waited forever. macOS delivers
++	 * XPC_ERROR_CONNECTION_INVALID: the event handler hears it here, and sendMessage:queue:withReply:
++	 * answers with it rather than sending into nothing.
++	 *
++	 * MoneyMoney is the case that found this. It looks up com.apple.security.syspolicy, which
++	 * nothing in this prefix serves, and then sat on its own startup screen forever.
++	 */
++	this->activation_failed = true;
++	if (this->event_handler) {
++		this->event_handler(XPC_ERROR_CONNECTION_INVALID);
++	}
+ }
+ 
+ - (BOOL)activate
+@@ -1027,6 +1043,18 @@
+ {
+ 	@autoreleasepool {
+ 		XPC_THIS_DECL(connection);
++
++		/* See activateLocked: a connection whose service never resolved has no route for a reply,
++		 * so answer the caller instead of leaving it waiting. */
++		if (this->activation_failed) {
++			xpc_handler_t copied = Block_copy(handler);
++
++			dispatch_async(queue ? queue : dispatch_get_main_queue(), ^{
++				copied(XPC_ERROR_CONNECTION_INVALID);
++				Block_release(copied);
++			});
++			return;
++		}
+ 		XPC_CLASS(serializer)* serializer = [XPC_CLASS(serializer) serializer];
+ 		xpc_connection_reply_context_t* context = NULL;
+ 		dispatch_mach_msg_t message = NULL;
+--- a/internal-include/xpc/objects/connection.h
++++ b/internal-include/xpc/objects/connection.h
+@@ -75,6 +75,11 @@
+ 	//
+ 	pthread_rwlock_t activated_lock;
+ 	bool activated;
++	/* SET WHEN ACTIVATION FAILED, which for a named client means the service could not be looked
++	 * up. Without it a send goes to a mach context that was never connected, libdispatch never
++	 * calls the async reply handler, and the caller waits FOREVER for a service that does not
++	 * exist. macOS answers XPC_ERROR_CONNECTION_INVALID instead. */
++	bool activation_failed;
+ 	pthread_rwlock_t server_peers_lock;
+ 	xpc_genarr_connection_t server_peers;
+ 	pthread_rwlock_t remote_credentials_lock;
