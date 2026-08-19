@@ -732,6 +732,33 @@ why the guest `/usr/lib` -> prefix mapping is not resolving for the loader's sta
 translation works (Linux ENOSYS 38 -> Darwin ENOSYS 78 is correct), so the emulation plumbing is
 sound; this is a dyld-loader / prefix-mapping layer.
 
+**Update, sixteenth pass -- the FairPlay mremap in the dyld2 loader (0003), then the signal wall.**
+
+The libSystem "no suitable image" was NOT a path-mapping problem after all -- dyld had FOUND the file
+(`.../usr/lib/libSystem.B.dylib`); the ENOENT stat probes were just dyld walking the fallback search
+list. The real reason was the first collected exception: `mremap_encrypted() => -1, errno=78`. Every
+cider dylib carries an `LC_ENCRYPTION_INFO_64` with cryptid 0 (not encrypted), and dyld's
+registerEncryption (ImageLoaderMachOCompressed.cpp:2127) -- compiled only on `(__arm__ || __arm64__)`,
+which is why x86 never saw it -- calls `::mremap_encrypted` whenever the command is PRESENT, cryptid
+regardless. The emulation has no such syscall (489), so it returned ENOSYS and every dylib load aborted.
+
+There was already a patch 0002 for EXACTLY this, but only in the dyld3 loader (dyld3/Loading.cpp);
+the guest boots through the dyld2 loader, which 0002 missed. 0003 adds `&& !defined(DARLING)` to the
+dyld2 block, byte-for-byte the same move 0002 made. libSystem now loads and the boot leaps again.
+
+New frontier -- SIGNALS. With libSystem up, the container runs TWO guest processes (vchroot, then
+shellspawn: two `darling_sigexc_self()`), and then a guest SIGSEGV (signal 11) arrives. The daemon
+tries to deliver it and hits an arm64 hole on the HOST (Rust ciderd) side:
+`xnu_sys_thread_load_state_from_user() unimplemented for architecture: dserver_rpc_architecture_x86_64`
+-> `UNIMPLEMENTED call sigprocess (#12)` -> `sigprocess failed ... signal 11: -38` -> init dies. Two
+threads to pull: (a) WHY the guest SIGSEGVs this early (real fault vs an expected darling
+Mach-exception bounce), and (b) the daemon's thread-state / signal machinery is x86_64-only and even
+mis-reports the guest arch as x86_64 -- an arm64 port of the ciderd sigprocess/thread_state path.
+This is the first HOST-side (Rust) arm64 gap the boot has reached; everything before was guest Mach-O.
+
+Landed so far this arc: 0027 (bsd stubs), 0028 (mach traps), dyld 0003 (fairplay). Boot path is now
+guest-loads-and-runs; the wall moved from "no syscalls" to "signal delivery".
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
