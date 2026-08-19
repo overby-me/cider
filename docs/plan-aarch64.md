@@ -933,6 +933,29 @@ socket/bind/sendto to see the checkin's target addr (vs .ciderd.sock), and audit
 __dserver_per_thread_socket_refresh + create_thread_socket for the arm64 forked-child (alignment /
 server_addr inheritance). This is the precise, tractable blocker between here and a running bash.
 
+**ROOT CAUSE + FIX (pass 23) -- the fork deadlock was a raw `svc` in the arm64 `___fork` stub.**
+Pass 22's socket-refresh / stack-alignment hypothesis was WRONG. Instrumenting sys_fork (fork.c)
+with kprintf showed it was NEVER CALLED: the guest's fork never reached the emulated sys_fork at
+all. The trail: libc `fork()` (vendor/src/libc/sys/fork.c) calls the asm stub `__fork()` ->
+`gen/bsdsyscalls/___fork.S`. Its arm64 branch emitted `mov x16,#SYS_fork; svc #0x80` -- a RAW
+supervisor call -- while i386/x86_64 have an `#ifdef DARLING` branch routing through
+`bl __darling_bsd_syscall`. On Linux arm64 that raw svc traps to the host kernel (x8 unset) and
+never runs sys_fork, so the forked child never checks in with darlingserver and the parent hangs
+forever in `_mach_fork_parent -> dserver_rpc_fork_wait_for_child` (RPC 11). This is the SAME class
+of bug as the generated bsd stubs (0027) and mach traps (0028); the hand-written custom fork/vfork
+stubs were simply missed. Fix: patch 0030 gives arm64 `___fork` the DARLING branch, using the same
+error convention as SYS.h DO_SYSCALL (`cmn x0,#4095 / b.cc / neg / _cerror`) plus the fork-specific
+child `__current_pid` clear. RESULT: the fork now works end-to-end -- sys_fork runs, the child
+(pid=2) refreshes its socket, checks in, and completes full Mach re-init (task_self_trap,
+thread_self_trap, set_thread_handles, ...); the parent's fork_wait returns. A NEW blocker appears
+downstream: the child (forked shellspawn) then takes a SIGSEGV (sigexc_handler signal 11) before it
+can spawn bash. Also debugging fact worth keeping: raw `write(2)` to fd 2 does NOT reach ciderd.log
+(the guest's fd 2 is virtualized), and kprintf before the child's socket refresh is unsafe (shared
+parent socket) -- log the fork child via kprintf only AFTER socket_refresh. NEXT: find the child's
+SIGSEGV fault PC (instrument the sigexc path / mldr signal handler) and fix it. (vfork uses the same
+raw-svc stub in `___vfork.S`; sys_vfork just calls sys_fork, so it needs the same treatment, but the
+current bash path uses fork+posix_spawn, not vfork.)
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
