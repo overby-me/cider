@@ -349,9 +349,15 @@ static NSImage *cider_default_alert_icon(NSAlertStyle style)
 /* The checkbox glyph plus the gap between it and its title. */
 #define SUPPRESSION_BOX_WIDTH 20
 /* Measured off the macOS reference capture in Downloads/macos-images: the panel there is about 257
- * points wide and its buttons about 110 each. These are the text column and the button minimum. */
+ * points wide and its buttons about 110 each. These are the text column and the button minimum.
+ *
+ * THE BUTTON NUMBERS ARE MEASURED, TWICE. That reference is a 2x capture, and in it the default
+ * button is 219 by 55 pixels while a plain one is 220 wide by 56 tall once the title glyphs that
+ * interrupt the scan are allowed for: 110 by 28 points, the same for both. Ours were 90 by 24, and
+ * the comment above already said 110 while the constant below said 90. */
 #define ALERT_TEXT_WIDTH 240.
-#define ALERT_BUTTON_MIN_WIDTH 90.
+#define ALERT_BUTTON_MIN_WIDTH 110.
+#define ALERT_BUTTON_HEIGHT 28.
 
     NSSize screenSize = [[NSScreen mainScreen] visibleFrame].size;
     NSSize textSize = NSZeroSize;
@@ -391,7 +397,8 @@ static NSImage *cider_default_alert_icon(NSAlertStyle style)
     NSSize mainSize = NSZeroSize;
     NSSize panelSize = NSZeroSize;
     NSUInteger i, count = [_buttons count];
-    NSSize okCancelButtonSize = NSMakeSize(ALERT_BUTTON_MIN_WIDTH, 24);
+    NSSize okCancelButtonSize =
+            NSMakeSize(ALERT_BUTTON_MIN_WIDTH, ALERT_BUTTON_HEIGHT);
     NSSize otherButtonSize = okCancelButtonSize;
     NSSize allButtonsSize = NSZeroSize;
 
