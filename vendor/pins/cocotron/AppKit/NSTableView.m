@@ -55,6 +55,35 @@ const CGFloat NSTableViewDefaultRowHeight = 16.0f;
 
 @end
 
+/*
+ * A BACKGROUND THAT IS NOT OPAQUE MUST NOT BE COPIED. NSRectFill composites with copy, so filling
+ * with a colour that has alpha means REPLACING the backing with it rather than laying it over what
+ * is there. For a clear background, which is what a nib means by "let what is behind show through",
+ * copy erases the window instead: this table punched a transparent hole 220 by 56 in Swift
+ * Publisher that read as a solid black rectangle (task #134).
+ *
+ * CIDER_TRACE_BGFILL names every site that fills a background with a translucent colour, so this
+ * rule can be measured rather than assumed.
+ */
+static void CiderFillBackground(NSColor *color, NSRect rect, const char *where) {
+    CGFloat alpha = color == nil ? 0.0 : [color alphaComponent];
+
+    [color setFill];
+    if (alpha < 1.0) {
+        const char *trace = getenv("CIDER_TRACE_BGFILL");
+
+        if (trace != NULL && trace[0] != (char) 0) {
+            fprintf(stderr, "CIDER_BGFILL %s alpha=%.3f rect=%.0fx%.0f@%.0f,%.0f\n", where,
+                    (double) alpha, rect.size.width, rect.size.height, rect.origin.x,
+                    rect.origin.y);
+            fflush(stderr);
+        }
+        NSRectFillUsingOperation(rect, NSCompositeSourceOver);
+    } else {
+        NSRectFill(rect);
+    }
+}
+
 @implementation NSTableView
 
 - (id) _replacementKeyPathForBinding: (id) binding {
@@ -1348,12 +1377,8 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
         if (row == _editedRow && drawThisColumn == _editedColumn &&
             _editingCell != nil) {
             /* Same rule as drawBackgroundInClipRect: below the cell being edited. */
-            [_backgroundColor setFill];
-            if ([_backgroundColor alphaComponent] < 1.0) {
-                NSRectFillUsingOperation(_editingBorder, NSCompositeSourceOver);
-            } else {
-                NSRectFill(_editingBorder);
-            }
+            CiderFillBackground(_backgroundColor, _editingBorder,
+                                "NSTableView editingBorder");
             [_editingCell setControlView: self];
             [_editingCell drawWithFrame: _editingFrame inView: self];
             if ([_editingCell focusRingType] != NSFocusRingTypeNone) {
@@ -1389,12 +1414,7 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
          * rectangle. The pixels really had been painted first, by the window background, and this
          * fill erased them again.
          */
-        [_backgroundColor setFill];
-        if ([_backgroundColor alphaComponent] < 1.0) {
-            NSRectFillUsingOperation(clipRect, NSCompositeSourceOver);
-        } else {
-            NSRectFill(clipRect);
-        }
+        CiderFillBackground(_backgroundColor, clipRect, "NSTableView background");
     } else if (colorCount == 1) {
         [(NSColor *) [rowColors objectAtIndex: 0] setFill];
         NSRectFill(clipRect);

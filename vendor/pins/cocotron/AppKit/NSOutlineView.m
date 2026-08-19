@@ -78,6 +78,35 @@ NSString *const NSOutlineViewDisclosureButtonKey =
 
 @end
 
+/*
+ * A BACKGROUND THAT IS NOT OPAQUE MUST NOT BE COPIED. NSRectFill composites with copy, so filling
+ * with a colour that has alpha means REPLACING the backing with it rather than laying it over what
+ * is there. For a clear background, which is what a nib means by "let what is behind show through",
+ * copy erases the window instead: Swift Publisher's layers table punched a transparent hole 220 by
+ * 56 that read as a solid black rectangle (task #134).
+ *
+ * CIDER_TRACE_BGFILL names every site that fills a background with a translucent colour, so this
+ * rule can be measured rather than assumed.
+ */
+static void CiderFillBackground(NSColor *color, NSRect rect, const char *where) {
+    CGFloat alpha = color == nil ? 0.0 : [color alphaComponent];
+
+    [color setFill];
+    if (alpha < 1.0) {
+        const char *trace = getenv("CIDER_TRACE_BGFILL");
+
+        if (trace != NULL && trace[0] != (char) 0) {
+            fprintf(stderr, "CIDER_BGFILL %s alpha=%.3f rect=%.0fx%.0f@%.0f,%.0f\n", where,
+                    (double) alpha, rect.size.width, rect.size.height, rect.origin.x,
+                    rect.origin.y);
+            fflush(stderr);
+        }
+        NSRectFillUsingOperation(rect, NSCompositeSourceOver);
+    } else {
+        NSRectFill(rect);
+    }
+}
+
 @implementation NSOutlineView
 
 static inline BOOL isItemExpanded(NSOutlineView *self, id item) {
@@ -806,8 +835,8 @@ static void loadItemIntoMapTables(NSOutlineView *self, id item,
 
         if (row == _editedRow && drawThisColumn == _editedColumn &&
             _editingCell != nil) {
-            [_backgroundColor setFill];
-            NSRectFill(_editingBorder);
+            CiderFillBackground(_backgroundColor, _editingBorder,
+                                "NSOutlineView editingBorder");
             [_editingCell setControlView: self];
             [_editingCell drawWithFrame: _editingFrame inView: self];
             if ([_editingCell focusRingType] != NSFocusRingTypeNone) {
