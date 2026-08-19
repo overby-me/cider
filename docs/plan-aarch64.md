@@ -915,6 +915,24 @@ inheritance in the daemon (task.rs / handler.rs / registry.rs) -- the forked chi
 with its single thread and an inherited bootstrap port, and the parent's stale threads must be torn
 down so the daemon stops messaging pid -1.
 
+Localized further (pass 22). It is a REAL deadlock (200s timeout, not slow), and the earlier
+"kmsg to pid -1" churn was only debug-level per-message logging, not a spin -- without debug the
+daemon log is quiet. It is the FORK checkin, not exec: shellspawn accepts the launcher connection
+(shellspawn.sock ESTAB, 8886 cmd bytes queued unread on fd 9), forks in listenForConnections, and the
+child's fork.c does `__dserver_per_thread_socket_refresh()` then `dserver_rpc_checkin(is_fork=true,
+newReadFd)`. DECISIVE datum from `ss -xap`: the daemon's `.ciderd.sock` is `u_dgr UNCONN Recv-Q 0`
+and ciderd's single thread sits in epoll_wait -- so the child's checkin datagram NEVER ARRIVES at the
+daemon. dserver did not abort ("Failed to checkin" never printed), so the child's sendto *succeeded*
+but delivered to the wrong place (a DGRAM sendto to a bad/stale addr silently drops), and its reply
+recvmsg blocks forever; no nsid=2 is ever created. So the bug is the FORK CHILD's RPC socket refresh
+on arm64: create_thread_socket / server-addr / bind after clone. Strong lead: rpc.rs
+reserve_high_cloexec documents that "the forked child's fork.c" runs on a stack MISALIGNED BY 8, which
+it worked around for x86 (movaps) -- arm64 has strict 16-byte SP alignment, so a misaligned child
+stack could corrupt the new socket setup or the sendto addr. NEXT: strace the fork child's
+socket/bind/sendto to see the checkin's target addr (vs .ciderd.sock), and audit
+__dserver_per_thread_socket_refresh + create_thread_socket for the arm64 forked-child (alignment /
+server_addr inheritance). This is the precise, tractable blocker between here and a running bash.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
