@@ -11020,3 +11020,33 @@ preserves its backing store across a resize, and this one now does, aligned on t
 And `CIDER_WAYLAND_SAMPLE=x,y` prints window-bitmap pixels at the moment a frame is handed over,
 which is what showed the remainder was black for twenty-five frames and turned grey exactly when the
 image was drawn — disproving my own earlier conclusion that nobody painted there.
+
+### The alert chrome, measured against the reference instead of compared by eye
+
+The permission alert was recorded as differing "in chrome only", and that was true but too vague to
+act on. Measuring both captures turned it into three numbers.
+
+The reference (`Downloads/macos-images/iterm2-with-imgcat-perm-dialog.png`) is a JPEG despite its
+name, and a 2× capture: its alert is 520×372 pixels — 260×186 points — against our 289×182, which is
+the same dialog. `magick` converts both to PPM and a short script fits a circle to the corner profile
+row by row.
+
+- **Corner radius**: macOS 56 px = 28 points; ours 7.6; now 29.9.
+- **Non-default button face**: macOS a flat `(220,220,220)`; ours pure white inside a `199` ring; now
+  `(220,220,220)`.
+- **Off checkbox**: macOS a filled `(215,215,215)`; ours white with a thin dark border; now
+  `(215,215,215)`.
+
+The radius has a lesson in it worth keeping. The panel background in `NSThemeFrame` is filled with a
+rounded path, so raising *that* radius from 10 to 28 was the obvious first move — and the measurement
+came back completely unchanged. The visible corner of an alert is not its background: something in
+the alert content paints opaque out to the window rectangle, and what actually shapes the corner is
+the punch the Wayland backend makes in the buffer. Both agree on 28 now, and menus keep the smaller
+radius because they are popups rather than panels.
+
+One earlier note is corrected here: the alert's drop shadow is **not** missing. That window carries
+`panel=1 alpha=1 margin=24` and a shadow is painted; it is simply invisible against a black terminal,
+which is what the note was reading. The reference shows one because its terminal background is grey.
+
+What remains, measured and left for later: the buttons are 90×24 where macOS is 110×28, and the text
+is slightly smaller.
