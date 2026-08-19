@@ -10889,3 +10889,41 @@ same nested compositor, so neither the seat nor the backend is the gap.
 That leaves two candidates, and they are separable: either `insertText:`/`interpretKeyEvents:` runs
 on the field editor and the inserted text is not drawn, or the field editor is never connected to
 its `NSTextField`.
+
+## Swift Publisher meets all three criteria, and the last defect was one rect comparison
+
+The final gap was not in the keyboard path at all. Every measurement along that path was healthy:
+the key arrived at the backend with the right keysym and text, the first responder was the field
+editor, it was editable and selectable, its delegate was the `NSTextField`,
+`shouldChangeTextInRange:replacementString:` allowed the change, `insertText:` ran, and the string
+grew one character at a time. The text was in the model and never on the screen.
+
+`-[NSTypesetter getLineFragmentRect:…]` asks the container for a rect as tall as the line, takes
+whatever shorter rect the container returns, and then:
+
+```objc
+if (_scanRect.size.height < wantedHeight)
+    _scanRect = NSZeroRect;      // too small for our text
+```
+
+That is correct for a *later* line — the container has run out of vertical room and the remaining
+text belongs to the next container. For the *first* line it means the view shows nothing, which is
+not what AppKit does: Cocoa lays the line out and lets the view clip it.
+
+A field editor is exactly this case, and it is not an edge case. `NSTextFieldCell` hands the editor
+its title rect, which for an ordinary bezeled field is a point or two shorter than the font wants.
+Measured on the same field, before and after: line height 16, ascender 12.628, descender −3.124,
+container 190×13; the fragment went from `0x0` to `26x16@82,0`, the glyph range from `NSNotFound+0`
+to `0+5`, and the used rect from `1x0` to `26x16`.
+
+The fix was never only about typing. The same capture now shows the Author field reading `root`, all
+four Document Margins spinners reading `9`, and the canvas toolbar's page field reading `0` — every
+one of them silently blank before and easy to mistake for an empty field. MoneyMoney gained the key
+equivalents in its File menu (`R` beside Refresh All Accounts, `P` beside Page Setup) for the same
+reason.
+
+With that, Swift Publisher meets all three criteria in a single run, all looked at: it renders a
+document page with rulers and a populated inspector; the mouse works through the application's own
+logic (two clicks on zoom-in took 75 percent to 125 percent, the page grew, the rulers rescaled) and
+the keyboard inserts text; and at 1000×600 the toolbar collapses to an overflow chevron, the
+inspector moves, the page is still drawn and the typed text survives the relayout.
