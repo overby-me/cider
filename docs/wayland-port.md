@@ -11446,3 +11446,10 @@ AppKit `header_map` lesson from #132.
 **Still open, and the next thing in the way:** `SecStaticCodeCheckValidity` on that bundle does not
 return within nine minutes. MoneyMoney itself gets past it (its startup screen appears), so it is not
 blocking the app, but a probe that calls it directly hangs. That is task #135.
+
+**Where MoneyMoney stops now** (task #136): at its own "Starting MoneyMoney…" screen, for at least
+330 seconds, printing nothing of its own. `CIDER_TRACE_XPC` shows exactly one XPC lookup in the whole
+run and it **fails**: `com.apple.security.syspolicy`, Gatekeeper's policy service. It fails rather
+than hangs, so it is a clue rather than a proven cause. The app's own XPC service is an updater,
+which nothing normally blocks startup on, and the driver runs with `DARLING_NO_LAUNCHD=1` so it could
+not start anyway.
