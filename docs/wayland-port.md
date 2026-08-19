@@ -11350,3 +11350,26 @@ window's view tree from its frame view on flush, throttled so the useful dump is
 every frame in view coordinates **and counted from the top** — the capture, the bitmap sampler and
 the drawing trace are all top-down while a view frame is bottom-up, and converting by hand is where
 three wrong conclusions came from. It named the scroll view over the hole in one run.
+
+### The same rule for every background fill
+
+`NSRectFill` composites with copy, so the table was unlikely to be the only place it could erase the
+window. Four more sites have the identical shape, found by looking for a fill whose colour comes
+from a settable or nib-decoded background: `NSBrowser drawRect:`, `NSClipView drawRect:`,
+`NSOutlineView` around the cell being edited, and `NSTextView drawRect:`. All five now go through
+one helper that uses source-over when the colour is not fully opaque and copy when it is, so nothing
+changes wherever the background is opaque.
+
+**Only one of the five is observed to take that path, and saying which matters more than the fix.**
+`CIDER_TRACE_BGFILL` names every site that fills with a translucent colour. Swift Publisher hits
+`NSTableView background alpha=0.000` eleven times and nothing else; MoneyMoney and iTerm2 hit none of
+the five. The other four are the same rule applied uniformly rather than four repaired defects, and
+the gate is there so the next occurrence announces itself instead of arriving as an unexplained
+black rectangle.
+
+The instrument was made to speak before its silence was read: its first run printed nothing, because
+the table still had its own bespoke guard and did not go through the helper. Unifying it made the
+same run print eleven lines, and only then was the silence elsewhere evidence.
+
+`NSTextView` also fills its background **unconditionally**, where macOS fills only when
+`drawsBackground` is YES. That is a separate divergence, untested here and not changed.
