@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSColor.h>
 #import <AppKit/NSColorPanel.h>
 #import <AppKit/NSColorWell.h>
+#import <objc/runtime.h>
 #import <AppKit/NSController.h>
 #import <AppKit/NSDragging.h>
 #import <AppKit/NSEvent.h>
@@ -165,8 +166,20 @@ NSNotificationName _NSColorWellDidBecomeExclusiveNotification =
 }
 
 - (void) setColor: (NSColor *) color {
+    if (getenv("CIDER_TRACE_SWATCH") != NULL && getenv("CIDER_TRACE_SWATCH")[0] != '\0') {
+        NSLog(@"CIDER_SWATCH setColor self=%p class=%s marker=%d color=%@", (void *) self,
+              color ? object_getClassName(color) : "(nil)",
+              (int) NSIsControllerMarker(color), color);
+    }
+    /* A CONTROLLER MARKER IS NOT A COLOUR, AND BLACK IS A LIE. A binding whose value is not
+     * applicable (Swift Publisher shows a paper colour well beside an unchecked "Simulate paper
+     * color") sent NSNotApplicableMarker here and this well painted itself SOLID BLACK, which
+     * reads as a deliberate choice of colour rather than as no value at all. The rest of this
+     * framework already treats a marker as empty: NSDictionaryController takes an empty array for
+     * one and NSTextView an empty string. An empty well is a well with no colour, so it draws its
+     * bezel and no swatch. */
     if (NSIsControllerMarker(color))
-        return [self setColor: [NSColor blackColor]];
+        color = nil;
 
     if ([_color isEqual: color]) {
         return;
@@ -243,6 +256,12 @@ NSNotificationName _NSColorWellDidBecomeExclusiveNotification =
 }
 
 - (void) drawWellInside: (NSRect) rect {
+    if (getenv("CIDER_TRACE_SWATCH") != NULL && getenv("CIDER_TRACE_SWATCH")[0] != '\0') {
+        NSLog(@"CIDER_SWATCH well self=%p color=%@ colorClass=%s rect=%g,%g,%g,%g",
+              (void *) self, _color,
+              _color ? object_getClassName(_color) : "(nil)", rect.origin.x,
+              rect.origin.y, rect.size.width, rect.size.height);
+    }
     [_color drawSwatchInRect: rect];
 }
 

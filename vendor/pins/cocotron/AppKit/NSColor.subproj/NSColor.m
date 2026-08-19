@@ -1220,6 +1220,21 @@ static void releasePatternInfo(void *info) {
 }
 
 - (void) drawSwatchInRect: (NSRect) rect {
+    if (getenv("CIDER_TRACE_SWATCH") != NULL && getenv("CIDER_TRACE_SWATCH")[0] != '\0') {
+        /* THE COMPONENTS ON THE SAME LINE AS THE DRAW. The existing CIDER_TRACE_COLOR prints them
+         * from setFill, but that goes to stderr while this goes to NSLog, and the two streams do
+         * not interleave in call order, so pairing them by position in the log is guesswork. */
+        NSColor *rgb = [self colorUsingColorSpaceName: NSDeviceRGBColorSpace];
+
+        NSLog(@"CIDER_SWATCH draw class=%s space=%@ rgb=%@ r=%g g=%g b=%g a=%g rect=%g,%g,%g,%g",
+              object_getClassName(self), [self colorSpaceName],
+              rgb == nil ? @"CONVERT-FAILED" : @"ok",
+              rgb == nil ? -1.0 : (double) [rgb redComponent],
+              rgb == nil ? -1.0 : (double) [rgb greenComponent],
+              rgb == nil ? -1.0 : (double) [rgb blueComponent],
+              rgb == nil ? -1.0 : (double) [rgb alphaComponent], rect.origin.x,
+              rect.origin.y, rect.size.width, rect.size.height);
+    }
     // Draw some B&W triangle background so we can see the color alpha component
     [[NSColor whiteColor] setFill];
     NSRectFill(rect);
