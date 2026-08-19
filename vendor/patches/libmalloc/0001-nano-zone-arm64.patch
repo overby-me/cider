@@ -1,0 +1,18 @@
+nano_zone address layout for arm64 (aarch64 port, task A12)
+
+The nanozone address field widths are guarded on __x86_64 alone, so a guest arm64 compile
+hits "Unknown Architecture" and then every NANO_*_BITS is undeclared. darling PR 1753 uses
+the identical widths on arm64 (the nanozone lives in the same 64-bit address layout), so the
+fix is only to let the guard accept the two arm64 spellings the compiler may use.
+
+--- a/src/nano_zone.h
++++ b/src/nano_zone.h
+@@ -33,7 +33,7 @@
+
+ /*************          nanozone address field layout        ******************/
+
+-#if defined(__x86_64)
++#if defined(__x86_64) || defined(__arm64__) || defined(__aarch64__)
+ #define NANO_MAG_BITS			6
+ #define NANO_BAND_BITS			17
+ #define NANO_SLOT_BITS			4
