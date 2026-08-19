@@ -459,6 +459,46 @@ patches), NOT the pristine pin — foundation 0025 first failed in nix because N
 
 `nix build .#cider-buck2-prefix-min` is re-running with all six fixes; next is the boot check.
 
+**Update, eighth pass — the prefix nix build clears the arm64 framework wall and hits an
+arch-independent endpoint gap (cocotron / bundled-pin staging).**
+
+With the six framework fixes in, `nix build .#cider-buck2-prefix-min` compiled the whole ObjC
+framework stack and got deep into the prefix tools before failing. `--keep-going` collected ~1200
+failed derivations; almost all are ONE cascade:
+
+- **`'CoreGraphics/CGBase.h' file not found`** in every target that includes `Foundation.h`
+  (CoreFoundation_obj, LocalAuthentication, sysmon, LaunchServices, ...). `Foundation/NSGeometry.h`
+  includes `<CoreGraphics/CGBase.h>` unconditionally, and CGBase.h lives only in **cocotron**
+  (`vendor/src/cocotron/CoreGraphics/include`). This builds fine under a direct `buck2` build
+  (cocotron is present in the dev-shell `vendor/src`), so it is NOT an arm64 code problem.
+
+  ROOT CAUSE, run to ground: cocotron is a **bundled in-tree pin** (checked into
+  `vendor/pins/cocotron`, no `submodules.json` entry). `ciderBuck2Graph.nix` has explicit
+  `bundledVendorSrcPins` handling that copies it into the graph's assembled source, and it does
+  appear in the global `cider-buck2-sources/sources.json` (48 CoreGraphics + 233 AppKit headers).
+  But the **per-target** side does not carry it: `cider-graph-sources` writes NO cocotron entry into
+  `target-groups.json` (checked: zero mentions), so no target's `pins`/`wantedPins` contains it;
+  and even if it did, `ciderBuck2Lower.nix`'s `pinsWithStores` filters to pins that have a store in
+  `ciderSrc.pinPaths`, which only holds the fetched `submodules.json` pins. So a bundled pin reaches
+  the graph analysis but never the per-target derivations. That is why only NON-Foundation targets
+  (libsimple_ciderd, the earlier nix validation) have ever nix-built: nothing before needed CGBase.h.
+  This gap is **arch-independent** — it blocks the x86 nix prefix identically, and the full
+  prefix-min nix build has evidently never completed on any arch.
+
+- Four genuinely arm64 compile issues sit behind the cascade, to fix once the prefix can build:
+  `CarbonCore/ComponentManager.cpp` (`undeclared 'CURRENT_PLATFORM'`), `launchd/src/core.c`,
+  `xtrace/xtracelib.cpp`, `vendor/src/libxpc/src/runtime.m`.
+
+**Where this leaves the port.** The arm64-SPECIFIC work is done and verified end to end by a direct
+`buck2 build //vendor/src:lp`: host tier, guest toolchain, the bash tier, the loader/wrapgen, the
+nix-endpoint arch threading, and now the whole ObjC framework stack all build and link as arm64. The
+one thing between here and buck-bash-check is NOT arm64 code — it is teaching the nix endpoint (the
+`cider-graph-sources` Rust tool plus the `ciderBuck2Lower.nix` pin farm) to stage bundled in-tree
+pins per target, the same way the graph build already stages them. The direct-buck2 prefix path is
+no shortcut: it has its own pre-existing, arch-independent broken-pin-symlink blockers (libnotify
+`notify.defs`, the security `.`-component), also latent on x86. Either route to a full prefix is
+general endpoint work, not aarch64 support.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
