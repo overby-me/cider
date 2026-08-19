@@ -344,11 +344,27 @@ not just the minimal bash link the plan's D9 assumed. objc4 is therefore on the 
 `//vendor/src/xnu:system_kernel_final` — the guest libsystem_kernel dylib — now links for
 arm64. That is the largest single component of the port.
 
-**Current blocker:** libpthread (A11). `system_pthread_final` has one undefined symbol,
-`_getsectiondata`, referenced from pthread.c's JIT-write-protect image-load callback. It lives
-in cctools `libmacho/getsecbyname.c`; the fix is a link-dependency trace through the umbrella
-(which sibling dylib should export it on arm64). After libpthread: the libSystem umbrella
-firstpass link (A15), bash's own link (A16), and the prefix assembly, then M3 (boot).
+**Update, fifth M2 pass — bash links as an arm64 Mach-O (A11, A15, A16 essentially done):**
+
+- **libpthread (A11):** `_getsectiondata` (from the arm64-only JIT-write-protect path) resolved
+  by adding libmacho as an arm64-only sibling of the pthread final link.
+- **libxpc type aliases (A15):** `_CREATE_ALIAS`'s `.equiv` form does not emit the alias on
+  arm64 Mach-O, so every `_xpc_type_*` was undefined; the PR's `.set` form fixes it (patch,
+  libxpc 0003).
+- **libkern arm OSByteOrder (A15):** the arm header gated the plain `OSReadSwapInt*` names
+  behind `_POSIX_C_SOURCE`, but the `OSSwap*` macros call the plain names; the PR drops the
+  underscore variants and keeps the plain ones (patch, xnu 0025).
+- **`//vendor/src:bash` BUILD SUCCEEDED.** `file` reports *Mach-O 64-bit arm64 executable,
+  NOUNDEFS|DYLDLINK|TWOLEVEL|PIE* — fully linked, no undefined symbols. The libSystem umbrella
+  and every dependency it pulls now build and link for arm64.
+
+**Current blocker (M3 prefix assembly, and it is build-infra not arch):** `buck2 build
+//buck/prefix:cider_prefix` fails at `vendor/src/security/darling/include/Security/CSCommon.h`
+— an "invalid symlink … path contains platform-specific path separator", a `.`-component
+symlink (`../.././../OSX/…`) that buck2 rejects and `cider-src-normalise` is meant to repoint.
+This is orthogonal to the arch port (it would bite an x86 direct-buck2 prefix build the same
+way); the fix is in the src-normalise path, not in any arm64 code. Once the prefix assembles,
+`scripts/checks/buck-bash-check.nu` can boot it (M3), followed by the guest-nix goal (M4).
 
 ## Risks, ranked
 
