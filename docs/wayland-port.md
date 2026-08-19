@@ -10944,3 +10944,42 @@ Unblocking needs a real Combine, which needs `swiftc`. There is no Swift compile
 no `.swift` in any BUCK target, and `vendor/pins/swift` holds prebuilt dylibs whose `libswiftCore`
 has no concurrency symbols. That is a toolchain task and a different kind of work from the
 application queue; it should not be attempted from inside it.
+
+### The inline image edge: the driver was measuring nothing, and the puzzle is now exact
+
+The grey remainder beside an inline image had survived several rungs. Most of that was spent on a
+driver that could not have shown anything: `run-iterm-edge.sh` never slimmed the environment the way
+`run-iterm-session.sh` does, and iTerm2 encodes the whole environment into its session launch
+request, so every run died on
+
+```
+Assertion failed: (status == 0: On decode: status is 1 for encoded length 66778),
+-[iTermFileDescriptorMultiClient copyLaunchRequest:], iTermFileDescriptorMultiClient.m:523
+```
+
+The devshell alone is about 65 KB. The session never started, the terminal never drew, and the run
+looked like the application quietly ignoring the command. With the same slimming the session driver
+already used, the image is back on screen and the run has zero assertions. That also accounts for
+several unrelated-looking iTerm2 failures the same day.
+
+With a run that means something, the numbers come from decoding the capture rather than looking at
+it: the red image is exactly 240×120 at (5,67), all 28,800 pixels pure red; the remainder is 5 px on
+the right and 6 px below, every one of them `(238,238,238)`; the terminal around it is `(0,0,0)`.
+
+A new gate, `CIDER_BITMAP_MAGENTA`, paints every freshly allocated small `NSBitmapImageRep` plane
+opaque magenta instead of the zeros `calloc` gives, so anything on screen that comes from an
+unwritten part of a bitmap announces itself. **The remainder turned magenta**, confirming on screen
+what the disassembly had claimed: those pixels are the unwritten part of the block bitmap iTerm2
+allocates and only partly draws into.
+
+That sharpens the question into a contradiction worth stating exactly. With the probe off, the
+unwritten area is transparent, so blitting it source-over should leave the window alone — and the
+window there is erased. Tracing that strip alone (`CIDER_TRACE_PAINT=246,68,4,110`) gives 24 fills
+of 985×549 and 23 of 973×532, every one `blend=17` (Copy) with `c=0.000,0.000,0.000,0.000`, both
+covering the strip, plus the row blits at `blend=0`. The colour paint never returns a skip span — it
+always returns `length` — so those fills really do write transparent black. The strip is therefore
+erased exactly like the terminal beside it, and it presents `(238,238,238)` while the terminal
+presents `(0,0,0)`.
+
+One of those two pixels is not doing what the trace says. The next step is to stop reasoning from
+the write list and read the window buffer at those coordinates immediately before present.
