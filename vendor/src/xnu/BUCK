@@ -1,4 +1,10 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+
+# select-pre1050.c is the pre-macOS-10.5 legacy select/pselect variant; on x86 its symbols are
+# $UNIX2003-versioned and coexist with the modern cancelable wrappers, but arm64 has no such
+# versioning (__DARWIN_ONLY_UNIX_CONFORMANCE), so both emit a plain _select/_pselect that
+# collide at the libsystem_kernel link. arm64 never had the pre-1050 ABI, so drop it (task A8).
+_M_ARM = read_root_config("cider", "guest_arch", "x86_64") == "arm64"
 load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 
@@ -958,9 +964,9 @@ cc_objects(
 
 cc_objects(
     name = "libsyscall_obj5",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "libsyscall/wrappers/legacy/select-pre1050.c",
-    ],
+    ]),
     compiler_flags = [
         "-DHAVE_STDINT_H=1",
         "-DIOKIT=1",

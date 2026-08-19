@@ -64,9 +64,9 @@ index a26ae39..99b599c 100644
 +	adrp x9, ___bsd_syscall_table@GOTPAGE
 +	ldr  x9, [x9, ___bsd_syscall_table@GOTPAGEOFF]
 +	ldr  x9, [x9, x16, lsl #3]    // table[syscall_nr * 8]
-+	cbz  x9, .no_sys
++	cbz  x9, Lno_sys
 +	blr  x9                        // call handler, args already in x0-x7
-+.std_ret:
++Lstd_ret:
 +Lexit_hook:
 +	nop
 +	nop
@@ -74,10 +74,10 @@ index a26ae39..99b599c 100644
 +	nop
 +	ldp  x29, x30, [sp], #16
 +	ret
-+.no_sys:
++Lno_sys:
 +	mov  x0, x16
 +	bl   ___unknown_syscall
-+	b    .std_ret
++	b    Lstd_ret
 +
 +.section        __DATA,__data
 +.globl __darling_bsd_syscall_entry
@@ -117,9 +117,9 @@ index b02d447..783e7df 100644
 +	adrp x9, ___mach_syscall_table@GOTPAGE
 +	ldr  x9, [x9, ___mach_syscall_table@GOTPAGEOFF]
 +	ldr  x9, [x9, x16, lsl #3]    // table[trap_nr * 8]
-+	cbz  x9, .no_sys
++	cbz  x9, Lno_sys
 +	blr  x9                        // call handler, args already in x0-x7
-+.std_ret:
++Lstd_ret:
 +Lexit_hook:
 +	nop
 +	nop
@@ -127,10 +127,10 @@ index b02d447..783e7df 100644
 +	nop
 +	ldp  x29, x30, [sp], #16
 +	ret
-+.no_sys:
++Lno_sys:
 +	mov  x0, x16
 +	bl   ___unknown_mach_syscall
-+	b    .std_ret
++	b    Lstd_ret
 +
 +.section        __DATA,__data
 +.globl __darling_mach_syscall_entry
@@ -161,15 +161,15 @@ index a4ed177..6cf2c60 100644
 +	adrp x9, ___machdep_syscall_table@GOTPAGE
 +	ldr  x9, [x9, ___machdep_syscall_table@GOTPAGEOFF]
 +	ldr  x9, [x9, x16, lsl #3]    // table[syscall_nr * 8]
-+	cbz  x9, .no_sys
++	cbz  x9, Lno_sys
 +	blr  x9                        // call handler, args already in x0-x7
-+.std_ret:
++Lstd_ret:
 +	ldp  x29, x30, [sp], #16
 +	ret
-+.no_sys:
++Lno_sys:
 +	mov  x0, x16
 +	bl   ___unknown_syscall_machdep
-+	b    .std_ret
++	b    Lstd_ret
 +
  #else
  #	error Missing assembly
