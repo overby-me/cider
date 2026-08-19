@@ -1,4 +1,11 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+
+# THE 32-BIT-INODE COMPAT GROUP IS x86-ONLY (aarch64 port, task A12). arm64 never shipped a
+# 32-bit-inode ABI, so __DARWIN_ONLY_64_BIT_INO_T is 1 there and defining _DARWIN_NO_64_BIT_INODE
+# (which the *_noinode64_* targets pass) is a hard #error in sys/cdefs.h. Those variants have no
+# symbols to provide on arm64 -- the 64-bit forms in the main object groups already cover it --
+# so on arm64 every noinode64 object target compiles nothing.
+_M_ARM = read_root_config("cider", "guest_arch", "x86_64") == "arm64"
 load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:install.bzl", "prefix_dir")
@@ -4779,12 +4786,12 @@ cc_header_root(
 
 cc_objects(
     name = "libc-gen_noinode64_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "gen/FreeBSD/getmntinfo.c",
         "gen/FreeBSD/scandir.c",
         "gen/fts.c",
         "gen/nftw.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -4838,9 +4845,9 @@ cc_objects(
 
 cc_objects(
     name = "libc-gen_noinode64_obj2",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "gen/FreeBSD/glob.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -4903,9 +4910,9 @@ cc_objects(
 
 cc_objects(
     name = "libc-gen_noinode64_obj3",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "gen/FreeBSD/opendir.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -4971,9 +4978,9 @@ cc_objects(
 
 cc_objects(
     name = "libc-gen_noinode64_obj4",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "gen/FreeBSD/readdir.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -5037,9 +5044,9 @@ cc_objects(
 
 cc_objects(
     name = "libc-gen_noinode64_obj5",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "gen/FreeBSD/rewinddir.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -5104,9 +5111,9 @@ cc_objects(
 
 cc_objects(
     name = "libc-gen_noinode64_obj6",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "gen/FreeBSD/seekdir.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -5171,9 +5178,9 @@ cc_objects(
 
 cc_objects(
     name = "libc-gen_noinode64_obj7",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "gen/FreeBSD/telldir.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -11314,9 +11321,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-sys_noinode64_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "sys/statx_np.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
