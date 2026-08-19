@@ -358,13 +358,32 @@ arm64. That is the largest single component of the port.
   NOUNDEFS|DYLDLINK|TWOLEVEL|PIE* — fully linked, no undefined symbols. The libSystem umbrella
   and every dependency it pulls now build and link for arm64.
 
-**Current blocker (M3 prefix assembly, and it is build-infra not arch):** `buck2 build
-//buck/prefix:cider_prefix` fails at `vendor/src/security/darling/include/Security/CSCommon.h`
-— an "invalid symlink … path contains platform-specific path separator", a `.`-component
-symlink (`../.././../OSX/…`) that buck2 rejects and `cider-src-normalise` is meant to repoint.
-This is orthogonal to the arch port (it would bite an x86 direct-buck2 prefix build the same
-way); the fix is in the src-normalise path, not in any arm64 code. Once the prefix assembles,
-`scripts/checks/buck-bash-check.nu` can boot it (M3), followed by the guest-nix goal (M4).
+**Current blocker (M3 prefix assembly — build-infra, arch-independent):** `buck2 build
+//buck/prefix:cider_prefix` hits a chain of symlink-materialization issues, none of them arm64
+code:
+
+1. `security/darling/include/Security/CSCommon.h` had a `.`-component symlink
+   (`../.././../OSX/…`) buck2 rejects — fixed by running `cider-src-normalise` on that pin.
+2. `libnotify/darling/src/notify.defs` is a symlink to `../../../../../darwin/Developer/…/mach/
+   notify.defs` — five `../` reach the repo root, but the SDK lives at `src/darwin`, not
+   `darwin`, so it dangles. `cider-src-normalise` does **not** repoint it (no `.` component, and
+   it does not verify the target exists). The `.#cider-src` assembled tree places the SDK at a
+   layout where the symlink is correct; `buck-src.nu --all` copies it verbatim into the repo's
+   `src/darwin` layout, where it breaks.
+
+The lesson: `buck-src.nu --all` leaves the raw assembled-tree symlinks, and a **whole-tree**
+`cider-src-normalise` pass is the wrong fix (it expands directory symlinks the direct-buck2
+build was relying on staying opaque). The right path for M3/M4 is almost certainly the **nix
+endpoint** — `nix build .#cider-buck2-prefix` (or `.#cider`), which materializes and lowers the
+graph with the SDK layout its own lowering expects — rather than a direct `buck2 build
+//buck/prefix:cider_prefix`. That also aligns with M4, which is a nix build anyway. Next pass:
+try the nix endpoint on aarch64 for the prefix, then run `buck-bash-check.nu --prefix
+<result>` (its `--prefix` path takes a pre-built tree) to boot it (M3), then the guest-nix goal
+(M4).
+
+**Milestone standing:** the guest bash binary and the entire libSystem umbrella it links
+against build and link for arm64 today (`//vendor/src:bash` → a fully-linked arm64 Mach-O).
+What remains is prefix *assembly* and *boot*, not guest-code compilation.
 
 ## Risks, ranked
 
