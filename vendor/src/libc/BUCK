@@ -11731,9 +11731,12 @@ cc_header_root(
 
 cc_objects(
     name = "libc-x86_64_obj",
-    srcs = [
+    # The only arch asm libc ships is x86's mcount.S (there is no arm64 one, in this pin or in
+    # darling PR 1753's newer libc); on arm64 the PR builds this object group from empty.c, so
+    # -pg profiling's _mcount is simply absent, which nothing in the guest needs (task A12).
+    srcs = (["darling/src/empty.c"] if _M_ARM else [
         "x86_64/gen/mcount.S",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
