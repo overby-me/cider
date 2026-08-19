@@ -11660,3 +11660,27 @@ comparing both files byte-for-byte.
 this is one defect on the way rather than the whole story — but a client that waits forever for a
 service that cannot exist is wrong on its own terms, and every app that talks to a missing service
 was hanging the same way.
+
+### A stub on a hot path wrote 303 MB per run
+
+`ciderd.log` from one MoneyMoney run was **303.7 MB**, and 1,268,727 of its lines were the same one:
+`stub: proc_get_effective_thread_policy: unimplemented flavor`. The stub's *answer* is already
+right — every XNU caller treats the result as a boolean flag or a small non-negative tier, and 0 is
+the neutral value — so the repetition bought nothing and cost the write bandwidth of every run. The
+logger's own comment says "cold path by construction", which a million calls falsify.
+
+It now logs once, keeping the one line that is worth knowing. Measured on a full app run:
+
+| | before | after |
+|---|---|---|
+| `ciderd.log` | 303.7 MB | 2.0 MB |
+| that stub's lines | 1,268,727 | 1 |
+
+Looked at afterwards: MoneyMoney still reaches its splash (unchanged), and Swift Publisher renders
+exactly as before, so nothing depended on the noise.
+
+**A caution for reading the same evidence:** the app's main thread burns about 13% CPU at the splash
+in a send-and-wait loop, and I first read that as a retry storm. It is not — with
+`CIDER_TRACE_XPC` on, the whole run makes **one** XPC lookup. The likeliest explanation is the
+splash's own animated spinner, which redraws continuously. A busy thread is not evidence of retrying
+until you have counted what it is sending.

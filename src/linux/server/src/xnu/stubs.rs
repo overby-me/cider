@@ -22,6 +22,7 @@
 //! stub logging off for good, so this reads the variable on first use instead. `getenv` does not
 //! change under us, so the answer is the same either way.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::os::raw::{c_char, c_int, c_uint, c_void};
 use std::ptr;
 use std::sync::OnceLock;
@@ -245,7 +246,16 @@ pub unsafe extern "C" fn proc_get_effective_thread_policy(
     // tier/QoS class (IO, QOS, THROUGH_QOS), and -1 is TRUTHY -- so every thread
     // read as "background" and every tier came back nonsense. 0 is the neutral
     // answer in all of those: not background, no throttling, unspecified QoS.
-    crate::xnu_sys_stub!("unimplemented flavor");
+    //
+    // ONCE, BECAUSE THIS IS NOT A COLD PATH, whatever the stub logger assumes. One MoneyMoney run
+    // logged this line 1,268,727 times and left a 303 MB ciderd.log: the answer above is already
+    // the right one, so the repetition bought nothing and cost the write bandwidth of every run.
+    // The first line still says the flavor is unimplemented, which is the part worth knowing.
+    static LOGGED: AtomicBool = AtomicBool::new(false);
+
+    if !LOGGED.swap(true, Ordering::Relaxed) {
+        crate::xnu_sys_stub!("unimplemented flavor (logged once, this is a hot path)");
+    }
     0
 }
 
