@@ -1,12 +1,8 @@
 The arm64 guards accept the compiler spelling too (aarch64 port, task A4)
 
-Every #if/#elif in xnu that tests __arm64__ (the Apple-compiler spelling) also accepts
-__aarch64__ (what a host aarch64-linux clang defines), 243 real files (symlinks skipped,
-their targets swept once). The added term is parenthesized so it stays a drop-in inside a
-larger boolean: message.h has `MACH_KERNEL_PRIVATE && __arm64__`, where a bare
-`|| __aarch64__` would pull the kernel-private trailers into a plain host compile. The
-guest is -target arm64-apple-darwin20 and defines BOTH spellings, so x86_64 and the guest
-are unchanged; the host tools (migcom, ld64, cider-coredump, xnu-sys) need it.
+Same parenthesized sweep as xnu patch 0019, for the duct-tape kernel the daemon compiles
+with a plain aarch64-linux clang. Applies after 0003 so it also covers the arm shims it
+adds. Symlinks skipped; every __arm64__ test also accepts __aarch64__.
 
 --- a/EXTERNAL_HEADERS/corecrypto/cc_config.h
 +++ b/EXTERNAL_HEADERS/corecrypto/cc_config.h
@@ -2402,7 +2398,7 @@ are unchanged; the host tools (migcom, ld64, cider-coredump, xnu-sys) need it.
  #if     __ARM_ENABLE_WFE_
 --- a/osfmk/arm/cpu_data.h
 +++ b/osfmk/arm/cpu_data.h
-@@ -51,7 +51,7 @@
+@@ -54,7 +54,7 @@
  static inline __attribute__((const)) thread_t
  current_thread_fast(void)
  {
@@ -2411,7 +2407,7 @@ are unchanged; the host tools (migcom, ld64, cider-coredump, xnu-sys) need it.
  	return (thread_t)(__builtin_arm_rsr64("TPIDR_EL1"));
  #else
  	return (thread_t)(__builtin_arm_mrc(15, 0, 13, 0, 4));  // TPIDRPRW
-@@ -80,7 +80,7 @@
+@@ -87,7 +87,7 @@
  	 *  it to eliminate redundant calls, which we don't want here.
  	 *  Thus we use volatile asm.  The mrc used for arm32 should be
  	 *  treated as volatile however. */
@@ -2420,7 +2416,7 @@ are unchanged; the host tools (migcom, ld64, cider-coredump, xnu-sys) need it.
  	thread_t result;
  	__asm__ volatile ("mrs %0, TPIDR_EL1" : "=r" (result));
  	return result;
-@@ -89,7 +89,7 @@
+@@ -96,7 +96,7 @@
  #endif
  }
  
@@ -2442,8 +2438,8 @@ are unchanged; the host tools (migcom, ld64, cider-coredump, xnu-sys) need it.
  typedef arm_thread_state32_t dbgwrap_thread_state_t;
 --- a/osfmk/arm/locks.h
 +++ b/osfmk/arm/locks.h
-@@ -147,7 +147,7 @@
- } lck_mtx_t;
+@@ -160,7 +160,7 @@
+ #endif // __DARLING__
  
  typedef struct {
 -#if defined(__arm64__)
@@ -2681,7 +2677,7 @@ are unchanged; the host tools (migcom, ld64, cider-coredump, xnu-sys) need it.
  #include <pexpert/arm/board_config.h>
 --- a/osfmk/arm/simple_lock.h
 +++ b/osfmk/arm/simple_lock.h
-@@ -83,7 +83,7 @@
+@@ -87,7 +87,7 @@
  typedef struct slock {
  	unsigned int    lock_data[10];
  } usimple_lock_data_t, *usimple_lock_t;
@@ -2703,7 +2699,7 @@ are unchanged; the host tools (migcom, ld64, cider-coredump, xnu-sys) need it.
  	set_saved_state_cpsr(saved_state, (ts32->cpsr & ~PSR_USER_MASK) | (ts32->cpsr & PSR_USER_MASK));
 --- a/osfmk/arm/thread.h
 +++ b/osfmk/arm/thread.h
-@@ -172,7 +172,7 @@
+@@ -178,7 +178,7 @@
  extern struct arm_vfpsaved_state * find_user_vfp(thread_t);
  #if defined(__arm__)
  extern arm_debug_state_t *         find_debug_state(thread_t);
@@ -2712,7 +2708,7 @@ are unchanged; the host tools (migcom, ld64, cider-coredump, xnu-sys) need it.
  extern arm_debug_state32_t *       find_debug_state32(thread_t);
  extern arm_debug_state32_t *       find_or_allocate_debug_state32(thread_t);
  extern arm_debug_state64_t *       find_debug_state64(thread_t);
-@@ -191,7 +191,7 @@
+@@ -197,7 +197,7 @@
  extern void vfp_load(struct arm_vfpsaved_state *vfp_ss);
  #endif /* __ARM_VFP__ */
  extern void arm_debug_set(arm_debug_state_t *debug_state);
@@ -3408,7 +3404,7 @@ are unchanged; the host tools (migcom, ld64, cider-coredump, xnu-sys) need it.
  #endif
 --- a/osfmk/kern/host.c
 +++ b/osfmk/kern/host.c
-@@ -572,7 +572,7 @@
+@@ -579,7 +579,7 @@
  			*count = TASK_POWER_INFO_COUNT;
  		} else if (*count >= TASK_POWER_INFO_V2_COUNT) {
  			tinfo2->gpu_energy.task_gpu_utilisation = dead_task_statistics.task_gpu_ns;
@@ -3907,6 +3903,17 @@ are unchanged; the host tools (migcom, ld64, cider-coredump, xnu-sys) need it.
 -#elif defined(__arm64__)
 +#elif (defined(__arm64__) || defined(__aarch64__))
  #include "mach/arm64/asm.h"
+ #else
+ #error architecture not supported
+--- a/osfmk/mach/machine/boolean.h
++++ b/osfmk/mach/machine/boolean.h
+@@ -31,7 +31,7 @@
+ 
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/boolean.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || (defined(__arm64__) || defined(__aarch64__))
+ #include "mach/arm/boolean.h"
  #else
  #error architecture not supported
 --- a/osfmk/mach/machine/exception.h
