@@ -11552,3 +11552,20 @@ answers "nothing found to load" (it carries `LimitLoadToSessionType = Background
 not be captured at all: `StandardOutPath`/`StandardErrorPath` produce no file, a `/bin/sh` wrapper as
 `ProgramArguments` never ran, and nothing in the prefix captures syslog. Run **by hand** it stays
 alive and prints only `sys_proc_info(): Unsupported callnum: 9` twice.
+
+**And being alive is not enough.** Staged as a LaunchDaemon with a distinct label, secd *does* run
+under launchd (`launchctl list` shows a PID and `LastExitStatus = 0`, and its stdout is capturable
+once the plist sets `StandardOutPath`). With it alive, `SecItemCopyMatching` **still hangs**. The
+case that worked had **no job declaring those names**, so the hand-started secd registered them
+itself and clients found it. So a launchd-started secd is not serving its declared MachServices, and
+that is where the next attempt starts — not with "start secd", which is done.
+
+Its startup is also intermittent: two runs exited with status 1, two later ones stayed up.
+
+**A separate launchd defect fell out of trying to instrument this** (task #139): a job with
+`ProgramArguments = ["/bin/sh", "-c", …]` **never runs at all** — no output, no side effect, and
+`LastExitStatus = 256`. The absence of the redirect target is what proves it: a shell that started
+would create it before failing to find `date`. It is not a general spawn or redirect failure, since
+a job whose program is a plain guest binary runs and its `StandardOutPath` file is written. It
+silently breaks every wrapper-script job, which is the obvious way to instrument a daemon that will
+not talk.
