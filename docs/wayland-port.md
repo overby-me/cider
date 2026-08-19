@@ -11373,3 +11373,28 @@ same run print eleven lines, and only then was the silence elsewhere evidence.
 
 `NSTextView` also fills its background **unconditionally**, where macOS fills only when
 `drawsBackground` is YES. That is a separate divergence, untested here and not changed.
+
+### Alert buttons at the size macOS makes them (task #127)
+
+The buttons were 90 by 24 and macOS makes them 110 by 28. The constant said 90 while the comment
+directly above it already recorded the reference as "about 110 each", so the right number had been
+written down and not applied.
+
+Measured again on the reference in `Downloads/macos-images`, a 2x capture: the default button is
+219 by 55 pixels and a plain one 220 by 56 once the title glyphs that interrupt a row scan are
+allowed for — 110 by 28 points for both. A first reading of that row reported two grey buttons 47
+points wide, which was **one button cut in half by its own label**; if a scan for a flat colour
+returns two short runs with a gap, check whether the gap is text before believing the runs.
+
+Verified in Swift Publisher rather than iTerm2: it shows a three-button licence alert and runs in a
+third of the time an iTerm2 session needs, so it is the faster loop. All three buttons measured
+90 by 24 before and 110 by 28 after, and the panel widened with them so the message sets on one line.
+
+**The text size in that task is not a defect.** Ink height on the message line is 13 px at 1x here
+against 25 and 24 px at 2x in the reference, so 12.0 to 12.5 — ours is if anything a touch larger.
+The two captures show different strings so it is approximate, but not in the direction the note
+claimed.
+
+MoneyMoney is unaffected, and that is the informative part: its damaged-application dialog keeps a
+97 by 22 button, below the new minimum, which is how we know that dialog is the application's own
+panel and not an `NSAlert`.
