@@ -865,13 +865,14 @@ static NSDictionary *cider_key_symbol_attributes(void) {
         return;
     }
 
-    [[NSColor colorWithCalibratedWhite: 0.78 alpha: alpha] set];
+    /*
+     * A FLAT GREY FACE, NOT A WHITE PILL IN A RING. Measured off the alert in
+     * Downloads/macos-images: the No button there is 220,220,220 across its whole face, only the
+     * anti-aliased edge varying, with no border colour at all. Ours was a 0.78 ring around pure
+     * white, which beside it reads as an outlined button from a different decade of macOS.
+     */
+    [[NSColor colorWithCalibratedWhite: 0.863 alpha: alpha] set];
     [[NSBezierPath bezierPathWithRoundedRect: rect xRadius: radius yRadius: radius] fill];
-    rect = NSInsetRect(rect, 1, 1);
-    [[NSColor colorWithCalibratedWhite: 1.0 alpha: alpha] set];
-    [[NSBezierPath bezierPathWithRoundedRect: rect
-                                     xRadius: MAX(radius - 1.0, 0.0)
-                                     yRadius: MAX(radius - 1.0, 0.0)] fill];
 }
 
 - (void) drawPushButtonPressedInRect: (NSRect) rect cornerRadius: (CGFloat) radius {
@@ -937,11 +938,14 @@ static BOOL isOnImage(NSString *name) {
         [[self accentColorEnabled: enabled] setFill];
         [shape fill];
     } else {
-        [[NSColor whiteColor] setFill];
+        /*
+         * AN OFF BOX IS FILLED, NOT OUTLINED. Measured on the same reference: the Remember my
+         * choice box is 215,215,215 across its face. A white box with a thin dark border is the
+         * older look and it vanishes against a white sheet. The radio button below shares this
+         * branch and macOS fills that one the same way.
+         */
+        [[NSColor colorWithCalibratedWhite: 0.843 alpha: 1.0] setFill];
         [shape fill];
-        [[NSColor colorWithCalibratedWhite: 0.0 alpha: 0.28] setStroke];
-        [shape setLineWidth: 1.0];
-        [shape stroke];
     }
 
     if (mixed) {
@@ -983,11 +987,14 @@ static BOOL isOnImage(NSString *name) {
         [[NSBezierPath bezierPathWithOvalInRect:
                 NSInsetRect(box, NSWidth(box) * 0.33, NSHeight(box) * 0.33)] fill];
     } else {
-        [[NSColor whiteColor] setFill];
+        /*
+         * AN OFF BOX IS FILLED, NOT OUTLINED. Measured on the same reference: the Remember my
+         * choice box is 215,215,215 across its face. A white box with a thin dark border is the
+         * older look and it vanishes against a white sheet. The radio button below shares this
+         * branch and macOS fills that one the same way.
+         */
+        [[NSColor colorWithCalibratedWhite: 0.843 alpha: 1.0] setFill];
         [shape fill];
-        [[NSColor colorWithCalibratedWhite: 0.0 alpha: 0.28] setStroke];
-        [shape setLineWidth: 1.0];
-        [shape stroke];
     }
 }
 
