@@ -657,9 +657,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-compat_legacy_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "darling/src/empty.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -1518,9 +1518,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-gdtoa_legacy_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "darling/src/empty.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -4658,9 +4658,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-gen_legacy_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "darling/src/empty.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -5325,9 +5325,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-gen_pre1050_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "gen/FreeBSD/daemon.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -6086,9 +6086,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-locale_legacy_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "darling/src/empty.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -6493,9 +6493,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-net_legacy_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "darling/src/empty.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -7241,9 +7241,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-regex_legacy_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "darling/src/empty.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -8458,9 +8458,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-stdio_legacy_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "darling/src/empty.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -9662,9 +9662,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-stdlib_legacy_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "darling/src/empty.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -10108,9 +10108,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-stdtime_legacy_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "darling/src/empty.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
@@ -10687,9 +10687,9 @@ cc_header_root(
 
 cc_objects(
     name = "libc-string_legacy_obj",
-    srcs = [
+    srcs = ([] if _M_ARM else [
         "darling/src/empty.c",
-    ],
+    ]),
     compiler_flags = [
         "-DBUILDING_LIBC",
         "-DHAVE_STDINT_H=1",
