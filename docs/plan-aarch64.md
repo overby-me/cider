@@ -628,6 +628,42 @@ TSD/commpage read), not in the loader. NEXT: reproduce the jump by starting cide
 passing `__mldr_sockpath=<prefix>/.ciderd.sock` to a directly-run mldr so its (and dyld's) output is
 not swallowed, then read the dyld PC at the first fault; or trace dyld's start under the same harness.
 
+**Update, thirteenth pass -- the first boot fault is found (core dump) and fixed: the TSD.**
+
+It never needed the ciderd harness. `coredumpctl` had a core from every boot attempt: mldr does NOT
+loop forever, it SIGSEGVs (the strace "loop" was strace slowing the fault cascade). gdb on the core
+gave the exact fault:
+
+    #0  cthread_set_errno_self
+        str w0, [x8, #3720]       ; global errno
+        mrs x8, tpidrro_el0       ; x8 = thread pointer
+        and x8, x8, #~7
+    =>  ldr x8, [x8, #8]          ; x8 = 0 -> read 0x8 -> SIGSEGV (si_addr=0x8)
+        cbz x8, .+8
+        str w0, [x8]              ; *errno = w0
+    x0 = -38 (a syscall's -ENOSYS return)
+
+So it is NOT garbage execution -- a syscall returned an error and setting errno needs the per-thread
+TSD, whose base comes from `mrs TPIDRRO_EL0`. TPIDRRO_EL0 is kernel-owned and reads 0 from EL0 on
+Linux arm64 (the D4 problem), so the base is null and `ldr x8,[x8,#8]` faults. The garbage syscall
+numbers in the earlier strace were the fault handler thrashing after this.
+
+ROOT CAUSE: D4 was half-done. Patch 0021 added the tid-keyed hash table
+`sys_thread_get_tsd_base()` (emulation tls.c, keyed by `__builtin_thread_pointer()` = TPIDR_EL0,
+with a fast cache and a `tsd_zero_page` fallback), but never rewired os/tsd.h's inlined
+`_os_tsd_get_base()` -- which every errno / pthread_self / TLS access uses -- so it still did
+`mrs TPIDRRO_EL0`. `_os_cpu_number` in the same header got a `#ifdef DARLING` branch; `_os_tsd_get_base`
+did not. Fix (xnu patch 0026): give it one, returning `sys_thread_get_tsd_base()`. dyld is
+unaffected -- it uses `gSyscallHelpers->errnoAddress()` and never inlines this accessor, so its
+self-contained link does not gain an unresolved symbol; the faulting code is in libSystem, which
+carries tls.c.
+
+Method note that unblocked everything: the direct-mldr harness plus `coredumpctl`/gdb is the boot
+debugging loop -- each fault leaves a core with the exact PC and registers. Deferred: pthread_asm.S
+`____chkstk_darwin` also reads TPIDRRO_EL0 directly (asm, can't just call a function); only hit on
+large stack frames, so fix it if it surfaces. Prefix rebuild with 0026 is running; retest the boot
+when it lands.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
