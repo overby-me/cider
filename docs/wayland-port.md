@@ -11248,3 +11248,69 @@ to its capture from before the change, so none of this moved a pixel in an appli
 
 Left behind, seen in that capture and not caused here: Swift Publisher's "Simulate paper color" well
 and the swatch under the inspector both draw solid black.
+
+### A colour well with no applicable value (task #133)
+
+Swift Publisher's inspector showed a solid black rectangle where it offers the simulated paper
+colour. The well was drawing exactly what it was told to: `-[NSColorWell setColor:]` turned a
+**controller marker** into `blackColor`, and the checkbox beside that well is unchecked, so the
+binding correctly sends `NSNotApplicableMarker`. Black reads as a deliberate choice of colour rather
+than as no value at all, and the rest of this framework already treats a marker as empty
+(`NSDictionaryController` takes an empty array for one, `NSTextView` an empty string). A marker now
+leaves the well with no colour, so it draws its bezel and no swatch.
+
+Measured rather than eyeballed: the black block is 39 by 10 pixels at 1126,176 and the well reported
+an inner rect of 38 by 9, which is what identified the *swatch* rather than the bezel as the thing
+painting it. Afterwards that rectangle holds 48 dark pixels instead of 390, all of them the bezel
+outline, and its interior samples 237,237,237.
+
+Four wrong turns are worth recording, because each looked like an answer. The colour trace named one
+unanswered colour, `highlightColor`, eleven times, which was true and irrelevant. The swatch inner
+rect looked far smaller than the black area, which argued the bezel was guilty, and that was a bad
+pixel estimate rather than a bad trace. `CIDER_TRACE_COLOR` prints components from `setFill` to
+stderr while the swatch trace prints through `NSLog`, and the two streams do not interleave in call
+order, so reading them as one timeline pairs the wrong lines. And the first `setColor` trace looked
+like a marker followed by a real colour arriving afterwards, which would have exonerated the marker
+path entirely: the second line *is* the marker path, printing again from its own recursive call with
+black already substituted.
+
+`CIDER_TRACE_SWATCH` stays as an instrument: it prints the well, the colour it holds with components
+converted to RGB **on the same line as the draw**, and every `setColor` with whether the value was a
+marker.
+
+Still black and not this: a 220 by 56 block at the bottom of the inspector, its full width, under
+the blue bar. No colour well draws there, so it is a different mechanism (task #134).
+
+### The other black block is a hole, not a fill (task #134, open)
+
+The 220 by 56 block at the bottom of Swift Publisher's inspector is **not painted black**. It is a
+transparent hole in the window, and what shows through it is the desktop. Two independent proofs:
+setting the nested compositor's background to magenta turns exactly that block magenta (12006 of its
+12320 pixels are 255,0,255, and the only other magenta anywhere is about 250 pixels of the rounded
+corner punch), and `CIDER_WAYLAND_SAMPLE` reads `0x00000000` from the drawing bitmap itself at those
+rows while the canvas column beside them reads `0xffffffff`.
+
+What is established, so the next attempt does not repeat it:
+
+- The boundary is sharp. At x=1174 the bitmap holds the accent blue `0xff007aff` at y=680 and
+  `0x00000000` from y=684 down. The inspector pane paints about 141 rows short of its own bottom.
+- The document window is **1256x799 at 0,-11 on a 1256x684 screen**, and the surface grew 684, 753,
+  799 as the driver resized it. The backend reports the screen correctly
+  (`screens=1 frame=1256x684 source=wl_output`), so this is not a wrong screen size.
+- **Double buffering is not the cause.** `present()` copies the whole bitmap into whichever of the
+  two slots it uses, so the slots cannot diverge.
+- **Nothing erases those pixels.** Tracing the exact rectangle with `CIDER_TRACE_PAINT` shows no
+  fill with a transparent colour reaching it; the region is simply never painted.
+- **The split view is not short.** `_adjustSubviewWidths` sets each pane's height to the split
+  view's bounds height, and the split view itself reaches 695 as the window grows. Whatever is short
+  is inside the inspector pane.
+- `-[NSWindow constrainFrameRect:toScreen:]` only moves the rectangle; macOS also clamps the height
+  so a window cannot be taller than the screen. Adding that clamp changed nothing here, because
+  cocotron calls it only from `initWithContentRect:` and this window's oversize frame is set later.
+  Verified by rebuilding with the clamp and reading the backend log: the window is still created
+  1256x799. The clamp was reverted rather than shipped unverified; if it is added later it belongs
+  where the window is placed on screen, and it wants its own evidence.
+
+The missing tool is a view-tree dump with frames. `CIDER_TRACE_VIEWS` only traces `adjustSubviews`,
+and nothing prints "which view covers this rectangle", which is the question every step above was
+working around.
