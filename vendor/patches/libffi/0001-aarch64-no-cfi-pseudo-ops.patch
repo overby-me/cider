@@ -1,0 +1,22 @@
+aarch64: do not emit CFI pseudo-ops in the hand-written asm.
+
+clang's integrated assembler for arm64 (Mach-O) rejects libffi's aarch64 sysv.S CFI (a
+symbol-valued .cfi_adjust_cfa_offset and .cfi_def_cfa with a register name). That is exactly
+what configure's HAVE_AS_CFI_PSEUDO_OP probe would come back false for, but cider reuses an
+x86-generated fficonfig where it is set. Gate the CFI macros off on arm64 so ffi_cfi.h takes its
+empty-macro branch; x86 is untouched.
+--- a/include/ffi_cfi.h
++++ b/include/ffi_cfi.h
+@@ -7,7 +7,11 @@
+ #ifndef FFI_CFI_H
+ #define FFI_CFI_H
+ 
+-#ifdef HAVE_AS_CFI_PSEUDO_OP
++/* clang's integrated assembler for arm64 (Mach-O) rejects the aarch64 sysv.S CFI
++   (a symbol-valued .cfi_adjust_cfa_offset, and .cfi_def_cfa with a register name):
++   exactly the case configure's HAVE_AS_CFI_PSEUDO_OP probe returns false for, but
++   cider reuses an x86-generated fficonfig. Force the no-CFI path on arm64. */
++#if defined(HAVE_AS_CFI_PSEUDO_OP) && !(defined(__aarch64__) || defined(__arm64__))
+ 
+ # define cfi_startproc			.cfi_startproc
+ # define cfi_endproc			.cfi_endproc
