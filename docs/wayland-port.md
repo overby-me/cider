@@ -11186,3 +11186,65 @@ One build note: QuartzCore was the entire AppKit build problem, because `AppKit.
 every case stopped at `QuartzCore/CIImage.h file not found` before saying anything about AppKit. The
 generator adds that header root and the AppKit dylib **only** for cases under `AppKit.framework` —
 pulling the GUI framework into a libc test would drag the display path somewhere it has no business.
+
+### What those five AppKit failures actually were (task #132)
+
+Four were real and are fixed; the fifth was never ours. **Eleven of the twelve AppKit cases pass
+now**, and the suite as a whole goes 24 to 28 exit-zero of 35 run.
+
+`test_NSColor_colorUsingColorSpaceNamedevice` is fifty lines of commented-out intentions followed by
+`exit(1)`, and CMake does not mark it `WILL_FAIL`, so it fails in upstream's own CI exactly as it
+fails here. Nothing in it touches this AppKit. It was on the divergence list for a day for no better
+reason than a non-zero exit code, and the generator names it as a placeholder now so it does not
+come back.
+
+**The exception that existed but could not be reached.** The case that would not compile wanted
+`NSColorListNotEditableException`, and the honest-looking fix is to declare it beside the class that
+raises it. That is wrong twice over: it collides with a real declaration (`NSExceptionName` against
+`NSString *const`), and the constant was never missing. `AppKit/NSErrors.h` declares thirty-six
+exception names and `NSErrors.m` defines them all; the header simply was not public and the umbrella
+did not import it, so every one of the thirty-six was invisible to an application. It is public now
+and `AppKit.h` imports it, which is one move for thirty-six constants rather than one for one.
+Public headers here come from an explicit `header_map` in `buck/generated`, not a glob, so a new one
+has to be listed there too or the umbrella cannot find its own header.
+
+**A stub that answered.** `-[NSColorList isEditable]` was `NSUnimplementedMethod(); return NO;`, and
+`insertColor:key:atIndex:` inserted into anything, so an application that offered a user the system
+palette to edit was told nothing and the edit did not survive. Editability is a real ivar now, YES
+for a list an application creates and NO for the four the framework builds, and `insertColor:` raises
+on a refusal. `setColor:forKey:` is deliberately left unguarded: that is how the framework fills its
+own lists and how the display backend seeds a catalogue colour it has just answered.
+
+**Two lists were shipping under invented names.** macOS ships `Apple`, `Crayons`, `System` and
+`Web Safe Colors`; this AppKit shipped `Basic`, `System` and `Web`. `Basic` *is* Apple's classic
+palette and `Web` is the HTML named colours, so those are renamed, `Crayons` is new (the 36
+chromatic crayons are the documented grid, the 12 greys a regular ramp rather than the exact macOS
+steps), and `colorListNamed:@"Apple"` answers for the first time. That mattered more than it looks:
+the not-editable test asks four lists to refuse an insert, and against a nil list every one of those
+would have "passed" while proving nothing.
+
+**The System list is the keys macOS publishes**, exactly the 51 and no others. Trimming the older
+names it carried is safe because a colour class method goes to the DISPLAY for its value
+(`NSColor_catalog` asks `[[NSDisplay currentDisplay] colorWithName:]`), not to this list; what is in
+the list decides what a colour panel offers and nothing else. Nineteen of the 51 had no `NSColor`
+class method at all — the whole modern `system*Color` palette, the five fill levels,
+`quinaryLabelColor` and `findHighlightColor` — and a missing one is an unrecognised selector, which
+raises, which most applications catch, which turns a feature off with no message. Three more had a
+method but no recipe (`gridColor`, `keyboardFocusIndicatorColor`,
+`unemphasizedSelectedTextBackgroundColor`) and so answered nil, which is worse than wrong: AppKit
+draws with no colour and a table simply has no grid. All are in `src/darwin/wayland/colors.rs` now,
+with an `Rgba` recipe added because the five fill colours are defined by their alpha.
+
+**The NSCursor coder cases** pin an exact archive layout, and both round trips work now: keyed
+coding reads `NSImage` and `NSHotSpot`, and non-keyed writes float x, float y, image, two signed
+chars and reads float, float, signed short, image.
+
+Verified under the nested compositor, and the proof is not the exit codes. `run.sh` caps each case at
+two lines of output and an AppKit case spends both on the backend saying hello, so the one case that
+prints on its happy path looked as silent as one that did nothing. With the cap raised it prints all
+five refusals by name — `color list System is not editable`, then Apple, Crayons and Web Safe Colors
+— which is what makes the zeros mean anything. Swift Publisher's document window is **byte-identical**
+to its capture from before the change, so none of this moved a pixel in an application.
+
+Left behind, seen in that capture and not caused here: Swift Publisher's "Simulate paper color" well
+and the swatch under the inspector both draw solid black.

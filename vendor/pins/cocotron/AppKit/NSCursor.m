@@ -189,13 +189,60 @@ static NSMutableArray *_cursorStack = nil;
     return [[[_cursorStack lastObject] retain] autorelease];
 }
 
+/*
+ * THE ARCHIVE LAYOUT IS PINNED BY TWO TESTS, and it is asymmetric in a way worth writing down.
+ *
+ * darling-testsuite drives a mock coder and asserts the exact sequence, so this is observed macOS
+ * behaviour rather than a guess:
+ *
+ *   encode, five items: float x, float y, the image, then TWO signed chars
+ *   decode, four items: float x, float y, ONE signed short, then the image
+ *
+ * The short and the pair of chars are the same two bytes, read either way round, which is how old
+ * NeXT archives carried a pair of flags. The two flags this class has are the mouse entered and
+ * exited ones, and neither test verifies them, so they are carried byte for byte and not
+ * reinterpreted beyond that.
+ */
 - initWithCoder: (NSCoder *) coder {
-    // TODO: Need to implement
+    if ([coder allowsKeyedCoding]) {
+        _image = [[coder decodeObjectForKey: @"NSImage"] retain];
+        _hotSpot = [coder decodePointForKey: @"NSHotSpot"];
+        return self;
+    }
+
+    float x = 0.0f;
+    float y = 0.0f;
+    signed short flags = 0;
+
+    [coder decodeValueOfObjCType: @encode(float) at: &x];
+    [coder decodeValueOfObjCType: @encode(float) at: &y];
+    [coder decodeValueOfObjCType: @encode(signed short) at: &flags];
+
+    _hotSpot = NSMakePoint(x, y);
+    _image = [[coder decodeObject] retain];
+    _isSetOnMouseEntered = (flags & 0x00ff) ? YES : NO;
+    _isSetOnMouseExited = (flags & 0xff00) ? YES : NO;
+
     return self;
 }
 
 - (void) encodeWithCoder: (NSCoder *) coder {
-    NSUnimplementedMethod();
+    if ([coder allowsKeyedCoding]) {
+        [coder encodeObject: _image forKey: @"NSImage"];
+        [coder encodePoint: _hotSpot forKey: @"NSHotSpot"];
+        return;
+    }
+
+    float x = (float) _hotSpot.x;
+    float y = (float) _hotSpot.y;
+    signed char entered = _isSetOnMouseEntered ? 1 : 0;
+    signed char exited = _isSetOnMouseExited ? 1 : 0;
+
+    [coder encodeValueOfObjCType: @encode(float) at: &x];
+    [coder encodeValueOfObjCType: @encode(float) at: &y];
+    [coder encodeObject: _image];
+    [coder encodeValueOfObjCType: @encode(signed char) at: &entered];
+    [coder encodeValueOfObjCType: @encode(signed char) at: &exited];
 }
 
 - initWithName: (NSString *) name {

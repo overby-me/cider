@@ -23,11 +23,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 APPKIT_EXPORT NSString *const NSColorListDidChangeNotification;
 
+/* Raised by the mutating methods when the receiver is not editable, which the system lists are not.
+ * An application that offers to edit a colour list catches this to tell the user why it cannot. */
+
 @interface NSColorList : NSObject {
     NSMutableArray *_keys;
     NSMutableArray *_colors;
     NSString *_name;
     NSString *_path;
+    /* Whether the mutating methods will do anything. The lists this framework builds for itself are
+     * the system ones and are not; a list an application creates is, which is what AppKit documents
+     * and what a colour panel relies on to know which lists it may offer to edit. */
+    BOOL _isEditable;
 }
 
 + (NSArray *) availableColorLists;

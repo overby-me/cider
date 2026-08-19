@@ -1,4 +1,4 @@
-#import "NSErrors.h"
+#import <AppKit/NSErrors.h>
 
 NSExceptionName NSTextLineTooLongException = @"NSTextLineTooLongException";
 NSExceptionName NSTextNoSelectionException = @"NSTextNoSelectionException";

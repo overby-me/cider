@@ -174,13 +174,88 @@ static NSMutableDictionary *_namedColorLists = nil;
                         {@"Yellow Green", 0x9ACD32},
                         {nil, 0x0}};
 
-    NSColorList *basicColorList =
-            [[[NSColorList alloc] initWithName: @"Basic"] autorelease];
+    /* THE FOUR LISTS macOS SHIPS, by the names it ships them under. Two of these already existed
+     * under names of this framework's own invention, which is why an application asking for the
+     * standard ones by name got nothing: "Basic" is Apple's classic palette and "Web" is the
+     * HTML named colours, so the first is renamed and the second takes the slot macOS calls
+     * "Web Safe Colors". Its CONTENTS are still the HTML names rather than the 216 web safe
+     * values, which is a difference nothing here checks yet.
+     *
+     * Crayons is new. The 36 chromatic crayons are the documented grid (a hue wheel at full
+     * saturation, then tinted, then shaded); the 12 greys are a regular ramp rather than the
+     * exact macOS steps, which were not transcribed. */
+    NSColorList *appleColorList =
+            [[[NSColorList alloc] initWithName: @"Apple"] autorelease];
+    NSColorList *crayonsColorList =
+            [[[NSColorList alloc] initWithName: @"Crayons"] autorelease];
     NSColorList *systemColorList =
             [[[NSColorList alloc] initWithName: @"System"] autorelease];
     NSColorList *webColorList =
-            [[[NSColorList alloc] initWithName: @"Web"] autorelease];
+            [[[NSColorList alloc] initWithName: @"Web Safe Colors"] autorelease];
     int i;
+
+    struct {
+        NSString *name;
+        unsigned value;
+    } crayons[] = {
+                        {@"Maraschino", 0xFF0000},
+                        {@"Tangerine", 0xFF8000},
+                        {@"Lemon", 0xFFFF00},
+                        {@"Lime", 0x80FF00},
+                        {@"Spring", 0x00FF00},
+                        {@"Sea Foam", 0x00FF80},
+                        {@"Turquoise", 0x00FFFF},
+                        {@"Aqua", 0x0080FF},
+                        {@"Blueberry", 0x0000FF},
+                        {@"Grape", 0x8000FF},
+                        {@"Magenta", 0xFF00FF},
+                        {@"Strawberry", 0xFF0080},
+                        {@"Salmon", 0xFF6666},
+                        {@"Cantaloupe", 0xFFCC66},
+                        {@"Banana", 0xFFFF66},
+                        {@"Honeydew", 0xCCFF66},
+                        {@"Flora", 0x66FF66},
+                        {@"Spindrift", 0x66FFCC},
+                        {@"Ice", 0x66FFFF},
+                        {@"Sky", 0x66CCFF},
+                        {@"Orchid", 0x6666FF},
+                        {@"Lavender", 0xCC66FF},
+                        {@"Bubblegum", 0xFF66FF},
+                        {@"Carnation", 0xFF66CC},
+                        {@"Cayenne", 0x800000},
+                        {@"Mocha", 0x804000},
+                        {@"Asparagus", 0x808000},
+                        {@"Fern", 0x408000},
+                        {@"Clover", 0x008000},
+                        {@"Moss", 0x008040},
+                        {@"Teal", 0x008080},
+                        {@"Ocean", 0x004080},
+                        {@"Midnight", 0x000080},
+                        {@"Eggplant", 0x400080},
+                        {@"Plum", 0x800080},
+                        {@"Maroon", 0x800040},
+                        {@"Snow", 0xFFFFFF},
+                        {@"Mercury", 0xE8E8E8},
+                        {@"Silver", 0xD1D1D1},
+                        {@"Magnesium", 0xBABABA},
+                        {@"Aluminum", 0xA2A2A2},
+                        {@"Nickel", 0x8B8B8B},
+                        {@"Tin", 0x747474},
+                        {@"Steel", 0x5D5D5D},
+                        {@"Tungsten", 0x464646},
+                        {@"Iron", 0x2E2E2E},
+                        {@"Lead", 0x171717},
+                        {@"Licorice", 0x000000},
+                        {nil, 0x0}};
+
+    /* THE SYSTEM LISTS ARE NOT EDITABLE, and saying so is the whole point of the flag: an
+     * application asks before offering to edit, and mutating one raises. setColor:forKey: below
+     * is deliberately not guarded, because that is how the framework fills them and how the
+     * display backend seeds a catalogue colour it has just answered. */
+    appleColorList->_isEditable = NO;
+    crayonsColorList->_isEditable = NO;
+    systemColorList->_isEditable = NO;
+    webColorList->_isEditable = NO;
 
     for (i = 0; webColors[i].name != nil; i++) {
         unsigned value = webColors[i].value;
@@ -195,86 +270,143 @@ static NSMutableDictionary *_namedColorLists = nil;
         [webColorList setColor: color forKey: webColors[i].name];
     }
 
-    [basicColorList setColor: [NSColor blackColor] forKey: @"Black"];
-    [basicColorList setColor: [NSColor blueColor] forKey: @"Blue"];
-    [basicColorList setColor: [NSColor brownColor] forKey: @"Brown"];
-    [basicColorList setColor: [NSColor cyanColor] forKey: @"Cyan"];
-    [basicColorList setColor: [NSColor greenColor] forKey: @"Green"];
-    [basicColorList setColor: [NSColor magentaColor] forKey: @"Magenta"];
-    [basicColorList setColor: [NSColor orangeColor] forKey: @"Orange"];
-    [basicColorList setColor: [NSColor purpleColor] forKey: @"Purple"];
-    [basicColorList setColor: [NSColor redColor] forKey: @"Red"];
-    [basicColorList setColor: [NSColor yellowColor] forKey: @"Yellow"];
-    [basicColorList setColor: [NSColor whiteColor] forKey: @"White"];
+    for (i = 0; crayons[i].name != nil; i++) {
+        unsigned value = crayons[i].value;
+        CGFloat red = ((value >> 16) & 0xFF) / 255.0;
+        CGFloat green = ((value >> 8) & 0xFF) / 255.0;
+        CGFloat blue = (value & 0xFF) / 255.0;
 
-    [systemColorList setColor: [NSColor alternateSelectedControlColor]
-                       forKey: @"alternateSelectedControlColor"];
+        [crayonsColorList setColor: [NSColor colorWithCalibratedRed: red
+                                                              green: green
+                                                               blue: blue
+                                                              alpha: 1.0]
+                            forKey: crayons[i].name];
+    }
+
+    [appleColorList setColor: [NSColor blackColor] forKey: @"Black"];
+    [appleColorList setColor: [NSColor blueColor] forKey: @"Blue"];
+    [appleColorList setColor: [NSColor brownColor] forKey: @"Brown"];
+    [appleColorList setColor: [NSColor cyanColor] forKey: @"Cyan"];
+    [appleColorList setColor: [NSColor greenColor] forKey: @"Green"];
+    [appleColorList setColor: [NSColor magentaColor] forKey: @"Magenta"];
+    [appleColorList setColor: [NSColor orangeColor] forKey: @"Orange"];
+    [appleColorList setColor: [NSColor purpleColor] forKey: @"Purple"];
+    [appleColorList setColor: [NSColor redColor] forKey: @"Red"];
+    [appleColorList setColor: [NSColor yellowColor] forKey: @"Yellow"];
+    [appleColorList setColor: [NSColor whiteColor] forKey: @"White"];
+
+    /* THE SYSTEM LIST IS THE KEYS macOS PUBLISHES, exactly these and no others. The older names
+     * this list used to carry (controlHighlightColor, knobColor, scrollBarColor and the rest) are
+     * still answered by NSColor: a class method here goes to the DISPLAY for its value, not to
+     * this list, so what is in the list decides what a colour panel offers and nothing else. */
     [systemColorList setColor: [NSColor alternateSelectedControlTextColor]
                        forKey: @"alternateSelectedControlTextColor"];
+    [systemColorList setColor: [NSColor alternatingContentBackgroundColor]
+                       forKey: @"alternatingContentBackgroundColor"];
+    [systemColorList setColor: [NSColor controlAccentColor]
+                       forKey: @"controlAccentColor"];
     [systemColorList setColor: [NSColor controlBackgroundColor]
                        forKey: @"controlBackgroundColor"];
-    [systemColorList setColor: [NSColor controlColor] forKey: @"controlColor"];
-    [systemColorList setColor: [NSColor controlDarkShadowColor]
-                       forKey: @"controlDarkShadowColor"];
-    [systemColorList setColor: [NSColor controlHighlightColor]
-                       forKey: @"controlHighlightColor"];
-    [systemColorList setColor: [NSColor controlLightHighlightColor]
-                       forKey: @"controlLightHighlightColor"];
-    [systemColorList setColor: [NSColor controlShadowColor]
-                       forKey: @"controlShadowColor"];
+    [systemColorList setColor: [NSColor controlColor]
+                       forKey: @"controlColor"];
     [systemColorList setColor: [NSColor controlTextColor]
                        forKey: @"controlTextColor"];
     [systemColorList setColor: [NSColor disabledControlTextColor]
                        forKey: @"disabledControlTextColor"];
-    [systemColorList setColor: [NSColor gridColor] forKey: @"gridColor"];
-    [systemColorList setColor: [NSColor headerColor] forKey: @"headerColor"];
+    [systemColorList setColor: [NSColor findHighlightColor]
+                       forKey: @"findHighlightColor"];
+    [systemColorList setColor: [NSColor gridColor]
+                       forKey: @"gridColor"];
     [systemColorList setColor: [NSColor headerTextColor]
                        forKey: @"headerTextColor"];
-    [systemColorList setColor: [NSColor highlightColor]
-                       forKey: @"highlightColor"];
     [systemColorList setColor: [NSColor keyboardFocusIndicatorColor]
                        forKey: @"keyboardFocusIndicatorColor"];
-    [systemColorList setColor: [NSColor knobColor] forKey: @"knobColor"];
-    [systemColorList setColor: [NSColor scrollBarColor]
-                       forKey: @"scrollBarColor"];
-    [systemColorList setColor: [NSColor secondarySelectedControlColor]
-                       forKey: @"secondarySelectedControlColor"];
+    [systemColorList setColor: [NSColor labelColor]
+                       forKey: @"labelColor"];
+    [systemColorList setColor: [NSColor linkColor]
+                       forKey: @"linkColor"];
+    [systemColorList setColor: [NSColor placeholderTextColor]
+                       forKey: @"placeholderTextColor"];
+    [systemColorList setColor: [NSColor quaternaryLabelColor]
+                       forKey: @"quaternaryLabelColor"];
+    [systemColorList setColor: [NSColor quaternarySystemFillColor]
+                       forKey: @"quaternarySystemFillColor"];
+    [systemColorList setColor: [NSColor quinaryLabelColor]
+                       forKey: @"quinaryLabelColor"];
+    [systemColorList setColor: [NSColor quinarySystemFillColor]
+                       forKey: @"quinarySystemFillColor"];
+    [systemColorList setColor: [NSColor secondaryLabelColor]
+                       forKey: @"secondaryLabelColor"];
+    [systemColorList setColor: [NSColor secondarySystemFillColor]
+                       forKey: @"secondarySystemFillColor"];
+    [systemColorList setColor: [NSColor selectedContentBackgroundColor]
+                       forKey: @"selectedContentBackgroundColor"];
     [systemColorList setColor: [NSColor selectedControlColor]
                        forKey: @"selectedControlColor"];
     [systemColorList setColor: [NSColor selectedControlTextColor]
                        forKey: @"selectedControlTextColor"];
-    [systemColorList setColor: [NSColor selectedKnobColor]
-                       forKey: @"selectedKnobColor"];
-    [systemColorList setColor: [NSColor selectedMenuItemColor]
-                       forKey: @"selectedMenuItemColor"];
     [systemColorList setColor: [NSColor selectedMenuItemTextColor]
                        forKey: @"selectedMenuItemTextColor"];
     [systemColorList setColor: [NSColor selectedTextBackgroundColor]
                        forKey: @"selectedTextBackgroundColor"];
     [systemColorList setColor: [NSColor selectedTextColor]
                        forKey: @"selectedTextColor"];
-    [systemColorList setColor: [NSColor shadowColor] forKey: @"shadowColor"];
+    [systemColorList setColor: [NSColor separatorColor]
+                       forKey: @"separatorColor"];
+    [systemColorList setColor: [NSColor systemBlueColor]
+                       forKey: @"systemBlueColor"];
+    [systemColorList setColor: [NSColor systemBrownColor]
+                       forKey: @"systemBrownColor"];
+    [systemColorList setColor: [NSColor systemCyanColor]
+                       forKey: @"systemCyanColor"];
+    [systemColorList setColor: [NSColor systemFillColor]
+                       forKey: @"systemFillColor"];
+    [systemColorList setColor: [NSColor systemGrayColor]
+                       forKey: @"systemGrayColor"];
+    [systemColorList setColor: [NSColor systemGreenColor]
+                       forKey: @"systemGreenColor"];
+    [systemColorList setColor: [NSColor systemIndigoColor]
+                       forKey: @"systemIndigoColor"];
+    [systemColorList setColor: [NSColor systemMintColor]
+                       forKey: @"systemMintColor"];
+    [systemColorList setColor: [NSColor systemOrangeColor]
+                       forKey: @"systemOrangeColor"];
+    [systemColorList setColor: [NSColor systemPinkColor]
+                       forKey: @"systemPinkColor"];
+    [systemColorList setColor: [NSColor systemPurpleColor]
+                       forKey: @"systemPurpleColor"];
+    [systemColorList setColor: [NSColor systemRedColor]
+                       forKey: @"systemRedColor"];
+    [systemColorList setColor: [NSColor systemTealColor]
+                       forKey: @"systemTealColor"];
+    [systemColorList setColor: [NSColor systemYellowColor]
+                       forKey: @"systemYellowColor"];
+    [systemColorList setColor: [NSColor tertiaryLabelColor]
+                       forKey: @"tertiaryLabelColor"];
+    [systemColorList setColor: [NSColor tertiarySystemFillColor]
+                       forKey: @"tertiarySystemFillColor"];
     [systemColorList setColor: [NSColor textBackgroundColor]
                        forKey: @"textBackgroundColor"];
-    [systemColorList setColor: [NSColor textColor] forKey: @"textColor"];
-    [systemColorList setColor: [NSColor windowBackgroundColor]
-                       forKey: @"windowBackgroundColor"];
-    [systemColorList setColor: [NSColor windowFrameColor]
-                       forKey: @"windowFrameColor"];
-    [systemColorList setColor: [NSColor labelColor] forKey: @"labelColor"];
-    [systemColorList setColor: [NSColor linkColor] forKey: @"linkColor"];
+    [systemColorList setColor: [NSColor textColor]
+                       forKey: @"textColor"];
+    [systemColorList setColor: [NSColor underPageBackgroundColor]
+                       forKey: @"underPageBackgroundColor"];
+    [systemColorList setColor: [NSColor unemphasizedSelectedContentBackgroundColor]
+                       forKey: @"unemphasizedSelectedContentBackgroundColor"];
+    [systemColorList setColor: [NSColor unemphasizedSelectedTextBackgroundColor]
+                       forKey: @"unemphasizedSelectedTextBackgroundColor"];
     [systemColorList setColor: [NSColor unemphasizedSelectedTextColor]
                        forKey: @"unemphasizedSelectedTextColor"];
-    [systemColorList setColor: [NSColor selectedContentBackgroundColor]
-                       forKey: @"selectedContentBackgroundColor"];
-    [systemColorList
-            setColor: [NSColor unemphasizedSelectedContentBackgroundColor]
-              forKey: @"unemphasizedSelectedContentBackgroundColor"];
+    [systemColorList setColor: [NSColor windowBackgroundColor]
+                       forKey: @"windowBackgroundColor"];
+    [systemColorList setColor: [NSColor windowFrameTextColor]
+                       forKey: @"windowFrameTextColor"];
 
     _namedColorLists = [[NSMutableDictionary alloc] init];
-    [_namedColorLists setObject: basicColorList forKey: @"Basic"];
+    [_namedColorLists setObject: appleColorList forKey: @"Apple"];
+    [_namedColorLists setObject: crayonsColorList forKey: @"Crayons"];
     [_namedColorLists setObject: systemColorList forKey: @"System"];
-    [_namedColorLists setObject: webColorList forKey: @"Web"];
+    [_namedColorLists setObject: webColorList forKey: @"Web Safe Colors"];
 }
 
 + (NSArray *) availableColorLists {
@@ -289,6 +421,9 @@ static NSMutableDictionary *_namedColorLists = nil;
     _colors = [[NSMutableArray alloc] init];
     _name = [name copy];
     _path = [path copy];
+    /* Editable by default: an application that makes a list means to fill it. The framework marks
+     * its own system lists otherwise, just below. */
+    _isEditable = YES;
 
     if (_path != nil) {
         // FIX, file loading doesnt work for NSColorList
@@ -319,8 +454,7 @@ static NSMutableDictionary *_namedColorLists = nil;
 }
 
 - (BOOL) isEditable {
-    NSUnimplementedMethod();
-    return NO;
+    return _isEditable;
 }
 
 - (NSString *) name {
@@ -386,6 +520,15 @@ static NSMutableDictionary *_namedColorLists = nil;
                  key: (NSString *) key
              atIndex: (unsigned) index
 {
+    /* A SYSTEM LIST REFUSES BY RAISING, which is how an application learns it may not edit one.
+     * Ours inserted into it happily, so a caller that offered the user an editable list of system
+     * colours was told nothing at all and the edit simply did not survive. */
+    if (![self isEditable]) {
+        [NSException raise: NSColorListNotEditableException
+                    format: @"color list %@ is not editable", _name];
+        return;
+    }
+
     [_colors insertObject: color atIndex: index];
     [_keys insertObject: key atIndex: index];
 

@@ -508,6 +508,82 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
     return [NSColor colorWithCatalogName: @"System" colorName: @"labelColor"];
 }
 
++ (NSColor *) quinaryLabelColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"quinaryLabelColor"];
+}
+
++ (NSColor *) findHighlightColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"findHighlightColor"];
+}
+
++ (NSColor *) systemFillColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemFillColor"];
+}
+
++ (NSColor *) secondarySystemFillColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"secondarySystemFillColor"];
+}
+
++ (NSColor *) tertiarySystemFillColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"tertiarySystemFillColor"];
+}
+
++ (NSColor *) quaternarySystemFillColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"quaternarySystemFillColor"];
+}
+
++ (NSColor *) quinarySystemFillColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"quinarySystemFillColor"];
+}
+
++ (NSColor *) systemRedColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemRedColor"];
+}
+
++ (NSColor *) systemOrangeColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemOrangeColor"];
+}
+
++ (NSColor *) systemYellowColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemYellowColor"];
+}
+
++ (NSColor *) systemGreenColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemGreenColor"];
+}
+
++ (NSColor *) systemMintColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemMintColor"];
+}
+
++ (NSColor *) systemTealColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemTealColor"];
+}
+
++ (NSColor *) systemCyanColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemCyanColor"];
+}
+
++ (NSColor *) systemBlueColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemBlueColor"];
+}
+
++ (NSColor *) systemIndigoColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemIndigoColor"];
+}
+
++ (NSColor *) systemPurpleColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemPurpleColor"];
+}
+
++ (NSColor *) systemPinkColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemPinkColor"];
+}
+
++ (NSColor *) systemBrownColor {
+    return [NSColor colorWithCatalogName: @"System" colorName: @"systemBrownColor"];
+}
+
 + (NSColor *) unemphasizedSelectedTextColor {
     return [NSColor colorWithCatalogName: @"System"
                                colorName: @"unemphasizedSelectedTextColor"];

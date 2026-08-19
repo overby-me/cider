@@ -27,6 +27,10 @@ enum Recipe {
     /// used for a selection since Aqua, and every selected menu item, every default button and
     /// every highlighted row was drawn in it.
     Rgb(f64, f64, f64),
+    /// [NSColor colorWithCalibratedRed:g:b:alpha:a], for the colours whose ALPHA is the point.
+    /// The five fill colours are defined as a tint of black at a few percent, so painting them
+    /// opaque would not be a slightly wrong shade, it would be a black box.
+    Rgba(f64, f64, f64, f64),
 }
 
 /// The macOS accent blue, which is what a selection is filled with.
@@ -90,6 +94,41 @@ fn recipe_for(name: &str) -> Option<Recipe> {
         "quaternaryLabelColor" => Recipe::Grey(0.7),
         "placeholderTextColor" => Recipe::Grey(0.6),
         "systemGrayColor" => Recipe::Grey(0.5),
+        "quinaryLabelColor" => Recipe::Grey(0.82),
+        // A NAME WITH A METHOD BUT NO RECIPE ANSWERED nil, which is the failure this table warns
+        // about at the top: a table drew no grid and a focused control no ring, and neither is
+        // distinguishable by looking from a control that was never asked to draw one.
+        "gridColor" => Recipe::Grey(0.8),
+        "keyboardFocusIndicatorColor" => Recipe::Rgba(0.0, 0.478, 1.0, 0.5),
+        "unemphasizedSelectedTextBackgroundColor" => Recipe::Grey(0.86),
+        "alternatingContentBackgroundColor" => Recipe::Grey(0.96),
+        // The yellow behind the current match in a find bar.
+        "findHighlightColor" => Recipe::Rgb(1.0, 1.0, 0.0),
+        // THE FILL HIERARCHY, black at a few percent, lighter with each step down. An application
+        // fills a control background with these and expects to see what is underneath through them.
+        "systemFillColor" => Recipe::Rgba(0.0, 0.0, 0.0, 0.10),
+        "secondarySystemFillColor" => Recipe::Rgba(0.0, 0.0, 0.0, 0.08),
+        "tertiarySystemFillColor" => Recipe::Rgba(0.0, 0.0, 0.0, 0.05),
+        "quaternarySystemFillColor" => Recipe::Rgba(0.0, 0.0, 0.0, 0.03),
+        "quinarySystemFillColor" => Recipe::Rgba(0.0, 0.0, 0.0, 0.02),
+        // THE MACOS SYSTEM PALETTE, light appearance. These are the published values, transcribed
+        // rather than measured off a running macOS, and they are what an application means when it
+        // asks for a colour BY ROLE instead of by value: a red that is the system red, not 1,0,0.
+        // Until now every one of these was an unrecognised selector, which raises, and a raise
+        // inside a drawing method is caught by most applications and turns the feature off with no
+        // message at all.
+        "systemRedColor" => Recipe::Rgb(1.0, 0.231, 0.188),
+        "systemOrangeColor" => Recipe::Rgb(1.0, 0.584, 0.0),
+        "systemYellowColor" => Recipe::Rgb(1.0, 0.8, 0.0),
+        "systemGreenColor" => Recipe::Rgb(0.157, 0.804, 0.255),
+        "systemMintColor" => Recipe::Rgb(0.0, 0.78, 0.745),
+        "systemTealColor" => Recipe::Rgb(0.349, 0.678, 0.769),
+        "systemCyanColor" => Recipe::Rgb(0.333, 0.745, 0.941),
+        "systemBlueColor" => Recipe::Rgb(0.0, 0.478, 1.0),
+        "systemIndigoColor" => Recipe::Rgb(0.345, 0.337, 0.839),
+        "systemPurpleColor" => Recipe::Rgb(0.686, 0.322, 0.871),
+        "systemPinkColor" => Recipe::Rgb(1.0, 0.176, 0.333),
+        "systemBrownColor" => Recipe::Rgb(0.635, 0.518, 0.369),
         _ => return None,
     })
 }
@@ -186,6 +225,12 @@ pub fn color_with_name(name: objc::Object) -> objc::Object {
                     "colorWithCalibratedRed:green:blue:alpha:"
                 ));
                 objc::msg_send_f64_4(color_cls, sel, r, g, b, 1.0)
+            }
+            Some(Recipe::Rgba(r, g, b, a)) => {
+                let sel = objc::sel_registerName(cstr!(
+                    "colorWithCalibratedRed:green:blue:alpha:"
+                ));
+                objc::msg_send_f64_4(color_cls, sel, r, g, b, a)
             }
         }
     }

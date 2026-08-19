@@ -48,6 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSCollectionViewLayout.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSColorList.h>
+#import <AppKit/NSErrors.h>
 #import <AppKit/NSColorPanel.h>
 #import <AppKit/NSColorPicker.h>
 #import <AppKit/NSColorSpace.h>
