@@ -499,6 +499,31 @@ no shortcut: it has its own pre-existing, arch-independent broken-pin-symlink bl
 `notify.defs`, the security `.`-component), also latent on x86. Either route to a full prefix is
 general endpoint work, not aarch64 support.
 
+**Update, ninth pass — the bundled-pin endpoint gap is fixed, and the last arm64 compile gaps land.**
+
+Decision (checked with the user, who asked for a recommendation and took it): fix the nix endpoint,
+since it is the supported prefix path and the gap was fully diagnosed. The fix mirrors the graph's
+existing `bundledVendorSrcPins` into the per-target lowering: `ciderBuck2Lower.nix` now defines
+`bundledPins = [ "vendor/pins/cocotron" ]` and a `bundledStage` that symlinks each one from its own
+content-addressed store (`builtins.path` on the in-tree pin) to `vendor/src/<name>` in EVERY staging
+script, injected at both `pinStageLines` sites. Unconditional because attribution does not know these
+pins; cheap because they are headers. Verified at the derivation level before building
+(`cider-bundled-cocotron` is in the prefix closure and the `buck2-stage-project-grouped` script
+references it): the ~1200-derivation `CGBase.h` cascade AND the libxpc `AppKit/NSApplication.h`
+failure both dropped to zero in the next build. `.named` on the lowering only exposes ~30 top-level
+probes, so there is no small Foundation target to test in isolation; the whole prefix is the test.
+
+The three arm64 compile gaps the cascade had been hiding, all landed (PR 1753 has the first two):
+CarbonCore `CURRENT_PLATFORM` -> `platformARM64NativeEntryPoint` (added to Components.h as 9);
+launchd's exception-port thread-state flavor -> `ARM_THREAD_STATE64`; and an arm64 xtrace hook
+trampoline (`ldr x16,#8` / `br`|`blr x16` / `.quad target`, x16 = IP0 scratch), which the PR does
+not provide. These five files are first-party `src/darwin` / `nix/`, committed directly, not pin patches.
+
+**Trap for next time: a source edit forces an ~18m graph rebuild.** `projectSrc` in
+ciderBuck2Graph.nix is `builtins.path` over the whole tree (only docs/nix/tests-nix filtered), so
+editing any `src/darwin` .c/.h rehashes it and the graph dump reruns. Batch source edits before a
+prefix build. The comprehensive build (cocotron + the three fixes) is running now.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
