@@ -1382,10 +1382,44 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
 
                 xform = send(ownCurrent, xformSel, 0, NO);
             }
+            /* WHICH BRANCH. The geometry switches on fitSizeMode and one value, minus one, jumps
+             * past the transform entirely, so the value says which arithmetic ran without having
+             * to infer it from how many times the transform was entered. */
+            SEL fitSel = sel_getUid("fitSizeMode");
+            long fit = -99;
+
+            if (ownWC != nil && [ownWC respondsToSelector: fitSel]) {
+                long (*sendFit)(id, SEL) = (long (*)(id, SEL)) objc_msgSend;
+
+                fit = sendFit(ownWC, fitSel);
+            }
+            /* THE ZOOM, READ WHERE THE APPLICATION READS IT. On the fitSizeMode -1 path the
+             * geometry does not ask for the zoom through a method at all: it loads a double
+             * straight out of the ftView at offset 0xd8 and multiplies the page size by it. The
+             * offset is taken from that instruction, so this probe reads exactly the value the
+             * arithmetic uses, and a NAN sitting there would reproduce itself on every pass. */
+            /* NOT AN OBJECTIVE C OBJECT. ftView hands back a C++ instance, which is why the
+             * geometry reads a raw double out of it instead of sending it a message, and why
+             * asking it for a class name crashed this probe inside the runtime. Print the pointer
+             * and the double, nothing that assumes an isa. */
+            SEL ftSel = sel_getUid("ftView");
+            void *ftView = NULL;
+
+            if (ownWC != nil && [ownWC respondsToSelector: ftSel]) {
+                void *(*sendFt)(id, SEL) = (void *(*)(id, SEL)) objc_msgSend;
+
+                ftView = sendFt(ownWC, ftSel);
+            }
+
+            double zoom = ftView != NULL ? *(double *) ((char *) ftView + 0xd8) : 0.0;
+
+            fprintf(stderr, "CIDER_GEOM   ftView=%p zoomAt0xd8=%g isnan=%d\n", ftView, zoom,
+                    (int) (zoom != zoom));
             fprintf(stderr,
-                    "CIDER_GEOM   ownWindowController=%s ownCurrentDesignElement=%p transform=%s\n",
+                    "CIDER_GEOM   ownWindowController=%s ownCurrentDesignElement=%p transform=%s "
+                    "fitSizeMode=%ld\n",
                     ownWC != nil ? object_getClassName(ownWC) : "nil", (void *) ownCurrent,
-                    xform != nil ? object_getClassName(xform) : "NIL");
+                    xform != nil ? object_getClassName(xform) : "NIL", fit);
             fprintf(stderr,
                     "CIDER_GEOM %s GOT NAN frame, was %.1fx%.1f bounds %.1fx%.1f visible "
                     "%.1fx%.1f at %.1f,%.1f scrollView=%s content %.1fx%.1f\n",
