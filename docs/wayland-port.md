@@ -11085,3 +11085,38 @@ What remains for a nix check proper: build and run a list of cases and report pa
 `tests/cider-buck2-smoke.nix` already boots the container in a VM and is the harness to reuse, and
 the case list is mechanical to generate from the `add_executable` lines upstream. The blocker on
 breadth is the `CGFloat` gap, not the wiring.
+
+### The suite as a batch: 33 wired, 8 built, 4 passed
+
+The case list is generated now (`scripts/gen-testsuite-buck.py`), which turns the suite from one
+demonstration into a measurement. Counting **cases**, not buck actions:
+
+| | |
+|---|---|
+| wired | 33 Objective-C cases |
+| built | 8 |
+| ran | 7 (one failed to stage in time and is counted as nothing) |
+| passed | 4 |
+
+The four that pass are `NSDistributedLock`, `NSString stringByRemovingPercentEncoding`, libobjc's
+`basic_verify_return_values` and libsystem_m's `sqrt`.
+
+**The harness spoke, and that matters more than the passes.** One case exited 134 — an abort from a
+fired assertion — printing `Expected: 1 (YES) Actual: 0 (NO)`. Until that happened, four zero exits
+proved nothing: a harness that cannot fail is not a harness.
+
+The three failures are all real. `_UIDataLooksLikeNibArchive` answers NO where macOS answers YES for
+a minimal archive, and `UIArchiveHeaderIdentifier` is not an exported symbol here at all (both
+task #130). `PubSub.framework` does not exist — `dlopen` says image not found, which is an honest
+absence rather than a defect.
+
+The twenty-five that do not build are evidence too: eight fail to link, four are the
+`NSDictionary writeToURL:error:` family (task #129), and the rest are undeclared SearchKit constants
+— `kSKSearchOptionDefault` and a dozen siblings — so our SearchKit headers carry the functions but
+not the option and index-type constants.
+
+Two groups are skipped deliberately and the generator says so in its own source: the C cases, which
+cannot compile until CoreFoundation provides `CGFloat` (task #128), and the eighteen that include
+`test_shared_data.h`, which upstream CMake produces with `configure_file` so it exists only inside a
+CMake build. Eighteen identical "file not found" errors read like a missing API and are nothing of
+the kind — worth skipping precisely so the failure list stays honest.
