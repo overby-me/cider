@@ -39,6 +39,12 @@ struct hook {
 	uint32_t addr;
 	uint8_t call[2];
 } __attribute__((packed));
+#elif defined(__aarch64__) || defined(__arm64__)
+struct hook {
+	uint32_t ldr;    // ldr x16, #8   -- load the target that follows into x16 (IP0 scratch)
+	uint32_t branch; // br x16 (jump) / blr x16 (call)
+	uint64_t addr;   // absolute target the ldr reads
+} __attribute__((packed));
 #else
 #error "Missing hook struct for arch"
 #endif
@@ -169,6 +175,15 @@ static void setup_hook(struct hook* hook, void* fnptr, bool jump)
 	hook->addr = (uintptr_t)fnptr;
 	hook->call[0] = 0xff;
 	hook->call[1] = jump ? 0xe1 : 0xd1;
+#elif defined(__aarch64__) || defined(__arm64__)
+	// this hook is (in ARM64 asm):
+	//   ldr x16, #8      ; load the 8-byte target that follows into x16 (IP0, a scratch
+	//                      register safe to clobber at a call boundary)
+	//   br  x16          ; jump -- or `blr x16` to call
+	//   .quad <fnptr value>
+	hook->ldr = 0x58000050;                        // ldr x16, #8
+	hook->branch = jump ? 0xd61f0200 : 0xd63f0200; // br x16 : blr x16
+	hook->addr = (uintptr_t)fnptr;
 #else
 #error "Missing hook implementation for arch
 #endif

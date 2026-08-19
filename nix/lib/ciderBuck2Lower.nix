@@ -337,6 +337,30 @@
       ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg p}
     '';
 
+  # BUNDLED IN-TREE PINS have no submodules.json entry, so they are absent from ciderSrc.pinPaths
+  # and from every target's attributed `pins` (cider-graph-sources writes no group for them) --
+  # the pin machinery above therefore never stages them for a target. ciderBuck2Graph.nix stages
+  # them for the GRAPH via bundledVendorSrcPins; this is the lowering's missing mirror. cocotron is
+  # the one that bites: Foundation's NSGeometry.h includes <CoreGraphics/CGBase.h>, which lives
+  # ONLY in cocotron, so every Foundation consumer (CoreFoundation, IOKit, Security, the CUPS
+  # tools, ...) failed the nix prefix with "file not found" while a direct buck2 build -- cocotron
+  # present in vendor/src -- was fine. Stage each from its own content-addressed store at
+  # vendor/src/<name>, where vendor/src/BUCK's header_map names it, unconditionally: attribution
+  # does not know these pins, and the headers are cheap. cocotron's 40 symlinks all stay inside the
+  # pin (checked), so an isolated store resolves them.
+  bundledPins = [ "vendor/pins/cocotron" ];
+  bundledStage = lib.concatMapStrings (p: let
+      name = builtins.baseNameOf p;
+      store = builtins.path {
+        name = "cider-bundled-${name}";
+        path = srcRaw + "/${p}";
+      };
+    in ''
+      mkdir -p vendor/src
+      rm -rf ${lib.escapeShellArg "vendor/src/${name}"}
+      ln -sfn ${store} ${lib.escapeShellArg "vendor/src/${name}"}
+    '') bundledPins;
+
   pinsWithStores = lib.filter (p: (ciderSrc.pinPaths or {}) ? ${p}) wantedPins;
   pinsFarm = pkgs.linkFarm "cider-pins" (map (p: {
     name = lib.strings.sanitizeDerivationName p;
@@ -1266,6 +1290,7 @@
     done
     ${lib.concatMapStrings (p: pinStageLines p)
     wantedPins}
+    ${bundledStage}
   '';
 
   # ONE DERIVATION PER DISTINCT SCRIPT, not one per label. Measured 2026-08-11: 1,474 labels
@@ -1398,6 +1423,7 @@
         '') (builtins.readDir (projectSrc + "/vendor/src")))}
     ''}
     ${lib.concatMapStrings (p: pinStageLines p) wantedPins}
+    ${bundledStage}
   '';
 
   # THE SCRIPT A LOWERED TARGET ACTUALLY RUNS, which is not always stageProject. Line 1215
