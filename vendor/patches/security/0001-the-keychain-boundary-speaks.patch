@@ -1,0 +1,214 @@
+The keychain call that never returns names its own boundary now.
+
+MoneyMoney reaches its startup screen and stops. A keychain query fans out to two back ends and
+merges them, so "SecItemCopyMatching did not return" named four candidates at once and none of the
+logs above could separate them. CIDER_TRACE_SECITEM prints one line per boundary, and a missing exit
+line IS the finding. MEASURED:
+
+    CIDER_SECITEM CopyMatching enter ios=1 osx=1
+    CIDER_SECITEM CopyMatching_ios call
+    CIDER_SECITEM CopyMatching_ios back status=-34018
+    CIDER_SECITEM CopyMatching_osx call
+    CIDER_SECITEM osx params call
+    CIDER_SECITEM osx attrlist call
+    CIDER_SECITEM osx attrlist back
+    CIDER_SECITEM osx SearchCreateFromAttributes call list=default
+    CIDER_SSCLNT findSecurityd call
+    CIDER_SSCLNT findSecurityd back port=0xd03
+    CIDER_SSCLNT verifyPrivileged2 call
+    <nothing, ever>
+
+So the MODERN back end, secd over XPC, answers PROMPTLY with errSecMissingEntitlement, and the
+LEGACY osx path is the one that blocks: the bootstrap lookup for com.apple.SecurityServer SUCCEEDS
+and hands back a real port, and the FIRST MIG call to that port never gets a reply. MIG has no
+timeout, so the caller waits forever with nothing on any log.
+
+THAT CORRECTS TWO THINGS I WROTE DOWN. secd is not the blocker and never was. And the securityd
+abort recorded as a side story is exactly where this lands, so it is not a side story.
+
+The instrument prints WHICH back end and WHAT OSStatus, and never a query or a result. That is
+deliberate rather than incidental: the application it diagnoses talks to banks, and an instrument
+that printed keychain contents would be a worse bug than the one it chases.
+
+--- a/OSX/libsecurity_keychain/lib/SecItem.cpp
++++ b/OSX/libsecurity_keychain/lib/SecItem.cpp
+@@ -62,6 +62,28 @@
+ 
+ const uint8_t kUUIDStringLength = 36;
+ 
++/*
++ * CIDER_TRACE_SECITEM: which half of a keychain query answers, and whether it answers at all.
++ *
++ * The public call fans out to a modern (secd, over XPC) and a legacy (securityd, over CSSM) back
++ * end and merges the two results, so "SecItemCopyMatching did not return" names four candidates at
++ * once. Every line here is a boundary, and a missing exit line is the finding.
++ *
++ * It says nothing about the query and nothing about a result, only which back end was entered and
++ * what OSStatus it gave. That is deliberate and not incidental: the application this diagnoses
++ * talks to banks, and an instrument that prints keychain contents would be a worse bug than the
++ * one it is chasing.
++ */
++static bool CiderTraceSecItem(void) {
++	/* Non-EMPTY, because our own drivers export every switch unset-as-empty and getenv would
++	 * then report a probe run as a control run. */
++	const char *v = getenv("CIDER_TRACE_SECITEM");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_SECITEM(fmt, ...) \
++	do { if (CiderTraceSecItem()) { fprintf(stderr, "CIDER_SECITEM " fmt "\n", ##__VA_ARGS__); fflush(stderr); } } while (0)
++
+ OSStatus SecItemAdd_osx(CFDictionaryRef attributes, CFTypeRef *result);
+ OSStatus SecItemCopyMatching_osx(CFDictionaryRef query, CFTypeRef *result);
+ OSStatus SecItemUpdate_osx(CFDictionaryRef query, CFDictionaryRef attributesToUpdate);
+@@ -3161,8 +3183,10 @@
+ 	}
+ 
+ 	// build a SecKeychainAttributeList from the query dictionary for the specified item class
++	CIDER_SECITEM("osx attrlist call");
+ 	require_noerr(status = _CreateSecKeychainAttributeListFromDictionary(dict, itemParams->itemClass, &itemParams->attrList), error_exit);
+-	
++	CIDER_SECITEM("osx attrlist back");
++
+     // if policy is a SMIME policy, copy email address in policy into emailAddrToMatch parameter
+     if(itemParams->policy) {
+         policyDict = SecPolicyCopyProperties(itemParams->policy);
+@@ -3212,10 +3236,13 @@
+ 	}
+ 	else {
+ 		// normal keychain item search
++		CIDER_SECITEM("osx SearchCreateFromAttributes call list=%s",
++			itemParams->searchList ? "given" : "default");
+ 		status = SecKeychainSearchCreateFromAttributes(itemParams->searchList,
+ 				itemParams->itemClass,
+ 				(itemParams->attrList->count == 0) ? NULL : itemParams->attrList,
+ 				(SecKeychainSearchRef*)&itemParams->search);
++		CIDER_SECITEM("osx SearchCreateFromAttributes back status=%d", (int) status);
+ 	}
+ 
+ error_exit:
+@@ -4886,6 +4913,8 @@
+ 		return status;
+ 	}
+ 
++	CIDER_SECITEM("CopyMatching enter ios=%d osx=%d", (int) can_target_ios, (int) can_target_osx);
++
+ 	if (can_target_ios) {
+ 		CFDictionaryRef attrs_ios = SecItemCopyTranslatedAttributes(query,
+ 			CFDictionaryGetValue(query, kSecClass), true, false, false, false, true, true);
+@@ -4893,7 +4922,9 @@
+ 			status_ios = errSecParam;
+ 		}
+ 		else {
++			CIDER_SECITEM("CopyMatching_ios call");
+ 			status_ios = SecItemCopyMatching_ios(attrs_ios, &result_ios);
++			CIDER_SECITEM("CopyMatching_ios back status=%d", (int) status_ios);
+ 			CFRelease(attrs_ios);
+ 		}
+ 		secitemlog(LOG_NOTICE, "SecItemCopyMatching_ios result: %d", status_ios);
+@@ -4906,7 +4937,9 @@
+ 			status_osx = errSecParam;
+ 		}
+ 		else {
++			CIDER_SECITEM("CopyMatching_osx call");
+ 			status_osx = SecItemCopyMatching_osx(attrs_osx, &result_osx);
++			CIDER_SECITEM("CopyMatching_osx back status=%d", (int) status_osx);
+ 			CFRelease(attrs_osx);
+ 		}
+ 		secitemlog(LOG_NOTICE, "SecItemCopyMatching_osx result: %d", status_osx);
+@@ -4915,6 +4948,7 @@
+ 	status = SecItemMergeResults(can_target_ios, status_ios, result_ios,
+ 								 can_target_osx, status_osx, result_osx, result);
+ 	secitemlog(LOG_NOTICE, "SecItemCopyMatching result: %d", status);
++	CIDER_SECITEM("CopyMatching exit status=%d", (int) status);
+ 	return status;
+ }
+ 
+@@ -5116,12 +5150,17 @@
+ 	OSStatus tmpStatus, status = errSecSuccess;
+ 
+ 	// validate input query parameters and create the search reference
++	CIDER_SECITEM("osx params call");
+ 	SecItemParams *itemParams = _CreateSecItemParamsFromDictionary(query, &status);
++	CIDER_SECITEM("osx params back status=%d params=%s", (int) status,
++		itemParams ? "yes" : "no");
+ 	require_action(itemParams != NULL, error_exit, itemParams = NULL);
+ 
+ 	// find the next match until we hit maxMatches, or no more matches found
++	CIDER_SECITEM("osx search first");
+ 	while ( !(!itemParams->returnAllMatches && matchCount >= itemParams->maxMatches) &&
+ 			SecItemSearchCopyNext(itemParams, (CFTypeRef*)&item) == errSecSuccess) {
++		CIDER_SECITEM("osx search hit %ld", (long) matchCount);
+ 
+ 		if (FilterCandidateItem((CFTypeRef*)&item, itemParams, &identity))
+ 			continue; // move on to next item
+@@ -5142,6 +5181,8 @@
+ 		}
+ 	}
+ 
++	CIDER_SECITEM("osx search done matches=%ld", (long) matchCount);
++
+ 	if (status == errSecSuccess)
+ 		status = (matchCount > 0) ? errSecSuccess : errSecItemNotFound;
+ 
+@@ -5154,6 +5195,7 @@
+ 
+     setCountLegacyAPIEnabledForThread(true);
+ 
++	CIDER_SECITEM("osx return status=%d", (int) status);
+ 	return status;
+ }
+ 
+--- a/OSX/libsecurityd/lib/ssclient.cpp
++++ b/OSX/libsecurityd/lib/ssclient.cpp
+@@ -30,6 +30,23 @@
+ #include <servers/netname.h>
+ #include <security_utilities/debugging.h>
+ 
++/*
++ * CIDER_TRACE_SECITEM: the securityd handshake, one line per step.
++ *
++ * Every one of these is a MIG send-and-receive, and MIG has no timeout: if securityd holds the
++ * name but never answers, the caller waits forever with nothing on any log. That is invisible from
++ * above -- the keychain call simply never returns -- so the boundary has to speak here.
++ */
++static bool CiderTraceSecItem(void) {
++	/* Non-EMPTY: our drivers export switches unset-as-empty, and getenv alone would read those
++	 * as on. */
++	const char *v = getenv("CIDER_TRACE_SECITEM");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_SSCLNT(fmt, ...) \
++	do { if (CiderTraceSecItem()) { fprintf(stderr, "CIDER_SSCLNT " fmt "\n", ##__VA_ARGS__); fflush(stderr); } } while (0)
++
+ using MachPlusPlus::check;
+ using MachPlusPlus::Bootstrap;
+ 
+@@ -148,10 +165,14 @@
+ ClientSession::Global::Global()
+ {
+     // find server port
++	CIDER_SSCLNT("findSecurityd call");
+ 	serverPort = findSecurityd();
+-    
++	CIDER_SSCLNT("findSecurityd back port=0x%x", (unsigned) serverPort.port());
++
+ 	mach_port_t originPort = MACH_PORT_NULL;
++	CIDER_SSCLNT("verifyPrivileged2 call");
+ 	IPCBASIC(ucsp_client_verifyPrivileged2(serverPort.port(), mig_get_reply_port(), &securitydCreds, &rcode, &originPort));
++	CIDER_SSCLNT("verifyPrivileged2 back origin=0x%x", (unsigned) originPort);
+ 	if (originPort != serverPort.port())
+ 		CssmError::throwMe(CSSM_ERRCODE_VERIFICATION_FAILURE);
+ 	mach_port_mod_refs(mach_task_self(), originPort, MACH_PORT_RIGHT_SEND, -1);
+@@ -164,8 +185,10 @@
+     Thread &thread = this->thread();
+ 	
+ 	task_id_token_t token = self_token_create();
++	CIDER_SSCLNT("setup call");
+ 	IPCBASIC(ucsp_client_setup(serverPort, thread.replyPort, &securitydCreds, &rcode,
+ 		token, info, extForm));
++	CIDER_SSCLNT("setup back");
+ 	self_token_deallocate(token);
+     thread.registered = true;	// as a side-effect of setup call above
+ 	IFDEBUG(serverPort.requestNotify(thread.replyPort));

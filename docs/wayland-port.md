@@ -11684,3 +11684,46 @@ in a send-and-wait loop, and I first read that as a retry storm. It is not — w
 `CIDER_TRACE_XPC` on, the whole run makes **one** XPC lookup. The likeliest explanation is the
 splash's own animated spinner, which redraws continuously. A busy thread is not evidence of retrying
 until you have counted what it is sending.
+
+### The keychain call that never returns, and the two things I had wrong about it
+
+MoneyMoney reaches its own startup screen and stops. `SecItemCopyMatching` fans out to two back
+ends and merges them, so "it did not return" named four candidates at once and nothing above it
+could separate them. `CIDER_TRACE_SECITEM` prints one line per boundary; the missing exit line is
+the finding.
+
+```
+CIDER_SECITEM CopyMatching enter ios=1 osx=1
+CIDER_SECITEM CopyMatching_ios back status=-34018     modern path: prompt
+CIDER_SECITEM CopyMatching_osx call
+CIDER_SECITEM osx attrlist back
+CIDER_SECITEM osx SearchCreateFromAttributes call list=default
+CIDER_SSCLNT findSecurityd back port=0xd03            the name RESOLVES
+CIDER_SSCLNT verifyPrivileged2 call
+                                                       <- nothing, ever
+```
+
+The modern back end (`secd`, over XPC) answers promptly with `errSecMissingEntitlement`. The
+**legacy** path is the one that blocks: the bootstrap lookup for `com.apple.SecurityServer`
+succeeds and returns a real port, and the **first MIG call to that port never gets a reply**. MIG
+has no timeout, so the caller waits forever and no log anywhere says so.
+
+**Two corrections.** secd is not the blocker and never was — I had it as the prime suspect for two
+rungs. And `securityd`'s startup abort, which I wrote down as "a side story and not even a defect",
+is exactly where this chain ends, so it is the thing to fix.
+
+**And a third, about a log I misread.** `secd`'s log ends every life with `semaphore_timedwait
+failed (internally): -111`, which I read as a crash loop. It is not: sampling the host while the
+guest runs shows `rpclog=0` for the whole life of the container and 8 lines appearing at the
+instant `ciderd` goes away. `-111` is `ECONNREFUSED` from `sendmsg` — **teardown**, a guest process
+outliving its daemon. The eleven "crashtrace installed" lines were eleven container runs, not
+eleven restarts.
+
+**A harness bug found underneath all of it, and it invalidated earlier runs.**
+`kill-stale-prefix.sh` matched `/proc/<pid>/exe` against the *prefix*, but the mm and sp containers
+execute `mldr` and `ciderd` out of the **shared runtime** under `/tmp/cider-appkit-1000/rt`. No
+guest process of `/tmp/cider-mm-1000/prefix` has that prefix anywhere in its exe path, so every
+sweep of a non-appkit prefix reported "STALE KILLED 0" and killed nothing — and the next run then
+joined a container it thought it had killed (`Cannot join mnt namespace`). It needs **both**
+signals: the exe says what the process *is* (no shell can be `mldr`), the cmdline says which prefix
+it belongs to. Matching on cmdline alone kills the caller, which is the older trap.
