@@ -1,0 +1,19 @@
+aarch64: do not export _SecCertificateCopyPublicKey_ios on arm64.
+
+On arm64 macOS SecCertificate.c aliases the _ios implementation to the plain
+_SecCertificateCopyPublicKey symbol (TARGET_CPU_ARM64 branch), so the _ios symbol
+name does not exist and the exported-symbols list fails to resolve it when linking
+Security. Guard the export with !TARGET_CPU_ARM64; the base name is already exported.
+Matches darling-security upstream (this pin is byte-identical to that PR base).
+--- a/OSX/sec/Security/SecExports.exp-in
++++ b/OSX/sec/Security/SecExports.exp-in
+@@ -504,7 +504,9 @@
+ _SecCertificateCopyNormalizedSubjectContent
+ _SecCertificateCopyPreference
+ _SecCertificateCopyPreferred
++#if !TARGET_CPU_ARM64
+ _SecCertificateCopyPublicKey_ios
++#endif
+ _SecCertificateCopyPublicKeySHA1DigestFromCertificateData
+ _SecCertificateCopyShortDescription
+ _SecCertificateCopySubjectComponent

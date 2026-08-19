@@ -1,0 +1,167 @@
+aarch64 Objective-C dispatch: cast the messengers, and no stret variant.
+
+On arm64 objc-api.h forces OBJC_OLD_DISPATCH_PROTOTYPES to 0 (the arm64 ABI
+requires the dispatch functions to be called through a correctly-typed function
+pointer -- variadic arguments go on the stack there, but the messenger trampoline
+reads them from registers). These call sites were relying on the old uncast form,
+so they fail to compile for arm64. Casting each objc_msgSend / objc_msgSendSuper /
+method_invoke / stored IMP to its real signature is a no-op on x86 and correct on
+both. Additionally method_invoke_stret is OBJC_ARM64_UNAVAILABLE: arm64 has no
+separate struct-return messenger (the caller passes the indirect result pointer in
+x8, which method_invoke preserves), so the value getters use method_invoke there.
+--- a/src/NSKeyValueObserving.m
++++ b/src/NSKeyValueObserving.m
+@@ -304,7 +304,7 @@
+     else
+     {
+         Method originalClassMethod = class_getInstanceMethod(ret, @selector(class));
+-        return method_invoke(self, originalClassMethod);
++        return ((id (*)(id, Method))method_invoke)(self, originalClassMethod);
+     }
+ }
+ 
+@@ -483,7 +483,7 @@
+     if (containerClass != nil)
+     {
+         IMP cachedIMP = containerClass.cachedObservationInfoImplementation;
+-        observationInfo = cachedIMP(object, @selector(observationInfo));
++        observationInfo = ((id (*)(id, SEL))cachedIMP)(object, @selector(observationInfo));
+     }
+     else
+     {
+@@ -743,7 +743,7 @@
+     NSArray *observances = [[observationInfo observances] retain];
+     struct objc_super super = {self, class_getSuperclass(object_getClass(self))};
+     const char *name = object_getClassName(self);
+-    (void)(void (*)(id, SEL))objc_msgSendSuper(&super, _cmd);
++    (void)((void (*)(struct objc_super *, SEL))objc_msgSendSuper)(&super, _cmd);
+     if (observances.count > 0)
+     {
+         NSKVODeallocateBreak(self, name);
+@@ -905,7 +905,7 @@
+     [methodName release];
+     if ([self respondsToSelector:action])
+     {
+-        return (NSSet *)((NSSet * (*)(id, SEL))objc_msgSend(self, action));
++        return ((NSSet * (*)(id, SEL))objc_msgSend)(self, action);
+     }
+ 
+     // i've checked and verified this is what happens:
+@@ -1242,7 +1242,7 @@
+             .super_class = class_getSuperclass(object_getClass(self))
+ #endif
+         };
+-        (void)(void (*)(id, SEL))objc_msgSendSuper(&super, _cmd);
++        (void)((void (*)(struct objc_super *, SEL))objc_msgSendSuper)(&super, _cmd);
+     }
+ }
+ 
+@@ -1573,7 +1573,7 @@
+     NSKeyValueContainerClass *kvcon = observance.property.containerClass;
+     if (kvcon != nil)
+     {
+-        observationInfo = kvcon.cachedObservationInfoImplementation(originalObservable, @selector(observationInfo));
++        observationInfo = ((id (*)(id, SEL))kvcon.cachedObservationInfoImplementation)(originalObservable, @selector(observationInfo));
+     }
+     else
+     {
+--- a/src/NSBetweenPredicateOperator.m
++++ b/src/NSBetweenPredicateOperator.m
+@@ -39,7 +39,7 @@
+ 
+     SEL comp = [self selector];
+ 
+-    if ((NSComparisonResult)objc_msgSend(upperBound, comp, lowerBound) == NSOrderedAscending)
++    if (((NSComparisonResult (*)(id, SEL, id))objc_msgSend)(upperBound, comp, lowerBound) == NSOrderedAscending)
+     {
+         id temp = upperBound;
+         upperBound = lowerBound;
+@@ -46,8 +46,8 @@
+         lowerBound = temp;
+     }
+ 
+-    if ((NSComparisonResult)objc_msgSend(upperBound, comp, obj) ==  NSOrderedAscending ||
+-        (NSComparisonResult)objc_msgSend(obj, comp, lowerBound) ==  NSOrderedAscending)
++    if (((NSComparisonResult (*)(id, SEL, id))objc_msgSend)(upperBound, comp, obj) ==  NSOrderedAscending ||
++        ((NSComparisonResult (*)(id, SEL, id))objc_msgSend)(obj, comp, lowerBound) ==  NSOrderedAscending)
+     {
+         return NO;
+     }
+--- a/src/NSComparisonPredicateOperator.m
++++ b/src/NSComparisonPredicateOperator.m
+@@ -95,7 +95,7 @@
+     }
+     else
+     {
+-        comp = (NSComparisonResult)objc_msgSend(lhs, [self selector], rhs);
++        comp = ((NSComparisonResult (*)(id, SEL, id))objc_msgSend)(lhs, [self selector], rhs);
+     }
+ 
+     switch (_variant)
+--- a/src/NSCustomPredicateOperator.m
++++ b/src/NSCustomPredicateOperator.m
+@@ -36,7 +36,7 @@
+         return NO;
+     }
+ 
+-    return (BOOL)objc_msgSend(target, [self selector], arg);
++    return ((BOOL (*)(id, SEL, id))objc_msgSend)(target, [self selector], arg);
+ }
+ 
+ - (id)symbol
+--- a/src/NSEqualityPredicateOperator.m
++++ b/src/NSEqualityPredicateOperator.m
+@@ -59,7 +59,7 @@
+         ![rhs isNSString__])
+     {
+         SEL sel = [self selector];
+-        BOOL eq = (BOOL)objc_msgSend(lhs, sel, rhs);
++        BOOL eq = ((BOOL (*)(id, SEL, id))objc_msgSend)(lhs, sel, rhs);
+         return _negate ^ eq;
+     }
+ 
+--- a/src/NSThread.m
++++ b/src/NSThread.m
+@@ -394,7 +394,7 @@
+ {
+     if (_target && _selector)
+     {
+-        objc_msgSend(_target, _selector, _argument);
++        ((void (*)(id, SEL, id))objc_msgSend)(_target, _selector, _argument);
+     }
+ }
+ 
+@@ -471,7 +471,7 @@
+ {
+     if ([NSThread currentThread] == thr && waitUntilDone)
+     {
+-        objc_msgSend(self, aSelector, arg);
++        ((void (*)(id, SEL, id))objc_msgSend)(self, aSelector, arg);
+         return;
+     }
+     BOOL signalled = NO;
+--- a/src/NSKeyValueAccessor.m
++++ b/src/NSKeyValueAccessor.m
+@@ -553,6 +553,9 @@
+     return [NSNumber numberWith##INFIX:((TYPE(*)(id, Method))method_invoke)(obj, method)]; \
+ }
+ 
++#if defined(__arm64__) || defined(__aarch64__)
++// ARM64 has no stret variant; struct returns use the same calling convention
++// (the caller passes the indirect result pointer in x8, which method_invoke preserves).
+ #define DEFINE_GET_VALUE_WITH_METHOD(INFIX, TYPE) \
+ static id _NSGet ## INFIX ##ValueWithMethod(id obj, SEL cmd, Method method) \
+ { \
+@@ -559,5 +562,12 @@
++    return [NSValue valueWith##INFIX:((TYPE(*)(id, Method))method_invoke)(obj, method)]; \
++}
++#else
++#define DEFINE_GET_VALUE_WITH_METHOD(INFIX, TYPE) \
++static id _NSGet ## INFIX ##ValueWithMethod(id obj, SEL cmd, Method method) \
++{ \
+     return [NSValue valueWith##INFIX:((TYPE(*)(id, Method))method_invoke_stret)(obj, method)]; \
+ }
++#endif
+ 
+ DEFINE_GET_NUMBER_WITH_METHOD(Char, char)
+ DEFINE_GET_NUMBER_WITH_METHOD(UnsignedChar, unsigned char)
