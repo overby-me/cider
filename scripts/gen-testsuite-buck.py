@@ -60,6 +60,17 @@ DYLIBS = [
     "//vendor/src:Foundation_dylib",
 ]
 
+# AN APPKIT CASE LINKS APPKIT, and only an AppKit case does: pulling the GUI framework into a libc
+# test would drag the whole display path into something that has no business touching it.
+APPKIT_DYLIBS = DYLIBS + ["//vendor/src:AppKit_dylib"]
+APPKIT_HEADERS = [
+    "//vendor/src:fw_AppKit",
+    "//vendor/src:fw_Onyx2D",
+    # AppKit.h reaches QuartzCore, so without this every AppKit case stops at
+    # "QuartzCore/CIImage.h file not found" before it has said anything about AppKit at all.
+    "//vendor/src:fw_QuartzCore",
+]
+
 
 def target_name(rel):
     """A buck target name from a case path: unique, and readable in a failure list."""
@@ -136,6 +147,7 @@ def main():
         out.append(f"#   {n}")
     for rel in cases:
         name = target_name(rel)
+        is_appkit = "AppKit.framework" in rel
         out.append("")
         out.append("cc_objects(")
         out.append(f'    name = "{name}_obj",')
@@ -148,6 +160,9 @@ def main():
         out.append('        "//src/darwin:sdk_env",')
         for d in FRAMEWORK_DEPS:
             out.append(f'        "{d}",')
+        if is_appkit:
+            for d in APPKIT_HEADERS:
+                out.append(f'        "{d}",')
         out.append('        ":darling_testsuite_inc",')
         out.append("    ],")
         out.append('    visibility = ["PUBLIC"],')
@@ -161,7 +176,7 @@ def main():
         out.append('        "//vendor/src/csu:crt1.10.6_obj2",')
         out.append("    ],")
         out.append("    dylibs = [")
-        for d in DYLIBS:
+        for d in (APPKIT_DYLIBS if is_appkit else DYLIBS):
             out.append(f'        "{d}",')
         out.append("    ],")
         out.append('    toolchain = "toolchains//:darwin_cc",')
