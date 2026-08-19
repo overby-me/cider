@@ -1280,14 +1280,33 @@ static inline void buildTransformsIfNeeded(NSView *self) {
     return NSMakeRect(minx, miny, maxx - minx, maxy - miny);
 }
 
+
+/*
+ * WHICH VIEWS TO FOLLOW. CIDER_TRACE_SVFRAME=1 still means every scroll view, which is what the
+ * Swift Publisher canvas work needed; any other value is a class NAME SUBSTRING, so a run can
+ * follow exactly the view that is behaving oddly rather than a category of them.
+ */
+static BOOL _CiderTraceFrameFor(NSView *view) {
+    const char *want = getenv("CIDER_TRACE_SVFRAME");
+
+    if (want == NULL || want[0] == '\0')
+        return NO;
+
+    if (strcmp(want, "1") == 0)
+        return [view isKindOfClass: [NSScrollView class]];
+
+    return strstr(object_getClassName(view), want) != NULL;
+}
+
 - (void) setFrame: (NSRect) frame {
     /* EVERY SIZE A SCROLL VIEW IS GIVEN, WITH THE CALLER. The document scroll view of Swift
      * Publisher arrives at zero and nothing in AppKit can size it (no mask, plain superview), so
      * the question is whether the application sizes it later and from where. Subtract the image
      * base from the caller to read it against the disassembly. */
-    if (getenv("CIDER_TRACE_SVFRAME") != NULL && [self isKindOfClass: [NSScrollView class]]) {
-        fprintf(stderr, "CIDER_SVFRAME %s %s -> %gx%g caller=%p\n", object_getClassName(self),
-                "setFrame", frame.size.width, frame.size.height, __builtin_return_address(0));
+    if (_CiderTraceFrameFor(self)) {
+        fprintf(stderr, "CIDER_SVFRAME %s %s -> %gx%g at %g,%g caller=%p\n",
+                object_getClassName(self), "setFrame", frame.size.width, frame.size.height,
+                frame.origin.x, frame.origin.y, __builtin_return_address(0));
         fflush(stderr);
     }
 
@@ -1404,7 +1423,7 @@ static inline void buildTransformsIfNeeded(NSView *self) {
      * Publisher arrives at zero and nothing in AppKit can size it (no mask, plain superview), so
      * the question is whether the application sizes it later and from where. Subtract the image
      * base from the caller to read it against the disassembly. */
-    if (getenv("CIDER_TRACE_SVFRAME") != NULL && [self isKindOfClass: [NSScrollView class]]) {
+    if (_CiderTraceFrameFor(self)) {
         fprintf(stderr, "CIDER_SVFRAME %s %s -> %gx%g caller=%p\n", object_getClassName(self),
                 "setFrameSize", size.width, size.height, __builtin_return_address(0));
         fflush(stderr);

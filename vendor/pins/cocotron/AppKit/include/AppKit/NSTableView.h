@@ -75,6 +75,16 @@ typedef enum {
     NSTableViewDropAbove
 } NSTableViewDropOperation;
 
+enum {
+    NSTableViewNoColumnAutoresizing = 0,
+    NSTableViewUniformColumnAutoresizingStyle,
+    NSTableViewSequentialColumnAutoresizingStyle,
+    NSTableViewReverseSequentialColumnAutoresizingStyle,
+    NSTableViewLastColumnOnlyAutoresizingStyle,
+    NSTableViewFirstColumnOnlyAutoresizingStyle
+};
+typedef NSUInteger NSTableViewColumnAutoresizingStyle;
+
 @interface NSTableView : NSControl {
     id _target;
     SEL _action;
@@ -95,6 +105,7 @@ typedef enum {
     BOOL _allowsColumnReordering;
     BOOL _allowsColumnResizing;
     BOOL _autoresizesAllColumnsToFit;
+    NSTableViewColumnAutoresizingStyle _columnAutoresizingStyle;
     BOOL _allowsMultipleSelection;
     BOOL _allowsEmptySelection;
     BOOL _allowsColumnSelection;
@@ -140,6 +151,7 @@ typedef enum {
 - (BOOL) allowsColumnReordering;
 - (BOOL) allowsColumnResizing;
 - (BOOL) autoresizesAllColumnsToFit;
+- (NSTableViewColumnAutoresizingStyle) columnAutoresizingStyle;
 - (BOOL) allowsMultipleSelection;
 - (BOOL) allowsEmptySelection;
 - (BOOL) allowsColumnSelection;
@@ -181,6 +193,7 @@ typedef enum {
 - (void) setAllowsColumnReordering: (BOOL) flag;
 - (void) setAllowsColumnResizing: (BOOL) flag;
 - (void) setAutoresizesAllColumnsToFit: (BOOL) flag;
+- (void) setColumnAutoresizingStyle: (NSTableViewColumnAutoresizingStyle) style;
 - (void) setAllowsMultipleSelection: (BOOL) flag;
 - (void) setAllowsEmptySelection: (BOOL) flag;
 - (void) setAllowsColumnSelection: (BOOL) flag;

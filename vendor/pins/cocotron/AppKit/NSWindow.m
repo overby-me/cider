@@ -230,9 +230,12 @@ static void _CiderDumpViewTree(NSView *view, int depth)
     else if ([view respondsToSelector: @selector(string)])
         text = [(id) view string];
 
-    fprintf(stderr, "CIDER_VIEW %*s%s %.0fx%.0f at %.0f,%.0f%s%s\n", depth * 2, "",
+    /* The mask belongs next to the frame: a subview that stays empty while its container grows is
+     * either masked to stay that way or was never given a size to grow from, and the two look
+     * identical in a frame-only dump. */
+    fprintf(stderr, "CIDER_VIEW %*s%s %.0fx%.0f at %.0f,%.0f mask=0x%x%s%s\n", depth * 2, "",
             object_getClassName(view), frame.size.width, frame.size.height,
-            frame.origin.x, frame.origin.y,
+            frame.origin.x, frame.origin.y, (unsigned) [view autoresizingMask],
             (text != nil && [text length] > 0) ? " text: " : "",
             (text != nil && [text length] > 0) ? [text UTF8String] : "");
 
@@ -2372,6 +2375,27 @@ static BOOL _allowsAutomaticWindowTabbing;
     if (![self isVisible] || [self isMiniaturized] ||
         ![self viewsNeedDisplay]) {
         return;
+    }
+
+    /* THE TREE OF EVERY WINDOW THAT EVER DRAWS, ONCE. -display dumps it, but a window that only
+     * ever goes through displayIfNeeded was invisible to that instrument, which is every document
+     * window in Swift Publisher. One dump per window is enough to answer whether a layout ran. */
+    if (getenv("CIDER_TRACE_VIEWS") != NULL) {
+        static NSWindow *dumped[64];
+        static int dumpedCount = 0;
+        BOOL seen = NO;
+
+        for (int i = 0; i < dumpedCount; i++)
+            if (dumped[i] == self)
+                seen = YES;
+
+        if (!seen && dumpedCount < 64) {
+            dumped[dumpedCount++] = self;
+            fprintf(stderr, "CIDER_VIEW tree(displayIfNeeded) of %s title=%s\n",
+                    object_getClassName(self), [[self title] UTF8String] ?: "(none)");
+            fflush(stderr);
+            _CiderDumpViewTree(_backgroundView, 1);
+        }
     }
 
     @autoreleasepool {

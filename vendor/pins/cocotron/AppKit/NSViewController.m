@@ -8,6 +8,24 @@
 
 @synthesize identifier = _identifier;
 
+/*
+ * NEW HAS TO REACH THE DESIGNATED INITIALISER. AppKit documents -init on a view controller as
+ * initWithNibName:nil bundle:nil, and a subclass that builds its view in code overrides that one
+ * method, because it is the only one every other initialiser funnels through. Without this, an
+ * ordinary [MyViewController new] runs NSObject's -init, the subclass override never executes, and
+ * the controller comes up with no view at all.
+ *
+ * That is not a theoretical tidiness point. Swift Publisher creates its document container that
+ * way: the override installs a real NSSplitView subclass as the controller's view, and the window
+ * then adds the page-preview strip and the canvas scroll view to it as panes, both with no
+ * autoresizing mask, because a split view sizes its own subviews. Skipping the override left them
+ * in the empty NSView that loadView hands back for a nib-less controller, which lays nothing out,
+ * so the canvas scroll view stayed at zero by zero for the life of the window.
+ */
+- init {
+    return [self initWithNibName: nil bundle: nil];
+}
+
 - initWithNibName: (NSString *) name bundle: (NSBundle *) bundle {
     _nibName = [name copy];
     _nibBundle = [bundle retain];

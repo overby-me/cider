@@ -154,6 +154,20 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
 
 /** adjust all the non-collapsed subviews so that they are equally spaced
  * horizontally within the splitview */
+/*
+ * A PANE THE DELEGATE WILL NOT LET US RESIZE keeps the size it has, and the room left over goes to
+ * the panes that will. Without this every pane is treated as elastic and the space is shared by
+ * ratio, which is wrong whenever one pane is a fixed strip: Swift Publisher stacks a toolbar, a
+ * page preview and the document canvas in one split view and answers YES for the canvas alone, so
+ * asking made the difference between a canvas with a height and a canvas with none.
+ */
+- (BOOL) _delegateShouldAdjustSizeOfSubview: (NSView *) subview {
+    if (![_delegate respondsToSelector: @selector(splitView:shouldAdjustSizeOfSubview:)])
+        return YES;
+
+    return [_delegate splitView: self shouldAdjustSizeOfSubview: subview];
+}
+
 - (void) _adjustSubviewWidths {
     // Set all the subview heights to the bounds height of the split view
     CGFloat height = NSHeight([self bounds]);
@@ -192,6 +206,24 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
             visibleCount++;
     }
 
+    /* The panes the delegate holds fixed are subtracted from both sides of the ratio, so what is
+     * shared out below is only the room the elastic panes may have. */
+    CGFloat fixedWidth = 0.0;
+
+    for (i = 0; i < count; i++) {
+        NSView *subview = [_subviews objectAtIndex: i];
+
+        if ([self isSubviewCollapsed: subview] == NO &&
+            [self _delegateShouldAdjustSizeOfSubview: subview] == NO) {
+            fixedWidth += NSWidth([subview frame]);
+            totalWidthBefore -= NSWidth([subview frame]);
+            visibleCount--;
+        }
+    }
+    totalWidthAfter -= fixedWidth;
+    if (!(totalWidthAfter >= 0.0))
+        totalWidthAfter = 0.0;
+
     BOOL haveProportions = (totalWidthBefore > 0.0) && (visibleCount > 0);
     CGFloat delta = haveProportions ? (totalWidthAfter / totalWidthBefore) : 0.0;
     CGFloat equalShare = (visibleCount > 0) ? (totalWidthAfter / visibleCount) : 0.0;
@@ -200,7 +232,11 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
     for (i = 0; i < count; i++) {
         NSView *subview = [_subviews objectAtIndex: i];
         if ([self isSubviewCollapsed: subview] == NO) {
-            frame.size.width = haveProportions ? (NSWidth([subview frame]) * delta) : equalShare;
+            if ([self _delegateShouldAdjustSizeOfSubview: subview] == NO)
+                frame.size.width = NSWidth([subview frame]);
+            else
+                frame.size.width =
+                        haveProportions ? (NSWidth([subview frame]) * delta) : equalShare;
             frame.size.width = floor(frame.size.width);
             if (!(frame.size.width >= 0.0)) /* also false for NAN */
                 frame.size.width = 0.0;
@@ -246,6 +282,23 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
             visibleCount++;
     }
 
+    /* Same as the width case: a pane the delegate holds fixed leaves the ratio entirely. */
+    CGFloat fixedHeight = 0.0;
+
+    for (i = 0; i < count; i++) {
+        NSView *subview = [_subviews objectAtIndex: i];
+
+        if ([self isSubviewCollapsed: subview] == NO &&
+            [self _delegateShouldAdjustSizeOfSubview: subview] == NO) {
+            fixedHeight += NSHeight([subview frame]);
+            totalHeightBefore -= NSHeight([subview frame]);
+            visibleCount--;
+        }
+    }
+    totalHeightAfter -= fixedHeight;
+    if (!(totalHeightAfter >= 0.0))
+        totalHeightAfter = 0.0;
+
     BOOL haveProportions = (totalHeightBefore > 0.0) && (visibleCount > 0);
     CGFloat delta = haveProportions ? (totalHeightAfter / totalHeightBefore) : 0.0;
     CGFloat equalShare = (visibleCount > 0) ? (totalHeightAfter / visibleCount) : 0.0;
@@ -254,7 +307,11 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
     for (i = 0; i < count; i++) {
         NSView *subview = [_subviews objectAtIndex: i];
         if ([self isSubviewCollapsed: subview] == NO) {
-            frame.size.height = haveProportions ? (NSHeight([subview frame]) * delta) : equalShare;
+            if ([self _delegateShouldAdjustSizeOfSubview: subview] == NO)
+                frame.size.height = NSHeight([subview frame]);
+            else
+                frame.size.height =
+                        haveProportions ? (NSHeight([subview frame]) * delta) : equalShare;
             frame.size.height = floor(frame.size.height);
             if (!(frame.size.height >= 0.0)) /* also false for NAN */
                 frame.size.height = 0.0;

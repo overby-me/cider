@@ -122,6 +122,9 @@ const CGFloat NSTableViewDefaultRowHeight = 16.0f;
         _allowsColumnReordering = (flags & 0x80000000) ? YES : NO;
         _allowsColumnResizing = (flags & 0x40000000) ? YES : NO;
         _autoresizesAllColumnsToFit = (flags & 0x00008000) ? YES : NO;
+        _columnAutoresizingStyle = _autoresizesAllColumnsToFit
+                ? NSTableViewUniformColumnAutoresizingStyle
+                : NSTableViewLastColumnOnlyAutoresizingStyle;
         _allowsMultipleSelection = (flags & 0x08000000) ? YES : NO;
         _allowsEmptySelection = (flags & 0x10000000) ? YES : NO;
         _allowsColumnSelection = (flags & 0x04000000) ? YES : NO;
@@ -165,6 +168,7 @@ const CGFloat NSTableViewDefaultRowHeight = 16.0f;
     _autoresizesAllColumnsToFit =
             NO; // the default isn't actually given in the spec, but this seems
                 // more like default behavior
+    _columnAutoresizingStyle = NSTableViewLastColumnOnlyAutoresizingStyle;
     _allowsMultipleSelection = NO;
     _allowsEmptySelection = YES;
     _allowsColumnSelection = YES;
@@ -272,6 +276,10 @@ const CGFloat NSTableViewDefaultRowHeight = 16.0f;
 
 - (BOOL) autoresizesAllColumnsToFit {
     return _autoresizesAllColumnsToFit;
+}
+
+- (NSTableViewColumnAutoresizingStyle) columnAutoresizingStyle {
+    return _columnAutoresizingStyle;
 }
 
 - (BOOL) allowsMultipleSelection {
@@ -649,7 +657,21 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
     _allowsColumnResizing = flag;
 }
 
+/*
+ * THE SAME SETTING, TWO SPELLINGS. autoresizesAllColumnsToFit is the older boolean and
+ * columnAutoresizingStyle replaced it, so they are kept in step here rather than allowed to
+ * disagree: the boolean is exactly the uniform style, and its NO is last-column-only, which is what
+ * the resize below already did.
+ */
+- (void) setColumnAutoresizingStyle: (NSTableViewColumnAutoresizingStyle) style {
+    _columnAutoresizingStyle = style;
+    _autoresizesAllColumnsToFit =
+            (style == NSTableViewUniformColumnAutoresizingStyle) ? YES : NO;
+}
+
 - (void) setAutoresizesAllColumnsToFit: (BOOL) flag {
+    _columnAutoresizingStyle = flag ? NSTableViewUniformColumnAutoresizingStyle
+                                    : NSTableViewLastColumnOnlyAutoresizingStyle;
     _autoresizesAllColumnsToFit = flag;
 }
 
@@ -1449,6 +1471,59 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
     return result;
 }
 
+/*
+ * WHO TAKES UP THE SLACK when the table is wider or narrower than its columns. The styles differ
+ * only in which columns are offered the difference, so this is one walk with a direction and a
+ * limit: sequential works from the last column towards the first and reverse sequential from the
+ * first towards the last, each column taking as much of the difference as its minimum and maximum
+ * width allow before the next one is asked.
+ */
+- (void) _autoresizeColumns {
+    CGFloat delta = [[self enclosingScrollView] contentSize].width -
+                    [self _displayWidthOfColumns];
+    NSInteger count = [_tableColumns count];
+    NSInteger i;
+
+    if (count == 0 || _columnAutoresizingStyle == NSTableViewNoColumnAutoresizing)
+        return;
+
+    switch (_columnAutoresizingStyle) {
+    case NSTableViewUniformColumnAutoresizingStyle:
+        for (i = 0; i < count; ++i) {
+            NSTableColumn *column = [_tableColumns objectAtIndex: i];
+
+            [column setWidth: [column width] + floor((delta / count))];
+        }
+        return;
+
+    case NSTableViewLastColumnOnlyAutoresizingStyle:
+        [self sizeLastColumnToFit];
+        return;
+
+    case NSTableViewFirstColumnOnlyAutoresizingStyle: {
+        NSTableColumn *column = [_tableColumns objectAtIndex: 0];
+
+        [column setWidth: [column width] + delta];
+        return;
+    }
+
+    default:
+        break;
+    }
+
+    for (i = 0; i < count && delta != 0; ++i) {
+        NSInteger index = (_columnAutoresizingStyle ==
+                           NSTableViewReverseSequentialColumnAutoresizingStyle)
+                ? i
+                : (count - 1 - i);
+        NSTableColumn *column = [_tableColumns objectAtIndex: index];
+        CGFloat was = [column width];
+
+        [column setWidth: was + delta];
+        delta -= [column width] - was;
+    }
+}
+
 - (void) resizeWithOldSuperviewSize: (NSSize) oldSize {
     NSSize size = [self frame].size;
 
@@ -1457,18 +1532,7 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
         [self setFrameSize: size];
     }
 
-    if (_autoresizesAllColumnsToFit) {
-        CGFloat delta = [[self enclosingScrollView] contentSize].width -
-                        [self _displayWidthOfColumns];
-        NSInteger i, count = [_tableColumns count];
-
-        for (i = 0; i < count; ++i) {
-            NSTableColumn *column = [_tableColumns objectAtIndex: i];
-            [column setWidth: [column width] + floor((delta / count))];
-        }
-
-    } else
-        [self sizeLastColumnToFit];
+    [self _autoresizeColumns];
 
     [self tile];
 }
