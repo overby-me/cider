@@ -216,24 +216,39 @@ cc_header_root(
 # subset of one map: if a pin moves or splits, the SDK generator moves this with it, and a
 # path that vanishes from the SDK fails HERE with a missing key rather than silently
 # resolving to something else.
-_MLDR_HOST_HEADERS = [
-    "architecture/byte_order.h",
+# The per-CPU leaf headers the dispatch headers above resolve to (task A4). On an aarch64
+# host cider-coredump reads arm64 Mach-O, so mach/machine/vm_types.h lands on
+# mach/arm/vm_types.h and the i386 leaves are simply absent; the arm OSByteOrder pulls
+# arm/arch.h, which the i386 one does not need.
+_MLDR_HOST_ARCH_HEADERS = [
+    "arm/arch.h",
+    "arm/cpu_capabilities.h",
+    "libkern/arm/OSByteOrder.h",
+    "mach/arm/boolean.h",
+    "mach/arm/vm_types.h",
+] if host_info().arch.is_aarch64 else [
     "i386/cpu_capabilities.h",
-    "libkern/OSByteOrder.h",
-    "libkern/_OSByteOrder.h",
     "libkern/i386/OSByteOrder.h",
     "libkern/i386/_OSByteOrder.h",
-    "mach/boolean.h",
     "mach/i386/boolean.h",
     "mach/i386/vm_types.h",
+]
+
+_MLDR_HOST_HEADERS = [
+    "architecture/byte_order.h",
+    "libkern/OSByteOrder.h",
+    "libkern/_OSByteOrder.h",
+    "mach/boolean.h",
     "mach/machine.h",
     "mach/machine/boolean.h",
     "mach/machine/vm_types.h",
     "mach/vm_prot.h",
     "sys/_types/_os_inline.h",
     "sys/commpage.h",
+] + _MLDR_HOST_ARCH_HEADERS + [
     # The farm links mach-o as a whole DIRECTORY, so the whole namespace comes with it.
-] + [_k for _k in SDK_ROOT if _k.startswith("mach-o/")]
+    _k for _k in SDK_ROOT if _k.startswith("mach-o/")
+]
 
 cc_header_root(
     name = "mldr_include",
