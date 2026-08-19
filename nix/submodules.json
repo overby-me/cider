@@ -146,5 +146,6 @@
   {"path": "vendor/pins/xar", "owner": "darlinghq", "repo": "darling-xar", "rev": "887bd4f42eb4ac9139a7f621b5811065aa86f3e3", "recursive": false, "hash": "sha256-UA0K5RgpPu0InkaT3mB/SrUtjMil4KO9VGBBufrI7hE="},
   {"path": "vendor/pins/metal", "owner": "darlinghq", "repo": "darling-metal", "rev": "ae20248dc144beab899e38752f5a530f28a0ea56", "recursive": true, "hash": "sha256-fMa6Bgw0hlgJ8C5p05Jt5O+MqB0kMHrQuqmHWAaXmFw="},
   {"path": "vendor/pins/xnu", "owner": "darlinghq", "repo": "darling-xnu", "rev": "fa29287aa2f0115271e091f1031f53c9e024005d", "recursive": false, "hash": "sha256-xce77DUpR113LoVZK0RHg4Qh1f01hpBUhDqo1yo6re0="},
-  {"path": "vendor/pins/ciderd/xnu-sys/xnu", "owner": "darlinghq", "repo": "darling-xnu", "rev": "fa29287aa2f0115271e091f1031f53c9e024005d", "recursive": false, "hash": "sha256-xce77DUpR113LoVZK0RHg4Qh1f01hpBUhDqo1yo6re0=", "patches": "xnu-sys-xnu"}
+  {"path": "vendor/pins/ciderd/xnu-sys/xnu", "owner": "darlinghq", "repo": "darling-xnu", "rev": "fa29287aa2f0115271e091f1031f53c9e024005d", "recursive": false, "hash": "sha256-xce77DUpR113LoVZK0RHg4Qh1f01hpBUhDqo1yo6re0=", "patches": "xnu-sys-xnu"},
+  {"path": "vendor/pins/darling-testsuite", "owner": "darlinghq", "repo": "darling-testsuite", "rev": "82fcb690d54f3c89359abcdfbb8cdd4b902b952d", "recursive": false, "hash": "sha256-ZMgYzSNqSreREKQ3xj3MdsCNi+CLs3YIpw4YpNIK0HY="}
 ]

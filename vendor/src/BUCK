@@ -63443,3 +63443,158 @@ cc_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: x86_64-apple-darwin20-ld binary
+
+# BEGIN darling-testsuite (task #123)
+#
+# The upstream suite is about a hundred small programs, one per behaviour, each a main() that
+# asserts and exits. Its own build is CMake and CTest; here each case is an ordinary guest binary,
+# because that is what this port already knows how to build and run.
+#
+# THE INCLUDE ROOTS POINT AT THE REAL DIRECTORIES, not at include/, whose entries are DIRECTORY
+# SYMLINKS into lib/ (include/darling-testsuite -> ../lib/darling-testsuite/include/...). Staging a
+# subtree as a directory symlink is what broke the groups, the pins and the SDK before, so the two
+# roots below name the trees the headers actually live in.
+
+cc_header_root(
+    name = "darling_testsuite_inc",
+    headers = glob(["darling-testsuite/lib/darling-testsuite/include/darling-testsuite/**/*.h"]),
+    root = "darling-testsuite/lib/darling-testsuite/include",
+)
+
+cc_header_root(
+    name = "darling_testsuite_inc_private",
+    headers = glob(["darling-testsuite/lib/darling-testsuite/include-private/**/*.h"]),
+    root = "darling-testsuite/lib/darling-testsuite/include-private",
+)
+
+# The harness the cases assert through. Its CMakeLists links Foundation, so every case does too.
+cc_objects(
+    name = "darling_testsuite_lib_obj",
+    srcs = [
+        "darling-testsuite/lib/darling-testsuite/src/darling-testsuite/algorithm.c",
+        "darling-testsuite/lib/darling-testsuite/src/darling-testsuite/assertion.m",
+        "darling-testsuite/lib/darling-testsuite/src/darling-testsuite/file.m",
+        "darling-testsuite/lib/darling-testsuite/src/darling-testsuite/obj/NSCoder.m",
+        "darling-testsuite/lib/darling-testsuite/src/darling-testsuite/print.m",
+        "darling-testsuite/lib/darling-testsuite/src/darling-testsuite/resource.m",
+        "darling-testsuite/lib/darling-testsuite/src/darling-testsuite/symbol.m",
+        "darling-testsuite/lib/darling-testsuite/src/darling-testsuite/unsupported.c",
+        "darling-testsuite/lib/darling-testsuite/src/darling-testsuite/xml.m",
+        "darling-testsuite/lib/darling-testsuite/src/private/DarlingTestSuite/DLTSTraverseXmlLayout.m",
+        "darling-testsuite/lib/darling-testsuite/src/private/DarlingTestSuite/DLTSXmlLayout.m",
+        "darling-testsuite/lib/darling-testsuite/src/private/DarlingTestSuite/DLTSXmlParserDelegate.m",
+    ],
+    compiler_flags = [
+        "-O2",
+        "-Wall",
+        "-fpic",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Security",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_CoreText",
+        "//vendor/src:fw_CoreData",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_ATS",
+        "//src/darwin/frameworks:fw_ApplicationServices",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_ColorSync",
+        "//src/darwin/frameworks:fw_ColorSyncLegacy",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_HIServices",
+        "//src/darwin/frameworks:fw_ImageIO",
+        "//src/darwin/frameworks:fw_LangAnalysis",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_OpenGL",
+        "//src/darwin/frameworks:fw_PrintCore",
+        "//src/darwin/frameworks:fw_QD",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/frameworks:fw_SpeechSynthesis",
+        ":darling_testsuite_inc",
+        ":darling_testsuite_inc_private",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# ONE CASE FIRST, and an Objective-C one on purpose.
+#
+# The obvious choice was the smallest C case, close(100) failing with EBADF, and it does not build:
+# the harness header uses CGFloat, and on macOS a plain C file gets that from
+# CoreFoundation/CFCGTypes.h, which OUR CoreFoundation does not have. That is a real divergence and
+# the first thing this suite has found, recorded as its own task rather than patched around here.
+# An Objective-C case reaches CGFloat through Foundation, and 54 of the 78 cases are Objective-C.
+cc_objects(
+    name = "dts_nsstring_percent_obj",
+    srcs = [
+        "darling-testsuite/testsuite/System/Library/Frameworks/Foundation.framework/test/NSString(NSURLUtilities)/test_NSString_stringByRemovingPercentEncoding.m",
+    ],
+    compiler_flags = [
+        "-O2",
+        "-Wall",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Security",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_CoreText",
+        "//vendor/src:fw_CoreData",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_ATS",
+        "//src/darwin/frameworks:fw_ApplicationServices",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_ColorSync",
+        "//src/darwin/frameworks:fw_ColorSyncLegacy",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_HIServices",
+        "//src/darwin/frameworks:fw_ImageIO",
+        "//src/darwin/frameworks:fw_LangAnalysis",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_OpenGL",
+        "//src/darwin/frameworks:fw_PrintCore",
+        "//src/darwin/frameworks:fw_QD",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/frameworks:fw_SpeechSynthesis",
+        ":darling_testsuite_inc",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "dts_nsstring_percent",
+    objs = [
+        ":dts_nsstring_percent_obj",
+        ":darling_testsuite_lib_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# A SECOND CASE IS NOT HERE YET, and the reason is a finding rather than an omission.
+#
+# test_NSDictionary_writeToURLerror_primitives.m does not COMPILE against our headers:
+#     instance method -writeToURL:error: not found (return type defaults to id)
+# -[NSDictionary writeToURL:error:] is a documented API and our Foundation does not declare it.
+# That and the missing CoreFoundation CGFloat above are the first two divergences this suite has
+# found, both before a single case ran, and both are recorded as their own tasks. Adding a target
+# that cannot build would only break the build for everyone.
+
+# END darling-testsuite
