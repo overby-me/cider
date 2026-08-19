@@ -11156,3 +11156,33 @@ passes. It says nothing about our libc, and I nearly wrote that it did.
 Five real failures remain of the twenty-three that run: UIFoundation's nib-archive detection and its
 missing exported symbol (#130), `clonefile` on a soft symlink with and without nofollow (#131), and
 `PubSub.framework`, which simply does not exist here.
+
+### The AppKit cases, and the segfaults that were not
+
+Wiring the twelve AppKit cases brings the suite to 69 wired, 35 built, 34 run and **24 passing**;
+eleven of the twelve AppKit cases build and six pass. That is the first automated coverage over the
+framework this port spends most of its time in.
+
+The first result was a lie I almost wrote down. Run headless, eight AppKit cases exit 139 — a
+segfault, which reads as AppKit crashing on calls as ordinary as `[NSColor labelColor]`. The backend
+says otherwise in the case output itself:
+
+```
+cider-wayland-appkit register=ok class=NSDisplayWayland
+cider-wayland-appkit init=declined reason=no-compositor
+```
+
+The display correctly declined to exist, and the case then died at its first use of it. Under the
+same nested sway the application drivers use, the segfaults are gone and AppKit passes go from one to
+six. The runner is `scratchpad/run-dts-wayland.sh`, and any future AppKit case has to go through it.
+
+Five AppKit failures remain and are real (task #132): `NSColorList availableColorLists` and
+`colorListNamed` fire assertions, `NSColor colorUsingColorSpaceNamed` for a device space exits 1, and
+both `NSCursor` coder cases fail — `initWithCoder` on `assert_equals_CGFloat`, so a coordinate such as
+the hotspot does not survive the round trip. A sixth does not compile at all:
+`NSColorListNotEditableException` is not declared in our AppKit.
+
+One build note: QuartzCore was the entire AppKit build problem, because `AppKit.h` reaches it and
+every case stopped at `QuartzCore/CIImage.h file not found` before saying anything about AppKit. The
+generator adds that header root and the AppKit dylib **only** for cases under `AppKit.framework` —
+pulling the GUI framework into a libc test would drag the display path somewhere it has no business.
