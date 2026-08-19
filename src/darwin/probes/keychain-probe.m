@@ -27,7 +27,22 @@ int main(void) {
     CFDictionarySetValue(query, kSecAttrService,
                          CFSTR("cider-probe-service-that-does-not-exist"));
     CFDictionarySetValue(query, kSecAttrAccount, CFSTR("cider-probe-account"));
-    /* No kSecReturnData: the answer wanted here is whether the call comes back at all. */
+    /*
+     * A WELL FORMED QUERY, and getting this wrong made the whole instrument lie. Without a return
+     * attribute the query is invalid, the client rejects it LOCALLY with errSecParam (-50), and
+     * that -50 came back in a run where secd was not even running. A -50 therefore proved nothing
+     * about whether anything answered. Asking for the attributes back makes the query one that has
+     * to reach the server, so the meanings separate:
+     *
+     *   -25300 errSecItemNotFound  the keychain answered, and there is no such item (expected)
+     *   a hang                     nothing is serving
+     *   -50 errSecParam            the query is malformed again, not a statement about the server
+     *
+     * Still no kSecReturnData: this asks for attributes of a service name that cannot exist, so it
+     * cannot return a secret even if one somehow matched. The application it diagnoses talks to
+     * banks.
+     */
+    CFDictionarySetValue(query, kSecReturnAttributes, kCFBooleanTrue);
     CFDictionarySetValue(query, kSecMatchLimit, kSecMatchLimitOne);
 
     printf("CIDER_KEYCHAIN calling SecItemCopyMatching\n");

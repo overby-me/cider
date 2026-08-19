@@ -11595,3 +11595,36 @@ printed nothing whatsoever. Those are harness failures that read exactly like ap
 
 **So whether MoneyMoney gets past its splash once the keychain answers is still unknown.** It showed
 the splash in every run looked at this rung, but not one of those runs had confirmed secd readiness.
+
+### The keychain probe was not measuring what I said it was
+
+**Correcting the table in the previous entry.** It reported "the keychain returned" as evidence that
+a launchd-started secd serves. That inference does not hold: `SecItemCopyMatching` also returned
+**with no secd PID at all** (two runs). So `-50` never proved that anything answered — the client can
+reject and return without reaching a server, and my query was malformed (no return attribute), which
+made that the likely path.
+
+Adding `kSecReturnAttributes` to make the query well-formed did **not** change the answer: still
+`-50`, still an intermittent hang, still uncorrelated with secd's PID. Per-run correlation, one
+`cider shell`, 15 s after boot:
+
+| run | secd PID | `SecItemCopyMatching` |
+|---|---|---|
+| 1 | yes | **hangs** |
+| 2 | yes | returns −50 |
+| 3 | yes | returns −50 |
+| 4 | yes | returns −50 |
+| 5 | **no** | **returns −50** |
+
+Rows 1 and 5 are each fatal to the simple story, in opposite directions.
+
+**What is solid.** The `-111` RPC-refusal lines from secd suggested the transport might be generally
+flaky, and it is not: `//src/darwin/probes:bootstrap-probe`, which does `mach_port_allocate`,
+`bootstrap_check_in`, `bootstrap_register` and `bootstrap_look_up`, completed **5 of 5** in fresh
+containers. So the Mach and bootstrap layer is reliable and the hang lives in Security's own client
+path.
+
+**What is therefore still unknown:** what distinguishes a run where `SecItemCopyMatching` returns
+from one where it blocks forever, and whether MoneyMoney's splash is that same block. The next step
+is an instrument that can tell "the server answered" from "the client answered locally" — the current
+one cannot, and every conclusion drawn from it needs that caveat.
