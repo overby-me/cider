@@ -839,6 +839,18 @@ handing back a bad pointer near the host libc. NEXT: disassemble the calloc stub
 guest malloc zone reserves its region at a high/garbage base on arm64. The bit-47 mask fault is just
 how the garbage surfaces; the bug is upstream in the allocation.
 
+Checked the calloc binding: objc's class_rw calloc stub (libobjc 0x45774) reads la_symbol_ptr at
+vmaddr 0x541e0, bound in the core to 0x0000100000e1d4e0 -- a LOW (16 TiB arena) guest address, i.e.
+guest libsystem_malloc, NOT mldr's host glibc. So calloc is correctly guest-resolved; the garbage
+comes from WITHIN the guest allocator -- its zone/region is high. strace of mldr shows no high mmap,
+so the high region is not a plain guest mmap: suspects are (a) the guest malloc zone reserving via a
+FIXED/hinted address (my sys_mmap low-hint only fires for start==0 && !MAP_FIXED, so a MAP_FIXED or
+hinted-high reservation slips through), or (b) mach_vm_allocate's `*address` hint being high, or (c)
+a class_rw slab/pool allocator using a bad base. NEXT: strace with mmap args (not just results) to
+catch a MAP_FIXED/hinted high reservation, and read the guest default malloc zone struct to see its
+region base. If it is a MAP_FIXED-high zone reservation, extend 0029 to also low-place hinted/FIXED
+mappings whose hint has bit 47 set.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
