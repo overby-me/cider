@@ -1263,6 +1263,16 @@ static int cider_trace_cell(void) {
     }
     [editor setRichText: _isRichText];
     [editor setString: strValue];
+    /* WHAT FONT THE EDITOR IS GIVEN. A nil here is not harmless: the field editor lays its glyphs
+     * out with no metrics, the used rect comes back one point wide and zero high, and the glyph
+     * range for any bounding rect is NSNotFound, so the text is in the model and never drawn. */
+    if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
+        fprintf(stderr, "CIDER_FIELDEDIT cell=%s font=%s string=%s editable=%d\n",
+                object_getClassName(self),
+                [self font] != nil ? [[[self font] description] UTF8String] : "NIL",
+                strValue != nil ? [strValue UTF8String] : "(nil)", (int) [self isEditable]);
+        fflush(stderr);
+    }
     [editor setFont: [self font]];
     [editor setAlignment: [self alignment]];
     if ([self respondsToSelector: @selector(drawsBackground)])

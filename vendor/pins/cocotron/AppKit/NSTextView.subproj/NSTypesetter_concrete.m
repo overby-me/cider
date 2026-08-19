@@ -137,8 +137,28 @@ static void loadGlyphAndCharacterCacheForLocation(NSATSTypesetter *self,
 #if DEBUG_GETLINEFRAGMENTRECT
         NSLog(@"height: %f is too small", _scanRect.size.height);
 #endif
-        // Too small for our text
-        _scanRect = NSZeroRect;
+        /*
+         * A CONTAINER TOO SHORT FOR ITS FIRST LINE CLIPS THE LINE, IT DOES NOT DISCARD IT.
+         *
+         * Dropping the fragment is right for a later line: the container has run out of vertical
+         * room and the rest of the text belongs to the next container, or to nowhere. For the FIRST
+         * line it is a different statement entirely, that the view shows NOTHING, and that is not
+         * what AppKit does. Cocoa lays the line out and lets the view clip it.
+         *
+         * A field editor is exactly this case and it is not an edge case at all. NSTextFieldCell
+         * gives the editor its title rect, which for an ordinary bezeled field is a point or two
+         * shorter than the font wants: measured here at 13 points for a line height of 16, an 11
+         * point system font with a 12.6 ascender and a 3.1 descender. Every character typed into
+         * the Swift Publisher inspector went into the text storage, generated its glyph, and then
+         * had its only line fragment thrown away, so the field held five characters and drew none
+         * of them, with no error anywhere.
+         */
+        if (startingGlyphIndex == 0 && _scanRect.size.height > 0.0) {
+            _scanRect.size.height = wantedHeight;
+        } else {
+            // Too small for our text
+            _scanRect = NSZeroRect;
+        }
     }
     if (NSEqualRects(_scanRect, NSZeroRect) == NO) {
 #if DEBUG_GETLINEFRAGMENTRECT

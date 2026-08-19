@@ -3038,8 +3038,20 @@ NSString *const NSAllRomanInputSourcesLocaleIdentifier =
         replacementString = [object string];
     }
 
-    if ([self shouldChangeTextInRange: [self selectedRange]
-                    replacementString: replacementString] == NO) {
+    /* AND WHERE AN INSERT IS REFUSED. shouldChangeTextInRange: consults the delegate, so a text
+     * view that is editable can still drop every character on a delegate answer, which is the other
+     * half of the same silence. */
+    BOOL allowed = [self shouldChangeTextInRange: [self selectedRange]
+                               replacementString: replacementString];
+
+    if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
+        fprintf(stderr, "CIDER_TEXTINSERT %s allowed=%d string=%s lengthBefore=%lu\n",
+                object_getClassName(self), (int) allowed, [replacementString UTF8String] ?: "",
+                (unsigned long) [[self string] length]);
+        fflush(stderr);
+    }
+
+    if (allowed == NO) {
         return;
     }
     [self _replaceCharactersInRange: [self selectedRange]
@@ -3050,6 +3062,24 @@ NSString *const NSAllRomanInputSourcesLocaleIdentifier =
 }
 
 - (void) keyDown: (NSEvent *) event {
+    /* WHY A KEY WENT NOWHERE. This method drops every event SILENTLY when the view is not editable,
+     * and a field editor that was never told it is editable looks exactly like an application
+     * ignoring the keyboard: the field takes a focus ring, the event reaches this responder, and
+     * nothing is inserted. Print the state that decides it, not just the fact that a key arrived.
+     * Same gate as the backend trace that shows the key being posted. */
+    const char *watch = getenv("CIDER_TRACE_TEXT");
+
+    if (watch != NULL && watch[0] != (char) 0) {
+        fprintf(stderr,
+                "CIDER_TEXTKEY %s type=%d editable=%d selectable=%d fieldEditor=%d delegate=%s "
+                "chars=%s\n",
+                object_getClassName(self), (int) [event type], (int) [self isEditable],
+                (int) [self isSelectable], (int) [self isFieldEditor],
+                _delegate != nil ? object_getClassName(_delegate) : "(nil)",
+                [[event characters] UTF8String] ?: "");
+        fflush(stderr);
+    }
+
     if ([event type] == NSKeyDown && [self isEditable]) {
         _processingKeyEvent = YES;
         [self interpretKeyEvents: [NSArray arrayWithObject: event]];
@@ -3088,12 +3118,72 @@ NSString *const NSAllRomanInputSourcesLocaleIdentifier =
 - (void) drawRect: (NSRect) rect {
     NSLayoutManager *layoutManager = [self layoutManager];
     NSPoint origin = [self textContainerOrigin];
+
     NSRect glyphRect = rect;
     glyphRect.origin.x -= _textContainerInset.width;
     glyphRect.origin.y -= _textContainerInset.height;
     NSRange gRange = gRange =
             [layoutManager glyphRangeForBoundingRect: glyphRect
                                      inTextContainer: [self textContainer]];
+
+    /* DID IT DRAW, AND WHERE. Text that is in the model and not on the screen is a drawing question,
+     * so this says whether this view is asked to draw at all, how big it is, what it is inside, and
+     * how many glyphs the layout manager thinks it has. A field editor with no superview or a zero
+     * frame answers every key happily and shows nothing. */
+    if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
+        NSView *sup = [self superview];
+
+        NSDictionary *attrs = [self typingAttributes];
+        id colour = [attrs objectForKey: NSForegroundColorAttributeName];
+        NSRect used = [layoutManager usedRectForTextContainer: [self textContainer]];
+        NSTextContainer *container = [self textContainer];
+        NSSize csize = container != nil ? [container containerSize] : NSZeroSize;
+
+        /* DOES ONE LINE FIT. A container whose height is smaller than the font line height holds no
+         * line fragment at all, and a layout manager with nowhere to put the text lays out nothing
+         * and reports a used rect of one by zero, which is exactly the shape seen here. */
+        NSFont *lineFont = [attrs objectForKey: NSFontAttributeName];
+        CGFloat lineHeight = lineFont != nil ? [layoutManager defaultLineHeightForFont: lineFont]
+                                             : -1.0;
+        NSRect frag = NSZeroRect;
+
+        if ([layoutManager numberOfGlyphs] > 0) {
+            frag = [layoutManager lineFragmentRectForGlyphAtIndex: 0 effectiveRange: NULL];
+        }
+        fprintf(stderr, "CIDER_TEXTLINE lineHeight=%g ascender=%g descender=%g frag=%gx%g@%g,%g\n",
+                lineHeight, lineFont != nil ? [lineFont ascender] : 0.0,
+                lineFont != nil ? [lineFont descender] : 0.0, frag.size.width, frag.size.height,
+                frag.origin.x, frag.origin.y);
+
+        fprintf(stderr,
+                "CIDER_TEXTCONT container=%s size=%gx%g widthTracks=%d heightTracks=%d "
+                "textView=%s lmContainers=%lu inset=%gx%g\n",
+                container != nil ? object_getClassName(container) : "(nil)", csize.width,
+                csize.height, container != nil ? (int) [container widthTracksTextView] : -1,
+                container != nil ? (int) [container heightTracksTextView] : -1,
+                (container != nil && [container textView] != nil) ? "yes" : "NO",
+                (unsigned long) [[layoutManager textContainers] count], _textContainerInset.width,
+                _textContainerInset.height);
+
+        fprintf(stderr,
+                "CIDER_TEXTDRAW %s rect=%gx%g@%g,%g frame=%gx%g@%g,%g super=%s window=%s len=%lu "
+                "glyphs=%lu range=%lu+%lu origin=%g,%g used=%gx%g@%g,%g colour=%s "
+                "font=%s fieldEditor=%d\n",
+                object_getClassName(self), rect.size.width, rect.size.height, rect.origin.x,
+                rect.origin.y, [self frame].size.width, [self frame].size.height,
+                [self frame].origin.x, [self frame].origin.y,
+                sup != nil ? object_getClassName(sup) : "(nil)",
+                [self window] != nil ? "yes" : "NO", (unsigned long) [[self string] length],
+                (unsigned long) [layoutManager numberOfGlyphs], (unsigned long) gRange.location,
+                (unsigned long) gRange.length, origin.x, origin.y, used.size.width,
+                used.size.height, used.origin.x, used.origin.y,
+                colour != nil ? [[colour description] UTF8String] : "(none)",
+                [attrs objectForKey: NSFontAttributeName] != nil
+                        ? [[[attrs objectForKey: NSFontAttributeName] description] UTF8String]
+                        : "NIL",
+                (int) [self isFieldEditor]);
+        fflush(stderr);
+    }
 
     if ([self drawsBackground]) {
         [_backgroundColor setFill];
