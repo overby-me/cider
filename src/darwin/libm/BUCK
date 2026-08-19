@@ -13,6 +13,11 @@ cc_header_root(
     header_map = {
         "architecture/i386/fenv.h": "Source/Intel/fenv.h",
         "architecture/i386/math.h": "Source/Intel/math.h",
+        # The arm dispatch targets (aarch64 port, task A13): fenv.h dispatches here on arm64,
+        # math.h reuses the Intel header (identical prototypes). Their contents came from
+        # darling PR 1753 (Source/architecture/arm/fenv.h).
+        "architecture/arm/fenv.h": "Source/architecture/arm/fenv.h",
+        "architecture/arm/math.h": "Source/Intel/math.h",
         "complex.h": "Source/complex.h",
         "fenv.h": "Source/fenv.h",
         "math.h": "Source/math.h",

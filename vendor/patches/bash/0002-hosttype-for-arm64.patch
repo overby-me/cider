@@ -1,0 +1,19 @@
+conftypes.h knows arm64 (aarch64 port, task A16)
+
+The MACOSX branch defines HOSTTYPE per __ARCH__ macro and falls back to CONF_HOSTTYPE for
+anything it does not recognise. It has no arm64 case, and cider's generated bash flags set
+CONF_MACHTYPE/OSTYPE/VENDOR but not CONF_HOSTTYPE (unused on x86_64, where the __x86_64__
+case wins), so an arm64 guest build hits "use of undeclared identifier 'CONF_HOSTTYPE'" in
+variables.c. Add the case the way the others read; __arm64__ is the guest compiler's spelling.
+
+--- a/bash-3.2/conftypes.h
++++ b/bash-3.2/conftypes.h
+@@ -37,6 +37,8 @@
+ #    define HOSTTYPE "i386"
+ #  elif defined(__arm__)
+ #    define HOSTTYPE "arm"
++#  elif defined(__arm64__) || defined(__aarch64__)
++#    define HOSTTYPE "arm64"
+ #  else
+ #    define HOSTTYPE CONF_HOSTTYPE
+ #  endif
