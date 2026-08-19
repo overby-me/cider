@@ -1,0 +1,216 @@
+A missing extended attribute is ENOATTR, and a filesystem without them has none.
+
+MoneyMoney refused to start and showed its own FatalError.CodeSign message, that the application
+file seems to be damaged and should be moved to the Trash. The bundle is intact: all 497 of its
+sealed resources hash to what CodeResources says. What failed was the first thing the code-signing
+machinery does with a bundle, an ordinary getxattr for com.apple.FinderInfo on the bundle root, and
+our answer was EOPNOTSUPP.
+
+Apple treats that as fatal. checkFork in libsecurity_utilities/unix++.cpp accepts ENOATTR and EPERM
+and throws on anything else, so SecStaticCodeCreateWithPath came back as errSecErrnoBase plus 102
+before a byte of the signature was read.
+
+Linux and Darwin disagree here in a way the global errno table cannot settle, because the
+disagreement is per call rather than per value: on Linux ENOATTR IS ENODATA, one number for both
+"this stream has no data" and "this file has no such attribute", while Darwin splits them into
+ENOATTR 93 and ENODATA 96. The table has to choose and chose ENODATA, which is right for the stream
+calls and wrong for these. A filesystem with no extended attribute support answers ENOTSUP, and
+macOS has no such filesystem, so no caller is written for that answer either.
+
+So the six get, remove and list calls translate through their own helper: a missing attribute and an
+unsupported filesystem both become ENOATTR, and a listing on such a filesystem is EMPTY rather than
+an error. Setting one is deliberately left alone, because an application told its attribute was
+stored when nothing was stored has been lied to.
+
+Two plain bugs came out of the same reading. listxattr passed the GUEST path to the host syscall
+instead of the expanded one, so every listing answered ENOENT for a file that plainly exists, while
+getxattr beside it already used vc.path. And getxattr returned 0 rather than the length on success,
+so a caller asking how big an attribute is saw an empty one every time; fgetxattr beside it already
+returned the length.
+
+MEASURED, on the MoneyMoney bundle: getxattr for com.apple.FinderInfo went from errno 102 to errno
+93, listxattr from -1 ENOENT to 0, and SecStaticCodeCreateWithPath from 100102 to 0. LOOKED AT: the
+application no longer shows the damaged alert and reaches its own startup screen with its logo,
+toolbar and search field.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getxattr.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getxattr.c
+@@ -6,6 +6,7 @@
+ 
+ #include <darling/emulation/common/base.h>
+ #include <darling/emulation/conversion/errno.h>
++#include <darling/emulation/conversion/xattr/errors.h>
+ #include <darling/emulation/conversion/xattr/getxattr.h>
+ #include <darling/emulation/linux_premigration/vchroot_expand.h>
+ #include <darling/emulation/common/bsdthread/per_thread_wd.h>
+@@ -26,13 +27,17 @@
+ 	strcpy(vc.path, path);
+ 	ret = vchroot_expand(&vc);
+ 
++	/* A path that will not resolve is a path error, not a missing attribute. */
+ 	if (ret < 0)
+ 		return errno_linux_to_bsd(ret);
+ 
+ 	ret = LINUX_SYSCALL(__NR_getxattr, vc.path, name, value, size);
+ 
+ 	if (ret < 0)
+-		return errno_linux_to_bsd(ret);
++		return xattr_errno_linux_to_bsd(ret);
+ 
+-	return 0;
++	/* THE SIZE, NOT ZERO. This answered 0 for every successful read, so a caller that asks how big
++	 * an attribute is, or reads one and trusts the count, saw an empty attribute every time.
++	 * fgetxattr beside it already returned the length. */
++	return ret;
+ }
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fgetxattr.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fgetxattr.c
+@@ -4,6 +4,7 @@
+ 
+ #include <darling/emulation/common/base.h>
+ #include <darling/emulation/conversion/errno.h>
++#include <darling/emulation/conversion/xattr/errors.h>
+ #include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
+ 
+ long sys_fgetxattr(int fd, const char* name, char* value,
+@@ -17,7 +18,7 @@
+ 	ret = LINUX_SYSCALL(__NR_fgetxattr, fd, name, value, size);
+ 
+ 	if (ret < 0)
+-		return errno_linux_to_bsd(ret);
++		return xattr_errno_linux_to_bsd(ret);
+ 
+ 	return ret;
+ }
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/removexattr.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/removexattr.c
+@@ -2,6 +2,7 @@
+ 
+ #include <darling/emulation/common/base.h>
+ #include <darling/emulation/conversion/errno.h>
++#include <darling/emulation/conversion/xattr/errors.h>
+ #include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
+ 
+ #define XATTR_NOFOLLOW	1
+@@ -16,7 +17,7 @@
+ 		ret = LINUX_SYSCALL(__NR_removexattr, path, name);
+ 
+ 	if (ret < 0)
+-		return errno_linux_to_bsd(ret);
++		return xattr_errno_linux_to_bsd(ret);
+ 
+ 	return ret;
+ }
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fremovexattr.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fremovexattr.c
+@@ -2,6 +2,7 @@
+ 
+ #include <darling/emulation/common/base.h>
+ #include <darling/emulation/conversion/errno.h>
++#include <darling/emulation/conversion/xattr/errors.h>
+ #include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
+ 
+ long sys_fremovexattr(int fd, const char* name, int options)
+@@ -11,7 +12,7 @@
+ 	ret = LINUX_SYSCALL(__NR_fremovexattr, fd, name);
+ 
+ 	if (ret < 0)
+-		return errno_linux_to_bsd(ret);
++		return xattr_errno_linux_to_bsd(ret);
+ 
+ 	return ret;
+ }
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/listxattr.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/listxattr.c
+@@ -2,6 +2,7 @@
+ 
+ #include <darling/emulation/common/base.h>
+ #include <darling/emulation/conversion/errno.h>
++#include <darling/emulation/conversion/duct_errno.h>
+ #include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
+ #include <darling/emulation/linux_premigration/vchroot_expand.h>
+ #include <darling/emulation/common/bsdthread/per_thread_wd.h>
+@@ -22,10 +23,19 @@
+ 	if (ret < 0)
+ 		return errno_linux_to_bsd(ret);
+ 
++	/* THE EXPANDED PATH. This passed the GUEST path to the host syscall, which is a path the host
++	 * does not have, so every listing answered ENOENT for a file that plainly exists. getxattr
++	 * beside it already used vc.path. */
+ 	if (options & XATTR_NOFOLLOW)
+-		ret = LINUX_SYSCALL(__NR_llistxattr, path, namebuf, size);
++		ret = LINUX_SYSCALL(__NR_llistxattr, vc.path, namebuf, size);
+ 	else
+-		ret = LINUX_SYSCALL(__NR_listxattr, path, namebuf, size);
++		ret = LINUX_SYSCALL(__NR_listxattr, vc.path, namebuf, size);
++
++	/* A FILESYSTEM WITHOUT EXTENDED ATTRIBUTES HAS AN EMPTY LIST, which is what a caller can act
++	 * on; the error macOS never returns is not. */
++	/* Linux spells ENOTSUP and EOPNOTSUPP with the same 95. */
++	if (ret == -LINUX_EOPNOTSUPP)
++		return 0;
+ 
+ 	if (ret < 0)
+ 		return errno_linux_to_bsd(ret);
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/flistxattr.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/flistxattr.c
+@@ -4,6 +4,7 @@
+ 
+ #include <darling/emulation/common/base.h>
+ #include <darling/emulation/conversion/errno.h>
++#include <darling/emulation/conversion/duct_errno.h>
+ #include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
+ #include <darling/emulation/conversion/stat/common.h>
+ #include <darling/emulation/xnu_syscall/bsd/helper/misc/fdpath.h>
+@@ -47,6 +48,11 @@
+ 		ret = LINUX_SYSCALL(__NR_flistxattr, fd, namebuf, size);
+ 	}
+ 
++	/* Same rule as listxattr: no extended attribute support is an empty list, not an error. */
++	/* Linux spells ENOTSUP and EOPNOTSUPP with the same 95. */
++	if (ret == -LINUX_EOPNOTSUPP)
++		return 0;
++
+ 	if (ret < 0)
+ 		return errno_linux_to_bsd(ret);
+ 
+--- /dev/null
++++ b/darling/src/libsystem_kernel/emulation/include/conversion/xattr/errors.h
+@@ -0,0 +1,37 @@
++#ifndef DARLING_CONVERSION_XATTR_ERRORS
++#define DARLING_CONVERSION_XATTR_ERRORS
++
++#include <sys/errno.h>
++#include <darling/emulation/conversion/errno.h>
++
++/*
++ * LINUX AND DARWIN DISAGREE ABOUT WHAT "NO SUCH ATTRIBUTE" IS, and the global errno table cannot
++ * settle it because the disagreement is per call rather than per value.
++ *
++ * On Linux, ENOATTR IS ENODATA: one number, 61, for both "this stream has no data" and "this file
++ * has no such extended attribute". Darwin splits them, ENOATTR 93 and ENODATA 96, so the global
++ * table has to choose, and it chose ENODATA, which is right for the stream calls and wrong for
++ * these six.
++ *
++ * A filesystem with no extended attribute support answers ENOTSUP. macOS has no such filesystem,
++ * so no caller is written for that answer: Apple's own code-signing machinery treats anything but
++ * ENOATTR or EPERM as fatal (checkFork in libsecurity_utilities/unix++.cpp), and that is exactly
++ * how MoneyMoney came to declare its own application file damaged and refuse to start. Its first
++ * call was getxattr for com.apple.FinderInfo on the bundle root, our answer was EOPNOTSUPP, and
++ * SecStaticCodeCreateWithPath returned errSecErrnoBase plus 102 before reading a byte of the
++ * signature. "There is no such attribute" is both true here and the answer macOS would give.
++ *
++ * SETTING one is a different question and is deliberately not translated: an application that
++ * stores an attribute and is told it succeeded, when nothing was stored, has been lied to.
++ */
++static inline long xattr_errno_linux_to_bsd(int linux_ret)
++{
++	long err = errno_linux_to_bsd(linux_ret);
++
++	if (err == -ENODATA || err == -ENOTSUP || err == -EOPNOTSUPP)
++		return -ENOATTR;
++
++	return err;
++}
++
++#endif // DARLING_CONVERSION_XATTR_ERRORS

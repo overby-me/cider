@@ -11398,3 +11398,51 @@ claimed.
 MoneyMoney is unaffected, and that is the informative part: its damaged-application dialog keeps a
 97 by 22 button, below the new minimum, which is how we know that dialog is the application's own
 panel and not an `NSAlert`.
+
+### MoneyMoney was not damaged, our getxattr was (task #117)
+
+MoneyMoney opened to a single alert saying its own application file seems to be damaged and should
+be moved to the Trash, and that was recorded here as "the application's own integrity check failing
+under Cider, which is expected". It was not expected and it was ours.
+
+The message is `FatalError.CodeSign` in the app's `Localizable.strings`, and the app uses exactly
+three code-signing calls: `SecStaticCodeCreateWithPath`, `SecStaticCodeCheckValidity`,
+`SecCodeCopySigningInformation`. **The bundle is intact** — parsing `_CodeSignature/CodeResources`
+and hashing every sealed file gives 497 checked, 0 mismatched, 0 missing — so macOS would have
+validated it.
+
+A guest probe (`//src/darwin/probes:codesign-probe`, kept) answered in one run what reading Apple's
+`libsecurity_codesigning` could not: `SecStaticCodeCreateWithPath` = **100102**, which is
+`errSecErrnoBase + EOPNOTSUPP`, before any signature is read. Bisecting with the probe: `/bin/ls`
+gives `errSecCSUnsigned` (correct), the same universal binary copied to `/tmp` opens fine, and a
+minimal unsigned `.app` fails — so it is neither the FAT format nor the location but **bundle**
+handling. `BundleDiskRep::setup` starts with `filehasExtendedAttribute(root, XATTR_FINDERINFO_NAME)`,
+and `checkFork` in `unix++.cpp` accepts only `ENOATTR` and `EPERM` and **throws on anything else**.
+Our `getxattr` answered `EOPNOTSUPP`.
+
+Linux and Darwin disagree in a way the global errno table cannot settle, because the disagreement is
+per call rather than per value: on Linux **ENOATTR *is* ENODATA**, one number for both "this stream
+has no data" and "this file has no such attribute", while Darwin splits them (93 and 96). The table
+chose ENODATA, right for the stream calls and wrong for these. And a filesystem with no xattr support
+answers ENOTSUP, which macOS has no filesystem to produce, so nothing is written to handle it. The
+six get/remove/list calls now translate through their own helper: missing *and* unsupported both
+become ENOATTR, and a listing on such a filesystem is empty rather than an error. Setting is left
+alone — an application told its attribute was stored when nothing was stored has been lied to.
+
+Two plain bugs fell out of the same reading. `listxattr` passed the **guest** path to the host
+syscall instead of the expanded one, so every listing answered ENOENT for a file that plainly
+exists; `getxattr` beside it already used `vc.path`. And `getxattr` returned **0** instead of the
+length on success, so a caller asking how big an attribute is saw an empty one every time.
+
+Measured on the MoneyMoney bundle: `getxattr` for `com.apple.FinderInfo` 102 → 93, `listxattr`
+-1/ENOENT → 0, `SecStaticCodeCreateWithPath` 100102 → 0. **Looked at: the damaged alert is gone and
+the app reaches its own startup screen** with its logo, toolbar icons and search field.
+
+Captured for nix as `vendor/patches/xnu/0018-*.patch` (verified by applying it to a pristine
+upstream tree and comparing byte-for-byte), and the new header needed entries in **two** generated
+maps, `buck/generated/exports_xnu.bzl` and `buck/generated/sdk_headers.bzl` — the same shape as the
+AppKit `header_map` lesson from #132.
+
+**Still open, and the next thing in the way:** `SecStaticCodeCheckValidity` on that bundle does not
+return within nine minutes. MoneyMoney itself gets past it (its startup screen appears), so it is not
+blocking the app, but a probe that calls it directly hangs. That is task #135.

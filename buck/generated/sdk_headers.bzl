@@ -805,6 +805,7 @@ SDK_ROOT = {
     "darling/emulation/conversion/time/setitimer.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_conversion_time_setitimer.h",
     "darling/emulation/conversion/xattr/getattrlist.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_conversion_xattr_getattrlist.h",
     "darling/emulation/conversion/xattr/getxattr.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_conversion_xattr_getxattr.h",
+    "darling/emulation/conversion/xattr/errors.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_conversion_xattr_errors.h",
     "darling/emulation/linux_premigration/elfcalls_wrapper.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_linux_premigration_elfcalls_wrapper.h",
     "darling/emulation/linux_premigration/ext/fanotify.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_linux_premigration_ext_fanotify.h",
     "darling/emulation/linux_premigration/ext/file_handle.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_linux_premigration_ext_file_handle.h",

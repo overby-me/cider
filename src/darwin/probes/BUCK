@@ -1,0 +1,44 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+# GUEST PROBES. Small binaries that ask a framework what it answers, for questions no trace above
+# the framework can settle. They are diagnostic tools rather than part of any product, and they are
+# here rather than in the scratchpad because they have to be BUILT for the guest and linked against
+# the same frameworks an application links.
+
+cc_objects(
+    name = "codesign_probe_obj",
+    srcs = [
+        "codesign-probe.m",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Security",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "codesign-probe",
+    objs = [
+        ":codesign_probe_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Security_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

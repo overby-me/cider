@@ -579,6 +579,7 @@ EXPORTS = {
     "darling_src_libsystem_kernel_emulation_include_conversion_time_setitimer.h": "darling/src/libsystem_kernel/emulation/include/conversion/time/setitimer.h",
     "darling_src_libsystem_kernel_emulation_include_conversion_xattr_getattrlist.h": "darling/src/libsystem_kernel/emulation/include/conversion/xattr/getattrlist.h",
     "darling_src_libsystem_kernel_emulation_include_conversion_xattr_getxattr.h": "darling/src/libsystem_kernel/emulation/include/conversion/xattr/getxattr.h",
+    "darling_src_libsystem_kernel_emulation_include_conversion_xattr_errors.h": "darling/src/libsystem_kernel/emulation/include/conversion/xattr/errors.h",
     "darling_src_libsystem_kernel_emulation_include_linux_premigration_elfcalls_wrapper.h": "darling/src/libsystem_kernel/emulation/include/linux_premigration/elfcalls_wrapper.h",
     "darling_src_libsystem_kernel_emulation_include_linux_premigration_ext_fanotify.h": "darling/src/libsystem_kernel/emulation/include/linux_premigration/ext/fanotify.h",
     "darling_src_libsystem_kernel_emulation_include_linux_premigration_ext_file_handle.h": "darling/src/libsystem_kernel/emulation/include/linux_premigration/ext/file_handle.h",
