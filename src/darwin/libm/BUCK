@@ -38,7 +38,9 @@ _LIBM_ARM_SRCS = [
         "Source/ARM/exp2f_freeBSD.c",
         "Source/ARM/expm1_freeBSD.c",
         "Source/ARM/expm1f_freeBSD.c",
-        "Source/ARM/fma_freeBSD.c",
+        # fma_freeBSD.c is deliberately absent: it is a software Dekker fallback that darling
+        # PR 1753 drops on arm64, where fma/fmaf come from arm64_builtins.c (__builtin_fma ->
+        # FMADD). Including it duplicates _fma/_fmal at link time.
         "Source/ARM/fmod_freeBSD.c",
         "Source/ARM/fmodf.c",
         "Source/ARM/e_hypot.c",
