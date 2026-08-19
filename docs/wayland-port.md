@@ -10927,3 +10927,20 @@ document page with rulers and a populated inspector; the mouse works through the
 logic (two clicks on zoom-in took 75 percent to 125 percent, the page grew, the rulers rescaled) and
 the keyboard inserts text; and at 1000×600 the toolbar collapses to an overflow chevron, the
 inspector moves, the page is still drawn and the typed text survives the relayout.
+
+### iA Writer is blocked on a Swift compiler, and the fault address says so
+
+Re-measured rather than recalled. iA Writer starts, runs its `+load` methods and reaches
+`-[NSApplication finishLaunching]`; the delegate's `NSApplicationDidFinishLaunching` handler runs a
+`dispatch_once` that calls `__swift_instantiateConcreteTypeFromMangledNameV2` inside its embedded
+`AccountCore` framework, and that faults at `addr=0xfffffffffffffff8`.
+
+The address is the diagnosis, not just a symptom. Swift keeps a type's value witness table at
+`metadata - 8`, so a read at `-8` means the metadata pointer itself came back **NULL** — which is
+precisely what a zero-valued placeholder symbol yields. The bundle's Combine imports are exactly
+those placeholders: they get the process past dyld and fault at the first real use.
+
+Unblocking needs a real Combine, which needs `swiftc`. There is no Swift compiler in this devshell,
+no `.swift` in any BUCK target, and `vendor/pins/swift` holds prebuilt dylibs whose `libswiftCore`
+has no concurrency symbols. That is a toolchain task and a different kind of work from the
+application queue; it should not be attempted from inside it.
