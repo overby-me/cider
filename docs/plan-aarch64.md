@@ -814,6 +814,31 @@ is now correct; this is a fixups bug.
 
 Committed this pass: xnu 0029 (sys_mmap low arena) + mldr compute_slide dyld-low.
 
+**Update, nineteenth pass -- the objc fault is NOT the VM layout; it is a corrupted class_rw.**
+
+Ran the fault to ground with the core + the on-disk dylib. The faulting class (libobjc, at runtime
+0x100004459050, a low 16-TiB address -- correctly placed) has its five header words compared file vs
+core:
+
+  field   file        rebased(+slide 0x100004400000)   core runtime
+  isa     0x59000     0x100004459000                   0x100004459000   OK
+  super   0x0         0x0                              0x0              OK
+  cache   0x462f0     0x1000044462f0                   0x1000044462f0   OK
+  bits    0x55d00     0x100004455d00                   0xe1215353f820   WRONG
+
+So dyld's classic LC_DYLD_INFO rebase is CORRECT for the whole struct -- isa/super/cache all match.
+ONLY `bits` (offset 0x20) is overwritten at runtime, from the right value 0x100004455d00 to garbage
+0xe1215353f820 -- an address that is UNMAPPED and sits just below mldr's own glibc (0xe12153700000);
+it changes with ASLR each run (0xe2be.., 0xe58a.., 0xe121..). objc writes cls->bits during
+realization: `realizeClassWithoutSwift` calloc's a class_rw and stores it into bits. So the guest's
+class_rw allocation returned a garbage pointer in mldr's glibc neighbourhood. This is NOT the VM
+layout (that is fixed -- the class, dylibs and dyld are all low now); it is the guest ALLOCATOR
+handing back a bad pointer near the host libc. NEXT: disassemble the calloc stub objc calls
+(libobjc __stubs ~0x45774) and read its GOT/la_symbol_ptr in the core -- determine whether guest
+`calloc`/`malloc` binds to the guest libsystem_malloc or leaks to mldr's host glibc, and whether the
+guest malloc zone reserves its region at a high/garbage base on arm64. The bit-47 mask fault is just
+how the garbage surfaces; the bug is upstream in the allocation.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
