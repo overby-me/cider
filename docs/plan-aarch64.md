@@ -524,6 +524,31 @@ ciderBuck2Graph.nix is `builtins.path` over the whole tree (only docs/nix/tests-
 editing any `src/darwin` .c/.h rehashes it and the graph dump reruns. Batch source edits before a
 prefix build. The comprehensive build (cocotron + the three fixes) is running now.
 
+**Update, tenth pass — the prefix build clears to two roots, both fixed.**
+
+The cocotron fix held: the ~1200-target `CGBase.h` cascade and the libxpc AppKit failure went to zero,
+and the three arm64 compile fixes (CarbonCore, launchd, xtrace.cpp) all built. `--keep-going` left
+exactly TWO real roots, everything else a dependency-failure of them:
+
+- **xtrace `trampoline.S`** -- x86_64/i386 macro bodies only, so on arm64 `trampoline_enter`/`call`
+  assembled as instructions. Added an arm64 branch: save x0-x7 and the number x16 around the print
+  call; entry passes `(x16, &args)`, exit passes `(x0 retval)` -- the split x86 did not need because
+  rax was both. (Committed with the xtracelib.cpp hook.)
+- **CoreServices `reexport.exp`** -- reexports 32 libm symbols, nine of them x86/PowerPC-only:
+  `__FE_DFL_DISABLE_SSE_DENORMS_ENV` (Intel SSE denorm env), `_nextafterd` (PowerPC legacy) and
+  seven `$fenv_access_off` variants. arm64 libm defines none of them, so the CoreServices_dylib link
+  failed on nine undefined symbols, cascading to AudioToolbox, the af* tools, gzip/lzma/ffi/xip and
+  the prefix itself. Added `reexport_arm64.exp` (the 23 that exist) and selected it in
+  `src/darwin/frameworks/BUCK` by `guest_arch`; x86 keeps `reexport.exp` byte-identical.
+
+Both landed; the final prefix build (all fixes) is running, reusing the previous build's object
+cache. If it comes back green, `nix build .#cider-buck2-prefix-min` is the arm64 prefix and M3 moves
+to the boot check (`buck-bash-check.nu --prefix <result>`).
+
+Note logged for later: Foundation and CoreFoundation dylibs still name `reexport_x86_64.exp` /
+`dylib_name = *_x86_64`, but both linked on arm64 in this build (their listed symbols all exist), so
+they are cosmetic rather than blocking -- revisit only if a later link complains.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
