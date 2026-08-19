@@ -36,6 +36,18 @@ int main(int argc, char **argv) {
      */
     const char *name = argc > 1 ? argv[1] : "com.cider.probe.receiveport";
 
+    /*
+     * CHECK IN FIRST, which is what Security's ReceivePort does: it only falls back to registering
+     * when checkInOptional answers nothing, and checkInOptional swallows SERVICE_ACTIVE,
+     * UNKNOWN_SERVICE and NOT_PRIVILEGED into that nothing. So the number this prints is the one
+     * that decides whether securityd lives, and it is invisible from inside Security.
+     */
+    mach_port_t checked = MACH_PORT_NULL;
+    kern_return_t ckr = bootstrap_check_in(bootstrap_port, (char *) name, &checked);
+
+    printf("CIDER_BOOTSTRAP bootstrap_check_in(%s)=%d port=0x%x\n", name, (int) ckr,
+           (unsigned) checked);
+
     kr = bootstrap_register(bootstrap_port, (char *) name, port);
     printf("CIDER_BOOTSTRAP bootstrap_register(%s)=%d\n", name, (int) kr);
 

@@ -11520,3 +11520,35 @@ client gets a port from launchd and waits forever for a server that died. Two se
 securityd should check in for its declared MachService (or our launchd should let the owning job
 register its own name), and the keychain client should answer `errSecNotAvailable` rather than block
 when nothing is there.
+
+### It is secd, not securityd, and it needs launchd too (task #138)
+
+Measured three ways with `//src/darwin/probes:keychain-probe`:
+
+| launchd | secd | `SecItemCopyMatching` |
+|---|---|---|
+| running | not running | **hangs** (killed at 120 s, then 180 s) |
+| not running | started by hand | **hangs** (killed at 150 s) |
+| running | started by hand | **returns** `-50 errSecParam` for a query built to match nothing |
+
+So both are needed — secd is the server and launchd is how a client finds it — and `SecItem*` talks
+to **secd**, not to the legacy `SecurityServer`. With securityd running (pid 9) the keychain still
+hangs.
+
+**That corrects the previous entry.** I wrote that securityd's abort in `Bootstrap::registerAs` was
+the root cause. It is real but it is not the blocker, and it is not even a defect in the case I
+measured: `ReceivePort` tries `bootstrap_check_in` **first** and only falls back to registering when
+`checkInOptional` answers nothing — and that helper swallows `SERVICE_ACTIVE`, `UNKNOWN_SERVICE` and
+`NOT_PRIVILEGED` into "nothing". A hand-started process is not the launchd job that owns
+`com.apple.SecurityServer`, so its check-in is *correctly* refused, and launchd even logs the case:
+"bootstrap_register() erroneously called instead of bootstrap_check_in()". A probe job with its own
+`MachServices` plist, started by launchd, checks in cleanly (`bootstrap_check_in = 0`), so the
+mechanism is fine.
+
+Why secd is not running: `/System/Library/LaunchAgents/com.apple.secd.plist` declares
+`com.apple.secd`, `com.apple.securityd.general` and six more services, but as an **agent** launchctl
+answers "nothing found to load" (it carries `LimitLoadToSessionType = Background`), and staged as a
+**daemon** with `RunAtLoad` it appears in `launchctl list` with status 1 and no PID. Its output could
+not be captured at all: `StandardOutPath`/`StandardErrorPath` produce no file, a `/bin/sh` wrapper as
+`ProgramArguments` never ran, and nothing in the prefix captures syslog. Run **by hand** it stays
+alive and prints only `sys_proc_info(): Unsupported callnum: 9` twice.
