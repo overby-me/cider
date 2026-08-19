@@ -664,6 +664,33 @@ debugging loop -- each fault leaves a core with the exact PC and registers. Defe
 large stack frames, so fix it if it surfaces. Prefix rebuild with 0026 is running; retest the boot
 when it lands.
 
+**Update, fourteenth pass -- a FAST boot-debug loop, the TSD fix confirmed, and the next fault (the
+arm64 syscall stubs).**
+
+Iteration was on the slow path: every fix meant a full `nix build .#cider-buck2-prefix-min`, ~30-40
+min, because any source edit rehashes the whole-tree `projectSrc` and forces an ~18 min buck2 graph
+re-dump before compiling. The fast loop instead uses direct `buck2` in the dev shell (guest_arch=arm64
+in .buckconfig.local; buck2's own incremental engine, no graph dump) and OVERLAYS the rebuilt guest
+dylibs onto a writable copy of the nix-built prefix -- guest binaries link libSystem at RUNTIME, so
+only the ~38 system dylibs (+ dyld) move, not the tools. `scripts/checks/buck-bash-check.nu --prefix
+<copy>`. Whole cycle ~1-2 min. Script: scratchpad/fast-boot.sh (target->prefix-path map lifted from
+buck/prefix-min/BUCK; dyld added by hand because it is not a *.dylib and statically links
+libsystem_kernel_static64.a). NOTE: overlay ALL of the TSD-inlining binaries or the OLD code is what
+runs -- the first attempt missed dyld (39 `mrs TPIDRRO`), so the fault didn't move.
+
+With libSystem + dyld overlaid, the TSD fix is CONFIRMED: the SIGSEGV-at-0x8 is gone (dyld now has 0
+TPIDRRO reads, 97 to sys_thread_get_tsd_base) and the boot advances to a NEW, different fault --
+Signal 5 (TRAP), a `brk #0x1`, because a call to Darwin BSD syscall 372 (`thread_selfid`) returned
+-1 and the caller asserts it cannot. The call is a RAW `svc #0x80` stub (`mov x16,#372; svc #0x80;
+b.cc ...`). Both ends are already correct: `sys_thread_selfid` does `LINUX_SYSCALL(__NR_gettid)`, and
+`bsd_syscall.S` HAS an `__aarch64__` `__darling_bsd_syscall` dispatcher (`ldr x9,[table + x16*8];
+blr x9`). The gap is the STUBS: the guest libsystem_kernel/dyld carry the UPSTREAM raw `svc #0x80`
+syscall stubs (490 in libsystem_kernel, 153 in dyld) instead of darling stubs that `bl
+__darling_bsd_syscall`. On Linux arm64 `svc #0x80` just traps to the kernel as `svc #0` with x8
+unset, so it fails. NEXT: fix the arm64 syscall-stub generation so `___thread_selfid` et al. route
+through `__darling_bsd_syscall` (as x86 does) rather than emitting `svc #0x80`. That is the arm64
+guest syscall ABI -- likely the biggest remaining boot piece.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
