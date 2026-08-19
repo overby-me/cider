@@ -11569,3 +11569,29 @@ would create it before failing to find `date`. It is not a general spawn or redi
 a job whose program is a plain guest binary runs and its `StandardOutPath` file is written. It
 silently breaks every wrapper-script job, which is the obvious way to instrument a daemon that will
 not talk.
+
+### The secd question is a rate, not a yes or no (task #138)
+
+**This corrects the previous entry.** I wrote that "a live secd is not a serving secd". That is
+wrong: a launchd-started secd **does** serve the keychain. What it does unreliably is *start*, and a
+probe run 8 seconds after boot catches it before it is ready. Measured:
+
+| wait before asking | secd job | `SecItemCopyMatching` |
+|---|---|---|
+| 8 s | 1 of 5 runs had a PID | that one still hung — up but not ready |
+| 25 s | 3 of 4 runs had a PID | **returned in all 3** |
+| 12 s, with `KeepAlive` | — | **returned in 3 of 5** |
+
+So the fix is not "make secd serve", it is "make secd start, and start early". `KeepAlive` on the job
+raises the odds but does not settle it.
+
+**What could not be measured, and why**, so the next attempt does not spend the rung the way this one
+did: there is no harness yet that both guarantees secd is up *and* launches the app. A second
+`cider shell` into the same container fails with "Cannot join mnt namespace", so the readiness check
+cannot be a separate invocation. Inside one invocation, `sh -c 'exec <app>'` launches the app
+normally (2 windows mapped), but a gate loop before the `exec` produced runs where the app never
+mapped a window at all — 25 `launchctl` checks in a loop, and then a three-check version that
+printed nothing whatsoever. Those are harness failures that read exactly like app failures.
+
+**So whether MoneyMoney gets past its splash once the keychain answers is still unknown.** It showed
+the splash in every run looked at this rung, but not one of those runs had confirmed secd readiness.
