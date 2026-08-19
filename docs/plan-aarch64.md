@@ -899,6 +899,22 @@ receives the fork CHECKIN, then read ciderd's checkin handler (src/linux/server)
 and the per-thread-socket rendezvous. This is a HOST-side (Rust daemon) fork/IPC issue, the second
 after the pass-17 arch fix.
 
+Deeper probe (CIDER_XNU_LOG=debug + live process tree): the fork DID happen -- two guest processes,
+the PARENT shellspawn blocked in `anon_pipe_read` (waiting on the shell it forked) and the CHILD in
+`recvmsg` (the dserver checkin RPC). The daemon is NOT idle now; it is SPINNING on Mach IPC:
+`sending kmsg ... to pid -1`, `mqueue_post: no receiver on mq=...`, and
+`special_port GET bootstrap: task=... itk_bootstrap=(nil) -> port=(nil)`, over and over. So the
+forked child's Mach state is wrong -- stale parent thread ports (messages to pid -1 = a dead thread)
+and a NULL bootstrap port -- and the daemon churns delivering to dead ports instead of completing the
+child's checkin, exactly the "a later send to the dead thread's ports spins the daemon (kmsg to pid
+-1)" failure the checkout handler warns about. handler.rs:387 even flags it: "Exec-replacement's
+task/thread swap is a later refinement." The arm64 boot is the FIRST to fork+exec a guest, so it is
+the first to hit this. NEXT (host-side, Rust): trace whether the child's checkin creates its task
+(task_create nsid=2) or the spin starves it; look at the fork/exec task+thread swap and bootstrap-port
+inheritance in the daemon (task.rs / handler.rs / registry.rs) -- the forked child needs a fresh task
+with its single thread and an inherited bootstrap port, and the parent's stale threads must be torn
+down so the daemon stops messaging pid -1.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
