@@ -286,11 +286,32 @@ Order the build surfaces the gaps, component by component. Landed so far:
 - **libmalloc (A12 done):** the nanozone address-field widths guard now accepts arm64 (same
   widths as x86_64, per the PR); patch.
 
-Still ahead in M2, roughly in build order: libm ARM Source (A13 body), the guest syscall
-layer and its six .S files (A8, the xnu emulation), csu/compiler-rt/libunwind (A9),
-libplatform's setjmp/atomics/cachecontrol/ucontext asm (A10), libpthread + the D4 TSD table
-(A11), the rest of the umbrella (A12), dyld (A14), the libSystem firstpass link (A15), and
-bash's own link (A16).
+**Update, second M2 pass — landed:**
+
+- **libm ARM Source (A13 done):** the ~100-file `Source/ARM` list imported and the libm BUCK
+  made arch-conditional; all libm object targets and the static archive build for arm64.
+- **libplatform machine layer (A10 done):** the pin's arm64 asm (5 files) selected per arch.
+- **dyld (A14, partial):** the C++ objects build; a patch skips the FairPlay `mremap_encrypted`
+  block under Darling (it only compiled on the arm arches). The .S startup and PAC pieces are
+  still ahead.
+- **The x86-flag filter (A4):** one filter in `compile_objects` drops `-msse*`/`-Dmovsxw` for
+  an arm64 guest, clearing the ~30 generated sites (libunwind, xnu×23, libm, ...) at once.
+- **libc noinode64 (A12, partial):** the eight 32-bit-inode compat object groups compile
+  nothing on arm64 (arm64 has no such ABI; the define is a hard `#error` there).
+- **objc4 arm mach headers (A12, partial):** `mach/arm/{thread_status,thread_state,_structs}.h`
+  repointed from cctools to xnu to match the i386 mapping, so `arm_thread_state64_get_pc`
+  resolves.
+
+**Discovery:** bash links `//vendor/src:system_final` (the libSystem umbrella), and the check
+builds `//buck/prefix:cider_prefix`, so M2/M3 pull the **whole guest tier** including objc4,
+not just the minimal bash link the plan's D9 assumed. objc4 is therefore on the critical path.
+
+**Current blocker:** objc4's non-pointer-isa config. `objc-runtime-new.mm` static-asserts
+`ISA_MASK` against `MACH_VM_MAX_ADDRESS`; the arm64 ISA_MASK/config does not match cider's
+arm `MACH_VM_MAX_ADDRESS`. The PR's objc4 bump (a196f59) carries the arm64 isa.h config; that
+is the next task. After objc4: the guest syscall layer and its six .S files (A8), libpthread +
+the D4 TSD table (A11), the rest of the umbrella, the libSystem firstpass link (A15), and the
+prefix assembly (A16).
 
 ## Risks, ranked
 
