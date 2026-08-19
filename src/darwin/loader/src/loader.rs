@@ -135,7 +135,7 @@ unsafe fn compute_slide(macho: &MachO) -> u64 {
         return 0;
     }
     let span = (end - base) as usize;
-    let p = libc::mmap(
+    let mut p = libc::mmap(
         base as *mut c_void,
         span,
         libc::PROT_NONE,
@@ -145,6 +145,27 @@ unsafe fn compute_slide(macho: &MachO) -> u64 {
     );
     if p == libc::MAP_FAILED {
         return 0;
+    }
+    // aarch64 port: Darwin userspace pointers are 47-bit (objc FAST_DATA_MASK, tagged pointers,
+    // isa masking all assume bit 47 is clear). A PIE image the aarch64 Linux kernel drops above
+    // 2^47 -- dyld, whose preferred base collides with the already-placed main executable, so the
+    // hint is ignored and it lands high in the 48-bit mmap area -- would carry a bit-47-set slide
+    // and fault objc the moment it masks a class pointer. Re-place it in the low half.
+    #[cfg(target_arch = "aarch64")]
+    if (p as u64) & (1u64 << 47) != 0 {
+        libc::munmap(p, span);
+        // 8 TiB: below the sys_mmap dylib arenas (16/64 TiB) and the stack, above the main image.
+        p = libc::mmap(
+            0x0000_0800_0000_0000u64 as *mut c_void,
+            span,
+            libc::PROT_NONE,
+            libc::MAP_ANONYMOUS | libc::MAP_PRIVATE,
+            -1,
+            0,
+        );
+        if p == libc::MAP_FAILED || (p as u64) & (1u64 << 47) != 0 {
+            return 0;
+        }
     }
     libc::munmap(p, span);
     (p as u64).wrapping_sub(base)

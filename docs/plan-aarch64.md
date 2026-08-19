@@ -759,6 +759,61 @@ This is the first HOST-side (Rust) arm64 gap the boot has reached; everything be
 Landed so far this arc: 0027 (bsd stubs), 0028 (mach traps), dyld 0003 (fairplay). Boot path is now
 guest-loads-and-runs; the wall moved from "no syscalls" to "signal delivery".
 
+**Update, seventeenth pass -- the checkin arch (mldr), then the objc FAST_DATA_MASK / high-VA fault.**
+
+The daemon's `xnu_sys_thread_load_state_from_user() unimplemented for architecture:
+dserver_rpc_architecture_x86_64` was NOT missing arm64 code -- thread.rs HAS the
+`#[cfg(target_arch="aarch64")]` branches. The task's `architecture` was simply WRONG: the Rust mldr
+(src/darwin/loader/src/rpc.rs) hardcoded `architecture: ARCH_X86_64` in its CHECKIN and VCHROOT_PATH
+RPC headers, so the daemon recorded every arm64 guest as x86_64 and skipped the arm64 thread-state
+path. Fix (committed, jj-tracked, not a pin): report the loader's compile-time arch (enum: x86_64=2,
+arm64=4; cider is native so host arch == guest arch). Signals now dispatch: the log turns into
+`sigexc: emulating default signal effects` / `handler (11) returning` -- the arm64 signal machinery
+runs. It was never the blocker though; it was masking the real one.
+
+The real blocker: a guest SIGSEGV whose default action (terminate) kills init. Core dump pins it
+exactly. Fault PC is in libobjc.A.dylib `readClass()` (offset 0x1fbc4), instruction
+`and x8, x8, #0x7ffffffffff8 ; ldr w9, [x8]` -- that mask is objc's arm64 FAST_DATA_MASK, extracting
+`cls->data()` from `cls->bits`. The guest dylibs are mapped at 0xe2be7e... -- **bit 47 is SET**
+(0xe > 0x7). FAST_DATA_MASK is 0x00007ffffffffff8, i.e. 47-bit; masking a 0xe2be... pointer clears
+bit 47 and yields 0x62be..., which is unmapped -> SEGV_MAPERR. On x86_64 the Linux mmap region sits
+at 0x7f... (bit 47 clear) so the mask is a no-op and this never fires; aarch64 Linux hands out 48-bit
+addresses with bit 47 set. So the guest (dyld's dylib mmaps, and the main image) MUST live below 2^47
+(0x0000_8000_0000_0000) for Darwin's 47-bit pointer assumptions (objc, tagged pointers, isa masking)
+to hold. NEXT: constrain guest mappings to the low 47 bits -- either mldr reserving / basing the guest
+region low, or the sys_mmap emulation refusing bit-47-set results. This is the memory-layout half of
+the arm64 port and is likely what darling PR 1753 addresses; check it.
+
+Committed this pass: mldr checkin arch (36b9a676).
+
+**Update, eighteenth pass -- the 47-bit VM layout: dylibs low (0029), dyld low (compute_slide).**
+
+Two fixes for the FAST_DATA_MASK / high-VA fault, both verified by core dumps:
+
+0029 (emulation sys_mmap, mman.c): for a kernel-chosen mapping (start==0, no MAP_FIXED) on aarch64,
+hand the kernel a low bump-hint (Linux honours a free hint even topdown) so guest dylibs land below
+2^47. dyld and libSystem link separate copies of sys_mmap, so disjoint arenas via VARIANT_DYLD (16
+TiB / 64 TiB). Result: libSystem moved from 0xe2be... to 0x100000000000 (16 TiB) -- dylibs are now
+low. The ucontext the daemon hands the signal handler also dropped from 0xe2be... to 0x10000127... .
+
+compute_slide (mldr loader.rs, jj-tracked): the guest DYLD is placed by mldr, not sys_mmap; its
+preferred base collides with the already-mapped main executable so the aarch64 kernel dropped it high
+(0xe58a30faa000). After the fix (re-place a bit-47-set PIE reservation at 8 TiB) dyld sits at
+0x080000000000 -- low, below the dylib arenas.
+
+BUT the SAME objc readClass fault survives both. New core: the faulting `and x21,x8,#FAST_DATA_MASK ;
+ldr w8,[x21]` reads x8 = 0xe121_5353_f820 (bit 47 SET) from a class that is itself LOW (x19 =
+0x100004459050, in the 16 TiB dylib arena). So a correctly-placed low class carries a data pointer
+into the HIGH half -- and that high half now contains ONLY mldr's own Linux libraries (glibc at
+0xe12153700000, libgcc, ld-linux). So the guest class-data pointer resolves into mldr's glibc region.
+That is not an mmap-placement problem (dylibs and dyld are low now); it is a mis-resolved pointer --
+a dyld arm64 chained-fixup / __objc_classlist bind computing the wrong target, landing near mldr's
+runtime. NEXT: disassemble libobjc readClass to see whether x0/x8 come from a classlist entry or a
+realized class_rw, then chase the dyld fixup that produced a glibc-adjacent target. The 47-bit layout
+is now correct; this is a fixups bug.
+
+Committed this pass: xnu 0029 (sys_mmap low arena) + mldr compute_slide dyld-low.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the

@@ -1,0 +1,39 @@
+aarch64: keep guest mmap allocations below 2^47 for Darwin's 47-bit pointers.
+
+Darwin userspace pointers are 47-bit -- objc FAST_DATA_MASK (0x7ffffffffff8), tagged pointers and
+isa masking all assume bit 47 is clear. The aarch64 Linux mmap area hands back 48-bit addresses
+with bit 47 SET, so an objc class-data pointer masked to 47 bits becomes unmapped and readClass()
+faults. For a kernel-chosen mapping (start==0, no MAP_FIXED) hand the kernel a low bump hint so the
+guest's dylibs and heap land below 2^47; dyld and libSystem link separate copies of sys_mmap, so
+give them disjoint arenas via VARIANT_DYLD. x86_64 is unaffected (its mmap area is already low).
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/mman.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/mman.c
+@@ -40,6 +40,28 @@
+ 	// if (flags & MAP_STACK)
+ 	// 	linux_flags |= LINUX_MAP_STACK;
+ 
++#if defined(__aarch64__) || defined(__arm64__)
++	// aarch64 port: Darwin userspace pointers are 47-bit -- objc's FAST_DATA_MASK (0x7ffffffffff8),
++	// tagged pointers and isa masking all assume bit 47 is clear. The Linux aarch64 mmap area hands
++	// back 48-bit addresses with bit 47 SET, so a class-data pointer masked by objc becomes an
++	// unmapped address and readClass() faults. For a kernel-chosen mapping (start == 0, no
++	// MAP_FIXED), hand the kernel a low hint from a monotonically advancing arena so guest dylibs
++	// and heap land below 2^47; Linux honours a free hint even under topdown allocation. MAP_FIXED
++	// requests (addresses the guest derived from these low reservations) pass through untouched.
++	// dyld and the shared libSystem link separate copies of this handler, so give them disjoint
++	// arenas (VARIANT_DYLD) to keep their bump pointers from colliding.
++	if (!start && !(flags & MAP_FIXED))
++	{
++#ifdef VARIANT_DYLD
++		static unsigned long mmap_low_next = 0x0000100000000000UL; // 16 TiB (dyld)
++#else
++		static unsigned long mmap_low_next = 0x0000400000000000UL; // 64 TiB (libSystem)
++#endif
++		unsigned long rounded = (len + 0x1fffffUL) & ~0x1fffffUL; // round up to 2 MiB
++		start = (void*) __atomic_fetch_add(&mmap_low_next, rounded, __ATOMIC_RELAXED);
++	}
++#endif
++
+ #ifdef __NR_mmap2
+ #ifdef __i386__
+ 	linux_flags |= LINUX_MAP_32BIT;
