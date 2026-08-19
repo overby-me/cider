@@ -10983,3 +10983,40 @@ presents `(0,0,0)`.
 
 One of those two pixels is not doing what the trace says. The next step is to stop reasoning from
 the write list and read the window buffer at those coordinates immediately before present.
+
+## The grey edge beside an inline image: an offscreen surface that started opaque
+
+This one survived several rungs because every theory about it was a theory about compositing, and it
+was not a compositing defect at all.
+
+cocotron backs image caching with a **real window**. `NSCachedImageRep` creates an `NSWindow` and
+marks it `NSAppKitPrivateWindow` (`0x8000000`), and everything drawn into an `NSImage` through
+`lockFocus` lands in one of those. This backend cleared such a window to the same opaque light grey
+a visible window starts at, so any part of an image the application never drew arrived — wherever
+that image was later composited — as an opaque light rectangle.
+
+iTerm2 shows it plainly: it allocates a 245×126 block for an inline image, draws a 240×120 picture
+into it, and the five-by-six-pixel remainder came out as *our* clear colour in the middle of a black
+terminal. An offscreen drawing surface is not a window on the screen; it has to start empty, because
+the result is composited somewhere else.
+
+What finally separated this from the compositing theories was a mutation rather than another trace.
+With `CIDER_WAYLAND_CLEAR=0xff00ff00` the remainder came out **green** — not grey, not black, but
+exactly the value the backend fills fresh pages with. After that the only open question was which
+surface, and the geometry trace answered it by naming windows of 245×14 being allocated: the image
+row slices.
+
+Measured, decoded from the capture rather than eyeballed: the red picture stays exactly 240×120 with
+all 28,800 pixels pure red; the 5 px right and 6 px below went from `(238,238,238)` to `(0,0,0)`; and
+`EEEEEE` anywhere in the capture fell from about 2,040 pixels to 15, which are window chrome.
+
+This is not only about iTerm2. Every partly drawn `NSImage` in every application had an opaque light
+grey behind the part nobody drew, and it would show anywhere such an image was composited over
+something darker. It had simply never been looked for.
+
+Two smaller things landed with it. `ensure_backing` used to discard the old pixels on every resize
+and fill the new pages with the clear colour, leaving AppKit to repaint all of it; a window server
+preserves its backing store across a resize, and this one now does, aligned on the inner rectangle.
+And `CIDER_WAYLAND_SAMPLE=x,y` prints window-bitmap pixels at the moment a frame is handed over,
+which is what showed the remainder was black for twenty-five frames and turned grey exactly when the
+image was drawn — disproving my own earlier conclusion that nobody painted there.
