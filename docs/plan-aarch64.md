@@ -549,6 +549,30 @@ Note logged for later: Foundation and CoreFoundation dylibs still name `reexport
 `dylib_name = *_x86_64`, but both linked on arm64 in this build (their listed symbols all exist), so
 they are cosmetic rather than blocking -- revisit only if a later link complains.
 
+**Update, eleventh pass -- the prefix clears to two more roots (libffi, liblzma), both pins.**
+
+With trampoline.S and CoreServices fixed, the build compiled and linked everything through the
+frameworks and cleared to exactly TWO real roots again, every other failure (gzip, lzma_dylib,
+ffi_dylib, xip_extract_cpio) a dependency-failure of them:
+
+- **libffi** (`pin-libffi`): clang's arm64 (Mach-O) integrated assembler rejects the aarch64
+  `sysv.S` CFI -- a symbol-valued `.cfi_adjust_cfa_offset (ffi_closure_SYSV_FS)` and
+  `.cfi_def_cfa x1, 40` -- with "invalid CFI advance_loc expression". That is exactly the case
+  configure's `HAVE_AS_CFI_PSEUDO_OP` probe returns false for, but cider reuses an x86-generated
+  fficonfig, so `ffi_cfi.h` still emits the pseudo-ops. Patch 0001 gates them off on arm64 (the
+  header's own empty-macro `#else` branch). The x86/arm sources in the same object group are
+  internally arch-guarded, so no BUCK src-selection was needed. libffi carries no asm CFI on arm64,
+  as the autoconf path would produce.
+- **liblzma** (`pin-liblzma`): `config.h` (x86-generated) hardcodes `HAVE_IMMINTRIN_H`, so
+  `memcmplen.h` pulls in `<immintrin.h>` and clang errors compiling the x86 intrinsic headers
+  (`mmintrin.h`) for arm64. Patch 0001 gates the define to x86; the SSE2 path that uses it is
+  already guarded by `__SSE2__`, absent on arm64. Note a `-U` on the command line does NOT work
+  here: config.h re-`#define`s it, so the header itself has to be gated.
+
+Both are the FIRST patches for those pins (new `vendor/patches/{libffi,liblzma}/` dirs); verified to
+apply via `nix build .#cider-src`. The prefix build with both fixes is running; if it comes back
+green the arm64 prefix exists and M3 moves to the boot check.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
