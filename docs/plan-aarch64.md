@@ -270,6 +270,28 @@ everything tests against it):
   a compiling daemon. The reference is darlingserver 0217769's duct-tape/src/thread.c
   (+150 lines) and misc.c (+81), against ciderd's Rust twins.
 
+## M2 progress (the guest bash tier, in flight)
+
+Order the build surfaces the gaps, component by component. Landed so far:
+
+- **Guest toolchain smoke test (A5 done):** `darwin_cc` with `guest_arch=arm64` emits a real
+  arm64 Mach-O object (verified with `file` + `llvm-objdump --macho`).
+- **bash (A16, partial):** conftypes.h gains an arm64 HOSTTYPE case (patch), since cider does
+  not set CONF_HOSTTYPE and the source has no arm64 branch.
+- **libm headers (A13, partial):** the in-tree dispatch headers `include/{fenv,math}.h` accept
+  arm64 and `sdk_src_libm_headers` stages the arm targets. The **implementation** is not done:
+  the libm target still compiles `Source/Intel/*.c` (SSE, `xmm_misc.c` fails on arm64). A13's
+  real body is importing darling PR 1753's `Source/ARM` (72 files) and making the libm source
+  list arch-conditional. **This is the current M2 blocker.**
+- **libmalloc (A12 done):** the nanozone address-field widths guard now accepts arm64 (same
+  widths as x86_64, per the PR); patch.
+
+Still ahead in M2, roughly in build order: libm ARM Source (A13 body), the guest syscall
+layer and its six .S files (A8, the xnu emulation), csu/compiler-rt/libunwind (A9),
+libplatform's setjmp/atomics/cachecontrol/ucontext asm (A10), libpthread + the D4 TSD table
+(A11), the rest of the umbrella (A12), dyld (A14), the libSystem firstpass link (A15), and
+bash's own link (A16).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
