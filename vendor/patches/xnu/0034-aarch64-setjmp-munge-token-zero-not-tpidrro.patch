@@ -1,0 +1,41 @@
+aarch64: use a zero pointer-munge token in setjmp/longjmp, not TPIDRRO_EL0.
+
+The asm _OS_PTR_MUNGE_TOKEN macro (os/tsd.h, used by setjmp/longjmp/ucontext) read the TSD base
+from `mrs TPIDRRO_EL0`. TPIDRRO_EL0 is kernel-owned and reads 0 from EL0 on Linux, so the following
+`ldr [base, #__TSD_PTR_MUNGE]` dereferenced a null base and faulted at 0x38 -- exactly where guest
+bash died in __setjmp during startup. Patch 0026 already rewired the C accessor _os_tsd_get_base to
+sys_thread_get_tsd_base, but this inlined asm macro was missed. The real token is TSD slot 7, but
+the TSD base needs a tid-keyed hash lookup (tls.c: arm64 Linux has no free TLS register) that this
+leaf asm cannot do without a call that clobbers setjmp;s x0/lr, and the process-global
+_pthread_ptr_munge_token lives in libpthread which libplatform must not depend on. Use a zero token:
+setjmp and longjmp both use it so they stay mutually consistent. This drops the jmp_buf pointer
+mangling (a security hardening, not correctness); ucontext mangling consistency is a follow-up.
+--- a/libsyscall/os/tsd.h
++++ b/libsyscall/os/tsd.h
+@@ -241,7 +241,21 @@
+ 
+ #elif (defined(__arm64__) || defined(__aarch64__))
+ 
++#if defined(DARLING)
++/* aarch64 darling: TPIDRRO_EL0 is kernel-owned and reads 0 from EL0 on Linux, so the upstream
++ * `mrs TPIDRRO_EL0` yields a null TSD base and the following `ldr [base, #__TSD_PTR_MUNGE]` faults
++ * at 0x38 -- which is where guest setjmp/longjmp die during startup. The real per-thread token is
++ * TSD slot 7 (== the process-global _pthread_ptr_munge_token), but the TSD base needs a tid-keyed
++ * hash lookup (emulation tls.c: no TLS register is free on arm64 Linux) that this leaf asm cannot do
++ * without a call that would clobber setjmp's x0/lr, and the global lives in libpthread which
++ * libplatform must not depend on. Use a zero token: setjmp and longjmp both use it, so they stay
++ * mutually consistent and nothing is dereferenced. This drops the jmp_buf pointer-mangling (a
++ * security hardening, not a correctness requirement) and is NOT consistent with the C makecontext
++ * path, so ucontext (makecontext/swapcontext) mangling is a follow-up; bash uses only setjmp/longjmp. */
+ #define _OS_PTR_MUNGE_TOKEN(_reg, _token) \
++	mov _token, #0
++#else
++#define _OS_PTR_MUNGE_TOKEN(_reg, _token) \
+ 	mrs _reg, TPIDRRO_EL0 %% \
+ 	and	_reg, _reg, #~0x7 %% \
+ 	ldr	_token, [ _reg,  #_OS_TSD_OFFSET(__TSD_PTR_MUNGE) ]
+@@ -248,3 +262,4 @@
++#endif
+ 
+ #endif // defined(__arm64__)
+ 

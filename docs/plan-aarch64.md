@@ -983,6 +983,22 @@ advancing the boot:
   libsystem_platform under bash but libsystem_asl under shellspawn -- so per-process maps matter;
   DYLD_PRINT_SEGMENTS now on in fast-boot. Also: kern_printf has no %016llx.)
 
+**bash RUNS (pass 25) -- setjmp TSD-base fixed; now a login-shell / launcher-handshake matter.**
+Root cause of the __setjmp crash: the asm `_OS_PTR_MUNGE_TOKEN` macro (os/tsd.h) read the TSD base
+from `mrs TPIDRRO_EL0`, which is 0 on Linux EL0, so `ldr [base,#0x38]` faulted. Patch 0026 fixed the
+C accessor but not this inlined asm. arm64 Linux has no free TLS register (tls.c), a call would
+clobber setjmp's x0/lr, and _pthread_ptr_munge_token is a libpthread symbol libplatform cannot link
+(confirmed: undefined-symbol link failure). Fix (patch 0034): use a zero munge token -- setjmp and
+longjmp stay mutually consistent, nothing is dereferenced; drops jmp_buf mangling (a hardening) and
+leaves ucontext mangling as a follow-up. RESULT: bash now starts fully -- loads its whole dylib set,
+does Mach init, and FORK+EXEC+WAITs real subprocesses from its login profile: /bin/cp and
+/usr/libexec/path_helper both run to completion (pid 4, 6), and bash handles signals. So the full
+fork/exec/wait machinery works on arm64. It does not yet reach `echo BUCK2_BASH_OK`: the launcher
+kills the container at its 60s startup watchdog because the 1-byte "started" marker shellspawn is
+supposed to send back never arrives (main.rs:852), and/or the login-profile subprocess chain is slow
+under emulation. NEXT: check whether CIDER_SHELL_STARTUP_TIMEOUT=0 lets bash finish (slow vs hung),
+then fix the shellspawn->launcher started-marker handshake and/or avoid the login-profile path.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
