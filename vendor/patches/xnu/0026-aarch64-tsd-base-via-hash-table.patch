@@ -1,0 +1,57 @@
+aarch64: read the TSD base through sys_thread_get_tsd_base(), not TPIDRRO_EL0.
+
+os/tsd.h _os_tsd_get_base() reads `mrs TPIDRRO_EL0` on arm64. TPIDRRO_EL0 is kernel-owned and
+reads 0 from EL0 on Linux, so the base is null and the first per-thread access -- errno, via
+_os_tsd_get_direct(__TSD_ERRNO) in libsyscall custom/errno.c -- does 'ldr x8,[x8,#8]' on a null
+base and faults at 0x8, which is where guest bash startup dies. patch 0021 already added the
+tid-keyed hash table sys_thread_get_tsd_base() (emulation tls.c) but never rewired this inlined
+accessor to it. Do so under DARLING (the non-DARLING path keeps the upstream mrs). It returns a
+valid zero page before a thread's TSD is set, so a null errno-pointer store is skipped rather than
+faulting. dyld is unaffected: it uses gSyscallHelpers errnoAddress and does not inline this.
+--- a/libsyscall/os/tsd.h
++++ b/libsyscall/os/tsd.h
+@@ -135,6 +135,17 @@
+ 
+ #elif defined(__arm__) || (defined(__arm64__) || defined(__aarch64__))
+ 
++#if defined(DARLING) && (defined(__arm64__) || defined(__aarch64__))
++/* Provided by the libsystem_kernel emulation (tls.c). Declared extern "C" so a C++ translation
++ * unit that includes this header (objc, xtrace) references the unmangled C symbol rather than the
++ * mangled _Z23sys_thread_get_tsd_basev, which would go unresolved against the C definition. */
++#ifdef __cplusplus
++extern "C" void* sys_thread_get_tsd_base(void);
++#else
++extern void* sys_thread_get_tsd_base(void);
++#endif
++#endif
++
+ __attribute__((always_inline, pure))
+ static __inline__ void**
+ _os_tsd_get_base(void)
+@@ -144,7 +155,16 @@
+ 	__asm__("mrc p15, 0, %0, c13, c0, 3\n"
+                 "bic %0, %0, #0x3\n" : "=r" (tsd));
+ 	/* lower 2-bits contain CPU number */
++	return (void**)(uintptr_t)tsd;
+ #elif (defined(__arm64__) || defined(__aarch64__))
++#ifdef DARLING
++	/* aarch64 port (D4): TPIDRRO_EL0 is kernel-owned and reads 0 from EL0 on Linux, so the
++	 * upstream `mrs TPIDRRO_EL0` yields a null TSD base and every errno / pthread_self / TLS
++	 * access faults at 0x8. sys_thread_get_tsd_base() (libsystem_kernel emulation, tls.c)
++	 * keys a per-thread hash table by the Linux thread pointer, caches the last lookup, and
++	 * returns a valid zero page before a thread's TSD is established. */
++	return (void**)sys_thread_get_tsd_base();
++#else
+ 	uint64_t tsd;
+ 	__asm__("mrs %0, TPIDRRO_EL0\n"
+                 "bic %0, %0, #0x7\n" : "=r" (tsd));
+@@ -151,7 +171,7 @@
+ 	/* lower 3-bits contain CPU number */
+-#endif
+-
+ 	return (void**)(uintptr_t)tsd;
++#endif
++#endif
+ }
+ #define _os_tsd_get_base()  _os_tsd_get_base()
+ 
