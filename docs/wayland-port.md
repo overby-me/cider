@@ -11120,3 +11120,39 @@ cannot compile until CoreFoundation provides `CGFloat` (task #128), and the eigh
 `test_shared_data.h`, which upstream CMake produces with `configure_file` so it exists only inside a
 CMake build. Eighteen identical "file not found" errors read like a missing API and are nothing of
 the kind — worth skipping precisely so the failure list stays honest.
+
+### CoreFoundation gets the CG types back, and the suite triples
+
+`CGFloat` and the four geometry structs belong to CoreFoundation as much as to CoreGraphics: on a
+real system `CoreFoundation/CFCGTypes.h` defines them and CoreGraphics defers through the
+`CGFLOAT_DEFINED` family of guards, so a plain C file that includes only CoreFoundation gets them.
+Ours had them **only** in `CoreGraphics/CGBase.h` — whose own comment says they were "moved over from
+our CoreFoundation", so this was a regression with a note attached.
+
+They are back in `CFBase.h`, chosen over a new `CFCGTypes.h` because the framework header map is
+generated per file and `CFBase.h` is already in it and already included by the umbrella. `CGBase.h`
+and `CGGeometry.h` now stand down when they arrive second. AppKit and CoreFoundation both rebuild
+clean, which is the check that matters for a duplicate typedef. Captured as
+`vendor/patches/corefoundation/0021`, because that tree is a materialised pin and an edit there is
+otherwise invisible to nix.
+
+The effect on the suite is the measurement:
+
+| | before | after |
+|---|---|---|
+| wired | 33 | 57 |
+| built | 8 | 24 |
+| ran | 7 | 23 |
+| passed | 4 | 18 |
+
+**Two of my own counting errors are worth recording**, because both inflated the failure list.
+`test_exit_return_1` is a `main` that calls `exit(1)`, and upstream marks it `WILL_FAIL` in CTest —
+a non-zero exit *is* its pass; the generator reads that property now. And `test_read_file` exited 139,
+a segfault, which looked alarming and was my rig: the harness looks for resources under
+`DARLING_TESTSUITE_RESOURCE_PATH` or `./resource`, I had staged neither, and the case then
+dereferenced a container the harness returned as NULL without checking. With the tree staged it
+passes. It says nothing about our libc, and I nearly wrote that it did.
+
+Five real failures remain of the twenty-three that run: UIFoundation's nib-archive detection and its
+missing exported symbol (#130), `clonefile` on a soft symlink with and without nofollow (#131), and
+`PubSub.framework`, which simply does not exist here.

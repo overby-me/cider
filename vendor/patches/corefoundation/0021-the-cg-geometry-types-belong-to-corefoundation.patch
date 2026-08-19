@@ -1,0 +1,91 @@
+The CG geometry types belong to CoreFoundation, and ours had lost them.
+
+On a real system CoreFoundation/CFCGTypes.h defines CGFloat and the four geometry structs, and
+CoreGraphics defers to it through the CGFLOAT_DEFINED family of guards. A plain C file that includes
+only CoreFoundation therefore gets CGFloat, and plenty of code does exactly that: every C case in
+darling-testsuite failed to compile here with "unknown type name CGFloat", because ours lived only in
+CoreGraphics/CGBase.h, whose own comment says they were "moved over from our CoreFoundation".
+
+They go in CFBase.h rather than a new CFCGTypes.h because the framework header map is generated per
+file, and CFBase.h is already in it and already included by the umbrella. Every definition carries
+the guard Apple uses, so whichever header a translation unit sees first wins and the other stands
+down; CGBase.h and CGGeometry.h were guarded to match in the same change.
+
+--- a/include/CoreFoundation/CFBase.h
++++ b/include/CoreFoundation/CFBase.h
+@@ -149,6 +149,75 @@
+ 
+ CF_EXTERN_C_BEGIN
+ 
++/*
++ * THE CG GEOMETRY TYPES BELONG TO COREFOUNDATION TOO, which is easy to forget because they carry a
++ * CG prefix and CoreGraphics is where they are used.
++ *
++ * On a real system CoreFoundation/CFCGTypes.h defines CGFloat and the four geometry structs, and
++ * CoreGraphics defers to it through the *_DEFINED guards. A plain C file that includes only
++ * CoreFoundation therefore gets CGFloat, and plenty do: the darling-testsuite assertion header is
++ * one, and every C case in that suite failed to compile here with "unknown type name CGFloat"
++ * because ours had these only in CoreGraphics/CGBase.h, whose own comment says they were "moved
++ * over from our CoreFoundation".
++ *
++ * Kept here rather than in a new CFCGTypes.h because the framework header map is generated per
++ * file, and CFBase.h is already in it and already included by the umbrella. The guards are the ones
++ * Apple uses, so whichever header is seen first wins and the other stands down.
++ */
++#if !defined(CGFLOAT_DEFINED)
++#define CGFLOAT_DEFINED 1
++#include <float.h>
++#if defined(__LP64__) && __LP64__
++typedef double CGFloat;
++#define CGFLOAT_MIN DBL_MIN
++#define CGFLOAT_MAX DBL_MAX
++#define CGFLOAT_SCAN "%lg"
++#define CGFLOAT_IS_DOUBLE 1
++#else
++typedef float CGFloat;
++#define CGFLOAT_MIN FLT_MIN
++#define CGFLOAT_MAX FLT_MAX
++#define CGFLOAT_SCAN "%g"
++#define CGFLOAT_IS_DOUBLE 0
++#endif
++#endif /* CGFLOAT_DEFINED */
++
++#if !defined(CGPOINT_DEFINED)
++#define CGPOINT_DEFINED 1
++struct CGPoint {
++    CGFloat x;
++    CGFloat y;
++};
++typedef struct CGPoint CGPoint;
++#endif
++
++#if !defined(CGSIZE_DEFINED)
++#define CGSIZE_DEFINED 1
++struct CGSize {
++    CGFloat width;
++    CGFloat height;
++};
++typedef struct CGSize CGSize;
++#endif
++
++#if !defined(CGVECTOR_DEFINED)
++#define CGVECTOR_DEFINED 1
++struct CGVector {
++    CGFloat dx;
++    CGFloat dy;
++};
++typedef struct CGVector CGVector;
++#endif
++
++#if !defined(CGRECT_DEFINED)
++#define CGRECT_DEFINED 1
++struct CGRect {
++    CGPoint origin;
++    CGSize size;
++};
++typedef struct CGRect CGRect;
++#endif
++
+ #if !defined(NULL)
+ #if defined(__GNUG__)
+     #define NULL __null
