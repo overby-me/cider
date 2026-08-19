@@ -3640,7 +3640,12 @@ darwin_dylib(
         "//vendor/src:system_dyld_firstpass",
         "//vendor/src/libc:system_c_firstpass",
         "//vendor/src/libplatform:platform_firstpass",
-    ],
+    ] + ([
+        # arm64 macOS turns on _PTHREAD_CONFIG_JIT_WRITE_PROTECT, whose image-load callback
+        # calls getsectiondata() from libmacho; on x86 the config is 0 and the symbol is never
+        # referenced. Add libmacho as a sibling so the final link resolves it (task A11).
+        "//vendor/src:macho_firstpass",
+    ] if host_info().arch.is_aarch64 else []),
     toolchain = "toolchains//:darwin_cc",
     deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
