@@ -11783,3 +11783,49 @@ task/<tid>/{syscall,wchan,stat}` names the syscall every thread is parked in.
 **Do not read a black capture as a blank app.** The captures from that run are fully black because
 a nested compositor from the previous run was still up and `grim` shot the wrong one. The app was
 demonstrably alive: 956 spinner frames.
+
+### The container does not always boot, and that has been read as the app failing
+
+`cider shell /bin/echo` — the simplest thing a container can do — measured over 8 runs each:
+
+| | boots |
+|---|---|
+| `DARLING_NO_LAUNCHD=0` (launchd boots) | **6/8** |
+| `DARLING_NO_LAUNCHD=1` (no launchd) | **8/8** |
+
+A failed boot produces **no output at all** and times out, which from outside is indistinguishable
+from the application failing to start. Three MoneyMoney runs in a row were read that way before this
+was measured. Photographed mid-hang, twice, identically: `launchd` parked in `recvmsg`, `launchctl
+bootstrap -S System` in `epoll_wait`, the jobs parked behind them, and the requested command never
+spawned at all. With `DSERVER_TRACE_CALLS=1` it went 6/6 — the trace perturbs the timing, so this is
+a race rather than a fixed deadlock (0.75⁶ ≈ 18% by luck, so suggestive, not proof).
+
+`scripts/run-with-retry.sh` now runs a driver, watches its log for the backend's own "I am alive"
+line, and re-runs the whole thing if it never appears. The gate is **outside** the container
+deliberately: a gate loop *inside* one invocation, before the `exec`, is what previously produced
+runs where the app never mapped a window.
+
+### Three defects behind MoneyMoney's splash, each one hiding the next
+
+1. **`xpc_connection_send_message_with_reply_sync` never answered a failed connection.** Patch 0003
+   fixed the async twin; the sync one had no guard, and a caller that asked for a synchronous reply
+   has nowhere else to be. Code signing registers a stapled notarization ticket **before it
+   validates anything**, over that call, to a syspolicy service we do not run — so *every* static
+   validation stopped on its first step. Fixed (`vendor/patches/libxpc/0004`); `registerStapledTicket
+   back` now appears.
+
+2. **`ciderd` SIGSEGV'd tearing down a mach-port kqchan.** `MachPortKqchan::drop` called
+   `xnu_sys_kqchan_mach_port_destroy` straight from the serve loop, but that reaches
+   `filt_machportdetach → knote_unlink_waitq → semaphore_wait`, which needs a current-thread;
+   with none, `thread_set_pending_block_hint` dereferenced null. The sibling `modify`/`read` already
+   run on a microthread via `sched::run_on_task`; the drop now does too. **A daemon SIGSEGV kills
+   every guest in the container and reads from outside as the app quietly exiting 1.**
+
+3. **`thread_terminate` was an empty stub**, so `thread_terminate_self` returned, and the
+   `unreachable!` after it panicked in an `extern "C"` frame and aborted the daemon
+   (`kqchan_waitq_waiter_entry`). It now jumps back to the scheduler top, which is exactly what the
+   body returning does: `run` marks the microthread finished and its owner drops it.
+
+After all three: `ciderd` no longer cores, validation reaches `validateNonResourceComponents`, and
+**Swift Publisher renders unchanged** (looked at: alert, inspector, layers row, canvas). What fails
+now is a SIGSEGV in the guest `/sbin/launchd`, which is the next thread to pull.

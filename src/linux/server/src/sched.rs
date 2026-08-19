@@ -831,7 +831,25 @@ mod hooks {
         if !mt.is_null() { (*mt).bsd_retval = retval; }
     }
     pub(super) unsafe extern "C" fn thread_context_dispose(_ctx: *mut c_void) {}
-    pub(super) unsafe extern "C" fn thread_terminate(_ctx: *mut c_void) {}
+    /// End the CURRENT microthread. This must not return: `thread_terminate_self` is declared
+    /// noreturn and its C callers put an unreachable after it, so a hook that falls through
+    /// panics in an `extern "C"` frame and aborts the daemon -- which is what killed every guest
+    /// in the container when a mach-port kqchan was torn down (`kqchan_waitq_waiter_entry`).
+    ///
+    /// Jumping back to the top is exactly what the body returning does: `run` sees a microthread
+    /// that came back un-suspended, marks it finished, and its owner drops it.
+    ///
+    /// Terminating some OTHER thread stays a no-op. There is no stack to unwind from here, and
+    /// the xnu-sys already owns that thread's lifecycle.
+    pub(super) unsafe extern "C" fn thread_terminate(ctx: *mut c_void) {
+        let mt = ctx as *mut Microthread;
+        if mt.is_null() || mt != current() {
+            return;
+        }
+        (*mt).suspended = false;
+        dserver_fast_setcontext(back_to_top_ptr());
+        unreachable!("setcontext returned");
+    }
 
     // ---- Lookups, thread introspection, and the S2C VM hooks. These were all left NULL,
     // and a NULL xnu_sys hook is an indirect-call-to-0 -> SIGSEGV the moment any guest

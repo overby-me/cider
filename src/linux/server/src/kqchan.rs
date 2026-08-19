@@ -459,11 +459,23 @@ impl MachPortKqchan {
 
 impl Drop for MachPortKqchan {
     fn drop(&mut self) {
+        let (xnu_sys, task) = (self.xnu_sys, self.owning_task);
         unsafe {
-            if !self.xnu_sys.is_null() {
+            if !xnu_sys.is_null() {
                 // Disable notifications BEFORE destroy so the callback can never fire into a freed box.
-                xnu_sys_kqchan_mach_port_disable_notifications(self.xnu_sys);
-                xnu_sys_kqchan_mach_port_destroy(self.xnu_sys);
+                xnu_sys_kqchan_mach_port_disable_notifications(xnu_sys);
+                // ON A MICROTHREAD, for the same reason modify and read are: destroy reaches
+                // filt_machportdetach -> knote_unlink_waitq -> semaphore_wait, and that needs a
+                // current-thread. Called straight from the serve loop it has none, and
+                // thread_set_pending_block_hint dereferences the null -- a SIGSEGV in the DAEMON,
+                // which takes every guest in the container with it and reads from outside as the
+                // application quietly exiting 1.
+                sched::run_on_task(
+                    task,
+                    Box::new(move || {
+                        xnu_sys_kqchan_mach_port_destroy(xnu_sys);
+                    }),
+                );
             }
             libc::close(self.daemon_fd);
         }

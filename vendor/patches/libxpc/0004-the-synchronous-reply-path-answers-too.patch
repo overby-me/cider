@@ -1,0 +1,46 @@
+The synchronous reply path answers too, and that is what held MoneyMoney at its splash.
+
+Patch 0003 gave xpc_connection_send_message_with_reply an answer when the service never resolved.
+Its SYNCHRONOUS twin never got the same guard, and the omission is worse there: a caller that asked
+for a synchronous reply has nowhere else to be. activateLocked releases both ports when the lookup
+fails, so dispatch_mach_send_with_result_and_wait_for_reply waits on ports that can never carry a
+reply, and it waits forever.
+
+TRACED END TO END. MoneyMoney runs SecStaticCodeCheckValidity on a background thread while its main
+thread keeps animating a spinner, so the process looks merely slow: window up, run loop turning,
+nothing wrong on any log. With CIDER_TRACE_SECITEM the boundary speaks and the missing line is the
+finding:
+
+    CIDER_CSAPI  staticValidate call flags=0x0 req=no /Applications/MoneyMoney.app/...
+    CIDER_CSSTEP registerStapledTicket call
+    nothing, ever
+
+The FIRST thing a static validation does is register a stapled notarization ticket, that goes to the
+syspolicy service over xpc_connection_send_message_with_reply_sync, and we run no syspolicyd. So
+every static validation in the system stopped on its first step.
+
+MEASURED AFTER: registerStapledTicket back now appears and validation moves on to
+staticValidateCore and validateNonResourceComponents, which is where it stops next.
+
+--- a/src/connection.m
++++ b/src/connection.m
+@@ -1096,6 +1096,19 @@
+ 	XPC_CLASS(dictionary)* result = nil;
+ 	mach_msg_header_t* header = NULL;
+ 
++	/* THE SAME GUARD AS THE ASYNC PATH, and its absence here is worse: a caller that asked for a
++	 * synchronous reply has nowhere else to be. activateLocked releases both ports when the
++	 * service never resolves, so the wait below is on ports that can never carry a reply and it
++	 * never ends.
++	 *
++	 * This is what held MoneyMoney at its splash. Code signing registers a stapled notarization
++	 * ticket before it validates anything, that goes to the syspolicy service over
++	 * xpc_connection_send_message_with_reply_sync, and we run no syspolicyd -- so the very first
++	 * step of every static validation waited forever. */
++	if (this->activation_failed) {
++		return XPC_ERROR_CONNECTION_INVALID;
++	}
++
+ 	@autoreleasepool {
+ 		XPC_CLASS(serializer)* serializer = [XPC_CLASS(serializer) serializer];
+ 		dispatch_mach_msg_t message = NULL;
