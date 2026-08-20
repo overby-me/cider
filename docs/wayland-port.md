@@ -12911,3 +12911,22 @@ they were talking about different processes.
 
 Next: re-arm (or resolve lazily) the `ProcKqchan` target when a task's host pid changes. The two
 records should not exist independently at all — the memory path's value is the one `ps` agrees with.
+
+### The re-arm fired zero times, so that explanation is wrong too
+
+The section above proposes that the two host-pid records **drift apart over time**: the death watch is
+armed once from `Handler::procs[nsid].host_pid`, `set_current` later corrects that field, and the
+watch is left behind. A re-arm was implemented on exactly that trigger.
+
+**It fired zero times in a run that reproduced the divergence.** So `procs[nsid].host_pid` does not
+change for the task in question, and the two records differ **from the start** rather than drifting.
+The explanation is wrong; the divergence itself (`watching … 3840122` against a real daemon at
+`3840326`) is measured and still unexplained.
+
+The re-arm is kept — a watch that does not follow its process is wrong regardless — but it is **not
+the fix** and the code says so.
+
+Next, and this time comparing the two directly rather than reasoning about them: print both
+`Handler::procs[nsid].host_pid` and `Registry::host_pids[nsid]` at the moment `kqchan_proc_open` arms
+the watch. They are supposedly fed from the same SO_PASSCRED value on every RPC; if they disagree at
+that instant, one of them is not fed from where I think it is, and that is the whole answer.

@@ -251,6 +251,9 @@ pub struct Handler {
     /// New process kqueue channels opened this dispatch, handed to the serve loop to
     /// register with the event loop (it owns the daemon-side sockets + death routing).
     pending_kqchans: Vec<crate::kqchan::ProcKqchan>,
+    /// (nsid, new host pid) for tasks whose host process changed since a death watch was armed.
+    /// Drained by the serve loop, which re-arms the pidfd; see set_current for why this must exist.
+    pending_pid_changes: Vec<(u32, libc::pid_t)>,
     /// New mach-port kqueue channels opened this dispatch (task #54), handed to the serve loop
     /// (boxed: their address is the xnu-sys notification callback's context, so it must be stable).
     pending_kqchans_mach: Vec<Box<crate::kqchan::MachPortKqchan>>,
@@ -274,6 +277,7 @@ impl Handler {
             mldr_path: std::env::var("DSERVER_MLDR_PATH").unwrap_or_default(),
             reply_fds: Vec::new(),
             pending_kqchans: Vec::new(),
+            pending_pid_changes: Vec::new(),
             pending_kqchans_mach: Vec::new(),
             pending_consoles: Vec::new(),
         }
@@ -285,6 +289,11 @@ impl Handler {
         std::mem::take(&mut self.reply_fds)
     }
     /// Take the kqueue channels opened this dispatch, for the serve loop to register.
+    /// Host-pid changes seen since the last drain, for the serve loop to re-arm death watches on.
+    pub fn take_pending_pid_changes(&mut self) -> Vec<(u32, libc::pid_t)> {
+        std::mem::take(&mut self.pending_pid_changes)
+    }
+
     pub fn take_pending_kqchans(&mut self) -> Vec<crate::kqchan::ProcKqchan> {
         std::mem::take(&mut self.pending_kqchans)
     }
@@ -305,6 +314,26 @@ impl Handler {
         self.current_tid = tid;
         if let Some(p) = self.procs.get_mut(&nsid) {
             if host_pid > 0 {
+                /*
+                 * A GUEST TASK CAN CHANGE HOST PROCESS, and something is already watching the old
+                 * one. kqchan_proc_open pidfd_opens this field ONCE to turn the target's death into
+                 * NOTE_EXIT, and never re-arms; when the pid moves, that watch is left on a process
+                 * nobody cares about, the real one's exit is never reported, and launchd -- which
+                 * removed the job's MachService ports from its demand set at job_ignore and only
+                 * puts them back on NOTE_EXIT -- can never demand-start the job again.
+                 *
+                 * MEASURED for trustd: watch on host pid 3840122, actual daemon 3840326, launchd
+                 * reaped secd and securityd and never trustd.
+                 *
+                 * AND THIS HAS NEVER FIRED. Zero re-arms in a run that reproduced the divergence, so
+                 * the two records do NOT drift apart over time the way this assumes -- they differ
+                 * from the start, and the reason is still open. Kept because a watch that does not
+                 * follow its process is wrong regardless, but it fixes nothing on its own and must
+                 * not be read as the fix.
+                 */
+                if p.host_pid != host_pid && p.host_pid > 0 {
+                    self.pending_pid_changes.push((nsid, host_pid));
+                }
                 p.host_pid = host_pid;
             }
             if arch != 0 {

@@ -370,6 +370,20 @@ unsafe fn run(cfg: Config) -> ! {
                         }
                         kqchans.push(kq);
                     }
+                    // A task that changed host process has its death watch pointed at the old one,
+                    // which never dies as far as anyone cares. Re-arm onto the new process.
+                    for (nsid, new_pid) in (*handler_ptr).take_pending_pid_changes() {
+                        for kq in kqchans.iter_mut().filter(|k| k.target_nsid == nsid) {
+                            let old = kq.rearm(new_pid);
+                            if old >= 0 {
+                                epoll_del(epfd, old);
+                                libc::close(old);
+                            }
+                            if kq.pidfd >= 0 {
+                                epoll_add(epfd, kq.pidfd);
+                            }
+                        }
+                    }
                     // Mach-port kqchans (task #54): only a daemon_fd to watch -- events arrive via
                     // the xnu-sys notification callback (fired inline on a sender's RPC), not epoll.
                     for kq in (*handler_ptr).take_pending_kqchans_mach() {

@@ -155,6 +155,21 @@ impl ProcKqchan {
         ))
     }
 
+    /// Point this watch at a different host process, returning the old pidfd for the caller to
+    /// remove from epoll and close (-1 if there was none).
+    ///
+    /// A guest task can change host process, and a death watch armed on the old one reports nothing
+    /// when the real one exits. That silence reaches launchd as "the job is still running", so its
+    /// MachService ports stay out of the demand set and it can never be started again.
+    pub fn rearm(&mut self, new_host_pid: libc::pid_t) -> RawFd {
+        let old = self.pidfd;
+        self.target_host_pid = new_host_pid;
+        self.pidfd = unsafe { libc::syscall(libc::SYS_pidfd_open, new_host_pid, 0) as RawFd };
+        eprintln!("CIDER_PROCKQ re-arming nsid={} onto host pid={} pidfd={}",
+                  self.target_nsid, new_host_pid, self.pidfd);
+        old
+    }
+
     /// The watched process died: queue NOTE_EXIT and notify the guest. Mirrors
     /// Process::notifyDead -> _notifyListeningKqchannels(NOTE_EXIT, 0).
     pub fn on_target_died(&mut self) {
