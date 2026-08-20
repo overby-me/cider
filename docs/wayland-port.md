@@ -13248,3 +13248,31 @@ hand it an image of the whole window. `CALayerContext` grew a `-subwindow` acces
 **The check is honest rather than hardcoded**: when subwindows exist, layer hosting starts working
 with no further change. Verified by measurement: the white bezel is 2941 pixels and its border 162,
 the same counts as before the boolean fix.
+
+### Dimming nothing paints a box
+
+The last flat grey in MoneyMoney's toolbar was a 32x32 block of exactly `#9F9F9F`. Two numbers named
+it before any instrument ran: `_NSToolbarIconSizeRegular` is `{32, 32}`, and 237 (the toolbar
+background) times 0.67 is 158.8.
+
+`-[NSToolbarItem drawInRect:highlighted:]` dims a disabled item by filling its icon rect with 33
+percent black using `NSCompositeSourceAtop` inside a transparency layer — meant to darken the image's
+own pixels and leave the rest alone. **With no image there are no pixels to be atop of**, so the fill
+landed on the toolbar. The item is `NSToolbarFlexibleSpaceItem`, `enabled=0`, `bounds=620x54`, and
+its icon rect is centred in it: a grey box in the middle of the space. Named by the item itself,
+under `CIDER_TRACE_IMAGESOURCE`, rather than inferred.
+
+The unbalanced `CGContextEndTransparencyLayer` went with it — it ran for every item, with a null
+context for every enabled one, having begun no layer.
+
+### MoneyMoney, against the three criteria
+
+**RENDERS**: menu bar, toolbar with its segmented control and search field, an empty white sidebar,
+an empty content area, and a status bar. No error dialog, no grey blocks. What an empty MoneyMoney
+should look like.
+**INTERACTIVE**: both halves, looked at. Clicking File opens the menu with its real items; clicking
+the search field focuses it, and typing puts `Giro` in it with a caret.
+**RESIZABLE**: 1000x600 and 1400x900, toolbar and status bar both relayout.
+
+Left as cosmetic: a 2-point horizontal scroller under the sidebar (`MainTree` is 329 wide in a 327
+clip), and a toolbar popup whose label is clipped.

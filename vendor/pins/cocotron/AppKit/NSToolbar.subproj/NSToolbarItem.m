@@ -649,8 +649,41 @@ extern NSSize _NSToolbarIconSizeSmall;
     }
 
     if ([_toolbar displayMode] != NSToolbarDisplayModeLabelOnly) {
-        if ([self view] == nil) {
-            NSImage *image = [self image];
+        /* AN ITEM WITH NO IMAGE MUST DRAW NOTHING, AND ESPECIALLY MUST NOT DIM NOTHING.
+         *
+         * The dimming below is a 33 percent black filled over the icon rect with SourceAtop, which
+         * is meant to darken the image's own pixels and leave the rest alone. With no image there
+         * are no pixels to be atop of, and the fill landed on the toolbar: a 32x32 block of exactly
+         * 159 grey, which is 237 times 0.67, sat in the middle of MoneyMoney's toolbar. That is a
+         * space item, 620 points wide with no view and no image, whose icon rect is centred in it.
+         *
+         * The unbalanced CGContextEndTransparencyLayer went with it: it ran on every item, with a
+         * null context for every enabled one, having begun no layer.
+         */
+        NSImage *image = [self view] == nil ? [self image] : nil;
+
+        /* NAME THE ITEM THAT HAS NOTHING TO DRAW, so the block above is a measurement and not a
+         * guess about which item it was. Same gate as the rest of the image tracing. */
+        if (image == nil && [self view] == nil) {
+            const char *watch = getenv("CIDER_TRACE_IMAGESOURCE");
+
+            if (watch != NULL && watch[0] != (char) 0) {
+                static int printed;
+
+                if (printed < 12) {
+                    printed++;
+                    fprintf(stderr,
+                            "CIDER_IMAGESOURCE toolbar item with no image id=%s label=%s "
+                            "enabled=%d bounds=%.0fx%.0f\n",
+                            [_itemIdentifier UTF8String] ?: "(nil)",
+                            [_label UTF8String] ?: "(nil)", (int) [self isEnabled],
+                            bounds.size.width, bounds.size.height);
+                    fflush(stderr);
+                }
+            }
+        }
+
+        if (image != nil) {
             NSRect imageRect;
 
             if ([_toolbar sizeMode] == NSToolbarSizeModeSmall)
@@ -662,8 +695,11 @@ extern NSSize _NSToolbarIconSizeSmall;
             imageRect.origin.x =
                     bounds.origin.x +
                     floor((bounds.size.width - imageRect.size.width) / 2);
+
+            BOOL dimmed = ([self isEnabled] == NO);
             CGContextRef ctx = NULL;
-            if ([self isEnabled] == NO) {
+
+            if (dimmed) {
                 ctx = [[NSGraphicsContext currentContext] graphicsPort];
                 CGContextClipToRect(ctx, imageRect);
                 CGContextBeginTransparencyLayer(ctx, NULL);
@@ -672,11 +708,11 @@ extern NSSize _NSToolbarIconSizeSmall;
                      fromRect: NSZeroRect
                     operation: NSCompositeSourceOver
                      fraction: highlighted ? 0.5 : 1.0];
-            if ([self isEnabled] == NO) {
+            if (dimmed) {
                 [[NSColor colorWithCalibratedWhite: 0.0 alpha: 0.33] set];
                 NSRectFillUsingOperation(imageRect, NSCompositeSourceAtop);
+                CGContextEndTransparencyLayer(ctx);
             }
-            CGContextEndTransparencyLayer(ctx);
         }
     }
 }
