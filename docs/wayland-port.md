@@ -13100,3 +13100,39 @@ not a set.**
 **Where it stops now:** "Could not delete the temporary database file … /Users/root/Library/Application
 Support/MoneyMoney/Database/MoneyMoney-Temp.sqlite … check the file permissions of the database
 directory." That is a filesystem question — an unlink — and an entirely fresh piece of work.
+
+### NSFileManager could not delete a file — any file, for any application
+
+MoneyMoney stopped on *"Could not delete the temporary database file … Please check the file
+permissions of the database directory."* The directory was writable and `rm` removed that exact file
+from a container shell. A syscall-level trace settled it: **the application never attempted the
+delete.** The only unlinks in a whole run were our own Wayland shm files. Its wording was a *guess*
+about the cause, not a diagnosis.
+
+`-[NSFileManager removeItemAtPath:error:]` hands the job to `NSFilesystemItemRemoveOperation`, which
+does not call `unlink` itself — it **walks** the path with `nftw()` and calls `remove()` from the
+callback. And `nftw()` refuses any root that is not a directory. That is Apple's own libc source, not
+something this port did: under `__DARWIN_UNIX03` it stats the path and, when an nftw-style callback
+is supplied, returns −1/`ENOTDIR` for anything that is not a directory, before `fts_open` is ever
+called.
+
+Measured, with a directory in the **same run** as the control — because "nftw is broken" and "nftw
+does not like plain files" are different findings, and only the second explains why a
+directory-based instrument would have looked healthy:
+
+```
+nftw(a plain file) rc=-1 errno=20 (Not a directory), callback fired 0 time(s)
+nftw(a directory)  rc=0,                             callback fired 4 time(s)
+```
+
+The walk stays for directories, where it is the right tool and demonstrably works. A single
+non-directory is removed directly, through the same callback function, so the delegate hooks behave
+identically for one file. (`vendor/patches/foundation/0026`; the probe is
+`src/darwin/probes/nftw-probe.c`.)
+
+**MoneyMoney now opens its main window.** It deletes its temporary database, creates a real one —
+307,200 bytes and a journal, where the file had been zero bytes — and draws a toolbar, sidebar,
+search field and status bar. The splash is gone.
+
+It then raises `-[NSUserNotificationCenter removeAllDeliveredNotifications]: unrecognized selector`,
+which is the next piece of work and exactly the shape of a missing method rather than a broken one.

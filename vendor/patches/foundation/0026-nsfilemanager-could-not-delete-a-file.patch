@@ -1,0 +1,94 @@
+NSFileManager could not delete a file. Any file, for any application.
+
+-[NSFileManager removeItemAtPath:error:] hands the job to NSFilesystemItemRemoveOperation, which does
+not call unlink itself: it WALKS the path with nftw() and calls remove() from the callback. And
+nftw() refuses any root that is not a directory. That is Apple's own libc source and not something
+this port did: under __DARWIN_UNIX03 it stats the path and, when an nftw-style callback is supplied,
+returns -1 with ENOTDIR for anything that is not a directory, before fts_open is ever called.
+
+MEASURED, with a directory in the SAME RUN as the control, because "nftw is broken" and "nftw does
+not like plain files" are different findings and only the second explains why a directory-based
+instrument would have looked healthy:
+
+    nftw(a plain file) rc=-1 errno=20 (Not a directory), callback fired 0 time(s)
+    nftw(a directory)  rc=0,                             callback fired 4 time(s)
+
+HOW IT PRESENTED, and the application was blamed for it. MoneyMoney stopped on "Could not delete the
+temporary database file ... Please check the file permissions of the database directory", while the
+directory was writable and rm removed that exact file from a container shell. A syscall level trace
+settled it: the application NEVER ATTEMPTED the delete. The only unlinks in a whole run were our own
+Wayland shm files. The application's wording was a GUESS about the cause, not a diagnosis.
+
+The walk stays for directories, where it is the right tool and demonstrably works. A single non
+directory is removed directly, through the same callback function, so the delegate hooks
+shouldShouldRemoveItemAtPath and shouldProceedAfterError behave identically for one file. Real
+Foundation does not remove files by walking them; this implementation carries a TODO next to it
+saying as much.
+
+AFTER THIS, MoneyMoney deletes its temporary database, creates a real one (307200 bytes and a
+journal, where the file had been zero bytes), and OPENS ITS MAIN WINDOW: toolbar, sidebar, search
+field and status bar. It then raises a different error, an unrecognized selector
+-[NSUserNotificationCenter removeAllDeliveredNotifications], which is the next piece of work.
+--- a/src/NSFilesystemItemRemoveOperation.m
++++ b/src/NSFilesystemItemRemoveOperation.m
+@@ -7,6 +7,7 @@
+ 
+ #import "NSFilesystemItemRemoveOperation.h"
+ #import <ftw.h>
++#import <sys/stat.h>
+ #import <errno.h>
+ #import <unistd.h>
+ #import <stdlib.h>
+@@ -99,13 +100,51 @@
+         // extern int _nftw_context(const char *path, int (*fn)(const char *, const struct stat *, int, struct FTW *, void *), int nfds, int ftwflags, void *ctx);
+         ctx = self;
+ 
+-        int err = nftw(
++        /*
++         * A SINGLE NON-DIRECTORY NEVER REACHES THE WALK, so remove it directly.
++         *
++         * nftw() refuses any root that is not a directory. That is Apple's own libc source, not
++         * something this port did: under __DARWIN_UNIX03 it stats the path and, when a non-NULL
++         * nftw-style callback is supplied, returns -1/ENOTDIR for anything that is not a directory
++         * before fts_open is ever called. Measured, with a directory in the same run as the control:
++         *
++         *   nftw(a plain file) rc=-1 errno=20 (Not a directory), callback fired 0 times
++         *   nftw(a directory)  rc=0,                             callback fired 4 times
++         *
++         * So -[NSFileManager removeItemAtPath:error:] could not delete a FILE at all -- any file,
++         * for any application. It reported failure with an errno that has nothing to do with the
++         * file, and MoneyMoney showed that to its user as "Could not delete the temporary database
++         * file ... check the file permissions of the database directory", while the directory was
++         * writable and rm removed that exact file from a shell.
++         *
++         * Real Foundation does not remove files by walking them; this implementation carries a
++         * "TODO implement remove with NSFilesystemItemRemoveOperation" next to it. The walk stays
++         * for directories, where it is the right tool and demonstrably works.
++         *
++         * The delegate callbacks still run: the same callback function is invoked, so
++         * shouldRemoveItemAtPath and shouldProceedAfterError behave identically for one file.
++         */
++        struct stat rootInfo;
++        int err;
++
++        if (lstat([_removePath cString], &rootInfo) == 0 && !S_ISDIR(rootInfo.st_mode))
++        {
++            struct FTW single = { 0, 0 };
++
++            err = NSFilesystemItemRemoveOperationFunction([_removePath cString], &rootInfo,
++                                                          S_ISLNK(rootInfo.st_mode) ? FTW_SL : FTW_F,
++                                                          &single);
++        }
++        else
++        {
++        err = nftw(
+             [_removePath cString],
+             NSFilesystemItemRemoveOperationFunction,
+             1, // ignored by the implementation, but values less than 1 and
+                // more than OPEN_MAX result in EINVAL
+             FTW_DEPTH
+         );
++        }
+ 
+         ctx = NULL;
+         if (_error == nil && err != 0)
