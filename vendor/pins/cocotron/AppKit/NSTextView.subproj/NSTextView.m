@@ -17,6 +17,7 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  SOFTWARE. */
+#include <dlfcn.h>
 #import <objc/runtime.h>
 #import "NSTextViewSharedData.h"
 #import <AppKit/NSApplication.h>
@@ -2689,6 +2690,19 @@ static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourc
 }
 
 - (void) setFieldEditor: (BOOL) flag {
+    /* WHO MADE THIS A FIELD EDITOR. A text view that an application hands to the window as its own
+     * field editor is moved into whatever control is being edited, and that move is what put
+     * MoneyMoney's IBAN view directly inside an MMBox. Naming the caller separates the application
+     * doing it from our own field editor machinery doing it. */
+    if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
+        Dl_info info;
+        void *ret = __builtin_return_address(0);
+
+        fprintf(stderr, "CIDER_TEXTFE %s setFieldEditor %d from %s\n", object_getClassName(self),
+                flag ? 1 : 0,
+                (dladdr(ret, &info) != 0 && info.dli_sname != NULL) ? info.dli_sname : "?");
+        fflush(stderr);
+    }
     _isFieldEditor = flag;
 }
 
@@ -3297,7 +3311,8 @@ static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourc
         fprintf(stderr,
                 "CIDER_TEXTDRAW %s rect=%gx%g@%g,%g frame=%gx%g@%g,%g super=%s window=%s len=%lu "
                 "glyphs=%lu range=%lu+%lu origin=%g,%g used=%gx%g@%g,%g colour=%s "
-                "font=%s fieldEditor=%d\n",
+                "font=%s fieldEditor=%d drawsBackground=%d background=%s storage=%s(%p) "
+                "lmStorage=%p storageLMs=%lu\n",
                 object_getClassName(self), rect.size.width, rect.size.height, rect.origin.x,
                 rect.origin.y, [self frame].size.width, [self frame].size.height,
                 [self frame].origin.x, [self frame].origin.y,
@@ -3310,7 +3325,11 @@ static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourc
                 [attrs objectForKey: NSFontAttributeName] != nil
                         ? [[[attrs objectForKey: NSFontAttributeName] description] UTF8String]
                         : "NIL",
-                (int) [self isFieldEditor]);
+                (int) [self isFieldEditor], (int) [self drawsBackground],
+                _backgroundColor != nil ? [[_backgroundColor description] UTF8String] : "(nil)",
+                object_getClassName([self textStorage]), (void *) [self textStorage],
+                (void *) [layoutManager textStorage],
+                (unsigned long) [[[self textStorage] layoutManagers] count]);
         fflush(stderr);
     }
 
@@ -3329,6 +3348,14 @@ static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourc
 }
 
 - (void) mouseDown: (NSEvent *) event {
+    /* DID THE CLICK REACH THE TEXT AT ALL. A field that ignores a click and a window that ignores
+     * every click are different findings; this one only fires for the first. */
+    if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
+        fprintf(stderr, "CIDER_TEXTCLICK %s mouseDown selectable=%d editable=%d fieldEditor=%d\n",
+                object_getClassName(self), (int) [self isSelectable], (int) [self isEditable],
+                (int) [self isFieldEditor]);
+        fflush(stderr);
+    }
     NSEvent *lastDrag = event;
     NSPoint point = [self convertPoint: [event locationInWindow] fromView: nil];
     CGFloat fraction = 0;
@@ -3338,6 +3365,22 @@ static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourc
 
     if (![self isSelectable])
         return;
+
+    /*
+     * A CLICK IN TEXT MEANS BECOMING FIRST RESPONDER, and this never did it.
+     *
+     * A text field gets there another way: clicking one runs NSCell's tracking, which asks the
+     * window for a field editor and makes THAT the first responder. A text view standing on its own
+     * has no such path, so nothing ever made it the responder and every key afterwards went
+     * somewhere else. MoneyMoney's IBAN field is one: the application installs its MMTextViewMono
+     * directly in a box as the field editor, the click reached -mouseDown: here, and the two
+     * letters typed after it landed nowhere.
+     */
+    NSWindow *window = [self window];
+
+    if (window != nil && [window firstResponder] != self && [self acceptsFirstResponder]) {
+        [window makeFirstResponder: self];
+    }
 
     firstRange.location = [self glyphIndexForPoint: point
                     fractionOfDistanceThroughGlyph: &fraction];

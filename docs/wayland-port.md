@@ -13550,3 +13550,35 @@ a caret and a focus ring, and 1000x600 and 1400x900 both relayout. Swift Publish
 came out byte-identical. **iTerm2 was black on one run and fully healthy on the next** — that matches
 the known container boot flakiness this repo already tracks, and at n=2 it cannot be separated from
 noise, but a working run is enough to say the change did not break it.
+
+### A click in text means becoming first responder
+
+MoneyMoney's IBAN field took a click and did nothing, and two letters typed after it went nowhere.
+The window was not the problem: the same run showed the click arriving as
+`button pressed x=284 y=118 window=10` (exactly inside the field), the keys arriving as
+`key ... window=10 text=Some("B")`, and a click on Cancel closing the wizard. **A field that ignores a
+click and a window that ignores every click are different findings**, and Cancel is the control whose
+effect is unmistakable.
+
+`-[NSTextView mouseDown:]` never called `-makeFirstResponder:`. A text FIELD gets there another way:
+clicking one runs `NSCell`'s tracking, which asks the window for a field editor and makes that the
+first responder. A text view standing on its own has no such path. MoneyMoney's is standing on its
+own: the application marks its `MMTextViewMono` as a field editor itself (traced:
+`setFieldEditor 1 from ?`, an unresolvable symbol, so application code) and installs it directly in an
+`MMBox`.
+
+**Measured after the fix**, since nothing about it is visible yet: `CIDER_TEXTKEY ... chars=A`, then
+`CIDER_TEXTINSERT ... string=A lengthBefore=0`, then `string=B lengthBefore=1`. The keys reach the
+view and the text goes into the model.
+
+**And it still does not draw**, which is the next question and a familiar one:
+
+    len=2 glyphs=0 range=NSNotFound+0 used=1x14 frag=0x0@0,0
+    container=255x19 widthTracks=1 heightTracks=1 inset=-2x4
+    storage=MMTextStorageMono(0x…1d0) lmStorage=0x…1d0 storageLMs=1
+
+The storage is the application's own subclass, the layout manager sees the same object, and the
+storage has exactly one layout manager, so the wiring is right. Two characters in the model produce
+**zero glyphs**. That is the signature this port has seen before, and the container is 19 points tall
+while the typing attributes report a line height of 17 — but the text is Menlo 16, whose line height
+is a little over 19. Next rung.
