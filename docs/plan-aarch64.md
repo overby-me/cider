@@ -1192,6 +1192,39 @@ proceeds past init to `--load-db` and the real `nix build`; expect clang/ld64/cc
 arm64 runtime bugs, iterated like the bash bring-up. DURABILITY still open: cocotron AppKit/Onyx2D fixes
 (no patch dir yet) and the scratchpad/m4-fw.sh framework overlay (not a committed build step).
 
+**M4c genuine build (pass 34): the check was passing TRIVIALLY; hardening it exposed and fixed a
+ciderd scheduler crash, and the guest now really COMPILES bash.** After the lstat fix, buck-nix-bash-
+check went green -- but falsely. `nix build` returned build_rc=0 in ~9s with no compiler output: the
+aarch64-darwin bash-interactive output is on cache.nixos.org, build-pkg-bypass dumped the store DB with
+`--include-outputs`, so load-db registered the target output as valid and the guest no-op'd. The driver
+comment even claims it substitutes "everything but the target's own output", but only excluded the
+default `out` (its $outhash), and the DB dump re-registered all of them anyway. Attempts to force a
+rebuild inside the guest failed on the overlay: the substituted output lives in the read-only /nix
+overlay LOWER, so `nix-store --delete` in the guest hit `fchmodat ... EPERM` (cannot clear a lower
+path), and excluding only `out` from the dump broke referential integrity (dev/doc reference out ->
+load-db rejects -> "failed to obtain derivation"). FIX (build-pkg-bypass.nu): compute ALL target
+outputs (`nix-store -q --outputs $drv`), exclude the whole set from both the substitution and the DB
+dump, and `nix-store --delete` (plain -- an unprivileged user may not `--ignore-liveness`) them from the
+HOST store before the run so nothing shadows the build via the overlay lower. Plus `nix build -L` so the
+compile is visible. With that, the guest genuinely builds from source -- and immediately crashed ciderd:
+`ciderd: FATAL host signal 11`, fault addr 0xffffae103f9f8698, twice. addr2line'd the (unstripped)
+daemon: the fault is `pqueue::meld_pair` via `priority_queue_remove` <- `waitq_thread_remove` <-
+`waitq_select_thread_locked` <- `waitq_wakeup64_thread` <- a psynch mutex drop (ksyn_mtxsignal). ROOT
+CAUSE: XNU's osfmk priority queue packs a node's child pointer into a signed `long child:48` bitfield and
+unpacks by sign-extending bit 47 -- a trick to rebuild kernel 0xffff.... pointers. ciderd runs this in
+USERSPACE; on x86_64 user VA is 47-bit (bit 47 = 0, harmless) but on arm64 it is 48-bit and ciderd is
+mapped high (0xae..), so a valid node pointer with bit 47 set sign-extends to a bogus 0xffff.. address
+(0xffffae103f9f8698 == 0xae103f9f8698 sign-extended). It only bites once the pairing heap has multiple
+nodes to meld -- i.e. under real pthread-mutex contention, which a parallel guest build produces and the
+single-threaded shell/nix never did. FIX: patch 0005 (vendor/patches/xnu-sys-xnu) masks unpack_child to
+the low CHILD_BITS (zero-extend) under `#ifdef __LP64__` -- correct for every 48-bit userspace address,
+a no-op on x86_64. Rebuilt //src/linux/server:ciderd, overlaid onto $rt, re-ran: ciderd stays alive (SN,
+not the previous zombie), no new FATAL, and the transcript shows bash's configure running under cider
+arm64 (`checking for getcwd... yes`, `geteuid... yes`, `mempcpy... no`). So the Darwin toolchain now
+executes a real compile under the port. Same CLASS as lstat: XNU code assuming a property (canonical
+high-half pointers / no-lstat-syscall) that holds for the kernel or x86 but not arm64 userspace. NEXT:
+watch the configure->make->cc->ld->install chain for the next arm64 toolchain bug (or completion).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the

@@ -1,0 +1,50 @@
+aarch64: zero-extend packed child pointers in the duct-tape priority queue
+
+The XNU pairing-heap in osfmk/kern packs each node child pointer into a signed
+long child : 48 bitfield and unpacks it by simply reading the bitfield, which
+sign-extends bit 47. Upstream relies on that trick to rebuild kernel pointers
+(canonical high-half 0xffff....) while keeping NULL as 0.
+
+ciderd runs this scheduler in USERSPACE. On x86_64 that is harmless: user VA is
+47-bit, so bit 47 is always 0 and the sign-extension is a no-op. On arm64 the
+user VA is 48-bit and ciderd itself is mapped in the high quarter (e.g.
+0xae.._....), so a valid priority_queue node can legitimately have bit 47 set.
+unpack_child() then sign-extends it to a bogus 0xffff.... pointer and meld_pair()
+dereferences it -> SIGSEGV (ciderd: FATAL host signal 11, fault addr like
+0xffffae103f9f8698, which is 0xae103f9f8698 sign-extended from bit 47).
+
+It only fires once the heap has multiple nodes to meld, i.e. under real
+pthread-mutex contention: a guest psynch mutex drop -> ksyn_mtxsignal ->
+waitq_wakeup64_thread -> waitq_select_thread_locked -> priority_queue_remove ->
+meld_pair. A single-threaded guest never hits it; a parallel guest build (many
+mutex waiters) crashes the daemon.
+
+Mask the unpacked value to the low CHILD_BITS so the pointer is zero-extended,
+correct for every 48-bit userspace address (and a no-op on x86_64 userspace). A
+real KERNEL build is unaffected -- this is the ciderd userspace duct-tape.
+
+--- a/libkern/c++/priority_queue.cpp
++++ b/libkern/c++/priority_queue.cpp
+@@ -134,7 +134,22 @@
+ 	static inline entry_t
+ 	unpack_child(entry_t e)
+ 	{
++#ifdef __LP64__
++		/*
++		 * `child` is a signed `long :48` bitfield, so reading it sign-extends bit 47.
++		 * Upstream XNU relies on that to rebuild 0xffff... KERNEL pointers (and to keep NULL
++		 * as 0). ciderd, however, runs this scheduler in USERSPACE: on arm64 the user VA is
++		 * 48-bit and ciderd itself is mapped high (e.g. 0xae..._....), so a perfectly valid
++		 * node pointer can have bit 47 set. Sign-extending it yields a bogus 0xffff... address
++		 * and meld_pair() then faults (SIGSEGV) on the first multi-node heap merge -- i.e.
++		 * under real pthread-mutex contention such as a parallel guest build. Mask to the low
++		 * CHILD_BITS so the pointer is zero-extended, which is correct for every 48-bit
++		 * userspace address (bit 47 is 0 on x86_64 userspace, so this is a no-op there).
++		 */
++		return (entry_t)((unsigned long)e->child & ((1UL << PRIORITY_QUEUE_ENTRY_CHILD_BITS) - 1));
++#else
+ 		return (entry_t)e->child;
++#endif
+ 	}
+ 
+ private:
