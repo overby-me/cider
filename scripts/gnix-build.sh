@@ -47,12 +47,16 @@ echo "=BUILD $GDRV="
 # nix builds are atomic, so a fresh attempt re-runs configure and usually passes.
 brc=1
 for attempt in 1 2 3 4; do
-	# --cores 1: build serially. Parallel `make -j` hangs under cider on aarch64: make's
-	# jobserver blocks in ppoll waiting for SIGCHLD, but SIGCHLD from its exited jobs does not
-	# interrupt that ppoll, so finished children pile up as unreaped zombies and the build never
-	# progresses (seen after the builtins/support subdirs). Serial fork+wait4 (as configure uses)
-	# works, so build with one job until the parallel-SIGCHLD delivery is fixed.
-	nix build -L --cores 1 --offline --no-link "${GDRV}^*" 2>&1
+	# Cores default to 1 (serial). Parallel `make -j` hung under cider on aarch64: make's
+	# jobserver waits in poll() (Darwin poll -> Linux ppoll on arm64) and uses the poll timeout
+	# as the heartbeat on which it reaps finished jobs. The arm64 ppoll ms->timespec conversion
+	# was broken (poll.c: tv_sec = (timeout%1000)*1000000), so a sub-second timeout became a
+	# ~15-year wait; finished children piled up as unreaped zombies and the build never
+	# progressed (seen after the builtins/support subdirs). Serial fork+wait4 (as configure uses)
+	# never hits that path, so it always worked. The timeout bug is fixed in
+	# vendor/patches/xnu/0038; set CIDER_GNIX_CORES>1 to build in parallel once a prefix rebuilt
+	# with 0038 has confirmed it, then this default can drop. 1 stays the safe default until then.
+	nix build -L --cores "${CIDER_GNIX_CORES:-1}" --offline --no-link "${GDRV}^*" 2>&1
 	brc=$?
 	[ "$brc" -eq 0 ] && break
 	echo "build attempt $attempt failed (rc=$brc); retrying (transient-crash mitigation)..."

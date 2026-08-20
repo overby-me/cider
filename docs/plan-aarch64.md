@@ -1332,6 +1332,30 @@ Task #10 done. Remaining follow-ups, neither blocking M4: task #12 (parallel `ma
 hang, which forces the milestone build to `--cores 1`) and task #11 (profile and speed up guest
 execution).
 
+**Pass 39 (task #12): the parallel `make -j` hang is a broken arm64 poll() timeout, not a signal-delivery
+bug.** The symptom (gnix-build.sh's own note): under `make -j`, make's jobserver blocks in ppoll, its
+finished jobs pile up as unreaped zombies, and the build stalls after the builtins/support subdirs;
+serial `--cores 1` always works. The signal-delivery reading came up empty as a cause: SIGCHLD is
+explicitly EXCLUDED from cider's sigexc catch-all (darling_sigexc_self skips SIGSTOP/SIGKILL/SIGCHLD),
+so make keeps its OWN SIGCHLD handler; the guest cannot even block cider's control signals, because a
+Darwin sigset is 32-bit and Linux SIGRTMIN is 34+, so they fall off the end of every mask the guest
+converts; and the zombies prove the children are real Linux children of make, i.e. the kernel really is
+posting SIGCHLD. What is actually broken is the poll() -> ppoll timeout. arm64 Linux has no `__NR_poll`,
+so sys_poll_nocancel (bsd/impl/select/poll.c) falls back to `__NR_ppoll`, which takes a `struct
+timespec`, and the ms->timespec conversion had the fields swapped and mis-scaled:
+`tv_sec = (timeout % 1000) * 1000000, tv_nsec = timeout / 1000`. A 500 ms poll timeout became tv_sec =
+500000000 (about 15.8 years). make's jobserver uses the poll TIMEOUT as the heartbeat on which it wakes
+to reap finished jobs and recycle their tokens; with the timeout stuck at ~15 years it never wakes, the
+SIGCHLD-driven EINTR just re-enters the same ~infinite poll, tokens never come back, and the build
+deadlocks. The x86 `__NR_poll` path passes the ms value straight through and never saw this; serial
+build uses fork+wait4, no poll, so it never hit it either. FIX: patch 0038 converts correctly (whole
+seconds to tv_sec, the ms remainder to tv_nsec). gnix-build.sh's `--cores` is now `CIDER_GNIX_CORES`
+(default 1, the safe serial path); re-enabling parallel is gated on a prefix rebuilt with 0038 running
+buck-nix-bash-check with `CIDER_GNIX_CORES` > 1 and completing, after which the serial default can drop.
+Confidence is high (the arithmetic is unambiguously wrong and every other candidate was ruled out), but
+this is recorded as landed-pending-verification because the parallel run has not yet been executed on a
+0038-built prefix.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
