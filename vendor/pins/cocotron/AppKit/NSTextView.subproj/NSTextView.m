@@ -17,6 +17,7 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  SOFTWARE. */
+#import <objc/runtime.h>
 #import "NSTextViewSharedData.h"
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSAttributedString.h>
@@ -172,6 +173,27 @@ static void CiderFillBackground(NSColor *color, NSRect rect, const char *where) 
     NSUnimplementedMethod();
 }
 
+/*
+ * WHICH INPUT SOURCES THE VIEW WILL ACCEPT, public since 10.5 and absent here, so MoneyMoney's
+ * add-account window raised an unrecognized selector while building its text view and the window
+ * never appeared. Nothing in this port restricts input sources, so the honest implementation is to
+ * remember what was set and answer with it: an application that sets a list and reads it back gets
+ * its list, and one that reads without setting gets nil, which is the documented default.
+ *
+ * An ASSOCIATED OBJECT rather than an ivar, because applications subclass NSTextView (MMTextViewMono
+ * is one) and an ivar added here would move theirs.
+ */
+static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourceLocalesKey;
+
+- (NSArray *) allowedInputSourceLocales {
+    return objc_getAssociatedObject(self, kCiderAllowedInputSourceLocalesKey);
+}
+
+- (void) setAllowedInputSourceLocales: (NSArray *) locales {
+    objc_setAssociatedObject(self, kCiderAllowedInputSourceLocalesKey, locales,
+                             OBJC_ASSOCIATION_COPY_NONATOMIC);
+}
+
 - (void) _setTextStorage: (NSTextStorage *) storage {
     if (_ownsTextStorage)
         [_textStorage release];
@@ -182,12 +204,31 @@ static void CiderFillBackground(NSColor *color, NSRect rect, const char *where) 
     NSMutableDictionary *typingAttributes =
             [[_textStorage attributesAtIndex: 0
                               effectiveRange: NULL] mutableCopy];
-    if (![typingAttributes objectForKey: NSFontAttributeName]) {
-        [typingAttributes setObject: _font forKey: NSFontAttributeName];
+    /*
+     * THIS CAN RUN BEFORE THE TEXT VIEW HAS FINISHED DECODING ITSELF, so neither ivar may be set.
+     *
+     * -[NSTextContainer setLayoutManager:] calls back into its text view, and that happens while
+     * NSLayoutManager is being decoded, which happens while NSTextContainer is being decoded, which
+     * happens inside -[NSTextView initWithCoder:] BEFORE the line that assigns _font. A nil in an
+     * attributes dictionary is not an empty entry, it is a fatal NSInvalidArgumentException, so the
+     * whole nib load unwound and MoneyMoney's add-account window never appeared. The only thing in
+     * the log was one caught exception whose message named neither the dictionary nor the key.
+     *
+     * The fallbacks are the defaults NSTextView documents, which is also what both of its
+     * initialisers assign, so an object built this way ends up in the same state either way.
+     */
+    if ([typingAttributes objectForKey: NSFontAttributeName] == nil) {
+        NSFont *font = (_font != nil) ? _font : [NSFont userFontOfSize: 0];
+
+        if (font != nil)
+            [typingAttributes setObject: font forKey: NSFontAttributeName];
     }
-    if (![typingAttributes objectForKey: NSForegroundColorAttributeName]) {
-        [typingAttributes setObject: _textColor
-                             forKey: NSForegroundColorAttributeName];
+    if ([typingAttributes objectForKey: NSForegroundColorAttributeName] == nil) {
+        NSColor *color = (_textColor != nil) ? _textColor : [NSColor textColor];
+
+        if (color != nil)
+            [typingAttributes setObject: color
+                                 forKey: NSForegroundColorAttributeName];
     }
 
     [_typingAttributes release];

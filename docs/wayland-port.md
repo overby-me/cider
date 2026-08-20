@@ -13359,3 +13359,47 @@ what a flat bundle rooted there would have. Its `developmentLocalization` came b
 real bundle said `en`, so the two are distinguishable, but a negative that needs that much
 qualification is not much of a negative. A directory with no `Resources` at all would have been the
 better choice.
+
+### Where a caught exception came from
+
+AppKit catches an application's exceptions per event, so a feature that raises one silently does
+nothing and the log holds a single line with no caller in it. `-[NSApplication reportException:]` now
+prints the exception's own `callStackSymbols` under `CIDER_TRACE_EXCEPTIONS`, and falls back to a
+backtrace of the report site when the exception carries no stack.
+
+It earned its place on the first run. MoneyMoney's add-account window was dying on `Cannot set nil
+objects nor nil keys`, a message that names neither the dictionary nor the key, and the trace named
+the whole chain:
+
+    -[NSTextView initWithCoder:]
+      -[NSTextContainer initWithCoder:]
+        -[NSLayoutManager initWithCoder:]
+          -[NSTextView _setTextStorage:]
+            -[__NSCFDictionary setObject:forKey:]   nil for NSFontAttributeName
+
+**`-_setTextStorage:` can run before the text view has finished decoding itself.**
+`-[NSTextContainer setLayoutManager:]` calls back into its text view, and that happens while the
+layout manager is being decoded, which happens while the container is being decoded, which happens
+inside `-[NSTextView initWithCoder:]` **before the line that assigns `_font`**. A nil in an
+attributes dictionary is not an empty entry, it is a fatal exception, so the whole nib load unwound.
+It now falls back to the defaults both initialisers assign.
+
+Then `-[MMTextViewMono setAllowedInputSourceLocales:]`, public since 10.5 and absent, so it is
+implemented: nothing here restricts input sources, but an application that sets a list and reads it
+back gets its list. Kept in an **associated object rather than an ivar**, because applications
+subclass `NSTextView` and an ivar added here would move theirs.
+
+Then `+[CBUUID UUIDWithString:]`. **A CBUUID is a value, not a connection** — 2, 4 or 16 bytes and a
+few conversions, none of which needs a Bluetooth stack — so it is now real while the rest of
+CoreBluetooth stays a stub: the string, data, `NSUUID` and `CFUUID` constructors, and equality and
+`UUIDString` through the full 128 bits so a 16-bit UUID and the long form it stands for compare
+equal. MoneyMoney builds several the moment the add-account flow starts, for the card readers it can
+talk to.
+
+**Where it stands, honestly:** four exceptions gone, zero left in the run, and the add-account window
+still does not appear. It now gets far enough to decode its nib (many `MMLabel`, `MMTextField` and
+`MMImageView` objects) and then dies on a worker thread:
+
+    cider CRASH signal=11 objc_autorelease + 34  <- MoneyMoney + 3249458 <- __NSThread__main__
+
+That is the next question, and it is a different kind of one.

@@ -1534,6 +1534,43 @@ static void _CiderAppNote(const char *what, id sender)
 
 - (void) reportException: (NSException *) exception {
     NSLog(@"NSApplication got exception: %@", exception);
+
+    /*
+     * WHERE IT CAME FROM, not only what it said.
+     *
+     * This is where an application's exceptions come to die: AppKit catches them per event, so the
+     * feature that raised one silently does nothing and the log holds a single line with no caller
+     * in it. "Cannot set nil objects nor nil keys" from MoneyMoney's add-account window is the case
+     * that asked for this, and the message names neither the dictionary nor the code that filled it.
+     *
+     * The exception's own callStackSymbols is the RAISE point, which is what matters, and it
+     * survives the unwind because NSException captures it when it is thrown.
+     */
+    const char *watch = getenv("CIDER_TRACE_EXCEPTIONS");
+
+    if (watch != NULL && watch[0] != (char) 0) {
+        NSArray *symbols = [exception callStackSymbols];
+
+        if ([symbols count] > 0) {
+            NSUInteger i, count = [symbols count];
+
+            for (i = 0; i < count && i < 20; i++)
+                fprintf(stderr, "CIDER_EXC   %s\n",
+                        [[symbols objectAtIndex: i] UTF8String] ?: "?");
+        } else {
+            /* An exception thrown before anyone captured a stack still tells us where it is being
+             * REPORTED, which is one frame short of useless. */
+            void *frames[24];
+            int count = backtrace(frames, 24);
+            char **names = backtrace_symbols(frames, count);
+
+            for (int i = 1; i < count && names != NULL; i++)
+                fprintf(stderr, "CIDER_EXC   (report) %s\n", names[i]);
+            if (names != NULL)
+                free(names);
+        }
+        fflush(stderr);
+    }
 }
 
 - (void) _attentionTimer: (NSTimer *) timer {

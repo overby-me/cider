@@ -19,6 +19,20 @@
 
 #include <Foundation/Foundation.h>
 
-@interface CBUUID : NSObject
+/*
+ * A CBUUID IS A VALUE, NOT A CONNECTION. It is 2, 4 or 16 bytes and a few conversions, and none of
+ * it needs a Bluetooth stack, so it can be real here while the rest of CoreBluetooth is a stub.
+ * MoneyMoney builds several the moment its add-account flow starts, for the card readers it can
+ * talk to, and a class that cannot answer +UUIDWithString: took the whole flow down with it.
+ */
+@interface CBUUID : NSObject <NSCopying>
+
+@property (nonatomic, readonly) NSData *data;
+@property (nonatomic, readonly) NSString *UUIDString;
+
++ (CBUUID *) UUIDWithString: (NSString *) theString;
++ (CBUUID *) UUIDWithData: (NSData *) theData;
++ (CBUUID *) UUIDWithNSUUID: (NSUUID *) theUUID;
++ (CBUUID *) UUIDWithCFUUID: (CFUUIDRef) theUUID;
 
 @end
