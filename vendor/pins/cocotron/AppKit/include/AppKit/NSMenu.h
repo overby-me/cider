@@ -46,6 +46,10 @@ APPKIT_EXPORT const NSNotificationName NSMenuDidChangeItemNotification;
 
 @property BOOL showsStateColumn;
 
+- (BOOL) popUpMenuPositioningItem: (NSMenuItem *) item
+                       atLocation: (NSPoint) location
+                           inView: (NSView *) view;
+
 + (void) popUpContextMenu: (NSMenu *) menu
                 withEvent: (NSEvent *) event
                   forView: (NSView *) view;

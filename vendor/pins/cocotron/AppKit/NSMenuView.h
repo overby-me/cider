@@ -39,6 +39,10 @@ enum {
 
 - (NSUInteger) itemIndexAtPoint: (NSPoint) point;
 - (NSUInteger) itemIndexAtPoint: (NSPoint) point rect: (NSRect*) rect;
+
+/* The row rect of one item, in this view's coordinates. NSZeroRect if the index is out of range.
+ * Needed to position a pop-up menu so that a NAMED ITEM lands on a given point. */
+- (NSRect) rectOfItemAtIndex: (NSUInteger) index;
 - (NSUInteger) selectedItemIndex;
 - (void) setSelectedItemIndex: (NSUInteger) itemIndex;
 

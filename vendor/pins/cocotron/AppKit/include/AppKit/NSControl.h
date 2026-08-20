@@ -48,6 +48,7 @@ APPKIT_EXPORT const NSNotificationName NSControlTextDidEndEditingNotification;
 - (SEL) action;
 - (NSInteger) tag;
 - (NSFont *) font;
+- (NSControlSize) controlSize;
 - (NSImage *) image;
 - (NSTextAlignment) alignment;
 - (BOOL) isEnabled;
@@ -78,6 +79,7 @@ APPKIT_EXPORT const NSNotificationName NSControlTextDidEndEditingNotification;
 - (void) setAction: (SEL) action;
 - (void) setTag: (NSInteger) tag;
 - (void) setFont: (NSFont *) font;
+- (void) setControlSize: (NSControlSize) size;
 - (void) setImage: (NSImage *) image;
 - (void) setAlignment: (NSTextAlignment) alignment;
 - (void) setFloatingPointFormat: (BOOL) fpp

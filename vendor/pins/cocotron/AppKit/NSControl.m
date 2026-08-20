@@ -227,6 +227,15 @@ static NSMutableDictionary *cellClassDictionary = nil;
     return [_cell alignment];
 }
 
+/*
+ * CONTROL SIZE IS A CELL PROPERTY THE CONTROL ALSO ANSWERS FOR, since 10.10. MoneyMoney asks its
+ * text fields for it while laying out the preferences window, and an unrecognized selector inside a
+ * layout pass is caught by NSApplication, so the whole window silently never appeared.
+ */
+- (NSControlSize) controlSize {
+    return [_cell controlSize];
+}
+
 - (BOOL) isEnabled {
     return [_cell isEnabled];
 }
@@ -358,6 +367,11 @@ static NSMutableDictionary *cellClassDictionary = nil;
                           right: (NSUInteger) right
 {
     [_cell setFloatingPointFormat: fpp left: left right: right];
+}
+
+- (void) setControlSize: (NSControlSize) size {
+    [_cell setControlSize: size];
+    [self setNeedsDisplay: YES];
 }
 
 - (void) setEnabled: (BOOL) flag {

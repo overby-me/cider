@@ -13303,3 +13303,34 @@ are not readable across versions.
 
 Filed as toolchain work, not app work. The next person starts from the 37-symbol list, not from the
 fault chain, which is already measured.
+
+### Two selectors were two whole features
+
+An application that renders an empty window correctly has been tested on almost nothing: no sheet,
+no panel, no list with rows in it. Driving MoneyMoney one step further, to its add-account button and
+its preferences window, found both closed, and the run log named the reason in two lines before any
+instrument was built:
+
+    -[NSKVONotifying_NSMenu popUpMenuPositioningItem:atLocation:inView:]: unrecognized selector
+    -[MMTextField controlSize]: unrecognized selector
+
+`NSApplication` catches both, so the button highlighted and did nothing and the preferences window
+never appeared. **A whole feature is one selector wide, and neither had a symptom that pointed at it.**
+
+`-[NSMenu popUpMenuPositioningItem:atLocation:inView:]` is public since 10.6. Implemented against the
+existing `NSMenuWindow` and `NSMenuView` machinery that `+popUpContextMenu:withEvent:forView:`
+already uses, with the part of the contract that is easiest to get backwards written down: **the
+location is in the view's coordinates, or in screen coordinates when the view is nil.** Positioning
+the named item on the point needed a row rect, so `NSMenuView` gained `-rectOfItemAtIndex:`, walking
+the rows exactly as `-itemIndexAtPoint:` already does from the other end.
+
+`-[NSControl controlSize]` is a cell property the control also answers for, since 10.10. Forwarded to
+the cell like every other one, with a setter beside it.
+
+**Looked at:** the add-account menu opens above the button with its five real items (Add account, Add
+account group, Add category, Add category group, Add template group), Escape dismisses it, and
+Command-comma opens a Preferences window with a five-item toolbar, five checked checkboxes, a
+language pop-up and an indented sub-option. Zero unrecognized selectors in the whole run.
+
+That Command-comma is also the stronger keyboard proof: a menu key equivalent reaching the
+application, not just text arriving in a focused field.

@@ -51,6 +51,10 @@ enum {
     return NSNotFound;
 }
 
+- (NSRect) rectOfItemAtIndex: (NSUInteger) index {
+    return NSZeroRect;
+}
+
 - (NSUInteger) selectedItemIndex {
     return _selectedItemIndex;
 }

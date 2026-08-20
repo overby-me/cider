@@ -373,6 +373,28 @@ static NSRect boundsToTitleAreaRect(NSRect rect) {
     return NSNotFound;
 }
 
+/* THE SAME WALK AS -itemIndexAtPoint:, from the other end: rows accumulate from the title area
+ * downwards, each as tall as its own item. */
+- (NSRect) rectOfItemAtIndex: (NSUInteger) index {
+    NSArray *items = [[self menu] itemArray];
+    NSUInteger i, count = [items count];
+    NSRect check = boundsToTitleAreaRect([self bounds]);
+
+    if (index >= count)
+        return NSZeroRect;
+
+    for (i = 0; i < count; i++) {
+        check.size.height = [self heightOfMenuItem: [items objectAtIndex: i]];
+
+        if (i == index)
+            return check;
+
+        check.origin.y += check.size.height;
+    }
+
+    return NSZeroRect;
+}
+
 - (void) positionBranchForSelectedItem: (NSWindow *) branch
                                 screen: (NSScreen *) screen
 {

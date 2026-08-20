@@ -111,6 +111,75 @@ static BOOL _ciderMenuBarVisible = YES;
     }
 }
 
+/*
+ * SHOW THIS MENU AS A POP-UP, positioned so that ITEM lands on LOCATION.
+ *
+ * Public since 10.6 and missing here, so MoneyMoney's add-account button raised an unrecognized
+ * selector, NSApplication caught it, and the button highlighted and did nothing. A whole feature is
+ * one selector wide.
+ *
+ * LOCATION IS IN VIEW'S COORDINATES, or in screen coordinates when VIEW is nil, which is the part
+ * of the contract easiest to get backwards.
+ */
+- (BOOL) popUpMenuPositioningItem: (NSMenuItem *) item
+                       atLocation: (NSPoint) location
+                           inView: (NSView *) view
+{
+    [self update];
+
+    if ([[self itemArray] count] == 0)
+        return NO;
+
+    NSPoint screenPoint = location;
+
+    if (view != nil) {
+        NSWindow *viewWindow = [view window];
+
+        screenPoint = [view convertPoint: location toView: nil];
+        if (viewWindow != nil)
+            screenPoint = [viewWindow convertBaseToScreen: screenPoint];
+    }
+
+    NSMenuWindow *menuWindow = [[NSMenuWindow alloc] initWithMenu: self];
+    NSMenuView *menuView = [menuWindow menuView];
+    NSPoint topLeft = screenPoint;
+
+    /* Lift the menu so the requested item, not the top of the menu, sits on the point. */
+    if (item != nil) {
+        NSUInteger index = [self indexOfItem: item];
+
+        if (index != NSNotFound) {
+            NSRect itemRect = [menuView rectOfItemAtIndex: index];
+            NSRect viewBounds = [menuView bounds];
+
+            if (!NSIsEmptyRect(itemRect)) {
+                CGFloat fromTop = [menuView isFlipped]
+                                          ? NSMinY(itemRect) - NSMinY(viewBounds)
+                                          : NSMaxY(viewBounds) - NSMaxY(itemRect);
+
+                topLeft.y += fromTop;
+            }
+        }
+    }
+
+    [menuWindow setReleasedWhenClosed: YES];
+    [menuWindow setFrameTopLeftPoint: topLeft];
+    [menuWindow orderFront: nil];
+
+    /* The event that got us here is the one the tracking loop needs: it reads a start point and a
+     * timestamp from it to tell a click from a drag. */
+    NSMenuItem *chosen = [menuView trackForEvent: [NSApp currentEvent]];
+
+    [menuWindow close];
+
+    if (chosen != nil) {
+        [NSApp sendAction: [chosen action] to: [chosen target] from: chosen];
+        return YES;
+    }
+
+    return NO;
+}
+
 + (NSZone *) menuZone {
     return NSDefaultMallocZone();
 }
