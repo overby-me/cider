@@ -12841,3 +12841,39 @@ but not sufficient; the recorded value itself is wrong.
 The launchd trace is gated on the **file** `/probe/launchd-trace`, not an environment variable —
 `CIDER_TRACE_LAUNCHD` demonstrably does not reach pid 1, and a run with it set produced zero lines,
 which is silence and not evidence. launchd's stderr lands in `ciderd.log`, not in the shell output.
+
+### Settled from the host: trustd does exit, and the guest's liveness check lies
+
+I have now claimed both answers to this and one of them is wrong, so here it is settled with an
+instrument that cannot be fooled by the emulation. The previous section says trustd is "usually still
+alive" and its recorded host pid is stale. **That was measured with `launchctl list` and `kill -0`,
+both of which run inside the guest** — and ciderd's tasks are leak-lived, so a departed process is
+still a live-looking task.
+
+Watching the **host** process table once per second, three runs of three:
+
+```
+ 7 × daemonPids=[]           not started yet
+16 × daemonPids=[3811393]    alive for about sixteen seconds
+41 × daemonPids=[]           gone for the rest of the run
+```
+
+and the ESRCH write names **exactly that pid**. Meanwhile the guest reports `trustd IS ALIVE before
+poke 2` in all three.
+
+**So trustd does exit after handling its one request, the guest-side liveness check is unreliable,
+and the stale host pid is a symptom, not the defect.** The correction two sections up was itself
+wrong; the one before it was right.
+
+Sixteen seconds is not arbitrary: fifteen of them are the `xpc_pipe` timeout it spends on the
+membership lookup, so it creates its listener at ~15 s, answers immediately, and — having no
+outstanding transaction — exits about a second later. That is `EnableTransactions` working as
+designed. **What is missing is launchd bringing it back**, which is #144 reopened: launchd
+demand-starts a `MachService` job the first time and never again once the job has gone.
+
+**The rule this cost three reversals to learn: never measure liveness from inside the thing under test.**
+`launchctl` and `kill -0` are the guest's account of its own kernel; `ps` on the host is not.
+
+The first version of the host watcher was also wrong in a way worth recording — `pgrep -af trustd`
+matched `/probe/trustd-steps.sh` and the driver itself and reported "8 trustd processes", most of
+them me. Match the binary (`libexec/trustd`), and exclude your own scripts.

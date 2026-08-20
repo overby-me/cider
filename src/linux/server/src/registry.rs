@@ -78,6 +78,14 @@ impl Registry {
          */
         if let Some(ctx) = self.ctxs.get_mut(&nsid) {
             if ctx.pid != host_pid {
+                /*
+                 * EVERY CHANGE, because the open question is whether the dead pid was ever CORRECTED.
+                 * A write into a live guest fails with ESRCH on a pid this table handed out, and that
+                 * has two opposite causes: the value was captured wrong and never revised, or a good
+                 * value arrived later and did not reach the live context. Logging the transitions
+                 * separates them; a task whose pid never changes and is dead was captured wrong.
+                 */
+                eprintln!("CIDER_HOSTPID nsid={nsid} host pid {} -> {host_pid}", ctx.pid);
                 ctx.pid = host_pid;
             }
         }
