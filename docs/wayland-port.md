@@ -11981,3 +11981,40 @@ trustd. That also explains the three-of-three result: every third-party bundle i
   — the log is not a timeline. The signer pointer pairs them.
 - **An instrument compiled out is silent in the same way a passing check is.** The status I needed
   was already syslogged — inside `#if SECTRUST_VERBOSE_DEBUG`, which is off.
+
+### One missing selector stopped trustd, and with trustd stopped nothing can evaluate trust
+
+Forcing trustd to run (it never had) made it say why it had been useless:
+
+```
+cider: UNRECOGNIZED -[__NSCFDictionary writeToURL:error:]
+libc++abi: terminating with uncaught exception of type NSException
+```
+
+Five times over. **That is task #129**, which had been sitting in the queue as a missing convenience
+method. It is the root of the whole code-signing chain:
+
+```
+no -[NSDictionary writeToURL:error:]
+  -> trustd dies at startup
+    -> SecTrustEvaluateIfNecessary cannot reach trustd, and Apple's own ramdisk fallback
+       returns SUCCESS while leaving the result kSecTrustResultInvalid
+      -> the timestamp verifier reads that as errSecTimestampNotTrusted
+        -> and abandons a signature it has already judged GoodSignature
+          -> flattened to kCMSSignerInvalidSignature -> errSecCSSignatureFailed
+            -> "The MoneyMoney application file seems to be damaged."
+```
+
+The **reader** (`dictionaryWithContentsOfURL:error:`) was declared and implemented all along; only
+the **writer** was missing, so anything that writes its own file and reads it back dies on a selector
+it never had. `NSArray` had the identical hole and is fixed too. Note the format: the `atomically:`
+methods write XML, these write **binary**, which is what Foundation changed to in 10.13.
+
+**Measured:** trustd's stderr goes from **2,328 bytes of repeated NSException to zero**, and
+`launchctl` reports it as **pid 9** rather than `-  0` (dead).
+
+**Two things this exposed and did not fix.** trustd only runs because I gave its plist `RunAtLoad`
+— Apple ships it demand-launched via its MachService, and our launchd does not demand-start (the
+same gap noted for securityd under #137). And with trustd actually alive, the codesign probe stops
+completing inside a container that has launchd, where it used to fail fast; the trust evaluation now
+does a real XPC round trip, and something in that path does not come back.

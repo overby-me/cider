@@ -1,0 +1,102 @@
+A missing writer stopped trustd, and with trustd stopped nothing can evaluate trust.
+
+trustd died at startup, five times over, on one selector:
+
+    cider: UNRECOGNIZED -[__NSCFDictionary writeToURL:error:]
+    libc++abi: terminating with uncaught exception of type NSException
+    Terminating app due to uncaught exception NSException, reason:
+      -[__NSCFDictionary writeToURL:error:]: unrecognized selector sent to instance
+
+The READER, dictionaryWithContentsOfURL:error:, was declared and implemented all along; only the
+WRITER was missing, so anything that writes its own file and reads it back dies on a selector it
+never had. NSArray had exactly the same hole, since arrayWithContentsOfURL:error: is declared there
+too, and it is fixed here as well rather than waiting to be found the same way.
+
+NOTE THE FORMAT. The atomically: methods write XML; these write BINARY, which is what Foundation
+changed to when it introduced them in 10.13. Reading sniffs the format either way, so the choice
+only shows up in the bytes on disk, and the bytes on disk are what fidelity means here.
+
+WHY IT MATTERS FAR BEYOND a missing convenience method. Traced from the other end this rung: no
+trustd means no trust evaluation, and Apple own ramdisk fallback in SecTrustEvaluateIfNecessary then
+returns SUCCESS while leaving the result kSecTrustResultInvalid. The timestamp verifier reads that
+as errSecTimestampNotTrusted, abandons a signature it has already judged GOOD, and everything above
+flattens it to kCMSSignerInvalidSignature. MoneyMoney shows that to its user as a damaged file.
+
+MEASURED AFTER: trustd stderr goes from 2,328 bytes of repeated NSException to ZERO, and launchctl
+reports it as pid 9 rather than dead.
+
+--- a/NSDictionary.m
++++ b/NSDictionary.m
+@@ -986,6 +986,37 @@
+     return success;
+ }
+ 
++/*
++ * macOS 10.13. Note the FORMAT: the atomically: methods above write XML, this one writes BINARY,
++ * which is what Foundation changed to when it introduced these. A caller that writes with one and
++ * reads with the other still works, because property-list reading sniffs the format, so the choice
++ * only shows up in the bytes on disk -- but the bytes on disk are what fidelity means here.
++ */
++- (BOOL)writeToURL:(NSURL *)url error:(NSError **)error
++{
++    CFErrorRef cfError = NULL;
++    NSData *data = (NSData *)CFPropertyListCreateData(kCFAllocatorDefault, (CFPropertyListRef)self,
++                                                     kCFPropertyListBinaryFormat_v1_0, 0, &cfError);
++
++    if (data == nil)
++    {
++        if (error != NULL)
++        {
++            *error = [(NSError *)cfError autorelease];
++        }
++        else if (cfError != NULL)
++        {
++            CFRelease(cfError);
++        }
++        return NO;
++    }
++
++    BOOL success = [data writeToURL:url options:NSDataWritingAtomic error:error];
++
++    [data release];
++    return success;
++}
++
+ - (NSArray *)keysSortedByValueUsingSelector:(SEL)comparator
+ {
+     return [[self allKeys] sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2) {
+--- a/NSArray.m
++++ b/NSArray.m
+@@ -1240,6 +1240,32 @@
+     return success;
+ }
+ 
++/* The twin of the NSDictionary one, and binary for the same reason. */
++- (BOOL)writeToURL:(NSURL *)url error:(NSError **)error
++{
++    CFErrorRef cfError = NULL;
++    NSData *data = (NSData *)CFPropertyListCreateData(kCFAllocatorDefault, (CFPropertyListRef)self,
++                                                     kCFPropertyListBinaryFormat_v1_0, 0, &cfError);
++
++    if (data == nil)
++    {
++        if (error != NULL)
++        {
++            *error = [(NSError *)cfError autorelease];
++        }
++        else if (cfError != NULL)
++        {
++            CFRelease(cfError);
++        }
++        return NO;
++    }
++
++    BOOL success = [data writeToURL:url options:NSDataWritingAtomic error:error];
++
++    [data release];
++    return success;
++}
++
+ - (void)makeObjectsPerformSelector:(SEL)sel
+ {
+     [self makeObjectsPerformSelector:sel withObject:nil];

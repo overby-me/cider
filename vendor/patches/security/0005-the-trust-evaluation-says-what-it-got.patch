@@ -1,0 +1,43 @@
+The one place a code signature really evaluates trust says what it got.
+
+The signing certificate's own chain is deliberately NOT evaluated during a code-signature check:
+the caller asks for the SecTrust by copy, and the smime library only evaluates when it is not asked
+for one. So a certificate status of 0 further up never meant a chain had been checked. The TIMESTAMP
+is the first thing that really asks, which is why it is the first to fail, and this line is what
+made that visible:
+
+    CIDER_TSA SecTrustEvaluate result=0 trustResult=0 cssmResultCode=0 (getCssm=0)
+
+trustResult 0 is kSecTrustResultInvalid, the case Apple own code marks "should never happen". It
+happens because SecTrustEvaluateIfNecessary cannot reach trustd, and its ramdisk fallback then
+returns SUCCESS while leaving the result Invalid.
+
+--- a/OSX/libsecurity_smime/lib/tsaSupport.c
++++ b/OSX/libsecurity_smime/lib/tsaSupport.c
+@@ -1068,6 +1068,26 @@
+         result = SecTrustEvaluate (trustRef, &trustResultType);
+         dtprintf("[%s] SecTrustEvaluate: result: %d, trustResult: %s (%d)\n",
+             __FUNCTION__, result, trustResultTypeString(trustResultType), trustResultType);
++        {
++            /*
++             * THE ONLY PLACE A CODE SIGNATURE ACTUALLY EVALUATES TRUST. The signing certificate's
++             * own chain is deliberately NOT evaluated here (the caller asks for the SecTrust by
++             * copy, and the smime library only evaluates when it is not asked for one), so a
++             * certificate status of 0 further up never meant a chain had been checked. The
++             * timestamp is the first thing that really asks, which is why it is the first to fail.
++             */
++            const char *cider = getenv("CIDER_TRACE_SECITEM");
++
++            if (cider != NULL && cider[0] != '\0') {
++                OSStatus cssm = 0;
++                OSStatus got = SecTrustGetCssmResultCode(trustRef, &cssm);
++
++                fprintf(stderr, "CIDER_TSA SecTrustEvaluate result=%d trustResult=%d "
++                        "cssmResultCode=%d (getCssm=%d)\n",
++                        (int) result, (int) trustResultType, (int) cssm, (int) got);
++                fflush(stderr);
++            }
++        }
+         if (result)
+             goto xit;
+         switch (trustResultType)

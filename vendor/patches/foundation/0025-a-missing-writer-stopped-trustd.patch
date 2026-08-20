@@ -1,0 +1,53 @@
+A missing writer stopped trustd, and with trustd stopped nothing can evaluate trust.
+
+trustd died at startup, five times over, on one selector:
+
+    cider: UNRECOGNIZED -[__NSCFDictionary writeToURL:error:]
+    libc++abi: terminating with uncaught exception of type NSException
+    Terminating app due to uncaught exception NSException, reason:
+      -[__NSCFDictionary writeToURL:error:]: unrecognized selector sent to instance
+
+The READER, dictionaryWithContentsOfURL:error:, was declared and implemented all along; only the
+WRITER was missing, so anything that writes its own file and reads it back dies on a selector it
+never had. NSArray had exactly the same hole, since arrayWithContentsOfURL:error: is declared there
+too, and it is fixed here as well rather than waiting to be found the same way.
+
+NOTE THE FORMAT. The atomically: methods write XML; these write BINARY, which is what Foundation
+changed to when it introduced them in 10.13. Reading sniffs the format either way, so the choice
+only shows up in the bytes on disk, and the bytes on disk are what fidelity means here.
+
+WHY IT MATTERS FAR BEYOND a missing convenience method. Traced from the other end this rung: no
+trustd means no trust evaluation, and Apple own ramdisk fallback in SecTrustEvaluateIfNecessary then
+returns SUCCESS while leaving the result kSecTrustResultInvalid. The timestamp verifier reads that
+as errSecTimestampNotTrusted, abandons a signature it has already judged GOOD, and everything above
+flattens it to kCMSSignerInvalidSignature. MoneyMoney shows that to its user as a damaged file.
+
+MEASURED AFTER: trustd stderr goes from 2,328 bytes of repeated NSException to ZERO, and launchctl
+reports it as pid 9 rather than dead.
+
+--- a/include/Foundation/NSDictionary.h
++++ b/include/Foundation/NSDictionary.h
+@@ -26,6 +26,11 @@
+ - (NSArray<ObjectType> *)objectsForKeys:(NSArray<KeyType> *)keys notFoundMarker:(id)marker;
+ - (BOOL)writeToFile:(NSString *)path atomically:(BOOL)useAuxiliaryFile;
+ - (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)atomically;
++/* macOS 10.13. The reader, dictionaryWithContentsOfURL:error:, was already declared below; only
++   the writer was missing, and a caller that writes then reads back its own file dies on the
++   selector it never had. That is what stopped trustd, and with trustd stopped nothing in the
++   system can evaluate trust. */
++- (BOOL)writeToURL:(NSURL *)url error:(NSError **)error;
+ - (NSArray<KeyType> *)keysSortedByValueUsingSelector:(SEL)comparator;
+ - (void)getObjects:(ObjectType __unsafe_unretained [])objects andKeys:(KeyType __unsafe_unretained [])keys;
+ - (ObjectType)objectForKeyedSubscript:(id)key;
+--- a/include/Foundation/NSArray.h
++++ b/include/Foundation/NSArray.h
+@@ -45,6 +45,9 @@
+ - (NSArray<ObjectType> *)subarrayWithRange:(NSRange)range;
+ - (BOOL)writeToFile:(NSString *)path atomically:(BOOL)atomically;
+ - (BOOL)writeToURL:(NSURL *)url atomically:(BOOL)atomically;
++/* macOS 10.13, and the twin of the NSDictionary one: arrayWithContentsOfURL:error: is declared
++   below, so the same asymmetry was waiting here. */
++- (BOOL)writeToURL:(NSURL *)url error:(NSError **)error;
+ - (void)makeObjectsPerformSelector:(SEL)sel;
+ - (void)makeObjectsPerformSelector:(SEL)sel withObject:(id)aeg;
+ - (NSArray<ObjectType> *)objectsAtIndexes:(NSIndexSet *)indices;
