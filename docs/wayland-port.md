@@ -12018,3 +12018,36 @@ methods write XML, these write **binary**, which is what Foundation changed to i
 same gap noted for securityd under #137). And with trustd actually alive, the codesign probe stops
 completing inside a container that has launchd, where it used to fail fast; the trust evaluation now
 does a real XPC round trip, and something in that path does not come back.
+
+### Demand-start works. launchd aborts immediately after it.
+
+Instrumenting launchd's demand loop (`CIDER_TRACE_LAUNCHD`) answers the question #144 asked, and not
+the way I expected:
+
+```
+CIDER_LAUNCHD demand_port_set=0xc07 EVFILT_MACHPORT add rc=1 (registered)
+CIDER_LAUNCHD mportset_callback members=6 withmail=1
+CIDER_LAUNCHD dispatch port=0x2307 job=0x71d45d887010
+CIDER_LAUNCHD dispatch returned port=0x2307        <- cleanly
+[guest kprintf] sigexc_handler(6, ...) RIP 0x71D4603042AD    <- abort(), twice
+[guest kprintf] sigexc_handler(4, ...) RIP 0x71D460000949    <- then the trap
+```
+
+The filter registers, the loop fires, it finds a member with mail, it dispatches a real job, and the
+dispatch **returns**. Then launchd calls `abort()` and dies. Its own `fatal_signal_handler` does not
+list SIGABRT, so the handler returns and `abort()` proceeds to its illegal instruction — which is the
+`sig=4` reported earlier, one layer removed from the actual event.
+
+**Two corrections to things I said an hour ago.**
+
+- `kevent_mod` returns **1 on success** — `EV_RECEIPT` makes `kevent` always hand back one event, and
+  every failure path returns −1. My first trace printed `rc=1 errno=2` and I read that as the filter
+  failing to register. It was registering all along, and the `errno` was stale: **never print errno
+  beside a value that did not fail, it reads as a reason.**
+- The null check around the dispatch is `#if 0`-ed out in the source, and I thought a null `udata`
+  was the crash. It is not — `job=0x71d45d887010` and the dispatch returned. The guard is restored
+  anyway, because calling through a null function pointer from pid 1 is never right, but it was not
+  this bug.
+
+Still true and still unexplained: trustd is never demand-started (`-  0  com.apple.trustd`), so
+whatever job the loop dispatched, it was not trustd's.

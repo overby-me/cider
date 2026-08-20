@@ -190,7 +190,29 @@ launchd_runtime_init(void)
 
 	os_assert_zero(mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_PORT_SET, &demand_port_set));
 	os_assert_zero(mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_PORT_SET, &ipc_port_set));
-	posix_assert_zero(kevent_mod(demand_port_set, EVFILT_MACHPORT, EV_ADD, 0, 0, &kqmportset_callback));
+	{
+		/*
+		 * THE WHOLE OF DEMAND-STARTING HANGS OFF THIS ONE FILTER. A MachService job with no
+		 * RunAtLoad -- trustd, and most of the Security daemons -- is started only when a
+		 * message lands on its service port, and that is noticed by an EVFILT_MACHPORT on this
+		 * PORT SET. If the filter does not register, or registers and never fires, every such
+		 * job stays dead, every client that looks its name up still gets a send right from us,
+		 * and the message goes nowhere with no timeout.
+		 */
+		int cider_rc = kevent_mod(demand_port_set, EVFILT_MACHPORT, EV_ADD, 0, 0, &kqmportset_callback);
+		const char *cider = getenv("CIDER_TRACE_LAUNCHD");
+
+		if (cider != NULL && cider[0] != '\0') {
+			/* kevent_mod returns 1 on SUCCESS here: EV_RECEIPT makes kevent always hand back one
+			 * event, and every failure path returns -1. Printing errno beside it is worse than
+			 * useless, because errno is stale on success and reads as a reason. */
+			fprintf(stderr, "CIDER_LAUNCHD demand_port_set=0x%x EVFILT_MACHPORT add rc=%d (%s)\n",
+				(unsigned) demand_port_set, cider_rc,
+				cider_rc == -1 ? "FAILED" : "registered");
+			fflush(stderr);
+		}
+		posix_assert_zero(cider_rc);
+	}
 
 	os_assert_zero(launchd_mport_create_recv(&launchd_internal_port));
 	os_assert_zero(launchd_mport_make_send(launchd_internal_port));
@@ -490,6 +512,31 @@ mportset_callback(void)
 		return;
 	}
 
+	{
+		/* HOW MANY MEMBERS, AND HOW MANY HAVE MAIL. A demand-started job is launched only when a
+		 * member port reports a pending message, so "fired but nothing had mail" and "never fired"
+		 * are different faults and this is what separates them. */
+		const char *cider = getenv("CIDER_TRACE_LAUNCHD");
+
+		if (cider != NULL && cider[0] != '\0') {
+			unsigned withmail = 0;
+			unsigned k;
+
+			for (k = 0; k < membersCnt; k++) {
+				mach_port_status_t st;
+				mach_msg_type_number_t stCnt = MACH_PORT_RECEIVE_STATUS_COUNT;
+
+				if (mach_port_get_attributes(mach_task_self(), members[k], MACH_PORT_RECEIVE_STATUS,
+							(mach_port_info_t) &st, &stCnt) == KERN_SUCCESS && st.mps_msgcount) {
+					withmail++;
+				}
+			}
+			fprintf(stderr, "CIDER_LAUNCHD mportset_callback members=%u withmail=%u\n",
+				(unsigned) membersCnt, withmail);
+			fflush(stderr);
+		}
+	}
+
 	for (i = 0; i < membersCnt; i++) {
 		statusCnt = MACH_PORT_RECEIVE_STATUS_COUNT;
 		if (mach_port_get_attributes(mach_task_self(), members[i], MACH_PORT_RECEIVE_STATUS, (mach_port_info_t)&status,
@@ -498,16 +545,41 @@ mportset_callback(void)
 		}
 		if (status.mps_msgcount) {
 			EV_SET(&kev, members[i], EVFILT_MACHPORT, 0, 0, 0, job_find_by_service_port(members[i]));
-#if 0
+			/*
+			 * THE NULL CHECK IS NOT OPTIONAL, and it was #if 0'd out. udata is whatever
+			 * job_find_by_service_port returned, which is NULL for any member of the demand port
+			 * set that no job owns a receive right for -- and the line below CALLS THROUGH IT.
+			 *
+			 * That is pid 1 dereferencing null, so the whole container goes down with it: the
+			 * crash handler reboots, cider shell returns 1, and from outside it looks like the
+			 * application quietly exiting. It fires the moment anything sends to a demand-started
+			 * service, which is why it followed every keychain and code-signing attempt.
+			 */
 			if (kev.udata != NULL) {
-#endif
+				const char *cider = getenv("CIDER_TRACE_LAUNCHD");
+
 				log_kevent_struct(LOG_DEBUG, &kev, 0);
+				if (cider != NULL && cider[0] != '\0') {
+					fprintf(stderr, "CIDER_LAUNCHD dispatch port=0x%x job=%p\n",
+						(unsigned) members[i], kev.udata);
+					fflush(stderr);
+				}
 				(*((kq_callback *)kev.udata))(kev.udata, &kev);
-#if 0
+				if (cider != NULL && cider[0] != '\0') {
+					fprintf(stderr, "CIDER_LAUNCHD dispatch returned port=0x%x\n",
+						(unsigned) members[i]);
+					fflush(stderr);
+				}
 			} else {
+				const char *cider = getenv("CIDER_TRACE_LAUNCHD");
+
 				log_kevent_struct(LOG_ERR, &kev, 0);
+				if (cider != NULL && cider[0] != '\0') {
+					fprintf(stderr, "CIDER_LAUNCHD no job owns port=0x%x with mail\n",
+						(unsigned) members[i]);
+					fflush(stderr);
+				}
 			}
-#endif
 			/* the callback may have tainted our ability to continue this for loop */
 			break;
 		}
