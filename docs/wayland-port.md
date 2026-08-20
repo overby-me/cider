@@ -12877,3 +12877,37 @@ demand-starts a `MachService` job the first time and never again once the job ha
 The first version of the host watcher was also wrong in a way worth recording — `pgrep -af trustd`
 matched `/probe/trustd-steps.sh` and the driver itself and reported "8 trustd processes", most of
 them me. Match the binary (`libexec/trustd`), and exclude your own scripts.
+
+### Two records of the same host pid, and the death watch is armed on the wrong one
+
+Why launchd never learns a job exited, traced to a single divergence. In one run, for **the same
+guest task**:
+
+```
+trustd guest pid = 25
+CIDER_PROCKQ watching nsid=25 host pid=3840122     ← the death watch (pidfd)
+ps: daemonPids=[3840326]                           ← the process actually serving the guest
+CIDER_VMWRITE FAILED pid=3840326 … No such process ← the memory path, on the real one
+```
+
+ciderd holds **two independent host-pid records** per guest task and they disagree:
+
+- `Registry::host_pids` → `TaskCtx.pid`, used by `process_vm_readv/writev`. Refreshed from
+  SO_PASSCRED on every RPC.
+- `Handler::procs[nsid].host_pid`, used **once** by `kqchan_proc_open` to `pidfd_open` the process
+  whose death will become `NOTE_EXIT`. `set_current` keeps the field current, but the pidfd is opened
+  at registration time and never re-armed.
+
+**A death watch on the wrong process is a job that never dies as far as launchd is concerned.**
+launchd takes a job's MachService ports out of its own demand set the moment the job starts
+(`job_ignore`), and the only thing that puts them back is `NOTE_EXIT` → `job_reap` → `job_watch`. So:
+no exit notification → ports never re-armed → **no later message can demand-start the job**, and
+`launchctl list` keeps reporting a pid for a process that has gone.
+
+Measured, in the same run: launchd sees `NOTE_EXIT` and reaps secd, securityd, xpc-probe, launchctl
+and sh — and **never** trustd. Its own `EVFILT_PROC` registration for trustd *succeeded*
+(`EVFILT_PROC add rc=1 errno=0`), and ciderd's `pidfd_open` *succeeded* too. Both sides did their job;
+they were talking about different processes.
+
+Next: re-arm (or resolve lazily) the `ProcKqchan` target when a task's host pid changes. The two
+records should not exist independently at all — the memory path's value is the one `ps` agrees with.

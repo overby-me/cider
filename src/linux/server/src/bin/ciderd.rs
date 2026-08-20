@@ -394,6 +394,11 @@ unsafe fn run(cfg: Config) -> ! {
                 }
             } else if let Some(idx) = kqchans.iter().position(|k| k.pidfd == fd) {
                 // A watched process died -> deliver NOTE_EXIT; stop watching the pidfd.
+                // Traced because the consumer of this is launchd's restart path: no NOTE_EXIT means
+                // a job's MachService ports never go back into launchd's demand set and it can never
+                // be started again. launchd reaps secd and securityd and never trustd.
+                eprintln!("CIDER_PROCKQ target died, nsid={} host pid={}",
+                          kqchans[idx].target_nsid, kqchans[idx].target_host_pid);
                 epoll_del(epfd, fd);
                 libc::close(fd);
                 kqchans[idx].pidfd = -1;

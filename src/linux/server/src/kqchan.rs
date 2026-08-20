@@ -127,6 +127,20 @@ impl ProcKqchan {
         }
         // pidfd_open the target so its death becomes an epoll-able readable event.
         let pidfd = unsafe { libc::syscall(libc::SYS_pidfd_open, target_host_pid, 0) as RawFd };
+        /*
+         * A pidfd we could not open means the death is NEVER reported. launchd takes a job's
+         * MachService ports out of its own demand set the moment the job starts, and the only thing
+         * that puts them back is NOTE_EXIT -> job_reap -> job_watch. No pidfd, no NOTE_EXIT, no
+         * restart: launchd keeps reporting a pid for a process that has gone and no later message
+         * can demand-start it. Measured: launchd reaps secd and securityd and never trustd.
+         */
+        if pidfd < 0 {
+            let e = io::Error::last_os_error();
+            eprintln!("CIDER_PROCKQ pidfd_open FAILED for nsid={target_nsid} host pid={target_host_pid}: {e} \
+                       -- this process's death will never be reported");
+        } else {
+            eprintln!("CIDER_PROCKQ watching nsid={target_nsid} host pid={target_host_pid} pidfd={pidfd}");
+        }
         Ok((
             ProcKqchan {
                 daemon_fd,

@@ -3647,6 +3647,7 @@ systemstats_is_enabled(void)
 void
 job_reap(job_t j)
 {
+	CIDER_LD("job_reap %s pid=%d", j->label, (int) j->p);
 	bool is_system_bootstrapper = ((j->is_bootstrapper && pid1_magic) && !j->mgr->parentmgr);
 
 	job_log(j, LOG_DEBUG, "Reaping");
@@ -4211,6 +4212,8 @@ job_callback_proc(job_t j, struct kevent *kev)
 		job_log_children_without_exec(j);
 	}
 
+	CIDER_LD("proc event for %s fflags=0x%x (NOTE_EXIT=%d)", j->label, (unsigned) fflags,
+	         (fflags & NOTE_EXIT) ? 1 : 0);
 	if (fflags & NOTE_EXIT) {
 		if (kev->data & NOTE_EXIT_DECRYPTFAIL) {
 			j->fpfail = true;
@@ -4581,7 +4584,20 @@ job_start(job_t j)
 			(void)job_assumes_zero(j, runtime_close(spair[1]));
 			ipc_open(_fd(spair[0]), j);
 		}
-		if (kevent_mod(c, EVFILT_PROC, EV_ADD, proc_fflags, 0, root_jobmgr ? root_jobmgr : j->mgr) != -1) {
+		/*
+		 * THE ONE REGISTRATION THAT DECIDES WHETHER A JOB CAN EVER BE RESTARTED.
+		 *
+		 * On success launchd calls job_ignore, which takes the job's MachService ports OUT of its
+		 * own demand port set, because the job now owns them. The only thing that puts them back is
+		 * NOTE_EXIT -> job_reap -> job_dispatch -> job_watch. If this kevent never fires, launchd
+		 * never learns the job died, keeps reporting a pid for it, and no later message can
+		 * demand-start it again -- which is exactly what trustd does: it exits after one request and
+		 * launchd never notices.
+		 */
+		int cider_kev = kevent_mod(c, EVFILT_PROC, EV_ADD, proc_fflags, 0, root_jobmgr ? root_jobmgr : j->mgr);
+		CIDER_LD("job_start %s child pid=%d EVFILT_PROC add rc=%d errno=%d", j->label, (int) c,
+		         cider_kev, cider_kev == -1 ? errno : 0);
+		if (cider_kev != -1) {
 			job_ignore(j);
 		} else {
 			if (errno == ESRCH) {
