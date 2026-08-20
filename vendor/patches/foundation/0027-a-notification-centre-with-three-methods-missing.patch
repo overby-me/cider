@@ -1,0 +1,125 @@
+NSUserNotificationCenter had two methods, and an application died on a third.
+
+MoneyMoney opened its main window and then raised NSInvalidArgumentException:
+-[NSUserNotificationCenter removeAllDeliveredNotifications] unrecognized selector, and showed its
+user "An internal error occured. Please contact our support". The method is documented API since
+10.8. The class here had exactly two methods, deliverNotification: and removeDeliveredNotification:,
+both of which only logged, and nothing else existed at all.
+
+Implemented as a real, local list rather than more no-ops: deliverNotification: and
+scheduleNotification: record, the remove methods remove, and deliveredNotifications and
+scheduledNotifications answer with what is there. There is no notification service in this container
+so nothing is ever displayed, but an application that delivers three notifications and then asks for
+them gets three. A method that merely logs answers every question with nil, which is a policy answer
+disguised as a stub.
+
+KEPT IN FILE STATICS, NOT IVARS. This is a singleton, and an ivar added to a public class changes its
+instanceSize -- which has cost this port once already, when one BOOL added to NSWindowController
+stopped an application reaching its own window controller at all, because an app subclass compiled
+against real AppKit lays its ivars after ours.
+
+MoneyMoney now opens with NO error dialog: menu bar, toolbar, search field and status bar. What is
+left there is a large grey region where the account list should be, which is a rendering question and
+the next piece of work.
+--- a/src/NSUserNotification.m
++++ b/src/NSUserNotification.m
+@@ -18,6 +18,7 @@
+ */
+ 
+ #import <Foundation/NSUserNotification.h>
++#import <Foundation/NSArray.h>
+ 
+ @implementation NSUserNotification
+ 
+@@ -53,12 +54,74 @@
+ 	return _defaultUserNotificationCenter;
+ }
+ 
++/*
++ * KEPT IN FILE STATICS, NOT IVARS. This is a singleton, and an ivar added to a public class changes
++ * its instanceSize -- which has already cost this port once, when one BOOL added to
++ * NSWindowController stopped an application reaching its own window controller at all, because an
++ * app subclass compiled against real AppKit lays its ivars after ours.
++ *
++ * There is no notification service in this container, so nothing is ever shown. Keeping the list
++ * anyway is what makes the accessors answer honestly: an application that delivers three
++ * notifications and asks for deliveredNotifications gets three, and removing them works. A method
++ * that merely logged would answer every question with nil.
++ */
++static NSMutableArray *_deliveredNotifications = nil;
++static NSMutableArray *_scheduledNotifications = nil;
++
+ - (void)deliverNotification:(NSUserNotification *)notification {
+-	NSLog(@"[NSUserNotificationCenter deliverNotification:]");
++	if (notification == nil) {
++		return;
++	}
++	if (_deliveredNotifications == nil) {
++		_deliveredNotifications = [[NSMutableArray alloc] init];
++	}
++	[_deliveredNotifications addObject:notification];
+ }
+ 
+ - (void)removeDeliveredNotification:(NSUserNotification *)notification {
+-	NSLog(@"[NSUserNotificationCenter removeDeliveredNotification:]");
++	if (notification != nil) {
++		[_deliveredNotifications removeObject:notification];
++	}
++}
++
++/*
++ * THE SELECTOR THAT KILLED MONEYMONEY. It is documented API since 10.8 and was simply absent, so the
++ * application raised NSInvalidArgumentException for an unrecognized selector and showed its user an
++ * internal error, having already opened its main window.
++ */
++- (void)removeAllDeliveredNotifications {
++	[_deliveredNotifications removeAllObjects];
++}
++
++- (NSArray *)deliveredNotifications {
++	return _deliveredNotifications ? [[_deliveredNotifications copy] autorelease] : [NSArray array];
++}
++
++- (void)scheduleNotification:(NSUserNotification *)notification {
++	if (notification == nil) {
++		return;
++	}
++	if (_scheduledNotifications == nil) {
++		_scheduledNotifications = [[NSMutableArray alloc] init];
++	}
++	[_scheduledNotifications addObject:notification];
++}
++
++- (void)removeScheduledNotification:(NSUserNotification *)notification {
++	if (notification != nil) {
++		[_scheduledNotifications removeObject:notification];
++	}
++}
++
++- (NSArray *)scheduledNotifications {
++	return _scheduledNotifications ? [[_scheduledNotifications copy] autorelease] : [NSArray array];
++}
++
++- (void)setScheduledNotifications:(NSArray *)notifications {
++	if (_scheduledNotifications == nil) {
++		_scheduledNotifications = [[NSMutableArray alloc] init];
++	}
++	[_scheduledNotifications setArray:notifications ?: [NSArray array]];
+ }
+ 
+ @end
+--- a/include/Foundation/NSUserNotification.h
++++ b/include/Foundation/NSUserNotification.h
+@@ -37,6 +37,12 @@
+ 
+ - (void)deliverNotification:(NSUserNotification *)notification;
+ - (void)removeDeliveredNotification:(NSUserNotification *)notification;
++- (void)removeAllDeliveredNotifications;
++- (void)scheduleNotification:(NSUserNotification *)notification;
++- (void)removeScheduledNotification:(NSUserNotification *)notification;
++
++@property(copy) NSArray *scheduledNotifications;
++@property(readonly) NSArray *deliveredNotifications;
+ 
+ @end
+ 

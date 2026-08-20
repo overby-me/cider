@@ -13136,3 +13136,28 @@ search field and status bar. The splash is gone.
 
 It then raises `-[NSUserNotificationCenter removeAllDeliveredNotifications]: unrecognized selector`,
 which is the next piece of work and exactly the shape of a missing method rather than a broken one.
+
+### MoneyMoney opens
+
+**Looked at: the main window is up with no error dialog** — menu bar, toolbar, search field, status
+bar reading "Free update for MoneyMoney available". Zero unrecognized selectors in the run.
+
+The last thing in the way was `NSUserNotificationCenter`, which had exactly **two** methods —
+`deliverNotification:` and `removeDeliveredNotification:`, both of which only logged. Everything else
+was absent, so `removeAllDeliveredNotifications` (documented API since 10.8) raised
+`NSInvalidArgumentException` and the app showed "An internal error occured."
+
+Implemented as a real local list rather than more no-ops: deliver and schedule record, the remove
+methods remove, and the accessors answer with what is there. Nothing is ever displayed — there is no
+notification service here — but an app that delivers three notifications and asks for them gets
+three. **A method that merely logs answers every question with nil, which is a policy answer
+disguised as a stub.** Kept in file statics, not ivars: this is a singleton, and an ivar added to a
+public class changes its `instanceSize`, which has cost this port once already.
+
+**What is left:** a large grey region where the account list should be. That is a rendering question
+and the next piece of work, and the three criteria are not met until it draws.
+
+**The full arc for #117**, every step measured and looked at: damaged-file alert → temporary-database
+delete → "database file is missing or empty" (stale zero-byte file from earlier failed runs, cleared;
+the app then created a real 307,200-byte database with a journal) → internal error on a missing
+selector → **open**.
