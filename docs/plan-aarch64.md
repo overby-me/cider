@@ -1165,6 +1165,33 @@ scratchpad/m4-build.sh (CIDER_SHELL_STARTUP_TIMEOUT=0, guest log at /tmp/m4-gues
 build-pkg-bypass cp). DURABILITY still open: the AppKit/Onyx2D fixes are in the cocotron pin with no
 patch dir; scratchpad/m4-fw.sh overlays the framework stack into $rt but is not a committed build step.
 
+**M4b RESOLVED (pass 33): the store-DB blocker was a cider arm64 `sys_lstat` bug, not sqlite.**
+Pass 32 guessed the missing db.sqlite pointed at an fcntl-lock/mmap gap in sqlite. Wrong. A guest
+probe run right after the failing `nix-store --init` (writing to a guest-mapped $HOME/probe.out so it
+is readable live from the host) showed cider's filesystem is CONSISTENT and CORRECT there: stat on the
+absent `db/schema` returns absent, open returns ENOENT, and a plain open(O_CREAT) of db.sqlite succeeds
+and persists. So basic FS ops are fine and there is no sqlite/fcntl problem. The tell was the divergence
+between two "does it exist" checks: nix's `pathExists()` (which uses **lstat**) saw db/schema as
+existing on a fresh store, while bash `[ -e ]` (which uses **stat**) correctly saw it absent. That
+isolates the fault to lstat specifically. Reading
+`vendor/src/xnu/.../bsd/impl/stat/lstat.c`: on an arch defining neither `__NR_lstat64` nor `__NR_lstat`
+(arm64, whose only Linux stat syscall is newfstatat), the `#else` branch of `sys_lstat`/`sys_lstat64`
+stored the LINUX_SYSCALL result in a fresh `int status` instead of `ret`. `ret` kept the value
+`vchroot_expand()` returned (0 on success), so `if (ret < 0)` was never taken and lstat/lstat64 returned
+0 (success) with an UNPOPULATED stat buffer for every path, including nonexistent ones. Existing files
+still worked (newfstatat filled the buffer, ret==0 was right), so the bug only bit absent paths.
+`sys_stat` was immune because it delegates to `sys_fstatat`, which already assigns `ret`. That is exactly
+why nix failed: `pathExists("<state>/db/schema")` returned true on a fresh store, nix `readFile()`'d it,
+open() returned ENOENT, and `nix-store --init` aborted with `opening file ".../db/schema": No such file
+or directory` before it ever created db.sqlite. FIX: patch 0036 (vendor/patches/xnu) assigns the
+newfstatat result to `ret` in both `#else` branches. Rebuilt `//vendor/src/xnu:system_kernel_final`,
+overlaid libsystem_kernel.dylib onto $rt, re-ran: `nix-store --init` now returns 0 and db/ contains
+db.sqlite(-shm/-wal) + schema. This is a whole CLASS fix -- any guest code using lstat for existence
+(nix, and likely make/coreutils/configure) was silently broken on arm64. NEXT (M4c): the guest driver
+proceeds past init to `--load-db` and the real `nix build`; expect clang/ld64/cctools/make/coreutils
+arm64 runtime bugs, iterated like the bash bring-up. DURABILITY still open: cocotron AppKit/Onyx2D fixes
+(no patch dir yet) and the scratchpad/m4-fw.sh framework overlay (not a committed build step).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
