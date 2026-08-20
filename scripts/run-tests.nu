@@ -34,7 +34,16 @@
 #   1 one or more tests failed
 #   2 infrastructure error (Darling not working, compilation failure, etc.)
 
-# Each suite: type ("c" or "sh"), source path from the repo root, description, extra cflags.
+# Each suite: type, source, description, extra cflags.
+#
+#   c    a C source compiled INSIDE the container by its own cc
+#   sh   a shell script run inside the container
+#   bin  a buck2 TARGET built on the host and only RUN inside the container
+#
+# bin exists because there is no guest C compiler in this runtime: /usr/bin/clang is a 12 KB xcrun
+# shim and /Library/Developer/DarlingCLT/usr/bin holds cctools with no clang in it. Every other
+# Darwin binary here is built by buck2, so a test can be too, and then the harness is testing the
+# library rather than the toolchain.
 const SUITES = [
     [name type source desc cflags];
     [renameatx_np c "tests/syscall/test_renameatx_np.c" "renameatx_np (syscall 488) — plain rename, SWAP, EXCL, invalid flags" ""]
@@ -43,7 +52,7 @@ const SUITES = [
     [sandbox_api c "tests/sandbox/test_sandbox_api.c" "sandbox C API — sandbox_init, sandbox_free_error" ""]
     [sandbox_exec sh "tests/sandbox/test_sandbox_exec.sh" "sandbox-exec stub — flag parsing, exec, exit codes, Nix patterns" ""]
     [dirserv sh "tests/dirserv/test_dirserv.sh" "Directory Services stubs — dseditgroup, sysadminctl, dscl (Phase 5.1)" ""]
-    [number_formatter c "tests/foundation/test_number_formatter.c" "NSNumberFormatter: parse and display, the range form, a clamped range, round trip" "-x objective-c -framework Foundation"]
+    [number_formatter bin "//tests/foundation:test_number_formatter" "NSNumberFormatter: parse and display, the range form, a clamped range, round trip" ""]
     [identity c "tests/identity/test_identity.c" "macOS 14 identity — uname, kern.osrelease/osproductversion/osversion (Phase A)" ""]
     [sw_vers sh "tests/identity/test_sw_vers.sh" "sw_vers identity — productVersion/buildVersion report macOS 14 (Phase A)" ""]
 ]
@@ -115,7 +124,9 @@ def main [
     log $c $"  Prefix: ($cider_prefix)"
     log $c $"  Suites: ($run_suites.name | str join ' ')"
 
-    for s in $run_suites {
+    # A bin suite names a buck2 TARGET rather than a file, so there is nothing to stat here; buck2
+    # reports an unknown target itself, and better than a path check could.
+    for s in ($run_suites | where type != "bin") {
         if not ($"($repo_dir)/($s.source)" | path exists) {
             err $c $"Source file not found: ($s.source)\n   Expected at: ($repo_dir)/($s.source)"
             exit 2
@@ -127,8 +138,25 @@ def main [
     let prefix_test_dir = $"($cider_prefix)/private/var/tmp/cider-nix-tests"
     mkdir $prefix_test_dir
     for s in $run_suites {
-        ^cp $"($repo_dir)/($s.source)" $"($prefix_test_dir)/"
-        log $c $"  Copied ($s.source)"
+        if $s.type == "bin" {
+            let built = (^buck2 build $s.source --show-output | complete)
+            if $built.exit_code != 0 {
+                err $c $"  buck2 build ($s.source) FAILED:"
+                $"($built.stdout)($built.stderr)" | lines | last 12 | each {|l| print -e $"    ($l)" }
+                exit 2
+            }
+            let shown = ($built.stdout | lines | where ($it | str starts-with "root//"))
+            if ($shown | is-empty) {
+                err $c $"  buck2 build ($s.source) printed no output path"
+                exit 2
+            }
+            let artefact = ($shown | last | split row " " | last)
+            ^cp $artefact $"($prefix_test_dir)/"
+            log $c $"  Built and staged ($s.source)"
+        } else {
+            ^cp $"($repo_dir)/($s.source)" $"($prefix_test_dir)/"
+            log $c $"  Copied ($s.source)"
+        }
     }
 
     # -- Compile C test suites ----------------------------------------------
@@ -185,6 +213,11 @@ def main [
                 $results = ($results | append {name: $s.name, verdict: "skip"})
                 continue
             }
+            let r = (^cider shell bash -c $"cd ($CIDER_TEST_DIR) && ./($bin) 2>&1" | complete)
+            $out = $"($r.stdout)($r.stderr)"
+            $code = $r.exit_code
+        } else if $s.type == "bin" {
+            let bin = ($s.source | split row ":" | last)
             let r = (^cider shell bash -c $"cd ($CIDER_TEST_DIR) && ./($bin) 2>&1" | complete)
             $out = $"($r.stdout)($r.stderr)"
             $code = $r.exit_code

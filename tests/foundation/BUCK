@@ -1,0 +1,84 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+# NSNumberFormatter has to parse AND display, and both halves were missing here at once: see
+# vendor/patches/foundation/0028 and 0029. This is the regression net for them.
+#
+# BUILT HERE RATHER THAN IN THE GUEST. scripts/run-tests.nu compiles its suites inside the
+# container, and there is no guest C compiler in this runtime: /usr/bin/clang is a 12 KB xcrun
+# shim and /Library/Developer/DarlingCLT/usr/bin holds the cctools set with no clang in it. Every
+# other Darwin binary in this tree is built by buck2, so this one is too, and the harness only has
+# to RUN it. Same shape as tests/buck2/gui/foundation_probe.
+
+cc_objects(
+    name = "test_number_formatter_obj",
+    srcs = ["test_number_formatter.m"],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        # The frameworks here are built MRR and the test is written to match them.
+        "-fno-objc-arc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        # The whole surface AppKit's HEADERS reach, not what the probe calls.
+        # Taken from xpc_obj, the widest AppKit consumer the port already builds,
+        # because chasing this cascade one #include at a time is what
+        # buck-port.py exists to automate and this target is hand-written.
+        "//vendor/src:fw_AppKit",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreData",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_CoreText",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_IOKit",
+        "//vendor/src:fw_Metal",
+        "//vendor/src:fw_Onyx2D",
+        "//vendor/src:fw_QuartzCore",
+        "//vendor/src:fw_Security",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_ATS",
+        "//src/darwin/frameworks:fw_ApplicationServices",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_ColorSync",
+        "//src/darwin/frameworks:fw_ColorSyncLegacy",
+        "//src/darwin/frameworks:fw_CoreImage",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_CoreVideo",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_HIServices",
+        "//src/darwin/frameworks:fw_HIToolbox",
+        "//src/darwin/frameworks:fw_IOSurface",
+        "//src/darwin/frameworks:fw_ImageIO",
+        "//src/darwin/frameworks:fw_LangAnalysis",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_LocalAuthentication",
+        "//src/darwin/frameworks:fw_OpenGL",
+        "//src/darwin/frameworks:fw_PrintCore",
+        "//src/darwin/frameworks:fw_QD",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/frameworks:fw_SpeechSynthesis",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "test_number_formatter",
+    objs = [
+        ":test_number_formatter_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

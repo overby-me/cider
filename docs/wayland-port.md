@@ -14083,3 +14083,24 @@ clang at all. So the C suites in `run-tests.nu` cannot compile here whatever the
 the same wall #123 keeps meeting. The way out is probably not to install a compiler in the prefix but
 to build the tests with buck2, as every other guest binary here is built, and have the harness only
 RUN them.
+
+### A test that runs: built by buck2, only executed in the guest
+
+The formatter suite from the previous rung now runs, and the last obstacle was not a path but an
+assumption. `scripts/run-tests.nu` compiles its C suites INSIDE the container, and **there is no guest
+C compiler in this runtime**: `/usr/bin/clang` is a 12 KB xcrun shim that executes
+`/Library/Developer/DarlingCLT/usr/bin/clang`, and that directory holds the cctools set with no clang
+in it. Every other Darwin binary in this tree is built by buck2, so a test can be too.
+
+The harness has a third suite type now, `bin`, whose `source` is a buck2 target: it builds on the
+host, stages the artefact in `/private/var/tmp` (see the previous entry for why not `/tmp`), and only
+RUNS it in the container. Three whole-harness runs in a row:
+
+    number_formatter          PASS      seven assertions, inside the guest, against the real Foundation
+
+Two details worth keeping. The target needs the same header dep set as `tests/buck2/gui`'s
+`foundation_probe` - Foundation's own headers reach Security, CoreGraphics and more, and chasing that
+cascade one `#include` at a time is what `buck-port.py` exists to avoid. And a test function called
+`check` does not compile: `<AssertMacros.h>` defines `check()` as a function-like macro and it arrives
+through that cascade, so the error is "too many arguments provided to function-like macro invocation"
+with nothing pointing at the header.
