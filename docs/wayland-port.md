@@ -12576,3 +12576,64 @@ The server now names the payload of each message it receives (`from=ping` vs `fr
 because with two clients served in one run and two separate log streams, counting events cannot say
 which client arrived — and the question that matters is whether the connection client's message
 reaches the server at all, or only its reply goes missing.
+
+### trustd starts for the first time, and then answers exactly once
+
+**A registered service that never answers must not hang its client forever.** On macOS these XPC
+round trips have no timeout because launchd guarantees the service — the name resolves only when
+something is there to serve it. That guarantee does not hold here, and the difference was the whole
+blocker:
+
+trustd blocked in `mbr_uid_to_uuid` *before* it could create its own listener, so it never answered
+anything. That call is a membership lookup libinfo sends to opendirectoryd over an `xpc_pipe`.
+`bootstrap_look_up` **succeeds** because launchd knows the *name* whether or not the job is alive and
+checked in, so the message sat on a port nobody was reading and the sender waited in `mach_msg` with
+no deadline. Security then waited on trustd, forever, and MoneyMoney sat on its splash.
+
+`vendor/patches/libxpc/0006` gives the pipe round trip a bounded wait (15 s default,
+`CIDER_XPC_PIPE_TIMEOUT_MS`, 0 restores the macOS behaviour). Nothing new is invented:
+`MACH_RCV_TIMED_OUT` was already mapped to `EIO`, and every caller on this path has an error route —
+libinfo builds a compatibility UUID in-process, Security has its no-trustd path.
+
+**Measured, and it is the first time this has happened at all:**
+
+```
+CIDER_TRUSTD loc: calling mbr_uid_to_uuid for euid 282
+CIDER_XPC pipe round trip timed out after 15000 ms
+CIDER_TRUSTD loc: mbr_uid_to_uuid returned 5
+CIDER_TRUSTD loc: secerror returned, falling back to the private trustd directory
+…every init step…
+CIDER_TRUSTD trustd_init_server done
+CIDER_TRUSTD creating mach service listener for com.apple.trustd
+CIDER_XPC check-in for service com.apple.trustd = 0 (claimed)
+CIDER_TRUSTD entering dispatch_main
+CIDER_TRUSTD listener event, object 0x78ab3d8049d0 is a connection
+CIDER_TRUSTD accepted connection 0x78ab3d8049d0
+CIDER_TRUSTD message arrived on connection 0x78ab3d8049d0
+```
+
+and the client got `CIDER_XPCPROBE com.apple.trustd=REPLY`.
+
+**What it does not fix, said plainly: trustd answers exactly ONE request and then goes deaf.** Pokes
+2 and 3 time out while it is still alive at the same pid, reproducibly. So MoneyMoney is still not
+open — its `verifySignature` still stalls, now with zero pipe timeouts, because it is waiting on a
+trustd that has stopped listening.
+
+**And the remaining defect is now split cleanly.** A new trace sits *above* the branching in libxpc's
+`dispatch_mach_handler`, because the existing drop trace is silent both when a message was never
+delivered and when it was delivered and accepted:
+
+```
+CIDER_XPC channel event reason=1 (connected) listener=1 service=com.apple.trustd id=0x0
+CIDER_XPC channel event reason=2 (received) listener=1 service=com.apple.trustd id=0x77303074
+   …and nothing at all for the second and third pokes
+```
+
+The listener channel is handed exactly one message and nothing after it. **libxpc is not discarding
+anything — the message never arrives.**
+
+`CIDER_TRACE_KQUEUE` now names the owning guest pid, because a mach port *name* is per-task and two
+channels both called `port=0x803` belong to different processes. That was not cosmetic: the read
+reply's trace was resolving the owner inside the microthread closure, where the thread-local task
+table is a different, empty map, so **every read reply was reported as `pid=0`** and trustd's channel
+looked as though it never got a reply at all. It does.

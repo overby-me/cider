@@ -409,6 +409,16 @@ pub fn task_for_nsid(nsid: u32) -> *mut xnu_sys_task_t {
     TASK_BY_NSID.with(|m| m.borrow().get(&nsid).map(|&(t, _)| t).unwrap_or(std::ptr::null_mut()))
 }
 
+/// The reverse: which guest nsid owns this task, 0 if unknown. Only the kqueue trace uses it, and
+/// only because a mach port NAME is per-task -- two channels both called port=0x803 belong to
+/// different processes, so without the owner the trace cannot say which daemon's listener went
+/// deaf. The table is small (one entry per guest process) and this is off unless the trace is on.
+pub fn nsid_for_task(task: *mut xnu_sys_task_t) -> u32 {
+    TASK_BY_NSID.with(|m| {
+        m.borrow().iter().find(|&(_, &(t, _))| t == task).map(|(&nsid, _)| nsid).unwrap_or(0)
+    })
+}
+
 /// Record a guest thread in the thread_lookup table (called once per guest thread by spawn_on).
 pub fn register_thread_lookup(tid: u64, thread: *mut xnu_sys_thread_t) {
     THREAD_BY_TID.with(|m| m.borrow_mut().insert(tid, thread));

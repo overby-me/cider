@@ -1,0 +1,110 @@
+A registered service that never answers must not hang its client forever.
+
+THIS IS THE SINGLE REASON MONEYMONEY CANNOT OPEN, and the chain is measured end to end.
+
+trustd blocks in mbr_uid_to_uuid before it can create its own XPC listener, so it never answers
+anything. That call is a membership lookup libinfo sends to opendirectoryd over an xpc_pipe.
+bootstrap_look_up SUCCEEDS because launchd knows the NAME whether or not the job is alive and
+checked in, so the message sits on a port nobody is reading and the sender waits in mach_msg with no
+deadline. Security then waits on trustd, forever, and the application sits on its splash.
+
+On macOS these round trips have no timeout because launchd guarantees the service: the name resolves
+only when something is there to serve it. That guarantee does not hold in this container.
+
+A bounded wait turns the hang into an ERROR, and every caller on this path already handles one:
+libinfo falls back to building a compatibility UUID in-process, and Security has its own no-trustd
+path. MACH_RCV_TIMED_OUT is already mapped to EIO by handleMachMessageReceiveReturnCode, so no new
+failure mode is invented here.
+
+MEASURED, and it is the first time this has ever happened: trustd now finishes starting.
+
+    CIDER_TRUSTD loc: calling mbr_uid_to_uuid for euid 282
+    CIDER_XPC pipe round trip timed out after 15000 ms
+    CIDER_TRUSTD loc: mbr_uid_to_uuid returned 5
+    CIDER_TRUSTD loc: secerror returned, falling back to the private trustd directory
+    ... every init step ...
+    CIDER_TRUSTD trustd_init_server done
+    CIDER_TRUSTD creating mach service listener for com.apple.trustd
+    CIDER_XPC check-in for service com.apple.trustd = 0 (claimed)
+    CIDER_TRUSTD entering dispatch_main
+    CIDER_TRUSTD listener event, object 0x78ab3d8049d0 is a connection
+    CIDER_TRUSTD accepted connection 0x78ab3d8049d0
+    CIDER_TRUSTD message arrived on connection 0x78ab3d8049d0
+
+and the client got CIDER_XPCPROBE com.apple.trustd=REPLY.
+
+WHAT IT DOES NOT FIX, said plainly: trustd answers exactly ONE request and then goes deaf. Pokes 2
+and 3 time out while it is still alive, and its listener channel is handed no event at all for them.
+That is a separate defect, in delivery rather than in libxpc.
+
+The default is far longer than any healthy round trip here, which are milliseconds.
+CIDER_XPC_PIPE_TIMEOUT_MS overrides it, and 0 restores the macOS behaviour of waiting forever.
+--- a/src/pipe.m
++++ b/src/pipe.m
+@@ -114,6 +114,41 @@
+ 	return status;
+ }
+ 
++/*
++ * A REGISTERED SERVICE THAT NEVER ANSWERS MUST NOT HANG ITS CLIENT FOREVER.
++ *
++ * On macOS these round trips have no timeout because launchd guarantees the service: the name
++ * resolves only when something is there to serve it. That guarantee does not hold here, and the
++ * difference is not academic -- it is the single reason MoneyMoney cannot open.
++ *
++ * The chain, measured: trustd blocks in mbr_uid_to_uuid before it can create its own XPC listener,
++ * so it never answers anything. That call is a membership lookup libinfo sends to opendirectoryd
++ * over an xpc_pipe. bootstrap_look_up SUCCEEDS because launchd knows the NAME whether or not the
++ * job is alive and checked in, so the message sits on a port nobody is reading and the sender waits
++ * in mach_msg with no deadline. Security then waits on trustd, forever, and the application sits on
++ * its splash.
++ *
++ * A bounded wait turns that into an ERROR, which every caller on this path already handles: libinfo
++ * falls back to building a compatibility UUID in-process, and Security has its own no-trustd path.
++ * MACH_RCV_TIMED_OUT is already mapped to EIO by handleMachMessageReceiveReturnCode just below, so
++ * no new failure mode is invented here.
++ *
++ * The default is far longer than any healthy round trip in this container, which are milliseconds.
++ * CIDER_XPC_PIPE_TIMEOUT_MS overrides it; 0 restores the macOS behaviour of waiting forever.
++ */
++static mach_msg_timeout_t cider_pipe_timeout_ms(void) {
++	static mach_msg_timeout_t cached;
++	static dispatch_once_t once;
++
++	dispatch_once(&once, ^{
++		const char* env = getenv("CIDER_XPC_PIPE_TIMEOUT_MS");
++
++		cached = (env != NULL && env[0] != '\0') ? (mach_msg_timeout_t) strtoul(env, NULL, 10) : 15000;
++	});
++
++	return cached;
++}
++
+ + (int)handleMachMessageReceiveReturnCode: (mach_msg_return_t)ret
+ {
+ 	int status = 0;
+@@ -557,8 +592,22 @@
+ 	serializer = nil;
+ 
+ retry:
+-	// do the send and receive at the same time as an optimization
+-	ret = mach_msg(header, (sent ? 0 : MACH_SEND_MSG) | MACH_RCV_MSG | MACH_RCV_LARGE | MACH_RCV_TRAILER_TYPE(MACH_MSG_TRAILER_FORMAT_0) | MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_AUDIT), sent ? 0 : messageSize, messageSize, replyPort, 0, MACH_PORT_NULL);
++	{
++		mach_msg_timeout_t timeout = cider_pipe_timeout_ms();
++		mach_msg_option_t options = (sent ? 0 : MACH_SEND_MSG) | MACH_RCV_MSG | MACH_RCV_LARGE | MACH_RCV_TRAILER_TYPE(MACH_MSG_TRAILER_FORMAT_0) | MACH_RCV_TRAILER_ELEMENTS(MACH_RCV_TRAILER_AUDIT);
++
++		if (timeout != 0) {
++			options |= MACH_RCV_TIMEOUT;
++		}
++
++		// do the send and receive at the same time as an optimization
++		ret = mach_msg(header, options, sent ? 0 : messageSize, messageSize, replyPort, timeout, MACH_PORT_NULL);
++
++		if (ret == MACH_RCV_TIMED_OUT && getenv("CIDER_TRACE_XPC") != NULL) {
++			fprintf(stderr, "CIDER_XPC pipe round trip timed out after %u ms\n", (unsigned) timeout);
++			fflush(stderr);
++		}
++	}
+ 	sent = YES;
+ 
+ 	status = [[self class] handleMachMessageSendReturnCode: ret withMessageHeader: header];

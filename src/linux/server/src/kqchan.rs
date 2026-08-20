@@ -75,10 +75,17 @@ fn as_bytes<T>(v: &T) -> &[u8] {
 /// mach port name being watched and `fd` is our end of the socketpair, unique per channel for as
 /// long as it lives.
 fn kq_trace(port: u32, fd: RawFd, dir: &str, number: u32, note: &str) {
+    kq_trace_owned(0, port, fd, dir, number, note)
+}
+
+/// The same, naming the guest process that owns the channel. A mach port NAME is per-task, so two
+/// channels both called port=0x803 belong to different processes; without the owner the trace
+/// cannot say which daemon's listener stopped being notified.
+fn kq_trace_owned(nsid: u32, port: u32, fd: RawFd, dir: &str, number: u32, note: &str) {
     // Non-EMPTY: our drivers export switches unset-as-empty.
     match std::env::var("CIDER_TRACE_KQUEUE") {
         Ok(v) if !v.is_empty() => {
-            eprintln!("CIDER_KQCHAN port=0x{port:x} fd={fd} {dir} number={number} {note}");
+            eprintln!("CIDER_KQCHAN pid={nsid} port=0x{port:x} fd={fd} {dir} number={number} {note}");
         }
         _ => {}
     }
@@ -304,7 +311,8 @@ extern "C" fn mach_port_notify_cb(context: *mut c_void) {
         // notification datagram because send_notification is THROTTLED to one outstanding: a
         // callback that fires and sends nothing is the interesting case, and it looks identical to
         // no callback at all when only the datagram is traced.
-        kq_trace((*kq).port, (*kq).daemon_fd, "NOTIFY", 0,
+        kq_trace_owned(crate::sched::nsid_for_task((*kq).owning_task), (*kq).port, (*kq).daemon_fd,
+                       "NOTIFY", 0,
                  if (*kq).can_send_notification { "message landed, sending" }
                  else { "message landed, THROTTLED (previous notification unread)" });
         (*kq).send_notification()
@@ -382,7 +390,8 @@ impl MachPortKqchan {
         // shows FEWER channels exchanging, sometimes none at all -- and with only SEND/RECV traced,
         // "no lines" cannot distinguish a channel that was never opened from one that was opened and
         // never had anything to carry. Those are opposite bugs.
-        kq_trace(port, daemon_fd, "OPEN", 0, "watching this port");
+        kq_trace_owned(crate::sched::nsid_for_task(owning_task), port, daemon_fd, "OPEN", 0,
+                       "watching this port");
         // If a message is already queued, notify now (the client's filter is level-triggered).
         if unsafe { xnu_sys_kqchan_mach_port_has_events(xnu_sys) } {
             b.send_notification();
@@ -392,8 +401,9 @@ impl MachPortKqchan {
 
     fn send(&self, bytes: &[u8]) {
         if bytes.len() >= 4 {
-            kq_trace(self.port, self.daemon_fd, "SEND",
-                     u32::from_ne_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]), "via send");
+            kq_trace_owned(crate::sched::nsid_for_task(self.owning_task), self.port, self.daemon_fd,
+                           "SEND", u32::from_ne_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
+                           "via send");
         }
         unsafe {
             libc::send(self.daemon_fd, bytes.as_ptr() as *const c_void, bytes.len(), libc::MSG_DONTWAIT);
@@ -421,8 +431,10 @@ impl MachPortKqchan {
                 return false;
             }
             if n >= 4 {
-                kq_trace(self.port, self.daemon_fd, "RECV",
-                         u32::from_ne_bytes([buf[0], buf[1], buf[2], buf[3]]), "from the guest");
+                kq_trace_owned(crate::sched::nsid_for_task(self.owning_task), self.port,
+                               self.daemon_fd, "RECV",
+                               u32::from_ne_bytes([buf[0], buf[1], buf[2], buf[3]]),
+                               "from the guest");
             }
             if n < 0 {
                 let e = io::Error::last_os_error();
@@ -484,6 +496,10 @@ impl MachPortKqchan {
         // notification" looked like, about 25 dropped events a second.
         let (xnu_sys, task, daemon_fd, port) =
             (self.xnu_sys, self.owning_task, self.daemon_fd, self.port);
+        // Resolved OUT HERE: the closure runs on a microthread, where the thread-local task table is
+        // a different (empty) map, so looking the owner up inside it would silently report 0 -- which
+        // is exactly what made every read reply look like it belonged to no process.
+        let nsid = crate::sched::nsid_for_task(task);
         // No `&mut self` is held across this run, so a notify callback that fires mid-fill only
         // touches self through the raw pointer (no aliasing).
         unsafe {
@@ -500,8 +516,8 @@ impl MachPortKqchan {
                         // 0xdead: "no events" sentinel (matches ProcKqchan + kqchan.cpp).
                         reply.header.code = 0xdead;
                     }
-                    kq_trace(port, daemon_fd, "SEND", reply.header.number as u32,
-                             "read reply from the fill body");
+                    kq_trace_owned(nsid, port, daemon_fd, "SEND", reply.header.number as u32,
+                                   "read reply from the fill body");
                     libc::send(
                         daemon_fd,
                         &reply as *const _ as *const c_void,
@@ -523,7 +539,8 @@ impl MachPortKqchan {
 
 impl Drop for MachPortKqchan {
     fn drop(&mut self) {
-        kq_trace(self.port, self.daemon_fd, "CLOSE", 0, "channel torn down");
+        kq_trace_owned(crate::sched::nsid_for_task(self.owning_task), self.port, self.daemon_fd,
+                       "CLOSE", 0, "channel torn down");
         let (xnu_sys, task) = (self.xnu_sys, self.owning_task);
         unsafe {
             if !xnu_sys.is_null() {

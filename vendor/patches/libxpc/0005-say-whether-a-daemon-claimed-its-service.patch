@@ -1,4 +1,4 @@
-Say whether a daemon claimed its service, and when a listener throws a message away.
+Say whether a daemon claimed its service, and every event its channel is handed.
 
 TWO SILENCES, both reported only through xpc_log_error or xpc_log_fault, which go to syslog -- and
 there is no syslog socket here.
@@ -8,25 +8,58 @@ succeeds launchd keeps the receive right, and a client that looks the name up st
 right, to a queue nobody is reading. The client then waits with no timeout and no error.
 
 And a listener DROPS any message that is not a check-in. A client whose first message is not one
-waits forever while the server silently throws it away, which from outside is indistinguishable
-from the daemon not running.
+waits forever while the server silently throws it away.
 
-WHAT THE FIRST ONE ANSWERED, and it corrected a reading of mine. launchd's port-set dump shows
-com.apple.trustd as recv=1 active=0, meaning launchd still holds the receive right, and I took that
-to mean trustd never checks in. It does:
+WHAT THE FIRST ONE ANSWERED, and it corrected a reading of mine. launchd port-set dump shows
+com.apple.trustd as recv=1 active=0, and I took that to mean trustd never checks in. It does:
 
     CIDER_XPC check-in for service com.apple.trustd = 0 (claimed)
 
-The port-set snapshot is taken at DEMAND DISPATCH time, before the job it just launched has had a
-chance to check in, so it could never have shown anything else. A snapshot proves a state at ITS
-moment, not a fact about the run.
+The snapshot is taken at DEMAND DISPATCH time, before the job it just launched could check in, so it
+could never have shown anything else.
 
-THE SECOND ONE HAS NOT FIRED YET, and that is recorded rather than claimed: in the runs so far
-trustd's listener prints neither the drop nor the accept, so where its messages actually go is
-still open.
+THE THIRD TRACE IS THE ONE THAT SPLIT THE REMAINING QUESTION. trustd now answers exactly ONE request
+and then goes deaf: poke 1 replies, pokes 2 and 3 time out, and trustd is still alive throughout.
+That has two very different causes, the message never reaching the guest or reaching this handler and
+being discarded here, and the drop trace CANNOT tell them apart because it is silent in both cases.
+A trace above the branching can:
+
+    CIDER_XPC channel event reason=1 (connected) listener=1 service=com.apple.trustd id=0x0
+    CIDER_XPC channel event reason=2 (received) listener=1 service=com.apple.trustd id=0x77303074
+    ...and NOTHING for the second and third pokes
+
+So the listener channel is handed exactly one message and nothing after it. libxpc is not discarding
+anything; the message never arrives.
 --- a/src/connection.m
 +++ b/src/connection.m
-@@ -184,6 +184,19 @@
+@@ -172,6 +172,26 @@
+ 
+ 	xpc_log_debug(connection, "connection %p: handler got event %lu (%s)\n", self, reason, reason_to_string(reason));
+ 
++	/*
++	 * EVERY EVENT THIS CHANNEL IS HANDED, before any decision is taken about it.
++	 *
++	 * trustd answers exactly ONE request and then goes deaf: poke 1 replies, pokes 2 and 3 time out,
++	 * and trustd logs nothing further while still alive. That has two very different causes -- the
++	 * message never reaches the guest at all, or it reaches this handler and something here discards
++	 * it -- and only a trace ABOVE the branching can tell them apart. The existing drop trace cannot:
++	 * it is silent both when the message was never delivered and when it was delivered and accepted.
++	 */
++	if (getenv("CIDER_TRACE_XPC") != NULL) {
++		mach_msg_header_t* peek = (reason == DISPATCH_MACH_MESSAGE_RECEIVED && message != NULL)
++				? dispatch_mach_msg_get_msg(message, NULL) : NULL;
++
++		fprintf(stderr, "CIDER_XPC channel event reason=%lu (%s) listener=%d service=%s id=0x%x\n",
++		        (unsigned long) reason, reason_to_string(reason), this->is_listener ? 1 : 0,
++		        this->service_name ? this->service_name : "(anonymous)",
++		        peek ? (unsigned) peek->msgh_id : 0u);
++		fflush(stderr);
++	}
++
+ 	switch (reason) {
+ 		case DISPATCH_MACH_MESSAGE_RECEIVED: {
+ 			mach_msg_header_t* header = dispatch_mach_msg_get_msg(message, NULL);
+@@ -184,6 +204,19 @@
  				audit_token_t* token = NULL;
  
  				if (header->msgh_id != XPC_MSGH_ID_CHECKIN) {
@@ -46,7 +79,7 @@ still open.
  					xpc_log_fault(connection, "server connection received non-checkin message");
  					mach_msg_destroy(header);
  					return;
-@@ -819,6 +832,19 @@
+@@ -819,6 +852,19 @@
  	if (this->is_listener && this->service_name) {
  		// named server
  		status = bootstrap_check_in(bootstrap_port, this->service_name, &this->recv_port);
