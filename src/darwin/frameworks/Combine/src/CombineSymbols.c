@@ -22,8 +22,18 @@
 
 #include <stdint.h>
 
+/*
+ * A PLACEHOLDER THAT NAMES ITSELF WHEN IT IS REACHED. Zero is invisible in a crash: a null metadata
+ * pointer faults at "address - 8" and every one of these looks the same. Each carries its own id in
+ * the low bits of an unmappable address instead, so the faulting address says WHICH of them the
+ * application asked for first. 0xC0MB1NE0000 + id, and the -8 of a value witness load keeps the id
+ * legible.
+ */
+#define CIDER_COMBINE_POISON_BASE ((uintptr_t) 0xC0B1E0000ull)
+
 #define CIDER_COMBINE_SYMBOL(id, mangled)                                                          \
-    __attribute__((visibility("default"))) const uintptr_t cider_combine_##id __asm__(mangled) = 0
+    __attribute__((visibility("default"))) const uintptr_t cider_combine_##id __asm__(mangled) =   \
+            CIDER_COMBINE_POISON_BASE + (id) * 0x100
 
 CIDER_COMBINE_SYMBOL(1, "_$s7Combine10PublishersO16RemoveDuplicatesVMa");
 CIDER_COMBINE_SYMBOL(2, "_$s7Combine10PublishersO16RemoveDuplicatesVMn");

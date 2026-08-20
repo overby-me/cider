@@ -13842,3 +13842,44 @@ along. And **no binding in this port ever writes UI to model** - `_NSKVOBinder` 
 direction outright, and a run with a trace on that write printed zero lines. Nothing in these three
 applications depends on it yet, because they use target/action, but a document-based application that
 binds a text field to its model would lose every edit. Filed rather than fixed.
+
+### iA Writer: what it actually stops on, which is not what I had recorded
+
+The record said iA Writer is blocked because Combine is a set of placeholder symbols. **That is not
+what fails first, and a five minute experiment says so.** The placeholders were all defined as zero,
+which is invisible in a crash because every null metadata faults the same way, at `address - 8`. They
+now carry their own identity instead - `0xC0B1E0000 + id * 0x100`, an unmappable address whose id
+survives the `- 8` - so a fault names the symbol that produced it. Re-run:
+
+    addr=0xfffffffffffffff8      before
+    addr=0xfffffffffffffff8      after, unchanged
+
+**The null does not come from Combine.** What does fail is the application's own type:
+
+    stub 0x10014cc80 = _$s11AccountCore0A11EnvironmentVMa      AccountEnvironment metadata accessor
+    call *stub ; mov -0x8(%rax),%rax                           rax is 0, so the load is at -8
+    -> __swift_instantiateConcreteTypeFromMangledNameV2 + 2044 in AccountCore
+
+`AccountCore` is iA Writer's own framework, not one of ours, and `swift_getTypeByMangledNameInContext`
+IS exported by our `libswiftCore`, so the resolver runs and answers null for a type it cannot build.
+
+**The measurement that names the gap is the symbol table.** AccountCore imports 64 `swift_*` runtime
+symbols and 12 of them are missing from our `libswiftCore`, every one from Swift's CONCURRENCY
+runtime:
+
+    swift_task_create        swift_task_switch       swift_task_alloc / dealloc
+    swift_continuation_init  swift_continuation_await
+    swift_defaultActor_initialize / destroy / deallocate
+    swift_task_isCurrentExecutor  swift_task_reportUnexpectedExecutor
+    swift_async_extendedFramePointerFlags
+
+A scan of **all 34,482 files** in the runtime finds `swift_task_create` in none of them. So the
+application is built against Swift 5.5 or later, with async/await and actors, and this port ships a
+5.2.2-era runtime with no concurrency library at all. That is the real cost of #115, and it is a
+toolchain question rather than an AppKit one: Combine would be the NEXT wall, not this one.
+
+The crash handler now prints the six argument registers and, when one points at readable memory, the
+string there - probed with a `write()` to `/dev/null` first, which answers `EFAULT` for a bad pointer
+instead of faulting again inside the handler. It is what showed that every register at the fault was
+a stack address, which is how a fault 2,044 bytes into a helper looks and why the caller had to be
+read from the disassembly instead.

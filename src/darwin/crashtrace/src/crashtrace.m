@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <sys/ucontext.h>
 #include <unistd.h>
 #include <mach-o/dyld.h>
@@ -192,6 +193,46 @@ static void cider_crashtrace_handler(int sig, siginfo_t *info, void *uap)
 		(void *) rsp, count);
 
 	write(2, head, (size_t) len);
+
+	/*
+	 * THE ARGUMENT REGISTERS, AND ANY STRING THEY POINT AT. A fault inside a runtime helper says
+	 * nothing about WHICH request faulted: Swift's type instantiation takes a mangled name as its
+	 * first argument, and that name is the whole answer. Probed with write() to /dev/null first,
+	 * which answers EFAULT for a bad pointer instead of faulting again inside the handler.
+	 */
+	if (uc != NULL && uc->uc_mcontext != NULL) {
+		const uint64_t args[6] = {
+			uc->uc_mcontext->__ss.__rdi, uc->uc_mcontext->__ss.__rsi,
+			uc->uc_mcontext->__ss.__rdx, uc->uc_mcontext->__ss.__rcx,
+			uc->uc_mcontext->__ss.__r8, uc->uc_mcontext->__ss.__r9,
+		};
+		static const char *const names[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+		int null_fd = open("/dev/null", O_WRONLY);
+
+		for (int i = 0; i < 6; i++) {
+			char line[192];
+			int n = snprintf(line, sizeof line, "  %s=%#llx", names[i],
+				(unsigned long long) args[i]);
+
+			if (null_fd >= 0 && args[i] > 0x1000) {
+				const char *text = (const char *) args[i];
+
+				if (write(null_fd, text, 32) == 32) {
+					n += snprintf(line + n, sizeof line - (size_t) n, " \"");
+					for (int c = 0; c < 48 && text[c] != 0 && n < (int) sizeof line - 4; c++) {
+						line[n++] = (text[c] >= 32 && text[c] < 127) ? text[c] : '.';
+					}
+					n += snprintf(line + n, sizeof line - (size_t) n, "\"");
+				}
+			}
+			n += snprintf(line + n, sizeof line - (size_t) n, "\n");
+			write(2, line, (size_t) n);
+		}
+		if (null_fd >= 0) {
+			close(null_fd);
+		}
+	}
+
 	backtrace_symbols_fd(frames, count, 2);
 
 	/*
