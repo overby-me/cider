@@ -1,0 +1,47 @@
+An advisory cache hint that returns EINVAL is not a hint, it is a failure.
+
+F_NOCACHE, F_RDAHEAD, F_NODIRECT and F_SINGLE_WRITER have no Linux fcntl equivalent, so they fell
+through to the default branch and returned EINVAL. Each of them asks for a CACHING PREFERENCE, not
+for a guarantee, and a caller that gets an error reports it as its own failure.
+
+WHERE IT SHOWED, and it took the whole of a code signature check to find. validateExecutable opens
+the main executable and calls fcntl(F_NOCACHE, true) before hashing its pages, purely so a one pass
+read does not fill the page cache. The EINVAL came back as a UnixError, whose OSStatus is
+errSecErrnoBase + errno, that is 100000 + 22 = 100022, and the bundle was reported invalid.
+MoneyMoney shows that to its user as the application file seems to be damaged.
+
+The number is worth remembering: a Security error in the hundred thousands is an ERRNO in disguise,
+and 100022 says EINVAL and nothing about certificates.
+
+Succeeding and doing nothing is what an advisory hint permits.
+
+MEASURED: with this, validateExecutable PASSES -- every page hash of the main executable verifies --
+and the verdict moves on to the sealed resource directory.
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/fcntl.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/fcntl.c
+@@ -80,6 +80,25 @@
+ 	{
+ 		case F_CHECK_LV:
+ 			return 0;
++		/*
++		 * ADVISORY CACHE HINTS. Nothing here has a Linux fcntl equivalent, so they fell through to
++		 * the default below and returned EINVAL -- and an EINVAL from a hint is not a hint, it is a
++		 * failure the caller reports as its own.
++		 *
++		 * Code signing is where that showed: validateExecutable opens the main executable and calls
++		 * fcntl(F_NOCACHE, true) before hashing its pages, purely to avoid filling the page cache on
++		 * a one-pass read. The EINVAL came back as a UnixError, whose OSStatus is errSecErrnoBase +
++		 * errno = 100000 + 22 = 100022, and the bundle was reported invalid. MoneyMoney shows that to
++		 * its user as "the application file seems to be damaged".
++		 *
++		 * Succeeding and doing nothing is what an advisory hint permits: the caller asked for a
++		 * caching preference, not for a guarantee.
++		 */
++		case F_NOCACHE:
++		case F_RDAHEAD:
++		case F_NODIRECT:
++		case F_SINGLE_WRITER:
++			return 0;
+ 		case F_SETFD:
+ 			if (arg & ~FD_CLOEXEC)
+ 				return -EINVAL;

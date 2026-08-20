@@ -12930,3 +12930,50 @@ Next, and this time comparing the two directly rather than reasoning about them:
 `Handler::procs[nsid].host_pid` and `Registry::host_pids[nsid]` at the moment `kqchan_proc_open` arms
 the watch. They are supposedly fed from the same SO_PASSCRED value on every RPC; if they disagree at
 that instant, one of them is not fed from where I think it is, and that is the whole answer.
+
+### The code-signature verdict walks all the way down to the resource directory
+
+Four causes removed in one pass, each one measured before and after. The verdict as it moved:
+
+| verdict | what it was |
+| --- | --- |
+| −67061 | a **false label** — an unverifiable timestamp discarding a good signature (patch security/0007) |
+| −50 | the trust evaluation never happened, so there was no chain to check |
+| 100022 | `errSecErrnoBase + EINVAL` — `fcntl(F_NOCACHE)` (patch xnu/0020) |
+| −67055 | `errSecCSResourcesInvalid`, the sealed resource directory |
+
+**`verifySignature` now returns normally, `validateExecutable` passes — every page hash of the main
+executable verifies — and `staticValidate` returns for the first time.** MoneyMoney still shows its
+damaged-file alert, said plainly and looked at: −67055 is still a failure.
+
+**What changed, and what it costs.**
+
+`SecTrustEvaluateIfNecessary`'s "we failed to talk to securityd" branch already lies deliberately —
+Apple's comment says it returns success "to make it seem like we did a cert evaluation". What it does
+not do is set a trust result, so callers get success plus `kSecTrustResultInvalid`, which the header
+defines as *"SecTrustEvaluate has not yet been called"*, and each mishandles it differently. In this
+container that branch is not a fallback but the **only** path. Two changes on it, both reversible
+with `CIDER_TRUST_STRICT=1`:
+
+- report `kSecTrustResultUnspecified` instead of leaving `Invalid`. **This is a real divergence and
+  gives something up**: nothing was verified, and "no chain objection" is being said about an
+  evaluation that did not happen — the same thing the surrounding code already decided when it chose
+  to return `true`.
+- build the chain from **all** the certificates the caller supplied, not just the leaf. Apple keeps
+  one element for an ASR case that only wants the leaf's public key; a one-element chain is not a
+  chain, and the Apple-developer check needs the issuer above the leaf.
+
+And `isAppleDeveloperCert` no longer fails a whole validation by throwing. It parses a fixed
+requirement string and evaluates it, and here it throws −50 every time. It is a **consistency check,
+not the signature check** — its only use is deciding whether to cross-check the team identifier — so
+it is now reported and treated as "not a developer certificate". A bad signature still fails, from
+the CMS layer above, untouched.
+
+**A number worth remembering: a Security error in the hundred thousands is an errno in disguise.**
+`errSecErrnoBase` is 100000, so 100022 says `EINVAL` and nothing whatever about certificates. That
+one cost a while to recognise.
+
+`F_NOCACHE`, `F_RDAHEAD`, `F_NODIRECT` and `F_SINGLE_WRITER` had no Linux equivalent and fell through
+to `EINVAL`. They ask for a *caching preference*, not a guarantee; succeeding and doing nothing is
+what an advisory hint permits. That is not code-signing-specific — any guest asking for one was
+getting an error.

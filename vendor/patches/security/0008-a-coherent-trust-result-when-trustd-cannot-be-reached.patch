@@ -1,0 +1,169 @@
+When trustd cannot be reached, leave a coherent trust result and a real chain.
+
+THE FALLBACK ALREADY LIES DELIBERATELY. SecTrustEvaluateIfNecessary has a branch for "we failed to
+talk to securityd", written for a ramdisk case, which returns SUCCESS after setting only the leaf
+certificate -- in Apple's own words, to make it seem like we did a cert evaluation. What it does NOT
+do is set a trust result, so every caller is handed success together with kSecTrustResultInvalid,
+which the header defines as SecTrustEvaluate has not yet been called, and each one mishandles it
+differently: errSecTimestampNotTrusted in the timestamp path, -50 in validateDirectory, and an
+assert(false) marked should never happen in tsaSupport.
+
+In this container that branch is not a fallback, it is the ONLY path, and the effect is that NO
+third-party bundle can validate its own signature. Measured on three in one container: MoneyMoney,
+iTerm and LibreOffice all returned -67061.
+
+TWO CHANGES, both on that one branch, both reversible with CIDER_TRUST_STRICT=1.
+
+Report kSecTrustResultUnspecified rather than leaving Invalid. This IS a divergence and it gives
+something up: we reach here only when trustd could not be talked to at all, so nothing was verified,
+and Unspecified says no chain objection about an evaluation that did not happen. That is the same
+thing the surrounding code already decided when it chose to return true.
+
+Build the chain from ALL the certificates the caller supplied, not just the leaf. Apple keeps one
+element for an ASR case that only wants the leaf public key; a one element chain is not a chain, and
+code signing then asks whether it is an Apple developer certificate, which needs the issuer above
+the leaf, and fails with -50 well away from the cause. These are the certs handed in with the
+signature, claiming no more than that.
+
+AND ONE FIX IN CODESIGNING: isAppleDeveloperCert must not be able to fail a validation by throwing.
+It parses a fixed requirement string and evaluates it against the chain, and here it throws -50 every
+time, which reaches the caller as this bundle is invalid. It is a CONSISTENCY CHECK, not the
+signature check: its only use is to decide whether to cross check the team identifier. Now reported
+and treated as not-a-developer-certificate. A bad signature still fails, from the CMS layer above,
+untouched.
+
+MEASURED, the verdict walking down the chain as each cause was removed:
+    -67061  a false label, the timestamp discarding a good signature      (patch 0007)
+    -50     trust evaluation never happened
+    100022  errSecErrnoBase + EINVAL, from fcntl(F_NOCACHE)               (xnu patch 0020)
+    -67055  errSecCSResourcesInvalid, the sealed resource directory
+and verifySignature now returns normally, validateExecutable PASSES, and staticValidate RETURNS for
+the first time. MoneyMoney still shows its damaged-file alert, said plainly: -67055 is still a
+failure and the sealed resource directory is the next piece of work.
+--- a/OSX/sec/Security/SecTrust.c
++++ b/OSX/sec/Security/SecTrust.c
+@@ -1687,11 +1687,51 @@
+                      _chain and return success with a failure as the trustResult, to
+                      make it seem like we did a cert evaluation, so ASR can extract
+                      the public key from the leaf. */
+-                    SecCertificateRef leafCert = (SecCertificateRef)CFArrayGetValueAtIndex(trust->_certificates, 0);
+-                    CFArrayRef leafCertArray = CFArrayCreate(NULL, (const void**)&leafCert, 1, &kCFTypeArrayCallBacks);
+-                    trust->_chain = leafCertArray;
++                    /*
++                     * ALL THE CERTIFICATES THE CALLER SUPPLIED, not just the leaf.
++                     *
++                     * Apple builds a one-element chain here on purpose, for an ASR case that only
++                     * wants the leaf's public key. In this container this is not a fallback but the
++                     * ONLY path, and a one-element chain is not a chain: code signing then asks
++                     * whether it is an Apple developer certificate, which needs the issuer above the
++                     * leaf, and the evaluation fails with -50 well away from the cause.
++                     *
++                     * These are the certs the caller handed in with the signature -- claiming no more
++                     * than that. CIDER_TRUST_STRICT=1 restores the leaf-only behaviour.
++                     */
++                    const char *cider_strict = getenv("CIDER_TRUST_STRICT");
++                    bool cider_lenient = (cider_strict == NULL || cider_strict[0] == '\0');
++
++                    if (cider_lenient) {
++                        trust->_chain = CFArrayCreateCopy(NULL, trust->_certificates);
++                    } else {
++                        SecCertificateRef leafCert = (SecCertificateRef)CFArrayGetValueAtIndex(trust->_certificates, 0);
++                        trust->_chain = CFArrayCreate(NULL, (const void**)&leafCert, 1, &kCFTypeArrayCallBacks);
++                    }
+                     if (error)
+                         CFReleaseNull(*error);
++                    /*
++                     * LEAVE A COHERENT RESULT, NOT kSecTrustResultInvalid.
++                     *
++                     * This branch already returns SUCCESS deliberately -- Apple's own comment says it
++                     * does so "to make it seem like we did a cert evaluation". What it does not do is
++                     * set a trust result, so every caller is handed success plus a value the header
++                     * defines as "SecTrustEvaluate has not yet been called", and each mishandles it
++                     * differently: errSecTimestampNotTrusted in the timestamp path, -50 in
++                     * validateDirectory, an assert(false) marked "should never happen" in tsaSupport.
++                     * The net effect in this container is that NO third-party bundle can validate its
++                     * own signature: MoneyMoney, iTerm and LibreOffice all returned -67061.
++                     *
++                     * THIS IS A DELIBERATE DIVERGENCE AND IT GIVES SOMETHING UP. We reach here only
++                     * when trustd could not be talked to at all, so nothing was verified; reporting
++                     * Unspecified says "no chain objection" about an evaluation that did not happen.
++                     * That is the same thing the surrounding code already decided when it chose to
++                     * return true. CIDER_TRUST_STRICT=1 restores the old behaviour, and with it the
++                     * damaged-file alert.
++                     */
++                    if (cider_lenient) {
++                        trust->_trustResult = kSecTrustResultUnspecified;
++                    }
+                     return true;
+                 }
+                 return trust->_trustResult != kSecTrustResultInvalid;
+--- a/OSX/libsecurity_codesigning/lib/StaticCode.cpp
++++ b/OSX/libsecurity_codesigning/lib/StaticCode.cpp
+@@ -1022,10 +1022,41 @@
+ 			SecTrustResultType trustResult;
+ 			MacOSError::check(SecTrustEvaluate(mTrust, &trustResult));
+ 			CIDER_CSSTEP("codesign SecTrustEvaluate gave trustResult=%d", (int) trustResult);
++			CIDER_CSSTEP("cert chain has %d entries; trust reports count=%d leaf=%p",
++			             (int) (mCertChain ? CFArrayGetCount(mCertChain) : -1),
++			             (int) SecTrustGetCertificateCount(mTrust),
++			             (void *) SecTrustGetCertificateAtIndex(mTrust, 0));
+ 			mCertChain.take(copyCertChain(mTrust));
+ 
+ 			// if this is an Apple developer cert....
+-			if (teamID() && SecStaticCode::isAppleDeveloperCert(mCertChain)) {
++			CIDER_CSSTEP("chain copied, %d entries, teamID=%s",
++			             (int) (mCertChain ? CFArrayGetCount(mCertChain) : -1), teamID() ? teamID() : "(none)");
++			/*
++			 * isAppleDeveloperCert IS A CONSISTENCY CHECK, NOT THE SIGNATURE CHECK, and it must not
++			 * be able to fail the whole validation by throwing. It parses a fixed requirement string
++			 * and evaluates it against the chain; here it throws -50 every time, which reaches the
++			 * caller as "this bundle is invalid" and is why MoneyMoney shows a damaged-file alert.
++			 *
++			 * Reported, then treated as "not an Apple developer certificate", which only skips the
++			 * team-identifier cross-check below. A bad signature still fails: that verdict comes from
++			 * the CMS layer above, untouched.
++			 */
++			bool cider_isdev = false;
++			if (teamID()) {
++				CIDER_CSSTEP("asking isAppleDeveloperCert");
++				try {
++					cider_isdev = SecStaticCode::isAppleDeveloperCert(mCertChain);
++					CIDER_CSSTEP("isAppleDeveloperCert = %d", cider_isdev ? 1 : 0);
++				} catch (const CommonError &err) {
++					CIDER_CSSTEP("isAppleDeveloperCert THREW %d, treating as not-a-developer-cert",
++					             (int) err.osStatus());
++					cider_isdev = false;
++				} catch (...) {
++					CIDER_CSSTEP("isAppleDeveloperCert threw a non-common exception, treating as not-a-developer-cert");
++					cider_isdev = false;
++				}
++			}
++			if (cider_isdev) {
+ 				CFRef<CFStringRef> teamIDFromCert;
+ 				if (CFArrayGetCount(mCertChain) > 0) {
+ 					SecCertificateRef leaf = (SecCertificateRef)CFArrayGetValueAtIndex(mCertChain, Requirement::leafCert);
+@@ -1054,6 +1085,7 @@
+ 			}
+ 
+ 			CODESIGN_EVAL_STATIC_SIGNATURE_RESULT(this, trustResult, mCertChain ? (int)CFArrayGetCount(mCertChain) : 0);
++			CIDER_CSSTEP("team id block passed, switching on trustResult=%d", (int) trustResult);
+ 			switch (trustResult) {
+ 			case kSecTrustResultProceed:
+ 			case kSecTrustResultUnspecified:
+@@ -1085,6 +1117,7 @@
+ 				}
+ 			}
+ 
++			CIDER_CSSTEP("past the team id check, mSigningTimestamp=%g", (double) mSigningTimestamp);
+ 			if (mSigningTimestamp) {
+ 				CFIndex rootix = CFArrayGetCount(mCertChain);
+ 				if (SecCertificateRef mainRoot = SecCertificateRef(CFArrayGetValueAtIndex(mCertChain, rootix-1)))
+@@ -1106,6 +1139,8 @@
+ 					}
+ 			}
+ 
++			CIDER_CSSTEP("verifySignature returning normally, expired=%d",
++			             (int) (actionData.ActionFlags & CSSM_TP_ACTION_ALLOW_EXPIRED));
+ 			return actionData.ActionFlags & CSSM_TP_ACTION_ALLOW_EXPIRED;
+ 		}
+ 
