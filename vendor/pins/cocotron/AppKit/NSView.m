@@ -1805,6 +1805,15 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
          positioned: (NSWindowOrderingMode) ordering
          relativeTo: (NSView *) relativeTo
 {
+    /* DOES THE APPLICATION REORDER AT RUNTIME. A nib gives a z order and an application may change
+     * it afterwards; if it does and we drop the call, a view sits in front of what should cover it. */
+    if (getenv("CIDER_TRACE_VIEWS") != NULL && getenv("CIDER_TRACE_VIEWS")[0] != '\0') {
+        fprintf(stderr, "CIDER_REORDER %s %s %s of %s in %s\n", object_getClassName(view),
+                (ordering == NSWindowBelow) ? "below" : "above",
+                relativeTo != nil ? object_getClassName(relativeTo) : "(nil)",
+                object_getClassName(self), [[[self window] title] UTF8String] ?: "(untitled)");
+        fflush(stderr);
+    }
     NSUInteger index = [_subviews indexOfObjectIdenticalTo: relativeTo];
 
     if (index == NSNotFound)

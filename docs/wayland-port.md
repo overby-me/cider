@@ -13936,3 +13936,31 @@ under the same empty key, exactly like an array's members, and it is a dozen lin
 With both fixed: `options=NSValueTransformerName`, the label stays hidden, the add menu opens at the
 button again, and the footer draws `+` with a pull-down arrow rather than `+x`, because the second
 button was hidden by the same kind of binding.
+
+### The wizard artwork is drawn exactly as the application asked
+
+MoneyMoney's Add Account sheet draws its card-fan artwork over the left edge of the white panel and
+over the first word of the title, and the obvious reading was that we had put it in the wrong place.
+**Measured, we did not.** Five facts, each from the application's own files:
+
+- The nib puts the image view **last** in the page container, so it is on top by the same rule that
+  fixed Swift Publisher's labels. It is `520x399`, the full content view.
+- Its `NSImageCell` says `NSAlign 4` (left) and `NSScale 2` (none): draw at natural size, at the left.
+- `Wizard.tiff` is `210x399` points with two representations, `420x798` and `210x399` pixels, both
+  reporting the same point size, so 210 points wide is right.
+- The image's alpha reaches x 154-157 at the title's rows and 201-206 lower down. **Our drawn edges,
+  measured off the capture row by row, are 151, 199, 167 and 128** against the file's 154, 201, ~165
+  and ~116.
+- Nothing hides it (no binding on that view in the nib) and nothing reorders it: a new
+  `CIDER_REORDER` trace on `addSubview:positioned:relativeTo:` printed **three** calls in a whole
+  launch, none of them the artwork.
+
+The draw itself comes from our `-[NSImageCell drawInteriorWithFrame:inView:]`, not from the
+application's `MMImageView` subclass, so there is no application drawing code we are failing to run.
+What is left is a question this machine cannot answer: whether macOS's `NSImageCell` insets or clips
+where ours does not. If a real macOS reference ever shows the title unobscured, that cell is the
+place to look; until then the overlap is what the nib and the artwork produce.
+
+**Two zeros came from closed gates in one rung.** `CIDER_TRACE_PAINT` reached nothing because the
+MoneyMoney driver forwards it as `MMPAINT`, and an unparseable rectangle silently disables it. Check
+what the driver forwards before reading a count of zero as an answer.
