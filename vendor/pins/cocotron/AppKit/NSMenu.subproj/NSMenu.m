@@ -612,7 +612,19 @@ BOOL itemIsEnabled(NSMenuItem *item) {
     for (i = 0; i < count; i++) {
         NSMenuItem *item = [_itemArray objectAtIndex: i];
 
-        if (_autoenablesItems) {
+        /*
+         * AN ITEM WITH NO ACTION IS NOT A DISABLED ITEM, IT IS ONE AUTOENABLING CANNOT JUDGE.
+         *
+         * itemIsEnabled starts at NO and only ever leaves that state by finding a target that
+         * answers the action, so an item with a NULL action was forced disabled every time the menu
+         * updated. A pop-up button's items are exactly that shape: the pop-up handles the selection
+         * itself and its items carry no action at all. Swift Publisher's zoom menu is eleven of
+         * them, every one drawn grey, and -itemIndexForPoint: answers -1 for a disabled item, so
+         * NOTHING IN ANY POP-UP MENU COULD EVER BE CHOSEN. Submenu parents have the same shape.
+         *
+         * With nothing to validate, the item keeps whatever state it was given.
+         */
+        if (_autoenablesItems && [item action] != NULL) {
             BOOL enabled = itemIsEnabled(item) ? YES : NO;
             BOOL currentlyEnabled = [item isEnabled] ? YES : NO;
 

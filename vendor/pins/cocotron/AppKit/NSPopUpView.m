@@ -186,6 +186,16 @@ static const NSTimeInterval kMenuInitialClickThreshold = .3f;
      * button, with every title truncated, is either measuring the titles wrongly or being told a
      * width from outside. Same gate as the rest of the menu tracing. */
     if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != (char) 0) {
+        /* AND WHETHER EACH ITEM IS ENABLED. A menu drawn grey and a menu whose items are disabled
+         * are the same picture; the flags separate them. */
+        char flags[64];
+        unsigned f;
+
+        for (f = 0; f < count && f < sizeof(flags) - 1; f++) {
+            flags[f] = [[items objectAtIndex: f] isEnabled] ? '1' : '0';
+        }
+        flags[f] = (char) 0;
+        fprintf(stderr, "CIDER_POPUPENABLED %s\n", flags);
         fprintf(stderr,
                 "CIDER_POPUPSIZE items=%u width=%g height=%g maxTitle=%g gutter=%g arrow=%g "
                 "bounds=%gx%g first=%s\n",
@@ -512,6 +522,22 @@ static NSRect boundsToTitleAreaRect(NSRect rect) {
         if (NSPointInRect(point, itemRect)) {
             if (([[items objectAtIndex: i] isEnabled] == NO) ||
                 ([[items objectAtIndex: i] isSeparatorItem])) {
+                /* WHICH ITEM REFUSED, AND WHY. A menu whose every point answers -1 cannot be used
+                 * at all, and -1 means exactly two things: the item under the pointer is disabled,
+                 * or it is a separator. Naming it and its title tells them apart in one line. */
+                if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != (char) 0) {
+                    static int printed;
+
+                    if (printed < 12) {
+                        printed++;
+                        fprintf(stderr,
+                                "CIDER_POPUPITEM refused index=%d title=%s enabled=%d separator=%d\n",
+                                i, [[[items objectAtIndex: i] title] UTF8String] ?: "(nil)",
+                                (int) [[items objectAtIndex: i] isEnabled],
+                                (int) [[items objectAtIndex: i] isSeparatorItem]);
+                        fflush(stderr);
+                    }
+                }
                 return -1;
             }
             return i;

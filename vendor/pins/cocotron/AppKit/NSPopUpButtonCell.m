@@ -185,6 +185,23 @@ static const void *kCiderSelectingItemKey = &kCiderSelectingItemKey;
     [_menu release];
     _menu = menu;
 
+    /*
+     * A POP-UP'S ITEMS ARE NOT AUTOENABLED, and letting them be made every pop-up menu unusable.
+     *
+     * Autoenabling asks -[NSApplication targetForAction:] whether anything answers an item's action
+     * and disables the item when nothing does. A pop-up button's items do not carry a working
+     * action: the pop-up handles the selection itself. Swift Publisher's zoom menu is eleven items
+     * whose action is literally named "fake" with no target, so every one came back disabled, was
+     * drawn grey, and -[NSPopUpView itemIndexForPoint:] answers -1 for a disabled item, which means
+     * NOTHING IN ANY POP-UP MENU COULD EVER BE CHOSEN. The application ships and works on macOS with
+     * those items, which is the evidence that macOS does not autoenable them either.
+     *
+     * HERE RATHER THAN AT TRACKING TIME, because -[NSMenu performKeyEquivalent:] also calls -update,
+     * for every menu, on every key event. Suspending the flag only while the menu is on screen was
+     * tried and changed nothing: the items had been disabled long before the button was pressed.
+     */
+    [_menu setAutoenablesItems: NO];
+
     if ([_menu numberOfItems] > 0)
         _selectedIndex = 0;
     else

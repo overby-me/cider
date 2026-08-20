@@ -977,10 +977,36 @@ pub fn pointer_screen_location() -> (f64, f64) {
         Ok(st) => (st.pointer_focus, st.pointer_x, st.pointer_y),
         Err(_) => return (0.0, 0.0),
     };
-    match window::frame_for_surface(surface) {
+    let result = match window::frame_for_surface(surface) {
         Some((origin_x, origin_y, height)) => (origin_x + x, origin_y + (height - y)),
         None => (x, y),
+    };
+    /*
+     * EVERY PART OF THE SUM, because the answer alone cannot say which part is wrong.
+     *
+     * A pop-up menu tracking loop reads this to decide which item the pointer is over, and it came
+     * out 68 points off. Three different things could do that: a stale local position, a focus
+     * surface that is no longer the one the coordinates belong to, or a frame whose height is not
+     * the one the event path flips by. Printed only when the ANSWER changes, so a loop asking twenty
+     * times a second does not bury the run.
+     */
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_INPUT") {
+        use std::sync::Mutex;
+        static LAST: Mutex<Option<(f64, f64)>> = Mutex::new(None);
+        if let Ok(mut last) = LAST.lock() {
+            if *last != Some(result) {
+                *last = Some(result);
+                let frame = window::frame_for_surface(surface);
+                let number = window::window_for_surface(surface).map(|w| w.3).unwrap_or(-1);
+                println!(
+                    "cider-wayland-input screenloc local={x:.0},{y:.0} focusWindow={number} \
+frame={frame:?} -> {:.0},{:.0}",
+                    result.0, result.1
+                );
+            }
+        }
     }
+    result
 }
 
 /// The current modifier flags, for -currentModifierFlags.

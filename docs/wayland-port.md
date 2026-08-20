@@ -13732,3 +13732,37 @@ the button for 900 ms — 24 lines cover the first second, entirely before the m
 pump is starved by periodic events" was refuted before it reached the page: the `nextevent` counter
 shows 21 calls a second across the menu, so `session::pump()` runs on essentially every pass and the
 2 ms `skip_work` shortcut never fires. **A cap is a lie about anything slower than the cap.**
+
+### The pop-up items are disabled, and mouseLocation was innocent
+
+**I need to correct the previous entry.** I wrote that `-[NSEvent mouseLocation]` comes out 68 points
+off during a drag. It does not. A trace of every part of the sum shows the conversions are all
+self-consistent:
+
+    local=275,120 focusWindow=36  frame=(0,0,753)     -> 275,633   the press
+    local=35,60   focusWindow=285 frame=(240,316,309) -> 275,565   the menu surface enter
+    local=275,236 focusWindow=36  frame=(0,0,753)     -> 275,517   the drag
+
+I had compared the 565 of one gesture against the 633 of another. **Two numbers from two gestures are
+not a delta.** Interleaving the location trace, the tracking loop and the input events in one listing
+is what showed it: the loop does read `275,517` while the pointer is over the item.
+
+**The real blocker is that the item refuses.** `-[NSPopUpView itemIndexForPoint:]` answers `-1` for a
+disabled item, and every real item in that menu is disabled:
+
+    CIDER_POPUPENABLED 000000001000        twelve items; only index 8, the separator, is enabled
+    CIDER_POPUPITEM refused index=3 title=100% enabled=0 separator=0
+
+Autoenabling is why. `-[NSMenu update]` asks `-[NSApplication targetForAction:]` whether anything
+answers each item's action; Swift Publisher's zoom items carry an action literally named `fake` with
+no target, nothing answers it, and every one is set disabled. **The application ships and works on
+macOS with those items**, which is the evidence that macOS does not autoenable a pop-up's menu.
+
+**Two changes, and neither is the fix — said plainly rather than implied.** `-[NSMenu update]` no
+longer force-disables an item with a NULL action, which is right on its own terms (a submenu parent
+has no action either) and is why the separator is now the one enabled item. And
+`-[NSPopUpButtonCell setMenu:]` sets `autoenablesItems` to NO, which **measurably takes effect** —
+`autoenables=0`, and the per-item validation trace stops firing — **and the items are still disabled
+and the pick still fails.** The question left is who disables them now, and the way to answer it is a
+trace on `-[NSMenuItem setEnabled:]` with its caller, exactly as `CIDER_MENUTITLE` named the
+truncation caller.
