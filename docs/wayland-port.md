@@ -13224,3 +13224,27 @@ those nibs — `controlTextColor`, `textBackgroundColor`, `controlColor`, `contr
 
 **Check the palette before making a lookup work.** A table of colours that nothing consults is a
 table nobody has ever checked.
+
+### A layer nothing composites must not swallow the drawing
+
+Fixing the nib booleans made MoneyMoney's toolbar search field vanish. It had not gone anywhere:
+`CIDER_TRACE_FRAMES=SearchField` reported `hidden=0`, `drawRect 180x18 at 0,4` and `ops=3` on every
+pass, while `CIDER_TRACE_PAINT` over the same region saw nothing but the theme frame's own fill.
+**It was drawing perfectly, into a bitmap nobody would ever show.**
+
+The nib sets `NSViewIsLayerTreeHost` on that field, which had always decoded as false. Now that it is
+true, `-setWantsLayer:YES` runs, and in cocotron drawing goes THROUGH the layer: `-lockFocus` hands
+`drawRect:` an offscreen `CGBitmapContext` and `-unlockFocus` turns it into the layer's contents. The
+layer tree is then composited by a `CALayerContext` into a **subwindow** it asks the platform window
+for — and the Wayland backend's `createSubWindowWithFrame:` returns nil, because there are no
+subwindows here.
+
+So the condition for taking the layer path is now whether the layer can reach the screen:
+`-_ciderLayerIsComposited` walks up to the ancestor that hosts the layer tree and asks its context
+whether it has a subwindow. Both halves are gated on it — `-lockFocus`, which chooses the bitmap, and
+`-unlockFocus`, which snapshots it — because snapshotting the WINDOW context into the layer would
+hand it an image of the whole window. `CALayerContext` grew a `-subwindow` accessor for this.
+
+**The check is honest rather than hardcoded**: when subwindows exist, layer hosting starts working
+with no further change. Verified by measurement: the white bezel is 2941 pixels and its border 162,
+the same counts as before the boolean fix.

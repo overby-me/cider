@@ -93,6 +93,10 @@
     [_subwindow setFrame: _frame];
 }
 
+- (CGSubWindow *) subwindow {
+    return _subwindow;
+}
+
 - (void) invalidate {
 }
 

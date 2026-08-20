@@ -27,6 +27,10 @@
 - (void) setLayer: (CALayer *) layer;
 - (void) setSubwindow: (CGSubWindow*) subwindow;
 
+/* WHETHER THIS LAYER TREE HAS ANYWHERE TO BE COMPOSITED. A backend with no subwindows cannot host
+ * a layer, and a view that draws into a layer nobody composites draws nowhere. */
+- (CGSubWindow *) subwindow;
+
 - (void) invalidate;
 
 - (void) render;

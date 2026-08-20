@@ -2735,13 +2735,46 @@ static NSView *viewBeingPrinted = nil;
     NSUnimplementedMethod();
 }
 
+/*
+ * WHETHER THIS VIEW'S LAYER REACHES THE SCREEN.
+ *
+ * A layer tree is composited by the CALayerContext of whichever ancestor hosts it, and that context
+ * composites into a SUBWINDOW it asks the platform window for. The Wayland backend has no
+ * subwindows, so -createSubWindowWithFrame: answers nil and the layer is never composited by
+ * anything.
+ *
+ * That matters because drawing goes THROUGH the layer: with one set, -lockFocus hands drawRect: an
+ * offscreen bitmap and -unlockFocus turns it into the layer's contents. So a view with a layer and
+ * no subwindow draws perfectly, into a bitmap nobody will ever show. MoneyMoney's toolbar search
+ * field is one: its nib sets NSViewIsLayerTreeHost, the field reported hidden=0 and three drawing
+ * operations every time, and the toolbar was empty where it should be.
+ */
+- (CALayerContext *) _ciderLayerContext {
+    return _layerContext;
+}
+
+- (BOOL) _ciderLayerIsComposited {
+    NSView *check = self;
+
+    while (check != nil) {
+        CALayerContext *context = [check _ciderLayerContext];
+
+        if (context != nil)
+            return [context subwindow] != nil;
+
+        check = [check superview];
+    }
+
+    return NO;
+}
+
 - (void) _lockFocusInContext: (NSGraphicsContext *) context {
     NSGraphicsContext *windowContext = [_window graphicsContext];
 
     if (context == nil) {
         if (viewBeingPrinted != nil) {
             context = [[NSPrintOperation currentOperation] context];
-        } else if (_layer != nil) {
+        } else if (_layer != nil && [self _ciderLayerIsComposited]) {
             CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
             CGFloat width = _frame.size.width;
             CGFloat height = _frame.size.height;
@@ -2810,7 +2843,10 @@ static NSView *viewBeingPrinted = nil;
     NSGraphicsContext *graphicsContext = [NSGraphicsContext currentContext];
     CGContextRef context = [graphicsContext graphicsPort];
 
-    if (viewBeingPrinted == nil && _layer != nil) {
+    /* THE SAME CONDITION AS -_lockFocusInContext:, because this is its other half. When the layer
+     * was skipped there, `context` is the WINDOW's, and snapshotting that would hand the layer an
+     * image of the whole window. */
+    if (viewBeingPrinted == nil && _layer != nil && [self _ciderLayerIsComposited]) {
         CGImageRef image = CGBitmapContextCreateImage(context);
         [_layer setContents:(id)image];
         CGImageRelease(image);
