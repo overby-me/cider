@@ -13608,3 +13608,8 @@ The field has no bezel, and that now looks like the design rather than a defect:
 scroll view `NSNoBorder` and no scrollers, and MoneyMoney installs the view itself as a field editor
 inside a plain box on a white panel. It takes a click, shows what is typed, and Cancel closes the
 sheet.
+
+**Re-verified after the storage fix**: Swift Publisher's document window byte-identical, including the
+text in its Author field; iTerm2's session live on the first try. The task was filed as "draw the
+missing bezel" and the premise was wrong — there is no bezel to draw. **A task title is a hypothesis
+too.**
