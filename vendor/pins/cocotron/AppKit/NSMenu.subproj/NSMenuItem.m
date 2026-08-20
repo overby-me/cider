@@ -18,6 +18,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 // Original - Christopher Lloyd <cjwl@objc.net>
+#include <dlfcn.h>
 #import <AppKit/NSEvent.h>
 #import <AppKit/NSImage.h>
 #import <AppKit/NSMenu.h>
@@ -296,6 +297,29 @@ static char CiderMenuItemObjectValueKey;
 }
 
 - (void) setTitle: (NSString *) title {
+    /*
+     * WHO NAMES A MENU ITEM, AND WITH WHAT. MoneyMoney's toolbar menu reads "New stand" and an
+     * ellipsis where its own Localizable.strings holds "New standing order", and the ellipsis is
+     * U+2026 while the only truncation in this AppKit appends three ASCII dots. So either the
+     * application arrives here with a short string, which makes the truncation ITS decision and
+     * probably taken from a width we reported, or it arrives long and something later shortens it.
+     * Those are different bugs and one line of caller tells them apart.
+     */
+    if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != (char) 0) {
+        Dl_info info;
+        void *ret = __builtin_return_address(0);
+
+        /* THE OFFSET AS WELL AS THE NAME. An application binary has no symbol for an ordinary
+         * method, so dladdr answers "?" and the only way on is the address: base plus offset is
+         * what scripts/machodis.py disassembles. */
+        int have = dladdr(ret, &info);
+
+        fprintf(stderr, "CIDER_MENUTITLE set %s from %s in %s +%#lx\n", [title UTF8String] ?: "(nil)",
+                (have != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
+                (have != 0 && info.dli_fname != NULL) ? info.dli_fname : "?",
+                (have != 0) ? (unsigned long) ((char *) ret - (char *) info.dli_fbase) : 0UL);
+        fflush(stderr);
+    }
     title = [title copy];
     [_title release];
     _title = title;

@@ -13676,3 +13676,30 @@ design.
 
 **Re-verified after the pop-up change**, which touches every application: Swift Publisher's document
 window byte-identical, iTerm2's session live.
+
+### The truncation is the application's own
+
+Following it properly took three steps and ended outside our code.
+
+`CIDER_MENUTITLE`, behind `CIDER_TRACE_MENU`, prints every `-[NSMenuItem setTitle:]` with its caller
+and, when the caller has no symbol, the image and the offset — an application binary has no symbol for
+an ordinary method, so the address is the only way on. The titles **arrive already truncated**:
+
+    CIDER_MENUTITLE set New stand<U+2026> from ? in …/MacOS/MoneyMoney +0x21b66a
+    CIDER_MENUTITLE set Refresh Account from ?                        <- not every one
+
+`scripts/machodis.py` at `0x10021b66a` shows the call is `objc_msgSend(item, setTitle:, rax)` where
+`rax` came from a message whose length argument is
+
+    budget = (double)[obj <selector>] - w1 - w2 - w3, clamped at 0, then cvttsd2si
+
+and the selector it tries, and falls back to, is **`minimumMenuWidth`**. That name does not exist in
+cocotron's AppKit at all, and the application binary contains both it and `setMinimumMenuWidth:`. It
+is MoneyMoney's own property, set and read by MoneyMoney.
+
+**So the truncation is its decision, not our layout.** Our only possible influence is the three widths
+it subtracts, and over-measurement is not the obvious culprit: our text is if anything *narrower* than
+macOS — `titleSize=82x19` for `Batch transfer` at 13pt where macOS is nearer 88.
+
+What is left is a narrower question than the one filed: find which of the three widths it measures and
+compare that single number with macOS. **Trace the measuring call, not the truncation.**
