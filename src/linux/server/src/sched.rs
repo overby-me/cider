@@ -729,7 +729,22 @@ pub unsafe fn write_process_memory(pid: libc::pid_t, remote_address: usize, loca
     let liov = libc::iovec { iov_base: local.as_ptr() as *mut c_void, iov_len: local.len() };
     let riov = libc::iovec { iov_base: remote_address as *mut c_void, iov_len: local.len() };
     let n = libc::process_vm_writev(pid, &liov, 1, &riov, 1, 0);
-    n >= 0 && n as usize == local.len()
+    let ok = n >= 0 && n as usize == local.len();
+
+    /*
+     * A FAILED WRITE INTO A GUEST IS SILENT ALL THE WAY UP, and one of them is why a listener goes
+     * deaf after its first message. copyoutmap turns this bool into KERN_FAILURE, ipc_kmsg_put turns
+     * that into MACH_RCV_INVALID_DATA, and libdispatch reports THAT only through
+     * _dispatch_bug_mach_client, which goes to a log with no sink here. Three layers, no message.
+     *
+     * Failures only: the happy path runs on every mach receive in the container.
+     */
+    if !ok {
+        let e = std::io::Error::last_os_error();
+        eprintln!("CIDER_VMWRITE FAILED pid={pid} addr=0x{remote_address:x} len={} rc={n} errno={e}",
+                  local.len());
+    }
+    ok
 }
 
 /// xnu_sys hook: read `length` bytes from the task's guest process at `remote_address`

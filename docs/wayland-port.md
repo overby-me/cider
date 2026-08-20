@@ -12757,3 +12757,46 @@ Note what this also explains: the earlier `MACH_RCV_INVALID_DATA` seen coming *o
 fill* is the **same failure in the same place**, reached by the fill's inline-copy attempt rather
 than by libdispatch's explicit receive. `CIDER_KQ_NO_INLINE` moved which of the two hit it first; it
 could never have avoided it.
+
+### Correction: trustd is not deaf, it has exited — and launchd does not restart it
+
+Everything above chases a message that goes missing between the daemon and libxpc. The message is
+real and the traces are accurate, but **the client-visible symptom has a much simpler cause, and I
+did not check it until now**: ask whether the daemon is still there.
+
+```
+PROBE poke 1                         → REPLY
+PROBE trustd pid after poke 1 = 32   → trustd IS ALIVE
+PROBE trustd pid before poke 2 = -   → trustd IS GONE
+PROBE poke 2                         → TIMEOUT
+PROBE trustd pid after poke 2 = -    → still gone, never restarted
+```
+
+trustd exits after answering one request. That is **correct behaviour on its part** — its plist sets
+`EnableTransactions` and `EnablePressuredExit`, and `listen_for_sigterm` ends in
+`xpc_transaction_exit_clean()`, so an idle daemon is supposed to go away and be brought back on the
+next message. **launchd never brings it back.**
+
+So "trustd answers exactly once and then goes deaf" was the wrong description throughout. It answers
+once and then *leaves*, and the next client waits on a name whose job is no longer running — the
+same shape as [[registered-service-is-not-a-live-one]], one level up.
+
+**What that makes of the earlier findings, stated plainly:**
+
+- The `MACH_RCV_INVALID_DATA` and the `CIDER_VMWRITE … errno=No such process` are **consequences** of
+  the process having gone, not the cause. A write into a departed process failing with `ESRCH` is
+  correct.
+- The four-layer localisation is still true as a description of *those* traces, and the instruments
+  it added are worth keeping — three separate silent failure paths now speak. But it was answering
+  "where does this message go" when the question should have been "is anyone there to receive it".
+- `CIDER_KQ_NO_INLINE` remains a negative result, unaffected.
+
+This also revises #144, which was marked done: launchd **does** demand-start a MachService job the
+first time, and does **not** start it again once the job has exited. The next look is what launchd
+does with the service port when a checked-in job dies — `machservice_resetport` and
+`machservice_watch` are the machinery, and whether the port goes back into launchd's demand port set
+decides whether a second message can ever wake it.
+
+One change was made and did **not** fix anything, kept because it is right on its own terms: the
+host pid recorded for a task is copied once into an address-stable context at task creation, so a
+later correction reached the lookup table and not the live context. They no longer disagree.

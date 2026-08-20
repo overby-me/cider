@@ -550,6 +550,14 @@ pub unsafe extern "C" fn copyoutmap(
         if ok {
             bindings::KERN_SUCCESS as kern_return_t
         } else {
+            /*
+             * WHOSE MAP was written into. The write itself already reports the host pid and ESRCH;
+             * what it cannot say is which GUEST process that map belongs to, and that is the whole
+             * question -- a receive is supposed to copy out into the RECEIVER, so a dead pid here
+             * means the map is not the one it should be.
+             */
+            eprintln!("CIDER_VMWRITE the map that failed belongs to guest nsid {}",
+                      crate::sched::nsid_for_task((*map).xnu_sys_task));
             bindings::KERN_FAILURE as kern_return_t
         }
     }

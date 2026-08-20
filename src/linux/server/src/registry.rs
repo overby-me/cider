@@ -61,6 +61,26 @@ impl Registry {
     /// so this need not be called. Must be set before the task is first ensured.
     pub fn set_host_pid(&mut self, nsid: u32, host_pid: libc::pid_t) {
         self.host_pids.insert(nsid, host_pid);
+
+        /*
+         * AND UPDATE THE LIVE TaskCtx, not just the table.
+         *
+         * ensure_task copies this pid ONCE into an address-stable box that the xnu-sys keeps as the
+         * task's context, and every process_vm_readv/writev for that task goes through it. A later
+         * correction landing only in the map left the box naming a process that no longer exists,
+         * and the failure is silent through three layers above: copyoutmap turns it into
+         * KERN_FAILURE, ipc_kmsg_put into MACH_RCV_INVALID_DATA, and libdispatch reports THAT only
+         * to a log with no sink -- so a mach receive simply lost its message.
+         *
+         * MEASURED: "CIDER_VMWRITE FAILED ... errno=No such process" naming trustd's own guest nsid,
+         * on the second receive on its listener port, while trustd was alive. First receive fine,
+         * second refused, listener deaf from then on.
+         */
+        if let Some(ctx) = self.ctxs.get_mut(&nsid) {
+            if ctx.pid != host_pid {
+                ctx.pid = host_pid;
+            }
+        }
     }
 
     /// Get or create the xnu_sys task for a guest pid (nsid = pid). Parent is NULL for
