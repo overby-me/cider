@@ -484,6 +484,9 @@
       darwin_rust_sysroot = ${darwinRust}
       elf_lib_dirs = ${elfLibDirs}
       host_include_dirs = ${hostIncludeDirs}
+      wayland_scanner = ${lib.getBin pkgs.wayland-scanner}/bin/wayland-scanner
+      wayland_protocols = ${pkgs.wayland-protocols}/share/wayland-protocols
+      wayland_core_protocol = ${import ../wayland-core-protocol.nix { inherit pkgs; }}
       EOF
 
       # The nixpkgs cc/bintools wrappers inject flags for THIS platform through NIX_CFLAGS_*
