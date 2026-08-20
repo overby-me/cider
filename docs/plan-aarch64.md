@@ -1118,6 +1118,49 @@ extend scratchpad/m4-fw.sh (which already builds+overlays a named set) to cover 
 expect framework RUNTIME arm64 bugs once nix actually loads them, then the clang/ld/make toolchain.
 The framework tier is the bulk of M4 but each blocker so far has been a small, localized fix.
 
+**M4 huge step (pass 31): the arm64 framework stack works; guest nix LOADS and RUNS. Next runtime
+blocker is the TPIDRRO_EL0/TSD bug again, now in dyld's thread-local accessor.** scratchpad/m4-fw.sh
+now builds+overlays ALL public+private framework Mach-O binaries (main dylibs AND framework-internal
+.dylib libraries) from buck/prefix/BUCK with --keep-going, then copies them into $rt. 210/212 build
+for arm64 (only JavaScriptCore + DBusKit fail, which nix does not need). With the full closure present
+the guest nix no longer hits any "dyld: image not found" -- it loads all 210 frameworks and RUNS:
+gnix-build.sh reaches =NIXVER=, =INIT=, =BUILD=, =PKG_DONE=. But EVERY nix command exits 139 (SIGSEGV).
+The fault is deterministic: PC=0x100008E515E4 = libdyld.dylib `_tlv_get_addr+0xc`, si_addr=0x810,
+code=1. Disassembly:
+```
+ldr  x16, [x0, #8]            // x16 = TLVDescriptor->key   (= 0x102)
+mrs  x17, TPIDRRO_EL0         // TSD base -- reads 0 from EL0 on Linux
+and  x17, x17, #-8
+ldr  x17, [x17, x16, lsl #3]  // *(0 + 0x102*8) -> FAULT at 0x810
+```
+This is the SAME root cause as the setjmp munge-token bug (patch 0034) and the errno accessor (0026):
+hand-written asm reading the Darwin TSD base straight from TPIDRRO_EL0, which cider cannot use on
+arm64 Linux (tls.c: the TSD lives in a tid-keyed hash reached via sys_thread_get_tsd_base()). nix uses
+C++ thread_locals, so `_tlv_get_addr` (vendor/src/dyld/src/threadLocalHelpers.S, __arm64__ at line 230)
+fires immediately. FIX: under DARLING arm64, fetch the base via sys_thread_get_tsd_base() instead of
+`mrs TPIDRRO_EL0`. The wrinkle: _tlv_get_addr's contract is "clobber only x0/x16/x17", but a C call
+trashes x1-x15/x18/x30/q0-q7, so the base fetch must save/restore those around the `bl` -- mirror the
+LlazyAllocate block already in that file (lines 256-297). Expect more of the same class (any other
+`mrs TPIDRRO_EL0` in guest asm) plus other nix/toolchain runtime bugs after. STATE: the framework
+tier is essentially built for arm64; AppKit + these fixes live in materialized pins (durability TODO:
+vendor/patches/cocotron, and this dyld fix). This was the last "does nix even run" blocker; past it,
+M4 becomes iterating nix/clang/ld/make runtime bugs like the bash bring-up.
+
+**GUEST NIX RUNS on cider arm64 (pass 32).** The _tlv_get_addr TPIDRRO_EL0 fix (patch 0004, dyld:
+route the TSD base through sys_thread_get_tsd_base with the ABI save/restore) landed and WORKS:
+`nix --version` now prints `nix (Nix) 2.34.8+1` and returns 0 (was 139/SIGSEGV). Verified the overlaid
+libdyld carries the fix (_tlv_get_addr moved to 0x5154c; the old 0x515E4 fault offset is now harmless
+LlazyAllocate code, so the residual faults in the $prefix log are cumulative from pre-fix runs -- the
+current run's return codes are the truth). So: the whole arm64 framework stack loads AND nix, a large
+threaded C++ program, executes under cider. NEXT blocker is no longer a crash but a nix-level error:
+`nix-store --init`/`--load-db` exit 1 with `error: opening file "/Users/root/nixstate/db/schema": No
+such file or directory` -- the store DB is not being created. Likely a state-dir/DB-setup issue
+(gnix-build.sh mkdir's $NIX_STATE_DIR but not db/; nix-store --init behavior in 2.34; or a cider
+filesystem quirk creating the sqlite DB). This is the store layer, past "does nix run". Reproduce:
+scratchpad/m4-build.sh (CIDER_SHELL_STARTUP_TIMEOUT=0, guest log at /tmp/m4-guest-build.log via the
+build-pkg-bypass cp). DURABILITY still open: the AppKit/Onyx2D fixes are in the cocotron pin with no
+patch dir; scratchpad/m4-fw.sh overlays the framework stack into $rt but is not a committed build step.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
