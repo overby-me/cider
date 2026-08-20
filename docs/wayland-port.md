@@ -13461,3 +13461,18 @@ typed anywhere, and none is needed to reach this.
 Chrome still to fix there: the panel has no title bar, the illustration overhangs its panel on the
 left, the IBAN field draws a grey bar rather than a placeholder, and Cancel and Next are plain
 rectangles rather than rounded push buttons.
+
+### Two bezel styles was too few
+
+`Cancel` and `Next` in the wizard sat against the left edge of their bezels with a third of each
+button empty on the right. `_isMacPushButton`, the rule that centres a push button's title, was gated
+on exactly two bezel styles: rounded and round-rect. MoneyMoney's wizard uses
+`NSTexturedRoundedBezelStyle`, and its nib gives those cells **natural** alignment, which is left.
+
+macOS centres the title of every bordered push button whatever its bezel, so the gate is now written
+the other way round: it excludes the four styles that have no title to place at all (disclosure,
+circular, help, rounded disclosure) and includes the rest. **A list of what qualifies goes stale the
+moment an application uses the style nobody thought of; a list of what does not is bounded.**
+
+Looked at: both buttons centred. Swift Publisher's alert, whose buttons were already correct,
+unchanged.

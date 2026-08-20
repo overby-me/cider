@@ -548,12 +548,28 @@ static const CGFloat kImageMargin = 2.;
  * And the DEFAULT button draws its label in WHITE, because that button is filled with the accent
  * colour. Ours drew black on blue.
  *
- * Narrowly gated on the two bezel styles that mean a push button, and on there being no image, so a
- * check box, a radio, a disclosure triangle and a textured toolbar button all keep what they had.
+ * Gated on the bezel styles that MEAN a push button, and on there being no image, so a check box, a
+ * radio, a disclosure triangle and an image toolbar button all keep what they had.
+ *
+ * THE LIST WAS TWO STYLES AND THAT WAS TOO FEW. MoneyMoney's wizard uses NSTexturedRoundedBezelStyle
+ * for Cancel and Next, and its nib gives those cells NATURAL alignment, which is left. macOS centres
+ * the title of every bordered push button whatever its bezel, so the two buttons sat against the
+ * left edge of their bezels with a third of each empty on the right. The styles left OUT are the
+ * four that have no title to place: disclosure, circular, help, rounded disclosure.
  */
 - (BOOL) _isMacPushButton {
-    return [self isBordered] && [self image] == nil &&
-           (_bezelStyle == NSRoundedBezelStyle || _bezelStyle == NSRoundRectBezelStyle);
+    if (![self isBordered] || [self image] != nil) {
+        return NO;
+    }
+    switch (_bezelStyle) {
+    case NSDisclosureBezelStyle:
+    case NSCircularBezelStyle:
+    case NSHelpButtonBezelStyle:
+    case NSRoundedDisclosureBezelStyle:
+        return NO;
+    default:
+        return _bezelStyle != 0;
+    }
 }
 
 - (BOOL) _isDefaultPushButton {
