@@ -12207,3 +12207,29 @@ the harness timeout, **zero** launchd fatal signals and zero reboots. Looked at 
 chrome, menu bar, splash, and the toolbar relaid out with its overflow chevron after the resize. It
 is still at the splash — `SecTrustEvaluate` now *blocks* where it used to fail fast, because a live
 launchd hands out a send right for a name whose job is not running. That is #140's shape exactly.
+
+### trustd runs and still does not answer, and a diagnostic that did not work
+
+With `_trustd` in `master.passwd`, a lookup demand-starts trustd and it **stays up**:
+
+```
+CIDER_XPCPROBE com.apple.trustd=TIMEOUT
+PROBE trustd now: 36  -  com.apple.trustd      running, no exit status
+PROBE codesign:                                 and then it blocks
+```
+
+So the daemon is alive and does not serve within the probe's 20 s. `ciderd.log` shows it exec'd and
+then says nothing at all — no crash, no message. That is the same shape as securityd under #137: a
+Security daemon that runs but never answers, while launchd hands its name out to clients.
+
+**A change I made and withdrew.** launchd logs a job's nonzero exit at `LOG_ERR`, which goes to
+syslog — a sink this container does not have, which is why every failed daemon has died silently.
+Adding `| LOG_CONSOLE` (the file's own idiom for what an operator must see) looked obviously right.
+It does not work: with a control job that runs `/usr/bin/false`, `launchctl` records
+`-  1  com.cider.exitprobe` and **no console line appears**. `job_logv` passes the priority through
+unmasked and `launchd_vsyslog` decodes `LOG_CONSOLE` at its top, so the reason is somewhere I did
+not find inside a sensible budget. **Reverted rather than shipped** — an instrument that is silent
+when it should speak is worse than none, because its silence reads as good news.
+
+The control is the part worth keeping: a job whose only purpose is to fail, in the same run, is what
+turned "no output, so nothing failed" into "no output, so the instrument is broken".
