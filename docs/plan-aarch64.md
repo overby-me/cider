@@ -1356,6 +1356,32 @@ Confidence is high (the arithmetic is unambiguously wrong and every other candid
 this is recorded as landed-pending-verification because the parallel run has not yet been executed on a
 0038-built prefix.
 
+**Pass 40 (task #12 verification attempt, and two infrastructure findings).** Tried to verify 0038 by
+rebuilding the prefix and running buck-nix-bash-check with CIDER_GNIX_CORES=2 (make -j2). Two things got
+in the way, neither the poll fix. (1) The HOST buck2 prefix build -- `buck2 build
+//buck/prefix:cider_prefix`, which buck-bash-check.nu runs when given no --prefix -- fails at graph load:
+`File not found: root//darwin/.../mach/notify.defs, Included in vendor/src/libnotify/BUCK`. That path is
+an SDK-farm symlink (src/darwin/.../mach/notify.defs -> vendor/pins/xnu/osfmk/mach/notify.defs), and
+vendor/pins/xnu is a FETCHED pin (submodules.json, hash-pinned), not a bundled one, so it is only ever in
+the nix store, never on disk. The host buck2 prefix build wants it on disk. The Nix-endpoint prefix build
+(`nix build .#cider-buck2-prefix`) assembles pins from the store and applies the vendor/patches (so it
+would carry 0038), but a --dry-run of it ALSO fails, at eval: buck/rules/codegen.bzl:355 aborts with
+`wayland_protocol needs [cider] wayland_scanner and wayland_protocols in .buckconfig.local: run
+scripts/buck-setup.nu`. So the deeper finding is that the host setup itself is incomplete after the
+rebase: .buckconfig.local is missing tool paths and vendor/pins is not fully materialized, and the tree
+names its own remedy, `scripts/buck-setup.nu`. #12 verification is therefore, in an attended session: run
+scripts/buck-setup.nu, `nix build .#cider-buck2-prefix` (applies 0038), point buck-bash-check.nu at the
+result via --prefix, then buck-nix-bash-check with CIDER_GNIX_CORES=2. Deferred (the setup and Nix prefix
+build are heavy, and this run was overnight and unattended). (2) A latent
+and DANGEROUS bug in buck-bash-check.nu, hit here for real: when the prefix build fails, `--show-output`
+prints nothing, so the parsed `$art` is "", and an empty string resolves to the cwd under `path type`,
+which is a dir -- so the `!= "dir"` guard passed on nothing and the `cp -a $"($art)/." $rt` after the
+`rm -rf $rt` became `cp -a /. $rt`, copying the root filesystem into the (already-emptied) prefix. It
+reached 4.3 GB of /tmp, /root, /srv before hitting unreadable paths. Fixed with an explicit is-empty
+guard (f090fac3); the polluted rt was removed. The M4 prefix in rt is regenerable, so this cost nothing
+permanent, but the guard was one buck2 build failure away from a much worse outcome for anyone running
+the check.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
