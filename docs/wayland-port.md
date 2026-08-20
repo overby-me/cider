@@ -11911,3 +11911,39 @@ actually verify a signature and fail on it.
 
 Attribution for launchd is clean too: with launchd the run ends at ~7 s with exit 1; without it, the
 app runs to the limit. Idle containers do not crash launchd, so its aborts follow the app's activity.
+
+### It is not MoneyMoney's signature. We reject every third-party signature.
+
+Splitting `validateDirectory` from the per-slot component loop, and naming each of the nine
+identical `errSecCSSignatureFailed` throws in `checkIntegrity`, gives:
+
+```
+CIDER_CSSTEP validateDirectory call
+CIDER_CSSTEP verifySignature call
+CIDER_CSSTEP CMS signer status=3 (kCMSSignerInvalidSignature)
+CIDER_CSSTEP core threw MacOSError error=-67061
+```
+
+No `CIDER_CDIR` line, so the CodeDirectory blob is structurally fine — it is the **CMS signature
+over it** that we judge invalid. Not a certificate or trust problem either: that would be
+`kCMSSignerInvalidCert`.
+
+**The probe carried its own control, and the control fired.** `//src/darwin/probes:codesign-probe`
+asked the same question of two other signed bundles in the same container:
+
+| bundle | `SecStaticCodeCheckValidity` | CMS signer status |
+|---|---|---|
+| MoneyMoney.app | −67061 | `kCMSSignerInvalidSignature` |
+| iTerm.app | −67061 | `kCMSSignerInvalidSignature` |
+| LibreOffice.app | −67061 | `kCMSSignerInvalidSignature` |
+
+Three of three. So this is **our CMS verification refusing every third-party signature**, not
+anything about the bundle MoneyMoney ships — a far better-scoped defect, and it explains why the
+other apps run: they never check their own signature at startup. MoneyMoney does, and shows the
+result as "this file seems to be damaged".
+
+Next: `verifySignature` feeds the CodeDirectory to `CMSDecoderSetDetachedContent` and asks
+`CMSDecoderCopySignerStatus`. Either the detached content we hand it is not byte-for-byte what was
+signed, or our digest/RSA verification is wrong. Compare the digest we compute over `mBaseDir`
+against the `messageDigest` attribute inside the CMS blob — those two disagreeing localises it to
+one side or the other in a single run.

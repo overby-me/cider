@@ -1,26 +1,34 @@
-Which step of a static validation stopped, and whether it stopped or threw.
+Which validation step stopped, whether it stopped or threw, and which integrity check refused.
 
-SecStaticCodeCheckValidity was already known to be where MoneyMoney sat; these are the steps it is
-made of, one line each. The application runs this on a background thread while its main thread keeps
-animating a spinner, so a validation that never finishes looks exactly like an application that is
-merely slow: window up, run loop turning, nothing wrong on any log.
+SecStaticCodeCheckValidity was already known to be where MoneyMoney sat. These are the steps it is
+made of, one line each, plus the two things that made the earlier readings wrong.
 
-AND THE CATCH BLOCKS PRINT TOO, WHICH IS THE PART I GOT WRONG FIRST. A call line with no back line
-means hung OR THREW, and I read it as hung for a whole rung. validateNonResourceComponents never
-printed a return and had not blocked at all: it threw, and the application went on to show its own
-damaged-bundle alert. With the catch instrumented the answer is one line,
+FIRST, THE CATCH BLOCKS PRINT TOO. A call line with no back line means hung OR THREW, and I read it
+as hung for a whole rung. validateNonResourceComponents had not blocked at all.
 
+SECOND, checkIntegrity threw the same errSecCSSignatureFailed from nine different places, so the
+status alone said only that the blob was refused, never why. Each one names itself now.
+
+WHAT THEY FOUND, and it is not the application:
+
+    CIDER_CSSTEP validateDirectory call
+    CIDER_CSSTEP verifySignature call
+    CIDER_CSSTEP CMS signer status=3 (kCMSSignerInvalidSignature)
     CIDER_CSSTEP core threw MacOSError error=-67061
 
-which is errSecCSSignatureFailed. So the code signature verification REJECTS this bundle, where
-macOS accepts it, and that is the next thing to explain.
+No CIDER_CDIR line, so the CodeDirectory blob itself is structurally fine; it is the CMS signature
+over it that we judge invalid. THE PROBE CARRIED ITS OWN CONTROL and the control fired: the same
+question asked of iTerm.app and LibreOffice.app in the same container gives the IDENTICAL answer,
+three bundles of three. So this is our CMS verification refusing every third-party signature, not
+anything about the bundle MoneyMoney ships.
 
 --- a/OSX/libsecurity_codesigning/lib/StaticCode.cpp
 +++ b/OSX/libsecurity_codesigning/lib/StaticCode.cpp
-@@ -2431,13 +2431,31 @@
- // SecStaticCode objects on the fly to complete the task.
- // (The point, of course, is to do as little duplicate work as possible.)
- //
+@@ -63,6 +63,23 @@
+ #include <Security/CMSDecoder.h>
+ #include <security_utilities/logging.h>
+ #include <dirent.h>
++
 +/*
 + * CIDER_TRACE_SECITEM: which step of a static validation never came back.
 + *
@@ -37,9 +45,69 @@ macOS accepts it, and that is the next thing to explain.
 +#define CIDER_CSSTEP(fmt, ...) \
 +	do { if (CiderTraceSecItem()) { fprintf(stderr, "CIDER_CSSTEP " fmt "\n", ##__VA_ARGS__); fflush(stderr); } } while (0)
 +
- void SecStaticCode::staticValidate(SecCSFlags flags, const SecRequirement *req)
+ #include <sys/xattr.h>
+ #include <sstream>
+ #include <IOKit/storage/IOStorageDeviceCharacteristics.h>
+@@ -638,13 +655,17 @@
+ 		try {
+ 			// perform validation (or die trying)
+ 			CODESIGN_EVAL_STATIC_DIRECTORY(this);
++			CIDER_CSSTEP("verifySignature call");
+ 			mValidationExpired = verifySignature();
++			CIDER_CSSTEP("verifySignature back expired=%d", (int) mValidationExpired);
+ 			if (mValidationFlags & kSecCSEnforceRevocationChecks)
+ 				mRevocationChecked = true;
+ 
+ 			for (CodeDirectory::SpecialSlot slot = codeDirectory()->maxSpecialSlot(); slot >= 1; --slot)
+-				if (mCache[slot])	// if we already loaded that resource...
++				if (mCache[slot]) {	// if we already loaded that resource...
++					CIDER_CSSTEP("recheck cached component slot=%d", (int) slot);
+ 					validateComponent(slot, errorForSlot(slot)); // ... then check it now
++				}
+ 			mValidated = true;			// we've done the deed...
+ 			mValidationResult = errSecSuccess;	// ... and it was good
+ 		} catch (const CommonError &err) {
+@@ -680,15 +701,19 @@
+ //
+ void SecStaticCode::validateNonResourceComponents()
  {
- 	setValidationFlags(flags);
++	CIDER_CSSTEP("validateDirectory call");
+ 	this->validateDirectory();
++	CIDER_CSSTEP("validateDirectory back");
+ 	for (CodeDirectory::SpecialSlot slot = codeDirectory()->maxSpecialSlot(); slot >= 1; --slot)
+ 		switch (slot) {
+ 		case cdResourceDirSlot:		// validated by validateResources
+ 			break;
+ 		default:
++			CIDER_CSSTEP("component slot=%d", (int) slot);
+ 			this->component(slot);		// loads and validates
+ 			break;
+ 		}
++	CIDER_CSSTEP("components done");
+ }
+ 	
+ 	
+@@ -839,6 +864,7 @@
+ 			}
+ 			Security::Syslog::error("CMSDecoderCopySignerStatus failed with %s error (%d)",
+ 									reason, (int)status);
++			CIDER_CSSTEP("CMS signer status=%d (%s)", (int) status, reason);
+ 			MacOSError::throwMe(errSecCSSignatureFailed);
+ 		}
+ 
+@@ -853,8 +879,10 @@
+ 
+ 				/* Note that this is not very "agile": There's no way to calculate the exact
+ 				 * list for comparison if it contains hash algorithms we don't know yet... */
+-				if (cdList == NULL || !CFEqual(cdList, myCdList))
++				if (cdList == NULL || !CFEqual(cdList, myCdList)) {
++					CIDER_CSSTEP("hash agility v1 mismatch cdList=%s", cdList ? "present" : "null");
+ 					MacOSError::throwMe(errSecCSSignatureFailed);
++				}
+ 			}
+ 			break;
+ 		case -1:	/* CMS used to return this for "no attribute found", so tolerate it. Now returning noErr/NULL */
+@@ -2437,7 +2465,9 @@
  
  #if TARGET_OS_OSX
  	if (!mStaplingChecked) {
@@ -49,7 +117,7 @@ macOS accepts it, and that is the next thing to explain.
  		mStaplingChecked = true;
  	}
  
-@@ -2460,7 +2478,9 @@
+@@ -2460,7 +2490,9 @@
  	}
  
    	// core components: once per architecture (if any)
@@ -59,7 +127,7 @@ macOS accepts it, and that is the next thing to explain.
  	if (flags & kSecCSCheckAllArchitectures) {
  		handleOtherArchitectures(^(SecStaticCode* subcode) {
  			if (flags & kSecCSCheckGatekeeperArchitectures) {
-@@ -2481,7 +2501,9 @@
+@@ -2481,7 +2513,9 @@
  
  	// resources: once for all architectures
  	if (!(flags & kSecCSDoNotValidateResources)) {
@@ -69,7 +137,7 @@ macOS accepts it, and that is the next thing to explain.
  	}
  
  	// perform strict validation if desired
-@@ -2504,13 +2526,24 @@
+@@ -2504,13 +2538,24 @@
  void SecStaticCode::staticValidateCore(SecCSFlags flags, const SecRequirement *req)
  {
  	try {
@@ -96,7 +164,7 @@ macOS accepts it, and that is the next thing to explain.
          if (Universal *fat = this->diskRep()->mainExecutableImage())    // Mach-O
              if (MachO *mach = fat->architecture()) {
                  err.augment(kSecCFErrorArchitecture, CFTempString(mach->architecture().displayName()));
-@@ -2518,6 +2551,7 @@
+@@ -2518,6 +2563,7 @@
              }
          throw;
      } catch (const MacOSError &err) {
@@ -104,3 +172,83 @@ macOS accepts it, and that is the next thing to explain.
          // add architecture information if we can get it
          if (Universal *fat = this->diskRep()->mainExecutableImage())
              if (MachO *mach = fat->architecture()) {
+--- a/OSX/libsecurity_codesigning/lib/codedirectory.cpp
++++ b/OSX/libsecurity_codesigning/lib/codedirectory.cpp
+@@ -150,6 +150,28 @@
+ // a Bad Guy could overlap the identifier and hash fields, which is nonsense
+ // but not dangerous.
+ //
++/*
++ * CIDER_TRACE_SECITEM: WHICH integrity check rejected a CodeDirectory.
++ *
++ * checkIntegrity throws the same errSecCSSignatureFailed from eleven different places, so the
++ * status alone says only that the blob was refused, never why -- and an application shows that to
++ * its user as "this file seems to be damaged". Each throw names itself now.
++ */
++static bool CiderTraceSecItem(void) {
++	/* Non-EMPTY: our drivers export switches unset-as-empty. */
++	const char *v = getenv("CIDER_TRACE_SECITEM");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_CDFAIL(why) \
++	do { \
++		if (CiderTraceSecItem()) { \
++			fprintf(stderr, "CIDER_CDIR checkIntegrity rejected: %s\n", why); \
++			fflush(stderr); \
++		} \
++		MacOSError::throwMe(errSecCSSignatureFailed); \
++	} while (0)
++
+ void CodeDirectory::checkIntegrity() const
+ {
+ 	// check version for support
+@@ -167,39 +189,39 @@
+ 
+ 	// now check interior offsets for validity
+ 	if (!stringAt(identOffset))
+-		MacOSError::throwMe(errSecCSSignatureFailed); // identifier out of blob range
++		CIDER_CDFAIL("identifier out of blob range");
+ 	if (version >= supportsTeamID && teamIDOffset != 0 && !stringAt(teamIDOffset))
+-			MacOSError::throwMe(errSecCSSignatureFailed); // identifier out of blob range
++			CIDER_CDFAIL("identifier out of blob range");
+ 	if (!contains(hashOffset - int64_t(hashSize) * nSpecialSlots, hashSize * (int64_t(nSpecialSlots) + nCodeSlots)))
+-		MacOSError::throwMe(errSecCSSignatureFailed); // hash array out of blob range
++		CIDER_CDFAIL("hash array out of blob range");
+ 	if (hasPreEncryptHashes && !contains(preEncryptOffset, hashSize * (int64_t(nCodeSlots))))
+-		MacOSError::throwMe(errSecCSSignatureFailed); // pre-encrypt array out of blob range
++		CIDER_CDFAIL("pre-encrypt array out of blob range");
+ 	if (const Scatter *scatter = this->scatterVector()) {
+ 		// the optional scatter vector is terminated with an element having (count == 0)
+ 		unsigned int pagesConsumed = 0;
+ 		for (;; scatter++) {
+ 			if (!contains(scatter, sizeof(Scatter)))
+-				MacOSError::throwMe(errSecCSSignatureFailed);
++				CIDER_CDFAIL("scatter element out of blob range");
+ 			if (scatter->count == 0)
+ 				break;
+ 			pagesConsumed += scatter->count;
+ 		}
+ 		if (!contains(getSlot(pagesConsumed-1, false), hashSize) ||
+ 			(hasPreEncryptHashes && !contains(getSlot(pagesConsumed-1, true), hashSize)))	// referenced too many main hash slots
+-			MacOSError::throwMe(errSecCSSignatureFailed);
++			CIDER_CDFAIL("scatter referenced too many hash slots");
+ 	}
+ 	
+ 	// check consistency between the page-coverage fields
+ 	size_t limit = signingLimit();
+ 	if (pageSize) {
+ 		if (limit == 0)									// can't have paged signatures with no covered data
+-			MacOSError::throwMe(errSecCSSignatureFailed);
++			CIDER_CDFAIL("paged signature covering no data");
+ 		size_t coveredPages = ((limit-1) >> pageSize) + 1; // page slots required to cover signingLimit
+ 		if (coveredPages != nCodeSlots)
+-			MacOSError::throwMe(errSecCSSignatureFailed);
++			CIDER_CDFAIL("covered pages do not match nCodeSlots");
+ 	} else {
+ 		if ((limit > 0) != nCodeSlots)	// must have one code slot, or none if no code
+-			MacOSError::throwMe(errSecCSSignatureFailed);
++			CIDER_CDFAIL("code slot count does not match the signing limit");
+ 	}
+ }
+ 
