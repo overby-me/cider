@@ -71,7 +71,13 @@ def main [
         let errf = (($env.TMPDIR? | default "/tmp") + "/cider-prefix-build.err")
         let b = (^buck2 build //buck/prefix:cider_prefix --show-output err> $errf | complete)
         $art = ($b.stdout | lines | last | default "" | split row " " | get 1? | default "")
-        if ($art | path type) != "dir" {
+        # is-empty FIRST. When the build produces no --show-output line, $art is "", and an empty
+        # string resolves to the cwd under `path type`, which is a dir -- so the type check alone
+        # passes on nothing, and the `cp -a $"($art)/." $rt` below becomes `cp -a /. $rt`, a
+        # recursive copy of the whole root filesystem into the prefix (measured: 4.3 GB of /tmp,
+        # /root, /srv before it hit unreadable paths, with the real prefix already rm -rf'd). Guard
+        # the empty case explicitly so a failed build stops here instead.
+        if ($art | is-empty) or (($art | path type) != "dir") {
             say $"the prefix did not build, see ($errf)"
             exit 1
         }
