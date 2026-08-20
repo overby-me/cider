@@ -423,11 +423,20 @@ impl MachPortKqchan {
     /// re-enable notifications, then fill the reply via the xnu-sys on the owning task's
     /// microthread (which also copies the message body into the guest's buffer). Mirrors _read.
     fn read(&mut self, default_buffer: u64, default_buffer_size: u64) {
-        self.can_send_notification = true; // ack: may notify again
+        // NOTIFICATIONS STAY OFF UNTIL THE REPLY IS ON THE WIRE. This used to re-enable them
+        // FIRST, and the claim in the comment below -- that sending the reply from the body makes
+        // it precede any notification -- was not true: the notify callback fires from inside
+        // xnu_sys_kqchan_mach_port_fill, which runs BEFORE that send. So the wire could carry a
+        // notification where the client was expecting its reply.
+        //
+        // The client reads notification, sends a request, reads the reply. Getting a notification
+        // in the reply slot fails that read, and because the failed exchange leaves the real reply
+        // unread, the NEXT read takes the reply where it expected a notification -- one slip
+        // becomes a permanent alternation, which is what "invalid reply" then "invalid
+        // notification" looked like, about 25 dropped events a second.
         let (xnu_sys, task, daemon_fd) = (self.xnu_sys, self.owning_task, self.daemon_fd);
         // No `&mut self` is held across this run, so a notify callback that fires mid-fill only
-        // touches self through the raw pointer (no aliasing). The reply is sent from the body so it
-        // precedes any such notification, keeping the channel in order (cf. _read's deferral note).
+        // touches self through the raw pointer (no aliasing).
         unsafe {
             sched::run_on_task(
                 task,
@@ -451,6 +460,10 @@ impl MachPortKqchan {
                 }),
             );
         }
+        // ACK NOW: the reply has been sent, so a notification can no longer overtake it. Checking
+        // has_events immediately afterwards is what keeps a wakeup that arrived during the fill --
+        // and was suppressed by the flag above -- from being lost.
+        self.can_send_notification = true;
         if unsafe { xnu_sys_kqchan_mach_port_has_events(xnu_sys) } {
             self.send_notification();
         }

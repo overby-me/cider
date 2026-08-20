@@ -1,35 +1,31 @@
-Losing one kqueue event is better than losing pid 1.
+Losing one kqueue event is better than losing pid 1, and a failed exchange must resynchronise.
 
-linux_kevent_copyout called abort() when a filter could not copy an event out, under an upstream
-comment that says the quiet part out loud:
+TWO THINGS, both in the same file pair.
+
+ONE, THE ABORT. linux_kevent_copyout called abort() when a filter could not copy an event out,
+under an upstream comment that says the quiet part out loud:
 
     /* XXX-FIXME: hard to handle this without losing events */
     abort();
 
-That trades one lost event for the whole process. When the process is launchd it is worse than that:
-launchd is pid 1, so its crash handler reboots the container and every guest dies with it, which
-from outside looks like the application quietly exiting. MEASURED: one fatal signal per run before,
-ZERO over four runs after.
+That trades one lost event for the whole process, and when the process is launchd it is worse than
+that: launchd is pid 1, so its crash handler reboots the container and every guest dies with it,
+which from outside looks like the application quietly exiting. Dropping the event is exactly what
+the zero-filter case immediately above already does. MEASURED: one fatal signal per run before,
+ZERO after.
 
-Dropping the event is exactly what the zero-filter case immediately above already does.
+TWO, THE DESYNC. evfilt_machport_copyout is a strict notification, request, reply exchange, so
+reading anything else in the first slot means the socket is off by a message and every later
+exchange reads the wrong one. Returning -1 without draining leaves the offending message in place,
+epoll keeps reporting the fd readable, and the caller spins. Draining costs at most the events
+already in flight and puts the channel back in step. MEASURED, counting only once the daemon is
+gone: 3,042,592 failures in one sixty second run before, then 78,644 / 63 / 79,082 over three runs
+after. About forty times better and NOT fixed; two runs in three still spin.
 
-AND THE FAILURE NOW SAYS WHY. All six failure paths in evfilt_machport_copyout had only a
-dbg_printf, which is compiled out, so a Mach-port event that could not be read killed the process
-and explained nothing. Under CIDER_TRACE_KQUEUE they name themselves, and the first thing they say
-is worth having:
+AND THE FAILURE NAMES ITSELF NOW. All six failure paths had only a dbg_printf, which is compiled
+out, so a Mach-port event that could not be read killed the process and explained nothing. Under
+CIDER_TRACE_KQUEUE each one says which it was, and that is how the desync was found at all.
 
-    CIDER_KQUEUE machport copyout: invalid reply (errno 2)
-    CIDER_KQUEUE copyout failed for filter -8, dropping the event
-    CIDER_KQUEUE machport copyout: invalid notification (errno 0)
-
-so the read/send/read exchange on the kqchan socket is going out of step, and a failed exchange
-leaves the unread message behind for the next call to trip over.
-
-WHAT THIS CHANGE TRADES, said plainly: the event is still lost and epoll keeps reporting the same fd
-readable, so launchd now drops steadily rather than dying, about 25 events a second in a 60 second
-run. That is a livelock rather than a crash, it does not stop anything else in the container, and it
-is bounded by the container's life. The real fix is the out-of-step exchange above, which this makes
-visible for the first time.
 --- a/src/linux/platform.c
 +++ b/src/linux/platform.c
 @@ -212,9 +212,25 @@
@@ -83,7 +79,7 @@ visible for the first time.
  int
  evfilt_machport_copyout(struct kevent64_s *dst, struct knote *src, void *ptr)
  {
-@@ -50,11 +64,13 @@
+@@ -50,11 +64,31 @@
  	rv = recv(src->kdata.kn_dupfd, &notification, sizeof(notification), 0);
  	if (rv < 0) {
  		dbg_printf("evfilt_machport_copyout() reading notification failed: %d (%s)", errno, strerror(errno));
@@ -92,12 +88,30 @@ visible for the first time.
  	}
  
  	if (notification.header.number != dserver_kqchan_msgnum_notification) {
++		/*
++		 * RESYNCHRONISE, do not just fail. This channel is a strict notification / request /
++		 * reply exchange, so reading anything else here means the socket is off by a message and
++		 * EVERY later exchange reads the wrong one. Returning -1 without draining leaves the
++		 * offending message in place, epoll keeps reporting the fd readable, and the caller
++		 * spins: three million failures in a sixty second run, measured.
++		 *
++		 * Discarding what is queued costs at most the events already in flight, and puts the
++		 * channel back in step instead of wedging it for the life of the process.
++		 */
++		char drain[512];
++		unsigned dropped = 0;
++
++		while (recv(src->kdata.kn_dupfd, drain, sizeof(drain), MSG_DONTWAIT) > 0) {
++			if (++dropped > 64) {
++				break;
++			}
++		}
  		dbg_puts("evfilt_machport_copyout() read invalid notification");
-+		CIDER_MACHPORT_FAIL("invalid notification");
++		CIDER_MACHPORT_FAIL("invalid notification, resynchronised");
  		return -1;
  	}
  
-@@ -67,6 +83,7 @@
+@@ -67,6 +101,7 @@
  	rv = send(src->kdata.kn_dupfd, &call, sizeof(call), 0);
  	if (rv < 0) {
  		dbg_printf("evfilt_machport_copyout() sending request failed: %d (%s)", errno, strerror(errno));
@@ -105,7 +119,7 @@ visible for the first time.
  		return -1;
  	}
  
-@@ -74,11 +91,13 @@
+@@ -74,11 +109,13 @@
  	rv = recv(src->kdata.kn_dupfd, &reply, sizeof(reply), 0);
  	if (rv < 0) {
  		dbg_printf("evfilt_machport_copyout() reading reply failed: %d (%s)", errno, strerror(errno));
@@ -119,7 +133,7 @@ visible for the first time.
  		return -1;
  	}
  
-@@ -92,6 +111,7 @@
+@@ -92,6 +129,7 @@
  	if (reply.header.code != 0) {
  		// FIXME: the returned code is actually a Linux code (but strerror is provided by Darwin libc here)
  		dbg_printf("evfilt_machport_copyout() server indicated failure: %d (%s)", -reply.header.code, strerror(-reply.header.code));

@@ -12093,3 +12093,33 @@ the unread message behind for the next call to trip over.
 readable, so launchd now *drops* steadily rather than dying — about 25 events a second. That is a
 livelock rather than a crash, it stops nothing else in the container, and the real fix is the
 out-of-step exchange this makes visible for the first time.
+
+### The kqchan exchange was off by a message, and I mis-measured how badly
+
+The mach-port kqchan is a strict **notification → request → reply** exchange. The daemon's `read()`
+re-enabled notifications *before* sending the reply:
+
+```rust
+self.can_send_notification = true;      // <- first
+run_on_task(... fill ...; send reply)   // <- the notify callback fires from inside the fill
+```
+
+so a notification could reach the wire **where the client was expecting its reply**. One slip then
+becomes permanent: the failed exchange leaves the real reply unread, so the next call takes the
+reply where it expected a notification. That is exactly the `invalid reply` / `invalid notification`
+alternation. Moving the ack to after the reply takes `invalid reply` to **0**.
+
+On the client, a failed exchange now **drains** rather than returning immediately, so the channel
+gets back in step instead of wedging for the life of the process.
+
+**A number I got wrong.** I reported the drop rate as "about 25 events a second". It was
+**3,042,592 failures in one sixty-second run** — I had counted the log *while the daemon was still
+writing it*, which is no measurement at all. Counting only once the daemon is gone:
+
+| | drops in one run |
+|---|---|
+| before the resync | 3,042,592 |
+| after | 78,644 / **63** / 79,082 |
+
+About forty times better, one run nearly clean, and **not fixed**: two runs in three still spin.
+trustd is still never demand-started.
