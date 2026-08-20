@@ -13883,3 +13883,25 @@ string there - probed with a `write()` to `/dev/null` first, which answers `EFAU
 instead of faulting again inside the handler. It is what showed that every register at the fault was
 a stack address, which is how a fault 2,044 bytes into a helper looks and why the caller had to be
 read from the disassembly instead.
+
+### Reading a nib that is not a NIBArchive
+
+`scripts/nibdump.py` reads the NIBArchive format and refuses everything else, which is most of Swift
+Publisher: `Inspector.nib/keyedobjects.nib` starts with `bplist00`. **Python's `plistlib` opens those
+directly**, and `$objects` is a flat array where a `$class` entry names the class and `UID`s index
+back into the same array, so a container's whole layout is three lines of walking:
+
+    objs = plistlib.load(open(nib,"rb"))["$objects"]
+    subs = objs[obj["NSSubviews"].data]            # UID -> index
+    frame = objs[view["NSFrame"].data]             # "{{73, 54}, {63, 17}}"
+
+That answered a rendering question in one pass, without a single run: Swift Publisher's Document
+Margins cluster puts the `Top` label at `(73, 54)` size `63x17` and the Left field's stepper at
+`(70, 43)` size `15x22`. **Those boxes overlap in the application's own nib**, so what the user sees
+is decided by paint order, and the nib lists the steppers before the labels. Ours paints the stepper
+last and it covers the `T`. Filed as #154 with the frames, so the next rung starts from measured
+geometry rather than from a guess about our layout.
+
+Alignment was the obvious suspect and it is innocent: cocotron reads it from `NSCellFlags2` bits
+16-18, which give 0 (left) for all four margin labels and 2 (centre) for the section headers, and the
+headers do come out centred.
