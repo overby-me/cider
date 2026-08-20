@@ -85,16 +85,42 @@ NSColor *NSColorGetCatalogColor(NSColorListName catalogName,
             autorelease];
 }
 
+/*
+ * A CATALOG COLOUR IS A NAME, AND THIS SYSTEM RESOLVES IT, NOT THE ONE THE NIB WAS WRITTEN ON.
+ *
+ * This is the archiving entry point: a nib stores a catalog colour as a catalog, a name, and the
+ * value that name HAD when the nib was saved. It used to take that stored value and never ask
+ * anybody, so every colour an application set in Interface Builder came from whatever version of
+ * macOS its designer used.
+ *
+ * MoneyMoney's account list is what showed it. Its outline view asks for System
+ * _sourceListBackgroundColor, whose stored fallback is System controlBackgroundColor, whose stored
+ * fallback is a calibrated white of 0.602715373 from some much older release. The whole sidebar
+ * came out filled with exactly that: a flat mid grey, 154 in every channel, where a source list
+ * belongs. The stored value is a FALLBACK for a name this system does not know, not the answer.
+ */
 + (NSColor *) colorWithCatalogName: (NSColorListName) catalogName
                          colorName: (NSColorName) colorName
                              color: (NSColor *) color
 {
-    if (NSColorGetCatalogColor(catalogName, colorName) == nil)
+    NSColor *resolved = nil;
+
+    /* Only the System catalog, because only that one is ours to answer for. An application with a
+     * catalog of its own may well use a name that collides with a system one. */
+    if ([catalogName isEqualToString: @"System"])
+        resolved = [[NSDisplay currentDisplay] colorWithName: colorName];
+
+    if (resolved == nil)
+        resolved = NSColorGetCatalogColor(catalogName, colorName);
+
+    if (resolved == nil) {
         NSColorSetCatalogColor(catalogName, colorName, color);
+        resolved = color;
+    }
 
     return [[[self alloc] initWithCatalogName: catalogName
                                     colorName: colorName
-                                        color: color] autorelease];
+                                        color: resolved] autorelease];
 }
 
 - (NSColorSpaceName) colorSpaceName {

@@ -13192,3 +13192,35 @@ bar has its buttons. Menus still open.
 **What is still grey:** the sidebar's `MainTree` now fills its pane correctly and still draws as flat
 `#9A9A9A`, and a 32x32 block in the toolbar draws flat `#9F9F9F`. Same question as before, now with
 the right geometry underneath it.
+
+### A catalog colour is a name
+
+MoneyMoney's sidebar was filled flat `#9A9A9A`. `CIDER_TRACE_PAINT` over the region named the last
+write in one line: `NSRectFill` from `-[NSTableView drawRect:]`, colour `c=0.603,1.000`.
+
+**0.603 is in the nib.** `MainTree`'s `NSBackgroundColor` is the System catalog colour
+`_sourceListBackgroundColor`, whose archived fallback is the System catalog colour
+`controlBackgroundColor`, whose archived fallback is a calibrated white of **0.602715373** from some
+much older macOS. `NSColor_catalog`'s archiving initialiser took that stored value and never asked
+anybody, so **every colour an application set in Interface Builder came from whatever version of
+macOS its designer used**, not from this system.
+
+A catalog colour is a name. The stored value is what the name meant when the nib was written, and it
+is a fallback for a name this system does not know — not the answer. The System catalog now resolves
+through `-[NSDisplay colorWithName:]` first, then the process catalog, and only then the stored
+value. `_sourceListBackgroundColor` is still a name we do not have, so MoneyMoney gets what its own
+nib says to use instead: `controlBackgroundColor`, which is white. **Looked at: the sidebar is white
+and empty**, which is what an outline view with no accounts in it should be.
+
+**Fifty green table headers, avoided.** Cocotron's X11 palette answers `headerColor` with
+`greenColor`, a placeholder nobody had ever seen precisely because archived catalog colours kept
+their stored value. Counting the catalog colour names in all 196 readable nibs of the three
+applications in the queue found `headerColor` fifty times, and every one of them would have turned
+green the moment this lookup started working. It is `Grey(0.96)` now. The other names used across
+those nibs — `controlTextColor`, `textBackgroundColor`, `controlColor`, `controlBackgroundColor`,
+`gridColor`, `headerTextColor`, `textColor`, `labelColor`, `selectedTextBackgroundColor`,
+`selectedTextColor`, `linkColor`, `separatorColor`, `windowFrameTextColor`, `windowBackgroundColor`
+— already had table values that agree with the archived ones or improve on them.
+
+**Check the palette before making a lookup work.** A table of colours that nothing consults is a
+table nobody has ever checked.

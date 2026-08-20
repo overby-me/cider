@@ -57,7 +57,11 @@ fn recipe_for(name: &str) -> Option<Recipe> {
         "selectedControlColor" => ACCENT,
         "controlBackgroundColor" => Recipe::ClassMethod("whiteColor"),
         "controlLightHighlightColor" => Recipe::ClassMethod("lightGrayColor"),
-        "headerColor" => Recipe::ClassMethod("greenColor"),
+        // NOT GREEN. Cocotron's X11 table answers greenColor here, which is a placeholder nobody
+        // ever saw because an archived headerColor used to keep its stored value instead of asking
+        // this table. Fifty of them across the three applications in the queue would have turned
+        // every table header green the moment that lookup started working.
+        "headerColor" => Recipe::Grey(0.96),
         "textBackgroundColor" => Recipe::ClassMethod("whiteColor"),
         "textColor" => Recipe::ClassMethod("blackColor"),
         // BLACK ON THE LIGHT BLUE ABOVE, not white. These two are a pair: selected text is drawn in
