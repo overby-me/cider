@@ -74,9 +74,15 @@ def main [
     # container invocation below is one.
     let cider = $"($monopath)/bin/cider"
 
+    # The nixpkgs system must match the guest ABI: a cider running an arm64 guest can only execute
+    # aarch64-darwin binaries, not x86_64-darwin. Derive it from guest_arch in .buckconfig.local.
+    let ga = (do -i { ^grep -m1 'guest_arch' $"($repo)/.buckconfig.local" } | complete | get stdout)
+    let sys = (if ($ga | str contains "arm64") { "aarch64-darwin" } else { "x86_64-darwin" })
+    print $"== nixpkgs system: ($sys) =="
+
     # 2. eval the target drv from the pin
     print $"== eval ($attr).drvPath =="
-    let e = (^nix eval --raw $"github:NixOS/nixpkgs/($REV)#legacyPackages.x86_64-darwin.($attr).drvPath"
+    let e = (^nix eval --raw $"github:NixOS/nixpkgs/($REV)#legacyPackages.($sys).($attr).drvPath"
         | complete)
     let drv = ($e.stdout | str trim)
     if $e.exit_code != 0 or ($drv | is-empty) {
@@ -84,7 +90,7 @@ def main [
         exit 1
     }
     print $"DRV=($drv)"
-    let o = (^nix eval --raw $"github:NixOS/nixpkgs/($REV)#legacyPackages.x86_64-darwin.($attr).outPath"
+    let o = (^nix eval --raw $"github:NixOS/nixpkgs/($REV)#legacyPackages.($sys).($attr).outPath"
         | complete)
     let outhash = ($o.stdout | str trim | path basename)
 
