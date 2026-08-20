@@ -261,7 +261,40 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
     _layoutInvalid = YES;
 }
 
+/*
+ * REPLACE MEANS MOVE EVERY LAYOUT MANAGER, not just this one's pointer.
+ *
+ * Apple documents it as: the new storage takes over from the old, and all the layout managers
+ * sharing the original are moved to it. This forwarded to -setTextStorage:, which changed one
+ * pointer and left the old storage still holding the layout managers.
+ *
+ * MoneyMoney's payment wizard is where that showed: MMTextViewMono installs an MMTextStorageMono of
+ * its own, and the view kept answering with the NSTextStorage_concrete from the nib, so the
+ * application's own -doExpectAmountValue went to a class that has never heard of it and the
+ * add-account window died on an unrecognized selector.
+ */
 - (void) replaceTextStorage: (NSTextStorage *) textStorage {
+    NSTextStorage *previous = _textStorage;
+
+    if (previous == textStorage) {
+        return;
+    }
+
+    if (previous != nil) {
+        /* A COPY, because moving a layout manager mutates the array being walked. */
+        NSArray *managers = [[[previous layoutManagers] copy] autorelease];
+
+        for (NSLayoutManager *manager in managers) {
+            [previous removeLayoutManager: manager];
+            [textStorage addLayoutManager: manager];
+            [manager setTextStorage: textStorage];
+        }
+    }
+
+    /* Whether or not it was in the old storage's list, this layout manager ends up on the new one. */
+    if (![[textStorage layoutManagers] containsObject: self]) {
+        [textStorage addLayoutManager: self];
+    }
     [self setTextStorage: textStorage];
 }
 

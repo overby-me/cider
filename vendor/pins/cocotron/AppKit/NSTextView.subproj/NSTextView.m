@@ -476,8 +476,18 @@ static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourc
     return [_textContainer layoutManager];
 }
 
+/*
+ * THE LAYOUT MANAGER OWNS THE ANSWER, and this used to hand back a cached ivar that could be stale.
+ *
+ * On macOS a text view has no separate text storage of its own: it reads through its layout manager,
+ * so -replaceTextStorage: is visible from here the moment it happens. Caching meant an application
+ * that swapped in a storage subclass kept getting the one the nib had built. The ivar stays as the
+ * fallback for a view with no layout manager yet, which is the state -_setTextStorage: runs in.
+ */
 - (NSTextStorage *) textStorage {
-    return _textStorage;
+    NSTextStorage *fromLayoutManager = [[self layoutManager] textStorage];
+
+    return fromLayoutManager != nil ? fromLayoutManager : _textStorage;
 }
 
 - (BOOL) usesRuler {
@@ -3081,6 +3091,20 @@ static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourc
 - (void) setFrameSize: (NSSize) size {
     [super setFrameSize: size];
     [self _configureTextContainerSize];
+}
+
+/*
+ * THE TEXT INPUT CLIENT FORM OF -insertText:, public since 10.6 and missing, so MoneyMoney's payment
+ * wizard raised an unrecognized selector while filling one of its own fields in.
+ *
+ * A replacement range of {NSNotFound, 0} means "wherever the selection is", which is exactly what
+ * -insertText: already does, so the only work here is honouring a range when one is given.
+ */
+- (void) insertText: (id) string replacementRange: (NSRange) range {
+    if (range.location != NSNotFound) {
+        [self setSelectedRange: range];
+    }
+    [self insertText: string];
 }
 
 - (void) insertText: (id) object {

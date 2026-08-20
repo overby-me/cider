@@ -154,6 +154,7 @@ APPKIT_EXPORT NSString *const NSAllRomanInputSourcesLocaleIdentifier;
 
 - initWithFrame: (NSRect) frame;
 
+- (void) insertText: (id) string replacementRange: (NSRange) range;
 - (NSArray *) allowedInputSourceLocales;
 - (void) setAllowedInputSourceLocales: (NSArray *) locales;
 

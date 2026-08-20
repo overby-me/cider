@@ -21,6 +21,16 @@
 
 @implementation CBManager
 
+/* The base class answers Unknown; CBCentralManager overrides with what this machine can actually
+ * do. Kept out of the forwarding stub below because a state is read, not called for effect. */
+- (CBManagerState) state {
+    return CBManagerStateUnknown;
+}
+
++ (CBManagerAuthorization) authorization {
+    return CBManagerAuthorizationNotDetermined;
+}
+
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];

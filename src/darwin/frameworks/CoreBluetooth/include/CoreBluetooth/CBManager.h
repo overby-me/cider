@@ -19,6 +19,24 @@
 
 #include <Foundation/Foundation.h>
 
+typedef NS_ENUM(NSInteger, CBManagerState) {
+    CBManagerStateUnknown = 0,
+    CBManagerStateResetting,
+    CBManagerStateUnsupported,
+    CBManagerStateUnauthorized,
+    CBManagerStatePoweredOff,
+    CBManagerStatePoweredOn,
+};
+
+typedef NS_ENUM(NSInteger, CBManagerAuthorization) {
+    CBManagerAuthorizationNotDetermined = 0,
+    CBManagerAuthorizationRestricted,
+    CBManagerAuthorizationDenied,
+    CBManagerAuthorizationAllowedAlways,
+};
+
 @interface CBManager : NSObject
+
+@property (nonatomic, readonly) CBManagerState state;
 
 @end

@@ -383,13 +383,34 @@ static void cider_crash_handler(int sig, siginfo_t *info, void *uap)
 		rbp = next;
 	}
 
-	char head[220];
+	char head[512];
 	int len = snprintf(head, sizeof head,
 		"\ncider CRASH signal=%d code=%d addr=%p rip=%p rsp=%p rbp=%p frames=%d\n",
 		sig, info != NULL ? info->si_code : 0, info != NULL ? info->si_addr : NULL,
 		(void *) rip, (void *) rsp, (void *) rbp, count);
 
 	write(2, head, (size_t) len);
+
+	/*
+	 * THE ARGUMENT REGISTERS, because "it faulted reading an object" and "it faulted reading THIS
+	 * object" are different findings and only the second can be chased.
+	 *
+	 * MoneyMoney dies in objc_autorelease + 34, which the disassembly says is andq (%rdi),%rax, the
+	 * isa load. si_addr is 0 and si_code is SI_KERNEL, the signature of a general protection fault,
+	 * so rdi holds a non-canonical pointer -- and the VALUE of it is the whole question: a freed
+	 * object still looks like a heap address, an uninitialised local usually does not.
+	 */
+	if (uc != NULL && uc->uc_mcontext != NULL) {
+		char regs[512];
+		int rlen = snprintf(regs, sizeof regs,
+			"cider CRASH rdi=%p rsi=%p rdx=%p rcx=%p r8=%p r9=%p rax=%p rbx=%p\n",
+			(void *) uc->uc_mcontext->__ss.__rdi, (void *) uc->uc_mcontext->__ss.__rsi,
+			(void *) uc->uc_mcontext->__ss.__rdx, (void *) uc->uc_mcontext->__ss.__rcx,
+			(void *) uc->uc_mcontext->__ss.__r8, (void *) uc->uc_mcontext->__ss.__r9,
+			(void *) uc->uc_mcontext->__ss.__rax, (void *) uc->uc_mcontext->__ss.__rbx);
+
+		write(2, regs, (size_t) rlen);
+	}
 	backtrace_symbols_fd(frames, count, 2);
 
 	struct sigaction dfl;

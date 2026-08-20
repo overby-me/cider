@@ -13418,3 +13418,46 @@ non-canonical pointer. Something garbage is being autoreleased.
 **I considered a misaligned stack hitting a `movaps`** — the elfcall class of bug this port has hit
 before — **and the disassembly rules it out**: `+34` is an ordinary quadword load and `rsp` was
 16-byte aligned at the fault. It is a lifetime question, not an alignment one. Filed as its own task.
+
+### The add-account window opens
+
+`objc_autorelease` was faulting on `0x4071f00000000000`, which is not a pointer at all: it is the
+double **287.0**. Dumping the argument registers in the crash handler is what said so, and the app's
+own disassembly said the rest. The function is:
+
+    pool = objc_autoreleasePoolPush()
+    m = objc_msgSend([CBCentralManager alloc], @selector(initWithDelegate:queue:), self, nil)
+    objc_autorelease(m)                                   <- the fault
+    [self performSelectorOnMainThread: @selector(didConnectToCentralManager:) withObject: m ...]
+
+**`CBCentralManager` was a `forwardInvocation:` stub, and an initialiser must return an object.**
+Its `-methodSignatureForSelector:` answered `"v@:"` for everything, so `initWithDelegate:queue:` was
+forwarded, produced no return value, and the caller autoreleased whatever was in the return register.
+It is a real class now: it keeps its delegate and queue, returns **self**, and delivers
+`centralManagerDidUpdateState:` asynchronously on that queue reporting `CBManagerStateUnsupported`.
+That is the truthful answer here — there is no Bluetooth transport in this container, and
+`PoweredOff` would be a different kind of lie, one that invites an application to ask the user to
+switch something on.
+
+Two more gaps behind it, each one selector wide:
+
+**`-[NSLayoutManager replaceTextStorage:]` only changed one pointer.** Apple documents it as: the new
+storage takes over, and *all* the layout managers sharing the original move with it. It forwarded to
+`-setTextStorage:`. `MMTextViewMono` installs an `MMTextStorageMono` of its own, the view kept
+answering with the `NSTextStorage_concrete` from the nib, and the application's own
+`-doExpectAmountValue` went to a class that has never heard of it. Fixed on both sides: the replace
+moves every layout manager, and **`-[NSTextView textStorage]` now reads through its layout manager**
+instead of a cached ivar that could go stale, which is how macOS defines it.
+
+**`-[NSTextView insertText:replacementRange:]`**, public since 10.6. A replacement range of
+`{NSNotFound, 0}` means "wherever the selection is", which `-insertText:` already does, so the only
+work is honouring a range when one is given.
+
+**Looked at: the Add Account window is up**, with its illustration, the "IBAN or Bankleitzahl" field,
+a green tick beside "Bank Name", an "or" divider, an "Other" choice with a "Credit cards, PayPal,
+Cash" pop-up, and Cancel and Next. Zero exceptions and zero crashes in the run. No credential was
+typed anywhere, and none is needed to reach this.
+
+Chrome still to fix there: the panel has no title bar, the illustration overhangs its panel on the
+left, the IBAN field draws a grey bar rather than a placeholder, and Cancel and Next are plain
+rectangles rather than rounded push buttons.

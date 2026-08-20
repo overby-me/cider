@@ -19,7 +19,44 @@
 
 #include <Foundation/Foundation.h>
 #import <CoreBluetooth/CBCentralManagerConstants.h>
+#import <CoreBluetooth/CBManager.h>
 
-@interface CBCentralManager : NSObject
+@class CBCentralManager;
+@class CBPeripheral;
+@class CBUUID;
+
+@protocol CBCentralManagerDelegate <NSObject>
+@required
+- (void) centralManagerDidUpdateState: (CBCentralManager *) central;
+@end
+
+/*
+ * A CENTRAL MANAGER THAT ANSWERS. There is no Bluetooth transport in this container, and the
+ * documented way to say that is a manager whose state is CBManagerStateUnsupported, delivered to the
+ * delegate on its queue. An application then hides the feature and carries on.
+ *
+ * The alternative, which is what a forwardInvocation: stub does, is to return a garbage value from
+ * -initWithDelegate:queue: and let the caller autorelease it. MoneyMoney did exactly that and died.
+ */
+@interface CBCentralManager : CBManager
+
+/* assign, not weak: this framework is built with manual reference counting, and a
+ * delegate is not owned. */
+@property (nonatomic, assign) id<CBCentralManagerDelegate> delegate;
+@property (nonatomic, readonly) BOOL isScanning;
+
+- (instancetype) initWithDelegate: (id<CBCentralManagerDelegate>) delegate
+                            queue: (dispatch_queue_t) queue;
+- (instancetype) initWithDelegate: (id<CBCentralManagerDelegate>) delegate
+                            queue: (dispatch_queue_t) queue
+                          options: (NSDictionary *) options;
+
+- (void) scanForPeripheralsWithServices: (NSArray *) serviceUUIDs
+                                options: (NSDictionary *) options;
+- (void) stopScan;
+- (void) connectPeripheral: (CBPeripheral *) peripheral options: (NSDictionary *) options;
+- (void) cancelPeripheralConnection: (CBPeripheral *) peripheral;
+- (NSArray *) retrievePeripheralsWithIdentifiers: (NSArray *) identifiers;
+- (NSArray *) retrieveConnectedPeripheralsWithServices: (NSArray *) serviceUUIDs;
 
 @end
