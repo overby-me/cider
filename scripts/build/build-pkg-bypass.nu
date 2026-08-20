@@ -79,6 +79,12 @@ def main [
     let ga = (do -i { ^grep -m1 'guest_arch' $"($repo)/.buckconfig.local" } | complete | get stdout)
     let sys = (if ($ga | str contains "arm64") { "aarch64-darwin" } else { "x86_64-darwin" })
     print $"== nixpkgs system: ($sys) =="
+    # The guest driver (gnix-build.sh) runs a nix binary INSIDE the container, so it must match the
+    # guest ABI. Its built-in default is an x86_64-darwin nix; resolve + realize the one for ($sys)
+    # and hand it over via NIXBIN so an arm64 guest gets an aarch64-darwin nix it can execute.
+    let gnix = (^nix eval --raw $"github:NixOS/nixpkgs/($REV)#legacyPackages.($sys).nix.outPath" | complete | get stdout | str trim)
+    do -i { ^nix build $"github:NixOS/nixpkgs/($REV)#legacyPackages.($sys).nix" --no-link } | ignore
+    print $"== guest nix: ($gnix)/bin =="
 
     # 2. eval the target drv from the pin
     print $"== eval ($attr).drvPath =="
@@ -122,6 +128,7 @@ def main [
         GDB: $dump
         GBIN: $bin
         CIDERPREFIX: $prefix
+        NIXBIN: $"($gnix)/bin"
     }
     # != rather than `not ... == ...`: nushell binds not tighter than ==, so the latter tries
     # to negate a string and fails with "Can't convert to boolean".

@@ -1020,6 +1020,29 @@ only, not captured as patches, so the nix re-materialization is clean; rpc_wire.
 source) reverted. NEXT: M4 -- the full nix build (`buck-nix-bash-check`: guest Nix builds bash inside
 the arm64 container), which re-materializes every pin from patches 0001-0035.
 
+**M4 started (pass 27) -- guest-nix infrastructure adapted for arm64; guest nix now launches under
+cider. Next wall: nix aborts early.** buck-nix-bash-check drives scripts/build/build-pkg-bypass.nu,
+which had bash x86_64-darwin assumptions. Two arm64 adaptations landed:
+  1. The nixpkgs system is now derived from guest_arch (.buckconfig.local): aarch64-darwin for an
+     arm64 guest, since cider can only execute binaries of the guest ABI (a cider arm64 cannot run
+     x86_64-darwin tools). Verified the aarch64-darwin bash derivation resolves.
+  2. scripts/gnix-build.sh hard-defaults to an x86_64-darwin nix; build-pkg-bypass now resolves and
+     realizes the ($sys) nix (aarch64-darwin nix-2.34.8+1 substitutes cleanly from cache) and passes
+     it via NIXBIN, so the guest gets an arm64 nix it can execute. This cleared the NO_NIX_BIN wall.
+With NIXBIN set, the guest nix (aarch64-darwin, under cider) LAUNCHES but aborts very early -- during
+`nix-store --init`/`--load-db`, before gnix-build.sh's =BUILD marker. The only guest output is
+`sigprocess failed internally while processing Linux signal 6: -111`: signal 6 = SIGABRT, and the
+sigexc handler's dserver_rpc_sigprocess RPC then failed with -111 (ECONNREFUSED, daemon connection
+refused) and re-aborted. So there are (at least) two threads to pull next: WHY nix aborts (a real nix
+error vs a cider bug in nix's sqlite/startup; nix forks heavily, so a forked-child RPC-socket gap
+like the earlier fork work is plausible), and WHY the sigexc RPC is refused for that process. Also
+still open: a few aarch64-darwin SDK build-tools (patchutils, cpio, pbzx, make-shell-wrapper-hook)
+are "no substituter" in the cache -- build-pkg-bypass treats that as harmless, matching x86, but it
+may bite once nix runs. M4 is a large, distinct phase: getting nix, then the whole Darwin arm64
+toolchain (clang, ld64/cctools, make, coreutils) to run under cider -- each a bring-up like bash but
+larger. The M3 milestone (bash boots and runs; patches 0030-0035, nix-validated) is the clean base
+it builds on.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
