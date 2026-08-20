@@ -1,0 +1,285 @@
+No requirement in this system has ever been parseable, and here is the whole reason.
+
+WHERE IT SHOWED. MoneyMoney fails code signing with errSecCSResourcesInvalid, the sealed resource
+directory is invalid, and that points at the application plist. It is not the plist. The seal parses
+perfectly: 499 files and 13 rules. The throw is in validateNestedCode, where the designated
+requirement sealing each piece of nested code is parsed:
+
+    CIDER_CSSTEP nested code requirement REFUSED rc=-50 for: anchor apple generic and identifier
+    UpdateHelper and (certificate leaf[field.1.2.840.113635.100.6.1.9] ... subject.OU] = "9BE2AB75LL")
+
+That is an ordinary Apple designated requirement. The same parser had already refused a FIXED,
+Apple-authored string inside isAppleDeveloperCert with the same -50, so this is ONE defect appearing
+twice and not two coincidences.
+
+THE REQUIREMENT LANGUAGE IS PARSED BY A LOADABLE BUNDLE, csparser.bundle, inside Security.framework.
+Four separate things were wrong, each hiding the next:
+
+  1. Security.framework HAS NO Info.plist, so CFBundleGetBundleWithIdentifier("com.apple.security")
+     returned NULL and the plugin path could never even be computed.
+  2. There is no PlugIns symlink at the framework root, so the computed path
+     Security.framework/PlugIns/csparser.bundle did not resolve.
+  3. csparser.bundle was never INSTALLED into the framework at all, though it is built.
+  4. And with the first three fixed by hand, the plugin loads and the entry point still does not
+     resolve, because THE BUNDLE IS 4112 BYTES OF NOTHING: csparser.cpp is twenty-three lines whose
+     entire body is asm(".reference _findAntlrPlugin"). It is a stub that REFERENCES the symbol; the
+     buck target links the stub and none of the ANTLR sources that define it.
+
+So every requirement string in the system is refused, always, and each caller reports that as its
+own kind of failure: errSecCSResourcesInvalid here, -50 in isAppleDeveloperCert.
+
+WHAT THESE TRACES ADD, all under CIDER_TRACE_SECITEM.
+
+The parser plugin now says whether the framework bundle was found, where it is loading the plugin
+from, whether the load succeeded, and whether the ENTRY POINT resolved -- which is a separate failure
+from the load, and the first version of this trace sat before the lookup and so said "loaded" while
+the lookup was failing.
+
+The parser's OWN error text is printed. It was being thrown into a CFError nobody reads, and that
+string is what names the syntax the grammar did not like.
+
+validateNestedCode prints the requirement it was given and the status, instead of reporting a plist
+problem for a parser problem.
+
+ResourceSeal names which of its four identical refusals fired, and the collecting context names every
+resource problem as it is gathered rather than only the one status thrown at the end. Both stayed
+silent here, which is how the search narrowed to the requirement parser.
+--- a/OSX/libsecurity_codesigning/lib/StaticCode.cpp
++++ b/OSX/libsecurity_codesigning/lib/StaticCode.cpp
+@@ -1560,9 +1560,15 @@
+ 			// now check for any errors found in the reporting context
+ 			mResourcesValidated = true;
+ 			mResourcesDeep = flags & kSecCSCheckNestedCode;
++			CIDER_CSSTEP("resource scan finished, collected status=%d",
++			             (int) mResourcesValidContext->osStatus());
+ 			if (mResourcesValidContext->osStatus() != errSecSuccess)
+ 				mResourcesValidContext->throwMe();
+ 		} catch (const CommonError &err) {
++			/* WHAT ACTUALLY PROPAGATED. Every tagged throw site in this file and in resources.cpp
++			 * stayed silent while the caller still saw errSecCSResourcesInvalid, so it is coming
++			 * from somewhere neither of those covers -- report it at the boundary it crosses. */
++			CIDER_CSSTEP("validateResources caught %d", (int) err.osStatus());
+ 			mResourcesValidated = true;
+ 			mResourcesDeep = flags & kSecCSCheckNestedCode;
+ 			mResourcesValidResult = err.osStatus();
+@@ -1610,8 +1616,26 @@
+ 		files = cfget<CFDictionaryRef>(sealedResources, "files");
+ 		version = 1;
+ 	}
+-	if (!rules || !files)
++	if (!rules || !files) {
++		/*
++		 * WHICH HALF IS MISSING, AND OUT OF WHAT. The sealed resource dictionary parsed -- we are
++		 * past resourceDictionary() -- so this is not "no CodeResources"; it is a dictionary that
++		 * does not contain the keys the version we picked requires. Saying which key set was looked
++		 * for, and what the dictionary actually holds, is the difference between "the plist did not
++		 * parse" and "we asked it the wrong question".
++		 */
++		CIDER_CSSTEP("resource seal v%d: rules=%s files=%s, sealed dict has %d keys, "
++		             "files2=%s rules2=%s files=%s rules=%s",
++		             version, rules ? "ok" : "MISSING", files ? "ok" : "MISSING",
++		             (int) CFDictionaryGetCount(sealedResources),
++		             CFDictionaryGetValue(sealedResources, CFSTR("files2")) ? "y" : "n",
++		             CFDictionaryGetValue(sealedResources, CFSTR("rules2")) ? "y" : "n",
++		             CFDictionaryGetValue(sealedResources, CFSTR("files")) ? "y" : "n",
++		             CFDictionaryGetValue(sealedResources, CFSTR("rules")) ? "y" : "n");
+ 		MacOSError::throwMe(errSecCSResourcesInvalid);
++	}
++	CIDER_CSSTEP("resource seal v%d loaded, %d files, %d rules", version,
++	             (int) CFDictionaryGetCount(files), (int) CFDictionaryGetCount(rules));
+ 	return true;
+ }
+ 	
+@@ -2036,8 +2060,21 @@
+ void SecStaticCode::validateNestedCode(CFURLRef path, const ResourceSeal &seal, SecCSFlags flags, bool isFramework)
+ {
+ 	CFRef<SecRequirementRef> req;
+-	if (SecRequirementCreateWithString(seal.requirement(), kSecCSDefaultFlags, &req.aref()))
++	/*
++	 * THE SEAL'S REQUIREMENT STRING, AND WHY IT WAS REFUSED. Nested code -- frameworks, helpers --
++	 * is sealed with a designated requirement, and this is where it is parsed. A failure here is
++	 * reported as errSecCSResourcesInvalid, "the sealed resource directory is invalid", which points
++	 * at the plist rather than at the parser.
++	 *
++	 * The same parser already refused a FIXED, Apple-authored string in isAppleDeveloperCert with
++	 * -50, so this is the second appearance of one defect and not two coincidences.
++	 */
++	OSStatus cider_rc = SecRequirementCreateWithString(seal.requirement(), kSecCSDefaultFlags, &req.aref());
++	if (cider_rc) {
++		CIDER_CSSTEP("nested code requirement REFUSED rc=%d for: %s", (int) cider_rc,
++		             seal.requirement() ? cfString(seal.requirement()).c_str() : "(null)");
+ 		MacOSError::throwMe(errSecCSResourcesInvalid);
++	}
+ 
+ 	// recursively verify this nested code
+ 	try {
+@@ -2487,6 +2524,21 @@
+ void SecStaticCode::CollectingContext::reportProblem(OSStatus rc, CFStringRef type, CFTypeRef value)
+ {
+ 	StLock<Mutex> _(mLock);
++	/*
++	 * EVERY PROBLEM AS IT IS COLLECTED. This context gathers all the resource failures and throws
++	 * ONE status at the end, so the caller learns only that something was wrong with some resource
++	 * out of 499. Naming each one, with the reason key and the path, is the difference between a
++	 * verdict and a diagnosis -- and if they all share a shape, that shape is the bug.
++	 */
++	{
++		string cider_path;
++		if (value && CFGetTypeID(value) == CFURLGetTypeID())
++			cider_path = cfString(CFURLRef(value));
++		else if (value && CFGetTypeID(value) == CFStringGetTypeID())
++			cider_path = cfString(CFStringRef(value));
++		CIDER_CSSTEP("resource problem rc=%d type=%s path=%s", (int) rc,
++		             type ? cfString(type).c_str() : "(none)", cider_path.c_str());
++	}
+ 	if (mStatus == errSecSuccess)
+ 		mStatus = rc;			// record first failure for eventual error return
+ 	if (type) {
+--- a/OSX/libsecurity_codesigning/lib/resources.cpp
++++ b/OSX/libsecurity_codesigning/lib/resources.cpp
+@@ -25,6 +25,8 @@
+ // resource directory construction and verification
+ //
+ #include "resources.h"
++#include <stdio.h>
++#include <stdlib.h>
+ #include "csutilities.h"
+ #include <security_utilities/unix++.h>
+ #include <security_utilities/debugging.h>
+@@ -458,11 +460,28 @@
+ 
+ //
+ // Resource Seals
++/*
++ * WHICH OF THE FOUR REFUSALS. ResourceSeal throws the same errSecCSResourcesInvalid from four
++ * places, and a function that throws one status from several places says only that it refused,
++ * never why. The sealed directory itself is fine here -- 499 files and 13 rules parsed -- so the
++ * refusal is about an individual seal, and which line it is decides whether the plist is wrong or
++ * our CoreFoundation pattern scanner is.
++ */
++static bool CiderTraceSecItem(void) {
++	const char *v = getenv("CIDER_TRACE_SECITEM");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_SEAL(...) do { \
++	if (CiderTraceSecItem()) { fprintf(stderr, "CIDER_SEAL " __VA_ARGS__); fputc('\n', stderr); fflush(stderr); } \
++} while (0)
++
+ //
+ ResourceSeal::ResourceSeal(CFTypeRef it)
+ 	: mDict(NULL), mRequirement(NULL), mLink(NULL), mFlags(0)
+ {
+ 	if (it == NULL) {
++		CIDER_SEAL("seal is NULL");
+ 		MacOSError::throwMe(errSecCSResourcesInvalid);
+ 	}
+ 	if (CFGetTypeID(it) == CFDataGetTypeID()) {	// old-style form with just a hash
+@@ -470,6 +489,7 @@
+ 	} else if (CFGetTypeID(it) == CFDictionaryGetTypeID()) {
+ 		mDict = CFDictionaryRef(it);
+ 	} else {
++		CIDER_SEAL("seal is neither data nor dictionary, typeID=%d", (int) CFGetTypeID(it));
+ 		MacOSError::throwMe(errSecCSResourcesInvalid);
+ 	}
+ 
+@@ -484,6 +504,10 @@
+ 	}
+ 
+ 	if (err) {
++		CIDER_SEAL("cfscan refused the seal dictionary (%d keys, requirement=%s symlink=%s)",
++		           (int) CFDictionaryGetCount(mDict),
++		           CFDictionaryGetValue(mDict, CFSTR("requirement")) ? "y" : "n",
++		           CFDictionaryGetValue(mDict, CFSTR("symlink")) ? "y" : "n");
+ 		MacOSError::throwMe(errSecCSResourcesInvalid);
+ 	}
+ 	if (optional) {
+@@ -503,6 +527,8 @@
+ 		hash = CFDictionaryGetValue(mDict, CFSTR("hash"));
+ 	}
+ 	if (hash == NULL || CFGetTypeID(hash) != CFDataGetTypeID()) {
++		CIDER_SEAL("no usable hash named %s in the seal (%d keys), hash key %s",
++		           name.c_str(), (int) CFDictionaryGetCount(mDict), hash ? "present but wrong type" : "absent");
+ 		MacOSError::throwMe(errSecCSResourcesInvalid);
+ 	}
+ 	return CFDataGetBytePtr(CFDataRef(hash));
+--- a/OSX/libsecurity_codesigning/lib/reqparser.cpp
++++ b/OSX/libsecurity_codesigning/lib/reqparser.cpp
+@@ -25,6 +25,8 @@
+ // reqparser - interface to Requirement language parser/compiler
+ //
+ #include "reqparser.h"
++#include <stdio.h>
++#include <stdlib.h>
+ #include "antlrplugin.h"
+ #include "cserror.h"
+ #include "codesigning_dtrace.h"
+@@ -36,6 +38,27 @@
+ namespace CodeSigning {
+ 
+ 
++/*
++ * DOES THE PARSER PLUGIN EVEN LOAD, AND WHAT DOES IT SAY?
++ *
++ * The requirement language is parsed by a LOADABLE BUNDLE, csparser.bundle, inside
++ * Security.framework. Every requirement in the system goes through it: the designated requirement
++ * sealing each piece of nested code, and the fixed Apple-authored string isAppleDeveloperCert uses.
++ * Both were refused with -50 here, which reads as a malformed requirement rather than as a missing
++ * parser, and the difference is invisible without asking.
++ *
++ * The parser also produces its OWN error text, which was thrown away into a CFError nobody printed.
++ * That string names the syntax it did not like.
++ */
++static bool CiderTraceSecItem(void) {
++	const char *v = getenv("CIDER_TRACE_SECITEM");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_REQ(...) do { \
++	if (CiderTraceSecItem()) { fprintf(stderr, "CIDER_REQ " __VA_ARGS__); fputc('\n', stderr); fflush(stderr); } \
++} while (0)
++
+ struct PluginHost {
+ 	PluginHost();
+ 	RefPointer<LoadableBundle> plugin;
+@@ -51,17 +74,25 @@
+ //
+ PluginHost::PluginHost()
+ {
+-	if (CFBundleRef securityFramework = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.security")))
++	CFBundleRef securityFramework = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.security"));
++	CIDER_REQ("Security.framework bundle = %p", (void *) securityFramework);
++	if (securityFramework)
+ 		if (CFRef<CFURLRef> plugins = CFBundleCopyBuiltInPlugInsURL(securityFramework))
+ 			if (CFRef<CFURLRef> pluginURL = makeCFURL("csparser.bundle", true, plugins)) {
++				CIDER_REQ("loading parser plugin from %s", cfString(pluginURL).c_str());
+ 				plugin = new LoadableBundle(cfString(pluginURL).c_str());
+ 				plugin->load();
++				CIDER_REQ("parser plugin loaded, looking up %s", FINDANTLRPLUGIN);
+ 				CODESIGN_LOAD_ANTLR();
++				/* The symbol lookup is a separate failure from the load, and the old trace sat
++				 * BEFORE it -- "loaded" said nothing about whether the entry point was found. */
+ 				antlr = reinterpret_cast<FindAntlrPlugin *>(plugin->lookupSymbol(FINDANTLRPLUGIN))();
++				CIDER_REQ("parser entry point resolved, antlr=%p", (void *) antlr);
+ 				return;
+ 			}
+ 				
+ 	// can't load plugin - fail
++	CIDER_REQ("NO PARSER PLUGIN: every requirement in the system will be refused");
+     Syslog::warning("code signing problem: unable to load csparser plug-in");
+ 	MacOSError::throwMe(errSecCSInternalError);
+ }
+@@ -77,8 +108,11 @@
+ 	string errors;
+ 	if (const Result *result = (plugin().antlr->*func)(source, errors))
+ 		return result;
+-	else
+-		CSError::throwMe(errSecCSReqInvalid, kSecCFErrorRequirementSyntax, CFTempString(errors));		
++	else {
++		/* The parser's OWN message, which was thrown into a CFError nobody reads. */
++		CIDER_REQ("parser refused it: %s", errors.c_str());
++		CSError::throwMe(errSecCSReqInvalid, kSecCFErrorRequirementSyntax, CFTempString(errors));
++	}		
+ }
+ 
+ 

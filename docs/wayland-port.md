@@ -12977,3 +12977,48 @@ one cost a while to recognise.
 to `EINVAL`. They ask for a *caching preference*, not a guarantee; succeeding and doing nothing is
 what an advisory hint permits. That is not code-signing-specific — any guest asking for one was
 getting an error.
+
+### No requirement in this system has ever been parseable
+
+`errSecCSResourcesInvalid` says "the sealed resource directory is invalid", which points at the
+application's plist. **It is not the plist.** The seal parses perfectly — 499 files, 13 rules. The
+throw is in `validateNestedCode`, parsing the designated requirement that seals each piece of nested
+code:
+
+```
+nested code requirement REFUSED rc=-50 for: anchor apple generic and identifier UpdateHelper and
+(certificate leaf[field.1.2.840.113635.100.6.1.9] … certificate leaf[subject.OU] = "9BE2AB75LL")
+```
+
+That is an ordinary Apple designated requirement. And the same parser had already refused a **fixed,
+Apple-authored** string inside `isAppleDeveloperCert` with the same −50 — so this is **one defect
+appearing twice**, not two coincidences.
+
+The requirement language is parsed by a loadable bundle, `csparser.bundle`, inside
+Security.framework. **Four things were wrong, each hiding the next:**
+
+1. **Security.framework has no `Info.plist`**, so `CFBundleGetBundleWithIdentifier("com.apple.security")`
+   returned NULL and the plugin path could never be computed.
+2. **No `PlugIns` symlink** at the framework root, so the computed
+   `Security.framework/PlugIns/csparser.bundle` did not resolve.
+3. **`csparser.bundle` is never installed** into the framework, though it is built.
+4. With the first three fixed by hand the plugin loads — and the entry point still does not resolve,
+   because **the bundle is 4112 bytes of nothing**. `csparser.cpp` is twenty-three lines whose entire
+   body is `asm(".reference _findAntlrPlugin")`: a stub that *references* the symbol. The buck target
+   links the stub and none of the ANTLR sources that define it.
+
+So every requirement string in the system is refused, always, and each caller reports it as its own
+kind of failure.
+
+**Next**: give `csparser.bundle` its actual contents — `antlrplugin.cpp`, the generated
+`RequirementLexer`/`RequirementParser`, and the `antlr2` runtime that already has a target — then wire
+all four pieces into `buck/prefix/BUCK` together. The three hand-installed pieces are in the runtime
+now for iteration speed but are **not in the build**, so a fresh deploy loses them.
+
+Instruments added (all `CIDER_TRACE_SECITEM`, `vendor/patches/security/0009`): the plugin host says
+whether the framework bundle was found, where it loads from, whether the load succeeded, and whether
+the **entry point** resolved — a separate failure from the load, and my first version of that trace
+sat before the lookup and so printed "loaded" while the lookup was failing. The parser's own error
+text is printed instead of being thrown into a CFError nobody reads. `ResourceSeal` names which of its
+four identical refusals fired, and the collecting context names every resource problem as it is
+gathered. Both stayed silent, which is how the search narrowed to the parser.
