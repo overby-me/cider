@@ -12276,3 +12276,28 @@ and releases an object whose class pointer is already dead.
 That is a plain crash on the **normal** exit path of any daemon whose `main` ends in
 `dispatch_main()`, which is every Security daemon here. It is a strong candidate for securityd's
 silent exit 1 (#137) and secd's behaviour too, and it is the next thing to fix.
+
+### `dispatch_main` is not enough on its own
+
+The trustd stack says the fault is in the autorelease-pool drain that `dispatch_main`'s
+`pthread_exit` triggers, so that should reproduce in twenty lines.
+`//src/darwin/probes:dispatchmain-probe` autoreleases an `NSObject`, posts a main-queue block, and
+calls `dispatch_main`:
+
+```
+CIDER_DM autoreleased an NSObject at 0x7aac2843fd90
+CIDER_DM calling dispatch_main
+CIDER_DM main queue block ran
+CIDER_DM still alive 8 seconds after dispatch_main, no crash
+```
+
+**It does not crash.** So the diagnosis is incomplete: parking the main thread and draining a pool
+with an object in it is not what kills trustd. Whatever is in *trustd's* pool matters, and the fault
+is a use-after-free (`objc_release` on an object whose isa is already dead) rather than anything
+structural about `dispatch_main`.
+
+**And the first version of this probe measured nothing.** Its main-queue block called `exit(0)`, so
+the process ended *before* `dispatch_main` ever parked the main thread — the only thing under test.
+It printed a clean run and would have been read as "no crash". A probe that exits before reaching
+the code it is aimed at is worse than no probe; the fix is the `dispatch_after` that lets it survive
+to be parked and still terminate.
