@@ -592,8 +592,32 @@ static NSRect boundsToTitleAreaRect(NSRect rect) {
     BOOL mouseMoved = NO;
 
     NSTimeInterval firstTimestamp = 0.;
+    int ciderTraced = 0;
+
     do {
         NSInteger index = [self itemIndexForPoint: point];
+
+        /* WHERE THE LOOP THINKS THE POINTER IS. A menu that opens and then selects nothing is either
+         * being told the wrong position or never asked again; printing the global point, the point
+         * in view coordinates and the index it produces separates those. Capped so a sticky menu
+         * does not fill the log. Same gate as the rest of the menu tracing. */
+        /* A CAP OF 24 IS A LIE ABOUT A ONE SECOND DRAG. This loop runs about twenty times a second,
+         * so twenty four lines cover the first second only, which is BEFORE a driver that holds the
+         * button for 900 ms moves the pointer at all. The first reading of this trace concluded the
+         * position never changes; what it showed was the trace stopping before anything happened. */
+        if (ciderTraced < 400 && getenv("CIDER_TRACE_MENU") != NULL &&
+            getenv("CIDER_TRACE_MENU")[0] != (char) 0) {
+            NSPoint global = [NSEvent mouseLocation];
+            NSRect wf = [[self window] frame];
+
+            ciderTraced++;
+            fprintf(stderr,
+                    "CIDER_POPUPLOOP global=%.0f,%.0f view=%.0f,%.0f index=%ld state=%d "
+                    "menuFrame=%.0fx%.0f@%.0f,%.0f\n",
+                    global.x, global.y, point.x, point.y, (long) index, (int) state,
+                    wf.size.width, wf.size.height, wf.origin.x, wf.origin.y);
+            fflush(stderr);
+        }
 
         /*
          If the popup is activated programmatically with performClick: index may

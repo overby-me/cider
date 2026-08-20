@@ -13703,3 +13703,32 @@ macOS — `titleSize=82x19` for `Batch transfer` at 13pt where macOS is nearer 8
 
 What is left is a narrower question than the one filed: find which of the three widths it measures and
 compare that single number with macOS. **Trace the measuring call, not the truncation.**
+
+### The pop-up menu opens in a second application
+
+The `menuNeedsUpdate:` fix was tested against MoneyMoney; a second application is what says it was a
+framework fix rather than one application's shape. **Looked at: Swift Publisher's zoom pop-up opens**
+with eleven items — 25%, 50%, 75%, 100%, 125%, 150%, 200%, 300%, a separator, Fit Width, Fit Height,
+Fit Page — in full, on a rounded panel with a shadow.
+
+That also **corrects something I wrote last rung**. I noted MoneyMoney's menu came out "exactly as
+wide as its button" and implied our sizing was wrong. It is not: this menu is 94 wide for a ~50 wide
+button and sizes to its widest item. MoneyMoney's coincidence came from its own pre-truncated titles.
+
+**Choosing from it still does not work**, and the measurement is precise. `CIDER_POPUPLOOP` prints the
+global point, the view point and the index each pass:
+
+    global=275,633  index=NSNotFound   x228     the press
+    global=275,565  index=-1           x172     after the drag
+
+The pointer does move. The menu spans Cocoa y 316..625; the press at top-y 120 reads 633, correctly 8
+above the menu, and the drag to top-y 236 should read 517 but reads 565 — **68 too high, which is the
+oversize-window offset this port already knows**. `-[NSEvent mouseLocation]` and the event path are
+applying different flips for the same window. Filed as its own task with the numbers.
+
+**Two of my own readings were wrong on the way and are corrected here.** "The pointer never moves"
+came from a trace capped at 24 lines, and the loop runs about 20 times a second while the driver holds
+the button for 900 ms — 24 lines cover the first second, entirely before the move. And "the Wayland
+pump is starved by periodic events" was refuted before it reached the page: the `nextevent` counter
+shows 21 calls a second across the menu, so `session::pump()` runs on essentially every pass and the
+2 ms `skip_work` shortcut never fires. **A cap is a lie about anything slower than the cap.**
