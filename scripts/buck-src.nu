@@ -186,6 +186,17 @@ def main [--all, ...paths: string] {
             }
             $"($assembled)\n" | save -f $stamp
         }
+        # NORMALISE, the same pass the per-path branch runs at the end of every tree (see the
+        # cider-src-normalise call below). The --all copy takes each tree VERBATIM from the
+        # assembled store (nix build .#cider-src), and that derivation does NOT normalise: the
+        # "." component and cell-escaping links are rewritten only here in the per-path branch
+        # and in assembleProject (ciderBuck2Graph.nix) for the Nix-graph build. Without this
+        # pass a direct `buck2 build` against this vendor/src dies on corefoundation's 94
+        # flat-header links (include/CoreFoundation/./CFArray.h) with "path contains
+        # platform-specific path separator", and every framework build fails at graph load. One
+        # pass over the whole tree; the binary is idempotent and re-running is the normal case.
+        print "vendor/src: normalising symlinks (cider-src-normalise) ..."
+        ^cider-src-normalise --repo $repo_root $dest_root
         let size = (^du -sh $dest_root | split row "\t" | first)
         print $"vendor/src: done \(($size))"
         exit 0
