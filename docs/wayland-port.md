@@ -13905,3 +13905,34 @@ geometry rather than from a guess about our layout.
 Alignment was the obvious suspect and it is innocent: cocotron reads it from `NSCellFlags2` bits
 16-18, which give 0 (left) for all four margin labels and 2 (centre) for the section headers, and the
 headers do come out centred.
+
+### The subview order was reversed, and every binding option was thrown away
+
+Two defects in the nib decoders, found from one overlapping label and each one affecting every
+application.
+
+**`-[NSCustomView initWithCoder:]` added its subviews in REVERSE**, with a comment saying the nib
+presents them backwards and that the reversal matches Cocoa. It does not. The container's array is
+the z order: AppKit paints subviews in array order and hit-tests them backwards, so reversing it puts
+the first view on top of the last. Measured against two nibs: Swift Publisher's margin cluster came
+out as the exact reverse of its archive, all 22 subviews, and MoneyMoney's footer likewise. `-[NSView
+initWithCoder:]` on the same key adds them in order, so this was also the odd one out. In order now,
+and the margin labels read `Top` and `Right` instead of `op` and `ight`.
+
+**Then MoneyMoney's add button stopped taking clicks, and that was the real find.** The footer's
+status label is hidden in the nib and overlaps the add button, so with the order corrected it was
+suddenly on top and ate the click. `CIDER_HIDDEN`, a new trace on `-[NSView setHidden:]` with its
+caller, printed the whole story in one line:
+
+    CIDER_HIDDEN MMLabel 446x23 at 23,0 <- 0 (was 1) from -[_NSKVOBinder writeDestinationToSource]
+
+The nib hid it and our own binder showed it. The nib binds that label's `hidden` to
+`canCancelRefresh` **through `NSNegateBoolean`**, and the archive stores that option as an
+`NSDictionary`. `_NSNIBArchiveUnarchiver` builds containers itself, and it built strings, numbers,
+arrays, sets and data - **not dictionaries**. So every binding option in every nib decoded to nothing:
+246 empty and 31 nil in one MoneyMoney launch, not one with an option. A dictionary is a run of pairs
+under the same empty key, exactly like an array's members, and it is a dozen lines to build.
+
+With both fixed: `options=NSValueTransformerName`, the label stays hidden, the add menu opens at the
+button again, and the footer draws `+` with a pull-down arrow rather than `+x`, because the second
+button was hidden by the same kind of binding.

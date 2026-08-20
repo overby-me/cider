@@ -523,6 +523,43 @@ static BOOL NIBTracing(void) {
         return contents;
     }
 
+    if ([className isEqualToString: @"NSDictionary"] ||
+        [className isEqualToString: @"NSMutableDictionary"]) {
+        /*
+         * A DICTIONARY IS A RUN OF PAIRS, and without this it decoded to nothing at all. Every
+         * binding option in every nib was lost: MoneyMoney binds its footer label's hidden to
+         * canCancelRefresh through NSNegateBoolean, and with the option gone the label came up
+         * VISIBLE and swallowed the clicks meant for the add button underneath it. Keys and values
+         * alternate under the same empty key, exactly as an array's members do.
+         */
+        NSMutableDictionary *contents = [[NSMutableDictionary alloc] init];
+        id pendingKey = nil;
+        NSUInteger i;
+
+        _instances[index] = contents;
+
+        for (i = 0; i < object->valueCount; i++) {
+            struct _NIBValue *value = [self _valueForObject: object at: i];
+
+            if (value == NULL || value->kind != _NIBValueObject) {
+                continue;
+            }
+
+            id member = [self _objectAtIndex: value->payload.object];
+
+            if (member == nil) {
+                continue;
+            }
+            if (pendingKey == nil) {
+                pendingKey = member;
+            } else {
+                [contents setObject: member forKey: pendingKey];
+                pendingKey = nil;
+            }
+        }
+        return contents;
+    }
+
     if ([className isEqualToString: @"NSData"] ||
         [className isEqualToString: @"NSMutableData"]) {
         NSUInteger i;

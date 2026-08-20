@@ -53,12 +53,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                 newView->_tag = [coder decodeIntForKey: @"NSTag"];
             NSArray *subviews = [coder decodeObjectForKey: @"NSSubviews"];
 
-            // For some unknown reason custom view subviews are presented in
-            // reverse order in the nib - so we need to add them in reverse -
-            // this matches Cocoa behaviour
-            NSEnumerator *reverseEnum = [subviews reverseObjectEnumerator];
-            NSView *subview = nil;
-            while ((subview = [reverseEnum nextObject])) {
+            /*
+             * IN ORDER, WHICH IS THE Z ORDER. This used to add them reversed, with a comment saying
+             * the nib presents them backwards and that the reversal matches Cocoa. The nib says the
+             * opposite: Swift Publisher's margin cluster lists its steppers BEFORE the labels whose
+             * boxes overlap them, which only reads correctly if the labels paint last, and reversed
+             * they painted first and each label lost its first letter behind a stepper. -[NSView
+             * initWithCoder:] on the same key adds them in order, so this was also the odd one out.
+             */
+            for (NSView *subview in subviews) {
                 [newView->_subviews addObject: subview];
             }
 

@@ -340,8 +340,21 @@ typedef struct __VFlags {
             _tag = [keyed decodeIntForKey: @"NSTag"];
 
         // Subviews come in from the nib in back to front order
-        [_subviews
-                addObjectsFromArray: [keyed decodeObjectForKey: @"NSSubviews"]];
+        NSArray *decodedSubviews = [keyed decodeObjectForKey: @"NSSubviews"];
+
+        /* THE ORDER IS THE Z ORDER. AppKit paints subviews in array order, so a container whose
+         * array arrives reversed paints its first view last. Printed as decoded, before anything
+         * here can touch it, so the answer says whether the decoder or AppKit did it. */
+        if (getenv("CIDER_TRACE_VIEWS") != NULL && [decodedSubviews count] > 1) {
+            fprintf(stderr, "CIDER_SUBVIEWS decoded %lu for %s:",
+                    (unsigned long) [decodedSubviews count], object_getClassName(self));
+            for (NSView *one in decodedSubviews)
+                fprintf(stderr, " %s@%.0f,%.0f", object_getClassName(one), [one frame].origin.x,
+                        [one frame].origin.y);
+            fprintf(stderr, "\n");
+            fflush(stderr);
+        }
+        [_subviews addObjectsFromArray: decodedSubviews];
         [_subviews
                 makeObjectsPerformSelector: @selector(viewWillMoveToSuperview:)
                                 withObject: self];
@@ -1021,6 +1034,21 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 }
 
 - (void) setHidden: (BOOL) flag {
+    /* WHO SHOWS A VIEW THE NIB HID. MoneyMoney's footer status label is hidden in the nib and
+     * overlaps the add button, so a label that is visible eats the click that should open the menu. */
+    if (getenv("CIDER_TRACE_VIEWS") != NULL && getenv("CIDER_TRACE_VIEWS")[0] != '\0') {
+        Dl_info info;
+        void *ret = __builtin_return_address(0);
+        int have = dladdr(ret, &info);
+
+        fprintf(stderr, "CIDER_HIDDEN %s %.0fx%.0f at %.0f,%.0f <- %d (was %d) from %s in %s +%#lx\n",
+                object_getClassName(self), _frame.size.width, _frame.size.height, _frame.origin.x,
+                _frame.origin.y, (int) flag, (int) _isHidden,
+                (have != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
+                (have != 0 && info.dli_fname != NULL) ? info.dli_fname : "?",
+                (have != 0) ? (unsigned long) ((char *) ret - (char *) info.dli_fbase) : 0UL);
+        fflush(stderr);
+    }
     flag = flag ? YES : NO;
 
     if (_isHidden != flag) {

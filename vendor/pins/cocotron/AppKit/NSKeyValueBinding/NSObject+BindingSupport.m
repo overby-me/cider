@@ -261,12 +261,18 @@ void NSDetermineBindingDebugLoggingLevel(void) {
                 ? nil
                 : [ciderValue description];
 
-        fprintf(stderr, "CIDER_BIND %s(%p) %s -> %s.%s value=%s(%.40s) count=%ld\n",
+        /* THE OPTIONS DECIDE THE MEANING. MoneyMoney binds a footer label's hidden to
+         * canCancelRefresh through NSNegateBoolean; without the option the label shows when it
+         * should hide, and it covers the button underneath. */
+        NSString *ciderOptions = [[options allKeys] componentsJoinedByString: @","];
+
+        fprintf(stderr, "CIDER_BIND %s(%p) %s -> %s.%s value=%s(%.40s) count=%ld options=%s\n",
                 object_getClassName(self), (void *) self, [binding UTF8String],
                 object_getClassName(destination), keyPath != nil ? [keyPath UTF8String] : "(nil)",
                 ciderValue != nil ? object_getClassName(ciderValue) : "nil",
                 [ciderText UTF8String] ?: "",
-                [ciderValue respondsToSelector: @selector(count)] ? (long) [ciderValue count] : -1);
+                [ciderValue respondsToSelector: @selector(count)] ? (long) [ciderValue count] : -1,
+                [ciderOptions UTF8String] ?: "(none)");
         fflush(stderr);
     }
 

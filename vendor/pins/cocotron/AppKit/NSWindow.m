@@ -233,9 +233,11 @@ static void _CiderDumpViewTree(NSView *view, int depth)
     /* The mask belongs next to the frame: a subview that stays empty while its container grows is
      * either masked to stay that way or was never given a size to grow from, and the two look
      * identical in a frame-only dump. */
-    fprintf(stderr, "CIDER_VIEW %*s%s %.0fx%.0f at %.0f,%.0f mask=0x%x%s%s\n", depth * 2, "",
-            object_getClassName(view), frame.size.width, frame.size.height,
-            frame.origin.x, frame.origin.y, (unsigned) [view autoresizingMask],
+    /* HIDDEN BELONGS HERE TOO: a view the nib hides takes no clicks and draws nothing, and without
+     * it a tree dump cannot tell that from a view that is simply behind another. */
+    fprintf(stderr, "CIDER_VIEW %*s%s %.0fx%.0f at %.0f,%.0f mask=0x%x hidden=%d%s%s\n", depth * 2,
+            "", object_getClassName(view), frame.size.width, frame.size.height,
+            frame.origin.x, frame.origin.y, (unsigned) [view autoresizingMask], (int) [view isHidden],
             (text != nil && [text length] > 0) ? " text: " : "",
             (text != nil && [text length] > 0) ? [text UTF8String] : "");
 
