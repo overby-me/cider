@@ -1,0 +1,175 @@
+Order the certificate chain, and MoneyMoney's signature validates.
+
+SecStaticCodeCheckValidity = 0. The application no longer says its own file seems to be damaged.
+
+WHAT WAS WRONG. The CMS carries a SET of certificates with no order; producing an ORDERED chain,
+leaf first and root last, is one of the things a real trust evaluation does, and the no-trustd
+fallback was copying the set verbatim. "anchor" in the requirement language means the LAST entry of
+the chain, so every requirement mentioning an anchor was asking whether MoneyMoney's own leaf was an
+Apple certificate authority:
+
+    anchor apple generic: chain has 4,
+    anchor subject=Developer ID Application: MRH applications GmbH (9BE2AB75LL) isAppleCA=0
+
+Now the chain is built by walking issuer to subject from the leaf:
+
+    chain[0] = Developer ID Application: MRH applications GmbH (9BE2AB75LL)
+    chain[1] = Developer ID Certification Authority
+    chain[2] = Apple Root CA
+    anchor apple generic: anchor subject=Apple Root CA isAppleCA=1
+
+AND ONE MISTAKE OF MINE IN THE MIDDLE OF THAT, worth keeping because it looked so reasonable. The
+first version appended any certificate that was not on the path, on the grounds that an odd
+certificate set should not silently lose entries. MoneyMoney's set contains the leaf TWICE, so the
+chain came out leaf, DevID CA, Apple Root, leaf -- with the duplicate leaf LAST, which is exactly the
+entry anchor means, and the anchor test failed identically to before the ordering. A CHAIN IS A
+PATH, NOT A SET. Certificates that are not on the path are not part of it.
+
+THE VERDICT, walked down over two rungs as each cause was removed:
+
+    -67061  a false label: an unverifiable timestamp discarding a good signature   security/0007
+    -50     the trust evaluation never happened                                    security/0008
+    100022  errSecErrnoBase + EINVAL from fcntl(F_NOCACHE)                         xnu/0020
+    -67055  NO requirement could be parsed: the parser was never reachable         security/0009
+    -67021  two nested components failed a requirement that could not match
+    0       valid
+
+MoneyMoney now gets past its own code signature check and reaches "Opening database". It stops there
+on a different alert -- it cannot delete its temporary database file under
+/Users/root/Library/Application Support -- which is a filesystem question and a fresh piece of work.
+
+The evaluator trace that found this is kept: it prints the whole chain in order beside the anchor
+verdict, because "the anchor is wrong" and "the chain is unordered" look identical when only the last
+entry is printed.
+--- a/OSX/sec/Security/SecTrust.c
++++ b/OSX/sec/Security/SecTrust.c
+@@ -1703,7 +1703,61 @@
+                     bool cider_lenient = (cider_strict == NULL || cider_strict[0] == '\0');
+ 
+                     if (cider_lenient) {
+-                        trust->_chain = CFArrayCreateCopy(NULL, trust->_certificates);
++                        /*
++                         * ORDERED LEAF FIRST, ROOT LAST, by issuer/subject linkage.
++                         *
++                         * The CMS carries a SET of certificates with no order; producing an ordered
++                         * chain is one of the things a real trust evaluation does. Copying the set
++                         * verbatim left MoneyMoney's leaf as the last entry, and "anchor" means the
++                         * LAST entry -- so every requirement mentioning an anchor was asking "is the
++                         * leaf an Apple CA?" and being told no:
++                         *
++                         *   anchor apple generic: chain has 4,
++                         *   anchor subject=Developer ID Application: MRH applications GmbH (9BE2AB75LL)
++                         *   isAppleCA=0
++                         *
++                         * Index 0 is the leaf by definition here (SecTrustGetCertificateAtIndex
++                         * returns _certificates[0] for index 0), so walk issuers from it.
++                         *
++                         * ANYTHING NOT ON THAT PATH IS DROPPED, and the first version of this got
++                         * that wrong. It appended the unlinked leftovers "so an odd certificate set
++                         * does not silently lose entries", and MoneyMoney's set contains the leaf
++                         * TWICE, so the chain came out [leaf, DevID CA, Apple Root, leaf] -- with the
++                         * duplicate leaf last, which is precisely the entry "anchor" means. The
++                         * anchor test then asked whether the leaf was an Apple CA and was told no,
++                         * exactly as before the ordering. A chain is a PATH, not a set.
++                         */
++                        CFIndex certN = CFArrayGetCount(trust->_certificates);
++                        CFMutableArrayRef ordered = CFArrayCreateMutable(NULL, certN, &kCFTypeArrayCallBacks);
++                        CFMutableSetRef placed = CFSetCreateMutable(NULL, 0, NULL);
++                        SecCertificateRef walk = (SecCertificateRef)CFArrayGetValueAtIndex(trust->_certificates, 0);
++
++                        while (walk != NULL) {
++                            CFArrayAppendValue(ordered, walk);
++                            CFSetAddValue(placed, walk);
++
++                            CFDataRef issuer = SecCertificateCopyIssuerSequence(walk);
++                            SecCertificateRef next = NULL;
++
++                            if (issuer) {
++                                for (CFIndex ix = 0; ix < certN; ix++) {
++                                    SecCertificateRef cand = (SecCertificateRef)CFArrayGetValueAtIndex(trust->_certificates, ix);
++                                    if (CFSetContainsValue(placed, cand))
++                                        continue;   /* also stops a self-signed root looping */
++                                    CFDataRef subject = SecCertificateCopySubjectSequence(cand);
++                                    bool match = subject && CFEqual(subject, issuer);
++                                    CFReleaseNull(subject);
++                                    if (match) {
++                                        next = cand;
++                                        break;
++                                    }
++                                }
++                                CFRelease(issuer);
++                            }
++                            walk = next;
++                        }
++                        CFRelease(placed);
++                        trust->_chain = ordered;
+                     } else {
+                         SecCertificateRef leafCert = (SecCertificateRef)CFArrayGetValueAtIndex(trust->_certificates, 0);
+                         trust->_chain = CFArrayCreate(NULL, (const void**)&leafCert, 1, &kCFTypeArrayCallBacks);
+--- a/OSX/libsecurity_codesigning/lib/reqinterp.cpp
++++ b/OSX/libsecurity_codesigning/lib/reqinterp.cpp
+@@ -26,6 +26,8 @@
+ //
+ 
+ #include "reqinterp.h"
++#include <stdio.h>
++#include <stdlib.h>
+ #include "codesigning_dtrace.h"
+ #include <Security/SecTrustSettingsPriv.h>
+ #include <Security/SecCertificatePriv.h>
+@@ -354,11 +356,53 @@
+ 
+ //
+ // Check the Apple-signed condition
++/*
++ * WHY A REQUIREMENT THAT PARSES DOES NOT MATCH.
++ *
++ * Now that the parser is reachable, requirements COMPILE and then evaluate to false: two nested
++ * components of MoneyMoney fail their designated requirement, and isAppleDeveloperCert returns false
++ * for a Developer ID application whose chain plainly ends at an Apple root.
++ *
++ * anchor apple generic is just isAppleCA on the LAST certificate of the chain, and the chain handed
++ * to the evaluator comes from the CMS signature rather than from a verified trust evaluation. Saying
++ * how many certificates there are and what the anchor test said separates "the chain is wrong" from
++ * "the anchor table is empty".
++ */
++static bool CiderTraceSecItem(void) {
++	const char *v = getenv("CIDER_TRACE_SECITEM");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_REQEVAL(...) do { \
++	if (CiderTraceSecItem()) { fprintf(stderr, "CIDER_REQEVAL " __VA_ARGS__); fputc('\n', stderr); fflush(stderr); } \
++} while (0)
++
+ //
+ bool Requirement::Interpreter::appleAnchored()
+ {
+-	if (SecCertificateRef cert = mContext->cert(anchorCert))
+-		if (isAppleCA(cert))
++	SecCertificateRef cert = mContext->cert(anchorCert);
++	bool apple = cert ? isAppleCA(cert) : false;
++
++	if (CiderTraceSecItem()) {
++		/* WHICH certificate is being treated as the anchor. anchorCert is the LAST entry of the
++		 * chain, and the chain here is a copy of the CMS certificate SET, which is unordered -- a
++		 * real trust evaluation is what puts leaf first and root last. If the subject printed is not
++		 * a root, the anchor test is being asked about the wrong certificate. */
++		CFStringRef sub = cert ? SecCertificateCopySubjectSummary(cert) : NULL;
++		std::string subject = sub ? cfString(sub) : "(none)";
++		if (sub) CFRelease(sub);
++		CIDER_REQEVAL("anchor apple generic: chain has %d, anchor subject=%s isAppleCA=%d",
++		              (int) mContext->certCount(), subject.c_str(), apple ? 1 : 0);
++		/* The WHOLE chain in order, because "the anchor is wrong" and "the chain is unordered" look
++		 * identical when only the last entry is printed. */
++		for (unsigned int ix = 0; ix < mContext->certCount(); ix++) {
++			SecCertificateRef c = mContext->cert((int) ix);
++			CFStringRef s = c ? SecCertificateCopySubjectSummary(c) : NULL;
++			CIDER_REQEVAL("  chain[%u] = %s", ix, s ? cfString(s).c_str() : "(none)");
++			if (s) CFRelease(s);
++		}
++	}
++	if (cert && apple)
+ 		return true;
+ 	return false;
+ }

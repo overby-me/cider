@@ -13053,3 +13053,50 @@ configuration. −67021 is still a failure.
 **Two of the three hand-installed runtime pieces are now unnecessary** (the framework `Info.plist`
 and the `PlugIns` symlink), because the bundle is no longer on the path. They are still in the
 runtime and still not in the build; nothing depends on them.
+
+### MoneyMoney's signature validates, and the damaged-file alert is gone
+
+**`SecStaticCodeCheckValidity = 0`.** Looked at: the alert MoneyMoney has shown for many rungs is
+gone, and the application now reaches **"Opening database…"**.
+
+The last cause was ordering. The CMS carries a **set** of certificates with no order; producing an
+ordered chain — leaf first, root last — is one of the things a real trust evaluation does, and the
+no-trustd fallback was copying the set verbatim. "anchor" in the requirement language means the
+**last** entry, so every requirement mentioning an anchor was asking whether MoneyMoney's own leaf
+was an Apple certificate authority:
+
+```
+anchor apple generic: chain has 4,
+anchor subject=Developer ID Application: MRH applications GmbH (9BE2AB75LL) isAppleCA=0
+```
+
+Walking issuer→subject from the leaf gives:
+
+```
+chain[0] = Developer ID Application: MRH applications GmbH (9BE2AB75LL)
+chain[1] = Developer ID Certification Authority
+chain[2] = Apple Root CA
+anchor apple generic: anchor subject=Apple Root CA isAppleCA=1
+```
+
+**And one mistake of mine in the middle of that, kept because it looked so reasonable.** The first
+version appended any certificate not on the path, on the grounds that an odd certificate set should
+not silently lose entries. MoneyMoney's set contains the leaf **twice**, so the chain came out
+`[leaf, DevID CA, Apple Root, leaf]` — with the duplicate leaf last, which is exactly the entry
+"anchor" means, and the anchor test failed identically to before the ordering. **A chain is a path,
+not a set.**
+
+**The verdict, walked down over two rungs as each cause was removed:**
+
+| verdict | cause | fix |
+| --- | --- | --- |
+| −67061 | a false label: an unverifiable timestamp discarding a good signature | security/0007 |
+| −50 | the trust evaluation never happened | security/0008 |
+| 100022 | `errSecErrnoBase + EINVAL` from `fcntl(F_NOCACHE)` | xnu/0020 |
+| −67055 | **no requirement could be parsed** — the parser was never reachable | security/0009 |
+| −67021 | two nested components failed a requirement that could not match | security/0010 |
+| **0** | **valid** | |
+
+**Where it stops now:** "Could not delete the temporary database file … /Users/root/Library/Application
+Support/MoneyMoney/Database/MoneyMoney-Temp.sqlite … check the file permissions of the database
+directory." That is a filesystem question — an unlink — and an entirely fresh piece of work.
