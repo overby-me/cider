@@ -1225,6 +1225,29 @@ executes a real compile under the port. Same CLASS as lstat: XNU code assuming a
 high-half pointers / no-lstat-syscall) that holds for the kernel or x86 but not arm64 userspace. NEXT:
 watch the configure->make->cc->ld->install chain for the next arm64 toolchain bug (or completion).
 
+**M4c blocker localized (pass 35): the guest linker (`ld`) SIGTRAPs intermittently.** With the timeout
+raised (1800s was killing a progressing build mid-make; now 7200s, CIDER_PKG_BUILD_TIMEOUT) and the
+DYLD_PRINT_SEGMENTS debug env dropped, the genuine build runs full configure and into make -- clang
+compiles reliably and most links succeed (mkbuiltins/man2html were built AND run). But the build fails
+in configure with `cannot compute sizeof (size_t)` -- and it is NOT deterministic: across the driver's
+4 retries a DIFFERENT probe fails each time (attempt1 size_t, attempt2 size_t=8 then intmax_t,
+attempt3 size_t again). config.log (kept from the killed run at $prefix/Users/root/nixstate/builds/nix-*
+/bash-5.3/config.log) shows the real cause: `AC_CHECK_SIZEOF` compiles AND links a conftest (`clang -o
+conftest`), and the LINKER crashes -- `cctools-binutils-darwin-1010.6/bin/ld: 25217 Trace/BPT trap: 5
+(core dumped) ld @responseFile` -> `clang: error: linker command failed with exit code 133` (128+5 =
+SIGTRAP). ld prints nothing before trapping (a bare trap, no assertion), and it happened 5x in one
+config.log. Tolerant checks (CoreFoundation link probes) swallow the failure and configure continues; a
+sizeof link probe failing is fatal. A per-link ~15-25% crash rate cannot be beaten by whole-build
+retries across a ~100-link build. CLUE: the earlier run WITH DYLD_PRINT_SEGMENTS (which serializes
+execution via constant stderr writes) got all the way through configure into make; dropping it exposed
+the flake -- so this looks timing-sensitive, i.e. a race, plausibly in the multithreaded linker via
+cider's psynch/scheduler (same subsystem as the pass-34 priority_queue fix). Toolchain otherwise sound:
+compile + link both work, just not reliably enough for a full build. NEXT: get a backtrace of the
+crashing ld (isolated reproducer -- loop one guest link until it SIGTRAPs, capture the PC/backtrace),
+localize the trap the way the ciderd backtrace localized the priority_queue bug, then fix at the root
+(preferred) or, as a fallback, a retry-on-SIGTRAP ld shim. No core file is written and the sigexc crash
+path logs no backtrace, so the reproducer must capture it live.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
