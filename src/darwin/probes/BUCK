@@ -333,3 +333,78 @@ darwin_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+cc_objects(
+    name = "localizations_probe_obj",
+    srcs = [
+        "localizations-probe.m",
+    ],
+    # NO -nostdinc here, unlike the C probes above: Foundation's headers reach out to CFNetwork and
+    # Security, and those come from the SDK include path that -nostdinc removes.
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        # THE WHOLE SURFACE FOUNDATION'S HEADERS REACH, taken wholesale from the wayland
+        # backend's list, because chasing this cascade one missing include at a time is exactly
+        # what that target's own comment warns against.
+        "//vendor/src:fw_AppKit",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreData",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_CoreText",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_IOKit",
+        "//vendor/src:fw_Metal",
+        "//vendor/src:fw_Onyx2D",
+        "//vendor/src:fw_QuartzCore",
+        "//vendor/src:fw_Security",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_ATS",
+        "//src/darwin/frameworks:fw_ApplicationServices",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_ColorSync",
+        "//src/darwin/frameworks:fw_ColorSyncLegacy",
+        "//src/darwin/frameworks:fw_CoreImage",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_CoreVideo",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_HIServices",
+        "//src/darwin/frameworks:fw_HIToolbox",
+        "//src/darwin/frameworks:fw_IOSurface",
+        "//src/darwin/frameworks:fw_ImageIO",
+        "//src/darwin/frameworks:fw_LangAnalysis",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_LocalAuthentication",
+        "//src/darwin/frameworks:fw_OpenGL",
+        "//src/darwin/frameworks:fw_PrintCore",
+        "//src/darwin/frameworks:fw_QD",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/frameworks:fw_SpeechSynthesis",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "localizations-probe",
+    objs = [
+        ":localizations_probe_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+        "//vendor/src/objc4:objc_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

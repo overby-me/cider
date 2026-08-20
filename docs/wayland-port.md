@@ -13334,3 +13334,28 @@ language pop-up and an indented sub-option. Zero unrecognized selectors in the w
 
 That Command-comma is also the stronger keyboard proof: a menu key equivalent reaching the
 application, not just text arriving in a focused field.
+
+### The language pop-up is not the bundle's fault
+
+MoneyMoney's preferences window has a Language pop-up that draws its chevrons and no title, and the
+cell reports `title=(null)`. The obvious suspect was `-[NSBundle localizations]`: the bundle carries
+`de.lproj` and `en.lproj` and no `CFBundleLocalizations` key, so the list has to be found by looking.
+
+`src/darwin/probes/localizations-probe.m` asked, and **the suspect was innocent**:
+
+    NSBundle localizations              (de, en)
+    CFBundleCopyBundleLocalizations     (de, en)
+    preferred                           (en), development en
+    on disk                             (de.lproj, en.lproj)
+
+Both layers agree with each other and with the disk. Pop-up buttons in general work too: Swift
+Publisher draws `Content Pages` and `75%` in its own. So the empty title is something narrower,
+inside the application's `MMLanguagePopUpButton`, and it is not a Foundation gap.
+
+**The control was weaker than intended and that is worth writing down.** The known-negative was
+`MoneyMoney.app/Contents`, a directory that is not a bundle, and it answered `(de, en)` as well. That
+is not necessarily wrong: CFBundle accepts a flat layout, and `Contents/Resources/*.lproj` is exactly
+what a flat bundle rooted there would have. Its `developmentLocalization` came back nil where the
+real bundle said `en`, so the two are distinguishable, but a negative that needs that much
+qualification is not much of a negative. A directory with no `Resources` at all would have been the
+better choice.
