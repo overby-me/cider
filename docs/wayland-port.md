@@ -13666,3 +13666,13 @@ So MoneyMoney truncated them itself, presumably from a width it measured or was 
 pattern shows on the button: `CIDER_BUTTON_TITLE title=Batch transfer titleSize=82x19` inside
 `titleRect=80x19`, two points over. **Not every menu is affected** — the add-account menu on the plus
 button shows its five titles in full. Filed with the measurements rather than guessed at.
+
+**The wizard also advances.** Choosing an item from the Other pop-up and clicking Next reaches page
+two, `Credentials`, which renders correctly: two bezeled text fields, a `Save password` checkbox,
+Cancel and a blue default Next. **It is a login form and it was not driven** — the standing
+instruction is that no credential goes near this application, and looking at the page is the whole
+test. That the fields there DO have bezels is also the last word on the IBAN field: borderless was the
+design.
+
+**Re-verified after the pop-up change**, which touches every application: Swift Publisher's document
+window byte-identical, iTerm2's session live.
