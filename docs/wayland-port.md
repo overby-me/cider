@@ -13998,3 +13998,29 @@ zero raises, 15,724 lines.
 
 **A log that is a hundred times too long is a measurement, not a nuisance.** Nothing else in this
 investigation pointed at the formatter.
+
+### The other half of the round trip, and a correction about bindings
+
+**I have to correct #153 as I filed it.** I wrote that no binding in this port ever writes UI back to
+the model, on the strength of a trace that printed zero lines. That trace was on `_NSBinder`'s
+`observeValueForKeyPath:`, and **that is one of two write-back paths**. A text field uses
+`_NSTextFieldBinder`, which on `textDidChange:` and `textDidEndEditing:` calls `applyDisplayedValue`
+→ `applyValue:` → `[_destination setValue:forKeyPath:]` in `_NSCachingBinder`. With the driver taught
+to commit the edit (Return, the `SPCOMMIT` gate), it fires:
+
+    CIDER_BIND APPLY NSTextField.objectValue -> CAMainWindowController.currentMarginTop = 22248
+
+309 inches at 72 points each, so the application's own unit conversion ran and the model took it. The
+reverse direction of the KVO binder is still disabled and still matters for controls that are not text
+fields; what is not true is the general claim.
+
+**Then the value came back out unformatted.** The field showed `22248` where it should show `309`:
+`NSNumberFormatter` had `stringFromNumber:` and **no `stringForObjectValue:`**, and `NSFormatter`
+answers nil there deliberately because it is abstract, so the cell fell back to the raw description of
+the model object. Apple implements it as `stringFromNumber:` for an `NSNumber` and nil otherwise. With
+that in place the whole round trip closes: type `2`, commit, the model takes `1440` (20 inches) and
+**the field reads `20`**.
+
+Two halves of one class, found one after the other: 0028 parses and 0029 displays. A formatter that
+can do neither looks like a text field that ignores the keyboard and then like a field that shows
+nonsense, and neither symptom names the formatter.

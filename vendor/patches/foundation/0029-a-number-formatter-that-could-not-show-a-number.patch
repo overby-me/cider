@@ -1,0 +1,43 @@
+A number formatter that could not show a number.
+
+With the parse half in place (0028) Swift Publisher's margin field committed correctly and then showed
+the wrong thing: type 309, commit, and the field reads 22248. That is the point value the application's
+own CCMeasurementUnitsFormatter converted to, coming back out of the model unformatted.
+
+The binding does its half properly: CIDER_BIND APPLY NSTextField.objectValue ->
+CAMainWindowController.currentMarginTop = 22248, which is 309 inches at 72 points each. What is missing
+is the way back. NSNumberFormatter had stringFromNumber: and no stringForObjectValue:, and NSFormatter
+answers nil there on purpose because it is abstract, so an NSCell asking its formatter to render the
+model value got nil and fell back to the raw description of the object.
+
+Apple's NSNumberFormatter implements stringForObjectValue: as stringFromNumber: for an NSNumber and nil
+for anything else, which is what this adds. The application's own formatter calls super for exactly
+this, through objc_msgSendSuper2, as the note above NSFormatter stringForObjectValue: already records.
+
+Measured after: typing 2 into the top margin and committing sets the model to 1440, which is 20 inches,
+and THE FIELD SHOWS 20. Before, the same round trip showed 22248.
+--- a/src/NSNumberFormatter.m
++++ b/src/NSNumberFormatter.m
+@@ -146,6 +146,22 @@
+     return YES;
+ }
+ 
++/*
++ * THE DISPLAY HALF, and it was missing the same way the parse half was. NSFormatter answers nil here
++ * deliberately, because it is abstract, so a number formatter with no override left every bound field
++ * showing what the CELL falls back to: the raw description of the model value. Swift Publisher's
++ * margin field committed 309 correctly and then displayed 22248, the point value its own formatter
++ * had converted to and would have converted back.
++ */
++- (NSString *)stringForObjectValue:(id)obj
++{
++    if (![obj isKindOfClass:[NSNumber class]])
++    {
++        return nil;
++    }
++    return [self stringFromNumber:(NSNumber *)obj];
++}
++
+ - (NSString *)stringFromNumber:(NSNumber *)number
+ {
+     if (number == nil) {

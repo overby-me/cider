@@ -20,6 +20,9 @@
  SOFTWARE. */
 
 #import "NSCachingBinder.h"
+#import <objc/runtime.h>
+#import <stdio.h>
+#import <stdlib.h>
 
 #import "NSObject+BindingSupport.h"
 #import <AppKit/NSControl.h>
@@ -139,6 +142,16 @@ NSString *NSFormatDisplayPattern(NSString *pattern, id *values,
         _currentlyTransferring = YES;
         [self setCachedValue: newValue];
         newValue = [self reverseTransformedObject: newValue];
+        /* THE EDIT REACHING THE MODEL. This is the caching binder's half of a two-way binding, which
+         * a text field uses and the KVO binder does not have at all, so a trace on one says nothing
+         * about the other. */
+        if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
+            fprintf(stderr, "CIDER_BIND APPLY %s(%p).%s -> %s.%s = %.40s\n",
+                    object_getClassName(_source), (void *) _source,
+                    [_bindingPath UTF8String] ?: "(nil)", object_getClassName(_destination),
+                    [_keyPath UTF8String] ?: "(nil)", [[newValue description] UTF8String] ?: "(nil)");
+            fflush(stderr);
+        }
         [_destination setValue: newValue forKeyPath: _keyPath];
         _currentlyTransferring = NO;
     }
