@@ -12703,3 +12703,26 @@ port=0x803 READ number=64 with a buffer → read reply, carries an event      (p
 Same size, non-NULL, all three times. Next look is inside the fill itself — what differs about the
 second message on a port, given a check-in message carries port rights that must be copied into the
 receiving task.
+
+### Correction again: a well-formed event is dropped too
+
+The refinement above concluded the defect is in `xnu_sys_kqchan_mach_port_fill`, because the lost
+delivery came back `MACH_RCV_INVALID_DATA / data=0` where working ones are `MACH_RCV_TOO_LARGE` with
+the port name — the signature of a failed inline copyout into a guest address made from the daemon.
+
+That reasoning was sound and **the result is negative.** Offering no inline buffer
+(`CIDER_KQ_NO_INLINE`, default off) makes `filt_machportprocess` report every message by name, and
+the previously-lost delivery does then come back correctly formed:
+
+```
+copyout port=0x803: delivering an event to the caller, flags=0x181 fflags=0x10004004 data=2051
+```
+
+**And the listener still never hears it.** libxpc logs no channel event for it, exactly as before. So
+a *well-formed* event is dropped above libkqueue just as the malformed one was — the malformed event
+was not the whole defect, and fixing it alone does not make trustd answer twice.
+
+Which puts libdispatch back in the frame, and this time not by elimination: it is handed a
+`MACH_RCV_TOO_LARGE` event carrying the port name, identical in shape to the two it *did* act on, and
+it does nothing with it. The switch is kept, defaulted off, because the negative result is worth as
+much as the change would have been.

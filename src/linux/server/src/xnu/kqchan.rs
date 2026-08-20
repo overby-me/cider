@@ -242,10 +242,29 @@ pub unsafe extern "C" fn xnu_sys_kqchan_mach_port_fill(
     let xthread = crate::bindings::current_thread();
     let thread = crate::xnu::condvar::thread_for_xnu_thread(xthread);
 
+    /*
+     * CIDER_KQ_NO_INLINE offers no inline buffer, so filt_machportprocess reports every message by
+     * NAME rather than copying small ones out. DEFAULT OFF, because of what it measured.
+     *
+     * The reasoning was sound and the result was negative, which is why the switch is kept. A
+     * listener gets its first message and then goes deaf, and the lost delivery came back
+     * MACH_RCV_INVALID_DATA with data 0 where working ones are MACH_RCV_TOO_LARGE with the port
+     * name -- the signature of a failed inline copyout into a guest address made from the daemon.
+     * With no buffer offered, that same delivery does come back correctly formed:
+     *
+     *     copyout port=0x803: delivering an event, flags=0x181 fflags=0x10004004 data=2051
+     *
+     * AND THE LISTENER STILL NEVER HEARS IT. libxpc logs no channel event for it, so a well-formed
+     * event is dropped above libkqueue just as the malformed one was. The malformed event was
+     * therefore not the whole defect, and fixing it alone does not make trustd answer twice.
+     */
+    let inline_ok = !matches!(std::env::var("CIDER_KQ_NO_INLINE"), Ok(ref v) if !v.is_empty());
+    let offered = if inline_ok { default_buffer_size } else { 0 };
+
     (*thread).kevent_ctx.kec_data_out = default_buffer;
     (*thread).kevent_ctx.kec_data_avail = default_buffer;
-    (*thread).kevent_ctx.kec_data_size = default_buffer_size;
-    (*thread).kevent_ctx.kec_data_resid = default_buffer_size;
+    (*thread).kevent_ctx.kec_data_size = offered;
+    (*thread).kevent_ctx.kec_data_resid = offered;
     (*thread).kevent_ctx.kec_process_flags = 0;
 
     let kn = ptr::addr_of_mut!((*kqchan).knote);
@@ -262,9 +281,35 @@ pub unsafe extern "C" fn xnu_sys_kqchan_mach_port_fill(
         return true;
     }
 
+    // kn_sfflags / kn_ext are macro ALIASES into kn_kevent in XNU, as the module header notes.
+    let sfflags = (*kn).kn_kevent.kei_sfflags;
+    let kn_ext0 = (*kn).kn_kevent.kei_ext[0];
+    let kn_ext1 = (*kn).kn_kevent.kei_ext[1];
+
     let result = (filt_machportprocess(kn, ptr::addr_of_mut!((*reply).kev) as *mut c_void)
         & FILTER_ACTIVE as c_int)
         != 0;
+
+    /*
+     * WHICH BRANCH filt_machportprocess TOOK, and with what.
+     *
+     * A listener gets its first message and then goes deaf, and the difference is visible one layer
+     * up as MACH_RCV_TOO_LARGE with the port name (delivered) against MACH_RCV_INVALID_DATA with
+     * data 0 (lost). Which of those you get is decided in here by whether MACH_RCV_MSG is among the
+     * knote's saved filter flags and whether the message fits kn_ext[1]: a message that does NOT fit
+     * is reported by name for the guest to receive itself, and one that DOES fit is copied out --
+     * into a guest address, from the daemon. Printing the inputs beside the verdict is what
+     * separates "the copyout failed" from "the filter was asked the wrong question".
+     */
+    if matches!(std::env::var("CIDER_TRACE_KQUEUE"), Ok(ref v) if !v.is_empty()) {
+        eprintln!(
+            "CIDER_KQFILL sfflags=0x{:x} kn_ext0=0x{:x} kn_ext1={} data_out=0x{:x} resid={} \
+             -> fflags=0x{:x} data=0x{:x} ext0=0x{:x} ext1={} active={}",
+            sfflags, kn_ext0, kn_ext1, default_buffer, default_buffer_size,
+            (*reply).kev.fflags, (*reply).kev.data, (*reply).kev.ext[0], (*reply).kev.ext[1],
+            result
+        );
+    }
 
     if !(*kqchan).waiter_read_semaphore.is_null() {
         crate::xnu::semaphore::xnu_sys_semaphore_up((*kqchan).waiter_read_semaphore);
