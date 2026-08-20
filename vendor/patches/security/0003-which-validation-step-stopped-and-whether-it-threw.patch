@@ -1,0 +1,106 @@
+Which step of a static validation stopped, and whether it stopped or threw.
+
+SecStaticCodeCheckValidity was already known to be where MoneyMoney sat; these are the steps it is
+made of, one line each. The application runs this on a background thread while its main thread keeps
+animating a spinner, so a validation that never finishes looks exactly like an application that is
+merely slow: window up, run loop turning, nothing wrong on any log.
+
+AND THE CATCH BLOCKS PRINT TOO, WHICH IS THE PART I GOT WRONG FIRST. A call line with no back line
+means hung OR THREW, and I read it as hung for a whole rung. validateNonResourceComponents never
+printed a return and had not blocked at all: it threw, and the application went on to show its own
+damaged-bundle alert. With the catch instrumented the answer is one line,
+
+    CIDER_CSSTEP core threw MacOSError error=-67061
+
+which is errSecCSSignatureFailed. So the code signature verification REJECTS this bundle, where
+macOS accepts it, and that is the next thing to explain.
+
+--- a/OSX/libsecurity_codesigning/lib/StaticCode.cpp
++++ b/OSX/libsecurity_codesigning/lib/StaticCode.cpp
+@@ -2431,13 +2431,31 @@
+ // SecStaticCode objects on the fly to complete the task.
+ // (The point, of course, is to do as little duplicate work as possible.)
+ //
++/*
++ * CIDER_TRACE_SECITEM: which step of a static validation never came back.
++ *
++ * SecStaticCodeCheckValidity has already been shown to enter this and never return, while the
++ * application it belongs to keeps animating a spinner, so the caller looks merely slow. These are
++ * the steps it is made of; a step with a call line and no back line IS the answer.
++ */
++static bool CiderTraceSecItem(void) {
++	/* Non-EMPTY: our drivers export switches unset-as-empty. */
++	const char *v = getenv("CIDER_TRACE_SECITEM");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_CSSTEP(fmt, ...) \
++	do { if (CiderTraceSecItem()) { fprintf(stderr, "CIDER_CSSTEP " fmt "\n", ##__VA_ARGS__); fflush(stderr); } } while (0)
++
+ void SecStaticCode::staticValidate(SecCSFlags flags, const SecRequirement *req)
+ {
+ 	setValidationFlags(flags);
+ 
+ #if TARGET_OS_OSX
+ 	if (!mStaplingChecked) {
++		CIDER_CSSTEP("registerStapledTicket call");
+ 		mRep->registerStapledTicket();
++		CIDER_CSSTEP("registerStapledTicket back");
+ 		mStaplingChecked = true;
+ 	}
+ 
+@@ -2460,7 +2478,9 @@
+ 	}
+ 
+   	// core components: once per architecture (if any)
++	CIDER_CSSTEP("staticValidateCore call");
+ 	this->staticValidateCore(flags, req);
++	CIDER_CSSTEP("staticValidateCore back");
+ 	if (flags & kSecCSCheckAllArchitectures) {
+ 		handleOtherArchitectures(^(SecStaticCode* subcode) {
+ 			if (flags & kSecCSCheckGatekeeperArchitectures) {
+@@ -2481,7 +2501,9 @@
+ 
+ 	// resources: once for all architectures
+ 	if (!(flags & kSecCSDoNotValidateResources)) {
++		CIDER_CSSTEP("validateResources call");
+ 		this->validateResources(flags);
++		CIDER_CSSTEP("validateResources back");
+ 	}
+ 
+ 	// perform strict validation if desired
+@@ -2504,13 +2526,24 @@
+ void SecStaticCode::staticValidateCore(SecCSFlags flags, const SecRequirement *req)
+ {
+ 	try {
++		CIDER_CSSTEP("validateNonResourceComponents call");
+ 		this->validateNonResourceComponents();	// also validates the CodeDirectory
++		CIDER_CSSTEP("validateTopDirectory call");
+ 		this->validateTopDirectory();
+-		if (!(flags & kSecCSDoNotValidateExecutable))
++		if (!(flags & kSecCSDoNotValidateExecutable)) {
++			CIDER_CSSTEP("validateExecutable call");
+ 			this->validateExecutable();
+-		if (req)
++		}
++		if (req) {
++			CIDER_CSSTEP("validateRequirement call");
+ 			this->validateRequirement(req->requirement(), errSecCSReqFailed);
++		}
++		CIDER_CSSTEP("core steps done");
+     } catch (CSError &err) {
++        // A CALL LINE WITH NO BACK LINE MEANS HUNG *OR* THREW, and reading it as hung cost a
++        // rung: validateNonResourceComponents never printed a return and it had not blocked at
++        // all, it had thrown, and the application went on to show its own damaged-bundle alert.
++        CIDER_CSSTEP("core threw CSError osStatus=%d", (int) err.osStatus());
+         if (Universal *fat = this->diskRep()->mainExecutableImage())    // Mach-O
+             if (MachO *mach = fat->architecture()) {
+                 err.augment(kSecCFErrorArchitecture, CFTempString(mach->architecture().displayName()));
+@@ -2518,6 +2551,7 @@
+             }
+         throw;
+     } catch (const MacOSError &err) {
++        CIDER_CSSTEP("core threw MacOSError error=%d", (int) err.error);
+         // add architecture information if we can get it
+         if (Universal *fat = this->diskRep()->mainExecutableImage())
+             if (MachO *mach = fat->architecture()) {

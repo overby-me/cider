@@ -11886,3 +11886,28 @@ app is killed mid-write, which is exactly what "MoneyMoney exits quietly at 7 s"
 
 Also on the console just before: a crashtrace for `/bin/launchctl` faulting inside
 `exit → __cxa_finalize → __cxa_finalize_ranges`, i.e. in its static destructors.
+
+### MoneyMoney reaches its own dialog for the first time
+
+With `DARLING_NO_LAUNCHD=1` — so launchd cannot abort the run — MoneyMoney survives the whole run
+(1699 spinner frames, exit 137 from the harness timeout rather than a crash) and **draws its own
+alert**: *"The MoneyMoney application file seems to be damaged."* Looked at: menu bar, splash and
+alert all rendered.
+
+**A correction to how I read my own instrument.** `validateNonResourceComponents call` with no
+`back` line — I read that as hung, for a rung. It had not blocked at all; it **threw**. With the
+catch blocks instrumented the answer is one line:
+
+```
+CIDER_CSSTEP core threw MacOSError error=-67061      errSecCSSignatureFailed
+```
+
+So a `call` with no `back` means **hung *or* threw** — instrument the catch as well as the return.
+
+The frontier is now precise (task #143): `validateNonResourceComponents` rejects a signature macOS
+accepts. This is *not* the old damaged-bundle bug — that was `getxattr` answering `EOPNOTSUPP` where
+macOS answers `ENOATTR` (`xnu/0018`), and it is still fixed. The check now gets far enough to
+actually verify a signature and fail on it.
+
+Attribution for launchd is clean too: with launchd the run ends at ~7 s with exit 1; without it, the
+app runs to the limit. Idle containers do not crash launchd, so its aborts follow the app's activity.
