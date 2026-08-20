@@ -13402,4 +13402,19 @@ still does not appear. It now gets far enough to decode its nib (many `MMLabel`,
 
     cider CRASH signal=11 objc_autorelease + 34  <- MoneyMoney + 3249458 <- __NSThread__main__
 
-That is the next question, and it is a different kind of one.
+That is the next question, and it is a different kind of one. It **reproduces 2 of 2**, same PC
+offset, same frames.
+
+**What `+34` actually is**, read off the shipped `libobjc` rather than guessed:
+
+    42c0  pushq %rbp ; movq %rsp,%rbp
+    42c4  testq %rdi,%rdi ...        early return for nil and for tagged pointers
+    42e2  andq (%rdi),%rax           <- objc_autorelease + 34, the ISA LOAD
+
+So the object is neither nil nor tagged, and dereferencing it faults. `si_code` 128 is `SI_KERNEL`
+and `si_addr` is 0, which on Linux is what a **general protection fault** reports, that is, a
+non-canonical pointer. Something garbage is being autoreleased.
+
+**I considered a misaligned stack hitting a `movaps`** — the elfcall class of bug this port has hit
+before — **and the disassembly rules it out**: `+34` is an ordinary quadword load and `rsp` was
+16-byte aligned at the fault. It is a lifetime question, not an alignment one. Filed as its own task.
