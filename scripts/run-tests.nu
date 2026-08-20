@@ -43,6 +43,7 @@ const SUITES = [
     [sandbox_api c "tests/sandbox/test_sandbox_api.c" "sandbox C API — sandbox_init, sandbox_free_error" ""]
     [sandbox_exec sh "tests/sandbox/test_sandbox_exec.sh" "sandbox-exec stub — flag parsing, exec, exit codes, Nix patterns" ""]
     [dirserv sh "tests/dirserv/test_dirserv.sh" "Directory Services stubs — dseditgroup, sysadminctl, dscl (Phase 5.1)" ""]
+    [number_formatter c "tests/foundation/test_number_formatter.c" "NSNumberFormatter: parse and display, the range form, a clamped range, round trip" "-x objective-c -framework Foundation"]
     [identity c "tests/identity/test_identity.c" "macOS 14 identity — uname, kern.osrelease/osproductversion/osversion (Phase A)" ""]
     [sw_vers sh "tests/identity/test_sw_vers.sh" "sw_vers identity — productVersion/buildVersion report macOS 14 (Phase A)" ""]
 ]
