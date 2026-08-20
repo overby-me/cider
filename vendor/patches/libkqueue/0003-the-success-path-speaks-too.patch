@@ -15,7 +15,16 @@ It does. Interleaved with trustd own log, in one run:
     machport copyout port=0x803: delivering an event   -> NOTHING, no libxpc event at all
 
 So the chain is: the daemon delivers, libkqueue delivers it to its caller, and LIBDISPATCH NEVER
-CALLS THE HANDLER. That is where the next look goes.
+CALLS THE HANDLER.
+
+THE FLAGS ARE PRINTED BECAUSE THEY DECIDE THE READING, and they corrected me once already. The lost
+delivery came back fflags=0x10004008, MACH_RCV_INVALID_DATA, with data 0, where the delivered ones
+are fflags=0x10004004, MACH_RCV_TOO_LARGE, with the port name in data. An event carrying nothing to
+receive is one a handler is RIGHT to ignore, so libdispatch was not at fault for that instance. Both
+constants read out of the xnu message.h in this tree rather than from memory.
+
+Then the daemon was made to report every message by name, the same delivery came back correctly
+formed, and the listener still never heard it -- so a well formed event is dropped above here too.
 
 The 0xdead path says so as well, because "no event available" and "an event was delivered" are
 otherwise indistinguishable from outside, and the two spurious drops above are themselves worth
@@ -47,7 +56,7 @@ seeing: the daemon re-arms a notification after every read while has_events is s
  		dst->filter = EVFILT_DROP;
  		return 0;
  	}
-@@ -158,6 +169,15 @@
+@@ -158,6 +169,27 @@
  	dst->ext[1] = reply.kev.ext[1];
  	dst->fflags = reply.kev.fflags;
  
@@ -58,7 +67,19 @@ seeing: the daemon re-arms a notification after every read while has_events is s
 +	 * handed nothing. The event is lost somewhere between here and dispatch, and only a line here
 +	 * can say whether it got this far.
 +	 */
-+	CIDER_MACHPORT_SAY("delivering an event to the caller", src->kev.ident);
++	/*
++	 * WITH THE FLAGS, because they are what libdispatch acts on. EV_ONESHOT or EV_DISPATCH here
++	 * would mean the knote is disabled after this delivery, which is exactly the shape of a listener
++	 * that answers once and then goes deaf -- and the assignment just above takes the server's flags
++	 * wholesale rather than merging them.
++	 */
++	if (getenv("CIDER_TRACE_KQUEUE") != NULL && getenv("CIDER_TRACE_KQUEUE")[0] != '\0') {
++		fprintf(stderr, "CIDER_KQUEUE machport copyout port=0x%x: delivering an event to the caller, "
++		        "flags=0x%x fflags=0x%x data=%lld\n",
++		        (unsigned) src->kev.ident, (unsigned) dst->flags, (unsigned) dst->fflags,
++		        (long long) dst->data);
++		fflush(stderr);
++	}
 +
  	// TODO: we need to properly support kevent_qos with regards to the data_out argument;
  	//       this is what's supposed to be passed in as the default buffer, not a buffer of our own.
