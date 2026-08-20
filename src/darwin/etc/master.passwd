@@ -18,3 +18,15 @@
 # filesystem is worse than none.
 root:*:0:0::0:0:System Administrator:/Users/root:/bin/sh
 nobody:*:-2:-2::0:0:Unprivileged User:/var/empty:/usr/bin/false
+#
+# SERVICE ACCOUNTS, because a launchd job that names a UserName it cannot resolve DOES NOT RUN.
+# com.apple.trustd asks for _trustd, and with only root and nobody here the job exited 3 every time
+# it was demand-started -- silently, since its plist ships no StandardErrorPath. Nothing above that
+# said "unknown user": it surfaced six layers up as a code signature being refused, because with no
+# trustd there is no trust evaluation at all.
+#
+# The ids follow macOS's service-account range. What actually matters here is only that the account
+# EXISTS and is unprivileged; if a parity check ever finds macOS uses different numbers, this is a
+# one-line change.
+_trustd:*:282:282::0:0:Trust Services:/var/empty:/usr/bin/false
+_lp:*:26:26::0:0:Printing Services:/var/spool/cups:/usr/bin/false

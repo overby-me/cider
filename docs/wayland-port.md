@@ -12163,3 +12163,47 @@ the knote be deleted, which `EV_ONESHOT` arranges in the caller's post-processin
 
 **Still true:** trustd is *not* demand-started by this, so #143/#144 do not end here after all — that
 guess was wrong and the two remain open.
+
+### trustd exits 3 because the container has no `_trustd` user
+
+Two corrections to what I wrote last rung, both from naming things the trace only had numbers for.
+
+**"trustd is never demand-started" was wrong.** Giving the demand loop the *service name* — a small
+exported `job_service_name_by_port` beside the lookup that already finds the job — shows launchd
+doing exactly the right thing:
+
+```
+CIDER_LAUNCHD   member port=0x1a07 msgs=1 com.apple.trustd
+CIDER_LAUNCHD   member port=0x2407 msgs=0 com.apple.SecurityServer
+CIDER_LAUNCHD dispatch port=0x1a07 job=0x7058d1632000 service=com.apple.trustd
+CIDER_LAUNCHD dispatch returned port=0x1a07
+```
+
+The port set holds trustd, the message arrives, and launchd dispatches it by name.
+
+**It starts and immediately exits 3.** `launchctl` before and after a lookup:
+
+```
+PROBE before: -  0  com.apple.trustd      never run
+PROBE after:  -  3  com.apple.trustd      ran, exited 3
+```
+
+`com.apple.trustd.plist` asks for `UserName = _trustd`, and the container's `/etc/master.passwd`
+holds **only root and nobody**. A launchd job that names a user it cannot resolve does not run —
+silently, because that plist ships no `StandardErrorPath`. Adding `_trustd` (and `_lp`, which
+`cups-lpd` needs for the identical reason) to `src/darwin/etc/master.passwd` and `group`:
+
+```
+PROBE after: 31  -  com.apple.trustd      running
+```
+
+Nothing above ever said "unknown user". It surfaced **six layers up** as a code signature being
+refused, because with no trustd there is no trust evaluation at all.
+
+### MoneyMoney survives a run with launchd now
+
+With the pid-1 fixes in place, MoneyMoney no longer dies at ~7 s: 1554 spinner frames, exit 137 from
+the harness timeout, **zero** launchd fatal signals and zero reboots. Looked at the capture: window
+chrome, menu bar, splash, and the toolbar relaid out with its overflow chevron after the resize. It
+is still at the splash — `SecTrustEvaluate` now *blocks* where it used to fail fast, because a live
+launchd hands out a send right for a name whose job is not running. That is #140's shape exactly.

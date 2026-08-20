@@ -525,11 +525,18 @@ mportset_callback(void)
 			for (k = 0; k < membersCnt; k++) {
 				mach_port_status_t st;
 				mach_msg_type_number_t stCnt = MACH_PORT_RECEIVE_STATUS_COUNT;
+				const char *nm = job_service_name_by_port(members[k]);
+				unsigned cnt = 0;
 
 				if (mach_port_get_attributes(mach_task_self(), members[k], MACH_PORT_RECEIVE_STATUS,
-							(mach_port_info_t) &st, &stCnt) == KERN_SUCCESS && st.mps_msgcount) {
+							(mach_port_info_t) &st, &stCnt) == KERN_SUCCESS) {
+					cnt = (unsigned) st.mps_msgcount;
+				}
+				if (cnt) {
 					withmail++;
 				}
+				fprintf(stderr, "CIDER_LAUNCHD   member port=0x%x msgs=%u %s\n",
+					(unsigned) members[k], cnt, nm ? nm : "(no service owns this port)");
 			}
 			fprintf(stderr, "CIDER_LAUNCHD mportset_callback members=%u withmail=%u\n",
 				(unsigned) membersCnt, withmail);
@@ -560,8 +567,10 @@ mportset_callback(void)
 
 				log_kevent_struct(LOG_DEBUG, &kev, 0);
 				if (cider != NULL && cider[0] != '\0') {
-					fprintf(stderr, "CIDER_LAUNCHD dispatch port=0x%x job=%p\n",
-						(unsigned) members[i], kev.udata);
+					const char *nm = job_service_name_by_port(members[i]);
+
+					fprintf(stderr, "CIDER_LAUNCHD dispatch port=0x%x job=%p service=%s\n",
+						(unsigned) members[i], kev.udata, nm ? nm : "(unnamed)");
 					fflush(stderr);
 				}
 				(*((kq_callback *)kev.udata))(kev.udata, &kev);

@@ -6,3 +6,7 @@
 wheel:*:0:root
 nobody:*:-2:
 staff:*:20:root
+# The groups the service accounts in master.passwd belong to. A job whose user resolves but whose
+# group does not is the same failure one step later.
+_trustd:*:282:
+_lp:*:26:

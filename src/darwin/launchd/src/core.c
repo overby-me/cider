@@ -3440,6 +3440,25 @@ job_find_by_service_port(mach_port_t p)
 	return NULL;
 }
 
+/*
+ * The NAME behind a demand-set member. The demand loop only ever had a port number and a job
+ * pointer, so "which service woke launchd" and "is this service even in the set" could not be told
+ * apart -- and that is exactly the question when a daemon is never demand-started.
+ */
+const char *
+job_service_name_by_port(mach_port_t p)
+{
+	struct machservice *ms;
+
+	LIST_FOREACH(ms, &port_hash[HASH_PORT(p)], port_hash_sle) {
+		if (ms->port == p) {
+			return machservice_name(ms);
+		}
+	}
+
+	return NULL;
+}
+
 void
 job_mig_destructor(job_t j)
 {
