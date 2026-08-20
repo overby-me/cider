@@ -12726,3 +12726,34 @@ Which puts libdispatch back in the frame, and this time not by elimination: it i
 `MACH_RCV_TOO_LARGE` event carrying the port name, identical in shape to the two it *did* act on, and
 it does nothing with it. The switch is kept, defaulted off, because the negative result is worth as
 much as the change would have been.
+
+### The whole chain, and it ends in our own mach_msg receive
+
+The four-layer localisation above pointed at libdispatch. It is not libdispatch either — and the
+reason it looked like it is worth stating, because it is the same shape as everything else in this
+investigation: **on a `MACH_RCV_TOO_LARGE` event libdispatch does not receive anything from the
+kevent at all.** It reads the *port name* out of `ke->data` and goes and receives the message itself
+with its own `mach_msg`. When that fails, the only report is `_dispatch_bug_mach_client` →
+`_dispatch_log` → syslog, which has no sink here. Silent by construction.
+
+With that made visible (`vendor/patches/libdispatch/0001`), the whole chain fits in one run:
+
+```
+copyout 0x803  TOO_LARGE → drain port=0x803  size=120 kr=0x0         → libxpc received   (poke 1)
+copyout 0x1503 TOO_LARGE → drain port=0x1503 size=140 kr=0x0         → libxpc received   (peer)
+copyout 0x803  no event available, dropping
+copyout 0x803  TOO_LARGE → drain port=0x803  size=120 kr=0x10004008  → FAILED, dropped   (poke 2)
+```
+
+`0x10004008` is `MACH_RCV_INVALID_DATA`. **The guest's own `mach_msg` receive fails**, on the second
+receive from the same port, with the same size and the same code path as the first one that worked.
+
+So nothing above is at fault: the daemon delivered, libkqueue delivered, libdispatch asked the kernel
+for the message and was refused, and libxpc was correctly never called for a message that was never
+received. **The defect is in our `mach_msg` receive path**, which is where it should have been two
+corrections ago — and it took making three separate silent failure paths speak to get there.
+
+Note what this also explains: the earlier `MACH_RCV_INVALID_DATA` seen coming *out of the kqueue
+fill* is the **same failure in the same place**, reached by the fill's inline-copy attempt rather
+than by libdispatch's explicit receive. `CIDER_KQ_NO_INLINE` moved which of the two hit it first; it
+could never have avoided it.

@@ -1,0 +1,71 @@
+Say what the second receive returned, because its only report goes to a log with no sink.
+
+A listener gets its first message and then goes deaf while every layer below reports success. The
+daemon delivers a read reply carrying an event, libkqueue delivers it to its caller, and libxpc is
+never called. This is the step in between, and it turns out not to be a delivery at all.
+
+On a MACH_RCV_TOO_LARGE event, libdispatch does not receive anything from the kevent. It reads the
+PORT NAME out of ke->data and goes and receives the message ITSELF, with a mach_msg call carrying
+MACH_RCV_TIMEOUT. When that fails, the only trace of it is _dispatch_bug_mach_client at the out
+label, which goes through _dispatch_log to syslog, and this container has no syslog sink. Silent by
+construction.
+
+MEASURED, the whole chain in one run, with the daemon and libkqueue and libxpc traces interleaved:
+
+    copyout 0x803  TOO_LARGE -> drain port=0x803  size=120 kr=0x0        -> libxpc received  poke 1
+    copyout 0x1503 TOO_LARGE -> drain port=0x1503 size=140 kr=0x0        -> libxpc received  peer
+    copyout 0x803  no event available, dropping
+    copyout 0x803  TOO_LARGE -> drain port=0x803  size=120 kr=0x10004008 -> FAILED, dropped   poke 2
+
+0x10004008 is MACH_RCV_INVALID_DATA. So THE GUEST OWN mach_msg RECEIVE FAILS, on the second receive
+from the same port, with the same size and the same code path as the first. Nothing above libdispatch
+is at fault and neither is libdispatch: it is asking the kernel for a message and being refused.
+
+That moves the question into our mach_msg receive path, which is where it should have been two
+corrections ago.
+--- a/src/event/event_kevent.c
++++ b/src/event/event_kevent.c
+@@ -19,6 +19,8 @@
+  */
+ 
+ #include "internal.h"
++#include <stdio.h>
++#include <stdlib.h>
+ #if DISPATCH_EVENT_BACKEND_KEVENT
+ #if HAVE_MACH
+ #include "protocol.h"
+@@ -3167,6 +3169,22 @@
+ 	hdr = malloc(siz); // mach_msg will return TOO_LARGE if hdr/siz is NULL/0
+ 	kr = mach_msg(hdr, options, 0, dispatch_assume(hdr) ? siz : 0,
+ 			(mach_port_name_t)ke->data, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL);
++	/*
++	 * WHAT THIS SECOND RECEIVE ACTUALLY RETURNED.
++	 *
++	 * A listener gets its first message and then goes deaf while every layer below reports success:
++	 * the daemon delivers a read reply carrying an event, libkqueue delivers it to its caller, and
++	 * libxpc is never called. This is the step in between, and it is not a delivery at all -- on a
++	 * MACH_RCV_TOO_LARGE event libdispatch goes and receives the message ITSELF from ke->data, with
++	 * MACH_RCV_TIMEOUT and a zero timeout, so a message that is not instantly available is simply
++	 * lost. When it fails, the only report is _dispatch_bug_mach_client at `out`, which goes to a
++	 * log with no sink in this container: silent by construction.
++	 */
++	if (getenv("CIDER_TRACE_DISPATCH") != NULL && getenv("CIDER_TRACE_DISPATCH")[0] != '\0') {
++		fprintf(stderr, "CIDER_DISPATCH machport drain: port=0x%x size=%u second receive kr=0x%x\n",
++				(unsigned)(mach_port_name_t)ke->data, (unsigned) siz, (unsigned) kr);
++		fflush(stderr);
++	}
+ 	if (likely(!kr)) {
+ 		flags |= DISPATCH_EV_MSG_NEEDS_FREE;
+ 		return _dispatch_kevent_mach_msg_recv(du, flags, hdr, msg_pp, ovr_pp);
+@@ -3183,6 +3201,11 @@
+ 
+ out:
+ 	if (unlikely(kr)) {
++		if (getenv("CIDER_TRACE_DISPATCH") != NULL && getenv("CIDER_TRACE_DISPATCH")[0] != '\0') {
++			fprintf(stderr, "CIDER_DISPATCH machport drain FAILED, kr=0x%x, the message is dropped\n",
++					(unsigned) kr);
++			fflush(stderr);
++		}
+ 		_dispatch_bug_mach_client("_dispatch_kevent_mach_msg_drain: "
+ 				"message reception failed", kr);
+ 	}
