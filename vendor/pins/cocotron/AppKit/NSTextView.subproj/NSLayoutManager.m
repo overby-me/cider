@@ -296,6 +296,26 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
         [textStorage addLayoutManager: self];
     }
     [self setTextStorage: textStorage];
+
+    /*
+     * AND EVERY TEXT VIEW HAS TO BE TOLD, which is the half I got wrong the first time.
+     *
+     * I changed -[NSTextView textStorage] to read through its layout manager, on the grounds that
+     * macOS has no separate storage on the view. It does not, but THIS implementation does: ninety
+     * odd places in NSTextView.m use the _textStorage ivar directly, -string among them. So the view
+     * typed into one object while its layout was computed from another, and MoneyMoney's IBAN field
+     * reported two characters and zero glyphs at the same moment. Keeping the ivar in step is the
+     * fix; the getter agreeing with it is then free.
+     */
+    NSUInteger i, count = [_textContainers count];
+
+    for (i = 0; i < count; i++) {
+        NSTextView *view = [[_textContainers objectAtIndex: i] textView];
+
+        if (view != nil) {
+            [view _setTextStorage: textStorage];
+        }
+    }
 }
 
 - (void) setGlyphGenerator: (NSGlyphGenerator *) generator {

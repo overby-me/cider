@@ -186,6 +186,23 @@ static void loadGlyphAndCharacterCacheForLocation(NSATSTypesetter *self,
             _scanRect = NSZeroRect;
         }
     }
+    /* WHAT THE FIRST FRAGMENT OF A LINE WAS GIVEN AND WHAT IT GOT. A container that refuses the
+     * first line and one that is never asked look identical from above: both end with no glyphs.
+     * Printed for the first fragment only, so a working field and a blank one can be compared in
+     * the same run. Same gate as the rest of the text tracing. */
+    if (startingGlyphIndex == 0 && getenv("CIDER_TRACE_TEXT") != NULL &&
+        getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
+        NSSize containerSize = _container != nil ? [_container containerSize] : NSZeroSize;
+
+        fprintf(stderr,
+                "CIDER_TYPESET first proposed=%gx%g@%g,%g wanted=%g default=%g scan=%gx%g@%g,%g "
+                "container=%gx%g padding=%g\n",
+                proposedRect.size.width, proposedRect.size.height, proposedRect.origin.x,
+                proposedRect.origin.y, wantedHeight, _fontDefaultLineHeight, _scanRect.size.width,
+                _scanRect.size.height, _scanRect.origin.x, _scanRect.origin.y, containerSize.width,
+                containerSize.height, _container != nil ? [_container lineFragmentPadding] : -1.0);
+        fflush(stderr);
+    }
     if (NSEqualRects(_scanRect, NSZeroRect)) {
         if ([_glyphRangesInLine count] == 0) {
 #if DEBUG_GETLINEFRAGMENTRECT

@@ -13582,3 +13582,29 @@ storage has exactly one layout manager, so the wiring is right. Two characters i
 **zero glyphs**. That is the signature this port has seen before, and the container is 19 points tall
 while the typing attributes report a line height of 17 — but the text is Menlo 16, whose line height
 is a little over 19. Next rung.
+
+### A text view with two storages
+
+The IBAN field took the click, took the keys, and drew nothing. The draw trace said why in two
+numbers that cannot both be true: **`len=2 glyphs=2`**… except it said `len=2 glyphs=0`.
+
+`-[NSLayoutManager numberOfGlyphs]` returns `[_textStorage length]`, so zero glyphs with two
+characters means **the layout manager and the view were looking at different storage objects**. And
+the typesetter trace confirmed it from the other end: `container=255x19` never appeared once, in a run
+where the same trace fired hundreds of times for other fields. Layout was never asked for this
+container because, as far as the layout manager could tell, there was nothing to lay out.
+
+**This one was mine, from the previous rung.** I changed `-[NSTextView textStorage]` to read through
+its layout manager, on the grounds that macOS has no separate storage on the view. macOS does not,
+but *this* implementation does: ninety-odd places in `NSTextView.m` use the `_textStorage` ivar
+directly, `-string` among them. So the view typed into one object while its layout was computed from
+another. `-[NSLayoutManager replaceTextStorage:]` now tells every text view of every one of its
+containers, which is what `-[NSTextContainer setLayoutManager:]` already did on the other path.
+
+**Looked at: `AB` is drawn in the field.** `len=1 glyphs=1`, then `len=2 glyphs=2`, and the typesetter
+gets its `container=255x19` and returns `scan=255x19`.
+
+The field has no bezel, and that now looks like the design rather than a defect: the nib gives its
+scroll view `NSNoBorder` and no scrollers, and MoneyMoney installs the view itself as a field editor
+inside a plain box on a white panel. It takes a click, shows what is typed, and Cancel closes the
+sheet.
