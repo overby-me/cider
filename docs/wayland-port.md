@@ -13647,3 +13647,22 @@ the wizard sheet and concluded the menu never opens. That was not measured. The 
 older capture said it was, and the click landed near Cancel: the input trace put the press at window
 coordinates `439,373` when the control was at `239,258`. **Ask a question like this of a control in a
 window that fills the output, where screen and window coordinates agree.**
+
+### The truncated titles are not ours
+
+With the menu open, its three items read `New stand…`, `New sche…`, `Refresh sc…`, and the button
+beside them reads `Stan`. The obvious guess is that the menu is too narrow and clips its titles. It is
+not:
+
+    CIDER_POPUPSIZE items=4 width=132 height=95 maxTitle=86 gutter=12 arrow=14
+                    bounds=133x25 first=New stand<e2 80 a6>
+
+**The title string is already truncated when the menu measures it**, and the ellipsis is `U+2026`.
+Cocotron's only tail truncation appends three ASCII dots, never `U+2026`, and it builds a temporary
+string rather than mutating the original — so our AppKit did not produce this. The application's own
+`Localizable.strings` holds `New standing order` with no ellipsis at all.
+
+So MoneyMoney truncated them itself, presumably from a width it measured or was handed, and the same
+pattern shows on the button: `CIDER_BUTTON_TITLE title=Batch transfer titleSize=82x19` inside
+`titleRect=80x19`, two points over. **Not every menu is affected** — the add-account menu on the plus
+button shows its five titles in full. Filed with the measurements rather than guessed at.

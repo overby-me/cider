@@ -182,6 +182,19 @@ static const NSTimeInterval kMenuInitialClickThreshold = .3f;
     result.width += WINDOW_BORDER_THICKNESS * 2;
     result.height += MENU_VERTICAL_PADDING;
 
+    /* HOW WIDE THE MENU DECIDED TO BE AND WHY. A pop-up menu that comes out exactly as wide as its
+     * button, with every title truncated, is either measuring the titles wrongly or being told a
+     * width from outside. Same gate as the rest of the menu tracing. */
+    if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != (char) 0) {
+        fprintf(stderr,
+                "CIDER_POPUPSIZE items=%u width=%g height=%g maxTitle=%g gutter=%g arrow=%g "
+                "bounds=%gx%g first=%s\n",
+                count, result.width, result.height, maxTitleWidth, gutterSize.width,
+                rightArrowSize.width, self.bounds.size.width, self.bounds.size.height,
+                count > 0 ? [[[items objectAtIndex: 0] title] UTF8String] ?: "(nil)" : "(none)");
+        fflush(stderr);
+    }
+
     if (_cachedItemRects == nil && [items isEqual: [self visibleItemArray]]) {
         // Build our cached item rects
         _cachedItemRects = [[NSMutableArray arrayWithCapacity: count] retain];
