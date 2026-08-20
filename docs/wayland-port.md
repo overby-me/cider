@@ -12521,3 +12521,33 @@ So **every trust evaluation in this container is a lie, and each caller mishandl
 bundle is still not valid (`SecStaticCodeCheckValidity` = −50 now instead of −67061). What these
 changes buy is a **true label instead of a false one**, and an application that gets past the alert.
 The one thing left is a trust evaluation that actually happens, which needs trustd to answer — #143.
+
+### Correction: MoneyMoney does NOT get past the damaged alert
+
+The section above is wrong in its headline and I am leaving it in place with this correction under
+it, because the way it went wrong is worth more than the claim was.
+
+**The two runs I looked at had launchd enabled. The run in which that alert had previously been
+seen did not.** They are not comparable, and the difference decides the outcome:
+
+| configuration | codesign check | what the user sees |
+| --- | --- | --- |
+| `DARLING_NO_LAUNCHD=1` | completes: `codesign SecTrustEvaluate gave trustResult=0` → throws −50 | **the damaged alert** |
+| launchd enabled | stops at `VerifyUnAuthAttrs returned -67882` and never returns | no alert — nothing answered |
+
+So with launchd the alert is absent because the check **hangs**, not because it passes. Looking at
+the capture in the matching configuration shows the alert still there, word for word.
+
+**A summary statistic lied here too, and looking is what caught it.** `grep -c damaged` returned 0 in
+both runs — the alert text is *drawn*, never logged — so the grep could not have found it either way.
+
+**What is actually true of the change in `vendor/patches/security/0007`:** it moves the verdict from
+−67061 (a false label: "bad signature") to −50 (a true one: trust could not be evaluated). The
+application treats **both** as damaged, so it is an honesty fix, not a functional one, and MoneyMoney
+is no closer to opening than before.
+
+**What is new and useful:** with launchd, `bootstrap_look_up` for `com.apple.trustd` *succeeds* —
+launchd hands out a send right and demand-starts the job — and trustd then never checks in, so the
+XPC call blocks forever with no timeout. Without launchd the lookup fails fast, `errSecNotAvailable`
+takes Apple's ramdisk fallback, and the check completes wrongly but quickly. That is a much sharper
+statement of #135 than "staticValidate never returns": **it returns iff there is no launchd**.
