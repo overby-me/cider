@@ -13543,3 +13543,10 @@ button**, and the country pop-up shows a German flag where it used to be an empt
 
 Still wrong there: the IBAN text field now draws no bezel at all, where before it drew the scroller
 across itself.
+
+**Re-verified after all of it**, because waking 1088 objects is not a small change. MoneyMoney still
+meets the three criteria: the File menu opens on a click, typing puts `Giro` in the search field with
+a caret and a focus ring, and 1000x600 and 1400x900 both relayout. Swift Publisher's document window
+came out byte-identical. **iTerm2 was black on one run and fully healthy on the next** — that matches
+the known container boot flakiness this repo already tracks, and at n=2 it cannot be separated from
+noise, but a working run is enough to say the change did not break it.
