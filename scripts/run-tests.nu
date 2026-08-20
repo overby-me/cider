@@ -49,7 +49,12 @@ const SUITES = [
 ]
 
 # Test directory inside the Darling prefix
-const CIDER_TEST_DIR = "/tmp/cider-nix-tests"
+# /private/var/tmp, NOT /tmp: launchd CLEARS /private/tmp at container boot, exactly as macOS clears
+# /tmp at startup, so sources staged there from the host are deleted before the compile ever runs and
+# the runner reports that the whole toolchain is broken. /var/tmp survives a boot on macOS and here.
+# Spelled /private/var/tmp on both sides because /var and /private/var are separate real directories
+# in a prefix, unlike macOS where /var is a symlink.
+const CIDER_TEST_DIR = "/private/var/tmp/cider-nix-tests"
 
 # Colours only on a terminal, the same condition the bash version used.
 def colours [] {
@@ -119,7 +124,7 @@ def main [
 
     # -- Copy test sources into the prefix ----------------------------------
     log $c $"($c.bold)Copying test sources into Darling prefix...($c.reset)"
-    let prefix_test_dir = $"($cider_prefix)/private/tmp/cider-nix-tests"
+    let prefix_test_dir = $"($cider_prefix)/private/var/tmp/cider-nix-tests"
     mkdir $prefix_test_dir
     for s in $run_suites {
         ^cp $"($repo_dir)/($s.source)" $"($prefix_test_dir)/"

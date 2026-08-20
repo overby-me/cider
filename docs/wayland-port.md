@@ -14055,3 +14055,31 @@ real directory or missing here**, while the runtime sets `TMPDIR=/private/tmp`. 
 the literal `/tmp` in the guest went somewhere else than everything that asks the system for a
 temporary directory. The launcher now makes that symlink when `/tmp` is absent or empty, and leaves a
 populated one alone.
+
+### Where a prefix write lands, and why the test sources kept vanishing
+
+Three separate rules, each measured, and only the first was what I assumed.
+
+**Staging into a prefix works.** The container mounts an overlay AT the prefix with the prefix itself
+as `upperdir` and the read-only runtime as `lowerdir`, so a file written on the host before boot is
+part of the merged view. `private/var/probe-var.txt` staged from the host is read by the guest without
+ceremony.
+
+**`/private/tmp` is the exception, and launchd is why.** A file staged there is gone from the guest AND
+from the host after a container boots. With `DARLING_NO_LAUNCHD=1` the same file survives and the
+guest reads it, so our launchd clears `/private/tmp` at startup exactly as macOS clears `/tmp`. That is
+correct behaviour being correctly ported, and it is what deleted `run-tests.nu`'s sources between the
+copy and the compile, leaving the runner to report that the toolchain was broken. The harness stages
+in `/private/var/tmp` now, which macOS preserves across a boot for the same reason.
+
+**And a prefix must not be written while a container is up.** With a live container, a host write into
+`<prefix>/private/tmp` was invisible to the guest. That is overlayfs doing what it documents: changing
+a layer under a mounted overlay is undefined. Stage before boot, or stage through a `cider shell` call.
+
+Behind all that sits a wall this rung did not knock down: **there is no guest C compiler in this
+runtime.** `/usr/bin/clang` is a 12 KB xcrun shim that executes
+`/Library/Developer/DarlingCLT/usr/bin/clang`, and that directory holds the cctools binaries and no
+clang at all. So the C suites in `run-tests.nu` cannot compile here whatever the paths say, which is
+the same wall #123 keeps meeting. The way out is probably not to install a compiler in the prefix but
+to build the tests with buck2, as every other guest binary here is built, and have the harness only
+RUN them.
