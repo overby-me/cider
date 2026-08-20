@@ -165,7 +165,11 @@ def main [
     let out = (mktemp --tmpdir-path /tmp pkg-build.XXXXXX.out)
     let guest_driver = $"/Volumes/SystemRoot($repo)/scripts/gnix-build.sh"
     with-env $genv {
-        do -i { ^timeout --signal=KILL 1800 $cider shell sh $guest_driver out+err> $out }
+        # arm64 builds run under emulation, where every subprocess reloads its dylibs, so a real
+        # from-source build (e.g. bash: configure + ~100 clang invocations) takes well over the old
+        # 30 min and was being killed mid-make. Cap generously; override for slower hosts/packages.
+        let build_timeout = ($env.CIDER_PKG_BUILD_TIMEOUT? | default "7200")
+        do -i { ^timeout --signal=KILL $build_timeout $cider shell sh $guest_driver out+err> $out }
     }
     kill_all
     # Through the external grep, and -a, because the transcript can carry bytes that are not
