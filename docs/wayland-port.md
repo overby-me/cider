@@ -12400,3 +12400,42 @@ So the same sentence now describes two daemons: up, checked in, and never handed
    twice (once deliberately, once as its own euid, which in a container shell is also 0). libinfo
    answers uid 0 from inside the process, so the run said nothing about opendirectoryd. Its own
    control is what caught it.
+
+### A minimal XPC listener gets its message about half the time
+
+Every service poked so far timed out, and none of those runs had a **positive control** — without a
+service known to answer, "nothing replied" cannot separate a broken delivery path from a container
+where no daemon would have answered anyway. So: an echo service we own end to end, one binary with a
+server mode and a client mode (`src/darwin/probes/xpcecho-probe.c`), registered in launchd with its
+own `MachServices` entry, doing the least a service can do.
+
+**It fails about half the time. 8 of 18 runs replied.** The known-negative control returned
+`ERROR(Connection invalid)` in every run that produced output, so the probe itself is sound.
+
+Both sides are silent when it fails:
+
+```
+CIDER_ECHOPROBE control=ERROR(Connection invalid)   (a name nothing can serve)
+CIDER_ECHOPROBE com.cider.xpcecho=TIMEOUT
+CIDER_ECHO server starting
+CIDER_ECHO listener = 0x796bd697ac90
+CIDER_ECHO listener resumed, entering dispatch_main
+   <no listener event, ever>
+```
+
+versus a good run, where the whole chain appears: `listener event, a connection` → `peer event, a
+dictionary` → `replied`.
+
+**So this is not a Security problem.** It is the substrate under every daemon in the container, and
+it is the plausible shared root of #135, #137 and #140. Two of the eighteen runs produced no result
+at all — the container itself died — which is separate from a timeout and matches #141.
+
+**A correction worth recording, because I nearly shipped it.** opendirectoryd targets its listener at
+a `DISPATCH_QUEUE_CONCURRENT`, which my echo did not, so I added that mode and measured: **3 of 4
+default against 1 of 4 concurrent**. That is exactly the shape of a finding. Nine runs each say **5
+of 9 and 3 of 9** — noise. The concurrent queue is not the discriminator, and a rate measured on four
+runs was not a rate.
+
+Two other candidates are already refuted for this: the message is not being dropped by the listener
+(libxpc's non-checkin drop path is instrumented and deployed and never fires), and it is not the
+dispatch workloop.
