@@ -1272,6 +1272,24 @@ sigexc.c's CIDER-FAULT logger is still in the materialized guest xnu for monitor
 final clean prefix build.) NEXT: let the build finish -> buck-nix-bash-check PASS, then durability
 (capture the cocotron/framework overlay steps) and revert the diagnostic logging.
 
+**M4 ACHIEVED (pass 37): buck-nix-bash-check.nu PASSES on aarch64.** The guest Nix, running inside the
+buck2-built cider on aarch64 Linux, compiled GNU bash 5.3.9 FROM SOURCE and ran it:
+`build_rc=0` -> `GNU bash, version 5.3.9(1)-release (arm-apple-darwin23.4.0)` -> `run_rc=0` ->
+`=PKG_DONE`, and the check prints `PASS: guest nix built and ran bash inside the buck2-built Darling`
+(m4 check exit=0). The full from-source build ran: configure, all the subdir libraries, ~50 main .c
+files compiled with clang, and the final `clang -o bash shell.o eval.o ... -lreadline -lhistory
+-Wl,-framework -Wl,CoreFoundation -ldl` link, then the freshly-built binary executed. This is the goal
+the whole port aimed at. The path from a silent no-op to a genuine build required, this session: the
+arm64 sys_lstat fix (M4b, nix store init), hardening the check to actually compile instead of no-op on
+the cache-substituted output, the ciderd priority_queue userspace-pointer fix (daemon crash under mutex
+contention), and the tls.c TSD-cache TOCTOU fix (the intermittent ld SIGTRAP). The last piece was
+`nix build --cores 1`: parallel `make -j` still hangs because SIGCHLD does not interrupt make's
+jobserver ppoll (task #12), so the milestone build runs serially. FOLLOW-UPS, none blocking the goal:
+task #12 (parallel-build SIGCHLD/ppoll hang -> restores fast parallel builds), and durability (task #10):
+revert the temporary SIGTRAP entry in sigexc.c's CIDER-FAULT logger and capture the cocotron/AppKit and
+framework-overlay steps as committed build inputs so a clean nix re-materialization reproduces this
+without the manual dylib overlays.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the

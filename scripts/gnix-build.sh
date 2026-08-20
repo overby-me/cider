@@ -47,7 +47,12 @@ echo "=BUILD $GDRV="
 # nix builds are atomic, so a fresh attempt re-runs configure and usually passes.
 brc=1
 for attempt in 1 2 3 4; do
-	nix build -L --offline --no-link "${GDRV}^*" 2>&1
+	# --cores 1: build serially. Parallel `make -j` hangs under cider on aarch64: make's
+	# jobserver blocks in ppoll waiting for SIGCHLD, but SIGCHLD from its exited jobs does not
+	# interrupt that ppoll, so finished children pile up as unreaped zombies and the build never
+	# progresses (seen after the builtins/support subdirs). Serial fork+wait4 (as configure uses)
+	# works, so build with one job until the parallel-SIGCHLD delivery is fixed.
+	nix build -L --cores 1 --offline --no-link "${GDRV}^*" 2>&1
 	brc=$?
 	[ "$brc" -eq 0 ] && break
 	echo "build attempt $attempt failed (rc=$brc); retrying (transient-crash mitigation)..."
