@@ -142,6 +142,11 @@ def main [
         GBIN: $bin
         CIDERPREFIX: $prefix
         NIXBIN: $"($gnix)/bin"
+        # Cores for the guest `make -j` (read by scripts/gnix-build.sh). The guest environment is
+        # built explicitly here, so a host env var does not reach the guest unless forwarded.
+        # Default 1 (serial), the safe path until the arm64 poll() timeout fix (patch 0038) is
+        # confirmed under -j; set CIDER_GNIX_CORES>1 on the host to test the parallel build.
+        CIDER_GNIX_CORES: ($env.CIDER_GNIX_CORES? | default "1")
     }
     # != rather than `not ... == ...`: nushell binds not tighter than ==, so the latter tries
     # to negate a string and fails with "Can't convert to boolean".
