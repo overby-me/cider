@@ -164,7 +164,11 @@ fn main() {
     }
 
     // Join the container mnt ns so we can connect to the overlay-resident socket
-    // (cider.c:285-287, the Linux 4.11 / overlayfs socket hack).
+    // (cider.c:285-287, the Linux 4.11 / overlayfs socket hack), through its user ns when it has
+    // one of its own: see try_enter_container for why the order matters.
+    if !same_namespace(pid_init, "user") {
+        join_namespace(pid_init, libc::CLONE_NEWUSER, "user");
+    }
     join_namespace(pid_init, libc::CLONE_NEWNS, "mnt");
 
     // Drop euid (cider.c:289; no-op rootless).
@@ -338,6 +342,41 @@ fn ensure_prefix_dirs(ctx: &Ctx) {
     ] {
         create_dir(&format!("{}{}", ctx.prefix, d));
     }
+
+    /*
+     * /tmp IS A SYMLINK ON macOS, and here it was a directory or nothing at all.
+     *
+     * The runtime sets TMPDIR to /private/tmp and creates it, so anything that asks the system for a
+     * temporary directory lands there, while anything that writes to the literal /tmp lands in a
+     * different place or fails. scripts/run-tests.nu copies its sources to <prefix>/private/tmp and
+     * compiles them at /tmp, which is the same path on macOS and two places here: cd said No such
+     * file or directory and the harness reported that the toolchain was broken.
+     *
+     * Only an ABSENT or EMPTY /tmp is replaced. A prefix whose /tmp already holds files keeps it,
+     * because moving a running container's temporary files is not this function's business. /var and
+     * /etc are symlinks on macOS too and are left as real directories here deliberately: they hold
+     * runtime state already and nothing has asked for that yet.
+     */
+    ensure_private_symlink(&ctx.prefix, "/tmp", "private/tmp");
+}
+
+fn ensure_private_symlink(prefix: &str, at: &str, target: &str) {
+    let path = format!("{prefix}{at}");
+
+    match std::fs::symlink_metadata(&path) {
+        Ok(md) if md.file_type().is_symlink() => return,
+        Ok(md) if md.is_dir() => {
+            let empty = std::fs::read_dir(&path).map(|mut d| d.next().is_none()).unwrap_or(false);
+
+            if !empty {
+                return;
+            }
+            let _ = std::fs::remove_dir(&path);
+        }
+        Ok(_) => return,
+        Err(_) => {}
+    }
+    let _ = std::os::unix::fs::symlink(target, &path);
 }
 
 fn setup_prefix(ctx: &Ctx) {
@@ -443,15 +482,64 @@ fn status_matches_ids(pid: i32, uid: u32, gid: u32) -> bool {
     uok && gok
 }
 
+/// Whether a surviving container can actually be ENTERED, which is not the same question as
+/// whether its namespace files can be opened.
+///
+/// This used to open /proc/<pid>/ns/mnt and answer yes if that succeeded. Opening succeeds for any
+/// live process this user can see; setns is what fails. So a container left by a previous
+/// invocation was declared joinable, the reap-and-restart path above was skipped, and the join a
+/// few lines later died with "Cannot join mnt namespace of pid N". THE ONLY HONEST TEST OF A
+/// SYSCALL IS THE SYSCALL, and setns cannot be undone in this process, so a forked child does it
+/// and reports by exit status.
 fn container_joinable(pid: i32) -> bool {
-    let p = cstr(&format!("/proc/{pid}/ns/mnt"));
-    let fd = unsafe { libc::open(p.as_ptr(), libc::O_RDONLY) };
-    if fd >= 0 {
-        unsafe { libc::close(fd) };
-        true
-    } else {
-        false
+    let child = unsafe { libc::fork() };
+
+    if child < 0 {
+        return false;
     }
+    if child == 0 {
+        let ok = try_enter_container(pid);
+        unsafe { libc::_exit(if ok { 0 } else { 1 }) };
+    }
+
+    let mut status: c_int = 0;
+    if unsafe { libc::waitpid(child, &mut status, 0) } != child {
+        return false;
+    }
+    libc::WIFEXITED(status) && libc::WEXITSTATUS(status) == 0
+}
+
+/// The two setns calls a caller needs, in the order the kernel requires.
+///
+/// A rootless container lives in a user namespace of its own, and setns(CLONE_NEWNS) demands
+/// CAP_SYS_ADMIN in the user namespace that OWNS the mount namespace. The invocation that created
+/// the container has that; a later one does not, which is why a second cider shell in the same
+/// prefix used to fail while the first succeeded. Joining the user namespace first grants those
+/// capabilities, exactly as nsenter -U -m does.
+fn try_enter_container(pid: i32) -> bool {
+    if !same_namespace(pid, "user") && !setns_path(pid, "user", libc::CLONE_NEWUSER) {
+        return false;
+    }
+    setns_path(pid, "mnt", libc::CLONE_NEWNS)
+}
+
+fn same_namespace(pid: i32, name: &str) -> bool {
+    let mine = std::fs::read_link(format!("/proc/self/ns/{name}")).ok();
+    let theirs = std::fs::read_link(format!("/proc/{pid}/ns/{name}")).ok();
+
+    mine.is_some() && mine == theirs
+}
+
+fn setns_path(pid: i32, name: &str, nstype: c_int) -> bool {
+    let p = cstr(&format!("/proc/{pid}/ns/{name}"));
+    let fd = unsafe { libc::open(p.as_ptr(), libc::O_RDONLY) };
+
+    if fd < 0 {
+        return false;
+    }
+    let ok = unsafe { libc::setns(fd, nstype) } == 0;
+    unsafe { libc::close(fd) };
+    ok
 }
 
 fn join_namespace(pid: i32, nstype: c_int, name: &str) {

@@ -14024,3 +14024,34 @@ that in place the whole round trip closes: type `2`, commit, the model takes `14
 Two halves of one class, found one after the other: 0028 parses and 0029 displays. A formatter that
 can do neither looks like a text field that ignores the keyboard and then like a field that shows
 nonsense, and neither symptom names the formatter.
+
+### Two cider shell calls in a row, and the check that tested the wrong syscall
+
+`scripts/run-tests.nu` could not run a single suite here: after the first `cider shell` every later
+one died with `Cannot join mnt namespace of pid NNNNN`, and since the runner spends its first call on
+a preflight probe, the compile always failed and it blamed the toolchain.
+
+**A rootless container lives in a user namespace of its own**, and `setns(CLONE_NEWNS)` demands
+CAP_SYS_ADMIN in the user namespace that OWNS that mount namespace. The invocation that created the
+container has it; a later invocation does not. `nsenter` says the same thing in three lines:
+
+    nsenter -t PID -m true                          reassociate to namespaces failed: EPERM
+    nsenter -t PID -U -m true                       gets past the join, fails later in setgroups
+    nsenter -t PID -U --preserve-credentials -m ls /   lists the guest root
+
+So the launcher joins the user namespace first when the container has one of its own, exactly as
+`nsenter -U -m` does. Six sequential `cider shell echo ok` calls now answer `ok` in about a fifth of a
+second each, where the second used to fail outright.
+
+**And the guard that was supposed to catch this tested the wrong thing.** `container_joinable` OPENED
+`/proc/<pid>/ns/mnt` and answered yes if that worked. Opening succeeds for any live process this user
+can see; `setns` is what fails, so a container that could not be entered was declared joinable, the
+reap-and-restart path above it was skipped, and the join a few lines later died. **The only honest
+test of a syscall is the syscall** - it now forks a child, tries the real join, and reads the exit
+status, because `setns` cannot be undone in the calling process.
+
+One more macOS divergence fell out of it: **`/tmp` is a symlink to `private/tmp` on macOS and was a
+real directory or missing here**, while the runtime sets `TMPDIR=/private/tmp`. Anything writing to
+the literal `/tmp` in the guest went somewhere else than everything that asks the system for a
+temporary directory. The launcher now makes that symlink when `/tmp` is absent or empty, and leaves a
+populated one alone.
