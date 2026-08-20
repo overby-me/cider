@@ -41,6 +41,10 @@ tests/*
 !tests/sandbox/
 !tests/syscall/
 !tests/dirserv/
+# Foundation regression tests: NSNumberFormatter has to parse AND display, and both halves were
+# missing here at once. Without this line the suite file is ignored and only its registration in
+# run-tests.nu gets committed, which is a suite that names a source nobody has.
+!tests/foundation/
 !tests/cider-smoke.nix
 # The VM-side twin of scripts/checks/buck-bash-check.nu: the bash milestone for the buck2 port.
 !tests/cider-buck2-smoke.nix
