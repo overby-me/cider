@@ -1,0 +1,91 @@
+aarch64: drop the racy global TSD single-entry cache in sys_thread_get_tsd_base
+
+The arm64 TSD emulation (added in 0021) fronted the tid-keyed hash with a
+single-entry cache held in two PLAIN globals (tsd_cache_tid / tsd_cache_base,
+not __thread). The fast path read them non-atomically:
+
+    if (tid == tsd_cache_tid && tsd_cache_base) return tsd_cache_base;
+
+That is a TOCTOU race. Thread A can match its own cached tid, then read the base
+after thread B overwrote BOTH globals, and return B TSD base. get() writes tid
+then base; tsd_set() writes base then tid; neither order makes the pair readable
+atomically. A thread that gets another thread base reads the wrong
+TSD[MACH_THREAD_SELF], so os_unfair_lock_unlock sees a non-owner and calls
+__os_unfair_lock_unowned_abort -> brk -> SIGTRAP. Under a parallel guest linker
+(ld64) this killed random link steps intermittently (Trace/BPT trap: 5, exit
+133), which failed AC_CHECK_SIZEOF link probes ("cannot compute sizeof") and the
+final bash link -- the M4c blocker. It only showed under real thread contention,
+and was masked when DYLD_PRINT_SEGMENTS serialised execution.
+
+The cache original purpose (avoid a gettid() syscall per call) is obsolete:
+current_tid() is a register read (__builtin_thread_pointer), not gettid, and the
+hash probe is O(1), so the lookup runs uncached and race-free at negligible cost.
+Also publish table entries base-before-tid with a release fence so a concurrent
+reader that matches a tid always sees a fully-written base on weakly-ordered arm64.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/impl/tls.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/impl/tls.c
+@@ -45,14 +45,17 @@
+ 	return (long)__builtin_thread_pointer();
+ }
+ 
+-/* Single-entry cache. gettid() is a Linux syscall and we are called *very*
+- * frequently (every errno read, every pthread_self()), so an uncached path
+- * burns the process at ~100% CPU on a syscall trampoline. The cache is
+- * deliberately not __thread (we cannot rely on TLV in dyld) — it's a regular
+- * global. Concurrent readers/writers race harmlessly: a stale tid means we
+- * fall through to the slow path and refresh. */
+-static volatile long  tsd_cache_tid;
+-static void* volatile tsd_cache_base = (void*)0; /* unused before first set */
++/* No single-entry cache. It used to be a pair of plain globals (tsd_cache_tid /
++ * tsd_cache_base, NOT __thread), and the fast-path read
++ *     if (tid == tsd_cache_tid && tsd_cache_base) return tsd_cache_base;
++ * is a TOCTOU race: thread A can match its own cached tid, then read the base
++ * after thread B overwrote BOTH globals, and return B's TSD base. Under a
++ * parallel guest linker (ld64) that made os_unfair_lock read the wrong owner
++ * from TSD[MACH_THREAD_SELF], tripping __os_unfair_lock_unowned_abort -> brk ->
++ * an intermittent SIGTRAP that killed random link steps. The cache's original
++ * purpose (avoid a gettid() syscall per call) is obsolete: current_tid() below
++ * is a register read (__builtin_thread_pointer), not gettid, and the hash probe
++ * is O(1), so this runs uncached and race-free at negligible cost. */
+ 
+ __attribute__((visibility("default")))
+ void* sys_thread_get_tsd_base(void)
+@@ -59,10 +62,5 @@
+ {
+ 	long tid = current_tid();
+-	/* Fast path: hits when the same thread keeps calling us (common
+-	 * during single-threaded dyld init and launchd setup). */
+-	if (tid == tsd_cache_tid && tsd_cache_base != (void*)0)
+-		return tsd_cache_base;
+-
+ 	unsigned int i = tsd_hash(tid);
+ 	for (unsigned int step = 0; step < TSD_TABLE_SIZE; step++)
+ 	{
+@@ -69,9 +67,6 @@
+ 		struct tsd_entry* e = &tsd_table[(i + step) & (TSD_TABLE_SIZE - 1)];
+-		if (e->tid == tid) {
+-			tsd_cache_tid = tid;
+-			tsd_cache_base = e->base;
++		if (e->tid == tid)
+ 			return e->base;
+-		}
+ 		if (e->tid == 0)
+ 			break;
+ 	}
+@@ -86,11 +81,12 @@
+ 		struct tsd_entry* e = &tsd_table[(i + step) & (TSD_TABLE_SIZE - 1)];
+ 		if (e->tid == 0 || e->tid == tid)
+ 		{
++			/* Publish base before tid with a release fence so a concurrent reader
++			 * that matches our tid always observes a fully-written base (arm64 is
++			 * weakly ordered). */
+ 			e->base = base;
++			__atomic_thread_fence(__ATOMIC_RELEASE);
+ 			e->tid = tid;
+-			/* Warm the fast path so the next get on this tid is O(1). */
+-			tsd_cache_base = base;
+-			tsd_cache_tid = tid;
+ 			return;
+ 		}
+ 	}

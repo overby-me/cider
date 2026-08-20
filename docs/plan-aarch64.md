@@ -1248,6 +1248,30 @@ localize the trap the way the ciderd backtrace localized the priority_queue bug,
 (preferred) or, as a fallback, a retry-on-SIGTRAP ld shim. No core file is written and the sigexc crash
 path logs no backtrace, so the reproducer must capture it live.
 
+**M4c UNBLOCKED (pass 36): the intermittent ld SIGTRAP was a TOCTOU race in the arm64 TSD cache.**
+Full chain, symptom to root, all localized statically (addr2line + objdump, no heavy cider runs):
+the ld Trace/BPT trap (pass 35) is `__os_unfair_lock_unowned_abort` -- a `brk #0x1` in
+libsystem_platform reached when os_unfair_lock_unlock finds the lock owner != the caller's self.
+The owner is `sys_thread_get_tsd_base()[MACH_THREAD_SELF]` (libplatform lock.c, via the DARLING
+tsd.h that already routes around TPIDRRO_EL0). `sys_thread_get_tsd_base()` (emulation tls.c, added
+by patch 0021) fronted its tid-keyed hash with a single-entry cache in TWO PLAIN GLOBALS
+(tsd_cache_tid/tsd_cache_base, NOT __thread) read non-atomically:
+`if (tid == tsd_cache_tid && tsd_cache_base) return tsd_cache_base;`. That is a TOCTOU race: thread
+A matches its own cached tid, then reads the base after thread B overwrote BOTH globals, and returns
+B's TSD base -> A reads B's MACH_THREAD_SELF -> unowned_abort -> brk -> SIGTRAP. Intermittent,
+thread-contention-driven (ld64's parallel linker), and masked when DYLD_PRINT_SEGMENTS serialised
+execution -- exactly what pass 35 saw. FIX: patch 0037 (vendor/patches/xnu) removes the racy cache
+(its purpose, avoiding a gettid() syscall, is obsolete since current_tid() is a register read via
+__builtin_thread_pointer, and the hash probe is O(1)) and publishes table entries base-before-tid
+with a release fence for weak arm64 ordering. Rebuilt libsystem_kernel, overlaid, re-ran: ZERO
+`CIDER-FAULT sig=5` (was ~5 per configure), configure COMPLETES (`config.status: creating config.h`),
+and make is compiling bash from source (alias.c, dispose_cmd.c, ...) with mksignames/mkbuiltins/
+man2html LINKING with no trap. Same TSD-on-arm64 family as the errno/setjmp/tlv fixes. This was the
+last known M4c blocker; the full from-source bash build is now running. (A temporary SIGTRAP entry in
+sigexc.c's CIDER-FAULT logger is still in the materialized guest xnu for monitoring; revert before the
+final clean prefix build.) NEXT: let the build finish -> buck-nix-bash-check PASS, then durability
+(capture the cocotron/framework overlay steps) and revert the diagnostic logging.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
