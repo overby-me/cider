@@ -3459,6 +3459,41 @@ job_service_name_by_port(mach_port_t p)
 	return NULL;
 }
 
+/*
+ * WHO HOLDS THE RECEIVE RIGHT, which is the difference between "the daemon has claimed its service
+ * and is not replying" and "the daemon never checked in and launchd is still holding the name for
+ * it". A client cannot tell those apart -- a lookup succeeds either way and the message then waits
+ * forever -- and neither can a bootstrap_check_in from another process, which is refused as
+ * NOT_PRIVILEGED in both cases. launchd knows, and this is the only place that does.
+ *
+ * recv     launchd still owns the receive right: nobody has checked in.
+ * isActive the service has been handed to its job.
+ */
+void
+job_service_state_by_port(mach_port_t p, bool *recv_out, bool *active_out)
+{
+	struct machservice *ms;
+
+	if (recv_out) {
+		*recv_out = false;
+	}
+	if (active_out) {
+		*active_out = false;
+	}
+
+	LIST_FOREACH(ms, &port_hash[HASH_PORT(p)], port_hash_sle) {
+		if (ms->port == p) {
+			if (recv_out) {
+				*recv_out = ms->recv;
+			}
+			if (active_out) {
+				*active_out = ms->isActive;
+			}
+			return;
+		}
+	}
+}
+
 void
 job_mig_destructor(job_t j)
 {

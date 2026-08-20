@@ -47,6 +47,7 @@ job_t job_dispatch(job_t j, bool kickstart); /* returns j on success, NULL on jo
 job_t job_find(jobmgr_t jm, const char *label);
 job_t job_find_by_service_port(mach_port_t p);
 const char *job_service_name_by_port(mach_port_t p);
+void job_service_state_by_port(mach_port_t p, bool *recv_out, bool *active_out);
 bool job_ack_port_destruction(mach_port_t p);
 bool job_is_anonymous(job_t j);
 launch_data_t job_export(job_t j);

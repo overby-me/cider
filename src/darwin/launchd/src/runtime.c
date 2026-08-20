@@ -535,8 +535,12 @@ mportset_callback(void)
 				if (cnt) {
 					withmail++;
 				}
-				fprintf(stderr, "CIDER_LAUNCHD   member port=0x%x msgs=%u %s\n",
-					(unsigned) members[k], cnt, nm ? nm : "(no service owns this port)");
+				bool ms_recv = false, ms_active = false;
+
+				job_service_state_by_port(members[k], &ms_recv, &ms_active);
+				fprintf(stderr, "CIDER_LAUNCHD   member port=0x%x msgs=%u recv=%d active=%d %s\n",
+					(unsigned) members[k], cnt, (int) ms_recv, (int) ms_active,
+					nm ? nm : "(no service owns this port)");
 			}
 			fprintf(stderr, "CIDER_LAUNCHD mportset_callback members=%u withmail=%u\n",
 				(unsigned) membersCnt, withmail);

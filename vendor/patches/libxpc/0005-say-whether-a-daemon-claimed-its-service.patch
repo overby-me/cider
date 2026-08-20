@@ -1,0 +1,41 @@
+Say whether a daemon claimed its service, because until it does every client waits forever.
+
+bootstrap_check_in in activateLocked is where a named XPC listener claims its service. Until that
+succeeds launchd keeps the receive right, and a client that looks the name up still gets a send
+right -- to a queue nobody is reading. The client then waits with no timeout and no error, which is
+what a Security daemon not serving looks like from every layer above.
+
+The failure was invisible: xpc_log_error goes to syslog and there is no syslog socket here. This is
+the same treatment the lookup failure a few lines below already needed, for the same reason.
+
+WHAT IT ANSWERED IMMEDIATELY, and it corrected a reading of mine. launchd's own port-set dump shows
+com.apple.trustd as recv=1 active=0, which says launchd still holds the receive right; I took that
+to mean trustd never checks in. It does:
+
+    CIDER_XPC check-in for service com.apple.trustd = 0 (claimed)
+
+The port-set snapshot is taken at DEMAND DISPATCH time, before the job it just launched has had a
+chance to check in, so it could never have shown anything else. A snapshot proves a state at ITS
+moment, not a fact about the run.
+--- a/src/connection.m
++++ b/src/connection.m
+@@ -819,6 +819,19 @@
+ 	if (this->is_listener && this->service_name) {
+ 		// named server
+ 		status = bootstrap_check_in(bootstrap_port, this->service_name, &this->recv_port);
++		/*
++		 * THIS IS WHERE A DAEMON CLAIMS ITS SERVICE, and until it does, launchd keeps the receive
++		 * right and every client that looks the name up gets a send right to a queue nobody is
++		 * reading. The client then waits forever with no timeout and no error.
++		 *
++		 * The failure was invisible: xpc_log_error goes to syslog, and there is no syslog socket
++		 * here. Same treatment as the lookup failure below, which needed it for the same reason.
++		 */
++		if (getenv("CIDER_TRACE_XPC") != NULL) {
++			fprintf(stderr, "CIDER_XPC check-in for service %s = %d (%s)\n", this->service_name,
++			        (int) status, status == KERN_SUCCESS ? "claimed" : "REFUSED");
++			fflush(stderr);
++		}
+ 		if (status != KERN_SUCCESS) {
+ 			xpc_log_error(connection, "failed to checkin for service with name \"%s\"", this->service_name);
+ 			goto error_out;

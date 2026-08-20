@@ -12233,3 +12233,46 @@ when it should speak is worse than none, because its silence reads as good news.
 
 The control is the part worth keeping: a job whose only purpose is to fail, in the same run, is what
 turned "no output, so nothing failed" into "no output, so the instrument is broken".
+
+### trustd checks in, calls `dispatch_main`, and dies draining an autorelease pool
+
+Two traces settled this: launchd now prints who holds each service's receive right, and libxpc now
+prints whether a listener's `bootstrap_check_in` succeeded.
+
+**A reading of mine that the second one corrected.** launchd's port-set dump shows
+
+```
+CIDER_LAUNCHD   member port=0x1907 msgs=1 recv=1 active=0 com.apple.trustd
+```
+
+`recv=1` means launchd still holds the receive right, and I took that to mean trustd never checks
+in. It does:
+
+```
+CIDER_XPC check-in for service com.apple.trustd = 0 (claimed)
+```
+
+The port-set snapshot is taken at **demand-dispatch time**, before the job it has just launched
+could possibly have checked in, so it could never have shown anything else. *A snapshot proves a
+state at its own moment, not a fact about the run.*
+
+**What actually happens.** trustd checks in and then exits with **signal 11**. The core, symbolised
+with `scripts/machosym.py`:
+
+```
+objc_class::isMetaClass +0x23            <- faults
+objc_release
+AutoreleasePoolPage::releaseUntil / pop / tls_dealloc
+__pthread_tsd_cleanup
+__pthread_exit  →  pthread_exit
+libdispatch
+trustd _main +0x149
+```
+
+`dispatch_main()` parks the main thread by `pthread_exit()`ing it — that is what it is for — and our
+`_pthread_tsd_cleanup` then runs objc's `tls_dealloc`, which drains that thread's autorelease pool
+and releases an object whose class pointer is already dead.
+
+That is a plain crash on the **normal** exit path of any daemon whose `main` ends in
+`dispatch_main()`, which is every Security daemon here. It is a strong candidate for securityd's
+silent exit 1 (#137) and secd's behaviour too, and it is the next thing to fix.
