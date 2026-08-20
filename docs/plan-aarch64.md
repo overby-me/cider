@@ -1043,6 +1043,28 @@ toolchain (clang, ld64/cctools, make, coreutils) to run under cider -- each a br
 larger. The M3 milestone (bash boots and runs; patches 0030-0035, nix-validated) is the clean base
 it builds on.
 
+**M4 blocker identified (pass 28): the guest nix needs the arm64 FRAMEWORK stack, which prefix-min
+lacks.** Instrumenting gnix-build.sh (per-step markers, full stderr) showed the guest nix aborts at
+the very first step, `nix --version`, with a dyld error -- not sqlite, not fork:
+```
+=NIXVER=
+dyld: Library not loaded: /System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation
+  Referenced from: /nix/store/...-curl-8.21.0/lib/libcurl.4.dylib
+  Reason: image not found
+abort_with_payload: reason: dyld: No shared cache present
+```
+nix links libcurl, and (from otool -L) libcurl needs CoreFoundation + CoreServices +
+SystemConfiguration -- Apple frameworks that live in the dyld shared cache on real macOS. cider has
+no shared cache, so it must supply them as standalone dylibs from the prefix. The full prefix
+(buck/prefix/BUCK) DOES map them (e.g. //vendor/src/corefoundation:CoreFoundation_dylib), but the
+bash-tier prefix-min (what M3 and this M4 attempt used) does NOT. So M4's real requirement is the
+arm64 framework stack: CoreFoundation (-> libobjc, already arm64 in M2) plus CoreServices and
+SystemConfiguration (both -> CoreFoundation). NEXT: confirm CoreFoundation compiles for arm64 (build
+//vendor/src/corefoundation:CoreFoundation_dylib was launched), then build a prefix that includes
+CF+CoreServices+SystemConfiguration (or the full cider_prefix) for arm64 and point M4's $rt at it.
+Each framework may surface its own arm64 execution bugs under cider once nix actually loads them --
+this is the framework-tier analogue of the M2/M3 bash bring-up.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the

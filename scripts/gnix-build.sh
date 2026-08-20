@@ -34,12 +34,11 @@ build-users-group =
 require-sigs = false
 substituters = "
 
-nix-store --init 2>&1 | tail -1
+echo "=NIXVER="; nix --version 2>&1; echo "=NIXVER_RC=$?="
+echo "=INIT="; nix-store --init 2>&1; echo "=INIT_RC=$?="
 # Seed the valid-paths DB so the substituted build inputs (present via the
 # writable-/nix overlay lower) are trusted and GDRV itself is buildable.
-if nix-store --load-db < "/Volumes/SystemRoot$GDB" 2>&1 | tail -1; then :; fi
-
-echo "=NIXVER="; nix --version 2>&1 | head -1 || { echo NIX_RUN_FAIL; exit 1; }
+echo "=LOADDB="; nix-store --load-db < "/Volumes/SystemRoot$GDB" 2>&1; echo "=LOADDB_RC=$?="
 echo "=BUILD $GDRV="
 # ^* builds all outputs, so multi-output packages (bin/lib/dev/...) work too.
 # Retry: guest test/build binaries occasionally crash with a transient signal
