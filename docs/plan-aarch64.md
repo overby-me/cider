@@ -1290,6 +1290,48 @@ revert the temporary SIGTRAP entry in sigexc.c's CIDER-FAULT logger and capture 
 framework-overlay steps as committed build inputs so a clean nix re-materialization reproduces this
 without the manual dylib overlays.
 
+**Pass 38 (M4 durability, task #10): the cocotron/framework fixes captured, and the normaliser gap a
+rebase exposed.** After M4 the branch was rebased onto main (aa8baa72, 84 commits, 0 conflicts) and
+buck2 re-verified. The rebase pulled main's CG-geometry CFBase.h patch, which targeted the
+`include/CoreFoundation/CFBase.h` SYMLINK rather than the real `CoreFoundation/Base.subproj/CFBase.h`;
+re-materialization failed applying it, fixed on-branch by retargeting to the real file (9f95199b).
+Re-materializing then wiped every manual guest-tree edit, which is the whole point of this pass: an
+arm64 fix that lived only in vendor/src vanishes on the next `buck-src.nu`, so each had to become a
+committed patch. Three cocotron (the bundled AppKit/Onyx2D pin) x86-isms, surfaced by building AppKit
+for arm64, are now `vendor/patches/cocotron/*.patch` (a32c729b): NSApplication.m read the x86
+`uc_mcontext->__ss.__rip/__rsp` in its CIDER_APP fatal-signal handler (arch-guarded to `__pc/__sp`) and
+called two sheet-didEnd IMPs directly, which the arm64 SDK types as `void(*)(void)` and rejects (cast to
+the real `(id, SEL, id, NSInteger, void *)`); NSTypesetter_concrete.m called `_layoutNextFragment` (an
+IMP) directly (cast to `(id, SEL)`); O2Font_freetype.m backed a spinlock off with the x86-only
+`__builtin_ia32_pause` (yield). All three verified to apply to vendor/pins/cocotron and reproduce the
+edits exactly.
+
+The bigger find was a NORMALISER GAP. A direct `buck2 build` of the frameworks died at graph load:
+`Invalid symlink at vendor/src/corefoundation/CFBurstTrie.h: include/CoreFoundation/./CFBurstTrie.h --
+path contains platform-specific path separator`. corefoundation materializes 94 flat-header links that
+carry a `.` component, exactly the case cider-src-normalise (src/linux/buildtools/src-normalise) exists
+to rewrite. Cause: `buck-src.nu --all` copies each tree VERBATIM out of the assembled store (`nix build
+.#cider-src`, which does not normalise) and never ran the normaliser -- only the per-path branch and
+assembleProject (ciderBuck2Graph.nix) did. So a `--all` re-materialization, which is what a rebase
+reaches for, left vendor/src un-normalised and every framework/AppKit build failed before compiling
+anything. FIX (33885d63): the --all branch now runs the same normalise pass over the materialized tree.
+Ran it once on the host tree (re-pointed 101 links, expanded 72 symlinked dirs, left JavaScriptCore's
+one cyclic dir link alone); corefoundation's `/./` count went 94 -> 0.
+
+The framework overlay is now a committed step, scripts/build/build-frameworks-overlay.nu (d954dfc7): it
+parses buck/prefix/BUCK for the 212 public/private framework Mach-O outputs, builds them for arm64 with
+--keep-going, and overlays each at the /System/Library/Frameworks/... path the BUCK prefix maps it to;
+RT follows the checks' $BUCK2_RT convention, and --dry-run lists targets without building. The temporary
+SIGTRAP entry in sigexc.c's CIDER-FAULT logger (pass 37) was a materialized-tree-only edit and is gone
+with the re-materialization; no committed patch carries it.
+
+VERIFIED: `buck2 build //vendor/src:AppKit_dylib //vendor/src:Onyx2D_dylib --keep-going` -> BUILD
+SUCCEEDED, 5581 local actions, 0 failed, both dylibs produced. Graph load cleared with no CFBurstTrie.h
+error (the normalise fix) and cocotron/AppKit + Onyx2D compiled clean for arm64 (the three patches).
+Task #10 done. Remaining follow-ups, neither blocking M4: task #12 (parallel `make -j` SIGCHLD/ppoll
+hang, which forces the milestone build to `--cores 1`) and task #11 (profile and speed up guest
+execution).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
