@@ -12637,3 +12637,35 @@ channels both called `port=0x803` belong to different processes. That was not co
 reply's trace was resolving the owner inside the microthread closure, where the thread-local task
 table is a different, empty map, so **every read reply was reported as `pid=0`** and trustd's channel
 looked as though it never got a reply at all. It does.
+
+### Where the second message actually goes: libdispatch never calls the handler
+
+"trustd answers exactly once" is now localised all the way down, with each layer cleared by its own
+trace rather than by argument. Interleaved from a single run, in order:
+
+```
+machport copyout port=0x803: delivering an event   → libxpc connected + received → trustd listener event
+machport copyout port=0xe03: delivering an event   → libxpc connected + received → trustd message arrived
+machport copyout port=0x803: no event available, dropping
+machport copyout port=0xe03: no event available, dropping
+machport copyout port=0x803: delivering an event   → NOTHING, no libxpc event at all
+```
+
+- **ciderd is innocent.** The listener's channel shows a read reply that *carries an event* for the
+  second request as well as the first — the trace now prints the reply code, because `0xdead` ("no
+  event available") and a real delivery were otherwise indistinguishable in it.
+- **libkqueue is innocent.** Its copyout says `delivering an event to the caller` the third time too.
+- **libxpc is innocent.** The trace above the branching in `dispatch_mach_handler` shows the listener
+  channel handed nothing for that third event, so nothing there discarded it.
+
+**So libdispatch receives the event and never calls the channel handler.** That is the next look.
+
+Two supporting details worth keeping. The kqueue trace now names the **owning guest pid**, because a
+mach port *name* is per-task — two channels both called `port=0x803` belong to different processes.
+That was not cosmetic: the read reply's trace resolved the owner *inside* the microthread closure,
+where the thread-local task table is a different, empty map, so every read reply was reported as
+`pid=0` and trustd's channel looked as though it never got a reply at all.
+
+And the two `no event available, dropping` lines are themselves a finding: ciderd re-arms a
+notification after every read while `has_events` is still true, so each real event is followed by a
+spurious wakeup that the guest reads and discards.

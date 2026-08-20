@@ -516,8 +516,15 @@ impl MachPortKqchan {
                         // 0xdead: "no events" sentinel (matches ProcKqchan + kqchan.cpp).
                         reply.header.code = 0xdead;
                     }
+                    /*
+                     * WITH THE CODE, because it is the whole content of the answer. 0xdead means
+                     * "no event available", and the guest turns that into EVFILT_DROP -- so a read
+                     * reply that carried nothing is indistinguishable, in a trace that omits the
+                     * code, from one that carried the message a listener was waiting for.
+                     */
                     kq_trace_owned(nsid, port, daemon_fd, "SEND", reply.header.number as u32,
-                                   "read reply from the fill body");
+                                   if reply.header.code == 0 { "read reply, carries an event" }
+                                   else { "read reply, code=0xdead, NO event to carry" });
                     libc::send(
                         daemon_fd,
                         &reply as *const _ as *const c_void,

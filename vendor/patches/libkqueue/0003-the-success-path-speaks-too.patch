@@ -1,0 +1,65 @@
+The success path speaks too, because the question is no longer why a read failed.
+
+trustd answers exactly ONE request and then goes deaf, while staying alive at the same pid. The
+daemon side is measurably innocent: its channel shows a read reply that CARRIES AN EVENT for the
+second request as well as the first. libxpc is innocent too: a trace above the branching in
+dispatch_mach_handler shows the listener channel being handed nothing at all for that second
+request. So the event is lost between the two, and only a line here can say whether it got this far.
+
+It does. Interleaved with trustd own log, in one run:
+
+    machport copyout port=0x803: delivering an event   -> libxpc connected + received -> listener event
+    machport copyout port=0xe03: delivering an event   -> libxpc connected + received -> message arrived
+    machport copyout port=0x803: no event available, dropping
+    machport copyout port=0xe03: no event available, dropping
+    machport copyout port=0x803: delivering an event   -> NOTHING, no libxpc event at all
+
+So the chain is: the daemon delivers, libkqueue delivers it to its caller, and LIBDISPATCH NEVER
+CALLS THE HANDLER. That is where the next look goes.
+
+The 0xdead path says so as well, because "no event available" and "an event was delivered" are
+otherwise indistinguishable from outside, and the two spurious drops above are themselves worth
+seeing: the daemon re-arms a notification after every read while has_events is still true.
+--- a/src/linux/machport.c
++++ b/src/linux/machport.c
+@@ -39,6 +39,16 @@
+  * of them into an abort() -- so a Mach-port kqueue event that could not be read killed the process
+  * and said nothing at all about why. CIDER_TRACE_KQUEUE makes the reason readable.
+  */
++#define CIDER_MACHPORT_SAY(what, port) \
++	do { \
++		const char *cider_ = getenv("CIDER_TRACE_KQUEUE"); \
++		if (cider_ != NULL && cider_[0] != '\0') { \
++			fprintf(stderr, "CIDER_KQUEUE machport copyout port=0x%x: %s\n", \
++			        (unsigned) (port), what); \
++			fflush(stderr); \
++		} \
++	} while (0)
++
+ #define CIDER_MACHPORT_FAIL(why) \
+ 	do { \
+ 		const char *cider_ = getenv("CIDER_TRACE_KQUEUE"); \
+@@ -140,6 +150,7 @@
+ 	if (reply.header.code == 0xdead) {
+ 		// server indicated there was actually no event available to read right now;
+ 		// drop the event
++		CIDER_MACHPORT_SAY("no event available, dropping", src->kev.ident);
+ 		dst->filter = EVFILT_DROP;
+ 		return 0;
+ 	}
+@@ -158,6 +169,15 @@
+ 	dst->ext[1] = reply.kev.ext[1];
+ 	dst->fflags = reply.kev.fflags;
+ 
++	/*
++	 * THE SUCCESS PATH SPEAKS TOO, because the interesting question is no longer why a read failed.
++	 * The daemon is measurably delivering a second message to a listener that never sees it: its
++	 * channel shows a read reply that "carries an event", and libxpc's dispatch_mach handler is
++	 * handed nothing. The event is lost somewhere between here and dispatch, and only a line here
++	 * can say whether it got this far.
++	 */
++	CIDER_MACHPORT_SAY("delivering an event to the caller", src->kev.ident);
++
+ 	// TODO: we need to properly support kevent_qos with regards to the data_out argument;
+ 	//       this is what's supposed to be passed in as the default buffer, not a buffer of our own.
+ 
