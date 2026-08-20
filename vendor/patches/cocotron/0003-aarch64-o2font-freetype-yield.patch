@@ -1,0 +1,19 @@
+aarch64: use a yield hint instead of x86 __builtin_ia32_pause
+
+The host-font spinlock backed off with the x86-only __builtin_ia32_pause(); on arm64
+use the yield instruction instead.
+
+--- a/Onyx2D/O2Font_freetype.m
++++ b/Onyx2D/O2Font_freetype.m
+@@ -62,7 +62,11 @@
+ 
+     while (__sync_val_compare_and_swap(&_CiderHostFontSpin, 0, 1) != 0) {
+         spun = 1;
++#if defined(__x86_64__) || defined(__i386__)
+         __builtin_ia32_pause();
++#else
++        __asm__ __volatile__("yield");
++#endif
+     }
+ 
+     _CiderHostFontOwner = me;
