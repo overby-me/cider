@@ -1,6 +1,6 @@
-Losing one kqueue event is better than losing pid 1, and a failed exchange must resynchronise.
+A closed channel is EOF, not a bad notification, and one lost event beats losing pid 1.
 
-TWO THINGS, both in the same file pair.
+THREE THINGS, in the order they were found, each hiding the next.
 
 ONE, THE ABORT. linux_kevent_copyout called abort() when a filter could not copy an event out,
 under an upstream comment that says the quiet part out loud:
@@ -8,23 +8,36 @@ under an upstream comment that says the quiet part out loud:
     /* XXX-FIXME: hard to handle this without losing events */
     abort();
 
-That trades one lost event for the whole process, and when the process is launchd it is worse than
-that: launchd is pid 1, so its crash handler reboots the container and every guest dies with it,
-which from outside looks like the application quietly exiting. Dropping the event is exactly what
-the zero-filter case immediately above already does. MEASURED: one fatal signal per run before,
-ZERO after.
+That trades one lost event for the whole process, and when the process is launchd it is worse:
+launchd is pid 1, so its crash handler reboots the container and every guest dies with it, which
+from outside looks like the application quietly exiting. Dropping the event is exactly what the
+zero-filter case immediately above already does. MEASURED: one fatal signal per run before, ZERO
+after.
 
 TWO, THE DESYNC. evfilt_machport_copyout is a strict notification, request, reply exchange, so
-reading anything else in the first slot means the socket is off by a message and every later
-exchange reads the wrong one. Returning -1 without draining leaves the offending message in place,
-epoll keeps reporting the fd readable, and the caller spins. Draining costs at most the events
-already in flight and puts the channel back in step. MEASURED, counting only once the daemon is
-gone: 3,042,592 failures in one sixty second run before, then 78,644 / 63 / 79,082 over three runs
-after. About forty times better and NOT fixed; two runs in three still spin.
+reading anything else in the first slot means the socket is off by a message. Returning without
+draining leaves the offending message in place for the next call to trip over.
 
-AND THE FAILURE NAMES ITSELF NOW. All six failure paths had only a dbg_printf, which is compiled
-out, so a Mach-port event that could not be read killed the process and explained nothing. Under
-CIDER_TRACE_KQUEUE each one says which it was, and that is how the desync was found at all.
+THREE, AND IT WAS THE WHOLE SPIN: EOF WAS NOT HANDLED. recv returning ZERO is the daemon having
+closed its end. Zero is not negative, so it slipped past the error check, and the number test then
+read an UNINITIALISED LOCAL, which of course is not a notification. epoll reports a closed
+descriptor readable forever, so that mis-read repeated as fast as the loop could turn.
+
+The kqueue answer to a source that has gone away is to deliver the event ONCE with EV_EOF and let
+the knote be deleted, which EV_ONESHOT arranges in the caller's post-processing.
+
+MEASURED, counting only once the daemon is gone, because counting a log while it is still being
+written is what made my first estimate wrong by five orders of magnitude:
+
+    abort()                 one fatal signal per run
+    drop, no drain          3,042,592 failures in one 60 s run
+    drop with drain            78,644 / 63 / 79,082 over three runs
+    EOF handled                      0 / 0 / 0, with 1, 3 and 7 clean EV_EOF events
+                                     and the daemon log down from 11 MB to 33 KB
+
+The traces that found it are kept: all six failure paths in evfilt_machport_copyout had only a
+dbg_printf, which is compiled out, so a Mach-port event that could not be read killed the process
+and explained nothing.
 
 --- a/src/linux/platform.c
 +++ b/src/linux/platform.c
@@ -79,7 +92,7 @@ CIDER_TRACE_KQUEUE each one says which it was, and that is how the desync was fo
  int
  evfilt_machport_copyout(struct kevent64_s *dst, struct knote *src, void *ptr)
  {
-@@ -50,11 +64,31 @@
+@@ -50,11 +64,49 @@
  	rv = recv(src->kdata.kn_dupfd, &notification, sizeof(notification), 0);
  	if (rv < 0) {
  		dbg_printf("evfilt_machport_copyout() reading notification failed: %d (%s)", errno, strerror(errno));
@@ -87,6 +100,24 @@ CIDER_TRACE_KQUEUE each one says which it was, and that is how the desync was fo
  		return -1;
  	}
  
++	if (rv == 0) {
++		/*
++		 * EOF, AND IT IS THE WHOLE SPIN. Zero from recv is the daemon having closed its end of the
++		 * channel; it is not negative, so it slipped past the check above and the number test below
++		 * then read an UNINITIALISED local, which of course is not a notification. epoll reports a
++		 * closed descriptor readable forever, so that mis-read repeated as fast as the loop could
++		 * turn: measured in the millions per run, and originally an abort() that took pid 1 with it.
++		 *
++		 * The kqueue answer to a source that has gone away is to deliver the event once with
++		 * EV_EOF and let the knote be deleted, which EV_ONESHOT arranges in the caller's
++		 * post-processing. One event, then silence, instead of an endless one.
++		 */
++		CIDER_MACHPORT_FAIL("channel closed by the daemon, reporting EV_EOF");
++		dst->flags |= EV_EOF | EV_ONESHOT;
++		dst->data = 0;
++		return 0;
++	}
++
  	if (notification.header.number != dserver_kqchan_msgnum_notification) {
 +		/*
 +		 * RESYNCHRONISE, do not just fail. This channel is a strict notification / request /
@@ -111,7 +142,7 @@ CIDER_TRACE_KQUEUE each one says which it was, and that is how the desync was fo
  		return -1;
  	}
  
-@@ -67,6 +101,7 @@
+@@ -67,6 +119,7 @@
  	rv = send(src->kdata.kn_dupfd, &call, sizeof(call), 0);
  	if (rv < 0) {
  		dbg_printf("evfilt_machport_copyout() sending request failed: %d (%s)", errno, strerror(errno));
@@ -119,7 +150,7 @@ CIDER_TRACE_KQUEUE each one says which it was, and that is how the desync was fo
  		return -1;
  	}
  
-@@ -74,11 +109,13 @@
+@@ -74,11 +127,13 @@
  	rv = recv(src->kdata.kn_dupfd, &reply, sizeof(reply), 0);
  	if (rv < 0) {
  		dbg_printf("evfilt_machport_copyout() reading reply failed: %d (%s)", errno, strerror(errno));
@@ -133,7 +164,7 @@ CIDER_TRACE_KQUEUE each one says which it was, and that is how the desync was fo
  		return -1;
  	}
  
-@@ -92,6 +129,7 @@
+@@ -92,6 +147,7 @@
  	if (reply.header.code != 0) {
  		// FIXME: the returned code is actually a Linux code (but strerror is provided by Darwin libc here)
  		dbg_printf("evfilt_machport_copyout() server indicated failure: %d (%s)", -reply.header.code, strerror(-reply.header.code));

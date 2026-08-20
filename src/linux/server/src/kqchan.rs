@@ -62,6 +62,22 @@ fn as_bytes<T>(v: &T) -> &[u8] {
     unsafe { std::slice::from_raw_parts(v as *const T as *const u8, size_of::<T>()) }
 }
 
+/// CIDER_TRACE_KQUEUE: every datagram a mach-port channel puts on the wire, and every one it takes
+/// off, in order.
+///
+/// The channel is a strict notification / request / reply exchange, so a desync is only ever
+/// visible as "what is actually on the wire", and neither side can see that alone: the client knows
+/// what it expected, the server knows what it meant to send, and the bug lives in between.
+fn kq_trace(dir: &str, number: u32, note: &str) {
+    // Non-EMPTY: our drivers export switches unset-as-empty.
+    match std::env::var("CIDER_TRACE_KQUEUE") {
+        Ok(v) if !v.is_empty() => {
+            eprintln!("CIDER_KQCHAN {dir} number={number} {note}");
+        }
+        _ => {}
+    }
+}
+
 /// One process-watching kqueue channel.
 pub struct ProcKqchan {
     /// Our end of the socketpair (nonblocking SEQPACKET).
@@ -351,6 +367,9 @@ impl MachPortKqchan {
     }
 
     fn send(&self, bytes: &[u8]) {
+        if bytes.len() >= 4 {
+            kq_trace("SEND", u32::from_ne_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]), "via send");
+        }
         unsafe {
             libc::send(self.daemon_fd, bytes.as_ptr() as *const c_void, bytes.len(), libc::MSG_DONTWAIT);
         }
@@ -375,6 +394,9 @@ impl MachPortKqchan {
             let n = unsafe { libc::recv(self.daemon_fd, buf.as_mut_ptr() as *mut c_void, buf.len(), 0) };
             if n == 0 {
                 return false;
+            }
+            if n >= 4 {
+                kq_trace("RECV", u32::from_ne_bytes([buf[0], buf[1], buf[2], buf[3]]), "from the guest");
             }
             if n < 0 {
                 let e = io::Error::last_os_error();
@@ -451,6 +473,7 @@ impl MachPortKqchan {
                         // 0xdead: "no events" sentinel (matches ProcKqchan + kqchan.cpp).
                         reply.header.code = 0xdead;
                     }
+                    kq_trace("SEND", reply.header.number as u32, "read reply from the fill body");
                     libc::send(
                         daemon_fd,
                         &reply as *const _ as *const c_void,

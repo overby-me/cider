@@ -12123,3 +12123,43 @@ writing it*, which is no measurement at all. Counting only once the daemon is go
 
 About forty times better, one run nearly clean, and **not fixed**: two runs in three still spin.
 trustd is still never demand-started.
+
+### A closed channel is EOF, and that was the whole spin
+
+Tracing every datagram on the kqchan wire (`CIDER_TRACE_KQUEUE`, now on both sides) settled it in
+one run. The server sends exactly the right thing and then stops:
+
+```
+CIDER_KQCHAN SEND number=1 via send                    notification
+CIDER_KQCHAN RECV number=3 from the guest              read request
+CIDER_KQCHAN SEND number=3 read reply from the fill body
+CIDER_KQCHAN SEND number=1 via send
+CIDER_KQCHAN RECV number=3 from the guest
+CIDER_KQCHAN SEND number=3 read reply from the fill body
+                                                       and nothing more, ever
+```
+
+Two clean exchanges, totals of exactly 2/2/2 — while the client failed millions of times. So the
+client was not mis-reading the server; it was reading **nothing**:
+
+```c
+rv = recv(src->kdata.kn_dupfd, &notification, sizeof(notification), 0);
+if (rv < 0) { ... return -1; }
+if (notification.header.number != dserver_kqchan_msgnum_notification) { ... }
+```
+
+`recv` returning **zero** is the daemon having closed its end. Zero is not negative, so it slipped
+past the error check, and the number test then read an **uninitialised local**. epoll reports a
+closed descriptor readable forever, so that mis-read repeated as fast as the loop could turn. The
+kqueue answer to a source that has gone away is to deliver the event **once** with `EV_EOF` and let
+the knote be deleted, which `EV_ONESHOT` arranges in the caller's post-processing.
+
+| | failures in one run |
+|---|---|
+| `abort()` | one fatal signal per run |
+| drop, no drain | 3,042,592 |
+| drop with drain | 78,644 / 63 / 79,082 |
+| **EOF handled** | **0 / 0 / 0** (with 1, 3, 7 clean `EV_EOF` events; daemon log 11 MB → 33 KB) |
+
+**Still true:** trustd is *not* demand-started by this, so #143/#144 do not end here after all — that
+guess was wrong and the two remain open.
