@@ -104,16 +104,29 @@ def main [
     print "== substituting build inputs from cache =="
     let idrvs = (^nix-store -qR $drv | complete | get stdout | lines
         | where {|l| $l | str ends-with ".drv" })
+    # ALL of the target's own outputs (out, dev, doc, man, info, ...), not just the default
+    # $outhash. They are excluded from the substitution and the DB dump and deleted from the host
+    # store below, so the guest actually COMPILES the target instead of finding the cache-
+    # substituted output already valid via the (read-only) writable-/nix overlay lower.
+    let touts = (do -i { ^nix-store -q --outputs $drv } | complete | get stdout | lines)
     let iouts = (
         (do -i { ^nix-store -q --outputs ...$idrvs } | complete | get stdout | lines
-            | where {|l| not ($l | str contains $outhash) } | uniq | sort)
+            | where {|l| $l not-in $touts } | uniq | sort)
     )
     # A few SDK build-tools are not cached; harmless.
     do -i { ^nix-store -r ...$iouts } | ignore
     # -p, because nushell mktemp rejects a template that contains a directory separator.
     let dump = (mktemp --tmpdir-path /tmp pkg-db.XXXXXX.dump)
-    let closure = (do -i { ^nix-store -qR --include-outputs $drv } | complete | get stdout | lines)
+    let closure = (do -i { ^nix-store -qR --include-outputs $drv } | complete | get stdout | lines
+        | where {|l| $l not-in $touts })
     do -i { ^nix-store --dump-db ...$closure out> $dump }
+    # Drop any cache-substituted copy of the target outputs from the host store, so they do not
+    # shadow the guest build through the overlay lower (read-only in the guest -> the guest cannot
+    # clear them itself: fchmodat EPERM). With them gone and excluded from the dump, `nix build`
+    # in the guest builds them from source into the writable upper. Plain --delete (no
+    # --ignore-liveness, which an unprivileged user is not allowed to use); the target outputs
+    # have no gc-roots, and all of them are deleted together so their cross-references resolve.
+    do -i { ^nix-store --delete ...$touts }
 
     # 4. warm-up boot -> skeleton; then build+run in one bypass session
     kill_all

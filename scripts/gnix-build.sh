@@ -47,7 +47,7 @@ echo "=BUILD $GDRV="
 # nix builds are atomic, so a fresh attempt re-runs configure and usually passes.
 brc=1
 for attempt in 1 2 3 4; do
-	nix build --offline --no-link "${GDRV}^*" 2>&1
+	nix build -L --offline --no-link "${GDRV}^*" 2>&1
 	brc=$?
 	[ "$brc" -eq 0 ] && break
 	echo "build attempt $attempt failed (rc=$brc); retrying (transient-crash mitigation)..."
