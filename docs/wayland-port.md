@@ -12551,3 +12551,28 @@ launchd hands out a send right and demand-starts the job — and trustd then nev
 XPC call blocks forever with no timeout. Without launchd the lookup fails fast, `errSecNotAvailable`
 takes Apple's ramdisk fallback, and the check completes wrongly but quickly. That is a much sharper
 statement of #135 than "staticValidate never returns": **it returns iff there is no launchd**.
+
+### A pipe client and a connection client, and why that is still not an answer
+
+libinfo reaches opendirectoryd with a raw `xpc_pipe`, not an `xpc_connection` — and a pipe sends a
+plain `XPC_MSGH_ID_MESSAGE` where a connection first sends `XPC_MSGH_ID_CHECKIN`, which matters
+because a libxpc **listener drops anything that is not a check-in**. That would neatly explain why
+every membership lookup hangs while an echo reached by a connection answers much of the time.
+
+So the echo probe now asks the same service both ways in the same run, with the connection client as
+the control. `xpc_pipe_routine` has no timeout — the very thing under investigation — so it runs on a
+detached thread with a deadline rather than being allowed to hang the probe.
+
+**Two runs looked like a finding: the pipe client returned `rc=0` with a reply while the connection
+client timed out, and the server logged two peer dictionaries and two replies. Three runs later,
+both clients timed out, and in two of those the server was up with no listener event at all.**
+
+Two runs is not a rate. This is the second time in two rungs that a four-run split evaporated — the
+concurrent target queue did the same thing (3/4 vs 1/4 became 5/9 vs 3/9). **The pipe/connection
+difference is unestablished.** What *is* established is that the service fails in at least two
+independent ways: the job does not start, or it starts and its listener is never handed the message.
+
+The server now names the payload of each message it receives (`from=ping` vs `from=ping-by-pipe`),
+because with two clients served in one run and two separate log streams, counting events cannot say
+which client arrived — and the question that matters is whether the connection client's message
+reaches the server at all, or only its reply goes missing.

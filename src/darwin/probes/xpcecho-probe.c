@@ -34,7 +34,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include <xpc/xpc.h>
+#include <xpc/private/pipe.h>
+#include <pthread.h>
 
 #define ECHO_SERVICE "com.cider.xpcecho"
 
@@ -76,8 +79,17 @@ static void run_server(bool concurrent) {
             return;
         }
         xpc_connection_set_event_handler(peer, ^(xpc_object_t event) {
-            fprintf(stderr, "CIDER_ECHO peer event, %sa dictionary\n",
-                    xpc_get_type(event) == XPC_TYPE_DICTIONARY ? "" : "NOT ");
+            /*
+             * NAME WHICH CLIENT. Both clients are served in the same run and the two log streams are
+             * different files, so counting events cannot say which of them arrived -- and the whole
+             * question is whether the CONNECTION client's message reaches the server at all or only
+             * its reply goes missing. The payload string answers it.
+             */
+            fprintf(stderr, "CIDER_ECHO peer event, %sa dictionary, from=%s\n",
+                    xpc_get_type(event) == XPC_TYPE_DICTIONARY ? "" : "NOT ",
+                    xpc_get_type(event) == XPC_TYPE_DICTIONARY
+                            ? (xpc_dictionary_get_string(event, "cider-probe") ?: "(no key)")
+                            : "(not a dictionary)");
             fflush(stderr);
 
             if (xpc_get_type(event) != XPC_TYPE_DICTIONARY) {
@@ -94,7 +106,8 @@ static void run_server(bool concurrent) {
             xpc_connection_send_message(xpc_dictionary_get_remote_connection(event), reply);
             xpc_release(reply);
 
-            fprintf(stderr, "CIDER_ECHO replied\n");
+            fprintf(stderr, "CIDER_ECHO replied to %s\n",
+                    xpc_dictionary_get_string(event, "cider-probe") ?: "(no key)");
             fflush(stderr);
         });
         xpc_connection_resume(peer);
@@ -144,6 +157,64 @@ static const char *ask(const char *name, int seconds) {
     return outcome;
 }
 
+/*
+ * THE SAME SERVICE, ASKED THE OTHER WAY.
+ *
+ * libinfo does not use an xpc_connection to reach opendirectoryd; it uses a raw xpc_pipe, and a pipe
+ * sends a plain XPC_MSGH_ID_MESSAGE where a connection first sends XPC_MSGH_ID_CHECKIN. A libxpc
+ * LISTENER drops anything that is not a check-in. If that is what happens, then a pipe client can
+ * never reach a connection listener, which would explain why every membership lookup hangs while an
+ * echo reached by a connection answers most of the time.
+ *
+ * The connection client is the control: same binary, same service, same run.
+ *
+ * WHAT IT ANSWERED SO FAR, AND IT IS NOT AN ANSWER YET. Two runs had the pipe client get rc=0 with a
+ * reply while the connection client timed out in the same run, which looked like exactly the split
+ * described above. Three runs after that, BOTH timed out, and in two of those the server was up with
+ * no listener event at all. Two runs is not a rate -- the same mistake a concurrent target queue
+ * already produced once in this file. The pipe/connection difference is UNESTABLISHED; what is
+ * established is that the service is flaky in at least two independent ways.
+ *
+ * xpc_pipe_routine has NO timeout, which is the whole problem being investigated, so it is called on
+ * a detached thread and given a deadline here rather than being allowed to hang the probe.
+ */
+static void *pipe_thread(void *ctx) {
+    xpc_object_t *slot = (xpc_object_t *) ctx;
+    xpc_pipe_t pipe = xpc_pipe_create(ECHO_SERVICE, 0);
+
+    if (pipe == NULL) {
+        printf("CIDER_ECHOPROBE pipe create FAILED\n");
+        return NULL;
+    }
+    xpc_object_t message = xpc_dictionary_create(NULL, NULL, 0);
+
+    xpc_dictionary_set_string(message, "cider-probe", "ping-by-pipe");
+
+    xpc_object_t reply = NULL;
+    int rc = xpc_pipe_routine(pipe, message, &reply);
+
+    printf("CIDER_ECHOPROBE pipe routine returned rc=%d reply=%s\n", rc, reply ? "yes" : "no");
+    *slot = reply;
+    return NULL;
+}
+
+static const char *ask_by_pipe(int seconds) {
+    static xpc_object_t slot;
+    pthread_t th;
+
+    slot = NULL;
+    if (pthread_create(&th, NULL, pipe_thread, &slot) != 0) {
+        return "THREAD-FAILED";
+    }
+    for (int i = 0; i < seconds * 10; i++) {
+        if (slot != NULL) {
+            return "REPLY";
+        }
+        usleep(100000);
+    }
+    return "TIMEOUT";
+}
+
 int main(int argc, char **argv) {
     setvbuf(stdout, NULL, _IONBF, 0);
 
@@ -159,6 +230,7 @@ int main(int argc, char **argv) {
     /* The known-negative, so a run whose control is not ERROR says nothing about the rest. */
     printf("CIDER_ECHOPROBE control=%s (a name nothing can serve)\n",
            ask("com.cider.probe.no.such.service.exists", 10));
-    printf("CIDER_ECHOPROBE " ECHO_SERVICE "=%s\n", ask(ECHO_SERVICE, 20));
+    printf("CIDER_ECHOPROBE connection " ECHO_SERVICE "=%s\n", ask(ECHO_SERVICE, 20));
+    printf("CIDER_ECHOPROBE pipe " ECHO_SERVICE "=%s\n", ask_by_pipe(20));
     return 0;
 }
