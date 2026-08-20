@@ -18,6 +18,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#import <objc/runtime.h>
 #import "NSKeyValueBinding/NSKVOBinder.h"
 #import "NSKeyValueBinding/NSMultipleValueBinder.h"
 #import <AppKit/AppKit.h>
@@ -2082,7 +2083,34 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
     [self tile];
 }
 
+/*
+ * WHAT THIS TABLE WILL LET A DRAG DO, which had a hardcoded answer and no setter at all.
+ *
+ * -setDraggingSourceOperationMask:forLocal: is public since 10.0, and MoneyMoney sends it to its
+ * TransactionList the moment awakeFromNib starts running. Unrecognized selector, caught by
+ * NSApplication, and the application put up its own internal-error sheet.
+ *
+ * AN ASSOCIATED OBJECT rather than two ivars, because applications subclass NSTableView and an ivar
+ * added here would move theirs. The fallback when nothing has been set is the answer this method
+ * always gave, so a table nobody configures behaves exactly as it did before.
+ */
+static const void *kCiderDragMaskLocalKey = &kCiderDragMaskLocalKey;
+static const void *kCiderDragMaskNonLocalKey = &kCiderDragMaskNonLocalKey;
+
+- (void) setDraggingSourceOperationMask: (NSDragOperation) mask forLocal: (BOOL) isLocal {
+    objc_setAssociatedObject(self,
+                             isLocal ? kCiderDragMaskLocalKey : kCiderDragMaskNonLocalKey,
+                             [NSNumber numberWithUnsignedInteger: (NSUInteger) mask],
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
 - (NSDragOperation) draggingSourceOperationMaskForLocal: (BOOL) isLocal {
+    NSNumber *stored = objc_getAssociatedObject(
+            self, isLocal ? kCiderDragMaskLocalKey : kCiderDragMaskNonLocalKey);
+
+    if (stored != nil) {
+        return (NSDragOperation) [stored unsignedIntegerValue];
+    }
     return NSDragOperationCopy;
 }
 

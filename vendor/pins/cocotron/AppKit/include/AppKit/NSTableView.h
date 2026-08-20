@@ -318,4 +318,7 @@ typedef NSUInteger NSTableViewColumnAutoresizingStyle;
 - (NSInteger) style;
 - (void) setStyle: (NSInteger) value;
 - (NSInteger) effectiveStyle;
+- (void) setDraggingSourceOperationMask: (NSDragOperation) mask forLocal: (BOOL) isLocal;
+- (NSDragOperation) draggingSourceOperationMaskForLocal: (BOOL) isLocal;
+
 @end

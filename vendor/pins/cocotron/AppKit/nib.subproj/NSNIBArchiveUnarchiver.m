@@ -648,6 +648,34 @@ static BOOL NIBTracing(void) {
         _instances[index] = awake;
         instance = awake;
     }
+
+    /*
+     * TELL THE DELEGATE THE OBJECT IS DECODED, which nothing here did.
+     *
+     * NSNib collects the objects a nib produced from -unarchiver:didDecodeObject:, and that array is
+     * what it walks to send -awakeFromNib and then -postAwakeFromNib. This unarchiver called
+     * -unarchiver:willReplaceObject:withObject: and never this one, so the array stayed EMPTY: over
+     * four nib loads in one MoneyMoney run the per-object trace inside that loop printed zero times
+     * while the phase markers around it printed four. Nothing in any NIBArchive nib was ever woken.
+     *
+     * What that costs is not only application code. -[NSScrollView postAwakeFromNib] is where a
+     * scroller the nib does not want gets removed, so MoneyMoney's IBAN field kept both scrollers
+     * from the archive and drew one across itself, and the account list kept a horizontal scroller
+     * its nib also says NO to.
+     *
+     * A delegate may substitute an object, which is the documented contract, so a different non-nil
+     * answer replaces the slot and the table takes ownership of it.
+     */
+    if ([_delegate respondsToSelector: @selector(unarchiver:didDecodeObject:)]) {
+        id substitute = [_delegate unarchiver: (id) self didDecodeObject: instance];
+
+        if (substitute != nil && substitute != instance) {
+            [substitute retain];
+            [_instances[index] release];
+            _instances[index] = substitute;
+            instance = substitute;
+        }
+    }
     if (NIBTracing()) {
         fprintf(stderr, "CIDER_NIB built %lu %s ok\n", (unsigned long) index,
                 [className UTF8String]);

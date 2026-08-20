@@ -13502,3 +13502,44 @@ started at the end of a rung.
 Worth remembering for the next `CIDER_TRACE_PAINT`: the rect is in the **target window's own**
 coordinates with a bottom-left origin, not the screen's, and `on=` is how you tell which window's
 surface a line belongs to.
+
+### Nothing in any nib had ever been woken
+
+The spurious scroller led somewhere much larger. `NSNib` collects the objects a nib produced from
+`-unarchiver:didDecodeObject:`, and that array is what it walks to send `-awakeFromNib` and then
+`-postAwakeFromNib`. **`_NSNIBArchiveUnarchiver` never called that delegate method**, only
+`-unarchiver:willReplaceObject:withObject:`, so the array was always empty.
+
+Measured rather than reasoned: over four nib loads in one MoneyMoney run the per-object trace inside
+that loop printed **zero** times while the phase markers around it printed four. After the fix, the
+same run prints **1088**.
+
+**I had this wrong for a moment and want it on the record**: I first read the empty array as "no
+object in any nib ever gets `awakeFromNib`", and the comments elsewhere in cocotron that quote
+`-[CCMainWindowController awakeFromNib]` frames looked like a contradiction. The measurement is what
+stands: in this run, through this loader, nothing was woken.
+
+What it cost was not only application code. `-[NSScrollView postAwakeFromNib]` is where a scroller the
+nib does not want gets removed, so **both** spurious scrollers came from here: the one drawn across
+MoneyMoney's IBAN field and the one under its account list. `Wizard.nib` says
+`hasHorizontalScroller = NO` **and** `hasVerticalScroller = NO` for that field; `MainWindow.nib` says
+no horizontal scroller for the sidebar. Both are gone now.
+
+Waking 1088 objects ran a great deal of application code that had never run, and it wanted two more
+public methods, each caught by `NSApplication` and turned into MoneyMoney's own internal-error sheet:
+
+- **`-[NSTableView setDraggingSourceOperationMask:forLocal:]`**, public since 10.0, which had a
+  hardcoded getter and no setter. Stored in an **associated object**, because applications subclass
+  `NSTableView` — `TransactionList` is one. The fallback when nothing is set is the answer the getter
+  always gave, so a table nobody configures behaves exactly as before.
+- **`-[NSTextView setConstrainedFrameSize:]`**, public since 10.0. Apple documents the constraint
+  precisely: an axis the view cannot resize in keeps the size it has, the rest is clamped between
+  `minSize` and `maxSize`.
+
+**Looked at, and it is a different application.** The account list has a real row in it. The
+transaction area on the right is the list's own colour rather than bare window background. The wizard
+draws its panel and shadow, the IBAN radio button is there and selected, **Next is the blue default
+button**, and the country pop-up shows a German flag where it used to be an empty grey box.
+
+Still wrong there: the IBAN text field now draws no bezel at all, where before it drew the scroller
+across itself.

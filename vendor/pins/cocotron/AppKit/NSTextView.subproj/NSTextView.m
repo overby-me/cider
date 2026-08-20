@@ -2825,6 +2825,42 @@ static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourc
     [[self textContainer] setContainerSize: containerSize];
 }
 
+/*
+ * SET THE FRAME, CONSTRAINED BY WHAT THIS VIEW IS ALLOWED TO BE, public since 10.0 and missing here.
+ *
+ * MoneyMoney sends it to its MMTextViewMono while the wizard nib wakes up, and an unrecognized
+ * selector there is caught by NSApplication, so the wizard put up an internal-error sheet instead of
+ * a window. Apple documents the constraint exactly: an axis the view cannot resize in keeps the size
+ * it has, and the rest is clamped between minSize and maxSize.
+ */
+- (void) setConstrainedFrameSize: (NSSize) desired {
+    NSSize size = desired;
+
+    if (![self isHorizontallyResizable]) {
+        size.width = [self frame].size.width;
+    } else {
+        if (_minSize.width > 0 && size.width < _minSize.width) {
+            size.width = _minSize.width;
+        }
+        if (_maxSize.width > 0 && size.width > _maxSize.width) {
+            size.width = _maxSize.width;
+        }
+    }
+
+    if (![self isVerticallyResizable]) {
+        size.height = [self frame].size.height;
+    } else {
+        if (_minSize.height > 0 && size.height < _minSize.height) {
+            size.height = _minSize.height;
+        }
+        if (_maxSize.height > 0 && size.height > _maxSize.height) {
+            size.height = _maxSize.height;
+        }
+    }
+
+    [self setFrameSize: size];
+}
+
 - (void) sizeToFit {
     NSRect usedRect, extraRect;
     NSSize size;
