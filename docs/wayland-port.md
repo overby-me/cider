@@ -11947,3 +11947,37 @@ Next: `verifySignature` feeds the CodeDirectory to `CMSDecoderSetDetachedContent
 signed, or our digest/RSA verification is wrong. Compare the digest we compute over `mBaseDir`
 against the `messageDigest` attribute inside the CMS blob — those two disagreeing localises it to
 one side or the other in a single run.
+
+### The signature is good. The timestamp is what we cannot check.
+
+Six layers, measured end to end, and the label is wrong at the top:
+
+```
+CIDER_CMS unauth attrs (timestamp) signer=0x…7a40 rux=-67884, abandoning a GoodSignature
+CIDER_CMS verify signer=0x…7a40 exit=loser verdict=1 (GoodSignature)
+CIDER_CMS VerifySignerInfo signer=0x…7a40 signature=-1 certificate=0
+CIDER_CSSTEP CMS signer status=3 (kCMSSignerInvalidSignature)
+CIDER_CODESIGN SecStaticCodeCheckValidity=-67061
+```
+
+1. `SecCmsSignerInfoVerifyWithPolicy` verifies the signature → **`GoodSignature`**.
+2. It then verifies the **unauthenticated** attributes — Apple's secure timestamp countersignature
+   — and gets **`errSecTimestampNotTrusted` (−67884)**.
+3. So it does `goto loser` **with `vs` still `GoodSignature`** and returns `SECFailure`.
+4. `CMSDecoderCopySignerStatus` turns any nonzero return into `kCMSSignerInvalidSignature` — its own
+   comment says it *assumes* that.
+5. `verifySignature` throws `errSecCSSignatureFailed` (−67061).
+6. The app tells its user the file seems to be damaged.
+
+**The code signature is fine at every step.** What cannot be checked is the timestamp, whose trust
+evaluation wants Apple's timestamp CA as an anchor, and this container has no trust anchors and no
+trustd. That also explains the three-of-three result: every third-party bundle is timestamped.
+
+**Three instrument lessons, each earned by an earlier trace lying by omission:**
+
+- **Report on every exit.** Reporting only on the success path made the failing call print nothing,
+  which reads exactly like the call not happening.
+- **Tag who.** Two verifications are in flight at once, so adjacent lines belong to different calls
+  — the log is not a timeline. The signer pointer pairs them.
+- **An instrument compiled out is silent in the same way a passing check is.** The status I needed
+  was already syslogged — inside `#if SECTRUST_VERBOSE_DEBUG`, which is off.

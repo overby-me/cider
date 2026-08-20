@@ -1,0 +1,174 @@
+A trusted timestamp we cannot check is reported as a bad code signature.
+
+The chain, measured end to end, six layers of it, and the label is wrong at the top:
+
+  1. MoneyMoney calls SecStaticCodeCheckValidity on its own bundle.
+  2. validateDirectory reaches verifySignature, which asks CMSDecoderCopySignerStatus.
+  3. SecCmsSignerInfoVerifyWithPolicy verifies the signature and gets GoodSignature.
+  4. It then verifies the UNAUTHENTICATED attributes, which carry Apple's secure timestamp
+     countersignature, and that returns errSecTimestampNotTrusted, -67884.
+  5. So it does `goto loser` WITH vs STILL SET TO GoodSignature, and returns SECFailure.
+  6. CMSDecoderCopySignerStatus turns any nonzero return into kCMSSignerInvalidSignature. Its own
+     comment says it assumes that: "assume that a nonzero vfyRtn means bad signature".
+  7. verifySignature throws errSecCSSignatureFailed, -67061.
+  8. The application tells its user the file seems to be damaged.
+
+The code signature is FINE at every step. What cannot be checked is the TIMESTAMP, whose trust
+evaluation needs Apple's timestamp CA as an anchor, and this container has no trust anchors and no
+trustd.
+
+These traces are what made that legible. Three of them exist because the earlier ones lied by
+omission, and each lesson is worth more than the line that carries it:
+
+  - REPORT ON EVERY EXIT. Reporting only on the success path made the failing call print nothing,
+    which reads exactly like the call not happening.
+  - TAG WHO. Two verifications are in flight at once, so adjacent lines belong to different calls
+    and the log is not a timeline. The signer pointer pairs them.
+  - AN INSTRUMENT COMPILED OUT IS SILENT IN THE SAME WAY A PASSING CHECK IS. The status this
+    needed was already syslogged, inside `#if SECTRUST_VERBOSE_DEBUG`, which is off.
+
+--- a/OSX/libsecurity_smime/lib/cmssiginfo.c
++++ b/OSX/libsecurity_smime/lib/cmssiginfo.c
+@@ -567,6 +567,46 @@
+     return SecCmsSignerInfoVerifyWithPolicy(signerinfo,NULL, digest,contentType);
+ }
+ 
++/*
++ * CIDER_TRACE_SECITEM: WHICH way a CMS signature failed.
++ *
++ * Everything above collapses this to kCMSSignerInvalidSignature, so "the signature is invalid" is
++ * all a caller ever learns -- and an application shows that to its user as "this file seems to be
++ * damaged". The distinction that matters is right here and is thrown away: DigestMismatch means the
++ * content we digested is not what was signed, BadSignature means the digest matched and the
++ * public-key verification failed. Those have nothing in common as bugs.
++ */
++static const char *cider_cms_vs_name(SecCmsVerificationStatus vs)
++{
++	switch (vs) {
++	case SecCmsVSUnverified:		return "Unverified";
++	case SecCmsVSGoodSignature:		return "GoodSignature";
++	case SecCmsVSBadSignature:		return "BadSignature (digest matched, key verify failed)";
++	case SecCmsVSDigestMismatch:		return "DigestMismatch (content is not what was signed)";
++	case SecCmsVSSigningCertNotFound:	return "SigningCertNotFound";
++	case SecCmsVSSigningCertNotTrusted:	return "SigningCertNotTrusted";
++	case SecCmsVSSignatureAlgorithmUnknown:	return "SignatureAlgorithmUnknown";
++	case SecCmsVSSignatureAlgorithmUnsupported: return "SignatureAlgorithmUnsupported";
++	case SecCmsVSMalformedSignature:	return "MalformedSignature";
++	case SecCmsVSProcessingError:		return "ProcessingError";
++	default:				return "unknown";
++	}
++}
++
++static void cider_cms_report(const void *who, const char *where, SecCmsVerificationStatus vs)
++{
++	/* Non-EMPTY: our drivers export switches unset-as-empty. */
++	const char *v = getenv("CIDER_TRACE_SECITEM");
++
++	if (v != NULL && v[0] != '\0') {
++		/* WHO, because two of these can be in flight at once and adjacent lines then belong to
++		 * different calls -- the same trap as reading a log as a timeline. */
++		fprintf(stderr, "CIDER_CMS verify signer=%p exit=%s verdict=%d (%s)\n",
++			who, where, (int) vs, cider_cms_vs_name(vs));
++		fflush(stderr);
++	}
++}
++
+ OSStatus
+ SecCmsSignerInfoVerifyWithPolicy(SecCmsSignerInfoRef signerinfo,CFTypeRef timeStampPolicy, CSSM_DATA_PTR digest, CSSM_DATA_PTR contentType)
+ {
+@@ -578,8 +618,10 @@
+     PLArenaPool *poolp = NULL;
+     SECOidTag digestAlgTag, digestEncAlgTag;
+     
+-    if (signerinfo == NULL)
++    if (signerinfo == NULL) {
++	cider_cms_report(signerinfo, "null-signerinfo", SecCmsVSUnverified);
+ 	return SECFailure;
++    }
+     
+     /* SecCmsSignerInfoGetSigningCertificate will fail if 2nd parm is NULL and */
+     /* cert has not been verified */
+@@ -692,6 +734,21 @@
+         OSStatus rux = SecCmsSignerInfoVerifyUnAuthAttrsWithPolicy(signerinfo,timeStampPolicy);
+         dprintf("SecCmsSignerInfoVerifyUnAuthAttrs Status: %ld\n", (long)rux);
+         if (rux) {
++            /*
++             * A GOOD SIGNATURE LEAVES BY THE FAILURE DOOR HERE, and vs still says GoodSignature.
++             * Everything above turns that into kCMSSignerInvalidSignature, so a TIMESTAMP that
++             * cannot be verified is reported to the application as a bad code signature.
++             */
++            {
++                const char *cider = getenv("CIDER_TRACE_SECITEM");
++
++                if (cider != NULL && cider[0] != '\0') {
++                    fprintf(stderr, "CIDER_CMS unauth attrs (timestamp) signer=%p rux=%d, "
++                            "abandoning a %s\n", (void *) signerinfo, (int) rux,
++                            cider_cms_vs_name(vs));
++                    fflush(stderr);
++                }
++            }
+             goto loser;
+         }
+     }
+@@ -720,6 +777,7 @@
+     if (publickey != NULL)
+ 	CFRelease(publickey);
+ 
++    cider_cms_report(signerinfo, "ok", vs);
+     signerinfo->verificationStatus = vs;
+     dprintfRC("SecCmsSignerInfoVerify end: cerp %p cert.rc %d\n",
+ 	    cert, (int)CFGetRetainCount(cert));
+@@ -733,6 +791,9 @@
+ 	SECKEY_DestroyPublicKey (publickey);
+ 
+     dprintf("verificationStatus2: %d\n", vs);
++    /* EVERY EXIT, not the one I expected. Reporting only on the success path made the failing
++     * call print nothing at all, which reads exactly like the call not happening. */
++    cider_cms_report(signerinfo, "loser", vs);
+     signerinfo->verificationStatus = vs;
+ 
+     PORT_SetError (SEC_ERROR_PKCS7_BAD_SIGNATURE);
+--- a/OSX/libsecurity_smime/lib/cmssigdata.c
++++ b/OSX/libsecurity_smime/lib/cmssigdata.c
+@@ -787,6 +787,21 @@
+     status2 = SecCmsSignerInfoVerifyCertificate(signerinfo, keychainOrArray,
+ 	policies, trustRef);
+     dprintf("SecCmsSignedDataVerifySignerInfo: status %d status2 %d\n", (int) status, (int)status2);
++    {
++	/*
++	 * BOTH NUMBERS, because the caller cannot tell them apart. CMSDecoderCopySignerStatus turns
++	 * ANY nonzero return from here into kCMSSignerInvalidSignature -- its own comment says it
++	 * assumes that -- so a CERTIFICATE failure is reported to the application as a bad
++	 * signature, and the application tells its user the file is damaged.
++	 */
++	const char *cider = getenv("CIDER_TRACE_SECITEM");
++
++	if (cider != NULL && cider[0] != '\0') {
++	    fprintf(stderr, "CIDER_CMS VerifySignerInfo signer=%p signature=%d certificate=%d\n",
++		    (void *) signerinfo, (int) status, (int) status2);
++	    fflush(stderr);
++	}
++    }
+     /* The error from SecCmsSignerInfoVerify() supercedes error from SecCmsSignerInfoVerifyCertificate(). */
+     if (status)
+ 	return status;
+--- a/OSX/libsecurity_cms/lib/CMSDecoder.cpp
++++ b/OSX/libsecurity_cms/lib/CMSDecoder.cpp
+@@ -471,6 +471,17 @@
+                                                        policyOrArray,
+                                                        &theTrust);
+ 
++	{
++		/* OUTSIDE the debug block on purpose. The syslog below is inside SECTRUST_VERBOSE_DEBUG,
++		 * which is off, so this number has never been readable -- and an instrument that is
++		 * compiled out is silent in exactly the way a passing check is. */
++		const char *cider = getenv("CIDER_TRACE_SECITEM");
++
++		if (cider != NULL && cider[0] != '\0') {
++			fprintf(stderr, "CIDER_CMS VerifySignerInfo=%d\n", (int) vfyRtn);
++			fflush(stderr);
++		}
++	}
+ #if SECTRUST_VERBOSE_DEBUG
+ 	syslog(LOG_ERR, "CMSDecoderCopySignerStatus: SecCmsSignedDataVerifySignerInfo returned %d", (int)vfyRtn);
+ 	if (policyOrArray) CFShow(policyOrArray);
