@@ -13476,3 +13476,29 @@ moment an application uses the style nobody thought of; a list of what does not 
 
 Looked at: both buttons centred. Swift Publisher's alert, whose buttons were already correct,
 unchanged.
+
+### The grey bar in the IBAN field is a scroller
+
+Where MoneyMoney's "IBAN or Bankleitzahl" field should be there is a flat grey rounded bar.
+`CIDER_TRACE_PAINT` on the **wizard's own surface** (`on=520x421`; the main window is 1400x900, so
+filter by that) named it in two lines:
+
+    path blend=0  202x8 at 255,293  c=0.000,0.320
+        <- -[NSGraphicsStyle(NSScroller) drawScrollerKnobInRect:vertical:highlight:]
+        <- -[NSScroller drawKnob]
+
+The arithmetic agrees: black at alpha 0.32 over the panel's 253 is 172, and the bar measures exactly
+173.
+
+**The nib says there should be no horizontal scroller.** Every `NSScrollView` in `Wizard.nib` has
+`NSsFlags` with bit `0x20` clear (`hasHorizontalScroller = NO`) and `0x200` set
+(`autohidesScrollers = YES`). And the knob is 202 wide in a roughly 243 wide track, so something also
+believes the content is a fifth wider than the clip.
+
+**The same symptom is in the main window** — a 2-point horizontal scroller under the sidebar, where
+`MainTree` is 329 wide in a 327 clip. Two instances of one defect. Filed as its own task rather than
+started at the end of a rung.
+
+Worth remembering for the next `CIDER_TRACE_PAINT`: the rect is in the **target window's own**
+coordinates with a bottom-left origin, not the screen's, and `on=` is how you tell which window's
+surface a line belongs to.
