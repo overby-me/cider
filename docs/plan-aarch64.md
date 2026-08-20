@@ -1065,6 +1065,59 @@ CF+CoreServices+SystemConfiguration (or the full cider_prefix) for arm64 and poi
 Each framework may surface its own arm64 execution bugs under cider once nix actually loads them --
 this is the framework-tier analogue of the M2/M3 bash bring-up.
 
+**M4 framework closure mapped (pass 29): nix's frameworks compile for arm64 EXCEPT the AppKit that
+CoreServices drags in via re-export.** From nix's otool closure, the guest nix needs exactly
+CoreFoundation + CoreServices + SystemConfiguration (Foundation too, transitively). Results building
+each for arm64 with buck2:
+  - CoreFoundation (//vendor/src/corefoundation:CoreFoundation_dylib): builds (real arm64 Mach-O;
+    the buck-out artifact is misleadingly named `..._x86_64` but `file` says arm64).
+  - CoreServices, SystemConfiguration (//src/darwin/frameworks:*_dylib): the umbrella dylibs build.
+  - BUT CoreServices is an umbrella that LC_REEXPORTs its sub-frameworks -- AE, CarbonCore,
+    DictionaryServices, FSEvents, LaunchServices, Metadata, SearchKit, SharedFileList, CFNetwork,
+    CoreFoundation. dyld loads all of them when nix loads CoreServices. Building the sub set pulls in
+    LaunchServices -> AppKit (//vendor/src:AppKit_obj), and AppKit does NOT compile for arm64:
+    cocotron/AppKit/NSApplication.m uses x86 `uc_mcontext->__ss.__rip/__rsp` in cider's own CIDER_APP
+    fatal-signal handler (should be __pc/__sp on arm64), and has IMP calls the newer arm64 SDK
+    rejects ("too many arguments, expected 0" -- IMP is now void(*)(void), needs a cast). Foundation
+    (also cocotron) built fine, so the IMP breakage looks localized to NSApplication.m, not pervasive.
+  - The full prefix (//buck/prefix:cider_prefix) is the WRONG target: 16708 actions, pulls in CloudKit
+    etc., and fails on a missing SDK MIG file (mach/notify.defs). Build only what nix needs.
+DECISION POINT for M4: nix never calls AppKit -- it is forced in solely by the CoreServices ->
+LaunchServices re-export. Two paths: (a) port AppKit (+ whatever else the re-export chain needs) to
+arm64 -- larger, and mostly dead weight for a build tool; or (b) avoid loading it -- e.g. build a
+stub LaunchServices (same exported symbols, no AppKit dep) or drop the LaunchServices re-export from
+CoreServices, then supply CF-level symbols nix actually uses. (b) is the smarter path but needs a
+symbol-usage audit (which CoreServices/re-exported symbols nix binds). The concrete first fixes
+either way: NSApplication.m __rip/__rsp -> __pc/__sp under arm64 (a clear cider bug), and cast the
+IMP calls. This framework-tier phase (stack + AppKit decision + then framework RUNTIME arm64 bugs
+once nix loads them, then the clang/ld/make toolchain) is M4's bulk -- much larger than the M2/M3
+bash bring-up. Overlay tooling exists: scratchpad/m4-fw.sh builds+copies the framework dylibs into
+$rt; extend it once the AppKit path is chosen.
+
+**AppKit ported for arm64 (pass 30): the framework tier is tractable, not a wall.** Building the
+CoreServices re-export chain surfaced AppKit's arm64 breakage; `buck2 build //vendor/src:AppKit_dylib
+--keep-going` showed it is SMALL and localized (not pervasive). Three fixes make AppKit compile AND
+link for arm64 ("BUILD SUCCEEDED"):
+  1. cocotron/AppKit/NSApplication.m -- cider's own CIDER_APP fatal-signal handler read x86
+     `uc_mcontext->__ss.__rip/__rsp`; arch-guard to `__pc/__sp` on arm64.
+  2. cocotron/AppKit/NSApplication.m + NSTextView.subproj/NSTypesetter_concrete.m -- direct IMP calls
+     the newer arm64 SDK rejects (IMP is now `void(*)(void)`); cast before calling, e.g.
+     `((void (*)(id, SEL, id, NSInteger, void *))function)(...)` and `((void (*)(id, SEL))imp)(self, NULL)`.
+  3. cocotron/Onyx2D/O2Font_freetype.m -- an x86 `__builtin_ia32_pause()` spinlock hint in the
+     host-font lock; arch-guard to `__asm__ __volatile__("yield")` on arm64.
+NOTE: these edits are in the MATERIALIZED cocotron pin but NOT yet captured -- there is no
+vendor/patches/cocotron/ dir and cocotron is not wired for patches, so a nix re-materialization would
+lose them. TODO: create the cocotron patch set (and manifest wiring) to make them durable; the fast
+buck2 build keeps them meanwhile.
+NEXT for M4: overlay the FULL framework LOAD closure into $rt, not just CF/CoreServices/
+SystemConfiguration/Foundation. nix loads CoreServices, which LC_REEXPORTs LaunchServices (-> AppKit
+-> its deps), CFNetwork, and the AE/CarbonCore/... subs, so ALL of those (transitively) must be
+present or dyld fails "image not found" as it did for CoreFoundation. Compute the closure by
+recursively otool -L'ing the framework dylibs, map each to its buck target via buck/prefix/BUCK, and
+extend scratchpad/m4-fw.sh (which already builds+overlays a named set) to cover it. Then re-run M4;
+expect framework RUNTIME arm64 bugs once nix actually loads them, then the clang/ld/make toolchain.
+The framework tier is the bulk of M4 but each blocker so far has been a small, localized fix.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
