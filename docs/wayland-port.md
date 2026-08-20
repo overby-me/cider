@@ -13733,19 +13733,31 @@ pump is starved by periodic events" was refuted before it reached the page: the 
 shows 21 calls a second across the menu, so `session::pump()` runs on essentially every pass and the
 2 ms `skip_work` shortcut never fires. **A cap is a lie about anything slower than the cap.**
 
-### The pop-up items are disabled, and mouseLocation was innocent
+### The pop-up items are disabled, and mouseLocation was 69 out after all
 
-**I need to correct the previous entry.** I wrote that `-[NSEvent mouseLocation]` comes out 68 points
-off during a drag. It does not. A trace of every part of the sum shows the conversions are all
-self-consistent:
+**Two corrections, and the second one is of the first.** I wrote that `-[NSEvent mouseLocation]` comes
+out 68 points off during a drag; then I wrote that it does not, because a trace of every part of the
+sum showed the conversions self-consistent. **Self-consistent is not correct.** The whole chain was
+uniformly wrong, and the way it hid is worth keeping: every number agrees with every other number
+when they are all computed from the same wrong height. The numbers that looked exonerating were:
 
     local=275,120 focusWindow=36  frame=(0,0,753)     -> 275,633   the press
     local=35,60   focusWindow=285 frame=(240,316,309) -> 275,565   the menu surface enter
     local=275,236 focusWindow=36  frame=(0,0,753)     -> 275,517   the drag
 
-I had compared the 565 of one gesture against the 633 of another. **Two numbers from two gestures are
-not a delta.** Interleaving the location trace, the tracking loop and the input events in one listing
-is what showed it: the loop does read `275,517` while the pointer is over the item.
+I had also compared the 565 of one gesture against the 633 of another, and **two numbers from two
+gestures are not a delta** either. But the flip itself was wrong. The window is 753 tall and the
+screen is 684, so `origin_y + height` puts the window's top 69 points ABOVE the top of the screen,
+and what the compositor actually shows is the top of that bitmap at the top of the screen with the
+rest hanging off the bottom. `pointer_screen_location` now clamps that top to the screen height, and
+the pointer at capture y 157 converts to 527 rather than 596. The tracking loop follows:
+
+    before   CIDER_POPUPLOOP global=274,596 view=34,29 index=0
+    after    CIDER_POPUPLOOP global=274,527 view=34,98 index=3      100%, the item aimed at
+
+**And the fix was measured against a binary that did not contain it.** The Rust backend is
+`//src/darwin/wayland:wayland_appkit_dylib`, not `AppKit_dylib`; building AppKit and re-running
+printed the old 596 and read exactly like a fix that did nothing.
 
 **The real blocker is that the item refuses.** `-[NSPopUpView itemIndexForPoint:]` answers `-1` for a
 disabled item, and every real item in that menu is disabled:
@@ -13758,11 +13770,31 @@ answers each item's action; Swift Publisher's zoom items carry an action literal
 no target, nothing answers it, and every one is set disabled. **The application ships and works on
 macOS with those items**, which is the evidence that macOS does not autoenable a pop-up's menu.
 
-**Two changes, and neither is the fix — said plainly rather than implied.** `-[NSMenu update]` no
+**Two changes, and neither was the fix — said plainly rather than implied.** `-[NSMenu update]` no
 longer force-disables an item with a NULL action, which is right on its own terms (a submenu parent
-has no action either) and is why the separator is now the one enabled item. And
-`-[NSPopUpButtonCell setMenu:]` sets `autoenablesItems` to NO, which **measurably takes effect** —
-`autoenables=0`, and the per-item validation trace stops firing — **and the items are still disabled
-and the pick still fails.** The question left is who disables them now, and the way to answer it is a
-trace on `-[NSMenuItem setEnabled:]` with its caller, exactly as `CIDER_MENUTITLE` named the
-truncation caller.
+has no action either) and is why the separator was the one enabled item. And
+`-[NSPopUpButtonCell setMenu:]` sets `autoenablesItems` to NO, which measurably took effect and left
+every item disabled anyway.
+
+**Nobody disabled them. They were never enabled.** A trace on `-[NSMenuItem setEnabled:]` carrying its
+caller printed 166 lines in MoneyMoney, every one of them the KVO binder reading a model that says NO,
+and in Swift Publisher it printed three, all of them the application's own inspector. **Not one zoom
+item was ever touched.** `NSMenuItem` had no `-init`: every default in the class lives in
+`-initWithTitle:action:keyEquivalent:`, so an item made with `alloc/init` was born with `_enabled` at
+zero. That is why the separator was the exception, since `+separatorItem` goes through the designated
+initialiser. Twelve items, before and after:
+
+    CIDER_POPUPENABLED 000000001000
+    CIDER_POPUPENABLED 111111111111
+
+**A trace that says nothing about the thing you are chasing is itself the answer** — but only because
+it spoke 166 times about everything else in the same run. Cf. the rule that silence proves nothing
+until the instrument has spoken once on the happy path.
+
+**What is fixed and what is not.** The gesture works end to end: the menu opens, every item is live,
+the loop tracks the pointer to the item aimed at, it highlights, and the release delivers it
+(`CIDER_POPUPPICK index=3 title=100%`, then the application rebuilds its menu and relays out). What
+the application then does with it is still wrong: it lands on a computed fit zoom of 35% whichever
+item is chosen, `300%` included, and it is `-[NSPopUpButton setTitle:]` from inside AppKit that writes
+that title into the pull-down's item 0. So the remaining question is not the menu but what a
+pull-down pop-up tells an application whose items carry an action named `fake` and a value binding.

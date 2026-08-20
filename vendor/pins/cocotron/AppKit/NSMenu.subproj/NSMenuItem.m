@@ -121,6 +121,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return self;
 }
 
+/* Every default lives below, so alloc/init left _enabled at zero and an item made in code was born
+ * disabled. Apple documents -init as initWithTitle: @"" action: NULL keyEquivalent: @"". */
+- init {
+    return [self initWithTitle: @"" action: NULL keyEquivalent: @""];
+}
+
 - initWithTitle: (NSString *) title
                action: (SEL) action
         keyEquivalent: (NSString *) keyEquivalent
@@ -432,6 +438,23 @@ static char CiderMenuItemObjectValueKey;
 }
 
 - (void) setEnabled: (BOOL) flag {
+    /*
+     * WHO DISABLES A POP-UP ITEM. With autoenabling off and NSMenu update no longer force-disabling
+     * an item with a NULL action, every item of Swift Publisher's zoom menu is still disabled, so
+     * somebody else says so. The caller, not the count, is the answer; cf. CIDER_MENUTITLE above.
+     */
+    if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != (char) 0) {
+        Dl_info info;
+        void *ret = __builtin_return_address(0);
+        int have = dladdr(ret, &info);
+
+        fprintf(stderr, "CIDER_MENUENABLE %s <- %d (was %d) from %s in %s +%#lx\n",
+                [_title UTF8String] ?: "(nil)", (int) flag, (int) _enabled,
+                (have != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
+                (have != 0 && info.dli_fname != NULL) ? info.dli_fname : "?",
+                (have != 0) ? (unsigned long) ((char *) ret - (char *) info.dli_fbase) : 0UL);
+        fflush(stderr);
+    }
     _enabled = flag;
 }
 

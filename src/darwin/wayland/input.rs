@@ -32,6 +32,7 @@ fn note_serial(serial: u32) {
     }
 }
 use crate::objc::Object;
+use crate::session;
 use crate::window;
 use crate::wl;
 
@@ -977,8 +978,21 @@ pub fn pointer_screen_location() -> (f64, f64) {
         Ok(st) => (st.pointer_focus, st.pointer_x, st.pointer_y),
         Err(_) => return (0.0, 0.0),
     };
+    /*
+     * THE WINDOW TOP, AND THE SCREEN CANNOT BE BELOW IT. A window whose application refuses to
+     * shrink keeps a bitmap taller than the screen, and its frame still claims origin y 0, so
+     * origin + height puts its top ABOVE the screen top and every answer here came out by exactly
+     * the overhang. What the compositor actually shows is the top of that bitmap at the top of the
+     * screen, and the rest hangs off the bottom.
+     */
     let result = match window::frame_for_surface(surface) {
-        Some((origin_x, origin_y, height)) => (origin_x + x, origin_y + (height - y)),
+        Some((origin_x, origin_y, height)) => {
+            let mut top = origin_y + height;
+            if let Some((_, screen_h)) = session::output_size() {
+                top = top.min(screen_h);
+            }
+            (origin_x + x, top - y)
+        }
         None => (x, y),
     };
     /*

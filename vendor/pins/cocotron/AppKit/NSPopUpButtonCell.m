@@ -702,6 +702,15 @@ static const void *kCiderSelectingItemKey = &kCiderSelectingItemKey;
         [window selectItemAtIndex: _selectedIndex];
 
     NSInteger itemIndex = [window runTrackingWithEvent: event];
+    /* WHICH ITEM THE GESTURE CHOSE, beside what the application does with it: the two disagreed
+     * once, and the capture can only show the second. */
+    if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != '\0') {
+        NSString *chosen = (itemIndex != NSNotFound && itemIndex < [menu numberOfItems])
+                ? [[menu itemAtIndex: itemIndex] title] : nil;
+        fprintf(stderr, "CIDER_POPUPPICK index=%ld title=%s pullsDown=%d\n", (long) itemIndex,
+                [chosen UTF8String] ?: "(none)", (int) _pullsDown);
+        fflush(stderr);
+    }
     if (itemIndex != NSNotFound) {
         if (_pullsDown) {
             // remember that thing we did with the first menu item?
