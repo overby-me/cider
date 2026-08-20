@@ -1,0 +1,175 @@
+A number formatter that called a method nobody had.
+
+Swift Publisher's Document Margins fields ignored every keystroke. The click was landing on the right
+view (CIDER_HIT says NSTextField frame {{76, 73}, {57, 19}} responder=1), a field editor was being set
+up (CIDER_FIELDEDIT cell=NSTextFieldCell string=9 editable=1) and the editor took the mouseDown, and
+still nothing typed. The log said why by its SIZE: 1.87 million lines against 16 thousand for a run
+that types into a field that works.
+
+    68612  cider: UNRECOGNIZED -[CCMeasurementUnitsFormatter getObjectValue:forString:range:error:]
+    68612    chain CCNumberFormatter   ...   NSNumberFormatter   ...   NSFormatter
+   137224  CIDER_EXC AppKit -[NSView _displayIfNeededWithoutViewWillDraw]
+
+-[NSNumberFormatter getObjectValue:forString:errorDescription:] here forwards to
+getObjectValue:forString:range:error:, and NOTHING IN THE CHAIN IMPLEMENTED THAT: not this class, and
+NSFormatter had no default for it either. So every parse raised, AppKit caught the raise per event and
+the field editor tried again on the next display pass, and the event loop never got far enough to
+process a key. The application ships on macOS, where both methods exist.
+
+Two methods, then. The concrete parse belongs to NSNumberFormatter and goes through the CFNumberFormatter
+the class already uses for numberFromString:, honouring the range it is given. The other is the
+documented default on NSFormatter: a subclass that implements only the errorDescription: form still has
+to answer the range: form, so the base class bridges to it and wraps the description in an NSError.
+
+AND THE RANGE ITSELF WAS UNINITIALISED. The existing errorDescription: implementation declared NSRange r
+and passed &r without setting it, which nobody noticed while the callee did not exist. With the callee
+in place, CoreFoundation read whatever the stack held and faulted inside CFNumberFormatterGetValueFromString.
+It is set to the whole string now, and the concrete method clamps any range a caller passes rather than
+trusting it.
+
+Measured after: the field takes 30 and shows it with a caret, four key events are delivered where zero
+were before, zero raises, and the log is 15,724 lines.
+--- a/src/NSFormatter.m
++++ b/src/NSFormatter.m
+@@ -5,6 +5,9 @@
+ //  Copyright (c) 2014 Apportable. All rights reserved.
+ //
+ 
++#import <Foundation/FoundationErrors.h>
++#import <Foundation/NSError.h>
++#import <Foundation/NSDictionary.h>
+ #import <Foundation/NSFormatter.h>
+ #import <Foundation/NSException.h>
+ #import <Foundation/NSInvocation.h>
+@@ -47,6 +50,37 @@
+     return NO;
+ }
+ 
++/*
++ * APPLE DOCUMENTS THE DEFAULT AS THE OLDER METHOD. A subclass that implements only
++ * getObjectValue:forString:errorDescription: still has to answer this one, or a caller that uses the
++ * range form gets an unrecognized selector instead of a parse.
++ */
++- (BOOL)getObjectValue:(out id *)obj forString:(NSString *)string range:(inout NSRange *)rangep error:(out NSError **)error
++{
++    NSString *description = nil;
++    BOOL parsed = [self getObjectValue:obj forString:string errorDescription:&description];
++
++    if (parsed)
++    {
++        if (rangep != NULL)
++        {
++            rangep->location = 0;
++            rangep->length = [string length];
++        }
++        return YES;
++    }
++
++    if (error != NULL)
++    {
++        NSDictionary *info = (description != nil)
++                ? [NSDictionary dictionaryWithObject:description forKey:NSLocalizedDescriptionKey]
++                : nil;
++
++        *error = [NSError errorWithDomain:NSCocoaErrorDomain code:NSFormattingError userInfo:info];
++    }
++    return NO;
++}
++
+ - (BOOL)isPartialStringValid:(NSString *)partialString newEditingString:(NSString **)newString
+             errorDescription:(NSString **)error
+ {
+--- a/src/NSNumberFormatter.m
++++ b/src/NSNumberFormatter.m
+@@ -6,6 +6,7 @@
+ //
+ 
+ #import <CoreFoundation/CFNumberFormatter.h>
++#import <Foundation/FoundationErrors.h>
+ #import <Foundation/NSNumberFormatter.h>
+ #import <Foundation/NSDictionary.h>
+ #import <Foundation/NSError.h>
+@@ -68,7 +69,9 @@
+ - (BOOL)getObjectValue:(out id *)obj forString:(NSString *)string errorDescription:(out NSString **)errorStr
+ {
+     NSError *error = nil;
+-    NSRange r;
++    /* THE WHOLE STRING, SPELLED OUT. This was an uninitialised NSRange handed to a method that reads
++     * it as the range to parse, so CoreFoundation walked whatever the stack held. */
++    NSRange r = NSMakeRange(0, [string length]);
+     BOOL success = [self getObjectValue:obj forString:string range:&r error:&error];
+     if (errorStr != NULL)
+     {
+@@ -77,6 +80,72 @@
+     return success;
+ }
+ 
++/*
++ * THE ONLY CONCRETE PARSE IN THIS CLASS, AND IT WAS MISSING. -getObjectValue:forString:errorDescription:
++ * above forwards to this selector, nothing in the chain implemented it, and NSFormatter has no default
++ * either, so every parse raised. AppKit catches that per event and the field editor tries again on the
++ * next display pass: Swift Publisher's margin field turned one click into 68,612 raises and 137,224
++ * display passes, and the keystrokes never got processed at all.
++ */
++- (BOOL)getObjectValue:(out id *)obj forString:(NSString *)string range:(inout NSRange *)rangep error:(out NSError **)error
++{
++    if (obj != NULL)
++    {
++        *obj = nil;
++    }
++    if (error != NULL)
++    {
++        *error = nil;
++    }
++    if (string == nil)
++    {
++        return NO;
++    }
++
++    [self _regenerateFormatter];
++
++    /* A RANGE FROM A CALLER IS CHECKED, not trusted: CFNumberFormatter reads it directly and a
++     * caller that leaves it uninitialised faults inside CoreFoundation with nothing to say why. */
++    NSUInteger length = [string length];
++    CFRange range = CFRangeMake(0, length);
++
++    if (rangep != NULL && rangep->location <= length)
++    {
++        range.location = rangep->location;
++        range.length = (rangep->length <= length - rangep->location) ? rangep->length
++                                                                     : length - rangep->location;
++    }
++    CFOptionFlags options = [_attributes[@"parseIntegersOnly"] boolValue] ? kCFNumberFormatterParseIntegersOnly : 0;
++    CFNumberRef number = CFNumberFormatterCreateNumberFromString(kCFAllocatorDefault, _formatter,
++                                                                (CFStringRef)string, &range, options);
++
++    if (number == NULL)
++    {
++        if (error != NULL)
++        {
++            *error = [NSError errorWithDomain:NSCocoaErrorDomain
++                                         code:NSFormattingError
++                                     userInfo:nil];
++        }
++        return NO;
++    }
++
++    if (obj != NULL)
++    {
++        *obj = [(id)number autorelease];
++    }
++    else
++    {
++        CFRelease(number);
++    }
++    if (rangep != NULL)
++    {
++        rangep->location = range.location;
++        rangep->length = range.length;
++    }
++    return YES;
++}
++
+ - (NSString *)stringFromNumber:(NSNumber *)number
+ {
+     if (number == nil) {

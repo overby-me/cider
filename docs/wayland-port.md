@@ -13964,3 +13964,37 @@ place to look; until then the overlap is what the nib and the artwork produce.
 **Two zeros came from closed gates in one rung.** `CIDER_TRACE_PAINT` reached nothing because the
 MoneyMoney driver forwards it as `MMPAINT`, and an unparseable rectangle silently disables it. Check
 what the driver forwards before reading a count of zero as an answer.
+
+### A formatter that called a method nobody had, and the log size that found it
+
+Swift Publisher's Document Margins fields ignored every keystroke, and the three obvious explanations
+were all wrong. The click was landing on the right view (`CIDER_HIT … NSTextField frame={{76, 73},
+{57, 19}} responder=1`), a field editor **was** being set up (`CIDER_FIELDEDIT cell=NSTextFieldCell
+string=9 editable=1`) and it took the mouseDown, and typing letters instead of digits changed nothing.
+
+**The log said it by its SIZE.** A run that types into a field that works is 16 thousand lines; every
+run that typed into a margin field was **1.87 million**. Counting the repeats named it:
+
+    68612  cider: UNRECOGNIZED -[CCMeasurementUnitsFormatter getObjectValue:forString:range:error:]
+    68612    chain CCNumberFormatter … NSNumberFormatter … NSFormatter … NSObject
+   137224  CIDER_EXC AppKit -[NSView _displayIfNeededWithoutViewWillDraw]
+
+`-[NSNumberFormatter getObjectValue:forString:errorDescription:]` forwards to
+`getObjectValue:forString:range:error:`, and **nothing in the chain implemented it** - not that class,
+and `NSFormatter` had no default either. Every parse raised, AppKit caught the raise per event, the
+field editor tried again on the next display pass, and the event loop never got far enough to process
+a key. Zero key events reached the application in those runs against ten in the control.
+
+Two methods fix it: the concrete parse on `NSNumberFormatter`, through the `CFNumberFormatter` the
+class already uses for `numberFromString:`, and the documented default on `NSFormatter` that bridges
+the range form to the older `errorDescription:` form.
+
+**And writing the callee exposed an uninitialised range in the caller.** The existing
+`errorDescription:` implementation declared `NSRange r` and passed `&r` without setting it - harmless
+while the callee did not exist, and a fault inside `CFNumberFormatterGetValueFromString` the moment it
+did. It is the whole string now, and the concrete method clamps any range it is handed rather than
+trusting it. Measured after: the field takes `30` and shows it with a caret, four key events arrive,
+zero raises, 15,724 lines.
+
+**A log that is a hundred times too long is a measurement, not a nuisance.** Nothing else in this
+investigation pointed at the formatter.
