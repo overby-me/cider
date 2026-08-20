@@ -263,6 +263,16 @@ static void *NSBinderChangeContext;
 
             value = [self reverseTransformedObject: value];
 
+            /* A BINDING WRITING INTO THE APPLICATION'S MODEL, which is the direction that changes
+             * what the application does rather than what it shows. */
+            if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
+                fprintf(stderr, "CIDER_BIND BACK %s(%p).%s -> %s.%s = %.40s\n",
+                        object_getClassName(_source), (void *) _source,
+                        [_bindingPath UTF8String] ?: "(nil)", object_getClassName(_destination),
+                        [_keyPath UTF8String] ?: "(nil)", [[value description] UTF8String] ?: "(nil)");
+                fflush(stderr);
+            }
+
             [_destination setValue: value forKeyPath: _keyPath];
 
             [self startObservingChanges];

@@ -143,7 +143,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     _mnemonic = @"";
     _mnemonicLocation = 0;
     _submenu = nil;
-    _tag = -1;
+    /* ZERO, AS APPLE DOCUMENTS. Swift Publisher's zoom action asks the chosen item for its tag and
+     * takes the branch that reads the represented object when it is zero; -1 sent it down the fit
+     * path instead, so every pick became a fit-to-canvas. */
+    _tag = 0;
     _indentationLevel = 0;
     _enabled = YES;
     _hidden = NO;
@@ -274,6 +277,21 @@ static char CiderMenuItemObjectValueKey;
 }
 
 - (void) setObjectValue: (id) value {
+    /* THIS IS A WRITE INTO THE APPLICATION'S MODEL, because a bound item sends it straight on:
+     * Swift Publisher's Fit Page item carries zoomFitCanvas, and the pick that set this set the
+     * document zoom to 35%. So the caller matters as much as the value. */
+    if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != '\0') {
+        Dl_info info;
+        void *ret = __builtin_return_address(0);
+        int have = dladdr(ret, &info);
+
+        fprintf(stderr, "CIDER_MENUOBJVALUE %s <- %s from %s in %s +%#lx\n", [_title UTF8String] ?: "(nil)",
+                [[value description] UTF8String] ?: "(nil)",
+                (have != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
+                (have != 0 && info.dli_fname != NULL) ? info.dli_fname : "?",
+                (have != 0) ? (unsigned long) ((char *) ret - (char *) info.dli_fbase) : 0UL);
+        fflush(stderr);
+    }
     objc_setAssociatedObject(self, &CiderMenuItemObjectValueKey, value,
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
@@ -361,6 +379,21 @@ static char CiderMenuItemObjectValueKey;
 }
 
 - (void) setTag: (NSInteger) tag {
+    /* A TAG IS A VALUE THE APPLICATION READS BACK. Swift Publisher's zoom action asks the chosen item
+     * for its tag and branches on zero, so an item whose tag never arrived is a zoom that never
+     * happens. */
+    if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != '\0') {
+        Dl_info info;
+        void *ret = __builtin_return_address(0);
+        int have = dladdr(ret, &info);
+
+        fprintf(stderr, "CIDER_MENUTAG %s <- %ld (was %ld) from %s in %s +%#lx\n",
+                [_title UTF8String] ?: "(nil)", (long) tag, (long) _tag,
+                (have != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
+                (have != 0 && info.dli_fname != NULL) ? info.dli_fname : "?",
+                (have != 0) ? (unsigned long) ((char *) ret - (char *) info.dli_fbase) : 0UL);
+        fflush(stderr);
+    }
     _tag = tag;
 }
 

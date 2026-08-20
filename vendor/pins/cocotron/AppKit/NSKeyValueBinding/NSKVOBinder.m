@@ -17,6 +17,8 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import "NSKVOBinder.h"
+#import <execinfo.h>
+#import <dlfcn.h>
 #import <objc/runtime.h>
 #import <stdio.h>
 #import <stdlib.h>
@@ -370,6 +372,27 @@ NSString *NSFormatDisplayPattern(NSString *pattern, id *values,
     // here which causes a problem for read only values If this isn't how it's
     // supposed to be, there must be some other logic which prevents writing
     // back values which are read only
+
+    /* WHO IN THE APPLICATION SET IT. A KVO notification is synchronous with the setter, so the
+     * stack here still holds the application frame that decided, which is the only way to see a
+     * decision taken inside a shipping binary. Named key so one run is readable. */
+    if (getenv("CIDER_TRACE_BINDSTACK") != NULL && getenv("CIDER_TRACE_BINDSTACK")[0] != '\0'
+        && [kp rangeOfString: [NSString stringWithUTF8String: getenv("CIDER_TRACE_BINDSTACK")]]
+                        .location != NSNotFound) {
+        void *frames[12];
+        int count = backtrace(frames, 12);
+
+        fprintf(stderr, "CIDER_BINDSTACK %s of %s\n", [kp UTF8String], object_getClassName(object));
+        for (int i = 1; i < count; i++) {
+            Dl_info info;
+            int have = dladdr(frames[i], &info);
+            fprintf(stderr, "    %-52s %s +%#lx\n",
+                    (have != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
+                    (have != 0 && info.dli_fname != NULL) ? info.dli_fname : "?",
+                    (have != 0) ? (unsigned long) ((char *) frames[i] - (char *) info.dli_fbase) : 0UL);
+        }
+        fflush(stderr);
+    }
 
     if (context == &NSKVOBinderChangeContext) {
         [self writeDestinationToSource];

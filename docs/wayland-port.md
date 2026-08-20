@@ -13798,3 +13798,47 @@ the application then does with it is still wrong: it lands on a computed fit zoo
 item is chosen, `300%` included, and it is `-[NSPopUpButton setTitle:]` from inside AppKit that writes
 that title into the pull-down's item 0. So the remaining question is not the menu but what a
 pull-down pop-up tells an application whose items carry an action named `fake` and a value binding.
+
+### A default tag of -1 turned every zoom pick into a fit
+
+The pick landed on the right item and the application still went to 35% whichever item was chosen,
+300% included, so the gesture was not the problem. Five instruments, each answering one question:
+
+    CIDER_POPUPTITLE   who asks for the title the button wears
+    CIDER_BIND value   the model value at bind time, not just its class
+    CIDER_BIND BACK    a binding writing INTO the model
+    CIDER_BINDSTACK    the stack at a KVO notification, which still holds the application frame
+    CIDER_POPUPREAD    which accessor the application reads off the button, and its caller
+
+The order matters. `CIDER_POPUPTITLE` said the application sets its own title from
+`-[CCMainWindowController zoomChanged:]`, so we were not inventing 35%. The bind trace showed
+`zoomFitCanvas` at 0 for the whole run and 1 immediately after the first pick. `BACK` never fired
+once, which says our bindings are one-way and did not write it. **A KVO notification is synchronous
+with the setter, so the stack at the notification still holds the frame that decided:**
+
+    __NSSetIntValueAndNotify
+    -[CCMainWindowController setZoom:]        <- the application's own action method
+    -[NSApplication sendAction:to:from:]
+    -[NSPopUpButton performClick:]
+
+So the action was delivered correctly and the application itself chose a fit. `CIDER_POPUPREAD` then
+showed it reading `selectedItem` and getting the right item, `100%` - **with a tag of -1**. The
+application's next six instructions are the whole answer:
+
+    mov 0x339ba5(%rip),%rbx        # the selref, which resolves to "tag"
+    call *0x291749(%rip)           # objc_msgSend
+    test %rax,%rax
+    je   0x10033b1fb               # tag == 0 -> read the represented object, the percentage
+
+**Apple documents `NSMenuItem`'s tag as 0 and cocotron initialised it to -1.** Swift Publisher sets a
+tag only on its three Fit items and leaves the percentages alone, so on macOS they arrive as 0 and
+take that branch. Here every one of them was -1, missed the branch, and fell through to the fit path.
+One line, and the pick now sets the zoom it names: `titleOfSelectedItem -> 100%`, and the page on
+screen is twice the size it was at 75%.
+
+Two smaller divergences fell out on the way. `-[NSPopUpButton selectedTag]` returned the **cell's**
+tag rather than the selected item's, which is a different number entirely; the cell had it right all
+along. And **no binding in this port ever writes UI to model** - `_NSKVOBinder` disables the reverse
+direction outright, and a run with a trace on that write printed zero lines. Nothing in these three
+applications depends on it yet, because they use target/action, but a document-based application that
+binds a text field to its model would lose every edit. Filed rather than fixed.

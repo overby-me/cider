@@ -16,6 +16,10 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+#include <dlfcn.h>
+
+#import <objc/runtime.h>
+
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSMenu.h>
 #import <AppKit/NSObject+BindingSupport.h>
@@ -27,6 +31,27 @@ NSString *const NSPopUpButtonWillPopUpNotification =
 
 static NSString *const NSPopUpButtonBindingObservationContext =
         @"NSPopUpButtonBindingObservationContext";
+
+
+/* WHAT THE APPLICATION READS OFF A POP-UP after it is clicked. Swift Publisher's zoom action takes
+ * the button as its sender and turns it into a number, and which accessor it asks decides which of
+ * our answers has to be right. */
+static void CiderPopUpRead(id button, const char *what, id answer, long number)
+{
+    if (getenv("CIDER_TRACE_MENU") == NULL || getenv("CIDER_TRACE_MENU")[0] == '\0')
+        return;
+
+    Dl_info info;
+    void *ret = __builtin_return_address(1);
+    int have = dladdr(ret, &info);
+
+    fprintf(stderr, "CIDER_POPUPREAD %s -> %s / %ld from %s in %s +%#lx\n", what,
+            answer != nil ? [[answer description] UTF8String] : "(nil)", number,
+            (have != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
+            (have != 0 && info.dli_fname != NULL) ? info.dli_fname : "?",
+            (have != 0) ? (unsigned long) ((char *) ret - (char *) info.dli_fbase) : 0UL);
+    fflush(stderr);
+}
 
 @implementation NSPopUpButton
 
@@ -106,19 +131,28 @@ static NSString *const NSPopUpButtonBindingObservationContext =
 }
 
 - (NSMenuItem *) selectedItem {
-    return [_cell selectedItem];
+    NSMenuItem *item = [_cell selectedItem];
+    CiderPopUpRead(self, "selectedItem", [item title], [item tag]);
+    return item;
 }
 
 - (NSString *) titleOfSelectedItem {
-    return [_cell titleOfSelectedItem];
+    NSString *title = [_cell titleOfSelectedItem];
+    CiderPopUpRead(self, "titleOfSelectedItem", title, 0);
+    return title;
 }
 
+/* THE SELECTED ITEM'S TAG, not the cell's, which is a different number entirely. */
 - (NSInteger) selectedTag {
-    return [_cell tag];
+    NSInteger tag = [[self selectedItem] tag];
+    CiderPopUpRead(self, "selectedTag", nil, (long) tag);
+    return tag;
 }
 
 - (NSInteger) indexOfSelectedItem {
-    return [_cell indexOfSelectedItem];
+    NSInteger index = [_cell indexOfSelectedItem];
+    CiderPopUpRead(self, "indexOfSelectedItem", nil, (long) index);
+    return index;
 }
 
 - (void) setPullsDown: (BOOL) flag {
@@ -253,6 +287,21 @@ static NSString *const NSPopUpButtonBindingObservationContext =
 }
 
 - (void) setTitle: (NSString *) title {
+    /* WHO ASKS FOR THE TITLE A POP-UP ENDS UP WEARING. Swift Publisher's zoom button reads 35% after
+     * any pick, and 35% is not the title of any item in its menu, so the name of the caller decides
+     * whether the application chose it or we did. */
+    if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != '\0') {
+        Dl_info info;
+        void *ret = __builtin_return_address(0);
+        int have = dladdr(ret, &info);
+
+        fprintf(stderr, "CIDER_POPUPTITLE %s pullsDown=%d from %s in %s +%#lx\n",
+                [title UTF8String] ?: "(nil)", (int) [self pullsDown],
+                (have != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
+                (have != 0 && info.dli_fname != NULL) ? info.dli_fname : "?",
+                (have != 0) ? (unsigned long) ((char *) ret - (char *) info.dli_fbase) : 0UL);
+        fflush(stderr);
+    }
     if ([self pullsDown]) {
         // The title gets stored in the zero index item in the menu - it made
         // sense to Apple at some point...
@@ -288,6 +337,22 @@ static NSString *const NSPopUpButtonBindingObservationContext =
         NSMenuItem *item = [self selectedItem];
         SEL action = [item action];
         id target = [item target];
+
+        /* WHAT THE GESTURE ACTUALLY SENDS, and to whom. A pull down sends the ITEM's action and a
+         * pop up sends the button's, so this line is where a wrong pullsDown becomes a wrong
+         * message to the application. */
+        if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != '\0') {
+            fprintf(stderr,
+                    "CIDER_POPUPSEND item=%s action=%s itemTarget=%s tag=%ld represented=%s "
+                    "pullsDown=%d buttonAction=%s buttonTarget=%s\n",
+                    [[item title] UTF8String] ?: "(nil)", action ? sel_getName(action) : "(nil)",
+                    [item target] ? object_getClassName([item target]) : "(nil)", (long) [item tag],
+                    [item representedObject] ? object_getClassName([item representedObject]) : "(nil)",
+                    (int) [self pullsDown],
+                    [self action] ? sel_getName([self action]) : "(nil)",
+                    [self target] ? object_getClassName([self target]) : "(nil)");
+            fflush(stderr);
+        }
 
         if (action != NULL) {
             // The item has an explicit action - so it's going to be the sender

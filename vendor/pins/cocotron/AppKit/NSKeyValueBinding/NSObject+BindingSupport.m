@@ -254,10 +254,18 @@ void NSDetermineBindingDebugLoggingLevel(void) {
     if (getenv("CIDER_TRACE_CONTROL") != NULL) {
         id ciderValue = keyPath != nil ? [destination valueForKeyPath: keyPath] : nil;
 
-        fprintf(stderr, "CIDER_BIND %s(%p) %s -> %s.%s value=%s count=%ld\n",
+        /* THE VALUE ITSELF, not just its class: the class of a flag says nothing about whether the
+         * flag is on, and an application that rebinds on every change turns this into a log of its
+         * own model. */
+        NSString *ciderText = [ciderValue respondsToSelector: @selector(count)]
+                ? nil
+                : [ciderValue description];
+
+        fprintf(stderr, "CIDER_BIND %s(%p) %s -> %s.%s value=%s(%.40s) count=%ld\n",
                 object_getClassName(self), (void *) self, [binding UTF8String],
                 object_getClassName(destination), keyPath != nil ? [keyPath UTF8String] : "(nil)",
                 ciderValue != nil ? object_getClassName(ciderValue) : "nil",
+                [ciderText UTF8String] ?: "",
                 [ciderValue respondsToSelector: @selector(count)] ? (long) [ciderValue count] : -1);
         fflush(stderr);
     }
