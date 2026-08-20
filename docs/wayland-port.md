@@ -14194,3 +14194,39 @@ specific `__DATA` slot what it held at that instant.
 handlers that both end in `backtrace_symbols_fd`, the SIGUSR1 sampler first and the crash handler
 second. A blind "insert before the anchor" lands in the sampler and the trace never fires. Anchor on
 the last occurrence, or on the line that prints `CRASHTRACE signal=`.
+
+### iA Writer, end to end: it is Combine, and my poison experiment could never have shown it
+
+The chain, every link measured rather than inferred:
+
+    the app calls          _$s11AccountCore0A0CMa            metadata accessor for AccountCore.Account
+    Account has            statePublisher: Combine.AnyPublisher<AccountState, Never>
+                           (the neighbouring stub in the same __stubs run says exactly that)
+    so its metadata needs  Combine.AnyPublisher
+    and the runtime says   metadata=0x0
+    so the helper does     mov -0x8(%rax),%rcx   with rax = 0     <- the fault
+
+The last two lines come from a probe built the `tests/foundation/BUCK` way and run in the guest: hand
+`swift_getTypeByMangledNameInContext` a mangled name and print what comes back.
+
+    Swift.Int / String / Bool / [String]        metadata and witness, all valid
+    Foundation.URL / Data / Date / URLRequest   metadata and witness, all valid
+    Foundation.NSString                         valid
+    Combine.AnyCancellable                      metadata=0x0
+    Combine.AnyPublisher                        metadata=0x0
+    Combine.CurrentValueSubject                 metadata=0x0
+
+**And I have to withdraw the experiment that sent me chasing three wrong explanations.** Two rungs ago
+I gave every Combine placeholder a distinct unmappable value, saw the fault address unchanged at
+`0xfffffffffffffff8`, and concluded the null was not a Combine placeholder. That reasoning is wrong.
+Poisoning the DESCRIPTOR changes what the resolver reads; the resolver still fails and still answers
+NULL, and the faulting load is computed from the null METADATA, not from the descriptor. The address
+could not have moved whichever way the answer went. **A probe that cannot fail differently proves
+nothing**, and this one sent me to the concurrency runtime, then to an unbound GOT slot, then to the
+runtime's version, all of which measurement then refuted.
+
+So `CombineSymbols.c` was right about itself all along: "Defining the names lets the LOADER finish,
+which is the only question this file can answer on its own: how far does the application get before it
+needs one of them for real. Anything that actually reads or calls one will fail, and where it fails is
+the measurement." Where it fails is `AccountCore.Account`, and the cost of iA Writer is a real Combine,
+which needs a Swift compiler targeting Darwin that this port does not have.
