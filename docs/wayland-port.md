@@ -13147,9 +13147,10 @@ The last thing in the way was `NSUserNotificationCenter`, which had exactly **tw
 was absent, so `removeAllDeliveredNotifications` (documented API since 10.8) raised
 `NSInvalidArgumentException` and the app showed "An internal error occured."
 
+
 Implemented as a real local list rather than more no-ops: deliver and schedule record, the remove
-methods remove, and the accessors answer with what is there. Nothing is ever displayed — there is no
-notification service here — but an app that delivers three notifications and asks for them gets
+methods remove, and the accessors answer with what is there. Nothing is ever displayed (there is no
+notification service here), but an app that delivers three notifications and asks for them gets
 three. **A method that merely logs answers every question with nil, which is a policy answer
 disguised as a stub.** Kept in file statics, not ivars: this is a singleton, and an ivar added to a
 public class changes its `instanceSize`, which has cost this port once already.
@@ -13170,7 +13171,7 @@ declared `_NIBValueTrue = 4, _NIBValueFalse = 5`; the NIBArchive format has them
 **Found by looking at the app's own data, not by reasoning about the code.** MoneyMoney's main window
 put a 500x304 grey box in the top-left corner and left the rest of a 1400x900 window empty. The view
 tree said the split view was 1400x772 and correct, its second pane 1400x448 and correct, and its
-first pane 500x319 — and `CIDER_TRACE_FRAMES=NSView` showed why: every time `_adjustSubviewHeights`
+first pane 500x319, and `CIDER_TRACE_FRAMES=NSView` showed why: every time `_adjustSubviewHeights`
 set that pane to the full width, something with no resolvable symbol set it straight back to 500.
 `_adjustSubviewHeights` is the horizontal branch. The pane was a sidebar, and the application was
 setting its **width**, which is what you do to a pane in a **vertical** split.
@@ -13206,7 +13207,7 @@ anybody, so **every colour an application set in Interface Builder came from wha
 macOS its designer used**, not from this system.
 
 A catalog colour is a name. The stored value is what the name meant when the nib was written, and it
-is a fallback for a name this system does not know — not the answer. The System catalog now resolves
+is a fallback for a name this system does not know, not the answer. The System catalog now resolves
 through `-[NSDisplay colorWithName:]` first, then the process catalog, and only then the stored
 value. `_sourceListBackgroundColor` is still a name we do not have, so MoneyMoney gets what its own
 nib says to use instead: `controlBackgroundColor`, which is white. **Looked at: the sidebar is white
@@ -13217,10 +13218,10 @@ and empty**, which is what an outline view with no accounts in it should be.
 their stored value. Counting the catalog colour names in all 196 readable nibs of the three
 applications in the queue found `headerColor` fifty times, and every one of them would have turned
 green the moment this lookup started working. It is `Grey(0.96)` now. The other names used across
-those nibs — `controlTextColor`, `textBackgroundColor`, `controlColor`, `controlBackgroundColor`,
+those nibs (`controlTextColor`, `textBackgroundColor`, `controlColor`, `controlBackgroundColor`,
 `gridColor`, `headerTextColor`, `textColor`, `labelColor`, `selectedTextBackgroundColor`,
-`selectedTextColor`, `linkColor`, `separatorColor`, `windowFrameTextColor`, `windowBackgroundColor`
-— already had table values that agree with the archived ones or improve on them.
+`selectedTextColor`, `linkColor`, `separatorColor`, `windowFrameTextColor`, `windowBackgroundColor`)
+already had table values that agree with the archived ones or improve on them.
 
 **Check the palette before making a lookup work.** A table of colours that nothing consults is a
 table nobody has ever checked.
@@ -13236,13 +13237,13 @@ The nib sets `NSViewIsLayerTreeHost` on that field, which had always decoded as 
 true, `-setWantsLayer:YES` runs, and in cocotron drawing goes THROUGH the layer: `-lockFocus` hands
 `drawRect:` an offscreen `CGBitmapContext` and `-unlockFocus` turns it into the layer's contents. The
 layer tree is then composited by a `CALayerContext` into a **subwindow** it asks the platform window
-for — and the Wayland backend's `createSubWindowWithFrame:` returns nil, because there are no
+for, and the Wayland backend's `createSubWindowWithFrame:` returns nil, because there are no
 subwindows here.
 
 So the condition for taking the layer path is now whether the layer can reach the screen:
 `-_ciderLayerIsComposited` walks up to the ancestor that hosts the layer tree and asks its context
-whether it has a subwindow. Both halves are gated on it — `-lockFocus`, which chooses the bitmap, and
-`-unlockFocus`, which snapshots it — because snapshotting the WINDOW context into the layer would
+whether it has a subwindow. Both halves are gated on it, `-lockFocus`, which chooses the bitmap, and
+`-unlockFocus`, which snapshots it, because snapshotting the WINDOW context into the layer would
 hand it an image of the whole window. `CALayerContext` grew a `-subwindow` accessor for this.
 
 **The check is honest rather than hardcoded**: when subwindows exist, layer hosting starts working
@@ -13256,13 +13257,13 @@ it before any instrument ran: `_NSToolbarIconSizeRegular` is `{32, 32}`, and 237
 background) times 0.67 is 158.8.
 
 `-[NSToolbarItem drawInRect:highlighted:]` dims a disabled item by filling its icon rect with 33
-percent black using `NSCompositeSourceAtop` inside a transparency layer — meant to darken the image's
+percent black using `NSCompositeSourceAtop` inside a transparency layer, meant to darken the image's
 own pixels and leave the rest alone. **With no image there are no pixels to be atop of**, so the fill
 landed on the toolbar. The item is `NSToolbarFlexibleSpaceItem`, `enabled=0`, `bounds=620x54`, and
 its icon rect is centred in it: a grey box in the middle of the space. Named by the item itself,
 under `CIDER_TRACE_IMAGESOURCE`, rather than inferred.
 
-The unbalanced `CGContextEndTransparencyLayer` went with it — it ran for every item, with a null
+The unbalanced `CGContextEndTransparencyLayer` went with it: it ran for every item, with a null
 context for every enabled one, having begun no layer.
 
 ### MoneyMoney, against the three criteria
