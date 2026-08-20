@@ -1382,6 +1382,28 @@ guard (f090fac3); the polluted rt was removed. The M4 prefix in rt is regenerabl
 permanent, but the guard was one buck2 build failure away from a much worse outcome for anyone running
 the check.
 
+**Pass 41 (corrects pass 40's remedy: the prefix build is broken on BOTH paths, and buck-setup alone
+does not fix it).** Ran buck-setup.nu: it wrote the [cider] toolchain config but left wayland_scanner and
+wayland_protocols EMPTY (`wayland_scanner =` with no value), even though `nix build nixpkgs#wayland-scanner`
+resolves cleanly by hand right after (returns .../wayland-scanner-1.25.0-bin) -- so the empty write is
+transient, and a re-run with wayland-scanner already in the store should populate the host
+.buckconfig.local. But that only touches the HOST config. `nix build .#cider-buck2-prefix` still fails,
+UNCHANGED (same graph.drv hash before and after buck-setup): the Nix graph derivation generates its OWN
+buck2 config in ciderBuck2Graph.nix and never reads the host .buckconfig.local, so it fails at
+`root//src/darwin/wayland:{wayland_cgbackend_dylib,wayland_glue_obj,xdg_shell_protocol}` with the same
+codegen.bzl:355 `needs [cider] wayland_scanner and wayland_protocols`. So the arm64 prefix cannot be
+rebuilt on this host by either path: the HOST buck2 build needs non-empty wayland config AND vendor/pins/
+xnu materialized on disk (the fetched pin behind libnotify's notify.defs), and the NIX endpoint needs
+ciderBuck2Graph.nix to supply wayland_scanner/wayland_protocols in its generated config. This is a
+post-rebase infrastructure regression (main added the src/darwin/wayland GUI backend, #112, and the
+wayland tooling config did not come across cleanly), NOT the poll fix. CONSEQUENCE: #12's parallel-build
+verification and #11's profiling both need a bootable prefix, and there is none to build against, so both
+are blocked here pending an attended fix of the wayland config on both paths (+ pin materialization for
+the host path). The poll fix (0038) is landed and high-confidence on its own reasoning; rt is left empty
+(regenerates from the prefix build). This is the wind-down point for the unattended run: everything that
+could be landed and verified WITHOUT a working prefix build has been, and the rest is gated on infra that
+should be repaired with a human watching, not overnight.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
