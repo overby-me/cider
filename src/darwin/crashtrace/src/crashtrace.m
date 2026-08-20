@@ -233,6 +233,53 @@ static void cider_crashtrace_handler(int sig, siginfo_t *info, void *uap)
 		}
 	}
 
+	/*
+	 * PEEK AT SLOTS OF THE FAULTING IMAGE, named as offsets from ITS load address.
+	 *
+	 * A crash that dereferences a null says nothing about WHERE the null came from. When the
+	 * suspect is a specific __DATA slot, a bind target or a cached metadata pointer, the value at
+	 * the moment of the fault settles it, and the faulting rip already identifies the image:
+	 * dladdr gives its base. CIDER_CRASH_PEEK is a comma separated list of hex offsets.
+	 */
+	const char *peek = getenv("CIDER_CRASH_PEEK");
+
+	if (peek != NULL && peek[0] != '\0' && rip != 0) {
+		Dl_info info;
+		int have = dladdr((void *) rip, &info);
+		char head2[160];
+		int n2 = snprintf(head2, sizeof head2, "  peek request=%.40s dladdr=%d fbase=%p\n", peek,
+			have, have != 0 ? info.dli_fbase : NULL);
+
+		write(2, head2, (size_t) n2);
+		if (have != 0 && info.dli_fbase != NULL) {
+			int null_fd = open("/dev/null", O_WRONLY);
+			const char *at = peek;
+
+			while (*at != '\0') {
+				char *stop = NULL;
+				unsigned long long delta = strtoull(at, &stop, 16);
+				char line[160];
+				int n;
+
+				if (stop == at) {
+					break;
+				}
+				const unsigned long long *slot =
+					(const unsigned long long *) ((char *) info.dli_fbase + delta);
+				int readable = (null_fd >= 0 && write(null_fd, slot, 8) == 8);
+
+				n = snprintf(line, sizeof line, "  peek %s +%#llx = %s%llx\n",
+					info.dli_fname != NULL ? info.dli_fname : "?", delta,
+					readable ? "0x" : "(unreadable) 0x", readable ? *slot : 0ull);
+				write(2, line, (size_t) n);
+				at = (*stop == ',') ? stop + 1 : stop;
+			}
+			if (null_fd >= 0) {
+				close(null_fd);
+			}
+		}
+	}
+
 	backtrace_symbols_fd(frames, count, 2);
 
 	/*

@@ -14166,3 +14166,31 @@ placeholders.
 
 So the next instrument is the runtime value of those three indirect references: a slot with no bind
 entry is null forever, and that is exactly what this fault looks like.
+
+### The slot was bound all along, so the null is the runtime's own answer
+
+Last rung I filed the next instrument as "the runtime value of those three indirect references: a slot
+with no bind entry is null forever". **It has a bind entry and it is not null.** Both halves measured:
+
+    LC_DYLD_INFO_ONLY bind opcodes:  BIND 0x4a5b8  _$s10Foundation3URLVMn
+    at the moment of the fault:      peek AccountCore +0x4a5b8 = 0x7c4cfbb02934
+
+that address being inside `libswiftFoundation`, which exports `URLVMn` at 0x163934 and its accessor at
+0x151bc0 as real definitions, not placeholders. The neighbouring slots are bound too: `+0x4a040` to
+AccountCore's own `JWTPublicKey` and `+0x4a550` to `URLRequest`.
+
+So the loader is doing its job and the null comes from the type resolution itself: our libswiftCore,
+which is 5.2.2 era, cannot build metadata for a type whose descriptor is right there. That is a
+different problem from a missing symbol and a different one again from the concurrency runtime I
+wrongly blamed two rungs ago.
+
+**New instrument, and it is general.** `CIDER_CRASH_PEEK` is a comma separated list of hex offsets;
+the crash handler resolves the faulting image with `dladdr`, reads each offset from ITS load address
+with the same `write()` to `/dev/null` fault probe as the register dump, and prints the value. A crash
+that dereferences a null says nothing about where the null came from, and this is how you ask a
+specific `__DATA` slot what it held at that instant.
+
+**And I put it in the wrong function first, for the second time in this file.** `crashtrace.m` has two
+handlers that both end in `backtrace_symbols_fd`, the SIGUSR1 sampler first and the crash handler
+second. A blind "insert before the anchor" lands in the sampler and the trace never fires. Anchor on
+the last occurrence, or on the line that prints `CRASHTRACE signal=`.
