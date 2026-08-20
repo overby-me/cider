@@ -1,0 +1,54 @@
+Name every object as the autorelease pool drains.
+
+A pool drain that faults inside objc_release says only that SOMETHING in the pool was already dead,
+and by then that object's isa is unreadable, so the crash itself can never name it. The line printed
+just BEFORE the fault can, because the object is still readable at that point.
+
+That is the whole question for a daemon that dies parking its main thread: trustd checks in for its
+service and then takes a SIGSEGV in AutoreleasePoolPage::releaseUntil, and nothing anywhere says
+what it was releasing.
+
+CIDER_TRACE_POOL, off unless asked for, one getenv the first time through.
+
+VERIFIED SPEAKING on the happy path: with the gate on, a trustd run that does NOT crash prints
+
+    CIDER_POOL releasing 0x786f6367c980 isa=0x786f64933168 __NSCFString
+
+which is a normal drain of one object. An instrument has to be seen working before its silence can
+be read as an answer.
+--- a/runtime/NSObject.mm
++++ b/runtime/NSObject.mm
+@@ -949,6 +949,33 @@
+             page->protect();
+ 
+             if (obj != POOL_BOUNDARY) {
++                /*
++                 * CIDER_TRACE_POOL: name every object as it leaves the pool.
++                 *
++                 * A drain that faults inside objc_release says only that SOMETHING in the pool was
++                 * already dead, and by then its isa is unreadable, so the crash itself can never
++                 * name it. The line printed just BEFORE the fault can: this prints the object and,
++                 * while it is still readable, its class.
++                 *
++                 * That is the whole question for a daemon that dies parking its main thread. It is
++                 * off unless asked for, and it costs a getenv once.
++                 */
++                {
++                    static int cider_pool_trace = -1;
++
++                    if (cider_pool_trace < 0) {
++                        const char *v = getenv("CIDER_TRACE_POOL");
++                        cider_pool_trace = (v != NULL && v[0] != '\0') ? 1 : 0;
++                    }
++                    if (cider_pool_trace) {
++                        Class cls = object_getClass(obj);
++                        const char *nm = cls ? class_getName(cls) : "(no class)";
++
++                        fprintf(stderr, "CIDER_POOL releasing %p isa=%p %s\n",
++                                (void *) obj, (void *) cls, nm ? nm : "(unnamed)");
++                        fflush(stderr);
++                    }
++                }
+ #if SUPPORT_AUTORELEASEPOOL_DEDUP_PTRS
+                 // release count+1 times since it is count of the additional
+                 // autoreleases beyond the first one

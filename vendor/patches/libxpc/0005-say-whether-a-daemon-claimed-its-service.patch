@@ -1,15 +1,18 @@
-Say whether a daemon claimed its service, because until it does every client waits forever.
+Say whether a daemon claimed its service, and when a listener throws a message away.
+
+TWO SILENCES, both reported only through xpc_log_error or xpc_log_fault, which go to syslog -- and
+there is no syslog socket here.
 
 bootstrap_check_in in activateLocked is where a named XPC listener claims its service. Until that
 succeeds launchd keeps the receive right, and a client that looks the name up still gets a send
-right -- to a queue nobody is reading. The client then waits with no timeout and no error, which is
-what a Security daemon not serving looks like from every layer above.
+right, to a queue nobody is reading. The client then waits with no timeout and no error.
 
-The failure was invisible: xpc_log_error goes to syslog and there is no syslog socket here. This is
-the same treatment the lookup failure a few lines below already needed, for the same reason.
+And a listener DROPS any message that is not a check-in. A client whose first message is not one
+waits forever while the server silently throws it away, which from outside is indistinguishable
+from the daemon not running.
 
-WHAT IT ANSWERED IMMEDIATELY, and it corrected a reading of mine. launchd's own port-set dump shows
-com.apple.trustd as recv=1 active=0, which says launchd still holds the receive right; I took that
+WHAT THE FIRST ONE ANSWERED, and it corrected a reading of mine. launchd's port-set dump shows
+com.apple.trustd as recv=1 active=0, meaning launchd still holds the receive right, and I took that
 to mean trustd never checks in. It does:
 
     CIDER_XPC check-in for service com.apple.trustd = 0 (claimed)
@@ -17,9 +20,33 @@ to mean trustd never checks in. It does:
 The port-set snapshot is taken at DEMAND DISPATCH time, before the job it just launched has had a
 chance to check in, so it could never have shown anything else. A snapshot proves a state at ITS
 moment, not a fact about the run.
+
+THE SECOND ONE HAS NOT FIRED YET, and that is recorded rather than claimed: in the runs so far
+trustd's listener prints neither the drop nor the accept, so where its messages actually go is
+still open.
 --- a/src/connection.m
 +++ b/src/connection.m
-@@ -819,6 +819,19 @@
+@@ -184,6 +184,19 @@
+ 				audit_token_t* token = NULL;
+ 
+ 				if (header->msgh_id != XPC_MSGH_ID_CHECKIN) {
++					/*
++					 * A LISTENER DROPS ANYTHING THAT IS NOT A CHECK-IN, and says so only through
++					 * xpc_log_fault, which goes to syslog -- and there is no syslog socket here.
++					 * So a client whose first message is not a check-in waits forever while the
++					 * server silently throws it away, which is indistinguishable from a daemon
++					 * that is not running at all.
++					 */
++					if (getenv("CIDER_TRACE_XPC") != NULL) {
++						fprintf(stderr, "CIDER_XPC listener %s DROPPED a non-checkin message, id=0x%x\n",
++						        this->service_name ? this->service_name : "(anonymous)",
++						        (unsigned) header->msgh_id);
++						fflush(stderr);
++					}
+ 					xpc_log_fault(connection, "server connection received non-checkin message");
+ 					mach_msg_destroy(header);
+ 					return;
+@@ -819,6 +832,19 @@
  	if (this->is_listener && this->service_name) {
  		// named server
  		status = bootstrap_check_in(bootstrap_port, this->service_name, &this->recv_port);

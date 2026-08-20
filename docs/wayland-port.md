@@ -12301,3 +12301,37 @@ the process ended *before* `dispatch_main` ever parked the main thread — the o
 It printed a clean run and would have been read as "no crash". A probe that exits before reaching
 the code it is aimed at is worse than no probe; the fix is the `dispatch_after` that lets it survive
 to be parked and still terminate.
+
+### A running trustd answers nothing, and a plist trap that hid my instruments
+
+**The sharpest statement yet.** Poking trustd twice — once to demand-start it, once six seconds
+later when it has a pid — gives:
+
+```
+poke 1 → TIMEOUT          (this is what starts it)
+trustd: 31 -              running
+poke 2 → TIMEOUT          up for six seconds
+trustd still: 31 -        same pid
+```
+
+So a **running, checked-in trustd with a stable pid answers neither poke**. Not a startup race, and
+not the intermittent crash — which is worth stating plainly, because the crash was where I was
+looking. (That crash is ~1 in 6; five runs in a row survived with the pool trace on, which is
+consistent with the rate and proves nothing either way.)
+
+**A plist trap that cost most of this rung.** My prefix-local trustd override added a *second*
+`EnvironmentVariables` key rather than merging into the existing one. A duplicate-key dict silently
+resolves to one of them, so my trace variables were being dropped — and the traces then printed
+nothing, which reads exactly like the code not running. Merging into the existing dict fixed it, and
+`CIDER_TRACE_POOL` started speaking immediately.
+
+**Two instruments, one verified and one not.**
+
+- `CIDER_TRACE_POOL` (objc4) names every object as the autorelease pool drains — the crash cannot
+  name the object it faults on, because by then its isa is unreadable, but the line printed just
+  *before* the fault can. **Verified speaking** on a non-crashing run:
+  `CIDER_POOL releasing 0x786f6367c980 isa=0x786f64933168 __NSCFString`.
+- libxpc now prints when a listener **drops a non-checkin message** — a real silent path, since a
+  listener throws away anything that is not a check-in and says so only via `xpc_log_fault` →
+  syslog. **This one has not fired yet**, so where trustd's messages actually go is still open. It
+  is recorded as an instrument, not as a finding.
