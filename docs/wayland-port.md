@@ -12669,3 +12669,37 @@ where the thread-local task table is a different, empty map, so every read reply
 And the two `no event available, dropping` lines are themselves a finding: ciderd re-arms a
 notification after every read while `has_events` is still true, so each real event is followed by a
 spurious wakeup that the guest reads and discards.
+
+### Refinement: libdispatch was handed an error, not a message
+
+The section above ends "libdispatch receives the event and never calls the channel handler", and
+points there as the next look. Printing the flags shows that is the wrong place — **libdispatch is
+behaving correctly, because what it receives is not a message-available event at all.**
+
+| | fflags | data |
+| --- | --- | --- |
+| delivered (poke 1, and the peer) | `0x10004004` = `MACH_RCV_TOO_LARGE` | the port name (2051 = 0x803) |
+| lost (poke 2) | `0x10004008` = `MACH_RCV_INVALID_DATA` | **0** |
+
+(Both constants read out of `vendor/src/xnu/.../message.h`, not from memory.)
+
+`MACH_RCV_TOO_LARGE` with the port name is the normal signal — "there is a message, it does not fit
+your 64-byte buffer, here is the port, go and receive it". `MACH_RCV_INVALID_DATA` with `data = 0`
+carries nothing to receive, so a handler that ignores it is right to.
+
+**So the defect is in `xnu_sys_kqchan_mach_port_fill`**: for the second message on the same listener
+port it produces an error where it produced the port name the first time.
+
+**One obvious cause is refuted by measurement.** The guest's receive buffer looked like the suspect —
+hand XNU somewhere it cannot write and `MACH_RCV_INVALID_DATA` is exactly what you would get. It is
+the same buffer every time:
+
+```
+port=0x803 READ number=64 with a buffer → read reply, carries an event      (poke 1)
+port=0x803 READ number=64 with a buffer → read reply, code=0xdead, NO event (spurious)
+port=0x803 READ number=64 with a buffer → read reply, carries an event      (poke 2, but INVALID_DATA)
+```
+
+Same size, non-NULL, all three times. Next look is inside the fill itself — what differs about the
+second message on a port, given a check-in message carries port rights that must be copied into the
+receiving task.

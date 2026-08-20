@@ -452,6 +452,16 @@ impl MachPortKqchan {
                 }
                 MSGNUM_MACH_PORT_READ if n >= size_of::<CallMachPortRead>() => {
                     let call: CallMachPortRead = unsafe { std::ptr::read_unaligned(buf.as_ptr() as *const _) };
+                    /*
+                     * THE BUFFER THE GUEST GAVE US. A delivered event comes back as MACH_RCV_TOO_LARGE
+                     * with the port name in data; the one that goes missing comes back as
+                     * MACH_RCV_INVALID_DATA with data 0, and the obvious way to produce that is to
+                     * hand XNU somewhere it cannot write.
+                     */
+                    kq_trace_owned(crate::sched::nsid_for_task(self.owning_task), self.port,
+                                   self.daemon_fd, "READ", call.default_buffer_size as u32,
+                                   if call.default_buffer == 0 { "with a NULL buffer" }
+                                   else { "with a buffer" });
                     self.read(call.default_buffer, call.default_buffer_size);
                 }
                 _ => { /* unknown msgnum for a mach-port channel: ignore */ }
