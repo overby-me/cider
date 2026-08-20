@@ -12800,3 +12800,44 @@ decides whether a second message can ever wake it.
 One change was made and did **not** fix anything, kept because it is right on its own terms: the
 host pid recorded for a task is copied once into an address-stable context at task creation, so a
 later correction reached the lookup table and not the live context. They no longer disagree.
+
+### Correction to the correction: measured over four runs, trustd is usually still alive
+
+The section above says trustd exits after one request and launchd never restarts it. **That was one
+run, and it is the minority case.** I made exactly the error I keep writing down: concluded from a
+single observation, and put it in a commit message.
+
+Four runs, asking `kill -0` on the job's pid at each step:
+
+| run | poke 1 | trustd before poke 2 | poke 2 |
+| --- | --- | --- | --- |
+| 1 | TIMEOUT | **gone** | TIMEOUT |
+| 2 | REPLY | **alive** | TIMEOUT |
+| 3 | REPLY | **alive** | TIMEOUT |
+| 4 | REPLY | **alive** | TIMEOUT |
+
+So **3 of 4**: trustd is alive and still does not answer the second request. The exited case is real
+but is the same job-start flakiness as #137, not the explanation for the deaf listener. The
+four-layer localisation stands.
+
+**And with trustd alive, the write into it still fails with ESRCH.** In run 4 trustd is guest pid 30,
+alive at every check, and ciderd reports:
+
+```
+CIDER_VMWRITE FAILED pid=3798354 addr=0x75e2cc804300 len=120 rc=-1 errno=No such process
+CIDER_VMWRITE the map that failed belongs to guest nsid 30
+```
+
+**The host pid ciderd holds for a live guest process is dead.** That is not a consequence of anything
+above it — it is the defect. `launchd`'s own trace confirms the surrounding state is sane: it watched
+`com.apple.trustd` at boot (`machservice_watch com.apple.trustd recv=1`, one of 20 services) and
+never logged a returned receive right, which is correct for a job that did not die.
+
+Next: find why that pid goes stale for a live task. `set_host_pid` runs on every incoming RPC from
+the guest, and a daemon parked in `dispatch_main` sends none — so the value is whatever its last RPC
+carried. Propagating updates into the live `TaskCtx` (done, and it did not fix this) was necessary
+but not sufficient; the recorded value itself is wrong.
+
+The launchd trace is gated on the **file** `/probe/launchd-trace`, not an environment variable —
+`CIDER_TRACE_LAUNCHD` demonstrably does not reach pid 1, and a run with it set produced zero lines,
+which is silence and not evidence. launchd's stderr lands in `ciderd.log`, not in the shell output.

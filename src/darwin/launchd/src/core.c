@@ -87,6 +87,30 @@
 #include <asl.h>
 #include <_simple.h>
 
+/*
+ * GATED ON A FILE, NOT AN ENVIRONMENT VARIABLE. launchd is pid 1, started by the container, and
+ * CIDER_TRACE_LAUNCHD demonstrably does not reach it -- a run with it set produced zero lines, which
+ * is silence and not evidence. Touching /probe/launchd-trace in the prefix sidesteps that entirely.
+ *
+ * What it is for: a MachService job that exits is supposed to be demand-started again by the next
+ * message. trustd is not: it answers one request, exits cleanly (EnableTransactions plus
+ * EnablePressuredExit, which is correct of it), and never comes back. Whether launchd ever learns
+ * the receive right is free, and whether it puts the port back in its demand set, decides that --
+ * and both are silent today.
+ */
+static bool cider_launchd_trace(void) {
+	static int cached = -1;
+
+	if (cached < 0) {
+		cached = (access("/probe/launchd-trace", F_OK) == 0) ? 1 : 0;
+	}
+	return cached == 1;
+}
+
+#define CIDER_LD(...) do { \
+	if (cider_launchd_trace()) { fprintf(stderr, "CIDER_LD " __VA_ARGS__); fputc('\n', stderr); fflush(stderr); } \
+} while (0)
+
 #include <libproc.h>
 #include <libproc_internal.h>
 #include <System/sys/proc_info.h>
@@ -6317,6 +6341,7 @@ job_active(job_t j)
 void
 machservice_watch(job_t j, struct machservice *ms)
 {
+	CIDER_LD("machservice_watch %s recv=%d", ms->name, ms->recv ? 1 : 0);
 	if (ms->recv) {
 		if (job_assumes_zero(j, runtime_add_mport(ms->port, NULL)) == KERN_INVALID_RIGHT) {
 			ms->recv_race_hack = true;
@@ -7456,6 +7481,7 @@ job_ack_port_destruction(mach_port_t p)
 
 	j = ms->job;
 
+	CIDER_LD("receive right returned for service %s", ms->name);
 	jobmgr_log(root_jobmgr, LOG_DEBUG, "Receive right returned to us: %s", ms->name);
 
 	/* Without being the exception handler, NOTE_EXIT is our only way to tell if
@@ -7497,7 +7523,11 @@ job_ack_port_destruction(mach_port_t p)
 	kern_return_t kr = mach_port_set_attributes(mach_task_self(), ms->port, MACH_PORT_TEMPOWNER, NULL, 0);
 	(void)job_assumes_zero(j, kr);
 	machservice_stamp_port(j, ms);
+	CIDER_LD("service %s: reset=%d delete=%d, dispatching, currently_ignored=%d",
+	         ms->name, ms->reset ? 1 : 0, ms->delete_on_destruction ? 1 : 0, j->currently_ignored ? 1 : 0);
 	job_dispatch(j, false);
+	CIDER_LD("service %s: after dispatch, currently_ignored=%d recv=%d isActive=%d",
+	         ms->name, j->currently_ignored ? 1 : 0, ms->recv ? 1 : 0, ms->isActive ? 1 : 0);
 
 	if (ms->recv_race_hack) {
 		ms->recv_race_hack = false;
