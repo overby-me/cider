@@ -68,11 +68,17 @@ fn as_bytes<T>(v: &T) -> &[u8] {
 /// The channel is a strict notification / request / reply exchange, so a desync is only ever
 /// visible as "what is actually on the wire", and neither side can see that alone: the client knows
 /// what it expected, the server knows what it meant to send, and the bug lives in between.
-fn kq_trace(dir: &str, number: u32, note: &str) {
+///
+/// WITH THE CHANNEL'S IDENTITY, because without it the trace cannot be read. A container runs
+/// several mach-port channels at once -- launchd's, each daemon's, each client's -- and the lines
+/// interleave, so "the exchange stopped" could not be attributed to any one of them. `port` is the
+/// mach port name being watched and `fd` is our end of the socketpair, unique per channel for as
+/// long as it lives.
+fn kq_trace(port: u32, fd: RawFd, dir: &str, number: u32, note: &str) {
     // Non-EMPTY: our drivers export switches unset-as-empty.
     match std::env::var("CIDER_TRACE_KQUEUE") {
         Ok(v) if !v.is_empty() => {
-            eprintln!("CIDER_KQCHAN {dir} number={number} {note}");
+            eprintln!("CIDER_KQCHAN port=0x{port:x} fd={fd} {dir} number={number} {note}");
         }
         _ => {}
     }
@@ -293,7 +299,16 @@ use crate::xnu::kqchan::{
 /// the microthread run), so poking it through the raw pointer here does not alias.
 extern "C" fn mach_port_notify_cb(context: *mut c_void) {
     let kq = context as *mut MachPortKqchan;
-    unsafe { (*kq).send_notification() };
+    unsafe {
+        // The moment XNU says a message landed on the watched port. Traced separately from the
+        // notification datagram because send_notification is THROTTLED to one outstanding: a
+        // callback that fires and sends nothing is the interesting case, and it looks identical to
+        // no callback at all when only the datagram is traced.
+        kq_trace((*kq).port, (*kq).daemon_fd, "NOTIFY", 0,
+                 if (*kq).can_send_notification { "message landed, sending" }
+                 else { "message landed, THROTTLED (previous notification unread)" });
+        (*kq).send_notification()
+    };
 }
 
 /// One Mach-port-watching kqueue channel. Heap-boxed: its address is the xnu-sys callback's
@@ -308,6 +323,9 @@ pub struct MachPortKqchan {
     owning_task: *mut xnu_sys_task_t,
     /// Throttle: at most one unacknowledged notification outstanding (the guest acks by reading).
     can_send_notification: bool,
+    /// The watched mach port name, kept for the trace: several channels are live at once and their
+    /// lines interleave, so an exchange that stops has to be attributable to one of them.
+    port: u32,
 }
 
 impl MachPortKqchan {
@@ -337,6 +355,7 @@ impl MachPortKqchan {
             xnu_sys: std::ptr::null_mut(),
             owning_task,
             can_send_notification: true,
+            port,
         });
         // The callback context is the box's stable heap address (it never moves while xnu_sys lives).
         let ctx = b.as_mut() as *mut MachPortKqchan as *mut c_void;
@@ -359,6 +378,11 @@ impl MachPortKqchan {
             return Err(io::Error::from_raw_os_error(libc::ESRCH));
         }
         b.xnu_sys = xnu_sys;
+        // OPEN AND CLOSE, not just the datagrams. A run where a listener is never handed its message
+        // shows FEWER channels exchanging, sometimes none at all -- and with only SEND/RECV traced,
+        // "no lines" cannot distinguish a channel that was never opened from one that was opened and
+        // never had anything to carry. Those are opposite bugs.
+        kq_trace(port, daemon_fd, "OPEN", 0, "watching this port");
         // If a message is already queued, notify now (the client's filter is level-triggered).
         if unsafe { xnu_sys_kqchan_mach_port_has_events(xnu_sys) } {
             b.send_notification();
@@ -368,7 +392,8 @@ impl MachPortKqchan {
 
     fn send(&self, bytes: &[u8]) {
         if bytes.len() >= 4 {
-            kq_trace("SEND", u32::from_ne_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]), "via send");
+            kq_trace(self.port, self.daemon_fd, "SEND",
+                     u32::from_ne_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]), "via send");
         }
         unsafe {
             libc::send(self.daemon_fd, bytes.as_ptr() as *const c_void, bytes.len(), libc::MSG_DONTWAIT);
@@ -396,7 +421,8 @@ impl MachPortKqchan {
                 return false;
             }
             if n >= 4 {
-                kq_trace("RECV", u32::from_ne_bytes([buf[0], buf[1], buf[2], buf[3]]), "from the guest");
+                kq_trace(self.port, self.daemon_fd, "RECV",
+                         u32::from_ne_bytes([buf[0], buf[1], buf[2], buf[3]]), "from the guest");
             }
             if n < 0 {
                 let e = io::Error::last_os_error();
@@ -456,7 +482,8 @@ impl MachPortKqchan {
         // unread, the NEXT read takes the reply where it expected a notification -- one slip
         // becomes a permanent alternation, which is what "invalid reply" then "invalid
         // notification" looked like, about 25 dropped events a second.
-        let (xnu_sys, task, daemon_fd) = (self.xnu_sys, self.owning_task, self.daemon_fd);
+        let (xnu_sys, task, daemon_fd, port) =
+            (self.xnu_sys, self.owning_task, self.daemon_fd, self.port);
         // No `&mut self` is held across this run, so a notify callback that fires mid-fill only
         // touches self through the raw pointer (no aliasing).
         unsafe {
@@ -473,7 +500,8 @@ impl MachPortKqchan {
                         // 0xdead: "no events" sentinel (matches ProcKqchan + kqchan.cpp).
                         reply.header.code = 0xdead;
                     }
-                    kq_trace("SEND", reply.header.number as u32, "read reply from the fill body");
+                    kq_trace(port, daemon_fd, "SEND", reply.header.number as u32,
+                             "read reply from the fill body");
                     libc::send(
                         daemon_fd,
                         &reply as *const _ as *const c_void,
@@ -495,6 +523,7 @@ impl MachPortKqchan {
 
 impl Drop for MachPortKqchan {
     fn drop(&mut self) {
+        kq_trace(self.port, self.daemon_fd, "CLOSE", 0, "channel torn down");
         let (xnu_sys, task) = (self.xnu_sys, self.owning_task);
         unsafe {
             if !xnu_sys.is_null() {

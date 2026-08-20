@@ -16,10 +16,19 @@
  *   --server   create a mach service listener, accept, and reply to every dictionary
  *   (default)  connect and send one message, bounded, reporting REPLY, ERROR or TIMEOUT
  *
- * WHAT IT ANSWERED: 8 of 18 runs replied. A service that does nothing but reply gets its message
- * about half the time, and the failures are silent on both sides -- the client waits out its own
- * timeout and the listener's event handler simply never fires. So this is not a Security problem at
- * all; it is the substrate under every daemon in the container.
+ * WHAT IT ANSWERED, and the first reading of it was too coarse. About half the runs reply, but
+ * "did not reply" turned out to be TWO different failures, which the server's own stderr separates
+ * at a glance. Of eleven runs kept with full logs:
+ *
+ *     5   replied
+ *     4   the server NEVER STARTED -- no "server starting" line at all
+ *     2   the server was up, listener resumed, and its event handler never fired
+ *
+ * Only the last two are a delivery failure. The commonest one is a launchd job that does not run,
+ * which is the signature filed against securityd -- reproduced here on a first-party daemon that
+ * does nothing but reply, so it is not securityd-specific.
+ *
+ * So this is not a Security problem at all; it is the substrate under every daemon in the container.
  */
 #include <dispatch/dispatch.h>
 #include <stdio.h>

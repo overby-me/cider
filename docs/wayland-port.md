@@ -12439,3 +12439,34 @@ runs was not a rate.
 Two other candidates are already refuted for this: the message is not being dropped by the listener
 (libxpc's non-checkin drop path is instrumented and deployed and never fires), and it is not the
 dispatch workloop.
+
+### The same number, split in two: a job that never runs, and a listener that never hears
+
+The echo rate above ("about half") was real but the diagnosis attached to it was too coarse. Tracing
+the daemon's own startup separates two failures that produce an identical client-side `TIMEOUT`. Of
+eleven runs kept with full logs:
+
+| outcome | runs |
+| --- | --- |
+| replied | 5 |
+| **the server never started** — no `server starting` line at all | 4 |
+| the server was up, listener resumed, event handler never fired | 2 |
+
+Only the last two are a delivery failure. **The commonest one is a launchd job that simply does not
+run** — which is exactly #137's signature, now reproduced on a 150-line first-party daemon whose
+whole body is "reply to a dictionary". That takes securityd out of #137 entirely: it is not
+securityd's bug.
+
+It also explains the ciderd side. In a failing run the mach-port channels show **13 `OPEN` and zero
+`NOTIFY`, zero `SEND`, zero `RECV`** — every channel registered and watching, and no message landing
+anywhere. With no listener process alive, that is the expected picture, not a second mystery.
+
+`CIDER_TRACE_KQUEUE` now names the channel (`port=0x… fd=…`) and logs `OPEN`, `NOTIFY` and `CLOSE`
+as well as the datagrams. Without identity the lines from several channels interleave and "the
+exchange stopped" cannot be attributed to any one of them; without `OPEN`, silence cannot distinguish
+a channel that was never created from one that was created and never had anything to carry.
+
+**And a snapshot lied again, in the same way it did for trustd.** `launchctl list` reported
+`-  1  com.cider.xpcecho` — no pid, last exit 1 — in a run that replied *and* in one that did not.
+With `KeepAlive` the job restarts, so a listing taken at one instant is not the state during the
+poke.
