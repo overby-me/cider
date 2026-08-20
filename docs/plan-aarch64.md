@@ -1154,9 +1154,13 @@ LlazyAllocate code, so the residual faults in the $prefix log are cumulative fro
 current run's return codes are the truth). So: the whole arm64 framework stack loads AND nix, a large
 threaded C++ program, executes under cider. NEXT blocker is no longer a crash but a nix-level error:
 `nix-store --init`/`--load-db` exit 1 with `error: opening file "/Users/root/nixstate/db/schema": No
-such file or directory` -- the store DB is not being created. Likely a state-dir/DB-setup issue
-(gnix-build.sh mkdir's $NIX_STATE_DIR but not db/; nix-store --init behavior in 2.34; or a cider
-filesystem quirk creating the sqlite DB). This is the store layer, past "does nix run". Reproduce:
+such file or directory` -- the store DB is not being created. Refined: nix-store --init DOES
+create the DB directory -- $NIX_STATE_DIR/db/{big-lock, reserved(8MB)}, gcroots, temproots, profiles
+all appear -- but db.sqlite and schema do NOT. So nix gets past the disk-space reservation and fails
+specifically at CREATING THE SQLITE DB. That points at sqlite under cider arm64 (its open path does
+fcntl advisory locking F_SETLK/F_GETLK, mmap, pwrite) rather than a permissions/mkdir problem. NEXT:
+strace the guest nix-store --init (or instrument) to see which syscall on db.sqlite fails; likely an
+arm64 fcntl-lock or mmap emulation gap. This is the store layer, past "does nix run". Reproduce:
 scratchpad/m4-build.sh (CIDER_SHELL_STARTUP_TIMEOUT=0, guest log at /tmp/m4-guest-build.log via the
 build-pkg-bypass cp). DURABILITY still open: the AppKit/Onyx2D fixes are in the cocotron pin with no
 patch dir; scratchpad/m4-fw.sh overlays the framework stack into $rt but is not a committed build step.
