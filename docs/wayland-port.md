@@ -12051,3 +12051,45 @@ list SIGABRT, so the handler returns and `abort()` proceeds to its illegal instr
 
 Still true and still unexplained: trustd is never demand-started (`-  0  com.apple.trustd`), so
 whatever job the loop dispatched, it was not trustd's.
+
+### Losing one kqueue event is better than losing pid 1
+
+Making launchd's silent abort audible took three instruments, each because the last one named the
+messenger rather than the sender:
+
+1. `os_crash_function` — libc's `os_crash` records the message and then calls
+   `dlsym(RTLD_MAIN_ONLY, "os_crash_function")`. Nothing defined it, so **every `os_assert` in
+   launchd died with no explanation at all.** Defined now. (It stayed silent here, which was itself
+   the answer: the abort was not launchd's own assert.)
+2. `dladdr` on the faulting PC — gave `linux_syscall +9`, i.e. the `raise()` inside `abort()`. The
+   messenger again.
+3. A **stack scan** with `dladdr` on every slot, the trick the AppKit fatal handler already uses:
+
+```
+abort +286                in libsystem_c.dylib
+linux_kevent_copyout +538 in libSystem.B.dylib     <- the sender
+kevent64_impl +1275
+```
+
+`linux_kevent_copyout` calls `abort()` when a filter cannot copy an event out, under an upstream
+comment that says the quiet part out loud: `/* XXX-FIXME: hard to handle this without losing events
+*/`. That trades one lost event for the whole process — and when the process is **pid 1**, its crash
+handler reboots the container and every guest dies with it. **Measured: one fatal signal per run
+before, zero over four runs after.**
+
+The failure now names itself too. All six paths in `evfilt_machport_copyout` had only a `dbg_printf`
+(compiled out):
+
+```
+CIDER_KQUEUE machport copyout: invalid reply (errno 2)
+CIDER_KQUEUE copyout failed for filter -8, dropping the event
+CIDER_KQUEUE machport copyout: invalid notification (errno 0)
+```
+
+So the read/send/read exchange on the kqchan socket goes out of step, and a failed exchange leaves
+the unread message behind for the next call to trip over.
+
+**What the change trades, plainly:** the event is still lost and epoll keeps reporting the same fd
+readable, so launchd now *drops* steadily rather than dying — about 25 events a second. That is a
+livelock rather than a crash, it stops nothing else in the container, and the real fix is the
+out-of-step exchange this makes visible for the first time.

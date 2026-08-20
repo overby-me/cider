@@ -1,0 +1,129 @@
+Losing one kqueue event is better than losing pid 1.
+
+linux_kevent_copyout called abort() when a filter could not copy an event out, under an upstream
+comment that says the quiet part out loud:
+
+    /* XXX-FIXME: hard to handle this without losing events */
+    abort();
+
+That trades one lost event for the whole process. When the process is launchd it is worse than that:
+launchd is pid 1, so its crash handler reboots the container and every guest dies with it, which
+from outside looks like the application quietly exiting. MEASURED: one fatal signal per run before,
+ZERO over four runs after.
+
+Dropping the event is exactly what the zero-filter case immediately above already does.
+
+AND THE FAILURE NOW SAYS WHY. All six failure paths in evfilt_machport_copyout had only a
+dbg_printf, which is compiled out, so a Mach-port event that could not be read killed the process
+and explained nothing. Under CIDER_TRACE_KQUEUE they name themselves, and the first thing they say
+is worth having:
+
+    CIDER_KQUEUE machport copyout: invalid reply (errno 2)
+    CIDER_KQUEUE copyout failed for filter -8, dropping the event
+    CIDER_KQUEUE machport copyout: invalid notification (errno 0)
+
+so the read/send/read exchange on the kqchan socket is going out of step, and a failed exchange
+leaves the unread message behind for the next call to trip over.
+
+WHAT THIS CHANGE TRADES, said plainly: the event is still lost and epoll keeps reporting the same fd
+readable, so launchd now drops steadily rather than dying, about 25 events a second in a 60 second
+run. That is a livelock rather than a crash, it does not stop anything else in the container, and it
+is bounded by the container's life. The real fix is the out-of-step exchange above, which this makes
+visible for the first time.
+--- a/src/linux/platform.c
++++ b/src/linux/platform.c
+@@ -212,9 +212,25 @@
+         filt = &kq->kq_filt[~(kn->kev.filter)];
+         rv = filt->kf_copyout(event, kn, ev);
+         if (slowpath(rv < 0)) {
++            /*
++             * DO NOT ABORT. The upstream comment here says "hard to handle this without losing
++             * events" and then calls abort(), which trades one lost event for the whole process.
++             * In launchd that process is PID 1: the container's crash handler reboots and every
++             * guest dies, which from outside looks like the application quietly exiting.
++             *
++             * Dropping the event is exactly what the zero-filter case above already does. Losing
++             * an event degrades one kqueue client; aborting loses everything.
++             */
++            const char *cider = getenv("CIDER_TRACE_KQUEUE");
++
+             dbg_puts("knote_copyout failed");
+-            /* XXX-FIXME: hard to handle this without losing events */
+-            abort();
++            if (cider != NULL && cider[0] != '\0') {
++                fprintf(stderr, "CIDER_KQUEUE copyout failed for filter %d, dropping the event\n",
++                        (int) kn->kev.filter);
++                fflush(stderr);
++            }
++            nret--;
++            continue;
+         }
+ 
+         /* If an empty kevent structure is returned, the event is discarded. */
+--- a/src/linux/machport.c
++++ b/src/linux/machport.c
+@@ -34,6 +34,20 @@
+ 
+ #include "private.h"
+ 
++/*
++ * Every failure path below had only a dbg_printf, which is compiled out, and the caller turned any
++ * of them into an abort() -- so a Mach-port kqueue event that could not be read killed the process
++ * and said nothing at all about why. CIDER_TRACE_KQUEUE makes the reason readable.
++ */
++#define CIDER_MACHPORT_FAIL(why) \
++	do { \
++		const char *cider_ = getenv("CIDER_TRACE_KQUEUE"); \
++		if (cider_ != NULL && cider_[0] != '\0') { \
++			fprintf(stderr, "CIDER_KQUEUE machport copyout: %s (errno %d)\n", why, errno); \
++			fflush(stderr); \
++		} \
++	} while (0)
++
+ int
+ evfilt_machport_copyout(struct kevent64_s *dst, struct knote *src, void *ptr)
+ {
+@@ -50,11 +64,13 @@
+ 	rv = recv(src->kdata.kn_dupfd, &notification, sizeof(notification), 0);
+ 	if (rv < 0) {
+ 		dbg_printf("evfilt_machport_copyout() reading notification failed: %d (%s)", errno, strerror(errno));
++		CIDER_MACHPORT_FAIL("reading the notification failed");
+ 		return -1;
+ 	}
+ 
+ 	if (notification.header.number != dserver_kqchan_msgnum_notification) {
+ 		dbg_puts("evfilt_machport_copyout() read invalid notification");
++		CIDER_MACHPORT_FAIL("invalid notification");
+ 		return -1;
+ 	}
+ 
+@@ -67,6 +83,7 @@
+ 	rv = send(src->kdata.kn_dupfd, &call, sizeof(call), 0);
+ 	if (rv < 0) {
+ 		dbg_printf("evfilt_machport_copyout() sending request failed: %d (%s)", errno, strerror(errno));
++		CIDER_MACHPORT_FAIL("sending the read request failed");
+ 		return -1;
+ 	}
+ 
+@@ -74,11 +91,13 @@
+ 	rv = recv(src->kdata.kn_dupfd, &reply, sizeof(reply), 0);
+ 	if (rv < 0) {
+ 		dbg_printf("evfilt_machport_copyout() reading reply failed: %d (%s)", errno, strerror(errno));
++		CIDER_MACHPORT_FAIL("reading the reply failed");
+ 		return -1;
+ 	}
+ 
+ 	if (reply.header.number != dserver_kqchan_msgnum_mach_port_read) {
+ 		dbg_puts("evfilt_machport_copyout() read invalid reply");
++		CIDER_MACHPORT_FAIL("invalid reply");
+ 		return -1;
+ 	}
+ 
+@@ -92,6 +111,7 @@
+ 	if (reply.header.code != 0) {
+ 		// FIXME: the returned code is actually a Linux code (but strerror is provided by Darwin libc here)
+ 		dbg_printf("evfilt_machport_copyout() server indicated failure: %d (%s)", -reply.header.code, strerror(-reply.header.code));
++		CIDER_MACHPORT_FAIL("the server indicated failure");
+ 		return -1;
+ 	}
+ 

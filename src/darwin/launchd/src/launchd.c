@@ -404,6 +404,36 @@ do_pid1_crash_diagnosis_mode2(const char *msg)
 	_exit(EXIT_FAILURE);
 }
 
+/*
+ * WHY PID 1 DIES SILENTLY, AND THE ONE HOOK THAT FIXES IT.
+ *
+ * Every os_assert/os_assumes failure in launchd ends in os_crash, and os_crash's implementation
+ * (libc, os/assumes.c) only records the message and then looks for a callback:
+ *
+ *     _os_crash_callback = dlsym(RTLD_MAIN_ONLY, "os_crash_function");
+ *
+ * Nothing defined that symbol, so the message went nowhere and launchd aborted with no explanation
+ * at all -- and launchd is pid 1, so its crash handler reboots and the whole container goes down
+ * looking, from outside, like the application quietly exiting. Three rungs were spent cornering an
+ * abort that was already describing itself.
+ *
+ * A plain write(2): this runs on the way to abort(), possibly from a signal handler, where nothing
+ * else is safe.
+ */
+void os_crash_function(const char *message);
+
+void
+os_crash_function(const char *message)
+{
+	char line[512];
+	int n = snprintf(line, sizeof(line), "CIDER_LAUNCHD_CRASH %s\n",
+			message ? message : "(no message)");
+
+	if (n > 0) {
+		(void)write(STDERR_FILENO, line, (size_t)n);
+	}
+}
+
 void
 fatal_signal_handler(int sig, siginfo_t *si, void *uap __attribute__((unused)))
 {
@@ -436,6 +466,78 @@ fatal_signal_handler(int sig, siginfo_t *si, void *uap __attribute__((unused)))
 	switch (sig) {
 	default:
 	case 0:
+		{
+			/*
+			 * SIGABRT lands here. The handler then RETURNS and abort() carries on to its illegal
+			 * instruction, so what gets reported is the trap and not the abort.
+			 *
+			 * si_addr is 0 for an abort, so it says nothing; the PROGRAM COUNTER is in the
+			 * ucontext, and dladdr turns that into an image and a symbol. That is the whole
+			 * question here -- which code called abort -- and it is answerable in the handler
+			 * itself without a core.
+			 */
+			char line[512];
+			const ucontext_t *uc = (const ucontext_t *)uap;
+			void *pc = NULL;
+			Dl_info info;
+			int n;
+
+			if (uc && uc->uc_mcontext) {
+				pc = (void *)(uintptr_t)uc->uc_mcontext->__ss.__rip;
+			}
+			if (pc && dladdr(pc, &info) && info.dli_sname) {
+				n = snprintf(line, sizeof(line),
+						"CIDER_LAUNCHD_FATAL unhandled sig=%d pc=%p %s +%ld in %s\n",
+						sig, pc, info.dli_sname,
+						(long)((uintptr_t)pc - (uintptr_t)info.dli_saddr),
+						info.dli_fname ? info.dli_fname : "?");
+			} else if (pc && dladdr(pc, &info)) {
+				n = snprintf(line, sizeof(line),
+						"CIDER_LAUNCHD_FATAL unhandled sig=%d pc=%p (no symbol) in %s\n",
+						sig, pc, info.dli_fname ? info.dli_fname : "?");
+			} else {
+				n = snprintf(line, sizeof(line),
+						"CIDER_LAUNCHD_FATAL unhandled sig=%d pc=%p (unmapped)\n", sig, pc);
+			}
+			if (n > 0) {
+				(void)write(STDERR_FILENO, line, (size_t)n);
+			}
+
+			/*
+			 * SCAN THE STACK, because the pc alone is the messenger and not the sender: abort()
+			 * ends in raise(), so the program counter is always the syscall stub and says nothing
+			 * about who decided to abort. Walking the stack and dladdr-ing every slot that lands
+			 * inside a known function recovers the call chain -- the same trick the AppKit fatal
+			 * handler uses, and it needs no core and no debugger.
+			 */
+			if (uc && uc->uc_mcontext) {
+				const uintptr_t *sp = (const uintptr_t *)(uintptr_t)uc->uc_mcontext->__ss.__rsp;
+				unsigned shown = 0;
+				unsigned k;
+
+				for (k = 0; sp && k < 256 && shown < 12; k++) {
+					Dl_info fi;
+					void *cand = (void *)sp[k];
+
+					if ((uintptr_t)cand < 0x1000) {
+						continue;
+					}
+					if (dladdr(cand, &fi) && fi.dli_sname) {
+						char fl[384];
+						int m = snprintf(fl, sizeof(fl),
+								"CIDER_LAUNCHD_FATAL   stack[%u] %s +%ld in %s\n", k,
+								fi.dli_sname,
+								(long)((uintptr_t)cand - (uintptr_t)fi.dli_saddr),
+								fi.dli_fname ? fi.dli_fname : "?");
+
+						if (m > 0) {
+							(void)write(STDERR_FILENO, fl, (size_t)m);
+						}
+						shown++;
+					}
+				}
+			}
+		}
 		break;
 	case SIGBUS:
 	case SIGSEGV:
