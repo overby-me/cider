@@ -1,0 +1,265 @@
+A timestamp we cannot check is not a bad code signature.
+
+MEASURED, three bundles in one container so the probe carried its own control, and all three came
+back the same: MoneyMoney, iTerm and LibreOffice each gave -67061, kCMSSignerInvalidSignature. The
+other two only run because they never check their own signature at startup. MoneyMoney does, and
+showed its user that the application file seems to be damaged.
+
+THE SIGNATURE WAS NEVER THE PROBLEM. Traced end to end:
+
+    CIDER_CMS verify signer=0x..da40 exit=ok verdict=1 (GoodSignature)
+    CIDER_CMS unauth attrs (timestamp) signer=0x..7a40 rux=-67884, abandoning a GoodSignature
+    CIDER_CMS VerifySignerInfo signer=0x..7a40 signature=-1 certificate=0
+    CIDER_CSSTEP core threw MacOSError error=-67061
+
+Three signers, two verify clean, and the third has a timestamp countersignature whose trust cannot
+be evaluated. Its GoodSignature verdict left by goto loser, and CMSDecoderCopySignerStatus flattens
+any nonzero into kCMSSignerInvalidSignature, which its own comment admits is an assumption.
+
+TWO CHANGES, each defensible on its own terms.
+
+cmssiginfo.c no longer discards a good signature because the unauthenticated attributes failed. A
+timestamp says WHEN something was signed, not WHETHER. A BAD signature still fails: vs is untouched
+and the SecCmsVSBadSignature path is unchanged.
+
+StaticCode.cpp treats errSecTimestampNotTrusted from CMSDecoderCopySignerTimestampWithPolicy the
+same as errSecTimestampMissing, which was already tolerated one line above. Nothing is claimed that
+we do not have: mSigningTimestamp stays 0, so the code takes its own "no timestamp available"
+branch. The surrounding code already takes this position for the cases Apple anticipated,
+returning noErr for CSSMERR_TP_CERT_EXPIRED and CSSMERR_TP_CERT_NOT_VALID_YET so that a TSA chain
+detail does not stop someone running an application.
+
+AND WHY THE TIMESTAMP CANNOT BE CHECKED, which is the finding under all of this and is OURS:
+
+    CIDER_TSA SecTrustEvaluate result=0 trustResult=0 cssmResultCode=0 (getCssm=0)
+
+trustResult 0 is kSecTrustResultInvalid, which the header defines as "SecTrustEvaluate has not yet
+been called" and which tsaSupport handles under an assert(false) marked should never happen.
+SecTrustEvaluate returns SUCCESS while leaving that result, and exactly one code path can do it:
+TRUSTD_XPC(sec_trust_evaluate) fails with errSecNotAvailable, and Apple's ramdisk fallback then
+returns true having set only the leaf, in its own words to make it seem like we did a cert
+evaluation. So every trust evaluation in this container is a lie its callers each mishandle
+differently.
+
+THE BUNDLE IS THEREFORE STILL NOT VALID, and that is said plainly rather than claimed otherwise: the
+verdict moves from -67061 to -50, because validateDirectory asks the same broken SecTrustEvaluate
+and gets the same kSecTrustResultInvalid. What these changes buy is a TRUE label instead of a false
+one, and a chain with no remaining unknowns in it. The one thing left is a trust evaluation that
+actually happens, which needs trustd to answer.
+
+The step traces are what made this legible, and they are kept: mTrust after the CMS status, the
+timestamp switch, each SecTrustSet call, and the trust result codesigning itself gets.
+diff -ru /tmp/claude-1000/-home-overby-me-Work-darling-nix/d5fb1e35-31ff-4a3f-b08e-d53e85fad659/scratchpad/sec7.OsDc/OSX/libsecurity_smime/lib/cmssiginfo.c vendor/src/security/OSX/libsecurity_smime/lib/cmssiginfo.c
+--- a/OSX/libsecurity_smime/lib/cmssiginfo.c	2026-08-20 07:39:17.538635674 +0200
++++ b/OSX/libsecurity_smime/lib/cmssiginfo.c	2026-08-20 07:31:46.082520794 +0200
+@@ -735,21 +735,46 @@
+         dprintf("SecCmsSignerInfoVerifyUnAuthAttrs Status: %ld\n", (long)rux);
+         if (rux) {
+             /*
+-             * A GOOD SIGNATURE LEAVES BY THE FAILURE DOOR HERE, and vs still says GoodSignature.
+-             * Everything above turns that into kCMSSignerInvalidSignature, so a TIMESTAMP that
+-             * cannot be verified is reported to the application as a bad code signature.
++             * A TIMESTAMP WE CANNOT CHECK IS NOT A BAD SIGNATURE.
++             *
++             * This used to `goto loser` with vs still GoodSignature. Everything above collapses a
++             * nonzero return into kCMSSignerInvalidSignature -- CMSDecoderCopySignerStatus says so
++             * in its own comment -- so an unverifiable TIMESTAMP was reported to the application as
++             * a bad CODE SIGNATURE, and MoneyMoney showed its user "the application file seems to
++             * be damaged". Measured on three bundles in one container: MoneyMoney, iTerm and
++             * LibreOffice all gave -67061. The other two only run because they never check their
++             * own signature at startup.
++             *
++             * The signature itself verified. A timestamp countersignature says WHEN something was
++             * signed, not WHETHER; conflating the two is what produced the wrong label.
++             *
++             * AND IT CANNOT SUCCEED HERE, for a reason that is ours and structural. The chain is:
++             * SecTrustEvaluate -> TRUSTD_XPC(sec_trust_evaluate) fails with errSecNotAvailable
++             * because trustd does not answer, Apple's ramdisk fallback then RETURNS SUCCESS while
++             * leaving _trustResult at kSecTrustResultInvalid ("make it seem like we did a cert
++             * evaluation"), and tsaSupport maps that to errSecTimestampNotTrusted under an
++             * assert(false) marked "should never happen". Even with trustd answering, this
++             * container has no anchor for Apple's timestamp CA, so the evaluation would still not
++             * succeed.
++             *
++             * The surrounding code already takes this position for the cases it anticipated:
++             * verifySigners returns noErr for CSSMERR_TP_CERT_EXPIRED and
++             * CSSMERR_TP_CERT_NOT_VALID_YET precisely so that users are not stopped from running
++             * applications over a TSA chain detail.
++             *
++             * A BAD signature still fails: vs is untouched, and the SecCmsVSBadSignature path below
++             * is unchanged.
+              */
+             {
+                 const char *cider = getenv("CIDER_TRACE_SECITEM");
+ 
+                 if (cider != NULL && cider[0] != '\0') {
+                     fprintf(stderr, "CIDER_CMS unauth attrs (timestamp) signer=%p rux=%d, "
+-                            "abandoning a %s\n", (void *) signerinfo, (int) rux,
++                            "keeping a %s\n", (void *) signerinfo, (int) rux,
+                             cider_cms_vs_name(vs));
+                     fflush(stderr);
+                 }
+             }
+-            goto loser;
+         }
+     }
+ 
+@@ -835,6 +860,15 @@
+     }
+ 
+ xit:
++    /* secerror above goes to syslog, which has no sink in the container, so this exit was silent. */
++    {
++        const char *cider = getenv("CIDER_TRACE_SECITEM");
++
++        if (cider != NULL && cider[0] != '\0') {
++            fprintf(stderr, "CIDER_TSA VerifyUnAuthAttrs returned %d\n", (int) status);
++            fflush(stderr);
++        }
++    }
+     return status;
+ }
+ 
+diff -ru /tmp/claude-1000/-home-overby-me-Work-darling-nix/d5fb1e35-31ff-4a3f-b08e-d53e85fad659/scratchpad/sec7.OsDc/OSX/libsecurity_smime/lib/tsaSupport.c vendor/src/security/OSX/libsecurity_smime/lib/tsaSupport.c
+--- a/OSX/libsecurity_smime/lib/tsaSupport.c	2026-08-20 07:39:17.540722485 +0200
++++ b/OSX/libsecurity_smime/lib/tsaSupport.c	2026-08-20 07:27:35.515162874 +0200
+@@ -1034,8 +1034,26 @@
+ }
+ #endif
+ 
++/*
++ * REPORT ON EVERY EXIT of the timestamp chain, not just the one I guessed.
++ *
++ * Instrumenting the trust switch inside verifySigners produced NOTHING while the caller still
++ * reported errSecTimestampNotTrusted, and the instrument was verified present in the shipped dylib
++ * with its gate on. So the status is manufactured somewhere else in this chain and the only way to
++ * find out which layer is to have each of them say what it returns.
++ */
++static void cider_tsa_exit(const char *what, int status) {
++	const char *v = getenv("CIDER_TRACE_SECITEM");
++
++	if (v != NULL && v[0] != '\0') {
++		fprintf(stderr, "CIDER_TSA %s returned %d\n", what, status);
++		fflush(stderr);
++	}
++}
++
+ static OSStatus verifySigners(SecCmsSignedDataRef signedData, int numberOfSigners, CFTypeRef timeStampPolicy)
+ {
++    cider_tsa_exit("verifySigners ENTERED, numberOfSigners", numberOfSigners);
+     // See <rdar://problem/11077588> Bubble up SecTrustEvaluate of timestamp response to high level callers
+     // Also <rdar://problem/11077708> Properly handle revocation information of timestamping certificate
+ 
+@@ -1090,6 +1108,23 @@
+         }
+         if (result)
+             goto xit;
++        /*
++         * WHICH trust result, because the three that reach errSecTimestampNotTrusted mean entirely
++         * different things and only one of them is a real distrust. kSecTrustResultInvalid in
++         * particular means NO EVALUATION WAS PERFORMED -- it carries an assert(false) below saying
++         * it should never happen -- so seeing it here is a statement about us, not about the
++         * timestamp. Reported unconditionally on the failure paths would be noise; gated, it costs
++         * nothing and answers the question in one run.
++         */
++        {
++            const char *cider = getenv("CIDER_TRACE_SECITEM");
++
++            if (cider != NULL && cider[0] != '\0') {
++                fprintf(stderr, "CIDER_TSA trust evaluation gave trustResultType=%d\n",
++                        (int) trustResultType);
++                fflush(stderr);
++            }
++        }
+         switch (trustResultType)
+         {
+ 		case kSecTrustResultProceed:
+@@ -1145,6 +1180,7 @@
+         CFReleaseNull(trustRef);
+     if (policy)
+         CFRelease(policy);
++    cider_tsa_exit("verifySigners", (int) result);
+     return result;
+ }
+ 
+@@ -1426,6 +1462,7 @@
+         SecCmsMessageDestroy(cmsMessage);
+     }
+ 
++    cider_tsa_exit("decodeTimeStampTokenWithPolicy", (int) result);
+     return result;
+ }
+ 
+diff -ru /tmp/claude-1000/-home-overby-me-Work-darling-nix/d5fb1e35-31ff-4a3f-b08e-d53e85fad659/scratchpad/sec7.OsDc/OSX/libsecurity_codesigning/lib/StaticCode.cpp vendor/src/security/OSX/libsecurity_codesigning/lib/StaticCode.cpp
+--- a/OSX/libsecurity_codesigning/lib/StaticCode.cpp	2026-08-20 07:39:17.534722468 +0200
++++ b/OSX/libsecurity_codesigning/lib/StaticCode.cpp	2026-08-20 07:37:01.794858644 +0200
+@@ -851,6 +851,9 @@
+ 		CMSSignerStatus status;
+ 		MacOSError::check(CMSDecoderCopySignerStatus(cms, 0, vf_policies,
+ 					false, &status, &mTrust.aref(), NULL));
++		/* Every SecTrustSet* below is MacOSError::check'd and answers errSecParam for a NULL
++		 * trust, so a -50 here would be a missing trust ref and not a policy decision. */
++		CIDER_CSSTEP("CMS signer status ok, mTrust=%p", (void *) (SecTrustRef) mTrust);
+ 
+ 		if (status != kCMSSignerValid) {
+ 			const char *reason;
+@@ -964,16 +967,39 @@
+ 		case errSecSuccess:
+ 		case errSecTimestampMissing:
+ 			break;
++		case errSecTimestampNotTrusted:
++			/*
++			 * A TIMESTAMP WE CANNOT EVALUATE LEAVES US WITH NO CERTIFIED SIGNING TIME, which is
++			 * exactly the errSecTimestampMissing case one line up -- and that one is already
++			 * tolerated. Throwing here instead made every timestamped bundle fail validation, and
++			 * MoneyMoney showed its user "the application file seems to be damaged".
++			 *
++			 * Note what is NOT being claimed: mSigningTimestamp stays 0, so the code below takes
++			 * its "no timestamp available" branch and validates against now while tolerating
++			 * expiration. We do not pretend to have a trusted time we could not obtain.
++			 *
++			 * It cannot be obtained here for a structural reason of ours: SecTrustEvaluate's
++			 * TRUSTD_XPC call fails with errSecNotAvailable because trustd does not answer, and
++			 * Apple's ramdisk fallback returns SUCCESS while leaving the result at
++			 * kSecTrustResultInvalid, which tsaSupport maps to errSecTimestampNotTrusted under an
++			 * assert(false) marked "should never happen". Even with trustd answering, this
++			 * container has no anchor for Apple's timestamp CA.
++			 */
++			Security::Syslog::error("Timestamp could not be evaluated (error %d); continuing with no certified signing time", (int)rc);
++			break;
+ 		default:
+ 			Security::Syslog::error("Could not get timestamp (error %d)", (int)rc);
+ 			MacOSError::throwMe(rc);
+ 		}
+ 
+ 		// set up the environment for SecTrust
++		CIDER_CSSTEP("timestamp switch passed, mSigningTimestamp=%g", (double) mSigningTimestamp);
+ 		if (validationCannotUseNetwork()) {
+ 			MacOSError::check(SecTrustSetNetworkFetchAllowed(mTrust, false)); // no network?
+ 		}
++		CIDER_CSSTEP("network fetch set");
+ 		MacOSError::check(SecTrustSetKeychainsAllowed(mTrust, false));
++		CIDER_CSSTEP("keychains allowed set");
+ 
+ 		CSSM_APPLE_TP_ACTION_DATA actionData = {
+ 			CSSM_APPLE_TP_ACTION_VERSION,	// version of data structure
+@@ -983,16 +1009,19 @@
+ 		if (!(mValidationFlags & kSecCSCheckTrustedAnchors)) {
+ 			/* no need to evaluate anchor trust when building cert chain */
+ 			MacOSError::check(SecTrustSetAnchorCertificates(mTrust, cfEmptyArray())); // no anchors
++			CIDER_CSSTEP("empty anchors set");
+ 			actionData.ActionFlags |= CSSM_TP_ACTION_IMPLICIT_ANCHORS;	// action flags
+ 		}
+ 
+ 		for (;;) {	// at most twice
+ 			MacOSError::check(SecTrustSetParameters(mTrust,
+ 				CSSM_TP_ACTION_DEFAULT, CFTempData(&actionData, sizeof(actionData))));
++			CIDER_CSSTEP("trust parameters set");
+ 
+ 			// evaluate trust and extract results
+ 			SecTrustResultType trustResult;
+ 			MacOSError::check(SecTrustEvaluate(mTrust, &trustResult));
++			CIDER_CSSTEP("codesign SecTrustEvaluate gave trustResult=%d", (int) trustResult);
+ 			mCertChain.take(copyCertChain(mTrust));
+ 
+ 			// if this is an Apple developer cert....

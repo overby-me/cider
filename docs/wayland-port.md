@@ -12470,3 +12470,54 @@ a channel that was never created from one that was created and never had anythin
 `-  1  com.cider.xpcecho` — no pid, last exit 1 — in a run that replied *and* in one that did not.
 With `KeepAlive` the job restarts, so a listing taken at one instant is not the state during the
 poke.
+
+### MoneyMoney gets past "the application file seems to be damaged"
+
+**Looked at, twice, and the alert is gone.** MoneyMoney now draws its menu bar (its own ten menus),
+its toolbar, its logo, and "Starting MoneyMoney…" with a spinner. Zero occurrences of "damaged" in
+the run log, where before it drew that alert. It still does not finish starting — said plainly.
+
+**The signature was never the problem.** Three signers; two verify clean; the third carries a
+timestamp countersignature whose trust cannot be evaluated, and its good verdict left through the
+failure door:
+
+```
+CIDER_CMS verify signer=0x…da40 exit=ok verdict=1 (GoodSignature)
+CIDER_CMS unauth attrs (timestamp) signer=0x…7a40 rux=-67884, abandoning a GoodSignature
+CIDER_CMS VerifySignerInfo signer=0x…7a40 signature=-1 certificate=0
+CIDER_CSSTEP core threw MacOSError error=-67061
+```
+
+`CMSDecoderCopySignerStatus` flattens any nonzero into `kCMSSignerInvalidSignature` — its own comment
+admits that is an assumption — so an unverifiable *timestamp* was reported as a bad *code signature*.
+Measured on three bundles in one container: MoneyMoney, iTerm and LibreOffice all gave −67061. The
+other two only run because they never check their own signature at startup.
+
+Two changes (`vendor/patches/security/0007`), each defensible on its own terms:
+
+- `cmssiginfo.c` no longer discards a good signature because the *unauthenticated* attributes failed.
+  A timestamp says **when** something was signed, not **whether**. A bad signature still fails — `vs`
+  is untouched and the `SecCmsVSBadSignature` path is unchanged.
+- `StaticCode.cpp` treats `errSecTimestampNotTrusted` like `errSecTimestampMissing`, which was
+  already tolerated one line above. Nothing is claimed that we do not have: `mSigningTimestamp` stays
+  0, so the code takes its own "no timestamp available" branch. Apple's own code already takes this
+  position for the cases it anticipated, returning `noErr` for `CSSMERR_TP_CERT_EXPIRED` and
+  `CSSMERR_TP_CERT_NOT_VALID_YET` so a TSA chain detail does not stop someone running an application.
+
+**And underneath it all is one defect of ours, which is now named exactly.**
+
+```
+CIDER_TSA SecTrustEvaluate result=0 trustResult=0 cssmResultCode=0 (getCssm=0)
+```
+
+`trustResult` 0 is `kSecTrustResultInvalid` — the header defines it as "`SecTrustEvaluate` has not yet
+been called", and `tsaSupport` handles it under an `assert(false)` marked *should never happen*.
+`SecTrustEvaluate` returns **success** while leaving it, and exactly one code path can do that:
+`TRUSTD_XPC(sec_trust_evaluate)` fails with `errSecNotAvailable` and Apple's ramdisk fallback returns
+`true` having set only the leaf — in its own words, "to make it seem like we did a cert evaluation".
+
+So **every trust evaluation in this container is a lie, and each caller mishandles it differently**:
+−67884 in the timestamp path, −50 in `validateDirectory`, `assert(false)` in a third place. The
+bundle is still not valid (`SecStaticCodeCheckValidity` = −50 now instead of −67061). What these
+changes buy is a **true label instead of a false one**, and an application that gets past the alert.
+The one thing left is a trust evaluation that actually happens, which needs trustd to answer — #143.
