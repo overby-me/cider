@@ -1,49 +1,51 @@
-No requirement in this system has ever been parseable, and here is the whole reason.
+The requirement parser was never reachable, and it is in this image all along.
 
-WHERE IT SHOWED. MoneyMoney fails code signing with errSecCSResourcesInvalid, the sealed resource
-directory is invalid, and that points at the application plist. It is not the plist. The seal parses
-perfectly: 499 files and 13 rules. The throw is in validateNestedCode, where the designated
-requirement sealing each piece of nested code is parsed:
+NO REQUIREMENT STRING IN THIS SYSTEM COULD BE PARSED. Every designated requirement sealing a piece
+of nested code was refused, and so was the fixed Apple-authored string inside isAppleDeveloperCert.
+That is one defect appearing twice, not two coincidences, and it presented as
+errSecCSResourcesInvalid, "the sealed resource directory is invalid", which points at the
+application plist. It is not the plist: the seal parses perfectly, 499 files and 13 rules.
 
-    CIDER_CSSTEP nested code requirement REFUSED rc=-50 for: anchor apple generic and identifier
-    UpdateHelper and (certificate leaf[field.1.2.840.113635.100.6.1.9] ... subject.OU] = "9BE2AB75LL")
+Apple keeps the requirement grammar out of the main Security binary and in a loadable bundle,
+csparser.bundle, so the ANTLR runtime is only paged in when something compiles a requirement. FOUR
+things stood between us and it, each hiding the next:
 
-That is an ordinary Apple designated requirement. The same parser had already refused a FIXED,
-Apple-authored string inside isAppleDeveloperCert with the same -50, so this is ONE defect appearing
-twice and not two coincidences.
+  1. Security.framework has NO Info.plist, so CFBundleGetBundleWithIdentifier for com.apple.security
+     returns NULL and the plugin path is never computed.
+  2. No PlugIns symlink at the framework root, so the computed path does not resolve.
+  3. csparser.bundle is never INSTALLED into the framework, though it is built.
+  4. And the bundle is 4112 BYTES OF NOTHING: csparser.cpp is 23 lines whose entire body is
+     asm(".reference _findAntlrPlugin"), a stub that REFERENCES the symbol. The buck target links the
+     stub and none of the ANTLR sources that define it.
 
-THE REQUIREMENT LANGUAGE IS PARSED BY A LOADABLE BUNDLE, csparser.bundle, inside Security.framework.
-Four separate things were wrong, each hiding the next:
+THIS BUILD DOES NOT SEPARATE THEM. antlrplugin.cpp and the whole antlr2 runtime are compiled into
+security_codesigning_obj, which is linked into Security itself, so findAntlrPlugin is right here --
+merely absent from the export list, which is exactly why looking it up through a bundle could never
+work. So ask for it directly and keep the bundle route below for a build that does separate them.
 
-  1. Security.framework HAS NO Info.plist, so CFBundleGetBundleWithIdentifier("com.apple.security")
-     returned NULL and the plugin path could never even be computed.
-  2. There is no PlugIns symlink at the framework root, so the computed path
-     Security.framework/PlugIns/csparser.bundle did not resolve.
-  3. csparser.bundle was never INSTALLED into the framework at all, though it is built.
-  4. And with the first three fixed by hand, the plugin loads and the entry point still does not
-     resolve, because THE BUNDLE IS 4112 BYTES OF NOTHING: csparser.cpp is twenty-three lines whose
-     entire body is asm(".reference _findAntlrPlugin"). It is a stub that REFERENCES the symbol; the
-     buck target links the stub and none of the ANTLR sources that define it.
+MEASURED, and the verdict moved again:
 
-So every requirement string in the system is refused, always, and each caller reports that as its
-own kind of failure: errSecCSResourcesInvalid here, -50 in isAppleDeveloperCert.
+    -67055  errSecCSResourcesInvalid   nothing could be parsed at all
+    -67021  errSecCSBadNestedCode      two named components fail their designated requirement:
+              /Applications/MoneyMoney.app/Contents/MacOS/UpdateHelper
+              /Applications/MoneyMoney.app/Contents/XPCServices/com.moneymoney-app.update.xpc
 
-WHAT THESE TRACES ADD, all under CIDER_TRACE_SECITEM.
+isAppleDeveloperCert now RETURNS a value instead of throwing, and returns false. The failure has
+moved from PARSING a requirement to EVALUATING one, which is a different piece of work: the
+evaluator has to match anchor apple generic and the certificate field clauses against the chain.
 
-The parser plugin now says whether the framework bundle was found, where it is loading the plugin
-from, whether the load succeeded, and whether the ENTRY POINT resolved -- which is a separate failure
-from the load, and the first version of this trace sat before the lookup and so said "loaded" while
-the lookup was failing.
+MoneyMoney still shows its damaged-file alert. Looked at, in the comparable no-launchd
+configuration, and said plainly: -67021 is still a failure.
 
-The parser's OWN error text is printed. It was being thrown into a CFError nobody reads, and that
-string is what names the syntax the grammar did not like.
-
-validateNestedCode prints the requirement it was given and the status, instead of reporting a plist
-problem for a parser problem.
-
-ResourceSeal names which of its four identical refusals fired, and the collecting context names every
-resource problem as it is gathered rather than only the one status thrown at the end. Both stayed
-silent here, which is how the search narrowed to the requirement parser.
+The traces added here are what made this findable, all under CIDER_TRACE_SECITEM: the plugin host
+says whether the parser was found in-image, whether the framework bundle resolved, where the bundle
+loads from, whether the load succeeded and whether the ENTRY POINT resolved -- a separate failure
+from the load, and the first version of that trace sat before the lookup and so printed loaded while
+the lookup was the thing failing. The parser's own error text is printed rather than thrown into a
+CFError nobody reads. validateNestedCode prints the requirement it was handed. ResourceSeal names
+which of its four identical refusals fired, and the collecting context names every resource problem
+as it is gathered rather than only the one status thrown at the end -- which is how the two named
+components above became visible.
 --- a/OSX/libsecurity_codesigning/lib/StaticCode.cpp
 +++ b/OSX/libsecurity_codesigning/lib/StaticCode.cpp
 @@ -1560,9 +1560,15 @@
@@ -242,11 +244,39 @@ silent here, which is how the search narrowed to the requirement parser.
  struct PluginHost {
  	PluginHost();
  	RefPointer<LoadableBundle> plugin;
-@@ -51,17 +74,25 @@
+@@ -51,17 +74,53 @@
  //
  PluginHost::PluginHost()
  {
 -	if (CFBundleRef securityFramework = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.security")))
++	/*
++	 * THE PARSER IS ALREADY IN THIS IMAGE, so ask for it directly.
++	 *
++	 * Apple keeps the requirement grammar out of the main Security binary and in a loadable bundle,
++	 * csparser.bundle, so the ANTLR runtime is only paged in when something actually compiles a
++	 * requirement. This build does not: antlrplugin.cpp and the whole antlr2 runtime are compiled
++	 * into security_codesigning_obj, which is linked into Security itself. findAntlrPlugin is right
++	 * here -- it is merely absent from the export list, which is why looking it up through a bundle
++	 * could never work.
++	 *
++	 * And the bundle route was unreachable for three further reasons, each hiding the next: the
++	 * framework has no Info.plist, so CFBundleGetBundleWithIdentifier returns NULL and the path is
++	 * never computed; there is no PlugIns symlink at the framework root; and csparser.bundle is
++	 * never installed, and is in any case 4112 bytes of nothing, because csparser.cpp is a stub
++	 * whose entire body is asm(".reference _findAntlrPlugin").
++	 *
++	 * The consequence of all that was total: NO requirement string in the system could be parsed.
++	 * Every designated requirement sealing a piece of nested code was refused, and so was the fixed
++	 * Apple-authored string in isAppleDeveloperCert.
++	 *
++	 * The bundle path is kept below for a build that does separate them.
++	 */
++	antlr = findAntlrPlugin();
++	if (antlr) {
++		CIDER_REQ("parser is linked into this image, antlr=%p", (void *) antlr);
++		return;
++	}
++
 +	CFBundleRef securityFramework = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.security"));
 +	CIDER_REQ("Security.framework bundle = %p", (void *) securityFramework);
 +	if (securityFramework)
@@ -269,7 +299,7 @@ silent here, which is how the search narrowed to the requirement parser.
      Syslog::warning("code signing problem: unable to load csparser plug-in");
  	MacOSError::throwMe(errSecCSInternalError);
  }
-@@ -77,8 +108,11 @@
+@@ -77,8 +136,11 @@
  	string errors;
  	if (const Result *result = (plugin().antlr->*func)(source, errors))
  		return result;

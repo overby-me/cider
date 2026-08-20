@@ -13022,3 +13022,34 @@ sat before the lookup and so printed "loaded" while the lookup was failing. The 
 text is printed instead of being thrown into a CFError nobody reads. `ResourceSeal` names which of its
 four identical refusals fired, and the collecting context names every resource problem as it is
 gathered. Both stayed silent, which is how the search narrowed to the parser.
+
+### The parser was in the image all along, and now runs
+
+The four gaps above are all real, but the fix is none of them: **`antlrplugin.cpp` and the whole
+antlr2 runtime are compiled into `security_codesigning_obj`, which is linked into Security itself.**
+`findAntlrPlugin` was right there — merely absent from the export list, which is exactly why looking
+it up *through a bundle* could never work. Apple splits the grammar out so the ANTLR runtime is only
+paged in when a requirement is compiled; this build does not split it. So ask for it directly, and
+keep the bundle route below for a build that does.
+
+**The verdict moved again:**
+
+```
+-67055  errSecCSResourcesInvalid   nothing could be parsed at all
+-67021  errSecCSBadNestedCode      two named components fail their designated requirement:
+          /Applications/MoneyMoney.app/Contents/MacOS/UpdateHelper
+          /Applications/MoneyMoney.app/Contents/XPCServices/com.moneymoney-app.update.xpc
+```
+
+`isAppleDeveloperCert` now **returns** a value instead of throwing — and returns false. **The failure
+has moved from *parsing* a requirement to *evaluating* one**, which is different work: the evaluator
+has to match `anchor apple generic` and the certificate-field clauses against the chain. The chain we
+supply comes from the CMS signature (4 certs) rather than from a verified trust evaluation, so that
+is the obvious first place to look.
+
+MoneyMoney still shows its damaged-file alert — looked at, in the comparable no-launchd
+configuration. −67021 is still a failure.
+
+**Two of the three hand-installed runtime pieces are now unnecessary** (the framework `Info.plist`
+and the `PlugIns` symlink), because the bundle is no longer on the path. They are still in the
+runtime and still not in the build; nothing depends on them.
