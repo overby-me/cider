@@ -13277,3 +13277,29 @@ the search field focuses it, and typing puts `Giro` in it with a caret.
 
 Left as cosmetic: a 2-point horizontal scroller under the sidebar (`MainTree` is 329 wide in a 327
 clip), and a toolbar popup whose label is clipped.
+### iA Writer needs six Combine types, not Combine
+
+Re-measured rather than recalled. Scanning every Mach-O in the bundle for symbols containing
+`7Combine` gives **37 distinct symbols**, and they decode to a small, bounded surface:
+
+    types          AnyPublisher, AnyCancellable, CurrentValueSubject,
+                   Publishers.Map, Publishers.ReceiveOn, Publishers.RemoveDuplicates
+    members        AnyCancellable.cancel(), .store(in:), CurrentValueSubject.init / .send(_:)
+    extensions     eraseToAnyPublisher(), map, receive(on:options:), removeDuplicates(),
+                   sink(receiveValue:)
+    conformances   DispatchQueue: Scheduler, NotificationCenter.Publisher: Publisher,
+                   NSObject.KeyValueObservingPublisher: Publisher
+
+Each type needs an `Ma` metadata accessor, an `Mn` nominal type descriptor and an `Mc` conformance
+record. That is Swift ABI metadata for **generic** types, which in practice means compiling Swift
+rather than writing C, so the smaller surface does not change the verdict: **still blocked**.
+
+What it does change is the cost estimate, and where to start. `vendor/src/swift/version.txt` says
+**5.2.2**, and `build.sh` downloads the swift.org macOS toolchain PKG, keeps only
+`usr/lib/swift/macosx/libswift*.dylib` and deletes the rest of the payload. So the Darwin *runtime*
+is vendored and nothing else from that toolchain is. nixpkgs `swift` on this box is **5.10.1**: a
+Linux compiler exists, eight minor versions ahead of the vendored runtime, and `.swiftmodule` files
+are not readable across versions.
+
+Filed as toolchain work, not app work. The next person starts from the 37-symbol list, not from the
+fault chain, which is already measured.
