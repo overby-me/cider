@@ -1,0 +1,30 @@
+aarch64: fix the poll() millisecond-to-timespec conversion on the ppoll path
+
+arm64 Linux has no __NR_poll, so sys_poll_nocancel falls back to __NR_ppoll,
+which takes a struct timespec. The ms -> timespec conversion had the two fields
+swapped and mis-scaled:
+
+    .tv_sec  = (timeout % 1000) * 1000000,
+    .tv_nsec = timeout / 1000
+
+so a 500 ms timeout became tv_sec = 500000000 (about 15.8 years) and a
+sub-microsecond tv_nsec. Every poll() with a positive timeout waited
+effectively forever on arm64; the x86 __NR_poll path passes the ms value
+straight through and never hit this. Convert correctly: whole seconds into
+tv_sec, the millisecond remainder into tv_nsec.
+
+Signed-off-by: Niclas Overby <niclas@overby.me>
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/poll.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/poll.c
+@@ -26,8 +26,8 @@
+ 		ret = LINUX_SYSCALL(__NR_poll, fds, nfds, timeout);
+ 	#else
+ 		struct ppoll_timespec timeout_ts = {
+-			.tv_sec = (timeout % 1000) * 1000000,
+-			.tv_nsec = timeout / 1000
++			.tv_sec = timeout / 1000,
++			.tv_nsec = (long)(timeout % 1000) * 1000000
+ 		};
+ 		
+ 		ret = LINUX_SYSCALL(__NR_ppoll, fds, nfds, (timeout < 0) ? NULL : &timeout_ts, NULL);
