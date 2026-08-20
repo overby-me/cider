@@ -14131,3 +14131,38 @@ One more thing the migration turned up: `tests/identity/test_identity.c` was **i
 while `run-tests.nu` named it, so that suite could never have run for anyone who did not happen to
 have the file, the same trap as `tests/foundation` a rung earlier. Both directories are on the
 allow list now.
+
+### iA Writer: I was wrong about the concurrency runtime
+
+Two rungs ago I wrote that iA Writer stops because this port ships no Swift concurrency runtime, and
+put the count of missing `swift_task_*` entry points behind it. **The app ships its own.**
+`Contents/Frameworks/libswift_Concurrency.dylib` sits right there in the bundle, and the reason my
+subtraction did not see it is that I globbed `*.framework` and it is a plain dylib. Corrected
+measurement, scanning **every** Mach-O the app ships (66 of them):
+
+    AccountCore imports 362 Swift symbols
+    missing after subtracting the app's own binaries:  26
+      23  Combine        AnyPublisher, AnyCancellable, CurrentValueSubject, Publishers.Map/ReceiveOn,
+                         sink, map, receive(on:), eraseToAnyPublisher
+       3  stdlib         withCheckedThrowingContinuation(isolation:function:_:) in both forms, and
+                         _stdlib_isOSVersionAtLeastOrVariantVersion
+
+And the bundled concurrency dylib needs 141 symbols from `libswiftCore`, of which **our libswiftCore
+provides all 141**. So the concurrency story is not the wall; Combine is back to being the candidate,
+with three stdlib symbols beside it that our 5.2.2-era core predates.
+
+**What the crash actually is**, now decoded rather than described: the faulting instruction inside
+`__swift_instantiateConcreteTypeFromMangledNameV2` is
+
+    mov -0x8(%rax),%rcx        with rax = 0
+
+which is the value-witness table load from a metadata pointer, on a NULL. The type being built is
+`AccountCore.AccountEnvironment`, and its six fields, read out of `__swift5_fieldmd` by resolving the
+symbolic references by hand, are two `Swift.String`, one `AccountCore.JWTPublicKey`, and three fields
+(`endpointURL`, `accountURL`, `marketingURL`) that are INDIRECT symbolic references to an imported
+descriptor. Our `libswiftFoundation` does export `Foundation.URL`'s nominal descriptor and accessor,
+so a missing URL is not the answer either, and the poison experiment already ruled out the Combine
+placeholders.
+
+So the next instrument is the runtime value of those three indirect references: a slot with no bind
+entry is null forever, and that is exactly what this fault looks like.
