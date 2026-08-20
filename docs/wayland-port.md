@@ -13176,7 +13176,7 @@ set that pane to the full width, something with no resolvable symbol set it stra
 setting its **width**, which is what you do to a pane in a **vertical** split.
 
 So the question became what the nib says, and the nib is the arbiter. A 60-line NIBArchive reader
-(`scratchpad/nibdump.py`) answered it: `NSIsVertical` is stored with value type 5.
+(`scripts/nibdump.py`) answered it: `NSIsVertical` is stored with value type 5.
 
 **One key cannot settle a polarity; the whole archive can.** Reading type 5 as true and type 4 as
 false, MainWindow.nib says: 21 controls `NSEnabled`, 23 controls not `NSControlRefusesFirstResponder`,
