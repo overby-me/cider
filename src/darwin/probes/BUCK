@@ -185,3 +185,77 @@ darwin_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+cc_objects(
+    name = "workloop_probe_obj",
+    srcs = [
+        "workloop-probe.m",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "workloop-probe",
+    objs = [
+        ":workloop_probe_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src/objc4:objc_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mbr_probe_obj",
+    srcs = [
+        "mbr-probe.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "mbr-probe",
+    objs = [
+        ":mbr_probe_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src/objc4:objc_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

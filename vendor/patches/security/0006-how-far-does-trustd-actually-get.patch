@@ -1,0 +1,312 @@
+How far does trustd actually get?
+
+A running, checked-in trustd with a stable pid answers no request at all. That is not a startup
+race and not the intermittent crash, so the question is not why it dies but how far it lives, and
+its own secdebug and secinfo go to syslog, which has no sink in this container. These go to stderr,
+which launchd captures in StandardErrorPath.
+
+One line per step, because the step that matters is the one whose line never appears.
+
+WHAT IT ANSWERED, and it relocated the bug entirely:
+
+    CIDER_TRUSTD main entered
+    CIDER_TRUSTD _SecDbServerSetup done
+    CIDER_TRUSTD init step: _SecTrustStoreMigrateConfigurations
+    CIDER_TRUSTD init step: SecTrustServerMigrateExceptionsResetCount
+    CIDER_TRUSTD migrate: ExceptionsResetCounterUrl (new)
+    CIDER_TRUSTD loc: calling mbr_uid_to_uuid for euid 282
+    <nothing, ever>
+
+trustd never reaches trustd_xpc_init, so it NEVER CREATES A LISTENER AT ALL. That is why it answers
+nothing: there is nothing there to answer. The task this came from was looking for a use-after-free
+in the autorelease pool at dispatch_main, and trustd never gets to dispatch_main.
+
+It stops in a membership lookup: libinfo asks opendirectoryd to translate uid 282 into a UUID, over
+an XPC pipe whose round trip has no timeout.
+
+TWO GUESSES REFUTED BY MEASUREMENT ALONG THE WAY, both recorded because each looked convincing:
+
+Not the dispatch workloop. trustd retargets every incoming connection onto dispatch_workloop_create,
+which nothing else in this container uses and which needs kernel support we may not have. A probe
+shows blocks running on a workloop and a source armed on one firing, with a plain-queue control
+agreeing.
+
+Not the uid. Asked as root for uid 282 the same call came back ENOSYS once, which looked like the
+caller identity mattered, since libinfo looks the service up with XPC_PIPE_FLAG_PRIVILEGED. Asked
+again as root it hung. So the uid is not the discriminator, and there is now a ten-line reproducer
+outside trustd.
+diff -ru '--exclude=*.o' /tmp/claude-1000/-home-overby-me-Work-darling-nix/d5fb1e35-31ff-4a3f-b08e-d53e85fad659/scratchpad/secb.0Mg4/trust/trustd/SecTrustExceptionResetCount.m vendor/src/security/trust/trustd/SecTrustExceptionResetCount.m
+--- a/trust/trustd/SecTrustExceptionResetCount.m	2026-08-20 06:43:26.457653174 +0200
++++ b/trust/trustd/SecTrustExceptionResetCount.m	2026-08-20 06:11:46.092684078 +0200
+@@ -13,6 +13,20 @@
+ static NSString *kExceptionResetCountKey = @"ExceptionResetCount";
+ static NSString *exceptionResetCounterFile = @"com.apple.security.exception_reset_counter.plist";
+ 
++/*
++ * WHICH CALL INSIDE THE MIGRATION NEVER RETURNS? Step traces named this whole function as the one
++ * trustd never leaves, so it never reaches trustd_xpc_init and never creates a listener at all.
++ * Narrow it to a single call; the interesting line is the one that does not appear.
++ */
++static bool CiderTraceTrustd(void) {
++	const char *v = getenv("CIDER_TRACE_TRUSTD");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_MIG(name) do { \
++	if (CiderTraceTrustd()) { fprintf(stderr, "CIDER_TRUSTD migrate: %s\n", name); fflush(stderr); } \
++} while (0)
++
+ static NSURL *ExceptionsResetCounterOldUrl (void) {
+     return CFBridgingRelease(SecCopyURLForFileInKeychainDirectory((__bridge CFStringRef)exceptionResetCounterFile));
+ }
+@@ -121,22 +135,33 @@
+ 
+ void SecTrustServerMigrateExceptionsResetCount(void) {
+     CFErrorRef error = NULL;
+-    (void)ReadExceptionsCountFromUrl(ExceptionsResetCounterUrl(), &error);
++    CIDER_MIG("ExceptionsResetCounterUrl (new)");
++    NSURL *newUrl = ExceptionsResetCounterUrl();
++    CIDER_MIG("read new url");
++    (void)ReadExceptionsCountFromUrl(newUrl, &error);
+     if (!error) {
++        CIDER_MIG("already migrated, returning");
+         secdebug("trust", "already migrated exceptions reset counter");
+         return;
+     }
+     CFReleaseNull(error);
+     secdebug("trust", "migrating exceptions reset counter");
+-    uint64_t currentExceptionResetCount = ReadExceptionsCountFromUrl(ExceptionsResetCounterOldUrl(), NULL);
++    CIDER_MIG("ExceptionsResetCounterOldUrl");
++    NSURL *oldUrl = ExceptionsResetCounterOldUrl();
++    CIDER_MIG("read old url");
++    uint64_t currentExceptionResetCount = ReadExceptionsCountFromUrl(oldUrl, NULL);
+ 
++    CIDER_MIG("write new url");
+     if (!WriteExceptionsCounterToUrl(currentExceptionResetCount, ExceptionsResetCounterUrl(), &error)) {
++        CIDER_MIG("write FAILED, returning");
+         secerror("Failed to migrate exceptions reset count: %@", error);
+         CFReleaseNull(error);
+         return;
+     }
+ 
++    CIDER_MIG("WithPathInKeychainDirectory remove");
+     WithPathInKeychainDirectory((__bridge CFStringRef)exceptionResetCounterFile, ^(const char *utf8String) {
+         remove(utf8String);
+     });
++    CIDER_MIG("migration done");
+ }
+diff -ru '--exclude=*.o' /tmp/claude-1000/-home-overby-me-Work-darling-nix/d5fb1e35-31ff-4a3f-b08e-d53e85fad659/scratchpad/secb.0Mg4/trust/trustd/trustd.c vendor/src/security/trust/trustd/trustd.c
+--- a/trust/trustd/trustd.c	2026-08-20 06:43:26.459012368 +0200
++++ b/trust/trustd/trustd.c	2026-08-20 06:05:25.465992706 +0200
+@@ -522,7 +522,26 @@
+     .trust_store_copy_transparent_connection_pins = {kSecEntitlementModifyAnchorCertificates, SecXPCTrustStoreCopyTransparentConnectionPins },
+ };
+ 
++/*
++ * WHERE DOES trustd ACTUALLY GET TO? A running, checked-in trustd with a stable pid answers no
++ * request at all, so the question is not why it dies but how far it lives. Its own secdebug/secinfo
++ * go to syslog, and this container has no syslog sink, so they are invisible; these go to stderr,
++ * which launchd captures in StandardErrorPath.
++ *
++ * Every step between main and the message handler, because the interesting one is the step whose
++ * line never appears.
++ */
++static bool CiderTraceTrustd(void) {
++	const char *v = getenv("CIDER_TRACE_TRUSTD");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_TRUSTD(...) do { \
++	if (CiderTraceTrustd()) { fprintf(stderr, "CIDER_TRUSTD " __VA_ARGS__); fputc('\n', stderr); fflush(stderr); } \
++} while (0)
++
+ static void trustd_xpc_dictionary_handler(const xpc_connection_t connection, xpc_object_t event) {
++    CIDER_TRUSTD("message arrived on connection %p", (void *) connection);
+     xpc_type_t type = xpc_get_type(event);
+     __block CFErrorRef error = NULL;
+     xpc_object_t xpcError = NULL;
+@@ -748,6 +767,7 @@
+ static void trustd_xpc_init(const char *service_name)
+ {
+     secdebug("serverxpc", "start");
++    CIDER_TRUSTD("creating mach service listener for %s", service_name);
+     xpc_connection_t listener = xpc_connection_create_mach_service(service_name, NULL, XPC_CONNECTION_MACH_SERVICE_LISTENER);
+     if (!listener) {
+         seccritical("security failed to register xpc listener for %s, exiting", service_name);
+@@ -755,6 +775,8 @@
+     }
+ 
+     xpc_connection_set_event_handler(listener, ^(xpc_object_t connection) {
++        CIDER_TRUSTD("listener event, object %p is %sa connection", (void *) connection,
++                     xpc_get_type(connection) == XPC_TYPE_CONNECTION ? "" : "NOT ");
+         if (xpc_get_type(connection) == XPC_TYPE_CONNECTION) {
+             xpc_connection_set_target_queue(connection, SecTrustServerGetWorkloop());
+             xpc_connection_set_event_handler(connection, ^(xpc_object_t event) {
+@@ -763,9 +785,11 @@
+                 }
+             });
+             xpc_connection_activate(connection);
++            CIDER_TRUSTD("accepted connection %p", (void *) connection);
+         }
+     });
+     xpc_connection_activate(listener);
++    CIDER_TRUSTD("listener activated");
+ }
+ 
+ static void trustd_sandbox(void) {
+@@ -849,8 +873,10 @@
+     trustd_sandbox();
+ #endif
+     FixTrustdFilePermissions();
++    CIDER_TRUSTD("main entered");
+     /* set up SQLite before some other component has a chance to create a database connection */
+     _SecDbServerSetup();
++    CIDER_TRUSTD("_SecDbServerSetup done");
+ 
+     const char *serviceName = kTrustdXPCServiceName;
+     if (argc > 1 && (!strcmp(argv[1], "--agent"))) {
+@@ -859,8 +885,10 @@
+ 
+     /* migrate files and initialize static content */
+     trustd_init_server();
++    CIDER_TRUSTD("trustd_init_server done");
+     /* We're ready now. Go. */
+     listen_for_sigterm(SecTrustServerGetWorkloop());
+     trustd_xpc_init(serviceName);
++    CIDER_TRUSTD("entering dispatch_main");
+     dispatch_main();
+ }
+diff -ru '--exclude=*.o' /tmp/claude-1000/-home-overby-me-Work-darling-nix/d5fb1e35-31ff-4a3f-b08e-d53e85fad659/scratchpad/secb.0Mg4/trust/trustd/trustdFileLocations.m vendor/src/security/trust/trustd/trustdFileLocations.m
+--- a/trust/trustd/trustdFileLocations.m	2026-08-20 06:43:26.459634344 +0200
++++ b/trust/trustd/trustdFileLocations.m	2026-08-20 06:27:39.692711298 +0200
+@@ -21,6 +21,9 @@
+  * @APPLE_LICENSE_HEADER_END@
+  */
+ 
++#include <stdio.h>
++#include <stdlib.h>
++#include <stdbool.h>
+ #include <Foundation/Foundation.h>
+ #import <Foundation/NSXPCConnection_Private.h>
+ #include <sys/stat.h>
+@@ -96,10 +99,28 @@
+     return SecCopyURLForFileInProtectedDirectory((__bridge CFStringRef)path);
+ }
+ 
++/*
++ * WHICH CALL IN THE TRUSTD DIRECTORY HELPERS NEVER RETURNS? trustd stops inside
++ * ExceptionsResetCounterUrl, which is SecCopyURLForFileInPrivateUserTrustdDirectory. Two guesses
++ * have already been refuted by measurement: it is not the dispatch workloop, and it is not
++ * mbr_uid_to_uuid, which answers ENOSYS for a non-zero uid rather than hanging. So trace the calls
++ * either side of it.
++ */
++static bool CiderTraceTrustd(void) {
++	const char *v = getenv("CIDER_TRACE_TRUSTD");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_LOC(...) do { \
++	if (CiderTraceTrustd()) { fprintf(stderr, "CIDER_TRUSTD loc: " __VA_ARGS__); fputc('\n', stderr); fflush(stderr); } \
++} while (0)
++
+ CFURLRef SecCopyURLForFileInPrivateTrustdDirectory(CFStringRef fileName)
+ {
++    CIDER_LOC("SecCopyURLForFileInPrivateTrustdDirectory entered");
+     static dispatch_once_t onceToken;
+     dispatch_once(&onceToken, ^{
++        CIDER_LOC("creating the private trustd directory");
+         WithPathInProtectedTrustdDirectory(CFSTR("private"), ^(const char *path) {
+             mode_t permissions = 0777;
+             int ret = mkpath_np(path, permissions);
+@@ -109,11 +130,14 @@
+             chmod(path, permissions);
+         });
+     });
++    CIDER_LOC("private trustd directory ready");
+     NSString *path = @"private/";
+     if (fileName) {
+         path = [NSString stringWithFormat:@"private/%@", fileName];
+     }
+-    return SecCopyURLForFileInProtectedTrustdDirectory((__bridge CFStringRef)path);
++    CFURLRef url = SecCopyURLForFileInProtectedTrustdDirectory((__bridge CFStringRef)path);
++    CIDER_LOC("SecCopyURLForFileInPrivateTrustdDirectory returning");
++    return url;
+ }
+ 
+ CFURLRef SecCopyURLForFileInPrivateUserTrustdDirectory(CFStringRef fileName)
+@@ -121,9 +145,13 @@
+ #if TARGET_OS_OSX
+     uid_t euid = geteuid();
+     uuid_t currentUserUuid;
++    CIDER_LOC("calling mbr_uid_to_uuid for euid %d", (int) euid);
+     int ret = mbr_uid_to_uuid(euid, currentUserUuid);
++    CIDER_LOC("mbr_uid_to_uuid returned %d", ret);
+     if (ret != 0) {
++        CIDER_LOC("about to secerror on the failure path");
+         secerror("failed to get UUID for user(%d) - %d", euid, ret);
++        CIDER_LOC("secerror returned, falling back to the private trustd directory");
+         return SecCopyURLForFileInPrivateTrustdDirectory(fileName);
+     }
+     NSUUID *userUuid = [[NSUUID alloc] initWithUUIDBytes:currentUserUuid];
+diff -ru '--exclude=*.o' /tmp/claude-1000/-home-overby-me-Work-darling-nix/d5fb1e35-31ff-4a3f-b08e-d53e85fad659/scratchpad/secb.0Mg4/trust/trustd/trustd_spi.c vendor/src/security/trust/trustd/trustd_spi.c
+--- a/trust/trustd/trustd_spi.c	2026-08-20 06:43:26.459634344 +0200
++++ b/trust/trustd/trustd_spi.c	2026-08-20 06:09:04.320641918 +0200
+@@ -23,6 +23,9 @@
+ 
+ #ifdef LIBTRUSTD
+ #include <CoreFoundation/CoreFoundation.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <stdbool.h>
+ 
+ #include "../utilities/SecFileLocations.h"
+ #include "../utilities/debugging.h"
+@@ -77,6 +80,21 @@
+ };
+ #endif
+ 
++/*
++ * WHICH STEP OF trustd_init_server NEVER RETURNS? Measured: trustd prints "main entered" and
++ * "_SecDbServerSetup done" and then nothing, so it never reaches trustd_xpc_init and never creates
++ * its listener at all -- which is why a running, checked-in trustd with a stable pid answers no
++ * request. One line per step, since the step that matters is the one whose line is missing.
++ */
++static bool CiderTraceTrustd(void) {
++	const char *v = getenv("CIDER_TRACE_TRUSTD");
++	return v != NULL && v[0] != '\0';
++}
++
++#define CIDER_TRUSTD_STEP(name) do { \
++	if (CiderTraceTrustd()) { fprintf(stderr, "CIDER_TRUSTD init step: %s\n", name); fflush(stderr); } \
++} while (0)
++
+ void trustd_init(CFURLRef home_path) {
+     if (home_path)
+         SecSetCustomHomeURL(home_path);
+@@ -87,7 +105,9 @@
+ void trustd_init_server(void) {
+     gTrustd = &trustd_spi;
+ #ifdef LIBTRUSTD
++    CIDER_TRUSTD_STEP("_SecTrustStoreMigrateConfigurations");
+     _SecTrustStoreMigrateConfigurations();
++    CIDER_TRUSTD_STEP("SecTrustServerMigrateExceptionsResetCount");
+     SecTrustServerMigrateExceptionsResetCount();
+ #if TARGET_OS_IPHONE
+     CFErrorRef error = NULL;
+@@ -97,11 +117,16 @@
+     CFReleaseNull(error);
+ #endif
+ 
++    CIDER_TRUSTD_STEP("SecPolicyServerInitialize");
+     SecPolicyServerInitialize();    // set up callbacks for policy checks
++    CIDER_TRUSTD_STEP("SecRevocationDbInitialize");
+     SecRevocationDbInitialize();    // set up revocation database if it doesn't already exist, or needs to be replaced
++    CIDER_TRUSTD_STEP("SecPinningDbInitialize");
+     SecPinningDbInitialize();       // set up the pinning database
+ #if TARGET_OS_OSX
++    CIDER_TRUSTD_STEP("SecTrustLegacySourcesListenForKeychainEvents");
+     SecTrustLegacySourcesListenForKeychainEvents(); // set up the legacy keychain event listeners (for cache invalidation)
+ #endif
++    CIDER_TRUSTD_STEP("all init steps returned");
+ #endif  // LIBTRUSTD
+ }

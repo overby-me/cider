@@ -12335,3 +12335,68 @@ nothing, which reads exactly like the code not running. Merging into the existin
   listener throws away anything that is not a check-in and says so only via `xpc_log_fault` →
   syslog. **This one has not fired yet**, so where trustd's messages actually go is still open. It
   is recorded as an instrument, not as a finding.
+
+### trustd has no listener at all, and neither does the daemon it waits for
+
+**The task was looking in the wrong place, and step traces said so in one run.** trustd was being
+investigated for a use-after-free in the main-thread autorelease pool at `dispatch_main`. It never
+reaches `dispatch_main`:
+
+```
+CIDER_TRUSTD main entered
+CIDER_TRUSTD _SecDbServerSetup done
+CIDER_TRUSTD init step: _SecTrustStoreMigrateConfigurations
+CIDER_TRUSTD init step: SecTrustServerMigrateExceptionsResetCount
+CIDER_TRUSTD migrate: ExceptionsResetCounterUrl (new)
+CIDER_TRUSTD loc: calling mbr_uid_to_uuid for euid 282
+   <nothing, ever>
+```
+
+It stops inside `trustd_init_server`, several calls before `trustd_xpc_init`, so it **never creates
+an XPC listener**. A "running, checked-in trustd that answers nothing" is a daemon with nothing
+listening — not a daemon whose replies are lost.
+
+The blocking call is a membership lookup: libinfo asks opendirectoryd to translate uid 282 to a
+UUID, over an XPC pipe whose round trip has no timeout.
+
+**And opendirectoryd is entirely up while that call hangs.** Its own logging is `os_log`, which has
+no sink here, so it was traced to stderr:
+
+```
+CIDER_ODD main entered
+CIDER_ODD creating the mach service listener
+CIDER_ODD listener created = 0x752e04d78190
+CIDER_ODD calling xpc_connection_resume on the listener
+CIDER_XPC check-in for service com.apple.system.opendirectoryd.membership = 0 (claimed)
+CIDER_ODD listener resumed, entering dispatch_main
+```
+
+Listener created, service claimed, parked in `dispatch_main` — and while a client sits blocked in
+`xpc_pipe_routine`, **the listener's event handler never fires**. It is not the listener discarding
+the message either: libxpc drops any non-checkin message a listener receives, that path is
+instrumented and deployed, and it does not fire. The message is lost before it gets that far.
+
+So the same sentence now describes two daemons: up, checked in, and never handed the mail.
+
+**Two guesses refuted by measurement**, both recorded because each looked convincing:
+
+- **Not the dispatch workloop.** trustd retargets incoming connections onto
+  `dispatch_workloop_create()`, which nothing else here uses and which needs kernel support we may
+  not have. A probe shows blocks running on a workloop, and a source armed on one firing, with a
+  plain-queue control agreeing.
+- **Not the caller's uid.** Asked as root for uid 282 the call returned `ENOSYS` once, which looked
+  like caller identity mattering (libinfo looks the service up with `XPC_PIPE_FLAG_PRIVILEGED`).
+  Asked again as root, it hung. There is now a ten-line reproducer outside trustd.
+
+**Three harness traps, all of which produced convincing false silence:**
+
+1. **Never pipe container output into `grep`.** `timeout` kills `cider`, but container children keep
+   the write end open, so the reader never sees EOF and the driver hangs long after the run ended.
+   Redirect to a file and grep the file.
+2. **A grep pattern can hide the answer.** An unconditional environment dump was printing for three
+   runs while I read the log through `PROBE\|CIDER_MBR\|opendirect` — which those lines do not
+   match. It read exactly like the daemon not running my binary.
+3. **Give a probe a case that is not short-circuited.** The first membership probe asked for uid 0
+   twice (once deliberately, once as its own euid, which in a container shell is also 0). libinfo
+   answers uid 0 from inside the process, so the run said nothing about opendirectoryd. Its own
+   control is what caught it.

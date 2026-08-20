@@ -1,0 +1,140 @@
+Say whether a membership request ever reaches this daemon.
+
+A client asking libinfo to translate a uid never gets an answer: trustd blocks in mbr_uid_to_uuid
+before it can create its own XPC listener, so a running, checked-in trustd answers every request
+with silence. A ten-line probe reproduces the same hang outside trustd, as root.
+
+This daemon is the other end of that call, and it says nothing, because everything it logs goes
+through os_log and the container has no log sink. These go to stderr, which launchd captures in
+StandardErrorPath.
+
+Traces at each of the three points, because "no reply" has three different causes and they are
+indistinguishable from outside: the listener never fired, the connection never delivered the
+dictionary, or a reply was sent that never arrived.
+
+WHAT IT ANSWERED, and it moved the bug:
+
+    CIDER_ODD main entered
+    CIDER_ODD creating the mach service listener
+    CIDER_ODD listener created = 0x752e04d78190
+    CIDER_ODD calling xpc_connection_resume on the listener
+    CIDER_XPC check-in for service com.apple.system.opendirectoryd.membership = 0 (claimed)
+    CIDER_ODD listener resumed, entering dispatch_main
+
+So the daemon is entirely up: listener created, service claimed, parked in dispatch_main. And while
+a client sits blocked in xpc_pipe_routine, the listener event handler NEVER FIRES. Not a slow
+daemon, not a crashed one, not a failed check-in.
+
+It is also not the listener throwing the message away: libxpc drops any non-checkin message a
+listener receives, that path is instrumented too, and it does not fire either. The message is lost
+before it gets that far.
+
+The environment dump is here for a reason worth keeping. A launchd plist that gains a SECOND
+EnvironmentVariables key becomes a duplicate-key dict, the parser silently takes one, and the added
+variables never arrive -- which reads exactly like the traces not running. Printing the environment
+as it actually arrived settles that in one run instead of by argument.
+--- a/opendirectoryd/src/main.c
++++ b/opendirectoryd/src/main.c
+@@ -18,6 +18,8 @@
+  */
+ 
+ #include <xpc/xpc.h>
++#include <stdio.h>
++#include <stdbool.h>
+ #include <dispatch/dispatch.h>
+ #include <stdlib.h>
+ #include <opendirectory/odipc.h>
+@@ -57,7 +59,24 @@
+ static dispatch_queue_t membership_service_queue = NULL;
+ static xpc_connection_t membership_service_listener = NULL;
+ 
++/*
++ * DOES THE REQUEST EVER ARRIVE? A membership lookup from libinfo does not come back: trustd blocks
++ * in mbr_uid_to_uuid before it can create its XPC listener, and a ten-line probe reproduces it
++ * outside trustd, as root. This daemon's own logging is os_log, which has no sink in the container,
++ * so say it on stderr instead -- and say it at each of the three points, because "no reply" can mean
++ * the listener never fired, the connection never delivered, or the reply went nowhere.
++ */
++static bool odd_trace(void) {
++	const char *v = getenv("CIDER_TRACE_ODD");
++	return v != NULL && v[0] != '\0';
++}
++
++#define ODD_TRACE(...) do { \
++	if (odd_trace()) { fprintf(stderr, "CIDER_ODD " __VA_ARGS__); fputc('\n', stderr); fflush(stderr); } \
++} while (0)
++
+ static void membership_reply_with_error(xpc_object_t incoming_message, int error) {
++	ODD_TRACE("replying with error %d", error);
+ 	xpc_object_t reply = xpc_dictionary_create_reply(incoming_message);
+ 	xpc_dictionary_set_int64(reply, OD_RPC_ERROR, error);
+ 	xpc_connection_send_message(xpc_dictionary_get_remote_connection(incoming_message), reply);
+@@ -180,10 +199,12 @@
+ };
+ 
+ static void handle_new_membership_connection(xpc_connection_t connection) {
++	ODD_TRACE("accepting a new membership connection %p", (void *) connection);
+ 	xpc_connection_set_event_handler(connection, ^(xpc_object_t object) {
+ 		xpc_type_t type = xpc_get_type(object);
+ 
+ 		if (type == XPC_TYPE_DICTIONARY) {
++			ODD_TRACE("connection received a dictionary");
+ 			membership_log_debug("membership connection received dictionary: %@", object);
+ 
+ 			int rpc_version = xpc_dictionary_get_int64(object, OD_RPC_VERSION);
+@@ -203,6 +224,7 @@
+ 
+ 			membership_log_debug("RPC procedure call message: %@", object);
+ 
++			ODD_TRACE("rpc %s", rpc_name);
+ 			if (strcmp(rpc_name, "mbr_identifier_translate") == 0) {
+ 				rpc_mbr_identifier_translate(object);
+ 			} else if (strcmp(rpc_name, "mbr_check_service_membership") == 0) {
+@@ -231,12 +253,29 @@
+ };
+ 
+ int main(int argc, char** argv) {
++	/*
++	 * The environment as it actually ARRIVED, because a launchd plist is a plausible place to lose
++	 * it: EnvironmentVariables added as a second key makes a duplicate-key dict and the values are
++	 * silently dropped. Printing them settles that in one run instead of by argument.
++	 */
++	if (odd_trace()) {
++		extern char **environ;
++		for (char **e = environ; e && *e; ++e) {
++			fprintf(stderr, "CIDER_ODD_ENV %s\n", *e);
++		}
++		fflush(stderr);
++	}
++
++	/* FIRST, so that a silent run is known to be a hang and not a trace that never speaks. */
++	ODD_TRACE("main entered");
+ 	membership_service_queue = dispatch_queue_create(ODD_MEMBERSHIP_SERVICE_NAME, DISPATCH_QUEUE_CONCURRENT);
+ 	if (!membership_service_queue) {
+ 		abort();
+ 	}
+ 
++	ODD_TRACE("creating the mach service listener");
+ 	membership_service_listener = xpc_connection_create_mach_service(ODD_MEMBERSHIP_SERVICE_NAME, membership_service_queue, XPC_CONNECTION_MACH_SERVICE_LISTENER);
++	ODD_TRACE("listener created = %p", (void *) membership_service_listener);
+ 	if (!membership_service_listener) {
+ 		abort();
+ 	}
+@@ -244,6 +283,7 @@
+ 	xpc_connection_set_event_handler(membership_service_listener, ^(xpc_object_t object) {
+ 		xpc_type_t type = xpc_get_type(object);
+ 
++		ODD_TRACE("listener event, type %s", type == XPC_TYPE_CONNECTION ? "connection" : "other");
+ 		if (type == XPC_TYPE_CONNECTION) {
+ 			handle_new_membership_connection(object);
+ 		} else if (type == XPC_TYPE_ERROR) {
+@@ -253,7 +293,9 @@
+ 		}
+ 	});
+ 
++	ODD_TRACE("calling xpc_connection_resume on the listener");
+ 	xpc_connection_resume(membership_service_listener);
++	ODD_TRACE("listener resumed, entering dispatch_main");
+ 
+ 	dispatch_main();
+ 	return 0;
