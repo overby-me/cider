@@ -1,0 +1,53 @@
+A malformed reboot message crashed pid 1, and crashed it again on the way down.
+
+sys_reboot's format string asks for two conversions and only ONE argument was passed:
+
+    __simple_printf("... with opt %d and cmd '%s' - terminating\n", cmd);
+
+so %d consumed the pointer and %s then read whatever happened to be in the next varargs slot and
+walked it as a string. __simple_vsnprintf guards NULL for %s but nothing guards garbage, so this
+faulted every single time a process asked to reboot.
+
+AND launchd IS ONE OF THEM, WHICH MADE IT RECURSIVE. launchd is pid 1, so its own fatal-signal
+handler ends in reboot(0). The fault inside sys_reboot therefore re-entered sys_reboot through
+sigexc_handler, and each pass added six frames until the stack ran out. The core shows the cycle
+plainly, the same six addresses repeating:
+
+    __simple_vsnprintf <- faults
+    __simple_printf
+    sys_reboot
+    __darling_bsd_syscall
+    handler_linux_to_bsd
+    sigexc_handler
+    sig_restorer
+    __simple_printf   <- and round again
+
+That was reported as a SIGSEGV in the guest /sbin/launchd, which is true and useless: a stack
+overflow, not a bad pointer, and nothing to do with the application that was running.
+
+MEASURED AFTER: no core at all, and the message finally says what it always meant to say,
+
+    ALERT: The process has asked for system reboot with opt 0 and cmd '(null)' - terminating
+
+A scan of the 187 countable __simple_printf/kern_printf calls in the emulation layer, the guest
+frameworks and libxpc finds no other format that disagrees with its argument list.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/reboot.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/reboot.c
+@@ -10,7 +10,15 @@
+ 
+ long sys_reboot(int opt, const char* cmd)
+ {
+-	__simple_printf("ALERT: The process has asked for system reboot with opt %d and cmd '%s' - terminating\n", cmd);
++	/*
++	 * BOTH ARGUMENTS. The format asks for two and only `cmd` was passed, so `%d` consumed the
++	 * pointer and `%s` then read whatever happened to be in the next varargs slot and walked it.
++	 * `%s` guards NULL but nothing guards garbage, so this faulted every time a process asked to
++	 * reboot -- and launchd is one of them, and launchd is pid 1, so ITS crash handler asks to
++	 * reboot too: the fault re-entered here through sigexc_handler and recursed until the stack
++	 * ran out. A six-frame cycle in the core is what named it.
++	 */
++	__simple_printf("ALERT: The process has asked for system reboot with opt %d and cmd '%s' - terminating\n", opt, cmd);
+ 	sys_exit(1);
+ 	return -ENOTSUP;
+ }

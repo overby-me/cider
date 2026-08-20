@@ -11829,3 +11829,60 @@ runs where the app never mapped a window.
 After all three: `ciderd` no longer cores, validation reaches `validateNonResourceComponents`, and
 **Swift Publisher renders unchanged** (looked at: alert, inspector, layers row, canvas). What fails
 now is a SIGSEGV in the guest `/sbin/launchd`, which is the next thread to pull.
+
+### A malformed reboot message crashed pid 1, and crashed it again on the way down
+
+`sys_reboot`'s format asked for two conversions and got **one** argument:
+
+```c
+__simple_printf("... with opt %d and cmd '%s' - terminating\n", cmd);
+```
+
+`%d` consumed the pointer, `%s` then read the next varargs slot and walked it. `%s` guards `NULL`
+but nothing guards garbage, so this faulted **every time any process asked to reboot**.
+
+**launchd is one of them, and that made it recursive.** launchd is pid 1, so its own fatal-signal
+handler ends in `reboot(0)`. The fault inside `sys_reboot` re-entered `sys_reboot` through
+`sigexc_handler`, six frames at a time, until the stack ran out. The core shows the cycle plainly —
+the same six addresses repeating:
+
+```
+__simple_vsnprintf   <- faults
+__simple_printf
+sys_reboot
+__darling_bsd_syscall
+handler_linux_to_bsd
+sigexc_handler
+sig_restorer
+__simple_printf      <- and round again
+```
+
+That had been reported as "a SIGSEGV in the guest `/sbin/launchd`", which is true and useless: it is
+a **stack overflow**, not a bad pointer, and nothing to do with the app that happened to be running.
+Fixed (`vendor/patches/xnu/0019`). A scan of the 187 countable `__simple_printf`/`kern_printf` calls
+in the emulation layer, the guest frameworks and libxpc finds no other format that disagrees with
+its argument list.
+
+**How to read a core like that:** a repeating cycle of addresses *is* the diagnosis. `nm` on the host
+cannot read Mach-O and reports nothing, so `scripts/machosym.py` parses `LC_SYMTAB` directly and
+turns the core's NT_FILE offsets into names.
+
+### Why the MoneyMoney run ends, and it is not MoneyMoney
+
+**Correction: "no cores any more" is not "launchd stopped crashing."** The reboot fix turned a
+stack-overflow core into a clean exit; the underlying fatal signal is still there. There is no
+`About to call: reboot` on the console, so the reboot does not come from an orderly shutdown — it
+comes from `launchd.c`'s **pid 1 crash handler**: fatal signal → diagnose → `sleep(3)` →
+`reboot(0)`. `CIDER_LAUNCHD_FATAL` (a bare `write(2)`, the only reporting safe in a fatal handler)
+now names it:
+
+```
+CIDER_LAUNCHD_FATAL sig=4 at instruction: 0x722c099cd949 (Illegal instruction: 4 ...)
+```
+
+and the daemon log shows `sigexc_handler(6, …)` twice before it, so launchd **aborts twice and then
+executes an illegal instruction**. That is what ends the container: `cider shell` returns 1 and the
+app is killed mid-write, which is exactly what "MoneyMoney exits quietly at 7 s" was.
+
+Also on the console just before: a crashtrace for `/bin/launchctl` faulting inside
+`exit → __cxa_finalize → __cxa_finalize_ranges`, i.e. in its static destructors.

@@ -444,6 +444,20 @@ fatal_signal_handler(int sig, siginfo_t *si, void *uap __attribute__((unused)))
 	case SIGFPE:
 	case SIGTRAP:
 		snprintf(msg, sizeof(msg), "%s: %p (%s sent by PID %u)", doom_why, crash_addr, strsignal(sig), crash_pid);
+		/*
+		 * SAY IT WHERE SOMEONE CAN READ IT. Everything below goes to a crash-diagnosis mode that
+		 * needs a console we do not have, so pid 1 dying looked from outside like the container
+		 * simply ending: reboot(0), and the run exits 1 with nothing anywhere. A bare write(2) is
+		 * the only reporting that is safe in a fatal signal handler, and it reaches the daemon log.
+		 */
+		{
+			char line[256];
+			int n = snprintf(line, sizeof(line), "CIDER_LAUNCHD_FATAL sig=%d %s\n", sig, msg);
+
+			if (n > 0) {
+				(void)write(STDERR_FILENO, line, (size_t)n);
+			}
+		}
 		sync();
 		do_pid1_crash_diagnosis_mode(msg);
 		sleep(3);
