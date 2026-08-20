@@ -1,0 +1,32 @@
+# Regression tests built the way every other Darwin binary here is built, because there is no guest
+# C compiler in this runtime: /usr/bin/clang is a 12 KB xcrun shim and the CLT directory holds cctools
+# with no clang. scripts/run-tests.nu stages the artefact and only RUNS it. Template and reasoning:
+# tests/foundation/BUCK.
+
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+cc_objects(
+    name = "test_sandbox_api_obj",
+    srcs = ["test_sandbox_api.c"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "test_sandbox_api",
+    objs = [
+        ":test_sandbox_api_obj",
+        # crt1.10.6
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

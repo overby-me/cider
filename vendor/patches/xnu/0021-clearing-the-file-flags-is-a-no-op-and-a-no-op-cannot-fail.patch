@@ -1,0 +1,76 @@
+Clearing the file flags is a no-op, and a no-op cannot fail.
+
+sys_chflags and sys_fchflags returned ENOTSUP for every call, with a comment saying that is what a
+filesystem without file flags reports and that applications must accept it. They must, for a request
+that asks for something. THIS ONE ASKS FOR NOTHING: getattrlist here always reports flags == 0,
+because Linux has no BSD file flags, so chflags(path, 0) is asking for the state the file is already
+in. Everything that clears flags before deleting does exactly that, which is what rm -rf and
+installers do.
+
+Measured, from the suite that has been in this tree unable to run:
+
+    FAIL [14]: lchflags(path, 0) returns 0 (errno=45: Operation not supported)
+    FAIL [16]: chflags(path, 0) returns 0 (errno=45: Operation not supported)
+
+and the same suite is green with this. A NONZERO value is still ENOTSUP: those flags cannot be
+stored, and a success there would be a lie the caller can read back. The setattrlist path in
+helper/xattr/setattrlist_generic.c accepts any value deliberately, for Nix; that inconsistency is
+known and this is the more honest half of it.
+diff -ur old/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chflags.c new/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chflags.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chflags.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chflags.c
+@@ -8,10 +8,22 @@
+ 
+ long sys_chflags(const char* file, int flags)
+ {
++	// CLEARING THE FLAGS IS A NO-OP, AND A NO-OP CANNOT FAIL. getattrlist here always reports
++	// flags == 0, because Linux has no BSD file flags, so a caller asking for 0 is asking for the
++	// state the file is already in. Answering ENOTSUP to that broke everything that clears flags
++	// before deleting, which is what rm -rf and installers do, and it is what
++	// tests/syscall/test_setattrlist_flags.c failed on: FAIL lchflags(path, 0) returns 0
++	// (errno=45: Operation not supported).
++	//
++	// A NONZERO value is still ENOTSUP: we cannot store those flags, and a success there would be
++	// a lie the caller can read back. (The setattrlist path in
++	// helper/xattr/setattrlist_generic.c accepts any value deliberately, for Nix; that
++	// inconsistency is known, and this is the more honest half of it.)
++	//
+ 	// TODO: We could implement this via ioctl(fd, FS_IOC_GETFLAGS/FS_IOC_SETFLAGS),
+ 	// but it requires root and this functionality is not all that important.
+-	// 
+-	// Returning ENOTSUP indicates that this filesystem doesn't support file flags,
+-	// which is true on NFS for example, so applications must accept this error return.
++	if (flags == 0)
++		return 0;
++
+ 	return -ENOTSUP;
+ }
+diff -ur old/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchflags.c new/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchflags.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchflags.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchflags.c
+@@ -8,10 +8,22 @@
+ 
+ long sys_fchflags(int fd, int flags)
+ {
++	// CLEARING THE FLAGS IS A NO-OP, AND A NO-OP CANNOT FAIL. getattrlist here always reports
++	// flags == 0, because Linux has no BSD file flags, so a caller asking for 0 is asking for the
++	// state the file is already in. Answering ENOTSUP to that broke everything that clears flags
++	// before deleting, which is what rm -rf and installers do, and it is what
++	// tests/syscall/test_setattrlist_flags.c failed on: FAIL lchflags(path, 0) returns 0
++	// (errno=45: Operation not supported).
++	//
++	// A NONZERO value is still ENOTSUP: we cannot store those flags, and a success there would be
++	// a lie the caller can read back. (The setattrlist path in
++	// helper/xattr/setattrlist_generic.c accepts any value deliberately, for Nix; that
++	// inconsistency is known, and this is the more honest half of it.)
++	//
+ 	// TODO: We could implement this via ioctl(fd, FS_IOC_GETFLAGS/FS_IOC_SETFLAGS),
+ 	// but it requires root and this functionality is not all that important.
+-	// 
+-	// Returning ENOTSUP indicates that this filesystem doesn't support file flags,
+-	// which is true on NFS for example, so applications must accept this error return.
++	if (flags == 0)
++		return 0;
++
+ 	return -ENOTSUP;
+ }

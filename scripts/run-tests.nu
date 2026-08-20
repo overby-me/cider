@@ -46,14 +46,14 @@
 # library rather than the toolchain.
 const SUITES = [
     [name type source desc cflags];
-    [renameatx_np c "tests/syscall/test_renameatx_np.c" "renameatx_np (syscall 488) — plain rename, SWAP, EXCL, invalid flags" ""]
-    [setattrlist_flags c "tests/syscall/test_setattrlist_flags.c" "setattrlist/getattrlist ATTR_CMN_FLAGS — lchflags, chflags, combined attrs" ""]
-    [utimensat c "tests/syscall/test_utimensat.c" "utimensat/setattrlistat — timestamps, MODTIME, ACCTIME, CRTIME, symlinks" ""]
-    [sandbox_api c "tests/sandbox/test_sandbox_api.c" "sandbox C API — sandbox_init, sandbox_free_error" ""]
+    [renameatx_np bin "//tests/syscall:test_renameatx_np" "renameatx_np (syscall 488) — plain rename, SWAP, EXCL, invalid flags" ""]
+    [setattrlist_flags bin "//tests/syscall:test_setattrlist_flags" "setattrlist/getattrlist ATTR_CMN_FLAGS — lchflags, chflags, combined attrs" ""]
+    [utimensat bin "//tests/syscall:test_utimensat" "utimensat/setattrlistat — timestamps, MODTIME, ACCTIME, CRTIME, symlinks" ""]
+    [sandbox_api bin "//tests/sandbox:test_sandbox_api" "sandbox C API — sandbox_init, sandbox_free_error" ""]
     [sandbox_exec sh "tests/sandbox/test_sandbox_exec.sh" "sandbox-exec stub — flag parsing, exec, exit codes, Nix patterns" ""]
     [dirserv sh "tests/dirserv/test_dirserv.sh" "Directory Services stubs — dseditgroup, sysadminctl, dscl (Phase 5.1)" ""]
     [number_formatter bin "//tests/foundation:test_number_formatter" "NSNumberFormatter: parse and display, the range form, a clamped range, round trip" ""]
-    [identity c "tests/identity/test_identity.c" "macOS 14 identity — uname, kern.osrelease/osproductversion/osversion (Phase A)" ""]
+    [identity bin "//tests/identity:test_identity" "macOS 14 identity — uname, kern.osrelease/osproductversion/osversion (Phase A)" ""]
     [sw_vers sh "tests/identity/test_sw_vers.sh" "sw_vers identity — productVersion/buildVersion report macOS 14 (Phase A)" ""]
 ]
 

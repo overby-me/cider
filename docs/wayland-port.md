@@ -14104,3 +14104,30 @@ cascade one `#include` at a time is what `buck-port.py` exists to avoid. And a t
 `check` does not compile: `<AssertMacros.h>` defines `check()` as a function-like macro and it arrives
 through that cascade, so the error is "too many arguments provided to function-like macro invocation"
 with nothing pointing at the header.
+
+### Nine suites, and the one that failed was right
+
+Every suite in `scripts/run-tests.nu` is a `bin` suite now: a buck2 target built on the host, staged,
+and only RUN in the container. The five C suites needed one BUCK file each, on the
+`tests/buck2/guest/stack_probe` pattern, because they are plain libc. The harness went from running
+NOTHING to:
+
+    9 suites, 8 passed, 1 failed
+
+and **the failure was a real defect**, in a test that has been in this tree unable to run:
+
+    FAIL [14]: lchflags(path, 0) returns 0 (errno=45: Operation not supported)
+    FAIL [16]: chflags(path, 0)  returns 0 (errno=45: Operation not supported)
+
+`sys_chflags` and `sys_fchflags` answered ENOTSUP to everything, with a comment saying that is what a
+filesystem without file flags reports and applications must accept it. They must, for a request that
+asks for something. **This one asks for nothing**: `getattrlist` here always reports `flags == 0`
+because Linux has no BSD file flags, so `chflags(path, 0)` asks for the state the file is already in,
+and everything that clears flags before deleting does exactly that. Zero succeeds now; a nonzero value
+is still ENOTSUP, because those flags cannot be stored and a success would be a lie the caller can
+read back. **9 of 9 green** after it.
+
+One more thing the migration turned up: `tests/identity/test_identity.c` was **ignored and untracked**
+while `run-tests.nu` named it, so that suite could never have run for anyone who did not happen to
+have the file, the same trap as `tests/foundation` a rung earlier. Both directories are on the
+allow list now.

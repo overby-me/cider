@@ -45,6 +45,9 @@ tests/*
 # missing here at once. Without this line the suite file is ignored and only its registration in
 # run-tests.nu gets committed, which is a suite that names a source nobody has.
 !tests/foundation/
+# The identity suite's source was ignored and untracked while run-tests.nu named it, so the suite
+# could never run for anyone who did not happen to have the file. Same trap as tests/foundation.
+!tests/identity/
 !tests/cider-smoke.nix
 # The VM-side twin of scripts/checks/buck-bash-check.nu: the bash milestone for the buck2 port.
 !tests/cider-buck2-smoke.nix
