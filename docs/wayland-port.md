@@ -13161,3 +13161,34 @@ and the next piece of work, and the three criteria are not met until it draws.
 delete → "database file is missing or empty" (stale zero-byte file from earlier failed runs, cleared;
 the app then created a real 307,200-byte database with a journal) → internal error on a missing
 selector → **open**.
+
+### Four is false
+
+**Every boolean in every nib in this system decoded as its opposite.** `NSNIBArchiveUnarchiver`
+declared `_NIBValueTrue = 4, _NIBValueFalse = 5`; the NIBArchive format has them the other way round.
+
+**Found by looking at the app's own data, not by reasoning about the code.** MoneyMoney's main window
+put a 500x304 grey box in the top-left corner and left the rest of a 1400x900 window empty. The view
+tree said the split view was 1400x772 and correct, its second pane 1400x448 and correct, and its
+first pane 500x319 — and `CIDER_TRACE_FRAMES=NSView` showed why: every time `_adjustSubviewHeights`
+set that pane to the full width, something with no resolvable symbol set it straight back to 500.
+`_adjustSubviewHeights` is the horizontal branch. The pane was a sidebar, and the application was
+setting its **width**, which is what you do to a pane in a **vertical** split.
+
+So the question became what the nib says, and the nib is the arbiter. A 60-line NIBArchive reader
+(`scratchpad/nibdump.py`) answered it: `NSIsVertical` is stored with value type 5.
+
+**One key cannot settle a polarity; the whole archive can.** Reading type 5 as true and type 4 as
+false, MainWindow.nib says: 21 controls `NSEnabled`, 23 controls not `NSControlRefusesFirstResponder`,
+23 not `NSControlContinuous`, 37 views wanting a best-resolution surface, 22 of 23 text controls not
+in single-line mode, and the window not restorable. Read the other way, every control in the window
+is disabled and refuses first responder. **Only one of those is a nib a person would author.**
+
+The fix is two lines in the enum. What it changed, looked at: the split view is side by side, the
+sidebar is 327 wide and full height, the segmented control in the toolbar has a selected segment, the
+six toolbar controls that were stacked on one another now show the one that belongs, and the status
+bar has its buttons. Menus still open.
+
+**What is still grey:** the sidebar's `MainTree` now fills its pane correctly and still draws as flat
+`#9A9A9A`, and a 32x32 block in the toolbar draws flat `#9F9F9F`. Same question as before, now with
+the right geometry underneath it.

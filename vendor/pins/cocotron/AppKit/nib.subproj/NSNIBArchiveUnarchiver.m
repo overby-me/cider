@@ -53,8 +53,13 @@ enum {
     _NIBValueInt16 = 1,
     _NIBValueInt32 = 2,
     _NIBValueInt64 = 3,
-    _NIBValueTrue = 4,
-    _NIBValueFalse = 5,
+    /* FOUR IS FALSE. These two were the wrong way round, so every boolean in every nib in the
+     * system decoded as its opposite. Settled from MoneyMoney's own MainWindow.nib, where under
+     * the old mapping all 21 NSEnabled controls were disabled, all 23 NSControlRefusesFirstResponder
+     * controls refused first responder, all 37 views declined a best resolution surface, and 22 of
+     * 23 text controls were in single line mode. None of those is a nib anyone would author. */
+    _NIBValueFalse = 4,
+    _NIBValueTrue = 5,
     _NIBValueFloat = 6,
     _NIBValueDouble = 7,
     _NIBValueData = 8,
