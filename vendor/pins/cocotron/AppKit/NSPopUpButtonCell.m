@@ -647,8 +647,22 @@ static const void *kCiderSelectingItemKey = &kCiderSelectingItemKey;
         }
     }
 
-    [[_menu delegate] menuNeedsUpdate: _menu];
-    //	[[_menu delegate] menuWillOpen: _menu];
+    /*
+     * AN OPTIONAL DELEGATE METHOD IS SENT ONLY AFTER ASKING, and this one was not.
+     *
+     * menuNeedsUpdate: is optional in NSMenuDelegate. MoneyMoney makes its MMPopUpButton the menu's
+     * delegate and does not implement it, so this raised an unrecognized selector, the raise unwound
+     * trackMouse: before the pop-up window was ever created, NSApplication caught it, and the button
+     * did nothing at all. NO POP-UP BUTTON WITH A DELEGATE HAS EVER OPENED ITS MENU IN THIS PORT.
+     */
+    id menuDelegate = [_menu delegate];
+
+    if ([menuDelegate respondsToSelector: @selector(menuNeedsUpdate:)]) {
+        [menuDelegate menuNeedsUpdate: _menu];
+    }
+    if ([menuDelegate respondsToSelector: @selector(menuWillOpen:)]) {
+        [menuDelegate menuWillOpen: _menu];
+    }
     NSMenu *menu = _menu;
     if (_pullsDown && [_menu numberOfItems]) {
         // Don't display the first item for pullDowns controls

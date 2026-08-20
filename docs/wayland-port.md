@@ -13613,3 +13613,37 @@ sheet.
 text in its Author field; iTerm2's session live on the first try. The task was filed as "draw the
 missing bezel" and the premise was wrong — there is no bezel to draw. **A task title is a hypothesis
 too.**
+
+### No pop-up button with a delegate had ever opened its menu
+
+Pressing MoneyMoney's toolbar pop-up and **holding it** produced nothing. The hold is the point: a
+pop-up menu only exists between the press and the release, so a click that does both in one place can
+never photograph it — the menu opens and closes inside the gesture and whatever was under the pointer
+gets chosen. `holdshot` in the driver presses, waits, captures, and only then releases.
+
+With the menu held open for three seconds the capture was byte-identical to the one before it, and
+the log said why:
+
+    CIDER_POPUPTRACK view=NSKVONotifying_MMPopUpButton cell=133x25+0+0
+    cider: UNRECOGNIZED -[MMPopUpButton menuNeedsUpdate:]
+        <- -[NSPopUpButtonCell trackMouse:inRect:ofView:untilMouseUp:] + 666
+        <- -[NSPopUpButton performClick:] + 126
+
+`-[NSPopUpButtonCell trackMouse:…]` sent `menuNeedsUpdate:` to the menu's delegate **without asking
+whether it responds**. It is optional in `NSMenuDelegate`. MoneyMoney makes its `MMPopUpButton` the
+menu's delegate and does not implement it, so the raise unwound `trackMouse:` before the pop-up window
+was ever created, `NSApplication` caught it, and the button did nothing at all.
+
+**An optional delegate method is sent only after asking.** Both it and `menuWillOpen:` are guarded
+now. **Looked at: the menu opens** — three items with their icons, a rounded panel, a shadow and a
+separator, and it closes again on release.
+
+Choosing an item from it needs a press on the button and a release on the item, which is what
+`pickmenu` in the driver does. Left for next time: the menu is only as wide as the button, so
+`New standing order…` draws as `New stand…`. macOS sizes a pop-up menu to its widest item.
+
+**A coordinate lesson from the same rung**: the first attempt asked this question of a pop-up inside
+the wizard sheet and concluded the menu never opens. That was not measured. The sheet is not where an
+older capture said it was, and the click landed near Cancel: the input trace put the press at window
+coordinates `439,373` when the control was at `239,258`. **Ask a question like this of a control in a
+window that fills the output, where screen and window coordinates agree.**
