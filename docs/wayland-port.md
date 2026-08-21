@@ -14439,3 +14439,44 @@ Nine of nine test suites still green, and Swift Publisher unchanged.
 That also closes the older note that trustd "goes deaf after its first message" and the guess that a
 MachService job needed to be re-demand-started for this to work. Neither was the cause: the daemon was
 being killed by a use-after-free that our own ownership mistake handed it.
+
+## What is left of MoneyMoney's startup with launchd, measured (2026-08-21)
+
+The reply-ownership fix removed the crash and the hang. What remains is latency, and it is worth
+writing down exactly, because two of the things I said about it in the same session were wrong.
+
+**The membership lookup is no longer slow.** The 15 second `xpc_pipe` timeout was a symptom of the
+reply being released twice, not a cause of anything: across roughly ten runs since the fix there are
+**zero** pipe timeouts, two `mbr_uid_to_uuid` calls per startup, each answering 78 (our
+opendirectoryd's honest ENOSYS) immediately, with libinfo falling back as it should. The task that
+asked for a fix there is closed as refuted.
+
+**What is actually slow is an early Mach round trip that does not come back.** It sits between two
+adjacent log lines with nothing in between:
+
+    -[NSEvent addLocalMonitorForEventsMatchingMask:handler:] unimplemented
+    ... 0 s in a fast run; 9.8, 29.9, 53.4 and 70.0 s in slow ones ...
+    CIDER_FONT pattern=Menlo-Regular asked=Menlo-Regular
+
+It happens **before the window exists**: the Wayland protocol trace is silent for the whole stall
+(the last message before it is the init roundtrip's `wl_callback.done`, the next is
+`wl_compositor.create_surface`), so the compositor is not what it waits for. `/proc` names the wait
+without perturbing it: the main thread is in syscall 47, `recvmsg`, on `__skb_wait_for_more_packets`,
+which is the dserver socket, for the whole stall, while the other three threads sit in `epoll_wait`,
+`futex` and `poll`. **Rate: four of the last nine runs stalled.**
+
+**Two corrections to my own readings from earlier in the same session.**
+
+1. I first read the stall as tracking the driver's settle time, because the application resumed when
+   the compositor resized the output. That held for four runs and then broke: a run with a 50 second
+   settle had no stall at all, and one with a 25 second settle stalled for 29.9 s. The correlation was
+   a coincidence of sampling.
+2. I wrote that "startup completes in every run I measured it in". What completes is the **code
+   signing validation**. That is not the same as the application finishing its startup: a run at 06:28
+   validated and was still showing its splash 200 seconds later, with the File menu opening correctly
+   over it. What the application does after validation is a third question, separate from both.
+
+The instrument for the next attempt is written: `scratchpad/mm-stallcatch.sh` polls
+`/proc/<pid>/syscall` every half second and fires `SIGUSR1` only once the main thread has been in
+`recvmsg` for several seconds and only during the early window, so crashtrace's sampler prints the
+stack from inside the wait rather than from an idle run loop.
