@@ -1,0 +1,61 @@
+Name who put an object in the pool.
+
+The drain trace added earlier names an object as it LEAVES the pool, which is how the daemon crash was
+pinned down: `CIDER_POOL releasing 0x74a81cb209a0 isa=0x0 (no class)`, the same pointer the crash
+reports in rdi. What it cannot say is who put it there, and by the time it is released nothing can:
+the object is already dead.
+
+This can. With CIDER_TRACE_POOL=sites, every autorelease prints the object, its class, and the
+caller's return address resolved through dladdr, so the pointer the drain reports can be matched back
+to the code that autoreleased it.
+
+TWO SEPARATE SWITCHES ON PURPOSE. The drain trace fires once per object per pool pop; this one fires
+on EVERY autorelease, which in an application is millions of lines. CIDER_TRACE_POOL=1 keeps the
+drain only, and sites turns this on as well.
+--- a/runtime/NSObject.mm
++++ b/runtime/NSObject.mm
+@@ -22,6 +22,7 @@
+  */
+ 
+ #include "objc-private.h"
++#include <dlfcn.h>
+ #include "NSObject.h"
+ 
+ #include "objc-weak.h"
+@@ -1192,6 +1193,36 @@
+     static inline id autorelease(id obj)
+     {
+         ASSERT(!obj->isTaggedPointerOrNil());
++        /*
++         * CIDER_TRACE_POOL=sites: WHO put this object in the pool.
++         *
++         * The drain trace names an object that is already dead when its turn comes, and by then
++         * nothing can say who autoreleased it. This can: the caller's return address, resolved to a
++         * library and symbol, printed with the same pointer the drain will print. Off unless asked
++         * for, and separate from the drain trace because it fires on every autorelease.
++         */
++        {
++            static int cider_sites = -1;
++
++            if (cider_sites < 0) {
++                const char *v = getenv("CIDER_TRACE_POOL");
++                cider_sites = (v != NULL && strcmp(v, "sites") == 0) ? 1 : 0;
++            }
++            if (cider_sites) {
++                void *ret = __builtin_return_address(0);
++                Dl_info info;
++                const char *lib = "?";
++                const char *sym = "?";
++
++                if (dladdr(ret, &info)) {
++                    lib = info.dli_fname ? info.dli_fname : "?";
++                    sym = info.dli_sname ? info.dli_sname : "?";
++                }
++                fprintf(stderr, "CIDER_POOL autorelease %p isa=%p from %s in %s\n",
++                        (void *) obj, (void *) object_getClass(obj), sym, lib);
++                fflush(stderr);
++            }
++        }
+         id *dest __unused = autoreleaseFast(obj);
+ #if SUPPORT_AUTORELEASEPOOL_DEDUP_PTRS
+         ASSERT(!dest  ||  dest == EMPTY_POOL_PLACEHOLDER  ||  (id)((AutoreleasePoolEntry *)dest)->ptr == obj);
