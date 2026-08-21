@@ -107,15 +107,20 @@ NSString *const NSApplicationLaunchUserNotificationKey =
  * answers as well, so 2022 no longer throws: zero unrecognized selectors, zero uncaught exceptions,
  * and the menu titles gain the two characters the 35 point metric buys them.
  *
- * IT STILL COSTS MORE THAN IT BUYS, and the capture is what says so. At 2022 MoneyMoney draws NO
- * MENU BAR AT ALL and an EMPTY TOOLBAR: it takes the Big Sur chrome path, which this AppKit does not
- * implement, and it does it silently rather than by raising. Two characters of menu title against
- * the menu bar is not a trade worth making.
+ * THE MENU BAR WAS OUR BUG AND IS FIXED. At 2022 the window is created with
+ * NSWindowStyleMaskFullSizeContentView, so it calls -setStyleMask:, and that method used to hide the
+ * menu view of every window it touched. It now hides only a window that no longer qualifies, and the
+ * menu bar draws at 2022 exactly as it does at 1504.
  *
- * So: raise this when the Big Sur toolbar and menu bar are drawn, not before, and check the capture
- * rather than the exception count.
+ * THE TOOLBAR IS THE ONE THAT IS STILL EMPTY, and it is the application taking a path this AppKit
+ * does not draw, silently rather than by raising. Both versions build the same three
+ * NSToolbarItemView frames, but at 1504 the icon strip draws as 41 NSSegmentedControl cells and 42
+ * MMPopUpButton cells, and at 2022 neither class ever draws once. The item views are there and empty.
+ *
+ * So: raise this when the Big Sur toolbar is drawn, not before, and check the capture rather than the
+ * exception count.
  */
-const NSAppKitVersion NSAppKitVersionNumber = 1504; // macOS 10.12
+const NSAppKitVersion NSAppKitVersionNumber = 1504; // macOS 10.12 Sierra
 
 NSApplication *NSApp = nil;
 

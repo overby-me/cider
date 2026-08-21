@@ -303,10 +303,22 @@ static BOOL _allowsAutomaticWindowTabbing;
  * two have to agree or a window gets a menu bar in one place and dialog placement in the other.
  */
 + (BOOL) hasMainMenuForStyleMask: (NSWindowStyleMask) styleMask {
-    if ((styleMask & NSTitledWindowMask) == 0) {
+    BOOL titled = (styleMask & NSTitledWindowMask) != 0;
+    BOOL miniaturizable = (styleMask & NSMiniaturizableWindowMask) != 0;
+
+    /*
+     * There is no global menu bar on Linux, so this port draws it INSIDE the window that qualifies,
+     * and a window with no menu bar is a window whose mask lost one of these two bits. Printing the
+     * mask answers which one in a single run, instead of a disassembly.
+     */
+    if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != '\0') {
+        NSLog(@"CIDER_MENUBAR styleMask=0x%lx titled=%d miniaturizable=%d -> %d",
+              (unsigned long) styleMask, titled, miniaturizable, titled && miniaturizable);
+    }
+    if (!titled) {
         return NO;
     }
-    return (styleMask & NSMiniaturizableWindowMask) != 0;
+    return miniaturizable;
 }
 
 /* This method is Cococtron specific and can be override by subclasses, do not
@@ -457,6 +469,17 @@ static BOOL _allowsAutomaticWindowTabbing;
                                                      menu: _menu];
         [_menuView setAutoresizingMask: NSViewWidthSizable | NSViewMinYMargin];
         [_backgroundView addSubview: _menuView];
+
+        /* The menu view's own geometry against the two frames it sits between, so a menu bar that is
+         * present but invisible can be told from one that was never given a place. */
+        if (getenv("CIDER_TRACE_MENU") != NULL && getenv("CIDER_TRACE_MENU")[0] != '\0') {
+            NSLog(@"CIDER_MENUBAR created menu=%.0fx%.0f@%.0f,%.0f content=%.0fx%.0f@%.0f,%.0f background=%.0fx%.0f@%.0f,%.0f",
+                  menuFrame.size.width, menuFrame.size.height, menuFrame.origin.x, menuFrame.origin.y,
+                  contentViewFrame.size.width, contentViewFrame.size.height,
+                  contentViewFrame.origin.x, contentViewFrame.origin.y,
+                  backgroundFrame.size.width, backgroundFrame.size.height,
+                  backgroundFrame.origin.x, backgroundFrame.origin.y);
+        }
     }
 
     [_backgroundView addSubview: _contentView];
@@ -551,7 +574,32 @@ static BOOL _allowsAutomaticWindowTabbing;
     _styleMask = mask;
     [_platformWindow setStyleMask: _styleMask];
 
-    [self _hideMenuViewIfNeeded];
+    /*
+     * A CHANGE OF STYLE MASK IS NOT A REASON TO LOSE THE MENU BAR.
+     *
+     * This used to call _hideMenuViewIfNeeded unconditionally, and that helper hides the menu view
+     * of any window that QUALIFIES for one, which is the opposite test: it is written for a modal
+     * session, where a window that would otherwise draw a menu bar must not. Applied here it means
+     * any window that changes its style mask never draws its menu bar again, because nothing shows
+     * it back.
+     *
+     * MEASURED: MoneyMoney adds NSWindowStyleMaskFullSizeContentView (0x8000, so the mask goes from
+     * 0xf to 0x800f) when AppKit says it is newer than 10.15, and from then on the window has ten
+     * menu titles set, an NSMainMenuView of the right size in the right place, and hidden=1 on it.
+     * No menu bar at all in the capture, and nothing raised.
+     *
+     * Hide it only when the new mask no longer qualifies, and bring it back when it does.
+     */
+    if (_menuView != nil) {
+        BOOL qualifies = [self hasMainMenu];
+
+        if (!qualifies && ![_menuView isHidden]) {
+            [_menuView setHidden: YES];
+            [self _resizeWithOldMenuViewSize: [_menuView frame].size];
+        } else if (qualifies && [_menuView isHidden]) {
+            [self _showMenuViewIfNeeded];
+        }
+    }
 
     [_backgroundView resizeSubviewsWithOldSize: [_backgroundView frame].size];
     [_backgroundView setNeedsDisplay: YES]; // FIXME: verify this is done
