@@ -14701,3 +14701,48 @@ operators `map`, `receive(on:)`, `removeDuplicates`, `eraseToAnyPublisher` and `
 application imports no Combine functions at all. That was the tool, not the application: `--bind`
 lists data binds only, and every call goes through the **lazy** bind table. With `--lazy-bind` the
 eight appear.
+
+## Four Combine functions, written in C, and the wall moves again (2026-08-21)
+
+A Swift method can be written in C, which an older note in this tree denied. clang has the calling
+convention: `swiftcall` passes arguments the way Swift does, and a parameter marked `swift_context`
+arrives in the context register, `r13` on x86_64, which is where a method finds `self`. A generic
+parameter is address-only from the callee's side, so it arrives as a pointer and is copied through the
+value witness table that hangs one word below its metadata. A closure is two words, a function and a
+context, and the context goes in `r13` when you call it. No Swift compiler is involved.
+
+So `CurrentValueSubject.init(_:)` and `send(_:)`, `Publisher.sink(receiveValue:)`, and
+`AnyCancellable.store(in:)` and `cancel()` now have bodies. The subject's storage is the interesting
+one: a class instance is a sixteen byte header and then its properties, and here the instance size is
+**not a constant**, because it depends on `Output`. The class builder asks for the size at the moment
+the metadata is instantiated, which is the moment `Output` is known. In one launch:
+
+    CIDER_COMBINE subject init self=0x7408c60af740 output=0x7408d6208c88 stride=672
+    CIDER_COMBINE subject init self=0x7408d38bda30 output=0x7408d55e21a8 stride=1
+
+a 672 byte struct and a one byte value, each taken into an instance sized for it.
+
+`sink` delivers the current value once and returns a cancellable that cancels nothing, which for a
+`CurrentValueSubject` is not a fiction: a real one sends its current value to every new subscriber
+immediately. What is missing is everything after that. It reads a payload only when it **recognises**
+the publisher by the descriptor in the metadata, because `Self` can be any publisher and a payload
+read out of a layout we did not choose is a fault, not a value. The proof that the argument order is
+right rather than merely survivable is that the metadata `sink` was handed is the one our own
+instantiation had built moments earlier.
+
+**The wall is now protocol conformances.**
+
+    swift_getWitnessTable + 414
+      movl 0x10(%rax), %eax        <- rax null, so the fault is at address sixteen
+
+That instruction reads the requirement count out of a **protocol descriptor**, resolved from the
+conformance descriptor the application passed, and the conformance is one of ours: eight bytes of
+poison whose relative protocol pointer resolves to nothing. The remaining placeholders are no longer
+merely referenced; they are used. A real one needs a protocol descriptor for `Combine.Publisher`,
+which the application never imports and is therefore ours to define, and a witness table carrying the
+protocol's requirements.
+
+One design decision has held through all of this and is worth stating: **every Combine value in this
+framework is one word**, either a class reference or a pointer to a box we own. That is why a single
+value witness table of size eight serves all three operator structs. It is a lie about layout that
+nothing can catch us in, because no real Combine code ever sees these values.
