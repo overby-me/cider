@@ -1404,6 +1404,36 @@ the host path). The poll fix (0038) is landed and high-confidence on its own rea
 could be landed and verified WITHOUT a working prefix build has been, and the rest is gated on infra that
 should be repaired with a human watching, not overnight.
 
+**Pass 42 (the prefix build is RESTORED and M4 runs again -- wayland + poll + crash-handler fixes land
+it).** Fixed every post-rebase arm64 blocker in the prefix build, in the order `nix build
+.#cider-buck2-prefix-min` surfaced them: (1) the Nix graph config (nix/lib/ciderBuck2Graph.nix) did not
+supply wayland_scanner / wayland_protocols to the .buckconfig.local it generates, so src/darwin/wayland
+failed codegen.bzl:355 -- added the three keys (4ce4bf9d), sourced the way buck-setup does; (2) poll.c's
+arm64 ppoll ms->timespec conversion (0038, already landed); (3) four FIRST-PARTY crash handlers --
+launchd.c, crashtrace.m, wayland/WaylandEvents.m, wayland/watch.c -- read the x86 __rip/__rsp/__rbp and
+full argument-register dumps straight from uc_mcontext->__ss, none of which exist in
+__darwin_arm_thread_state64; arch-guarded each to __pc/__sp/__fp and __x[] (e32f9df8), the same class as
+the cocotron NSApplication.m fix. With those, `.#cider-buck2-prefix-min` BUILDS clean (every member
+compiled), buck-bash-check --prefix boots it and runs bash (`BUCK2_BASH_OK 3.2.57(1)-release
+arm64-apple-darwin19`), and buck-nix-bash-check drives the guest nix to build and run bash: `build_rc=0`,
+`run_rc=0`, `=PKG_DONE`, `GNU bash, version 5.3.9(1)-release (arm-apple-darwin23.4.0)`. So the M4
+machinery is reproduced on this host after the rebase, on the MIN prefix. The FULL prefix still fails on
+a separate JavaScriptCore arm64 gap (undefined LLInt/WASM offline-asm entry symbols
+_vmEntryToJavaScript / _wasm_entry / _wasmLLIntPCRange* at link), which bash and nix do not need; it is
+its own task.
+
+Two INFRASTRUCTURE issues block a clean empirical #12 (parallel make -j) verification, neither the poll
+fix: (a) the guest `--offline` build finds bash-interactive already in the store and returns build_rc=0
+with ZERO compile activity -- a cache hit, so make -j2 never genuinely runs; (b) forcing a from-source
+rebuild needs that cached output deleted, but the TEARDOWN HANG (after the guest exits, ciderd exits with
+`[xnu_sys] Trying to lock/unlock mutex without an active thread!` spam and leaves guest bash processes
+spinning) holds live /proc gc-roots on the output, so build-pkg-bypass's nix-store --delete is refused
+and the cache survives. Clearing the debris by hand is whack-a-mole because each boot re-creates it. So
+#12's poll fix stays LANDED and high-confidence (unambiguous arithmetic, airtight mechanism, and the
+whole M4 pipeline -- which sets up CIDER_GNIX_CORES=2 -- now runs end to end), with the isolated
+genuine-parallel-build test gated on fixing the teardown hang. That hang is itself a real regression
+worth its own task: it is why every guest run leaves spinning processes behind.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
