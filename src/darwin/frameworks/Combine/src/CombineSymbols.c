@@ -51,13 +51,9 @@ CIDER_COMBINE_SYMBOL(9, "_$s7Combine10PublishersO9ReceiveOnVy_xq_GAA9PublisherAA
 CIDER_COMBINE_SYMBOL(12, "_$s7Combine12AnyPublisherVyxq_GAA0C0AAMc");
 CIDER_COMBINE_SYMBOL(13, "_$s7Combine14AnyCancellableC5store2inyShyACGz_tF");
 CIDER_COMBINE_SYMBOL(14, "_$s7Combine14AnyCancellableC6cancelyyF");
-CIDER_COMBINE_SYMBOL(15, "_$s7Combine14AnyCancellableCMa");
-CIDER_COMBINE_SYMBOL(16, "_$s7Combine14AnyCancellableCMn");
 CIDER_COMBINE_SYMBOL(17, "_$s7Combine14AnyCancellableCSHAAMc");
 CIDER_COMBINE_SYMBOL(18, "_$s7Combine14AnyCancellableCSQAAMc");
 CIDER_COMBINE_SYMBOL(19, "_$s7Combine19CurrentValueSubjectC4sendyyxF");
-CIDER_COMBINE_SYMBOL(20, "_$s7Combine19CurrentValueSubjectCMa");
-CIDER_COMBINE_SYMBOL(21, "_$s7Combine19CurrentValueSubjectCMn");
 CIDER_COMBINE_SYMBOL(22, "_$s7Combine19CurrentValueSubjectCyACyxq_Gxcfc");
 CIDER_COMBINE_SYMBOL(23, "_$s7Combine19CurrentValueSubjectCyxq_GAA9PublisherAAMc");
 CIDER_COMBINE_SYMBOL(24, "_$s7Combine9PublisherPAAE010eraseToAnyB0AA0eB0Vy6OutputQz7FailureQzGyF");

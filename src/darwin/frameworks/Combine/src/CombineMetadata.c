@@ -180,6 +180,182 @@ CiderMetadataResponse cider_combine_anypublisher_metadata_accessor(size_t reques
     return answer;
 }
 
+
+/*
+ * AND ONE CLASS, BUILT AT RUNTIME RATHER THAN EMITTED.
+ *
+ * Account stores a Set of AnyCancellable and two CurrentValueSubjects, so a struct is not enough:
+ * the next types the application needs are CLASSES. A class metadata record on Darwin is an
+ * Objective-C class object with the Swift fields laid out after it, and emitting one statically
+ * means emitting a metaclass and an Objective-C class_ro_t beside it. Building it in the accessor
+ * costs one malloc and no object file surgery, and the shape came from a real one:
+ * AccountCore.Account, read with scratchpad/swiftclassmeta.py.
+ *
+ *     -24  zero            (the address point is 24 bytes in: classAddressPoint)
+ *     -16  destroy         the heap object destructor
+ *      -8  value witness table
+ *      +0  isa             the metaclass
+ *      +8  superclass      zero for a Swift root class
+ *     +16  objc cache, two words
+ *     +32  objc data, with the low bit set to say Swift
+ *     +40  flags, instance address point
+ *     +48  instance size, alignment mask, reserved
+ *     +56  class size, class address point
+ *     +64  nominal type descriptor
+ *     +72  ivar destroyer
+ *
+ * The witnesses are the runtime's own for a native reference, $sBoWV, so copying and destroying a
+ * reference to one of these behaves exactly as Swift expects even though the class itself is empty.
+ */
+extern const uintptr_t cider_combine_anycancellable_descriptor[];
+
+static void cider_combine_class_destroy(void *object)
+{
+    (void) object;
+}
+
+/*
+ * WHERE A GENERIC CLASS KEEPS ITS ARGUMENTS. The runtime reads them back out of the metadata to
+ * confirm that the answer matches the question, and it computes the offset from the descriptor:
+ * the immediate members start at (positive size in words - number of immediate members), and the
+ * generic arguments are the first of them. So a class declaring twelve positive words and two
+ * immediate members keeps them at words ten and eleven, and the block has to be big enough to hold
+ * them. That is what CurrentValueSubject's descriptor says next door.
+ */
+static void *cider_combine_build_class(const void *descriptor, size_t instanceSize,
+                                       const void *arg0, const void *arg1)
+{
+    static const size_t addressPoint = 24;
+    static const size_t positiveSize = 96;
+    char *block = calloc(1, addressPoint + positiveSize);
+    uintptr_t *words;
+    const void *nativeWitnesses = dlsym(RTLD_DEFAULT, "$sBoWV");
+
+    if (block == NULL) {
+        return NULL;
+    }
+    words = (uintptr_t *) (block + addressPoint);
+    words[-2] = (uintptr_t) cider_combine_class_destroy;
+    words[-1] = (uintptr_t) nativeWitnesses;
+    /* The isa has to be a class, and this class is never handed to Objective-C, so it points at
+     * itself: a metaclass of last resort that keeps every "is this a class" test true. */
+    words[0] = (uintptr_t) words;
+    words[1] = 0;
+    words[4] = 2;                       /* objc data: the low bit says this is a Swift class */
+    words[5] = 2;                       /* flags */
+    ((uint32_t *) &words[6])[0] = (uint32_t) instanceSize;
+    ((uint16_t *) &words[6])[2] = 7;    /* alignment mask, eight byte alignment */
+    ((uint32_t *) &words[7])[0] = (uint32_t) (addressPoint + positiveSize);
+    ((uint32_t *) &words[7])[1] = (uint32_t) addressPoint;
+    words[8] = (uintptr_t) descriptor;
+    if (arg0 != NULL || arg1 != NULL) {
+        words[10] = (uintptr_t) arg0;
+        words[11] = (uintptr_t) arg1;
+    }
+    return words;
+}
+
+CiderMetadataResponse cider_combine_anycancellable_metadata_accessor(size_t request)
+{
+    static void *metadata;
+    CiderMetadataResponse answer;
+
+    if (metadata == NULL) {
+        metadata = cider_combine_build_class(cider_combine_anycancellable_descriptor, 16, NULL, NULL);
+    }
+    if (cider_combine_trace()) {
+        fprintf(stderr, "CIDER_COMBINE anycancellable accessor request=%zu -> %p\n", request, metadata);
+        fflush(stderr);
+    }
+    answer.metadata = metadata;
+    answer.state = 0;
+    return answer;
+}
+
+
+/*
+ * AND A GENERIC CLASS, WITHOUT THE GENERIC CLASS MACHINERY.
+ *
+ * CurrentValueSubject is where Account actually keeps its state, twice over, and it is a generic
+ * class: on the compiler's path that means a class metadata pattern, swift_allocateGenericClassMetadata
+ * and swift_initClassMetadata, all of which exist to lay out fields and inherit a superclass vtable.
+ * This one has no fields and no superclass, so none of that is needed. What the runtime actually
+ * does when it resolves a bound generic name is CALL THE DESCRIPTOR'S ACCESS FUNCTION with the
+ * arguments, which was measured on AnyPublisher, and an access function may answer however it likes.
+ *
+ * So this builds one class metadata per specialisation and remembers it. Eight is far more than the
+ * two an application like this asks for, and running out means answering nothing rather than
+ * answering wrongly.
+ */
+extern const uintptr_t cider_combine_currentvaluesubject_descriptor[];
+
+#define CIDER_COMBINE_MAX_SPECIALISATIONS 8
+
+struct CiderSpecialisation {
+    const void *output;
+    const void *failure;
+    void *metadata;
+};
+
+static struct CiderSpecialisation cider_combine_subjects[CIDER_COMBINE_MAX_SPECIALISATIONS];
+
+CiderMetadataResponse cider_combine_currentvaluesubject_metadata_accessor(size_t request,
+                                                                          const void *output,
+                                                                          const void *failure)
+{
+    CiderMetadataResponse answer = { NULL, 0 };
+    size_t i;
+
+    /*
+     * AND IT ANSWERS NOTHING FOR NOW, DELIBERATELY.
+     *
+     * The descriptor and this accessor are right as far as they have been measured: the runtime
+     * resolves the bound name, calls this with the two argument metadata pointers, and takes the
+     * class metadata built below. What happens NEXT kills the process, twice over: once with the
+     * generic arguments left out of the metadata and once with them stored where a non resilient
+     * class keeps its immediate members (positive size minus immediate member count, so words ten
+     * and eleven of a twelve word class). Something the runtime reads back from a generic class is
+     * still wrong, and handing it a metadata it then dies on is worse than handing it nothing:
+     * nothing is what it had before, and the probe can still finish and report.
+     *
+     * TO FINISH THIS: find what the runtime reads after the access function returns for a BOUND
+     * GENERIC CLASS. The measurement is one line of trace inside swift_getTypeByMangledNameInContext
+     * away in principle, but that lives in a prebuilt libswiftCore, so the next best instrument is
+     * to build the same shape for a class the compiler DID emit (AccountCore has generic classes)
+     * and compare the two metadata records word by word.
+     */
+    if (getenv("CIDER_COMBINE_GENERIC_CLASS") == NULL) {
+        if (cider_combine_trace()) {
+            fprintf(stderr, "CIDER_COMBINE currentvaluesubject accessor: answering nothing, see the comment\n");
+            fflush(stderr);
+        }
+        return answer;
+    }
+
+    for (i = 0; i < CIDER_COMBINE_MAX_SPECIALISATIONS; ++i) {
+        struct CiderSpecialisation *slot = &cider_combine_subjects[i];
+
+        if (slot->metadata != NULL && slot->output == output && slot->failure == failure) {
+            answer.metadata = slot->metadata;
+            break;
+        }
+        if (slot->metadata == NULL) {
+            slot->output = output;
+            slot->failure = failure;
+            slot->metadata = cider_combine_build_class(cider_combine_currentvaluesubject_descriptor, 16,
+                                                      output, failure);
+            answer.metadata = slot->metadata;
+            break;
+        }
+    }
+    if (cider_combine_trace()) {
+        fprintf(stderr, "CIDER_COMBINE currentvaluesubject accessor request=%zu out=%p fail=%p -> %p\n",
+                request, output, failure, answer.metadata);
+        fflush(stderr);
+    }
+    return answer;
+}
+
 /*
  * THE VALUE WITNESSES. Eight functions, then size, stride, flags and the extra inhabitant count, in
  * that order: the layout was read out of a real table in one of the application's own frameworks
@@ -377,4 +553,72 @@ __asm__(
 "	.set _$s7Combine12AnyPublisherVMa, _cider_combine_anypublisher_metadata_accessor\n"
 "	.globl _cider_combine_anypublisher_descriptor\n"
 "	.set _cider_combine_anypublisher_descriptor, _$s7Combine12AnyPublisherVMn\n"
+"	.section __TEXT,__const\n"
+"	.p2align 2\n"
+"	.private_extern _cider_combine_name_anycancellable\n"
+"_cider_combine_name_anycancellable:\n"
+"	.asciz \"AnyCancellable\"\n"
+"	.section __TEXT,__constg_swiftt\n"
+"	.p2align 2\n"
+"	.globl _$s7Combine14AnyCancellableCMn\n"
+"_$s7Combine14AnyCancellableCMn:\n"
+"	.long 0x50\n"
+"	.long _cider_combine_module_descriptor - (_$s7Combine14AnyCancellableCMn + 4)\n"
+"	.long _cider_combine_name_anycancellable - (_$s7Combine14AnyCancellableCMn + 8)\n"
+"	.long _cider_combine_anycancellable_metadata_accessor - (_$s7Combine14AnyCancellableCMn + 12)\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long 3\n"
+"	.long 10\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.section __TEXT,__swift5_types\n"
+"	.p2align 2\n"
+"	.private_extern _cider_combine_anycancellable_typerecord\n"
+"_cider_combine_anycancellable_typerecord:\n"
+"	.long _$s7Combine14AnyCancellableCMn - _cider_combine_anycancellable_typerecord\n"
+"	.globl _$s7Combine14AnyCancellableCMa\n"
+"	.set _$s7Combine14AnyCancellableCMa, _cider_combine_anycancellable_metadata_accessor\n"
+"	.globl _cider_combine_anycancellable_descriptor\n"
+"	.set _cider_combine_anycancellable_descriptor, _$s7Combine14AnyCancellableCMn\n"
+"	.section __TEXT,__const\n"
+"	.p2align 2\n"
+"	.private_extern _cider_combine_name_currentvaluesubject\n"
+"_cider_combine_name_currentvaluesubject:\n"
+"	.asciz \"CurrentValueSubject\"\n"
+"	.section __DATA,__data\n"
+"	.p2align 3\n"
+"	.private_extern _cider_combine_currentvaluesubject_cache\n"
+"_cider_combine_currentvaluesubject_cache:\n"
+"	.space 128, 0\n"
+"	.section __TEXT,__constg_swiftt\n"
+"	.p2align 2\n"
+"	.globl _$s7Combine19CurrentValueSubjectCMn\n"
+"_$s7Combine19CurrentValueSubjectCMn:\n"
+"	.long 0xd0\n"
+"	.long _cider_combine_module_descriptor - (_$s7Combine19CurrentValueSubjectCMn + 4)\n"
+"	.long _cider_combine_name_currentvaluesubject - (_$s7Combine19CurrentValueSubjectCMn + 8)\n"
+"	.long _cider_combine_currentvaluesubject_metadata_accessor - (_$s7Combine19CurrentValueSubjectCMn + 12)\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long 3\n"
+"	.long 12\n"
+"	.long 2\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long _cider_combine_currentvaluesubject_cache - (_$s7Combine19CurrentValueSubjectCMn + 44)\n"
+"	.long 0\n"
+"	.short 2, 0\n"
+"	.short 2, 0\n"
+"	.byte 0x80, 0x80, 0, 0\n"
+"	.section __TEXT,__swift5_types\n"
+"	.p2align 2\n"
+"	.private_extern _cider_combine_currentvaluesubject_typerecord\n"
+"_cider_combine_currentvaluesubject_typerecord:\n"
+"	.long _$s7Combine19CurrentValueSubjectCMn - _cider_combine_currentvaluesubject_typerecord\n"
+"	.globl _$s7Combine19CurrentValueSubjectCMa\n"
+"	.set _$s7Combine19CurrentValueSubjectCMa, _cider_combine_currentvaluesubject_metadata_accessor\n"
+"	.globl _cider_combine_currentvaluesubject_descriptor\n"
+"	.set _cider_combine_currentvaluesubject_descriptor, _$s7Combine19CurrentValueSubjectCMn\n"
 );

@@ -130,6 +130,10 @@ int main(void)
                                   "AccountCore.framework/AccountCore";
         void *account = dlopen(accountcore, RTLD_LAZY | RTLD_GLOBAL);
 
+        /* The two classes Account stores, bound the way its fields mangle them. */
+        ask(fn, "CurrentValueSubject<Int,Never>", "7Combine19CurrentValueSubjectCySis5NeverOG");
+        ask(fn, "Set<AnyCancellable>", "Shy7Combine14AnyCancellableCG");
+
         printf("\nAccountCore handle:        %p  %s\n", account, account ? "" : dlerror());
         if (account != NULL) {
             ask(fn, "AccountCore.Account", "11AccountCore0A0C");

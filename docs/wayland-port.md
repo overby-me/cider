@@ -14546,3 +14546,37 @@ heap metadata rather than a value pattern: an isa, a superclass, instance size a
 a generic class the instantiation goes through `swift_allocateGenericClassMetadata` and
 `swift_initClassMetadata`. The method is the same one that worked here: copy the shape from a class
 descriptor the compiler emitted, in the same binary that needs it.
+
+## A Combine class the runtime accepts, and the generic class that it does not (2026-08-21)
+
+`Combine.AnyCancellable` now resolves too:
+
+    Combine.AnyCancellable   7Combine14AnyCancellableC   metadata=0x...c918 witness=0x...6e10
+
+and the witness is libswiftCore's own `$sBoWV`, the table for a native reference, so copying and
+destroying one of these behaves exactly as Swift expects even though the class is empty.
+
+**It is built at runtime, not emitted.** A class metadata record on Darwin is an Objective-C class
+object with the Swift fields laid out after it, and emitting one statically means emitting a
+metaclass and a class_ro_t beside it. The access function allocates and fills one instead, in the
+shape read out of `AccountCore.Account` with `scratchpad/swiftclassmeta.py`: the address point is 24
+bytes in, the destructor and the value witness table sit behind it, and the isa points at the record
+itself, which keeps every "is this a class" test true for a class Objective-C never sees.
+
+**The generic class does not work yet, and it is left answering nothing on purpose.**
+`CurrentValueSubject` is where `Account` keeps its state, twice. The descriptor and access function
+are right as far as they can be measured: the runtime resolves the bound name
+`7Combine19CurrentValueSubjectCySis5NeverOG`, calls the access function with the two argument
+metadata pointers, and takes the class metadata it returns. What it does **next** kills the process,
+both with the generic arguments left out of the metadata and with them stored where a non-resilient
+class keeps its immediate members (positive size minus immediate-member count: words ten and eleven
+of a twelve-word class). Handing the runtime a metadata it then dies on is worse than handing it
+nothing, so the accessor answers nothing unless `CIDER_COMBINE_GENERIC_CLASS` is set, and the probe
+runs to the end again.
+
+**What that leaves for iA Writer, said plainly.** Even with every metadata answered, `Account.init`
+would immediately call `CurrentValueSubject.init`, `AnyCancellable.store(in:)` and
+`eraseToAnyPublisher()`, and those are still placeholder symbols with no code behind them.
+Implementing them means writing Combine's core semantics against the Swift calling convention, which
+is a project rather than a rung. What has been proved is the method and three of its steps: a generic
+struct, a class, and the exact point where a generic class stops.
