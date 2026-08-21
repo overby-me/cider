@@ -47,8 +47,7 @@ CIDER_COMBINE_SYMBOL(9, "_$s7Combine10PublishersO9ReceiveOnVy_xq_GAA9PublisherAA
  * are REAL now, in CombineMetadata.c and CombineMetadata.s next door, because that pair is what the
  * runtime needs to build AccountCore.Account. Everything below is still a placeholder. */
 CIDER_COMBINE_SYMBOL(12, "_$s7Combine12AnyPublisherVyxq_GAA0C0AAMc");
-CIDER_COMBINE_SYMBOL(13, "_$s7Combine14AnyCancellableC5store2inyShyACGz_tF");
-CIDER_COMBINE_SYMBOL(14, "_$s7Combine14AnyCancellableC6cancelyyF");
+/* 13 and 14 are gone: store(in:) and cancel() are real, and empty, in CombineSubject.c. */
 CIDER_COMBINE_SYMBOL(17, "_$s7Combine14AnyCancellableCSHAAMc");
 CIDER_COMBINE_SYMBOL(18, "_$s7Combine14AnyCancellableCSQAAMc");
 /* 19 and 22 are gone: CurrentValueSubject's initialiser and send are real, in CombineSubject.c. */
@@ -57,7 +56,7 @@ CIDER_COMBINE_SYMBOL(24, "_$s7Combine9PublisherPAAE010eraseToAnyB0AA0eB0Vy6Outpu
 CIDER_COMBINE_SYMBOL(25, "_$s7Combine9PublisherPAAE3mapyAA10PublishersO3MapVy_xqd__Gqd__6OutputQzclF");
 CIDER_COMBINE_SYMBOL(26, "_$s7Combine9PublisherPAAE7receive2on7optionsAA10PublishersO9ReceiveOnVy_xqd__Gqd___16SchedulerOptionsQyd__SgtAA0I0Rd__lF");
 CIDER_COMBINE_SYMBOL(27, "_$s7Combine9PublisherPAASQ6OutputRpzrlE16removeDuplicatesAA10PublishersO06RemoveE0Vy_xGyF");
-CIDER_COMBINE_SYMBOL(28, "_$s7Combine9PublisherPAAs5NeverO7FailureRtzrlE4sink12receiveValueAA14AnyCancellableCy6OutputQzc_tF");
+/* 28 is gone: sink(receiveValue:) is real, in CombineSubject.c. */
 CIDER_COMBINE_SYMBOL(29, "_$sSo17OS_dispatch_queueC7Combine9Scheduler8DispatchMc");
 CIDER_COMBINE_SYMBOL(30, "_$sSo20NSNotificationCenterC10FoundationE9PublisherV7CombineAdCMc");
 CIDER_COMBINE_SYMBOL(31, "_$sSo8NSObjectC10FoundationE26KeyValueObservingPublisherVy_xq_G7Combine0F0ACMc");

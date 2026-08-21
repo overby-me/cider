@@ -352,6 +352,13 @@ CiderMetadataResponse cider_combine_anycancellable_metadata_accessor(size_t requ
 }
 
 
+/* CombineSubject.c allocates one of these to hand back from sink, and swift_allocObject wants the
+ * metadata rather than the accessor's two word answer. */
+void *cider_combine_anycancellable_metadata(void)
+{
+    return (void *) cider_combine_anycancellable_metadata_accessor(0).metadata;
+}
+
 /*
  * AND A GENERIC CLASS, WHICH HAS TO GO THROUGH THE RUNTIME EVEN THOUGH THE METADATA IS OURS.
  *

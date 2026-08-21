@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <dlfcn.h>
 
 /*
  * A value witness table: eight functions, then the layout. The order is the runtime's own and the
@@ -135,6 +136,111 @@ __attribute__((swiftcall)) void cider_combine_subject_send(void *value,
     ((CiderCopyWitness) witnesses->assignWithCopy)(payload, value, output);
     if (cider_combine_subject_trace()) {
         fprintf(stderr, "CIDER_COMBINE subject send self=%p output=%p\n", self, output);
+        fflush(stderr);
+    }
+}
+
+/*
+ * AND THE ONE THE APPLICATION ASKS FOR NEXT: Publisher.sink(receiveValue:).
+ *
+ * It is a protocol extension method, so it takes more than it looks: the escaping closure as two
+ * words (a function and its context), then self, then Self's metadata and the Publisher witness
+ * table, because the body of a generic extension needs both. self is the swift_context parameter and
+ * the rest arrive in order.
+ *
+ * WHAT IT HONESTLY DOES. There is no subscription machinery here, so this delivers the CURRENT value
+ * once and returns a cancellable that cancels nothing. For a CurrentValueSubject that is not a
+ * fiction: a real one sends its current value to every new subscriber immediately. What is missing is
+ * everything AFTER that, so a later send(_:) reaches nobody.
+ *
+ * It only delivers when it recognises the publisher, and it recognises it by the descriptor in the
+ * metadata rather than by trusting the caller: Self can be any publisher, and reading a payload out
+ * of a type whose layout we did not choose would be a fault, not a value.
+ */
+extern const uintptr_t cider_combine_currentvaluesubject_descriptor[];
+extern void *cider_combine_anycancellable_metadata(void);
+
+typedef void *(*CiderAllocObject)(const void *metadata, size_t size, size_t alignMask);
+
+/* A closure is a function and a context, and the context arrives the way self does, in r13. */
+typedef __attribute__((swiftcall)) void (*CiderReceiveValue)(
+        const void *value, void *context __attribute__((swift_context)));
+
+__attribute__((swiftcall)) void *cider_combine_publisher_sink(
+        void *receiveValue, void *receiveValueContext, const void *selfMetadata,
+        const void *publisherWitnesses, void *self __attribute__((swift_context)))
+        __asm__("_$s7Combine9PublisherPAAs5NeverO7FailureRtzrlE4sink12receiveValueAA14AnyCancellableCy6OutputQzc_tF");
+
+__attribute__((swiftcall)) void *cider_combine_publisher_sink(
+        void *receiveValue, void *receiveValueContext, const void *selfMetadata,
+        const void *publisherWitnesses, void *self __attribute__((swift_context)))
+{
+    static CiderAllocObject allocObject;
+    const uintptr_t *metadata = (const uintptr_t *) selfMetadata;
+    void *cancellable = NULL;
+
+    if (allocObject == NULL) {
+        allocObject = (CiderAllocObject) dlsym(RTLD_DEFAULT, "swift_allocObject");
+    }
+    if (cider_combine_subject_trace()) {
+        fprintf(stderr, "CIDER_COMBINE sink self=%p metadata=%p witnesses=%p fn=%p ctx=%p\n",
+                self, selfMetadata, publisherWitnesses, receiveValue, receiveValueContext);
+        fflush(stderr);
+    }
+    if (metadata != NULL && metadata[8] == (uintptr_t) cider_combine_currentvaluesubject_descriptor) {
+        void *subject = *(void *const *) self;
+        const void *output = (const void *) metadata[10];
+
+        if (subject != NULL && output != NULL && receiveValue != NULL) {
+            ((CiderReceiveValue) receiveValue)((char *) subject + CIDER_COMBINE_SUBJECT_PAYLOAD,
+                                               receiveValueContext);
+        }
+    }
+    if (allocObject != NULL) {
+        cancellable = allocObject(cider_combine_anycancellable_metadata(), 16, 7);
+    }
+    if (cider_combine_subject_trace()) {
+        fprintf(stderr, "CIDER_COMBINE sink -> cancellable=%p\n", cancellable);
+        fflush(stderr);
+    }
+    return cancellable;
+}
+
+/*
+ * AND THE TWO THINGS AN APPLICATION DOES WITH A CANCELLABLE, both honestly empty.
+ *
+ * store(in:) puts the cancellable in a Set to keep it alive, and cancel() tears the subscription
+ * down. There are no subscriptions here to tear down, and keeping it alive is what this framework
+ * does by accident anyway: the class destructor is a no-op, so nothing is ever freed. Writing into
+ * the Set would need Set itself and a real Hashable conformance for the class, which is another ABI
+ * structure and buys nothing while cancel does nothing.
+ *
+ * The cost is a leak per subscription, which is the right price for an application that has not
+ * opened yet.
+ */
+__attribute__((swiftcall)) void cider_combine_cancellable_store(
+        void *set, void *self __attribute__((swift_context)))
+        __asm__("_$s7Combine14AnyCancellableC5store2inyShyACGz_tF");
+
+__attribute__((swiftcall)) void cider_combine_cancellable_store(
+        void *set, void *self __attribute__((swift_context)))
+{
+    if (cider_combine_subject_trace()) {
+        fprintf(stderr, "CIDER_COMBINE cancellable store self=%p set=%p (kept by leaking)\n",
+                self, set);
+        fflush(stderr);
+    }
+}
+
+__attribute__((swiftcall)) void cider_combine_cancellable_cancel(
+        void *self __attribute__((swift_context)))
+        __asm__("_$s7Combine14AnyCancellableC6cancelyyF");
+
+__attribute__((swiftcall)) void cider_combine_cancellable_cancel(
+        void *self __attribute__((swift_context)))
+{
+    if (cider_combine_subject_trace()) {
+        fprintf(stderr, "CIDER_COMBINE cancellable cancel self=%p (nothing to cancel)\n", self);
         fflush(stderr);
     }
 }
