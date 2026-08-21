@@ -90,6 +90,14 @@ def main [
     } else {
         ($env | get -o CIDERPREFIX | default ($env.HOME | path join ".cider"))
     }
+    # AND EVERY cider CALL BELOW HAS TO USE THAT PREFIX. --prefix only ever set the host side paths
+    # this script stages into; the guest calls inherited whatever CIDERPREFIX the caller happened to
+    # export, so a run with --prefix and no CIDERPREFIX staged the tests into one prefix and ran them
+    # in ~/.cider, where the suites do not exist. That reads as nine failures whose message is
+    # "cd: /private/var/tmp/cider-nix-tests: No such file or directory", and the boot of the OTHER
+    # prefix complaining about /Users/root is the giveaway.
+    $env.CIDERPREFIX = $cider_prefix
+
     let selected = ($suite | split row "," | each {|x| $x | str trim } | where {|x| $x != "" })
 
     def log [c: record, msg: string] { print $"($c.green)[run-tests]($c.reset) ($msg)" }
@@ -134,6 +142,14 @@ def main [
     }
 
     # -- Copy test sources into the prefix ----------------------------------
+    #
+    # THE CONTAINER HAS TO BE DOWN FIRST, and the preflight above has just booted one. A prefix is
+    # an overlayfs upper layer; writing it under a live mount is undefined and the guest keeps the
+    # view it had, so everything staged here is invisible inside and every suite fails with
+    # "cd: /private/var/tmp/cider-nix-tests: No such file or directory" while the files sit in that
+    # exact path on the host. Measured: nine of nine suites, twice in a row.
+    ^bash $"($repo_dir)/scripts/kill-cider-container.sh" $cider_prefix | ignore
+
     log $c $"($c.bold)Copying test sources into Darling prefix...($c.reset)"
     let prefix_test_dir = $"($cider_prefix)/private/var/tmp/cider-nix-tests"
     mkdir $prefix_test_dir

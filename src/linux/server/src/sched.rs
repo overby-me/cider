@@ -706,58 +706,163 @@ fn next_region_after(pid: libc::pid_t, addr: usize) -> usize {
     0
 }
 
+/// A LIVE THREAD OF `pid`, because the thread group LEADER can be a zombie while the process runs.
+///
+/// `dispatch_main()` ends the main thread with `pthread_exit`, which is what every daemon here does
+/// last: trustd, opendirectoryd, secd. On Linux that leaves the group leader in state Z until the
+/// whole group exits, and `process_vm_readv`/`writev` against a zombie leader answer ESRCH even
+/// though the address space is alive and other threads are running in it. Passing any live thread's
+/// tid instead targets the same mm and works.
+///
+/// MEASURED: trustd evaluated a trust chain, sent the reply, and the send failed with
+/// MACH_SEND_INVALID_DATA because ipc_kmsg_get could not copy the message out of it. procfs at that
+/// instant: state=[Z (zombie)] comm=mldr tgid=itself, and the guest was still logging.
+fn live_thread_of(pid: libc::pid_t) -> Option<libc::pid_t> {
+    let entries = std::fs::read_dir(format!("/proc/{pid}/task")).ok()?;
+
+    for entry in entries.flatten() {
+        let tid: libc::pid_t = match entry.file_name().to_str().and_then(|s| s.parse().ok()) {
+            Some(t) => t,
+            None => continue,
+        };
+        if tid == pid {
+            continue; // the leader is the one we already know cannot serve
+        }
+        // stat field 3 is the state, and field 2 is a parenthesised name that may contain
+        // spaces and parentheses, so start after the LAST ')'.
+        let stat = match std::fs::read_to_string(format!("/proc/{pid}/task/{tid}/stat")) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        let after = match stat.rfind(')') {
+            Some(i) => &stat[i + 1..],
+            None => continue,
+        };
+        match after.split_whitespace().next() {
+            Some("Z") | Some("X") | None => continue,
+            Some(_) => return Some(tid),
+        }
+    }
+    None
+}
+
+/// tgid -> a thread of it known to serve memory calls. Only ever populated for processes whose
+/// leader has already refused one, and consulted only when that has happened at least once, so the
+/// ordinary path stays a single syscall with no lock.
+fn live_thread_cache() -> &'static std::sync::Mutex<std::collections::HashMap<libc::pid_t, libc::pid_t>> {
+    static CACHE: std::sync::OnceLock<
+        std::sync::Mutex<std::collections::HashMap<libc::pid_t, libc::pid_t>>,
+    > = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+}
+
+static ANY_ZOMBIE_LEADER: AtomicU64 = AtomicU64::new(0);
+
+fn cached_live_thread(pid: libc::pid_t) -> Option<libc::pid_t> {
+    if ANY_ZOMBIE_LEADER.load(Ordering::Relaxed) == 0 {
+        return None;
+    }
+    live_thread_cache().lock().ok()?.get(&pid).copied()
+}
+
+fn remember_live_thread(pid: libc::pid_t, tid: libc::pid_t) {
+    if let Ok(mut map) = live_thread_cache().lock() {
+        map.insert(pid, tid);
+        ANY_ZOMBIE_LEADER.store(1, Ordering::Relaxed);
+    }
+}
+
+fn forget_live_thread(pid: libc::pid_t) {
+    if let Ok(mut map) = live_thread_cache().lock() {
+        map.remove(&pid);
+    }
+}
+
+/// Report a memory call that failed even through a live thread, with what procfs says at that
+/// instant. Failures only: the happy path runs on every mach message in the container.
+fn report_memory_failure(what: &str, pid: libc::pid_t, target: libc::pid_t, addr: usize, len: usize, n: isize) {
+    let e = std::io::Error::last_os_error();
+    let state = std::fs::read_to_string(format!("/proc/{pid}/status"))
+        .ok()
+        .and_then(|s| {
+            s.lines()
+                .find(|l| l.starts_with("State:"))
+                .map(|l| l.trim_start_matches("State:").trim().to_string())
+        })
+        .unwrap_or_else(|| "no /proc entry here".to_string());
+
+    eprintln!("CIDER_VM{what} FAILED pid={pid} via={target} addr=0x{addr:x} len={len} rc={n} \
+               errno={e} state=[{state}]");
+}
+
 /// Read `local.len()` bytes from process `pid`'s address space at `remote_address`,
 /// via process_vm_readv -- the exact primitive DarlingServer::Process uses
 /// (process.cpp). Pure host-side, no guest cooperation. Returns false unless the whole
-/// range transfers.
+/// range transfers, and falls back to a live thread when the leader is a zombie.
 pub unsafe fn read_process_memory(pid: libc::pid_t, remote_address: usize, local: &mut [u8]) -> bool {
     if local.is_empty() {
         return true;
     }
-    let liov = libc::iovec { iov_base: local.as_mut_ptr() as *mut c_void, iov_len: local.len() };
-    let riov = libc::iovec { iov_base: remote_address as *mut c_void, iov_len: local.len() };
-    let n = libc::process_vm_readv(pid, &liov, 1, &riov, 1, 0);
-    let ok = n >= 0 && n as usize == local.len();
+    let len = local.len();
+    let attempt = |target: libc::pid_t, buf: &mut [u8]| -> isize {
+        let liov = libc::iovec { iov_base: buf.as_mut_ptr() as *mut c_void, iov_len: len };
+        let riov = libc::iovec { iov_base: remote_address as *mut c_void, iov_len: len };
+        libc::process_vm_readv(target, &liov, 1, &riov, 1, 0)
+    };
 
-    /*
-     * THE MIRROR OF THE WRITE TRACE ABOVE, and it answers a hang rather than a deafness: a failed
-     * read here becomes KERN_FAILURE in copyinmap, MACH_SEND_INVALID_DATA in ipc_kmsg_get, and
-     * libxpc drops the send result on the floor, so a daemon logs that it replied and its client
-     * waits forever. Failures only.
-     */
-    if !ok {
-        let e = std::io::Error::last_os_error();
-        eprintln!("CIDER_VMREAD FAILED pid={pid} addr=0x{remote_address:x} len={} rc={n} errno={e}",
-                  local.len());
+    let first = cached_live_thread(pid).unwrap_or(pid);
+    let n = attempt(first, local);
+    if n >= 0 && n as usize == len {
+        return true;
     }
-    ok
+    if std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH) {
+        forget_live_thread(pid);
+        if let Some(tid) = live_thread_of(pid) {
+            let n = attempt(tid, local);
+            if n >= 0 && n as usize == len {
+                remember_live_thread(pid, tid);
+                return true;
+            }
+            report_memory_failure("READ", pid, tid, remote_address, len, n);
+            return false;
+        }
+    }
+    report_memory_failure("READ", pid, first, remote_address, len, n);
+    false
 }
 
 /// Write `local` into process `pid`'s address space at `remote_address`, via
-/// process_vm_writev. Mirror of read_process_memory.
+/// process_vm_writev. Mirror of read_process_memory, zombie leader and all.
 pub unsafe fn write_process_memory(pid: libc::pid_t, remote_address: usize, local: &[u8]) -> bool {
     if local.is_empty() {
         return true;
     }
-    let liov = libc::iovec { iov_base: local.as_ptr() as *mut c_void, iov_len: local.len() };
-    let riov = libc::iovec { iov_base: remote_address as *mut c_void, iov_len: local.len() };
-    let n = libc::process_vm_writev(pid, &liov, 1, &riov, 1, 0);
-    let ok = n >= 0 && n as usize == local.len();
+    let len = local.len();
+    let attempt = |target: libc::pid_t| -> isize {
+        let liov = libc::iovec { iov_base: local.as_ptr() as *mut c_void, iov_len: len };
+        let riov = libc::iovec { iov_base: remote_address as *mut c_void, iov_len: len };
+        libc::process_vm_writev(target, &liov, 1, &riov, 1, 0)
+    };
 
-    /*
-     * A FAILED WRITE INTO A GUEST IS SILENT ALL THE WAY UP, and one of them is why a listener goes
-     * deaf after its first message. copyoutmap turns this bool into KERN_FAILURE, ipc_kmsg_put turns
-     * that into MACH_RCV_INVALID_DATA, and libdispatch reports THAT only through
-     * _dispatch_bug_mach_client, which goes to a log with no sink here. Three layers, no message.
-     *
-     * Failures only: the happy path runs on every mach receive in the container.
-     */
-    if !ok {
-        let e = std::io::Error::last_os_error();
-        eprintln!("CIDER_VMWRITE FAILED pid={pid} addr=0x{remote_address:x} len={} rc={n} errno={e}",
-                  local.len());
+    let first = cached_live_thread(pid).unwrap_or(pid);
+    let n = attempt(first);
+    if n >= 0 && n as usize == len {
+        return true;
     }
-    ok
+    if std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH) {
+        forget_live_thread(pid);
+        if let Some(tid) = live_thread_of(pid) {
+            let n = attempt(tid);
+            if n >= 0 && n as usize == len {
+                remember_live_thread(pid, tid);
+                return true;
+            }
+            report_memory_failure("WRITE", pid, tid, remote_address, len, n);
+            return false;
+        }
+    }
+    report_memory_failure("WRITE", pid, first, remote_address, len, n);
+    false
 }
 
 /// xnu_sys hook: read `length` bytes from the task's guest process at `remote_address`

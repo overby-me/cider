@@ -1,0 +1,61 @@
+Trace the client half of a securityd round trip.
+
+trustd logs that it evaluated a chain and sent the reply; the caller of SecTrustEvaluate never
+returns. Only one of those two can be true, and nothing in between them speaks: xpc_connection_send_
+message_with_reply_sync either answers or does not, and the retry loop around it is silent either way.
+
+With this, the answer arrived in one line and the question moved:
+
+    CIDER_SECXPC send  operation=8 connection=0x7a0d4a8acb00
+    CIDER_SECXPC reply operation=8 reply=0x7a0c312125e0 type=dictionary tries_left=4
+    CIDER_SECXPC send  operation=8 connection=0x7a0d4a8acb00      <- never answered
+
+Operation 8 is sec_trust_evaluate. The FIRST evaluation succeeds and returns a real dictionary; the
+code signing path asks a second time (StaticCode.cpp evaluates at most twice), and by then trustd has
+crashed in an autorelease pool pop, so nothing answers and the application sits on its splash.
+
+Gated on a NON-EMPTY CIDER_TRACE_XPC.
+--- a/OSX/sec/ipc/client.c
++++ b/OSX/sec/ipc/client.c
+@@ -35,6 +35,7 @@
+ #endif // TARGET_OS_OSX
+ 
+ #include <stdbool.h>
++#include <stdio.h>
+ #include <sys/queue.h>
+ #include <syslog.h>
+ #include <vproc_priv.h>
+@@ -424,10 +425,33 @@
+ 
+     const int max_tries = SECURITYD_MAX_XPC_TRIES;
+ 
++    /*
++     * THE CLIENT HALF OF A ROUND TRIP NOTHING ELSE CAN SEE. trustd logs that it evaluated and
++     * replied, and the caller of SecTrustEvaluate never gets its answer, so both ends have to be
++     * traceable in one run. Gated on a NON-EMPTY CIDER_TRACE_XPC.
++     */
++    const char *cider_trace = getenv("CIDER_TRACE_XPC");
++    bool cider_on = cider_trace != NULL && cider_trace[0] != '\0';
++
++    if (cider_on) {
++        fprintf(stderr, "CIDER_SECXPC send operation=%llu connection=%p\n",
++                (unsigned long long) operation, (void *) connection);
++        fflush(stderr);
++    }
++
+     unsigned int tries_left = max_tries;
+     do {
+         if (reply) xpc_release(reply);
+         reply = xpc_connection_send_message_with_reply_sync(connection, message);
++        if (cider_on) {
++            fprintf(stderr, "CIDER_SECXPC reply operation=%llu reply=%p type=%s tries_left=%u\n",
++                    (unsigned long long) operation, (void *) reply,
++                    reply == NULL ? "null"
++                        : (xpc_get_type(reply) == XPC_TYPE_ERROR ? "error"
++                            : (xpc_get_type(reply) == XPC_TYPE_DICTIONARY ? "dictionary" : "other")),
++                    tries_left);
++            fflush(stderr);
++        }
+     } while (reply == XPC_ERROR_CONNECTION_INTERRUPTED && --tries_left > 0);
+ 
+ 	_securityd_process_message_reply(&reply, error, connection, operation);

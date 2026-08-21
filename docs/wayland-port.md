@@ -14331,3 +14331,72 @@ above used launchd, because `NOLAUNCHD` defaults to off in the driver whose name
 `NOLAUNCHD=1` there is no trustd at all, Security takes its no-trustd path, and the application
 reaches its main window in about a second. So MoneyMoney has two states, and both are real: it opens
 without launchd, and it hangs on the splash with launchd because of the lost reply above.
+
+## The zombie leader: why a daemon's mach messages could not be copied (2026-08-21)
+
+`dispatch_main()` is how every daemon here ends its main function, and its contract is that the main
+thread never returns: libdispatch hands the main queue to a worker and calls `pthread_exit` on the
+thread it was called from. On Linux that leaves the **thread group leader in state Z** until the whole
+group exits, while the process runs on in its other threads.
+
+`process_vm_readv` and `process_vm_writev` against a zombie leader answer **ESRCH**. The daemon is
+alive, its address space is intact, other threads are running in it, and the kernel still refuses,
+because the pid names a task with no mm.
+
+Everything above that is silent:
+
+    copyinmap  -> KERN_FAILURE
+    ipc_kmsg_get -> MACH_SEND_INVALID_DATA        (a send)
+    ipc_kmsg_put -> MACH_RCV_INVALID_DATA         (a receive)
+    libxpc handle_send_result -> xpc_log_debug, with no sink in this container
+
+so a daemon logs that it replied, and its client waits forever. Measured at the moment of failure,
+from the daemon's own procfs entry:
+
+    CIDER_VMREAD FAILED pid=800602 ... errno=No such process state=[Z (zombie)] comm=mldr tgid=800602
+
+`read_process_memory` and `write_process_memory` now fall back to a live thread of the same group:
+`/proc/<pid>/task` still lists them all, and any live tid targets the same address space. The tid is
+cached per process, the cache is consulted only once a leader has refused, and an atomic flag keeps
+the ordinary path a single syscall with no lock.
+
+**What that fixed, and what it did not.** The first trust evaluation now completes end to end: the
+client's own trace says `reply=... type=dictionary`, a real answer rather than an error. The
+application still sits on its splash, and the reason is now visible for the first time:
+
+    CIDER_SECXPC send  operation=8 connection=0x7a0d4a8acb00
+    CIDER_SECXPC reply operation=8 reply=0x7a0c312125e0 type=dictionary tries_left=4
+    CIDER_SECXPC send  operation=8 connection=0x7a0d4a8acb00      <- never answered
+
+`StaticCode.cpp` evaluates trust **at most twice** (`for (;;)`, breaking on the second pass), and
+between the two, trustd dies:
+
+    CIDER_TRUSTD trust evaluate: reply sent
+    CIDER_TRUSTD handler returning
+    cider CRASHTRACE signal=11 addr=0x20 ... objc_release + 37
+
+`addr=0x20` is the read of a class field through a **NULL isa**, and `CIDER_TRACE_POOL` names the
+object as it leaves the pool: `CIDER_POOL releasing 0x74a81cb209a0 isa=0x0 (no class)`, the same
+pointer the crash reports in `rdi`. In the same drain, one `__NSCFString` appears **twice**: an object
+autoreleased twice, released twice, and the second release lands on freed memory.
+
+So the old note in libxpc that trustd "answers exactly ONE request and then goes deaf" was half right.
+It does not go deaf. It dies, and because a MachService job that exits is never learned about (#143),
+the name stays registered and the next request waits forever.
+
+## Two harness bugs, and the nine suites are green again (2026-08-21)
+
+`scripts/run-tests.nu --prefix <p>` reported nine failures, all of them
+`cd: /private/var/tmp/cider-nix-tests: No such file or directory`, with the files sitting in exactly
+that path on the host. Two independent defects, both about which container the guest half runs in:
+
+1. **`--prefix` never reached the guest.** It set the host side staging paths only; the `cider shell`
+   calls inherited whatever `CIDERPREFIX` the caller happened to export, so the suites were staged
+   into one prefix and run in `~/.cider`. The boot of that other prefix complaining that `/Users/root`
+   does not exist is the giveaway.
+2. **The staging wrote a prefix while a container was up.** The preflight probe boots one, and an
+   overlayfs upper layer written under a live mount is undefined: the guest keeps the view it had.
+   `scripts/kill-cider-container.sh` takes it down first, and it is the same two signals as the stale
+   sweep (the exe says it is a guest runtime binary, the command line says which prefix).
+
+Nine of nine, twice in a row, against the new daemon.

@@ -1,34 +1,41 @@
-A send that fails must not be silent.
+A send that fails must not be silent, and a reply must be traceable at both ends.
 
-MONEYMONEY NEVER LEAVES ITS SPLASH, and the reason is one line that nothing ever printed.
+MONEYMONEY NEVER LEFT ITS SPLASH WITH LAUNCHD RUNNING, and every layer between the two processes
+reported success. handle_send_result is where the truth was: every caller ignores its return value
+and its only report is an xpc_log_debug with no sink in this container, so a send that failed and a
+send that arrived looked identical from outside the process.
 
-trustd receives the trust evaluation, runs it, gets kSecTrustResultUnspecified and calls
-xpc_connection_send_message with the reply. Its own log then says it replied. The application waits
-for that reply forever.
-
-handle_send_result is where the truth was: every caller ignores its return value, and the only
-report of a failed send is an xpc_log_debug that has no sink in this container. A send that failed
-and a send that arrived looked exactly the same from outside the process.
-
-With this trace on, the failing run says
+What the trace then said, and it named a bug two layers down:
 
     CIDER_XPC send FAILED reason=4 err=0x10000002 id=0x10000000 dest=0xb03
 
 reason 4 is DISPATCH_MACH_MESSAGE_SEND_FAILED and 0x10000002 is MACH_SEND_INVALID_DATA, which
-ipc_kmsg_get returns when copyinmsg cannot read the message out of the sending process. The daemon
-was alive and logging at that moment.
+ipc_kmsg_get returns when copyinmsg cannot read the message out of the sending process.
 
-DEFERRED IS NOT DELIVERED and is called out separately: DISPATCH_MACH_NEEDS_DEFERRED_SEND leaves the
+THE SENDER'S OWN IDENTITY IS IN THE LINE (pid and pthread) because that is what tied it to the
+daemon-side failure: the pid that could not be read was the sender's, and procfs called it a zombie.
+
+DEFERRED IS NOT DELIVERED and is named separately: DISPATCH_MACH_NEEDS_DEFERRED_SEND leaves the
 message queued on the channel, and a daemon that exits right after replying takes the queue with it.
 
-Gated on a NON-EMPTY CIDER_TRACE_XPC, unlike the older traces in this file: drivers here export
-every switch empty, so getenv != NULL is true in every run.
+WHICH PATH SENT IT, because a synchronous send reports only after its wait ends and an asynchronous
+one reports immediately, so the same line means opposite things: sync-returned says the caller
+already has its answer, async says it is still waiting. That distinction is what showed the trust
+round trip completing and a SECOND request going unanswered.
+
+AND WHERE A REPLY LANDS: dmxh_async_reply_handler, which the channel handler's trace never covers, so
+its silence used to prove nothing.
+
+All of it gated on a NON-EMPTY CIDER_TRACE_XPC, unlike the older traces in this file: drivers here
+export every switch empty, and getenv != NULL is true for those.
 --- a/src/connection.m
 +++ b/src/connection.m
-@@ -101,6 +101,30 @@
+@@ -100,7 +100,33 @@
+ };
  
  // returns `true` if there was no error, `false` otherwise
- static bool handle_send_result(dispatch_mach_msg_t message, dispatch_mach_reason_t sendResult, mach_error_t sendError, bool expecting_reply) {
+-static bool handle_send_result(dispatch_mach_msg_t message, dispatch_mach_reason_t sendResult, mach_error_t sendError, bool expecting_reply) {
++static bool handle_send_result_where(dispatch_mach_msg_t message, dispatch_mach_reason_t sendResult, mach_error_t sendError, bool expecting_reply, const char* how) {
 +	/*
 +	 * A SEND THAT FAILS IS SILENT: every caller of this ignores the return, and the only report is
 +	 * an xpc_log_debug that goes nowhere. That is indistinguishable from a delivered message, which
@@ -43,11 +50,13 @@ every switch empty, so getenv != NULL is true in every run.
 +
 +			/* DEFERRED is not delivered: it is queued on the channel, and a daemon that exits
 +			 * right after replying takes the queue with it. */
-+			fprintf(stderr, "CIDER_XPC send %s reason=%lu err=0x%x id=0x%x dest=0x%x%s\n",
++			fprintf(stderr, "CIDER_XPC send %s pid=%d tid=%p reason=%lu err=0x%x id=0x%x dest=0x%x %s%s\n",
 +			        sent ? "SENT" : (sendResult == DISPATCH_MACH_NEEDS_DEFERRED_SEND ? "DEFERRED" : "FAILED"),
++			        (int) getpid(), (void *) pthread_self(),
 +			        (unsigned long) sendResult, (unsigned) sendError,
 +			        header ? (unsigned) header->msgh_id : 0u,
 +			        header ? (unsigned) header->msgh_remote_port : 0u,
++			        how,
 +			        expecting_reply ? " (expecting reply)" : "");
 +			fflush(stderr);
 +		}
@@ -56,3 +65,63 @@ every switch empty, so getenv != NULL is true in every run.
  	switch (sendResult) {
  		case DISPATCH_MACH_MESSAGE_SENT: {
  			xpc_log_debug(connection, "message%s successfully sent", expecting_reply ? " expecting reply" : "");
+@@ -380,7 +406,7 @@
+ 		case DISPATCH_MACH_MESSAGE_SEND_FAILED: /* fallthrough */
+ 		case DISPATCH_MACH_MESSAGE_NOT_SENT: {
+ 			mach_msg_header_t* header = dispatch_mach_msg_get_msg(message, NULL);
+-			handle_send_result(message, reason, error, MACH_MSGH_BITS_LOCAL(header->msgh_bits) & MACH_MSG_TYPE_MAKE_SEND_ONCE);
++			handle_send_result_where(message, reason, error, MACH_MSGH_BITS_LOCAL(header->msgh_bits) & MACH_MSG_TYPE_MAKE_SEND_ONCE, "deferred");
+ 			return true;
+ 		} break;
+ 
+@@ -408,6 +434,23 @@
+ 
+ 	xpc_log_debug(connection, "connection %p: async reply handler got event %lu (%s)\n", self, reason, reason_to_string(reason));
+ 
++	/*
++	 * WHERE A REPLY LANDS. The channel handler above traces only the channel's own events, and a
++	 * reply to a with-reply send does not go through it, so its silence says nothing about whether
++	 * the answer arrived. This is the place that would run if it did.
++	 */
++	{
++		const char* trace = getenv("CIDER_TRACE_XPC");
++
++		if (trace != NULL && trace[0] != '\0') {
++			fprintf(stderr, "CIDER_XPC reply pid=%d reason=%lu (%s) service=%s size=%u\n",
++			        (int) getpid(), (unsigned long) reason, reason_to_string(reason),
++			        this->service_name ? this->service_name : "(anonymous)",
++			        header ? (unsigned) header->msgh_size : 0u);
++			fflush(stderr);
++		}
++	}
++
+ 	switch (reason) {
+ 		case DISPATCH_MACH_MESSAGE_RECEIVED: {
+ 			token = get_audit_token(header);
+@@ -1081,7 +1124,7 @@
+ 
+ 		dispatch_mach_send_with_result(this->mach_ctx, message, 0, 0, &sendResult, &sendError);
+ 
+-		handle_send_result(message, sendResult, sendError, false);
++		handle_send_result_where(message, sendResult, sendError, false, "oneway");
+ 	}
+ }
+ 
+@@ -1129,7 +1172,7 @@
+ 
+ 		dispatch_mach_send_with_result_and_async_reply_4libxpc(this->mach_ctx, message, 0, 0, &sendResult, &sendError);
+ 
+-		handle_send_result(message, sendResult, sendError, true);
++		handle_send_result_where(message, sendResult, sendError, true, "async");
+ 		// no need to call the user handler or destroy the context on error
+ 		// libdispatch will always call async reply handler, with either success or failure
+ 	}
+@@ -1175,7 +1218,7 @@
+ 
+ 		reply = dispatch_mach_send_with_result_and_wait_for_reply(this->mach_ctx, message, 0, 0, &sendResult, &sendError);
+ 
+-		handle_send_result(message, sendResult, sendError, true);
++		handle_send_result_where(message, sendResult, sendError, true, "sync-returned");
+ 	}
+ 
+ 	if (!reply) {
