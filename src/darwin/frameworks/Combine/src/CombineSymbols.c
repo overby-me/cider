@@ -51,8 +51,7 @@ CIDER_COMBINE_SYMBOL(13, "_$s7Combine14AnyCancellableC5store2inyShyACGz_tF");
 CIDER_COMBINE_SYMBOL(14, "_$s7Combine14AnyCancellableC6cancelyyF");
 CIDER_COMBINE_SYMBOL(17, "_$s7Combine14AnyCancellableCSHAAMc");
 CIDER_COMBINE_SYMBOL(18, "_$s7Combine14AnyCancellableCSQAAMc");
-CIDER_COMBINE_SYMBOL(19, "_$s7Combine19CurrentValueSubjectC4sendyyxF");
-CIDER_COMBINE_SYMBOL(22, "_$s7Combine19CurrentValueSubjectCyACyxq_Gxcfc");
+/* 19 and 22 are gone: CurrentValueSubject's initialiser and send are real, in CombineSubject.c. */
 CIDER_COMBINE_SYMBOL(23, "_$s7Combine19CurrentValueSubjectCyxq_GAA9PublisherAAMc");
 CIDER_COMBINE_SYMBOL(24, "_$s7Combine9PublisherPAAE010eraseToAnyB0AA0eB0Vy6OutputQz7FailureQzGyF");
 CIDER_COMBINE_SYMBOL(25, "_$s7Combine9PublisherPAAE3mapyAA10PublishersO3MapVy_xqd__Gqd__6OutputQzclF");

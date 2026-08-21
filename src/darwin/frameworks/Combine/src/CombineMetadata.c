@@ -377,10 +377,15 @@ CiderMetadataResponse cider_combine_anycancellable_metadata_accessor(size_t requ
  */
 extern const uintptr_t cider_combine_currentvaluesubject_descriptor[];
 
+/* CombineSubject.c owns the instance layout, so it owns the size the class has to declare. */
+extern size_t cider_combine_subject_instance_size(const void *output);
+
 void *cider_combine_class_instantiate(const void *descriptor, const void *const *arguments,
                                       const void *pattern)
 {
-    void *metadata = cider_combine_build_class(descriptor, 16, arguments[0], arguments[1]);
+    void *metadata = cider_combine_build_class(descriptor,
+                                               cider_combine_subject_instance_size(arguments[0]),
+                                               arguments[0], arguments[1]);
 
     if (cider_combine_trace()) {
         fprintf(stderr, "CIDER_COMBINE class instantiate desc=%p pattern=%p args=%p,%p -> %p\n",

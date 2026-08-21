@@ -16998,6 +16998,7 @@ cc_objects(
     srcs = [
         "Combine/src/Combine.m",
         "Combine/src/CombineMetadata.c",
+        "Combine/src/CombineSubject.c",
         "Combine/src/CombineSymbols.c",
     ],
     compiler_flags = [
