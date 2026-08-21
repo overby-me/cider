@@ -50,7 +50,16 @@ def main [--dry-run] {
     let err = ($tmp | path join "fw.err")
     print $"== building ($targets | length) framework dylibs for arm64 (--keep-going); log ($err) =="
     # -i: --keep-going still exits non-zero when any target fails, and a partial set is the point.
-    do -i { ^buck2 build ...$targets --keep-going --show-output out> $out err> $err }
+    # CIDER_FW_JOBS caps buck2 execution threads (-j): the big ObjC frameworks (Foundation, AppKit,
+    # ...) compiled all at once exhaust RAM on a small host and get OOM-killed. Unset = buck2's
+    # default (# cores).
+    let jobs = ($env.CIDER_FW_JOBS? | default "")
+    if ($jobs | is-not-empty) {
+        print $"   capping buck2 to -j ($jobs)"
+        do -i { ^buck2 build ...$targets -j $jobs --keep-going --show-output out> $out err> $err }
+    } else {
+        do -i { ^buck2 build ...$targets --keep-going --show-output out> $out err> $err }
+    }
 
     # --show-output prints `root//<target> <relative-output-path>`, one per built target.
     let built = (open $out | lines | where {|l| $l | str starts-with 'root//' }
