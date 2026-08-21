@@ -126,6 +126,14 @@ def main [
     # in the guest builds them from source into the writable upper. Plain --delete (no
     # --ignore-liveness, which an unprivileged user is not allowed to use); the target outputs
     # have no gc-roots, and all of them are deleted together so their cross-references resolve.
+    # Any guest process left spinning by a PRIOR run's teardown (the #15 guest-side EPOLLHUP
+    # busy-loop) keeps the target's store path mapped and so holds a gc-root on it, which makes the
+    # --delete below refuse (an unprivileged user cannot --ignore-liveness). Force-kill those
+    # orphans first and give the kernel a moment to reap them and drop the /proc references, so the
+    # delete succeeds and the guest genuinely rebuilds from source. This does NOT fix #15 (that is
+    # guest-side kqueue work); it stops a stale orphan from blocking the store GC between runs.
+    kill_all
+    sleep 2sec
     do -i { ^nix-store --delete ...$touts }
 
     # 4. warm-up boot -> skeleton; then build+run in one bypass session
