@@ -1,0 +1,75 @@
+The caller owns an xpc pipe reply, so it has to leave retained.
+
+THIS IS WHY MONEYMONEY COULD NOT START WITH LAUNCHD RUNNING, and the whole chain is one release.
+
++[deserializer process:] returns an AUTORELEASED dictionary. The three pipe entry points that hand a
+dictionary out through an out-parameter (xpc_pipe_routine, xpc_pipe_receive, xpc_pipe_try_receive)
+passed that autoreleased reference straight to the caller, and every caller of those releases what it
+is handed: libinfo does exactly that around every membership lookup (ds_module.c releases the reply,
+membership.c releases the reply). So the object was released twice, once by the caller and once when
+the pool drained.
+
+WHAT THAT DID, measured end to end:
+
+    CIDER_TRUSTD trust evaluate: reply sent
+    CIDER_TRUSTD handler returning
+    cider CRASHTRACE signal=11 code=1 addr=0x20 ... objc_release + 37
+
+trustd answered one trust evaluation and then died draining the message handler's pool, on an object
+that was already gone. CIDER_TRACE_POOL=sites named it: the pointer the crash reports in rdi was
+autoreleased "from -[OS_xpc_pipe sendMessage:withSynchronousReply:flags:]", and the class table in
+libxpc says its isa is OS_xpc_dictionary. The application's SECOND trust evaluation (StaticCode.cpp
+evaluates at most twice) then had nothing to answer it, and MoneyMoney sat on Starting MoneyMoney
+forever.
+
+AFTER: zero crashes in five runs, trustd serves six evaluations instead of one, the static validation
+runs to completion (staticValidateCore back, resource scan finished, collected status=0), and the
+application opens its main window with launchd running for the first time. Nine of nine test suites
+still green.
+--- a/src/pipe.m
++++ b/src/pipe.m
+@@ -244,7 +244,23 @@
+ 				goto out;
+ 			}
+ 
+-			*incomingMessage = dict;
++			/*
++			 * THE CALLER OWNS THE REPLY, so it has to leave here retained.
++			 *
++			 * +[deserializer process:] returns an AUTORELEASED dictionary, and every caller of
++			 * xpc_pipe_routine / xpc_pipe_receive / xpc_pipe_try_receive releases what it is handed
++			 * (libinfo does exactly that around every membership lookup). Handing out the
++			 * autoreleased reference means the object is released twice: once by the caller and
++			 * once when the pool drains.
++			 *
++			 * That is what killed trustd. It answered one trust evaluation, and the drain of the
++			 * message handler's pool then walked into an object that was already gone: CRASHTRACE
++			 * signal=11 in objc_release, and CIDER_TRACE_POOL=sites named the pointer and its
++			 * origin, "from -[OS_xpc_pipe sendMessage:withSynchronousReply:flags:]", an
++			 * OS_xpc_dictionary. The client's SECOND evaluation then had nothing to answer it, and
++			 * MoneyMoney sat on its splash.
++			 */
++			*incomingMessage = [dict retain];
+ 
+ 			status = 0;
+ 		} else {
+@@ -284,7 +300,8 @@
+ 				goto out;
+ 			}
+ 
+-			*incomingMessage = dict;
++			/* Owned by the caller, as in receiveWithPort above. */
++			*incomingMessage = [dict retain];
+ 			*replyPort = header->msgh_local_port;
+ 
+ 			status = 0;
+@@ -630,7 +647,8 @@
+ 					goto out;
+ 				}
+ 
+-				*reply = dict;
++				/* Owned by the caller, as in receiveWithPort above. */
++				*reply = [dict retain];
+ 
+ 				status = 0;
+ 			} else {

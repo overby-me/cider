@@ -14400,3 +14400,42 @@ that path on the host. Two independent defects, both about which container the g
    sweep (the exe says it is a guest runtime binary, the command line says which prefix).
 
 Nine of nine, twice in a row, against the new daemon.
+
+## MoneyMoney starts with launchd: the reply that was released twice (2026-08-21)
+
+One release. `+[deserializer process:]` returns an **autoreleased** dictionary, and the three pipe
+entry points that hand a dictionary out through an out-parameter (`xpc_pipe_routine`,
+`xpc_pipe_receive`, `xpc_pipe_try_receive`) passed that reference straight to the caller. Every caller
+of those owns what it is handed and releases it: libinfo does exactly that around every membership
+lookup. So the object was released twice, once by the caller and once when the pool drained, and from
+then on that memory was somebody else's.
+
+**How it was found**, and it took the instrument built for it. The drain trace named the dying object
+but not its origin; `CIDER_TRACE_POOL=sites` names every autorelease with the caller resolved through
+`dladdr`. The pool is LIFO, so the object that crashed the drain is the one autoreleased just before
+the last one printed:
+
+    CIDER_POOL autorelease 0x7ef840206450 isa=0x7ef851221620 from -[OS_xpc_pipe sendMessage:withSynchronousReply:flags:]
+    CIDER_POOL releasing  0x7ef8402062b0 ... __NSCFString        <- last line before the crash
+
+and the isa resolves through libxpc's own class table (slide from `OS_xpc_serializer`, whose address
+the same log prints) to `OS_xpc_dictionary`. That is the reply.
+
+**What it cost, before the fix:** trustd answered exactly one trust evaluation and then died draining
+the message handler's pool (`CRASHTRACE signal=11 addr=0x20` in `objc_release`). `StaticCode.cpp`
+evaluates trust at most twice, so the application's second evaluation had nothing to answer it.
+
+**After:** zero crashes in five runs, trustd serves **six** evaluations instead of one, the static
+validation runs to completion,
+
+    CIDER_CSSTEP staticValidateCore back
+    CIDER_CSSTEP resource scan finished, collected status=0
+    CIDER_CSSTEP validateResources back
+
+and **MoneyMoney opens its main window with launchd running**: menu bar, toolbar, sidebar, trial
+banner, and the File menu opens on a click with its items, separators and key equivalents. Looked at.
+Nine of nine test suites still green, and Swift Publisher unchanged.
+
+That also closes the older note that trustd "goes deaf after its first message" and the guess that a
+MachService job needed to be re-demand-started for this to work. Neither was the cause: the daemon was
+being killed by a use-after-free that our own ownership mistake handed it.
