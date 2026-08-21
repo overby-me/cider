@@ -44,8 +44,10 @@ CIDER_COMBINE_SYMBOL(6, "_$s7Combine10PublishersO3MapVy_xq_GAA9PublisherAAMc");
 CIDER_COMBINE_SYMBOL(7, "_$s7Combine10PublishersO9ReceiveOnVMa");
 CIDER_COMBINE_SYMBOL(8, "_$s7Combine10PublishersO9ReceiveOnVMn");
 CIDER_COMBINE_SYMBOL(9, "_$s7Combine10PublishersO9ReceiveOnVy_xq_GAA9PublisherAAMc");
-CIDER_COMBINE_SYMBOL(10, "_$s7Combine12AnyPublisherVMa");
-CIDER_COMBINE_SYMBOL(11, "_$s7Combine12AnyPublisherVMn");
+
+/* 10 and 11 are gone on purpose: AnyPublisher's metadata accessor and its nominal type descriptor
+ * are REAL now, in CombineMetadata.c and CombineMetadata.s next door, because that pair is what the
+ * runtime needs to build AccountCore.Account. Everything below is still a placeholder. */
 CIDER_COMBINE_SYMBOL(12, "_$s7Combine12AnyPublisherVyxq_GAA0C0AAMc");
 CIDER_COMBINE_SYMBOL(13, "_$s7Combine14AnyCancellableC5store2inyShyACGz_tF");
 CIDER_COMBINE_SYMBOL(14, "_$s7Combine14AnyCancellableC6cancelyyF");

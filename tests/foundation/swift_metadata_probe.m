@@ -35,6 +35,10 @@ typedef const void *(*GetTypeByMangledNameInContext)(const char *name, size_t le
 
 static void ask(GetTypeByMangledNameInContext fn, const char *what, const char *mangled)
 {
+    /* ANNOUNCED BEFORE IT IS ASKED. A question that kills the process leaves no line of its own, and
+     * then the output stops with no clue which one it was. */
+    printf("%-28s %-22s asking...\n", what, mangled);
+
     const void *metadata = fn(mangled, strlen(mangled), NULL, NULL);
 
     /* The value witness table sits 8 bytes BEFORE the metadata, which is the load that faults in the
@@ -50,6 +54,10 @@ static void ask(GetTypeByMangledNameInContext fn, const char *what, const char *
 int main(void)
 {
     @autoreleasepool {
+        /* UNBUFFERED, because a probe that dies takes its buffered output with it: stdout to a pipe
+         * is block buffered, and a crash in the last question then erases the answers to all the
+         * earlier ones. That looked exactly like a probe that printed nothing at all. */
+        setvbuf(stdout, NULL, _IONBF, 0);
         /* NOTHING PULLS SWIFT INTO AN OBJC PROCESS, so the first attempt asked a runtime that was
          * not there: RTLD_NOLOAD answered NULL and dlsym then failed on RTLD_DEFAULT. Load both
          * libraries here, in the order the runtime expects, and say what each attempt gave. */
@@ -95,6 +103,39 @@ int main(void)
         ask(fn, "Combine.AnyCancellable", "7Combine14AnyCancellableC");
         ask(fn, "Combine.AnyPublisher", "7Combine12AnyPublisherV");
         ask(fn, "Combine.CurrentValueSubject", "7Combine19CurrentValueSubjectC");
+
+        /*
+         * AND THE SAME AFTER LOADING OUR OWN COMBINE, which is where the hand built descriptor for
+         * AnyPublisher lives. The runtime finds a type by scanning the __swift5_types records of
+         * LOADED images, so a descriptor in a framework nobody opened is a descriptor nobody finds.
+         *
+         * A generic type is asked for BOUND: AnyPublisher on its own has no metadata, only
+         * AnyPublisher<Int, Never> does, and that is what an application's field type mangles to.
+         */
+        void *combine = dlopen("/System/Library/Frameworks/Combine.framework/Combine",
+                               RTLD_LAZY | RTLD_GLOBAL);
+
+        printf("\nCombine handle:            %p  %s\n", combine, combine ? "" : dlerror());
+        ask(fn, "AnyPublisher<Int,Never>", "7Combine12AnyPublisherVySis5NeverOG");
+        ask(fn, "AnyPublisher<String,Never>", "7Combine12AnyPublisherVySSs5NeverOG");
+
+        /*
+         * AND THE TYPE THE APPLICATION ACTUALLY DIES ON, asked directly rather than through a
+         * three minute GUI run. AccountCore.Account is a class whose statePublisher property is an
+         * AnyPublisher, so building its metadata is what needs Combine. If this answers, the wall
+         * that has held iA Writer since the beginning is down; if it does not, the trace from our
+         * own accessor says whether the runtime even asked us.
+         */
+        const char *accountcore = "/Applications/iA Writer.app/Contents/Frameworks/"
+                                  "AccountCore.framework/AccountCore";
+        void *account = dlopen(accountcore, RTLD_LAZY | RTLD_GLOBAL);
+
+        printf("\nAccountCore handle:        %p  %s\n", account, account ? "" : dlerror());
+        if (account != NULL) {
+            ask(fn, "AccountCore.Account", "11AccountCore0A0C");
+            ask(fn, "AccountCore.AccountState", "11AccountCore0A5StateO");
+            ask(fn, "AccountCore.AccountEnvironment", "11AccountCore0A11EnvironmentV");
+        }
     }
     return 0;
 }

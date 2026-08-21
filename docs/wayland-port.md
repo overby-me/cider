@@ -14490,3 +14490,59 @@ its splash this morning.
 
 The early stall has not reappeared in the last eight runs (it was four of nine before), so its rate is
 not steady and the next attempt at it should not assume it will show up on demand.
+
+## Swift type metadata, hand built, and the first Combine type the runtime accepts (2026-08-21)
+
+**I have to withdraw a sentence I wrote in this file.** It said that Swift type metadata, metadata
+accessors and generic patterns "cannot be written in C: they are ABI structures the Swift runtime
+walks and calls". The first half is wrong. They are ABI structures, yes, and that is exactly why they
+CAN be written by hand: the only part C cannot express is the relative pointer, because the
+difference of two addresses is not a constant expression. An assembler writes those without effort.
+
+`Combine.AnyPublisher` now has a real nominal type descriptor, a generic metadata pattern, a value
+witness table and a record in `__swift5_types`, all in our own Combine framework, and the runtime
+accepts them:
+
+    AnyPublisher<Int,Never>      7Combine12AnyPublisherVySis5NeverOG metadata=0x...18d8 witness=0x...048
+    AnyPublisher<String,Never>   7Combine12AnyPublisherVySSs5NeverOG metadata=0x...1930 witness=0x...048
+
+That is the first non-null answer this port has ever given for a Combine type.
+
+**Nothing was guessed.** The layout of a generic struct descriptor, of a metadata pattern and of a
+value witness table was read field by field out of descriptors the Swift compiler itself emitted, in
+iA Writer's own frameworks (`scratchpad/swiftdesc.py`, `swiftdump.py`, `swiftvwt.py`). Three things
+that layout does not tell you, each of which cost a run:
+
+* **The instantiation cache is sixteen words**, not two. The runtime constructs a cache in place in
+  that space; with two words it walked off the end and the process hung inside
+  `swift_getGenericMetadata` before it ever called our instantiation function.
+* **The metadata header is not written for you.** A compiler-emitted pattern carries an extra data
+  pattern, which is the prefix the runtime copies over fresh metadata: the kind word and the pointer
+  back to the descriptor. Ours has none, so the kind stayed zero, which reads as **class**, and the
+  runtime then walked a class that was not there. Two stores in the instantiation function say the
+  same thing.
+* **A probe that prints to a pipe is block buffered**, so when it died the answers to every earlier
+  question died with it, and the output looked like a probe that printed nothing at all.
+
+**What it is not.** The witnesses are trivial: copying does not retain the box and destroying does not
+release it, which leaks rather than crashes, and anything that actually subscribes still has nothing
+to call. This buys metadata construction, not Combine.
+
+**And it is not enough for iA Writer, which is now measured rather than assumed.** The crash moved
+nowhere, because `Account.init(environment:client:)` needs more than `AnyPublisher`. Reading
+Account's field descriptor and resolving each symbolic reference through the bind table names all
+fifteen stored properties and what they need:
+
+    stateSubject          _$s7Combine19CurrentValueSubjectCMn
+    isRefreshingSubject   _$s7Combine19CurrentValueSubjectCMn
+    cancellables          Set<AnyCancellable>
+    refreshTask           _$sScTMn                     (Swift.Task, from the concurrency library the app ships)
+    environmentValet      _$s5ValetAACMn               (its own package)
+    jsonDecoder           _$s10Foundation11JSONDecoderCMn
+    lastRefreshDate       _$s10Foundation4DateVMn
+
+So the next two are `CurrentValueSubject` and `AnyCancellable`, and both are **classes**, which need
+heap metadata rather than a value pattern: an isa, a superclass, instance size and alignment, and for
+a generic class the instantiation goes through `swift_allocateGenericClassMetadata` and
+`swift_initClassMetadata`. The method is the same one that worked here: copy the shape from a class
+descriptor the compiler emitted, in the same binary that needs it.
