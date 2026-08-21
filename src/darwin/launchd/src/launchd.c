@@ -483,7 +483,11 @@ fatal_signal_handler(int sig, siginfo_t *si, void *uap __attribute__((unused)))
 			int n;
 
 			if (uc && uc->uc_mcontext) {
+#if defined(__x86_64__) || defined(__i386__)
 				pc = (void *)(uintptr_t)uc->uc_mcontext->__ss.__rip;
+#else
+				pc = (void *)(uintptr_t)uc->uc_mcontext->__ss.__pc;
+#endif
 			}
 			if (pc && dladdr(pc, &info) && info.dli_sname) {
 				n = snprintf(line, sizeof(line),
@@ -511,7 +515,11 @@ fatal_signal_handler(int sig, siginfo_t *si, void *uap __attribute__((unused)))
 			 * handler uses, and it needs no core and no debugger.
 			 */
 			if (uc && uc->uc_mcontext) {
+#if defined(__x86_64__) || defined(__i386__)
 				const uintptr_t *sp = (const uintptr_t *)(uintptr_t)uc->uc_mcontext->__ss.__rsp;
+#else
+				const uintptr_t *sp = (const uintptr_t *)(uintptr_t)uc->uc_mcontext->__ss.__sp;
+#endif
 				unsigned shown = 0;
 				unsigned k;
 

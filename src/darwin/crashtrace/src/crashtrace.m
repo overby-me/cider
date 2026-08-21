@@ -92,9 +92,15 @@ static void cider_crashtrace_sample(int sig, siginfo_t *info, void *uap)
 	(void) info;
 
 	if (uc != NULL && uc->uc_mcontext != NULL) {
+#if defined(__x86_64__) || defined(__i386__)
 		rip = uc->uc_mcontext->__ss.__rip;
 		rbp = uc->uc_mcontext->__ss.__rbp;
 		rsp = uc->uc_mcontext->__ss.__rsp;
+#else
+		rip = uc->uc_mcontext->__ss.__pc;
+		rbp = uc->uc_mcontext->__ss.__fp;
+		rsp = uc->uc_mcontext->__ss.__sp;
+#endif
 	}
 	if (rip != 0) {
 		frames[count++] = (void *) rip;
@@ -157,9 +163,15 @@ static void cider_crashtrace_handler(int sig, siginfo_t *info, void *uap)
 	uint64_t rip = 0, rbp = 0, rsp = 0;
 
 	if (uc != NULL && uc->uc_mcontext != NULL) {
+#if defined(__x86_64__) || defined(__i386__)
 		rip = uc->uc_mcontext->__ss.__rip;
 		rbp = uc->uc_mcontext->__ss.__rbp;
 		rsp = uc->uc_mcontext->__ss.__rsp;
+#else
+		rip = uc->uc_mcontext->__ss.__pc;
+		rbp = uc->uc_mcontext->__ss.__fp;
+		rsp = uc->uc_mcontext->__ss.__sp;
+#endif
 	}
 	if (rip != 0) {
 		frames[count++] = (void *) rip;
@@ -201,12 +213,21 @@ static void cider_crashtrace_handler(int sig, siginfo_t *info, void *uap)
 	 * which answers EFAULT for a bad pointer instead of faulting again inside the handler.
 	 */
 	if (uc != NULL && uc->uc_mcontext != NULL) {
+#if defined(__x86_64__) || defined(__i386__)
 		const uint64_t args[6] = {
 			uc->uc_mcontext->__ss.__rdi, uc->uc_mcontext->__ss.__rsi,
 			uc->uc_mcontext->__ss.__rdx, uc->uc_mcontext->__ss.__rcx,
 			uc->uc_mcontext->__ss.__r8, uc->uc_mcontext->__ss.__r9,
 		};
 		static const char *const names[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+#else
+		const uint64_t args[6] = {
+			uc->uc_mcontext->__ss.__x[0], uc->uc_mcontext->__ss.__x[1],
+			uc->uc_mcontext->__ss.__x[2], uc->uc_mcontext->__ss.__x[3],
+			uc->uc_mcontext->__ss.__x[4], uc->uc_mcontext->__ss.__x[5],
+		};
+		static const char *const names[6] = {"x0", "x1", "x2", "x3", "x4", "x5"};
+#endif
 		int null_fd = open("/dev/null", O_WRONLY);
 
 		for (int i = 0; i < 6; i++) {

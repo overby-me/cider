@@ -344,9 +344,15 @@ static void cider_crash_handler(int sig, siginfo_t *info, void *uap)
 	uint64_t rip = 0, rbp = 0, rsp = 0;
 
 	if (uc != NULL && uc->uc_mcontext != NULL) {
+#if defined(__x86_64__) || defined(__i386__)
 		rip = uc->uc_mcontext->__ss.__rip;
 		rbp = uc->uc_mcontext->__ss.__rbp;
 		rsp = uc->uc_mcontext->__ss.__rsp;
+#else
+		rip = uc->uc_mcontext->__ss.__pc;
+		rbp = uc->uc_mcontext->__ss.__fp;
+		rsp = uc->uc_mcontext->__ss.__sp;
+#endif
 	}
 	if (rip != 0) {
 		frames[count++] = (void *) rip;
@@ -402,12 +408,21 @@ static void cider_crash_handler(int sig, siginfo_t *info, void *uap)
 	 */
 	if (uc != NULL && uc->uc_mcontext != NULL) {
 		char regs[512];
+#if defined(__x86_64__) || defined(__i386__)
 		int rlen = snprintf(regs, sizeof regs,
 			"cider CRASH rdi=%p rsi=%p rdx=%p rcx=%p r8=%p r9=%p rax=%p rbx=%p\n",
 			(void *) uc->uc_mcontext->__ss.__rdi, (void *) uc->uc_mcontext->__ss.__rsi,
 			(void *) uc->uc_mcontext->__ss.__rdx, (void *) uc->uc_mcontext->__ss.__rcx,
 			(void *) uc->uc_mcontext->__ss.__r8, (void *) uc->uc_mcontext->__ss.__r9,
 			(void *) uc->uc_mcontext->__ss.__rax, (void *) uc->uc_mcontext->__ss.__rbx);
+#else
+		int rlen = snprintf(regs, sizeof regs,
+			"cider CRASH x0=%p x1=%p x2=%p x3=%p x4=%p x5=%p x6=%p x7=%p\n",
+			(void *) uc->uc_mcontext->__ss.__x[0], (void *) uc->uc_mcontext->__ss.__x[1],
+			(void *) uc->uc_mcontext->__ss.__x[2], (void *) uc->uc_mcontext->__ss.__x[3],
+			(void *) uc->uc_mcontext->__ss.__x[4], (void *) uc->uc_mcontext->__ss.__x[5],
+			(void *) uc->uc_mcontext->__ss.__x[6], (void *) uc->uc_mcontext->__ss.__x[7]);
+#endif
 
 		write(2, regs, (size_t) rlen);
 	}
