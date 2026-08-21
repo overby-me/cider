@@ -35,28 +35,15 @@
     __attribute__((visibility("default"))) const uintptr_t cider_combine_##id __asm__(mangled) =   \
             CIDER_COMBINE_POISON_BASE + (id) * 0x100
 
-/* 1, 2, 4, 5, 7 and 8 are gone: the three Publishers structs have real descriptors and real metadata
+/* Every conformance descriptor is real too, in CombineConformance.c, with a witness table
+ * whose every slot names itself if it is called. 1, 2, 4, 5, 7 and 8 are gone: the three Publishers structs have real descriptors and real metadata
  * accessors in CombineMetadata.c, nested in a real Publishers enum, because Account's initialiser
  * asks the runtime to build ReceiveOn by mangled name. The CONFORMANCES below are still
  * placeholders. */
-CIDER_COMBINE_SYMBOL(3, "_$s7Combine10PublishersO16RemoveDuplicatesVy_xGAA9PublisherAAMc");
-CIDER_COMBINE_SYMBOL(6, "_$s7Combine10PublishersO3MapVy_xq_GAA9PublisherAAMc");
-CIDER_COMBINE_SYMBOL(9, "_$s7Combine10PublishersO9ReceiveOnVy_xq_GAA9PublisherAAMc");
 
 /* 10 and 11 are gone on purpose: AnyPublisher's metadata accessor and its nominal type descriptor
  * are REAL now, in CombineMetadata.c and CombineMetadata.s next door, because that pair is what the
  * runtime needs to build AccountCore.Account. Everything below is still a placeholder. */
-CIDER_COMBINE_SYMBOL(12, "_$s7Combine12AnyPublisherVyxq_GAA0C0AAMc");
 /* 13 and 14 are gone: store(in:) and cancel() are real, and empty, in CombineSubject.c. */
-CIDER_COMBINE_SYMBOL(17, "_$s7Combine14AnyCancellableCSHAAMc");
-CIDER_COMBINE_SYMBOL(18, "_$s7Combine14AnyCancellableCSQAAMc");
 /* 19 and 22 are gone: CurrentValueSubject's initialiser and send are real, in CombineSubject.c. */
-CIDER_COMBINE_SYMBOL(23, "_$s7Combine19CurrentValueSubjectCyxq_GAA9PublisherAAMc");
-CIDER_COMBINE_SYMBOL(24, "_$s7Combine9PublisherPAAE010eraseToAnyB0AA0eB0Vy6OutputQz7FailureQzGyF");
-CIDER_COMBINE_SYMBOL(25, "_$s7Combine9PublisherPAAE3mapyAA10PublishersO3MapVy_xqd__Gqd__6OutputQzclF");
-CIDER_COMBINE_SYMBOL(26, "_$s7Combine9PublisherPAAE7receive2on7optionsAA10PublishersO9ReceiveOnVy_xqd__Gqd___16SchedulerOptionsQyd__SgtAA0I0Rd__lF");
-CIDER_COMBINE_SYMBOL(27, "_$s7Combine9PublisherPAASQ6OutputRpzrlE16removeDuplicatesAA10PublishersO06RemoveE0Vy_xGyF");
 /* 28 is gone: sink(receiveValue:) is real, in CombineSubject.c. */
-CIDER_COMBINE_SYMBOL(29, "_$sSo17OS_dispatch_queueC7Combine9Scheduler8DispatchMc");
-CIDER_COMBINE_SYMBOL(30, "_$sSo20NSNotificationCenterC10FoundationE9PublisherV7CombineAdCMc");
-CIDER_COMBINE_SYMBOL(31, "_$sSo8NSObjectC10FoundationE26KeyValueObservingPublisherVy_xq_G7Combine0F0ACMc");

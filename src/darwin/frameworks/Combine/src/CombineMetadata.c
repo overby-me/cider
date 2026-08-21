@@ -210,7 +210,7 @@ CiderMetadataResponse cider_combine_anypublisher_metadata_accessor(size_t reques
  */
 static CiderMetadataResponse cider_combine_generic_metadata(const void *descriptor, size_t request,
                                                             const void *const *arguments,
-                                                            const char *name)
+                                                            size_t count, const char *name)
 {
     CiderGetGenericMetadata get = cider_get_generic_metadata();
     CiderMetadataResponse none = { NULL, 0 };
@@ -218,6 +218,12 @@ static CiderMetadataResponse cider_combine_generic_metadata(const void *descript
 
     if (get == NULL) {
         return none;
+    }
+    if (cider_combine_trace()) {
+        fprintf(stderr, "CIDER_COMBINE %s accessor request=%zu args=%p,%p (array at %p)\n",
+                name, request, arguments[0], count > 1 ? arguments[1] : NULL,
+                (const void *) arguments);
+        fflush(stderr);
     }
     answer = get(request, arguments, descriptor);
     if (cider_combine_trace()) {
@@ -233,13 +239,45 @@ static CiderMetadataResponse cider_combine_generic_metadata(const void *descript
  * witness table per constraint follows the types. Reading only the leading types is safe, and the
  * trailing arguments are simply not part of the key.
  */
+/*
+ * RECEIVEON IS CALLED TWO DIFFERENT WAYS, and the count of generic arguments is what decides.
+ *
+ * A metadata accessor takes its arguments in registers up to THREE and a pointer to an array beyond
+ * that, and the two callers here disagree about which applies. The runtime, resolving a mangled name
+ * against OUR descriptor, counts two: Upstream and Context. The application, compiled against the
+ * real Combine, counts four, because there Upstream is constrained to Publisher and Context to
+ * Scheduler and each constraint adds a witness table. So the same function is entered once with two
+ * metadata pointers and once with a pointer to an array of four words.
+ *
+ * They are told apart by where the first argument points. Type metadata is never on the stack, and
+ * the array the runtime passes always is, in the caller's own frame. The alternative is to declare
+ * both constraints in the descriptor so that both sides count four, which means emitting generic
+ * requirement descriptors and having the runtime find real conformances for them: correct, larger,
+ * and the next step rather than this one.
+ */
+static int cider_combine_on_stack(const void *pointer)
+{
+    char here;
+    uintptr_t a = (uintptr_t) pointer;
+    uintptr_t b = (uintptr_t) &here;
+    uintptr_t distance = a > b ? a - b : b - a;
+
+    return distance < (1u << 20);
+}
+
 CiderMetadataResponse cider_combine_receiveon_metadata_accessor(size_t request, const void *upstream,
                                                                 const void *context)
 {
     const void *arguments[2] = { upstream, context };
 
+    if (cider_combine_on_stack(upstream)) {
+        const void *const *spilled = (const void *const *) upstream;
+
+        arguments[0] = spilled[0];
+        arguments[1] = spilled[1];
+    }
     return cider_combine_generic_metadata(cider_combine_receiveon_descriptor, request, arguments,
-                                          "ReceiveOn");
+                                          2, "ReceiveOn");
 }
 
 CiderMetadataResponse cider_combine_map_metadata_accessor(size_t request, const void *upstream,
@@ -247,7 +285,7 @@ CiderMetadataResponse cider_combine_map_metadata_accessor(size_t request, const 
 {
     const void *arguments[2] = { upstream, output };
 
-    return cider_combine_generic_metadata(cider_combine_map_descriptor, request, arguments, "Map");
+    return cider_combine_generic_metadata(cider_combine_map_descriptor, request, arguments, 2, "Map");
 }
 
 CiderMetadataResponse cider_combine_removeduplicates_metadata_accessor(size_t request,
@@ -256,7 +294,7 @@ CiderMetadataResponse cider_combine_removeduplicates_metadata_accessor(size_t re
     const void *arguments[1] = { upstream };
 
     return cider_combine_generic_metadata(cider_combine_removeduplicates_descriptor, request,
-                                          arguments, "RemoveDuplicates");
+                                          arguments, 1, "RemoveDuplicates");
 }
 
 
@@ -409,7 +447,7 @@ CiderMetadataResponse cider_combine_currentvaluesubject_metadata_accessor(size_t
     const void *arguments[2] = { output, failure };
 
     return cider_combine_generic_metadata(cider_combine_currentvaluesubject_descriptor, request,
-                                          arguments, "CurrentValueSubject");
+                                          arguments, 2, "CurrentValueSubject");
 }
 
 /*

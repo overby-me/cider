@@ -16997,7 +16997,9 @@ cc_objects(
     name = "Combine_obj",
     srcs = [
         "Combine/src/Combine.m",
+        "Combine/src/CombineConformance.c",
         "Combine/src/CombineMetadata.c",
+        "Combine/src/CombineProtocols.c",
         "Combine/src/CombineSubject.c",
         "Combine/src/CombineSymbols.c",
     ],

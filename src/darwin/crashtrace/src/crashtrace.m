@@ -195,37 +195,94 @@ static void cider_crashtrace_handler(int sig, siginfo_t *info, void *uap)
 	write(2, head, (size_t) len);
 
 	/*
+	 * THE FRAMES GO OUT FIRST, because everything below this line touches memory the crash has
+	 * already shown to be untrustworthy. Two runs printed a header and two registers and then
+	 * nothing at all, and the stack they were hiding was the whole question.
+	 */
+	backtrace_symbols_fd(frames, count, 2);
+
+	/*
 	 * THE ARGUMENT REGISTERS, AND ANY STRING THEY POINT AT. A fault inside a runtime helper says
 	 * nothing about WHICH request faulted: Swift's type instantiation takes a mangled name as its
 	 * first argument, and that name is the whole answer. Probed with write() to /dev/null first,
 	 * which answers EFAULT for a bad pointer instead of faulting again inside the handler.
 	 */
 	if (uc != NULL && uc->uc_mcontext != NULL) {
-		const uint64_t args[6] = {
+		/*
+		 * THE CALLEE SAVED REGISTERS ARE HERE FOR A REASON. Deep inside a runtime function the
+		 * argument registers have long been reused, and the pointer that was passed IN is usually
+		 * sitting in rbx or r12 to r15. Naming each one with dladdr is what turned "a conformance
+		 * descriptor somewhere is null" into the name of the conformance.
+		 */
+		const uint64_t args[11] = {
 			uc->uc_mcontext->__ss.__rdi, uc->uc_mcontext->__ss.__rsi,
 			uc->uc_mcontext->__ss.__rdx, uc->uc_mcontext->__ss.__rcx,
 			uc->uc_mcontext->__ss.__r8, uc->uc_mcontext->__ss.__r9,
+			uc->uc_mcontext->__ss.__rbx, uc->uc_mcontext->__ss.__r12,
+			uc->uc_mcontext->__ss.__r13, uc->uc_mcontext->__ss.__r14,
+			uc->uc_mcontext->__ss.__r15,
 		};
-		static const char *const names[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+		static const char *const names[11] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9",
+			"rbx", "r12", "r13", "r14", "r15"};
 		int null_fd = open("/dev/null", O_WRONLY);
 
-		for (int i = 0; i < 6; i++) {
+		/*
+		 * THE VALUE GOES OUT BEFORE THE STRING DOES. Two runs lost every register from rdx onwards
+		 * because the probe validated 32 bytes and the loop below then read 48: a string ending in
+		 * the last bytes of a mapped page faults inside the handler, and the line being built was
+		 * never written. Probe exactly what is read, and write the number first so that a fault can
+		 * only ever cost the quoted text.
+		 */
+		enum { CIDER_PEEK_BYTES = 48 };
+
+		for (int i = 0; i < 11; i++) {
 			char line[192];
 			int n = snprintf(line, sizeof line, "  %s=%#llx", names[i],
 				(unsigned long long) args[i]);
+			Dl_info where;
 
-			if (null_fd >= 0 && args[i] > 0x1000) {
-				const char *text = (const char *) args[i];
+			if (args[i] > 0x1000 && dladdr((void *) args[i], &where) != 0
+				&& where.dli_sname != NULL) {
+				const char *img = where.dli_fname ? strrchr(where.dli_fname, '/') : NULL;
 
-				if (write(null_fd, text, 32) == 32) {
-					n += snprintf(line + n, sizeof line - (size_t) n, " \"");
-					for (int c = 0; c < 48 && text[c] != 0 && n < (int) sizeof line - 4; c++) {
-						line[n++] = (text[c] >= 32 && text[c] < 127) ? text[c] : '.';
-					}
-					n += snprintf(line + n, sizeof line - (size_t) n, "\"");
-				}
+				n += snprintf(line + n, sizeof line - (size_t) n, " [%s %s+%#lx]",
+					img ? img + 1 : "?", where.dli_sname,
+					(unsigned long) (args[i] - (uint64_t) where.dli_saddr));
 			}
 			n += snprintf(line + n, sizeof line - (size_t) n, "\n");
+			write(2, line, (size_t) n);
+		}
+
+		/*
+		 * AND ONLY THEN THE STRINGS. The probe is a write to /dev/null, which answers EFAULT for a
+		 * bad pointer on a real kernel; under this emulation a write goes through a copy in the
+		 * guest first, so a bad pointer faults HERE instead of returning an error. One register
+		 * holding 0x30000 was enough to lose every register after it, so the values are out already
+		 * and this pass can afford to die.
+		 */
+		for (int i = 0; i < 11 && null_fd >= 0; i++) {
+			char line[192];
+			const char *text = (const char *) args[i];
+			Dl_info mapped;
+			int n;
+
+			/*
+			 * ONLY WHAT IS INSIDE AN IMAGE. A write to /dev/null answers EFAULT for a bad pointer on
+			 * a real kernel, and this emulation copies the buffer in the guest first, so the probe
+			 * FAULTS instead of failing. dladdr does not dereference anything, so it can say whether
+			 * an address is inside a loaded image before anything reads it. The strings worth having
+			 * here, mangled names and selectors, all live in one.
+			 */
+			if (args[i] <= 0x1000 || dladdr((void *) args[i], &mapped) == 0
+				|| write(null_fd, text, CIDER_PEEK_BYTES) != CIDER_PEEK_BYTES) {
+				continue;
+			}
+			n = snprintf(line, sizeof line, "  %s -> \"", names[i]);
+			for (int c = 0; c < CIDER_PEEK_BYTES && text[c] != 0
+				&& n < (int) sizeof line - 4; c++) {
+				line[n++] = (text[c] >= 32 && text[c] < 127) ? text[c] : '.';
+			}
+			n += snprintf(line + n, sizeof line - (size_t) n, "\"\n");
 			write(2, line, (size_t) n);
 		}
 		if (null_fd >= 0) {
@@ -279,8 +336,6 @@ static void cider_crashtrace_handler(int sig, siginfo_t *info, void *uap)
 			}
 		}
 	}
-
-	backtrace_symbols_fd(frames, count, 2);
 
 	/*
 	 * CHAIN, DO NOT SWALLOW AND DO NOT FORCE THE DEFAULT.

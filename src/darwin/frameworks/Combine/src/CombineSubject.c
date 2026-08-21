@@ -244,3 +244,123 @@ __attribute__((swiftcall)) void cider_combine_cancellable_cancel(
         fflush(stderr);
     }
 }
+
+/*
+ * THE FOUR OPERATORS, AND THE ONE WORD THEY ALL RETURN.
+ *
+ * map, receive(on:), removeDuplicates and eraseToAnyPublisher each return a different Combine type,
+ * and in this framework every one of those types is EIGHT BYTES holding a pointer to a box we own.
+ * That is the same lie the value witness table next door tells, kept consistent: nothing outside
+ * this framework ever looks inside one of these values, because no real Combine code exists here to
+ * look.
+ *
+ * A box keeps a COPY of its upstream, taken through the upstream's own value witness table, because
+ * the operator's self is borrowed and the chain outlives the call. The copy is never freed: see the
+ * note on store(in:) for why a leak is the right price here.
+ *
+ * The result is passed as a hidden first argument. A generic return type has no size at the call
+ * site, so Swift returns it indirectly, and clang spells that swift_indirect_result. The metadata
+ * and witness tables the caller appends after the explicit parameters are what make the copy
+ * possible: Self's metadata is how the box learns the upstream's stride.
+ */
+#define CIDER_COMBINE_BOX_MAGIC ((uintptr_t) 0xC0B1E0B0C0B1E0B0ull)
+
+struct CiderCombineBox {
+    uintptr_t magic;
+    const void *upstreamMetadata;
+    void *upstream;
+    int transforms;
+    const char *what;
+};
+
+static void *cider_combine_box(const char *what, const void *selfMetadata, const void *selfValue,
+                               int transforms)
+{
+    struct CiderCombineBox *box = calloc(1, sizeof *box);
+    const struct CiderWitnesses *witnesses;
+
+    if (box == NULL || selfMetadata == NULL) {
+        return box;
+    }
+    witnesses = cider_combine_witnesses(selfMetadata);
+    box->magic = CIDER_COMBINE_BOX_MAGIC;
+    box->upstreamMetadata = selfMetadata;
+    box->upstream = calloc(1, witnesses->stride ? witnesses->stride : 8);
+    box->transforms = transforms;
+    box->what = what;
+    if (box->upstream != NULL && selfValue != NULL) {
+        ((CiderCopyWitness) witnesses->initializeWithCopy)(box->upstream, (void *) selfValue,
+                                                           selfMetadata);
+    }
+    if (cider_combine_subject_trace()) {
+        fprintf(stderr, "CIDER_COMBINE %s box=%p upstream=%p meta=%p stride=%zu\n",
+                what, (void *) box, box->upstream, selfMetadata, witnesses->stride);
+        fflush(stderr);
+    }
+    return box;
+}
+
+__attribute__((swiftcall)) void cider_combine_publisher_receive_on(
+        void **result __attribute__((swift_indirect_result)), const void *scheduler,
+        const void *options, const void *selfMetadata, const void *schedulerMetadata,
+        const void *publisherWitnesses, void *self __attribute__((swift_context)))
+        __asm__("_$s7Combine9PublisherPAAE7receive2on7optionsAA10PublishersO9ReceiveOnVy_xqd__Gqd___16SchedulerOptionsQyd__SgtAA0I0Rd__lF");
+
+__attribute__((swiftcall)) void cider_combine_publisher_receive_on(
+        void **result __attribute__((swift_indirect_result)), const void *scheduler,
+        const void *options, const void *selfMetadata, const void *schedulerMetadata,
+        const void *publisherWitnesses, void *self __attribute__((swift_context)))
+{
+    (void) scheduler;
+    (void) options;
+    (void) schedulerMetadata;
+    (void) publisherWitnesses;
+    *result = cider_combine_box("receiveOn", selfMetadata, self, 0);
+}
+
+__attribute__((swiftcall)) void cider_combine_publisher_map(
+        void **result __attribute__((swift_indirect_result)), void *transform, void *context,
+        const void *selfMetadata, const void *outputMetadata, const void *publisherWitnesses,
+        void *self __attribute__((swift_context)))
+        __asm__("_$s7Combine9PublisherPAAE3mapyAA10PublishersO3MapVy_xqd__Gqd__6OutputQzclF");
+
+__attribute__((swiftcall)) void cider_combine_publisher_map(
+        void **result __attribute__((swift_indirect_result)), void *transform, void *context,
+        const void *selfMetadata, const void *outputMetadata, const void *publisherWitnesses,
+        void *self __attribute__((swift_context)))
+{
+    (void) transform;
+    (void) context;
+    (void) outputMetadata;
+    (void) publisherWitnesses;
+    *result = cider_combine_box("map", selfMetadata, self, 1);
+}
+
+__attribute__((swiftcall)) void cider_combine_publisher_remove_duplicates(
+        void **result __attribute__((swift_indirect_result)), const void *selfMetadata,
+        const void *publisherWitnesses, const void *equatableWitnesses,
+        void *self __attribute__((swift_context)))
+        __asm__("_$s7Combine9PublisherPAASQ6OutputRpzrlE16removeDuplicatesAA10PublishersO06RemoveE0Vy_xGyF");
+
+__attribute__((swiftcall)) void cider_combine_publisher_remove_duplicates(
+        void **result __attribute__((swift_indirect_result)), const void *selfMetadata,
+        const void *publisherWitnesses, const void *equatableWitnesses,
+        void *self __attribute__((swift_context)))
+{
+    (void) publisherWitnesses;
+    (void) equatableWitnesses;
+    *result = cider_combine_box("removeDuplicates", selfMetadata, self, 0);
+}
+
+__attribute__((swiftcall)) void cider_combine_publisher_erase(
+        void **result __attribute__((swift_indirect_result)), const void *selfMetadata,
+        const void *publisherWitnesses, void *self __attribute__((swift_context)))
+        __asm__("_$s7Combine9PublisherPAAE010eraseToAnyB0AA0eB0Vy6OutputQz7FailureQzGyF");
+
+__attribute__((swiftcall)) void cider_combine_publisher_erase(
+        void **result __attribute__((swift_indirect_result)), const void *selfMetadata,
+        const void *publisherWitnesses, void *self __attribute__((swift_context)))
+{
+    (void) publisherWitnesses;
+    *result = cider_combine_box("erase", selfMetadata, self, 0);
+}
