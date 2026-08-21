@@ -1434,6 +1434,28 @@ whole M4 pipeline -- which sets up CIDER_GNIX_CORES=2 -- now runs end to end), w
 genuine-parallel-build test gated on fixing the teardown hang. That hang is itself a real regression
 worth its own task: it is why every guest run leaves spinning processes behind.
 
+**Pass 43 (the teardown hang is FIXED at the source -- the no-active-thread mutex fallback is now
+bounded).** Root-caused and fixed the spin from Pass 42(b). In src/linux/server/src/xnu/locks.rs,
+`xnu_sys_mutex_lock`'s fallback for a caller with no microthread (`thread_for_xnu_thread` is null, which
+happens hundreds of times a second once a guest forks, and for every lock taken during per-process
+teardown) was `loop { lock queue_lock; if owner == 0 { return }; unlock; spin_loop() }` -- an UNBOUNDED
+busy-wait for `xnu_sys_owner` to clear. During teardown a microthread can be destroyed while still owning
+the mutex (it died between lock and unlock), so the owner never clears: the ciderd worker spins on a
+pinned core forever and the guest process it serves stays wedged in its trapped syscall, holding the live
+/proc gc-root that made `nix-store --delete` refuse and blocked a genuine from-source rebuild. The fix
+bounds the wait: yield instead of busy-spinning, and after 2s (far longer than any legitimate
+xnu_sys_mutex hold, which is sub-millisecond, so normal contention is unaffected) give up on the vanished
+owner and take the lock anyway. Both exits return holding queue_lock, exactly like the success path, so
+the paired null-thread unlock (which just releases queue_lock) stays balanced. The change is confined to
+the null-thread branch; try_lock and unlock already returned promptly, and the hot path (active
+microthread) is untouched. Verified with `//src/linux/server:stage3_spike` (rebuilt clean, 146 local
+actions): 500k suspend+resume round-trips -- whose log is full of the very "Trying to lock/unlock mutex
+without an active thread!" lines, so it exercises the changed paths -- complete in 3.4s at 6885
+ns/round-trip, rc=0, no hang (27d67c00). This is a host-side stress proof with no guest boot and no
+gc-roots. What remains is the end-to-end confirmation: a full buck-nix-bash-check boot that completes and
+leaves ZERO spinning guest procs behind, which is also the gate that lets build-pkg-bypass force a genuine
+from-source rebuild for the isolated #12 (parallel make -j) test.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
