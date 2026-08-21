@@ -65,6 +65,19 @@ NSNotificationName const NSScreenColorSpaceDidChangeNotification = @"NSScreenCol
     return result;
 }
 
+/*
+ * NO, AND SAYING SO IS THE WHOLE FEATURE. macOS answers this from the Mission Control preference
+ * that gives each display its own set of Spaces; there is one screen here and no Spaces at all.
+ *
+ * MoneyMoney asks it inside -[NSWindow setFrameAutosaveName:], which is early enough in window setup
+ * that an unrecognized selector there leaves the window half built. The application CATCHES the
+ * exception, so nothing crashes and nothing draws either, which is the shape described in the plan:
+ * a caught exception hides a whole feature.
+ */
++ (BOOL) screensHaveSeparateSpaces {
+    return NO;
+}
+
 + (NSArray *) screens {
     return [[NSDisplay currentDisplay] screens];
 }

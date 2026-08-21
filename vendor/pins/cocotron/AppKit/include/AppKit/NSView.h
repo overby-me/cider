@@ -86,6 +86,8 @@ APPKIT_EXPORT const NSNotificationName NSViewGlobalFrameDidChangeNotification;
 
 APPKIT_EXPORT const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPresentationOptions;
 
+@class NSLayoutConstraint;
+
 @interface NSView : NSResponder <NSAnimatablePropertyContainer, NSUserInterfaceItemIdentification, NSAppearanceCustomization> {
     NSRect _frame;
     NSRect _bounds;
@@ -112,6 +114,7 @@ APPKIT_EXPORT const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPre
     CGFloat _frameRotation;
     CGFloat _boundsRotation;
     BOOL _translatesAutoresizingMaskIntoConstraints;
+    NSMutableArray *_constraints;
 
     BOOL _validTrackingAreas;
     BOOL _validTransforms;
@@ -143,6 +146,15 @@ APPKIT_EXPORT const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPre
 
 @property(class, readonly) BOOL requiresConstraintBasedLayout;
 @property BOOL translatesAutoresizingMaskIntoConstraints;
+
+/* THE CONSTRAINTS A VIEW HOLDS. Nothing here solves them, see NSLayoutConstraint.h; a view keeps
+ * them so that activating one has somewhere to go and so that it outlives the statement that made
+ * it, which is what an application can otherwise notice. */
+@property (readonly, copy) NSArray *constraints;
+- (void) addConstraint: (NSLayoutConstraint *) constraint;
+- (void) addConstraints: (NSArray *) constraints;
+- (void) removeConstraint: (NSLayoutConstraint *) constraint;
+- (void) removeConstraints: (NSArray *) constraints;
 
 + (NSView *) focusView;
 + (NSMenu *) defaultMenu;

@@ -1,0 +1,250 @@
+A real NSLayoutConstraint, in the framework that already had a stub of it.
+
+MONEYMONEY DIES ON +constraintWithItem: THE MOMENT APPKIT CLAIMS TO BE NEWER THAN 10.15, which is the
+band that also changes its menu metric, so the two are tied together: the cosmetic fix in task #150
+cannot land while the class is a stub.
+
+The class belongs to AppKit on macOS and that is where the implementation was written first. It could
+not stay there. THIS Foundation has carried an NSLayoutConstraint since the nib decoder needed
+something to decode into, along with three subclasses of it, and two Objective-C classes with one
+name is a coin toss the runtime announces and then resolves however it likes. It resolved to the
+stub, whose methodSignatureForSelector answers "v@:" for everything, and +constraintWithItem: stayed
+unrecognized however carefully AppKit implemented it. So the object lives here and AppKit imports
+this header.
+
+WHAT IT IS: the constraint, its properties, the factory, activate and deactivate, and -setActive:,
+which puts the constraint on a view and takes it off again. Asked BY SELECTOR, because NSView is
+AppKit's and this is Foundation.
+
+WHAT IT IS NOT: a solver. Nothing here lays anything out. Every view in these nibs still carries an
+autoresizing mask and translatesAutoresizingMaskIntoConstraints defaults to YES, so the layout is
+exactly what it was. An application that genuinely lays out BY constraint gets a window whose
+subviews sit where the mask puts them, which is wrong but visible, rather than an unrecognized
+selector, which stops it dead.
+
+MEASURED: with this and +[NSScreen screensHaveSeparateSpaces], MoneyMoney runs at
+NSAppKitVersionNumber 2022 with zero unrecognized selectors and zero uncaught exceptions, and its
+truncated menu titles gain the two characters the 35 point metric buys. The version number is still
+1504 and the reason is in the capture, not the log: at 2022 the application draws no menu bar at all
+and an empty toolbar, because it takes the Big Sur chrome path. See AppKit/NSApplication.m.
+--- a/include/Foundation/NSLayoutConstraint.h
++++ b/include/Foundation/NSLayoutConstraint.h
+@@ -1,5 +1,89 @@
+ #import <Foundation/NSObject.h>
++#import <Foundation/NSArray.h>
++#import <Foundation/NSString.h>
+ 
+-@interface NSLayoutConstraint : NSObject
++/*
++ * THE CLASS LIVES HERE BECAUSE IT ALREADY DID, and two of them is one too many.
++ *
++ * On macOS NSLayoutConstraint is AppKit's, and that is where the implementation was written first.
++ * It could not stay there: this Foundation has carried a stub of the same name since the nib
++ * decoder needed something to decode into, along with three subclasses of it, and a duplicate
++ * Objective-C class is a coin toss the runtime announces and then resolves however it likes. The
++ * application got the stub, whose methodSignatureForSelector answers "v@:" for everything, and
++ * +constraintWithItem: was unrecognized however carefully AppKit implemented it.
++ *
++ * So the object and its accounting live here, and AppKit imports this header. Nothing solves the
++ * constraints; see the note in AppKit/NSLayoutConstraint.h for why that is the right amount of Auto
++ * Layout for the applications in front of us.
++ */
++
++typedef float NSLayoutPriorityFoundation;
++
++typedef NS_ENUM(NSInteger, NSLayoutRelation) {
++    NSLayoutRelationLessThanOrEqual = -1,
++    NSLayoutRelationEqual = 0,
++    NSLayoutRelationGreaterThanOrEqual = 1,
++};
++
++typedef NS_ENUM(NSInteger, NSLayoutAttribute) {
++    NSLayoutAttributeNotAnAttribute = 0,
++    NSLayoutAttributeLeft = 1,
++    NSLayoutAttributeRight,
++    NSLayoutAttributeTop,
++    NSLayoutAttributeBottom,
++    NSLayoutAttributeLeading,
++    NSLayoutAttributeTrailing,
++    NSLayoutAttributeWidth,
++    NSLayoutAttributeHeight,
++    NSLayoutAttributeCenterX,
++    NSLayoutAttributeCenterY,
++    NSLayoutAttributeLastBaseline,
++    NSLayoutAttributeFirstBaseline,
++};
++
++enum {
++    NSLayoutPriorityRequired = 1000,
++    NSLayoutPriorityDefaultHigh = 750,
++    NSLayoutPriorityDragThatCanResizeWindow = 510,
++    NSLayoutPriorityWindowSizeStayPut = 500,
++    NSLayoutPriorityDragThatCannotResizeWindow = 490,
++    NSLayoutPriorityDefaultLow = 250,
++    NSLayoutPriorityFittingSizeCompression = 50,
++};
++
++@interface NSLayoutConstraint : NSObject {
++    id _firstItem;
++    id _secondItem;
++    NSLayoutAttribute _firstAttribute;
++    NSLayoutAttribute _secondAttribute;
++    NSLayoutRelation _relation;
++    double _multiplier;
++    double _constant;
++    float _priority;
++    BOOL _active;
++    NSString *_identifier;
++}
++
+++ (instancetype) constraintWithItem: (id) firstItem
++                          attribute: (NSLayoutAttribute) firstAttribute
++                          relatedBy: (NSLayoutRelation) relation
++                             toItem: (id) secondItem
++                          attribute: (NSLayoutAttribute) secondAttribute
++                         multiplier: (double) multiplier
++                           constant: (double) constant;
++
+++ (void) activateConstraints: (NSArray *) constraints;
+++ (void) deactivateConstraints: (NSArray *) constraints;
++
++@property (readonly, assign) id firstItem;
++@property (readonly, assign) id secondItem;
++@property (readonly) NSLayoutAttribute firstAttribute;
++@property (readonly) NSLayoutAttribute secondAttribute;
++@property (readonly) NSLayoutRelation relation;
++@property (readonly) double multiplier;
++@property double constant;
++@property float priority;
++@property (getter=isActive) BOOL active;
++@property (copy) NSString *identifier;
+ 
+ @end
+--- a/src/NSLayoutConstraint.m
++++ b/src/NSLayoutConstraint.m
+@@ -21,21 +21,118 @@
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+ 
+-#warning TODO: $ld$hide$os 10.4 through 10.7, also METACLASS
+ 
+ @implementation NSLayoutConstraint
+ 
+-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++@synthesize firstItem = _firstItem;
++@synthesize secondItem = _secondItem;
++@synthesize firstAttribute = _firstAttribute;
++@synthesize secondAttribute = _secondAttribute;
++@synthesize relation = _relation;
++@synthesize multiplier = _multiplier;
++@synthesize constant = _constant;
++@synthesize priority = _priority;
++@synthesize identifier = _identifier;
++
+++ (instancetype) constraintWithItem: (id) firstItem
++                          attribute: (NSLayoutAttribute) firstAttribute
++                          relatedBy: (NSLayoutRelation) relation
++                             toItem: (id) secondItem
++                          attribute: (NSLayoutAttribute) secondAttribute
++                         multiplier: (double) multiplier
++                           constant: (double) constant
++{
++    NSLayoutConstraint *result = [[[self alloc] init] autorelease];
++
++    result->_firstItem = firstItem;
++    result->_secondItem = secondItem;
++    result->_firstAttribute = firstAttribute;
++    result->_secondAttribute = secondAttribute;
++    result->_relation = relation;
++    result->_multiplier = multiplier;
++    result->_constant = constant;
++    result->_priority = NSLayoutPriorityRequired;
++    return result;
+ }
+ 
+-- (id)initWithCoder:(NSCoder *)coder {
+-    NSLog(@"Stub called: initWithCoder in NSLayoutConstraint");
+++ (void) activateConstraints: (NSArray *) constraints
++{
++    for (NSLayoutConstraint *constraint in constraints) {
++        [constraint setActive: YES];
++    }
++}
++
+++ (void) deactivateConstraints: (NSArray *) constraints
++{
++    for (NSLayoutConstraint *constraint in constraints) {
++        [constraint setActive: NO];
++    }
++}
++
++- (id) initWithCoder: (NSCoder *) coder
++{
++    self = [super init];
++    if (self != nil) {
++        _priority = NSLayoutPriorityRequired;
++    }
+     return self;
+ }
+ 
+-- (void)forwardInvocation:(NSInvocation *)anInvocation {
+-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
++- (void) dealloc
++{
++    [_identifier release];
++    [super dealloc];
++}
++
++- (BOOL) isActive
++{
++    return _active;
++}
++
++/*
++ * ACTIVATING A CONSTRAINT IS WHAT PUTS IT ON A VIEW, and macOS picks the nearest common ancestor of
++ * the two items. Holding it on the first item is enough here, because nothing reads the list back
++ * except the view that owns it, and what an application can otherwise notice is the constraint being
++ * deallocated the moment the statement that made it ends.
++ *
++ * ASKED BY SELECTOR, NOT BY CLASS. NSView is AppKit's and this is Foundation; respondsToSelector is
++ * how a lower framework talks to a higher one without a dependency it cannot have.
++ */
++- (void) setActive: (BOOL) active
++{
++    if (active == _active) {
++        return;
++    }
++    _active = active;
++
++    id owner = nil;
++
++    if ([_firstItem respondsToSelector: @selector(superview)]) {
++        owner = [_firstItem performSelector: @selector(superview)];
++        if (owner == nil) {
++            owner = _firstItem;
++        }
++    } else if ([_secondItem respondsToSelector: @selector(superview)]) {
++        owner = _secondItem;
++    }
++    if (owner == nil) {
++        return;
++    }
++    if (active) {
++        if ([owner respondsToSelector: @selector(addConstraint:)]) {
++            [owner performSelector: @selector(addConstraint:) withObject: self];
++        }
++    } else if ([owner respondsToSelector: @selector(removeConstraint:)]) {
++        [owner performSelector: @selector(removeConstraint:) withObject: self];
++    }
++}
++
++- (NSString *) description
++{
++    return [NSString stringWithFormat: @"<%@ %p first=%@ attr=%ld rel=%ld second=%@ attr=%ld x%g +%g%@>",
++                                       [self class], self, [_firstItem class], (long) _firstAttribute,
++                                       (long) _relation, [_secondItem class], (long) _secondAttribute,
++                                       _multiplier, _constant, _active ? @" active" : @""];
+ }
+ 
+ @end

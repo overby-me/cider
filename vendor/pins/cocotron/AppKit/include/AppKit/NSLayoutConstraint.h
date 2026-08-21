@@ -20,6 +20,8 @@
 #import <AppKit/AppKitExport.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSArray.h>
+#import <Foundation/NSObject.h>
 
 typedef float NSLayoutPriority;
 
@@ -30,3 +32,18 @@ typedef NS_ENUM(NSInteger, NSLayoutConstraintOrientation) {
 
 APPKIT_EXPORT const CGFloat NSViewNoInstrinsicMetric;
 APPKIT_EXPORT const CGFloat NSViewNoIntrinsicMetric;
+
+/*
+ * AUTO LAYOUT, AS FAR AS AN APPLICATION THAT ONLY MAKES CONSTRAINTS NEEDS IT.
+ *
+ * MoneyMoney reaches for exactly three things once AppKit claims to be newer than 10.15:
+ * +constraintWithItem:..., the class itself, and -setActive:. Two constraints, activated once. What
+ * it does NOT do is rely on a solver for its layout, because every view in its nibs still carries an
+ * autoresizing mask and translatesAutoresizingMaskIntoConstraints defaults to YES.
+ *
+ * So there is an object and its accounting, and no solver. THE CLASS ITSELF IS IN FOUNDATION, which
+ * has carried a stub of that name since the nib decoder needed one, along with three subclasses of
+ * it. Two Objective-C classes with one name is a coin toss the runtime announces and then resolves
+ * however it likes, and the application got the stub. See Foundation/NSLayoutConstraint.h.
+ */
+#import <Foundation/NSLayoutConstraint.h>

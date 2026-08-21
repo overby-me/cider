@@ -14580,3 +14580,38 @@ would immediately call `CurrentValueSubject.init`, `AnyCancellable.store(in:)` a
 Implementing them means writing Combine's core semantics against the Swift calling convention, which
 is a project rather than a rung. What has been proved is the method and three of its steps: a generic
 struct, a class, and the exact point where a generic class stops.
+
+## Auto Layout exists now, and the version number still does not move (2026-08-21)
+
+Task #150 ended with a one-line change that could not land: raising `NSAppKitVersionNumber` past
+10.15 buys MoneyMoney's truncated menu titles seven points of room, and kills the application on
+`+[NSLayoutConstraint constraintWithItem:...]`, because cocotron's `NSLayoutConstraint.m` was
+twenty-three lines with no class in it.
+
+**There is a class now**, and the first attempt at it was in the wrong framework. Implemented in
+AppKit, the selector stayed unrecognized: **this Foundation has carried an `NSLayoutConstraint` stub
+since the nib decoder needed something to decode into**, along with three subclasses of it, and two
+Objective-C classes with one name is a coin toss the runtime announces and then resolves however it
+likes. It resolved to the stub, whose `methodSignatureForSelector:` answers `"v@:"` for everything.
+So the object lives in Foundation, where the name already was, and AppKit imports that header.
+
+It is the constraint and its accounting, and **no solver**: the properties, the factory, activate and
+deactivate, and `-setActive:`, which puts the constraint on a view and takes it off again (asked by
+selector, because `NSView` is AppKit's and this is Foundation). Every view in these nibs still carries
+an autoresizing mask and `translatesAutoresizingMaskIntoConstraints` defaults to YES, so the layout is
+exactly what it was.
+
+With that and `+[NSScreen screensHaveSeparateSpaces]` (which MoneyMoney asks inside
+`-[NSWindow setFrameAutosaveName:]`, early enough that an unrecognized selector there leaves the
+window half built and the application catches the exception, so nothing crashes and nothing draws),
+the modern version number runs clean: **zero unrecognized selectors, zero uncaught exceptions**, and
+the menu titles gain their two characters:
+
+    1504:  Send batc…   New tran…   New inst…   New forei…   Use as tr…   Change t…
+    2022:  Send batch t…  New transf…  New instan…  New foreig…  Use as tran…  Change tra…
+
+**And it still does not land, because of the capture rather than the log.** At 2022 MoneyMoney draws
+**no menu bar at all** and an **empty toolbar**: it takes the Big Sur chrome path, silently, and this
+AppKit does not implement it. Two characters of menu title against the menu bar is not a trade worth
+making, so the constant went back to 1504 with that written where it lives. The class stays: it is
+what makes the next attempt possible, and it is the right shape regardless.

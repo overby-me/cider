@@ -18,6 +18,9 @@
 */
 
 #import <AppKit/NSLayoutConstraint.h>
+#import <AppKit/NSView.h>
+#import <Foundation/NSString.h>
 
 const CGFloat NSViewNoInstrinsicMetric = 0xbff0000000000000;
 const CGFloat NSViewNoIntrinsicMetric = 0xbff0000000000000;
+

@@ -99,10 +99,21 @@ NSString *const NSApplicationLaunchUserNotificationKey =
         @"NSApplicationLaunchUserNotificationKey";
 
 /*
- * THE VERSION APPLICATIONS BRANCH ON, and 10.12 is deliberate even though SystemVersion.plist says
- * 14.4.1. Anything newer than 10.15 makes MoneyMoney build its wizard with Auto Layout, and
- * NSLayoutConstraint here is two constants and no class, so the application dies on
- * +constraintWithItem: before it draws. Raise this only together with Auto Layout.
+ * THE VERSION APPLICATIONS BRANCH ON, and 10.12 is still deliberate. What changed is WHY.
+ *
+ * It used to be pinned here because anything newer than 10.15 made MoneyMoney build its wizard with
+ * Auto Layout and die on +constraintWithItem: before drawing. There is a real NSLayoutConstraint
+ * now (in Foundation, where the class already lived), and +[NSScreen screensHaveSeparateSpaces]
+ * answers as well, so 2022 no longer throws: zero unrecognized selectors, zero uncaught exceptions,
+ * and the menu titles gain the two characters the 35 point metric buys them.
+ *
+ * IT STILL COSTS MORE THAN IT BUYS, and the capture is what says so. At 2022 MoneyMoney draws NO
+ * MENU BAR AT ALL and an EMPTY TOOLBAR: it takes the Big Sur chrome path, which this AppKit does not
+ * implement, and it does it silently rather than by raising. Two characters of menu title against
+ * the menu bar is not a trade worth making.
+ *
+ * So: raise this when the Big Sur toolbar and menu bar are drawn, not before, and check the capture
+ * rather than the exception count.
  */
 const NSAppKitVersion NSAppKitVersionNumber = 1504; // macOS 10.12
 

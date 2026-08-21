@@ -38,6 +38,7 @@ typedef NSString *NSDeviceDescriptionKey;
 + (NSScreen *) mainScreen;
 
 + (NSArray *) screens;
++ (BOOL) screensHaveSeparateSpaces;
 
 - initWithFrame: (NSRect) frame visibleFrame: (NSRect) visibleFrame;
 

@@ -582,6 +582,7 @@ typedef struct __VFlags {
                                withObject: nil];
 
     [_subviews release];
+    [_constraints release];
     [_draggedTypes release];
     [_trackingAreas release];
     [_contentFilters release];
@@ -3694,6 +3695,44 @@ static NSView *viewBeingPrinted = nil;
 
 - (void) _nsib_setUsesPointIntegralizationForLayout: (BOOL) usesPointIntegralizationForLayout {
     NSUnimplementedMethod();
+}
+
+
+/*
+ * THE CONSTRAINTS A VIEW HOLDS, and nothing that solves them. An application that only builds
+ * constraints and activates them (MoneyMoney makes exactly two) needs the object to exist, to be
+ * retained, and to be findable again. Layout is still the autoresizing path.
+ */
+- (NSArray *) constraints {
+    return _constraints ? [NSArray arrayWithArray: _constraints] : [NSArray array];
+}
+
+- (void) addConstraint: (NSLayoutConstraint *) constraint {
+    if (constraint == nil) {
+        return;
+    }
+    if (_constraints == nil) {
+        _constraints = [[NSMutableArray alloc] init];
+    }
+    if (![_constraints containsObject: constraint]) {
+        [_constraints addObject: constraint];
+    }
+}
+
+- (void) addConstraints: (NSArray *) constraints {
+    for (NSLayoutConstraint *constraint in constraints) {
+        [self addConstraint: constraint];
+    }
+}
+
+- (void) removeConstraint: (NSLayoutConstraint *) constraint {
+    [_constraints removeObject: constraint];
+}
+
+- (void) removeConstraints: (NSArray *) constraints {
+    for (NSLayoutConstraint *constraint in constraints) {
+        [self removeConstraint: constraint];
+    }
 }
 
 - (NSLayoutPriority) contentHuggingPriorityForOrientation: (NSLayoutConstraintOrientation) orientation {
