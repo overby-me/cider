@@ -71,6 +71,9 @@ static CiderAllocateGenericValueMetadata cider_allocate_generic_value_metadata(v
 
 /* Defined in the module level asm at the end of this file. */
 extern const uint32_t cider_combine_anypublisher_descriptor[];
+extern const uint32_t cider_combine_receiveon_descriptor[];
+extern const uint32_t cider_combine_map_descriptor[];
+extern const uint32_t cider_combine_removeduplicates_descriptor[];
 
 /*
  * THE INSTANTIATION FUNCTION the generic pattern names. The runtime hands it the descriptor, the
@@ -180,6 +183,82 @@ CiderMetadataResponse cider_combine_anypublisher_metadata_accessor(size_t reques
     return answer;
 }
 
+/*
+ * THE THREE OPERATOR STRUCTS, which is where the application went next.
+ *
+ * With AnyPublisher answering, AccountCore got as far as Account's initialiser and died there on
+ * another null: at AccountCore+0x1ecc, immediately after
+ *
+ *     callq ___swift_instantiateConcreteTypeFromMangledNameV2
+ *     movq  -0x8(%rax), %rcx          <- rax is zero, so this reads address minus eight
+ *
+ * and the mangled name it passes resolves, through two symbolic references in __swift5_typeref, to
+ * Publishers.ReceiveOn<NotificationCenter.Publisher, DispatchQueue>. Map and RemoveDuplicates are
+ * bound by the same binaries and are the same shape, so all three are here.
+ *
+ * THEY ARE NESTED IN AN ENUM AND THE NESTING IS NOT DECORATION. Publishers is a caseless enum used as
+ * a namespace, and a bound generic type mangles ONE ARGUMENT LIST PER LEVEL of its context: the
+ * conformance names read Vy_xq_G, an empty list for Publishers and then the type's own arguments. The
+ * runtime counts the parameters level by level down the parent chain, so a descriptor whose parent is
+ * the module rather than the enum has the wrong shape for the name being resolved. Hence the enum
+ * descriptor below, with no cases and no generic parameters of its own.
+ *
+ * The requirements are DELIBERATELY not declared. Real Combine constrains Upstream to Publisher and
+ * Context to Scheduler, and each such constraint adds a witness table to the key arguments. Declaring
+ * none means the runtime builds these from types alone, which is all the metadata needs and all this
+ * framework can honour: there are no conformances here to hand it.
+ */
+static CiderMetadataResponse cider_combine_generic_metadata(const void *descriptor, size_t request,
+                                                            const void *const *arguments,
+                                                            const char *name)
+{
+    CiderGetGenericMetadata get = cider_get_generic_metadata();
+    CiderMetadataResponse none = { NULL, 0 };
+    CiderMetadataResponse answer;
+
+    if (get == NULL) {
+        return none;
+    }
+    answer = get(request, arguments, descriptor);
+    if (cider_combine_trace()) {
+        fprintf(stderr, "CIDER_COMBINE %s accessor request=%zu -> metadata=%p state=%zu\n",
+                name, request, answer.metadata, answer.state);
+        fflush(stderr);
+    }
+    return answer;
+}
+
+/*
+ * The application calls these with the real Combine argument count, which is larger than ours: a
+ * witness table per constraint follows the types. Reading only the leading types is safe, and the
+ * trailing arguments are simply not part of the key.
+ */
+CiderMetadataResponse cider_combine_receiveon_metadata_accessor(size_t request, const void *upstream,
+                                                                const void *context)
+{
+    const void *arguments[2] = { upstream, context };
+
+    return cider_combine_generic_metadata(cider_combine_receiveon_descriptor, request, arguments,
+                                          "ReceiveOn");
+}
+
+CiderMetadataResponse cider_combine_map_metadata_accessor(size_t request, const void *upstream,
+                                                          const void *output)
+{
+    const void *arguments[2] = { upstream, output };
+
+    return cider_combine_generic_metadata(cider_combine_map_descriptor, request, arguments, "Map");
+}
+
+CiderMetadataResponse cider_combine_removeduplicates_metadata_accessor(size_t request,
+                                                                       const void *upstream)
+{
+    const void *arguments[1] = { upstream };
+
+    return cider_combine_generic_metadata(cider_combine_removeduplicates_descriptor, request,
+                                          arguments, "RemoveDuplicates");
+}
+
 
 /*
  * AND ONE CLASS, BUILT AT RUNTIME RATHER THAN EMITTED.
@@ -274,86 +353,51 @@ CiderMetadataResponse cider_combine_anycancellable_metadata_accessor(size_t requ
 
 
 /*
- * AND A GENERIC CLASS, WITHOUT THE GENERIC CLASS MACHINERY.
+ * AND A GENERIC CLASS, WHICH HAS TO GO THROUGH THE RUNTIME EVEN THOUGH THE METADATA IS OURS.
  *
  * CurrentValueSubject is where Account actually keeps its state, twice over, and it is a generic
- * class: on the compiler's path that means a class metadata pattern, swift_allocateGenericClassMetadata
- * and swift_initClassMetadata, all of which exist to lay out fields and inherit a superclass vtable.
- * This one has no fields and no superclass, so none of that is needed. What the runtime actually
- * does when it resolves a bound generic name is CALL THE DESCRIPTOR'S ACCESS FUNCTION with the
- * arguments, which was measured on AnyPublisher, and an access function may answer however it likes.
+ * class. The first attempt built one class metadata per specialisation in this accessor and returned
+ * it directly, which is what an access function is allowed to do for a NON generic type. It died, and
+ * this is where:
  *
- * So this builds one class metadata per specialisation and remembers it. Eight is far more than the
- * two an application like this asks for, and running out means answering nothing rather than
- * answering wrongly.
+ *     swift_checkMetadataState + 892
+ *       callq  resolveExistingEntry<GenericCacheEntry>
+ *       movb   0x9(%rax), %al          <- rax is null, so this faults at address nine
+ *
+ * The runtime asks the type's own GENERIC CACHE for the entry belonging to these arguments and reads
+ * the entry's state byte without checking. Metadata that the runtime did not create has no entry, so
+ * ANY later question about its state is a null dereference. The answer to "what does the runtime read
+ * back after the access function returns", which the previous attempt left as the open question.
+ *
+ * So the metadata is still ours, and the runtime still makes the entry: the descriptor now carries a
+ * generic pattern whose instantiation function is the builder below, and the accessor asks
+ * swift_getGenericMetadata exactly as the struct accessors do. The runtime creates the cache entry,
+ * calls us to fill it, and every state check afterwards finds what it looks for. It also means the
+ * specialisation table is gone: the runtime keys the cache on the arguments already.
  */
 extern const uintptr_t cider_combine_currentvaluesubject_descriptor[];
 
-#define CIDER_COMBINE_MAX_SPECIALISATIONS 8
+void *cider_combine_class_instantiate(const void *descriptor, const void *const *arguments,
+                                      const void *pattern)
+{
+    void *metadata = cider_combine_build_class(descriptor, 16, arguments[0], arguments[1]);
 
-struct CiderSpecialisation {
-    const void *output;
-    const void *failure;
-    void *metadata;
-};
-
-static struct CiderSpecialisation cider_combine_subjects[CIDER_COMBINE_MAX_SPECIALISATIONS];
+    if (cider_combine_trace()) {
+        fprintf(stderr, "CIDER_COMBINE class instantiate desc=%p pattern=%p args=%p,%p -> %p\n",
+                descriptor, pattern, arguments[0], arguments[1], metadata);
+        fflush(stderr);
+    }
+    return metadata;
+}
 
 CiderMetadataResponse cider_combine_currentvaluesubject_metadata_accessor(size_t request,
                                                                           const void *output,
                                                                           const void *failure)
 {
-    CiderMetadataResponse answer = { NULL, 0 };
-    size_t i;
+    const void *arguments[2] = { output, failure };
 
-    /*
-     * AND IT ANSWERS NOTHING FOR NOW, DELIBERATELY.
-     *
-     * The descriptor and this accessor are right as far as they have been measured: the runtime
-     * resolves the bound name, calls this with the two argument metadata pointers, and takes the
-     * class metadata built below. What happens NEXT kills the process, twice over: once with the
-     * generic arguments left out of the metadata and once with them stored where a non resilient
-     * class keeps its immediate members (positive size minus immediate member count, so words ten
-     * and eleven of a twelve word class). Something the runtime reads back from a generic class is
-     * still wrong, and handing it a metadata it then dies on is worse than handing it nothing:
-     * nothing is what it had before, and the probe can still finish and report.
-     *
-     * TO FINISH THIS: find what the runtime reads after the access function returns for a BOUND
-     * GENERIC CLASS. The measurement is one line of trace inside swift_getTypeByMangledNameInContext
-     * away in principle, but that lives in a prebuilt libswiftCore, so the next best instrument is
-     * to build the same shape for a class the compiler DID emit (AccountCore has generic classes)
-     * and compare the two metadata records word by word.
-     */
-    if (getenv("CIDER_COMBINE_GENERIC_CLASS") == NULL) {
-        if (cider_combine_trace()) {
-            fprintf(stderr, "CIDER_COMBINE currentvaluesubject accessor: answering nothing, see the comment\n");
-            fflush(stderr);
-        }
-        return answer;
-    }
-
-    for (i = 0; i < CIDER_COMBINE_MAX_SPECIALISATIONS; ++i) {
-        struct CiderSpecialisation *slot = &cider_combine_subjects[i];
-
-        if (slot->metadata != NULL && slot->output == output && slot->failure == failure) {
-            answer.metadata = slot->metadata;
-            break;
-        }
-        if (slot->metadata == NULL) {
-            slot->output = output;
-            slot->failure = failure;
-            slot->metadata = cider_combine_build_class(cider_combine_currentvaluesubject_descriptor, 16,
-                                                      output, failure);
-            answer.metadata = slot->metadata;
-            break;
-        }
-    }
-    if (cider_combine_trace()) {
-        fprintf(stderr, "CIDER_COMBINE currentvaluesubject accessor request=%zu out=%p fail=%p -> %p\n",
-                request, output, failure, answer.metadata);
-        fflush(stderr);
-    }
-    return answer;
+    return cider_combine_generic_metadata(cider_combine_currentvaluesubject_descriptor, request,
+                                          arguments, "CurrentValueSubject");
 }
 
 /*
@@ -592,6 +636,14 @@ __asm__(
 "	.private_extern _cider_combine_currentvaluesubject_cache\n"
 "_cider_combine_currentvaluesubject_cache:\n"
 "	.space 128, 0\n"
+"	.section __TEXT,__const\n"
+"	.p2align 2\n"
+"	.private_extern _cider_combine_currentvaluesubject_pattern\n"
+"_cider_combine_currentvaluesubject_pattern:\n"
+"	.long _cider_combine_class_instantiate - _cider_combine_currentvaluesubject_pattern\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long 0\n"
 "	.section __TEXT,__constg_swiftt\n"
 "	.p2align 2\n"
 "	.globl _$s7Combine19CurrentValueSubjectCMn\n"
@@ -608,7 +660,7 @@ __asm__(
 "	.long 0\n"
 "	.long 0\n"
 "	.long _cider_combine_currentvaluesubject_cache - (_$s7Combine19CurrentValueSubjectCMn + 44)\n"
-"	.long 0\n"
+"	.long _cider_combine_currentvaluesubject_pattern - (_$s7Combine19CurrentValueSubjectCMn + 48)\n"
 "	.short 2, 0\n"
 "	.short 2, 0\n"
 "	.byte 0x80, 0x80, 0, 0\n"
@@ -621,4 +673,154 @@ __asm__(
 "	.set _$s7Combine19CurrentValueSubjectCMa, _cider_combine_currentvaluesubject_metadata_accessor\n"
 "	.globl _cider_combine_currentvaluesubject_descriptor\n"
 "	.set _cider_combine_currentvaluesubject_descriptor, _$s7Combine19CurrentValueSubjectCMn\n"
+);
+
+/*
+ * THE NAMESPACE AND THE THREE STRUCTS INSIDE IT.
+ *
+ * The enum carries no cases and no generic parameters; it exists so the three descriptors have the
+ * parent chain their mangled names describe. An enum descriptor is a nominal descriptor with two
+ * extra words, the payload case count and the empty case count, and both are zero for a namespace.
+ *
+ * Each struct is the AnyPublisher shape with a different parameter count, and they share the
+ * instantiation function and the value witness table, because for all of them the answer is the same:
+ * the layout does not depend on the arguments, and one pointer wide is a consistent lie. See the file
+ * comment for what that costs.
+ */
+__asm__(
+"	.section __TEXT,__const\n"
+"	.p2align 2\n"
+"	.private_extern _cider_combine_name_publishers\n"
+"_cider_combine_name_publishers:\n"
+"	.asciz \"Publishers\"\n"
+"	.private_extern _cider_combine_name_receiveon\n"
+"_cider_combine_name_receiveon:\n"
+"	.asciz \"ReceiveOn\"\n"
+"	.private_extern _cider_combine_name_map\n"
+"_cider_combine_name_map:\n"
+"	.asciz \"Map\"\n"
+"	.private_extern _cider_combine_name_removeduplicates\n"
+"_cider_combine_name_removeduplicates:\n"
+"	.asciz \"RemoveDuplicates\"\n"
+"\n"
+"	.section __TEXT,__constg_swiftt\n"
+"	.p2align 2\n"
+"	.globl _$s7Combine10PublishersOMn\n"
+"_$s7Combine10PublishersOMn:\n"
+"	.long 0x52\n"
+"	.long _cider_combine_module_descriptor - (_$s7Combine10PublishersOMn + 4)\n"
+"	.long _cider_combine_name_publishers - (_$s7Combine10PublishersOMn + 8)\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long 0\n"
+"\n"
+"	.globl _$s7Combine10PublishersO9ReceiveOnVMn\n"
+"	.p2align 2\n"
+"_$s7Combine10PublishersO9ReceiveOnVMn:\n"
+"	.long 0xd1\n"
+"	.long _$s7Combine10PublishersOMn - (_$s7Combine10PublishersO9ReceiveOnVMn + 4)\n"
+"	.long _cider_combine_name_receiveon - (_$s7Combine10PublishersO9ReceiveOnVMn + 8)\n"
+"	.long _cider_combine_receiveon_metadata_accessor - (_$s7Combine10PublishersO9ReceiveOnVMn + 12)\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long _cider_combine_receiveon_cache - (_$s7Combine10PublishersO9ReceiveOnVMn + 28)\n"
+"	.long _cider_combine_receiveon_pattern - (_$s7Combine10PublishersO9ReceiveOnVMn + 32)\n"
+"	.short 2, 0\n"
+"	.short 2, 0\n"
+"	.byte 0x80, 0x80, 0, 0\n"
+"\n"
+"	.globl _$s7Combine10PublishersO3MapVMn\n"
+"	.p2align 2\n"
+"_$s7Combine10PublishersO3MapVMn:\n"
+"	.long 0xd1\n"
+"	.long _$s7Combine10PublishersOMn - (_$s7Combine10PublishersO3MapVMn + 4)\n"
+"	.long _cider_combine_name_map - (_$s7Combine10PublishersO3MapVMn + 8)\n"
+"	.long _cider_combine_map_metadata_accessor - (_$s7Combine10PublishersO3MapVMn + 12)\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long _cider_combine_map_cache - (_$s7Combine10PublishersO3MapVMn + 28)\n"
+"	.long _cider_combine_map_pattern - (_$s7Combine10PublishersO3MapVMn + 32)\n"
+"	.short 2, 0\n"
+"	.short 2, 0\n"
+"	.byte 0x80, 0x80, 0, 0\n"
+"\n"
+"	.globl _$s7Combine10PublishersO16RemoveDuplicatesVMn\n"
+"	.p2align 2\n"
+"_$s7Combine10PublishersO16RemoveDuplicatesVMn:\n"
+"	.long 0xd1\n"
+"	.long _$s7Combine10PublishersOMn - (_$s7Combine10PublishersO16RemoveDuplicatesVMn + 4)\n"
+"	.long _cider_combine_name_removeduplicates - (_$s7Combine10PublishersO16RemoveDuplicatesVMn + 8)\n"
+"	.long _cider_combine_removeduplicates_metadata_accessor - (_$s7Combine10PublishersO16RemoveDuplicatesVMn + 12)\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long _cider_combine_removeduplicates_cache - (_$s7Combine10PublishersO16RemoveDuplicatesVMn + 28)\n"
+"	.long _cider_combine_removeduplicates_pattern - (_$s7Combine10PublishersO16RemoveDuplicatesVMn + 32)\n"
+"	.short 1, 0\n"
+"	.short 1, 0\n"
+"	.byte 0x80, 0, 0, 0\n"
+"\n"
+"	.section __TEXT,__const\n"
+"	.p2align 2\n"
+"	.private_extern _cider_combine_receiveon_pattern\n"
+"_cider_combine_receiveon_pattern:\n"
+"	.long _cider_combine_anypublisher_instantiate - _cider_combine_receiveon_pattern\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long _cider_combine_anypublisher_vwt - (_cider_combine_receiveon_pattern + 12)\n"
+"	.private_extern _cider_combine_map_pattern\n"
+"_cider_combine_map_pattern:\n"
+"	.long _cider_combine_anypublisher_instantiate - _cider_combine_map_pattern\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long _cider_combine_anypublisher_vwt - (_cider_combine_map_pattern + 12)\n"
+"	.private_extern _cider_combine_removeduplicates_pattern\n"
+"_cider_combine_removeduplicates_pattern:\n"
+"	.long _cider_combine_anypublisher_instantiate - _cider_combine_removeduplicates_pattern\n"
+"	.long 0\n"
+"	.long 0\n"
+"	.long _cider_combine_anypublisher_vwt - (_cider_combine_removeduplicates_pattern + 12)\n"
+"\n"
+"	.section __TEXT,__swift5_types\n"
+"	.p2align 2\n"
+"	.private_extern _cider_combine_receiveon_typerecord\n"
+"_cider_combine_receiveon_typerecord:\n"
+"	.long _$s7Combine10PublishersO9ReceiveOnVMn - _cider_combine_receiveon_typerecord\n"
+"	.private_extern _cider_combine_map_typerecord\n"
+"_cider_combine_map_typerecord:\n"
+"	.long _$s7Combine10PublishersO3MapVMn - _cider_combine_map_typerecord\n"
+"	.private_extern _cider_combine_removeduplicates_typerecord\n"
+"_cider_combine_removeduplicates_typerecord:\n"
+"	.long _$s7Combine10PublishersO16RemoveDuplicatesVMn - _cider_combine_removeduplicates_typerecord\n"
+"	.private_extern _cider_combine_publishers_typerecord\n"
+"_cider_combine_publishers_typerecord:\n"
+"	.long _$s7Combine10PublishersOMn - _cider_combine_publishers_typerecord\n"
+"\n"
+"	.section __DATA,__data\n"
+"	.p2align 3\n"
+"	.private_extern _cider_combine_receiveon_cache\n"
+"_cider_combine_receiveon_cache:\n"
+"	.space 128, 0\n"
+"	.private_extern _cider_combine_map_cache\n"
+"_cider_combine_map_cache:\n"
+"	.space 128, 0\n"
+"	.private_extern _cider_combine_removeduplicates_cache\n"
+"_cider_combine_removeduplicates_cache:\n"
+"	.space 128, 0\n"
+"\n"
+"	.globl _$s7Combine10PublishersO9ReceiveOnVMa\n"
+"	.set _$s7Combine10PublishersO9ReceiveOnVMa, _cider_combine_receiveon_metadata_accessor\n"
+"	.globl _$s7Combine10PublishersO3MapVMa\n"
+"	.set _$s7Combine10PublishersO3MapVMa, _cider_combine_map_metadata_accessor\n"
+"	.globl _$s7Combine10PublishersO16RemoveDuplicatesVMa\n"
+"	.set _$s7Combine10PublishersO16RemoveDuplicatesVMa, _cider_combine_removeduplicates_metadata_accessor\n"
+"	.globl _cider_combine_receiveon_descriptor\n"
+"	.set _cider_combine_receiveon_descriptor, _$s7Combine10PublishersO9ReceiveOnVMn\n"
+"	.globl _cider_combine_map_descriptor\n"
+"	.set _cider_combine_map_descriptor, _$s7Combine10PublishersO3MapVMn\n"
+"	.globl _cider_combine_removeduplicates_descriptor\n"
+"	.set _cider_combine_removeduplicates_descriptor, _$s7Combine10PublishersO16RemoveDuplicatesVMn\n"
 );

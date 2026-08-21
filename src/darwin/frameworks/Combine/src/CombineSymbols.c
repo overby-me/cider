@@ -35,14 +35,12 @@
     __attribute__((visibility("default"))) const uintptr_t cider_combine_##id __asm__(mangled) =   \
             CIDER_COMBINE_POISON_BASE + (id) * 0x100
 
-CIDER_COMBINE_SYMBOL(1, "_$s7Combine10PublishersO16RemoveDuplicatesVMa");
-CIDER_COMBINE_SYMBOL(2, "_$s7Combine10PublishersO16RemoveDuplicatesVMn");
+/* 1, 2, 4, 5, 7 and 8 are gone: the three Publishers structs have real descriptors and real metadata
+ * accessors in CombineMetadata.c, nested in a real Publishers enum, because Account's initialiser
+ * asks the runtime to build ReceiveOn by mangled name. The CONFORMANCES below are still
+ * placeholders. */
 CIDER_COMBINE_SYMBOL(3, "_$s7Combine10PublishersO16RemoveDuplicatesVy_xGAA9PublisherAAMc");
-CIDER_COMBINE_SYMBOL(4, "_$s7Combine10PublishersO3MapVMa");
-CIDER_COMBINE_SYMBOL(5, "_$s7Combine10PublishersO3MapVMn");
 CIDER_COMBINE_SYMBOL(6, "_$s7Combine10PublishersO3MapVy_xq_GAA9PublisherAAMc");
-CIDER_COMBINE_SYMBOL(7, "_$s7Combine10PublishersO9ReceiveOnVMa");
-CIDER_COMBINE_SYMBOL(8, "_$s7Combine10PublishersO9ReceiveOnVMn");
 CIDER_COMBINE_SYMBOL(9, "_$s7Combine10PublishersO9ReceiveOnVy_xq_GAA9PublisherAAMc");
 
 /* 10 and 11 are gone on purpose: AnyPublisher's metadata accessor and its nominal type descriptor
