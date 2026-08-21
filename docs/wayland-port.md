@@ -14746,3 +14746,50 @@ One design decision has held through all of this and is worth stating: **every C
 framework is one word**, either a class reference or a pointer to a box we own. That is why a single
 value witness table of size eight serves all three operator structs. It is a lie about layout that
 nothing can catch us in, because no real Combine code ever sees these values.
+
+## The Combine wall was never the application (2026-08-21)
+
+iA Writer now runs every Combine call it makes and leaves `finishLaunching`. What stood in the way at
+the end was not the application's use of Combine at all: **libswiftFoundation and libswiftDispatch
+conform their own types to Combine's protocols**, `NotificationCenter.Publisher` is a `Publisher` and
+`DispatchQueue` is a `Scheduler`, and those conformances use resilient witnesses. Each witness names
+the requirement it implements by a pointer, the runtime turns that pointer into a witness table index
+by subtracting the protocol's requirement base, and every one of those pointers is a weak import from
+Combine. With no Combine to bind them they are null:
+
+    swift_getWitnessTable + 414
+      movl 0x10(%rax), %eax        <- the protocol descriptor, null, so the fault is at sixteen
+
+**Measured, not guessed.** `scratchpad/swiftconf.py` dumps a conformance record and the symbols its
+witnesses name, so the set of requirements and their count come from the conformances themselves:
+four for `Publisher`, nine for `Scheduler`. The order within a protocol is ours to choose, because
+the only code that turns those pointers into indices reads the same symbols. Nine protocol
+descriptors are now in `CombineProtocols.c` with their requirement symbols.
+
+**Our own conformances are smaller than they look.** Disassembling `swift_getWitnessTable`'s entry
+shows a conformance that declares no generic witness table hands its table back with nothing else
+read: not the protocol, not the type reference, not the requirement count. So ours are four words and
+a table of stubs that name themselves if anything calls one. `AnyCancellable`'s `Hashable` and
+`Equatable` are real, because `Set` needs them and a wrong `==` is a silent corruption where a
+constant hash is only slow.
+
+**One accessor is called two ways.** A metadata accessor takes up to three generic arguments in
+registers and a pointer to an array beyond that. The runtime, resolving a mangled name against our
+descriptor, counts two for `ReceiveOn`; the application, compiled against the real Combine where
+`Upstream` is a `Publisher` and `Context` a `Scheduler`, counts four. They are told apart by where the
+first argument points, since type metadata is never on the stack.
+
+**Where it stops now is an ordinary bug**, on a worker thread, in the application's own indexing:
+
+    Cannot generate query for function valueForKeyPath:
+    -[IALibraryIndex indexingProgressWithLocationIdentifiers:] -> FMDatabaseQueue
+
+No window yet, so none of the three criteria are met for iA Writer.
+
+**Crashtrace learned three things**, each paid for by a lost measurement. The frames print before
+anything dereferences a register, because two runs printed a header, two registers and then nothing
+at all. The callee-saved registers are printed and named with `dladdr`, which is what turned "some
+conformance is null" into the name of the conformance. And the string probe runs last and only for
+addresses `dladdr` places inside a loaded image: a write to `/dev/null` answers `EFAULT` for a bad
+pointer on a real kernel, but this emulation copies the buffer in the guest first, so the probe
+faults instead of failing.
