@@ -14230,3 +14230,104 @@ which is the only question this file can answer on its own: how far does the app
 needs one of them for real. Anything that actually reads or calls one will fail, and where it fails is
 the measurement." Where it fails is `AccountCore.Account`, and the cost of iA Writer is a real Combine,
 which needs a Swift compiler targeting Darwin that this port does not have.
+
+## MoneyMoney does not start any more, and the reply that never arrives (2026-08-21)
+
+Eleven runs today, and the application reached its main window in **none** of them. It draws its
+window, its menu bar and its toolbar, and then sits on `Starting MoneyMoney...` until the driver
+kills it. That is a queue application that no longer opens, so it outranks everything else here.
+
+**What it is waiting for, measured on both sides.** The application connects to `com.apple.trustd`,
+sends one message and never hears back. trustd is spawned on demand, and with new traces in it the
+whole exchange is visible:
+
+    CIDER_TRUSTD message arrived on connection 0x786bfda045d0
+    CIDER_TRUSTD trust evaluate: parameters read, handing the work to the workloop
+    CIDER_TRUSTD trust evaluate: the workloop answered, result=4 error=no
+    CIDER_TRUSTD trust evaluate: reply sent
+    CIDER_TRUSTD handler returning
+
+`result=4` is `kSecTrustResultUnspecified`, a good chain. **The trust evaluation succeeds.** So the
+splash is not a code-signing failure and not a daemon that dies before answering, which is what I
+assumed for most of this rung.
+
+**The reply is what fails.** `xpc_connection_send_message` reports its outcome through
+`handle_send_result`, whose return value every caller ignores and whose only log line is an
+`xpc_log_debug` with no sink in this container: a send that failed and a send that arrived looked
+identical from outside the process. With a trace there (`vendor/patches/libxpc/0007`):
+
+    CIDER_XPC send FAILED reason=4 err=0x10000002 id=0x10000000 dest=0xb03
+
+reason 4 is `DISPATCH_MACH_MESSAGE_SEND_FAILED`, and `0x10000002` is `MACH_SEND_INVALID_DATA`, which
+`ipc_kmsg_get` returns when `copyinmsg` cannot read the message out of the sending process.
+
+**And the reason it cannot read it.** `copyinmsg` reaches `read_process_memory` in the daemon, which
+is `process_vm_readv`. It had no failure trace, only the write side did; with the mirror added:
+
+    CIDER_VMREAD FAILED pid=638035 addr=0x786c00904818 len=28 rc=-1 errno=No such process
+
+**ESRCH, for a process that is alive and still writing to its own log.** 28 bytes is exactly
+`mach_msg_legacy_base_t`, the first header read of the send. The pid is the one ciderd itself
+recorded for that task (`CIDER_PROCKQ watching nsid=39 host pid=638035`).
+
+That is not the whole story either, because the failure is not deterministic: in one run the same
+reply was sent cleanly (`CIDER_XPC send SENT reason=3 err=0x0 id=0x20000000 dest=0x2803`) and the
+application still did not proceed. So there are two questions left, and they are separate: why the
+daemon's own pid reads as ESRCH while it is running, and where a successfully sent reply goes.
+
+**What is now ruled out, with evidence, so nobody re-tests it:**
+
+* The trust evaluation itself. It runs and returns a good result.
+* trustd dying before it answers. It answers first; it does exit a few seconds later, which is
+  correct of a job with `EnablePressuredExit` and `EnableTransactions`.
+* The application blocking in a Mach call. Sampled with `SIGUSR1` while it waits: the main thread is
+  in `__CFRunLoopServiceMachPort` inside its normal event loop, or drawing its title bar. **I read an
+  earlier `recvmsg` in the host thread sample as "a Mach send with no reply" and that was wrong: it
+  is the idle run loop.**
+* A membership lookup. It is slow, not fatal: `mbr_uid_to_uuid` for euid 282 times out after 15000 ms
+  because opendirectoryd answers `error 78` and the reply is lost the same way, and libinfo then
+  falls back. Two of those per message, and the evaluation still finishes.
+
+**Also seen once, and worth its own look:** trustd crashed in `objc_release` inside an autorelease
+pool pop with a NULL isa, and with `CIDER_TRACE_POOL` on, the pool drain names a pointer that appears
+**twice** in the same pool. A double autorelease in the message path.
+
+## Who truncates MoneyMoney's menu titles: our own AppKit version number (2026-08-21)
+
+Task #150 asked which of three subtracted widths the application measures. The answer is none of
+them: it measures nothing of ours. Disassembling the loop that ends at `+0x21b66a` gives
+
+    budget = [self maximumMenuWidth or minimumMenuWidth] - w1 - w2 - w3   clamped at 0
+    w1 = 20 if the item got an icon, else 0
+    w2 = 12 * the indentation level the application itself sets
+    w3 = 42 or 35, chosen by a comparison against 1894.0
+
+and 1894 is `NSAppKitVersionNumber10_15`. The value it compares is `_NSAppKitVersionNumber`, imported
+from AppKit, and **we answer 1504**, which is 10.12 Sierra, while `SystemVersion.plist` tells the same
+application it is running on macOS 14.4.1. So it takes the pre-Big-Sur branch and gives every title 7
+points less room than macOS would.
+
+It is not one decision either. MoneyMoney reads that global in **188 places**, comparing against
+1038, 1138, 1265, 1343, 1404, 1504.6, 1561, 1671, 1894 and 2113, which is 10.6 through 12.0. At 1504
+it takes the old branch nearly everywhere. Of the applications here only MoneyMoney imports it.
+
+**And the one-line change does not work, which is the more useful half of the answer.** MoneyMoney
+runs fine without launchd (that is how every earlier rung drove it), so the change was measurable
+after all: with `NSAppKitVersionNumber = 2487` the application dies during startup with
+
+    cider: UNRECOGNIZED -[NSLayoutConstraint constraintWithItem:attribute:relatedBy:toItem:attribute:multiplier:constant:]
+    Terminating app due to uncaught exception NSException
+
+and with 2022, macOS 11.0 exactly, it dies in the same place. So the branch that switches the menu
+metric from 42 to 35 is the same one that switches this application to Auto Layout, and cocotron's
+`NSLayoutConstraint.m` is twenty three lines: two constants, no class at all.
+
+Reverted to 1504 with that reason written where the constant is, and verified: 57 titles from the
+truncating site again, 12 of them shortened, no unrecognized selector, and the window comes up with
+its sidebar, toolbar and trial banner. **The seven points cost an Auto Layout implementation.**
+
+**One more correction, and it matters for how MoneyMoney is driven.** It is not regressed. Every run
+above used launchd, because `NOLAUNCHD` defaults to off in the driver whose name says otherwise; with
+`NOLAUNCHD=1` there is no trustd at all, Security takes its no-trustd path, and the application
+reaches its main window in about a second. So MoneyMoney has two states, and both are real: it opens
+without launchd, and it hangs on the splash with launchd because of the lost reply above.

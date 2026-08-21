@@ -1,0 +1,58 @@
+A send that fails must not be silent.
+
+MONEYMONEY NEVER LEAVES ITS SPLASH, and the reason is one line that nothing ever printed.
+
+trustd receives the trust evaluation, runs it, gets kSecTrustResultUnspecified and calls
+xpc_connection_send_message with the reply. Its own log then says it replied. The application waits
+for that reply forever.
+
+handle_send_result is where the truth was: every caller ignores its return value, and the only
+report of a failed send is an xpc_log_debug that has no sink in this container. A send that failed
+and a send that arrived looked exactly the same from outside the process.
+
+With this trace on, the failing run says
+
+    CIDER_XPC send FAILED reason=4 err=0x10000002 id=0x10000000 dest=0xb03
+
+reason 4 is DISPATCH_MACH_MESSAGE_SEND_FAILED and 0x10000002 is MACH_SEND_INVALID_DATA, which
+ipc_kmsg_get returns when copyinmsg cannot read the message out of the sending process. The daemon
+was alive and logging at that moment.
+
+DEFERRED IS NOT DELIVERED and is called out separately: DISPATCH_MACH_NEEDS_DEFERRED_SEND leaves the
+message queued on the channel, and a daemon that exits right after replying takes the queue with it.
+
+Gated on a NON-EMPTY CIDER_TRACE_XPC, unlike the older traces in this file: drivers here export
+every switch empty, so getenv != NULL is true in every run.
+--- a/src/connection.m
++++ b/src/connection.m
+@@ -101,6 +101,30 @@
+ 
+ // returns `true` if there was no error, `false` otherwise
+ static bool handle_send_result(dispatch_mach_msg_t message, dispatch_mach_reason_t sendResult, mach_error_t sendError, bool expecting_reply) {
++	/*
++	 * A SEND THAT FAILS IS SILENT: every caller of this ignores the return, and the only report is
++	 * an xpc_log_debug that goes nowhere. That is indistinguishable from a delivered message, which
++	 * is exactly the question when a daemon logs that it replied and its client waits forever.
++	 */
++	{
++		const char* trace = getenv("CIDER_TRACE_XPC");
++
++		if (trace != NULL && trace[0] != '\0') {
++			mach_msg_header_t* header = message ? dispatch_mach_msg_get_msg(message, NULL) : NULL;
++			bool sent = sendResult == DISPATCH_MACH_MESSAGE_SENT;
++
++			/* DEFERRED is not delivered: it is queued on the channel, and a daemon that exits
++			 * right after replying takes the queue with it. */
++			fprintf(stderr, "CIDER_XPC send %s reason=%lu err=0x%x id=0x%x dest=0x%x%s\n",
++			        sent ? "SENT" : (sendResult == DISPATCH_MACH_NEEDS_DEFERRED_SEND ? "DEFERRED" : "FAILED"),
++			        (unsigned long) sendResult, (unsigned) sendError,
++			        header ? (unsigned) header->msgh_id : 0u,
++			        header ? (unsigned) header->msgh_remote_port : 0u,
++			        expecting_reply ? " (expecting reply)" : "");
++			fflush(stderr);
++		}
++	}
++
+ 	switch (sendResult) {
+ 		case DISPATCH_MACH_MESSAGE_SENT: {
+ 			xpc_log_debug(connection, "message%s successfully sent", expecting_reply ? " expecting reply" : "");

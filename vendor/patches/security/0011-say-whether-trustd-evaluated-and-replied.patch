@@ -1,0 +1,104 @@
+Say whether trustd evaluated the chain and whether it replied.
+
+The daemon logged that a message arrived and then nothing at all, which fits two opposite stories:
+the evaluation never ran, or it ran and the answer never left. Both end with the client waiting.
+
+These say which. The operation number, whether the parameters could be read, when the workloop
+answered and with what result, and whether a reply was sent, on both the asynchronous path used by
+trust evaluation and the synchronous one used by everything else.
+
+MEASURED with them, and it settles the question: the evaluation runs and succeeds.
+
+    CIDER_TRUSTD operation 1
+    CIDER_TRUSTD trust evaluate: parameters read, handing the work to the workloop
+    CIDER_TRUSTD trust evaluate: the workloop answered, result=4 error=no
+    CIDER_TRUSTD trust evaluate: reply sent
+    CIDER_TRUSTD handler returning
+
+result 4 is kSecTrustResultUnspecified, which is a good chain. So the trust round trip is not what
+fails: the reply is.
+
+ALSO HERE: an atexit line and a SIGTERM line, because this job has EnablePressuredExit and
+EnableTransactions and can end itself, and a daemon that vanishes mid request leaves no trace at all.
+--- a/trust/trustd/trustd.c
++++ b/trust/trustd/trustd.c
+@@ -540,6 +540,10 @@
+ 	if (CiderTraceTrustd()) { fprintf(stderr, "CIDER_TRUSTD " __VA_ARGS__); fputc('\n', stderr); fflush(stderr); } \
+ } while (0)
+ 
++static void cider_trustd_exiting(void) {
++    CIDER_TRUSTD("process exiting");
++}
++
+ static void trustd_xpc_dictionary_handler(const xpc_connection_t connection, xpc_object_t event) {
+     CIDER_TRUSTD("message arrived on connection %p", (void *) connection);
+     xpc_type_t type = xpc_get_type(event);
+@@ -568,6 +572,8 @@
+ 
+         uint64_t operation = xpc_dictionary_get_uint64(event, kSecXPCKeyOperation);
+ 
++        CIDER_TRUSTD("operation %llu", (unsigned long long) operation);
++
+         audit_token_t auditToken = {};
+         xpc_connection_get_audit_token(connection, &auditToken);
+ 
+@@ -599,10 +605,14 @@
+                 xpc_object_t asyncReply = replyMessage;
+                 replyMessage = NULL;
+ 
++                CIDER_TRUSTD("trust evaluate: parameters read, handing the work to the workloop");
++
+                 SecTrustServerEvaluateBlock(SecTrustServerGetWorkloop(), clientAuditToken, certificates, anchors, anchorsOnly, keychainsAllowed, policies,
+                                             responses, scts, trustedLogs, verifyTime, client.accessGroups, exceptions,
+                                             ^(SecTrustResultType tr, CFArrayRef details, CFDictionaryRef info, CFArrayRef chain,
+                                               CFErrorRef replyError) {
++                    CIDER_TRUSTD("trust evaluate: the workloop answered, result=%d error=%s",
++                                 (int) tr, replyError ? "yes" : "no");
+                     // Send back reply now
+                     if (replyError) {
+                         CFRetain(replyError);
+@@ -625,11 +635,14 @@
+                     }
+ 
+                     xpc_connection_send_message(connection, asyncReply);
++                    CIDER_TRUSTD("trust evaluate: reply sent");
+                     xpc_release(asyncReply);
+                     xpc_release(connection);
+                     CFReleaseSafe(client.task);
+                     CFReleaseSafe(clientAuditToken);
+                 });
++            } else {
++                CIDER_TRUSTD("trust evaluate: reading the parameters failed, nothing was scheduled");
+             }
+             CFReleaseSafe(policies);
+             CFReleaseSafe(anchors);
+@@ -752,8 +765,10 @@
+ 
+     if (replyMessage) {
+         xpc_connection_send_message(connection, replyMessage);
++        CIDER_TRUSTD("handler replied synchronously");
+         xpc_release(replyMessage);
+     }
++    CIDER_TRUSTD("handler returning");
+     if (xpcError)
+         xpc_release(xpcError);
+     CFReleaseSafe(error);
+@@ -848,6 +863,7 @@
+     static dispatch_source_t terminateSource = NULL;
+     terminateSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGTERM, 0, queue);
+     dispatch_source_set_event_handler(terminateSource, ^ {
++        CIDER_TRUSTD("SIGTERM arrived, will exit when clean");
+         secinfo("serverxpc", "Received signal SIGTERM. Will terminate when clean.");
+         xpc_transaction_exit_clean();
+     });
+@@ -874,6 +890,10 @@
+ #endif
+     FixTrustdFilePermissions();
+     CIDER_TRUSTD("main entered");
++
++    /* A daemon that vanishes mid request leaves no trace at all, and its client then waits for a
++     * reply forever. This says the process ended itself rather than being killed. */
++    atexit(cider_trustd_exiting);
+     /* set up SQLite before some other component has a chance to create a database connection */
+     _SecDbServerSetup();
+     CIDER_TRUSTD("_SecDbServerSetup done");

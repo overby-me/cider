@@ -717,7 +717,20 @@ pub unsafe fn read_process_memory(pid: libc::pid_t, remote_address: usize, local
     let liov = libc::iovec { iov_base: local.as_mut_ptr() as *mut c_void, iov_len: local.len() };
     let riov = libc::iovec { iov_base: remote_address as *mut c_void, iov_len: local.len() };
     let n = libc::process_vm_readv(pid, &liov, 1, &riov, 1, 0);
-    n >= 0 && n as usize == local.len()
+    let ok = n >= 0 && n as usize == local.len();
+
+    /*
+     * THE MIRROR OF THE WRITE TRACE ABOVE, and it answers a hang rather than a deafness: a failed
+     * read here becomes KERN_FAILURE in copyinmap, MACH_SEND_INVALID_DATA in ipc_kmsg_get, and
+     * libxpc drops the send result on the floor, so a daemon logs that it replied and its client
+     * waits forever. Failures only.
+     */
+    if !ok {
+        let e = std::io::Error::last_os_error();
+        eprintln!("CIDER_VMREAD FAILED pid={pid} addr=0x{remote_address:x} len={} rc={n} errno={e}",
+                  local.len());
+    }
+    ok
 }
 
 /// Write `local` into process `pid`'s address space at `remote_address`, via

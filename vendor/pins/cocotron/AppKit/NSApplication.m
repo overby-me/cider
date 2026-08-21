@@ -98,6 +98,12 @@ NSString *const NSApplicationLaunchIsDefaultLaunchKey =
 NSString *const NSApplicationLaunchUserNotificationKey =
         @"NSApplicationLaunchUserNotificationKey";
 
+/*
+ * THE VERSION APPLICATIONS BRANCH ON, and 10.12 is deliberate even though SystemVersion.plist says
+ * 14.4.1. Anything newer than 10.15 makes MoneyMoney build its wizard with Auto Layout, and
+ * NSLayoutConstraint here is two constants and no class, so the application dies on
+ * +constraintWithItem: before it draws. Raise this only together with Auto Layout.
+ */
 const NSAppKitVersion NSAppKitVersionNumber = 1504; // macOS 10.12
 
 NSApplication *NSApp = nil;
