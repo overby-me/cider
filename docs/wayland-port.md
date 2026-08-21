@@ -14480,3 +14480,13 @@ The instrument for the next attempt is written: `scratchpad/mm-stallcatch.sh` po
 `/proc/<pid>/syscall` every half second and fires `SIGUSR1` only once the main thread has been in
 `recvmsg` for several seconds and only during the early window, so crashtrace's sampler prints the
 stack from inside the wait rather than from an idle run loop.
+
+**And the three criteria with launchd running, looked at rather than inferred.** One run, one
+container, captures at each step: the main window at **1000x600** (menu bar, toolbar, sidebar with its
+selected row, the add button, the trial banner), the same window relaid out at **1400x900**, and the
+File menu open over it from a mouse click with its items, separators, greyed entries and key
+equivalents. That is renders, interactive and resizable, in the configuration that could not get past
+its splash this morning.
+
+The early stall has not reappeared in the last eight runs (it was four of nine before), so its rate is
+not steady and the next attempt at it should not assume it will show up on demand.
