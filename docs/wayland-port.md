@@ -14650,3 +14650,54 @@ The same three item views with the same frames, and **not one draw** of the two 
 the icon strip. So the items are built and their contents never are: an application path this AppKit
 does not carry, taken silently rather than by raising, which is why the exception count kept saying
 zero. That is what #163 has left, and the constant stays at 1504 until it draws.
+
+## iA Writer stops asking for shapes and starts asking for behaviour (2026-08-21)
+
+Combine now answers every TYPE iA Writer asks for. Two steps got there, and each was measured at the
+point it failed rather than guessed.
+
+**The three operator structs.** With `AnyPublisher` answering, the application died in AccountCore at
+`+0x1ecc`, one instruction after the call that builds a type from its mangled name:
+
+    callq ___swift_instantiateConcreteTypeFromMangledNameV2
+    movq  -0x8(%rax), %rcx        <- rax was zero, hence the fault at address minus eight
+
+The name it passes sits in `__TEXT,__swift5_typeref` and is mostly symbolic references; following
+them through the bind table names the type: `Publishers.ReceiveOn<NotificationCenter.Publisher,
+DispatchQueue>`. `Map` and `RemoveDuplicates` are bound by the same binaries, so all three have real
+descriptors, accessors and generic patterns now, built the way `AnyPublisher` was.
+
+They are nested in a `Publishers` enum, and **the nesting is load bearing**: a bound generic type
+mangles one argument list per level of its context, which is what the `y_xq_G` in the conformance
+names means, an empty list for the namespace and then the type's own arguments. A descriptor parented
+on the module would have the wrong shape for the name being resolved, so there is an enum descriptor
+here too, with no cases and no parameters of its own.
+
+**The generic class, and the question the last attempt left open.** `CurrentValueSubject` metadata
+built by hand and returned straight from the access function killed the process, and the address said
+nothing until the crash rip was symbolicated against the real `libswiftCore`:
+
+    swift_checkMetadataState + 892
+      callq  resolveExistingEntry<GenericCacheEntry>
+      movb   0x9(%rax), %al        <- rax null, so the fault is at address nine
+
+The runtime asks the type's own generic cache for the entry belonging to these arguments and reads
+its state byte **without checking there is one**. Metadata the runtime did not create has no entry,
+so any later question about its state is a null dereference. The fix keeps our metadata and gives the
+runtime the entry: the descriptor carries a generic pattern whose instantiation function is our class
+builder, and the accessor calls `swift_getGenericMetadata` exactly as the struct accessors do.
+
+That symbolication is worth keeping as a method. Our own trace prints the resolved address of
+`swift_allocateGenericValueMetadata`, which gives the image base; `llvm-nm -n` on the dylib then names
+the function any crash address belongs to, with no debugger in the picture.
+
+**Where it stops now is a different kind of wall.** The application reaches
+`_$s7Combine19CurrentValueSubjectCyACyxq_Gxcfc`, which is `CurrentValueSubject.init(_:)` and is still
+a placeholder, so the call lands in data and faults with `rip` inside our own framework. Eight
+functions are left: the subject's `init` and `send`, `AnyCancellable.store(in:)` and `cancel`, and the
+operators `map`, `receive(on:)`, `removeDuplicates`, `eraseToAnyPublisher` and `sink`.
+
+**A correction on how they were counted.** An earlier count with `llvm-objdump --bind` said the
+application imports no Combine functions at all. That was the tool, not the application: `--bind`
+lists data binds only, and every call goes through the **lazy** bind table. With `--lazy-bind` the
+eight appear.
