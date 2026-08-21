@@ -14615,3 +14615,38 @@ the menu titles gain their two characters:
 AppKit does not implement it. Two characters of menu title against the menu bar is not a trade worth
 making, so the constant went back to 1504 with that written where it lives. The class stays: it is
 what makes the next attempt possible, and it is the right shape regardless.
+
+## The missing menu bar was our bug; the empty toolbar is the real one (2026-08-21)
+
+Half of the previous entry turns out to have been a defect in this AppKit rather than a feature it
+does not implement, and the tree is what said so. The menu model was set identically at both versions
+(`CIDER_MAINMENU set items=10 ... [MoneyMoney] [File] ... [Help]`) while `CIDER_MENU bar drawRect`
+never fired at 2022, so the question was about the view, not the menu. A view dump found it:
+
+    CIDER_VIEW NSMainMenuView 1124x28 at 0,706 mask=0xa hidden=1
+
+The right size, the right place, **hidden**. `-[NSWindow setStyleMask:]` called
+`_hideMenuViewIfNeeded` on every change, and that helper hides the menu view of a window that
+*qualifies* for one, which is the opposite test to the one wanted here: it is written for a modal
+session, where a window that would otherwise draw a menu bar must not. Nothing shows it back, so any
+window that changes its style mask never draws its menu bar again. MoneyMoney adds
+`NSWindowStyleMaskFullSizeContentView` on the newer path (`CIDER_MENUBAR styleMask=0xf` at 1504
+against `0x800f` at 2022), which is exactly such a change. It now hides only when the new mask no
+longer qualifies and shows the bar again when it does, and at 2022 the menu bar draws with its ten
+`drawRect` calls and the File menu opens on a click.
+
+**The toolbar is the half that is really missing**, and it is not SF Symbols: the binary has no
+reference to `imageWithSystemSymbolName`, `NSImageSymbolConfiguration` or any symbol name at all.
+Counted by class over a whole run:
+
+| drawn                    | 1504 | 2022 |
+|--------------------------|-----:|-----:|
+| `NSSegmentedControl`     |   41 |    0 |
+| `MMPopUpButton`          |   42 |    0 |
+| toolbar template images  |    8 |    1 |
+| `NSToolbarItemView`      |    3 |    3 |
+
+The same three item views with the same frames, and **not one draw** of the two classes that make up
+the icon strip. So the items are built and their contents never are: an application path this AppKit
+does not carry, taken silently rather than by raising, which is why the exception count kept saying
+zero. That is what #163 has left, and the constant stays at 1504 until it draws.
