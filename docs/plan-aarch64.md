@@ -1434,8 +1434,10 @@ whole M4 pipeline -- which sets up CIDER_GNIX_CORES=2 -- now runs end to end), w
 genuine-parallel-build test gated on fixing the teardown hang. That hang is itself a real regression
 worth its own task: it is why every guest run leaves spinning processes behind.
 
-**Pass 43 (the teardown hang is FIXED at the source -- the no-active-thread mutex fallback is now
-bounded).** Root-caused and fixed the spin from Pass 42(b). In src/linux/server/src/xnu/locks.rs,
+**Pass 43 (bounding the no-active-thread mutex fallback: a valid hardening, but NOT the teardown-hang
+root cause -- see Pass 44).** Bounded an unbounded ciderd-side spin that was at first believed to BE the
+Pass 42(b) teardown hang; the end-to-end boot in Pass 44 disproved that and found the real cause in guest
+code. The change stands as hardening. In src/linux/server/src/xnu/locks.rs,
 `xnu_sys_mutex_lock`'s fallback for a caller with no microthread (`thread_for_xnu_thread` is null, which
 happens hundreds of times a second once a guest forks, and for every lock taken during per-process
 teardown) was `loop { lock queue_lock; if owner == 0 { return }; unlock; spin_loop() }` -- an UNBOUNDED
@@ -1452,9 +1454,29 @@ microthread) is untouched. Verified with `//src/linux/server:stage3_spike` (rebu
 actions): 500k suspend+resume round-trips -- whose log is full of the very "Trying to lock/unlock mutex
 without an active thread!" lines, so it exercises the changed paths -- complete in 3.4s at 6885
 ns/round-trip, rc=0, no hang (27d67c00). This is a host-side stress proof with no guest boot and no
-gc-roots. What remains is the end-to-end confirmation: a full buck-nix-bash-check boot that completes and
-leaves ZERO spinning guest procs behind, which is also the gate that lets build-pkg-bypass force a genuine
-from-source rebuild for the isolated #12 (parallel make -j) test.
+gc-roots. NOTE: the end-to-end boot (Pass 44) then showed this change does NOT stop the teardown hang --
+the process that spins is a GUEST libdispatch thread, not ciderd -- so this stands as hardening only.
+
+**Pass 44 (the real teardown-hang root cause: a GUEST libdispatch busy-loop on EPOLLHUP, found by booting
+the Pass 43 ciderd).** Rebuilt the min prefix (nix `.#cider-buck2-prefix-min`) so its ciderd carries the
+Pass 43 change, materialized it into rt (the nix prefix nests under `cider_prefix_min__prefix/`; bin +
+libexec is the whole darling layout, the guest tree lives under libexec/cider), and booted with the same
+env buck-bash-check uses (CIDER_NO_LAUNCHD=1, CIDERPREFIX): `BUCK2_BASH_OK 3.2.57(1)-release
+arm64-apple-darwin19`. So the guest bash runs and the fix does not break the boot. But `cider shell` still
+never returned. strace of the survivor showed ciderd already EXITED (zombie) while a guest process -- the
+libdispatch manager thread, gettid()==2 -- busy-loops at 99.6% CPU:
+`epoll_pwait(13, [{events=EPOLLIN|EPOLLHUP}], 1, -1, ...) = 1`, forever. fd 13 is the guest's socket to
+ciderd; once ciderd exits it is EPOLLHUP (peer hung up). The guest's kevent()-over-epoll emulation
+(vendor/pins/ciderd/xnu-sys/xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent.c)
+reports the HUP fd as merely readable and never sets EV_EOF, so guest libdispatch re-arms the same dead
+source every iteration and spins. THIS holds the /proc gc-root, not ciderd's mutex path -- so Pass 43's
+premise was wrong. Bounding the ciderd null-thread spin is a real hardening (and it did let ciderd exit
+cleanly here) but is orthogonal to the observed hang. The genuine fix is guest-side: map EPOLLHUP/EPOLLERR
+onto EV_EOF in the kevent emulation so libdispatch drops the dead source and the process exits
+(alternative: have ciderd SIGKILL its spawned guests on shutdown so none orphan-spin). Both are deep,
+boot-testable changes in vendored code and are the next step. The min prefix + M4 pipeline are unaffected
+and still pass (the check cache-hits to build_rc=0/run_rc=0); the hang only blocks the isolated
+genuine-rebuild #12 test by keeping a gc-root alive.
 
 ## Risks, ranked
 
