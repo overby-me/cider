@@ -1478,6 +1478,31 @@ boot-testable changes in vendored code and are the next step. The min prefix + M
 and still pass (the check cache-hits to build_rc=0/run_rc=0); the hang only blocks the isolated
 genuine-rebuild #12 test by keeping a gc-root alive.
 
+**Pass 45 (why the genuine #12 empirical test is out of reach on THIS host: an overlay that is a
+14963-action from-scratch build, and systemd-oomd killing it under pressure).** Tried to drive the
+genuine rebuild (delete the cached bash output, recompile under make -j2) end to end and hit two
+independent walls, both about resources rather than the port. (1) The guest nix links the
+CoreFoundation/Foundation family, which the MIN prefix does not install; supplying them via
+scripts/build/build-frameworks-overlay.nu is not a small overlay -- on a clean host buck-out those 212
+framework targets pull a 14963-action from-scratch compile (the min prefix's framework objects were built
+inside the nix sandbox, so nothing is cached on the host). (2) That build, and a bare-min-prefix
+buck-nix-bash-check that boots the guest and forks a compile process tree, are both KILLED early -- but
+NOT by the kernel OOM killer: memory.max is `max` and memory.events oom_kill is 0 at every cgroup level,
+pids.max is not hit, yet `systemd-oomd` is active and kills the whole scope under memory/IO PRESSURE
+(PSI), which never touches the kernel oom counter. The min-prefix `nix build` survives because its
+compiles run in nix-daemon's own system-slice cgroup, off the user scope oomd watches; buck2 (thousands
+of parallel clang) and a guest build run IN the user scope and trip it. A capped overlay (CIDER_FW_JOBS,
+new this pass) still died, because the 14963-action depth -- not just width -- is the cost. One
+observation worth keeping: the killed guest-build boot left an orphaned, slowly GROWING chain of `mldr`
+guest processes (each the parent of the next) reparented to init; consistent with a normal
+nix->sh->make->cc process tree mid-compile that outlived its killed driver, though a genuine runaway-fork
+bug is not ruled out and would be worth a look during the attended #15 work. NET: on this 15 GB host under
+a COSMIC/oomd session, the isolated genuine-parallel-build #12 proof and the full framework overlay need
+attended handling (a bigger box, or oomd relaxed for the build scope, or the frameworks materialized from
+nix instead of a host buck2 rebuild). The #12 poll fix (0038) stays LANDED and high-confidence on its own
+reasoning, and the whole M4 pipeline -- which sets CIDER_GNIX_CORES=2 -- runs end to end; only the
+isolated from-scratch reproduction is blocked, and by the environment, not the fix.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
