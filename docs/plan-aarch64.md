@@ -1704,6 +1704,27 @@ addition to the min prefix could sidestep JSC/#14 entirely -- worth checking bef
 JSC fix. NET this session: #15 (the novel, load-bearing teardown/epoll-misrouting bug) is fixed and the
 intermediate milestone passes; the remaining loop goal is gated by #14 + framework packaging.
 
+**Pass 56 (framework path re-scoped: #14/JSC is a red herring; the real gate is oomd-immune nix packaging of
+the M4 framework closure).** Re-read the M4 record (passes 29-38) against the current state. Confirmed: the
+min prefix has zero framework dylibs; guest nix needs the CoreFoundation/CoreServices/SystemConfiguration/
+Foundation stack, which drags in a ~210-dylib load closure via CoreServices' LC_REEXPORTs. That closure
+BUILDS for arm64 -- pass 31 measured 210/212 targets build, only JavaScriptCore + DBusKit fail, and nix
+needs neither. So the full prefix (.#cider-buck2-prefix / //buck/prefix:cider_prefix) is the WRONG target on
+two counts: it fails at JSC (#14) AND at other cones nix never touches (mach/notify.defs MIG, CloudKit;
+16708 actions, pass-29 note). Fixing #14 is therefore NOT required for buck-nix-bash-check. The actual
+blocker is purely PACKAGING: the working overlay (scratchpad/m4-fw.sh, captured as
+scripts/build/build-frameworks-overlay.nu, task #10) is a HOST buck2 build of the 210 framework targets
+(~14963 actions), and on this 15 GB host systemd-oomd kills host-scope buck2 builds under PSI pressure
+(Pass 45); even a job-capped run died. The min prefix escapes oomd only because it builds through
+nix-daemon's own cgroup. CONCRETE PATH: lower the framework closure through the SAME nix endpoint the min
+prefix uses -- i.e. a scoped prefix target (min + the ~210 framework dylibs, minus JavaScriptCore/DBusKit)
+with its own buck2-targets list and a flake attribute (mirroring cider-buck2-prefix-min /
+buck2-targets-min.nix), then `nix build` it (oomd-immune, per-target derivations), materialize into $rt, and
+run buck-nix-bash-check. That is the next phase: BUCK prefix tier + targets list + flake attribute + one
+heavy-but-oomd-immune nix build, then the genuine guest bash build (which #15/0039 should now let complete,
+given the Pass-45 runaway-mldr chain did not recur). This is the bulk of the remaining work and is
+well-scoped but large; #14 (JSC offline-asm link) stays a separate, non-gating task.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
