@@ -1644,6 +1644,31 @@ rebuild once, and watch whether knote_new truly returns the same address twice o
 freed between the two ADDs. Only then patch -- the fix site is the allocator/free path, not read.c.
 Meanwhile 0006 stays as the verified proc-spin bound; do not layer more ONESHOT.
 
+**Pass 53 (THE root cause, found with the 0007 trace: aarch64 struct epoll_event was packed, so the kernel
+read/wrote data at the wrong offset and every kqueue event misrouted; fix = xnu 0039).** Booted result-min5
+with CIDER_TRACE_KNOTE=1. The trace settled the Pass-52 contradiction: knote_new returns DISTINCT pointers
+(EVFILT_READ ident=launcher-fd -> 0x40000266f2d0 dupfd14; EVFILT_PROC ident=shell-pid -> 0x40000266f3c0
+dupfd15), yet the host epoll_ctl (strace) recorded BOTH with data=0xdf7c00004000. So the collapse is not in
+libkqueue at all -- it is the guest->kernel epoll_event marshalling. Cause:
+emulation/.../ext/sys/epoll.h defined `struct epoll_event { uint32_t events; epoll_data_t data; }
+__attribute__((packed))` UNCONDITIONALLY. That is the x86_64 layout: the Linux kernel packs epoll_event
+ONLY on x86_64 (uapi/linux/eventpoll.h gates EPOLL_PACKED on __x86_64__), giving 12 bytes with the 8-byte
+data at offset 4. On aarch64 the kernel leaves it unpacked: __u64 data aligns to 8, so 16 bytes with data
+at offset 8. With the packed guest struct on an aarch64 host, the kernel read data from offset 8 while the
+guest wrote it at offset 4; the bytes the kernel picked up were the pointer's high 32 bits (identical
+0x00004000 for every 0x40000266f... knote) plus adjacent stack bytes (0xdf7c), so ALL knotes collapsed to
+0xdf7c00004000 and aliased onto one epoll registration. That single marshalling bug is the whole of #15:
+NOTE_EXIT for the shell came back tagged as the wrong knote/filter, so shellspawn never saw the exit and
+the launcher hung; and a freed knote's descriptor fired under a live knote's pointer -> the zero-filter
+discard spin. It is a LATENT bug present since the port began (the packed attribute was never arch-gated);
+it only bites when live knote pointers share the bytes the kernel misreads at offset 8, which the current
+guest heap layout (0x40000266f...) guarantees -- which is why an earlier heap layout (pass 26) could pass
+buck-bash-check while today's hangs. FIX (xnu 0039, committed 24eb277e): gate the packing on __x86_64__,
+matching the kernel per arch. This should make 0004-0006 unnecessary (they bounded symptoms of the
+misrouting); keep them for this build to change one variable, and revisit removing the now-redundant
+ONESHOT once 0039 is confirmed by buck-bash-check on result-min6. NOTE: this bug affects ALL guest epoll
+users (libdispatch too), not just kqueue, so 0039 is broadly load-bearing.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
