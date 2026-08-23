@@ -1749,6 +1749,20 @@ cgroup) and hit two blockers, each fixed:
      with a log). Re-launched; monitoring. If it completes, materialize result-fw and run buck-nix-bash-check
      (the genuine guest bash build, which #15/0039 should now let finish).
 
+**Pass 58 (fw build blocker 3: the cocotron aarch64 patches were never applied because cocotron is
+vendored, not a submodule).** With the OOM cap, the fw build cut 747 failures to 30, all cascading from ONE
+root: pin-cocotron, which failed with the four pass-30 arm64 errors in NSApplication.m (__rip/__rsp absent
+on arm_thread_state64; IMP calls need casts). The fixes existed as vendor/patches/cocotron/0001-0003 (task
+#10 captured them) but were ORPHANED: cocotron was converted to a checked-in vendored pin (VENDORED.md, not
+in nix/submodules.json), and the build stages it directly from vendor/pins/cocotron via bundledPins
+(ciderBuck2Lower.nix:351 / ciderBuck2Graph.nix:109), so cider-src.nix -- which only patches submodules --
+never applied them. The materialized working-copy vendor/src/cocotron was fixed, masking it; the nix
+bundledPins store reads the raw pin. Fix (commit dd5f3b03): fold the three patches into vendor/pins/cocotron
+(same as the original 86), so the content-addressed bundled store carries the fix. Re-launched; base tier
+stays cached, cocotron + the 30 GUI-framework dylibs (AppKit/Cocoa/QuartzCore/WebKit/Onyx2D/X11+wayland
+backends) rebuild. So far three distinct fw-build blockers found and fixed: wayland-scanner declaration,
+OOM job cap, and this cocotron pin fold-in.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
