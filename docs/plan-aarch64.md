@@ -1531,6 +1531,33 @@ rearmed and cannot spin. The machport hot path is untouched. Empirical confirmat
 result-min4 rebuild) is the outstanding step; the mechanism is proven by the strace and the fix is bounded
 by construction.
 
+**Pass 47 (0006 boot-tested: the proc spin is GONE for the simple case, but two distinct issues remain --
+a machport orphan and a teardown that never completes).** Rebuilt to result-min4 (0004+0005+0006 all in the
+build log) and tested three ways.
+- SIMPLE (`bash -c 'echo BUCK2_BASH_OK'`), 75s time-series: peak guest CPU 5% (boot only), settling to 0%.
+  The exact mldr that used to burn 99.6% on epoll_pwait(13) is now 0% and BLOCKED in epoll_pwait. fdinfo of
+  fd 13 shows the proc orphan fd with `events=40000000` = a disarmed EPOLLONESHOT fd -- fired once, went
+  quiet, exactly as designed. So 0006 WORKS: the proc-orphan CPU spin is eliminated.
+- COMPLEX (`bash -c 'echo; sleep 4; echo'`), strace -f -y: at teardown the guest mldr spins on
+  epoll_pwait(13) returning EPOLLIN ~140us apart on knote 0xdf7c00004000. The spinning fd (fd14) was
+  registered `events=EPOLLIN` with NO EPOLLONESHOT, while the proc fd15 has EPOLLIN|EPOLLONESHOT. Since only
+  proc.c was patched, fd14 is a MACHPORT orphan: the same freed-knote-leaves-a-registered-fd bug exists in
+  evfilt_machport, and it spins on EPOLLIN (unread data on a freed knote's fd that the zero-filter discard
+  never drains) rather than EPOLLHUP. So 0006 is INCOMPLETE -- the orphan/spin is a property of the shared
+  kqchan knote lifecycle, not proc alone, and machport needs the same treatment (or a general birth-fix in
+  the knote free path).
+- TEARDOWN, separate bug: even in the SIMPLE no-spin case, `cider` never returns. Process tree at rest:
+  launcher `cider` blocked in ppoll([fd=3,fd=7], NULL) forever; its only child ciderd idle in
+  epoll_pwait(4); the guest mldr idle in epoll_pwait(13) with (in the echo case) an UNREAPED ZOMBIE child.
+  In the complex case wait4 DID reap the children, so the child-exit path can work, yet nothing concludes
+  the session. This teardown-incompleteness is the actual milestone blocker and is at least partly
+  pre-existing (result-min3 also never returned, it just span while doing so). Compounding it: `cider`
+  appears to ignore SIGTERM (buck-bash-check wraps the boot in `timeout 180`, which cannot kill it, so the
+  check HANGS instead of passing-with-output at 180s). NET for #15: the headline CPU spin is fixed for the
+  common case and committed; remaining work is (a) extend the orphan fix to machport (patch 0007, mirror of
+  0006) or prevent the orphan at the knote free site, and (b) root-cause why the launcher/ciderd/guest never
+  conclude teardown, and/or make `cider` honor SIGTERM so the timeout-guarded check yields a pass.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
