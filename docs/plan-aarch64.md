@@ -1627,6 +1627,23 @@ it) and any dup'd-fd delete path -- so knote_new can never return an address sti
 epoll entry. OPEN: the exact free-without-DEL site is not yet pinned; a knote-lifecycle trace on shellspawn
 from process start is the next step, then a birth-fix patch rather than more ONESHOT symptom-bounding.
 
+**Pass 52 (refinement: create-failure is RULED OUT; the two aliased knotes are both LIVE, so it is an
+allocation double-hand-out).** kevent_copyin (common/kevent.c:203-229): when nevents==0 -- exactly
+shellspawn's `kevent(kq, changes, 2, NULL, 0, NULL)` -- a failing change returns -1 (line 227), which would
+send shellspawn to its `err` label. It does not go there, so BOTH changes[0] (EVFILT_READ) and changes[1]
+(EVFILT_PROC) creates SUCCEEDED and both knotes are live and inserted. That rules out the Pass-51
+create-failure-leak theory: this is not an orphan of a failed create, it is two LIVE knotes that share one
+address. knote_new is a plain `calloc(1, sizeof(struct knote))` (knote.c:46, no freelist), and the address
+0xdf7c00004000 is identical on every run (the guest has no ASLR, so allocation is deterministic). So the
+real question is why the guest heap hands the second knote an address the first still holds -- candidates:
+(a) a guest malloc/TSD bug on arm64 returning a live chunk (cf. the pass-36 arm64 TSD TOCTOU), (b) a
+kq_tofree delayed-free that free()s a still-referenced knote mid-batch, or (c) data.ptr not being the value
+I think for one filter. DECISIVE next step needs instrumentation, not more black-box straces: add a
+temporary dbg line logging the pointer from knote_new and from each EPOLL_CTL_ADD (guarded by an env var),
+rebuild once, and watch whether knote_new truly returns the same address twice or whether one knote is
+freed between the two ADDs. Only then patch -- the fix site is the allocator/free path, not read.c.
+Meanwhile 0006 stays as the verified proc-spin bound; do not layer more ONESHOT.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
