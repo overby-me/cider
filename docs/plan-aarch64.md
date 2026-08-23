@@ -1503,6 +1503,34 @@ nix instead of a host buck2 rebuild). The #12 poll fix (0038) stays LANDED and h
 reasoning, and the whole M4 pipeline -- which sets CIDER_GNIX_CORES=2 -- runs end to end; only the
 isolated from-scratch reproduction is blocked, and by the environment, not the fix.
 
+**Pass 46 (the teardown spin's real birth: an EVFILT_PROC NOTE_TRACK fork-follow orphans one epoll fd;
+fix = EPOLLONESHOT, patch 0006).** Booted the 0004+0005 min prefix (result-min3, both patches confirmed
+applied in the build log, no rejects). The guest command still ran (`BUCK2_BASH_OK ... arm64-apple-darwin19`)
+but teardown STILL spun: an `mldr` at 99.6% CPU on `epoll_pwait(13)` returning EPOLLIN/EPOLLHUP forever,
+`ciderd` already defunct. /proc/PID/fdinfo/13 again showed TWO sockets (tfd 14 ino b6ee, tfd 15 ino adfe)
+with the SAME `data 0xdf7c00004000` -- so 0005's re-create guard did not prevent it. Straced the WHOLE boot
+with fd decoding (`strace -f -y`) to catch the birth, no rebuild needed. Ground truth, on epoll fd 13:
+
+    epoll_ctl(13, ADD, 14<socket:[47704]>, data=0xdf7c00004000)      # SOCK_STREAM, proc_open kqchan
+    socketpair(AF_UNIX, SOCK_SEQPACKET, [9, 10<socket:[59018]>])     # ciderd hands over a child channel
+    epoll_ctl(13, ADD, 15<socket:[59018]>, data=0xdf7c00004000)      # same knote, ~1ms later, NO DEL
+
+Two different socket types on ONE knote pointer = the EVFILT_PROC NOTE_TRACK fork-follow (proc.c copyout
+110-149): on a NOTE_FORK, ciderd passes a fresh child kqchan fd via SCM_RIGHTS and libkqueue calls
+`kevent_copyin_one` to start following the child. A knote holds exactly one fd in `kn_dupfd`, so the second
+registration orphans the first: nothing references it, nothing can EPOLL_CTL_DEL it, and
+`linux_kevent_copyout` only ever has the knote pointer (never the fd that fired), so the wait loop cannot
+remove it either. When ciderd exits both sockets go EPOLLHUP; the orphan is level-triggered and fires
+forever while copyout discards a zero-filter knote with no progress -- the 100% CPU spin. This is why 0004
+(delete path) and 0005 (re-create path) could not fix it: the orphan is never deleted and never re-created,
+it is a second live registration the one-fd knote model cannot track. FIX (patch 0006, committed a35bf7a4):
+register proc kqchan fds EPOLLONESHOT so any registration fires at most once then goes quiet; a live knote
+rearms (EPOLL_CTL_MOD) after each delivered event, NOTE_EXIT is left disarmed (about to be deleted), and a
+freed knote never reaches copyout (platform.c discards zero-filter events first) so an orphan is never
+rearmed and cannot spin. The machport hot path is untouched. Empirical confirmation (boot-test of the
+result-min4 rebuild) is the outstanding step; the mechanism is proven by the strace and the fix is bounded
+by construction.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
