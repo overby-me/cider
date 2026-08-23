@@ -1558,6 +1558,23 @@ build log) and tested three ways.
   0006) or prevent the orphan at the knote free site, and (b) root-cause why the launcher/ciderd/guest never
   conclude teardown, and/or make `cider` honor SIGTERM so the timeout-guarded check yields a pass.
 
+**Pass 48 (the teardown-completion bug, probed without a rebuild: the launcher blocks every catchable
+signal, and the stall is a regression).** With result-min4 booted on the simple `echo` command: the
+launcher `cider` waits in ppoll on fd3 = socket to ciderd and fd7 = a pipe, timeout NULL. Sending SIGTERM,
+then SIGINT, SIGQUIT, SIGHUP to it in turn: it survives ALL of them (only SIGKILL ends it). That is the
+mechanism behind buck-bash-check hanging: the check wraps the boot in `timeout 180`, timeout's SIGTERM is
+ignored, and timeout then waits forever for a process that will not die. Two consequences: (a) the check
+can never pass-by-timeout, so cider MUST either return on its own or be taught to honor SIGTERM; (b) the
+launcher is waiting for ciderd to signal session-end (fd3/fd7), which never comes because the guest never
+concludes -- in the fast `echo` case the guest parent sits in epoll_pwait(13) with an unreaped zombie bash,
+i.e. it never saw the child exit, while the slower `sleep 4` case DID reap (a fork-vs-watch timing smell:
+bash may exit before/at the moment its proc knote is armed). Important framing: `cider shell <cmd>`
+RETURNED at Pass 26 (buck-bash-check passed), so the non-return is a REGRESSION introduced somewhere
+between M3 (pass 26) and the current base, NOT inherent. Cheap next lead (no rebuild): bisect the plan /
+jj history between pass 26 and pass 42 (where the teardown hang first surfaced) for changes to the launcher
+shutdown path, ciderd's guest-exit detection, or the proc/NOTE_EXIT handling, rather than only chasing it
+forward from the symptom.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
