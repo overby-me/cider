@@ -1669,6 +1669,23 @@ misrouting); keep them for this build to change one variable, and revisit removi
 ONESHOT once 0039 is confirmed by buck-bash-check on result-min6. NOTE: this bug affects ALL guest epoll
 users (libdispatch too), not just kqueue, so 0039 is broadly load-bearing.
 
+**Pass 54 (0039 CONFIRMED: buck-bash-check PASSES in 3s, #15 resolved).** Rebuilt result-min6 (0004-0007 +
+xnu 0039) and tested. Direct boot: `cider shell /bin/bash -c 'echo BUCK2_BASH_OK'` returns rc=0 in <1s (was
+rc=137, hung 150s+); the survivor mldr is idle in accept(8), no epoll_pwait spin. Official gate:
+`buck-bash-check.nu --prefix result-min6` -> `PASS: the buck2-built Darling boots and runs bash`, rc=0,
+elapsed 3s (previously it hung past 180s because cider never returned and timeout could not kill it). So the
+epoll_event layout fix is the correct and complete fix for #15: NOTE_EXIT now routes to the right knote,
+shellspawn reports the shell's exit, and the launcher returns cleanly. The residual persistent ciderd +
+shellspawn-listener that linger after exit are BY DESIGN (ciderd is a warm daemon for the prefix; idle,
+state S, cleaned by the next run's kill-by-root loop) -- not the old spin. #15 is DONE. Follow-ups: (1) the
+libkqueue symptom patches 0004-0006 are now redundant with 0039; 0004/0005 are harmless general robustness,
+but 0006's proc-EPOLLONESHOT+rearm adds a MOD syscall per proc event and could be reverted for cleanliness
+and for #11 (guest speed) once there is a spare rebuild; 0007 is an off-by-default diagnostic, keep it.
+(2) #12 (parallel make -j) was blocked by #15 and is now unblocked; the epoll fix likely also matters for
+any build-time kqueue traffic. (3) The remaining loop goal is the buck-NIX-bash-check gate (guest nix builds
+bash from source), whose blocker was environmental (systemd-oomd + the 14963-action framework overlay,
+Pass 45), not #15.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
