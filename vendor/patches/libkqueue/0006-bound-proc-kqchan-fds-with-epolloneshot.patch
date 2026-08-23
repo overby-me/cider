@@ -1,0 +1,89 @@
+Bound proc kqchan fds with EPOLLONESHOT so a fork-follow orphan cannot spin the core.
+
+0004 and 0005 fixed the machport/proc delete and re-create paths, but the guest STILL burned a core
+in epoll_pwait after ciderd exited. An strace of the boot with fd decoding (-y) caught the real birth:
+one EVFILT_PROC knote gets TWO epoll registrations ~1ms apart, same data.ptr, no EPOLL_CTL_DEL between
+them --
+
+  epoll_ctl(13, ADD, 14<socket:[47704]>,       data=0xdf7c00004000)   # proc_open, SOCK_STREAM
+  socketpair(SEQPACKET) = [9, 10<socket:[59018]>]                     # ciderd hands over a child chan
+  epoll_ctl(13, ADD, 15<socket:[59018]>,       data=0xdf7c00004000)   # NOTE_TRACK fork-follow
+
+This is the NOTE_TRACK path: evfilt_proc_copyout receives a NOTE_FORK plus a passed child kqchan fd
+(SCM_RIGHTS) and calls kevent_copyin_one to start following the child. A knote can hold exactly one fd
+in kn_dupfd, so the second registration orphans the first: nothing references it, nothing can ever
+EPOLL_CTL_DEL it, and linux_kevent_copyout only has the knote pointer (never the fd that fired), so it
+cannot remove it either. Once the daemon exits both sockets go EPOLLHUP; the orphan is level-triggered
+and fires forever, and the copyout loop discards a zero-filter knote without progress -- 100% CPU (#15).
+
+Rather than chase the exact allocator/pid aliasing that makes both registrations share one data.ptr,
+bound the failure mode: register proc kqchan fds EPOLLONESHOT so any registration fires at most once and
+then goes quiet. A live knote rearms (EPOLL_CTL_MOD) after each delivered event -- the 0xdead no-event
+drop, NOTE_FORK, and normal deliveries all rearm; NOTE_EXIT sets EV_ONESHOT and is deliberately left
+disarmed because it is about to be deleted. A freed knote never reaches copyout (platform.c discards
+zero-filter events first), so an orphan is never rearmed and cannot spin. The machport hot path is left
+untouched.
+---
+--- a/src/linux/proc.c
++++ b/src/linux/proc.c
+@@ -30,6 +30,24 @@
+ #include "private.h"
+ 
+ #define NOTE_PASSINGFD 0x100000
++
++/*
++ * Proc kqchan fds are registered EPOLLONESHOT. A NOTE_TRACK fork-follow can leave a second fd in the
++ * epoll set sharing this knote's data.ptr (the passed child channel vs. the parent's proc_open one);
++ * only one is reachable via kn_dupfd, so the other can never be EPOLL_CTL_DEL'd. Without ONESHOT that
++ * orphan HUP-spins at 100% CPU once the daemon exits (#15). ONESHOT bounds it to a single wakeup; a
++ * live knote rearms here after each delivered event, a freed one never reaches copyout (platform.c
++ * discards zero-filter events first) so it stays quiet.
++ */
++static void
++evfilt_proc_rearm(struct knote *kn)
++{
++    struct epoll_event ev;
++    memset(&ev, 0, sizeof(ev));
++    ev.events = EPOLLIN | EPOLLONESHOT;
++    ev.data.ptr = kn;
++    (void) epoll_ctl(kn->kn_epollfd, EPOLL_CTL_MOD, kn->kdata.kn_dupfd, &ev);
++}
+ 
+ int
+ evfilt_proc_copyout(struct kevent64_s *dst, struct knote *src, void *ptr)
+@@ -95,6 +113,7 @@
+ 		// server indicated there was actually no event available to read right now;
+ 		// drop the event
+ 		dst->filter = EVFILT_DROP;
++		evfilt_proc_rearm(src);
+ 		return 0;
+ 	}
+ 
+@@ -171,6 +190,9 @@
+ 			dst->filter = EVFILT_DROP_POSTPROCESS; // drop event
+ 	}
+ 
++    /* NOTE_EXIT sets EV_ONESHOT: the knote is about to be deleted, so leave its fd disarmed. */
++    if (!(dst->flags & EV_ONESHOT))
++        evfilt_proc_rearm(src);
+     return (0);
+ }
+ 
+@@ -198,7 +220,7 @@
+     }
+ 
+     memset(&ev, 0, sizeof(ev));
+-    ev.events = kn->data.events;
++    ev.events = kn->data.events | EPOLLONESHOT; /* bound a stale/orphaned fd; see evfilt_proc_rearm */
+     ev.data.ptr = kn;
+ 
+ 	if (kn->kev.fflags & NOTE_PASSINGFD)
+@@ -290,7 +312,7 @@
+     struct epoll_event ev;
+ 
+     memset(&ev, 0, sizeof(ev));
+-    ev.events = kn->data.events;
++    ev.events = kn->data.events | EPOLLONESHOT; /* bound a stale/orphaned fd; see evfilt_proc_rearm */
+     ev.data.ptr = kn;
+ 
+ 	if (epoll_ctl(kn->kn_epollfd, EPOLL_CTL_ADD, kn->kdata.kn_dupfd, &ev) < 0) {
