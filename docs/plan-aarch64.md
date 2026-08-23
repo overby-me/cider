@@ -1575,6 +1575,23 @@ jj history between pass 26 and pass 42 (where the teardown hang first surfaced) 
 shutdown path, ciderd's guest-exit detection, or the proc/NOTE_EXIT handling, rather than only chasing it
 forward from the symptom.
 
+**Pass 49 (the teardown blocker pinned to a single call: shellspawn's NOTE_EXIT kevent never fires).**
+Traced the launcher's exit condition to shell_loop (launcher/src/main.rs:848-864): after the guest program
+starts, `cider` blocks on sockfd for a 4-byte exit status. The guest sender is shellspawn.c (the
+NO_LAUNCHD guest init): it sends the 1-byte started marker (line 320), then registers
+`EVFILT_PROC/NOTE_EXIT` on the shell pid (330-334) and BLOCKS in `kevent(kq, NULL,0,&ev,1,NULL)` (342)
+until NOTE_EXIT; only then does it `waitpid` + `write(fd,&wstatus,4)` (415-420). The hang is that this
+kevent never returns: shellspawn is the guest mldr we keep finding idle in epoll_pwait(13) with an
+unreaped zombie shell. So the milestone blocker is a proc/NOTE_EXIT DELIVERY failure in the guest
+kqueue-on-epoll, and it is CONSISTENT, not a race: a comparison run (`echo` vs `echo; sleep 2`, both under
+`timeout -k 5 40`) hung BOTH (rc=137, 45s, each having printed its marker). It is also independent of 0006
+and pre-existing (result-min3 never returned either), so 0006 neither caused nor was expected to fix it --
+0006's job was the CPU spin, which it does. NEXT (diagnostic, no rebuild first): strace shellspawn's kevent
+and ciderd's proc channel across the shell's exit to decide whether ciderd fails to SEND the NOTE_EXIT
+(daemon-side kqchan_proc bug) or libkqueue fails to DELIVER it (guest-side proc copyout/arming), then fix
+that specific end. This is the same EVFILT_PROC machinery as 0004-0006 and likely the pass-26 -> pass-42
+regression.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
