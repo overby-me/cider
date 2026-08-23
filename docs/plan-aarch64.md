@@ -1725,6 +1725,30 @@ heavy-but-oomd-immune nix build, then the genuine guest bash build (which #15/00
 given the Pass-45 runaway-mldr chain did not recur). This is the bulk of the remaining work and is
 well-scoped but large; #14 (JSC offline-asm link) stays a separate, non-gating task.
 
+**Pass 57 (task #16: the framework-tier nix prefix is wired and building; two blockers found and fixed).**
+Built the framework tier as planned: gen-prefix-fw.nu (sibling of gen-prefix-min.nu that KEEPS
+System/Library/Frameworks + PrivateFrameworks and drops only JavaScriptCore + DBusKit, the two framework
+dylibs that do not build for arm64), buck/prefix-fw/BUCK (generated, 741 framework entries, consistency
+check clean), nix/lib/buck2-targets-fw.nix, and packages.cider-buck2-prefix-fw mirroring the FULL prefix's
+lowering settings -- crucially NOT prefix-min's, because prefix-min uses sourceGroups=true which dangles the
+frameworks' relative header symlinks (CoreServices/MacTypes.h); min only survives that by dropping
+frameworks. Committed de74cf7c. Then drove `nix build .#cider-buck2-prefix-fw` (oomd-immune, nix-daemon
+cgroup) and hit two blockers, each fixed:
+  1. WAYLAND-SCANNER UNDECLARED. The framework GUI cone (AppKit -> cocotron -> wayland, pulled by the
+     CoreServices->LaunchServices re-export) runs wayland codegen, whose tool + protocol XML store paths
+     ciderBuck2Graph bakes into the buckconfig as PLAIN TEXT -- invisible to Nix, so absent in the sandbox:
+     "wayland-scanner: No such file or directory". Fixed by declaring wayland-scanner + wayland-protocols +
+     wayland-core-protocol in the fw endpoint's extraTools (commit 202220aa). Confirmed: all wayland/AppKit
+     targets then built.
+  2. OOM UNDER DEFAULT PARALLELISM. With wayland fixed the build reached the framework compiles and 747
+     targets died with NO logs and NO compile errors -- the signature of kernel-OOM kills, not build errors
+     (memory was high again only AFTER the kills freed it). This is exactly what m4-fw.sh's CIDER_FW_JOBS
+     cap warns about: the big ObjC frameworks (Foundation, AppKit, ...) compiled all at once exhaust the
+     15GB host. nix-daemon survives systemd-oomd but not the kernel OOM killer when total RAM is gone. Fixed
+     by capping the nix build to --max-jobs 4 --cores 2 (plus --keep-going to surface any genuine failure
+     with a log). Re-launched; monitoring. If it completes, materialize result-fw and run buck-nix-bash-check
+     (the genuine guest bash build, which #15/0039 should now let finish).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
