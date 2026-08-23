@@ -1592,6 +1592,19 @@ and ciderd's proc channel across the shell's exit to decide whether ciderd fails
 that specific end. This is the same EVFILT_PROC machinery as 0004-0006 and likely the pass-26 -> pass-42
 regression.
 
+**Pass 50 (correction: the fd13 loop is NOT shellspawn -- the teardown path is on a different epfd).**
+Traced epoll_ctl on the guest kqueue fd13 for the simple `echo` boot: ADD=2 (fd14 EPOLLIN machport-style,
+fd15 EPOLLIN|EPOLLONESHOT proc), MOD=0, DEL=0, and NO third ADD. So the process idling/spinning on fd13 is
+a long-lived guest kqueue (libdispatch, whose knotes here are never re-armed or torn down in this window),
+NOT shellspawn: shellspawn's EVFILT_PROC/NOTE_EXIT knote for the shell is registered on ITS OWN kqueue
+epfd, in the shellspawn guest process, which the `epoll_ctl(13<` filter missed. Consequences: (i) the prior
+passes' fd13 fdinfo (the two-fd 0xdf7c00004000 case) is a libdispatch knote, so 0006 is validated there,
+but (ii) the teardown NOTE_EXIT lives elsewhere and must be traced on shellspawn's OWN epfd. Concrete next
+step: identify the shellspawn guest process (the one that sends the 1-byte started marker then blocks in
+kevent), find which epoll fd IT waits on, and trace epoll_ctl/epoll_pwait/recvmsg on THAT fd across the
+shell exit -- that is where the missed NOTE_EXIT (or a never-registered proc knote) actually is. Stop
+reading fd13 for the teardown question.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
