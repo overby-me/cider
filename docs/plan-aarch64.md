@@ -1605,6 +1605,28 @@ kevent), find which epoll fd IT waits on, and trace epoll_ctl/epoll_pwait/recvms
 shell exit -- that is where the missed NOTE_EXIT (or a never-registered proc knote) actually is. Stop
 reading fd13 for the teardown question.
 
+**Pass 51 (Pass 50 was wrong: fd13 IS shellspawn's kqueue; the teardown bug is knote-pointer ALIASING
+that misroutes NOTE_EXIT).** Identified the guest procs by full cmdline in the hung simple-echo state: TWO
+`/usr/libexec/shellspawn` mldrs (one blocked in accept(8) = the listener, one in epoll_pwait(13) = the
+instance running the shell) plus the zombie bash. So fd13 IS shellspawn's kqueue (it links
+libSystem/libdispatch); Pass 50's "libdispatch not shellspawn" call was wrong. shellspawn.c:329-334
+registers TWO knotes in one kevent: changes[0] = EVFILT_READ on the launcher socket fd, changes[1] =
+EVFILT_PROC/NOTE_EXIT on shell_pid. In the trace both land in epoll 13 with the SAME data.ptr
+0xdf7c00004000 (fd14 and fd15), ADD=2 MOD=0 DEL=0. Two LIVE knotes cannot share an address, so one fd is an
+ORPHAN of a previously-freed knote whose address was reused -- read.c registers a DUP of the socket
+(_dup_4libkqueue, read.c:190), the textbook case where close() does not unregister and only EPOLL_CTL_DEL
+does. That shared data.ptr is the whole teardown bug: when the shell exits and the proc fd fires, copyout
+resolves data.ptr to the WRONG knote/filter, the event is delivered as the wrong filter or discarded,
+shellspawn's `if (ev.filter == EVFILT_PROC && NOTE_EXIT)` never trips, it never breaks its loop, never
+sends the 4-byte exit status, and the launcher hangs. This ALIASING is the shared root of BOTH the orphan
+spin (0004-0006) AND the teardown hang, PREDATES 0006 (result-min3 showed the same two-fd data.ptr), and
+0006 only bounded the spin symptom. THE FIX must eliminate the orphan at the source: guarantee a knote's fd
+is EPOLL_CTL_DEL'd whenever the knote is freed -- including the create-failure path (kevent_copyin_one:
+150-154 calls knote_release WITHOUT kn_delete, so a create that registered its fd then returned -1 leaks
+it) and any dup'd-fd delete path -- so knote_new can never return an address still referenced by a live
+epoll entry. OPEN: the exact free-without-DEL site is not yet pinned; a knote-lifecycle trace on shellspawn
+from process start is the next step, then a birth-fix patch rather than more ONESHOT symptom-bounding.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
