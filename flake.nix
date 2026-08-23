@@ -513,11 +513,23 @@
           lowered = import ./nix/lib/ciderBuck2Lower.nix {
             inherit pkgs ciderSrc;
             allPins = true;
+            # The wayland codegen tool and protocol XML, declared so the lowered actions can see
+            # them: the graph bakes their store paths into [cider] wayland_scanner/wayland_protocols/
+            # wayland_core_protocol (ciderBuck2Graph.nix), but those are plain-text argv, invisible to
+            # Nix, so undeclared they are absent in the sandbox and the framework tier's GUI cone
+            # (AppKit -> cocotron -> wayland) dies "wayland-scanner: No such file or directory".
+            # prefix-min never builds wayland; only this tier does.
             extraTools =
               let
                 di = pkgs.callPackage ./nix/ciderBuildInputs.nix { };
               in
-              di.wrappedLibs ++ di.hostHeaderLibs;
+              di.wrappedLibs
+              ++ di.hostHeaderLibs
+              ++ [
+                (pkgs.lib.getBin pkgs.wayland-scanner)
+                pkgs.wayland-protocols
+                (import ./nix/wayland-core-protocol.nix { inherit pkgs; })
+              ];
             graph = import ./nix/lib/ciderBuck2Graph.nix {
               inherit pkgs ciderSrc;
               allPins = true;
