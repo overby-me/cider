@@ -1109,7 +1109,7 @@ static void loadGlyphAndCharacterCacheForLocation(NSATSTypesetter *self,
         if (!NSLocationInRange(_nextGlyphLocation, _attributesRange))
             [self fetchAttributes];
 
-        _layoutNextFragment(self, NULL);
+        ((void (*)(id, SEL)) _layoutNextFragment)(self, NULL);
         if (NSEqualRects(_scanRect, NSZeroRect)) {
 #if DEBUGLAYOUTGLYPHSINLAYOUTMANAGER
             NSLog(@"_scanRect is zero - bailing...");
