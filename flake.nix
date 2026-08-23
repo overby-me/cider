@@ -496,6 +496,37 @@
       # entries. The full prefix above is untouched and remains the parity target.
       #
       #   nix build .#cider-buck2-prefix-min
+      #   nix build .#cider-buck2-prefix-fw
+      # THE FRAMEWORK TIER (#16): prefix-min plus the CoreFoundation/CoreServices/
+      # SystemConfiguration/Foundation stack guest nix loads, minus JavaScriptCore/DBusKit (which do
+      # not build for arm64). Built through the SAME nix endpoint the min prefix uses so it survives
+      # systemd-oomd, unlike the host buck2 framework overlay. Settings mirror the FULL prefix, not
+      # prefix-min: sourceGroups is OFF because group staging dangles the frameworks' relative header
+      # symlinks (CoreServices/MacTypes.h), the failure prefix-min avoids only by dropping frameworks.
+      packages.cider-buck2-prefix-fw =
+        pkgs:
+        let
+          ciderSrc = import ./nix/lib/cider-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          lowered = import ./nix/lib/ciderBuck2Lower.nix {
+            inherit pkgs ciderSrc;
+            allPins = true;
+            extraTools =
+              let
+                di = pkgs.callPackage ./nix/ciderBuildInputs.nix { };
+              in
+              di.wrappedLibs ++ di.hostHeaderLibs;
+            graph = import ./nix/lib/ciderBuck2Graph.nix {
+              inherit pkgs ciderSrc;
+              allPins = true;
+              targets = import ./nix/lib/buck2-targets-fw.nix;
+            };
+          };
+        in
+        lowered.named."root//buck/prefix-fw:cider_prefix_fw" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv specName depVar toolsAll stageScriptFor treeScriptsFor depsFor; };
+
       packages.cider-buck2-prefix-min =
         pkgs:
         let
