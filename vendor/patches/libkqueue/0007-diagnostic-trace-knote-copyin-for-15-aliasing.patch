@@ -1,0 +1,35 @@
+Diagnostic (off by default): trace knote copyin to catch the #15 data.ptr aliasing at its source.
+
+Passes 46-52 established that shellspawn's two knotes (EVFILT_READ on the launcher socket, EVFILT_PROC
+NOTE_EXIT on the shell) end up registered in one epoll with the SAME data.ptr, which misroutes the shell's
+NOTE_EXIT and hangs teardown. On Linux libkqueue never free()s a knote until the whole kqueue closes
+(kq_tofree drained only in kqueue_cleanup), and knote_new is a plain calloc, so two live knotes cannot
+share an address -- yet they do, deterministically (the guest has no ASLR). To resolve the contradiction
+without guesswork, log, guarded by CIDER_TRACE_KNOTE, the (filter, ident, lookup result) for every change
+and the (filter, ident, knote, dupfd) for every fresh create. This is diagnostic only; the real fix lands
+once the trace shows whether knote_new returns a live address or a knote is reused across filters.
+---
+--- a/src/common/kevent.c
++++ b/src/common/kevent.c
+@@ -129,6 +129,11 @@
+ 
+     kn = knote_lookup(filt, src->ident);
+     dbg_printf("knote_lookup: ident %d == %p", (int)src->ident, kn);
++    /* #15 diagnostic: two epoll registrations shared one data.ptr; log which knote each change resolves
++     * to (lookup hit = reuse, NULL = fresh) to catch aliasing at its source. Off unless env is set. */
++    if (getenv("CIDER_TRACE_KNOTE"))
++        fprintf(stderr, "CIDER_KNOTE copyin filt=%d ident=%ld flags=0x%x lookup=%p\n",
++                (int) src->filter, (long) src->ident, (unsigned) src->flags, (void *) kn);
+     if (kn == NULL) {
+         if (src->flags & EV_ADD) {
+             if ((kn = knote_new()) == NULL) {
+@@ -154,6 +159,9 @@
+             } 
+             knote_insert(filt, kn);
+             dbg_printf("created kevent %s", kevent_dump(src));
++            if (getenv("CIDER_TRACE_KNOTE"))
++                fprintf(stderr, "CIDER_KNOTE created filt=%d ident=%ld kn=%p dupfd=%d\n",
++                        (int) src->filter, (long) src->ident, (void *) kn, kn->kdata.kn_dupfd);
+ 
+ /* XXX- FIXME Needs to be handled in kn_create() to prevent races */
+             if (src->flags & EV_DISABLE) {
