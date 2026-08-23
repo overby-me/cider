@@ -1686,6 +1686,24 @@ any build-time kqueue traffic. (3) The remaining loop goal is the buck-NIX-bash-
 bash from source), whose blocker was environmental (systemd-oomd + the 14963-action framework overlay,
 Pass 45), not #15.
 
+**Pass 55 (#15 done; the buck-NIX-bash-check final gate is blocked by missing frameworks, not the teardown
+bug).** With #15 fixed, ran buck-nix-bash-check.nu on the min prefix (result-min6 rt). It FAILED, but
+cleanly and for the Pass-45 reason, not #15: the guest nix's curl aborts with `Library not loaded:
+/System/Library/Frameworks/CoreFoundation.framework ... dyld: No shared cache present` -- the MIN prefix
+does not install the CoreFoundation/Foundation family. Two things worth recording: (i) the boot failed FAST
+on the missing dylib, before any build, with mldr=0/ciderd=0 and MemAvailable flat at 9 GB -- so the
+Pass-45 runaway mldr chain + oomd did NOT recur; that process explosion was plausibly the NOTE_TRACK
+misrouting that 0039 fixed, though a genuine build has not yet run far enough to prove it. (ii) The
+frameworks live in the FULL prefix, which IS a nix attribute (.#cider-buck2-prefix, flake.nix:367) that
+would build under nix-daemon (surviving oomd) -- but it is blocked by #14 (JavaScriptCore arm64 LLInt/WASM
+offline-asm link failure). So the path to the final gate is now: fix #14 -> nix build .#cider-buck2-prefix
+-> buck-nix-bash-check with the full prefix. That is a distinct effort from #15 (a JSC/offline-asm link
+issue, not kqueue/epoll). Open question for that effort: whether buck-nix-bash-check truly needs the whole
+full prefix or only CoreFoundation+Foundation (curl's dependency), in which case a CF/Foundation-scoped
+addition to the min prefix could sidestep JSC/#14 entirely -- worth checking before committing to the full
+JSC fix. NET this session: #15 (the novel, load-bearing teardown/epoll-misrouting bug) is fixed and the
+intermediate milestone passes; the remaining loop goal is gated by #14 + framework packaging.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
