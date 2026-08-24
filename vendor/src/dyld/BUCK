@@ -351,7 +351,6 @@ cc_objects(
         "dyld3/shared-cache/CacheBuilder.cpp",
         "dyld3/shared-cache/AdjustDylibSegments.cpp",
         "dyld3/shared-cache/FileUtils.cpp",
-        "dyld3/shared-cache/JSONReader.cpp",
         "dyld3/shared-cache/DyldSharedCache.cpp",
         "dyld3/MachOAnalyzer.cpp",
         "dyld3/MachOAnalyzerSet.cpp",

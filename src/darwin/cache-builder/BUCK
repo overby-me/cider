@@ -29,10 +29,38 @@ cc_objects(
     visibility = ["PUBLIC"],
 )
 
+cc_objects(
+    name = "cache_builder_json_stub_obj",
+    srcs = ["json_stub.cpp"],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBCPP_NO_EXCEPTIONS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-nostdinc",
+        "-DBUILDING_UPDATE_DYLD_CACHE_BUILDER=1",
+        "-DPRIVATE=1",
+        "-fno-stack-check",
+    ],
+    prefix_headers = [
+        "//src/darwin/duct:CrashReporterClient.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//vendor/src/dyld:system_loader_inc_dyld_dyld3",
+        "//vendor/src/dyld:system_loader_inc_dyld_dyld3_shared_cache",
+        "//vendor/src/dyld:system_loader_inc_dyld_include",
+        "//vendor/src/dyld:system_loader_inc_dyld",
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 darwin_binary(
     name = "cache_builder",
     objs = [
         ":cache_builder_driver_obj",
+        ":cache_builder_json_stub_obj",
         "//vendor/src/dyld:cache_builder_obj",
         "//vendor/src/csu:crt1.10.6_obj2",
     ],
