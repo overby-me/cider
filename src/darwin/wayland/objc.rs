@@ -133,7 +133,12 @@ unsafe extern "C-unwind" {
     /// read the return value from the wrong place and produce a rectangle made of whatever was in
     /// the registers. Rust's own sret lowering puts the hidden pointer first, which is exactly
     /// what this symbol expects.
-    #[link_name = "objc_msgSend_stret"]
+    ///
+    /// arm64 has NO objc_msgSend_stret: its ABI returns a large struct through the indirect-result
+    /// register x8, which the ordinary objc_msgSend forwards, so the plain symbol is correct there
+    /// (Rust's sret lowering puts the hidden pointer in x8 on aarch64). Only x86-64 has _stret.
+    #[cfg_attr(target_arch = "x86_64", link_name = "objc_msgSend_stret")]
+    #[cfg_attr(not(target_arch = "x86_64"), link_name = "objc_msgSend")]
     pub fn msg_send_rect_ret(receiver: Object, sel: Sel) -> NsRect;
     /// The four-argument super call for -nextEventMatchingMask:untilDate:inMode:dequeue:.
     #[link_name = "objc_msgSendSuper"]
