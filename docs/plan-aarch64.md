@@ -1788,6 +1788,26 @@ graph AND invalidates the per-target cache (each of the 4 fixes cost a ~full fra
 --max-jobs 4); adding skeleton to the fw graph, as prefix-min has, would avoid that if more fixes are
 needed.
 
+**Pass 61 (THE GOAL: buck-nix-bash-check PASSES on aarch64 via the framework prefix).** Ran
+buck-nix-bash-check against result-fw (rt materialized from the framework tier). Guest nix, running inside
+the buck2-built Darling on aarch64, built GNU bash 5.3.9 FROM SOURCE and ran it:
+
+    build_rc=0
+    GNU bash, version 5.3.9(1)-release (arm-apple-darwin23.4.0)
+    run_rc=0
+    =PKG_DONE .../bash-interactive-5.3p9.drv=
+    PASS: guest nix built and ran bash inside the buck2-built Darling
+
+No CoreFoundation "image not found" (frameworks present, Pass 55 cleared), no Pass-45 runaway-mldr/oomd
+(mldr peaked at a stable ~9-process build chain, not a runaway; memory dipped to ~0.9GB at the compile peak
+then recovered to 10.5GB), and CLEAN teardown -- 0 leaked cider/ciderd/mldr afterwards (#15/0039). The
+parallel `make` during the guest bash build (CIDER_GNIX_CORES=2) completed without the #12 hang, so 0038
+(poll) + 0039 (epoll) resolve that too. This is the milestone the whole aarch64 port aimed at. The chain
+that made it possible this session: #15 root-caused to the packed-epoll_event ABI bug (xnu 0039) so the
+guest kqueue routes correctly and teardown completes, then task #16 packaged the framework closure as an
+oomd-immune nix prefix (gen-prefix-fw + cider-buck2-prefix-fw) with four arch/packaging fixes
+(wayland-scanner declaration, OOM job cap, cocotron pin fold-in, objc_msgSend_stret).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
