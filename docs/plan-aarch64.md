@@ -1975,6 +1975,26 @@ effort/risk estimate drops. Remaining un-derisked risk is step 4 (MAP_FIXED at 0
 free in cider's guest VM layout); scope that next (cheap), after which further progress needs a heavy build and
 so waits on the user's go/no-go.
 
+**Pass 70 (task #11: dyld-cache step 4 MAP_FIXED placement de-risked -- the 0x180000000 range is a natural gap).**
+Code-read only, no build. SHARED_REGION_BASE_ARM64 = 0x180000000, SIZE 0x100000000 (xnu shared_region.h:86),
+so the private cache maps at 0x180000000-0x280000000 (6-10 GiB). cider's guest VM layout (loader.rs
+compute_slide + the aarch64 placement comments): the guest MAIN executable lands near its vmaddr 0x100000000
+(~4 GiB) with a bit-47-clear slide; dyld is re-placed at 0x080000000000 (8 TiB) when it would land high; guest
+dylib mmap arenas live at 16/64 TiB; Linux anonymous mmaps land high (~0x7f...); libmalloc uses the high mmap
+arenas, not a low brk. So 0x180000000-0x280000000 is a GAP -- above the ~4 GiB main image and far below
+dyld/arenas -- which is exactly the real arm64 macOS layout (main at 4 GiB, shared region at 6 GiB) that cider
+inherited. At dyld-init time (only main image + dyld mapped) the range is free, so mapCachePrivate's
+mmap(MAP_FIXED) at 0x180000000 should succeed; cider's mmap emulation already passes MAP_FIXED through
+(s2c.rs mmap_flags). Residual placement risk is only a pathological main-image slide extending past 6 GiB
+(improbable: images are MB-scale and the slide hint is 0x100000000). NET: step 4 placement is likely safe.
+
+CHEAP-SCOPING PHASE COMPLETE (Passes 68-70). The dyld shared cache is GO with its three named risks scoped:
+step 1 (build the cache tool) = tractable incremental guest binary; step 4 placement = natural gap, likely
+safe; the remaining unknowns (codesign cdhash handling per SharedCacheRuntime.cpp:478, and the actual compile
+grind of SharedCacheBuilder + CacheBuilder for the guest) can only be resolved by building. Further progress
+therefore needs heavy builds and waits on the user's go/no-go among: (A) dyld shared cache [biggest perf win,
+multi heavy-build iterations], (B) the smaller vchroot immutable-prefix lstat cache (~4%), or (C) #14 (JSC).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
