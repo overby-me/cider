@@ -2022,6 +2022,25 @@ tree. Patch dry-runs clean (7/7 files). Rebuilding min prefix -> result-min8; ne
 buck-nix-bash-check) to confirm no regression, then commit. After B lands: start A (Pass 69 step 1, guest
 cache-builder target).
 
+**Pass 72 (task #11 lever B VERIFIED + correct; done).** Committed 0041 (fd4aa943), rebuilt min prefix ->
+result-min9 (/nix/store/d7ivyxd82cly9japwmnj8dzmyrmhhiy8-..., a NEW path; the first rebuild was a no-op
+because the flake only sees VCS-COMMITTED files -- 0041 was uncommitted, so min8 == min7 byte-for-byte). Cache
+symbols confirmed in the built libsystem_kernel.dylib. Measured (result-min9, `cider shell`):
+ - newfstatat 3379 -> 967 per spawn (~71% fewer); the worst hot path (/usr/lib/system re-stat'd 396x) fell to
+   ~18x; unique still 184. Residual redundancy is generation-bump CHURN: ~18-26 boot-time system-setup
+   mutations (the `cp /Users/root ...` launchd/template writes) each bump __vchroot_generation and clear the
+   whole cache, so prefixes get re-stat'd ~20x instead of once. On a real long-running build (higher
+   lookup:mutation ratio, and the mutations are mostly one-time boot setup) it collapses more.
+ - Per-spawn wall ~27ms (30x true = 0.809s) vs ~26ms pre-B = WITHIN NOISE. Confirms Pass 67: newfstatat is a
+   cheap syscall (~0.4us), so cutting 2412/spawn saves ~1ms -- B is a SYSCALL-TRAFFIC reduction, not a
+   wall-clock win. Correct and worth keeping (less kernel traffic, helps heavier path-walk workloads), but not
+   a spawn speedup on this micro-benchmark.
+ - Regression: buck-bash-check --prefix result-min9 PASS -- "BUCK2_BASH_OK 3.2.57(1)-release
+   arm64-apple-darwin19", the Darling boots and runs bash. No path-resolution regression from the cache.
+B is COMPLETE (commit fd4aa943 stands). A possible future refinement: finer-grained invalidation (drop only
+the mutated path's entry instead of a global generation bump) would recover the residual ~20x, but the wall
+payoff is sub-noise so it is not worth the added risk now. NEXT: A (dyld shared cache), Pass 69 step 1.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
