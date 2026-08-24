@@ -1825,6 +1825,22 @@ returns the same (failing->0) value all process long here. ~24k getcpu/spawn -> 
 shim; the real clang comes from the guest nix store during a build.) NEXT: rebuild min prefix with 0040,
 re-strace a spawn to confirm getcpu is gone and measure the per-spawn wall-time drop.
 
+**Pass 63 (task #11: the getcpu fix is VERIFIED, ~40% faster spawn).** Rebuilt the min prefix with xnu
+0040 (result-min7), re-materialized rt, and re-ran the profile. Before -> after, minimal guest spawn
+(`/usr/bin/true`):
+  - getcpu syscalls: 368,550 for 15 spawns (~24,570/spawn, ~90% of ALL syscalls) -> 22 for 5 spawns
+    (~4.4/spawn, 0.02%). The 22 still error, but caching means getcpu is now called ~once per libmalloc
+    translation unit per process instead of once per malloc. ~99.98% fewer.
+  - per-spawn wall (30x true): 1.285s -> 0.771s, i.e. ~43ms -> ~26ms, about 40% faster.
+  - sys time (30x true): 0.788s -> 0.385s, HALVED -- direct confirmation the win is the eliminated
+    syscall storm, not noise.
+Landed as xnu 0040 (commit 452a10a6). NEXT lever, now measured rather than guessed: with getcpu gone the
+top real syscalls are dyld's -- newfstatat ~972/spawn and mmap ~518/spawn (path resolution + image
+map/bind). That is the task's predicted #1 (dyld cold-load: no shared cache, every short-lived process
+re-stats and re-maps its whole dylib closure). Candidate: a dyld closure/shared-cache or a stat cache for
+the common libSystem+frameworks set. Higher effort; profile the newfstatat targets first (are they
+repeated stats of the same closure paths, which a cache would collapse).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
