@@ -1763,6 +1763,17 @@ stays cached, cocotron + the 30 GUI-framework dylibs (AppKit/Cocoa/QuartzCore/We
 backends) rebuild. So far three distinct fw-build blockers found and fixed: wayland-scanner declaration,
 OOM job cap, and this cocotron pin fold-in.
 
+**Pass 59 (fw build blocker 4: objc_msgSend_stret is x86-64-only).** With cocotron fixed, the fw build cut
+to a SINGLE failure: wayland_appkit_dylib, "Undefined symbols for architecture arm64: _objc_msgSend_stret".
+That entry point exists only on x86-64; arm64 returns a struct >16 bytes through the indirect-result
+register x8 via the ordinary objc_msgSend. src/darwin/wayland/objc.rs hard-coded
+`#[link_name="objc_msgSend_stret"]` on msg_send_rect_ret (-frame -> NSRect, 32 bytes). Fix (commit
+follows): gate the link_name -- _stret on x86_64, objc_msgSend elsewhere; Rust's sret lowering puts the
+hidden pointer in x8 on aarch64, so the plain symbol is correct. Only objc.rs changed, so most of the
+framework closure stays cached; re-running rebuilds the graph + wayland_appkit + staging. Four fw-build
+blockers now, all clean arch/packaging fixes: wayland-scanner declaration, OOM cap, cocotron pin fold-in,
+objc_msgSend_stret. If wayland_appkit was truly the last, result-fw should complete this run.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
