@@ -2180,6 +2180,17 @@ its cost is cache-ineffectiveness (reply-port lifecycle), a deeper fix. Tier 1 c
 (expect 6.7 -> ~1), buck-bash-check; if verified, Tier 1's clean wins are done -- then either the reply-port
 lifecycle fix (if tractable), return to A's eligibility diagnostic, or record perf substantially complete.
 
+**Pass 80 (task #11 Tier 1 trim #2 VERIFIED).** Rebuilt with 0044 -> result-min12
+(4isw4rjy3pwnlaz0g33yks52hkfzxjjb-...). measure-rpc12: task_self_trap 6.7 -> 3.3/spawn (~half); total per-spawn
+50 -> 47; boot RECV 252 -> 236. Residual 3.3 is inherent (each fork child resets the cache + re-fetches once,
+and each exec'd process re-fetches once -- correct). buck-bash-check --prefix result-min12 PASS ("BUCK2_BASH_OK
+3.2.57 arm64") -- the fork-child cache reset is correct, no regression. So Tier 1 CLEAN WINS ARE DONE:
+kprintf (0042, -4.4 RPC/spawn) + task_self (0044, -3.4 RPC/spawn) = ~8 fewer RPCs/spawn (of ~50), no
+regressions. Item-4 note for the reply-port lever: mig_dealloc_reply_port has NO callers in libsyscall, so the
+6.7 mach_reply_port/spawn is NOT from that destruction path -- it is either the __TSD_MIG_REPLY slot not
+persisting on aarch64 (the D4 TSD-base-via-hash situation) or mach_msg consuming the reply port; needs
+mach_msg.c emulation analysis (queue item 4). Overnight queue continues: unblock A (item 2) next.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
