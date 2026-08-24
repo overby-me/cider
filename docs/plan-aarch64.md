@@ -2085,6 +2085,27 @@ target to model entry/linkage on, not the dyld dylinker), add the apfs stub, COM
 only committed files), build the single target to surface compile errors, iterate. Then: nix step to run it
 under cider over the prefix dylibs -> cache file at the dyld-expected path; enable dyld private mode; verify.
 
+**Pass 75 (task #11 lever A step 1 DONE: the guest arm64 dyld cache-builder tool BUILDS).** cache_builder is
+a 1.7MB arm64 Mach-O (NOUNDEFS|DYLDLINK|PIE) -- a component Darling never compiled, now building on cider
+aarch64 via .#cider-buck2-cache-builder. Build-system notes: the single-target buildTarget path overflows Nix
+eval (max-call-depth), so the endpoint uses the ciderBuck2Lower path (like cider-buck2-migcom, allPins); and
+these must run under PLAIN `nix build` -- systemd-run --user --scope gets torn down when the harness reaps the
+long background task (killed a run mid graph-materialization). PORT FIXES (each committed): removed the
+nonexistent dyld3/shared-cache/JSONReader.cpp; stubbed dyld3::json (src/darwin/cache-builder/json_stub.cpp) so
+it links without JSONReader.mm's Foundation/NSJSONSerialization; empty <apfs/apfs_fsctl.h> stub; <stdbool.h>
+in the C driver; -DBUILDING_CACHE_BUILDER=1 (THE key define -- gates DyldSharedCache::CreateOptions/MappedMachO,
+TimeRecorder, Diagnostics::warning); and the full src set is required (the optimizers are referenced
+unconditionally, "skip them" does NOT link): dyld3/shared-cache/{mrm_shared_cache_builder,SharedCacheBuilder,
+CacheBuilder,AdjustDylibSegments,FileUtils,DyldSharedCache,OptimizerObjC,OptimizerLinkedit,OptimizerBranches,
+IMPCaches}.cpp + dyld3/{MachOAnalyzer,MachOAnalyzerSet,MachOFile,MachOLoaded,Closure,ClosureBuilder,
+ClosureFileSystemPhysical,ClosureFileSystemNull,ClosureWriter,Diagnostics,PathOverrides,RootsChecker}.cpp. The
+ObjC optimizers compiled clean (no ObjC-runtime hell). Driver src/darwin/cache-builder/cache_builder_main.c
+(MRM C API) + BUCK in src/darwin/cache-builder/ + cache_builder_obj in vendor/src/dyld/BUCK. STEP 2 (next):
+run cache_builder under cider over the 221 guest dylib install-names (scratchpad/cache-manifest.txt) to emit
+a dyld_shared_cache_arm64; prototype the run first (cheap: cider shell <cache_builder> <out-dir> / <manifest>
+on the min9 rt) to confirm it emits a cache; then wire into the prefix at the dyld cache path, set dyld
+private mode, rebuild, boot, verify dylib opens collapse (dyldprof) + buck-bash-check.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
