@@ -2191,6 +2191,25 @@ regressions. Item-4 note for the reply-port lever: mig_dealloc_reply_port has NO
 persisting on aarch64 (the D4 TSD-base-via-hash situation) or mach_msg consuming the reply port; needs
 mach_msg.c emulation analysis (queue item 4). Overnight queue continues: unblock A (item 2) next.
 
+**Pass 81 (task #11 A: eligibility reason isolated to SharedCacheBuilder dep-resolution; deep, deferred).**
+Rebuilt cache_builder WITH MustBeInCache (result-cachebuilder lpwv154s...) and re-ran the diagnostic. The
+only reported error: "/usr/lib/system/libxpc.dylib not placed because: Could not find dependency '<X>'" for
+14 core libs (libobjc.A, libsystem_c/kernel/malloc/platform/pthread/info/trace/blocks, libcompiler_rt,
+libdispatch, libdyld, liblaunch, libunwind). VERIFIED all 14 are in the 39-dylib manifest, present as files,
+and name-matched (e.g. libsystem_c install-name == /usr/lib/system/libsystem_c.dylib). knownDylibs
+(SharedCacheBuilder.cpp:584-590) is keyed by BOTH runtimePath and installName, so a present+matched dep should
+resolve. Yet libxpc's deps are "not found" -> the deps are NOT in dylibsToCache: loadMachOs
+(CacheInputBuilder) routed them to otherDylibs/couldNotLoad, OR the getRealPath fallback (line 670) mangles
+the guest path under cider. They are not individually reported (FileFlags MustBeInCache -> state mapping in
+mrm addFile/fileSystem.addFile is not clearly mustBeIncluded per CacheBuilder.h:60 state==MustBeIncluded).
+ROOT is a SharedCacheBuilder-internals / ClosureFileSystem-under-cider issue; pinning it needs builder
+INSTRUMENTATION (print which bucket each dylib lands in + getRealPath results) = another cache_builder rebuild.
+DECISION: A is precisely characterized + resumable (next step: instrument loadMachOs bucketing / getRealPath),
+but it is a deep rabbit hole for uncertain wall payoff; per the overnight "don't loop on a blocked item"
+guardrail, defer A and move to the next bottleneck. A remains the biggest dyld-side lever for a future focused
+session. Committed patches to date (all inert-safe or wins): 0040 getcpu, 0041 vchroot cache, 0042 kprintf,
+0043 (inert) + 0044 task_self; plus the cache_builder target (src/darwin/cache-builder + vendor/src/dyld).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
