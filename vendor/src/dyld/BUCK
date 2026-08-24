@@ -362,6 +362,13 @@ cc_objects(
         "dyld3/ClosureFileSystemNull.cpp",
         "dyld3/ClosureWriter.cpp",
         "dyld3/Diagnostics.cpp",
+        "dyld3/PathOverrides.cpp",
+        # Optimizers: SharedCacheBuilder/CacheBuilder reference these unconditionally, so a "first
+        # functional cache without them" does not link -- include them.
+        "dyld3/shared-cache/OptimizerObjC.cpp",
+        "dyld3/shared-cache/OptimizerLinkedit.cpp",
+        "dyld3/shared-cache/OptimizerBranches.cpp",
+        "dyld3/shared-cache/IMPCaches.cpp",
     ],
     compiler_flags = [
         "-DHAVE_STDINT_H=1",
