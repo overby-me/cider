@@ -1808,6 +1808,23 @@ guest kqueue routes correctly and teardown completes, then task #16 packaged the
 oomd-immune nix prefix (gen-prefix-fw + cider-buck2-prefix-fw) with four arch/packaging fixes
 (wayland-scanner declaration, OOM job cap, cocotron pin fold-in, objc_msgSend_stret).
 
+**Pass 62 (task #11 step 1: profiled a guest spawn; the #1 cost is a getcpu syscall storm, not dyld).**
+Followed #11's "profile FIRST" step. No perf on this host, so used timing + strace -f -c on `cider shell`
+against the materialized fw prefix. A minimal guest spawn (`/usr/bin/true`) costs ~43 ms wall, ~60% in
+sys, i.e. OS-shim not codegen. strace -f -c of 15 true spawns: getcpu was 368,550 of 407,946 syscalls
+(~90%) and ALL errored -- ~24k failing getcpu per short-lived process, far more than the dyld map/bind
+(~340 mmap+mprotect/spawn) or the ciderd RPC (~324 sendmsg+recvmsg/spawn) the task predicted as the top
+levers. Root cause: libmalloc calls _malloc_cpu_number() on every allocation (magazine selection,
+magazine_tiny/small/medium/nano), which on DARLING routes _os_cpu_number() (xnu libsyscall/os/tsd.h)
+straight to a getcpu Linux syscall -- the hottest path in a process that mallocs thousands of times during
+dyld/libSystem init. Real Darwin reads the cpu number from a register (TPIDRRO_EL0 low bits), but cider
+uses TPIDRRO_EL0 for the TSD base, so it fell back to the syscall. FIX (xnu 0040, committed 452a10a6):
+cache the first result and skip the syscall thereafter -- the value is only a magazine hint and getcpu
+returns the same (failing->0) value all process long here. ~24k getcpu/spawn -> ~1 per libmalloc TU.
+(The clang split the task asked for could not be measured: /usr/bin/clang in the prefix is only the xcrun
+shim; the real clang comes from the guest nix store during a build.) NEXT: rebuild min prefix with 0040,
+re-strace a spawn to confirm getcpu is gone and measure the per-spawn wall-time drop.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
