@@ -369,7 +369,7 @@ cc_objects(
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-std=c++17",
         "-nostdinc",
-        "-DBUILDING_UPDATE_DYLD_CACHE_BUILDER=1",
+        "-DBUILDING_CACHE_BUILDER=1", "-DBUILDING_UPDATE_DYLD_CACHE_BUILDER=1",
         "-DPRIVATE=1",
         "-gfull",
         "-fPIC",

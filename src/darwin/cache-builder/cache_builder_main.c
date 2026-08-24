@@ -6,6 +6,7 @@
 // mmaps each from <root>, and writes the produced cache file(s) into <out-dir>.
 //
 // usage: cache_builder <out-dir> <root-prefix> <manifest>
+#include <stdbool.h>   // the MRM C API (and this driver) use bool/true/false; C needs this under -nostdinc
 #include "mrm_shared_cache_builder.h"
 
 #include <stdio.h>
