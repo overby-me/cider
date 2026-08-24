@@ -2131,6 +2131,26 @@ checkpoint A here (resumable: the tool + the MustBeInCache diagnostic + step2-pr
 manifest are all in place; next step is simply to land the MustBeInCache rebuild and read the reason), and
 per the user's "A first, Tier 1 after" PIVOT to Tier 1 (#17), the higher-value wall lever, on fresh ground.
 
+**Pass 77 (task #11 Tier 1 / #17: per-spawn RPC histogram captured; REVISES Pass 73; first trim = drop debug
+kprintf).** Capture unblock: ciderd's stdout+stderr (incl. DSERVER_TRACE_CALLS "RECV #<num>") go to
+<prefix>/ciderd.log (launcher main.rs:526-537), not /dev/null -- so the histogram needs NO rebuild
+(scratchpad/measure-rpc.sh: boot+1 vs boot+10 spawns, delta/spawn). RESULT: ~50 RPCs per EXEC'd process
+(marginal), plus a ~223-RPC one-time boot. This REVISES Pass 73: the earlier "wall is RPC-bound" was from a
+boot-inflated strace (recvmsg ~240/spawn); the true marginal per-process RPC is ~50 -> ~50 x ~122us ~= 6ms,
+about 23% of the ~26ms spawn wall, NOT dominant. dyld load + exec + guest compute is the other ~20ms (so A's
+dyld cache, if unblockable, attacks the bigger chunk). Per-spawn RPC by type (delta): mach_msg_overwrite 7.8,
+mach_reply_port 6.7, task_self_trap 6.7, mach_port_deallocate 4.4, kprintf 4.4, thread_self_trap 3.3,
+host_self_trap 3.3, vchroot_path 3.3, set_thread_handles/uidgid/checkin ~2 each. Levers: (a) DEBUG kprintf
+(4.4/spawn) -- execve.c "execve expand", filio.c "dtype for fd", sigexc.c "darling_sigexc_self()" are
+unconditional debug prints that dserver_rpc_kprintf round-trip to ciderd; pure noise, SAFE to remove. (b)
+self-port traps task_self_trap 6.7 + host_self_trap 3.3 (+ thread_self 3.3) RPC every call
+(mach_traps.c:38,706, no caching) returning per-process constants -- cacheable getcpu-style but needs
+fork-invalidation (riskier). (c) mach_reply_port 6.7 -- per-thread reply port, should be TSD-cached. FIRST
+TRIM (this pass): (a), vendor/patches/xnu/0042-aarch64-drop-per-process-debug-kprintf.patch (3 files,
+dry-runs clean) -- removes the 3 hot debug kprintf. Rebuild min prefix, re-run measure-rpc.sh (expect kprintf
+~4.4->0/spawn), buck-bash-check. Then consider (b)/(c). Note: RPC is ~23% of wall so Tier 1's ceiling is
+modest; the getcpu fix remains the standout perf win.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
