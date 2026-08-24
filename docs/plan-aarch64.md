@@ -2164,6 +2164,22 @@ guest for direct task_self_trap()/host_self_trap() call sites, find the hot one,
 cached global (or cache host self similarly). Same for mach_reply_port 6.7 (per-thread reply port -- should be
 TSD-cached; check __TSD_MIG_REPLY usage). Record the source as a plan pass before patching.
 
+**Pass 79 (task #11 Tier 1: 0043 was INEFFECTIVE; 0044 caches task_self_trap at the leaf).** Rebuilt with
+0043 -> result-min11 (nqh398yg...). measure-rpc11: task_self_trap STILL 6.7/spawn (unchanged) -- so caching
+the mach_task_self() C function did nothing; guest code invokes the task_self trap DIRECTLY, not via that
+function. 0043 is harmless (a correct function cache) but inert; leaving it. The robust fix, 0044
+(vendor/patches/xnu/0044-aarch64-cache-task-self-trap-leaf.patch), caches at the emulation LEAF
+(task_self_trap_impl in mach_traps.c, the getcpu pattern) so it catches every caller, and resets the cache in
+the fork child (fork.c, after re-checkin -- a forked child is a new task; vfork + posix_spawn both route
+through sys_fork, and exec'd processes get fresh statics, so one reset covers all). Also confirmed
+mach_reply_port 6.7/spawn is ALREADY TSD-cached (mig_reply_port.c mig_get_reply_port -> __TSD_MIG_REPLY), so
+its cost is cache-ineffectiveness (reply-port lifecycle), a deeper fix. Tier 1 clean-win status: kprintf
+(0042) landed+verified; task_self (0044) building; beyond these the RPC levers are deep/risky
+(reply-port lifecycle, mach_msg service calls, host/thread self = caller-freed refs) for a few % wall each
+(RPC ~23% of wall; getcpu 40% stays the standout). NEXT: rebuild min12 with 0044, measure task_self_trap
+(expect 6.7 -> ~1), buck-bash-check; if verified, Tier 1's clean wins are done -- then either the reply-port
+lifecycle fix (if tractable), return to A's eligibility diagnostic, or record perf substantially complete.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
