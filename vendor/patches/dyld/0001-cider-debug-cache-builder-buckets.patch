@@ -1,0 +1,34 @@
+cider #11 DEBUG (temporary): instrument SharedCacheBuilder to reveal why dylibs miss dylibsToCache.
+
+Prints, under cider, which bucket each input dylib lands in after loadMachOs (dylibsToCache/otherDylibs/
+couldNotLoad + reasons) and each unresolved dependency, to find the root of A's 'Could not find
+dependency' cascade. Revert once the root is known.
+---
+--- a/dyld3/shared-cache/SharedCacheBuilder.cpp
++++ b/dyld3/shared-cache/SharedCacheBuilder.cpp
+@@ -47,6 +47,7 @@
+ #include "CodeSigningTypes.h"
+ #include "MachOFileAbstraction.hpp"
+ #include "SharedCacheBuilder.h"
++#include <stdio.h> // CIDERDBG
+ #include "RootsChecker.h"
+ #include "IMPCachesBuilder.hpp"
+ 
+@@ -674,6 +675,7 @@
+                     }
+                 }
+                 if ( knownDylibs.count(loadPath) == 0 ) {
++                    fprintf(stderr, "CIDERDBG depmiss: %s needs '%s' (known=%zu)\n", dylib.mappedFile.runtimePath.c_str(), loadPath, knownDylibs.size()); // CIDERDBG
+                     badDylibs[dylib.mappedFile.runtimePath].insert(std::string("Could not find dependency '") + loadPath + "'");
+                     knownDylibs.erase(dylib.mappedFile.runtimePath);
+                     knownDylibs.erase(dylib.mappedFile.mh->installName());
+@@ -773,6 +775,9 @@
+     std::vector<LoadedMachO> executables;
+     std::vector<LoadedMachO> couldNotLoadFiles;
+     cacheInputBuilder.loadMachOs(inputFiles, dylibsToCache, otherDylibs, executables, couldNotLoadFiles);
++    fprintf(stderr, "CIDERDBG buckets: dylibsToCache=%zu otherDylibs=%zu executables=%zu couldNotLoad=%zu\n", dylibsToCache.size(), otherDylibs.size(), executables.size(), couldNotLoadFiles.size()); // CIDERDBG
++    for (const CacheBuilder::LoadedMachO& _d : otherDylibs) fprintf(stderr, "CIDERDBG other: %s\n", _d.mappedFile.runtimePath.c_str()); // CIDERDBG
++    for (const CacheBuilder::LoadedMachO& _d : couldNotLoadFiles) { const char* _m = (_d.inputFile && _d.inputFile->diag.hasError()) ? _d.inputFile->diag.errorMessage() : "(no diag)"; fprintf(stderr, "CIDERDBG couldNotLoad: %s -> %s\n", _d.mappedFile.runtimePath.c_str(), _m); } // CIDERDBG
+ 
+     verifySelfContained(_fileSystem, dylibsToCache, otherDylibs, couldNotLoadFiles);
+ 
