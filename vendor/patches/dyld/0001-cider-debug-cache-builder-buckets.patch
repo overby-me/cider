@@ -28,7 +28,7 @@ dependency' cascade. Revert once the root is known.
      cacheInputBuilder.loadMachOs(inputFiles, dylibsToCache, otherDylibs, executables, couldNotLoadFiles);
 +    fprintf(stderr, "CIDERDBG buckets: dylibsToCache=%zu otherDylibs=%zu executables=%zu couldNotLoad=%zu\n", dylibsToCache.size(), otherDylibs.size(), executables.size(), couldNotLoadFiles.size()); // CIDERDBG
 +    for (const CacheBuilder::LoadedMachO& _d : otherDylibs) fprintf(stderr, "CIDERDBG other: %s\n", _d.mappedFile.runtimePath.c_str()); // CIDERDBG
-+    for (const CacheBuilder::LoadedMachO& _d : couldNotLoadFiles) { const char* _m = (_d.inputFile && _d.inputFile->diag.hasError()) ? _d.inputFile->diag.errorMessage() : "(no diag)"; fprintf(stderr, "CIDERDBG couldNotLoad: %s -> %s\n", _d.mappedFile.runtimePath.c_str(), _m); } // CIDERDBG
++    for (const CacheBuilder::LoadedMachO& _d : couldNotLoadFiles) { std::string _m = (_d.inputFile && _d.inputFile->diag.hasError()) ? _d.inputFile->diag.errorMessage() : std::string("(no diag)"); fprintf(stderr, "CIDERDBG couldNotLoad: %s -> %s\n", _d.mappedFile.runtimePath.c_str(), _m.c_str()); } // CIDERDBG
  
      verifySelfContained(_fileSystem, dylibsToCache, otherDylibs, couldNotLoadFiles);
  
