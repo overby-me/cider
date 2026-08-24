@@ -2106,6 +2106,31 @@ a dyld_shared_cache_arm64; prototype the run first (cheap: cider shell <cache_bu
 on the min9 rt) to confirm it emits a cache; then wire into the prefix at the dyld cache path, set dyld
 private mode, rebuild, boot, verify dylib opens collapse (dyldprof) + buck-bash-check.
 
+**Pass 76 (task #11 lever A step 2: cache_builder RUNS under cider; blocked on dylib cache-eligibility;
+checkpointing A, pivoting to Tier 1).** Ran cache_builder under cider (guest root = rt/libexec/cider; place
+the binary at guest /usr/bin, manifest + out-dir under guest /tmp; scratchpad/step2-proto.sh). It works: reads
+the manifest, mmaps + addFile's each dylib, invokes the real SharedCacheBuilder. BUT the builder rejects the
+set: dylibsToCache ends up < 30 -> "[ciderCustomer.arm64] missing required minimum set of dylibs"
+(SharedCacheBuilder.cpp:912, the >=30 guard). Tried manifests: all-199 (not self-contained), the /usr/lib/
+system closure (38), and a computed dependency closure (39, 0 external missing) -- all still < 30. RULED OUT
+every inspectable cause (llvm-otool + reading the checks): install-name matches path; LC_SEGMENT_SPLIT_INFO
+present; MH_TWOLEVEL set; arch arm64 cpusubtype 0x0 ALL (matches archs=["arm64"]); platform 1 macOS; deps
+self-contained; 0 symlink-alias deps; bind addends all 0 (the >31 cache limit is not hit); and per
+MachOAnalyzer.cpp:3753 an arm64 non-chained dylib RETURNS TRUE from canBePlacedInDyldCache after the addend
+check -- so by inspection these dylibs should be eligible AND land in dylibsToCache, yet they do not. The
+reduction is in loadMachOs/verifySelfContained for a reason not isolable by inspection. The definitive
+diagnostic (driver addFile flag NoFlags->MustBeInCache, committed, so SharedCacheBuilder.cpp:783-819 prints
+the per-dylib "not included because: <reason>") needs a cache_builder REBUILD, and that rebuild keeps getting
+KILLED ("interrupted by the user") during the allPins graph re-materialization (twice; plain nix build, not
+systemd-run -- so it is resource/harness flakiness on the heavy 147-pin materialization, not the scope). A
+STATUS: step 1 DONE and durable (cache_builder is a 1.7MB arm64 Mach-O that builds via .#cider-buck2-cache-
+builder and RUNS under cider -- a component Darling never compiled); step 2 blocked on the un-isolated
+eligibility reason + fragile diagnostic rebuild. Combined with Pass 73 (A's WALL payoff is sub-noise; the
+spawn is RPC-bound), A is a large effort with an uncertain remaining blocker for little wall gain. DECISION:
+checkpoint A here (resumable: the tool + the MustBeInCache diagnostic + step2-proto harness + the closure
+manifest are all in place; next step is simply to land the MustBeInCache rebuild and read the reason), and
+per the user's "A first, Tier 1 after" PIVOT to Tier 1 (#17), the higher-value wall lever, on fresh ground.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
