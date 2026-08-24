@@ -1956,6 +1956,25 @@ is the biggest remaining perf lever, but a genuinely large, heavy-build, multi-i
 explicit go-ahead before sinking many heavy builds into it; the bounded vchroot lever remains the smaller
 alternative.
 
+**Pass 69 (task #11: dyld-cache step 1 de-risked -- TRACTABLE as an incremental guest binary, not a host port).**
+Code-read only, no build. The cache builder should be built as a GUEST arm64-darwin binary run under cider,
+NOT cross-compiled for the linux host: MachOAnalyzer.cpp (and the layout code) use mach/vm_* APIs
+(vm_allocate/mach_task_self/vm_copy/vm_protect) that are native for the guest (cider emulates them) but would
+need a shim layer on a linux host. And the guest dyld target ALREADY compiles the heavy shared pieces for
+arm64-darwin: dyld3/MachOAnalyzer, MachOAnalyzerSet, MachOFile, MachOLoaded, ClosureBuilder, Closure,
+ClosureWriter, ClosureFileSystemPhysical, Diagnostics, shared-cache/DyldSharedCache (dyld BUCK 62-155). So a
+builder is INCREMENTAL: add ~8 shared-cache srcs -- SharedCacheBuilder.cpp, CacheBuilder.cpp,
+AdjustDylibSegments.cpp, FileUtils.cpp, a driver (mrm_shared_cache_builder.cpp or update_dyld_shared_cache.cpp)
+-- plus headers MachOFileAbstraction.hpp (big template), CodeSigningTypes.h, Trie.hpp. Extra deps/risks:
+codesign hashing (CommonCrypto/SHA for the cache cdhash; guest needs it) and the optimizers
+(OptimizerObjC.cpp / IMPCaches.cpp / OptimizerBranches.cpp / OptimizerLinkedit.cpp) which are the compile-grind
+risk -- but they are cache OPTIMIZATIONS, not required for a functional cache, so a first cut can disable them
+(unoptimized-but-functional cache still collapses the 77 dylib opens, which is the whole point). NET: step 1's
+"biggest unknown" is downgraded to a moderate incremental guest-binary target; the GO verdict stands and the
+effort/risk estimate drops. Remaining un-derisked risk is step 4 (MAP_FIXED at 0x180000000-0x280000000 must be
+free in cider's guest VM layout); scope that next (cheap), after which further progress needs a heavy build and
+so waits on the user's go/no-go.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
