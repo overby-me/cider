@@ -1841,6 +1841,23 @@ re-stats and re-maps its whole dylib closure). Candidate: a dyld closure/shared-
 the common libSystem+frameworks set. Higher effort; profile the newfstatat targets first (are they
 repeated stats of the same closure paths, which a cache would collapse).
 
+**Pass 64 (task #11: profiled the dyld path; the newfstatat redundancy is real but modest, the real cost
+is closure mmap/open).** strace -f -e newfstatat,openat of ONE guest spawn: 3379 newfstatat but only 184
+UNIQUE paths (~18x redundancy). The repeats are shared PREFIX components: PREFIX/usr 491x, PREFIX/usr/lib
+460x, PREFIX/usr/lib/system 396x -- roughly once per system dylib. Cause: vchroot_run
+(linux_premigration/vchroot_userspace.c:280-353) walks each path component and lstat's it to catch
+symlinks in the guest->host mapping, with no cross-call cache, so every dylib load re-stats the common
+prefixes. A component lstat cache would collapse 3379 -> ~184, but: (a) the win is modest -- ~918 redundant
+lstats/spawn at ~2us ~= 1.5-5 ms of the ~26 ms spawn; (b) it is a correctness-critical change to the layer
+every file op goes through, needing generation-based invalidation on all path-mutating syscalls and a full
+buck-nix-bash-check regression. The DOMINANT dyld cost is not the stats but the actual mmap (~518/spawn) and
+openat (~604/spawn) of the whole dylib closure, which only a dyld shared cache / prebound closure removes
+(the task's lever #1, "hardest"). ASSESSMENT of remaining #11 levers after getcpu: (1) dyld shared cache =
+biggest remaining win, biggest effort; (2) psynch uncontended futex fast path (task lever #2, rated
+tractable) -- worth profiling the ~324 sendmsg/recvmsg/spawn RPC to see how much is uncontended psynch; (3)
+vchroot stat cache = modest + risky. getcpu was the outsized, low-risk win; the rest are diminishing-returns
+or higher-risk. NEXT: profile the ciderd RPC breakdown to size the psynch lever before any core-layer change.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
