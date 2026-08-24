@@ -1858,6 +1858,18 @@ tractable) -- worth profiling the ~324 sendmsg/recvmsg/spawn RPC to see how much
 vchroot stat cache = modest + risky. getcpu was the outsized, low-risk win; the rest are diminishing-returns
 or higher-risk. NEXT: profile the ciderd RPC breakdown to size the psynch lever before any core-layer change.
 
+**Pass 65 (task #11: after getcpu there is no single outlier; psynch RPC is the tractable next lever).**
+Post-fix syscall profile (strace -f -c, 5 spawns, wall dominated by wait4 which is idle waiting): the real
+work is spread -- newfstatat 4859 (~972/spawn), mmap 2589 (~518/spawn), openat 870, read 624, plus the
+ciderd RPC sendmsg 1023 (~205/spawn) + recvmsg 1678 (~336/spawn), clock_gettime 2003 (~400/spawn), and
+execve/clone for the spawn. Crucially, ZERO futex syscalls -- so all guest pthread locking round-trips to
+ciderd even when uncontended, exactly the task's lever #2. So ~541 RPC messages/spawn are lock/cond/signal
+round-trips, a chunk of which (uncontended lock/unlock) could be done in-guest via a Linux futex, daemon
+only for real sleep/wake. That is the best remaining TRACTABLE lever (the dyld closure mmap/open is bigger
+but needs a shared cache; the vchroot stat cache is modest+risky). clock_gettime ~400/spawn is also worth a
+look (should be a vDSO no-syscall read). NEXT: read the guest psynch path (libpthread + the daemon
+kqchan/psynch RPC) to see where an uncontended mutex/cond fast path can stay in-guest.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
