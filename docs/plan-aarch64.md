@@ -2058,6 +2058,33 @@ daemon waits, so this needs a clean confirmation -- size the RPC by tracing ONLY
 the critical-path RPC cost. RECOMMENDATION surfaced to user: prioritize Tier 1 for wall-clock; keep A as a
 lower-priority I/O/architecture improvement. Awaiting steer; meanwhile confirming RPC dominance cheaply.
 
+**Pass 74 (task #11 lever A: user chose "do A first, Tier 1 after"; step 1 driver written, BUCK target next).**
+User steer: do A (dyld shared cache) first despite the sub-noise-wall caveat (values the I/O + correct
+architecture), then start Tier 1 (#17). A step 1 = build a guest arm64 cache-builder tool. Chosen entry: the
+MRM builder C API (mrm_shared_cache_builder.h: createSharedCacheBuilder(BuildOptions_v1*) / addFile(path,data,
+size,flags) / addSymlink / runSharedCacheBuilder / getErrors / getFileResults / destroySharedCacheBuilder) --
+cleaner and more self-contained than update_dyld_shared_cache.cpp (which pulls legacy mega-dylib-utils.h).
+Darling never compiled the cache tools (CMakeLists only builds system_loader), so this is a fresh port.
+Enums: Platform macOS=1, Disposition Customer=2, FileFlags NoFlags=0. DRIVER WRITTEN:
+src/darwin/cache-builder/cache_builder_main.c -- reads a manifest of guest dylib install-names (e.g.
+/usr/lib/libSystem.B.dylib), mmaps each from <root-prefix>, addFile(installName,data,size,NoFlags),
+runSharedCacheBuilder, then writes each getFileResults() entry (the cache bytes) into <out-dir>. Options:
+version1, platform macOS, archs=["arm64"], Customer, isLocallyBuiltCache.
+PORTING ITEMS for the builder srcs (guest arm64-darwin): (1) <apfs/apfs_fsctl.h> at SharedCacheBuilder.cpp:36
+is the ONLY apfs reference (no fsctl calls) -- cider's SDK lacks it, so stub an empty header (or patch out the
+include). (2) -DBUILDING_UPDATE_DYLD_CACHE_BUILDER=1 (SharedCacheBuilder.cpp:79 guards on it), NOT
+-DBUILDING_DYLD. (3) MachOFileAbstraction.hpp is a big template header. (4) codesign cdhash needs
+CommonCrypto SHA. SRCS for the obj target: shared-cache/{mrm_shared_cache_builder,SharedCacheBuilder,
+CacheBuilder,AdjustDylibSegments,FileUtils,JSONReader}.cpp + dyld3/{MachOAnalyzer,MachOAnalyzerSet,MachOFile,
+MachOLoaded,Closure,ClosureBuilder,ClosureFileSystemPhysical,ClosureFileSystemNull,ClosureWriter,
+Diagnostics}.cpp + shared-cache/DyldSharedCache.cpp; skip OptimizerObjC/IMPCaches/OptimizerBranches/
+OptimizerLinkedit for a first functional cache (verify SharedCacheBuilder does not hard-require them).
+NEXT: author a cc_objects + darwin_binary target (model compile flags/include-dir deps on
+vendor/src/dyld/BUCK system_loader_obj, but a normal executable linking libSystem -- find a normal guest-exe
+target to model entry/linkage on, not the dyld dylinker), add the apfs stub, COMMIT (driver+BUCK; flake sees
+only committed files), build the single target to surface compile errors, iterate. Then: nix step to run it
+under cider over the prefix dylibs -> cache file at the dyld-expected path; enable dyld private mode; verify.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
