@@ -125,16 +125,29 @@
         }).buildTarget
           { target = "//src/darwin/duct:system_duct_static"; };
 
-      # cider #11 lever A: the guest arm64 dyld shared-cache builder tool, built alone for a
-      # tight compile loop before wiring it into a prefix tier.
-      #   nix build .#cider-buck2-cache-builder
+      # cider #11 lever A: the guest arm64 dyld shared-cache builder tool, lowered alone (through the
+      # same ciderBuck2Lower path the prefixes use, NOT buildTarget which overflows on this dep graph)
+      # for a tighter compile loop than a full prefix rebuild. Needs the pins (dyld tree + SDK).
+      #   systemd-run --user --scope -p MemoryMax=8G nix build .#cider-buck2-cache-builder
       packages.cider-buck2-cache-builder =
         pkgs:
-        (import ./nix/lib/ciderBuck2.nix {
-          inherit pkgs;
-          overby = inputs.overby;
-        }).buildTarget
-          { target = "//src/darwin/cache-builder:cache_builder"; };
+        (
+          let
+            ciderSrc = import ./nix/lib/cider-src.nix {
+              inherit pkgs;
+              baseSrc = ./.;
+            };
+          in
+          import ./nix/lib/ciderBuck2Lower.nix {
+            inherit pkgs ciderSrc;
+            allPins = true;
+            graph = import ./nix/lib/ciderBuck2Graph.nix {
+              inherit pkgs ciderSrc;
+              allPins = true;
+              targets = [ "//src/darwin/cache-builder:cache_builder" ];
+            };
+          }
+        ).final;
 
       # Two probes for where the Nix-lowered path runs out of road. Both are
       # trivial targets; what differs is the FILE the interpreter has to read:
