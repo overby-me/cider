@@ -69,8 +69,11 @@ int main(int argc, char** argv) {
 
         // path passed to the builder IS the install name (what dyld looks up by). MustBeInCache so the
         // builder propagates the per-dylib "cannot be placed in cache" reason instead of silently dropping.
-        if (!addFile(b, line, (uint8_t*)data, (uint64_t)st.st_size, MustBeInCache))
-            fprintf(stderr, "cache_builder: addFile rejected %s\n", line);
+        // strdup: FileSystemMRM stores FileInfo.path as a raw const char*, not a copy, so a reused stack
+        // buffer would make every entry point at the last manifest line. Leak is fine (short-lived tool).
+        char* instname = strdup(line);
+        if (!addFile(b, instname, (uint8_t*)data, (uint64_t)st.st_size, MustBeInCache))
+            fprintf(stderr, "cache_builder: addFile rejected %s\n", instname);
         else
             added++;
     }

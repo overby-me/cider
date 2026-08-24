@@ -2210,6 +2210,19 @@ guardrail, defer A and move to the next bottleneck. A remains the biggest dyld-s
 session. Committed patches to date (all inert-safe or wins): 0040 getcpu, 0041 vchroot cache, 0042 kprintf,
 0043 (inert) + 0044 task_self; plus the cache_builder target (src/darwin/cache-builder + vendor/src/dyld).
 
+**Pass 82 (task #11 A: ROOT CAUSE found -- a DRIVER bug, not a cider/builder block).** Instrumented
+SharedCacheBuilder (debug patch vendor/patches/dyld/0001) and re-ran: "CIDERDBG buckets: dylibsToCache=1
+otherDylibs=0 executables=0 couldNotLoad=0" -- only 1 of 39 added dylibs reached ANY bucket, and it was
+libxpc (the alphabetically-last /usr/lib/system entry). Cause: FileSystemMRM::addFile
+(mrm_shared_cache_builder.cpp:166) stores FileInfo.path as a RAW const char* (not a copy), and the driver
+(cache_builder_main.c) passed `line` from a REUSED `char line[4096]` buffer -- so at build time all 39
+FileInfo.path pointers read the buffer's final value (the last manifest line = libxpc), collapsing 39 files to
+one. So A was NEVER blocked by cider dylib eligibility (that whole line of investigation was chasing a
+symptom); it was a use-after-scope in the driver. FIX: strdup(line) per file before addFile (leak fine,
+short-lived tool). Rebuilding cache_builder; expect buckets=39 and an actual cache to emit. This unblocks A's
+carry-through (install cache -> dyld private mode -> boot -> dyldprof). Revert the debug patch
+vendor/patches/dyld/0001 before the final keeper build.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
