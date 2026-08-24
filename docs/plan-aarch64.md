@@ -2041,6 +2041,23 @@ B is COMPLETE (commit fd4aa943 stands). A possible future refinement: finer-grai
 the mutated path's entry instead of a global generation bump) would recover the residual ~20x, but the wall
 payoff is sub-noise so it is not worth the added risk now. NEXT: A (dyld shared cache), Pass 69 step 1.
 
+**Pass 73 (task #11: WALL is RPC-latency-bound, not dylib-load-bound -- reconsider A vs Tier 1).**
+B taught the lesson: cutting 2400 cheap newfstatat/spawn (71%) did NOT move the ~26ms wall (newfstatat ~0.4us).
+So before A's large build, measured what actually dominates the wall (strace -w -f, 10 spawns, result-min9).
+Raw top is idle-blocking (accept 96.8% = ciderd waiting for connections; epoll_pwait/ppoll/wait4 = daemon/
+parent idle), which strace -w -f conflates with the guest critical path. The signal that survives: recvmsg
+averages 122us/call and there are ~240 recvmsg/spawn -> ~29ms, on the ORDER of the whole 26ms spawn wall;
+mmap/openat/read (dyld load) are cheap per call (~22-25us). Interpretation: the spawn wall is substantially
+RPC round-trip LATENCY (guest blocks ~122us per ciderd reply), not dylib-load syscall count. Consequence for
+the plan: A (dyld shared cache) collapses ~600 cheap dylib opens+mmaps -- FEWER syscalls than B removed -- so
+its WALL payoff is likely sub-noise like B (its real value is I/O reduction + the unmeasured dyld parse/bind
+CPU + being the correct architecture, and it helps more for dylib-heavy processes than /usr/bin/true). The
+BIGGER wall lever is Tier 1 (#17): cut the per-process RPC round-trips. CAVEAT: strace -w -f mixes guest and
+daemon waits, so this needs a clean confirmation -- size the RPC by tracing ONLY the guest process chain
+(exclude ciderd) or wire DSERVER_TRACE_CALLS capture to count RECV per spawn, then RPC_count x ~122us gives
+the critical-path RPC cost. RECOMMENDATION surfaced to user: prioritize Tier 1 for wall-clock; keep A as a
+lower-priority I/O/architecture improvement. Awaiting steer; meanwhile confirming RPC dominance cheaply.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
