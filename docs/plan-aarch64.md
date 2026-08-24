@@ -2223,6 +2223,21 @@ short-lived tool). Rebuilding cache_builder; expect buckets=39 and an actual cac
 carry-through (install cache -> dyld private mode -> boot -> dyldprof). Revert the debug patch
 vendor/patches/dyld/0001 before the final keeper build.
 
+**Pass 83 (task #11 A: strdup fix landed 37/39; last 2 blockers = flat-namespace dylibs).** After the strdup
+driver fix, CIDERDBG showed dylibsToCache=37 with libsystem_blocks.dylib + libunwind.dylib in otherDylibs, and
+libxpc (plus the rest) cascading on "Could not find dependency ...libsystem_blocks.dylib / ...libunwind.dylib".
+Confirmed directly: both ship with mach header flags=0x100004 (MH_DYLDLINK|MH_NO_REEXPORTED_DYLIBS) and NO
+MH_TWOLEVEL (0x80) / MH_NOUNDEFS (0x1). dyld's canBePlacedInDyldCache (MachOFile.cpp:55) rejects
+non-two-level dylibs -> they never enter the cache -> everything that links them cascades out. ROOT: their
+_final targets in vendor/src/BUCK carried `linker_flags = ["-Wl,-flat_namespace", "-Wl,-undefined,suppress"]`
+(flat + suppress is a firstpass idiom that leaked into the finals); every other system dylib final links
+two-level by default. FIX (committed): drop those flags so unwind_final + system_blocks_final link two-level;
+undefined symbols resolve via the firstpass `siblings` already listed. Bounded risk: if a symbol fails to
+resolve two-level the min-prefix build errors (revert), and two-level is the safer runtime model (gated by
+buck-bash-check). Rebuilding the min prefix (result-min13); then re-run cache_builder expecting dylibsToCache=39
+and an emitted cache. Still to do after: install cache at the dyld path -> dyld private mode -> boot -> dyldprof
+to confirm the ~77 per-spawn dylib open/mmap collapse; revert vendor/patches/dyld/0001 before the keeper build.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the

@@ -3044,11 +3044,15 @@ darwin_dylib(
     siblings = [
         "//vendor/src/libc:system_c_firstpass",
         "//vendor/src:keymgr_firstpass",
+        # aarch64 #11 A: needed so a two-level link resolves libunwind's out-of-lib refs:
+        # malloc/free, pthread_rwlock_*, and the dyld unwind/dladdr APIs.
+        "//vendor/src:system_malloc_firstpass",
+        "//vendor/src:system_pthread_firstpass",
+        "//vendor/src:system_dyld_firstpass",
     ],
-    linker_flags = [
-        "-Wl,-flat_namespace",
-        "-Wl,-undefined,suppress",
-    ],
+    # aarch64 #11 A: two-level (default) so the dylib is dyld-shared-cache eligible; was flat_namespace
+    # which canBePlacedInDyldCache rejects. Symbols resolve via the firstpass siblings above.
+    linker_flags = [],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
@@ -3692,11 +3696,14 @@ darwin_dylib(
         "//vendor/src:system_malloc_firstpass",
         "//vendor/src:system_pthread_firstpass",
         "//vendor/src/libc:system_c_firstpass",
+        # aarch64 #11 A: needed so a two-level link resolves __platform_memmove (Block_copy)
+        # and finds dyld_stub_binder (from libdyld) for the lazy stub to __os_assert_log.
+        "//vendor/src/libplatform:platform_firstpass",
+        "//vendor/src:system_dyld_firstpass",
     ],
-    linker_flags = [
-        "-Wl,-flat_namespace",
-        "-Wl,-undefined,suppress",
-    ],
+    # aarch64 #11 A: two-level (default) so the dylib is dyld-shared-cache eligible; was flat_namespace
+    # which canBePlacedInDyldCache rejects. Symbols resolve via the firstpass siblings above.
+    linker_flags = [],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
