@@ -1774,6 +1774,20 @@ framework closure stays cached; re-running rebuilds the graph + wayland_appkit +
 blockers now, all clean arch/packaging fixes: wayland-scanner declaration, OOM cap, cocotron pin fold-in,
 objc_msgSend_stret. If wayland_appkit was truly the last, result-fw should complete this run.
 
+**Pass 60 (task #16 built: the framework-tier nix prefix is COMPLETE and boots; guest nix now loads with
+frameworks).** After the four fixes, `nix build .#cider-buck2-prefix-fw` completed with 0 failures
+(result-fw). The prefix carries the full stack the min prefix lacked: CoreFoundation, CoreServices,
+SystemConfiguration, Foundation, CFNetwork, AppKit -- all real arm64 Mach-O, 199 framework dylibs (min had
+0), JSC dylib correctly excluded. buck-bash-check --prefix result-fw PASSES in 3s (boots + runs bash with
+the 199 frameworks materialized, clean return via #15). Then launched buck-nix-bash-check (the loop's final
+gate: guest nix builds bash from source) against it. First 30s: the Pass-55 CoreFoundation "image not found"
+is GONE, and the Pass-45 runaway-mldr/oomd does NOT recur (mldr steady at 1, MemAvailable flat ~10GB) --
+confirming both the frameworks and the #15/0039 fix. The genuine guest build is running; outcome pending.
+NOTE for future fw rebuilds: the fw endpoint has no `skeleton`, so any first-party source edit rebuilds the
+graph AND invalidates the per-target cache (each of the 4 fixes cost a ~full framework rebuild at
+--max-jobs 4); adding skeleton to the fw graph, as prefix-min has, would avoid that if more fixes are
+needed.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
