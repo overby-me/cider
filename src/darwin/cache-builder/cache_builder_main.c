@@ -67,8 +67,9 @@ int main(int argc, char** argv) {
         close(fd);
         if (data == MAP_FAILED) { fprintf(stderr, "cache_builder: skip (mmap) %s\n", real); continue; }
 
-        // path passed to the builder IS the install name (what dyld looks up by).
-        if (!addFile(b, line, (uint8_t*)data, (uint64_t)st.st_size, NoFlags))
+        // path passed to the builder IS the install name (what dyld looks up by). MustBeInCache so the
+        // builder propagates the per-dylib "cannot be placed in cache" reason instead of silently dropping.
+        if (!addFile(b, line, (uint8_t*)data, (uint64_t)st.st_size, MustBeInCache))
             fprintf(stderr, "cache_builder: addFile rejected %s\n", line);
         else
             added++;
