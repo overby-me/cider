@@ -1995,6 +1995,33 @@ grind of SharedCacheBuilder + CacheBuilder for the guest) can only be resolved b
 therefore needs heavy builds and waits on the user's go/no-go among: (A) dyld shared cache [biggest perf win,
 multi heavy-build iterations], (B) the smaller vchroot immutable-prefix lstat cache (~4%), or (C) #14 (JSC).
 
+**Pass 71 (user chose "do both A and B"; B implemented + building; RPC question answered + tiered as tasks).**
+User greenlit BOTH the dyld shared cache (A) and the vchroot lstat cache (B); doing B first (bounded, quick
+verified win), then A. Also asked "how much work to run nix mostly without xnu rpc?" -> answered: the ~200
+RPC round-trips/process (sendmsg 205 + recvmsg 336 per spawn) are lifecycle-dominated (task/thread
+registration, Mach bootstrap ports, teardown); file IO is already in-guest. Tier 1 (trim the hot lifecycle
+handshakes) is moderate/incremental and where the nix win is; Tier 2 (in-guest Mach/signal fast paths) is
+large; Tier 3 (drop ciderd for most ops) is very large. Added as tasks #17 (Tier 1), #18 (Tier 2 todo),
+#19 (Tier 3 todo). To size Tier 1 precisely, ciderd has DSERVER_TRACE_CALLS (logs "RECV #<num>"); still need
+to wire capture of ciderd's stderr (in `cider shell` mode it is not on the fd the guest stderr redirect
+catches).
+
+B source CONFIRMED: vchroot_expand is the guest translator (33 BSD-wrapper call sites: openat, faccessat,
+stat, chdir, ...); its vchroot_run does the per-component NOFOLLOW lstat, and 93% of the 3379 stats/spawn are
+guest-prefix paths issued as absolute host paths (NOFOLLOW + accumulated-prefix signature). B implemented as
+vendor/patches/xnu/0041-aarch64-vchroot-stat-cache.patch (7 files): a 256-entry direct-mapped per-process
+cache in vchroot_run of "accumulated path exists and is not a symlink", keyed by full path, tagged with
+__vchroot_generation; the namespace-mutating wrappers that can REMOVE or RETYPE a path bump the generation --
+unlinkat.c (covers unlink+rmdir-via-AT_REMOVEDIR), stat/rmdir.c (direct __NR_unlinkat AT_REMOVEDIR),
+renameat.c, renameatx_np.c (__NR_renameat2), symlinkat.c; creates cannot invalidate an existing-dir entry
+and ENOENT is never cached, so that set is complete. Symlinks/ENOENT bypass the cache; disabled under TEST.
+BUILD MODEL learned: vendor/src is EXCLUDED from the nix build (cider-src.nix:92); guest xnu changes must be
+patches under vendor/patches/xnu (applied to the vendor/pins/xnu fetch), NOT edits to the read-only vendor/src
+tree. Patch dry-runs clean (7/7 files). Rebuilding min prefix -> result-min8; next: measure the stat drop
+(dyldprof: expect newfstatat 3379 -> near 184 unique) and per-spawn wall, then buck-bash-check (and ideally
+buck-nix-bash-check) to confirm no regression, then commit. After B lands: start A (Pass 69 step 1, guest
+cache-builder target).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
