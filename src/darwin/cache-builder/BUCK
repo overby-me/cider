@@ -1,0 +1,49 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+# cider #11 lever A: a guest arm64 tool that builds a dyld shared cache from the prefix dylibs.
+# The heavy builder objects (dyld3/shared-cache/*) live in //vendor/src/dyld:cache_builder_obj (where the
+# sources are); this package holds the driver, the executable, and the apfs stub include.
+
+# SharedCacheBuilder.cpp includes <apfs/apfs_fsctl.h>, absent from cider's guest SDK; provide an empty stub.
+cc_header_root(
+    name = "apfs_stub_inc",
+    headers = ["stubs/apfs/apfs_fsctl.h"],
+    root = "stubs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cache_builder_driver_obj",
+    srcs = ["cache_builder_main.c"],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        # mrm_shared_cache_builder.h
+        "//vendor/src/dyld:system_loader_inc_dyld_dyld3_shared_cache",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "cache_builder",
+    objs = [
+        ":cache_builder_driver_obj",
+        "//vendor/src/dyld:cache_builder_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src/libcxx:cxx_dylib",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

@@ -339,6 +339,61 @@ darwin_binary(
 )
 # END generated: dyld binary
 
+# BEGIN cider #11 lever A: dyld shared-cache builder objects (guest tool)
+# Compiles the dyld3 shared-cache builder + the Mach-O/closure sources it needs, as a normal tool
+# (-DBUILDING_UPDATE_DYLD_CACHE_BUILDER, not -DBUILDING_DYLD). Linked by //src/darwin/cache-builder:cache_builder.
+# ObjC/IMP/branch/linkedit optimizers are omitted for a first functional cache; add back if link needs them.
+cc_objects(
+    name = "cache_builder_obj",
+    srcs = [
+        "dyld3/shared-cache/mrm_shared_cache_builder.cpp",
+        "dyld3/shared-cache/SharedCacheBuilder.cpp",
+        "dyld3/shared-cache/CacheBuilder.cpp",
+        "dyld3/shared-cache/AdjustDylibSegments.cpp",
+        "dyld3/shared-cache/FileUtils.cpp",
+        "dyld3/shared-cache/JSONReader.cpp",
+        "dyld3/shared-cache/DyldSharedCache.cpp",
+        "dyld3/MachOAnalyzer.cpp",
+        "dyld3/MachOAnalyzerSet.cpp",
+        "dyld3/MachOFile.cpp",
+        "dyld3/MachOLoaded.cpp",
+        "dyld3/Closure.cpp",
+        "dyld3/ClosureBuilder.cpp",
+        "dyld3/ClosureFileSystemPhysical.cpp",
+        "dyld3/ClosureFileSystemNull.cpp",
+        "dyld3/ClosureWriter.cpp",
+        "dyld3/Diagnostics.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBCPP_NO_EXCEPTIONS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-nostdinc",
+        "-DBUILDING_UPDATE_DYLD_CACHE_BUILDER=1",
+        "-DPRIVATE=1",
+        "-gfull",
+        "-fPIC",
+        "-fno-stack-check",
+    ],
+    prefix_headers = [
+        "//src/darwin/duct:CrashReporterClient.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_loader_inc_dyld_src",
+        ":system_loader_inc_dyld_dyld3",
+        ":system_loader_inc_dyld_dyld3_shared_cache",
+        ":system_loader_inc_dyld_include_mach_o",
+        ":system_loader_inc_dyld_include",
+        "//src/darwin:sdk_env",
+        ":system_loader_inc_dyld",
+        "//src/darwin/cache-builder:apfs_stub_inc",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END cider #11 lever A
+
 # BEGIN generated: pin exports
 load("//buck/generated:exports_dyld.bzl", "EXPORTS")
 

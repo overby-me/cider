@@ -125,6 +125,17 @@
         }).buildTarget
           { target = "//src/darwin/duct:system_duct_static"; };
 
+      # cider #11 lever A: the guest arm64 dyld shared-cache builder tool, built alone for a
+      # tight compile loop before wiring it into a prefix tier.
+      #   nix build .#cider-buck2-cache-builder
+      packages.cider-buck2-cache-builder =
+        pkgs:
+        (import ./nix/lib/ciderBuck2.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget
+          { target = "//src/darwin/cache-builder:cache_builder"; };
+
       # Two probes for where the Nix-lowered path runs out of road. Both are
       # trivial targets; what differs is the FILE the interpreter has to read:
       # src/darwin/BUCK loads the generated SDK maps (4178 entries), vendor/src/BUCK is
