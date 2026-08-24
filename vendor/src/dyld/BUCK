@@ -363,6 +363,7 @@ cc_objects(
         "dyld3/ClosureWriter.cpp",
         "dyld3/Diagnostics.cpp",
         "dyld3/PathOverrides.cpp",
+        "dyld3/RootsChecker.cpp",
         # Optimizers: SharedCacheBuilder/CacheBuilder reference these unconditionally, so a "first
         # functional cache without them" does not link -- include them.
         "dyld3/shared-cache/OptimizerObjC.cpp",
