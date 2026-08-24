@@ -1924,6 +1924,38 @@ major project (dyld shared cache) or a modest bounded change (vchroot immutable-
 increment: the vchroot immutable-prefix stat cache (bounded, safe, on-theme); the dyld shared cache is the
 bigger prize but needs an explicit go-ahead given its scale.
 
+**Pass 68 (task #11: dyld shared cache feasibility scope -- verdict GO, but a large multi-step project).**
+Code-read only, no build. Corrects Pass 67's stated blocker: the missing ciderd shared_region syscalls only
+gate the SYSTEM-WIDE mapping. The PRIVATE path (SharedCacheRuntime.cpp mapCachePrivate, chosen when
+loadDyldCache sees options.forcePrivate) maps the cache with ordinary mmap(MAP_FIXED|MAP_PRIVATE, fd, offset)
+and applies slide/rebase in userspace -- NO shared_region syscall. cider already emulates guest file mmap
+(that is the 518 mmap/spawn loading dylibs today), so the private path is architecturally reachable now.
+Confirmed pieces:
+ - dyld CONSUMES the cache: dyld2.cpp calls loadDyldCache at startup (4232) and resolves dylibs from the
+   cache via findInSharedCacheImage + ImageLoaderMachO::instantiateFromCache (3560/3566/3644/3763/3930); not
+   patched out. So a mapped cache collapses the 77 per-spawn dylib opens.
+ - forcePrivate is driven by gLinkContext.sharedRegionMode == kUsePrivateSharedRegion (dyld2.cpp:4222); the
+   mode is set from env/config (2232-2640), so cider can force the private path.
+ - Builder knows arm64: SharedCacheBuilder.cpp:94 (ARM64_SHARED_REGION_START 0x180000000, size 0x100000000).
+ - The builder tool exists (dyld3/shared-cache/*: SharedCacheBuilder, CacheBuilder, mrm_shared_cache_builder;
+   interlinked-dylibs/update_dyld_shared_cache_compat.cpp has main) but is NOT a cider BUCK/nix target yet.
+Implementation plan (each a heavy-build increment, one at a time):
+ 1. Add a host build target for a cache builder (update_dyld_shared_cache / mrm builder); resolve its deps
+    (MachOAnalyzer, CacheBuilder, codesign). Biggest single unknown -- may be a build-system rabbit hole.
+ 2. nix build step: run it over the ~77 prefix dylibs (install names /usr/lib/...) -> dyld_shared_cache_arm64,
+    placed at the dyld-expected path (IPHONE/MACOSX_MRM_DYLD_SHARED_CACHE_DIR + base + arch) in the prefix.
+ 3. Set cider dyld to kUsePrivateSharedRegion (env DYLD_SHARED_REGION=private or a small dyld2 default patch).
+ 4. Make it map+rebase under cider: handle the codesign-coverage check (SharedCacheRuntime.cpp:478; Darling
+    stubs codesign, likely OK), MAP_FIXED at 0x180000000-0x280000000 (needs that guest VM range free -- key
+    risk), and the DataConstScopedWriter mprotect RW/RO slide pass.
+ 5. Boot, confirm dylib opens collapse (re-run dyldprof: openat/mmap/newfstatat should drop sharply), measure
+    per-spawn wall, regression-test buck-bash-check + buck-nix-bash-check, commit.
+Risks: (1) building the cache tool cleanly here; (2) MAP_FIXED placement collision with cider's guest layout;
+(3) codesign/rebase under cider. None is a proven blocker; all are integration work. VERDICT: feasible and it
+is the biggest remaining perf lever, but a genuinely large, heavy-build, multi-iteration effort. Recommend an
+explicit go-ahead before sinking many heavy builds into it; the bounded vchroot lever remains the smaller
+alternative.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
