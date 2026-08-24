@@ -1870,6 +1870,60 @@ but needs a shared cache; the vchroot stat cache is modest+risky). clock_gettime
 look (should be a vDSO no-syscall read). NEXT: read the guest psynch path (libpthread + the daemon
 kqchan/psynch RPC) to see where an uncontended mutex/cond fast path can stay in-guest.
 
+**Pass 66 (task #11: CORRECTION to Pass 65 -- psynch is NOT the spawn bottleneck; the RPC is Mach setup).**
+Read the libpthread lock path. The uncontended unlock already has an IN-GUEST fast path
+(pthread_mutex.c:999-1031: numwaiters==0 returns immediately; otherwise a plain CAS, no kernel/daemon
+call unless there are actual waiters), and there is also a __ulock policy. Build-spawn processes are ~single
+-threaded (strace: clone ~2.4/spawn), so their locks are uncontended and take the CAS fast path -- they do
+NOT RPC for locks. So the ~541 sendmsg/recvmsg/spawn are almost certainly Mach bootstrap/task/thread setup
+(the per-process spawn handshake, task lever #3), not psynch; the recvmsg error rate (~30%) also looks like
+Mach receive polling, not lock waits. Pass 65's "psynch is the next lever" was premature. REVISED remaining
+#11 levers, honestly: getcpu (DONE, ~40%, low risk) was the one outsized win; what is left is fundamentals
+-- the dyld closure mmap/open (needs a shared cache, big project) and the Mach per-spawn handshake (lever
+#3, load-bearing, hard to trim safely) -- plus modest/bounded ones: the vchroot lstat cache (collapses the
+measured 3379->184 stats/spawn, safe with generation invalidation, ~5-15% of a spawn) and routing
+clock_gettime (~400/spawn) to a vDSO/commpage read. NEXT concrete landable increment: the vchroot lstat
+cache (targets the measured dyld-load stat redundancy; implement with a global generation bumped by every
+path-mutating syscall so any mutation invalidates it; regression-test with buck-bash-check and
+buck-nix-bash-check). The psynch fast path stays relevant only for contended/multi-threaded guests, not the
+build spawn path.
+
+**Pass 67 (task #11: profile is FLAT post-getcpu; remaining levers characterized; getcpu was the one clean win).**
+Re-profiled a min spawn (5x /usr/bin/true) after the getcpu fix. Per-spawn syscall counts: newfstatat 972,
+mmap 518, clock_gettime 401, recvmsg 336, getpid 217, sendmsg 205, rt_sigprocmask 197, write 181, openat
+174, close 168, rt_sigaction 159, read 125, gettid 114, getuid/getgid 105 each, epoll_pwait 103, pread64 84.
+NOTHING is remotely getcpu-scale (getcpu was ~24,500/spawn = ~25x the largest survivor). The profile is now
+FLAT -- normal process-startup traffic spread across categories, no single outlier. getcpu was THE win.
+
+Dead leads ruled out THIS pass (measurement over assumption):
+- vchroot debug printf: vchroot_userspace.c:197 unconditionally `__simple_printf("vchroot_expand(): input
+  %s")` -> write(1), which looked like a per-translation cost. Empirically it does NOT fire (booted, captured
+  guest stdout: only the marker, zero spam) -- the guest hot path doesn't route through this exact function's
+  print. Not a cost.
+- clock_gettime (401/spawn): only ~1.1% of time; Darwin timing maps to a Linux clock_gettime syscall with no
+  easy vDSO route from the Darwin guest. Not worth it.
+- getpid/gettid/getuid/getgid (105-217/spawn): cheap; caching is fork/setuid-risky for ~1%. Skip.
+
+Remaining REAL levers, ranked honestly:
+1. dyld shared cache -- BIGGEST win. A min spawn opens 77 distinct dylibs individually (drives most of the
+   518 mmap + 174 openat + reads/stats). The guest-side infra EXISTS (dyld3 SharedCacheBuilder.cpp,
+   SharedCacheRuntime.cpp, update_dyld_shared_cache). It is inactive because BOTH pieces are missing: (a)
+   ciderd implements none of the shared_region host syscalls (__shared_region_map_and_slide[_2]_np /
+   _check_np -- grep of src/linux/server is empty), and (b) no cache file is generated for the arm64 prefix.
+   So it is a MAJOR multi-subsystem project (host VM-mapping syscall in ciderd, mapping the Mach-O cache at
+   SHARED_REGION_BASE with slide/rebase, plus an arm64 cache-generation build step over the prefix dylibs).
+   High value, high effort, real risk; flagged for a deliberate go/no-go rather than loop-grinding.
+2. vchroot lstat cache -- newfstatat is 972/spawn and 94.5% redundant (3379 total, 184 unique; top repeats
+   are read-only system prefixes: /usr/lib/system 396x, /usr/lib 460x, /usr 491x re-stat'd during one dyld
+   load). But newfstatat is a cheap syscall (~4% of a spawn), and the fix lives in correctness-critical path
+   resolution. SAFEST framing: cache is_symlink ONLY for provably-immutable read-only prefixes (never stale,
+   no invalidation). Loop-sized and testable via buck-nix-bash-check (a resolution bug breaks the real build).
+
+CONCLUSION: #11's high-value, low-risk perf work is COMPLETE (getcpu, ~40%, verified). What remains is a
+major project (dyld shared cache) or a modest bounded change (vchroot immutable-prefix cache). Next loop
+increment: the vchroot immutable-prefix stat cache (bounded, safe, on-theme); the dyld shared cache is the
+bigger prize but needs an explicit go-ahead given its scale.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
