@@ -2151,6 +2151,19 @@ dry-runs clean) -- removes the 3 hot debug kprintf. Rebuild min prefix, re-run m
 ~4.4->0/spawn), buck-bash-check. Then consider (b)/(c). Note: RPC is ~23% of wall so Tier 1's ceiling is
 modest; the getcpu fix remains the standout perf win.
 
+**Pass 78 (task #11 Tier 1: trim #1 VERIFIED; self-port-cache design correction).** Rebuilt min prefix with
+0042 -> result-min10 (/nix/store/n49g03ccw75aywl5kchyz3alxmjwkl75-...). Measured (measure-rpc10.sh):
+kprintf dropped 4.4 -> ~0 per spawn (gone from the histogram); boot RECV 277 -> 252. buck-bash-check --prefix
+result-min10 PASS ("BUCK2_BASH_OK 3.2.57 arm64"). So trim #1 (drop 3 debug kprintf, 0042) is landed + verified
+-- ~4 fewer RPCs/spawn, no regression. CORRECTION for the next trim: mach_task_self() is ALREADY a cached
+global (mach/mach_init.h:83 `#define mach_task_self() mach_task_self_`; mach_init.c:71 the global, :192 set
+ONCE to task_self_trap() at init), and the mach_port_* guards use that cached global -- so caching
+mach_task_self is NOT the lever. Yet task_self_trap is 6.7/spawn, so the 6.7 comes from DIRECT task_self_trap()
+calls (or repeated mach_init) elsewhere in the guest that should reuse mach_task_self_ instead. NEXT: grep the
+guest for direct task_self_trap()/host_self_trap() call sites, find the hot one, and route it through the
+cached global (or cache host self similarly). Same for mach_reply_port 6.7 (per-thread reply port -- should be
+TSD-cached; check __TSD_MIG_REPLY usage). Record the source as a plan pass before patching.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
