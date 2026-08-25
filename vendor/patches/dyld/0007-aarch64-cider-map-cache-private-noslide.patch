@@ -1,0 +1,26 @@
+Map the dyld shared cache privately with no slide under cider (aarch64 #11 A).
+
+With codesign registration skipped (0006), the guest dyld reached the cache mapping but still
+did not use it: the system-wide path needs __shared_region_map_and_slide_np, which cider does not
+emulate ('syscall to map cache into shared region failed'), and forcing private mode with an ASLR
+slide hung in the chained-fixup rebase. Under DARLING, force opts.forcePrivate (use mapCachePrivate,
+ordinary mmap) and opts.disableASLR (slide=0), so the cache maps at its own baseAddress
+(0x180000000) with no rebase pass.
+
+Signed-off-by: Niclas Overby <niclas@overby.me>
+---
+--- a/src/dyld2.cpp
++++ b/src/dyld2.cpp
+@@ -4229,6 +4229,12 @@
+     // <rdar://problem/32031197> respect -disable_aslr boot-arg
+     // <rdar://problem/56299169> kern.bootargs is now blocked
+ 	opts.disableASLR		= (mainExecutableSlide == 0) && dyld3::internalInstall(); // infer ASLR is off if main executable is not slid
++#ifdef DARLING
++	// cider #11 A: system-wide mapping needs __shared_region_map_and_slide_np (cider lacks it), so map
++	// the cache privately; force no ASLR slide so it lands at its own baseAddress with no rebase.
++	opts.forcePrivate		= true;
++	opts.disableASLR		= true;
++#endif
+ 	loadDyldCache(opts, &sSharedCacheLoadInfo);
+ 
+ 	// update global state
