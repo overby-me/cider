@@ -2257,6 +2257,19 @@ vendor/patches/corecrypto/0001-export-ccchacha20-family.patch uncomments exactly
 symbols. Rebuilding the min prefix; expect the cache to emit next (or the builder to surface the next dangling
 import, same pattern).
 
+**Pass 85 prep (A step 3 mechanism located).** The guest dyld boot NEVER maps a shared cache: dyld2.cpp
+(~line 6813) wraps the whole "load shared cache" block -- checkSharedRegionDisable + mapSharedCache + the
+DATA_CONST override -- in `#ifndef DARLING`, with the comment "we don't plan on building our libraries into a
+shared cache". cider builds with DARLING defined, so mapSharedCache() is never called and installing a cache
+file alone does nothing. Everything else is present and appears ungated: mapSharedCache/sSharedCacheLoadInfo,
+the findInSharedCacheImage lookups in the dylib-load path (dyld2.cpp:3246/3560/3763), and the
+DYLD_SHARED_REGION env (use/private/avoid, dyld2.cpp:2230). Cache dir constant
+MACOSX_MRM_DYLD_SHARED_CACHE_DIR = "/System/Library/dyld/" (guest path). So A step 3 = a dyld patch that
+enables the mapSharedCache block under DARLING (guarded so it no-ops when no cache is installed), then install
+the emitted cache at guest /System/Library/dyld/, boot, dyldprof to confirm the ~77 per-spawn dylib open/mmap
+collapse, buck-bash-check. Risky (boot dyld + MAP_FIXED at the cache baseAddress under cider's vm / page-size
+handling); do it only after the cache actually emits, and keep it revertible.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
