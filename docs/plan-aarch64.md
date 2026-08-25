@@ -2402,6 +2402,26 @@ across cider's thread setup? do the MIG stubs actually use mig_get_reply_port, o
 rebuild, uncertain. Reminder: the ~28ms marginal is ~10% of the ~292ms per-invocation (boot dominates), so
 absolute wall wins here are small; they matter for many-spawn build workloads.
 
+**Pass 93 (task #21 Tier 1: leaf-caching exhausted; the bulk is per-exec init RPCs; next real lever is
+checkin-batching, Tier 2).** vchroot_path (3.3/spawn) is ALREADY cached in the guest: vchroot_userspace.c has
+a static prefix_path filled once by init_vchroot_path(), guarded `if (prefix_path_len == -1)`; the 3.3 is the
+re-fetch after each exec (fresh image resets the static), same shape as task_self's residual. So the hot
+per-spawn RPCs break down as: already-cached-per-process (task_self 3.3, vchroot_path 3.3 -- residual is
+first-call-per-exec), UNCACHEABLE (host_self 3.3, thread_self 3.3 -- Mach add-ref/deallocate), and real
+work (mach_msg 7.8 IPC, mach_reply_port 6.7 + deallocate 4.4 reply-port alloc, checkin/uidgid/set_thread_
+handles ~2.2 each process-init). Leaf-caching is DONE (task_self was the only win). KEY STRUCTURAL OBSERVATION:
+a large share of the 47 is FIRST-CALL-PER-EXEC init (task_self, host_self, thread_self, vchroot_path, uidgid,
+set_thread_handles, checkin ~ 13-17 RPC/spawn across ~3 execs/spawn). The one genuinely tractable lever left
+is TIER 2 checkin-batching: the child re-checks-in with ciderd after fork/exec (dserver_rpc_checkin); if the
+checkin RESPONSE carried the per-process constants (vchroot prefix, task self port, and the uidgid/thread
+handles it already needs), the guest could populate its caches from the checkin reply instead of issuing
+separate RPCs -- potentially removing several RPC/exec. That is a protocol + guest + server change (moderate,
+one 2h rebuild), not a leaf cache. host_self/thread_self cannot be folded in (refcount). Everything else
+(reply-port cache in build-generated MIG, the 223-RPC boot) is deeper Tier 2/3. Reminder: marginal spawn is
+~10% of the boot-dominated ~292ms per-invocation, so absolute wall wins per RPC are ~0.5ms; these matter only
+for many-spawn build workloads. Honest position: the quick/medium per-spawn RPC wins are done; remaining
+levers are deliberate Tier 2/3 efforts.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
