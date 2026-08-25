@@ -2464,3 +2464,16 @@ build-generated + needs runtime instrumentation (reply-port), or a deliberate wi
 multi-hour, and modest-payoff; it should be scoped deliberately, not loop-ground. Most useful next measurement:
 time the real build workload (buck-nix-bash-check builds bash from source under cider = many in-session spawns
 = #11's actual goal) to get the definitive number and regression-check the committed A + task_self work.
+
+**Pass 95 (task #11: build-workload benchmark was mis-prefixed; A patches confirmed non-regressing; building
+the full prefix for the definitive number).** Ran buck-nix-bash-check (guest nix-builds bash) but against the
+MIN prefix (bnkbwki4 = cider_prefix_min), which lacks CoreFoundation -- the build aborted "Library not loaded:
+CoreFoundation ... image not found" with dyld appending "dyld cache load error: shared cache file open()
+failed" (dyld2.cpp:4421 -- that text is dyld's EXISTING augmentation on a missing-dylib error when no cache is
+present, NOT a new abort from the A patches). So the failure was a setup error (wrong prefix), not an A
+regression. Confirmed NO regression directly: on the min prefix, `cider shell /bin/bash -c 'echo $((6*7)); 
+/usr/bin/true'` returns BASH_OK: 42 + TRUE_OK, rc=0 -- bash and its dylibs load fine with A patches
+(0005/0006/0007) + task_self 0044 committed. buck-nix-bash-check needs the FULL framework prefix
+(.#cider-buck2-prefix, //buck/prefix:cider_prefix, ~5500 entries incl. CoreFoundation). Building that now to
+get the definitive #11 build-workload wall time AND verify A on the real milestone. This is the heaviest build
+(full framework closure) -- one at a time, bounded jobs.
