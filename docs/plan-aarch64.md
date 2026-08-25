@@ -2285,6 +2285,22 @@ guest /System/Library/dyld/dyld_shared_cache_arm64, boot with DYLD tracing / dyl
 per-spawn dylib open/mmap collapse, buck-bash-check. The 39 cached dylibs are unchanged by the dyld-loader
 patch, so the preserved cache still matches the rebuilt prefix.
 
+**Pass 87 (task #20/A step 3: cache maps -- two dyld hurdles down, one hard one left).** With
+vendor/patches/dyld/0005 (un-gate mapSharedCache) + 0006 (skip codesign registration under DARLING + log
+reject reason), the guest dyld now gets PAST code-signature registration. Measured with measure-cache.sh on
+the rebuilt prefix: still no speedup (229 *.dylib opens, ~245 ms/spawn both ways) but now the reject reason is
+LOGGED: "dyld: shared cache not used: syscall to map cache into shared region failed" -- the SYSTEM-WIDE
+mapping path (SharedCacheRuntime.cpp ~820, __shared_region_map_and_slide_np) which cider does not emulate.
+Forcing PRIVATE mode (DYLD_SHARED_REGION=private, uses ordinary mmap) instead HANGS the spawn (timed out,
+no dyld output) -- the MAP_FIXED @0x180000000 + chained-fixup rebase under cider's vm. So step 3's remaining
+blocker is the actual cache mapping: system-wide needs a syscall cider lacks; private hangs in mmap/rebase.
+HYPOTHESIS for the private hang: dyld applies an ASLR slide and the rebase of the cache's chained fixups loops
+under cider; forcing disableASLR (slide=0, map at the cache's own baseAddress, no rebase) may avoid it -- but
+that needs a dyld patch + ~2h rebuild to test, and MAP_FIXED@0x180000000 availability under cider is itself
+unverified. NOTE: patches 0005/0006 are safe no-ops without a cache installed (mapSharedCache no-ops; codesign
+skip only matters with a cache), so the prefix still boots normally; no regression. Step 3 is a genuine
+multi-cycle dyld-cache-under-cider-vm port; paused here for a direction call. Cache (step 2) is banked.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
