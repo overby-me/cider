@@ -2301,6 +2301,26 @@ unverified. NOTE: patches 0005/0006 are safe no-ops without a cache installed (m
 skip only matters with a cache), so the prefix still boots normally; no regression. Step 3 is a genuine
 multi-cycle dyld-cache-under-cider-vm port; paused here for a direction call. Cache (step 2) is banked.
 
+**Pass 88 (task #20/A step 3: cache MAPS -- but cached-code execution traps; A banked here).** The no-slide
+patch 0007 (force opts.forcePrivate + opts.disableASLR under DARLING) cleared the mapping blockers: with the
+cache installed at guest /System/Library/dyld/, the guest dyld now MAPS it -- measure-cache.sh shows the
+with-cache spawn at "*.dylib opens=39 shared_cache opens=2 mmap@0x18x=3" vs the nocache "opens=229 mmap=0".
+So per-spawn dylib file opens collapse 229 -> 39 and the 3 cache regions map at 0x180000000. That is the whole
+build->install->map->serve-from-cache path working end to end. BUT the mapped-cache process then HANGS: the
+wall A/B shows nocache 236.3 ms/spawn vs with-cache 60000 ms/spawn (every timed spawn hit the 60s timeout).
+Cause (from the strace tail): an infinite loop of SIGTRAP {si_code=TRAP_BRKPT, si_addr=0x180370d40} -- the
+process executes code inside the cache TEXT (0x180000000-0x180568000) that hits a brk and re-traps forever.
+Hypotheses: (a) disableASLR skipped the chained-fixup unpack, so a stub/pointer in cache __TEXT/__DATA stayed
+in packed form and a branch lands on a brk; (b) cider's SIGTRAP/brk handling does not advance the PC past the
+brk, turning a one-shot trap into a loop. Either is a deeper dyld-cache-under-cider-vm issue, past the
+user-approved one-shot. NET: the mapping blocker (codesign + shared-region syscall + slide) is SOLVED and the
+dylib-open collapse is proven (229->39), but end-to-end there is no usable speedup yet (it hangs); baseline
+236 ms/spawn is unchanged without a cache. The prefix ships NO cache, and mapSharedCache no-ops without one,
+so patches 0005/0006/0007 are safe no-ops in the shipped prefix (nocache spawn works at 236 ms, no
+regression). A banked here; resuming it later means fixing the cached-code trap (start by NOT skipping the
+rebase/unpack at slide=0, and checking cider's brk PC-advance). Per the user's one-shot decision, pivoting to
+Tier 1 (task #21) for measurable RPC wins.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
