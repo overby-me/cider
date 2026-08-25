@@ -1,20 +1,45 @@
-aarch64 #11 Tier 1: cache task_self_trap at the emulation leaf (skip ~6.7 RPC/spawn).
+aarch64 #11 Tier 1: cache task_self_trap AND host_self_trap at the emulation leaf.
 
-0043 cached the mach_task_self() C function but task_self_trap stayed 6.7/spawn -- guest code invokes
-the trap directly, not that function. Cache in task_self_trap_impl itself (catches every caller); the
-task self port is a per-process constant, so reset the cache in the fork child (fork.c, after re-checkin)
-since a forked child is a new task. vfork and posix_spawn both go through sys_fork, and exec'd processes
-start with fresh statics, so the single fork-child reset covers all paths.
+Both the task self port and the host self port are per-process constants (until fork), but guest
+code invokes each trap a few times per spawn (DSERVER_TRACE_CALLS: task_self ~6.7, host_self ~3.3).
+Cache each in mach_traps.c and skip the RPC; the fork child calls __task_self_trap_reset() and
+__host_self_trap_reset() after it re-checks-in (a forked child is a new task with a fresh port
+namespace). vfork and posix_spawn both go through sys_fork, and exec'd processes start with fresh
+statics, so the single fork-child reset covers all paths. Never cache a failed RPC.
+
+Signed-off-by: Niclas Overby <niclas@overby.me>
 ---
 --- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
 +++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
-@@ -703,12 +703,20 @@
+@@ -35,12 +35,19 @@
+ 	return port_name;
+ }
+ 
++// aarch64 #11 Tier 1: the host self port is a per-process constant too; cache it like task_self
++// (skips ~3.3 host_self_trap RPC/spawn). Reset in the fork child (fresh port namespace).
++static mach_port_name_t _cached_host_self = MACH_PORT_NULL;
++void __host_self_trap_reset(void) { _cached_host_self = MACH_PORT_NULL; }
+ mach_port_name_t host_self_trap_impl(void)
+ {
++	if (_cached_host_self != MACH_PORT_NULL)
++		return _cached_host_self;
+ 	unsigned int port_name;
+ 	if (dserver_rpc_host_self_trap(&port_name) != 0) {
+-		port_name = MACH_PORT_NULL;
+-	}
++		return MACH_PORT_NULL;
++	}
++	_cached_host_self = port_name;
+ 	return port_name;
+ }
+ 
+@@ -703,12 +710,20 @@
  	return KERN_SUCCESS;
  }
  
 +// aarch64 #11 Tier 1: task self is a per-process constant (until fork), but guest code invokes this
-+// trap ~6.7x/spawn (DSERVER_TRACE_CALLS). Cache the result and skip the RPC; the fork child calls
-+// __task_self_trap_reset() after it re-checks-in (new task -> new self port name). Never cache a fail.
++// trap a few times/spawn (DSERVER_TRACE_CALLS). Cache the result and skip the RPC; the fork child calls
++// __task_self_trap_reset() after re-checkin (new task -> new self port name). Never cache a failure.
 +static mach_port_name_t _cached_task_self = MACH_PORT_NULL;
 +void __task_self_trap_reset(void) { _cached_task_self = MACH_PORT_NULL; }
  mach_port_name_t task_self_trap_impl(void)
@@ -33,20 +58,22 @@ start with fresh statics, so the single fork-child reset covers all paths.
  
 --- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c
 +++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c
-@@ -17,6 +17,7 @@
+@@ -17,6 +17,8 @@
  #include <darlingserver/rpc.h>
  
  extern _libkernel_functions_t _libkernel_functions;
 +extern void __task_self_trap_reset(void); // #11: drop cached task_self in the fork child
++extern void __host_self_trap_reset(void); // #11: drop cached host_self in the fork child
  
  long sys_fork(void)
  {
-@@ -61,6 +62,8 @@
+@@ -61,6 +63,9 @@
  			__simple_printf("Failed to checkin with darlingserver after fork\n");
  			__simple_abort();
  		}
-+		// #11 Tier 1: the child is a new task with a new self port; drop the cached task_self.
++		// #11 Tier 1: the child is a new task; drop the cached task_self/host_self self ports.
 +		__task_self_trap_reset();
++		__host_self_trap_reset();
  		if (wdfd >= 0)
  			sys_fchdir(wdfd);
  
