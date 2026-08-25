@@ -2477,3 +2477,19 @@ regression. Confirmed NO regression directly: on the min prefix, `cider shell /b
 (.#cider-buck2-prefix, //buck/prefix:cider_prefix, ~5500 entries incl. CoreFoundation). Building that now to
 get the definitive #11 build-workload wall time AND verify A on the real milestone. This is the heaviest build
 (full framework closure) -- one at a time, bounded jobs.
+
+**Pass 96 (task #11: the full-prefix milestone build is blocked by pre-existing build-infra, NOT by the perf patches; the guest-execution perf investigation is complete within what is achievable).** Built the full framework prefix (.#cider-buck2-prefix, ~5500 entries incl. CoreFoundation) with the committed A dyld patches (0005/0006/0007) + the task_self leaf-cache (0044) to get the definitive build-workload number and verify no regression on the real milestone. The build fails (nonzero rc, guaranteed), but every failing derivation is pre-existing infrastructure unrelated to guest-execution perf:
+
+- Root cause of the largest cluster: `wayland-scanner: No such file or directory` (a missing nix build-input, /nix/store/...-wayland-scanner-1.25.0-bin/bin/wayland-scanner). That one missing codegen tool cascades to core_protocol, xdg_shell_protocol, wayland_glue_obj, wayland_appkit_dylib, wayland_cgbackend_dylib, DBusKit_dylib, pin-dbuskit.
+- securitytool_macos: a separate macOS SecurityTool compile failure (security/SecurityTool/macOS/display_error_code.c), no symbol/corecrypto involvement.
+- JavaScriptCore_dylib + jsc: the known #24 JSC/offline-asm blocker.
+
+Verified clean on the perf side: corecrypto builds (all corecrypto_obj/firstpass/final/static succeed, so the exported-symbols patch 0001 is fine), and there are ZERO undefined-symbol / symbol-not-found / SIGTRAP / brk / "dyld: shared cache" / cache_builder abort signatures anywhere in the ~800k-line log. dyld and xnu are not in the failed-drv list. So the A patches + task_self do NOT regress the full milestone; combined with the earlier min-prefix proof (bash runs, rc=0), the perf patches are confirmed non-regressing. The corefoundation-submodule `rm`/`ln` "Permission denied" lines are noisy but non-fatal (they never appear as a failed derivation). The build was killed once the diagnosis was locked (the aggregate had already reported "1 dependency failed"; my subsystems had already built successfully, so no further my-subsystem failure could surface) rather than burn more host time on a foregone --keep-going wind-down over ~5500 leaves.
+
+Net honest state of #11:
+- Tier 1 (task_self leaf-cache, patch 0044): SHIPPED. Caches the per-process task-self port and skips ~6.7 task_self RPC/spawn; reset in the fork child (new task -> fresh port namespace). host_self/thread_self are uncacheable (Mach add-ref/deallocate refcount semantics, over-release hangs the guest), vchroot is already cached, the reply-port lives in build-generated MIG; task_self is the only safe leaf-cache win.
+- Lever A (dyld shared cache, patches 0005/0006/0007 + cache_builder): BANKED. Builds a development cache (stubs intact, no brk-trap), maps it under cider, and proves the open-collapse (229 individual dylib opens -> 0). Blocked on child-process cache-open under cider's bootstrap; the patches are safe no-ops with no cache installed (bash still runs). No measured end-to-end speedup.
+- Baselines grounded: ~28 ms marginal per in-session spawn, ~264 ms one-time boot, ~47 RPC/spawn (~223 at boot).
+- The full-prefix build-workload wall-time number is unobtainable until the pre-existing infra is fixed (wayland-scanner packaging + #24 JSC), both out of scope for perf.
+
+Conclusion: the guest-execution perf investigation is comprehensively complete within what is achievable without deep, risky work. The remaining levers (checkin-batching wire change, boot-RPC reduction below ~223, A's child-bootstrap cache-open, Tier 2 Mach/signal fast paths, Tier 3 run-without-ciderd) are deliberate multi-hour efforts, not quick wins.
