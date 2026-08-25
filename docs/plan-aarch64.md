@@ -2382,6 +2382,26 @@ mach_reply_port 6.7, mach_port_deallocate 4.4, the self-traps ~3.3 each, vchroot
 dylib mmap/fork/exec. This baseline grounds all future perf claims: measure any change (A, Tier 1/2) as delta
 on the ~28 ms marginal (and separately on the ~264 ms boot), NOT on the boot-dominated per-invocation wall.
 
+**Pass 92 (task #21 Tier 1: task_self is the only cacheable self-trap; host/thread_self are not; reply-port
+cache is the next lead).** Tried extending the task_self leaf cache (0044) to host_self_trap. It BUILT but
+HUNG the guest (cider shell /usr/bin/true rc=124). Root cause is Mach semantics, not a code bug: mach_task_self
+returns a cached self-port name that callers never deallocate (Darwin itself caches it in mach_task_self_), but
+mach_host_self (and mach_thread_self) ADD a send-right reference each call and callers deallocate it -- so a
+single cached name is over-released, the port dies, and host ops hang. Reverted 0044 to task_self-only (commit
+6c6f0bd1); repointed result-min13 at the equivalent working prefix bnkbwki4 (same source as the reverted
+build, no 2h rebuild needed). Confirmed bnkbwki4 boots (/usr/bin/true rc=0; the "shared cache not used" lines
+prove the A dyld patches safely no-op with no cache installed -> no regression). So Tier 1 LEAF-CACHING IS
+DONE: task_self was the only safely-cacheable hot self-trap (already saves ~3.3 RPC/spawn, 6.7->3.3; the
+residual 3.3 is the first call per process/exec). Re-confirmed histogram (47 marginal RPC/spawn): mach_msg
+7.8, mach_reply_port 6.7, mach_port_deallocate 4.4, thread_self 3.3, host_self 3.3, task_self 3.3 (cached),
+vchroot_path 3.3. NEXT LEAD: mach_reply_port (6.7) ~= mach_msg (7.8) means a reply port is allocated per MIG
+RPC -- the guest mig_get_reply_port per-thread TSD cache (__TSD_MIG_REPLY slot 2, mig_reply_port.c) is NOT
+sticking under cider. If it stuck, mach_reply_port would drop to ~1/thread (save ~5) and some of the 4.4
+deallocate. Biggest remaining marginal-spawn lever, but needs a TSD/MIG investigation (is slot 2 preserved
+across cider's thread setup? do the MIG stubs actually use mig_get_reply_port, or allocate fresh?) + a 2h
+rebuild, uncertain. Reminder: the ~28ms marginal is ~10% of the ~292ms per-invocation (boot dominates), so
+absolute wall wins here are small; they matter for many-spawn build workloads.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
