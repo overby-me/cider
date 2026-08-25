@@ -36,7 +36,10 @@ int main(int argc, char** argv) {
     opts.version            = 1;
     opts.updateName         = "cider-1";
     opts.deviceName         = "cider";
-    opts.disposition        = Customer;   // 2
+    // InternalDevelopment (1) -> a DEVELOPMENT cache with optimizeStubs=false on macOS: stubs stay in the
+    // stub table (no branch rewriting/islands). The optimized Customer cache branch-rewrites call sites,
+    // which under cider lands a call on a brk (SIGTRAP loop). Same dyld_shared_cache_arm64 filename on macOS.
+    opts.disposition        = InternalDevelopment;   // 1
     opts.platform           = macOS;      // 1
     const char* archs[1]    = { "arm64" };
     opts.archs              = archs;
