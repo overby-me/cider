@@ -2270,6 +2270,21 @@ the emitted cache at guest /System/Library/dyld/, boot, dyldprof to confirm the 
 collapse, buck-bash-check. Risky (boot dyld + MAP_FIXED at the cache baseAddress under cider's vm / page-size
 handling); do it only after the cache actually emits, and keep it revertible.
 
+**Pass 86 (task #11 A: a dyld shared cache BUILDS -- step 2 done).** With the full corecrypto export patch
+in, cache_builder under cider succeeded: "dylibsToCache=39 otherDylibs=0 couldNotLoad=0" then "OK, 2 cache
+file(s)", exit 0. It emitted dyld_shared_cache_arm64 (8MB) + .map at guest /tmp/cache-out (host
+$CIDERPREFIX/private/tmp/cache-out). Verified: magic "dyld_v1 arm64", 3 mappings (EX 5MB @0x180000000, RW
+1MB @0x182568000, RO 1MB @0x186668000), imagesCount=39. Preserved to scratchpad/dyld_shared_cache_arm64. So
+the flat-namespace + corecrypto-export saga is resolved and a guest shared cache is producible. STEP 3
+STARTED: confirmed the guest dyld (usr/lib/dyld, 1.5MB) is built from src/dyld2.cpp (nm shows dyld::_main,
+sSharedCacheLoadInfo, findInSharedCacheImage) and mldr (src/darwin/loader/src/main.rs:337) execs
+/usr/lib/dyld -- so the mapSharedCache patch is in the real boot path. Wrote
+vendor/patches/dyld/0005-aarch64-enable-shared-cache-under-darling.patch (un-gates the mapSharedCache block;
+safe no-op without a cache) and reverted the debug patch 0001. Next: rebuild min prefix, install the cache at
+guest /System/Library/dyld/dyld_shared_cache_arm64, boot with DYLD tracing / dyldprof to confirm the
+per-spawn dylib open/mmap collapse, buck-bash-check. The 39 cached dylibs are unchanged by the dyld-loader
+patch, so the preserved cache still matches the rebuilt prefix.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the

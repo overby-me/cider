@@ -1,0 +1,38 @@
+Enable the dyld boot-time shared-cache mapping under DARLING (aarch64 #11 A).
+
+dyld2.cpp gated its whole 'load shared cache' block (checkSharedRegionDisable +
+mapSharedCache + the DATA_CONST override) behind #ifndef DARLING, so the guest dyld
+never mapped a shared cache. Now that a cache can be built for the guest arm64 prefix
+and installed at /System/Library/dyld/, un-gate the block so dyld maps it. This is safe
+for prefixes without a cache: mapSharedCache -> loadDyldCache leaves
+sSharedCacheLoadInfo.loadAddress null when no cache file is present, and the DATA_CONST
+override is guarded by loadAddress != nullptr. The dylib-lookup paths
+(findInSharedCacheImage) were already compiled unconditionally.
+
+Signed-off-by: Niclas Overby <niclas@overby.me>
+---
+--- a/src/dyld2.cpp
++++ b/src/dyld2.cpp
+@@ -6810,10 +6810,10 @@
+ 	if ( sJustBuildClosure )
+ 		sClosureMode = ClosureMode::On;
+ 
+-#ifndef DARLING
+-	// While the shared cache code doesn't prevent Darling's libraries
+-	// from being loaded, we don't plan on building our libraries 
+-	// into a shared cache.
++	// cider #11 A: map the guest dyld shared cache when one is installed at
++	// /System/Library/dyld/. mapSharedCache/loadDyldCache no-op when it is absent,
++	// so this stays safe for prefixes without a cache. Upstream Darling gated this
++	// whole block out (#ifndef DARLING) because it shipped no cache.
+ 
+ 	// load shared cache
+ 	checkSharedRegionDisable((dyld3::MachOLoaded*)mainExecutableMH, mainExecutableSlide);
+@@ -6832,7 +6832,6 @@
+ 																		 (gLinkContext.verboseMapping ? &dyld::log : nullptr));
+ 		}
+ 	}
+-#endif // !DARLING
+ 
+ #if !TARGET_OS_SIMULATOR && !defined(DARLING)
+ 	if ( getpid() == 1 ) {
