@@ -2321,6 +2321,34 @@ regression). A banked here; resuming it later means fixing the cached-code trap 
 rebase/unpack at slide=0, and checking cider's brk PC-advance). Per the user's one-shot decision, pivoting to
 Tier 1 (task #21) for measurable RPC wins.
 
+**Pass 89 (task #20/A: fully characterized end to end -- works but no speedup yet; exact remaining blocker found).**
+Layer by layer, with numbers:
+1. Cache BUILDS (39 images) -- done.
+2. Guest dyld MAPS it (patches 0005 un-gate, 0006 skip codesign, 0007 forcePrivate+disableASLR) -- done;
+   B2 shows "mapped dyld cache file private to process ... 0x180000000" and "Using shared cached for
+   libsystem_kernel".
+3. The OPTIMIZED (Customer) cache TRAPS: optimizeAwayStubs rewrites call sites, a rewritten branch lands on
+   brk #1 in cached libsystem_c (0x180370d40), cider loops on SIGTRAP -> hang. The earlier "opens 229->39"
+   was this process trapping EARLY (39 opens before the crash), NOT a real collapse. Fixed by building an
+   InternalDevelopment cache (optimizeStubs=false, commit f658b124): boots clean, 0 SIGTRAPs, exit 0.
+4. But the dev cache gives NO speedup: with the on-disk dylibs present, dyld BYPASSES the cache and still
+   opens+mmaps each dylib from disk at 0x100001000000 (with-cache *.dylib opens=229 == nocache 229; ms/spawn
+   258 vs 248 baseline -- flat). The cache is mapped but only a couple of dylibs actually come from it.
+5. Removing the 39 on-disk dylibs PROVES the collapse is real: dyld then opens 0 dylib files (229->0) and uses
+   the cache -- BUT the boot ABORTS: "dyld: shared cache not used: shared cache file open() failed" ->
+   "Library not loaded: /usr/lib/libSystem.B.dylib, image not found". Only 1 cache open() succeeded across the
+   whole boot; child/re-exec'd processes fail to open() the cache file, and with no on-disk fallback they
+   abort. So the EXACT remaining blocker is: child processes under cider cannot open() the cache at
+   /System/Library/dyld/ (a cider fs/path-visibility issue for the cache across fork/exec).
+NET: A is a deep, mostly-working infrastructure (build+map+no-trap+open-collapse all proven) that does not yet
+deliver a spawn speedup. Two things stand between here and a win: (a) fix child-process cache open() so the
+cache is used without keeping dylibs on disk; (b) a MARGINAL in-session spawn benchmark -- the current
+`cider shell /usr/bin/true` is boot-dominated (~223 boot RPCs), so even a perfect dylib-load collapse barely
+moves its wall; A's real payoff is many-spawns-per-session build workloads (#11's actual goal), not per-boot.
+All A patches (0005/0006/0007 dyld, f658b124 dev-cache) are safe no-ops in the shipped prefix (no cache
+installed). Banked here as a documented checkpoint; honest verdict is that the measured spawn speedup is 0 so
+far and realizing it is further multi-layer cider-fs work of uncertain payoff given boot domination.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
