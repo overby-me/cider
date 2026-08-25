@@ -1,0 +1,39 @@
+Export the corecrypto ChaCha20 functions CommonCrypto imports.
+
+libcommonCrypto.dylib imports ccchacha20 and ccchacha20poly1305_{info,
+encrypt_oneshot,decrypt_oneshot} from libcorecrypto.dylib (lib/CommonCryptorChaCha20*.c),
+but corecrypto's scripts/exported-symbols.exp had the whole chacha family commented
+out: the functions are compiled (src/ccchacha20poly1305.c) but not exported. dyld's
+shared-cache builder binds eagerly and rejected the cache on the dangling import (the
+runtime loader tolerated it lazily, since bash never calls ChaCha20). Uncomment exactly
+the four functions corecrypto defines and CommonCrypto imports.
+
+Signed-off-by: Niclas Overby <niclas@overby.me>
+---
+--- a/scripts/exported-symbols.exp
++++ b/scripts/exported-symbols.exp
+@@ -63,7 +63,7 @@
+ _cccast_ecb_encrypt_mode
+ _cccast_ofb_crypt_mode
+ #_cccbc_one_shot
+-#_ccchacha20
++_ccchacha20
+ #_ccchacha20_final
+ #_ccchacha20_init
+ #_ccchacha20_reset
+@@ -72,12 +72,12 @@
+ #_ccchacha20_update
+ #_ccchacha20poly1305_aad
+ #_ccchacha20poly1305_decrypt
+-#_ccchacha20poly1305_decrypt_oneshot
++_ccchacha20poly1305_decrypt_oneshot
+ #_ccchacha20poly1305_encrypt
+-#_ccchacha20poly1305_encrypt_oneshot
++_ccchacha20poly1305_encrypt_oneshot
+ #_ccchacha20poly1305_finalize
+ #_ccchacha20poly1305_incnonce
+-#_ccchacha20poly1305_info
++_ccchacha20poly1305_info
+ #_ccchacha20poly1305_init
+ #_ccchacha20poly1305_reset
+ #_ccchacha20poly1305_setnonce
