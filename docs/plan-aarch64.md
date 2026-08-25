@@ -2349,6 +2349,27 @@ All A patches (0005/0006/0007 dyld, f658b124 dev-cache) are safe no-ops in the s
 installed). Banked here as a documented checkpoint; honest verdict is that the measured spawn speedup is 0 so
 far and realizing it is further multi-layer cider-fs work of uncertain payoff given boot domination.
 
+**Pass 90 (task #20/A: child cache-open root cause; A grind stopped here).** Traced the "shared cache file
+open() failed" child abort. In the WORKING case (dylibs on disk) every process, children included, opens the
+cache at the CIDERPREFIX-translated host path (/tmp/cider-nixpkg-1000/System/Library/dyld/dyld_shared_cache_arm64,
+success). In the BROKEN case (on-disk dylibs removed so the cache MUST supply libSystem) a child instead does
+openat("/System/Library/dyld/dyld_shared_cache_arm64") -- the RAW guest path, host-cwd-relative -> ENOENT --
+and does not fall through to the CIDERPREFIX path, so dyld reports "shared cache file open() failed" and, with
+no on-disk libSystem fallback, aborts. So the child needs the cache at the earliest dyld bootstrap (to get
+libSystem) at a stage where cider's guest->host path translation for /System/Library/dyld is not yet applied
+for that process; normally this never bites because on-disk dylibs satisfy libSystem before the cache is
+consulted. Fixing it is a cider fork/exec bootstrap + fs-translation change (ensure the cache path resolves,
+or the cache is reachable, at the earliest child dyld stage) -- deep, and the payoff is capped because the
+`cider shell X` benchmark is boot-dominated (~223 boot RPCs) so per-boot spawns barely benefit regardless.
+DECISION: stop grinding A here. It is a thoroughly documented, mostly-working infrastructure (build + map +
+no-trap dev cache + proven 229->0 open collapse) whose spawn-speedup payoff needs (a) the child bootstrap
+cache-open fix and (b) an in-session marginal-spawn benchmark to even be visible. Recommended next steps for
+whoever resumes: build the in-session benchmark first (boot once, time many /usr/bin/true spawns; that grounds
+every perf claim and isolates the ~47 marginal RPCs + dylib-load cost from boot), then decide if A's remaining
+cider-bootstrap work is worth it vs the RPC levers (Tier 1 self-trap caches; Tier 2 reply-port churn = 11
+RPCs/spawn). All A patches (dyld 0005/0006/0007, cache_builder dev-cache f658b124) are committed and are safe
+no-ops in the shipped prefix (no cache installed).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
