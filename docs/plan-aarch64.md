@@ -2238,6 +2238,25 @@ buck-bash-check). Rebuilding the min prefix (result-min13); then re-run cache_bu
 and an emitted cache. Still to do after: install cache at the dyld path -> dyld private mode -> boot -> dyldprof
 to confirm the ~77 per-spawn dylib open/mmap collapse; revert vendor/patches/dyld/0001 before the keeper build.
 
+**Pass 84 (task #11 A: two-level fix LANDED, 39/39 eligible; now a guest-lib export gap).** The
+flat->two-level change took three min-prefix rebuilds to converge, because a two-level link must resolve
+every out-of-lib ref via explicit firstpass siblings (flat+suppress had hidden them): unwind_final needed
+system_malloc + system_pthread + system_dyld firstpass (malloc/free, pthread_rwlock_*, dyld unwind/dladdr +
+dyld_stub_binder); system_blocks_final needed libplatform (__platform_memmove) + system_dyld
+(dyld_stub_binder for the lazy stub to __os_assert_log). Result: both ship as flags=0x100085
+(MH_TWOLEVEL|MH_NOUNDEFS), and cache_builder now reports "dylibsToCache=39 otherDylibs=0 couldNotLoad=0" --
+the flat-namespace cascade is gone, all 39 dylibs are cache-eligible. (Fixes squashed into the two-level
+commit.) NEW blocker, a different class: runSharedCacheBuilder binds eagerly and failed on a dangling import
+-- "symbol '_ccchacha20' not found, expected in libcorecrypto.dylib, needed by libcommonCrypto.dylib". Root:
+libcommonCrypto (lib/CommonCryptorChaCha20*.c) imports ccchacha20 + ccchacha20poly1305_{info,encrypt_oneshot,
+decrypt_oneshot} from corecrypto, but corecrypto's scripts/exported-symbols.exp had the whole chacha family
+commented out -- the functions are compiled (src/ccchacha20poly1305.c) but not exported. The runtime loader
+tolerated this lazily (bash never calls ChaCha20); the cache builder does not. corecrypto is a pin
+(darlinghq/darling-corecrypto, nix/submodules.json), so the fix is a pin patch:
+vendor/patches/corecrypto/0001-export-ccchacha20-family.patch uncomments exactly the four defined+imported
+symbols. Rebuilding the min prefix; expect the cache to emit next (or the builder to surface the next dangling
+import, same pattern).
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
