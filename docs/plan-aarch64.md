@@ -2370,6 +2370,18 @@ cider-bootstrap work is worth it vs the RPC levers (Tier 1 self-trap caches; Tie
 RPCs/spawn). All A patches (dyld 0005/0006/0007, cache_builder dev-cache f658b124) are committed and are safe
 no-ops in the shipped prefix (no cache installed).
 
+**Pass 91 (task #11: grounded per-spawn baseline -- the number to optimize against).** Built an in-session
+marginal-spawn benchmark (scratchpad/in-session-bench.sh): boot cider once, run N x /usr/bin/true inside one
+guest bash, fit the slope. Result on result-min13 (no cache): boot+1=0.292s, boot+20=0.862s, boot+60=1.990s
+-> MARGINAL ~28 ms/in-session-spawn (slopes 30.0/28.8/28.2, consistent), and boot itself ~264 ms. So a single
+`cider shell X` (~292 ms) is ~90% one-time boot, ~10% spawn -- which is why lever A (targeting the spawn's
+dylib load) is invisible in the per-invocation benchmark, and why the RPC histogram's ~223 boot RECV dwarf the
+~47 marginal per-spawn RECV. For build workloads (many spawns per session, #11's real goal) the number that
+matters is the ~28 ms marginal spawn. Of that ~28 ms: ~47 guest->ciderd RPCs (mach_msg_overwrite 7.8,
+mach_reply_port 6.7, mach_port_deallocate 4.4, the self-traps ~3.3 each, vchroot_path 3.3, ...) plus the
+dylib mmap/fork/exec. This baseline grounds all future perf claims: measure any change (A, Tier 1/2) as delta
+on the ~28 ms marginal (and separately on the ~264 ms boot), NOT on the boot-dominated per-invocation wall.
+
 ## Risks, ranked
 
 1. **TPIDRRO_EL0 for stock binaries (D4c).** No kernel mechanism and an inlined read in the
