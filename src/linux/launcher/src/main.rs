@@ -147,16 +147,18 @@ fn main() {
         setup_workdir(&ctx);
         pid_init = spawn_init_process(&ctx); // blocks on the sync pipe until mounts ready
         put_init_pid(&ctx, pid_init);
-        // Poll for the guest to boot shellspawn, up to 360s (cider.c:277-282).
+        // Poll for the guest to boot shellspawn, up to 360s (cider.c:277-282). The socket
+        // appears in ~20ms; a 100ms poll would round every spawn's wait up to ~100ms, so
+        // poll at 1ms and keep the same 360s cap (360_000 * 1ms).
         let sock = format!("{}{}", ctx.prefix, SHELLSPAWN_SOCKPATH);
         let sock_c = cstr(&sock);
         let mut ok = false;
-        for _ in 0..3600 {
+        for _ in 0..360_000 {
             if unsafe { libc::access(sock_c.as_ptr(), libc::F_OK) } == 0 {
                 ok = true;
                 break;
             }
-            unsafe { libc::usleep(100 * 1000) };
+            unsafe { libc::usleep(1000) };
         }
         if !ok {
             die("Timed out waiting for the guest shellspawn socket");
