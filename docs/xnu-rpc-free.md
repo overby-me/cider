@@ -215,6 +215,24 @@ edit propagates to both sides. Concrete steps:
 4. Build bounded and supervised; measure with rpc-count.sh (expect the self-port and reply-port
    traps to drop out of the per-spawn trace).
 
+### Implementation nuance: are the self-ports ready at checkin?
+
+This is the main risk for Steps 2/3. ciderd's self-port traps return the CURRENT task/thread's
+port from the emulated kernel, not per-call state:
+`handler.rs task_self_trap -> mach::task_self_trap -> xnu_sys_task_self_trap()`. The thread
+microthread (and its xnu_sys task/thread ipc space) is created LAZILY on the first call for an
+`(nsid,tid)`, via `reg.run_thread` (ciderd.rs:520-523), and CHECKIN is that first call.
+Empirically the checkin dispatch logs `[xnu_sys] Trying to lock mutex without an active thread!`
+(Pass 120 trace), so the ipc space is probably NOT fully active when the checkin handler runs.
+
+CONSEQUENCE: folding task/host/thread_self into the checkin reply likely needs a ciderd
+REFINEMENT to establish the task/thread ipc space inside the checkin handler (before building the
+reply), not merely calling `xnu_sys_task_self_trap()` there. VERIFY cheaply first: add a probe at
+the end of the checkin handler that calls `xnu_sys_task_self_trap()` and check it returns a
+non-zero name. If yes, the fold is a straight reply-fill. If no (likely), move the ipc-space
+creation to run before the checkin reply is built. Either way `mach_reply_port` (the initial
+`_task_reply_port`) is allocated the same way and folds alongside.
+
 ## Notes for whoever picks this up
 
 - Do NOT chase self-port caching: it is already done (mach_init.c). The win is fewer inits
