@@ -398,6 +398,7 @@ fn main() {
                     seed_task_self,
                     seed_uid,
                     seed_gid,
+                    vchroot_root.as_deref().unwrap_or(""),
                 )
             };
             let sp0 = unsafe { *(sp as *const u64) };

@@ -64,6 +64,8 @@ pub unsafe fn setup_stack(
     seed_task_self: u32,
     seed_uid: i32,
     seed_gid: i32,
+    // #11/#25 v2: vchroot prefix from mldr's own vchroot_path fetch; empty = unknown -> guest RPCs.
+    seed_vchroot: &str,
 ) -> u64 {
     let size = stack_size();
     let base = stack_top - size;
@@ -118,6 +120,7 @@ pub unsafe fn setup_stack(
         format!("dserver_task_self={seed_task_self:x}"),
         format!("dserver_uid={:x}", seed_uid as u32),
         format!("dserver_gid={:x}", seed_gid as u32),
+        format!("dserver_vchroot={seed_vchroot}"),
     ];
 
     // Strings high, from stack_top downward.
