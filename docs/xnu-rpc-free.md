@@ -90,21 +90,42 @@ DSERVER_TRACE_CALLS) and `agg-ab.sh` / `agg-ab2.sh` (wall-time, cider.orig vs a 
 variant, N sequential `cider exec`). Correctness gate: a known program computes the right
 result and exit codes are preserved, over 50x sequential plus a parallel batch.
 
-1. Skip the transient fork's wasted re-init (Category A). Guest-only; shellspawn is a bounded
-   buck2 target (`//src/darwin/shellspawn:shellspawn`, one C file), so this is testable
-   without the full prefix. Replace `fork()+execv()` with `posix_spawn()` (posix_spawn.c
-   already uses the leaner `posix_spawn_child` path and skips user atfork callbacks), or add a
-   dedicated fork-for-exec path that defers `mach_init_doit` when an immediate exec follows.
-   CAVEAT to verify first: confirm `posix_spawn_child` (a `_libkernel_functions` entry set in
-   libSystem init) does not itself call `mach_init_doit`; if it does, this saves less and the
-   dedicated path is the right fix. Watch the fd setup: shellspawn currently dup2s the socket
-   fds onto stdio in the parent before forking (shellspawn.c:271-277), and waits for
-   NOTE_EXIT via kqueue; preserve both (posix_spawn file-actions or keep the pre-spawn dup2).
+1. Skip the transient fork's wasted Mach re-init (Category A). VERIFIED: the obvious form,
+   switching shellspawn's `fork()+execv()` to `posix_spawn()`, does NOT help.
+   `libSystem_posix_spawn_child` (vendor/src/libsystem/init.c:475-491) calls
+   `_mach_fork_child()` (line 478) exactly like `libSystem_atfork_child` (line 408); the only
+   difference (init.c:440-441) is that the posix_spawn variant skips USER `pthread_atfork`
+   handlers, which shellspawn does not register. So `_mach_fork_child` -> `mach_init_doit` ->
+   `task_self_trap` + `mach_reply_port` still runs in the transient child and is still discarded
+   by the following `execv`.
+   THE REAL FIX is a spawn-for-exec path that OMITS `_mach_fork_child` (and any other
+   `_*_fork_child` handler that round-trips) in a child that will immediately `execve`, because
+   mldr re-inits Mach after exec anyway. The RPC socket the child needs during exec is refreshed
+   separately by `sys_fork` (fork.c), not by `_mach_fork_child`, so dropping the Mach re-init is
+   plausible. This is a guest-CORE-lib change (libsystem / libsystem_kernel), heavier than a
+   shellspawn-only build, and delicate: verify nothing between fork and execve uses
+   `mach_task_self_` / `_task_reply_port` / pthread-self, and guard the error/abort path (which
+   may `mach_msg` to report failure). Preserve shellspawn's existing fd setup (dup2 of the socket
+   fds onto stdio, shellspawn.c:271-277) and its NOTE_EXIT wait.
+   CONSEQUENCE: there is NO shellspawn-only bounded quick win. Every xnu-rpc-free step below
+   touches a guest core lib or ciderd, so all are supervised, bounded, one-at-a-time builds.
 
-2. Fold per-image setup RPCs into checkin (extend #25, which already folded init constants
-   into the checkin reply). UIDGID (#7), VCHROOT_PATH (#3), MLDR_PATH (#10), and
-   SET_THREAD_HANDLES (#8) are known at checkin time; carry them in the checkin call/reply so
-   they cost no extra round-trips.
+2. Fold per-image setup RPCs into checkin. The checkin reply is currently header-only
+   (`rpc_wire.rs` `RpcReplyCheckin`), and each of these per-process RPCs is a separate
+   round-trip. By direction (read from their ciderd handlers in handler.rs):
+   - SETTERS (guest -> ciderd), fold into the checkin CALL body: `uidgid` (#7, new_uid/new_gid;
+     its reply carries the old ids, rarely needed at spawn), `set_thread_handles` (#8,
+     pthread_handle + dispatch_qaddr), `vchroot` (#3, a dir fd sent via SCM_RIGHTS, which
+     checkin can also carry).
+   - GETTERS (ciderd -> guest constants), fold into the checkin REPLY: `get_tracer` (#6,
+     tracer_nsid), `started_suspended` (#5, a bool), `mldr_path` (#10, a path string plus
+     vchroot_len; needs a fixed-max buffer field in the reply).
+   Collapses ~5-6 round-trips per image into the single checkin. CAVEAT: this is a reorder, so
+   each value must be AVAILABLE at checkin time. `set_thread_handles` in particular is set during
+   pthread init, which may run after checkin; if so it cannot fold without moving checkin later
+   or splitting the set. Verify the guest init order (the libSystem_initializer sequence) before
+   committing to a fold set. (Note: task #25 is marked done as "fold init constants into the
+   checkin reply", but the current reply is header-only, so treat that as not-yet-landed here.)
 
 3. exec-replacement task/thread swap. ciderd's own handlers flag this as unfinished
    (handler.rs:417 "Exec-replacement's task/thread swap is a later refinement", :436 "The
