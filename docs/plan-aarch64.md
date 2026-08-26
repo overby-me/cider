@@ -2530,3 +2530,32 @@ Correctness gate (cider shell /bin/bash on the #25 min prefix): BASH_OK 42, GUID
 Boot RPC (boot + one `exit 0`, DSERVER_TRACE_CALLS): 236 -> 224 total (-12). task_self_trap 17 -> 11 (-6), uidgid 14 -> 8 (-6). Interpretation: the mldr loader checkin (is_fork=false) runs once per exec'd process and seeds it, eliminating that process's first task_self_trap + uidgid RPC; ~6 exec'd processes at boot => -6 each. The remaining task_self_trap (11) / uidgid (8) are fork children (is_fork=true, deliberately not seeded so they NULL the reply and inherit warm caches) plus repeat/daemon contexts. vchroot_path (18) is unchanged: vchroot seeding was deferred to a v2 (its reply is a variable-length string -> more wire work) and would add roughly another -6.
 
 Net: #25 is the first working checkin-reply-batching win. Boot is ~90% of per-invocation cost and ~RPC-bound (~1.1 ms/RPC over 236 RPC ~= 264 ms), so -12 boot RPC ~= ~13 ms/boot (~4-5% of boot / per-invocation), non-regressing, verified. It also proves the mechanism (fold per-process constants into checkin, seed via apple[]) end to end. v2 follow-ups: fold vchroot_path (string reply) for ~-6 more; host_self_trap/thread_self_trap remain unfoldable (Mach add-ref/deallocate semantics). Task #25 complete.
+
+**Pass 100 (task #11/#25 v2: vchroot prefix folded into checkin seeding; boot RPC 224 -> 219; full checkin-batching lever 236 -> 219).** Built the min prefix with v2 (abecd0d4): mldr passes its already-fetched vchroot prefix to the image as apple[] dserver_vchroot=<path>, and libsystem_kernel's mach_driver_init seeds prefix_path via a new __vchroot_seed (vendor/patches/xnu/0046), so a freshly exec'd process skips its first vchroot_path RPC. No wire change was needed (mldr already fetches the prefix via rpc::vchroot_path). The build was clean on the first try (no compile fixes, unlike v1); again a ~2h near-full guest rebuild (libsystem_kernel cascade), run detached.
+
+Correctness gate (cider shell /bin/bash on the v2 min prefix): BASH_OK 42, GUID 0:0 (uid/gid correct), SPAWN_OK 0 -- the fork/exec spawns succeeded, which requires vchroot path translation, so the seeded prefix is correct and seeding did not corrupt it. rc=0, no hang. Non-regressing.
+
+Boot RPC (boot + one `exit 0`, DSERVER_TRACE_CALLS): vchroot_path 18 -> 13 (-5); total 224 -> 219. Combined with v1, the full checkin-batching lever is:
+  task_self_trap  17 -> 11
+  uidgid          14 -> 8
+  vchroot_path    18 -> 13
+  TOTAL boot RECV 236 -> 219  (-17, ~7.2% of boot)
+Each foldable per-process init constant now seeds from the mldr checkin/loader into the freshly exec'd image via apple[], eliminating that process's first RPC for it; the residual counts are fork children (deliberately not seeded -> inherit the parent's warm caches) plus repeat/daemon contexts.
+
+CHECKIN-BATCHING LEVER: FULLY HARVESTED. The three foldable per-process init constants (task_self, uid/gid, vchroot) are all seeded. host_self_trap (17) and thread_self_trap (17) remain UNFOLDABLE: their Mach add-ref/deallocate semantics make the returned name non-cacheable (leaf-caching over-releases a send right and hangs the guest, proven earlier). The remaining boot RPC (219) is dominated by the Mach transport primitives themselves: mach_msg_overwrite 39 + mach_reply_port 34 + mach_port_deallocate 23 = 96 (44% of boot), which are the RPC mechanism's own per-call overhead and only shrink by reducing the NUMBER of RPCs (deep Tier 2: in-guest Mach fast paths / batching the message layer). Boot is ~90% of per-invocation cost and ~RPC-bound (~1.1 ms/RPC over ~219 RPC ~= ~240 ms), so -17 boot RPC ~= ~19 ms/boot (~7% of boot and of per-invocation), non-regressing, verified end to end.
+
+## Shipped perf summary for #11 (aarch64 guest execution)
+- Tier 1: task_self_trap leaf-cache (patch 0044). Caches the per-process task-self port; skips repeat task_self RPCs within a process.
+- Checkin-reply batching v1 (0045 + server rpc_wire/handler + mldr loader): fold {task_self, uid, gid} into the checkin reply, seed via apple[]. Boot 236 -> 224.
+- Checkin-reply batching v2 (0046 + mldr): fold vchroot prefix. Boot 224 -> 219.
+- Net measured: boot RPC 236 -> 219 (-17, ~7%), all verified non-regressing (bash rc=0, uid correct, spawns work).
+- Lever A (dyld shared cache, 0005/0006/0007 + cache_builder): BANKED. Builds a dev cache, maps it, proves open-collapse (229 -> 0), but blocked on child-process cache-open under cider; safe no-op with no cache installed, no measured speedup.
+- Grounded baselines: ~28 ms marginal/spawn, ~264 ms boot (~90% of per-invocation), ~47 RPC/spawn, 236 RPC/boot (now 219).
+
+## Remaining levers (all deep, deliberately NOT pursued as marginal/high-cost)
+- Mach transport (44% of boot): reduce the NUMBER of RPCs (in-guest Mach port fast paths, reply-port pooling) -- Tier 2 (#22), deep.
+- host_self/thread_self: unfoldable (ref semantics).
+- Tier 3 (#23): run guest processes mostly without ciderd -- very deep.
+- The full-prefix milestone build number is gated on pre-existing infra (missing wayland-scanner, securitytool, #24 JSC), independent of perf.
+
+The reachable, sensible-payoff perf work for #11 is complete. Each further lever is a multi-week effort or unsafe; not worth another ~2h rebuild for a marginal RPC.
