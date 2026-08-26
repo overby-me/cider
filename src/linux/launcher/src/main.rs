@@ -335,6 +335,7 @@ fn ensure_prefix_dirs(ctx: &Ctx) {
     for d in [
         "/Volumes",
         "/Applications",
+        "/Users",
         "/usr",
         "/usr/local",
         "/usr/local/share",
@@ -360,6 +361,11 @@ fn ensure_prefix_dirs(ctx: &Ctx) {
     ] {
         create_dir(&format!("{}{}", ctx.prefix, d));
     }
+    // $HOME (/Users/<login>) has no directory in the image, so the login profile's
+    // `cp -r "User Template/Library" ~/` failed ENOENT every login and, never making ~/Library, looped forever.
+    let (name, _, _) = get_user_info(ctx.orig_uid);
+    create_dir(&format!("{}/Users/root", ctx.prefix));
+    create_dir(&format!("{}/Users/{name}", ctx.prefix));
 }
 
 fn setup_prefix(ctx: &Ctx) {
