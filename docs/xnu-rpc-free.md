@@ -185,6 +185,36 @@ empirically with rpc-count.sh after each step; do not trust this estimate as a r
   bespoke continuation handling in ciderd (the -111 interrupt race, task #44). An in-guest
   port layer must not disturb those paths.
 
+## Where to start (the fat checkin, highest leverage)
+
+The RPC protocol is generated from one inline table:
+`vendor/pins/ciderd/scripts/generate-rpc-wrappers.py`, `calls = [...]`. The `checkin` entry is
+at line 108 and its reply list is currently EMPTY:
+
+```
+('checkin', [
+    ('is_fork', 'bool'),
+    ('stack_hint', 'void*', 'uint64_t'),
+    ('lifetime_listener_pipe', '@fd')
+], []),   # <- empty reply
+```
+
+The generator emits BOTH the ciderd wire structs (`src/linux/server/src/rpc_wire.rs`
+`CallCheckin` / `RpcReplyCheckin`) and the guest client wrapper from this one entry, so a single
+edit propagates to both sides. Concrete steps:
+
+1. Add reply getters to the checkin entry: `('task_self','uint32_t')`, `('host_self','uint32_t')`,
+   `('thread_self','uint32_t')`, `('reply_port','uint32_t')`, plus `('tracer','int32_t')` and
+   `('suspended','bool')`. (mldr_path is a string, add later with a fixed buffer.) Optionally add
+   foldable setter args (uidgid, thread handles) if the init-order check clears them.
+2. Fill the reply in ciderd's checkin handler (`handler.rs:418`) from the task/thread it just
+   registered (it already owns these port names).
+3. Consume it in the guest: `mach_init_doit` (`vendor/src/xnu/libsyscall/mach/mach_init.c:192-193`)
+   reads `mach_task_self_` / `_task_reply_port` (and host/thread) from the checkin reply instead of
+   calling `task_self_trap()` / `mach_reply_port()`.
+4. Build bounded and supervised; measure with rpc-count.sh (expect the self-port and reply-port
+   traps to drop out of the per-spawn trace).
+
 ## Notes for whoever picks this up
 
 - Do NOT chase self-port caching: it is already done (mach_init.c). The win is fewer inits
