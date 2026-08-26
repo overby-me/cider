@@ -61,8 +61,24 @@ fn main() {
         std::process::exit(1);
     }
 
-    // Privilege gate (cider.c:131-142).
-    if unsafe { libc::geteuid() } != 0 {
+    // Persistent-container fast path: before creating our own userns, try to JOIN a live
+    // container from this (parent) userns. A fresh unshare lands in a sibling userns that
+    // cannot join the container's namespaces, forcing a ~20ms ciderd rebuild every spawn.
+    // Only for container subcommands, only on first entry (not the post-unshare re-exec).
+    let joined_pid = if unsafe { libc::geteuid() } != 0
+        && std::env::var_os("CIDER_USERNS_STAGE2").is_none()
+        && !matches!(
+            argv[1].as_str(),
+            "--help" | "-h" | "--version" | "-v" | "shutdown"
+        ) {
+        try_join_live_container(&resolve_prefix())
+    } else {
+        None
+    };
+
+    // Privilege gate (cider.c:131-142). Skipped when we joined a live container: setns into
+    // its userns already gave us euid 0 there.
+    if joined_pid.is_none() && unsafe { libc::geteuid() } != 0 {
         if std::env::var_os("CIDER_USERNS_STAGE2").is_none() {
             enter_userns_and_reexec(&argv); // only returns on failure
             missing_setuid_root();
@@ -82,10 +98,7 @@ fn main() {
     }
 
     // Resolve prefix (cider.c:150-161).
-    let prefix = match std::env::var("CIDERPREFIX") {
-        Ok(p) if !p.is_empty() => p,
-        _ => default_prefix_path(),
-    };
+    let prefix = resolve_prefix();
     if prefix.len() > 255 {
         die("Prefix path too long (>255)");
     }
@@ -124,46 +137,53 @@ fn main() {
         _ => {}
     }
 
-    let mut pid_init = get_init_process(&ctx); // cider.c:209
+    // Reuse the container we already joined, otherwise find / reap / create one
+    // (cider.c:209-283).
+    let pid_init = if let Some(pid) = joined_pid {
+        pid
+    } else {
+        let mut pid_init = get_init_process(&ctx); // cider.c:209
 
-    // shutdown subcommand, handled before any ns work (cider.c:211-239).
-    if argv[1] == "shutdown" {
-        do_shutdown(pid_init);
-        std::process::exit(0);
-    }
+        // shutdown subcommand, handled before any ns work (cider.c:211-239).
+        if argv[1] == "shutdown" {
+            do_shutdown(pid_init);
+            std::process::exit(0);
+        }
 
-    // Stale-container reap (cider.c:246-255): a prior rootless container lives in a
-    // different userns whose mnt ns we cannot setns into -> discard + restart.
-    if pid_init != 0 && !container_joinable(pid_init) {
-        kill_container(&ctx);
-        let _ = std::fs::remove_file(format!("{}/.init.pid", ctx.prefix));
-        let _ = std::fs::remove_file(format!("{}{}", ctx.prefix, SHELLSPAWN_SOCKPATH));
-        pid_init = 0;
-    }
+        // Stale-container reap (cider.c:246-255): a prior rootless container lives in a
+        // different userns whose mnt ns we cannot setns into -> discard + restart.
+        if pid_init != 0 && !container_joinable(pid_init) {
+            kill_container(&ctx);
+            let _ = std::fs::remove_file(format!("{}/.init.pid", ctx.prefix));
+            let _ = std::fs::remove_file(format!("{}{}", ctx.prefix, SHELLSPAWN_SOCKPATH));
+            pid_init = 0;
+        }
 
-    // Start the container if none (cider.c:258-283).
-    if pid_init == 0 {
-        let _ = std::fs::remove_file(format!("{}{}", ctx.prefix, SHELLSPAWN_SOCKPATH));
-        setup_workdir(&ctx);
-        pid_init = spawn_init_process(&ctx); // blocks on the sync pipe until mounts ready
-        put_init_pid(&ctx, pid_init);
-        // Poll for the guest to boot shellspawn, up to 360s (cider.c:277-282). The socket
-        // appears in ~20ms; a 100ms poll would round every spawn's wait up to ~100ms, so
-        // poll at 1ms and keep the same 360s cap (360_000 * 1ms).
-        let sock = format!("{}{}", ctx.prefix, SHELLSPAWN_SOCKPATH);
-        let sock_c = cstr(&sock);
-        let mut ok = false;
-        for _ in 0..360_000 {
-            if unsafe { libc::access(sock_c.as_ptr(), libc::F_OK) } == 0 {
-                ok = true;
-                break;
+        // Start the container if none (cider.c:258-283).
+        if pid_init == 0 {
+            let _ = std::fs::remove_file(format!("{}{}", ctx.prefix, SHELLSPAWN_SOCKPATH));
+            setup_workdir(&ctx);
+            pid_init = spawn_init_process(&ctx); // blocks on the sync pipe until mounts ready
+            put_init_pid(&ctx, pid_init);
+            // Poll for the guest to boot shellspawn, up to 360s (cider.c:277-282). The socket
+            // appears in ~20ms; a 100ms poll would round every spawn's wait up to ~100ms, so
+            // poll at 1ms and keep the same 360s cap (360_000 * 1ms).
+            let sock = format!("{}{}", ctx.prefix, SHELLSPAWN_SOCKPATH);
+            let sock_c = cstr(&sock);
+            let mut ok = false;
+            for _ in 0..360_000 {
+                if unsafe { libc::access(sock_c.as_ptr(), libc::F_OK) } == 0 {
+                    ok = true;
+                    break;
+                }
+                unsafe { libc::usleep(1000) };
             }
-            unsafe { libc::usleep(1000) };
+            if !ok {
+                die("Timed out waiting for the guest shellspawn socket");
+            }
         }
-        if !ok {
-            die("Timed out waiting for the guest shellspawn socket");
-        }
-    }
+        pid_init
+    };
 
     // Join the container mnt ns so we can connect to the overlay-resident socket
     // (cider.c:285-287, the Linux 4.11 / overlayfs socket hack).
@@ -443,6 +463,58 @@ fn status_matches_ids(pid: i32, uid: u32, gid: u32) -> bool {
         }
     }
     uok && gok
+}
+
+fn resolve_prefix() -> String {
+    match std::env::var("CIDERPREFIX") {
+        Ok(p) if !p.is_empty() => p,
+        _ => default_prefix_path(),
+    }
+}
+
+/// Persistent-container fast path (rootless). If a live container exists, join its USER
+/// namespace from our parent userns and return the ciderd pid, so the launcher reuses the
+/// container instead of rebuilding ciderd every spawn. Only the userns is joined here; the
+/// mount-namespace join stays at its normal point so prefix/cwd are still read in the host
+/// namespace. The normal unshare path lands in a sibling userns that cannot join the
+/// container's namespaces at all, which is why cider otherwise kills and respawns ciderd on
+/// every invocation.
+fn try_join_live_container(prefix: &str) -> Option<i32> {
+    let pid: i32 = std::fs::read_to_string(format!("{prefix}/.init.pid"))
+        .ok()
+        .and_then(|c| c.trim().parse().ok())?;
+    // liveness + identity, matching get_init_process.
+    if unsafe { libc::kill(pid, 0) } != 0 && errno() == libc::ESRCH {
+        return None;
+    }
+    if std::fs::read_to_string(format!("/proc/{pid}/comm"))
+        .unwrap_or_default()
+        .trim()
+        != "ciderd"
+    {
+        return None;
+    }
+    // Only reuse a container whose shellspawn socket is already up; otherwise the create
+    // path's socket wait is the right thing to run.
+    let sock = cstr(&format!("{prefix}{SHELLSPAWN_SOCKPATH}"));
+    if unsafe { libc::access(sock.as_ptr(), libc::F_OK) } != 0 {
+        return None;
+    }
+    let ufd = unsafe {
+        libc::open(
+            cstr(&format!("/proc/{pid}/ns/user")).as_ptr(),
+            libc::O_RDONLY,
+        )
+    };
+    if ufd < 0 {
+        return None;
+    }
+    let r = unsafe { libc::setns(ufd, libc::CLONE_NEWUSER) };
+    unsafe { libc::close(ufd) };
+    if r != 0 {
+        return None;
+    }
+    Some(pid)
 }
 
 fn container_joinable(pid: i32) -> bool {
