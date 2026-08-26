@@ -225,13 +225,18 @@ microthread (and its xnu_sys task/thread ipc space) is created LAZILY on the fir
 Empirically the checkin dispatch logs `[xnu_sys] Trying to lock mutex without an active thread!`
 (Pass 120 trace), so the ipc space is probably NOT fully active when the checkin handler runs.
 
-CONSEQUENCE: folding task/host/thread_self into the checkin reply likely needs a ciderd
-REFINEMENT to establish the task/thread ipc space inside the checkin handler (before building the
-reply), not merely calling `xnu_sys_task_self_trap()` there. VERIFY cheaply first: add a probe at
-the end of the checkin handler that calls `xnu_sys_task_self_trap()` and check it returns a
-non-zero name. If yes, the fold is a straight reply-fill. If no (likely), move the ipc-space
-creation to run before the checkin reply is built. Either way `mach_reply_port` (the initial
-`_task_reply_port`) is allocated the same way and folds alongside.
+UPDATE (traced the creation path, good news): the task and thread ARE created before checkin
+dispatches. `spawn_on` (registry.rs:174-182) calls `ensure_task(pid, arch)` and then
+`spawn_with_nsid(task, tid, ...)` to build the xnu_sys task + thread, and only THEN runs the
+microthread whose doWork loop dispatches the first call (checkin). So the self-port NAMES are
+almost certainly queryable inside the checkin handler, and the fold is most likely a straight
+reply-fill: call `xnu_sys_task_self_trap()` / `host_self_trap()` / `thread_self_trap()` in the
+checkin handler and place the results in the reply. The `[xnu_sys] no active thread` warning at
+checkin is probably a separate "active-thread" state (used by mutex ops) that is set slightly
+later, not the port-name availability. STILL verify with a one-line probe (call
+`xnu_sys_task_self_trap()` at the top of the checkin handler, expect a non-zero name) before
+wiring the reply; if it is zero, move the activation earlier. `mach_reply_port` (the initial
+`_task_reply_port`) folds the same way.
 
 ## Notes for whoever picks this up
 
