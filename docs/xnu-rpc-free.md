@@ -117,27 +117,62 @@ result and exit codes are preserved, over 50x sequential plus a parallel batch.
      its reply carries the old ids, rarely needed at spawn), `set_thread_handles` (#8,
      pthread_handle + dispatch_qaddr), `vchroot` (#3, a dir fd sent via SCM_RIGHTS, which
      checkin can also carry).
-   - GETTERS (ciderd -> guest constants), fold into the checkin REPLY: `get_tracer` (#6,
-     tracer_nsid), `started_suspended` (#5, a bool), `mldr_path` (#10, a path string plus
-     vchroot_len; needs a fixed-max buffer field in the reply).
-   Collapses ~5-6 round-trips per image into the single checkin. CAVEAT: this is a reorder, so
+   - GETTERS (ciderd -> guest constants), fold into the checkin REPLY. BIGGEST WIN: the initial
+     Mach ports that `mach_init_doit` (mach_init.c:192-193) currently fetches with SEPARATE traps,
+     `task_self_trap` (#33), `host_self_trap` (#34), `thread_self_trap` (#35, main thread), and
+     the initial `mach_reply_port` (#36). ciderd ASSIGNS these port names at checkin, so it can
+     return them in the checkin reply and `mach_init_doit` reads them instead of round-tripping.
+     These self-port traps are the largest reducible category in the ~55 (roughly 20 round-trips
+     across both nsids). Also fold: `get_tracer` (#6, tracer_nsid), `started_suspended` (#5, a
+     bool), `mldr_path` (#10, a path string plus vchroot_len; needs a fixed-max buffer field).
+   Collapses the bulk of a per-image init (self-ports + setup constants) into the single checkin. CAVEAT: this is a reorder, so
    each value must be AVAILABLE at checkin time. `set_thread_handles` in particular is set during
    pthread init, which may run after checkin; if so it cannot fold without moving checkin later
    or splitting the set. Verify the guest init order (the libSystem_initializer sequence) before
    committing to a fold set. (Note: task #25 is marked done as "fold init constants into the
    checkin reply", but the current reply is header-only, so treat that as not-yet-landed here.)
 
-3. exec-replacement task/thread swap. ciderd's own handlers flag this as unfinished
-   (handler.rs:417 "Exec-replacement's task/thread swap is a later refinement", :436 "The
-   exec-listener branch is a later refinement"). On `execve` of an existing nsid, reuse the
-   task/thread in ciderd instead of teardown + rebuild. Cross-component (ciderd via buck2 +
-   guest mldr).
+3. exec-replacement task/thread swap, unified with the fat checkin. The guest ALREADY flags
+   exec: on `execve` it calls `dserver_rpc_checkout(pipe, executing_macho=true)` (execve.c:378)
+   and then the re-exec'd mldr re-checks-in under the SAME nsid. ciderd's handlers flag the reuse
+   as unfinished (handler.rs:417 "Exec-replacement's task/thread swap is a later refinement",
+   :436 "The exec-listener branch is a later refinement"): today it tears the task/thread down on
+   checkout and rebuilds on the next checkin. The fix: on a checkout with `executing_macho=true`,
+   KEEP the task/thread/ports, and on the same-nsid re-checkin return those SAME port names in the
+   (fat, Step 2) checkin reply. Then the re-exec'd image's entire Mach init is a single checkin
+   round-trip. This unifies Steps 2 and 3: one fat checkin serves both a fresh spawn and a
+   re-exec. Cross-component (ciderd via buck2 + guest mldr/libsyscall), the highest-leverage
+   single change after the launcher arc.
 
 4. Guest-local Mach port namespace (Category B, the bulk of the mode). Extend the self-VM
-   precedent to ports: allocate reply ports and self-relative port names in-guest and sync
-   with ciderd only lazily, when a name escapes to a non-self destination (a `mach_msg` to a
-   ciderd-hosted service). Define the escape boundary precisely; that boundary is the line
-   between xnu-rpc-free and the irreducible Category C.
+   precedent to ports. Concrete first target: reply ports. Most reply ports are ephemeral
+   (allocate, use in one MIG round-trip, deallocate), and the reply-port name already travels
+   in the mach_msg header (`msgh_local_port`). So a guest-local reply-port allocator can hand out
+   names WITHOUT an RPC; ciderd learns the name lazily when the message arrives and creates the
+   port on demand, and deallocate is purely local. Eliminates the `mach_reply_port` (#36) and its
+   matching `mach_port_deallocate` (#39) round-trips (order ~13/spawn). Correctness by name-space
+   PARTITION: reserve a guest-local range of `mach_port_name_t` (e.g. a high tag bit) so a
+   locally minted name can never collide with a ciderd-assigned one, and have ciderd treat an
+   inbound name in that range as create-on-first-sight. Generalize the same partition to other
+   self-relative port ops. The ESCAPE BOUNDARY (a local name sent to another task, or a right
+   transferred cross-task) is where ciderd must still be told synchronously; that boundary is the
+   line between xnu-rpc-free and the irreducible Category C.
+
+## Estimated impact (order-of-magnitude, from the Pass 120 counts)
+
+Rough, to size priority, not a promise. Of the ~55 round-trips/spawn:
+
+- Fat checkin (Steps 2 + 3) folds the per-image init handshake: self-ports (~12), initial
+  reply_port (part of ~8), uidgid (~4), vchroot (~3), set_thread_handles (~3), mldr_path (~1),
+  tracer/suspended (~2). Order ~30 round-trips collapse into the checkins that already happen.
+- Skipping the transient fork child's re-init (real Step 1) removes most of one nsid's init on
+  top of that.
+- Remaining and largely irreducible (Category C): the `mach_msg` service IPC (~10), some
+  reply-port churn/dealloc (~5 each), fork_wait/checkout/kqchan lifecycle (~4).
+
+So a plausible target is ~55 -> ~15-20 round-trips, i.e. the ~21ms Mach segment toward
+~6-8ms, a warm spawn from ~40ms toward ~25-28ms (~1.5x on top of the banked ~3.5x). Verify
+empirically with rpc-count.sh after each step; do not trust this estimate as a result.
 
 ## Correctness hazards
 
