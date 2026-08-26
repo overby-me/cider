@@ -123,9 +123,7 @@ pub unsafe fn create_thread_socket() -> c_int {
 /// Check in on a created thread's own socket.
 pub unsafe fn checkin_thread(fd: c_int, stack_hint: u64) -> i32 {
     match SOCKPATH.get() {
-        // A new thread shares the process's task/creds, so its cache seeds are already warm; #25's
-        // reply is only for the initial exec checkin (main.rs). Keep just the code here.
-        Some(p) => checkin(fd, &p.clone(), stack_hint).code,
+        Some(p) => checkin(fd, &p.clone(), stack_hint),
         None => -1,
     }
 }
@@ -169,16 +167,8 @@ struct RpcCallCheckin {
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
-struct ReplyCheckin {
-    task_self: u32,
-    uid: i32,
-    gid: i32,
-}
-#[repr(C)]
-#[derive(Clone, Copy)]
 struct RpcReplyCheckin {
     header: DserverRpcReplyhdr,
-    body: ReplyCheckin,
 }
 
 /// For a wire sanity check: must be 40 (16 header + 24 body with x86_64 padding).
@@ -317,23 +307,8 @@ fn make_server_addr(path: &str) -> (libc::sockaddr_un, libc::socklen_t) {
     (addr, len)
 }
 
-/// #11/#25: mldr checkin result -- the reply code plus the per-process init constants the daemon
-/// folds into the checkin reply (task-self port name, uid, gid), used to seed the guest caches.
-pub struct CheckinReply {
-    pub code: i32,
-    pub task_self: u32,
-    pub uid: i32,
-    pub gid: i32,
-}
-impl CheckinReply {
-    fn failed() -> Self {
-        Self { code: -1, task_self: 0, uid: -1, gid: -1 }
-    }
-}
-
-/// Send checkin and return the reply. is_fork=false, lifetime pipe -1. #11/#25: the reply also
-/// carries the task-self port name + uid/gid so the caller can seed the guest caches via apple[].
-pub unsafe fn checkin(fd: c_int, sockpath: &str, stack_hint: u64) -> CheckinReply {
+/// Send checkin and return the reply code (0 = ok). is_fork=false, lifetime pipe -1.
+pub unsafe fn checkin(fd: c_int, sockpath: &str, stack_hint: u64) -> i32 {
     let (server, slen) = make_server_addr(sockpath);
     let call = RpcCallCheckin {
         header: DserverRpcCallhdr {
@@ -362,7 +337,7 @@ pub unsafe fn checkin(fd: c_int, sockpath: &str, stack_hint: u64) -> CheckinRepl
     );
     if sent < 0 {
         eprintln!("[mldr] checkin sendto failed (errno {})", errno());
-        return CheckinReply::failed();
+        return -1;
     }
     let mut reply: RpcReplyCheckin = std::mem::zeroed();
     let got = libc::recv(
@@ -373,12 +348,7 @@ pub unsafe fn checkin(fd: c_int, sockpath: &str, stack_hint: u64) -> CheckinRepl
     );
     if got < 0 {
         eprintln!("[mldr] checkin recv failed (errno {})", errno());
-        return CheckinReply::failed();
+        return -1;
     }
-    CheckinReply {
-        code: reply.header.code,
-        task_self: reply.body.task_self,
-        uid: reply.body.uid,
-        gid: reply.body.gid,
-    }
+    reply.header.code
 }

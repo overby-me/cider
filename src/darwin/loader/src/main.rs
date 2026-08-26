@@ -249,11 +249,6 @@ fn main() {
             );
             let mut kernfd: c_int = -1;
             let mut vchroot_root: Option<String> = None;
-            // #11/#25: the checkin reply folds in this task's init constants; carry them to the
-            // start stack's apple[] so libsystem_kernel seeds its caches instead of re-RPCing.
-            let mut seed_task_self: u32 = 0;
-            let mut seed_uid: i32 = -1;
-            let mut seed_gid: i32 = -1;
             if let Some(ref sockpath) = special.sockpath {
                 let rpcfd = unsafe { rpc::create_socket(sockpath) };
                 if rpcfd >= 0 {
@@ -261,15 +256,9 @@ fn main() {
                     // stack_hint must be a real stack address (the C passes &dummy), not the
                     // commpage base -- the daemon uses it to locate the thread's stack.
                     let hint = 0u64;
-                    let checkin =
+                    let code =
                         unsafe { rpc::checkin(rpcfd, sockpath, &hint as *const u64 as u64) };
-                    dlog!(
-                        "[mldr] checkin({sockpath}) -> code={} task_self={:#x} uid={} gid={}",
-                        checkin.code, checkin.task_self, checkin.uid, checkin.gid
-                    );
-                    seed_task_self = checkin.task_self;
-                    seed_uid = checkin.uid;
-                    seed_gid = checkin.gid;
+                    dlog!("[mldr] checkin({sockpath}) -> code={code}");
                     rpc::set_sockpath(sockpath);
                     rpc::set_thread_socket(rpcfd);
                     vchroot_root = unsafe { rpc::vchroot_path(rpcfd) };
@@ -395,10 +384,6 @@ fn main() {
                     &guest_exe_path,
                     &guest_argv,
                     &envp,
-                    seed_task_self,
-                    seed_uid,
-                    seed_gid,
-                    vchroot_root.as_deref().unwrap_or(""),
                 )
             };
             let sp0 = unsafe { *(sp as *const u64) };

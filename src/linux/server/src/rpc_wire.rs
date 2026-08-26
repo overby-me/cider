@@ -122,16 +122,8 @@ pub struct RpcCallCheckin {
 }
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct ReplyCheckin {
-	pub task_self: u32,
-	pub uid: i32,
-	pub gid: i32,
-}
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
 pub struct RpcReplyCheckin {
 	pub header: DserverRpcReplyhdr,
-	pub body: ReplyCheckin,
 }
 
 #[repr(C)]
@@ -1992,7 +1984,7 @@ pub const EINVAL: i32 = -22;
 /// SCM_RIGHTS descriptors passed with the call.
 #[allow(unused_variables)]
 pub trait RpcHandler {
-	fn checkin(&mut self, call: &CallCheckin, fds: &[RawFd]) -> Result<ReplyCheckin, i32> { Err(ENOSYS) }
+	fn checkin(&mut self, call: &CallCheckin, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
 	fn checkout(&mut self, call: &CallCheckout, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
 	fn vchroot_path(&mut self, call: &CallVchrootPath, fds: &[RawFd]) -> Result<ReplyVchrootPath, i32> { Err(ENOSYS) }
 	fn kprintf(&mut self, call: &CallKprintf, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
@@ -2082,10 +2074,10 @@ pub fn dispatch<H: RpcHandler>(h: &mut H, msg: &Message) -> Option<Vec<u8>> {
 	fn enc<T>(v: &T) -> Vec<u8> { unsafe { std::slice::from_raw_parts(v as *const T as *const u8, size_of::<T>()) }.to_vec() }
 	match n & !callnum::UNMANAGED_FLAG {
 		1 => {
-			if msg.body().len() < size_of::<CallCheckin>() { return Some(enc(&RpcReplyCheckin { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			if msg.body().len() < size_of::<CallCheckin>() { return Some(enc(&RpcReplyCheckin { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
 			let call: CallCheckin = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
-			let (code, body) = match h.checkin(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
-			Some(enc(&RpcReplyCheckin { header: DserverRpcReplyhdr { number: n, code }, body }))
+			let code = match h.checkin(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyCheckin { header: DserverRpcReplyhdr { number: n, code } }))
 		}
 		2 => {
 			if msg.body().len() < size_of::<CallCheckout>() { return Some(enc(&RpcReplyCheckout { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
