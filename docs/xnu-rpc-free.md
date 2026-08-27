@@ -15,6 +15,21 @@ ciderd for XNU/Mach operations. One mechanism serves two ends:
 - Architecture: a guest that owns its own XNU state depends less on the daemon, which is a
   stated end-goal in its own right (an "xnu-rpc-free mode").
 
+> PERF CAVEAT (READ FIRST, added Pass 122). The RPC-count reduction below is NOT a proven
+> wall-time win, and prior evidence says it probably is not one. Task #25 was exactly the
+> checkin-reply fold (fold task_self/uid/gid/vchroot into checkin): it was implemented
+> (plan-aarch64.md Pass 99, boot RPC 236->224), extended (Pass 100, 236->219), then REVERTED
+> (Pass 102) because a wall-time A/B showed NO benefit and a small spawn-heavy REGRESSION
+> (~2.5ms/spawn slower, from the extra eager server work), despite the lower RPC count. The
+> lesson the passes repeat: "RPC count is a false proxy for wall-time." The fat checkin here
+> folds MORE and adds MORE eager checkin work, so it may regress the same way. The session's
+> warm-spawn decomposition attributes ~21ms to "Mach RPC" by SUBTRACTION (40ms - ~14ms host -
+> ~5ms dyld), which is an inference, not a direct measurement that RPC round-trip LATENCY is on
+> the critical path. Before building any of this for perf, PROTOTYPE a wall-time A/B (the fold
+> is no-regression-by-construction for correctness, so a prototype is safe). Treat this document
+> as the design for the xnu-rpc-free MODE (architecture / reduced daemon coupling); its perf
+> payoff is unproven and must be gated on wall-time, not RPC count.
+
 ## How guest Mach ops reach ciderd today
 
 Guest Mach traps are implemented client-side in libsystem_kernel:
