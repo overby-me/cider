@@ -37,8 +37,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include "duct_signals.h"
 #include <time.h>
 
-// #11 spawn-hot-path timing (CIDER_TIMING=1 -> stderr, monotonic sec.us). Splits the launcher's
-// [sent->started] phase into fork+atfork-reinit (child-post-fork minus pre-fork) vs pre-execv work.
+// #11 spawn-hot-path timing (CIDER_TIMING=1 -> stderr, monotonic sec.us).
 static void ts_mark(const char* label) {
 	static int on = -1;
 	if (on == -1) on = getenv("CIDER_TIMING") ? 1 : 0;
@@ -54,17 +53,14 @@ struct sigaction sigchld_oldaction;
 
 void setupSocket(void);
 void listenForConnections(void);
-void spawnShell(int fd);
 void setupSigchild(void);
-void restoreSigchild(void);
 void reapAll(void);
 
 int main(int argc, const char** argv)
 {
-	// shellspawn (daemon) --fork()--> shellspawn (child) --fork()--> exec /bin/bash
-	// in order to read the exit status of the shell process,
-	// we have to allow it to become a zombie, therefore we need to
-	// restore the sigaction of SIGCHLD of the child shellspawn
+	// #11 Pass 128: the daemon runs ONE central event loop and forks ONLY the target per
+	// connection (no per-connection handler fork, whose ~5ms atfork Mach re-init sat on the
+	// spawn hot path). SIGCHLD stays default so exited targets remain reapable via waitpid.
 	setupSigchild();
 	setupSocket();
 	listenForConnections();
@@ -106,366 +102,357 @@ void setupSocket(void)
 	}
 }
 
-void listenForConnections(void)
+// One kqueue multiplexes the server socket, each live spawn's control fd, and each target's
+// NOTE_EXIT. The daemon never blocks on a spawn's exit, so spawns stay concurrent.
+
+#define MAX_SPAWNS 8192
+struct spawn {
+	int fd;             // control socket to the launcher; -1 marks a free slot
+	pid_t pid;
+	int shellfd[3];     // launcher stdio (daemon's copies, closed when the target exits)
+};
+static struct spawn g_spawns[MAX_SPAWNS];
+
+static struct spawn* spawn_slot(void)
 {
-	int sock;
-	struct sockaddr_un addr;
-	socklen_t len = sizeof(addr);
-
-	while (true)
-	{
-		sock = accept(g_serverSocket, (struct sockaddr*) &addr, &len);
-		if (sock == -1)
-			break;
-
-		if (fork() == 0)
-		{
-			restoreSigchild();
-			fcntl(sock, F_SETFD, FD_CLOEXEC);
-			spawnShell(sock);
-			exit(EXIT_SUCCESS);
-		}
-		else
-		{
-			close(sock);
-		}
-	}
+	for (int i = 0; i < MAX_SPAWNS; i++)
+		if (g_spawns[i].fd == -1)
+			return &g_spawns[i];
+	return NULL;
 }
 
-void spawnShell(int fd)
+// Per-process setup a connection requests, applied in the target CHILD (was the handler's job).
+#define MAX_ENVS 1024
+struct spawn_cfg {
+	char** argv;
+	char* alloc_exec;
+	int shellfd[3];
+	char* envs[MAX_ENVS];
+	int n_envs;
+	char* chdir_path;
+	int uid, gid;       // -1 = unchanged
+};
+
+// Read the command stream up to GO into cfg. Returns 0 on GO (cfg->shellfd valid), -1 on error.
+static int read_commands(int fd, struct spawn_cfg* cfg)
 {
-	pid_t shell_pid = -1;
-	int shellfd[3] = { -1, -1, -1 };
-	int pipefd[2];
-	int rv;
-	struct pollfd pfd[2];
-	char** argv = NULL;
+	memset(cfg, 0, sizeof(*cfg));
+	cfg->uid = -1;
+	cfg->gid = -1;
+	cfg->argv = (char**) malloc(sizeof(char*) * 3);
+	cfg->argv[0] = strdup("/bin/bash");
+	cfg->argv[1] = strdup("--login");
 	int argc = 2;
-	struct msghdr msg;
-	struct iovec iov;
-	char cmsgbuf[CMSG_SPACE(sizeof(int)) * 3];
-	int kq;
+	bool go = false;
 
-	bool read_cmds = true;
-
-	argv = (char**) malloc(sizeof(char*) * 3);
-	argv[0] = "/bin/bash";
-	argv[1] = "--login";
-
-	char* alloc_exec = NULL;
-
-	// Read commands from client
-	while (read_cmds)
+	while (!go)
 	{
 		struct shellspawn_cmd cmd;
 		char* param = NULL;
+		struct msghdr msg;
+		struct iovec iov;
+		char cmsgbuf[CMSG_SPACE(sizeof(int)) * 3];
 
 		memset(&msg, 0, sizeof(msg));
 		msg.msg_control = cmsgbuf;
 		msg.msg_controllen = sizeof(cmsgbuf);
-
 		iov.iov_base = &cmd;
 		iov.iov_len = sizeof(cmd);
 		msg.msg_iov = &iov;
 		msg.msg_iovlen = 1;
 
 		if (recvmsg(fd, &msg, 0) != sizeof(cmd))
-		{
-			if (DBG) puts("bad recvmsg");
-			goto err;
-		}
+			return -1;
 
 		if (cmd.data_length != 0)
 		{
 			param = (char*) malloc(cmd.data_length + 1);
 			if (read(fd, param, cmd.data_length) != cmd.data_length)
-				goto err;
+				return -1;
 			param[cmd.data_length] = '\0';
 		}
 
 		switch (cmd.cmd)
 		{
 			case SHELLSPAWN_ADDARG:
-			{
 				if (param != NULL)
 				{
-					argv = (char**) realloc(argv, sizeof(char*) * (argc + 1));
-					argv[argc] = param;
-					if (DBG) printf("add arg: %s\n", param);
-					argc++;
+					cfg->argv = (char**) realloc(cfg->argv, sizeof(char*) * (argc + 1));
+					cfg->argv[argc++] = param;
 				}
 				break;
-			}
 			case SHELLSPAWN_SETENV:
-			{
-				if (param != NULL)
-				{
-					if (DBG) printf("set env: %s\n", param);
-					putenv(param);
-				}
+				// Deferred to the child (putenv in the daemon would leak into every spawn).
+				if (param != NULL && cfg->n_envs < MAX_ENVS)
+					cfg->envs[cfg->n_envs++] = param;
 				break;
-			}
 			case SHELLSPAWN_CHDIR:
-			{
 				if (param != NULL)
+					cfg->chdir_path = param;
+				break;
+			case SHELLSPAWN_SETUIDGID:
+				if (param != NULL && cmd.data_length >= 2 * sizeof(int))
 				{
-					if (DBG) printf("chdir: %s\n", param);
-					chdir(param);
-					free(param);
+					int* ids = (int*) param;
+					cfg->uid = ids[0];
+					cfg->gid = ids[1];
 				}
 				break;
-			}
+			case SHELLSPAWN_SETEXEC:
+				for (int i = 0; i < argc; i++)
+					free(cfg->argv[i]);
+				argc = 0;
+				cfg->argv = (char**) realloc(cfg->argv, sizeof(char*));
+				cfg->alloc_exec = param;
+				break;
 			case SHELLSPAWN_GO:
 			{
-				struct cmsghdr *cmptr = CMSG_FIRSTHDR(&msg);
-
-				if (cmptr == NULL)
-				{
-					if (DBG) puts("bad cmptr");
-					goto err;
-				}
-				if (cmptr->cmsg_level != SOL_SOCKET
-						|| cmptr->cmsg_type != SCM_RIGHTS)
-				{
-					if (DBG) puts("bad cmsg level/type");
-					goto err;
-				}
-				if (cmptr->cmsg_len != CMSG_LEN(sizeof(int) * 3))
-				{
-					if (DBG) printf("bad cmsg_len: %d\n", cmptr->cmsg_len);
-					goto err;
-				}
-
-				memcpy(shellfd, CMSG_DATA(cmptr), sizeof(int) * 3);
-
-				if (DBG) printf("go, fds={ %d, %d, %d }\n", shellfd[0], shellfd[1], shellfd[2]);
-				free(param);
-				read_cmds = false;
-				break;
-			}
-			case SHELLSPAWN_SETUIDGID:
-			{
-				int* ids = (int*) param;
-				if (cmd.data_length < 2*sizeof(int))
+				struct cmsghdr* c = CMSG_FIRSTHDR(&msg);
+				if (c == NULL || c->cmsg_level != SOL_SOCKET || c->cmsg_type != SCM_RIGHTS
+						|| c->cmsg_len != CMSG_LEN(sizeof(int) * 3))
 				{
 					free(param);
-					break;
+					return -1;
 				}
-
-				setuid(ids[0]);
-				setgid(ids[1]);
+				memcpy(cfg->shellfd, CMSG_DATA(c), sizeof(int) * 3);
 				free(param);
-
+				go = true;
 				break;
 			}
-			case SHELLSPAWN_SETEXEC:
-			{
-				argc = 0;
-				argv = realloc(argv, 0);
-				alloc_exec = param;
-				if (DBG) printf("setexec: %s\n", param);
+			default:
+				free(param);
 				break;
-			}
 		}
 	}
 
-	// Add terminating NULL
-	argv = (char**) realloc(argv, sizeof(char*) * (argc + 1));
-	argv[argc] = NULL;
+	cfg->argv = (char**) realloc(cfg->argv, sizeof(char*) * (argc + 1));
+	cfg->argv[argc] = NULL;
+	return 0;
+}
 
+// Free the malloc'd cfg after the child has forked (the child has its own COW copies).
+static void free_cfg(struct spawn_cfg* cfg)
+{
+	if (cfg->argv)
+	{
+		for (int i = 0; cfg->argv[i] != NULL; i++)
+			free(cfg->argv[i]);
+		free(cfg->argv);
+	}
+	free(cfg->alloc_exec);
+	for (int i = 0; i < cfg->n_envs; i++)
+		free(cfg->envs[i]);
+	free(cfg->chdir_path);
+}
+
+static void finish_spawn(int kq, struct spawn* s);
+
+// Accept-time: read commands, fork the target (which applies env/uid/cwd/session/stdio/ctty then
+// execs), report "started", and register the spawn in kq. Non-blocking for the daemon apart from
+// the short exec-check read (the child execs in ~ms).
+static void start_spawn(int kq, int fd)
+{
+	fcntl(fd, F_SETFD, FD_CLOEXEC);
+
+	struct spawn_cfg cfg;
+	if (read_commands(fd, &cfg) != 0)
+	{
+		free_cfg(&cfg);
+		close(fd);
+		return;
+	}
+
+	int pipefd[2];
 	if (pipe(pipefd) == -1)
-		goto err;
-
-	setsid();
-	setpgrp();
-
-	close(STDIN_FILENO);
-	close(STDOUT_FILENO);
-	close(STDERR_FILENO);
-
-	dup2(shellfd[0], STDIN_FILENO);
-	dup2(shellfd[1], STDOUT_FILENO);
-	dup2(shellfd[2], STDERR_FILENO);
-
-	ioctl(STDIN_FILENO, TIOCSCTTY, STDIN_FILENO);
+	{
+		free_cfg(&cfg);
+		close(fd);
+		return;
+	}
 
 	ts_mark("pre-fork");
-	shell_pid = fork();
-	if (shell_pid == 0)
+	pid_t pid = fork();
+	if (pid == 0)
 	{
-		ts_mark("child-post-fork");
-		close(fd);
-
+		// target child: everything the old per-connection handler did in its own process
+		close(pipefd[0]);
+		if (cfg.chdir_path)
+			chdir(cfg.chdir_path);
+		for (int i = 0; i < cfg.n_envs; i++)
+			putenv(cfg.envs[i]);
+		if (cfg.gid != -1)
+			setgid(cfg.gid);
+		if (cfg.uid != -1)
+			setuid(cfg.uid);
+		setsid();
+		setpgrp();
+		dup2(cfg.shellfd[0], STDIN_FILENO);
+		dup2(cfg.shellfd[1], STDOUT_FILENO);
+		dup2(cfg.shellfd[2], STDERR_FILENO);
+		ioctl(STDIN_FILENO, TIOCSCTTY, STDIN_FILENO);
 		fcntl(pipefd[1], F_SETFD, FD_CLOEXEC);
-
-		// In future, we may support spawning something else than Bash
-		// and check the provided shell against /etc/shells
-		ts_mark("child-pre-execv");
-		execv(alloc_exec ? alloc_exec : "/bin/bash", argv);
-
-		rv = errno;
-		write(pipefd[1], &rv, sizeof(rv));
-		close(pipefd[1]);
-
-		exit(EXIT_FAILURE);
+		execv(cfg.alloc_exec ? cfg.alloc_exec : "/bin/bash", cfg.argv);
+		// exec failed: signal the parent with one byte, then _exit
+		write(pipefd[1], "x", 1);
+		_exit(127);
 	}
 
-	if (alloc_exec)
-	{
-		free(alloc_exec);
-		alloc_exec = NULL;
-	}
-
-	// Check that exec succeeded
-	close(pipefd[1]); // close the write end
-	if (read(pipefd[0], &rv, sizeof(rv)) == sizeof(rv))
-	{
-		errno = rv;
-		goto err;
-	}
+	close(pipefd[1]);
+	// exec check: one byte from the child means execv failed (EOF via CLOEXEC means success)
+	char c;
+	ssize_t n = (pid < 0) ? -1 : read(pipefd[0], &c, 1);
 	close(pipefd[0]);
+	free_cfg(&cfg);
 
-	// Tell the launcher the shell has started, so it can stop applying its startup
-	// watchdog. Without this, a stalled fork/exec under heavy host contention would
-	// hang the launcher forever (it waits below for the exit status). Sent once,
-	// before we block waiting for the shell to exit.
+	if (pid < 0 || n == 1)
 	{
-		unsigned char started = 1;
-		if (write(fd, &started, 1) != 1)
-			goto err;
+		if (pid > 0)
+		{
+			kill(pid, SIGKILL);
+			waitpid(pid, NULL, 0);
+		}
+		for (int i = 0; i < 3; i++)
+			if (cfg.shellfd[i] != -1)
+				close(cfg.shellfd[i]);
+		close(fd);
+		return;
 	}
 
-	// Now we start passing signals
-	// and check for child process exit
-
-	kq = kqueue();
-
+	// Tell the launcher the target started (so it drops its startup watchdog).
+	unsigned char started = 1;
+	if (write(fd, &started, 1) != 1)
 	{
-		struct kevent changes[2];
-		EV_SET(&changes[0], fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-		EV_SET(&changes[1], shell_pid, EVFILT_PROC, EV_ADD | EV_ENABLE, NOTE_EXIT, 0, NULL);
-
-		if (kevent(kq, changes, 2, NULL, 0, NULL) == -1)
-			goto err;
+		kill(pid, SIGKILL);
+		waitpid(pid, NULL, 0);
+		for (int i = 0; i < 3; i++)
+			if (cfg.shellfd[i] != -1)
+				close(cfg.shellfd[i]);
+		close(fd);
+		return;
 	}
+
+	struct spawn* s = spawn_slot();
+	if (s == NULL)
+	{
+		kill(pid, SIGKILL);
+		waitpid(pid, NULL, 0);
+		close(fd);
+		return;
+	}
+	s->fd = fd;
+	s->pid = pid;
+	for (int i = 0; i < 3; i++)
+		s->shellfd[i] = cfg.shellfd[i];
+
+	struct kevent ch;
+	EV_SET(&ch, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, s);
+	kevent(kq, &ch, 1, NULL, 0, NULL);
+
+	// Registered separately so its ESRCH (target already gone) surfaces as kevent()==-1 with
+	// nevents=0; without this an instant-exit target would never deliver NOTE_EXIT and hang.
+	EV_SET(&ch, pid, EVFILT_PROC, EV_ADD | EV_ENABLE, NOTE_EXIT, 0, s);
+	if (kevent(kq, &ch, 1, NULL, 0, NULL) == -1)
+		finish_spawn(kq, s);
+}
+
+// Control fd readable: a SIGNAL cmd to forward to the target, or EOF (launcher gone -> kill).
+static void handle_control(struct spawn* s)
+{
+	struct shellspawn_cmd cmd;
+	if (read(s->fd, &cmd, sizeof(cmd)) != sizeof(cmd))
+	{
+		kill(s->pid, SIGKILL); // NOTE_EXIT will finish the teardown
+		return;
+	}
+	if (cmd.cmd == SHELLSPAWN_SIGNAL && cmd.data_length == sizeof(int))
+	{
+		int linux_signal;
+		if (read(s->fd, &linux_signal, sizeof(int)) != sizeof(int))
+			return;
+		int darwin_signal = signum_linux_to_bsd(linux_signal);
+		if (darwin_signal != 0)
+		{
+			int fg_pid = tcgetpgrp(s->shellfd[0]);
+			if (fg_pid != -1)
+				kill(fg_pid, darwin_signal);
+			else
+				kill(-s->pid, darwin_signal);
+		}
+	}
+}
+
+// Target exited: send its exit code back as the launcher's final wire message, then tear down.
+static void finish_spawn(int kq, struct spawn* s)
+{
+	int wstatus = 0;
+	if (waitpid(s->pid, &wstatus, 0) != s->pid)
+		wstatus = 0;
+	int code = WEXITSTATUS(wstatus);
+	write(s->fd, &code, sizeof(int));
+
+	// EVFILT_PROC self-clears on NOTE_EXIT; remove the control-fd filter explicitly.
+	struct kevent ch;
+	EV_SET(&ch, s->fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+	kevent(kq, &ch, 1, NULL, 0, NULL);
+
+	close(s->fd);
+	for (int i = 0; i < 3; i++)
+		if (s->shellfd[i] != -1)
+			close(s->shellfd[i]);
+	s->fd = -1;
+}
+
+void listenForConnections(void)
+{
+	for (int i = 0; i < MAX_SPAWNS; i++)
+		g_spawns[i].fd = -1;
+
+	int kq = kqueue();
+	fcntl(kq, F_SETFD, FD_CLOEXEC);
+
+	struct kevent ch;
+	EV_SET(&ch, g_serverSocket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+	kevent(kq, &ch, 1, NULL, 0, NULL);
 
 	while (true)
 	{
 		struct kevent ev;
-
-		if (kevent(kq, NULL, 0, &ev, 1, NULL) <= 0)
+		int n = kevent(kq, NULL, 0, &ev, 1, NULL);
+		if (n <= 0)
 		{
-			if (errno == EINTR) {
-				if (DBG) puts("kevent call interrupted; continuing...");
+			if (errno == EINTR)
 				continue;
-			}
-			if (DBG) puts("kevent fail");
-			goto err;
+			break;
 		}
 
-		if (ev.filter == EVFILT_PROC && (ev.fflags & NOTE_EXIT))
+		if (ev.udata == NULL && ev.filter == EVFILT_READ)
 		{
-			if (DBG) puts("subprocess exit");
-			break;
+			// server socket: accept + start a new spawn
+			struct sockaddr_un addr;
+			socklen_t len = sizeof(addr);
+			int sock = accept(g_serverSocket, (struct sockaddr*) &addr, &len);
+			if (sock != -1)
+				start_spawn(kq, sock);
+		}
+		else if (ev.filter == EVFILT_PROC && (ev.fflags & NOTE_EXIT))
+		{
+			finish_spawn(kq, (struct spawn*) ev.udata);
 		}
 		else if (ev.filter == EVFILT_READ)
 		{
-			struct shellspawn_cmd cmd;
-
-			if (read(fd, &cmd, sizeof(cmd)) != sizeof(cmd))
-			{
-				if (DBG) puts("Cannot read cmd");
-				break;
-			}
-
-			switch (cmd.cmd)
-			{
-				case SHELLSPAWN_SIGNAL:
-				{
-					int linux_signal, darwin_signal;
-
-					if (cmd.data_length != sizeof(int))
-						goto err;
-
-					if (read(fd, &linux_signal, sizeof(int)) != sizeof(int))
-						goto err;
-
-					// Convert Linux signal number to Darwin signal number
-					darwin_signal = signum_linux_to_bsd(linux_signal);
-					if (DBG) printf("rcvd signal %d -> %d\n", linux_signal, darwin_signal);
-
-					if (darwin_signal != 0)
-					{
-						int fg_pid = tcgetpgrp(shellfd[0]);
-						if (fg_pid != -1)
-						{
-							if (DBG) printf("fg_pid = %d\n", fg_pid);
-							kill(fg_pid, darwin_signal);
-						}
-						else
-							kill(-shell_pid, darwin_signal);
-					}
-
-					break;
-				}
-				default:
-					goto err;
-			}
+			handle_control((struct spawn*) ev.udata);
 		}
 	}
-
-	// Kill the child process in case it's still running
-	kill(shell_pid, SIGKILL);
-
-	// Close shell fds
-	for (int i = 0; i < 3; i++)
-	{
-		if (shellfd[i] != -1)
-			close(shellfd[0]);
-	}
-
-	// Reap the child
-	int wstatus;
-	if (waitpid(shell_pid, &wstatus, 0) != shell_pid)
-		perror("waitpid");
-	wstatus = WEXITSTATUS(wstatus);
-	
-	// Report exit code back to the client
-	write(fd, &wstatus, sizeof(int));
-
-	if (DBG) printf("Shell terminated with exit code %d\n", wstatus);
-	close(fd);
-
-	reapAll();
-	return;
-err:
-	if (DBG) fprintf(stderr, "Error spawning shell: %s\n", strerror(errno));
-
-	for (int i = 0; i < 3; i++)
-	{
-		if (shellfd[i] != -1)
-			close(shellfd[0]);
-	}
-
-	if (shell_pid != -1)
-		kill(shell_pid, SIGKILL);
-
-	close(fd);
-	reapAll();
 }
 
 void setupSigchild(void)
 {
+	// Default SIGCHLD (no SA_NOCLDWAIT): exited targets stay reapable via waitpid in finish_spawn.
 	struct sigaction sigchld_action = {
 		.sa_handler = SIG_DFL,
-		.sa_flags = SA_NOCLDWAIT
+		.sa_flags = 0
 	};
 	sigaction(SIGCHLD, &sigchld_action, &sigchld_oldaction);
-}
-
-void restoreSigchild(void)
-{
-	sigaction(SIGCHLD, &sigchld_oldaction, NULL);
 }
 
 void reapAll(void)
