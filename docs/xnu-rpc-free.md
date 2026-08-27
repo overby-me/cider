@@ -29,6 +29,16 @@ ciderd for XNU/Mach operations. One mechanism serves two ends:
 > is no-regression-by-construction for correctness, so a prototype is safe). Treat this document
 > as the design for the xnu-rpc-free MODE (architecture / reduced daemon coupling); its perf
 > payoff is unproven and must be gated on wall-time, not RPC count.
+>
+> RESOLVED (Pass 123): #25 was resurrected and measured in the warm regime with a clean
+> same-base 3-run A/B (result-xnu25 vs a full-closure no-#25 baseline). Result: WITHIN NOISE
+> and NO reliable win -- warm `cider exec` median across runs went #25 -6.1ms / +3.9ms / +5.6ms
+> vs baseline (sign flips; the ~4-6ms effect is smaller than the ~13ms run-to-run median swing).
+> A single run (and the confounded preliminary) looked like a ~4ms win but did not survive
+> re-runs. So the checkin-fold / RPC-count reduction does NOT improve wall-time even in the warm
+> persistent-container regime. #25 is parked on bookmark xnu25-warm-ab, not merged. The warm
+> residual is guest-side image-load/mldr, not the Mach round-trips. Perf ceiling stays the
+> launcher arc (~3.5x).
 
 ## How guest Mach ops reach ciderd today
 
