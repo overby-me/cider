@@ -132,15 +132,20 @@ result and exit codes are preserved, over 50x sequential plus a parallel batch.
      its reply carries the old ids, rarely needed at spawn), `set_thread_handles` (#8,
      pthread_handle + dispatch_qaddr), `vchroot` (#3, a dir fd sent via SCM_RIGHTS, which
      checkin can also carry).
-   - GETTERS (ciderd -> guest constants), fold into the checkin REPLY. BIGGEST WIN: the initial
-     Mach ports that `mach_init_doit` (mach_init.c:192-193) currently fetches with SEPARATE traps,
-     `task_self_trap` (#33), `host_self_trap` (#34), `thread_self_trap` (#35, main thread), and
-     the initial `mach_reply_port` (#36). ciderd ASSIGNS these port names at checkin, so it can
-     return them in the checkin reply and `mach_init_doit` reads them instead of round-tripping.
-     These self-port traps are the largest reducible category in the ~55 (roughly 20 round-trips
-     across both nsids). Also fold: `get_tracer` (#6, tracer_nsid), `started_suspended` (#5, a
-     bool), `mldr_path` (#10, a path string plus vchroot_len; needs a fixed-max buffer field).
-   Collapses the bulk of a per-image init (self-ports + setup constants) into the single checkin. CAVEAT: this is a reorder, so
+   - GETTERS (ciderd -> guest constants), fold into the checkin REPLY. `mach_init_doit`
+     (mach_init.c:192-193) fetches `task_self_trap` (#33) and `mach_reply_port` (#36) once per
+     init; ciderd ASSIGNS both at checkin, so return them in the checkin reply and read them there
+     instead of round-tripping. This is exactly what task #25 folded for task_self. CAUTION
+     (from prior work, plan-aarch64.md Pass 97/99): `host_self_trap` (#34) and `thread_self_trap`
+     (#35) are NOT foldable, their Mach add-ref/deallocate semantics make a cached name
+     over-release a send right and HANG the guest. So the SAFE fold set is
+     {task_self, reply_port, uid, gid, vchroot} -- exactly the #25 set -- NOT the broader
+     self-port set. Also fold the trivially-constant getters: `get_tracer` (#6), `started_
+     suspended` (#5), `mldr_path` (#10, needs a buffer field).
+   Collapses the #25 per-image init set into the single checkin. NOTE this is literally task #25,
+   which was implemented then reverted as a boot-regime wall-time non-win; the open question is
+   whether it wins in the NEW warm persistent-container regime (dyld only ~5ms there), which must
+   be settled by a warm-regime wall-time A/B, not by RPC count. CAVEAT: this is a reorder, so
    each value must be AVAILABLE at checkin time. `set_thread_handles` in particular is set during
    pthread init, which may run after checkin; if so it cannot fold without moving checkin later
    or splitting the set. Verify the guest init order (the libSystem_initializer sequence) before
@@ -188,6 +193,28 @@ Rough, to size priority, not a promise. Of the ~55 round-trips/spawn:
 So a plausible target is ~55 -> ~15-20 round-trips, i.e. the ~21ms Mach segment toward
 ~6-8ms, a warm spawn from ~40ms toward ~25-28ms (~1.5x on top of the banked ~3.5x). Verify
 empirically with rpc-count.sh after each step; do not trust this estimate as a result.
+
+## Honest scope assessment (what an xnu-rpc-free mode can and cannot be)
+
+Separating the two goals the user named (perf, and the mode itself):
+
+- As a PERF lever: likely a dead end (see the caveat above). Prior work already ran the
+  wall-time A/B and reverted the RPC fold; per-RPC cost is regime-independent, so that null
+  result transfers to the warm regime. Do not invest build time here without a wall-time
+  prototype first. The banked perf win is the launcher arc (~3.5x); the warm-spawn residual is
+  most likely image-load / mldr, which is the separately-blocked dyld-shared-cache problem.
+- As an ARCHITECTURE goal (reduced daemon coupling): partially achievable, with a HARD FLOOR.
+  Category B (self-directed ops: self-ports, reply ports, own-space port ops) CAN move in-guest,
+  extending the existing self-VM precedent. Category C (cross-process Mach IPC: mach_msg to
+  bootstrap/launchd/other tasks, task_for_pid, right transfer, the fork/checkin/checkout
+  lifecycle) fundamentally needs a coordinator, so it CANNOT be rpc-free for a multi-process
+  guest. A FULLY xnu-rpc-free process is therefore only possible for one that does no
+  cross-process Mach IPC (uncommon: even a trivial launchd-less shell touches bootstrap). So the
+  realistic mode is "xnu-rpc-REDUCED": self-ops local, cross-process IPC still via ciderd.
+
+Recommendation: pursue the mode for its architecture value (a guest that leans less on the
+daemon for self-ops) if that is wanted for its own sake, but do NOT justify it on perf, and
+size it against the Category C floor. Gate any perf claim on a wall-time A/B, never RPC count.
 
 ## Correctness hazards
 
