@@ -93,6 +93,19 @@ self-VM to self-ports and self-IPC, and cut the number of per-spawn inits.
 Two guest nsids participate: the transient shellspawn fork-child and the exec'd image, each
 running a near-full init sequence. That doubling is a big part of the count.
 
+POST-COLLAPSE UPDATE (Pass 128/129, after the shellspawn double-fork collapse landed). The
+per-spawn count is now ~43 answered RPCs (was ~55), and only ONE guest nsid does the target
+init per spawn (plus the persistent shellspawn daemon's own management calls); the extra
+per-connection handler nsid and its ~12-RPC handshake are gone. Measured histogram for one
+warm `cider exec true` (DSERVER_TRACE_CALLS): mach_msg_overwrite 7, mach_reply_port 6,
+mach_port_deallocate 4, uidgid 4, task_self_trap 3, thread_self_trap 3, host_self_trap 3,
+vchroot_path 3, checkin 2, set_thread_handles 2, then fork_wait_for_child / mldr_path /
+checkout / kqchan_proc_open / started_suspended / get_tracer (1 each). The largest remaining
+Category-B (in-guest-able) target is still reply_port (6) + its dealloc (4) ~= 10 RPCs (Step 4).
+NOTE this reduction did NOT come from folding round-trips (proven perf-null, Pass 123); it came
+from doing LESS work (one fewer forked guest process), which is also why it moved wall-time
+(~13%) where the fold did not.
+
 ## Categorization
 
 - A. Redundant re-init (cut the NUMBER of inits). shellspawn spawns with `fork()`
