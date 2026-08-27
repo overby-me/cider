@@ -35,6 +35,17 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 #include <signal.h>
 #include "shellspawn.h"
 #include "duct_signals.h"
+#include <time.h>
+
+// #11 spawn-hot-path timing (CIDER_TIMING=1 -> stderr, monotonic sec.us). Splits the launcher's
+// [sent->started] phase into fork+atfork-reinit (child-post-fork minus pre-fork) vs pre-execv work.
+static void ts_mark(const char* label) {
+	static int on = -1;
+	if (on == -1) on = getenv("CIDER_TIMING") ? 1 : 0;
+	if (!on) return;
+	struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t);
+	fprintf(stderr, "shellspawn-timing %s %lld.%06ld\n", label, (long long)t.tv_sec, t.tv_nsec/1000);
+}
 
 #define DBG 0
 
@@ -278,15 +289,18 @@ void spawnShell(int fd)
 
 	ioctl(STDIN_FILENO, TIOCSCTTY, STDIN_FILENO);
 
+	ts_mark("pre-fork");
 	shell_pid = fork();
 	if (shell_pid == 0)
 	{
+		ts_mark("child-post-fork");
 		close(fd);
 
 		fcntl(pipefd[1], F_SETFD, FD_CLOEXEC);
 
 		// In future, we may support spawning something else than Bash
 		// and check the provided shell against /etc/shells
+		ts_mark("child-pre-execv");
 		execv(alloc_exec ? alloc_exec : "/bin/bash", argv);
 
 		rv = errno;
