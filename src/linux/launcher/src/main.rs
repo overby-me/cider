@@ -61,6 +61,7 @@ fn main() {
         std::process::exit(1);
     }
 
+    timing_mark("start");
     // Persistent-container fast path: before creating our own userns, try to JOIN a live
     // container from this (parent) userns. A fresh unshare lands in a sibling userns that
     // cannot join the container's namespaces, forcing a ~20ms ciderd rebuild every spawn.
@@ -188,6 +189,7 @@ fn main() {
     // Join the container mnt ns so we can connect to the overlay-resident socket
     // (cider.c:285-287, the Linux 4.11 / overlayfs socket hack).
     join_namespace(pid_init, libc::CLONE_NEWNS, "mnt");
+    timing_mark("joined");
 
     // Drop euid (cider.c:289; no-op rootless).
     unsafe { libc::seteuid(ctx.orig_uid) };
@@ -698,6 +700,23 @@ fn do_shutdown(pid_init: i32) {
 
 // ==================== shellspawn client (cider.c:360-916) ====================
 
+/// Phase timing for the spawn hot path, stderr, gated by CIDER_TIMING. Monotonic ms since the
+/// first mark this process, to decompose join -> connect -> send -> guest-started -> exit.
+fn timing_mark(label: &str) {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static T0: AtomicU64 = AtomicU64::new(0);
+    if std::env::var_os("CIDER_TIMING").is_none() {
+        return;
+    }
+    let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts) };
+    let now = ts.tv_sec as u64 * 1_000_000_000 + ts.tv_nsec as u64;
+    match T0.compare_exchange(0, now, Ordering::Relaxed, Ordering::Relaxed) {
+        Ok(_) => eprintln!("cider-timing {label} +0.000ms"),
+        Err(base) => eprintln!("cider-timing {label} +{:.3}ms", (now - base) as f64 / 1e6),
+    }
+}
+
 fn spawn_shell(ctx: &Ctx, args: &[String]) -> ! {
     let sockfd = connect_shellspawn(ctx);
     setup_shellspawn_env(sockfd);
@@ -721,6 +740,7 @@ fn spawn_shell(ctx: &Ctx, args: &[String]) -> ! {
 
 fn spawn_binary(ctx: &Ctx, binary: &str, args: &[String]) -> ! {
     let sockfd = connect_shellspawn(ctx);
+    timing_mark("connected");
     setup_shellspawn_env(sockfd);
     push_cmd(sockfd, SHELLSPAWN_SETEXEC, binary.as_bytes());
     for a in args {
@@ -731,6 +751,7 @@ fn spawn_binary(ctx: &Ctx, binary: &str, args: &[String]) -> ! {
     let (fds, master) = setup_fds();
     install_signal_forwarding(sockfd, master);
     spawn_go(sockfd, &fds);
+    timing_mark("sent");
     shell_loop(ctx, sockfd, master)
 }
 
@@ -932,12 +953,14 @@ fn shell_loop(ctx: &Ctx, sockfd: c_int, master: c_int) -> ! {
                 let rn = unsafe { libc::read(sockfd, b.as_mut_ptr() as *mut c_void, 1) };
                 if rn == 1 {
                     started = true;
+                    timing_mark("started");
                 } else {
                     exit_clean(1); // EOF before the started marker
                 }
             } else {
                 let mut st = [0u8; 4];
                 if read_full(sockfd, &mut st) == 4 {
+                    timing_mark("exit");
                     exit_clean(i32::from_le_bytes(st));
                 }
                 exit_clean(1);

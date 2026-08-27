@@ -2747,3 +2747,13 @@ VERDICT: #25 has NO reliable effect on warm wall-time -- it is WITHIN MEASUREMEN
 BUILD-TIMEOUT LESSON: the first baseline build was KILLED by my own watchdog's 3h (10800s) time cap (rc=137) while healthy and progressing (memory fine, ~11Gi). Bumped to 6h and restarted (resumed from the cached completed derivations; the memory-kill threshold avail<2Gi never triggered, memory stayed ~10Gi). Lesson: size the build timeout for a full-closure rebuild (many hours); rely on the MEMORY watchdog, not a time cap, for OOM safety.
 
 METHOD: a SINGLE warm A/B run is misleading here (~5ms median run-to-run noise); a ~4ms effect needs 3+ runs / large N to separate from noise, and #25 does not survive that. Always gate on wall-time WITH enough samples.
+
+**Pass 124 (task #11: DIRECTLY profiled the warm spawn -- bottleneck is the shellspawn transient fork+exec transition (~14ms, ~55% of the spawn), NOT the host launcher or dyld).** Stopped inferring the warm residual and MEASURED it: added CIDER_TIMING phase marks to the launcher (start/joined/connected/sent/started/exit; gated by the env var, no-op otherwise; nix build .#launcher = seconds). Warm `cider exec true` decomposition (repeated, representative):
+- start -> joined ~1ms (setns userns + mnt join)
+- joined -> connected ~0.1ms (shellspawn socket connect)
+- connected -> sent ~0.5ms (env + SETEXEC + args + GO)
+- sent -> started ~14ms (shellspawn receives GO -> fork() -> the child runs the FULL libSystem atfork Mach re-init -> execv(mldr) succeeds) <- DOMINANT
+- started -> exit ~8ms (guest runs: mldr load + dyld ~5ms + program + teardown)
+So the host launcher is only ~2ms and the post-exec guest run is ~8ms; the DOMINANT ~14ms is the shellspawn fork+exec transition. shellspawn.c does fork() (shellspawn.c:281) + execv() (:290); the forked child runs libSystem's atfork child path (_mach_fork_child -> mach_init -> a full guest-process Mach registration with ciderd, order ~55 RPCs / a task+thread+ipc creation) and then execv IMMEDIATELY DISCARDS it (mldr re-inits after exec anyway).
+
+RECONCILES Pass 123: the checkin FOLD trimmed only ~4 of the ~55 transient-init RPCs (~1ms, below the ~5ms noise -> no detectable win). ELIMINATING the whole transient fork re-init is ~14ms -- a different magnitude, and the real lever. LEVER: make shellspawn not pay a full guest-process Mach init that exec throws away, e.g. vfork()+execv (vfork runs no atfork handlers) or a dedicated fork-for-exec that skips _mach_fork_child. shellspawn is ONE C file (bounded build). Expected: warm spawn ~24ms -> ~12ms. CIDER_TIMING instrumentation committed (reusable). Next: instrument shellspawn to split fork/atfork-reinit vs execv, then try the fork->vfork (or skip-reinit) change and measure [sent->started].
