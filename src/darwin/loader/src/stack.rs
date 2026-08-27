@@ -59,6 +59,13 @@ pub unsafe fn setup_stack(
     exe_path: &str,
     argv: &[String],
     envp: &[String],
+    // #11/#25: per-process init constants from the checkin reply, seeded into libsystem_kernel via
+    // apple[]. Sentinels task_self==0 / uid<0 mean "unknown" (checkin failed) -> guest RPCs as before.
+    seed_task_self: u32,
+    seed_uid: i32,
+    seed_gid: i32,
+    // #11/#25 v2: vchroot prefix from mldr's own vchroot_path fetch; empty = unknown -> guest RPCs.
+    seed_vchroot: &str,
 ) -> u64 {
     let size = stack_size();
     let base = stack_top - size;
@@ -108,6 +115,12 @@ pub unsafe fn setup_stack(
         // What distinguishes the two is the stacksize the probe reports: 0x10000 when this
         // parses, and 8388608 (the DFLSSIZ the sysctl fallback hardcodes) when it does not.
         format!("main_stack=0x{stack_top:x},0x{size:x},0x{base:x},0x{size:x}"),
+        // #11/#25: seed the guest's per-process init caches (parsed in mach_driver_init). All hex so
+        // the guest reuses __simple_atoi16; task_self=0 / uid=ffffffff (-1) mean "unknown" -> RPC.
+        format!("dserver_task_self={seed_task_self:x}"),
+        format!("dserver_uid={:x}", seed_uid as u32),
+        format!("dserver_gid={:x}", seed_gid as u32),
+        format!("dserver_vchroot={seed_vchroot}"),
     ];
 
     // Strings high, from stack_top downward.
