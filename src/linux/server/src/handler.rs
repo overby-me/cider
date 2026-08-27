@@ -606,6 +606,21 @@ impl rpc_wire::RpcHandler for Handler {
     fn mach_reply_port(&mut self, _fds: &[RawFd]) -> Result<ReplyMachReplyPort, i32> {
         Ok(ReplyMachReplyPort { port_name: unsafe { mach::mach_reply_port() } })
     }
+    fn mach_reply_port_batch(&mut self, call: &CallMachReplyPortBatch, _fds: &[RawFd]) -> Result<ReplyMachReplyPortBatch, i32> {
+        // #11/#23 in-guest port layer: mint a batch of reply ports (REAL names from xnu_sys, so no
+        // collision or translation) and write them into the guest's pool buffer. The guest then hands
+        // them out locally, skipping the per-reply_port RPC. count = names actually written.
+        let cap = (call.buffer_size / 4).min(16) as usize;
+        let mut bytes = Vec::with_capacity(cap * 4);
+        for _ in 0..cap {
+            let name = unsafe { mach::mach_reply_port() };
+            bytes.extend_from_slice(&name.to_le_bytes());
+        }
+        if !bytes.is_empty() {
+            self.write_mem(call.buffer, &bytes)?;
+        }
+        Ok(ReplyMachReplyPortBatch { count: cap as u32 })
+    }
 
     /// Allocate a port right; the allocated NAME is copied out to the caller's `name`
     /// address in ITS OWN address space (write_memory hook -> process_vm_writev to the

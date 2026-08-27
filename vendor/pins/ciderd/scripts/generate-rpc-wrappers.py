@@ -649,6 +649,15 @@ calls = [
 		('message_count', 'uint64_t'),
 		('fd', '@fd'),
 	], UNMANAGED_CALL),
+	# #11/#23 in-guest port layer: batch-allocate reply ports. The guest fills a small pool from ONE
+	# RPC and hands ports out locally (no per-reply_port RPC), cutting the ~6 reply_port round-trips/spawn.
+	# ciderd assigns REAL names (no translation/collision); count = names actually written to buffer.
+	('mach_reply_port_batch', [
+		('buffer', 'uint32_t*', 'uint64_t'),
+		('buffer_size', 'uint64_t'),
+	], [
+		('count', 'uint32_t'),
+	]),
 ]
 
 ALLOWED_PRIVATE_TYPES = [

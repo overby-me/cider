@@ -105,6 +105,7 @@ pub mod callnum {
 	pub const DEBUG_LIST_PORTS: u32 = UNMANAGED_FLAG | 78;
 	pub const DEBUG_LIST_MEMBERS: u32 = UNMANAGED_FLAG | 79;
 	pub const DEBUG_LIST_MESSAGES: u32 = UNMANAGED_FLAG | 80;
+	pub const MACH_REPLY_PORT_BATCH: u32 = 81;
 }
 
 #[repr(C)]
@@ -1723,6 +1724,30 @@ pub struct RpcReplyDebugListMessages {
 	pub body: ReplyDebugListMessages,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct CallMachReplyPortBatch {
+	pub buffer: u64,
+	pub buffer_size: u64,
+}
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct RpcCallMachReplyPortBatch {
+	pub header: DserverRpcCallhdr,
+	pub body: CallMachReplyPortBatch,
+}
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct ReplyMachReplyPortBatch {
+	pub count: u32,
+}
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct RpcReplyMachReplyPortBatch {
+	pub header: DserverRpcReplyhdr,
+	pub body: ReplyMachReplyPortBatch,
+}
+
 /// Print `<key> <size> <align>` for every RPC message struct; diffed
 /// against the C probe when the structs landed to prove byte parity.
 pub fn print_sizes() {
@@ -1889,6 +1914,8 @@ pub fn print_sizes() {
 	println!("RpcReplyDebugListMembers {} {}", size_of::<RpcReplyDebugListMembers>(), align_of::<RpcReplyDebugListMembers>());
 	println!("RpcCallDebugListMessages {} {}", size_of::<RpcCallDebugListMessages>(), align_of::<RpcCallDebugListMessages>());
 	println!("RpcReplyDebugListMessages {} {}", size_of::<RpcReplyDebugListMessages>(), align_of::<RpcReplyDebugListMessages>());
+	println!("RpcCallMachReplyPortBatch {} {}", size_of::<RpcCallMachReplyPortBatch>(), align_of::<RpcCallMachReplyPortBatch>());
+	println!("RpcReplyMachReplyPortBatch {} {}", size_of::<RpcReplyMachReplyPortBatch>(), align_of::<RpcReplyMachReplyPortBatch>());
 }
 
 /// The name of an RPC call number (unmanaged flag ignored), for dispatch/logging.
@@ -1974,6 +2001,7 @@ pub fn callnum_name(n: u32) -> Option<&'static str> {
 		78 => Some("debug_list_ports"),
 		79 => Some("debug_list_members"),
 		80 => Some("debug_list_messages"),
+		81 => Some("mach_reply_port_batch"),
 		_ => None,
 	}
 }
@@ -2072,6 +2100,7 @@ pub trait RpcHandler {
 	fn debug_list_ports(&mut self, call: &CallDebugListPorts, fds: &[RawFd]) -> Result<ReplyDebugListPorts, i32> { Err(ENOSYS) }
 	fn debug_list_members(&mut self, call: &CallDebugListMembers, fds: &[RawFd]) -> Result<ReplyDebugListMembers, i32> { Err(ENOSYS) }
 	fn debug_list_messages(&mut self, call: &CallDebugListMessages, fds: &[RawFd]) -> Result<ReplyDebugListMessages, i32> { Err(ENOSYS) }
+	fn mach_reply_port_batch(&mut self, call: &CallMachReplyPortBatch, fds: &[RawFd]) -> Result<ReplyMachReplyPortBatch, i32> { Err(ENOSYS) }
 }
 
 /// Decode `msg`, invoke the matching RpcHandler method, and encode the reply
@@ -2530,6 +2559,12 @@ pub fn dispatch<H: RpcHandler>(h: &mut H, msg: &Message) -> Option<Vec<u8>> {
 			let call: CallDebugListMessages = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
 			let (code, body) = match h.debug_list_messages(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
 			Some(enc(&RpcReplyDebugListMessages { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		81 => {
+			if msg.body().len() < size_of::<CallMachReplyPortBatch>() { return Some(enc(&RpcReplyMachReplyPortBatch { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallMachReplyPortBatch = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.mach_reply_port_batch(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyMachReplyPortBatch { header: DserverRpcReplyhdr { number: n, code }, body }))
 		}
 		_ => None,
 	}
