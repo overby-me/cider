@@ -11,7 +11,8 @@ use std::os::raw::c_void;
 
 // Was an `extern "C"` declaration resolving back into this crate through the linker; imported
 // directly since xnu-sys became Rust (#71, #75).
-use crate::xnu::task::{xnu_sys_task_create, xnu_sys_task_destroy};
+use crate::xnu::task::{task_deallocate, xnu_sys_task_create};
+use crate::xnu::thread::thread_deallocate;
 
 /// The architecture arrives from the RPC wire as a plain u32; xnu_sys_task_create takes the
 /// bindgen ENUM.
@@ -33,6 +34,28 @@ fn arch_from_wire(arch: u32) -> crate::bindings::dserver_rpc_architecture_t {
         x if x == A::dserver_rpc_architecture_arm32 as u32 => A::dserver_rpc_architecture_arm32,
         x if x == A::dserver_rpc_architecture_arm64 as u32 => A::dserver_rpc_architecture_arm64,
         _ => A::dserver_rpc_architecture_invalid,
+    }
+}
+
+/// Destroy the threads still on `task`'s thread list: the execve-reaped remnants whose microthreads
+/// finished without a checkout, so they were never freed and pin the task refcount (task #33). Parked
+/// threads are already gone (discard_parked destroyed them, which queue_removes each). COLLECT first,
+/// then destroy -- xnu_sys_thread_destroy queue_removes the thread, which would corrupt a walk in
+/// progress. Follows the element-pointer queue contract (the stored link IS the thread; see
+/// xnu::thread::queue_enter_threads). The guard bounds a corrupt/cyclic list instead of hanging.
+unsafe fn destroy_task_threads(task: *mut xnu_sys_task_t) {
+    let head = std::ptr::addr_of_mut!((*task).xnu_task.threads);
+    let mut collected: Vec<*mut crate::bindings::thread> = Vec::new();
+    let mut cur = (*head).next;
+    let mut guard = 0;
+    while cur != head as *mut _ && guard < 100_000 {
+        let xt = cur as *mut crate::bindings::thread;
+        cur = (*xt).task_threads.next;
+        collected.push(xt);
+        guard += 1;
+    }
+    for xt in collected {
+        thread_deallocate(xt);
     }
 }
 
@@ -188,12 +211,12 @@ impl Registry {
 
     /// Free a guest task on real process exit (the task #52 cleanup the task_lookup table deferred).
     /// Refuses while any thread is still parked mid-call: a parked microthread holds this task
-    /// pointer, so freeing then would dangle (call discard_parked first). Force-destroys rather than
-    /// refcount-releasing: the process is dead, so its only remaining task references are its own
-    /// execve-reaped threads (their microthreads already dropped) - refcount-waiting would just leak
-    /// the whole vm_map forever. ipc_space_terminate reclaims those threads' ports; the thread
-    /// structs themselves leak small (a later reaper can free them). Must run under a current-thread
-    /// context (the caller's run_on_task), which the port teardown reads.
+    /// pointer, so freeing then would dangle (call discard_parked first). First destroys the task's
+    /// leftover threads -- the execve-reaped ones (their microthreads finished without a checkout, so
+    /// they were never xnu_sys_thread_destroy'd) pin the task refcount -- then task_deallocate reaches
+    /// 0 and frees the vm_map + ipc_space. Refcount-safe: if the walk ever misses a thread the task is
+    /// merely deferred (leaked), never force-freed under a live ref. Must run under a current-thread
+    /// context (the caller's run_on_task), which the thread/port teardown reads.
     pub unsafe fn despawn_task(&mut self, pid: u32) -> bool {
         if self.parked.keys().any(|&(p, _)| p == pid) {
             return false;
@@ -203,7 +226,8 @@ impl Registry {
         self.ctxs.remove(&pid);
         match self.tasks.remove(&pid) {
             Some(t) => {
-                xnu_sys_task_destroy(t);
+                destroy_task_threads(t);
+                task_deallocate(std::ptr::addr_of_mut!((*t).xnu_task));
                 true
             }
             None => false,
