@@ -166,15 +166,37 @@ impl Registry {
         self.tasks.get(&pid).copied()
     }
 
-    /// Free a guest task on REAL process exit (the task #52 cleanup the task_lookup table deferred).
+    /// Free every microthread of `pid` still parked mid-call, host-side (task #33): a process that
+    /// dies via its pidfd never checks its threads out, so their doWork microthreads sit parked
+    /// forever. Dropped WITHOUT resuming (the guest is gone; resuming would block on an S2C reply to
+    /// a dead peer); `dying` + `deallocate` then release the xnu_sys_thread and its task reference,
+    /// so a following despawn_task can reach 0 refs. Runs under a current-thread context (its caller
+    /// wraps it in run_on_task), which the IPC teardown in `deallocate` requires.
+    pub unsafe fn discard_parked(&mut self, pid: u32) {
+        let tids: Vec<u64> = self.parked.keys().filter(|(p, _)| *p == pid).map(|(_, t)| *t).collect();
+        for tid in tids {
+            if let Some(mt) = self.parked.remove(&(pid, tid)) {
+                let dthread = (*mt).xnu_sys_thread();
+                drop(Box::from_raw(mt));
+                if !dthread.is_null() {
+                    crate::thread::dying(dthread);
+                    crate::thread::deallocate(dthread);
+                }
+            }
+        }
+    }
+
+    /// Free a guest task on real process exit (the task #52 cleanup the task_lookup table deferred).
     /// Refuses while any thread is still parked mid-call: a parked microthread holds this task
-    /// pointer, so freeing then would dangle. task_deallocate is refcount-aware, so an outstanding
-    /// retain defers the destroy rather than causing a use-after-free.
+    /// pointer, so freeing then would dangle (call discard_parked first). task_deallocate is
+    /// refcount-aware, so an outstanding retain defers the destroy rather than a use-after-free.
     pub unsafe fn despawn_task(&mut self, pid: u32) -> bool {
         if self.parked.keys().any(|&(p, _)| p == pid) {
             return false;
         }
         sched::unregister_task_lookup(pid);
+        self.host_pids.remove(&pid);
+        self.ctxs.remove(&pid);
         match self.tasks.remove(&pid) {
             Some(t) => {
                 task_deallocate(std::ptr::addr_of_mut!((*t).xnu_task));
