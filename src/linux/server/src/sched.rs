@@ -403,6 +403,12 @@ pub fn register_task_lookup(nsid: u32, task: *mut xnu_sys_task_t, host_pid: libc
     TASK_BY_NSID.with(|m| m.borrow_mut().insert(nsid, (task, host_pid)));
 }
 
+/// Drop a task's task_lookup entry on real exit so its xnu_sys task can be freed: task #52's
+/// deferred cleanup, without which every exited process leaks ~1MB and ciderd OOMs on build loads.
+pub fn unregister_task_lookup(nsid: u32) -> Option<*mut xnu_sys_task_t> {
+    TASK_BY_NSID.with(|m| m.borrow_mut().remove(&nsid).map(|(t, _)| t))
+}
+
 /// Resolve a task by guest nsid for the RPC handlers (ptrace targets another process), null if
 /// unknown. The handler-facing counterpart of the task_lookup xnu_sys hook.
 pub fn task_for_nsid(nsid: u32) -> *mut xnu_sys_task_t {

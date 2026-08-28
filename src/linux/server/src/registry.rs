@@ -11,7 +11,7 @@ use std::os::raw::c_void;
 
 // Was an `extern "C"` declaration resolving back into this crate through the linker; imported
 // directly since xnu-sys became Rust (#71, #75).
-use crate::xnu::task::xnu_sys_task_create;
+use crate::xnu::task::{task_deallocate, xnu_sys_task_create};
 
 /// The architecture arrives from the RPC wire as a plain u32; xnu_sys_task_create takes the
 /// bindgen ENUM.
@@ -164,6 +164,24 @@ impl Registry {
 
     pub fn task_for_pid(&self, pid: u32) -> Option<*mut xnu_sys_task_t> {
         self.tasks.get(&pid).copied()
+    }
+
+    /// Free a guest task on REAL process exit (the task #52 cleanup the task_lookup table deferred).
+    /// Refuses while any thread is still parked mid-call: a parked microthread holds this task
+    /// pointer, so freeing then would dangle. task_deallocate is refcount-aware, so an outstanding
+    /// retain defers the destroy rather than causing a use-after-free.
+    pub unsafe fn despawn_task(&mut self, pid: u32) -> bool {
+        if self.parked.keys().any(|&(p, _)| p == pid) {
+            return false;
+        }
+        sched::unregister_task_lookup(pid);
+        match self.tasks.remove(&pid) {
+            Some(t) => {
+                task_deallocate(std::ptr::addr_of_mut!((*t).xnu_task));
+                true
+            }
+            None => false,
+        }
     }
     pub fn kernel_task(&self) -> *mut xnu_sys_task_t { self.kernel_task }
     pub fn task_count(&self) -> usize { self.tasks.len() }

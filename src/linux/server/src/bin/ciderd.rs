@@ -363,9 +363,10 @@ unsafe fn run(cfg: Config) -> ! {
                     if let Some((rn, rt, real_exit)) = reap {
                         reap_thread(&mut reg, &mut slots, rn, rt);
                         if real_exit && !slots.keys().any(|(n, _)| *n == rn) {
-                            // last thread of the process exited (not an execve) -> drop its
-                            // ProcState, whose Drop closes the retained vchroot fd.
+                            // process's last thread really exited -> drop its ProcState (its Drop
+                            // closes the retained vchroot fd) and free the task, not leak it.
                             (*handler_ptr).prune_process(rn);
+                            reg.despawn_task(rn);
                         }
                     }
                     for kq in (*handler_ptr).take_pending_kqchans() {
