@@ -1,0 +1,68 @@
+aarch64 #11/#23: in-guest reply-port pool.
+
+mach_reply_port_impl hands out ports from a per-process pool filled by ONE
+mach_reply_port_batch RPC instead of one RPC per reply port; ciderd assigns REAL
+names (no translation/collision). The fork child drops the pool (parent task owns
+those ports); exec resets via the fresh image. Falls back to the single RPC on batch
+failure (no-regression). On top of 0045.
+
+Signed-off-by: Niclas Overby <niclas@overby.me>
+---
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -17,8 +17,43 @@
+ 
+ #define UNIMPLEMENTED_TRAP() { char msg[] = "Called unimplemented Mach trap: "; write(2, msg, sizeof(msg)-1); write(2, __FUNCTION__, sizeof(__FUNCTION__)-1); write(2, "\n", 1); }
+ 
++#include <libsimple/lock.h>
++// #11/#23 in-guest reply-port pool: hand out ports from a batch fetched in ONE RPC
++// (mach_reply_port_batch), skipping the per-reply_port round-trip. ciderd assigns REAL names, so
++// there is no translation or collision. Guarded like getuid.c's uid/gid cache.
++#define REPLY_POOL_MAX 8
++static mach_port_name_t g_reply_pool[REPLY_POOL_MAX];
++static int g_reply_pool_avail = 0;
++static libsimple_rwlock_t g_reply_pool_lock = LIBSIMPLE_RWLOCK_INITIALIZER;
++// Fork child: the parent task's reply ports are not this task's, so drop the pool (it refills
++// lazily). exec needs no reset -- the fresh image starts with an empty pool.
++void __reply_pool_reset(void)
++{
++	libsimple_rwlock_lock_write(&g_reply_pool_lock);
++	g_reply_pool_avail = 0;
++	libsimple_rwlock_unlock_write(&g_reply_pool_lock);
++}
+ mach_port_name_t mach_reply_port_impl(void)
+ {
++	libsimple_rwlock_lock_write(&g_reply_pool_lock);
++	if (g_reply_pool_avail > 0)
++	{
++		mach_port_name_t name = g_reply_pool[--g_reply_pool_avail];
++		libsimple_rwlock_unlock_write(&g_reply_pool_lock);
++		return name;
++	}
++	unsigned int count = 0;
++	if (dserver_rpc_mach_reply_port_batch(g_reply_pool, sizeof(g_reply_pool), &count) == 0 && count > 0)
++	{
++		if (count > REPLY_POOL_MAX)
++			count = REPLY_POOL_MAX;
++		g_reply_pool_avail = (int) count;
++		mach_port_name_t name = g_reply_pool[--g_reply_pool_avail];
++		libsimple_rwlock_unlock_write(&g_reply_pool_lock);
++		return name;
++	}
++	libsimple_rwlock_unlock_write(&g_reply_pool_lock);
++	// fallback: the original single-alloc RPC (unchanged behavior when the batch fails)
+ 	unsigned int port_name;
+ 	if (dserver_rpc_mach_reply_port(&port_name) != 0) {
+ 		port_name = MACH_PORT_NULL;
+--- a/libsyscall/mach/mach_init.c
++++ b/libsyscall/mach/mach_init.c
+@@ -135,6 +135,9 @@
+ int
+ _mach_fork_child(void)
+ {
++	// #11/#23: the parent task's reply-port pool does not belong to this new task; drop it.
++	extern void __reply_pool_reset(void);
++	__reply_pool_reset();
+ #ifdef DARLING
+ 	mach_init_doit(NULL);
+ #else
