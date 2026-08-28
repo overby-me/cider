@@ -11,7 +11,7 @@ use std::os::raw::c_void;
 
 // Was an `extern "C"` declaration resolving back into this crate through the linker; imported
 // directly since xnu-sys became Rust (#71, #75).
-use crate::xnu::task::{task_deallocate, xnu_sys_task_create};
+use crate::xnu::task::{xnu_sys_task_create, xnu_sys_task_destroy};
 
 /// The architecture arrives from the RPC wire as a plain u32; xnu_sys_task_create takes the
 /// bindgen ENUM.
@@ -188,8 +188,12 @@ impl Registry {
 
     /// Free a guest task on real process exit (the task #52 cleanup the task_lookup table deferred).
     /// Refuses while any thread is still parked mid-call: a parked microthread holds this task
-    /// pointer, so freeing then would dangle (call discard_parked first). task_deallocate is
-    /// refcount-aware, so an outstanding retain defers the destroy rather than a use-after-free.
+    /// pointer, so freeing then would dangle (call discard_parked first). Force-destroys rather than
+    /// refcount-releasing: the process is dead, so its only remaining task references are its own
+    /// execve-reaped threads (their microthreads already dropped) - refcount-waiting would just leak
+    /// the whole vm_map forever. ipc_space_terminate reclaims those threads' ports; the thread
+    /// structs themselves leak small (a later reaper can free them). Must run under a current-thread
+    /// context (the caller's run_on_task), which the port teardown reads.
     pub unsafe fn despawn_task(&mut self, pid: u32) -> bool {
         if self.parked.keys().any(|&(p, _)| p == pid) {
             return false;
@@ -199,7 +203,7 @@ impl Registry {
         self.ctxs.remove(&pid);
         match self.tasks.remove(&pid) {
             Some(t) => {
-                task_deallocate(std::ptr::addr_of_mut!((*t).xnu_task));
+                xnu_sys_task_destroy(t);
                 true
             }
             None => false,
