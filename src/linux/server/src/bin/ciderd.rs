@@ -303,6 +303,10 @@ unsafe fn run(cfg: Config) -> ! {
     let mut kqchans: Vec<ProcKqchan> = Vec::new();
     let mut mach_kqchans: Vec<Box<MachPortKqchan>> = Vec::new();
     let mut consoles: Vec<RawFd> = Vec::new();
+    // pidfd -> nsid for the per-process death watch (task #33; see Handler::pending_watches for why
+    // per-process). Deduped by watched_nsids.
+    let mut proc_watches: HashMap<RawFd, u32> = HashMap::new();
+    let mut watched_nsids: std::collections::HashSet<u32> = std::collections::HashSet::new();
 
     let epfd = libc::epoll_create1(libc::EPOLL_CLOEXEC);
     let main_fd = listener.fd();
@@ -389,6 +393,18 @@ unsafe fn run(cfg: Config) -> ! {
                         epoll_add(epfd, cfd);
                         consoles.push(cfd);
                     }
+                    // Arm a death watch on each newly-checked-in process (task #33), deduped by nsid.
+                    for (nsid, hpid) in (*handler_ptr).take_pending_watches() {
+                        if watched_nsids.insert(nsid) {
+                            let pfd = libc::syscall(libc::SYS_pidfd_open, hpid, 0) as RawFd;
+                            if pfd >= 0 {
+                                epoll_add(epfd, pfd);
+                                proc_watches.insert(pfd, nsid);
+                            } else {
+                                watched_nsids.remove(&nsid);
+                            }
+                        }
+                    }
                 }
             } else if let Some(idx) = kqchans.iter().position(|k| k.daemon_fd == fd) {
                 // Guest sent a message on a kqchan socket (proc_modify/proc_read) or hung up.
@@ -412,24 +428,26 @@ unsafe fn run(cfg: Config) -> ! {
                 libc::close(fd);
                 kqchans[idx].pidfd = -1;
                 kqchans[idx].on_target_died();
-                // A process that dies via its pidfd never checks its threads out, so its doWork
-                // microthreads sit parked and its task never frees -> ~1 task + thread leaked per
-                // process, ciderd OOMs on build workloads (task #33). Tear it down on the LAST live
-                // watcher (so a multiply-watched pid frees once), on a kernel-task microthread via
-                // run_on_task: the IPC teardown reads current_thread(), null on the bare epoll loop
-                // -> null deref (same reason task CREATE runs on a microthread). The body runs
-                // synchronously, so the raw reg/handler pointers outlive it.
-                if !kqchans.iter().any(|k| k.target_nsid == dead_nsid && k.pidfd >= 0) {
-                    slots.retain(|(n, _), _| *n != dead_nsid);
-                    let kt = reg.kernel_task();
-                    let reg_ptr: *mut Registry = &mut reg;
-                    let hp = handler_ptr;
-                    sched::run_on_task(kt, Box::new(move || unsafe {
-                        (*reg_ptr).discard_parked(dead_nsid);
-                        (*hp).prune_process(dead_nsid);
-                        (*reg_ptr).despawn_task(dead_nsid);
-                    }));
-                }
+                // Teardown is NOT done here: every process (this one included) is torn down by its
+                // per-process death watch below, the SOLE teardown path (task #33).
+            } else if let Some(&dead_nsid) = proc_watches.get(&fd) {
+                // A checked-in process died (its per-process death watch, task #33). Free its task +
+                // threads on a kernel-task microthread (run_on_task): the xnu-sys IPC teardown reads
+                // current_thread(), null on the bare epoll loop -> null deref (same reason task CREATE
+                // runs on a microthread). The body runs synchronously, so the raw ptrs outlive it.
+                proc_watches.remove(&fd);
+                watched_nsids.remove(&dead_nsid);
+                epoll_del(epfd, fd);
+                libc::close(fd);
+                slots.retain(|(n, _), _| *n != dead_nsid);
+                let kt = reg.kernel_task();
+                let reg_ptr: *mut Registry = &mut reg;
+                let hp = handler_ptr;
+                sched::run_on_task(kt, Box::new(move || unsafe {
+                    (*reg_ptr).discard_parked(dead_nsid);
+                    (*hp).prune_process(dead_nsid);
+                    (*reg_ptr).despawn_task(dead_nsid);
+                }));
             } else if let Some(idx) = mach_kqchans.iter().position(|k| k.daemon_fd == fd) {
                 // Guest sent modify/read on a mach-port kqchan socket, or hung up (task #54).
                 if !mach_kqchans[idx].on_readable() {

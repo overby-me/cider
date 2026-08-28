@@ -260,6 +260,12 @@ pub struct Handler {
     /// New guest-console daemon-side fds opened this dispatch (console_open, task #60): the daemon
     /// monitors each and logs the guest's console/os_log output. Handed to the serve loop.
     pending_consoles: Vec<RawFd>,
+    /// (nsid, host pid) of processes that checked in this dispatch, for the serve loop to arm a
+    /// per-process death watch (task #33). kqchan_proc_open only watches processes a guest kqueues
+    /// on (the launcher's top-level spawns), so an in-guest fork (a bash subshell, waited via
+    /// waitpid) is never watched and its task leaks on death. Every process checks in, so watching
+    /// here covers them all.
+    pending_watches: Vec<(u32, libc::pid_t)>,
 }
 
 impl Default for Handler {
@@ -280,6 +286,7 @@ impl Handler {
             pending_pid_changes: Vec::new(),
             pending_kqchans_mach: Vec::new(),
             pending_consoles: Vec::new(),
+            pending_watches: Vec::new(),
         }
     }
 
@@ -296,6 +303,9 @@ impl Handler {
 
     pub fn take_pending_kqchans(&mut self) -> Vec<crate::kqchan::ProcKqchan> {
         std::mem::take(&mut self.pending_kqchans)
+    }
+    pub fn take_pending_watches(&mut self) -> Vec<(u32, libc::pid_t)> {
+        std::mem::take(&mut self.pending_watches)
     }
     /// Take the mach-port kqchans opened this dispatch (task #54), for the serve loop to register.
     pub fn take_pending_kqchans_mach(&mut self) -> Vec<Box<crate::kqchan::MachPortKqchan>> {
@@ -421,6 +431,14 @@ impl rpc_wire::RpcHandler for Handler {
         // the full pipe-page-starvation mechanism that this prevents.
         for &fd in fds {
             unsafe { libc::close(fd); }
+        }
+        // Queue this process for a death watch (task #33) -- at EVERY checkin, fork children too,
+        // since that is the only point ciderd sees an unwatched in-guest fork. Serve loop dedups.
+        let hp = self.cur().map(|p| p.host_pid);
+        if let Some(hp) = hp {
+            if hp > 0 {
+                self.pending_watches.push((self.current_pid, hp));
+            }
         }
         if let Some(parent_nsid) = self.cur().and_then(|p| p.parent_nsid) {
             if let Some(sem) = self.procs.get(&parent_nsid).and_then(|p| p.fork_sem) {
