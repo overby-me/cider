@@ -332,6 +332,14 @@ pub unsafe extern "C" fn ipc_kmsg_trace_send(kmsg: ipc_kmsg_t, _option: mach_msg
         }
     }
 
+    if std::env::var_os("DSERVER_TRACE_MSG").is_some() {
+        eprintln!(
+            "KMSG send to_pid={} id={} bits=0x{:x} remote={:p} local={:p} ndesc={} dtype={}",
+            dest_pid, (*header).msgh_id, (*header).msgh_bits,
+            (*header).msgh_remote_port as *const c_void,
+            (*header).msgh_local_port as *const c_void, ndesc, dtype
+        );
+    }
     log(
         bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
         &format!(
