@@ -444,6 +444,7 @@ unsafe fn run(cfg: Config) -> ! {
                 let reg_ptr: *mut Registry = &mut reg;
                 let hp = handler_ptr;
                 sched::run_on_task(kt, Box::new(move || unsafe {
+                    sched::reap_prior_kernel_scratch();
                     (*reg_ptr).discard_parked(dead_nsid);
                     (*hp).prune_process(dead_nsid);
                     (*reg_ptr).despawn_task(dead_nsid);

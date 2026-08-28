@@ -535,6 +535,29 @@ pub unsafe fn spawn(task: *mut xnu_sys_task_t, body: Box<dyn FnOnce()>) -> *mut 
     spawn_with_nsid(task, NEXT_KTID.fetch_add(1, Ordering::Relaxed), body)
 }
 
+thread_local! {
+    /// The previous kernel-task teardown body's scratch thread, awaiting free (task #33).
+    static PREV_KERNEL_SCRATCH: std::cell::Cell<*mut xnu_sys_thread_t> =
+        const { std::cell::Cell::new(std::ptr::null_mut()) };
+}
+
+/// Call at the TOP of a run_on_task(kernel_task) body: free the PREVIOUS such body's scratch thread
+/// and remember this one, bounding run_on_task's per-call scratch-thread leak (it spawns+drops a
+/// microthread but never frees its xnu_sys_thread) to 1 (task #33). Safe because every teardown
+/// scratch lives on the PERSISTENT kernel task (a guest-task scratch would be freed with the task),
+/// the prior one is idle (its microthread already dropped), and current_thread() is THIS scratch --
+/// valid for the freed thread's IPC teardown, which is why this cannot run in the bare epoll loop.
+pub unsafe fn reap_prior_kernel_scratch() {
+    let prev = PREV_KERNEL_SCRATCH.with(|p| p.replace(std::ptr::null_mut()));
+    if !prev.is_null() {
+        crate::xnu::thread::thread_deallocate(std::ptr::addr_of_mut!((*prev).xnu_thread));
+    }
+    let cur = current();
+    if !cur.is_null() {
+        PREV_KERNEL_SCRATCH.with(|p| p.set((*cur).xnu_sys_thread()));
+    }
+}
+
 /// Queue a microthread to be (re)entered by the run loop. Called by thread_resume.
 pub fn schedule(mt: *mut Microthread) {
     RUN_QUEUE.with(|q| q.borrow_mut().push_back(mt));
