@@ -282,10 +282,10 @@ history.
 
 ## Milestone 4 -- the lifecycle skip is multi-target + cascading (session 2/3, final map)
 
-STATUS: three incremental guest-side wins are COMPLETE -- milestone-1 (in-guest self-contained Mach
-IPC), milestone-3 (in-guest BSD: mldr_path 0059 + uidgid 0060), and the interrupt gate (0061). A
-self-contained guest's Mach + BSD + forwarded-signal handling now run with 0 ciderd RPCs. `cider shell
-/usr/bin/true` flag-on RECV 35 -> 29 (0061); flag-off 132; both rc=0, soak 4/4.
+STATUS: four incremental guest-side wins are COMPLETE -- milestone-1 (in-guest self-contained Mach IPC),
+milestone-3 (in-guest BSD: mldr_path 0059 + uidgid 0060), the interrupt gate (0061), and the fork_wait
+skip (0062). A self-contained guest's Mach + BSD + forwarded-signal handling run with 0 ciderd RPCs.
+`cider shell /usr/bin/true` flag-on RECV 35 -> 25 (0061 + 0062); flag-off 132; both rc=0, soak.
 
 interrupt (0061) was NOT the delicate signal-exception-delivery piece feared earlier. Trace shows bash's
 signals fire the NON-ptraced handler_linux_to_bsd_wrapper (sigaction.c), which brackets the forwarded
@@ -295,16 +295,16 @@ pushes is read only by thread_get_state, which a plain forwarded handler never c
 flag-on is safe + validatable. The PTRACED sigexc_handler+sigprocess path is separate and still
 load-bearing (not hit by an unattached process).
 
-The remaining flag-on 29 are ALL structural: #1 checkin x10, #3 vchroot_path x8 (SHELLSPAWN container
-setup, nsid=1), #2 checkout x5, #11 fork_wait x4, #9 vchroot x1, #29 kqchan x1. Key: ciderd's per-task
-state is UNUSED for the self-contained case (the guest mints its own ports since 0058), so checkin
-creates a task nothing reads. But the lifecycle is interlocked and the mechanisms are load-bearing:
+The remaining flag-on 25 are ALL structural: #1 checkin x10, #3 vchroot_path x8 (SHELLSPAWN container
+setup, nsid=1), #2 checkout x5, #9 vchroot x1, #29 kqchan x1 (fork_wait is now 0 via 0062). Key: ciderd's
+per-task state is UNUSED for the self-contained case (the guest mints its own ports since 0058), so
+checkin creates a task nothing reads -- yet the mechanisms are load-bearing:
+- checkin supplies state the fork child's libc needs post-fork, beyond registration (set_current
+  auto-registers) and beyond the minted #25 seeds: skipping it makes the child abort() (raw libc SIGABRT
+  via the ptraced sigexc_handler path). Load-bearing; the abort root is still open.
 - checkout's essential job is CLOSING the lifetime pipe (handler.rs:471) -- skip it and ciderd leaks one
   pipe read-end per process, reproducing the config.status write() hang (a real M1 bug). Not a gate.
-- checkin/fork_wait are paired: fork_wait (libsyscall mach_init.c:154, a DIFFERENT build target) downs a
-  semaphore the child ups on checkin; skip checkin without fork_wait and the parent hangs.
-- kqchan_proc_open watches a process by pid; skip the target's checkin and it hits ciderd with no task
-  -> ESRCH.
+- kqchan_proc_open here is SHELLSPAWN's (nsid=1) watching the guest -- infra, not a guest gate.
 
 ORDERED plan to remove the lifecycle:
 1. kqchan in-guest -- NOT a raw pidfd as out_socket (that HANGS: cider's libkqueue linux/proc.c is the
@@ -312,19 +312,15 @@ ORDERED plan to remove the lifecycle:
    evfilt_proc_copyout, so a bare pidfd yields no frame; posix/proc.c is EVFILT_NOTIMPL). The real fix is
    rewriting that filter to epoll pidfd_open(target) directly and synthesize NOTE_EXIT locally -- bounded
    to one filter file, but its own libkqueue build target + delicate kqueue semantics (oneshot/rearm).
-2. checkin + fork_wait skip together (fork.c + mach_init.c) -- ATTEMPTED, BROKEN, reverted. ciderd's
-   set_current AUTO-REGISTERS the child on its next RPC (handler.rs -- it builds the ProcState + fork-wait
-   sem from the socket SO_PASSCRED, not only at checkin), and the parent can skip fork_wait (it reaps via
-   in-guest wait4; else it hangs). BUT the skip makes fork children ABORT: shell RECV 29 -> 37 where the
-   +8 is 3 children raising SIGABRT (signal 6) -- a raw libc-level abort() with NO guest error message,
-   handled via the ptraced sigexc_handler path (sigprocess x3 + interrupt x6 + kprintf x9, none of which
-   the 0061 wrapper gate covers). The baseline has ZERO such aborts, so the skip CAUSES them: checkin
-   supplies state the fork child's libc needs post-fork -- beyond registration and beyond the #25 seeds
-   (which milestone-1 mints) -- and without it the child abort()s. rc=0 only survives because the aborting
-   children are non-critical to `true`. So checkin is genuinely load-bearing for the fork child; the skip
-   needs that libc-needed state supplied another way first (root open). (vfork broke exec at Pass 126 --
-   lifecycle changes are delicate.)
-3. checkout skip -- only safe once no checkin means no lifetime pipe to leak; otherwise keep it.
+2. fork_wait skip -- LANDED (0062). _mach_fork_parent skips dserver_rpc_fork_wait_for_child flag-on; the
+   child checks in itself and the parent reaps via in-guest wait4. shell RECV 29 -> 25, rc=0, soak 3/3.
+   Isolated cleanly: fork_wait alone has ZERO aborts.
+3. checkin skip (fork.c) -- NOT viable yet. set_current auto-registers the child (registration is not the
+   blocker) and skipping checkout too does not help, but skipping checkin makes the fork child abort()
+   (raw libc SIGABRT, group-propagated from the aborting nsid, via the ptraced sigexc_handler path; the
+   saved rip is bogus). checkin supplies libc-needed state to the fork child; cracking that root (what
+   state, supplied in-guest) is the next thread -- it unblocks checkin (10) then checkout (5). (vfork
+   broke exec at Pass 126 -- lifecycle changes are delicate.)
 
 VALIDATION remains the binding constraint on THIS host: `cider exec` (the clean signal-free case) is
 rc=1 (SYSTEM_ROOT/container quirk), and `cider shell` (bash) exercises the full lifecycle. A working

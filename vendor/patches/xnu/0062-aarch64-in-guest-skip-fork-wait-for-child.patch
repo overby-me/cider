@@ -1,0 +1,26 @@
+aarch64 #23 milestone-4: guest parent skips fork_wait_for_child (flag-on)
+
+_mach_fork_parent blocked on dserver_rpc_fork_wait_for_child until the forked child checked in. For the
+self-contained case that wait is unnecessary: the child checks in on its own and the parent reaps it via
+the in-guest wait4 path, so the parent returns immediately. ONLY fork_wait is skipped -- skipping the
+child's checkin (fork.c) too makes the child abort() (checkin is load-bearing for the fork child) via the
+ptraced sigexc_handler path, which the 0061 wrapper gate does not cover. shell /usr/bin/true fork_wait
+4 -> 0 (RECV 29 -> 25 flag-on), rc=0, soak 3/3; flag-off unchanged (132). Flag-gated. On top of 0061.
+
+diff --git a/libsyscall/mach/mach_init.c b/libsyscall/mach/mach_init.c
+index 2ad12aa..1ee64f0 100644
+--- a/libsyscall/mach/mach_init.c
++++ b/libsyscall/mach/mach_init.c
+@@ -149,6 +149,12 @@ _mach_fork_child(void)
+ #ifdef DARLING
+ int _mach_fork_parent(void) {
+ 	int result;
++	extern int __inguest_ipc_on(void);
++
++	// Self-contained (flag-on): the child checks in itself and the parent reaps via in-guest wait4, so
++	// blocking on the child's checkin is unnecessary. (Only fork_wait -- skipping checkin too aborts the child.)
++	if (__inguest_ipc_on())
++		return 0;
+ 
+ retry:
+ 	result = dserver_rpc_fork_wait_for_child();
