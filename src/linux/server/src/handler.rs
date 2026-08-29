@@ -449,13 +449,14 @@ impl rpc_wire::RpcHandler for Handler {
         // current_task() is bound before dispatch (module header); task_uidgid(-1,-1) reads without
         // mutating. A null task just yields sentinels -> the guest RPCs as before, so it is harmless.
         let task_self = unsafe { mach::task_self_trap() };
+        let host_self = unsafe { mach::host_self_trap() };
         let taskptr = sched::current_task();
         let (uid, gid) = if taskptr.is_null() {
             (-1, -1)
         } else {
             unsafe { traps::task_uidgid(taskptr, -1, -1) }
         };
-        Ok(ReplyCheckin { task_self, uid, gid })
+        Ok(ReplyCheckin { task_self, uid, gid, host_self })
     }
     /// A guest thread checks out on exit. Tell XNU the thread is dying so its Mach state
     /// (ports, rights, notifications) is torn down -- otherwise a later send to the dead

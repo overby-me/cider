@@ -1,0 +1,56 @@
+aarch64 #23/#25: seed host-self from the checkin reply.
+
+Adds host_self to the checkin RPC reply (generate-rpc-wrappers.py + regenerated
+rpc_wire.rs + ciderd handler fills it via host_self_trap). The loader carries it to
+apple[] (dserver_host_self=) like task_self, and mach_driver_init seeds the host-self
+cache via __host_self_trap_set (which also guards the name from deallocate). This
+completes the host-self cache across the exec boundary so host_self_trap drops toward
+1/spawn and host_get_io_master (206) can dedup. On top of 0049.
+
+---
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -78,6 +78,9 @@
+ // in with a fresh ipc space, so re-fetch there (matches __task_self_trap_reset, fork.c).
+ static mach_port_name_t g_host_self_cached = MACH_PORT_NULL;
+ void __host_self_trap_reset(void) { g_host_self_cached = MACH_PORT_NULL; }
++// #23/#25: seed the host-self cache from the checkin reply (via apple[], parsed in mach_driver_init);
++// guard the name so its per-call deallocs are swallowed, same as a fetched host self.
++void __host_self_trap_set(mach_port_name_t name) { if (name != MACH_PORT_NULL) { g_host_self_cached = name; mach_msg_guard_add(name); } }
+ 
+ mach_port_name_t host_self_trap_impl(void)
+ {
+--- a/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c
++++ b/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c
+@@ -32,6 +32,7 @@
+ 
+ extern void _xtrace_postfork_child(void);
+ extern void __task_self_trap_set(unsigned int name);  // #11/#25: seed task-self cache from checkin
++extern void __host_self_trap_set(unsigned int name);  // #23/#25: seed host-self cache from checkin
+ extern void __getuidgid_seed(int uid, int gid);       // #11/#25: seed uid/gid cache from checkin
+ extern void __vchroot_seed(const char* path);         // #11/#25 v2: seed vchroot prefix from mldr
+ 
+@@ -56,6 +57,12 @@
+ 				unsigned int name = (unsigned int) __simple_atoi16(applep[i] + 18, NULL);
+ 				if (name != 0)
+ 					__task_self_trap_set(name);
++			}
++			else if (strncmp(applep[i], "dserver_host_self=", 18) == 0)
++			{
++				unsigned int name = (unsigned int) __simple_atoi16(applep[i] + 18, NULL);
++				if (name != 0)
++					__host_self_trap_set(name);
+ 			}
+ 			else if (strncmp(applep[i], "dserver_uid=", 12) == 0)
+ 				seed_uid = (int) (unsigned int) __simple_atoi16(applep[i] + 12, NULL);
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c
+@@ -58,7 +58,7 @@
+ 		}
+ 
+ 		int dummy_stack_variable;
+-		if (dserver_rpc_checkin(true, &dummy_stack_variable, newReadFd, NULL, NULL, NULL) < 0) {
++		if (dserver_rpc_checkin(true, &dummy_stack_variable, newReadFd, NULL, NULL, NULL, NULL) < 0) {
+ 			// we can't do ANYTHING if darlingserver fails to acknowledge us
+ 			__simple_printf("Failed to checkin with darlingserver after fork\n");
+ 			__simple_abort();

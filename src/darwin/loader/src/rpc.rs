@@ -173,6 +173,7 @@ struct ReplyCheckin {
     task_self: u32,
     uid: i32,
     gid: i32,
+    host_self: u32,
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -324,10 +325,11 @@ pub struct CheckinReply {
     pub task_self: u32,
     pub uid: i32,
     pub gid: i32,
+    pub host_self: u32,
 }
 impl CheckinReply {
     fn failed() -> Self {
-        Self { code: -1, task_self: 0, uid: -1, gid: -1 }
+        Self { code: -1, task_self: 0, uid: -1, gid: -1, host_self: 0 }
     }
 }
 
@@ -380,5 +382,6 @@ pub unsafe fn checkin(fd: c_int, sockpath: &str, stack_hint: u64) -> CheckinRepl
         task_self: reply.body.task_self,
         uid: reply.body.uid,
         gid: reply.body.gid,
+        host_self: reply.body.host_self,
     }
 }

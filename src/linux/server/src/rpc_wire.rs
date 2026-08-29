@@ -127,6 +127,7 @@ pub struct ReplyCheckin {
 	pub task_self: u32,
 	pub uid: i32,
 	pub gid: i32,
+	pub host_self: u32,
 }
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]

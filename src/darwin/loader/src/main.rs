@@ -252,6 +252,7 @@ fn main() {
             // #11/#25: the checkin reply folds in this task's init constants; carry them to the
             // start stack's apple[] so libsystem_kernel seeds its caches instead of re-RPCing.
             let mut seed_task_self: u32 = 0;
+            let mut seed_host_self: u32 = 0;
             let mut seed_uid: i32 = -1;
             let mut seed_gid: i32 = -1;
             if let Some(ref sockpath) = special.sockpath {
@@ -268,6 +269,7 @@ fn main() {
                         checkin.code, checkin.task_self, checkin.uid, checkin.gid
                     );
                     seed_task_self = checkin.task_self;
+                    seed_host_self = checkin.host_self;
                     seed_uid = checkin.uid;
                     seed_gid = checkin.gid;
                     rpc::set_sockpath(sockpath);
@@ -396,6 +398,7 @@ fn main() {
                     &guest_argv,
                     &envp,
                     seed_task_self,
+                    seed_host_self,
                     seed_uid,
                     seed_gid,
                     vchroot_root.as_deref().unwrap_or(""),

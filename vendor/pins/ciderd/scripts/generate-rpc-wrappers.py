@@ -110,11 +110,12 @@ calls = [
 		('stack_hint', 'void*', 'uint64_t'),
 		('lifetime_listener_pipe', '@fd')
 	], [
-		# #11/#25: fold the per-process init constants (task_self/uid/gid) so a freshly exec'd process
-		# seeds its caches from this reply instead of separate RPCs; guest falls back to RPC if unseeded.
+		# #11/#25: fold the per-process init constants (task_self/uid/gid/host_self) so a freshly exec'd
+		# process seeds its caches from this reply instead of separate RPCs; guest falls back to RPC if unseeded.
 		('task_self', 'uint32_t'),
 		('uid', 'int32_t'),
 		('gid', 'int32_t'),
+		('host_self', 'uint32_t'),
 	]),
 
 	('checkout', [
