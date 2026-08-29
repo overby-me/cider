@@ -124,6 +124,44 @@ Net: the tractable, safe, gated guest-side wins are landed (milestone 1). The re
 fragile-low-value (milestone 3) or a deep re-architecture gated on the guest owning task_self
 (milestone 4). Both deserve careful, incremental, well-validated steps -- not a rushed pass.
 
+## Milestone 4 design (detail): launcher-managed lifecycle
+
+What each lifecycle RPC does (read from src/linux/server/src/handler.rs + the guest callers):
+- **checkin** (fork.c, per process + per fork child): registers the process and does THREE things --
+  (a) queues a ciderd DEATH-WATCH (pidfd reap when it exits), (b) UPs the parent's fork semaphore
+  (this is what fork_wait_for_child parks on), (c) returns the SEED reply (task_self/host_self/uid/gid/
+  vchroot -- the #25 seed the guest caches).
+- **checkout** (execve.c, on re-exec): `thread::dying(...)` tears down the thread's emulated-XNU state
+  + closes the lifetime pipe.
+- **fork_wait_for_child** (_mach_fork_parent): the parent parks on the fork semaphore until the child
+  checks in.
+- **kqchan_proc_open** (for-libkqueue.c): the parent's EVFILT_PROC exit-watch on the child.
+
+**Key insight:** for the SELF-CONTAINED case, ciderd's per-task/thread emulated-XNU state is now UNUSED
+-- every Mach op is served in-guest (milestone 1) and task_self is guest-owned (0058). So checkin/
+checkout are pure bookkeeping that a LAUNCHER can own instead:
+1. **Container:** the launcher sets up the namespaces + prefix overlay (today ciderd at boot,
+   container.rs) and spawns the guest into it.
+2. **Reap:** the launcher waitpids the guest for the exit code -- replaces the checkin death-watch +
+   checkout + kqchan_proc_open exit-watch.
+3. **Fork:** an in-guest fork no longer needs the ciderd sync if the child does not check in; the
+   fork semaphore + fork_wait_for_child existed only to order the child's checkin.
+4. **Seed:** uid/gid already ride apple[] (#25); task_self/host_self are minted in-guest (0054/0058);
+   vchroot from the seed -- so no checkin reply is needed.
+
+**Dependency / order:** this only holds once NOTHING the guest does needs ciderd -- true for the Mach
+side, but the milestone-3 BSD RPCs (vchroot_path/uidgid/mldr_path) still hit ciderd, so they must move
+in-guest FIRST or they keep the daemon alive. Then checkin/checkout/fork_wait/kqchan can be gated off
+guest-side WHILE the launcher takes spawn/reap/container.
+
+**Risk / why this needs the user:** this alters the BASELINE (launcher + ciderd + guest, not a gated
+guest-only flag), touches fork/exec correctness (the checkin is load-bearing -- vfork attempts broke
+exec, plan-aarch64 Pass 126), and is the riskiest part of the campaign. It is NOT an autonomous grind:
+it wants a real design review + fork-heavy/login/build validation. Recommended sequencing: (i) finish
+milestone-3 BSD in-guest (carefully -- vchroot is startup-fragile); (ii) prototype the launcher
+waitpid-reap path + the guest-side checkin/checkout skip together, behind the flag, with heavy
+validation; (iii) only then remove the daemon for the self-contained case.
+
 What landed (behind `CIDER_INGUEST_IPC`, a dev flag, default OFF; flag-off is byte-identical baseline):
 - **Dual-variant apple[] flag.** libsystem_kernel is compiled twice (the dyld loader's VARIANT_DYLD
   copy for early traffic, and libsystem_kernel.dylib for the guest); each has its OWN mach_traps.c
