@@ -279,3 +279,26 @@ kqchan in-guest pidfd or verify absent; (4) confirm fork_wait does not hang. The
 the self-contained case. This IS validatable (shell forks/execs/reaps bash + children), so attempt it
 incrementally rather than flag it -- but stop + revert on the first hang/crash given the crashed-session
 history.
+
+## Milestone 4 -- the lifecycle skip is multi-target + cascading (session 2, final map)
+
+The checkin/checkout/fork_wait skip is NOT a clean gate:
+1. fork_wait lives in _mach_fork_parent (vendor/src/xnu/libsyscall/mach/mach_init.c:154) -- a DIFFERENT
+   build target from the darling libsystem_kernel dylib, and must be gated WITH the fork.c checkin or the
+   parent hangs waiting for a checkin that never comes.
+2. Skipping checkin leaves the child unregistered, so its interrupt (signals, sigexc.c
+   dserver_rpc_interrupt_enter) and kqchan_proc_open RPCs hit ciderd with no task -> ESRCH -> break.
+   interrupt fires whenever signals are handled (bash/SIGCHLD -- the shell test), though NOT for a
+   signal-free exec-true.
+
+So the lifecycle removal needs, IN ORDER: interrupt in-guest (deliver the signal-exception locally --
+delicate) + kqchan in-guest (Linux pidfd_open feeding the emulated kqueue EVFILT_PROC) + the two-target
+fork skip. And VALIDATION is the binding constraint on THIS host: `cider exec` (the clean signal-free
+case that would NOT cascade) returns rc=1 (the SYSTEM_ROOT/container quirk), and `cider shell` (bash)
+cascades on interrupt/kqchan. So milestone-4 needs a dedicated effort with a working exec-true baseline
+(a real launcher exec fix or a full prefix build) plus the interrupt/kqchan in-guest work.
+
+STATUS: the incremental guest-side wins are COMPLETE -- milestone-1 (in-guest self-contained Mach IPC)
+and milestone-3 (in-guest guest BSD: mldr_path 0059 + uidgid 0060). A self-contained guest's Mach + BSD
+now run with 0 ciderd RPCs; only the ciderd-tracking lifecycle remains, and removing it is the mapped
+multi-part milestone-4 effort above.
