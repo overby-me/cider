@@ -1,0 +1,95 @@
+aarch64 #23/#25: apply the checkin init-cache seeds in BOTH libsystem_kernel variants (not dyld-only).
+
+#25 folds task_self/host_self/uid/gid/vchroot from the checkin reply into apple[] and mach_driver_init
+seeds the guest caches from them -- but that seeding sat inside #ifdef VARIANT_DYLD, so only the dyld
+loader's copy was seeded. libsystem_kernel.dylib (which the guest's own traps use) has its OWN statics
+and was never seeded, so it re-RPC'd task_self and uidgid on every process. Moving the seed parse to
+the always-compiled block (elf_calls stays dyld-only) seeds the dylib copy too. On fork (applep NULL)
+nothing re-seeds; the fork child resets task/host self and re-fetches, and uid/gid/vchroot are
+fork-preserved.
+
+This is a general baseline improvement (NOT gated on CIDER_INGUEST_IPC): exec-true RECV 70 -> 59
+flag-off (task_self_trap 4->1, uidgid 4->1... i.e. the dylib-side fetches go away), rc=0, soak 8/8.
+Combined with the flag it reaches RECV 38. Recommend fork-heavy + login validation before landing in
+the prefix. On top of 0054.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c b/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c
+index 3888118..52ca36d 100644
+--- a/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c
++++ b/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c
+@@ -39,38 +39,19 @@ extern void __inguest_ipc_set(int on);                // #23: enable in-guest Ma
+ 
+ void mach_driver_init(const char** applep)
+ {
+-	// #23: parse the in-guest-IPC flag in BOTH variants. libsystem_kernel is compiled twice (the
+-	// dyld loader's VARIANT_DYLD copy for early traffic, and libsystem_kernel.dylib for the guest),
+-	// each with its own mach_traps.c statics. The guest's host_info/self-port mach_msg runs through
+-	// the DYLIB copy (mach_init_doit -> mach_driver_init(apple) at libc init), so the flag must reach
+-	// it too, not just the dyld copy. The seeds below stay VARIANT_DYLD-only.
++	// #23/#25: seed the per-process init caches from the checkin values mldr folds into apple[], and
++	// parse the in-guest-IPC flag -- ALL applied in BOTH variants. libsystem_kernel is compiled twice
++	// (the dyld loader's VARIANT_DYLD copy and libsystem_kernel.dylib); the guest's traps run through
++	// the DYLIB copy, which has its OWN mach_traps.c/getuid.c statics, so seeding only the dyld copy (as
++	// before) left the dylib re-RPCing task_self/uidgid/etc. elf_calls stays dyld-only below (the dylib
++	// gets elfcalls via dyld_func_lookup). On fork (applep NULL) nothing is re-seeded; the fork child
++	// resets and re-fetches its fresh task/host self.
+ 	if (applep != NULL)
+ 	{
+-		for (int fi = 0; applep[fi] != NULL; fi++)
+-		{
+-			if (strncmp(applep[fi], "cider_inguest_ipc=", 18) == 0)
+-			{
+-				if (applep[fi][18] == '1')
+-					__inguest_ipc_set(1);
+-				break;
+-			}
+-		}
+-	}
+-#ifdef VARIANT_DYLD
+-	if (applep != NULL)
+-	{
+-		int i;
+-		// #11/#25: seed the per-process init caches from the checkin reply that mldr folds into apple[]
+-		// (all hex; task_self 0 / uid,gid ffffffff => -1 mean "unknown" -> leave the cache empty -> RPC).
+ 		int seed_uid = -1, seed_gid = -1;
+-		for (i = 0; applep[i] != NULL; i++)
++		for (int i = 0; applep[i] != NULL; i++)
+ 		{
+-			if (strncmp(applep[i], "elf_calls=", 10) == 0)
+-			{
+-				uintptr_t table = (uintptr_t) __simple_atoi16(applep[i] + 10, NULL);
+-				_elfcalls = (struct elf_calls*) table;
+-			}
+-			else if (strncmp(applep[i], "dserver_task_self=", 18) == 0)
++			if (strncmp(applep[i], "dserver_task_self=", 18) == 0)
+ 			{
+ 				unsigned int name = (unsigned int) __simple_atoi16(applep[i] + 18, NULL);
+ 				if (name != 0)
+@@ -92,10 +73,27 @@ void mach_driver_init(const char** applep)
+ 				if (*vc)
+ 					__vchroot_seed(vc);
+ 			}
++			else if (strncmp(applep[i], "cider_inguest_ipc=", 18) == 0)
++			{
++				if (applep[i][18] == '1')
++					__inguest_ipc_set(1);
++			}
+ 		}
+ 		if (seed_uid >= 0 && seed_gid >= 0)
+ 			__getuidgid_seed(seed_uid, seed_gid);
+ 	}
++#ifdef VARIANT_DYLD
++	if (applep != NULL)
++	{
++		for (int i = 0; applep[i] != NULL; i++)
++		{
++			if (strncmp(applep[i], "elf_calls=", 10) == 0)
++			{
++				uintptr_t table = (uintptr_t) __simple_atoi16(applep[i] + 10, NULL);
++				_elfcalls = (struct elf_calls*) table;
++			}
++		}
++	}
+ #else
+ 	// ask for elfcalls already set up by dyld
+ 	void* (*p2)(void);
