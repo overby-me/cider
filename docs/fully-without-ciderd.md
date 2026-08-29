@@ -79,8 +79,12 @@ Per-spawn calls (post-0050 histogram) and their in-guest disposition:
 
 ## Milestone 1 status + key finding (2026-08-29)
 
-**host_info(200) is now served FULLY in-guest, zero ciderd RPC (patch 0051).** exec-true drops 3
-RPCs/spawn (RECV 70 -> 67, id-200 3 -> 0), rc=0, soak 10/10, reply byte-identical to ciderd's.
+**All four self-contained kernel queries are now served FULLY in-guest, zero ciderd RPC (patches
+0051 + 0052): host_info(200), host_get_clock_service(206), task special ports(3409, 3418).** exec-true
+drops 12 RPCs/spawn (RECV 70 -> 58, those four ids 3 -> 0 each), rc=0, soak 10+/10+, replies
+byte-identical to ciderd's. The port-returning queries hand back guest-minted port names (reserved
+0xE0000000+ range) that exec-true only stores; a tiny guest port table serves their deallocate/mod_refs
+in-guest too.
 
 What landed (behind `CIDER_INGUEST_IPC`, a dev flag, default OFF; flag-off is byte-identical baseline):
 - **Dual-variant apple[] flag.** libsystem_kernel is compiled twice (the dyld loader's VARIANT_DYLD
