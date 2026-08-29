@@ -110,14 +110,18 @@ bash-boot baseline, flag-on RECV 42 with the same RPC mix. See the cider-test-re
   after all: the RPC only echoes DSERVER_MLDR_PATH, which mldr also leaves in /proc/self/environ, so
   sys_execve reads it in-guest with an RPC fallback (new inguest_environ_value(), mirroring
   host_loader_path). shell workload mldr_path 5 -> 0, RECV 42 -> 37, rc=0, soak 8/8, flag-off unchanged.
-  vchroot_path/vchroot return the container prefix root. The loader DOES fold it (apple[]
-  dserver_vchroot, from mldr's own fetch; src/darwin/loader/src/stack.rs) and the guest applies it in
-  mach_driver_init, so the x5 are NOT a missing seed -- they are fetches that run BEFORE
-  mach_driver_init (dyld-phase dylib-path resolution via vchroot_expand) or inside mldr itself.
-  Eliminating them means seeding prefix_path earlier in the VARIANT_DYLD copy, or making the loader
-  reuse its one fetch: dyld/loader-init timing, delicate, not a clean one-file guest win. (The
-  `__darling_vchroot` readlink is the container-setup helper's mechanism, run once by the `vchroot`
-  binary; guest processes have no vchroot dfd.) uidgid x2 is the same pre-seed timing story.
+  vchroot_path/vchroot return the container prefix root. ATTEMPTED the mldr_path env-technique and
+  REVERTED: expose the prefix as DSERVER_VCHROOT_PATH in the env (it propagates launcher->guest, value
+  is correct) and read it in init_vchroot_path via inguest_environ_value when flag-on. Result: the
+  container init (guest PID 1) CRASHES -- setting prefix_path before its thread registration breaks
+  early-init ordering (the vchroot_path RPC there doubles as a sync point). Excluding PID 1 stops the
+  crash but reduces 0 RPCs: every vchroot_path fetch is an early (pre-mach_driver_init) init context
+  where the /proc/self/environ read is premature or the process otherwise resists it. So unlike
+  mldr_path (whose RPC is in sys_execve, well after init), the vchroot_path RPCs are STRUCTURAL
+  early-init fetches; the env-read technique does not transfer without reworking the init's early
+  path-resolution ordering. Delicate, deferred. (The `__darling_vchroot` readlink is the
+  container-setup `vchroot` helper's one-shot mechanism; guest processes have no vchroot dfd.) uidgid
+  x2 is the same pre-seed early-init story.
 - **Milestone 4 (lifecycle, ~8): the endgame, but blocked on a deep dependency.** checkin registers
   the guest's TASK + ipc space with ciderd; checkout/fork_wait/kqchan hang off it. It can only be
   removed once the guest owns its WHOLE task port space in-guest -- and today task_self is still
