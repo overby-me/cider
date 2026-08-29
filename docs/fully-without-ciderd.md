@@ -96,10 +96,33 @@ rcv_msg = msg, so the reply memset zeroed the request's msgh_id before it was re
 The dyld-loader copy needs NO separate patch -- it compiles the same patched sources, so a prefix build
 gets it (validated by rebuilding //vendor/src/dyld:dyld: RECV 34 dylib-only -> 25 both copies).
 
-Remaining flag-on RECV=25 is NOT self-contained Mach: milestone-4 lifecycle
-(checkin/checkout/get_tracer/started_suspended/mldr_path/kqchan/fork_wait = 16), milestone-3 BSD
-(vchroot_path x5, uidgid x2, vchroot x1 = 8), and 1 task_self (the deep-port-table anchor: it is the
-TARGET of mach_port_deallocate/self-VM, so it cannot be minted without owning the task port space).
+Remaining flag-on RECV=19 (after 0057) is NOT self-contained Mach; it is the harder next phases:
+
+## Milestone 3/4: the harder remaining, ordered (the endgame dependency)
+
+Flag-on RECV=19 = vchroot_path x5, checkin x4, uidgid x2, checkout x2, mldr_path x2, vchroot x1,
+task_self x1, kqchan_proc_open x1, fork_wait_for_child x1.
+
+- **Milestone 3 (BSD, ~9): fiddly + FRAGILE, low marginal value.** vchroot_path/vchroot return the
+  container prefix root; the value IS derivable in-guest (`__darling_vchroot` does
+  `readlink(/proc/self/fd/<vchroot_dfd>)`) but `init_vchroot_path` -- the x5 RPC -- runs in contexts
+  without the dfd and isn't seeded. vchroot_userspace.c WARNS that routing early path work through
+  vchroot_expand "killed iTerm2 during startup with no output" -- treat as high-risk. uidgid x2 +
+  mldr_path x2 are the same multi-context/exec-chain seeding story. These are finicky, not gated-safe,
+  and worth little (9 RPCs vs the 51 already removed) -- deprioritized.
+- **Milestone 4 (lifecycle, ~8): the endgame, but blocked on a deep dependency.** checkin registers
+  the guest's TASK + ipc space with ciderd; checkout/fork_wait/kqchan hang off it. It can only be
+  removed once the guest owns its WHOLE task port space in-guest -- and today task_self is still
+  ciderd-SEEDED (the real name), because it is the TARGET of mach_port_deallocate + the self-VM
+  short-circuit, which minting alone cannot replace. So the true order is: own task_self in-guest (the
+  deep port table -- translate/serve every task-port op in-guest, since nothing must reach ciderd) ->
+  THEN checkin/checkout become removable and the LAUNCHER manages the lifecycle (sets up the container
+  itself + waitpids). This is the "lean in-guest XNU" of the roadmap and is a genuine multi-part
+  re-architecture, not a gated one-file win.
+
+Net: the tractable, safe, gated guest-side wins are landed (milestone 1). The remainder is either
+fragile-low-value (milestone 3) or a deep re-architecture gated on the guest owning task_self
+(milestone 4). Both deserve careful, incremental, well-validated steps -- not a rushed pass.
 
 What landed (behind `CIDER_INGUEST_IPC`, a dev flag, default OFF; flag-off is byte-identical baseline):
 - **Dual-variant apple[] flag.** libsystem_kernel is compiled twice (the dyld loader's VARIANT_DYLD
