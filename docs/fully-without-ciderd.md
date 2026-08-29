@@ -100,16 +100,24 @@ Remaining flag-on RECV=19 (after 0057) is NOT self-contained Mach; it is the har
 
 ## Milestone 3/4: the harder remaining, ordered (the endgame dependency)
 
-Flag-on RECV=19 = vchroot_path x5, checkin x4, uidgid x2, checkout x2, mldr_path x2, vchroot x1,
-task_self x1, kqchan_proc_open x1, fork_wait_for_child x1.
+Flag-on RECV=19 (exec-true, after 0057; 18 after 0058) = vchroot_path x5, checkin x4, uidgid x2,
+checkout x2, mldr_path x2, vchroot x1, task_self x1, kqchan_proc_open x1, fork_wait_for_child x1.
+(This host's `cider exec` cannot resolve macOS paths: its launcher realpath validates against the host
+FS, which lacks /usr/bin/true, so measure with `cider shell /usr/bin/true` instead. That is a heavier
+bash-boot baseline, flag-on RECV 42 with the same RPC mix. See the cider-test-recipe-nix-host memory.)
 
-- **Milestone 3 (BSD, ~9): fiddly + FRAGILE, low marginal value.** vchroot_path/vchroot return the
-  container prefix root; the value IS derivable in-guest (`__darling_vchroot` does
-  `readlink(/proc/self/fd/<vchroot_dfd>)`) but `init_vchroot_path` -- the x5 RPC -- runs in contexts
-  without the dfd and isn't seeded. vchroot_userspace.c WARNS that routing early path work through
-  vchroot_expand "killed iTerm2 during startup with no output" -- treat as high-risk. uidgid x2 +
-  mldr_path x2 are the same multi-context/exec-chain seeding story. These are finicky, not gated-safe,
-  and worth little (9 RPCs vs the 51 already removed) -- deprioritized.
+- **Milestone 3 (BSD): mldr_path LANDED (0059); vchroot_path/uidgid remain.** mldr_path was gated-safe
+  after all: the RPC only echoes DSERVER_MLDR_PATH, which mldr also leaves in /proc/self/environ, so
+  sys_execve reads it in-guest with an RPC fallback (new inguest_environ_value(), mirroring
+  host_loader_path). shell workload mldr_path 5 -> 0, RECV 42 -> 37, rc=0, soak 8/8, flag-off unchanged.
+  vchroot_path/vchroot return the container prefix root. The loader DOES fold it (apple[]
+  dserver_vchroot, from mldr's own fetch; src/darwin/loader/src/stack.rs) and the guest applies it in
+  mach_driver_init, so the x5 are NOT a missing seed -- they are fetches that run BEFORE
+  mach_driver_init (dyld-phase dylib-path resolution via vchroot_expand) or inside mldr itself.
+  Eliminating them means seeding prefix_path earlier in the VARIANT_DYLD copy, or making the loader
+  reuse its one fetch: dyld/loader-init timing, delicate, not a clean one-file guest win. (The
+  `__darling_vchroot` readlink is the container-setup helper's mechanism, run once by the `vchroot`
+  binary; guest processes have no vchroot dfd.) uidgid x2 is the same pre-seed timing story.
 - **Milestone 4 (lifecycle, ~8): the endgame, but blocked on a deep dependency.** checkin registers
   the guest's TASK + ipc space with ciderd; checkout/fork_wait/kqchan hang off it. It can only be
   removed once the guest owns its WHOLE task port space in-guest -- and today task_self is still
@@ -120,9 +128,10 @@ task_self x1, kqchan_proc_open x1, fork_wait_for_child x1.
   itself + waitpids). This is the "lean in-guest XNU" of the roadmap and is a genuine multi-part
   re-architecture, not a gated one-file win.
 
-Net: the tractable, safe, gated guest-side wins are landed (milestone 1). The remainder is either
-fragile-low-value (milestone 3) or a deep re-architecture gated on the guest owning task_self
-(milestone 4). Both deserve careful, incremental, well-validated steps -- not a rushed pass.
+Net: milestone 1 plus milestone-3 mldr_path (0059) are landed, gated, and safe. The remainder is
+vchroot_path/uidgid (milestone 3 -- vchroot worth a careful in-guest readlink attempt next) and the
+milestone-4 lifecycle re-architecture gated on the guest owning task_self. Careful, incremental,
+well-validated steps -- not a rushed pass.
 
 ## Milestone 4 design (detail): launcher-managed lifecycle
 

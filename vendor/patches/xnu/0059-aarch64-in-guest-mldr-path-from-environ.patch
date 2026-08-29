@@ -1,0 +1,89 @@
+aarch64 #23 milestone-3: serve mldr_path in-guest from the environment.
+
+sys_execve's mldr_path RPC only echoes DSERVER_MLDR_PATH, which mldr also leaves in the process
+environment; with CIDER_INGUEST_IPC on, read it from /proc/self/environ instead of asking ciderd,
+falling back to the RPC when absent. New static inguest_environ_value() mirrors host_loader_path's
+whole-environ read. Measured via `cider shell /usr/bin/true` (this host lacks /usr/bin/true so exec's
+host-side realpath cannot resolve it): RECV 42 -> 37 flag-on, mldr_path 5 -> 0, rc=0, soak 8/8;
+flag-off unchanged (134, mldr_path 5). Removes the mldr_path RPC from every guest exec. On top of 0058.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
+index 27aadca..52baa46 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
+@@ -134,6 +134,47 @@ static const char* host_loader_path(void)
+ 	return have ? entry : NULL;
+ }
+ 
++extern int __inguest_ipc_on(void);
++
++// mldr leaves DSERVER_MLDR_PATH in /proc/self/environ, the same value ciderd's mldr_path RPC returns,
++// so a daemonless exec can read it here (by name, e.g. "DSERVER_MLDR_PATH=") instead. NULL if absent.
++static const char* inguest_environ_value(const char* want)
++{
++	static char buf[262144];
++	static long len = -1;
++
++	if (len == -1)
++	{
++		len = 0;
++		int fd = LINUX_SYSCALL(__NR_openat, -100 /* AT_FDCWD */, "/proc/self/environ", LINUX_O_RDONLY, 0);
++		if (fd >= 0)
++		{
++			for (;;)
++			{
++				long chunk = LINUX_SYSCALL(__NR_read, fd, buf + len, sizeof(buf) - 1 - len);
++				if (chunk <= 0)
++					break;
++				len += chunk;
++				if (len >= (long) sizeof(buf) - 1)
++					break;
++			}
++			LINUX_SYSCALL(__NR_close, fd);
++		}
++		buf[len] = '\0';
++	}
++
++	long wantlen = strlen(want);
++	for (long i = 0; i < len; )
++	{
++		const char* var = &buf[i];
++		long varlen = strlen(var);
++		if (strncmp(var, want, wantlen) == 0 && var[wantlen] != '\0')
++			return var + wantlen;
++		i += varlen + 1;
++	}
++	return NULL;
++}
++
+ long sys_execve(const char* fname, const char** argvp, const char** envp)
+ {
+ 	int ret;
+@@ -142,9 +183,24 @@ long sys_execve(const char* fname, const char** argvp, const char** envp)
+ 	uint64_t mldr_path_length;
+ 	const char* path_to_exec = vc.path;
+ 
+-	ret = dserver_rpc_mldr_path(mldr_path, sizeof(mldr_path), &mldr_path_length);
+-	if (ret < 0) {
+-		return errno_linux_to_bsd(ret);
++	// Flag on with DSERVER_MLDR_PATH in the environment: skip the mldr_path RPC; otherwise fall back.
++	int have_mldr = 0;
++	if (__inguest_ipc_on()) {
++		const char* mp = inguest_environ_value("DSERVER_MLDR_PATH=");
++		if (mp) {
++			long n = strlen(mp);
++			if (n > 0 && n < (long) sizeof(mldr_path)) {
++				memcpy(mldr_path, mp, (unsigned long) n + 1);
++				mldr_path_length = (uint64_t) n;
++				have_mldr = 1;
++			}
++		}
++	}
++	if (!have_mldr) {
++		ret = dserver_rpc_mldr_path(mldr_path, sizeof(mldr_path), &mldr_path_length);
++		if (ret < 0) {
++			return errno_linux_to_bsd(ret);
++		}
+ 	}
+ 
+ 	vc.flags = VCHROOT_FOLLOW;
