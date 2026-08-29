@@ -201,14 +201,14 @@ fn main() {
             if argv.len() <= 2 {
                 die("exec requires a binary path");
             }
-            let full = full_path(&argv[2]);
+            let full = full_path(&argv[2], &ctx.prefix);
             let mut a = vec![full.clone()];
             a.extend_from_slice(&argv[3..]);
             spawn_binary(&ctx, &full, &a);
         }
         _ => {
             // Bare `cider <prog> [args]`: realpath+SYSTEM_ROOT, shell-wrapped.
-            let full = full_path(&argv[1]);
+            let full = full_path(&argv[1], &ctx.prefix);
             let mut a = vec![full];
             a.extend_from_slice(&argv[2..]);
             spawn_shell(&ctx, &a);
@@ -1166,15 +1166,24 @@ fn startup_timeout() -> i32 {
         .unwrap_or(60)
 }
 
-fn full_path(arg: &str) -> String {
-    let a = cstr(arg);
+fn full_path(arg: &str, prefix: &str) -> String {
     let mut buf = [0 as c_char; 4096];
+    let a = cstr(arg);
     let r = unsafe { libc::realpath(a.as_ptr(), buf.as_mut_ptr()) };
-    if r.is_null() {
+    if !r.is_null() {
+        let resolved = unsafe { CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned() };
+        return format!("{SYSTEM_ROOT}{resolved}");
+    }
+    // The host FS may not have the macOS command path (e.g. a nix host with no /usr/bin/true), so
+    // realpath fails there; resolve against the container overlay we joined and strip its prefix back.
+    let pj = cstr(&format!("{prefix}{arg}"));
+    let r2 = unsafe { libc::realpath(pj.as_ptr(), buf.as_mut_ptr()) };
+    if r2.is_null() {
         die(&format!("{arg} is not a supported command or a file"));
     }
     let resolved = unsafe { CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned() };
-    format!("{SYSTEM_ROOT}{resolved}")
+    let macos = resolved.strip_prefix(prefix).unwrap_or(&resolved);
+    format!("{SYSTEM_ROOT}{macos}")
 }
 
 fn read_full(fd: c_int, buf: &mut [u8]) -> usize {
