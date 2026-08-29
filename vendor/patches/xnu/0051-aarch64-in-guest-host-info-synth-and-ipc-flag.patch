@@ -1,18 +1,20 @@
-aarch64 #23 milestone-1: in-guest host_info synthesis + CIDER_INGUEST_IPC flag (WIP, gated off).
+aarch64 #23 milestone-1: host_info served fully in-guest (0 ciderd RPC), gated by CIDER_INGUEST_IPC.
 
-Adds the dev flag CIDER_INGUEST_IPC (parsed from apple[] in mach_driver_init, OUTSIDE
-the VARIANT_DYLD block so BOTH the dyld-loader copy and libsystem_kernel.dylib see it;
-the guest's host_info runs through the dylib copy at libc init). When on,
-mach_msg_overwrite_trap_impl serves host_info (id 200) fully in-guest: HOST_BASIC_INFO
-and HOST_PRIORITY_INFO, flavor-checked, cpu/mem via sched_getaffinity/sysinfo (NOT
-sysconf, which is itself host_info and would recurse), reply laid out to match the MIG
-__Reply__host_info bytes exactly.
+When CIDER_INGUEST_IPC is set, mach_msg_overwrite_trap_impl serves host_info (id 200,
+HOST_BASIC_INFO + HOST_PRIORITY_INFO) fully in-guest -- zero ciderd round-trip. The reply
+matches the MIG __Reply__host_info bytes exactly; cpu/mem come from sched_getaffinity/sysinfo
+(NOT sysconf, which is host_info and would recurse). The flag is parsed from apple[] in
+mach_driver_init OUTSIDE the VARIANT_DYLD block so both the dyld-loader copy and
+libsystem_kernel.dylib (which the guest's host_info uses at libc init) see it.
 
-WIP, default OFF (flag-off is byte-identical baseline). Enabling it presently SIGTRAPs
-the guest: a pure RPC-skip leaves ciderd's reply-port/thread state unestablished, which
-a later guest op asserts on (proven: real RPC + synthesized bytes runs clean). The fix
-is the in-guest reply-port/thread layer (docs/fully-without-ciderd.md, the port-table
-design); the synthesis here is the verified reference it will sit on. On top of 0050.
+Verified: exec-true drops 3 RPCs/spawn (host_info x3 -> 0), rc=0, soak 10/10, reply byte-identical
+to ciderd's. Flag-off is the unchanged baseline.
+
+Load-bearing detail: mach_msg_trap passes rcv_msg = msg, so the reply buffer ALIASES the request;
+every request field (flavor, outCnt, msgh_id) is read into a local BEFORE the reply memset, else
+the memset zeroes the request mid-read -- that made the reply id 100 not req+100=300, the MIG stub
+rejected it, and pthread init's host_info() assert fired (the failure that masqueraded as missing
+ciderd state). On top of 0050.
 
 diff --git a/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c b/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c
 index df54387..3888118 100644
@@ -47,10 +49,10 @@ index df54387..3888118 100644
  	if (applep != NULL)
  	{
 diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
-index f92cf82..6079dc7 100644
+index f92cf82..3453441 100644
 --- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
 +++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
-@@ -167,6 +167,119 @@ static void mach_msg_guard_add(mach_port_name_t name) {
+@@ -167,6 +167,127 @@ static void mach_msg_guard_add(mach_port_name_t name) {
  	libsimple_rwlock_unlock_write(&g_mach_msg_cache_lock);
  }
  
@@ -92,10 +94,18 @@ index f92cf82..6079dc7 100644
 +	struct hi_request { mach_msg_header_t Head; NDR_record_t NDR; host_flavor_t flavor;
 +		mach_msg_type_number_t outCnt; };
 +	if (req == 0 || rcv == 0) return 0;
++	// rcv MAY ALIAS req: mach_msg_trap passes rcv_msg = msg, so the reply is written over the request.
++	// Read EVERY request field into locals BEFORE writing the reply; otherwise the memset below zeroes
++	// the request mid-read. This aliasing is exactly what made the reply id 100 instead of req+100=300,
++	// so the MIG stub rejected the reply and host_info() returned an error, tripping pthread's init
++	// assert -- the failure that looked like missing ciderd state but was this buffer aliasing.
 +	struct hi_request* q = (struct hi_request*) req;
++	host_flavor_t flavor = q->flavor;
++	mach_msg_type_number_t outCnt = q->outCnt;
++	mach_msg_id_t reqid = req->msgh_id;
 +	integer_t data[32];
 +	mach_msg_type_number_t cnt = 0;
-+	switch (q->flavor) {
++	switch (flavor) {
 +	case HOST_BASIC_INFO: {
 +		host_basic_info_data_t bi;
 +		memset(&bi, 0, sizeof(bi));
@@ -135,7 +145,7 @@ index f92cf82..6079dc7 100644
 +	default:
 +		return 0; // unhandled flavor: RPC path
 +	}
-+	if (cnt == 0 || q->outCnt < cnt) return 0;
++	if (cnt == 0 || outCnt < cnt) return 0;
 +	mach_msg_size_t reply_size = (mach_msg_size_t) (sizeof(mach_msg_header_t) + sizeof(NDR_record_t)
 +		+ sizeof(kern_return_t) + sizeof(mach_msg_type_number_t) + cnt * sizeof(integer_t));
 +	if (rcv_size < reply_size) return 0;
@@ -147,7 +157,7 @@ index f92cf82..6079dc7 100644
 +	h->msgh_size = reply_size;
 +	h->msgh_remote_port = 0;
 +	h->msgh_local_port = rcv_name;
-+	h->msgh_id = req->msgh_id + 100;
++	h->msgh_id = reqid + 100;
 +	size_t off = sizeof(mach_msg_header_t);
 +	// NDR record, explicit little-endian (int_rep=1) as in the real reply; a wrong NDR makes the MIG
 +	// client byte-swap outCnt into a huge value and overflow.
@@ -170,7 +180,7 @@ index f92cf82..6079dc7 100644
  mach_msg_return_t mach_msg_overwrite_trap_impl(
  				mach_msg_header_t *msg,
  				mach_msg_option_t option,
-@@ -180,6 +293,19 @@ mach_msg_return_t mach_msg_overwrite_trap_impl(
+@@ -180,6 +301,19 @@ mach_msg_return_t mach_msg_overwrite_trap_impl(
  {
  	int code;
  

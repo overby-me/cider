@@ -79,12 +79,10 @@ Per-spawn calls (post-0050 histogram) and their in-guest disposition:
 
 ## Milestone 1 status + key finding (2026-08-29)
 
-Milestone 1 was started on host_info and it surfaced the load-bearing constraint for the WHOLE
-campaign: **a pure in-guest reply synthesis (skip the ciderd RPC, return a fabricated reply) crashes
-the guest even when the reply is byte-perfect. The blocker is ciderd-side STATE, not reply content.**
+**host_info(200) is now served FULLY in-guest, zero ciderd RPC (patch 0051).** exec-true drops 3
+RPCs/spawn (RECV 70 -> 67, id-200 3 -> 0), rc=0, soak 10/10, reply byte-identical to ciderd's.
 
-What landed (behind `CIDER_INGUEST_IPC`, a dev flag, default OFF; flag-off is byte-identical baseline,
-verified `cider exec true` rc=0 / RECV histogram unchanged):
+What landed (behind `CIDER_INGUEST_IPC`, a dev flag, default OFF; flag-off is byte-identical baseline):
 - **Dual-variant apple[] flag.** libsystem_kernel is compiled twice (the dyld loader's VARIANT_DYLD
   copy for early traffic, and libsystem_kernel.dylib for the guest); each has its OWN mach_traps.c
   statics. The guest's host_info runs through the DYLIB copy (`mach_init_doit -> mach_driver_init(apple)`
@@ -93,17 +91,21 @@ verified `cider exec true` rc=0 / RECV histogram unchanged):
   (`stack.rs`) folds `cider_inguest_ipc={0,1}` into apple[] from mldr's env (NOT getenv in-guest:
   getenv from mach_msg during early init hangs).
 - **host_info reply synthesis**, flavor-aware (BASIC + PRIORITY), recursion-safe (cpu/mem via direct
-  `sched_getaffinity`/`__linux_sysinfo`, never sysconf, which IS host_info). Reply bytes were verified
-  byte-identical to ciderd's via a runtime shadow-compare.
+  `sched_getaffinity`/`__linux_sysinfo`, never sysconf, which IS host_info).
 
-The wall: skipping the RPC leaves ciderd's reply-port / per-thread state unestablished, and a later
-guest op raises a Mach exception (id 2405 -> SIGTRAP). Proven it is the state and not the bytes: doing
-the real RPC and then overwriting the reply with the synthesized bytes runs clean (rc=0). Therefore
-milestone 1 is NOT separable from the port/thread layer (milestones 2-3): every first-call kernel
-query (host_info, host_get_io_master 206, task special ports 3409/3418) hits the same state wall, and
-the 0048 cache already serves SUBSEQUENT calls (the first RPC establishes the state). **Next real step:
-own the reply-port + per-thread lifecycle in-guest, then wire the (already-correct) synthesis on top.**
-See [[cider-inguest-synth-blocked-on-state]].
+The days-long "blocker" was NOT ciderd state -- it was a **buffer-aliasing bug**. `mach_msg_trap` passes
+`rcv_msg = msg`, so the reply buffer aliases the request; the synthesis read `req->msgh_id` for the reply
+id AFTER `memset(rcv, 0, ...)`, which had zeroed the aliased request -> reply id 100 instead of req+100
+= 300 -> the MIG stub rejected the reply -> `host_info()` returned an error -> pthread init's
+`host_info() != KERN_SUCCESS` assert (a `brk #1` in `___pthread_init`) fired. The shadow test that
+"proved state" used a scratch buffer (no aliasing), masking it. Symbolicated via `DSERVER_TRACE_SIGNAL=5`
+(gave rip + insn) + a byte-pattern search of the guest dylibs. Fix: read every request field into a
+local before the reply memset.
+
+**Consequence for the campaign: the data-only queries do NOT need the port/thread layer.** host_info is
+proof. Next are the PORT-RETURNING queries (host_get_io_master 206, task special ports 3409/3418): those
+need in-guest port NAMES for the returned ports, which is where the port table below comes in -- but the
+reply-port/per-thread-state fear is retired.
 
 ## In-guest port table: design (the milestone-1/2 core)
 
