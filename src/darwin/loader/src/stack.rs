@@ -123,6 +123,13 @@ pub unsafe fn setup_stack(
         format!("dserver_uid={:x}", seed_uid as u32),
         format!("dserver_gid={:x}", seed_gid as u32),
         format!("dserver_vchroot={seed_vchroot}"),
+        // #23: enable in-guest Mach IPC (fully-without-ciderd milestone 1). Read from mldr's env,
+        // parsed in mach_driver_init. An apple[] flag, NOT getenv in the guest: mach_msg fires during
+        // early init before libsystem_c is up, so getenv there hangs.
+        format!(
+            "cider_inguest_ipc={}",
+            if std::env::var_os("CIDER_INGUEST_IPC").map_or(false, |v| v == "1") { "1" } else { "0" }
+        ),
     ];
 
     // Strings high, from stack_top downward.

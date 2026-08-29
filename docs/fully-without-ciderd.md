@@ -77,6 +77,34 @@ Per-spawn calls (post-0050 histogram) and their in-guest disposition:
 7. **Cross-process: shared-memory kernel** for bootstrap/launchd/XPC. Removes the daemon for the
    general case.
 
+## Milestone 1 status + key finding (2026-08-29)
+
+Milestone 1 was started on host_info and it surfaced the load-bearing constraint for the WHOLE
+campaign: **a pure in-guest reply synthesis (skip the ciderd RPC, return a fabricated reply) crashes
+the guest even when the reply is byte-perfect. The blocker is ciderd-side STATE, not reply content.**
+
+What landed (behind `CIDER_INGUEST_IPC`, a dev flag, default OFF; flag-off is byte-identical baseline,
+verified `cider exec true` rc=0 / RECV histogram unchanged):
+- **Dual-variant apple[] flag.** libsystem_kernel is compiled twice (the dyld loader's VARIANT_DYLD
+  copy for early traffic, and libsystem_kernel.dylib for the guest); each has its OWN mach_traps.c
+  statics. The guest's host_info runs through the DYLIB copy (`mach_init_doit -> mach_driver_init(apple)`
+  at libc init), so any in-guest gate/seed must be parsed OUTSIDE the `#ifdef VARIANT_DYLD` block to
+  reach both copies. This is the reusable lever for every future in-guest gate. The loader
+  (`stack.rs`) folds `cider_inguest_ipc={0,1}` into apple[] from mldr's env (NOT getenv in-guest:
+  getenv from mach_msg during early init hangs).
+- **host_info reply synthesis**, flavor-aware (BASIC + PRIORITY), recursion-safe (cpu/mem via direct
+  `sched_getaffinity`/`__linux_sysinfo`, never sysconf, which IS host_info). Reply bytes were verified
+  byte-identical to ciderd's via a runtime shadow-compare.
+
+The wall: skipping the RPC leaves ciderd's reply-port / per-thread state unestablished, and a later
+guest op raises a Mach exception (id 2405 -> SIGTRAP). Proven it is the state and not the bytes: doing
+the real RPC and then overwriting the reply with the synthesized bytes runs clean (rc=0). Therefore
+milestone 1 is NOT separable from the port/thread layer (milestones 2-3): every first-call kernel
+query (host_info, host_get_io_master 206, task special ports 3409/3418) hits the same state wall, and
+the 0048 cache already serves SUBSEQUENT calls (the first RPC establishes the state). **Next real step:
+own the reply-port + per-thread lifecycle in-guest, then wire the (already-correct) synthesis on top.**
+See [[cider-inguest-synth-blocked-on-state]].
+
 ## Correctness discipline (unchanged)
 
 Every milestone gated via the buck2 dev-loop swap (build the changed components, swap into a prefix
