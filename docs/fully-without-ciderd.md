@@ -374,3 +374,26 @@ STATUS (session 3 end): 4 patches landed (0059 mldr_path, 0060 uidgid, 0061 inte
 flag-on RECV 35 -> 25, milestone-1 + milestone-3 complete. The remaining is a dedicated multi-session
 re-architecture; the checkin-abort (the bulk, checkin x10 + checkout x5) is now precisely characterized
 above so a future session can go straight to the ciderd-side fix or the launcher pivot.
+
+## Task #24 -- JSC arm64 LLInt offline-asm gap, root-caused (session 3)
+
+The FULL prefix's JavaScriptCore_dylib link fails with undefined offline-asm entry symbols
+(_vmEntryToJavaScript, _wasm_entry, _wasmLLIntPCRange*). ROOT: JavaScriptCore/CMakeLists.txt (which the
+BUCK is generated from) handles the low_level_interpreter for TARGET_x86_64 (X86_64/debug LLIntOffsets
+header) and TARGET_i386 (C_LOOP/debug header) but has NO arm64 case (~lines 2160-2181) -- so on arm64,
+llint/LowLevelInterpreter.cpp is built as an EMPTY stub (darling/source/empty.c) and the LLInt/WASM entry
+symbols are never defined. The pre-generated DerivedSources LLIntOffsets exist for C_LOOP + X86_64 only;
+no ARM64.
+
+FIX PATH (add an arm64 case building llint/LowLevelInterpreter.cpp with an ARM64 or C_LOOP header):
+- offlineasm HAS arm64.rb + arm64e.rb backends (offlineasm/backends.rb requires + lists ARM64/ARM64E), so
+  a NATIVE arm64 header can be generated: offset extractor (generate_offset_extractor.rb -> compile for
+  arm64 -> run -> offsets) then `ruby offlineasm/asm.rb` (ARM64 backend) llint/LowLevelInterpreter.asm
+  <offsets> -> DerivedSources/JavaScriptCore/LLIntOffsets/ARM64/{release,debug}/LLIntAssembly.h.
+- OR simplest: mirror i386 and use the existing C_LOOP/debug header for arm64 (portable C++ interpreter),
+  with ENABLE(C_LOOP) set for the arm64 JSC build -- slower JS but no offline-asm needed; fine for cider
+  (correctness, not JS perf). Must also cover WASM (wasm_entry/wasmLLIntPCRange*): C_LOOP-WASM or
+  ENABLE(WEBASSEMBLY)=0.
+VERIFY (bounded, no full-dylib link needed): compile LowLevelInterpreter.cpp with the chosen header ->
+`llvm-nm` the obj -> confirm the entry symbols are DEFINED; then the full JavaScriptCore_dylib links.
+NON-GATING: bash + nix + the min prefix do NOT need JSC; #24 only blocks the FULL prefix.
