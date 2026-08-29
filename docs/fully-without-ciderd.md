@@ -79,19 +79,27 @@ Per-spawn calls (post-0050 histogram) and their in-guest disposition:
 
 ## Milestone 1 status + key finding (2026-08-29)
 
-**All four self-contained kernel queries AND the per-thread MIG reply port are now served FULLY
-in-guest, zero ciderd RPC (patches 0051 + 0052 + 0053): host_info(200), host_get_clock_service(206),
-task special ports(3409, 3418), and mach_reply_port.** exec-true drops 16 RPCs/spawn (RECV 70 -> 54),
-rc=0, soak 10+/10+, replies byte-identical to ciderd's. The port-returning queries hand back
-guest-minted port names (reserved 0xE0000000+ range) that exec-true only stores; a tiny guest port
-table serves their deallocate/mod_refs in-guest too. Because there is then 0 ciderd mach_msg, the MIG
-reply port is minted in-guest as well (3 reply_port_batch remain, from the dyld-loader copy not rebuilt
-in the buck2 dylib-only swap).
+**Milestone 1 (in-guest self-contained Mach IPC) is essentially COMPLETE: exec-true RECV 70 -> 25
+flag-on, rc=0, soak 12/12** (patches 0051-0056, gated by CIDER_INGUEST_IPC, flag-off = baseline
+70 -> 59 after the #25 dylib-seed fix). All served fully in-guest, 0 ciderd RPC:
+- kernel queries: host_info(200), host_get_clock_service(206), task special ports(3409/3418) -- data +
+  COMPLEX port-descriptor replies byte-identical to ciderd's; port-returning ones mint guest-owned
+  names in a reserved 0xE0000000+ port table (deallocate/mod_refs on them served in-guest).
+- the per-thread MIG reply port (minted in-guest -- 0 ciderd mach_msg remain, so it's never sent out).
+- host_self + thread_self (minted); task_self + uidgid + vchroot SEEDED into the dylib copy too (0055
+  moved the #25 checkin seeds out of #ifdef VARIANT_DYLD -- the general baseline win 70 -> 59).
+- set_thread_handles skipped (ciderd stores it, never reads it).
 
-Remaining self-contained Mach RPCs (flag-on RECV=54): the SELF-PORTS (thread_self 35, host_self 34,
-task_self 33) are harder -- they anchor ciderd ops (mach_port_deallocate(task_self,...), self-VM), so
-minting a self-port name needs those ops in-guest too. Then milestone 3 (uidgid/vchroot/
-set_thread_handles) and milestone 4 (checkin/checkout lifecycle).
+The load-bearing bug (days of "blocked on ciderd state") was buffer aliasing: mach_msg_trap passes
+rcv_msg = msg, so the reply memset zeroed the request's msgh_id before it was read (reply id 100 not
+300 -> MIG stub rejected -> host_info() error -> pthread init assert). Fix: read request fields first.
+The dyld-loader copy needs NO separate patch -- it compiles the same patched sources, so a prefix build
+gets it (validated by rebuilding //vendor/src/dyld:dyld: RECV 34 dylib-only -> 25 both copies).
+
+Remaining flag-on RECV=25 is NOT self-contained Mach: milestone-4 lifecycle
+(checkin/checkout/get_tracer/started_suspended/mldr_path/kqchan/fork_wait = 16), milestone-3 BSD
+(vchroot_path x5, uidgid x2, vchroot x1 = 8), and 1 task_self (the deep-port-table anchor: it is the
+TARGET of mach_port_deallocate/self-VM, so it cannot be minted without owning the task port space).
 
 What landed (behind `CIDER_INGUEST_IPC`, a dev flag, default OFF; flag-off is byte-identical baseline):
 - **Dual-variant apple[] flag.** libsystem_kernel is compiled twice (the dyld loader's VARIANT_DYLD
