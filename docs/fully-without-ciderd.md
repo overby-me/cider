@@ -119,9 +119,21 @@ bash-boot baseline, flag-on RECV 42 with the same RPC mix. See the cider-test-re
   where the /proc/self/environ read is premature or the process otherwise resists it. So unlike
   mldr_path (whose RPC is in sys_execve, well after init), the vchroot_path RPCs are STRUCTURAL
   early-init fetches; the env-read technique does not transfer without reworking the init's early
-  path-resolution ordering. Delicate, deferred. (The `__darling_vchroot` readlink is the
-  container-setup `vchroot` helper's one-shot mechanism; guest processes have no vchroot dfd.) uidgid
-  x2 is the same pre-seed early-init story.
+  path-resolution ordering. Delicate, deferred.
+
+  CORRECTION (session 2, RPC-attribution by ciderd nsid): the GUEST is already CLEAN of vchroot_path.
+  The seed (apple[] dserver_vchroot) is applied in __libkernel_init -> mach_init(apple) -> __vchroot_seed
+  BEFORE any path op, so the guest never hits init_vchroot_path. The vchroot_path (#3) RPCs all come from
+  SHELLSPAWN (nsid=1, the container-setup process, pre-vchroot): its apple[] lacks dserver_vchroot because
+  the container is not set up yet, so it legitimately RPCs ciderd to establish + read the vchroot.
+  Eliminating them = re-architecting container SETUP (launcher/ciderd own the vchroot), a milestone-4
+  concern, NOT a guest seed. So the earlier "vchroot in-guest" attempts targeted the wrong process. The
+  guest's own remaining RPCs are uidgid x2 + checkin/checkout: uidgid RPCs because __getuidgid_seed got no
+  valid uid/gid (getuid.c aborts-or-RPCs when stored_uid/gid == -1; lkm.c seeds only if both
+  dserver_uid/gid >= 0 in apple[]), so the loader/checkin handed uid/gid = -1 for that process. NEXT WIN
+  LEAD: attribute the 2 uidgid (fetch getuid.c:41 vs set getuid.c:63) and why seed_uid is -1 (checkin
+  reply / stack.rs fold); if a real fetch with a bad seed, provide valid uid/gid so the existing seed
+  wires it like vchroot -- the most tractable remaining guest-side win.
 - **Milestone 4 (lifecycle, ~8): the endgame, but blocked on a deep dependency.** checkin registers
   the guest's TASK + ipc space with ciderd; checkout/fork_wait/kqchan hang off it. It can only be
   removed once the guest owns its WHOLE task port space in-guest -- and today task_self is still
