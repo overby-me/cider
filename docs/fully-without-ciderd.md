@@ -255,3 +255,27 @@ fallback for production.
 Every milestone gated via the buck2 dev-loop swap (build the changed components, swap into a prefix
 copy, measure -- see [[cider-buck2-dev-loop]]): RPC count drops, exec true 50x + 16-way + fork-heavy
 correct, no ciderd leak, ciderd survives (until milestone 4 removes it). One heavy build at a time.
+
+## Milestone 4 refined (session 2): reaping is ALREADY in-guest, so it is more tractable
+
+Guest BSD is now COMPLETE (mldr_path 0059 + uidgid 0060). The remaining ciderd RPCs are the lifecycle.
+KEY FINDING: the guest reaps its own children via LINUX_SYSCALL(__NR_wait4) (wait4.c:36), NOT through
+ciderd -- so the launcher does NOT need to reap. ciderd's death-watch (task #33) is only for (a) its own
+task cleanup (N/A without ciderd) and (b) kqchan_proc_open (a guest watching a process via kqueue
+EVFILT_PROC). So the lifecycle RPCs are ciderd-TRACKING, not reaping.
+
+For NO ciderd (Mach in-guest milestone-1 + BSD in-guest; a forked child INHERITS prefix_path/stored_uid/
+reset ports, so it needs no RPCs except the lifecycle):
+- checkin (fork.c:61, per-fork) -> SKIP flag-on + skip the RPC-socket/lifetime-pipe refresh.
+- checkout (execve.c:434, exec/exit teardown) -> SKIP flag-on (nothing to tear down without ciderd).
+- fork_wait_for_child (#11) -> NO guest emulation call site; triggered server-side or by mldr -- find it,
+  it may not need gating.
+- kqchan_proc_open (#29) -> serve in-guest via Linux pidfd_open(target) feeding the kqueue EVFILT_PROC,
+  or verify it does not fire for the self-contained case.
+
+PLAN (coordinated, flag-on, validate via `cider shell /usr/bin/true`, revert on ANY break/hang, never
+regress flag-off): (1) gate checkin + socket/pipe refresh (fork.c); (2) gate checkout (execve.c); (3)
+kqchan in-guest pidfd or verify absent; (4) confirm fork_wait does not hang. Then ciderd is unneeded for
+the self-contained case. This IS validatable (shell forks/execs/reaps bash + children), so attempt it
+incrementally rather than flag it -- but stop + revert on the first hang/crash given the crashed-session
+history.
