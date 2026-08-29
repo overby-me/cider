@@ -156,6 +156,30 @@ fn clamp_open_file_limit() {
     }
 }
 
+/// Whether in-guest IPC is on. The same env read mldr folds into the guest's apple[] as
+/// cider_inguest_ipc=, so mldr's own view here stays consistent with the guest's.
+fn inguest_ipc() -> bool {
+    std::env::var_os("CIDER_INGUEST_IPC").map_or(false, |v| v == "1")
+}
+
+/// The host path prefix guest `/` lives under, recovered from the resolved executable path: mldr
+/// loads <prefix><mac> for a guest whose own argv0 is the absolute Mac path <mac>, so the host path
+/// minus that suffix is the prefix the daemon's vchroot_path would return (verified equal for the
+/// login chain). None (caller RPCs) when the suffix strip cannot yield a prefix: a bare basename
+/// like `cp`, a non-matching argv0, or -- CRITICAL -- argv0 already equal to the full host path
+/// (a shebang interpreter mldr host-resolved, so guest_path == argv0), which strips to "" and, if
+/// used, empties root and sends dyld to /usr/lib/dyld. Reject empty; only a non-empty prefix seeds.
+fn local_vchroot_prefix(guest_path: &str, guest_argv: &[String]) -> Option<String> {
+    let mac = guest_argv.first()?;
+    if !mac.starts_with('/') {
+        return None;
+    }
+    match guest_path.strip_suffix(mac.as_str()) {
+        Some(prefix) if !prefix.is_empty() => Some(prefix.to_string()),
+        _ => None,
+    }
+}
+
 fn main() {
     // Prime the MLDR_DEBUG flag here, on main's aligned stack: the env read must
     // not happen later on an elfcall's misaligned stack (movaps constraint).
@@ -274,7 +298,15 @@ fn main() {
                     seed_gid = checkin.gid;
                     rpc::set_sockpath(sockpath);
                     rpc::set_thread_socket(rpcfd);
-                    vchroot_root = unsafe { rpc::vchroot_path(rpcfd) };
+                    // #23 milestone-4: recover the vchroot prefix locally (see local_vchroot_prefix)
+                    // instead of RPCing it. RPC fallback keeps flag-off unchanged and covers the cases
+                    // local recovery declines.
+                    vchroot_root = if inguest_ipc() {
+                        local_vchroot_prefix(&guest_path, &guest_argv)
+                            .or_else(|| unsafe { rpc::vchroot_path(rpcfd) })
+                    } else {
+                        unsafe { rpc::vchroot_path(rpcfd) }
+                    };
                     dlog!("[mldr] vchroot_path -> {vchroot_root:?}");
                 } else {
                     eprintln!("[mldr] rpc socket creation failed");
