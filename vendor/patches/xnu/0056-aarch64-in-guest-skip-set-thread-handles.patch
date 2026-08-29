@@ -1,0 +1,56 @@
+aarch64 #23 milestone-1: skip set_thread_handles in-guest (ciderd only stores it, never reads it).
+
+bsdthread_register calls set_thread_handles to hand ciderd the thread's pthread handle + dispatch queue
+address. ciderd inserts them into a per-thread thread_handles map that has NO read site anywhere in the
+server -- it is pure introspection bookkeeping. So when CIDER_INGUEST_IPC is on, the guest skips the RPC
+(the call aborts on failure, so gating the call, not erroring in ciderd). An exported __inguest_ipc_on()
+lets bsdthread_register.c read the flag set in mach_traps.c.
+
+exec-true RECV 38 -> 34 (set_thread_handles 4 -> 0), rc=0, soak 8/8. Flag-off unchanged. On top of 0055.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.c
+index 615fca5..dc03590 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.c
+@@ -12,6 +12,10 @@
+ 
+ #include <darlingserver/rpc.h>
+ 
++// #23: when in-guest IPC is on, skip set_thread_handles -- ciderd only STORES the pthread/dispatch
++// handles (thread_handles map) and never reads them, so the RPC is pure introspection bookkeeping.
++extern int __inguest_ipc_on(void);
++
+ int pthread_obj_size;
+ bsdthread_entry_t pthread_entry_point;
+ bsdwqthread_entry_t wqueue_entry_point;
+@@ -45,7 +49,7 @@ long sys_bsdthread_register(void* thread_start, void* wqthread, int pthsize,
+ 
+ 	uintptr_t pthread_handle = _pthread_getspecific_direct(_PTHREAD_TSD_SLOT_PTHREAD_SELF);
+ 	uintptr_t dispatch_qaddr = pthread_handle + g_pth_regdata.tsd_offset + g_pth_regdata.dispatch_queue_offset;
+-	if (dserver_rpc_set_thread_handles(pthread_handle, dispatch_qaddr) < 0) {
++	if (!__inguest_ipc_on() && dserver_rpc_set_thread_handles(pthread_handle, dispatch_qaddr) < 0) {
+ 		__simple_abort();
+ 	}
+ 
+@@ -63,7 +67,7 @@ void pthread_entry_point_wrapper(void* self, int thread_port, void* funptr,
+ 
+ 	uintptr_t pthread_handle = (unsigned long) self;
+ 	uintptr_t dispatch_qaddr = pthread_handle + g_pth_regdata.tsd_offset + g_pth_regdata.dispatch_queue_offset;
+-	if (dserver_rpc_set_thread_handles(pthread_handle, dispatch_qaddr) < 0) {
++	if (!__inguest_ipc_on() && dserver_rpc_set_thread_handles(pthread_handle, dispatch_qaddr) < 0) {
+ 		__simple_abort();
+ 	}
+ 
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+index f1b769e..bcfac83 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -210,6 +210,8 @@ static void mach_msg_guard_add(mach_port_name_t name) {
+ static _Bool g_inguest_ipc = 0;
+ void __inguest_ipc_set(int on) { g_inguest_ipc = on ? 1 : 0; }
+ static _Bool inguest_ipc_on(void) { return g_inguest_ipc; }
++// Exported so other translation units (e.g. bsdthread_register.c) can gate dserver RPCs on the flag.
++int __inguest_ipc_on(void) { return g_inguest_ipc; }
+ // #23 port table (milestone 1, port-returning queries): mint guest-owned port names in a reserved
+ // high range ciderd never assigns, so a synthesized kernel query can hand back a port with no daemon.
+ // exec-true only FETCHES these ports (clock service, task special ports) and never sends to them, so a
