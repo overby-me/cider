@@ -134,27 +134,29 @@ bash-boot baseline, flag-on RECV 42 with the same RPC mix. See the cider-test-re
   LEAD: attribute the 2 uidgid (fetch getuid.c:41 vs set getuid.c:63) and why seed_uid is -1 (checkin
   reply / stack.rs fold); if a real fetch with a bad seed, provide valid uid/gid so the existing seed
   wires it like vchroot -- the most tractable remaining guest-side win.
-- **Milestone 4 (lifecycle): fork_wait + checkout removed independently; checkin is the remaining
-  blocker.** The earlier belief that "checkout/fork_wait hang off checkin" (removable only after the
-  guest owns its whole task port space) turned out to be WRONG for two of the three: both are gone
-  flag-on with no checkin change. fork_wait (0062): the child self-checks-in and the parent reaps via
-  in-guest wait4. checkout (0063): ciderd's #30 exec-replacement reuse reaps the old thread at the new
-  image's re-checkin, and the #33 death-watch + despawn_task clean threads that finished without a
-  checkout at process death, so the guest's exec-checkout is pure redundancy. CHECKIN alone remains,
-  and it is genuinely load-bearing two ways now: it is the fork child's registration (skipping it makes
-  the child abort on teardown -- a deep runtime signal-routing issue, characterized over 3 sessions in
-  the cider-test-recipe memory, NOT yet fixed), AND it is the exec-replacement reap trigger that
-  checkout-skip now depends on. Removing checkin is the launcher-managed-lifecycle re-architecture
-  (launcher sets up the container + waitpids; ciderd stops registering), gated on fixing the fork-child
-  teardown abort. A genuine multi-part re-arch, not a gated one-file win.
+- **Milestone 4 (lifecycle): fork_wait + checkout + fork-checkin removed; only exec-checkin + shellspawn
+  infra remain.** The earlier belief that "checkout/fork_wait hang off checkin" was WRONG, and so was
+  treating the "checkin abort" as a deep unfixable signal-routing bug. fork_wait (0062): child
+  self-checks-in, parent reaps via in-guest wait4. checkout (0063): ciderd's #30 exec-reuse reaps the
+  old thread at the new image's re-checkin; the #33 death-watch cleans the rest. **fork-checkin (0064):
+  RESOLVED the 3-session abort.** The abort was never caused by skipping checkin -- it was the HALF-OPEN
+  connection prior attempts left by skipping only the checkin RPC while KEEPING the socket refresh.
+  Skipping the WHOLE post-fork dserver block (socket + lifetime pipe + guards + checkin) removes the
+  half-open state and the abort. A self-contained fork child then makes zero RPCs and is invisible to
+  ciderd (nothing allocated to leak); an exec'd child gets mldr's checkin + the death-watch. The
+  remaining checkins are mldr EXEC-checkins, still load-bearing (initial registration + the
+  exec-replacement reap that checkout-skip depends on, e.g. bash's --login re-exec), and mldr cannot
+  cheaply tell an initial registration from a replacement -- so removing them is the launcher/shellspawn
+  re-arch (ciderd stops registering; the container init reports births/deaths), a genuine multi-part
+  effort. Not gated on the abort anymore -- that wall is gone.
 
-Net (session 4): flag-on `shell /usr/bin/true` RECV 25 -> 16. Landed + gated + soak-verified (simple +
-a 100-exec bash loop, flag-off unchanged at 132): checkout 5 -> 0 (0063), vchroot_path 8 -> 4 (mldr
-recovers the prefix locally from the resolved exe path; the loop test caught + fixed an empty-prefix
-bug when a shebang interpreter's argv0 is host-resolved to the full path). Remaining 16: checkin x10
-(the abort blocker + exec-reap trigger), vchroot_path x4 (shellspawn/init + a basename-argv0 cp; env-
-propagation hangs the init, deferred), vchroot x1 + kqchan x1 (shellspawn container setup). The tractable
-guest-side eliminations for this recipe are now exhausted; the rest is the launcher/shellspawn re-arch.
+Net (session 4): flag-on `shell /usr/bin/true` RECV 25 -> 12 (cumulative 132 -> 12). Landed + gated +
+soak-verified (simple + a 100-exec bash loop + 200 pure-fork subshells, flag-off unchanged at 132):
+checkout 5 -> 0 (0063); vchroot_path 8 -> 4 (mldr recovers the prefix locally; the loop test caught +
+fixed an empty-prefix bug for a host-resolved shebang argv0); fork-checkin 10 -> 6 (0064, the abort
+fix). Remaining 12: checkin x6 (mldr exec-checkins: nsid 1/2/3/5), vchroot_path x4 (init x3 + basename
+cp), vchroot x1 + kqchan x1 (shellspawn container setup). 7 of the 12 are nsid=1 (shellspawn/init) infra.
+The rest is the launcher/shellspawn re-arch.
 
 ## Milestone 4 design (detail): launcher-managed lifecycle
 
