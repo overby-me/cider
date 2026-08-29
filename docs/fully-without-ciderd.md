@@ -280,25 +280,44 @@ the self-contained case. This IS validatable (shell forks/execs/reaps bash + chi
 incrementally rather than flag it -- but stop + revert on the first hang/crash given the crashed-session
 history.
 
-## Milestone 4 -- the lifecycle skip is multi-target + cascading (session 2, final map)
+## Milestone 4 -- the lifecycle skip is multi-target + cascading (session 2/3, final map)
 
-The checkin/checkout/fork_wait skip is NOT a clean gate:
-1. fork_wait lives in _mach_fork_parent (vendor/src/xnu/libsyscall/mach/mach_init.c:154) -- a DIFFERENT
-   build target from the darling libsystem_kernel dylib, and must be gated WITH the fork.c checkin or the
-   parent hangs waiting for a checkin that never comes.
-2. Skipping checkin leaves the child unregistered, so its interrupt (signals, sigexc.c
-   dserver_rpc_interrupt_enter) and kqchan_proc_open RPCs hit ciderd with no task -> ESRCH -> break.
-   interrupt fires whenever signals are handled (bash/SIGCHLD -- the shell test), though NOT for a
-   signal-free exec-true.
+STATUS: three incremental guest-side wins are COMPLETE -- milestone-1 (in-guest self-contained Mach
+IPC), milestone-3 (in-guest BSD: mldr_path 0059 + uidgid 0060), and the interrupt gate (0061). A
+self-contained guest's Mach + BSD + forwarded-signal handling now run with 0 ciderd RPCs. `cider shell
+/usr/bin/true` flag-on RECV 35 -> 29 (0061); flag-off 132; both rc=0, soak 4/4.
 
-So the lifecycle removal needs, IN ORDER: interrupt in-guest (deliver the signal-exception locally --
-delicate) + kqchan in-guest (Linux pidfd_open feeding the emulated kqueue EVFILT_PROC) + the two-target
-fork skip. And VALIDATION is the binding constraint on THIS host: `cider exec` (the clean signal-free
-case that would NOT cascade) returns rc=1 (the SYSTEM_ROOT/container quirk), and `cider shell` (bash)
-cascades on interrupt/kqchan. So milestone-4 needs a dedicated effort with a working exec-true baseline
-(a real launcher exec fix or a full prefix build) plus the interrupt/kqchan in-guest work.
+interrupt (0061) was NOT the delicate signal-exception-delivery piece feared earlier. Trace shows bash's
+signals fire the NON-ptraced handler_linux_to_bsd_wrapper (sigaction.c), which brackets the forwarded
+handler in interrupt_enter/exit but does NO sigprocess. Those brackets are no-ops for the self-contained
+case: sigexc_enter's clear_wait has no in-guest Mach wait to interrupt, and the user_state sigexc_enter2
+pushes is read only by thread_get_state, which a plain forwarded handler never calls. So gating them
+flag-on is safe + validatable. The PTRACED sigexc_handler+sigprocess path is separate and still
+load-bearing (not hit by an unattached process).
 
-STATUS: the incremental guest-side wins are COMPLETE -- milestone-1 (in-guest self-contained Mach IPC)
-and milestone-3 (in-guest guest BSD: mldr_path 0059 + uidgid 0060). A self-contained guest's Mach + BSD
-now run with 0 ciderd RPCs; only the ciderd-tracking lifecycle remains, and removing it is the mapped
-multi-part milestone-4 effort above.
+The remaining flag-on 29 are ALL structural: #1 checkin x10, #3 vchroot_path x8 (SHELLSPAWN container
+setup, nsid=1), #2 checkout x5, #11 fork_wait x4, #9 vchroot x1, #29 kqchan x1. Key: ciderd's per-task
+state is UNUSED for the self-contained case (the guest mints its own ports since 0058), so checkin
+creates a task nothing reads. But the lifecycle is interlocked and the mechanisms are load-bearing:
+- checkout's essential job is CLOSING the lifetime pipe (handler.rs:471) -- skip it and ciderd leaks one
+  pipe read-end per process, reproducing the config.status write() hang (a real M1 bug). Not a gate.
+- checkin/fork_wait are paired: fork_wait (libsyscall mach_init.c:154, a DIFFERENT build target) downs a
+  semaphore the child ups on checkin; skip checkin without fork_wait and the parent hangs.
+- kqchan_proc_open watches a process by pid; skip the target's checkin and it hits ciderd with no task
+  -> ESRCH.
+
+ORDERED plan to remove the lifecycle:
+1. kqchan in-guest -- NOT a raw pidfd as out_socket (that HANGS: cider's libkqueue linux/proc.c is the
+   ciderd-socket client -- it epolls the socketpair and reads SEQPACKET NOTE_EXIT frames in
+   evfilt_proc_copyout, so a bare pidfd yields no frame; posix/proc.c is EVFILT_NOTIMPL). The real fix is
+   rewriting that filter to epoll pidfd_open(target) directly and synthesize NOTE_EXIT locally -- bounded
+   to one filter file, but its own libkqueue build target + delicate kqueue semantics (oneshot/rearm).
+2. checkin + fork_wait skip together (fork.c + mach_init.c), flag-on. With kqchan in-guest and interrupt
+   already gated, the child's checkin has no remaining ciderd consumer and the parent's fork_wait skips
+   in lockstep. (vfork broke exec at Pass 126 historically -- validate carefully.)
+3. checkout skip -- only safe once no checkin means no lifetime pipe to leak; otherwise keep it.
+
+VALIDATION remains the binding constraint on THIS host: `cider exec` (the clean signal-free case) is
+rc=1 (SYSTEM_ROOT/container quirk), and `cider shell` (bash) exercises the full lifecycle. A working
+exec-true baseline (launcher exec fix or full prefix build) would de-risk step 2. This is a dedicated,
+careful, high-risk effort -- not an incremental gate.
