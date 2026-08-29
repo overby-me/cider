@@ -105,6 +105,44 @@ the 0048 cache already serves SUBSEQUENT calls (the first RPC establishes the st
 own the reply-port + per-thread lifecycle in-guest, then wire the (already-correct) synthesis on top.**
 See [[cider-inguest-synth-blocked-on-state]].
 
+## In-guest port table: design (the milestone-1/2 core)
+
+The finding forces the shape. Because MIG reuses ONE per-thread reply port (`mig_get_reply_port`)
+for every kernel query, making that reply port guest-owned makes ALL of a self-contained thread's
+Mach queries in-guest **atomically**: you cannot hand an in-guest reply-port name to ciderd for a
+query you did not synthesize. So milestone 1 is the whole self-contained query set at once, not one
+routine at a time.
+
+Structure (mach_traps.c, gated by `CIDER_INGUEST_IPC`):
+- **Reserved range `0xE0000000+`** for guest-owned port names (ciderd's names sit far lower, no
+  collision). A small fixed table `{name, kind (recv/send/send-once/dead), urefs}`, minted
+  monotonically.
+- **`mig_get_reply_port` (gated):** return a guest-minted receive-right name instead of the ciderd
+  reply-port pool (0047). This one switch is what makes the thread self-contained.
+- **`mach_msg_overwrite` (gated):** when the destination is a self/host/task/guest name, serve
+  in-guest and never touch the socket:
+  - host port -> route by msgh_id: host_info(200, data-only, DONE + byte-verified),
+    host_get_io_master(206) -> a guest-minted io_master send right, host_get_special_port, ...
+  - task port -> task_get_special_port(3409/3418) -> guest-minted send rights.
+  - Reply header: `msgh_local_port` = the reply port, MOVE_SEND_ONCE in the LOCAL field, id=req+100,
+    NDR int_rep=1, RetCode 0, payload, 8-byte format-0 trailer; consume the reply-port send-once in
+    the table.
+- **Port-returning queries** mint a guest name for the returned port; callers later
+  deallocate/mod_refs those names -> handled in-guest via the table (task_self's 0049 deallocate
+  guard is the precedent).
+- **`mach_port_deallocate` / `mod_refs` / `mach_port_type` (gated):** name `>= 0xE0000000` -> table;
+  else RPC.
+- **Safety fallback:** switch `mig_get_reply_port` to in-guest only if EVERY query the thread will
+  issue is synthesizable; an unknown msgh_id must abort the in-guest path for that thread (back to
+  ciderd) rather than leak a guest name to the daemon.
+
+Query set for exec-true (flag-off RECV histogram): 200 host_info, 206 host_get_io_master, 3409 +
+3418 task special ports. Notifications (id 1/2) and the checkin/checkout lifecycle do NOT use the MIG
+reply port and stay on ciderd until milestone 4. Dev loop: temporarily FORCE the in-guest reply port
+(bypass the safety fallback) and add one query at a time -- exec-true dies one query later as each
+lands (crash-advance) until it completes with 200/206/3409/3418 all at 0 RPC; then re-enable the
+fallback for production.
+
 ## Correctness discipline (unchanged)
 
 Every milestone gated via the buck2 dev-loop swap (build the changed components, swap into a prefix

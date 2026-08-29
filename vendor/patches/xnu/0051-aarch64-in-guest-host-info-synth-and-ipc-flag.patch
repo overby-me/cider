@@ -1,0 +1,192 @@
+aarch64 #23 milestone-1: in-guest host_info synthesis + CIDER_INGUEST_IPC flag (WIP, gated off).
+
+Adds the dev flag CIDER_INGUEST_IPC (parsed from apple[] in mach_driver_init, OUTSIDE
+the VARIANT_DYLD block so BOTH the dyld-loader copy and libsystem_kernel.dylib see it;
+the guest's host_info runs through the dylib copy at libc init). When on,
+mach_msg_overwrite_trap_impl serves host_info (id 200) fully in-guest: HOST_BASIC_INFO
+and HOST_PRIORITY_INFO, flavor-checked, cpu/mem via sched_getaffinity/sysinfo (NOT
+sysconf, which is itself host_info and would recurse), reply laid out to match the MIG
+__Reply__host_info bytes exactly.
+
+WIP, default OFF (flag-off is byte-identical baseline). Enabling it presently SIGTRAPs
+the guest: a pure RPC-skip leaves ciderd's reply-port/thread state unestablished, which
+a later guest op asserts on (proven: real RPC + synthesized bytes runs clean). The fix
+is the in-guest reply-port/thread layer (docs/fully-without-ciderd.md, the port-table
+design); the synthesis here is the verified reference it will sit on. On top of 0050.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c b/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c
+index df54387..3888118 100644
+--- a/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c
++++ b/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c
+@@ -35,9 +35,27 @@ extern void __task_self_trap_set(unsigned int name);  // #11/#25: seed task-self
+ extern void __host_self_trap_set(unsigned int name);  // #23/#25: seed host-self cache from checkin
+ extern void __getuidgid_seed(int uid, int gid);       // #11/#25: seed uid/gid cache from checkin
+ extern void __vchroot_seed(const char* path);         // #11/#25 v2: seed vchroot prefix from mldr
++extern void __inguest_ipc_set(int on);                // #23: enable in-guest Mach IPC (fully-without-ciderd)
+ 
+ void mach_driver_init(const char** applep)
+ {
++	// #23: parse the in-guest-IPC flag in BOTH variants. libsystem_kernel is compiled twice (the
++	// dyld loader's VARIANT_DYLD copy for early traffic, and libsystem_kernel.dylib for the guest),
++	// each with its own mach_traps.c statics. The guest's host_info/self-port mach_msg runs through
++	// the DYLIB copy (mach_init_doit -> mach_driver_init(apple) at libc init), so the flag must reach
++	// it too, not just the dyld copy. The seeds below stay VARIANT_DYLD-only.
++	if (applep != NULL)
++	{
++		for (int fi = 0; applep[fi] != NULL; fi++)
++		{
++			if (strncmp(applep[fi], "cider_inguest_ipc=", 18) == 0)
++			{
++				if (applep[fi][18] == '1')
++					__inguest_ipc_set(1);
++				break;
++			}
++		}
++	}
+ #ifdef VARIANT_DYLD
+ 	if (applep != NULL)
+ 	{
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+index f92cf82..6079dc7 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -167,6 +167,119 @@ static void mach_msg_guard_add(mach_port_name_t name) {
+ 	libsimple_rwlock_unlock_write(&g_mach_msg_cache_lock);
+ }
+ 
++// ===== fully-without-ciderd milestone 1: serve kernel MIG queries fully IN-GUEST (synthesize the
++// reply, zero ciderd RPC), gated by CIDER_INGUEST_IPC so the RPC path stays the fallback until the
++// whole self-contained IPC is in place. host_info(HOST_BASIC_INFO) is the first case: data-only, no
++// port, so no in-guest port table is needed yet. See docs/fully-without-ciderd.md. =====
++#include <mach/host_info.h>
++#include <mach/machine.h>
++#include <mach/ndr.h>
++#include <darling/emulation/linux_premigration/ext/sysinfo.h>
++#include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
++// Gated by g_inguest_ipc, seeded from apple[] (cider_inguest_ipc=) in mach_driver_init. NOT getenv:
++// mach_msg fires during early init (self-ports/queries) before libsystem_c is up, and calling getenv
++// there HANGS.
++static _Bool g_inguest_ipc = 0;
++void __inguest_ipc_set(int on) { g_inguest_ipc = on ? 1 : 0; }
++static _Bool inguest_ipc_on(void) { return g_inguest_ipc; }
++static int inguest_ncpu(void) {
++	// sched_getaffinity, NOT sysconf(_SC_NPROCESSORS_ONLN): sysconf is itself implemented via host_info,
++	// so calling it from this hook re-enters and recurses forever.
++	unsigned char aff[128];
++	memset(aff, 0, sizeof(aff));
++	long affn = LINUX_SYSCALL(__NR_sched_getaffinity, 0, (unsigned long) sizeof(aff), aff);
++	int ncpu = 0;
++	if (affn > 0) {
++		if (affn > (long) sizeof(aff)) affn = sizeof(aff);
++		for (long i = 0; i < affn; i++) ncpu += __builtin_popcount(aff[i]);
++	}
++	return ncpu < 1 ? 1 : ncpu;
++}
++
++// Synthesize the reply to host_info(flavor) in-guest for the static/derivable flavors, matching the
++// MIG __Reply__host_info layout: Head, NDR, RetCode, outCnt, integer_t out[outCnt]. Unhandled flavors
++// (and undersized caller buffers) return 0 so the RPC path serves them. The flavor is read from the
++// request body, so a wrong-flavor reply can never overflow the caller's buffer (the crash mode that a
++// flavor-blind synthesis caused).
++static _Bool inguest_serve_host_info(mach_msg_header_t* req, mach_msg_header_t* rcv, mach_msg_size_t rcv_size, mach_port_name_t rcv_name) {
++	struct hi_request { mach_msg_header_t Head; NDR_record_t NDR; host_flavor_t flavor;
++		mach_msg_type_number_t outCnt; };
++	if (req == 0 || rcv == 0) return 0;
++	struct hi_request* q = (struct hi_request*) req;
++	integer_t data[32];
++	mach_msg_type_number_t cnt = 0;
++	switch (q->flavor) {
++	case HOST_BASIC_INFO: {
++		host_basic_info_data_t bi;
++		memset(&bi, 0, sizeof(bi));
++		int ncpu = inguest_ncpu();
++		bi.max_cpus = bi.avail_cpus = (integer_t) ncpu;
++		bi.physical_cpu = bi.physical_cpu_max = (integer_t) ncpu;
++		bi.logical_cpu = bi.logical_cpu_max = (integer_t) ncpu;
++		bi.cpu_type = CPU_TYPE_ARM64;
++		bi.cpu_subtype = CPU_SUBTYPE_ARM64_ALL;
++		bi.cpu_threadtype = CPU_THREADTYPE_NONE;
++		struct sysinfo si;
++		uint64_t mem = 0;
++		if (__linux_sysinfo(&si) == 0) {
++			unsigned int unit = si.mem_unit ? si.mem_unit : 1;
++			mem = (uint64_t) si.totalram * (uint64_t) unit;
++		}
++		bi.max_mem = mem;
++		bi.memory_size = (natural_t) (mem > 0x80000000ull ? 0x80000000ull : mem);
++		cnt = HOST_BASIC_INFO_COUNT;
++		if (cnt > 32) return 0;
++		memcpy(data, &bi, cnt * sizeof(integer_t));
++		break;
++	}
++	case HOST_PRIORITY_INFO: {
++		// XNU osfmk/kern/host.c host_info(HOST_PRIORITY_INFO): static scheduler bands.
++		data[0] = 80; // kernel_priority  = MINPRI_KERNEL
++		data[1] = 80; // system_priority  = MINPRI_KERNEL
++		data[2] = 64; // server_priority  = MINPRI_RESERVED
++		data[3] = 31; // user_priority    = BASEPRI_DEFAULT
++		data[4] = 0;  // depress_priority = DEPRESSPRI
++		data[5] = 0;  // idle_priority    = IDLEPRI
++		data[6] = 0;  // minimum_priority = MINPRI_USER
++		data[7] = 79; // maximum_priority = MAXPRI_RESERVED
++		cnt = HOST_PRIORITY_INFO_COUNT;
++		break;
++	}
++	default:
++		return 0; // unhandled flavor: RPC path
++	}
++	if (cnt == 0 || q->outCnt < cnt) return 0;
++	mach_msg_size_t reply_size = (mach_msg_size_t) (sizeof(mach_msg_header_t) + sizeof(NDR_record_t)
++		+ sizeof(kern_return_t) + sizeof(mach_msg_type_number_t) + cnt * sizeof(integer_t));
++	if (rcv_size < reply_size) return 0;
++	char* p = (char*) rcv;
++	memset(p, 0, reply_size);
++	mach_msg_header_t* h = (mach_msg_header_t*) p;
++	// Match the real ciderd reply header: local field = MOVE_SEND_ONCE (the reply-port right), remote 0.
++	h->msgh_bits = 0x1200;
++	h->msgh_size = reply_size;
++	h->msgh_remote_port = 0;
++	h->msgh_local_port = rcv_name;
++	h->msgh_id = req->msgh_id + 100;
++	size_t off = sizeof(mach_msg_header_t);
++	// NDR record, explicit little-endian (int_rep=1) as in the real reply; a wrong NDR makes the MIG
++	// client byte-swap outCnt into a huge value and overflow.
++	unsigned char* ndr = (unsigned char*) (p + off);
++	ndr[0] = 0; ndr[1] = 0; ndr[2] = 0; ndr[3] = 0; ndr[4] = 1; ndr[5] = 0; ndr[6] = 0; ndr[7] = 0;
++	off += sizeof(NDR_record_t);
++	*(kern_return_t*) (p + off) = 0 /* KERN_SUCCESS */; off += sizeof(kern_return_t);
++	*(mach_msg_type_number_t*) (p + off) = cnt; off += sizeof(mach_msg_type_number_t);
++	memcpy(p + off, data, cnt * sizeof(integer_t));
++	// An 8-byte format-0 receive trailer follows the body: the receiver reads a trailer at msgh_size,
++	// and leaving that area as prior-message garbage makes the receive flaky (crash or hang).
++	if (rcv_size >= reply_size + 8) {
++		unsigned char* tr = p + reply_size;
++		tr[0] = 0; tr[1] = 0; tr[2] = 0; tr[3] = 0; // msgh_trailer_type = MACH_MSG_TRAILER_FORMAT_0
++		tr[4] = 8; tr[5] = 0; tr[6] = 0; tr[7] = 0; // msgh_trailer_size = 8
++	}
++	return 1;
++}
++
+ mach_msg_return_t mach_msg_overwrite_trap_impl(
+ 				mach_msg_header_t *msg,
+ 				mach_msg_option_t option,
+@@ -180,6 +293,19 @@ mach_msg_return_t mach_msg_overwrite_trap_impl(
+ {
+ 	int code;
+ 
++	// fully-without-ciderd milestone 1: synthesize a self-contained kernel MIG reply fully in-guest
++	// (zero ciderd RPC). host_info's reply BYTES are synthesized correctly (verified byte-identical to
++	// ciderd's), but enabling this presently SIGTRAPs the guest: skipping the RPC leaves ciderd's
++	// reply-port/thread state unestablished, which a later guest op asserts on. The fix is the in-guest
++	// reply-port/thread state layer, NOT the reply bytes -- see cider-inguest-synth-blocked-on-state.
++	// Gated behind CIDER_INGUEST_IPC (default off); flag-off is the untouched baseline path.
++	if (inguest_ipc_on() && (option & MACH_SEND_MSG) && (option & MACH_RCV_MSG)
++	    && send_size >= sizeof(mach_msg_header_t) + sizeof(NDR_record_t) + 2 * sizeof(mach_msg_type_number_t)
++	    && msg->msgh_id == 200
++	    && inguest_serve_host_info(msg, rcv_msg, rcv_size, rcv_name)) {
++		return MACH_MSG_SUCCESS;
++	}
++
+ 	// #11/#23: short-circuit a cacheable kernel MIG query from the in-guest cache, skipping the
+ 	// ciderd round-trip. Only a combined send+receive to a whitelisted routine; msgh_id is the
+ 	// REQUEST id here (rcv_msg may alias msg, so read it before the RPC overwrites it).
