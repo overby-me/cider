@@ -312,9 +312,19 @@ ORDERED plan to remove the lifecycle:
    evfilt_proc_copyout, so a bare pidfd yields no frame; posix/proc.c is EVFILT_NOTIMPL). The real fix is
    rewriting that filter to epoll pidfd_open(target) directly and synthesize NOTE_EXIT locally -- bounded
    to one filter file, but its own libkqueue build target + delicate kqueue semantics (oneshot/rearm).
-2. checkin + fork_wait skip together (fork.c + mach_init.c), flag-on. With kqchan in-guest and interrupt
-   already gated, the child's checkin has no remaining ciderd consumer and the parent's fork_wait skips
-   in lockstep. (vfork broke exec at Pass 126 historically -- validate carefully.)
+2. checkin + fork_wait skip together (fork.c + mach_init.c) -- ATTEMPTED, NET-ZERO, reverted. It works
+   FUNCTIONALLY (rc=0): ciderd's set_current AUTO-REGISTERS the child on its next RPC (handler.rs -- it
+   builds the ProcState + fork-wait sem from the socket SO_PASSCRED, not only at checkin), the #25 seeds
+   are minted in-guest (milestone-1), and the parent reaps via in-guest wait4 (so fork_wait is skippable
+   in lockstep, else it hangs). BUT it is NET-ZERO: shell RECV 29 -> 37 (checkin 10->5, fork_wait 4->0,
+   but a CASCADE appears: kprintf x9 + sigprocess x3 + interrupt x6). Root: without checkin the fork
+   child receives ~3 signals via the PTRACED sigexc_handler path (which 0061 does NOT gate -- 0061 gates
+   only the non-ptraced handler_linux_to_bsd_wrapper) instead of the wrapper. checkin was suppressing
+   that. darling_sigexc_self() is called UNCONDITIONALLY in sigexc_setup (sigexc.c:189), and the app's
+   sigaction wrapper normally overrides sigexc_handler for handled signals; without checkin, 3 signals
+   slip through to sigexc_handler (exact trigger open). So the lifecycle skip must ALSO keep the fork
+   child off the ptraced path. Not landable until that cascade is eliminated. (vfork broke exec at Pass
+   126 historically -- lifecycle changes are delicate.)
 3. checkout skip -- only safe once no checkin means no lifetime pipe to leak; otherwise keep it.
 
 VALIDATION remains the binding constraint on THIS host: `cider exec` (the clean signal-free case) is
