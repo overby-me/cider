@@ -374,6 +374,11 @@ impl Handler {
         let task = sched::current_task();
         if !task.is_null() {
             ps.fork_sem = Some(unsafe { task::semaphore_create(task, 0) });
+            // Seed the task's uid/gid from the guest's real credentials so the #25 checkin reply
+            // carries a valid uid, letting the guest cache it via apple[] instead of RPCing uidgid.
+            if let Some((uid, gid)) = task::read_uidgid(host_pid) {
+                unsafe { traps::task_uidgid(task, uid as i32, gid as i32); }
+            }
         }
         self.procs.insert(nsid, ps);
     }

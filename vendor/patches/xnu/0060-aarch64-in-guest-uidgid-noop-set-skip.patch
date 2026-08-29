@@ -1,0 +1,26 @@
+aarch64 #23 milestone-3: guest __setuidgid skips the no-op set RPC.
+
+__setuidgid RPC'd the daemon unconditionally; per the file's caching note (the server only changes our
+uid/gid when we tell it to), a setuid/setgid to the value we already hold is a no-op, so skip the
+round-trip when nothing changes. Paired with a ciderd change that seeds a fresh task's uid/gid from the
+guest's real credentials (so stored_uid starts at the real value, not -1), the guest's startup
+setuid(0)/setgid(0) become detectable no-ops. shell /usr/bin/true uidgid 2 -> 0 (RECV 134 -> 132
+flag-off, 37 -> 35 flag-on), rc=0, soak 6/6 + flag-off 2/2. General, not flag-gated. On top of 0059.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getuid.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getuid.c
+index 1fd4350..303bc95 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getuid.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getuid.c
+@@ -59,6 +59,12 @@ long __setuidgid(int32_t uid, int32_t gid) {
+ 	int ret = 0;
+ 
+ 	libsimple_rwlock_lock_write(&uidgid_rwlock);
++	// A setuid/setgid to the value we already hold is a no-op (per the caching note above, the server
++	// only changes our uid/gid when we tell it to), so skip the round-trip when nothing changes.
++	if ((uid < 0 || uid == stored_uid) && (gid < 0 || gid == stored_gid)) {
++		libsimple_rwlock_unlock_write(&uidgid_rwlock);
++		return 0;
++	}
+ 	// see note about impossibility of deadlocks in __getuidgid
+ 	ret = dserver_rpc_uidgid(uid, gid, NULL, NULL);
+ 	if (ret == 0) {

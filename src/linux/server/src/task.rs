@@ -65,3 +65,20 @@ pub fn read_ppid(pid: libc::pid_t) -> Option<libc::pid_t> {
     }
     None
 }
+
+/// The host-side real uid/gid of `pid`, from the first field of /proc/<pid>/status Uid:/Gid:.
+/// Used to seed a fresh task's credentials so the #25 checkin reply carries a valid uid instead
+/// of -1, which otherwise forces the guest to RPC uidgid.
+pub fn read_uidgid(pid: libc::pid_t) -> Option<(u32, u32)> {
+    let status = std::fs::read_to_string(format!("/proc/{pid}/status")).ok()?;
+    let mut uid = None;
+    let mut gid = None;
+    for line in status.lines() {
+        if let Some(rest) = line.strip_prefix("Uid:") {
+            uid = rest.split_whitespace().next().and_then(|s| s.parse().ok());
+        } else if let Some(rest) = line.strip_prefix("Gid:") {
+            gid = rest.split_whitespace().next().and_then(|s| s.parse().ok());
+        }
+    }
+    Some((uid?, gid?))
+}
