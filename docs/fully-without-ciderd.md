@@ -326,3 +326,51 @@ VALIDATION remains the binding constraint on THIS host: `cider exec` (the clean 
 rc=1 (SYSTEM_ROOT/container quirk), and `cider shell` (bash) exercises the full lifecycle. A working
 exec-true baseline (launcher exec fix or full prefix build) would de-risk step 2. This is a dedicated,
 careful, high-risk effort -- not an incremental gate.
+
+## Milestone 4 -- checkin-abort root exhaustively characterized (session 3) + the plan
+
+The checkin skip (fork.c) is blocked by a TEARDOWN abort, traced end-to-end this session (all instruments
+reverted; baseline clean at flag-on RECV 25):
+- nsid 5 = /usr/libexec/path_helper, a LOGIN-CHAIN helper (tree: shellspawn(1) > bash(2) > cp(3) +
+  path_helper(5) + subshell(4)), NOT the user's command. path_helper's source is CLEAN (read /etc/paths,
+  print, return 0; no kill/abort). So `true` still returns rc=0.
+- Without its fork.c checkin, path_helper (which is exec'd + mldr-checked-in) emits a spurious group
+  SIGABRT (SI_USER, sender=5) that kills innocent siblings blocked in sys_read (bash nsid 2) + sys_wait4
+  (subshell nsid 4); they self-terminate via the sigexc default-effect. It is TEARDOWN-phase.
+- path_helper itself shows NO EXIT-PRE (never reaches sys_exit) and NO SIGABRT-IN (never receives via
+  sigexc) -- it dies abnormally with neither a normal exit nor a caught signal.
+- The SIGABRT-send BYPASSES every instrumentable kill path: guest sys_kill (KILLBT never fired),
+  sigexc:487 default-kill (DEFKILL was only the receivers self-killing, self_pid 2/4), and ciderd's
+  send_thread_signal (tgkill = SI_TKILL, but this is SI_USER). So the send is the guest libc abort/
+  pthread_kill path OR the emulation's exit/reap of a checkin-less process, mis-resolving the target --
+  most likely a Mach thread-port mapping corrupted by the skipped fork checkin.
+- Instruments used + reverted: fork.c checkin gate; sigexc ABORTBT (tstate.__pc/__lr + fp-walk) +
+  SIGABRT-IN; kill.c KILLBT; sigexc:487 DEFKILL; execve EXECVE path; exit.c EXIT-PRE/POSTFINI.
+  Symbolication: DYLD_PRINT_SEGMENTS=1 + `llvm-nm -n` (abort pc = _linux_syscall in libsystem_kernel).
+
+DIAGNOSIS: the fork->exec transition WITHOUT the fork.c checkin corrupts the exec'd process's
+post-mldr-checkin ciderd-side per-thread signal-routing, so a routine teardown signal is mis-delivered to
+relatives. checkin's load-bearing role is NOT registration (set_current auto-registers from SO_PASSCRED)
+nor the #25 seeds (milestone-1 mints task_self/host_self, 0060 seeds uid/gid) -- it is establishing the
+per-thread signal-routing state that must survive the exec.
+
+PLAN (multi-session, in priority order):
+1. Fix the checkin-abort in CIDERD: make per-thread signal routing consistent for a process whose fork.c
+   checkin was skipped (its teardown signal must target itself, not relatives). Deepest piece; look at
+   handler.rs set_current auto-register + the thread/task creation vs the checkin path + send_thread_signal
+   target resolution. Validate: skip checkin+fork_wait+checkout flag-on -> cider shell rc=0, no SIGABRT,
+   RECV well below 25.
+2. If (1) is intractable, PIVOT to the launcher-managed lifecycle (the original design above): the launcher
+   owns the container + reaps via in-guest wait4 + serves the seeds, removing ciderd from the lifecycle
+   entirely -- bigger but cleaner, and it sidesteps the checkin-skip exit-abort.
+3. vchroot_path x8 + vchroot x1: shellspawn container bootstrap (structural early-init; the env-seed
+   technique crashed PID 1). Needs shellspawn's early path-resolution reworked.
+4. kqchan x1: shellspawn's libkqueue EVFILT_PROC; rewrite linux/proc.c (the ciderd-socket client) to a
+   pidfd -- bounded to one filter, delicate oneshot/rearm; libc/system_c build target.
+5. SEPARATELY, task #24 (JSC arm64 LLInt/WASM offline-asm link failure) blocks the FULL prefix build;
+   unrelated to the lifecycle.
+
+STATUS (session 3 end): 4 patches landed (0059 mldr_path, 0060 uidgid, 0061 interrupt, 0062 fork_wait),
+flag-on RECV 35 -> 25, milestone-1 + milestone-3 complete. The remaining is a dedicated multi-session
+re-architecture; the checkin-abort (the bulk, checkin x10 + checkout x5) is now precisely characterized
+above so a future session can go straight to the ciderd-side fix or the launcher pivot.
