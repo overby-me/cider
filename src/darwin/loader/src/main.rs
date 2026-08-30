@@ -180,6 +180,17 @@ fn local_vchroot_prefix(guest_path: &str, guest_argv: &[String]) -> Option<Strin
     }
 }
 
+/// The authoritative vchroot prefix ciderd exports (container.rs) and every descendant inherits, for
+/// a process whose executable-path derivation cannot recover it (a basename argv0 like `cp`). Guarded
+/// to skip guest pid 1: pre-seeding the container init pre-empts its own __darling_vchroot setup and
+/// hangs bring-up (measured); descendants run after the mount and are safe.
+fn vchroot_prefix_from_env() -> Option<String> {
+    if unsafe { libc::getpid() } == 1 {
+        return None;
+    }
+    std::env::var("__cider_vchroot_prefix").ok().filter(|s| !s.is_empty())
+}
+
 fn main() {
     // Prime the MLDR_DEBUG flag here, on main's aligned stack: the env read must
     // not happen later on an elfcall's misaligned stack (movaps constraint).
@@ -303,6 +314,7 @@ fn main() {
                     // local recovery declines.
                     vchroot_root = if inguest_ipc() {
                         local_vchroot_prefix(&guest_path, &guest_argv)
+                            .or_else(vchroot_prefix_from_env)
                             .or_else(|| unsafe { rpc::vchroot_path(rpcfd) })
                     } else {
                         unsafe { rpc::vchroot_path(rpcfd) }
