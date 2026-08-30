@@ -381,6 +381,13 @@ impl Handler {
             }
         }
         self.procs.insert(nsid, ps);
+        // #23 milestone-4 (launcher re-arch step 1): arm the death-watch at FIRST SIGHTING, not only at
+        // checkin, so a process ciderd sees without ever checking in (a future checkin-less guest) is
+        // still reaped on death. The serve loop dedups, so a process that also checks in is unaffected
+        // (watched once). host_pid is the SO_PASSCRED pid, >0 for a real guest.
+        if host_pid > 0 {
+            self.pending_watches.push((nsid, host_pid));
+        }
     }
 
     /// Drop a process's state on its exit (the serve loop calls this once the process's last
