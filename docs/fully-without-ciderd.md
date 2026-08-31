@@ -384,6 +384,14 @@ flag-on RECV 35 -> 25, milestone-1 + milestone-3 complete. The remaining is a de
 re-architecture; the checkin-abort (the bulk, checkin x10 + checkout x5) is now precisely characterized
 above so a future session can go straight to the ciderd-side fix or the launcher pivot.
 
+## Milestone 4/5 update (session 3, later) -- remaining wall = exec-checkin -> sigprocess-needs-socket; in-guest signal processing (#40) is BOUNDED
+
+The fork-checkin abort above is now FIXED (patches 0063 skip-exec-checkout, 0064 skip-fork-child-connect-checkin); flag-on RECV 132->11 this session, exec loop DONE rc=0, baseline committed on bookmark fully-without-ciderd. The REMAINING blocker to removing the EXEC checkin is different and precisely pinned: a checkin-less (socket-less) process dies on its FIRST default-action signal at `sigprocess failed ... signal 6: -32` (sigexc.c:421), because dserver_rpc_sigprocess (RPC #12) needs the ciderd socket. So the endgame's true prerequisite is IN-GUEST SIGNAL PROCESSING (task #40), and it is MORE BOUNDED than "port XNU Thread::processSignal":
+- ciderd sigprocess (handler.rs:558) = load the guest reg state -> `xnu_sys_thread_process_signal` (thread.rs:72, the full BSD signal-frame machinery) -> wait_while_user_suspended (ptrace) -> save state; reply = the pending bsd signal.
+- BUT the guest ALREADY has what the self-contained case needs: `sig_handlers[]` + `cider_signal_is_fatal()` (sigexc.c:136/436), and patch 0061 already dispatches REGISTERED handlers in-guest (handler_linux_to_bsd_wrapper, no sigprocess). So for a non-ptraced self-contained process the ONLY signals still reaching sigexc_handler -> sigprocess are UNHANDLED / default-action ones (SIGABRT with no app handler, SIGSEGV, ...). There is no handler frame to build for those -- the correct XNU effect is simply TERMINATE with the signal's semantics.
+- IN-GUEST REPLACEMENT (flag-on, socket-less): in sigexc_handler, when there is no app handler and the signal is fatal (cider_signal_is_fatal), restore SIG_DFL and let Linux apply the fatal default (synchronous signals: rt_sigreturn to re-run the faulting insn under SIG_DFL; async: re-raise) -- correct exit status + core -- instead of RPCing sigprocess. The ptrace/debugger + Mach exception-port paths stay RPC (neither is present in the self-contained target). Gate on CIDER_INGUEST_IPC + socket-absent; keep the RPC path for flag-off and for a socketed process.
+- RISK / DISCIPLINE: the signal path silently defeated 4+ prior attempts, and the DYLD copy of the handler must be rebuilt too (//vendor/src/dyld:dyld runs the handler). Landable, but it must be gated + soaked for SIGABRT/SIGSEGV exit-status correctness + fork-heavy, so it is a SUPERVISED milestone, not an autonomous-loop change against the clean baseline.
+
 ## Task #24 -- JSC arm64 LLInt offline-asm gap, root-caused (session 3)
 
 The FULL prefix's JavaScriptCore_dylib link fails with undefined offline-asm entry symbols
