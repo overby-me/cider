@@ -232,7 +232,7 @@ darwin_dylib(
 # buck-registry: src/swiftshim/libswiftCompat = libswiftCompat_dylib
 cc_objects(
     name = "libswiftCompat_obj",
-    srcs = ["libswiftCompat.c"],
+    srcs = ["libswiftCompat.c", "libswiftCompatSymbols.c"],
     compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//src/darwin:sdk_env"],

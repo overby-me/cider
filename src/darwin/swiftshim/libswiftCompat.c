@@ -18,6 +18,8 @@
  */
 
 #include <stdbool.h>
+#include <stddef.h>
+#include <dlfcn.h>
 #include <stdint.h>
 
 /*
@@ -68,4 +70,33 @@ void swift_willThrowTypedImpl(void *value, const void *type, const void *errorCo
     (void) errorConformance;
 }
 
+/*
+ * swift_isUniquelyReferenced_nonNull_bridgeObject(bridgeObject) -> Bool
+ *
+ * THE SAME FUNCTION UNDER ITS OLDER NAME, not a stub. The runtime here exports
+ * swift_isUniquelyReferencedNonObjC_nonNull_bridgeObject, which is what this was called before the
+ * ObjC-aware and native variants were unified; a binary built against a newer stdlib asks for the
+ * new name and dyld stops. iTerm2's BetterFontPicker, built for 12.4, does exactly that.
+ *
+ * dlsym rather than a link-time reference, so that the compat library keeps loading in a prefix
+ * whose runtime does not have it either. FALSE IS THE SAFE ANSWER if it is missing: the caller
+ * copies its buffer instead of mutating in place, which costs a copy and cannot corrupt anything.
+ * Answering true would hand a caller permission to write into storage somebody else holds.
+ */
+bool swift_isUniquelyReferenced_nonNull_bridgeObject(uintptr_t bridgeObject);
+
+bool swift_isUniquelyReferenced_nonNull_bridgeObject(uintptr_t bridgeObject)
+{
+    static bool (*real)(uintptr_t) = NULL;
+    static bool looked = false;
+
+    if (!looked) {
+        looked = true;
+        real = (bool (*)(uintptr_t)) dlsym(RTLD_DEFAULT,
+                "swift_isUniquelyReferencedNonObjC_nonNull_bridgeObject");
+    }
+    return real != NULL ? real(bridgeObject) : false;
+}
+
 const char cider_swift_compat[] = "cider swift compat";
+

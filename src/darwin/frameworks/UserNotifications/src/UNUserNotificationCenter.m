@@ -18,8 +18,54 @@
 */
 
 #import <UserNotifications/UNUserNotificationCenter.h>
+#import <dispatch/dispatch.h>
 
-@implementation UNUserNotificationCenter
+/*
+ * THE ENTRY POINT, which is a CLASS method and so was never covered by the forwarding below.
+ *
+ * forwardInvocation: catches instance messages only, so every class message to this class raised.
+ * iTerm2 asks for the current centre while it starts, does not catch the failure, and the process
+ * terminated on an uncaught NSException.
+ *
+ * There is one centre per process on macOS and the same holds here.
+ */
+@implementation UNUserNotificationCenter {
+    id _delegate;
+}
+
++ (UNUserNotificationCenter *)currentNotificationCenter
+{
+    static UNUserNotificationCenter *center = nil;
+    static dispatch_once_t once;
+
+    dispatch_once(&once, ^{
+        center = [[UNUserNotificationCenter alloc] init];
+    });
+    return center;
+}
+
+/*
+ * NOT GRANTED IS THE TRUTHFUL ANSWER: there is no notification system behind this, so a caller told
+ * yes would post notifications that go nowhere and report success. The handler IS called, because a
+ * completion handler that never runs leaves the caller waiting forever, which is worse than a no.
+ */
+- (void)requestAuthorizationWithOptions:(NSUInteger)options
+                      completionHandler:(void (^)(BOOL, NSError *))completionHandler
+{
+    if (completionHandler != NULL) {
+        completionHandler(NO, nil);
+    }
+}
+
+- (id)delegate
+{
+    return _delegate;
+}
+
+- (void)setDelegate:(id)delegate
+{
+    _delegate = delegate;
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

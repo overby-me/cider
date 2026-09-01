@@ -30,6 +30,9 @@ typedef struct job_s *job_t;
 typedef struct jobmgr_s *jobmgr_t;
 
 extern jobmgr_t root_jobmgr;
+#ifdef DARLING
+mach_port_t jobmgr_bootstrap_port(jobmgr_t jm);
+#endif
 extern mach_port_t launchd_audit_port;
 extern au_asid_t launchd_audit_session;
 extern bool launchd_flat_mach_namespace;

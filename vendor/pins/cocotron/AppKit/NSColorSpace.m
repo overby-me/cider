@@ -35,6 +35,32 @@ NSString *const _NSColorCoreUICatalogNamePrefix =
     return colorSpace;
 }
 
+/*
+ * THE WIDE GAMUT SPACES, ANSWERED WITH sRGB.
+ *
+ * Display P3 and extended sRGB are real colour spaces this stack cannot render into: everything
+ * downstream is 8 bit sRGB. Answering sRGB means a P3 colour is clamped to the smaller gamut, which
+ * is a visible difference on a saturated red and nothing at all on the greys an interface is mostly
+ * made of.
+ *
+ * NIL WOULD BE WORSE AND SO WOULD RAISING. iTerm2 asks for displayP3ColorSpace while building its
+ * colour tables, does not catch the failure, and the process died:
+ *
+ *     Terminating app due to uncaught exception, +[NSColorSpace displayP3ColorSpace]:
+ *     unrecognized selector
+ */
++ (NSColorSpace *) displayP3ColorSpace {
+    return [self sRGBColorSpace];
+}
+
++ (NSColorSpace *) extendedSRGBColorSpace {
+    return [self sRGBColorSpace];
+}
+
++ (NSColorSpace *) adobeRGB1998ColorSpace {
+    return [self sRGBColorSpace];
+}
+
 + (NSColorSpace *) deviceRGBColorSpace {
     CGColorSpaceRef device = CGColorSpaceCreateDeviceRGB();
     NSColorSpace *result =

@@ -9,6 +9,10 @@
         <array>
             <string>/usr/libexec/shellspawn</string>
         </array>
+        <key>StandardOutPath</key>
+        <string>/var/log/shellspawn.out</string>
+        <key>StandardErrorPath</key>
+        <string>/var/log/shellspawn.err</string>
         <key>RunAtLoad</key>
         <true/>
         <key>KeepAlive</key>

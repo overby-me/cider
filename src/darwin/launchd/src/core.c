@@ -6578,6 +6578,16 @@ job_set_exception_port(job_t j, mach_port_t port)
 	}
 }
 
+#ifdef DARLING
+/* The port a child must be given as its bootstrap, for callers outside this file: struct jobmgr_s
+ * is private here and launchd.c needs it to hand launchctl a usable bootstrap at boot. */
+mach_port_t
+jobmgr_bootstrap_port(jobmgr_t jm)
+{
+	return jm ? jm->jm_port : MACH_PORT_NULL;
+}
+#endif
+
 void
 machservice_setup_options(launch_data_t obj, const char *key, void *context)
 {

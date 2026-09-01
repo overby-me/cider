@@ -19,6 +19,16 @@
     __attribute__((visibility("default"))) const uintptr_t cider_shim_##id __asm__(mangled) =      \
             CIDER_SHIM_POISON_BASE + (id) * 0x100
 
+/* BOTH SPELLINGS OF AN ASYNC FUNCTION. The Tu suffix is the async function POINTER, which is what
+ * a caller that suspends needs, and the bare name is the entry point itself. Only the pointers were
+ * here, so iTerm2 loaded its Swift packages and dyld stopped on the plain
+ * evaluateJavaScript(_:in:contentWorld:). */
 CIDER_SHIM_SYMBOL(1, "_$sSo9WKWebViewC6WebKitE18evaluateJavaScript_2in12contentWorldypSgSS_So11WKFrameInfoCSgSo09WKContentJ0CtYaKFTu");
 CIDER_SHIM_SYMBOL(2, "_$sSo9WKWebViewC6WebKitE19callAsyncJavaScript_9arguments2in12contentWorldypSgSS_SDySSypGSo11WKFrameInfoCSgSo09WKContentL0CtYaKFTu");
+CIDER_SHIM_SYMBOL(3, "_$sSo9WKWebViewC6WebKitE18evaluateJavaScript_2in12contentWorldypSgSS_So11WKFrameInfoCSgSo09WKContentJ0CtYaKF");
+CIDER_SHIM_SYMBOL(4, "_$sSo9WKWebViewC6WebKitE19callAsyncJavaScript_9arguments2in12contentWorldypSgSS_SDySSypGSo11WKFrameInfoCSgSo09WKContentL0CtYaKF");
+
+CIDER_SHIM_SYMBOL(5, "_$sSo9WKWebViewC6WebKitE18evaluateJavaScript_2inAE17completionHandlerySS_So11WKFrameInfoCSgSo14WKContentWorldCys6ResultOyyps5Error_pGcSgtF");
+CIDER_SHIM_SYMBOL(6, "_$sSo18WKWebsiteDataStoreC6WebKitE19proxyConfigurationsSay7Network18ProxyConfigurationVGvs");
+
 const char cider_shim_libswiftWebKit[] = "cider shim libswiftWebKit";

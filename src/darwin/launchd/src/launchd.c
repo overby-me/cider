@@ -97,6 +97,9 @@ static bool get_network_state(void);
 static void monitor_networking_state(void);
 static void fatal_signal_handler(int sig, siginfo_t *si, void *uap);
 static void handle_pid1_crashes_separately(void);
+#ifdef DARLING
+static void cider_load_system_daemons(void);
+#endif
 static void do_pid1_crash_diagnosis_mode(const char *msg);
 static int basic_fork(void);
 static bool do_pid1_crash_diagnosis_mode2(const char *msg);
@@ -274,8 +277,111 @@ main(int argc, char *const *argv)
 	jobmgr_init(sflag);
 
 	launchd_runtime_init2();
+#ifdef DARLING
+	if (getpid() == 1) {
+		cider_load_system_daemons();
+	}
+#endif
 	launchd_runtime();
 }
+
+#ifdef DARLING
+/*
+ * LOAD THE SYSTEM DAEMONS, which on macOS is /etc/rc's job and there is no rc here.
+ *
+ * Nothing in launchd reads /System/Library/LaunchDaemons; launchctl does, and macOS runs it during
+ * boot. Without that step a container with launchd as its init has pid 1 and NOTHING ELSE: the
+ * shellspawn job never starts, so the socket the launcher waits for never appears and every
+ * cider shell hangs. Measured before this existed, three runs of three, and a bare
+ * cider shell /bin/sleep 3 sat for the full sixty seconds.
+ *
+ * launchctl rather than a directory walk in here, because it already parses the plists, honours
+ * Disabled and the overrides database, and its first message is what makes launchd create the
+ * client socket other launchctls need.
+ *
+ * CIDER_LAUNCHD_BOOTSTRAP overrides the directory, and "none" turns this off, which is how a run
+ * can start pid 1 alone deliberately.
+ */
+static void
+cider_load_system_daemons(void)
+{
+	const char *path = getenv("CIDER_LAUNCHD_BOOTSTRAP");
+
+	if (path == NULL || path[0] == '\0') {
+		path = "/System/Library/LaunchDaemons";
+	}
+	if (strcmp(path, "none") == 0) {
+		launchd_syslog(LOG_NOTICE | LOG_CONSOLE, "*** cider: not loading any daemons, asked not to. ***");
+		return;
+	}
+
+	/* THE CHILD NEEDS A BOOTSTRAP PORT, and a plain posix_spawn does not give it one.
+	 *
+	 * launchctl inherited bootstrap 0x1 that way and could do nothing with it:
+	 *
+	 *     Could not get location of job overrides database: ppid/bootstrap: 1/0x1
+	 *     bind(): Permission denied
+	 *     launch_msg(): Socket is not connected
+	 *
+	 * runtime_fork is what launchd itself uses to start a job, and its whole argument is the port
+	 * the child wakes up with as its bootstrap. Its output goes to a file because launchd's own
+	 * stdout and stderr are /dev/null, so a launchctl that fails otherwise leaves only a zombie.
+	 */
+	/*
+	 * SHELLSPAWN FIRST, AND DIRECTLY, because it is cider's own bridge rather than a macOS daemon.
+	 *
+	 * It is what the launcher connects to for every cider shell, and with launchd as init it was
+	 * simply never there: launchctl loads its job and writes Disabled=false into the overrides
+	 * database, and launchd then never spawns it, so the socket the launcher polls for never
+	 * appears and the whole container is unusable. That defect has its own task; this does not
+	 * depend on it, and the no-launchd path starts shellspawn exactly this way, as init.
+	 */
+	pid_t bridge = runtime_fork(jobmgr_bootstrap_port(root_jobmgr));
+
+	if (bridge == 0) {
+		char *const bridge_argv[] = { "shellspawn", NULL };
+		execv("/usr/libexec/shellspawn", bridge_argv);
+		_exit(127);
+	}
+	launchd_syslog(LOG_NOTICE | LOG_CONSOLE, "*** cider: shellspawn is pid %d. ***", bridge);
+
+	pid_t child = runtime_fork(jobmgr_bootstrap_port(root_jobmgr));
+	int rv = 0;
+
+	if (child == 0) {
+		int fd = open("/private/var/log/cider-launchctl.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+		if (fd >= 0) {
+			dup2(fd, STDOUT_FILENO);
+			dup2(fd, STDERR_FILENO);
+			if (fd > STDERR_FILENO) {
+				close(fd);
+			}
+		}
+
+		char *const argv[] = { "launchctl", "load", "-w", (char *)path, NULL };
+		execv("/bin/launchctl", argv);
+		_exit(127);
+	}
+	if (child < 0) {
+		rv = errno;
+	}
+
+	/* The console is a buffered FILE and nothing flushes it after this point in boot, so a line
+	 * written here is invisible exactly when it matters most. */
+	if (launchd_console != NULL) {
+		fflush(launchd_console);
+	}
+
+	/* AND A MARK ON DISK, because the boot this reports on is the one where the log cannot be
+	 * trusted: the prefix is visible from the host while the container is still wedged. */
+	FILE *mark = fopen("/private/var/log/cider-launchd-bootstrap.txt", "w");
+	if (mark != NULL) {
+		fprintf(mark, "spawn %s rv=%d pid=%d\n", path, rv, (int)child);
+		fclose(mark);
+	}
+}
+#endif
 
 void
 handle_pid1_crashes_separately(void)
