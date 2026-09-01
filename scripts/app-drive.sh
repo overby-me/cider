@@ -121,9 +121,24 @@ say "nested compositor on $NEW"
 
 shoot() { WAYLAND_DISPLAY=$NEW "$GRIM" "$SHOTS/$1.png" 2>>"$SHOTS/driver.log" && say "shot $1"; }
 
+# WHAT THE GUEST NEEDS TOLD, and every one of these was a silent hang until it was measured (#168).
+# The launcher bakes an install prefix and only finds its daemon as a SIBLING, which buck artifacts
+# never are; the daemon names its own missing paths only in <prefix>/ciderd.log; and launchd cannot
+# spawn a job here (#139), so the container is booted WITHOUT it, which is what every driver that
+# ever ran an application did. Set LAUNCHD=1 to get the launchd path back.
+CIDERD=${CIDERD:-$(ls -t "$REPO"/buck-out/v2/art/root/*/src/linux/server/__ciderd__/ciderd 2>/dev/null | head -1)}
+MLDR=${MLDR:-$(ls -t "$REPO"/buck-out/v2/art/root/*/src/darwin/loader/__mldr__/mldr 2>/dev/null | head -1)}
+RT=${RT:-$(ls -td "$REPO"/buck-out/v2/art/root/*/buck/prefix/__cider_prefix__/cider_prefix__prefix 2>/dev/null | head -1)}
+for t in CIDERD MLDR RT; do
+	[ -e "${!t}" ] || { echo "missing $t: build //src/linux/server:ciderd, //src/darwin/loader:mldr and //buck/prefix:cider_prefix" >&2; exit 3; }
+done
+
 say "launching $APPBIN"
 (
 	CIDERPREFIX="$PREFIX" WAYLAND_DISPLAY=$NEW XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000} \
+		CIDER_NO_LAUNCHD=${LAUNCHD:-1} \
+		DSERVER_PATH="$(realpath "$CIDERD")" DSERVER_MLDR_PATH="$(realpath "$MLDR")" \
+		DSERVER_LIBEXEC_PATH="$(realpath "$RT")/libexec/cider" \
 		timeout "$LIMIT" "$CIDER" shell "$APPBIN"
 ) >"$SHOTS/app.log" 2>&1 &
 APPPID=$!

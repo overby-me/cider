@@ -14833,3 +14833,30 @@ fail honestly:
 111 is ECONNREFUSED. It fails identically with `CIDER_INGUEST_IPC` unset and set, and with the
 branch's own validation command `cider shell /usr/bin/true`, which its documentation says exits 0.
 That is the open question, and until it is answered no application can be verified at all.
+
+### The container was never broken, and neither were the applications (2026-09-01, continued)
+
+`cider shell /usr/bin/true` exits 0 from a cold prefix, three times out of three, once the container
+is booted with `CIDER_NO_LAUNCHD=1`. That is what every driver that ever ran an application did.
+**launchd** is what cannot spawn a job here, which is task #139 and was already known; chasing the
+ECONNREFUSED was chasing the aftermath of a process that launchd had failed to start.
+
+Then the first real run said something better than a black screen:
+
+    /bin/bash: /Applications/Swift Publisher 5.app/Contents/MacOS/Swift Publisher 5:
+    No such file or directory
+
+The guest could *list* the bundle. Counting it explains everything:
+
+    Swift Publisher 5.app  ->  0 files, 5 directories
+
+The same `/tmp` sweep that took the drivers took the applications, leaving the directory skeleton
+behind. An empty bundle reads as present to every ordinary check, which is why the failure looked
+like a rendering problem and then like a loader problem. The sources survive in `~/Downloads` for
+three of the five, and re-staging is #169.
+
+**One defect was found on the way and must not be mistaken for the fix.** `sigrt_handler` called
+`dserver_rpc_interrupt_enter` unguarded while the other three call sites in the same file ask
+`__cider_no_daemon()` first, so a checkin-less process was guaranteed to die on its first real-time
+signal. It is fixed (`vendor/patches/xnu/0066`) and the boot behaves identically with and without it,
+measured both ways.
