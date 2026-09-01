@@ -11,7 +11,8 @@ use std::os::raw::c_void;
 
 // Was an `extern "C"` declaration resolving back into this crate through the linker; imported
 // directly since xnu-sys became Rust (#71, #75).
-use crate::xnu::task::xnu_sys_task_create;
+use crate::xnu::task::{task_deallocate, xnu_sys_task_create};
+use crate::xnu::thread::thread_deallocate;
 
 /// The architecture arrives from the RPC wire as a plain u32; xnu_sys_task_create takes the
 /// bindgen ENUM.
@@ -33,6 +34,28 @@ fn arch_from_wire(arch: u32) -> crate::bindings::dserver_rpc_architecture_t {
         x if x == A::dserver_rpc_architecture_arm32 as u32 => A::dserver_rpc_architecture_arm32,
         x if x == A::dserver_rpc_architecture_arm64 as u32 => A::dserver_rpc_architecture_arm64,
         _ => A::dserver_rpc_architecture_invalid,
+    }
+}
+
+/// Destroy the threads still on `task`'s thread list: the execve-reaped remnants whose microthreads
+/// finished without a checkout, so they were never freed and pin the task refcount (task #33). Parked
+/// threads are already gone (discard_parked destroyed them, which queue_removes each). COLLECT first,
+/// then destroy -- xnu_sys_thread_destroy queue_removes the thread, which would corrupt a walk in
+/// progress. Follows the element-pointer queue contract (the stored link IS the thread; see
+/// xnu::thread::queue_enter_threads). The guard bounds a corrupt/cyclic list instead of hanging.
+unsafe fn destroy_task_threads(task: *mut xnu_sys_task_t) {
+    let head = std::ptr::addr_of_mut!((*task).xnu_task.threads);
+    let mut collected: Vec<*mut crate::bindings::thread> = Vec::new();
+    let mut cur = (*head).next;
+    let mut guard = 0;
+    while cur != head as *mut _ && guard < 100_000 {
+        let xt = cur as *mut crate::bindings::thread;
+        cur = (*xt).task_threads.next;
+        collected.push(xt);
+        guard += 1;
+    }
+    for xt in collected {
+        thread_deallocate(xt);
     }
 }
 
@@ -164,6 +187,51 @@ impl Registry {
 
     pub fn task_for_pid(&self, pid: u32) -> Option<*mut xnu_sys_task_t> {
         self.tasks.get(&pid).copied()
+    }
+
+    /// Free every microthread of `pid` still parked mid-call, host-side (task #33): a process that
+    /// dies via its pidfd never checks its threads out, so their doWork microthreads sit parked
+    /// forever. Dropped WITHOUT resuming (the guest is gone; resuming would block on an S2C reply to
+    /// a dead peer); `dying` + `deallocate` then release the xnu_sys_thread and its task reference,
+    /// so a following despawn_task can reach 0 refs. Runs under a current-thread context (its caller
+    /// wraps it in run_on_task), which the IPC teardown in `deallocate` requires.
+    pub unsafe fn discard_parked(&mut self, pid: u32) {
+        let tids: Vec<u64> = self.parked.keys().filter(|(p, _)| *p == pid).map(|(_, t)| *t).collect();
+        for tid in tids {
+            if let Some(mt) = self.parked.remove(&(pid, tid)) {
+                let dthread = (*mt).xnu_sys_thread();
+                drop(Box::from_raw(mt));
+                if !dthread.is_null() {
+                    crate::thread::dying(dthread);
+                    crate::thread::deallocate(dthread);
+                }
+            }
+        }
+    }
+
+    /// Free a guest task on real process exit (the task #52 cleanup the task_lookup table deferred).
+    /// Refuses while any thread is still parked mid-call: a parked microthread holds this task
+    /// pointer, so freeing then would dangle (call discard_parked first). First destroys the task's
+    /// leftover threads -- the execve-reaped ones (their microthreads finished without a checkout, so
+    /// they were never xnu_sys_thread_destroy'd) pin the task refcount -- then task_deallocate reaches
+    /// 0 and frees the vm_map + ipc_space. Refcount-safe: if the walk ever misses a thread the task is
+    /// merely deferred (leaked), never force-freed under a live ref. Must run under a current-thread
+    /// context (the caller's run_on_task), which the thread/port teardown reads.
+    pub unsafe fn despawn_task(&mut self, pid: u32) -> bool {
+        if self.parked.keys().any(|&(p, _)| p == pid) {
+            return false;
+        }
+        sched::unregister_task_lookup(pid);
+        self.host_pids.remove(&pid);
+        self.ctxs.remove(&pid);
+        match self.tasks.remove(&pid) {
+            Some(t) => {
+                destroy_task_threads(t);
+                task_deallocate(std::ptr::addr_of_mut!((*t).xnu_task));
+                true
+            }
+            None => false,
+        }
     }
     pub fn kernel_task(&self) -> *mut xnu_sys_task_t { self.kernel_task }
     pub fn task_count(&self) -> usize { self.tasks.len() }

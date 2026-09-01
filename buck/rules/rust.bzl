@@ -310,7 +310,16 @@ bindgen_gen = rule(
 # LLVM 22 and fails the whole archive.
 _DARWIN_RUSTC = read_root_config("cider", "darwin_rustc", "")
 _DARWIN_RUST_SYSROOT = read_root_config("cider", "darwin_rust_sysroot", "")
-_DARWIN_RUST_TARGET = read_root_config("cider", "darwin_rust_target", "x86_64-apple-darwin")
+
+# rustc spells the guest arch differently than clang does: Mach-O land says arm64, rust says
+# aarch64 (docs/plan-aarch64.md, D2). Derived from the same [cider] guest_arch key the C
+# toolchain reads, overridable by the explicit darwin_rust_target key as before.
+_GUEST_ARCH = read_root_config("cider", "guest_arch", "x86_64")
+_DARWIN_RUST_TARGET = read_root_config(
+    "cider",
+    "darwin_rust_target",
+    ("aarch64" if _GUEST_ARCH == "arm64" else _GUEST_ARCH) + "-apple-darwin",
+)
 
 def _darwin_rust_staticlib_impl(ctx):
     if not _DARWIN_RUSTC or not _DARWIN_RUST_SYSROOT:

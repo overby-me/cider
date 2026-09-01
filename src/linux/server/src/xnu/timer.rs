@@ -25,9 +25,17 @@ use std::os::raw::{c_int, c_void};
 use std::ptr;
 
 use crate::bindings::{
-    mpqueue_head_t, pal_rtc_nanotime, timer_coalescing_priority_params_ns_t, boolean_t,
-    xnu_sys_hooks_t, lck_mtx_init_ext, mach_absolute_time, timer_queue_expire, NSEC_PER_SEC,
+    mpqueue_head_t, timer_coalescing_priority_params_ns_t, boolean_t,
+    xnu_sys_hooks_t, mach_absolute_time, timer_queue_expire, NSEC_PER_SEC,
 };
+
+// The PAL nanotime path is the i386 rtclock's; on arm64 the daemon links rtclock_arm64.c,
+// which reads CLOCK_MONOTONIC itself, so neither the type nor these two symbols are wanted
+// (task A18).
+#[cfg(target_arch = "x86_64")]
+use crate::bindings::{pal_rtc_nanotime, lck_mtx_init_ext};
+#[cfg(target_arch = "aarch64")]
+use crate::bindings::lck_mtx_init;
 
 extern "C" {
     static xnu_sys_hooks: *const xnu_sys_hooks_t;
@@ -42,7 +50,9 @@ static mut COALESCING_PARAMS: timer_coalescing_priority_params_ns_t =
 
 // ---- data symbols XNU reads directly ----
 
-/// A stub: nothing populates it, but XNU's rtclock code takes its address.
+/// A stub: nothing populates it, but the i386 rtclock code takes its address. arm64 has no
+/// such symbol (rtclock_arm64.c does not reference it).
+#[cfg(target_arch = "x86_64")]
 #[no_mangle]
 #[used]
 pub static mut pal_rtc_nanotime_info: pal_rtc_nanotime = unsafe { std::mem::zeroed() };
@@ -64,9 +74,18 @@ unsafe fn mpqueue_init(q: *mut mpqueue_head_t) {
     (*head).next = head;
     (*head).prev = head;
 
+    // The lock half of the macro is per-arch (kern/mpqueue.h): x86 has a lock_data_ext field
+    // and calls lck_mtx_init_ext, arm64 has neither and calls plain lck_mtx_init (task A18).
+    #[cfg(target_arch = "x86_64")]
     lck_mtx_init_ext(
         ptr::addr_of_mut!((*q).lock_data),
         ptr::addr_of_mut!((*q).lock_data_ext) as *mut _,
+        ptr::null_mut(),
+        ptr::null_mut(),
+    );
+    #[cfg(target_arch = "aarch64")]
+    lck_mtx_init(
+        ptr::addr_of_mut!((*q).lock_data),
         ptr::null_mut(),
         ptr::null_mut(),
     );
@@ -85,7 +104,9 @@ pub unsafe extern "C" fn xnu_sys_timer_init() {
     mpqueue_init(ptr::addr_of_mut!(TIMER_QUEUE));
 }
 
-/// Monotonic nanoseconds. XNU's rtclock reads the wall clock through this.
+/// Monotonic nanoseconds. The i386 rtclock reads the wall clock through this; arm64 uses
+/// rtclock_arm64.c's own reader instead, so this symbol is x86-only (task A18).
+#[cfg(target_arch = "x86_64")]
 #[no_mangle]
 pub unsafe extern "C" fn _rtc_nanotime_read(_rntp: *mut pal_rtc_nanotime) -> u64 {
     let mut ts: libc::timespec = std::mem::zeroed();

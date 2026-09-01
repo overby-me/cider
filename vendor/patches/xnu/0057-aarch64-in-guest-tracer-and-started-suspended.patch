@@ -1,0 +1,57 @@
+aarch64 #23 milestone-1: serve get_tracer + started_suspended in-guest (sigexc_setup).
+
+sigexc_setup (VARIANT_DYLD) asks ciderd started_suspended and get_tracer to decide whether to suspend /
+SIGTRAP for a debugger. In the self-contained case there is no tracer and the process is not started
+suspended, so with CIDER_INGUEST_IPC on the guest returns false / 0 with no RPC. started_suspended's
+only ciderd side effect is a reset to false -- a no-op when it is already false. A debugger (which is
+what sets these) is out of scope for the flag.
+
+exec-true RECV 25 -> 19 (get_tracer 3 -> 0, started_suspended 3 -> 0), rc=0, soak 8/8. Flag-off
+unchanged. dyld-copy code; a prefix build compiles it. On top of 0056.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+index ec32d54..3966f12 100644
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+@@ -191,22 +191,31 @@ void sigexc_setup(void)
+ 	sigexc_setup2();
+ 
+ #ifdef VARIANT_DYLD
+-	bool started_suspended;
+-	int code = dserver_rpc_started_suspended(&started_suspended);
+-	if (code < 0) {
+-		__simple_printf("Failed to get started_suspended status: %d\n", code);
+-		__simple_abort();
++	// #23: in the self-contained case there is no tracer and the process is not started suspended, so
++	// serve both queries in-guest (false / 0) with no RPC. started_suspended's ciderd side effect is a
++	// reset to false, a no-op when it is already false. A debugger (which would set these) is out of
++	// scope for CIDER_INGUEST_IPC.
++	extern int __inguest_ipc_on(void);
++	bool started_suspended = false;
++	if (!__inguest_ipc_on()) {
++		int code = dserver_rpc_started_suspended(&started_suspended);
++		if (code < 0) {
++			__simple_printf("Failed to get started_suspended status: %d\n", code);
++			__simple_abort();
++		}
+ 	}
+ 	if (started_suspended) {
+ 		kern_printf("sigexc: start_suspended -> suspending (ret to %p)\n", __builtin_return_address(0));
+ 		task_suspend(mach_task_self());
+ 		kern_printf("sigexc: start_suspended -> wokenup (ret to %p)\n", __builtin_return_address(0));
+ 	} else {
+-		int32_t tracer;
+-		code = dserver_rpc_get_tracer(&tracer);
+-		if (code < 0) {
+-			__simple_printf("Failed to get tracer status: %d\n", code);
+-			__simple_abort();
++		int32_t tracer = 0;
++		if (!__inguest_ipc_on()) {
++			int code = dserver_rpc_get_tracer(&tracer);
++			if (code < 0) {
++				__simple_printf("Failed to get tracer status: %d\n", code);
++				__simple_abort();
++			}
+ 		}
+ 		if (tracer != 0) {
+ 			kern_printf("sigexc: already traced -> SIGTRAP\n");

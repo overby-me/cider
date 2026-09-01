@@ -1,0 +1,45 @@
+aarch64: do not pack struct epoll_event, or every kqueue event misroutes.
+
+This is the true root of #15 (the teardown hang AND the ciderd-teardown CPU spin that 0004-0007 in
+libkqueue were only bounding). The guest's linux epoll_event was `__attribute__((packed))`
+unconditionally -- the x86_64 layout (12 bytes, 8-byte data at offset 4). The Linux kernel packs
+epoll_event ONLY on x86_64 (uapi/linux/eventpoll.h: EPOLL_PACKED is packed under __x86_64__, empty
+otherwise); on aarch64 __u64 data aligns to 8, so the struct is 16 bytes with data at offset 8.
+
+With the packed guest struct on an aarch64 host, the kernel read (and wrote) the 8-byte data field at
+offset 8 while the guest stored it at offset 4. Every knote pointer libkqueue passes as epoll_event.data
+therefore came back mangled, and because all guest knote pointers share their high 32 bits
+(0x40000266f2d0, 0x40000266f3c0, ...), they all collapsed to the SAME value (0xdf7c00004000 observed) --
+so distinct knotes aliased one epoll registration. That misrouting is exactly the observed failures:
+EVFILT_PROC/NOTE_EXIT for the shell was delivered as the wrong filter, so shellspawn never saw the exit
+and the launcher hung; and a freed knote's descriptor kept firing under a live knote's pointer, the
+100% CPU epoll spin.
+
+Fix: gate the packing on __x86_64__, matching the kernel per arch. Confirmed by CIDER_TRACE_KNOTE
+(patch 0007): knote_new returns distinct pointers, but the host epoll_ctl recorded one shared data value.
+---
+--- a/darling/src/libsystem_kernel/emulation/include/linux_premigration/ext/sys/epoll.h
++++ b/darling/src/libsystem_kernel/emulation/include/linux_premigration/ext/sys/epoll.h
+@@ -43,11 +43,21 @@
+ 	uint64_t u64;
+ } epoll_data_t;
+ 
++/* The kernel packs epoll_event ONLY on x86_64 (uapi eventpoll.h): 12 bytes, data at offset 4.
++ * Everywhere else (aarch64) it is unpacked: __u64 data aligns to 8, so 16 bytes, data at offset 8.
++ * Packing unconditionally made the aarch64 kernel read/write data at the wrong offset, collapsing
++ * every distinct data pointer to the same value and misrouting every kqueue event (#15). */
++#if defined(__x86_64__)
++#	define CIDER_EPOLL_PACKED __attribute__((packed))
++#else
++#	define CIDER_EPOLL_PACKED
++#endif
++
+ struct epoll_event
+ {
+ 	uint32_t events;
+ 	epoll_data_t data;
+-} __attribute__((packed));
++} CIDER_EPOLL_PACKED;
+ 
+ extern int epoll_create (int __size) __THROW;
+ 

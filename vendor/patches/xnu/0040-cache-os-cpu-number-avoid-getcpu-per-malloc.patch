@@ -1,0 +1,48 @@
+Cache _os_cpu_number: stop issuing a getcpu syscall on every malloc.
+
+Profiling a guest process spawn under cider (strace -f -c of `cider shell true`) showed getcpu was
+~90% of ALL syscalls and every call errored: ~24,000 failing getcpu per short-lived process. Cause:
+libmalloc calls _malloc_cpu_number() on every allocation to pick a per-cpu magazine, which on DARLING
+routed _os_cpu_number() straight to a getcpu Linux syscall (libsyscall/os/tsd.h). Real Darwin reads the
+cpu number from a register (TPIDRRO_EL0 low bits / commpage), not a syscall; cider has no such fast
+path, and TPIDRRO_EL0 is used here for the TSD base, so it fell back to the syscall on the hottest path
+in the process.
+
+The cpu number is only a magazine HINT, and on cider getcpu returns the same value for the process
+(here it fails and yields 0 every time), so cache the first result and skip the syscall thereafter. This
+turns ~24k getcpu/spawn into ~one per libmalloc translation unit. Per-TU static, benign int race; the
+magazine hint becoming sticky-per-process is fine for the build-tool workload (largely single-threaded
+per process, and per-cpu magazines were already inert since getcpu failed).
+---
+--- a/libsyscall/os/tsd.h
++++ b/libsyscall/os/tsd.h
+@@ -63,16 +63,23 @@
+ _os_cpu_number(void)
+ {
+ #ifdef DARLING
++	// Called on EVERY malloc (libmalloc magazine selection), so a getcpu syscall per call is a
++	// startup hot path: measured ~24k getcpu/short-lived process under cider. The value is only a
++	// per-cpu magazine HINT (real Darwin reads it from a register, not a syscall), so cache the first
++	// result and skip the syscall thereafter -- getcpu also currently fails here, yielding 0 anyway.
+ 	extern int __linux_syscall(int nr, ...);
++
++	static int _cpu_num_cache = -1;
++	int cached = _cpu_num_cache;
++	if (__builtin_expect(cached >= 0, 1)) {
++		return (unsigned int) cached;
++	}
+ 
+ 	unsigned int cpu_num = 0;
+ 	int status = __linux_syscall(__NR_getcpu, &cpu_num, 0, 0, 0, 0, 0);
+-	// should we even check? i don't think it's possible for it to fail with these arguments
+-	if (status < 0) {
+-		return 0; // i guess?
+-	}
+-
+-	return cpu_num;
++	cached = (status < 0) ? 0 : (int) cpu_num;
++	_cpu_num_cache = cached;
++	return (unsigned int) cached;
+ #else // !DARLING
+ #if defined(__arm__)
+ 	uintptr_t p;

@@ -1,0 +1,58 @@
+aarch64: route the ___fork stub through __darling_bsd_syscall, not `svc #0x80`.
+
+libc fork() calls the __fork asm stub (gen/bsdsyscalls/___fork.S). The arm64 branch emitted
+`mov x16,#SYS_fork; svc #0x80`, which on Linux arm64 traps to the host kernel (x8 unset) and
+never reaches the emulated sys_fork -- the code that clones AND checks the forked child in with
+darlingserver. Without that checkin the child never registers and the parent hangs forever in
+_mach_fork_parent -> dserver_rpc_fork_wait_for_child. i386/x86_64 already had the DARLING branch;
+arm64 was missed (like the generated bsd stubs fixed in 0027 and the mach traps in 0028).
+
+Route arm64 through __darling_bsd_syscall using the same error convention as DO_SYSCALL in SYS.h
+(cmn x0,#4095 / b.cc / neg / _cerror), then apply the fork-specific child __current_pid clear.
+`bl` clobbers x30/lr, so the existing PUSH_FRAME/POP_FRAME brackets it. Non-DARLING keeps svc.
+--- a/gen/bsdsyscalls/___fork.S
++++ b/gen/bsdsyscalls/___fork.S
+@@ -152,6 +152,35 @@
+ MI_ENTRY_POINT(___fork)
+ 	ARM64_STACK_PROLOG
+ 	PUSH_FRAME
++#ifdef DARLING
++	// aarch64 darling: route fork through the userspace emulation dispatcher, NOT a raw `svc`.
++	// A raw `svc #0x80` on Linux arm64 traps to the host kernel (x8 unset) and never reaches the
++	// emulated sys_fork -- which is the code that clones AND checks the forked child in with
++	// darlingserver. Without that checkin the parent hangs forever in fork_wait_for_child.
++	// __darling_bsd_syscall reads the Darwin syscall number from x16, runs sys_fork, and returns
++	// pid (parent) / 0 (child) / -errno (error) in x0 -- exactly like the generated bsd stubs
++	// (DO_SYSCALL in SYS.h) and the x86_64 branch above.
++	mov		x16, #SYS_fork				// Darwin syscall number in x16
++	bl		__darling_bsd_syscall		// emulated fork: clone + (in child) darlingserver checkin
++	cmn		x0, #4095					// x0 in [-4095, -1] => -errno error
++	b.cc	Ldarling_ok					// not an error
++	neg		x0, x0						// x0 = errno
++	MI_CALL_EXTERNAL(_cerror)			// set errno; returns -1
++	mov		w0, #-1						// (defensive) ensure -1 return
++	POP_FRAME
++	ARM64_STACK_EPILOG
++Ldarling_ok:
++	cbz		x0, Ldarling_child			// x0 == 0 => we are the child
++	// Parent: x0 holds the child pid; return it.
++	POP_FRAME
++	ARM64_STACK_EPILOG
++Ldarling_child:
++	MI_GET_ADDRESS(x9, __current_pid)	// clear the cached pid in the child
++	mov		w0, #0
++	str		w0, [x9]
++	POP_FRAME
++	ARM64_STACK_EPILOG
++#else
+ 	// ARM moves a 1 in to r1 here, but I can't see why.
+ 	mov		x16, #SYS_fork				// Syscall code
+ 	svc		#SWI_SYSCALL				// Trap to kernel
+@@ -171,6 +200,7 @@
+ Lparent:
+ 	POP_FRAME							// Return
+ 	ARM64_STACK_EPILOG
++#endif
+ 
+ #else
+ #error Unsupported architecture

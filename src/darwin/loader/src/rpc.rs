@@ -34,6 +34,15 @@ std::thread_local! {
 static SOCKPATH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 pub fn set_sockpath(p: &str) {
     let _ = SOCKPATH.set(p.to_string());
+    // #40: also record the server address, so the guest's dserver_socket_address is valid even when
+    // we never create a socket (socket-less exec). sys_execve reads it to build the child's
+    // __mldr_sockpath; without it the guest deref'd a NULL sockaddr (->sun_path == 0x2) and crashed
+    // in strlen. Harmless on the socketed path (create_socket writes the same value).
+    let (server, _slen) = make_server_addr(p);
+    unsafe {
+        SERVER_ADDR.write(server);
+    }
+    SERVER_ADDR_SET.store(true, Ordering::SeqCst);
 }
 pub fn set_thread_socket(fd: c_int) {
     T_SOCKET.with(|s| s.set(fd));
@@ -123,13 +132,22 @@ pub unsafe fn create_thread_socket() -> c_int {
 /// Check in on a created thread's own socket.
 pub unsafe fn checkin_thread(fd: c_int, stack_hint: u64) -> i32 {
     match SOCKPATH.get() {
-        Some(p) => checkin(fd, &p.clone(), stack_hint),
+        // A new thread shares the process's task/creds, so its cache seeds are already warm; #25's
+        // reply is only for the initial exec checkin (main.rs). Keep just the code here.
+        Some(p) => checkin(fd, &p.clone(), stack_hint).code,
         None => -1,
     }
 }
 
 const CHECKIN: u32 = 1;
-const ARCH_X86_64: u32 = 2; // dserver_rpc_architecture_x86_64
+// dserver_rpc_architecture_t: invalid=0, i386=1, x86_64=2, arm32=3, arm64=4. The daemon keys its
+// thread-state and signal (sigprocess) machinery on the architecture the guest checks in with;
+// hardcoding x86_64 made it treat an arm64 guest as x86_64 and refuse to load thread state.
+// cider is native (guest arch == host arch), so mldr reports its own compile-time arch.
+#[cfg(target_arch = "x86_64")]
+const GUEST_ARCH: u32 = 2; // dserver_rpc_architecture_x86_64
+#[cfg(target_arch = "aarch64")]
+const GUEST_ARCH: u32 = 4; // dserver_rpc_architecture_arm64
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -160,8 +178,17 @@ struct RpcCallCheckin {
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
+struct ReplyCheckin {
+    task_self: u32,
+    uid: i32,
+    gid: i32,
+    host_self: u32,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
 struct RpcReplyCheckin {
     header: DserverRpcReplyhdr,
+    body: ReplyCheckin,
 }
 
 /// For a wire sanity check: must be 40 (16 header + 24 body with x86_64 padding).
@@ -219,7 +246,7 @@ pub unsafe fn vchroot_path(fd: c_int) -> Option<String> {
             number: VCHROOT_PATH,
             pid: libc::getpid(),
             tid: gettid(),
-            architecture: ARCH_X86_64,
+            architecture: GUEST_ARCH,
         },
         body: CallVchrootPath {
             buffer: buf.as_mut_ptr() as u64,
@@ -300,15 +327,31 @@ fn make_server_addr(path: &str) -> (libc::sockaddr_un, libc::socklen_t) {
     (addr, len)
 }
 
-/// Send checkin and return the reply code (0 = ok). is_fork=false, lifetime pipe -1.
-pub unsafe fn checkin(fd: c_int, sockpath: &str, stack_hint: u64) -> i32 {
+/// #11/#25: mldr checkin result -- the reply code plus the per-process init constants the daemon
+/// folds into the checkin reply (task-self port name, uid, gid), used to seed the guest caches.
+pub struct CheckinReply {
+    pub code: i32,
+    pub task_self: u32,
+    pub uid: i32,
+    pub gid: i32,
+    pub host_self: u32,
+}
+impl CheckinReply {
+    fn failed() -> Self {
+        Self { code: -1, task_self: 0, uid: -1, gid: -1, host_self: 0 }
+    }
+}
+
+/// Send checkin and return the reply. is_fork=false, lifetime pipe -1. #11/#25: the reply also
+/// carries the task-self port name + uid/gid so the caller can seed the guest caches via apple[].
+pub unsafe fn checkin(fd: c_int, sockpath: &str, stack_hint: u64) -> CheckinReply {
     let (server, slen) = make_server_addr(sockpath);
     let call = RpcCallCheckin {
         header: DserverRpcCallhdr {
             number: CHECKIN,
             pid: libc::getpid(),
             tid: gettid(),
-            architecture: ARCH_X86_64,
+            architecture: GUEST_ARCH,
         },
         body: CallCheckin {
             is_fork: false,
@@ -330,7 +373,7 @@ pub unsafe fn checkin(fd: c_int, sockpath: &str, stack_hint: u64) -> i32 {
     );
     if sent < 0 {
         eprintln!("[mldr] checkin sendto failed (errno {})", errno());
-        return -1;
+        return CheckinReply::failed();
     }
     let mut reply: RpcReplyCheckin = std::mem::zeroed();
     let got = libc::recv(
@@ -341,7 +384,13 @@ pub unsafe fn checkin(fd: c_int, sockpath: &str, stack_hint: u64) -> i32 {
     );
     if got < 0 {
         eprintln!("[mldr] checkin recv failed (errno {})", errno());
-        return -1;
+        return CheckinReply::failed();
     }
-    reply.header.code
+    CheckinReply {
+        code: reply.header.code,
+        task_self: reply.body.task_self,
+        uid: reply.body.uid,
+        gid: reply.body.gid,
+        host_self: reply.body.host_self,
+    }
 }

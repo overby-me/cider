@@ -198,8 +198,13 @@ extern "C" fn crash_handler(sig: c_int, info: *mut libc::siginfo_t, ctx: *mut c_
         }
         if !ctx.is_null() {
             let uc = ctx as *mut libc::ucontext_t;
-            let rip = (*uc).uc_mcontext.gregs[libc::REG_RIP as usize] as u64;
-            write_labeled_hex(b"  rip ", rip);
+            // The crash PC, named per arch (task A18): x86_64 keeps it in gregs[REG_RIP],
+            // aarch64 in mcontext.pc. Same label so the two transcripts read alike.
+            #[cfg(target_arch = "x86_64")]
+            let pc = (*uc).uc_mcontext.gregs[libc::REG_RIP as usize] as u64;
+            #[cfg(target_arch = "aarch64")]
+            let pc = (*uc).uc_mcontext.pc as u64;
+            write_labeled_hex(b"  pc ", pc);
         }
         let mut bt: [*mut c_void; 40] = [std::ptr::null_mut(); 40];
         let n = backtrace(bt.as_mut_ptr(), 40);
@@ -298,6 +303,10 @@ unsafe fn run(cfg: Config) -> ! {
     let mut kqchans: Vec<ProcKqchan> = Vec::new();
     let mut mach_kqchans: Vec<Box<MachPortKqchan>> = Vec::new();
     let mut consoles: Vec<RawFd> = Vec::new();
+    // pidfd -> nsid for the per-process death watch (task #33; see Handler::pending_watches for why
+    // per-process). Deduped by watched_nsids.
+    let mut proc_watches: HashMap<RawFd, u32> = HashMap::new();
+    let mut watched_nsids: std::collections::HashSet<u32> = std::collections::HashSet::new();
 
     let epfd = libc::epoll_create1(libc::EPOLL_CLOEXEC);
     let main_fd = listener.fd();
@@ -341,27 +350,16 @@ unsafe fn run(cfg: Config) -> ! {
                 // Drain all pending RPC datagrams; dispatch each on its guest thread's
                 // doWork microthread, flush replies, and register any kqchans it opened.
                 while let Ok(Some((msg, peer))) = listener.recv() {
-                    // checkout (call #2) = a guest thread exiting: reap its microthread + slot
-                    // after its reply flushes, or every thread leaks (captured before the move).
-                    // Also note whether it is a REAL exit vs an execve: CallCheckout's body
-                    // begins with exec_listener_pipe: i32, which is >= 0 only for an execve (the
-                    // process lives on); < 0 is a real exit. If the LAST thread of a process
-                    // does a real exit, the process is gone -> prune its ProcState (task #52).
-                    let reap = msg.header().filter(|h| h.number == 2).map(|h| {
-                        let body = msg.body();
-                        let real_exit = body.len() >= 4
-                            && i32::from_ne_bytes([body[0], body[1], body[2], body[3]]) < 0;
-                        (h.pid as u32, h.tid as u64, real_exit)
-                    });
+                    // checkout (call #2) = a guest thread exiting or execing: reap its microthread +
+                    // slot after its reply flushes, or every thread leaks (captured before the move).
+                    // The process's real teardown (free its task + threads) runs on its pidfd death
+                    // (the "CIDER_PROCKQ target died" path), the reliable signal; a checkout alone
+                    // cannot tell a thread that execs from the process's last exit.
+                    let reap = msg.header().filter(|h| h.number == 2).map(|h| (h.pid as u32, h.tid as u64));
                     handle_call(&listener, &mut reg, handler_ptr, &mut slots, msg, peer);
                     flush_replies(&listener, &mut slots);
-                    if let Some((rn, rt, real_exit)) = reap {
+                    if let Some((rn, rt)) = reap {
                         reap_thread(&mut reg, &mut slots, rn, rt);
-                        if real_exit && !slots.keys().any(|(n, _)| *n == rn) {
-                            // last thread of the process exited (not an execve) -> drop its
-                            // ProcState, whose Drop closes the retained vchroot fd.
-                            (*handler_ptr).prune_process(rn);
-                        }
                     }
                     for kq in (*handler_ptr).take_pending_kqchans() {
                         epoll_add(epfd, kq.daemon_fd);
@@ -395,6 +393,18 @@ unsafe fn run(cfg: Config) -> ! {
                         epoll_add(epfd, cfd);
                         consoles.push(cfd);
                     }
+                    // Arm a death watch on each newly-checked-in process (task #33), deduped by nsid.
+                    for (nsid, hpid) in (*handler_ptr).take_pending_watches() {
+                        if watched_nsids.insert(nsid) {
+                            let pfd = libc::syscall(libc::SYS_pidfd_open, hpid, 0) as RawFd;
+                            if pfd >= 0 {
+                                epoll_add(epfd, pfd);
+                                proc_watches.insert(pfd, nsid);
+                            } else {
+                                watched_nsids.remove(&nsid);
+                            }
+                        }
+                    }
                 }
             } else if let Some(idx) = kqchans.iter().position(|k| k.daemon_fd == fd) {
                 // Guest sent a message on a kqchan socket (proc_modify/proc_read) or hung up.
@@ -411,12 +421,34 @@ unsafe fn run(cfg: Config) -> ! {
                 // Traced because the consumer of this is launchd's restart path: no NOTE_EXIT means
                 // a job's MachService ports never go back into launchd's demand set and it can never
                 // be started again. launchd reaps secd and securityd and never trustd.
+                let dead_nsid = kqchans[idx].target_nsid;
                 eprintln!("CIDER_PROCKQ target died, nsid={} host pid={}",
-                          kqchans[idx].target_nsid, kqchans[idx].target_host_pid);
+                          dead_nsid, kqchans[idx].target_host_pid);
                 epoll_del(epfd, fd);
                 libc::close(fd);
                 kqchans[idx].pidfd = -1;
                 kqchans[idx].on_target_died();
+                // Teardown is NOT done here: every process (this one included) is torn down by its
+                // per-process death watch below, the SOLE teardown path (task #33).
+            } else if let Some(&dead_nsid) = proc_watches.get(&fd) {
+                // A checked-in process died (its per-process death watch, task #33). Free its task +
+                // threads on a kernel-task microthread (run_on_task): the xnu-sys IPC teardown reads
+                // current_thread(), null on the bare epoll loop -> null deref (same reason task CREATE
+                // runs on a microthread). The body runs synchronously, so the raw ptrs outlive it.
+                proc_watches.remove(&fd);
+                watched_nsids.remove(&dead_nsid);
+                epoll_del(epfd, fd);
+                libc::close(fd);
+                slots.retain(|(n, _), _| *n != dead_nsid);
+                let kt = reg.kernel_task();
+                let reg_ptr: *mut Registry = &mut reg;
+                let hp = handler_ptr;
+                sched::run_on_task(kt, Box::new(move || unsafe {
+                    sched::reap_prior_kernel_scratch();
+                    (*reg_ptr).discard_parked(dead_nsid);
+                    (*hp).prune_process(dead_nsid);
+                    (*reg_ptr).despawn_task(dead_nsid);
+                }));
             } else if let Some(idx) = mach_kqchans.iter().position(|k| k.daemon_fd == fd) {
                 // Guest sent modify/read on a mach-port kqchan socket, or hung up (task #54).
                 if !mach_kqchans[idx].on_readable() {

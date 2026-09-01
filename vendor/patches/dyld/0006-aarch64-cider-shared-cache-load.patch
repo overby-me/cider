@@ -1,0 +1,43 @@
+Map the dyld shared cache under cider: skip code-signature registration (aarch64 #11 A).
+
+The guest dyld opened the installed cache but rejected it silently. Cause: mapCachePrivate
+registers the cache's code signature via fcntl(F_ADDFILESIGS_RETURN); under cider (which does
+not enforce code signatures) that returns -1, so dyld set errorMessage and fell back to loading
+each dylib individually. The upstream halt-on-error in mapSharedCache is commented out, so the
+reject was invisible. Skip the CS registration + coverage check for the cache under DARLING, and
+log sSharedCacheLoadInfo.errorMessage when the cache is not used so any further reject reason is
+visible.
+
+Signed-off-by: Niclas Overby <niclas@overby.me>
+---
+--- a/dyld3/SharedCacheRuntime.cpp
++++ b/dyld3/SharedCacheRuntime.cpp
+@@ -460,6 +460,7 @@
+         return false;
+     }
+ 
++#ifndef DARLING  // cider #11 A: cider does not enforce code signatures; skip cache CS registration
+     // register code signature of cache file
+     fsignatures_t siginfo;
+     siginfo.fs_file_start = 0;  // cache always starts at beginning of file
+@@ -479,6 +480,7 @@
+         ::close(fd);
+         return false;
+     }
++#endif // !DARLING
+     void* mappedData = ::mmap(NULL, sizeof(firstPage), PROT_READ|PROT_EXEC, MAP_PRIVATE, fd, 0);
+     if ( mappedData == MAP_FAILED ) {
+         results->errorMessage = "first page of shared cache not mmap()able";
+--- a/src/dyld2.cpp
++++ b/src/dyld2.cpp
+@@ -4239,6 +4239,10 @@
+ 		dyld::gProcessInfo->sharedCacheBaseAddress          = (unsigned long)sSharedCacheLoadInfo.loadAddress;
+ 		sSharedCacheLoadInfo.loadAddress->getUUID(dyld::gProcessInfo->sharedCacheUUID);
+ 		dyld3::kdebug_trace_dyld_image(DBG_DYLD_UUID_SHARED_CACHE_A, sSharedCacheLoadInfo.path, (const uuid_t *)&dyld::gProcessInfo->sharedCacheUUID[0], {0,0}, {{ 0, 0 }}, (const mach_header *)sSharedCacheLoadInfo.loadAddress);
++	}
++	// cider #11 A: surface why the shared cache was not used (upstream halt path is disabled).
++	else if ( sSharedCacheLoadInfo.errorMessage != nullptr ) {
++		dyld::log("dyld: shared cache not used: %s\n", sSharedCacheLoadInfo.errorMessage);
+ 	}
+ 
+ //#if TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR

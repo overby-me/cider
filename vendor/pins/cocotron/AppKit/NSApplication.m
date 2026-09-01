@@ -172,7 +172,11 @@ static void _CiderAppFatalSignal(int signo, siginfo_t *info, void *ucontextIn)
 
     ucontext_t *uc = (ucontext_t *) ucontextIn;
     if (uc != NULL && uc->uc_mcontext != NULL) {
+#if defined(__x86_64__)
         void *pc = (void *) (uintptr_t) uc->uc_mcontext->__ss.__rip;
+#else
+        void *pc = (void *) (uintptr_t) uc->uc_mcontext->__ss.__pc;
+#endif
         Dl_info pcinfo;
 
         if (dladdr(pc, &pcinfo) != 0 && pcinfo.dli_sname != NULL)
@@ -190,7 +194,11 @@ static void _CiderAppFatalSignal(int signo, siginfo_t *info, void *ucontextIn)
          * that faulted, so there is no chain to follow; a stack that ran out of room is however
          * full of the cycle that filled it, so count the code addresses lying in it and the
          * repeating callers come out on top. */
+#if defined(__x86_64__)
         uintptr_t sp = (uintptr_t) uc->uc_mcontext->__ss.__rsp;
+#else
+        uintptr_t sp = (uintptr_t) uc->uc_mcontext->__ss.__sp;
+#endif
         uintptr_t scanned = 0;
 
         fprintf(stderr, "CIDER_APP scan starting, rsp=%p probefd=%d\n", (void *) sp, _CiderProbeFd);
@@ -1521,7 +1529,8 @@ static void _CiderAppNote(const char *what, id sender)
         IMP function = [[context modalDelegate]
                 methodForSelector: [context didEndSelector]];
         if (function != NULL) {
-            function([context modalDelegate], [context didEndSelector], sheet,
+            ((void (*)(id, SEL, id, NSInteger, void *)) function)(
+                     [context modalDelegate], [context didEndSelector], sheet,
                      returnCode, [context contextInfo]);
         }
         [sheet _setSheetContext: nil];
@@ -1541,7 +1550,8 @@ static void _CiderAppNote(const char *what, id sender)
                 function = [[context modalDelegate]
                         methodForSelector: [context didEndSelector]];
                 if (function != NULL)
-                    function([context modalDelegate], [context didEndSelector],
+                    ((void (*)(id, SEL, id, NSInteger, void *)) function)(
+                             [context modalDelegate], [context didEndSelector],
                              sheet, returnCode, [context contextInfo]);
 
                 return;

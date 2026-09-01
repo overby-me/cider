@@ -1,6 +1,163 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects", "cc_static_lib")
 load("//buck/rules:darwin.bzl", "darwin_dylib")
 
+# THE GUEST ARCH SPLIT (aarch64 port, task A13). The reference build.ninja this file was
+# generated from is x86-only and frozen, so the arm64 half is hand-written from darling PR
+# 1753's src/libm/CMakeLists.txt: arm64 compiles a flat Source/ARM C list (FreeBSD msun
+# transcendentals plus arm64_builtins.c hardware wrappers), with no .S, no SSE, the ARM
+# include dir, -DARMLIBM_FENV_SUPPORT, and the arm_vfp alias in place of the Intel ones.
+# system_m_extra is empty on arm64 (the xmm_* files are x86 SSE). Every _M_ARM branch below
+# keys off this one flag; with it false the file is byte-identical to the generated original.
+_M_ARM = host_info().arch.is_aarch64
+
+# The flat arm64 source list, from PR 1753's TARGET_ARM64 libm_sources (Source/abs.c,
+# sincos.c and exp10.c are the common three every arch builds; they are appended here so the
+# arm object target is self-contained).
+_LIBM_ARM_SRCS = [
+        "Source/ARM/acos_freeBSD.c",
+        "Source/ARM/acosf_freeBSD.c",
+        "Source/ARM/acosh_freeBSD.c",
+        "Source/ARM/acoshf_freeBSD.c",
+        "Source/ARM/asin_freeBSD.c",
+        "Source/ARM/asinf_freeBSD.c",
+        "Source/ARM/asinh_freeBSD.c",
+        "Source/ARM/asinhf_freeBSD.c",
+        "Source/ARM/s_atan.c",
+        "Source/ARM/e_atan2.c",
+        "Source/ARM/e_atan2f.c",
+        "Source/ARM/s_atanf.c",
+        "Source/ARM/atanh_freeBSD.c",
+        "Source/ARM/atanhf_freeBSD.c",
+        "Source/ARM/cbrt.c",
+        "Source/ARM/s_cbrtf.c",
+        "Source/ARM/cosh_freeBSD.c",
+        "Source/ARM/coshf_freeBSD.c",
+        "Source/ARM/exp_freeBSD.c",
+        "Source/ARM/expf_freeBSD.c",
+        "Source/ARM/exp2_freeBSD.c",
+        "Source/ARM/exp2f_freeBSD.c",
+        "Source/ARM/expm1_freeBSD.c",
+        "Source/ARM/expm1f_freeBSD.c",
+        # fma_freeBSD.c is deliberately absent: it is a software Dekker fallback that darling
+        # PR 1753 drops on arm64, where fma/fmaf come from arm64_builtins.c (__builtin_fma ->
+        # FMADD). Including it duplicates _fma/_fmal at link time.
+        "Source/ARM/fmod_freeBSD.c",
+        "Source/ARM/fmodf.c",
+        "Source/ARM/e_hypot.c",
+        "Source/ARM/e_hypotf.c",
+        "Source/ARM/log.c",
+        "Source/ARM/log_freeBSD.c",
+        "Source/ARM/logf_freeBSD.c",
+        "Source/ARM/log2_freeBSD.c",
+        "Source/ARM/log10f_freeBSD.c",
+        "Source/ARM/log2f_freeBSD.c",
+        "Source/ARM/log1pf_freeBSD.c",
+        "Source/ARM/e_pow.c",
+        "Source/ARM/e_powf.c",
+        "Source/ARM/sinh_freeBSD.c",
+        "Source/ARM/sinhf_freeBSD.c",
+        "Source/ARM/s_sin.c",
+        "Source/ARM/s_cos.c",
+        "Source/ARM/s_tan.c",
+        "Source/ARM/s_sinf.c",
+        "Source/ARM/s_cosf.c",
+        "Source/ARM/s_tanf.c",
+        "Source/ARM/tanh_freeBSD.c",
+        "Source/ARM/tanhf_freeBSD.c",
+        "Source/ARM/erf.c",
+        "Source/ARM/erfc.c",
+        "Source/ARM/erfcf.c",
+        "Source/ARM/erff.c",
+        "Source/ARM/j0y0_freeBSD.c",
+        "Source/ARM/j1y1_freeBSD.c",
+        "Source/ARM/jnyn_freeBSD.c",
+        "Source/ARM/lgamma.c",
+        "Source/ARM/lgammaf.c",
+        "Source/ARM/tgamma.c",
+        "Source/ARM/tgammaf.c",
+        "Source/ARM/signgam.c",
+        "Source/ARM/fdim.c",
+        "Source/ARM/fdimf.c",
+        "Source/ARM/s_frexp.c",
+        "Source/ARM/s_frexpf.c",
+        "Source/ARM/ilogb.c",
+        "Source/ARM/ilogbf.c",
+        "Source/ARM/s_ldexp.c",
+        "Source/ARM/s_ldexpf.c",
+        "Source/ARM/logb.c",
+        "Source/ARM/logbf.c",
+        "Source/ARM/s_modf.c",
+        "Source/ARM/s_modff.c",
+        "Source/ARM/nextafter.c",
+        "Source/ARM/nextafterf.c",
+        "Source/ARM/nexttoward.c",
+        "Source/ARM/nexttowardf.c",
+        "Source/ARM/remainder.c",
+        "Source/ARM/remainderf.c",
+        "Source/ARM/remquo.c",
+        "Source/ARM/remquof.c",
+        "Source/ARM/scalb.c",
+        "Source/ARM/scalbln.c",
+        "Source/ARM/scalblnf.c",
+        "Source/ARM/e_rem_pio2_freeBSD.c",
+        "Source/ARM/e_rem_pio2f_freeBSD.c",
+        "Source/ARM/k_rem_pio2_freeBSD.c",
+        "Source/ARM/k_cos.c",
+        "Source/ARM/k_cosf.c",
+        "Source/ARM/k_sin.c",
+        "Source/ARM/k_sinf.c",
+        "Source/ARM/k_tan_freeBSD.c",
+        "Source/ARM/k_tanf_freeBSD.c",
+        "Source/ARM/k_exp.c",
+        "Source/ARM/k_expf.c",
+        "Source/ARM/math_errhandling.c",
+        "Source/ARM/nan.c",
+        "Source/ARM/fenv.c",
+        "Source/ARM/complex.c",
+        "Source/ARM/containsNothing.c",
+        "Source/ARM/arm64_complex_helpers.c",
+        "Source/ARM/arm64_builtins.c",
+        "Source/ARM/arm64_classify.c",
+        "Source/ARM/arm64_misc.c",
+        "Source/ARM/version_info.c",
+    "Source/abs.c",
+    "Source/exp10.c",
+    "Source/sincos.c",
+]
+
+# arm64 has no external assembler files and no SSE; the Intel .c object target becomes the
+# whole library, so the .S object target compiles the empty translation unit instead.
+_LIBM_ARM_EMPTY = ["Source/empty.c"]
+
+# The alias list the firstpass/final link applies: arm_vfp on arm64, the Intel pair otherwise.
+_LIBM_ALIAS = ({
+    "-Wl,-alias_list": "Exports/libm_arm_vfp.a.alias",
+} if _M_ARM else {
+    "-Wl,-alias_list": "Exports/libmathCommonIntel.alias",
+})
+
+# The arm64 flag set for the main .c object target: PR 1753 drops the SSE trio and the
+# Carbon-legacy define, keeps the rest, and adds ARMLIBM_FENV_SUPPORT.
+_LIBM_ARM_CFLAGS = [
+    "-DPRIVATE",
+    "-D_LIBC_NO_FEATURE_VERIFICATION",
+    "-D__DARWIN_UNIX03",
+    "-DARMLIBM_FENV_SUPPORT",
+    "-fPIC",
+    "-w",
+    "-ggdb",
+    "-O0",
+    "-funroll-loops",
+]
+
+# The arm64 include root: Source/ARM in place of Source/Intel.
+cc_header_root(
+    name = "system_m_inc_libm_Source_ARM",
+    headers = glob(["Source/ARM/*.h", "Source/ARM/**/*.h"]),
+    root = "Source/ARM",
+    visibility = ["PUBLIC"],
+)
+
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
 # package. GENERATED by cider-sdk-header-roots --repo-roots.
@@ -13,6 +170,11 @@ cc_header_root(
     header_map = {
         "architecture/i386/fenv.h": "Source/Intel/fenv.h",
         "architecture/i386/math.h": "Source/Intel/math.h",
+        # The arm dispatch targets (aarch64 port, task A13): fenv.h dispatches here on arm64,
+        # math.h reuses the Intel header (identical prototypes). Their contents came from
+        # darling PR 1753 (Source/architecture/arm/fenv.h).
+        "architecture/arm/fenv.h": "Source/architecture/arm/fenv.h",
+        "architecture/arm/math.h": "Source/Intel/math.h",
         "complex.h": "Source/complex.h",
         "fenv.h": "Source/fenv.h",
         "math.h": "Source/math.h",
@@ -47,7 +209,8 @@ cc_header_root(
 
 cc_objects(
     name = "system_m_obj",
-    srcs = [
+    srcs = (_LIBM_ARM_EMPTY if _M_ARM else [
+
         "Source/Intel/acosf.S",
         "Source/Intel/acoshf.S",
         "Source/Intel/asinf.S",
@@ -131,7 +294,7 @@ cc_objects(
         "Source/Intel/trunc.S",
         "Source/Intel/truncf.S",
         "Source/Intel/truncl.S",
-    ],
+    ]),
     compiler_flags = [
         "-DPRIVATE",
         "-D_LIBC_NO_FEATURE_VERIFICATION",
@@ -139,17 +302,19 @@ cc_objects(
         "-DBUILDING_FOR_CARBONCORE_LEGACY",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = [
+    deps = (["//src/darwin:sdk_env", ":system_m_inc_libm_Source", ":system_m_inc_libm_Source_ARM"] if _M_ARM else [
+
         "//src/darwin:sdk_env",
         ":system_m_inc_libm_Source",
         ":system_m_inc_libm_Source_Intel",
-    ],
+    ]),
     visibility = ["PUBLIC"],
 )
 
 cc_objects(
     name = "system_m_obj2",
-    srcs = [
+    srcs = (_LIBM_ARM_SRCS if _M_ARM else [
+
         "Source/Intel/acos.c",
         "Source/Intel/asin.c",
         "Source/Intel/atan.c",
@@ -185,8 +350,9 @@ cc_objects(
         "Source/abs.c",
         "Source/exp10.c",
         "Source/sincos.c",
-    ],
-    compiler_flags = [
+    ]),
+    compiler_flags = (_LIBM_ARM_CFLAGS if _M_ARM else [
+
         "-DPRIVATE",
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-Dmovsxw=movsw",
@@ -200,13 +366,14 @@ cc_objects(
         "-msse",
         "-msse2",
         "-msse3",
-    ],
+    ]),
     toolchain = "toolchains//:darwin_cc",
-    deps = [
+    deps = (["//src/darwin:sdk_env", ":system_m_inc_libm_Source", ":system_m_inc_libm_Source_ARM"] if _M_ARM else [
+
         "//src/darwin:sdk_env",
         ":system_m_inc_libm_Source",
         ":system_m_inc_libm_Source_Intel",
-    ],
+    ]),
     visibility = ["PUBLIC"],
 )
 # END generated: system_m_obj
@@ -230,9 +397,7 @@ darwin_dylib(
         ":system_m_obj",
         ":system_m_obj2",
     ],
-    link_flag_files = {
-        "-Wl,-alias_list": "Exports/libmathCommonIntel.alias",
-    },
+    link_flag_files = _LIBM_ALIAS,
     toolchain = "toolchains//:darwin_cc",
     deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
@@ -255,9 +420,7 @@ darwin_dylib(
         "//vendor/src/libc:system_c_firstpass",
         "//vendor/src:system_dyld_firstpass",
     ],
-    link_flag_files = {
-        "-Wl,-alias_list": "Exports/libmathCommonIntel.alias",
-    },
+    link_flag_files = _LIBM_ALIAS,
     toolchain = "toolchains//:darwin_cc",
     deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
@@ -289,12 +452,13 @@ cc_header_root(
 
 cc_objects(
     name = "system_m_extra_obj",
-    srcs = [
+    srcs = (_LIBM_ARM_EMPTY if _M_ARM else [
+
         "Source/Intel/e_remquol.S",
         "Source/Intel/fmaxfminfdim.S",
         "Source/Intel/nextafter.S",
-    ],
-    compiler_flags = [
+    ]),
+    compiler_flags = (_LIBM_ARM_CFLAGS if _M_ARM else [
         "-DPRIVATE",
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-Dmovsxw=movsw",
@@ -302,7 +466,7 @@ cc_objects(
         "-UBUILDING_FOR_CARBONCORE_LEGACY",
         "-O0",
         "-ggdb",
-    ],
+    ]),
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//src/darwin:sdk_env",
@@ -314,12 +478,13 @@ cc_objects(
 
 cc_objects(
     name = "system_m_extra_obj2",
-    srcs = [
+    srcs = (_LIBM_ARM_EMPTY if _M_ARM else [
+
         "Source/Intel/xmm_log.c",
         "Source/Intel/xmm_misc.c",
         "Source/Intel/xmm_remainder.c",
-    ],
-    compiler_flags = [
+    ]),
+    compiler_flags = (_LIBM_ARM_CFLAGS if _M_ARM else [
         "-DPRIVATE",
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-Dmovsxw=movsw",
@@ -336,7 +501,7 @@ cc_objects(
         "-UBUILDING_FOR_CARBONCORE_LEGACY",
         "-O0",
         "-ggdb",
-    ],
+    ]),
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//src/darwin:sdk_env",
@@ -372,7 +537,8 @@ cc_header_root(
 
 cc_objects(
     name = "system_m_static_obj",
-    srcs = [
+    srcs = (_LIBM_ARM_EMPTY if _M_ARM else [
+
         "Source/Intel/acosf.S",
         "Source/Intel/acoshf.S",
         "Source/Intel/asinf.S",
@@ -456,7 +622,7 @@ cc_objects(
         "Source/Intel/trunc.S",
         "Source/Intel/truncf.S",
         "Source/Intel/truncl.S",
-    ],
+    ]),
     compiler_flags = [
         "-DPRIVATE",
         "-D_LIBC_NO_FEATURE_VERIFICATION",
@@ -464,17 +630,19 @@ cc_objects(
         "-DBUILDING_FOR_CARBONCORE_LEGACY",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = [
+    deps = (["//src/darwin:sdk_env", ":system_m_inc_libm_Source", ":system_m_inc_libm_Source_ARM"] if _M_ARM else [
+
         "//src/darwin:sdk_env",
         ":system_m_static_inc_src_libm_Source",
         ":system_m_static_inc_src_libm_Source_Intel",
-    ],
+    ]),
     visibility = ["PUBLIC"],
 )
 
 cc_objects(
     name = "system_m_static_obj2",
-    srcs = [
+    srcs = (_LIBM_ARM_SRCS if _M_ARM else [
+
         "Source/Intel/acos.c",
         "Source/Intel/asin.c",
         "Source/Intel/atan.c",
@@ -510,8 +678,9 @@ cc_objects(
         "Source/abs.c",
         "Source/exp10.c",
         "Source/sincos.c",
-    ],
-    compiler_flags = [
+    ]),
+    compiler_flags = (_LIBM_ARM_CFLAGS if _M_ARM else [
+
         "-DPRIVATE",
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-Dmovsxw=movsw",
@@ -525,13 +694,14 @@ cc_objects(
         "-msse",
         "-msse2",
         "-msse3",
-    ],
+    ]),
     toolchain = "toolchains//:darwin_cc",
-    deps = [
+    deps = (["//src/darwin:sdk_env", ":system_m_inc_libm_Source", ":system_m_inc_libm_Source_ARM"] if _M_ARM else [
+
         "//src/darwin:sdk_env",
         ":system_m_static_inc_src_libm_Source",
         ":system_m_static_inc_src_libm_Source_Intel",
-    ],
+    ]),
     visibility = ["PUBLIC"],
 )
 # END generated: system_m_static

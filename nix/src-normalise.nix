@@ -31,7 +31,10 @@ rustPlatform.buildRustPackage {
   meta = with lib; {
     description = "Make the materialized pins crawlable by buck2 (#99)";
     license = licenses.gpl3Plus;
-    platforms = [ "x86_64-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     mainProgram = "cider-src-normalise";
   };
 }

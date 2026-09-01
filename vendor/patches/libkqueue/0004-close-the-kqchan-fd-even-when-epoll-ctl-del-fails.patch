@@ -1,0 +1,63 @@
+Close the kqchan fd even when EPOLL_CTL_DEL fails, or a dead channel spins forever.
+
+When ciderd exits, a guest that outlives it burns a whole core in epoll_pwait and never dies,
+holding a /proc gc-root open on its store path: the real teardown hang (#15). strace of the survivor
+is two syscalls turning as fast as the loop allows -- gettid then epoll_pwait -- returning the same
+descriptor EPOLLIN|EPOLLHUP every time, with no recv between them. That is a level-triggered dead fd
+that nothing ever removes from the epoll set.
+
+The descriptor is a kqchan socket to the daemon. evfilt_machport_knote_delete and
+evfilt_proc_knote_delete drop it from the kqueue's epoll set with EPOLL_CTL_DEL and then close it, but
+on a FAILED del they returned -1 before reaching the close. knote_delete ignores that return and frees
+the knote regardless, so the socket stayed both open and still registered, its epoll entry now
+pointing at freed memory. linux_kevent_copyout reads that freed knote, sees filter 0, discards the
+event as a zero-filter wakeup, and the caller is handed nothing and wakes on the same ready fd again
+at once. No recv is ever issued because no filter copyout runs. That is the whole spin.
+
+The close is what actually removes the fd from the epoll set, so it must run whether or not the DEL
+succeeded. Make the DEL best-effort and fall through to the close in both kqchan-backed filters.
+---
+--- a/src/linux/machport.c
++++ b/src/linux/machport.c
+@@ -272,10 +272,17 @@
+ evfilt_machport_knote_delete(struct filter *filt, struct knote *kn)
+ {
+     if ((kn->kev.flags & EV_DISABLE) == 0) {
+-        if (epoll_ctl(kn->kn_epollfd, EPOLL_CTL_DEL, kn->kdata.kn_dupfd, NULL) < 0) {
++        /*
++         * Best-effort, and DO NOT bail before the close below. The old code returned here on a
++         * failed EPOLL_CTL_DEL, leaving kn_dupfd both open AND still registered in the epoll set;
++         * knote_delete ignores this return and frees the knote regardless, so epoll then reports
++         * that dead fd forever (level-triggered EPOLLHUP once the daemon exits), linux_kevent_copyout
++         * sees a zero-filter knote and discards it, and the caller spins on epoll_wait at 100% CPU --
++         * the ciderd-teardown busy-loop (#15). The close is what actually removes the fd from epoll,
++         * so it must always run.
++         */
++        if (epoll_ctl(kn->kn_epollfd, EPOLL_CTL_DEL, kn->kdata.kn_dupfd, NULL) < 0)
+             dbg_perror("epoll_ctl(2)");
+-            return (-1);
+-        }
+     }
+
+ 	(void) __close_for_kqueue(kn->kdata.kn_dupfd);
+--- a/src/linux/proc.c
++++ b/src/linux/proc.c
+@@ -254,10 +254,15 @@
+ evfilt_proc_knote_delete(struct filter *filt, struct knote *kn)
+ {
+     if ((kn->kev.flags & EV_DISABLE) == 0) {
+-        if (epoll_ctl(kn->kn_epollfd, EPOLL_CTL_DEL, kn->kdata.kn_dupfd, NULL) < 0) {
++        /*
++         * Best-effort, and DO NOT bail before the close below -- same bug as
++         * evfilt_machport_knote_delete: returning here on a failed EPOLL_CTL_DEL leaves kn_dupfd
++         * open and still in the epoll set while knote_delete frees the knote, so epoll reports the
++         * dead fd forever and the caller spins (#15, ciderd teardown). The close removes the fd
++         * from epoll, so it must always run.
++         */
++        if (epoll_ctl(kn->kn_epollfd, EPOLL_CTL_DEL, kn->kdata.kn_dupfd, NULL) < 0)
+             dbg_perror("epoll_ctl(2)");
+-            return (-1);
+-        }
+     }
+
+ 	(void) __close_for_kqueue(kn->kdata.kn_dupfd);

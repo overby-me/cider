@@ -1,0 +1,59 @@
+Drop the old kqchan fd on a second knote create, or two epoll entries leak per knote.
+
+Pass 44 and 0004 fixed the delete path, but the guest still burned a core in epoll_pwait after ciderd
+exited. /proc/PID/fdinfo of the survivor's epoll told the truth: TWO different sockets registered in
+the same epoll with the SAME data pointer -- one knote, two descriptors. knote_create is the only code
+that ever assigns kn_dupfd, so a second create on the same (calloc'd) knote overwrote kn_dupfd and left
+the first descriptor still registered, its data.ptr pointing at this knote. Nothing removed it; once the
+knote was freed epoll reported that descriptor forever, linux_kevent_copyout saw a zero-filter knote and
+discarded it, and the caller spun with no recv -- the strace we captured.
+
+Before assigning a new kn_dupfd, drop any descriptor the knote already holds: EPOLL_CTL_DEL it and close
+it. A fresh knote has kn_dupfd 0 (calloc) so this is a no-op on first create; it only fires on the
+re-create that would otherwise orphan a descriptor (NOTE_TRACK hands us a fresh kqchan per fork).
+---
+--- a/src/linux/machport.c
++++ b/src/linux/machport.c
+@@ -206,6 +206,19 @@
+     kn->data.events = EPOLLIN;
+     kn->kn_epollfd = filter_epfd(filt);
+ 
++    /*
++     * A second create on the same knote (calloc'd, so kn_dupfd starts 0) would overwrite kn_dupfd
++     * below and ORPHAN the previous descriptor in the epoll set: it stays registered with
++     * data.ptr = this knote and nothing ever removes it, so once the knote is freed epoll reports
++     * it forever -- the #15 teardown spin, observed as two epoll entries sharing one knote pointer.
++     * Drop the old registration first.
++     */
++    if (kn->kdata.kn_dupfd > 0) {
++        (void) epoll_ctl(kn->kn_epollfd, EPOLL_CTL_DEL, kn->kdata.kn_dupfd, NULL);
++        (void) __close_for_kqueue(kn->kdata.kn_dupfd);
++        kn->kdata.kn_dupfd = -1;
++    }
++
+     memset(&ev, 0, sizeof(ev));
+     ev.events = kn->data.events;
+     ev.data.ptr = kn;
+--- a/src/linux/proc.c
++++ b/src/linux/proc.c
+@@ -183,6 +183,20 @@
+     kn->data.events = EPOLLIN;
+     kn->kn_epollfd = filter_epfd(filt);
+ 
++    /*
++     * A second create on the same knote (calloc'd, so kn_dupfd starts 0) would overwrite kn_dupfd
++     * below and ORPHAN the previous descriptor in the epoll set: it stays registered with
++     * data.ptr = this knote and nothing ever removes it, so once the knote is freed epoll reports
++     * it forever -- the #15 teardown spin, observed as two epoll entries sharing one knote pointer.
++     * Drop the old registration first. (With NOTE_TRACK, the server hands us a fresh kqchan fd per
++     * fork; a re-create that reuses the knote is exactly how the orphan happens.)
++     */
++    if (kn->kdata.kn_dupfd > 0) {
++        (void) epoll_ctl(kn->kn_epollfd, EPOLL_CTL_DEL, kn->kdata.kn_dupfd, NULL);
++        (void) __close_for_kqueue(kn->kdata.kn_dupfd);
++        kn->kdata.kn_dupfd = -1;
++    }
++
+     memset(&ev, 0, sizeof(ev));
+     ev.events = kn->data.events;
+     ev.data.ptr = kn;

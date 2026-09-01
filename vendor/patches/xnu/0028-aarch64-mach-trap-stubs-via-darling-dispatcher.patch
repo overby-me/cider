@@ -1,0 +1,42 @@
+aarch64: route Mach trap stubs through __darling_mach_syscall, not `svc #0x80`.
+
+The arm64 kernel_trap macro emitted `mov x16,#trap; svc #0x80`, which fails on Linux arm64
+(traps as `svc #0`, x8 unset). Mach traps (mach_reply_port, vm_allocate, mach_msg, ...) all
+failed with ENOSYS, so dyld's _simple_salloc (vm_allocate) returned NULL and dyld aborted.
+__darling_mach_syscall already has an arm64 implementation; route the stubs to it as x86
+does. `bl` clobbers x30/lr so bracket it with a frame. Non-DARLING keeps svc.
+--- a/osfmk/mach/arm/syscall_sw.h
++++ b/osfmk/mach/arm/syscall_sw.h
+@@ -107,6 +107,24 @@
+ 
+ #include <mach/machine/vm_param.h>
+ 
++#ifdef DARLING
++/* aarch64 darling: route the Mach trap through the userspace emulation dispatcher instead
++ * of `svc #0x80`. On Linux arm64 `svc #0x80` traps to the host kernel as `svc #0` with x8
++ * unset and fails; __darling_mach_syscall takes the (negative) trap number in x16, negates
++ * it, indexes ___mach_syscall_table and calls the emulated handler (args already in x0-x7).
++ * `bl` clobbers x30/lr, so bracket it with a frame. */
++#define kernel_trap(trap_name, trap_number, num_args) \
++.globl _##trap_name                                           %% \
++.text                                                         %% \
++.align  2                                                     %% \
++_##trap_name:                                                 %% \
++    stp x29, x30, [sp, #-16]!                                 %% \
++    mov x29, sp                                               %% \
++    mov x16, #(trap_number)                                   %% \
++    bl __darling_mach_syscall                                 %% \
++    ldp x29, x30, [sp], #16                                   %% \
++    ret
++#else
+ #define kernel_trap(trap_name, trap_number, num_args) \
+ .globl _##trap_name                                           %% \
+ .text                                                         %% \
+@@ -115,6 +133,7 @@
+     mov x16, #(trap_number)                                   %% \
+     svc #SWI_SYSCALL                                          %% \
+     ret
++#endif
+ 
+ #else
+ #error Unsupported architecture

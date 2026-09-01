@@ -140,10 +140,12 @@ void parse_elf(const char* elf, std::string& soname, std::set<std::string>& symb
 		throw std::runtime_error(ss.str());
 	}
 
-	if (ehdr->e_machine != EM_X86_64)
+	// Reading the dynamic symbol table is arch-independent; accept the host arches the port
+	// targets (aarch64 port, task A16) rather than x86-64 alone.
+	if (ehdr->e_machine != EM_X86_64 && ehdr->e_machine != EM_AARCH64)
 	{
 		std::stringstream ss;
-		ss << elf << " is not an ELF for x86-64";
+		ss << elf << " is not an ELF for a supported architecture";
 		throw std::runtime_error(ss.str());
 	}
 

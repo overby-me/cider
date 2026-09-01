@@ -74,9 +74,21 @@ def main [
     # container invocation below is one.
     let cider = $"($monopath)/bin/cider"
 
+    # The nixpkgs system must match the guest ABI: a cider running an arm64 guest can only execute
+    # aarch64-darwin binaries, not x86_64-darwin. Derive it from guest_arch in .buckconfig.local.
+    let ga = (do -i { ^grep -m1 'guest_arch' $"($repo)/.buckconfig.local" } | complete | get stdout)
+    let sys = (if ($ga | str contains "arm64") { "aarch64-darwin" } else { "x86_64-darwin" })
+    print $"== nixpkgs system: ($sys) =="
+    # The guest driver (gnix-build.sh) runs a nix binary INSIDE the container, so it must match the
+    # guest ABI. Its built-in default is an x86_64-darwin nix; resolve + realize the one for ($sys)
+    # and hand it over via NIXBIN so an arm64 guest gets an aarch64-darwin nix it can execute.
+    let gnix = (^nix eval --raw $"github:NixOS/nixpkgs/($REV)#legacyPackages.($sys).nix.outPath" | complete | get stdout | str trim)
+    do -i { ^nix build $"github:NixOS/nixpkgs/($REV)#legacyPackages.($sys).nix" --no-link } | ignore
+    print $"== guest nix: ($gnix)/bin =="
+
     # 2. eval the target drv from the pin
     print $"== eval ($attr).drvPath =="
-    let e = (^nix eval --raw $"github:NixOS/nixpkgs/($REV)#legacyPackages.x86_64-darwin.($attr).drvPath"
+    let e = (^nix eval --raw $"github:NixOS/nixpkgs/($REV)#legacyPackages.($sys).($attr).drvPath"
         | complete)
     let drv = ($e.stdout | str trim)
     if $e.exit_code != 0 or ($drv | is-empty) {
@@ -84,7 +96,7 @@ def main [
         exit 1
     }
     print $"DRV=($drv)"
-    let o = (^nix eval --raw $"github:NixOS/nixpkgs/($REV)#legacyPackages.x86_64-darwin.($attr).outPath"
+    let o = (^nix eval --raw $"github:NixOS/nixpkgs/($REV)#legacyPackages.($sys).($attr).outPath"
         | complete)
     let outhash = ($o.stdout | str trim | path basename)
 
@@ -92,16 +104,37 @@ def main [
     print "== substituting build inputs from cache =="
     let idrvs = (^nix-store -qR $drv | complete | get stdout | lines
         | where {|l| $l | str ends-with ".drv" })
+    # ALL of the target's own outputs (out, dev, doc, man, info, ...), not just the default
+    # $outhash. They are excluded from the substitution and the DB dump and deleted from the host
+    # store below, so the guest actually COMPILES the target instead of finding the cache-
+    # substituted output already valid via the (read-only) writable-/nix overlay lower.
+    let touts = (do -i { ^nix-store -q --outputs $drv } | complete | get stdout | lines)
     let iouts = (
         (do -i { ^nix-store -q --outputs ...$idrvs } | complete | get stdout | lines
-            | where {|l| not ($l | str contains $outhash) } | uniq | sort)
+            | where {|l| $l not-in $touts } | uniq | sort)
     )
     # A few SDK build-tools are not cached; harmless.
     do -i { ^nix-store -r ...$iouts } | ignore
     # -p, because nushell mktemp rejects a template that contains a directory separator.
     let dump = (mktemp --tmpdir-path /tmp pkg-db.XXXXXX.dump)
-    let closure = (do -i { ^nix-store -qR --include-outputs $drv } | complete | get stdout | lines)
+    let closure = (do -i { ^nix-store -qR --include-outputs $drv } | complete | get stdout | lines
+        | where {|l| $l not-in $touts })
     do -i { ^nix-store --dump-db ...$closure out> $dump }
+    # Drop any cache-substituted copy of the target outputs from the host store, so they do not
+    # shadow the guest build through the overlay lower (read-only in the guest -> the guest cannot
+    # clear them itself: fchmodat EPERM). With them gone and excluded from the dump, `nix build`
+    # in the guest builds them from source into the writable upper. Plain --delete (no
+    # --ignore-liveness, which an unprivileged user is not allowed to use); the target outputs
+    # have no gc-roots, and all of them are deleted together so their cross-references resolve.
+    # Any guest process left spinning by a PRIOR run's teardown (the #15 guest-side EPOLLHUP
+    # busy-loop) keeps the target's store path mapped and so holds a gc-root on it, which makes the
+    # --delete below refuse (an unprivileged user cannot --ignore-liveness). Force-kill those
+    # orphans first and give the kernel a moment to reap them and drop the /proc references, so the
+    # delete succeeds and the guest genuinely rebuilds from source. This does NOT fix #15 (that is
+    # guest-side kqueue work); it stops a stale orphan from blocking the store GC between runs.
+    kill_all
+    sleep 2sec
+    do -i { ^nix-store --delete ...$touts }
 
     # 4. warm-up boot -> skeleton; then build+run in one bypass session
     kill_all
@@ -116,6 +149,12 @@ def main [
         GDB: $dump
         GBIN: $bin
         CIDERPREFIX: $prefix
+        NIXBIN: $"($gnix)/bin"
+        # Cores for the guest `make -j` (read by scripts/gnix-build.sh). The guest environment is
+        # built explicitly here, so a host env var does not reach the guest unless forwarded.
+        # Default 1 (serial), the safe path until the arm64 poll() timeout fix (patch 0038) is
+        # confirmed under -j; set CIDER_GNIX_CORES>1 on the host to test the parallel build.
+        CIDER_GNIX_CORES: ($env.CIDER_GNIX_CORES? | default "1")
     }
     # != rather than `not ... == ...`: nushell binds not tighter than ==, so the latter tries
     # to negate a string and fails with "Can't convert to boolean".
@@ -139,7 +178,11 @@ def main [
     let out = (mktemp --tmpdir-path /tmp pkg-build.XXXXXX.out)
     let guest_driver = $"/Volumes/SystemRoot($repo)/scripts/gnix-build.sh"
     with-env $genv {
-        do -i { ^timeout --signal=KILL 1800 $cider shell sh $guest_driver out+err> $out }
+        # arm64 builds run under emulation, where every subprocess reloads its dylibs, so a real
+        # from-source build (e.g. bash: configure + ~100 clang invocations) takes well over the old
+        # 30 min and was being killed mid-make. Cap generously; override for slower hosts/packages.
+        let build_timeout = ($env.CIDER_PKG_BUILD_TIMEOUT? | default "7200")
+        do -i { ^timeout --signal=KILL $build_timeout $cider shell sh $guest_driver out+err> $out }
     }
     kill_all
     # Through the external grep, and -a, because the transcript can carry bytes that are not

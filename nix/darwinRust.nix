@@ -37,8 +37,24 @@
 
 let
   version = "1.95.0";
-  target = "x86_64-apple-darwin";
-  host = "x86_64-unknown-linux-gnu";
+  # Keyed by the machine this runs on (docs/plan-aarch64.md, task A7): the host rustc must be
+  # a binary for THIS Linux, and the guest std must match the guest arch buck2 targets here
+  # (aarch64 hosts build arm64 Mach-O, x86_64 hosts build x86_64 Mach-O).
+  perSystem = {
+    x86_64-linux = {
+      host = "x86_64-unknown-linux-gnu";
+      hostHash = "sha256-hCaj0XClh59WgvX73QJKF3mzlR57q6aFry1twypt/BU=";
+      target = "x86_64-apple-darwin";
+      targetHash = "sha256-K+E8FBIrjU0Jt/fENPyprnIV7HIEmUQYnIjE2RKM5QQ=";
+    };
+    aarch64-linux = {
+      host = "aarch64-unknown-linux-gnu";
+      hostHash = "sha256-D+NonurtYD5e8kVy0RWX0+2trv0ssYFnStYhJg8lAdI=";
+      target = "aarch64-apple-darwin";
+      targetHash = "sha256-mzAImw92fLkbIZD/7FWpvusqIaFAXY2g9mTX4J0I5tg=";
+    };
+  };
+  inherit (perSystem.${stdenv.hostPlatform.system}) host hostHash target targetHash;
 in
 stdenv.mkDerivation {
   pname = "cider-darwin-rust";
@@ -47,11 +63,11 @@ stdenv.mkDerivation {
   srcs = [
     (fetchurl {
       url = "https://static.rust-lang.org/dist/rustc-${version}-${host}.tar.xz";
-      hash = "sha256-hCaj0XClh59WgvX73QJKF3mzlR57q6aFry1twypt/BU=";
+      hash = hostHash;
     })
     (fetchurl {
       url = "https://static.rust-lang.org/dist/rust-std-${version}-${target}.tar.xz";
-      hash = "sha256-K+E8FBIrjU0Jt/fENPyprnIV7HIEmUQYnIjE2RKM5QQ=";
+      hash = targetHash;
     })
   ];
   sourceRoot = ".";
@@ -88,6 +104,6 @@ stdenv.mkDerivation {
       mit
       asl20
     ];
-    platforms = [ "x86_64-linux" ];
+    platforms = builtins.attrNames perSystem;
   };
 }

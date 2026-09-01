@@ -1,0 +1,39 @@
+Export corecrypto symbols CommonCrypto and coretls need for the dyld shared cache.
+
+dyld's shared-cache builder binds every two-level import eagerly, so each symbol
+libcommonCrypto.dylib and libsystem_coretls.dylib import from libcorecrypto.dylib
+must be exported. corecrypto defines all of these in src/ (chacha20, cmac, dh, ec,
+rsa, zp, hkdf, h2c) but left them out of scripts/exported-symbols.exp, so the builder
+rejected the cache on dangling imports (the runtime loader tolerated them lazily).
+Append the full set as an export block; append is duplicate-safe (a symbol also present
+as a commented line stays commented, only the active line exports it).
+
+Signed-off-by: Niclas Overby <niclas@overby.me>
+---
+--- a/scripts/exported-symbols.exp
++++ b/scripts/exported-symbols.exp
+@@ -591,3 +591,24 @@
+ 
+ # not in standard corecrypto, for some reason?
+ _ccn_shift_left
++
++# cider #11 A: corecrypto symbols commonCrypto + coretls import for the dyld shared cache.
++# Defined in src/ but were unexported; the shared-cache builder binds these eagerly.
++_ccchacha20
++_ccchacha20poly1305_info
++_ccchacha20poly1305_encrypt_oneshot
++_ccchacha20poly1305_decrypt_oneshot
++_cccmac_cbc
++_ccdh_ccn_size
++_ccdh_gp_g
++_ccdh_gp_n
++_ccdh_gp_prime
++_ccec_blind
++_ccec_unblind
++_ccec_generate_blinding_keys
++_ccrsa_ctx_private_zp
++_cczp_n
++_cczp_prime
++_cch2c
++_cchkdf_extract
++_cchkdf_expand

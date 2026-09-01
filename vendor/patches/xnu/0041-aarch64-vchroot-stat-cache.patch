@@ -1,0 +1,165 @@
+aarch64 #11: cache vchroot_run's per-component lstat to kill redundant path-translation stats.
+
+vchroot_run lstat()s every accumulated path component on every guest path translation, so a dyld load
+re-walks the same read-only system directories thousands of times: measured 94% of newfstatat redundant
+(3379 total, 184 unique; /usr/lib/system re-stat'd ~400x per spawn) under `cider shell`. Add a per-process
+cache of the dominant "this accumulated path exists and is not a symlink" result, keyed by the full path
+and tagged with a generation counter that the namespace-mutating syscall wrappers (unlink/rename/symlink)
+bump, so a cached entry can never outlive the path being removed or retyped. Symlinks and ENOENT bypass the
+cache and keep full semantics. Disabled under TEST (the standalone vchroot test harness).
+---
+--- a/darling/src/libsystem_kernel/emulation/include/linux_premigration/vchroot_expand.h
++++ b/darling/src/libsystem_kernel/emulation/include/linux_premigration/vchroot_expand.h
+@@ -26,4 +26,8 @@
+ int vchroot_unexpand(struct vchroot_unexpand_args* args);
+ int vchroot_fdpath(struct vchroot_fdpath_args* args);
+ 
++// aarch64 perf (#11): bumped by namespace-mutating syscalls to invalidate the
++// vchroot_run stat cache (vchroot_userspace.c).
++void __vchroot_bump_generation(void);
++
+ #endif // _VCHROOT_EXPAND_H
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c
+@@ -263,6 +263,56 @@
+ 
+ 	return rv;
+ }
++
++// aarch64 perf (#11): vchroot_run lstat()s every accumulated path component on every translation, so a
++// dyld load re-walks the same system dirs thousands of times (measured 94% of newfstatat redundant;
++// /usr/lib/system re-stat'd ~400x per spawn). Cache the dominant "path exists and is not a symlink"
++// result, keyed by the full path and tagged with a generation that the namespace-mutating syscalls
++// (unlink/rename/symlink) bump, so an entry can never outlive the path being removed or retyped.
++// Symlinks and ENOENT bypass the cache (rare; full semantics preserved). Per-process; off in TEST.
++unsigned long __vchroot_generation = 1;
++void __vchroot_bump_generation(void) { __vchroot_generation++; }
++
++#ifndef TEST
++#define VCHROOT_CACHE_N 256
++struct vchroot_cache_ent {
++	unsigned long gen;
++	unsigned int  hash;
++	unsigned int  len;
++	char          path[256];
++};
++static struct vchroot_cache_ent vchroot_cache[VCHROOT_CACHE_N];
++
++static unsigned int vchroot_path_hash(const char* s, unsigned int len)
++{
++	unsigned int h = 2166136261u;
++	for (unsigned int i = 0; i < len; i++) { h ^= (unsigned char) s[i]; h *= 16777619u; }
++	return h;
++}
++static int vchroot_cache_hit(const char* path, unsigned int len)
++{
++	if (len == 0 || len >= sizeof(vchroot_cache[0].path))
++		return 0;
++	unsigned int h = vchroot_path_hash(path, len);
++	struct vchroot_cache_ent* e = &vchroot_cache[h % VCHROOT_CACHE_N];
++	return e->gen == __vchroot_generation && e->hash == h && e->len == len
++		&& memcmp(e->path, path, len) == 0;
++}
++static void vchroot_cache_put(const char* path, unsigned int len)
++{
++	if (len == 0 || len >= sizeof(vchroot_cache[0].path))
++		return;
++	unsigned int h = vchroot_path_hash(path, len);
++	struct vchroot_cache_ent* e = &vchroot_cache[h % VCHROOT_CACHE_N];
++	e->gen = __vchroot_generation;
++	e->hash = h;
++	e->len = len;
++	memcpy(e->path, path, len);
++}
++#else
++static int vchroot_cache_hit(const char* path, unsigned int len) { (void) path; (void) len; return 0; }
++static void vchroot_cache_put(const char* path, unsigned int len) { (void) path; (void) len; }
++#endif
+ 
+ static int vchroot_run(const char* input_path, struct context* ctxt)
+ {
+@@ -342,15 +392,27 @@
+ 				if (!ctxt->unknown_component)
+ 				{
+ 					stat_t st;
+-					#if defined(__NR_lstat)
+-						int status = LINUX_SYSCALL(__NR_lstat, ctxt->current_path, &st);
+-					#else
+-						#if __NR_newfstatat
+-							int status = LINUX_SYSCALL(__NR_newfstatat, LINUX_AT_FDCWD, ctxt->current_path, &st, LINUX_AT_SYMLINK_NOFOLLOW);
++					int status;
++					if (vchroot_cache_hit(ctxt->current_path, ctxt->current_path_len))
++					{
++						// cached: this accumulated path exists and is not a symlink (#11)
++						status = 0;
++						st.st_mode = 0;
++					}
++					else
++					{
++						#if defined(__NR_lstat)
++							status = LINUX_SYSCALL(__NR_lstat, ctxt->current_path, &st);
+ 						#else
+-							int status = LINUX_SYSCALL(__NR_fstatat64, LINUX_AT_FDCWD, ctxt->current_path, &st, LINUX_AT_SYMLINK_NOFOLLOW);
++							#if __NR_newfstatat
++								status = LINUX_SYSCALL(__NR_newfstatat, LINUX_AT_FDCWD, ctxt->current_path, &st, LINUX_AT_SYMLINK_NOFOLLOW);
++							#else
++								status = LINUX_SYSCALL(__NR_fstatat64, LINUX_AT_FDCWD, ctxt->current_path, &st, LINUX_AT_SYMLINK_NOFOLLOW);
++							#endif
+ 						#endif
+-					#endif
++						if (status == 0 && (st.st_mode & LINUX_S_IFMT) != LINUX_S_IFLNK)
++							vchroot_cache_put(ctxt->current_path, ctxt->current_path_len);
++					}
+ 
+ 					if (icase_enabled && status == -LINUX_ENOENT)
+ 					{
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/unlinkat.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/unlinkat.c
+@@ -32,6 +32,7 @@
+ 		return -EINVAL;
+ 
+ 	ret = LINUX_SYSCALL(__NR_unlinkat, vc.dfd, vc.path, linux_flags);
++	__vchroot_bump_generation(); // #11: invalidate vchroot stat cache
+ 	if (ret < 0)
+ 		ret = errno_linux_to_bsd(ret);
+ 
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameat.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameat.c
+@@ -34,6 +34,7 @@
+ 		return errno_linux_to_bsd(ret);
+ 
+ 	ret = LINUX_SYSCALL(__NR_renameat, vc.dfd, vc.path, vc2.dfd, vc2.path);
++	__vchroot_bump_generation(); // #11: invalidate vchroot stat cache
+ 
+ 	if (ret < 0)
+ 		return errno_linux_to_bsd(ret);
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c
+@@ -58,6 +58,7 @@
+ 		return errno_linux_to_bsd(ret);
+ 
+ 	ret = LINUX_SYSCALL(__NR_renameat2, vc.dfd, vc.path, vc2.dfd, vc2.path, linux_flags);
++	__vchroot_bump_generation(); // #11: invalidate vchroot stat cache
+ 
+ 	if (ret < 0)
+ 		return errno_linux_to_bsd(ret);
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/symlinkat.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/symlinkat.c
+@@ -25,6 +25,7 @@
+ 		return errno_linux_to_bsd(ret);
+ 
+ 	ret = LINUX_SYSCALL(__NR_symlinkat, path, vc.dfd, vc.path);
++	__vchroot_bump_generation(); // #11: invalidate vchroot stat cache
+ 	if (ret < 0)
+ 		ret = errno_linux_to_bsd(ret);
+ 
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/rmdir.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/rmdir.c
+@@ -30,6 +30,7 @@
+ 		return errno_linux_to_bsd(ret);
+ 
+ 	ret = LINUX_SYSCALL(__NR_unlinkat, vc.dfd, vc.path, LINUX_AT_REMOVEDIR);
++	__vchroot_bump_generation(); // #11: invalidate vchroot stat cache
+ 
+ 	if (ret < 0)
+ 		return errno_linux_to_bsd(ret);

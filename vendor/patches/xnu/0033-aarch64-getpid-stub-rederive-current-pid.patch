@@ -1,0 +1,18 @@
+aarch64: re-derive &__current_pid in the getpid() stub after the syscall.
+
+Same root cause as the pipe stub (patch 0032): the arm64 ___getpid stub stashed &__current_pid in
+x9 before SYSCALL_NONAME and used it after, but `bl __darling_bsd_syscall` clobbers x9. On the
+uncached path getpid then did ldxr/stxr through a garbage pointer. Re-derive the address with
+MI_GET_ADDRESS after the call (adrp/add, no memory dependency) instead of trusting the stash.
+--- a/gen/bsdsyscalls/___getpid.S
++++ b/gen/bsdsyscalls/___getpid.S
+@@ -163,6 +163,9 @@
+ 	ret									// Else, we're done
+ L_notcached:
+ 	SYSCALL_NONAME(getpid, 0, cerror_nocancel)
++	// x9 was clobbered by `bl __darling_bsd_syscall` (darling routes the bsd syscall through a call,
++	// not a register-preserving `svc`), so re-derive &__current_pid instead of trusting the stash.
++	MI_GET_ADDRESS(x9, __current_pid)	// Re-get address of cached value
+ 	ldxr	w10, [x9]					// Exclusive load
+ 	cbnz	w10, L_done					// Unless unset, don't even try
+ 	stxr	wzr, w0, [x9]				// Try to store, but don't care if we fail (someone will win, or not)

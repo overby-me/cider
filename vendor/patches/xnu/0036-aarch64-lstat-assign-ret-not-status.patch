@@ -1,0 +1,45 @@
+aarch64: assign the newfstatat result to ret in sys_lstat/sys_lstat64.
+
+On an arch that defines neither __NR_lstat64 nor __NR_lstat (arm64, whose only
+Linux stat syscall is newfstatat), the #else branch of sys_lstat and sys_lstat64
+stored the LINUX_SYSCALL result in a fresh `int status` instead of `ret`. `ret`
+therefore kept the value vchroot_expand() had returned (0 on success), so the
+`if (ret < 0)` error check was never taken: lstat/lstat64 returned 0 (success)
+with an unpopulated stat buffer for EVERY path, including nonexistent ones.
+Existing files still worked (newfstatat filled the buffer and ret==0 was correct),
+so the bug only surfaced for absent paths.
+
+This broke Nix on cider arm64. Nix's pathExists() uses lstat, so on a fresh store
+pathExists("<state>/db/schema") returned true even though schema does not exist;
+Nix then readFile()'d it, open() returned ENOENT, and `nix-store --init` aborted
+with `opening file ".../db/schema": No such file or directory` before it ever
+created db.sqlite. sys_stat is unaffected because it delegates to sys_fstatat,
+which already assigns `ret`.
+
+Assign the syscall result to `ret` in both #else branches so the error path runs.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/lstat.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/lstat.c
+@@ -34,9 +34,9 @@
+ 		ret = LINUX_SYSCALL(__NR_lstat, vc.path, &lstat);
+ 	#else
+ 		#if defined(__NR_newfstatat)
+-			int status = LINUX_SYSCALL(__NR_newfstatat, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
++			ret = LINUX_SYSCALL(__NR_newfstatat, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
+ 		#else
+-			int status = LINUX_SYSCALL(__NR_fstatat64, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
++			ret = LINUX_SYSCALL(__NR_fstatat64, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
+ 		#endif
+ 	#endif
+
+@@ -69,9 +69,9 @@
+ 		ret = LINUX_SYSCALL(__NR_lstat, vc.path, &lstat);
+ 	#else
+ 		#if defined(__NR_newfstatat)
+-			int status = LINUX_SYSCALL(__NR_newfstatat, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
++			ret = LINUX_SYSCALL(__NR_newfstatat, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
+ 		#else
+-			int status = LINUX_SYSCALL(__NR_fstatat64, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
++			ret = LINUX_SYSCALL(__NR_fstatat64, LINUX_AT_FDCWD, vc.path, &lstat, LINUX_AT_SYMLINK_NOFOLLOW);
+ 		#endif
+ 	#endif

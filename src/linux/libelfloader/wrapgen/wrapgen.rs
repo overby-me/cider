@@ -33,6 +33,7 @@ const ELFMAG: &[u8; 4] = b"\x7fELF";
 const ELFCLASS64: u8 = 2;
 const ET_DYN: u16 = 3;
 const EM_X86_64: u16 = 62;
+const EM_AARCH64: u16 = 183;
 const PT_DYNAMIC: u32 = 2;
 const DT_NULL: i64 = 0;
 const DT_SONAME: i64 = 14;
@@ -151,8 +152,12 @@ fn parse_elf(path: &str) -> Result<Parsed, String> {
     if u16_at(&b, 16) != Some(ET_DYN) {
         return Err(format!("{path} is not a dynamic library ELF"));
     }
-    if u16_at(&b, 18) != Some(EM_X86_64) {
-        return Err(format!("{path} is not an ELF for x86-64"));
+    // The e_machine gate only guards against handing wrapgen a non-native or corrupt object;
+    // reading the dynamic symbol table (all wrapgen does) is arch-independent. Accept the two
+    // host arches the port targets (aarch64 port, task A16), rather than x86-64 alone.
+    match u16_at(&b, 18) {
+        Some(EM_X86_64) | Some(EM_AARCH64) => {}
+        _ => return Err(format!("{path} is not an ELF for a supported architecture")),
     }
 
     // The first PT_DYNAMIC segment, and only the first: the C++ breaks out of the loop.

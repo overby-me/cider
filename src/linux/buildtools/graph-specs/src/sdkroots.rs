@@ -420,7 +420,7 @@ fn main() -> ExitCode {
     }
 
     let sdk_include =
-        format!("{repo}/darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include");
+        format!("{repo}/src/darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include");
     let mut ctx = Ctx { repo: repo.clone(), sdk_include, repo_side: Vec::new() };
     let moved = split_pins(&repo);
 

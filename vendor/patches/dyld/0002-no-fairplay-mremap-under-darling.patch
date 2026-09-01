@@ -1,0 +1,18 @@
+dyld: skip the fairplay mremap_encrypted registration under Darling (aarch64 port, task A14)
+
+The FairPlay-encrypted-region registration is guarded on `(__arm__ || __arm64__) &&
+!TARGET_OS_SIMULATOR`. On x86_64 the arch test is false so the block never compiled; on an
+arm64 guest it does, and calls `::mremap_encrypted`, which the emulation does not provide as a
+usable global (and which has no meaning without a real FairPlay kernel). darling PR 1753 adds
+`&& !defined(DARLING)` so the block is excluded under the emulation, the same way the other
+kernel-only fast paths in this file are. cider defines DARLING, so the call disappears.
+
+--- a/dyld3/Loading.cpp
++++ b/dyld3/Loading.cpp
+@@ -682,7 +682,7 @@
+
+-#if (__arm__ || __arm64__) && !TARGET_OS_SIMULATOR
++#if (__arm__ || __arm64__) && !TARGET_OS_SIMULATOR && !defined(DARLING)
+     // tell kernel about fairplay encrypted regions
+     uint32_t fpTextOffset;
+     uint32_t fpSize;

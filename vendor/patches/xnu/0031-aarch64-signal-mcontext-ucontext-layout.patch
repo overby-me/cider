@@ -1,0 +1,49 @@
+aarch64: fix the signal mcontext/ucontext struct layout to match the kernel.
+
+The arm64 branches of struct linux_gregset and struct linux_ucontext did not match the
+Linux kernel signal frame (asm/sigcontext.h, asm/ucontext.h): fault_address was placed LAST
+in the gregset (kernel puts it FIRST), and uc_mcontext preceded uc_sigmask (the x86 order;
+arm64 has uc_sigmask + a 1024-bit reservation BEFORE uc_mcontext). Every register read out of a
+signal (PC, SP, x0-x30) therefore came from the wrong offset, so crash reporting and any
+signal that inspects/edits thread state were garbage. Fixed both, arch-guarded so x86 is
+unchanged. Verified: sigcontext.fault_address now equals siginfo.si_addr.
+--- a/darling/src/libsystem_kernel/emulation/include/conversion/signal/sigaction.h
++++ b/darling/src/libsystem_kernel/emulation/include/conversion/signal/sigaction.h
+@@ -169,9 +169,11 @@
+ 
+ typedef struct linux_fpsimd_context *linux_fpregset_t;
+ 
+-// ARM64 Linux general-purpose registers (matches sigcontext layout)
++// ARM64 Linux general-purpose registers (matches kernel struct sigcontext layout:
++// fault_address is FIRST, per asm/sigcontext.h -- not last).
+ struct linux_gregset
+ {
++	unsigned long long fault_address;
+ 	unsigned long long regs[31]; // x0-x30
+ 	unsigned long long sp;
+ 	unsigned long long pc;
+@@ -178,5 +180,4 @@
+ 	unsigned long long pstate;
+-	unsigned long long fault_address;
+ };
+ 
+ #endif
+@@ -204,9 +205,18 @@
+ 	unsigned long uc_flags;
+ 	struct linux_ucontext* uc_link;
+ 	struct linux_stack uc_stack;
++#if defined(__aarch64__) || defined(__arm64__)
++	// arm64 kernel ucontext (asm/ucontext.h): uc_sigmask (plus glibc's 1024-bit reservation)
++	// comes BEFORE uc_mcontext, and the sigcontext is LAST. The x86 order (mcontext first) is
++	// wrong here and made every register in the signal state read from the wrong offset.
++	linux_sigset_t uc_sigmask;
++	unsigned char __glibc_reserved[1024 / 8 - sizeof(linux_sigset_t)];
+ 	struct linux_mcontext uc_mcontext;
++#else
++	struct linux_mcontext uc_mcontext;
+ 	linux_sigset_t uc_sigmask;
+ 	// linux_libc_fpstate fpregs_mem;
++#endif
+ };
+ 
+ struct bsd_exception_state

@@ -2,6 +2,13 @@ load("//buck/rules:cc.bzl", "cc_objects")
 load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 
+# The accelerated block CRC (crc32_vec, called from bzlib.c) has a per-arch hand-written
+# implementation; each file is internally #if-guarded to its arch, so the x86_64 one emits
+# nothing under -target arm64 and leaves _crc32_vec undefined. Pick the matching source by
+# guest arch (aarch64 port). The arm64 file ships in the upstream bzip2 pin.
+_M_ARM = read_root_config("cider", "guest_arch", "x86_64") == "arm64"
+_BZ_CRC32VEC = "bzip2/arm64/crc32vec.S" if _M_ARM else "bzip2/x86_64/crc32vec.S"
+
 # Targets over the bzip2 pin, materialized by scripts/buck-src.nu. The tree
 # itself is gitignored (content is pinned in nix/submodules.json); this file is
 # committed. One package per pin keeps what the Nix-lowered path has to parse
@@ -67,7 +74,7 @@ darwin_dylib(
 cc_objects(
     name = "bz264_obj",
     srcs = [
-        "bzip2/x86_64/crc32vec.S",
+        _BZ_CRC32VEC,
     ],
     compiler_flags = [
         "-DPRIVATE",

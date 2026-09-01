@@ -62,7 +62,11 @@ void O2FontHostLock(void) {
 
     while (__sync_val_compare_and_swap(&_CiderHostFontSpin, 0, 1) != 0) {
         spun = 1;
+#if defined(__x86_64__) || defined(__i386__)
         __builtin_ia32_pause();
+#else
+        __asm__ __volatile__("yield");
+#endif
     }
 
     _CiderHostFontOwner = me;

@@ -185,6 +185,7 @@ extern "C" fn cider_thread_entry(p: *mut c_void) -> *mut c_void {
         args.real_entry_point
     };
     unsafe {
+        #[cfg(target_arch = "x86_64")]
         core::arch::asm!(
             "xor rbp, rbp",
             "mov rsp, {stack}",
@@ -198,6 +199,25 @@ extern "C" fn cider_thread_entry(p: *mut c_void) -> *mut c_void {
             in("rcx") args.arg1,
             in("r8") args.arg2,
             in("r9") args.arg3,
+            options(noreturn),
+        );
+        // arm64 (aarch64 port, task A17): the Darwin thread-start register ABI, same argument
+        // order as the x86_64 rdi/rsi/rdx/rcx/r8/r9 mapping (x0..x5). w1 is the 32-bit view of
+        // x1 for the mach thread-self port. No return slot to push: a `br` needs none, and the
+        // stack is already 16-aligned.
+        #[cfg(target_arch = "aarch64")]
+        core::arch::asm!(
+            "mov x29, xzr",
+            "mov sp, {stack}",
+            "br {entry}",
+            stack = in(reg) stack_ptr,
+            entry = in(reg) args.entry_point,
+            in("x0") args.pth,
+            in("x1") (port as u32 as u64),
+            in("x2") rdx,
+            in("x3") args.arg1,
+            in("x4") args.arg2,
+            in("x5") args.arg3,
             options(noreturn),
         );
     }

@@ -1,0 +1,82 @@
+aarch64 #23: in-guest host-self cache, guarded from over-release.
+
+host_self_trap_impl caches the host-self port (one host per process) and returns it
+without the RPC on later calls, dropping host_self_trap from ~3 to 1 per spawn. A
+stable host-port name also lets the mach_msg query cache (0048) dedup
+host_get_io_master (206), which it could not before because mach_host_self()->
+host_self_trap RPCs a fresh name each call. mach_host_self adds a send-right ref per
+call that callers deallocate, so a cached name would over-release and die (the 0044
+note); the 0048 deallocate guard swallows deallocate of the guarded host name,
+defusing it. The fork child re-checks in with a fresh ipc space, so
+__host_self_trap_reset() re-fetches there (mirrors __task_self_trap_reset). On top of 0048.
+
+---
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -70,12 +70,28 @@
+ 	return port_name;
+ }
+ 
++// Defined below with the mach_msg cache; forward-declared so host_self_trap_impl can guard its name.
++static void mach_msg_guard_add(mach_port_name_t name);
++
++// #23: cache the host-self port (one host per process). A stable name lets the mach_msg cache dedup
++// host_get_io_master (206) and drops the ~3 host_self_trap RPCs/spawn to 1. The fork child re-checks
++// in with a fresh ipc space, so re-fetch there (matches __task_self_trap_reset, fork.c).
++static mach_port_name_t g_host_self_cached = MACH_PORT_NULL;
++void __host_self_trap_reset(void) { g_host_self_cached = MACH_PORT_NULL; }
++
+ mach_port_name_t host_self_trap_impl(void)
+ {
++	mach_port_name_t cached = g_host_self_cached;
++	if (cached != MACH_PORT_NULL)
++		return cached;
+ 	unsigned int port_name;
+ 	if (dserver_rpc_host_self_trap(&port_name) != 0) {
+-		port_name = MACH_PORT_NULL;
++		return MACH_PORT_NULL;
+ 	}
++	// mach_host_self adds a send-right ref each call that callers deallocate, so a cached name would
++	// over-release and die (0044 note); the deallocate guard swallows those deallocs, defusing it.
++	mach_msg_guard_add(port_name);
++	g_host_self_cached = port_name;
+ 	return port_name;
+ }
+ 
+@@ -134,6 +150,18 @@
+ 	}
+ 	libsimple_rwlock_unlock_read(&g_mach_msg_cache_lock);
+ 	return found;
++}
++
++// Record a port name to guard from deallocate. Used by host_self_trap_impl (NOT from the mach_msg
++// store path, which already holds the write lock and adds inline to avoid a recursive lock).
++static void mach_msg_guard_add(mach_port_name_t name) {
++	if (name == 0) return;
++	libsimple_rwlock_lock_write(&g_mach_msg_cache_lock);
++	_Bool dup = 0;
++	for (int i = 0; i < g_mach_msg_guarded_count; i++) if (g_mach_msg_guarded[i] == name) { dup = 1; break; }
++	if (!dup && g_mach_msg_guarded_count < MACH_MSG_GUARD_MAX)
++		g_mach_msg_guarded[g_mach_msg_guarded_count++] = name;
++	libsimple_rwlock_unlock_write(&g_mach_msg_cache_lock);
+ }
+ 
+ mach_msg_return_t mach_msg_overwrite_trap_impl(
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c
+@@ -18,6 +18,7 @@
+ 
+ extern _libkernel_functions_t _libkernel_functions;
+ extern void __task_self_trap_reset(void); // #11: drop cached task_self in the fork child
++extern void __host_self_trap_reset(void); // #23: drop cached host_self in the fork child
+ 
+ long sys_fork(void)
+ {
+@@ -64,6 +65,7 @@
+ 		}
+ 		// #11 Tier 1: the child is a new task with a new self port; drop the cached task_self.
+ 		__task_self_trap_reset();
++		__host_self_trap_reset();
+ 		if (wdfd >= 0)
+ 			sys_fchdir(wdfd);
+ 

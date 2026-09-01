@@ -43,7 +43,11 @@ impl Listener {
             addr.sun_family = libc::AF_UNIX as _;
             let bytes = cpath.as_bytes_with_nul();
             assert!(bytes.len() <= addr.sun_path.len(), "socket path too long");
-            std::ptr::copy_nonoverlapping(bytes.as_ptr() as *const i8, addr.sun_path.as_mut_ptr(), bytes.len());
+            std::ptr::copy_nonoverlapping(
+                bytes.as_ptr() as *const libc::c_char,
+                addr.sun_path.as_mut_ptr(),
+                bytes.len(),
+            );
             let addrlen = (size_of::<libc::sa_family_t>() + bytes.len()) as libc::socklen_t;
             cvt(libc::bind(listen_fd, &addr as *const _ as *const libc::sockaddr, addrlen) as i64)?;
             set_nonblocking(listen_fd);
@@ -144,7 +148,11 @@ pub fn connect(path: &str) -> io::Result<RawFd> {
         let mut addr: libc::sockaddr_un = zeroed();
         addr.sun_family = libc::AF_UNIX as _;
         let bytes = cpath.as_bytes_with_nul();
-        std::ptr::copy_nonoverlapping(bytes.as_ptr() as *const i8, addr.sun_path.as_mut_ptr(), bytes.len());
+        std::ptr::copy_nonoverlapping(
+                bytes.as_ptr() as *const libc::c_char,
+                addr.sun_path.as_mut_ptr(),
+                bytes.len(),
+            );
         let addrlen = (size_of::<libc::sa_family_t>() + bytes.len()) as libc::socklen_t;
         cvt(libc::connect(fd, &addr as *const _ as *const libc::sockaddr, addrlen) as i64)?;
         Ok(fd)

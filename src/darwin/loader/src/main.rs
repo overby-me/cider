@@ -156,6 +156,41 @@ fn clamp_open_file_limit() {
     }
 }
 
+/// Whether in-guest IPC is on. The same env read mldr folds into the guest's apple[] as
+/// cider_inguest_ipc=, so mldr's own view here stays consistent with the guest's.
+fn inguest_ipc() -> bool {
+    std::env::var_os("CIDER_INGUEST_IPC").map_or(false, |v| v == "1")
+}
+
+/// The host path prefix guest `/` lives under, recovered from the resolved executable path: mldr
+/// loads <prefix><mac> for a guest whose own argv0 is the absolute Mac path <mac>, so the host path
+/// minus that suffix is the prefix the daemon's vchroot_path would return (verified equal for the
+/// login chain). None (caller RPCs) when the suffix strip cannot yield a prefix: a bare basename
+/// like `cp`, a non-matching argv0, or -- CRITICAL -- argv0 already equal to the full host path
+/// (a shebang interpreter mldr host-resolved, so guest_path == argv0), which strips to "" and, if
+/// used, empties root and sends dyld to /usr/lib/dyld. Reject empty; only a non-empty prefix seeds.
+fn local_vchroot_prefix(guest_path: &str, guest_argv: &[String]) -> Option<String> {
+    let mac = guest_argv.first()?;
+    if !mac.starts_with('/') {
+        return None;
+    }
+    match guest_path.strip_suffix(mac.as_str()) {
+        Some(prefix) if !prefix.is_empty() => Some(prefix.to_string()),
+        _ => None,
+    }
+}
+
+/// The authoritative vchroot prefix ciderd exports (container.rs) and every descendant inherits, for
+/// a process whose executable-path derivation cannot recover it (a basename argv0 like `cp`). Guarded
+/// to skip guest pid 1: pre-seeding the container init pre-empts its own __darling_vchroot setup and
+/// hangs bring-up (measured); descendants run after the mount and are safe.
+fn vchroot_prefix_from_env() -> Option<String> {
+    if unsafe { libc::getpid() } == 1 {
+        return None;
+    }
+    std::env::var("__cider_vchroot_prefix").ok().filter(|s| !s.is_empty())
+}
+
 fn main() {
     // Prime the MLDR_DEBUG flag here, on main's aligned stack: the env read must
     // not happen later on an elfcall's misaligned stack (movaps constraint).
@@ -249,22 +284,50 @@ fn main() {
             );
             let mut kernfd: c_int = -1;
             let mut vchroot_root: Option<String> = None;
+            // #11/#25: the checkin reply folds in this task's init constants; carry them to the
+            // start stack's apple[] so libsystem_kernel seeds its caches instead of re-RPCing.
+            let mut seed_task_self: u32 = 0;
+            let mut seed_host_self: u32 = 0;
+            let mut seed_uid: i32 = -1;
+            let mut seed_gid: i32 = -1;
             if let Some(ref sockpath) = special.sockpath {
-                let rpcfd = unsafe { rpc::create_socket(sockpath) };
-                if rpcfd >= 0 {
-                    kernfd = rpcfd;
-                    // stack_hint must be a real stack address (the C passes &dummy), not the
-                    // commpage base -- the daemon uses it to locate the thread's stack.
-                    let hint = 0u64;
-                    let code =
-                        unsafe { rpc::checkin(rpcfd, sockpath, &hint as *const u64 as u64) };
-                    dlog!("[mldr] checkin({sockpath}) -> code={code}");
+                if inguest_ipc() && unsafe { libc::getpid() } != 1 {
+                    // #40: a flag-on non-pid-1 process runs socket-less (no exec checkin). Self Mach
+                    // IPC is in-guest (milestone-1), signals in-guest (sigexc __cider_no_daemon), uid/gid
+                    // seeded locally below; vchroot recovered locally. No RPC.
+                    seed_uid = unsafe { libc::getuid() } as i32;
+                    seed_gid = unsafe { libc::getgid() } as i32;
                     rpc::set_sockpath(sockpath);
-                    rpc::set_thread_socket(rpcfd);
-                    vchroot_root = unsafe { rpc::vchroot_path(rpcfd) };
-                    dlog!("[mldr] vchroot_path -> {vchroot_root:?}");
+                    vchroot_root = local_vchroot_prefix(&guest_path, &guest_argv)
+                        .or_else(vchroot_prefix_from_env);
                 } else {
-                    eprintln!("[mldr] rpc socket creation failed");
+                    let rpcfd = unsafe { rpc::create_socket(sockpath) };
+                    if rpcfd < 0 {
+                        eprintln!("[mldr] rpc socket creation failed");
+                    } else {
+                        kernfd = rpcfd;
+                        let hint = 0u64;
+                        let checkin =
+                            unsafe { rpc::checkin(rpcfd, sockpath, &hint as *const u64 as u64) };
+                        dlog!(
+                            "[mldr] checkin({sockpath}) -> code={} task_self={:#x} uid={} gid={}",
+                            checkin.code, checkin.task_self, checkin.uid, checkin.gid
+                        );
+                        seed_task_self = checkin.task_self;
+                        seed_host_self = checkin.host_self;
+                        seed_uid = checkin.uid;
+                        seed_gid = checkin.gid;
+                        rpc::set_sockpath(sockpath);
+                        rpc::set_thread_socket(rpcfd);
+                        vchroot_root = if inguest_ipc() {
+                            local_vchroot_prefix(&guest_path, &guest_argv)
+                                .or_else(vchroot_prefix_from_env)
+                                .or_else(|| unsafe { rpc::vchroot_path(rpcfd) })
+                        } else {
+                            unsafe { rpc::vchroot_path(rpcfd) }
+                        };
+                        dlog!("[mldr] vchroot_path -> {vchroot_root:?}");
+                    }
                 }
             } else {
                 eprintln!("[mldr] (no __mldr_sockpath; skipping checkin)");
@@ -384,6 +447,11 @@ fn main() {
                     &guest_exe_path,
                     &guest_argv,
                     &envp,
+                    seed_task_self,
+                    seed_host_self,
+                    seed_uid,
+                    seed_gid,
+                    vchroot_root.as_deref().unwrap_or(""),
                 )
             };
             let sp0 = unsafe { *(sp as *const u64) };
@@ -458,12 +526,20 @@ pub(crate) unsafe fn install_trap_diag() {
         for b in b" rip=0x" {
             buf[n] = *b; n += 1;
         }
-        // ucontext_t.uc_mcontext.gregs[REG_RIP]; REG_RIP is 16 on x86_64 Linux.
+        // The faulting PC, per arch (aarch64 port, task A17): x86_64 keeps it in
+        // uc_mcontext.gregs[REG_RIP] (16 on Linux), aarch64 in uc_mcontext.pc.
         let rip = if uc.is_null() {
             0u64
         } else {
             let ucp = uc as *const libc::ucontext_t;
-            (*ucp).uc_mcontext.gregs[16] as u64
+            #[cfg(target_arch = "x86_64")]
+            {
+                (*ucp).uc_mcontext.gregs[16] as u64
+            }
+            #[cfg(target_arch = "aarch64")]
+            {
+                (*ucp).uc_mcontext.pc as u64
+            }
         };
         for i in (0..16).rev() {
             let nib = ((rip >> (i * 4)) & 0xf) as u8;

@@ -1,0 +1,52 @@
+aarch64 #23 milestone-1: mint host-self and thread-self ports in-guest.
+
+With the host queries served in-guest (0051/0052) the host port is only ever a query destination and a
+guarded deallocate, so host_self_trap_impl mints it from the guest port table instead of the RPC.
+thread_self_trap_impl likewise mints the thread-self port (per-context cache; single thread per context
+for exec-true -- a multi-threaded guest, milestone 6, will need this in TLS, and __thread_self_trap_reset
+is provided for the fork child). Deallocate of the minted names is served in-guest.
+
+Verified: exec-true RECV 54 -> 46 (host_self_trap 4 -> 0, thread_self_trap 7 -> 3), rc=0, soak 8/8. The
+3 remaining thread_self_trap are the dyld-loader copy (not rebuilt in the buck2 dylib-only swap).
+Flag-off unchanged. On top of 0053.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+index 42186ab..f1b769e 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -69,8 +69,20 @@ mach_port_name_t mach_reply_port_impl(void)
+ 	return port_name;
+ }
+ 
++// #23: per-context cache for a minted thread-self. Correct for one thread per libsystem_kernel context
++// (exec-true); a multi-threaded guest (milestone 6) needs this in TLS. Reset on fork (new thread).
++static mach_port_name_t g_thread_self_cached = MACH_PORT_NULL;
++void __thread_self_trap_reset(void) { g_thread_self_cached = MACH_PORT_NULL; }
++
+ mach_port_name_t thread_self_trap_impl(void)
+ {
++	// #23: mint the thread-self port in-guest instead of the thread_self_trap RPC. Safe while exec-true
++	// never sends to it / uses it as a ciderd op target; deallocate of the minted name is in-guest.
++	if (inguest_ipc_on()) {
++		if (g_thread_self_cached == MACH_PORT_NULL)
++			g_thread_self_cached = inguest_mint_port();
++		return g_thread_self_cached;
++	}
+ 	unsigned int port_name;
+ 	if (dserver_rpc_thread_self_trap(&port_name) != 0) {
+ 		port_name = MACH_PORT_NULL;
+@@ -95,6 +107,14 @@ mach_port_name_t host_self_trap_impl(void)
+ 	mach_port_name_t cached = g_host_self_cached;
+ 	if (cached != MACH_PORT_NULL)
+ 		return cached;
++	// #23: the host port is only used as the destination of the host queries (all served in-guest) and
++	// a guarded deallocate, so mint it in-guest instead of the host_self_trap RPC. Cached like a fetch;
++	// deallocate of the minted name is served in-guest (inguest_is_minted guard).
++	if (inguest_ipc_on()) {
++		mach_port_name_t name = inguest_mint_port();
++		g_host_self_cached = name;
++		return name;
++	}
+ 	unsigned int port_name;
+ 	if (dserver_rpc_host_self_trap(&port_name) != 0) {
+ 		return MACH_PORT_NULL;

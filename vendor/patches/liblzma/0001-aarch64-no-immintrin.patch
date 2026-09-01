@@ -1,0 +1,19 @@
+aarch64: immintrin.h is x86-only.
+
+config.h was generated for x86 and hardcodes HAVE_IMMINTRIN_H, so memcmplen.h pulls in
+<immintrin.h> and clang errors compiling the x86 intrinsic headers for arm64. Gate the define to
+x86; the SSE2 fast path that uses it is already guarded by __SSE2__, which is absent on arm64.
+--- a/config.h
++++ b/config.h
+@@ -155,7 +155,11 @@
+ #define HAVE_ICONV 1
+ 
+ /* Define to 1 if you have the <immintrin.h> header file. */
++/* aarch64 port: immintrin.h is x86-only; this config was generated for x86, so gate the
++   define to x86 or memcmplen.h pulls it in and clang errors compiling arm64. */
++#if defined(__x86_64__) || defined(__i386__)
+ #define HAVE_IMMINTRIN_H 1
++#endif
+ 
+ /* Define to 1 if you have the <inttypes.h> header file. */
+ #define HAVE_INTTYPES_H 1

@@ -260,6 +260,12 @@ pub struct Handler {
     /// New guest-console daemon-side fds opened this dispatch (console_open, task #60): the daemon
     /// monitors each and logs the guest's console/os_log output. Handed to the serve loop.
     pending_consoles: Vec<RawFd>,
+    /// (nsid, host pid) of processes that checked in this dispatch, for the serve loop to arm a
+    /// per-process death watch (task #33). kqchan_proc_open only watches processes a guest kqueues
+    /// on (the launcher's top-level spawns), so an in-guest fork (a bash subshell, waited via
+    /// waitpid) is never watched and its task leaks on death. Every process checks in, so watching
+    /// here covers them all.
+    pending_watches: Vec<(u32, libc::pid_t)>,
 }
 
 impl Default for Handler {
@@ -280,6 +286,7 @@ impl Handler {
             pending_pid_changes: Vec::new(),
             pending_kqchans_mach: Vec::new(),
             pending_consoles: Vec::new(),
+            pending_watches: Vec::new(),
         }
     }
 
@@ -296,6 +303,9 @@ impl Handler {
 
     pub fn take_pending_kqchans(&mut self) -> Vec<crate::kqchan::ProcKqchan> {
         std::mem::take(&mut self.pending_kqchans)
+    }
+    pub fn take_pending_watches(&mut self) -> Vec<(u32, libc::pid_t)> {
+        std::mem::take(&mut self.pending_watches)
     }
     /// Take the mach-port kqchans opened this dispatch (task #54), for the serve loop to register.
     pub fn take_pending_kqchans_mach(&mut self) -> Vec<Box<crate::kqchan::MachPortKqchan>> {
@@ -364,8 +374,20 @@ impl Handler {
         let task = sched::current_task();
         if !task.is_null() {
             ps.fork_sem = Some(unsafe { task::semaphore_create(task, 0) });
+            // Seed the task's uid/gid from the guest's real credentials so the #25 checkin reply
+            // carries a valid uid, letting the guest cache it via apple[] instead of RPCing uidgid.
+            if let Some((uid, gid)) = task::read_uidgid(host_pid) {
+                unsafe { traps::task_uidgid(task, uid as i32, gid as i32); }
+            }
         }
         self.procs.insert(nsid, ps);
+        // #23 milestone-4 (launcher re-arch step 1): arm the death-watch at FIRST SIGHTING, not only at
+        // checkin, so a process ciderd sees without ever checking in (a future checkin-less guest) is
+        // still reaped on death. The serve loop dedups, so a process that also checks in is unaffected
+        // (watched once). host_pid is the SO_PASSCRED pid, >0 for a real guest.
+        if host_pid > 0 {
+            self.pending_watches.push((nsid, host_pid));
+        }
     }
 
     /// Drop a process's state on its exit (the serve loop calls this once the process's last
@@ -415,19 +437,38 @@ impl rpc_wire::RpcHandler for Handler {
     /// its forked child has arrived, upping the parent's fork-wait semaphore so its
     /// fork_wait_for_child unblocks. Mirrors Process::notifyCheckin's fork case. (Exec-
     /// replacement's task/thread swap is a later refinement.)
-    fn checkin(&mut self, _call: &CallCheckin, fds: &[RawFd]) -> Result<(), i32> {
+    fn checkin(&mut self, _call: &CallCheckin, fds: &[RawFd]) -> Result<ReplyCheckin, i32> {
         // Defensive: close any SCM_RIGHTS fd (a lifetime pipe can ride checkin when
         // __mldr_lifetime_pipe is set). The high-volume leak is on `checkout` -- see there for
         // the full pipe-page-starvation mechanism that this prevents.
         for &fd in fds {
             unsafe { libc::close(fd); }
         }
+        // Queue this process for a death watch (task #33) -- at EVERY checkin, fork children too,
+        // since that is the only point ciderd sees an unwatched in-guest fork. Serve loop dedups.
+        let hp = self.cur().map(|p| p.host_pid);
+        if let Some(hp) = hp {
+            if hp > 0 {
+                self.pending_watches.push((self.current_pid, hp));
+            }
+        }
         if let Some(parent_nsid) = self.cur().and_then(|p| p.parent_nsid) {
             if let Some(sem) = self.procs.get(&parent_nsid).and_then(|p| p.fork_sem) {
                 unsafe { task::semaphore_up(sem) };
             }
         }
-        Ok(())
+        // #11/#25: fill the reply with this task's init constants for the guest to seed its caches.
+        // current_task() is bound before dispatch (module header); task_uidgid(-1,-1) reads without
+        // mutating. A null task just yields sentinels -> the guest RPCs as before, so it is harmless.
+        let task_self = unsafe { mach::task_self_trap() };
+        let host_self = unsafe { mach::host_self_trap() };
+        let taskptr = sched::current_task();
+        let (uid, gid) = if taskptr.is_null() {
+            (-1, -1)
+        } else {
+            unsafe { traps::task_uidgid(taskptr, -1, -1) }
+        };
+        Ok(ReplyCheckin { task_self, uid, gid, host_self })
     }
     /// A guest thread checks out on exit. Tell XNU the thread is dying so its Mach state
     /// (ports, rights, notifications) is torn down -- otherwise a later send to the dead
@@ -595,6 +636,21 @@ impl rpc_wire::RpcHandler for Handler {
     }
     fn mach_reply_port(&mut self, _fds: &[RawFd]) -> Result<ReplyMachReplyPort, i32> {
         Ok(ReplyMachReplyPort { port_name: unsafe { mach::mach_reply_port() } })
+    }
+    fn mach_reply_port_batch(&mut self, call: &CallMachReplyPortBatch, _fds: &[RawFd]) -> Result<ReplyMachReplyPortBatch, i32> {
+        // #11/#23 in-guest port layer: mint a batch of reply ports (REAL names from xnu_sys, so no
+        // collision or translation) and write them into the guest's pool buffer. The guest then hands
+        // them out locally, skipping the per-reply_port RPC. count = names actually written.
+        let cap = (call.buffer_size / 4).min(16) as usize;
+        let mut bytes = Vec::with_capacity(cap * 4);
+        for _ in 0..cap {
+            let name = unsafe { mach::mach_reply_port() };
+            bytes.extend_from_slice(&name.to_le_bytes());
+        }
+        if !bytes.is_empty() {
+            self.write_mem(call.buffer, &bytes)?;
+        }
+        Ok(ReplyMachReplyPortBatch { count: cap as u32 })
     }
 
     /// Allocate a port right; the allocated NAME is copied out to the caller's `name`

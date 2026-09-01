@@ -56,9 +56,19 @@ cc_header_root(
 # paths that only exist materialized under vendor/src).
 cc_header_root(
     name = "mldr_shim_headers",
-    header_map = {
+    # The _types and vm_param shims are per-CPU (task A4): an aarch64 host reads arm64
+    # Mach-O, so the dispatch headers land on the arm leaves and it is arm/_types.h and
+    # mach/arm/vm_param.h that must be the host-safe stubs. thread_status and sys/_types
+    # are arch-neutral.
+    header_map = ({
+        "arm/_types.h": "mldr/include/arm/_types.h",
+        "mach/arm/vm_param.h": "mldr/include/mach/arm/vm_param.h",
+        # arm's mach/arm/vm_types.h pulls <Availability.h>; the i386 one does not.
+        "Availability.h": "mldr/include/Availability.h",
+    } if host_info().arch.is_aarch64 else {
         "i386/_types.h": "mldr/include/i386/_types.h",
         "mach/i386/vm_param.h": "mldr/include/mach/i386/vm_param.h",
+    }) | {
         "mach/machine/thread_status.h": "mldr/include/mach/machine/thread_status.h",
         "sys/_types.h": "mldr/include/sys/_types.h",
     },

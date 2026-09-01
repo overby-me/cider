@@ -111,8 +111,24 @@ def main [--all, ...paths: string] {
             if (not $force) and $stamped {
                 continue
             }
-            if ($dest | path exists) { do -i { ^chmod -R u+w $dest } }
-            rm -rf $dest
+            # A NESTED pin's parent directory arrived with its enclosing pin's copy, so it
+            # carries the store's read-only mode (555) and refuses both the rm and the cp
+            # below. u+w on the parent is enough, and GNU rm rather than nushell's: nushell's
+            # is remove_dir_all, which reports EACCES instead of chmod-ing its way in.
+            let parent = ($dest | path dirname)
+            if ($parent | path exists) { do -i { ^chmod u+w $parent } }
+            # THE COMMITTED BUCK FILES LIVE INSIDE THE TREES THIS LOOP REPLACES. The rm below
+            # deleted all 55 of them on the first fresh --all checkout (aarch64 bring-up,
+            # task A2), because only the per-path branch saved them. Same keep set as there:
+            # the assembled store tree does NOT carry the port-owned files back in.
+            let keep_buck = (if ($dest | path exists) {
+                glob $"($dest)/**/{BUCK,BUCK.v2,extra-deps.json}" --no-dir
+                | each {|f| {rel: ($f | path relative-to $dest), body: (open --raw $f)} }
+            } else { [] })
+            if ($dest | path exists) {
+                do -i { ^chmod -R u+w $dest }
+                ^rm -rf $dest
+            }
             # Plain copy, NOT hardlinks: hardlinked store files share the store's inode, so any
             # later chmod/write would mutate the nix store itself. Left read-only; nothing here
             # is edited, only compiled.
@@ -121,6 +137,11 @@ def main [--all, ...paths: string] {
             # itself made writable first (only the directory, not the tree: nothing in here is
             # edited).
             ^chmod u+w $dest
+            for k in $keep_buck {
+                let target = ($dest | path join $k.rel)
+                mkdir ($target | path dirname)
+                $k.body | save -f -r $target
+            }
             # With the trailing newline echo wrote, so a tree stamped by either version
             # is byte-identical. The readers strip it, but the file should not differ.
             $"($assembled)\n" | save -f $stamp
@@ -130,6 +151,52 @@ def main [--all, ...paths: string] {
             # existed, so the per-path branch skipped, and the tree stayed on the old rev.
             $"($e.rev)\n" | save -f ($dest | path join ".buck-src-rev")
         }
+        # BUNDLED PINS HAVE NO MANIFEST ENTRY, so the loop above never reaches them, and a
+        # fresh --all checkout came up without vendor/src/cocotron while vendor/src/BUCK
+        # names cocotron paths 671 times (found on the first aarch64 bring-up, task A2).
+        # Copy every top-level bundled pin the tree's BUCK actually names (cocotron today;
+        # vendor/pins/ciderd is built IN PLACE and copying it would drag the whole duct-tape
+        # xnu checkout along) out of the assembled tree, the way the manifest pins were.
+        let buck_text = (open --raw ($dest_root | path join "BUCK"))
+        for sub in (ls vendor/pins | where type == dir | get name) {
+            if ($entries | where path == $sub | is-not-empty) { continue }
+            if not ($buck_text | str contains $'"($sub | path basename)/') { continue }
+            let dest = (pin_dest $sub $dest_root $repo_root $entries)
+            let src = ($assembled | path join $sub)
+            if ($src | path type) != "dir" { continue }
+            let stamp = ($dest | path join ".buck-src-assembled")
+            if (not $force) and ($stamp | path exists) and ((open --raw $stamp | str trim) == $assembled) {
+                continue
+            }
+            print $"vendor/src: ($sub | path basename) is vendored in-tree, copying"
+            let keep_bundled = (if ($dest | path exists) {
+                ls -a $dest | where name =~ '/BUCK$' | get name
+            } else { [] })
+            let saved = (mktemp -d)
+            for f in $keep_bundled { ^cp -a $f $saved }
+            if ($dest | path exists) {
+                do -i { ^chmod -R u+w $dest }
+                ^rm -rf $dest
+            }
+            ^cp -a --no-preserve=ownership $src $dest
+            ^chmod -R u+w $dest
+            for f in $keep_bundled {
+                let base = ($f | path basename)
+                ^cp -a ($saved | path join $base) ($dest | path join $base)
+            }
+            $"($assembled)\n" | save -f $stamp
+        }
+        # NORMALISE, the same pass the per-path branch runs at the end of every tree (see the
+        # cider-src-normalise call below). The --all copy takes each tree VERBATIM from the
+        # assembled store (nix build .#cider-src), and that derivation does NOT normalise: the
+        # "." component and cell-escaping links are rewritten only here in the per-path branch
+        # and in assembleProject (ciderBuck2Graph.nix) for the Nix-graph build. Without this
+        # pass a direct `buck2 build` against this vendor/src dies on corefoundation's 94
+        # flat-header links (include/CoreFoundation/./CFArray.h) with "path contains
+        # platform-specific path separator", and every framework build fails at graph load. One
+        # pass over the whole tree; the binary is idempotent and re-running is the normal case.
+        print "vendor/src: normalising symlinks (cider-src-normalise) ..."
+        ^cider-src-normalise --repo $repo_root $dest_root
         let size = (^du -sh $dest_root | split row "\t" | first)
         print $"vendor/src: done \(($size))"
         exit 0

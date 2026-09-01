@@ -4,7 +4,7 @@ load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:install.bzl", "prefix_dir", "prefix_gen_dir")
 
-load("//buck/generated:sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
+load("//buck/generated:sdk_headers.bzl", "SDK_ARM", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
 
 # Targets over the nix-pinned upstream trees materialized by
 # scripts/buck-src.nu. The trees themselves are gitignored (content is pinned in
@@ -43,6 +43,11 @@ MIGCOM_FLAGS = [
     "-D__uint16_t=uint16_t",
     "-D__uint64_t=uint64_t",
     "-D_BSD_I386__TYPES_H_",
+    # The arm twin of the line above (task A4): on an aarch64 host the SDK dispatch lands on
+    # arm/_types.h, whose fixed-width typedefs collide with the -D__int64_t glibc mappings
+    # here exactly as i386/_types.h would. Suppress it the same way; both defines are inert
+    # on the arch whose header is never reached.
+    "-D_BSD_ARM__TYPES_H_",
 ]
 
 cc_header_root(
@@ -86,7 +91,9 @@ cc_header_root(
 
 cc_header_root(
     name = "sdk_darling_include",
-    header_map = SDK_MACH | SDK_I386 | SDK_MACHINE | SDK_LIBKERN | SDK_SYS_FOR_MIGCOM,
+    # SDK_ARM beside SDK_I386 (task A6): mach/arm/vm_types.h includes <arm/_types.h>,
+    # so the arm namespace has to be visible wherever the i386 one is.
+    header_map = SDK_MACH | SDK_I386 | SDK_ARM | SDK_MACHINE | SDK_LIBKERN | SDK_SYS_FOR_MIGCOM,
     visibility = ["PUBLIC"],
 )
 
@@ -209,24 +216,39 @@ cc_header_root(
 # subset of one map: if a pin moves or splits, the SDK generator moves this with it, and a
 # path that vanishes from the SDK fails HERE with a missing key rather than silently
 # resolving to something else.
-_MLDR_HOST_HEADERS = [
-    "architecture/byte_order.h",
+# The per-CPU leaf headers the dispatch headers above resolve to (task A4). On an aarch64
+# host cider-coredump reads arm64 Mach-O, so mach/machine/vm_types.h lands on
+# mach/arm/vm_types.h and the i386 leaves are simply absent; the arm OSByteOrder pulls
+# arm/arch.h, which the i386 one does not need.
+_MLDR_HOST_ARCH_HEADERS = [
+    "arm/arch.h",
+    "arm/cpu_capabilities.h",
+    "libkern/arm/OSByteOrder.h",
+    "mach/arm/boolean.h",
+    "mach/arm/vm_types.h",
+] if host_info().arch.is_aarch64 else [
     "i386/cpu_capabilities.h",
-    "libkern/OSByteOrder.h",
-    "libkern/_OSByteOrder.h",
     "libkern/i386/OSByteOrder.h",
     "libkern/i386/_OSByteOrder.h",
-    "mach/boolean.h",
     "mach/i386/boolean.h",
     "mach/i386/vm_types.h",
+]
+
+_MLDR_HOST_HEADERS = [
+    "architecture/byte_order.h",
+    "libkern/OSByteOrder.h",
+    "libkern/_OSByteOrder.h",
+    "mach/boolean.h",
     "mach/machine.h",
     "mach/machine/boolean.h",
     "mach/machine/vm_types.h",
     "mach/vm_prot.h",
     "sys/_types/_os_inline.h",
     "sys/commpage.h",
+] + _MLDR_HOST_ARCH_HEADERS + [
     # The farm links mach-o as a whole DIRECTORY, so the whole namespace comes with it.
-] + [_k for _k in SDK_ROOT if _k.startswith("mach-o/")]
+    _k for _k in SDK_ROOT if _k.startswith("mach-o/")
+]
 
 cc_header_root(
     name = "mldr_include",
@@ -3022,11 +3044,15 @@ darwin_dylib(
     siblings = [
         "//vendor/src/libc:system_c_firstpass",
         "//vendor/src:keymgr_firstpass",
+        # aarch64 #11 A: needed so a two-level link resolves libunwind's out-of-lib refs:
+        # malloc/free, pthread_rwlock_*, and the dyld unwind/dladdr APIs.
+        "//vendor/src:system_malloc_firstpass",
+        "//vendor/src:system_pthread_firstpass",
+        "//vendor/src:system_dyld_firstpass",
     ],
-    linker_flags = [
-        "-Wl,-flat_namespace",
-        "-Wl,-undefined,suppress",
-    ],
+    # aarch64 #11 A: two-level (default) so the dylib is dyld-shared-cache eligible; was flat_namespace
+    # which canBePlacedInDyldCache rejects. Symbols resolve via the firstpass siblings above.
+    linker_flags = [],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
@@ -3618,7 +3644,12 @@ darwin_dylib(
         "//vendor/src:system_dyld_firstpass",
         "//vendor/src/libc:system_c_firstpass",
         "//vendor/src/libplatform:platform_firstpass",
-    ],
+    ] + ([
+        # arm64 macOS turns on _PTHREAD_CONFIG_JIT_WRITE_PROTECT, whose image-load callback
+        # calls getsectiondata() from libmacho; on x86 the config is 0 and the symbol is never
+        # referenced. Add libmacho as a sibling so the final link resolves it (task A11).
+        "//vendor/src:macho_firstpass",
+    ] if host_info().arch.is_aarch64 else []),
     toolchain = "toolchains//:darwin_cc",
     deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
@@ -3665,11 +3696,14 @@ darwin_dylib(
         "//vendor/src:system_malloc_firstpass",
         "//vendor/src:system_pthread_firstpass",
         "//vendor/src/libc:system_c_firstpass",
+        # aarch64 #11 A: needed so a two-level link resolves __platform_memmove (Block_copy)
+        # and finds dyld_stub_binder (from libdyld) for the lazy stub to __os_assert_log.
+        "//vendor/src/libplatform:platform_firstpass",
+        "//vendor/src:system_dyld_firstpass",
     ],
-    linker_flags = [
-        "-Wl,-flat_namespace",
-        "-Wl,-undefined,suppress",
-    ],
+    # aarch64 #11 A: two-level (default) so the dylib is dyld-shared-cache eligible; was flat_namespace
+    # which canBePlacedInDyldCache rejects. Symbols resolve via the firstpass siblings above.
+    linker_flags = [],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],

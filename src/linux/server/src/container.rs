@@ -254,6 +254,11 @@ pub unsafe fn spawn_launchd(cfg: &Config) -> ! {
     let sock = format!("{}/.ciderd.sock", cfg.prefix);
     std::env::set_var("__mldr_DYLD_ROOT_PATH", &cfg.libexec_path);
     std::env::set_var("__mldr_sockpath", &sock);
+    // #23 milestone-4: the authoritative vchroot prefix (the overlay mount, guest `/`). Plain env, not
+    // __mldr_, so it survives mldr's env-clean and every descendant inherits it; mldr seeds the guest
+    // from it (guarded to skip guest pid 1, whose vchroot setup a pre-seed would hang) instead of a
+    // vchroot_path RPC when the executable-path derivation cannot (a basename argv0 like `cp`).
+    std::env::set_var("__cider_vchroot_prefix", &cfg.prefix);
 
     // execl(mldr, "mldr!<libexec>/usr/libexec/cider/vchroot", "vchroot", prefix, init, NULL)
     let mldr = CString::new(cfg.mldr_path.clone()).unwrap();

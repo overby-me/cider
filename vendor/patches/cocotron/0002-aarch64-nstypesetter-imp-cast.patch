@@ -1,0 +1,16 @@
+aarch64: cast the direct _layoutNextFragment IMP call
+
+_layoutNextFragment is an IMP; calling it directly is rejected by the arm64 SDK
+(IMP is void(*)(void)). Cast to (id, SEL) before calling.
+
+--- a/AppKit/NSTextView.subproj/NSTypesetter_concrete.m
++++ b/AppKit/NSTextView.subproj/NSTypesetter_concrete.m
+@@ -1109,7 +1109,7 @@
+         if (!NSLocationInRange(_nextGlyphLocation, _attributesRange))
+             [self fetchAttributes];
+ 
+-        _layoutNextFragment(self, NULL);
++        ((void (*)(id, SEL)) _layoutNextFragment)(self, NULL);
+         if (NSEqualRects(_scanRect, NSZeroRect)) {
+ #if DEBUGLAYOUTGLYPHSINLAYOUTMANAGER
+             NSLog(@"_scanRect is zero - bailing...");

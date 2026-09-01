@@ -23,7 +23,12 @@
     flakelight ./. {
       inherit inputs;
 
-      systems = [ "x86_64-linux" ];
+      # aarch64-linux: the aarch64 port (docs/plan-aarch64.md, task A1). The guest
+      # arch is chosen per machine by scripts/buck-setup.nu, not by this list.
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
 
       # NOT "cider", AND THE REASON IS A NAME COLLISION IN NIXPKGS. flakelight resolves
       # pkgs.${pname}, and nixpkgs already has a package called `cider`, an unrelated Apple Music
@@ -119,6 +124,30 @@
           overby = inputs.overby;
         }).buildTarget
           { target = "//src/darwin/duct:system_duct_static"; };
+
+      # cider #11 lever A: the guest arm64 dyld shared-cache builder tool, lowered alone (through the
+      # same ciderBuck2Lower path the prefixes use, NOT buildTarget which overflows on this dep graph)
+      # for a tighter compile loop than a full prefix rebuild. Needs the pins (dyld tree + SDK).
+      #   systemd-run --user --scope -p MemoryMax=8G nix build .#cider-buck2-cache-builder
+      packages.cider-buck2-cache-builder =
+        pkgs:
+        (
+          let
+            ciderSrc = import ./nix/lib/cider-src.nix {
+              inherit pkgs;
+              baseSrc = ./.;
+            };
+          in
+          import ./nix/lib/ciderBuck2Lower.nix {
+            inherit pkgs ciderSrc;
+            allPins = true;
+            graph = import ./nix/lib/ciderBuck2Graph.nix {
+              inherit pkgs ciderSrc;
+              allPins = true;
+              targets = [ "//src/darwin/cache-builder:cache_builder" ];
+            };
+          }
+        ).final;
 
       # Two probes for where the Nix-lowered path runs out of road. Both are
       # trivial targets; what differs is the FILE the interpreter has to read:
@@ -491,6 +520,49 @@
       # entries. The full prefix above is untouched and remains the parity target.
       #
       #   nix build .#cider-buck2-prefix-min
+      #   nix build .#cider-buck2-prefix-fw
+      # THE FRAMEWORK TIER (#16): prefix-min plus the CoreFoundation/CoreServices/
+      # SystemConfiguration/Foundation stack guest nix loads, minus JavaScriptCore/DBusKit (which do
+      # not build for arm64). Built through the SAME nix endpoint the min prefix uses so it survives
+      # systemd-oomd, unlike the host buck2 framework overlay. Settings mirror the FULL prefix, not
+      # prefix-min: sourceGroups is OFF because group staging dangles the frameworks' relative header
+      # symlinks (CoreServices/MacTypes.h), the failure prefix-min avoids only by dropping frameworks.
+      packages.cider-buck2-prefix-fw =
+        pkgs:
+        let
+          ciderSrc = import ./nix/lib/cider-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          lowered = import ./nix/lib/ciderBuck2Lower.nix {
+            inherit pkgs ciderSrc;
+            allPins = true;
+            # The wayland codegen tool and protocol XML, declared so the lowered actions can see
+            # them: the graph bakes their store paths into [cider] wayland_scanner/wayland_protocols/
+            # wayland_core_protocol (ciderBuck2Graph.nix), but those are plain-text argv, invisible to
+            # Nix, so undeclared they are absent in the sandbox and the framework tier's GUI cone
+            # (AppKit -> cocotron -> wayland) dies "wayland-scanner: No such file or directory".
+            # prefix-min never builds wayland; only this tier does.
+            extraTools =
+              let
+                di = pkgs.callPackage ./nix/ciderBuildInputs.nix { };
+              in
+              di.wrappedLibs
+              ++ di.hostHeaderLibs
+              ++ [
+                (pkgs.lib.getBin pkgs.wayland-scanner)
+                pkgs.wayland-protocols
+                (import ./nix/wayland-core-protocol.nix { inherit pkgs; })
+              ];
+            graph = import ./nix/lib/ciderBuck2Graph.nix {
+              inherit pkgs ciderSrc;
+              allPins = true;
+              targets = import ./nix/lib/buck2-targets-fw.nix;
+            };
+          };
+        in
+        lowered.named."root//buck/prefix-fw:cider_prefix_fw" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv specName depVar toolsAll stageScriptFor treeScriptsFor depsFor; };
+
       packages.cider-buck2-prefix-min =
         pkgs:
         let

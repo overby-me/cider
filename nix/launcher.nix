@@ -22,7 +22,10 @@ rustPlatform.buildRustPackage {
   meta = with lib; {
     description = "Rust rewrite of the cider launcher (src/linux/startup/cider.c)";
     license = licenses.gpl3Plus;
-    platforms = [ "x86_64-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     mainProgram = "cider";
   };
 }

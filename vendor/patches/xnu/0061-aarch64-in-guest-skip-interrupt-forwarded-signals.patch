@@ -1,0 +1,39 @@
+aarch64 #23 milestone-4: guest skips the interrupt RPCs for forwarded signal handlers (flag-on).
+
+handler_linux_to_bsd_wrapper wrapped every forwarded (non-ptraced) signal handler in
+dserver_rpc_interrupt_enter/exit. For the self-contained case those are no-ops: sigexc_enter has no
+ciderd Mach wait to clear (in-guest Mach from milestone-1) and the user_state sigexc_enter2 pushes is
+read only by thread_get_state, which a plain forwarded handler never calls. Trace confirms bash's
+signals fire this wrapper (interrupt x6, NO sigprocess -- the ptraced sigexc_handler path is not hit),
+so gating it flag-on is validatable. shell /usr/bin/true interrupt 6 -> 0 (RECV 35 -> 29 flag-on),
+rc=0, soak 4/4; flag-off unchanged (RECV 132, interrupt 6). Flag-gated. On top of 0060.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c
+index 4b6d175..d3319ce 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c
+@@ -14,6 +14,7 @@
+ static int sigflags_bsd_to_linux(int flags);
+ static int sigflags_linux_to_bsd(int flags);
+ extern void sig_restorer(void);
++extern int __inguest_ipc_on(void);
+ 
+ extern void* memcpy(void* dest, const void* src, __SIZE_TYPE__ len);
+ extern void* memset(void* dest, int v, __SIZE_TYPE__ len);
+@@ -174,9 +175,14 @@ long sys_sigaction(int signum, const struct bsd___sigaction* nsa, struct bsd_sig
+ #endif
+ 
+ static void handler_linux_to_bsd_wrapper(int linux_signum, struct linux_siginfo* info, void* ctxt) {
+-	dserver_rpc_interrupt_enter();
++	// Self-contained (flag-on): interrupt is a no-op -- sigexc_enter has no ciderd Mach wait to clear,
++	// and its user_state is read only by thread_get_state, which a forwarded handler never calls.
++	int inguest = __inguest_ipc_on();
++	if (!inguest)
++		dserver_rpc_interrupt_enter();
+ 	handler_linux_to_bsd(linux_signum, info, ctxt);
+-	dserver_rpc_interrupt_exit();
++	if (!inguest)
++		dserver_rpc_interrupt_exit();
+ };
+ 
+ static int sigflags_bsd_to_linux(int flags)

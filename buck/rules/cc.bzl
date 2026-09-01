@@ -24,6 +24,31 @@ load("@toolchains//:cc.bzl", "CcToolchainInfo")
 # What a C target hands to its consumers.
 load("//buck/rules:inproc.bzl", "InProcInfo")
 
+# x86-GUEST-ONLY COMPILE FLAGS, DROPPED FOR AN ARM64 GUEST (aarch64 port, task A4). The generated
+# BUCK files carry the reference build's -msse* (and the -Dmovsxw shim libm's SSE inline asm
+# needs); clang refuses them under -target arm64-apple-darwin20. -D_DARWIN_NO_64_BIT_INODE joins
+# them for the same reason: arm64 never shipped a 32-bit-inode ABI, so __DARWIN_ONLY_64_BIT_INO_T
+# is 1 and defining it is a hard #error in sys/cdefs.h; the frameworks that pass it (IOKit and the
+# other vendor/src framework groups) just want the ordinary 64-bit stat, which is the only stat on
+# arm64. (libc handles its own noinode64 *variant* targets by compiling nothing on arm64 instead;
+# see vendor/src/libc/BUCK.) Rather than gate each of the 40-odd sites by hand, one filter over
+# every compile drops them when the guest arch is arm64. On x86 the filter is inert, so the argv is
+# byte-identical to before.
+_M_GUEST_ARM = read_root_config("cider", "guest_arch", "x86_64") == "arm64"
+_X86_ONLY_FLAG_PREFIXES = ["-msse", "-mmmx", "-mavx", "-mfpmath", "-Dmovsxw", "-D_DARWIN_NO_64_BIT_INODE"]
+
+def _drop_x86_flags(flags):
+    if not _M_GUEST_ARM:
+        return flags
+    kept = []
+    for f in flags:
+        # Only plain string flags can be filtered; anything else (cmd_args, artifacts) passes
+        # through untouched. A flag is dropped when it starts with an x86-only prefix.
+        if type(f) == type("") and [p for p in _X86_ONLY_FLAG_PREFIXES if f.startswith(p)]:
+            continue
+        kept.append(f)
+    return kept
+
 CcLibInfo = provider(fields = [
     # list[artifact]: staged include roots, passed as -I in order.
     "include_dirs",
@@ -114,7 +139,7 @@ def compile_objects(ctx, tc, srcs, include_dirs, flags, out_prefix, prefix_heade
         obj = ctx.actions.declare_output(out_prefix + "/" + src.short_path + ".o")
         cmd = cmd_args(tc.cxx if is_cxx else tc.cc)
         cmd.add(tc.cxxflags if is_cxx else tc.cflags)
-        cmd.add(flags)
+        cmd.add(_drop_x86_flags(flags))
         for inc in include_dirs:
             cmd.add(cmd_args(inc, format = "-I{}"))
         # Force-included headers travel as artifacts, not as bare path strings,

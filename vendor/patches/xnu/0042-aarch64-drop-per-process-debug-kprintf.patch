@@ -1,0 +1,37 @@
+aarch64 #11 Tier 1: drop per-process debug kprintf that round-trip to ciderd.
+
+DSERVER_TRACE_CALLS (ciderd.log) shows ~4.4 kprintf RPCs per spawned process, all unconditional debug output:
+execve.c "execve expand ...", filio.c "dtype for fd ...", and sigexc.c "darling_sigexc_self()". Each
+__simple_kprintf is a dserver_rpc_kprintf round-trip to the daemon (plus formatting), on the hot per-process
+path. They carry no functional purpose, so remove them; this cuts per-spawn guest->ciderd RPCs.
+---
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
+@@ -153,7 +153,6 @@
+ 	strcpy(vc.path, fname);
+ 
+ 	ret = vchroot_expand(&vc);
+-	__simple_kprintf("execve expand %s -> %s, ret %d", fname, vc.path, ret);
+ 	if (ret < 0)
+ 		return errno_linux_to_bsd(ret);
+ 
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/filio.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/filio.c
+@@ -60,7 +60,6 @@
+ 				*retval = -EBADF;
+ 				return IOCTL_HANDLED;
+ 			}
+-			__simple_kprintf("dtype for fd %d -> %s\n", fd, orig_path);
+ 
+ 			*retval = 0;
+ 			if (strncmp(orig_path, "/dev/pts", 8) == 0
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+@@ -285,7 +285,6 @@
+ {
+ 	am_i_ptraced = true;
+ 
+-	__simple_kprintf("darling_sigexc_self()\n");
+ 	// Make sigexc_handler the handler for all signals in the process
+ 	for (int i = 1; i <= 31; i++)
+ 	{

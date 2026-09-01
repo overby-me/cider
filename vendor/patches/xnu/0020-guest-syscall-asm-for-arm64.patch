@@ -1,0 +1,200 @@
+The guest syscall entry asm gains its arm64 forms (aarch64 port, task A8)
+
+The six darling-authored syscall trampolines (bsd/mach/machdep syscall, the linux-syscall
+thunk, the signal restorer, the xtrace hooks) were x86-only and hit #error Missing assembly
+under -target arm64. darling PR 1753 adds the arm64 blocks: the table dispatch through
+x16/x9, the svc #0 thunk with the syscall number in x8, and the xtrace NOP sleds. Taken
+verbatim from the PR xnu (fa29287..12132d9); no cider patch touches these files.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/linux_premigration/linux-syscall.S b/darling/src/libsystem_kernel/emulation/src/linux_premigration/linux-syscall.S
+index e7b9f53..609978b 100644
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/linux-syscall.S
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/linux-syscall.S
+@@ -69,6 +69,15 @@ _linux_syscall:
+ 	pop %ebp
+ 	ret
+ 
++#elif defined(__aarch64__)
++
++	// ARM64 Linux syscall convention:
++	// syscall number in x8, arguments in x0-x5, return value in x0
++	// In the C calling convention, the 7th argument (syscall number) is in x6
++	mov  x8, x6
++	svc  #0
++	ret
++
+ #else
+ 
+ #	error Missing assembly!
+diff --git a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sig_restorer.S b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sig_restorer.S
+index 916c2cb..ba6e3b2 100644
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sig_restorer.S
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sig_restorer.S
+@@ -12,4 +12,10 @@ _sig_restorer:
+ _sig_restorer:
+ 	movl $173, %eax
+ 	int $0x80
++
++#elif defined(__aarch64__)
++
++_sig_restorer:
++	mov x8, #139
++	svc #0
+ #endif
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall.S b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall.S
+index a26ae39..99b599c 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall.S
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall.S
+@@ -96,6 +96,44 @@ __darling_bsd_syscall_exit:
+ 
+ .subsections_via_symbols
+ 
++#elif defined(__aarch64__)
++
++__darling_bsd_syscall:
++	// Save fp/lr around the blr; otherwise ret returns to itself.
++	stp  x29, x30, [sp, #-16]!
++	mov  x29, sp
++Lentry_hook:
++	// NOP sled for xtrace hook (ARM64 NOP = 0xd503201f)
++	nop
++	nop
++	nop
++	nop
++	adrp x9, ___bsd_syscall_table@GOTPAGE
++	ldr  x9, [x9, ___bsd_syscall_table@GOTPAGEOFF]
++	ldr  x9, [x9, x16, lsl #3]    // table[syscall_nr * 8]
++	cbz  x9, Lno_sys
++	blr  x9                        // call handler, args already in x0-x7
++Lstd_ret:
++Lexit_hook:
++	nop
++	nop
++	nop
++	nop
++	ldp  x29, x30, [sp], #16
++	ret
++Lno_sys:
++	mov  x0, x16
++	bl   ___unknown_syscall
++	b    Lstd_ret
++
++.section        __DATA,__data
++.globl __darling_bsd_syscall_entry
++.globl __darling_bsd_syscall_exit
++__darling_bsd_syscall_entry:
++	.quad Lentry_hook
++__darling_bsd_syscall_exit:
++	.quad Lexit_hook
++
+ #else
+ #	error Missing assembly
+ #endif
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall.S b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall.S
+index b02d447..783e7df 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall.S
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall.S
+@@ -106,6 +106,48 @@ __darling_mach_syscall_exit:
+ 
+ .subsections_via_symbols
+ 
++#elif defined(__aarch64__)
++
++__darling_mach_syscall:
++	// Save fp/lr around the blr; otherwise ret returns to itself.
++	stp  x29, x30, [sp, #-16]!
++	mov  x29, sp
++	cmp  x16, #0
++	b.ge Lpositive
++	neg  x16, x16
++Lpositive:
++Lentry_hook:
++	// NOP sled for xtrace hook
++	nop
++	nop
++	nop
++	nop
++	adrp x9, ___mach_syscall_table@GOTPAGE
++	ldr  x9, [x9, ___mach_syscall_table@GOTPAGEOFF]
++	ldr  x9, [x9, x16, lsl #3]    // table[trap_nr * 8]
++	cbz  x9, Lno_sys
++	blr  x9                        // call handler, args already in x0-x7
++Lstd_ret:
++Lexit_hook:
++	nop
++	nop
++	nop
++	nop
++	ldp  x29, x30, [sp], #16
++	ret
++Lno_sys:
++	mov  x0, x16
++	bl   ___unknown_mach_syscall
++	b    Lstd_ret
++
++.section        __DATA,__data
++.globl __darling_mach_syscall_entry
++.globl __darling_mach_syscall_exit
++__darling_mach_syscall_entry:
++	.quad Lentry_hook
++__darling_mach_syscall_exit:
++	.quad Lexit_hook
++
+ #else
+ #	error Missing assembly
+ #endif
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall.S b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall.S
+index a4ed177..6cf2c60 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall.S
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall.S
+@@ -63,6 +63,26 @@ L___machdep_syscall_table$non_lazy_ptr:
+ 
+ .subsections_via_symbols
+ 
++#elif defined(__aarch64__)
++
++__darling_machdep_syscall:
++	// Save fp/lr — we make a function call (blr x9) and then RET back to caller.
++	stp  x29, x30, [sp, #-16]!
++	mov  x29, sp
++	and  x16, x16, #0xff
++	adrp x9, ___machdep_syscall_table@GOTPAGE
++	ldr  x9, [x9, ___machdep_syscall_table@GOTPAGEOFF]
++	ldr  x9, [x9, x16, lsl #3]    // table[syscall_nr * 8]
++	cbz  x9, Lno_sys
++	blr  x9                        // call handler, args already in x0-x7
++Lstd_ret:
++	ldp  x29, x30, [sp], #16
++	ret
++Lno_sys:
++	mov  x0, x16
++	bl   ___unknown_syscall_machdep
++	b    Lstd_ret
++
+ #else
+ #	error Missing assembly
+ #endif
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/xtrace-hooks.S b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/xtrace-hooks.S
+index 76e3f5f..d7fdcd1 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/xtrace-hooks.S
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/xtrace-hooks.S
+@@ -18,6 +18,19 @@
+ 		ret
+ .endm
+ 
++#elif defined(__aarch64__) || defined(__arm64__)
++
++.macro xtrace_hook name
++	.text
++	.globl _\name
++	_\name\():
++		nop
++		nop
++		nop
++		nop
++		ret
++.endm
++
+ #else
+ 
+ #error Missing xtrace hook dummy function macro for this architecture

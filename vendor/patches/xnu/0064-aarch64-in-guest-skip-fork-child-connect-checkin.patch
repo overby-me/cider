@@ -1,0 +1,84 @@
+aarch64 #23 milestone-4: fork child skips the ciderd connect + checkin (flag-on)
+
+The post-fork child rebuilt its dserver RPC socket and checked in. Flag-on a self-contained child
+needs no ciderd connection at all until it execs (mldr rebuilds the socket and checks in there) or
+exits, so skip the whole block: socket refresh, lifetime-pipe refresh, guards, and checkin.
+
+This is what 3 sessions of the checkin-abort chase missed. Skipping ONLY the checkin RPC while KEEPING
+the socket refresh left a half-open dserver connection (a fresh socket ciderd sees, with no checkin
+handshake) that made a fork+exec child (path_helper in the login chain) abort on teardown and
+group-signal its siblings. Dropping the ENTIRE block removes the half-open state and the abort with it.
+
+No leak: a self-contained child makes zero RPCs, so ciderd never sees it and allocates nothing to
+reap; a child that execs gets mldr's checkin + the #33 death-watch. Verified: 200 pure-fork subshells
+flag-on make 0 ciderd RPCs (RECV stays at the login-chain baseline) and finish faster than flag-off;
+a 100-exec bash loop runs clean, no leak. shell /usr/bin/true checkin 10 -> 6 (RECV 16 -> 12), rc=0,
+soak 3/3; flag-off unchanged (132). Flag-gated. On top of 0063.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c
+@@ -41,27 +41,36 @@
+ 		// that should also take care of closing descriptors for any other threads.
+ 		guard_table_postfork_child();
+
+-		// create a new dserver RPC socket
+-		__dserver_per_thread_socket_refresh();
+-		int newReadFd = __dserver_process_lifetime_pipe_refresh();
++		// #23 milestone-4 (flag-on): a self-contained fork child needs no ciderd connection until it
++		// execs (mldr rebuilds the socket and checks in) or exits, so skip the whole refresh+checkin.
++		// Skipping ONLY the checkin while keeping the socket refresh left a half-open connection that
++		// aborted the child on teardown; dropping the entire block is what avoids that.
++		extern int __inguest_ipc_on(void);
++		if (!__inguest_ipc_on())
++		{
++			// create a new dserver RPC socket
++			__dserver_per_thread_socket_refresh();
++			int newReadFd = __dserver_process_lifetime_pipe_refresh();
+
+-		// guard it
+-		guard_entry_options_t options;
+-		options.close = __dserver_close_socket;
+-		guard_table_add(__dserver_per_thread_socket(), guard_flag_prevent_close | guard_flag_close_on_fork, &options);
++			// guard it
++			guard_entry_options_t options;
++			options.close = __dserver_close_socket;
++			guard_table_add(__dserver_per_thread_socket(), guard_flag_prevent_close | guard_flag_close_on_fork, &options);
+
+-		// only guard the lifetime pipe if it's used.
+-		if (newReadFd != -1)
+-		{
+-			options.close = __dserver_close_process_lifetime_pipe;
+-			guard_table_add(__dserver_get_process_lifetime_pipe(), guard_flag_prevent_close | guard_flag_close_on_fork, &options);
+-		}
++			// only guard the lifetime pipe if it's used.
++			if (newReadFd != -1)
++			{
++				options.close = __dserver_close_process_lifetime_pipe;
++				guard_table_add(__dserver_get_process_lifetime_pipe(), guard_flag_prevent_close | guard_flag_close_on_fork, &options);
++			}
+
+-		int dummy_stack_variable;
+-		if (dserver_rpc_checkin(true, &dummy_stack_variable, newReadFd, NULL, NULL, NULL, NULL) < 0) {
+-			// we can't do ANYTHING if darlingserver fails to acknowledge us
+-			__simple_printf("Failed to checkin with darlingserver after fork\n");
+-			__simple_abort();
++			int dummy_stack_variable;
++			if (dserver_rpc_checkin(true, &dummy_stack_variable, newReadFd, NULL, NULL, NULL, NULL) < 0) {
++				// we can't do ANYTHING if darlingserver fails to acknowledge us
++				__simple_printf("Failed to checkin with darlingserver after fork\n");
++				__simple_abort();
++			}
++			__dserver_close_process_lifetime_pipe(newReadFd);
+ 		}
+ 		// #11 Tier 1: the child is a new task with a new self port; drop the cached task_self.
+ 		__task_self_trap_reset();
+@@ -68,8 +77,6 @@
+ 		__host_self_trap_reset();
+ 		if (wdfd >= 0)
+ 			sys_fchdir(wdfd);
+-
+-		__dserver_close_process_lifetime_pipe(newReadFd);
+ 	}
+
+ 	return ret;

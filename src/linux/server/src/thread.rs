@@ -29,9 +29,10 @@ use crate::bindings::xnu_sys_thread_t;
 //                               guest addresses, run the signal through XNU, optionally wait
 //                               while user-suspended for a debugger, save the modified state.
 use crate::xnu::thread::{
-    xnu_sys_thread_dying, xnu_sys_thread_load_state_from_user, xnu_sys_thread_process_signal,
-    xnu_sys_thread_save_state_to_user, xnu_sys_thread_sigexc_enter, xnu_sys_thread_sigexc_enter2,
-    xnu_sys_thread_sigexc_exit, xnu_sys_thread_wait_while_user_suspended,
+    thread_deallocate, xnu_sys_thread_dying, xnu_sys_thread_load_state_from_user,
+    xnu_sys_thread_process_signal, xnu_sys_thread_save_state_to_user, xnu_sys_thread_sigexc_enter,
+    xnu_sys_thread_sigexc_enter2, xnu_sys_thread_sigexc_exit,
+    xnu_sys_thread_wait_while_user_suspended,
 };
 
 /// Tell XNU the guest thread has died, tearing down its Mach state. Call on checkout
@@ -41,6 +42,15 @@ pub unsafe fn dying(thread: *mut xnu_sys_thread_t) {
     // Drop it from the thread_lookup table first, so no lookup resolves a dead thread.
     crate::sched::unregister_thread_lookup(thread);
     xnu_sys_thread_dying(thread);
+}
+
+/// Release a really-dead guest thread's xnu_sys_thread (task #33): drops the create-ref, so once no
+/// retain is outstanding xnu_sys_thread_destroy runs, freeing the struct AND releasing (via
+/// task_deallocate) the thread's task reference, which lets the task reach 0 refs. MUST run under a
+/// current-thread context (on a microthread, e.g. run_on_task): the IPC teardown reads
+/// current_thread(), which is null on the bare daemon thread -> null deref.
+pub unsafe fn deallocate(thread: *mut xnu_sys_thread_t) {
+    thread_deallocate(std::ptr::addr_of_mut!((*thread).xnu_thread));
 }
 
 /// Load the guest thread's saved register/float state (at guest addresses) into the xnu_sys

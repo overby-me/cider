@@ -1,0 +1,34 @@
+aarch64 #23 milestone-4: guest skips exec-checkout (flag-on)
+
+execve sent the daemon a checkout on every exec: the pre-exec thread's reap signal, plus the
+execve-completion pipe (EOF = success, one byte = failure). For the self-contained case neither is
+needed. ciderd's #30 exec-replacement reuse reaps the old thread when the new image re-checks in on
+the same (nsid,tid), and the completion pipe is redundant: a successful exec re-checks in, a failed
+one leaves the old image and its daemon thread running, which is already the correct state. Skipping
+it leaks nothing -- the per-process death watch + despawn_task (#33) already destroy threads that
+finished without a checkout at process death. shell /usr/bin/true checkout 5 -> 0 (RECV 21 -> 16
+flag-on), rc=0; a 100-exec bash loop runs clean (checkout 105 -> 0, RECV 2632 -> 217, faster
+wall-clock, no leak), flag-off unchanged (132). Flag-gated. On top of 0062.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
+@@ -431,9 +431,15 @@
+ 		return errno_linux_to_bsd(ret);
+
+ 	// send a copy of the read end to the server (along with whether or not we're executing another Darling-managed binary)
+-	ret = dserver_rpc_checkout(dserver_execve_pipe[0], is_script || is_macho);
+-	if (ret < 0)
+-		return errno_linux_to_bsd(ret);
++	// #23 milestone-4 (flag-on): skip the exec-checkout. Its two jobs are covered without it -- ciderd's
++	// #30 exec-replacement reuse reaps the old thread when the new image re-checks in (same nsid,tid),
++	// and the daemon needs no execve-pipe success/failure signal: a successful exec re-checks in, a
++	// failed one leaves the old image (and its daemon thread) running, which is already correct.
++	if (!__inguest_ipc_on()) {
++		ret = dserver_rpc_checkout(dserver_execve_pipe[0], is_script || is_macho);
++		if (ret < 0)
++			return errno_linux_to_bsd(ret);
++	}
+
+ 	// close the read end for ourselves
+ 	close_internal(dserver_execve_pipe[0]);

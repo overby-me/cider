@@ -1,0 +1,60 @@
+aarch64: fetch the TSD base in _tlv_get_addr via sys_thread_get_tsd_base, not TPIDRRO_EL0.
+
+The arm64 _tlv_get_addr (thread-local variable accessor) read the Darwin TSD base from
+`mrs TPIDRRO_EL0`. TPIDRRO_EL0 is kernel-owned and reads 0 from EL0 on Linux, so `ldr x17,[x17,
+key*8]` dereferenced a null base and faulted (e.g. at 0x810 for key 0x102). Any guest that uses
+C++/C11 thread_locals crashed the instant it touched one -- guest Nix dies immediately. Same root
+cause as the errno accessor (patch 0026) and setjmp (0034). Route the base through the emulation
+hash (sys_thread_get_tsd_base). _tlv_get_addr must preserve everything but x0/x16/x17, so the C call
+is bracketed with a save/restore of the caller-saved regs, mirroring the LlazyAllocate path in the
+same file; x16 (the key) is reloaded afterward. With this, guest nix runs under cider arm64.
+--- a/src/threadLocalHelpers.S
++++ b/src/threadLocalHelpers.S
+@@ -233,8 +233,47 @@
+ #else
+ 	ldr		w16, [x0, #4]			// get key from descriptor
+ #endif
++#ifdef DARLING
++	// aarch64 darling: TPIDRRO_EL0 reads 0 from EL0 on Linux, so the Darwin TSD base must come from
++	// sys_thread_get_tsd_base() (the tid-keyed hash in the libsystem_kernel emulation), like the errno
++	// accessor (patch 0026) and setjmp (0034). _tlv_get_addr's contract is "clobber only x0/x16/x17",
++	// so bracket the C call with a save/restore of the caller-saved regs it may trash, mirroring the
++	// LlazyAllocate path below. x16 (the key) is reloaded from the descriptor after the call.
++	stp		fp, lr, [sp, #-16]!
++	mov		fp, sp
++	stp		x0, x1, [sp, #-16]!
++	stp		x2, x3, [sp, #-16]!
++	stp		x4, x5, [sp, #-16]!
++	stp		x6, x7, [sp, #-16]!
++	stp		x8, x9, [sp, #-16]!
++	stp		x10, x11, [sp, #-16]!
++	stp		x12, x13, [sp, #-16]!
++	stp		x14, x15, [sp, #-16]!
++	stp		q0, q1, [sp, #-32]!
++	stp		q2, q3, [sp, #-32]!
++	stp		q4, q5, [sp, #-32]!
++	stp		q6, q7, [sp, #-32]!
++	bl		_sys_thread_get_tsd_base
++	mov		x17, x0					// x17 = Darwin TSD base
++	ldp		q6, q7, [sp], #32
++	ldp		q4, q5, [sp], #32
++	ldp		q2, q3, [sp], #32
++	ldp		q0, q1, [sp], #32
++	ldp		x14, x15, [sp], #16
++	ldp		x12, x13, [sp], #16
++	ldp		x10, x11, [sp], #16
++	ldp		x8, x9, [sp], #16
++	ldp		x6, x7, [sp], #16
++	ldp		x4, x5, [sp], #16
++	ldp		x2, x3, [sp], #16
++	ldp		x0, x1, [sp], #16
++	mov		sp, fp
++	ldp		fp, lr, [sp], #16
++	ldr		x16, [x0, #8]			// reload key (clobbered across the call)
++#else
+ 	mrs		x17, TPIDRRO_EL0
+ 	and		x17, x17, #-8			// clear low 3 bits???
++#endif
+ #if __LP64__
+ 	ldr		x17, [x17, x16, lsl #3]	// get thread allocation address for this key
+ #else

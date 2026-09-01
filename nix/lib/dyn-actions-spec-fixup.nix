@@ -33,7 +33,10 @@ rustPlatform.buildRustPackage {
   meta = with lib; {
     description = "Fix up an emitted derivation spec before nix derivation add (#99)";
     license = licenses.gpl3Plus;
-    platforms = [ "x86_64-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     mainProgram = "cider-spec-fixup";
   };
 }

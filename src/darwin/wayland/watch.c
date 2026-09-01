@@ -68,7 +68,11 @@ static void cider_watch_handler(int signo, siginfo_t *info, void *context)
 	unsigned long long pc = 0;
 	ucontext_t *uc = (ucontext_t *) context;
 	if (uc != NULL && uc->uc_mcontext != NULL) {
+#if defined(__x86_64__) || defined(__i386__)
 		pc = (unsigned long long) uc->uc_mcontext->__ss.__rip;
+#else
+		pc = (unsigned long long) uc->uc_mcontext->__ss.__pc;
+#endif
 	}
 
 	if (watch_reported < 12) {

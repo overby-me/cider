@@ -102,6 +102,12 @@ unsafe fn fail(message: &[u8]) -> ! {
 // mutex
 // ---------------------------------------------------------------------------------------
 
+/// How long the no-active-thread fallback in `xnu_sys_mutex_lock` waits for a vanished owner
+/// before taking the mutex anyway. Far longer than any legitimate xnu_sys_mutex hold (which is
+/// sub-millisecond); short enough that per-process teardown is not visibly delayed. See the use
+/// site for why an unbounded wait here wedges a ciderd worker and the guest it serves.
+const NO_THREAD_LOCK_TIMEOUT_MS: u128 = 2000;
+
 #[no_mangle]
 pub unsafe extern "C" fn xnu_sys_mutex_init(mutex: *mut xnu_sys_mutex_t) {
     (*mutex).xnu_sys_owner = 0;
@@ -128,15 +134,29 @@ pub unsafe extern "C" fn xnu_sys_mutex_lock(mutex: *mut xnu_sys_mutex_t) {
 
     if thread.is_null() {
         log_warning("Trying to lock mutex without an active thread!");
-        // No microthread to suspend, so fall back to the native queue lock and SPIN. Anything
-        // taking this path really does sleep the whole thread, so it must hold briefly.
+        // No microthread to suspend, so fall back to the native queue lock and wait for the
+        // logical owner to free the mutex. Anything taking this path really does sleep the whole
+        // thread, so an owner is expected to hold briefly.
+        //
+        // BOUNDED, because the owner can VANISH. During per-process teardown a microthread that
+        // owns this mutex can be destroyed without ever clearing xnu_sys_owner (it died between
+        // lock and unlock). An unbounded wait then never ends: the ciderd worker spins forever and
+        // the guest process it serves stays wedged in its syscall, holding a /proc gc-root. So
+        // after a window far longer than any legitimate xnu_sys_mutex hold, give up on the dead
+        // owner and take the lock anyway. Both exits return holding queue_lock, exactly like the
+        // success path, so the paired null-thread unlock stays balanced.
+        let start = std::time::Instant::now();
         loop {
             libsimple_lock_lock(queue_lock);
             if (*mutex).xnu_sys_owner == 0 {
                 return;
             }
+            if start.elapsed().as_millis() >= NO_THREAD_LOCK_TIMEOUT_MS {
+                log_warning("mutex owner vanished (teardown?): taking it without an active thread");
+                return;
+            }
             libsimple_lock_unlock(queue_lock);
-            std::hint::spin_loop();
+            std::thread::yield_now();
         }
     }
 

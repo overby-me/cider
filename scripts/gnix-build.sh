@@ -34,12 +34,11 @@ build-users-group =
 require-sigs = false
 substituters = "
 
-nix-store --init 2>&1 | tail -1
+echo "=NIXVER="; nix --version 2>&1; echo "=NIXVER_RC=$?="
+echo "=INIT="; nix-store --init 2>&1; echo "=INIT_RC=$?="
 # Seed the valid-paths DB so the substituted build inputs (present via the
 # writable-/nix overlay lower) are trusted and GDRV itself is buildable.
-if nix-store --load-db < "/Volumes/SystemRoot$GDB" 2>&1 | tail -1; then :; fi
-
-echo "=NIXVER="; nix --version 2>&1 | head -1 || { echo NIX_RUN_FAIL; exit 1; }
+echo "=LOADDB="; nix-store --load-db < "/Volumes/SystemRoot$GDB" 2>&1; echo "=LOADDB_RC=$?="
 echo "=BUILD $GDRV="
 # ^* builds all outputs, so multi-output packages (bin/lib/dev/...) work too.
 # Retry: guest test/build binaries occasionally crash with a transient signal
@@ -48,7 +47,16 @@ echo "=BUILD $GDRV="
 # nix builds are atomic, so a fresh attempt re-runs configure and usually passes.
 brc=1
 for attempt in 1 2 3 4; do
-	nix build --offline --no-link "${GDRV}^*" 2>&1
+	# Cores default to 1 (serial). Parallel `make -j` hung under cider on aarch64: make's
+	# jobserver waits in poll() (Darwin poll -> Linux ppoll on arm64) and uses the poll timeout
+	# as the heartbeat on which it reaps finished jobs. The arm64 ppoll ms->timespec conversion
+	# was broken (poll.c: tv_sec = (timeout%1000)*1000000), so a sub-second timeout became a
+	# ~15-year wait; finished children piled up as unreaped zombies and the build never
+	# progressed (seen after the builtins/support subdirs). Serial fork+wait4 (as configure uses)
+	# never hits that path, so it always worked. The timeout bug is fixed in
+	# vendor/patches/xnu/0038; set CIDER_GNIX_CORES>1 to build in parallel once a prefix rebuilt
+	# with 0038 has confirmed it, then this default can drop. 1 stays the safe default until then.
+	nix build -L --cores "${CIDER_GNIX_CORES:-1}" --offline --no-link "${GDRV}^*" 2>&1
 	brc=$?
 	[ "$brc" -eq 0 ] && break
 	echo "build attempt $attempt failed (rc=$brc); retrying (transient-crash mitigation)..."

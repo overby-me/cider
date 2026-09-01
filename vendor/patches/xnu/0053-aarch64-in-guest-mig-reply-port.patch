@@ -1,0 +1,35 @@
+aarch64 #23 milestone-1: mint the MIG reply port in-guest too (drops reply_port_batch).
+
+With every MIG kernel query served in-guest (0051 + 0052) there is 0 ciderd mach_msg, so the
+per-thread MIG reply port is never sent to ciderd. mach_reply_port_impl therefore mints it from the
+guest port table (0xE0000000+) instead of the reply-port batch RPC. Verified: exec-true RECV 58 -> 54
+(reply_port_batch 7 -> 3), rc=0, soak 10/10. The 3 remaining are the dyld-loader copy of
+libsystem_kernel (not rebuilt in the buck2 swap); folding those needs the dyld build with its own
+queries synthesized. Flag-off unchanged. On top of 0052.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+index cb70414..42186ab 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -18,6 +18,9 @@
+ #define UNIMPLEMENTED_TRAP() { char msg[] = "Called unimplemented Mach trap: "; write(2, msg, sizeof(msg)-1); write(2, __FUNCTION__, sizeof(__FUNCTION__)-1); write(2, "\n", 1); }
+ 
+ #include <libsimple/lock.h>
++// #23 port table (defined below with the in-guest IPC gate); forward-declared for mach_reply_port_impl.
++static _Bool inguest_ipc_on(void);
++static mach_port_name_t inguest_mint_port(void);
+ // #11/#23 in-guest reply-port pool: hand out ports from a batch fetched in ONE RPC
+ // (mach_reply_port_batch), skipping the per-reply_port round-trip. ciderd assigns REAL names, so
+ // there is no translation or collision. Guarded like getuid.c's uid/gid cache.
+@@ -35,6 +38,11 @@ void __reply_pool_reset(void)
+ }
+ mach_port_name_t mach_reply_port_impl(void)
+ {
++	// #23 port table: with every MIG kernel query served in-guest (0 ciderd mach_msg), the per-thread
++	// MIG reply port is never sent to ciderd, so mint it in-guest -- no reply_port_batch RPC at all.
++	// (Safe only because no ciderd mach_msg uses it; deallocate/mod_refs on the minted name are in-guest.)
++	if (inguest_ipc_on())
++		return inguest_mint_port();
+ 	libsimple_rwlock_lock_write(&g_reply_pool_lock);
+ 	if (g_reply_pool_avail > 0)
+ 	{

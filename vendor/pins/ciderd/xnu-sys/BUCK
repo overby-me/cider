@@ -728,7 +728,9 @@ cc_objects(
         "xnu/libkern/c++/priority_queue.cpp",
         "xnu/libkern/gen/OSAtomicOperations.c",
         "xnu/libkern/os/refcnt.c",
-        "xnu/osfmk/i386/rtclock.c",
+        # rtclock is the one machine file the daemon compiles from osfmk: the i386 one reads
+        # TSC, the arm64 replacement (darling PR 1753's, src/rtclock_arm64.c) reads CNTVCT.
+        "src/rtclock_arm64.c" if host_info().arch.is_aarch64 else "xnu/osfmk/i386/rtclock.c",
         "xnu/osfmk/ipc/ipc_entry.c",
         "xnu/osfmk/ipc/ipc_eventlink.c",
         "xnu/osfmk/ipc/ipc_hash.c",

@@ -1,0 +1,143 @@
+aarch64 #23 milestone-1: port-returning kernel queries served in-guest (host_get_clock_service 206,
+task special ports 3409/3418).
+
+Extends the in-guest kernel-query synthesis (0051) to the PORT-returning queries. Adds a tiny guest
+port table: inguest_mint_port() hands out names in a reserved high range (0xE0000000+) that ciderd
+never assigns. mach_msg_overwrite_trap_impl synthesizes the COMPLEX reply (Head COMPLEX + msgh_body
+{count=1} + one MOVE_SEND port descriptor, 40 bytes, matching ciderd's bytes) for
+host_get_clock_service (206 -> minted clock port) and the two task special-port queries (3409 ->
+MACH_PORT_NULL, as ciderd returns; 3418 -> minted port). deallocate/mod_refs on a minted name are
+served in-guest (the guest owns it; RPCing an unknown name would error and abort the trap).
+
+exec-true only FETCHES these ports (never sends to them), so a minted name that is stored and freed
+at exit suffices. Verified with 0051: exec-true drops all 4 self-contained kernel queries
+(200/206/3409/3418) to 0 ciderd RPC -- RECV 70 -> 58 (-12 RPCs/spawn), rc=0, soak 10/10. Flag-off
+unchanged. On top of 0051.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+index 3453441..cb70414 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -182,6 +182,22 @@ static void mach_msg_guard_add(mach_port_name_t name) {
+ static _Bool g_inguest_ipc = 0;
+ void __inguest_ipc_set(int on) { g_inguest_ipc = on ? 1 : 0; }
+ static _Bool inguest_ipc_on(void) { return g_inguest_ipc; }
++// #23 port table (milestone 1, port-returning queries): mint guest-owned port names in a reserved
++// high range ciderd never assigns, so a synthesized kernel query can hand back a port with no daemon.
++// exec-true only FETCHES these ports (clock service, task special ports) and never sends to them, so a
++// minted name that is only stored (and freed at exit) suffices; a name in the range routes port ops
++// in-guest (see the deallocate/mod_refs guards).
++#define INGUEST_PORT_BASE 0xE0000000u
++static libsimple_rwlock_t g_inguest_mint_lock = LIBSIMPLE_RWLOCK_INITIALIZER;
++static uint32_t g_inguest_next = 0;
++static mach_port_name_t inguest_mint_port(void) {
++	libsimple_rwlock_lock_write(&g_inguest_mint_lock);
++	uint32_t n = ++g_inguest_next;
++	libsimple_rwlock_unlock_write(&g_inguest_mint_lock);
++	return (mach_port_name_t) (INGUEST_PORT_BASE + n);
++}
++static _Bool inguest_is_minted(mach_port_name_t name) { return name >= INGUEST_PORT_BASE; }
++
+ static int inguest_ncpu(void) {
+ 	// sched_getaffinity, NOT sysconf(_SC_NPROCESSORS_ONLN): sysconf is itself implemented via host_info,
+ 	// so calling it from this hook re-enters and recurses forever.
+@@ -288,6 +304,36 @@ static _Bool inguest_serve_host_info(mach_msg_header_t* req, mach_msg_header_t*
+ 	return 1;
+ }
+ 
++// Synthesize a port-returning kernel query reply (host_get_clock_service 206, task special ports
++// 3409/3418): a COMPLEX message with ONE port descriptor, matching the real ciderd reply bytes
++// (Head COMPLEX + msgh_body{count=1} + port_descriptor, 40 bytes, no NDR/RetCode). want_port=0 returns
++// MACH_PORT_NULL (as ciderd does for task port 3409). The returned port is a guest-minted name that
++// exec-true only stores; reqid is passed already-read because rcv aliases the request.
++static _Bool inguest_serve_port_query(mach_msg_id_t reqid, mach_msg_header_t* rcv, mach_msg_size_t rcv_size, mach_port_name_t rcv_name, _Bool want_port) {
++	mach_msg_size_t reply_size = (mach_msg_size_t) (sizeof(mach_msg_header_t) + sizeof(mach_msg_body_t)
++		+ sizeof(mach_msg_port_descriptor_t));
++	if (rcv == 0 || rcv_size < reply_size + 8) return 0;
++	mach_port_name_t port = want_port ? inguest_mint_port() : MACH_PORT_NULL;
++	char* p = (char*) rcv;
++	memset(p, 0, reply_size);
++	mach_msg_header_t* h = (mach_msg_header_t*) p;
++	h->msgh_bits = 0x80001200; // MACH_MSGH_BITS_COMPLEX + MOVE_SEND_ONCE local, remote 0
++	h->msgh_size = reply_size;
++	h->msgh_remote_port = 0;
++	h->msgh_local_port = rcv_name;
++	h->msgh_id = reqid + 100;
++	mach_msg_body_t* body = (mach_msg_body_t*) (p + sizeof(mach_msg_header_t));
++	body->msgh_descriptor_count = 1;
++	mach_msg_port_descriptor_t* d = (mach_msg_port_descriptor_t*) (p + sizeof(mach_msg_header_t) + sizeof(mach_msg_body_t));
++	d->name = port;
++	d->disposition = 17; // MACH_MSG_TYPE_MOVE_SEND
++	d->type = MACH_MSG_PORT_DESCRIPTOR;
++	unsigned char* tr = p + reply_size;
++	tr[0] = 0; tr[1] = 0; tr[2] = 0; tr[3] = 0;
++	tr[4] = 8; tr[5] = 0; tr[6] = 0; tr[7] = 0;
++	return 1;
++}
++
+ mach_msg_return_t mach_msg_overwrite_trap_impl(
+ 				mach_msg_header_t *msg,
+ 				mach_msg_option_t option,
+@@ -301,17 +347,28 @@ mach_msg_return_t mach_msg_overwrite_trap_impl(
+ {
+ 	int code;
+ 
+-	// fully-without-ciderd milestone 1: synthesize a self-contained kernel MIG reply fully in-guest
+-	// (zero ciderd RPC). host_info's reply BYTES are synthesized correctly (verified byte-identical to
+-	// ciderd's), but enabling this presently SIGTRAPs the guest: skipping the RPC leaves ciderd's
+-	// reply-port/thread state unestablished, which a later guest op asserts on. The fix is the in-guest
+-	// reply-port/thread state layer, NOT the reply bytes -- see cider-inguest-synth-blocked-on-state.
+-	// Gated behind CIDER_INGUEST_IPC (default off); flag-off is the untouched baseline path.
++	// fully-without-ciderd milestone 1: serve a self-contained kernel MIG query fully in-guest, zero
++	// ciderd RPC. Gated behind CIDER_INGUEST_IPC (default off; flag-off is the untouched baseline).
++	// msg->msgh_id (the REQUEST id) is captured FIRST: the synthesizers write rcv_msg, which aliases msg
++	// for mach_msg_trap, so reading it afterwards would see the zeroed request.
+ 	if (inguest_ipc_on() && (option & MACH_SEND_MSG) && (option & MACH_RCV_MSG)
+-	    && send_size >= sizeof(mach_msg_header_t) + sizeof(NDR_record_t) + 2 * sizeof(mach_msg_type_number_t)
+-	    && msg->msgh_id == 200
+-	    && inguest_serve_host_info(msg, rcv_msg, rcv_size, rcv_name)) {
+-		return MACH_MSG_SUCCESS;
++	    && send_size >= sizeof(mach_msg_header_t)) {
++		mach_msg_id_t rid = msg->msgh_id;
++		if (rid == 200) {
++			// host_info: data-only reply.
++			if (send_size >= sizeof(mach_msg_header_t) + sizeof(NDR_record_t) + 2 * sizeof(mach_msg_type_number_t)
++			    && inguest_serve_host_info(msg, rcv_msg, rcv_size, rcv_name))
++				return MACH_MSG_SUCCESS;
++		} else if (rid == 206) {
++			// host_get_clock_service -> a guest-minted clock port (never sent to by exec-true).
++			if (inguest_serve_port_query(rid, rcv_msg, rcv_size, rcv_name, 1)) return MACH_MSG_SUCCESS;
++		} else if (rid == 3409) {
++			// task special port that ciderd returns NULL -> return MACH_PORT_NULL.
++			if (inguest_serve_port_query(rid, rcv_msg, rcv_size, rcv_name, 0)) return MACH_MSG_SUCCESS;
++		} else if (rid == 3418) {
++			// task special port -> a guest-minted port (never sent to by exec-true).
++			if (inguest_serve_port_query(rid, rcv_msg, rcv_size, rcv_name, 1)) return MACH_MSG_SUCCESS;
++		}
+ 	}
+ 
+ 	// #11/#23: short-circuit a cacheable kernel MIG query from the in-guest cache, skipping the
+@@ -710,6 +767,11 @@ kern_return_t _kernelrpc_mach_port_deallocate_trap_impl(
+ 	if (mach_msg_name_guarded(name))
+ 		return KERN_SUCCESS;
+ 
++	// #23 port table: a guest-minted port (reserved range) is not known to ciderd; free it in-guest.
++	// Without this a deallocate would RPC an unknown name, ciderd would error, and this trap aborts.
++	if (inguest_ipc_on() && inguest_is_minted(name))
++		return KERN_SUCCESS;
++
+ 	int code = dserver_rpc_mach_port_deallocate(target, name);
+ 
+ 	if (code < 0) {
+@@ -727,6 +789,11 @@ kern_return_t _kernelrpc_mach_port_mod_refs_trap_impl(
+ 				mach_port_delta_t delta
+ )
+ {
++	// #23 port table: guest-minted ports (reserved range) are guest-owned; adjust refs in-guest rather
++	// than RPC an unknown name to ciderd (which would error and abort this trap).
++	if (inguest_ipc_on() && inguest_is_minted(name))
++		return KERN_SUCCESS;
++
+ 	int code = dserver_rpc_mach_port_mod_refs(target, name, right, delta);
+ 
+ 	if (code < 0) {

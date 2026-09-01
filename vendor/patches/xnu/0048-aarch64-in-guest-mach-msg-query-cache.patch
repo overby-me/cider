@@ -1,0 +1,148 @@
+aarch64 #11/#23: in-guest mach_msg cacheable-query cache + deallocate guard.
+
+mach_msg_overwrite_trap_impl short-circuits a repeated cacheable kernel MIG query
+(host_info 200, host_get_io_master 206, task special-port queries 3409/3418) by
+replaying the exact reply bytes cached from the first call, skipping the ciderd
+round-trip. mldr and the jump-loaded target share one libsystem_kernel, so the
+target-phase queries hit answers the loader phase already fetched (same dest+id;
+the differing reply port does not matter, a hit bypasses the port mechanism).
+WHITELIST by exact msgh_id -- a cached ACTION would drop its side effect.
+
+A replayed port-return adds no new send right, so a per-call deallocate would
+over-release the port (Pass 92). The cache records each cached reply's port name and
+_kernelrpc_mach_port_deallocate_trap_impl swallows deallocate of a guarded name
+(task_self's Pass-22 trick): it leaks one uref reclaimed at task exit and keeps the
+port valid for any real user. On top of 0047.
+
+---
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -94,6 +94,48 @@
+ 			msg, 0);
+ }
+ 
++#include <string.h>
++// #11/#23 in-guest cache of cacheable kernel MIG query replies, so a re-queried answer skips the
++// ciderd mach_msg round-trip (mldr and the jump-loaded target share one libsystem_kernel, so the
++// target's queries hit answers the loader phase already fetched). Replays the exact reply bytes, no
++// fragile MIG synthesis. WHITELIST by exact msgh_id -- verified static QUERIES returning data/ports:
++// host_info (200), host_get_io_master (206), task special-port queries (3409, 3418). Caching an
++// ACTION (e.g. task_suspend) would drop its side effect, hence exact-id, not a port-range match.
++#define MACH_MSG_CACHE_MAX 8
++#define MACH_MSG_CACHE_REPLY_MAX 256
++struct mach_msg_cache_entry {
++	mach_port_name_t dest;
++	mach_msg_id_t id;
++	mach_msg_size_t reply_size;
++	_Bool valid;
++	uint8_t reply[MACH_MSG_CACHE_REPLY_MAX];
++};
++static struct mach_msg_cache_entry g_mach_msg_cache[MACH_MSG_CACHE_MAX];
++static libsimple_rwlock_t g_mach_msg_cache_lock = LIBSIMPLE_RWLOCK_INITIALIZER;
++
++static _Bool mach_msg_id_cacheable(mach_msg_id_t id) {
++	return id == 200 || id == 206 || id == 3409 || id == 3418;
++}
++
++// A cached port-return reply carries a real send right from the FIRST query only; a replayed hit
++// copies the port NAME but adds no new right, so a per-call deallocate would over-release it
++// (Pass 92). Guard: never deallocate a cached special-port name (task_self's Pass-22 trick). It
++// leaks one uref reclaimed at task exit, and the port stays valid for any real user meanwhile.
++#define MACH_MSG_GUARD_MAX 8
++static mach_port_name_t g_mach_msg_guarded[MACH_MSG_GUARD_MAX];
++static int g_mach_msg_guarded_count = 0;
++
++static _Bool mach_msg_name_guarded(mach_port_name_t name) {
++	if (name == 0) return 0;
++	_Bool found = 0;
++	libsimple_rwlock_lock_read(&g_mach_msg_cache_lock);
++	for (int i = 0; i < g_mach_msg_guarded_count; i++) {
++		if (g_mach_msg_guarded[i] == name) { found = 1; break; }
++	}
++	libsimple_rwlock_unlock_read(&g_mach_msg_cache_lock);
++	return found;
++}
++
+ mach_msg_return_t mach_msg_overwrite_trap_impl(
+ 				mach_msg_header_t *msg,
+ 				mach_msg_option_t option,
+@@ -107,6 +149,27 @@
+ {
+ 	int code;
+ 
++	// #11/#23: short-circuit a cacheable kernel MIG query from the in-guest cache, skipping the
++	// ciderd round-trip. Only a combined send+receive to a whitelisted routine; msgh_id is the
++	// REQUEST id here (rcv_msg may alias msg, so read it before the RPC overwrites it).
++	_Bool cacheable = (option & MACH_SEND_MSG) && (option & MACH_RCV_MSG)
++		&& send_size >= sizeof(mach_msg_header_t)
++		&& mach_msg_id_cacheable(msg->msgh_id);
++	mach_port_name_t cache_dest = cacheable ? msg->msgh_remote_port : 0;
++	mach_msg_id_t cache_id = cacheable ? msg->msgh_id : 0;
++	if (cacheable) {
++		libsimple_rwlock_lock_read(&g_mach_msg_cache_lock);
++		for (int i = 0; i < MACH_MSG_CACHE_MAX; i++) {
++			struct mach_msg_cache_entry* e = &g_mach_msg_cache[i];
++			if (e->valid && e->dest == cache_dest && e->id == cache_id && e->reply_size <= rcv_size) {
++				memcpy(rcv_msg, e->reply, e->reply_size);
++				libsimple_rwlock_unlock_read(&g_mach_msg_cache_lock);
++				return MACH_MSG_SUCCESS;
++			}
++		}
++		libsimple_rwlock_unlock_read(&g_mach_msg_cache_lock);
++	}
++
+ retry:
+ 	code = dserver_rpc_mach_msg_overwrite(msg, option, send_size, rcv_size, rcv_name, timeout, notify, rcv_msg);
+ 
+@@ -130,6 +193,39 @@
+ 		__simple_abort();
+ 	}
+ 
++	// Cache a clean, size-bounded reply so the target phase (and later callers) replay it instead of
++	// re-querying ciderd. The port names it carries stay valid for the whole task lifetime.
++	if (cacheable && code == 0 && rcv_msg->msgh_size <= MACH_MSG_CACHE_REPLY_MAX) {
++		libsimple_rwlock_lock_write(&g_mach_msg_cache_lock);
++		struct mach_msg_cache_entry* slot = NULL;
++		for (int i = 0; i < MACH_MSG_CACHE_MAX; i++) {
++			if (g_mach_msg_cache[i].valid && g_mach_msg_cache[i].dest == cache_dest && g_mach_msg_cache[i].id == cache_id) { slot = &g_mach_msg_cache[i]; break; }
++			if (!slot && !g_mach_msg_cache[i].valid) slot = &g_mach_msg_cache[i];
++		}
++		if (slot) {
++			slot->dest = cache_dest;
++			slot->id = cache_id;
++			slot->reply_size = rcv_msg->msgh_size;
++			memcpy(slot->reply, rcv_msg, rcv_msg->msgh_size);
++			slot->valid = 1;
++			// If the reply hands back a port (COMPLEX + a port descriptor), guard that name from
++			// deallocate so a replayed hit never over-releases it (see the guard note above).
++			mach_msg_header_t* rep = (mach_msg_header_t*)slot->reply;
++			if ((rep->msgh_bits & MACH_MSGH_BITS_COMPLEX)
++			    && slot->reply_size >= sizeof(mach_msg_header_t) + sizeof(mach_msg_body_t) + sizeof(mach_msg_port_descriptor_t)) {
++				mach_msg_body_t* body = (mach_msg_body_t*)(rep + 1);
++				mach_msg_port_descriptor_t* d = (mach_msg_port_descriptor_t*)(body + 1);
++				if (body->msgh_descriptor_count >= 1 && d->type == MACH_MSG_PORT_DESCRIPTOR && d->name != 0) {
++					_Bool dup = 0;
++					for (int i = 0; i < g_mach_msg_guarded_count; i++) if (g_mach_msg_guarded[i] == d->name) { dup = 1; break; }
++					if (!dup && g_mach_msg_guarded_count < MACH_MSG_GUARD_MAX)
++						g_mach_msg_guarded[g_mach_msg_guarded_count++] = d->name;
++				}
++			}
++		}
++		libsimple_rwlock_unlock_write(&g_mach_msg_cache_lock);
++	}
++
+ 	return code;
+ }
+ 
+@@ -444,6 +540,11 @@
+ 				mach_port_name_t name
+ )
+ {
++	// #11/#23: a cached kernel special port is kept alive for the task lifetime; swallow its
++	// deallocate so a replayed query never over-releases it (see the mach_msg guard note above).
++	if (mach_msg_name_guarded(name))
++		return KERN_SUCCESS;
++
+ 	int code = dserver_rpc_mach_port_deallocate(target, name);
+ 
+ 	if (code < 0) {

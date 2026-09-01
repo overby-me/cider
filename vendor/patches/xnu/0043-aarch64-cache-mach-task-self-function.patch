@@ -1,0 +1,24 @@
+aarch64 #11 Tier 1: cache the mach_task_self() legacy function to skip a per-call RPC.
+
+DSERVER_TRACE_CALLS shows ~6.7 task_self_trap RPCs per spawned process. mach_task_self() has a cached
+form (the mach_init.h macro -> mach_task_self_, set once at init) but the mach_legacy.c FUNCTION calls
+task_self_trap() every time, so cross-dylib callers that reach the function symbol pay an RPC per call.
+The task self port is a fork-stable well-known port (the macro already relies on that across fork) and
+is not a caller-deallocated ref (unlike mach_host_self/mach_thread_self), so return the cached global.
+---
+--- a/libsyscall/mach/mach_legacy.c
++++ b/libsyscall/mach/mach_legacy.c
+@@ -41,7 +41,12 @@
+ mach_port_t
+ mach_task_self(void)
+ {
+-	return task_self_trap();
++	// aarch64 #11 Tier 1: task self is a fork-stable well-known port, already fetched once into
++	// mach_task_self_ at mach_init and used by the mach_task_self() MACRO everywhere. Cross-dylib
++	// callers of this FUNCTION otherwise dserver_rpc_task_self_trap on every call (~6.7 RPC/spawn).
++	// Return the cached global (it is not a deallocated ref, unlike host/thread self), falling back
++	// to the trap only before mach_init has set it.
++	return (mach_task_self_ != MACH_PORT_NULL) ? mach_task_self_ : task_self_trap();
+ }
+ 
+ mach_port_t

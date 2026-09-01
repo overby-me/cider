@@ -403,6 +403,12 @@ pub fn register_task_lookup(nsid: u32, task: *mut xnu_sys_task_t, host_pid: libc
     TASK_BY_NSID.with(|m| m.borrow_mut().insert(nsid, (task, host_pid)));
 }
 
+/// Drop a task's task_lookup entry on real exit so its xnu_sys task can be freed: task #52's
+/// deferred cleanup, without which every exited process leaks ~1MB and ciderd OOMs on build loads.
+pub fn unregister_task_lookup(nsid: u32) -> Option<*mut xnu_sys_task_t> {
+    TASK_BY_NSID.with(|m| m.borrow_mut().remove(&nsid).map(|(t, _)| t))
+}
+
 /// Resolve a task by guest nsid for the RPC handlers (ptrace targets another process), null if
 /// unknown. The handler-facing counterpart of the task_lookup xnu_sys hook.
 pub fn task_for_nsid(nsid: u32) -> *mut xnu_sys_task_t {
@@ -527,6 +533,29 @@ pub unsafe fn spawn_with_nsid(task: *mut xnu_sys_task_t, nsid: u64, body: Box<dy
 /// Create a kernel microthread (auto kernel-range nsid) with the given body.
 pub unsafe fn spawn(task: *mut xnu_sys_task_t, body: Box<dyn FnOnce()>) -> *mut Microthread {
     spawn_with_nsid(task, NEXT_KTID.fetch_add(1, Ordering::Relaxed), body)
+}
+
+thread_local! {
+    /// The previous kernel-task teardown body's scratch thread, awaiting free (task #33).
+    static PREV_KERNEL_SCRATCH: std::cell::Cell<*mut xnu_sys_thread_t> =
+        const { std::cell::Cell::new(std::ptr::null_mut()) };
+}
+
+/// Call at the TOP of a run_on_task(kernel_task) body: free the PREVIOUS such body's scratch thread
+/// and remember this one, bounding run_on_task's per-call scratch-thread leak (it spawns+drops a
+/// microthread but never frees its xnu_sys_thread) to 1 (task #33). Safe because every teardown
+/// scratch lives on the PERSISTENT kernel task (a guest-task scratch would be freed with the task),
+/// the prior one is idle (its microthread already dropped), and current_thread() is THIS scratch --
+/// valid for the freed thread's IPC teardown, which is why this cannot run in the bare epoll loop.
+pub unsafe fn reap_prior_kernel_scratch() {
+    let prev = PREV_KERNEL_SCRATCH.with(|p| p.replace(std::ptr::null_mut()));
+    if !prev.is_null() {
+        crate::xnu::thread::thread_deallocate(std::ptr::addr_of_mut!((*prev).xnu_thread));
+    }
+    let cur = current();
+    if !cur.is_null() {
+        PREV_KERNEL_SCRATCH.with(|p| p.set((*cur).xnu_sys_thread()));
+    }
 }
 
 /// Queue a microthread to be (re)entered by the run loop. Called by thread_resume.

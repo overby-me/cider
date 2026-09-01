@@ -91,6 +91,8 @@ ret
 
 #endif
 
+#if defined(__x86_64__) || defined(__i386__)
+
 .private_extern _cider_mach_syscall_entry_trampoline
 _cider_mach_syscall_entry_trampoline:
 	trampoline_enter
@@ -114,3 +116,62 @@ _cider_bsd_syscall_exit_trampoline:
 	trampoline_enter
 	call _cider_bsd_syscall_exit_print
 	trampoline_leave
+
+#elif defined(__arm64__) || defined(__aarch64__)
+
+// ARM64. Save the syscall argument registers x0-x7 and the syscall number x16 around the
+// print call, then restore them so the traced call continues untouched. The entry handlers
+// take (int nr, void* args[]) -- nr is the number in x16, args points at the saved x0-x7 --
+// while the exit handlers take (uintptr_t retval), which arm64 returns in x0. That split is
+// why entry and exit set up the first argument differently (on x86 rax was both).
+.macro tramp_save
+	stp x29, x30, [sp, #-16]!
+	mov x29, sp
+	sub sp, sp, #80
+	stp x0, x1, [sp, #0]
+	stp x2, x3, [sp, #16]
+	stp x4, x5, [sp, #32]
+	stp x6, x7, [sp, #48]
+	str x16, [sp, #64]
+.endmacro
+
+.macro tramp_restore
+	ldp x0, x1, [sp, #0]
+	ldp x2, x3, [sp, #16]
+	ldp x4, x5, [sp, #32]
+	ldp x6, x7, [sp, #48]
+	ldr x16, [sp, #64]
+	add sp, sp, #80
+	ldp x29, x30, [sp], #16
+	ret
+.endmacro
+
+.private_extern _cider_mach_syscall_entry_trampoline
+_cider_mach_syscall_entry_trampoline:
+	tramp_save
+	mov x0, x16        // arg1 = syscall number
+	mov x1, sp         // arg2 = pointer to saved x0-x7
+	bl _cider_mach_syscall_entry_print
+	tramp_restore
+
+.private_extern _cider_mach_syscall_exit_trampoline
+_cider_mach_syscall_exit_trampoline:
+	tramp_save         // x0 already holds the return value -> arg1
+	bl _cider_mach_syscall_exit_print
+	tramp_restore
+
+.private_extern _cider_bsd_syscall_entry_trampoline
+_cider_bsd_syscall_entry_trampoline:
+	tramp_save
+	mov x0, x16        // arg1 = syscall number
+	mov x1, sp         // arg2 = pointer to saved x0-x7
+	bl _cider_bsd_syscall_entry_print
+	tramp_restore
+
+.private_extern _cider_bsd_syscall_exit_trampoline
+_cider_bsd_syscall_exit_trampoline:
+	tramp_save         // x0 already holds the return value -> arg1
+	bl _cider_bsd_syscall_exit_print
+	tramp_restore
+
+#endif

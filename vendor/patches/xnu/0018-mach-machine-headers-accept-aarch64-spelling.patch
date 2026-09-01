@@ -1,0 +1,19 @@
+mach/machine dispatch headers: accept the compiler spelling of arm64 (aarch64 port, task A4)
+
+The machine/ dispatch headers test __arm64__, which Apple's compilers define but a HOST
+aarch64-linux clang does not: it says __aarch64__. Host tools that include mach headers
+(migcom is the first, via mig strdefs.h -> mach/boolean.h) then land on #error
+"architecture not supported". Same one-line fix darling PR 1753 carries for boolean.h;
+guest compiles (-target arm64-apple-darwin20) define both spellings and never notice.
+
+--- a/osfmk/mach/machine/boolean.h
++++ b/osfmk/mach/machine/boolean.h
+@@ -34,7 +34,7 @@
+
+ #if defined (__i386__) || defined(__x86_64__)
+ #include "mach/i386/boolean.h"
+-#elif defined (__arm__) || defined (__arm64__)
++#elif defined (__arm__) || defined (__arm64__) || defined (__aarch64__)
+ #include "mach/arm/boolean.h"
+ #else
+ #error architecture not supported

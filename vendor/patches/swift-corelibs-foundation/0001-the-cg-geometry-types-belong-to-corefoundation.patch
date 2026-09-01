@@ -11,8 +11,8 @@ file, and CFBase.h is already in it and already included by the umbrella. Every 
 the guard Apple uses, so whichever header a translation unit sees first wins and the other stands
 down; CGBase.h and CGGeometry.h were guarded to match in the same change.
 
---- a/include/CoreFoundation/CFBase.h
-+++ b/include/CoreFoundation/CFBase.h
+--- a/CoreFoundation/Base.subproj/CFBase.h
++++ b/CoreFoundation/Base.subproj/CFBase.h
 @@ -149,6 +149,75 @@
  
  CF_EXTERN_C_BEGIN

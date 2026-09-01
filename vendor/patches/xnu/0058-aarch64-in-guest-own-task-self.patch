@@ -1,0 +1,29 @@
+aarch64 #23 milestone-4 probe: own task_self in-guest (mint).
+
+Mints the task-self port in-guest (overriding the 0055 seed) when CIDER_INGUEST_IPC is on. For the
+self-contained case task_self is now only the self-VM short-circuit target (compared against this same
+minted value) with 0 ciderd deallocate/mod_refs, so a guest-minted name fully replaces the seeded real
+name -- a positive signal that the guest can own its task port space (the milestone-4 gate to removing
+checkin). exec-true RECV 19 -> 18 (task_self_trap 1 -> 0), rc=0, soak 10/10. Flag-off unchanged. fork
+resets _cached_task_self so the child re-mints. On top of 0057.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+index bcfac83..c059605 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -1112,6 +1112,15 @@ void __task_self_trap_reset(void) { _cached_task_self = MACH_PORT_NULL; }
+ void __task_self_trap_set(mach_port_name_t name) { if (name != MACH_PORT_NULL) _cached_task_self = name; }
+ mach_port_name_t task_self_trap_impl(void)
+ {
++	// #23 milestone-4 probe: own task_self in-guest (mint, overriding the 0055 seed). task_self is now
++	// only the self-VM short-circuit target (compared against this same value) with 0 ciderd
++	// deallocate/mod_refs, so a guest-minted name may fully replace the seeded real name. If any task-port
++	// op must still reach ciderd this breaks exec-true -> revert. fork resets _cached_task_self -> re-mint.
++	if (inguest_ipc_on()) {
++		if (_cached_task_self == MACH_PORT_NULL || _cached_task_self < INGUEST_PORT_BASE)
++			_cached_task_self = inguest_mint_port();
++		return _cached_task_self;
++	}
+ 	if (_cached_task_self != MACH_PORT_NULL)
+ 		return _cached_task_self;
+ 	unsigned int port_name;

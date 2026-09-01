@@ -109,7 +109,14 @@ calls = [
 		('is_fork', 'bool'),
 		('stack_hint', 'void*', 'uint64_t'),
 		('lifetime_listener_pipe', '@fd')
-	], []),
+	], [
+		# #11/#25: fold the per-process init constants (task_self/uid/gid/host_self) so a freshly exec'd
+		# process seeds its caches from this reply instead of separate RPCs; guest falls back to RPC if unseeded.
+		('task_self', 'uint32_t'),
+		('uid', 'int32_t'),
+		('gid', 'int32_t'),
+		('host_self', 'uint32_t'),
+	]),
 
 	('checkout', [
 		('exec_listener_pipe', '@fd'),
@@ -643,6 +650,15 @@ calls = [
 		('message_count', 'uint64_t'),
 		('fd', '@fd'),
 	], UNMANAGED_CALL),
+	# #11/#23 in-guest port layer: batch-allocate reply ports. The guest fills a small pool from ONE
+	# RPC and hands ports out locally (no per-reply_port RPC), cutting the ~6 reply_port round-trips/spawn.
+	# ciderd assigns REAL names (no translation/collision); count = names actually written to buffer.
+	('mach_reply_port_batch', [
+		('buffer', 'uint32_t*', 'uint64_t'),
+		('buffer_size', 'uint64_t'),
+	], [
+		('count', 'uint32_t'),
+	]),
 ]
 
 ALLOWED_PRIVATE_TYPES = [
