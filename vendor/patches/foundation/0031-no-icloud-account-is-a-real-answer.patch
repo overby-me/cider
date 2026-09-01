@@ -1,0 +1,24 @@
+--- a/src/NSFileManager.m
++++ b/src/NSFileManager.m
+@@ -1087,4 +1087,21 @@
+     return [[[NSString alloc] initWithBytes:str length:len encoding:defaultEncoding()] autorelease];
+ }
+ 
++
++/*
++ * NO ICLOUD ACCOUNT, WHICH IS A REAL ANSWER RATHER THAN A STUB. macOS returns nil from this when the
++ * user is not signed in, and every caller already handles that: iA Writer asks for it during
++ * startup and died on the unrecognized selector instead, which is a far worse answer than the one
++ * a signed-out Mac gives.
++ */
++- (id <NSObject, NSCopying, NSCoding>)ubiquityIdentityToken
++{
++    return nil;
++}
++
++- (NSURL *)URLForUbiquityContainerIdentifier:(NSString *)identifier
++{
++    return nil;
++}
++
+ @end
