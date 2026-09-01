@@ -133,10 +133,17 @@ for t in CIDERD MLDR RT; do
 	[ -e "${!t}" ] || { echo "missing $t: build //src/linux/server:ciderd, //src/darwin/loader:mldr and //buck/prefix:cider_prefix" >&2; exit 3; }
 done
 
+# THE HOST LIBRARIES THE GUEST DLOPENS. mldr loads libGL and friends out of the nix store, and with
+# no search path it tries whichever store directory it saw last: the first run failed with
+# "libGL.so.1: /nix/store/...-alsa-lib-.../lib/libGL.so.1: cannot open shared object file", which
+# names alsa-lib because that was simply the last entry, not because anyone asked for it.
+# buck-setup.nu already computes the list; it is the same one the compiler links against.
+ELF_LIBS=$(grep '^elf_lib_dirs' "$REPO/.buckconfig.local" 2>/dev/null | sed 's/^elf_lib_dirs *= *//')
+
 say "launching $APPBIN"
 (
 	CIDERPREFIX="$PREFIX" WAYLAND_DISPLAY=$NEW XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000} \
-		CIDER_NO_LAUNCHD=${LAUNCHD:-1} \
+		CIDER_NO_LAUNCHD=${LAUNCHD:-1} LD_LIBRARY_PATH="$ELF_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 		DSERVER_PATH="$(realpath "$CIDERD")" DSERVER_MLDR_PATH="$(realpath "$MLDR")" \
 		DSERVER_LIBEXEC_PATH="$(realpath "$RT")/libexec/cider" \
 		timeout "$LIMIT" "$CIDER" shell "$APPBIN"
