@@ -488,6 +488,18 @@ static BOOL _allowsAutomaticWindowTabbing;
     if (!(_styleMask & NSAppKitPrivateWindow)) {
         [[NSApplication sharedApplication] _addWindow: self];
     }
+
+    /* EVERY WINDOW THAT IS MADE AT ALL. Two applications finish launching with zero windows after
+     * telling AppKit they opened their own document, and the absence of a window cannot say whether
+     * one was never built or was built and never registered. A private window is counted too,
+     * because an offscreen image surface is one of these. */
+    if (getenv("CIDER_TRACE_NIB") != NULL) {
+        fprintf(stderr, "CIDER_NIB window created class=%s style=0x%lx private=%d size=%.0fx%.0f\n",
+                object_getClassName(self), (unsigned long) _styleMask,
+                (int) ((_styleMask & NSAppKitPrivateWindow) != 0),
+                (double) contentRect.size.width, (double) contentRect.size.height);
+        fflush(stderr);
+    }
     return self;
 }
 

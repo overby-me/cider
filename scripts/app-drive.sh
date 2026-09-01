@@ -154,7 +154,13 @@ say "launching $APPBIN"
 	# env, NOT an assignment prefix. An unquoted ${VAR:+NAME=value} is expanded AFTER the line is
 	# parsed, so bash does not see an assignment and takes it as the command name: the whole run
 	# died with "CIDER_WAYLAND_TRACE_INPUT=1: command not found" and an empty log.
-	env CIDERPREFIX="$PREFIX" WAYLAND_DISPLAY=$NEW XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000} \
+	# SLIM THE ENVIRONMENT, and this is not tidiness. iTerm2 encodes a launch request for every
+	# child it starts, the request CARRIES THE ENVIRONMENT, and the buffer is fixed: with the nix
+	# devshell inherited (NIX_CFLAGS_COMPILE alone is 21 KB) it aborts at "encoded length 67951" and
+	# no session ever starts. The failure never mentions size. PATH and LD_LIBRARY_PATH stay because
+	# the runtime needs them.
+	UNSET=$(env | awk -F= '/^[A-Za-z_][A-Za-z0-9_]*=/ && length($0)>400 && $1!="PATH" && $1!="LD_LIBRARY_PATH" {printf "-u %s ", $1}')
+	env $UNSET CIDERPREFIX="$PREFIX" WAYLAND_DISPLAY=$NEW XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000} \
 		CIDER_NO_LAUNCHD="${LAUNCHD:-1}" LD_LIBRARY_PATH="$ELF_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 		${TRACE_INPUT:+CIDER_WAYLAND_TRACE_INPUT=1} ${TRACE_ENV:-} \
 		DSERVER_PATH="$(realpath "$CIDERD")" DSERVER_MLDR_PATH="$(realpath "$MLDR")" \
