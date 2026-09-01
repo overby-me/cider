@@ -613,6 +613,59 @@ extern "C-unwind" fn display_color_with_name(_this: Object, _cmd: Sel, name: Obj
 /// AppKit hands the display a colour to remember under a name. Nothing needs remembering yet: the
 /// table is static, so this accepts and ignores rather than raising, which is what an override
 /// with no state should do.
+/// The keyboard layout, as an identifier AppKit can compare across calls.
+///
+/// Carbon's TextInputSources asks the display for this to notice a layout change, and iTerm2 asks
+/// on the way up: unimplemented, the message raised, nothing caught it, and the process terminated
+/// with "-[NSDisplayWayland keyboardLayoutId]: unrecognized selector".
+///
+/// ZERO IS A TRUE ANSWER HERE, not a placeholder. Nothing in this backend switches layouts, so the
+/// identifier never changes, and a caller comparing it against its last value correctly concludes
+/// that nothing has changed. The X11 backend returns the XKB group and -1 when it cannot ask;
+/// answering -1 would mean "unknown", which would be a worse description of a fixed layout.
+extern "C-unwind" fn display_keyboard_layout_id(_this: Object, _cmd: Sel) -> i32 {
+    0
+}
+
+/// The Carbon 'uchr' layout, which this backend does not have.
+///
+/// A UCKeyboardLayout is the resource UCKeyTranslate walks to turn a key code into characters, and
+/// it is a Carbon structure with tables inside it. Wayland gives a client an xkb keymap instead,
+/// and the two are not convertible in a few lines. NULL with a zero length is the answer for "no
+/// layout resource", which is what a caller checks for; the alternative is a fabricated table that
+/// silently mistranslates every key.
+///
+/// The X11 backend builds a synthetic one. Doing the same from the xkb keymap is real work and is
+/// worth doing only once something is measured to need it.
+extern "C-unwind" fn display_keyboard_layout(_this: Object, _cmd: Sel, byte_length: *mut u32) -> *const c_void {
+    if !byte_length.is_null() {
+        unsafe { *byte_length = 0 };
+    }
+    core::ptr::null()
+}
+
+/// The layout's short and long names, both fixed because nothing here switches layout.
+extern "C-unwind" fn display_keyboard_layout_name(_this: Object, _cmd: Sel, name: *mut Object, full_name: *mut Object) {
+    unsafe {
+        let cls = objc::objc_getClass(cstr!("NSString"));
+        if cls.is_null() {
+            return;
+        }
+        let with_utf8 = objc::sel_registerName(cstr!("stringWithUTF8String:"));
+        if !name.is_null() {
+            *name = objc::msg_send_cstr(cls, with_utf8, cstr!("US"));
+        }
+        if !full_name.is_null() {
+            *full_name = objc::msg_send_cstr(cls, with_utf8, cstr!("U.S."));
+        }
+    }
+}
+
+/// macOS's own default, which is what an application compares its click gaps against.
+extern "C-unwind" fn display_double_click_interval(_this: Object, _cmd: Sel) -> f64 {
+    0.5
+}
+
 extern "C-unwind" fn display_add_system_color(_this: Object, _cmd: Sel, _color: Object, _name: Object) {}
 
 /// The window border geometry pair.
@@ -782,6 +835,26 @@ pub extern "C-unwind" fn cider_wayland_appkit_register() {
                 sel: cstr!("colorWithName:"),
                 types: cstr!("@@:@"),
                 imp: display_color_with_name as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("keyboardLayout:"),
+                types: cstr!("^v@:^I"),
+                imp: display_keyboard_layout as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("keyboardLayoutName:fullName:"),
+                types: cstr!("v@:^@^@"),
+                imp: display_keyboard_layout_name as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("doubleClickInterval"),
+                types: cstr!("d@:"),
+                imp: display_double_click_interval as *const c_void,
+            },
+            objc::MethodDef {
+                sel: cstr!("keyboardLayoutId"),
+                types: cstr!("i@:"),
+                imp: display_keyboard_layout_id as *const c_void,
             },
             objc::MethodDef {
                 sel: cstr!("_addSystemColor:forName:"),
