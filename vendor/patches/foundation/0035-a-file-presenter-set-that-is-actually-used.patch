@@ -1,0 +1,26 @@
+--- a/src/NSFileCoordinator.m
++++ b/src/NSFileCoordinator.m
+@@ -507,7 +507,11 @@
+ 		presentersForPath = filePresentersByPath[filePresenter.presentedItemURL.URLByStandardizingPath.URLByResolvingSymlinksInPath.path];
+ 		if (presentersForPath == nil) {
+ 			FCDebug(@"no existing set for path %@; creating...", filePresenter.presentedItemURL.URLByStandardizingPath.URLByResolvingSymlinksInPath.path);
+-			filePresentersByPath[filePresenter.presentedItemURL.URLByStandardizingPath.URLByResolvingSymlinksInPath.path] = [NSMutableSet set];
++			/* THE NEW SET HAS TO BE THE ONE WE THEN ADD TO. It was stored and dropped, leaving
++			 * presentersForPath nil, so the FIRST presenter for any path was added to nothing at all
++			 * and silently lost: @synchronized(nil) and -addObject: on nil are both quiet. */
++			presentersForPath = [NSMutableSet set];
++			filePresentersByPath[filePresenter.presentedItemURL.URLByStandardizingPath.URLByResolvingSymlinksInPath.path] = presentersForPath;
+ 		}
+ 	}
+ 	@synchronized(presentersForPath) {
+@@ -534,7 +538,9 @@
+ {
+ 	NSMutableArray<id<NSFilePresenter>>* presenters = [NSMutableArray array];
+ 	@synchronized(filePresentersByPath) {
+-		for (NSMutableSet<id<NSFilePresenter>>* presentersForPath in filePresentersByPath) {
++		/* ENUMERATING A DICTIONARY YIELDS ITS KEYS, which here are path strings, so this was sending
++		 * -allObjects to an NSString. The values are what holds the presenters. */
++		for (NSMutableSet<id<NSFilePresenter>>* presentersForPath in [filePresentersByPath allValues]) {
+ 			@synchronized(presentersForPath) {
+ 				[presenters addObjectsFromArray: presentersForPath.allObjects];
+ 			}
