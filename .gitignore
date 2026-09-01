@@ -150,3 +150,7 @@ __pycache__/
 
 # A 250 byte boot log that was sitting at the repository root.
 /.dfx-boot.log
+
+# GUI captures from scripts/app-drive.sh
+captures/
+.cache/
