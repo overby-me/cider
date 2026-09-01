@@ -384,6 +384,19 @@ flag-on RECV 35 -> 25, milestone-1 + milestone-3 complete. The remaining is a de
 re-architecture; the checkin-abort (the bulk, checkin x10 + checkout x5) is now precisely characterized
 above so a future session can go straight to the ciderd-side fix or the launcher pivot.
 
+## Milestone 5 LANDED (session 4) -- socket-less non-pid-1 procs run END-TO-END
+
+Bookmark milestone5-socketless-signals (commit 8ca032ce). A flag-on non-pid-1 process now runs with NO
+ciderd socket: (1) mldr skips create_socket+checkin, seeds uid/gid from local getuid/getgid (fixes the
+startup abort), recovers vchroot locally; (2) mldr rpc::set_sockpath fills SERVER_ADDR so sys_execve
+builds the child's __mldr_sockpath instead of deref'ing a NULL sockaddr (the strlen(0x2) SIGSEGV,
+sun_path at offset 2 of NULL); (3) patch 0065 gates sigexc_handler's interrupt_enter/sigprocess/
+interrupt_exit via __cider_no_daemon(), and the EXISTING in-guest default-effect path (sigexc.c ~458)
+delivers the signal -- the "reimplement signal actions" scope below was too pessimistic; no reimpl
+needed. Socket-less `cider shell` (login chain + bash fork/exec loop + shell math) soaks 4/4+2/2,
+flag-off 2/2, rc=0. REMAINING for full no-daemon: pid-1/shellspawn still checks in + container
+lifecycle still on ciderd. The design/analysis that led here (now partly superseded):
+
 ## Milestone 4/5 update (session 3, later) -- remaining wall = exec-checkin -> sigprocess-needs-socket; in-guest signal processing (#40) is BOUNDED
 
 The fork-checkin abort above is now FIXED (patches 0063 skip-exec-checkout, 0064 skip-fork-child-connect-checkin); flag-on RECV 132->11 this session, exec loop DONE rc=0, baseline committed on bookmark fully-without-ciderd. The REMAINING blocker to removing the EXEC checkin is different and precisely pinned: a checkin-less (socket-less) process dies on its FIRST default-action signal at `sigprocess failed ... signal 6: -32` (sigexc.c:421), because dserver_rpc_sigprocess (RPC #12) needs the ciderd socket. So the endgame's true prerequisite is IN-GUEST SIGNAL PROCESSING (task #40), and it is MORE BOUNDED than "port XNU Thread::processSignal":
