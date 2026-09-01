@@ -14860,3 +14860,32 @@ three of the five, and re-staging is #169.
 `__cider_no_daemon()` first, so a checkin-less process was guaranteed to die on its first real-time
 signal. It is fixed (`vendor/patches/xnu/0066`) and the boot behaves identically with and without it,
 measured both ways.
+
+### Where the five applications actually stand (2026-09-01)
+
+| application | renders | mouse | keyboard | resizes | what stops it |
+|---|---|---|---|---|---|
+| MoneyMoney | yes | yes | yes | yes | nothing: all three criteria met |
+| Swift Publisher 5 | yes | yes | delivered | yes | a dialog that is never configured (#170) |
+| iA Writer | no | - | - | - | its own predicate to SQL layer (#115) |
+| iTerm2 | no | - | - | - | CryptoKit is not in this project at all (#171) |
+| LibreOffice | not installed | - | - | - | nixpkgs refuses it on Linux (#166) |
+
+**The keyboard was never broken; the test was racing.** `wtype` creates a virtual keyboard when it
+starts and destroys it when it exits, so the seat gains and loses the capability in one breath, and
+the guest attaches its `wl_keyboard` listener only after it *sees* the capability. Every keystroke
+was gone before the listener existed:
+
+    seat=capabilities pointer=false keyboard=true
+    keyboard=attached
+    seat=capabilities pointer=false keyboard=false
+
+with no `key=` line between them. Sending twice does not help, because each pass creates its own
+short-lived device, and `WLR_HEADLESS_INPUTS` adds no persistent one. Telling `wtype` to sleep before
+typing is what works: the device outlives the round trip. MoneyMoney's search field then holds the
+typed text with a caret in it.
+
+**iTerm2's requirement turned out to be three symbols.** It refuses to load without
+`CryptoKit.framework`, which exists nowhere in this project, and everything it binds from it is
+`Curve25519.Signing.PublicKey`: a metadata accessor, `init(rawRepresentation:)` and
+`isValidSignature(_:for:)`. That is the Combine pattern at a much smaller scale (#171).
