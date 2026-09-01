@@ -112,7 +112,7 @@ before=$(ls "$XDG_RUNTIME_DIR"/wayland-[0-9]* 2>/dev/null | grep -v '\.lock$' | 
 # parent had chosen. Headless owns its own output, so the size asked for is the size captured, and
 # the resize criterion becomes measurable.
 WAYLAND_DISPLAY=$PARENT_DISPLAY XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
-	WLR_BACKENDS=headless WLR_HEADLESS_OUTPUTS=1 "$SWAY" -c "$SHOTS/sway.conf" -d >"$SHOTS/sway.log" 2>&1 &
+	WLR_BACKENDS=headless WLR_HEADLESS_OUTPUTS=1 WLR_HEADLESS_INPUTS=1 "$SWAY" -c "$SHOTS/sway.conf" -d >"$SHOTS/sway.log" 2>&1 &
 SWAYPID=$!
 NEW=""
 for _ in $(seq 1 60); do
@@ -151,8 +151,12 @@ ELF_LIBS=$(grep '^elf_lib_dirs' "$REPO/.buckconfig.local" 2>/dev/null | sed 's/^
 
 say "launching $APPBIN"
 (
-	CIDERPREFIX="$PREFIX" WAYLAND_DISPLAY=$NEW XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000} \
-		CIDER_NO_LAUNCHD=${LAUNCHD:-1} LD_LIBRARY_PATH="$ELF_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+	# env, NOT an assignment prefix. An unquoted ${VAR:+NAME=value} is expanded AFTER the line is
+	# parsed, so bash does not see an assignment and takes it as the command name: the whole run
+	# died with "CIDER_WAYLAND_TRACE_INPUT=1: command not found" and an empty log.
+	env CIDERPREFIX="$PREFIX" WAYLAND_DISPLAY=$NEW XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000} \
+		CIDER_NO_LAUNCHD="${LAUNCHD:-1}" LD_LIBRARY_PATH="$ELF_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+		${TRACE_INPUT:+CIDER_WAYLAND_TRACE_INPUT=1} \
 		DSERVER_PATH="$(realpath "$CIDERD")" DSERVER_MLDR_PATH="$(realpath "$MLDR")" \
 		DSERVER_LIBEXEC_PATH="$(realpath "$RT")/libexec/cider" \
 		timeout "$LIMIT" "$CIDER" shell "$APPBIN"
@@ -181,10 +185,19 @@ if [ -n "$TYPE" ]; then
 	# key:<name> sends a named key rather than text. Proving the keyboard works needs something
 	# whose effect is VISIBLE, and in an application whose text fields are several clicks deep the
 	# cheapest such thing is Return on a selection.
-	case "$TYPE" in
-		key:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -k "${TYPE#key:}" >>"$SHOTS/driver.log" 2>&1 ;;
-		*)     WAYLAND_DISPLAY=$NEW "$WTYPE" "$TYPE" >>"$SHOTS/driver.log" 2>&1 ;;
-	esac
+	send_keys() {
+		# -s SLEEPS BEFORE TYPING, and that is the whole trick. wtype creates its virtual keyboard
+		# when it starts and destroys it when it exits, so the seat gains and loses the capability in
+		# one breath; the guest attaches its wl_keyboard listener only after it SEES the capability,
+		# and every key was gone before the listener existed. Sleeping first keeps the device alive
+		# long enough for the application to attach, and -d spaces the keys so none is lost to the
+		# same race.
+		case "$TYPE" in
+			key:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -k "${TYPE#key:}" >>"$SHOTS/driver.log" 2>&1 ;;
+			*)     WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -d 120 "$TYPE" >>"$SHOTS/driver.log" 2>&1 ;;
+		esac
+	}
+	send_keys
 	sleep 3
 	shoot d3-typed
 fi
