@@ -13,6 +13,10 @@ prefix_tree(
         # bundle, with no Versions/A, which is why there is no symlink pair for it further down.
         "libexec/cider/Library/Frameworks/iTunesLibrary.framework/iTunesLibrary": "//src/darwin/frameworks:iTunesLibrary_dylib",
         "libexec/cider/System/Library/Frameworks/Combine.framework/Versions/A/Combine": "//src/darwin/frameworks:Combine_dylib",
+        # The crash handler is inserted with DYLD_INSERT_LIBRARIES, so it has to BE in the
+        # prefix: a guest that dies before it draws says nothing without it, which is exactly
+        # what a boot failure looks like (#168).
+        "libexec/cider/usr/lib/cider-crashtrace.dylib": "//src/darwin/crashtrace:crashtrace_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/bitcode_strip": "//vendor/src:bitcode_strip",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/check_dylib": "//vendor/src:check_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/checksyms": "//vendor/src:checksyms",
