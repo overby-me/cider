@@ -13,6 +13,12 @@ prefix_tree(
         # bundle, with no Versions/A, which is why there is no symlink pair for it further down.
         "libexec/cider/Library/Frameworks/iTunesLibrary.framework/iTunesLibrary": "//src/darwin/frameworks:iTunesLibrary_dylib",
         "libexec/cider/System/Library/Frameworks/Combine.framework/Versions/A/Combine": "//src/darwin/frameworks:Combine_dylib",
+        "libexec/cider/System/Library/Frameworks/CryptoKit.framework/Versions/A/CryptoKit": "//src/darwin/frameworks:CryptoKit_dylib",
+        "libexec/cider/System/Library/Frameworks/Charts.framework/Versions/A/Charts": "//src/darwin/frameworks:Charts_dylib",
+        "libexec/cider/System/Library/Frameworks/FoundationModels.framework/Versions/A/FoundationModels": "//src/darwin/frameworks:FoundationModels_dylib",
+        "libexec/cider/System/Library/Frameworks/QuickLookUI.framework/Versions/A/QuickLookUI": "//src/darwin/frameworks:QuickLookUI_dylib",
+        "libexec/cider/System/Library/Frameworks/ScreenCaptureKit.framework/Versions/A/ScreenCaptureKit": "//src/darwin/frameworks:ScreenCaptureKit_dylib",
+        "libexec/cider/System/Library/Frameworks/SwiftUI.framework/Versions/A/SwiftUI": "//src/darwin/frameworks:SwiftUI_dylib",
         # The crash handler is inserted with DYLD_INSERT_LIBRARIES, so it has to BE in the
         # prefix: a guest that dies before it draws says nothing without it, which is exactly
         # what a boot failure looks like (#168).

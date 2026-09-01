@@ -17052,3 +17052,269 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END hand written: Combine
+
+# BEGIN hand written: CryptoKit
+# NOT generated from the reference build. iTerm2 will not load without this framework and binds
+# exactly three symbols from it, all of them Curve25519.Signing.PublicKey. See
+# src/darwin/frameworks/CryptoKit/src/CryptoKit.c.
+# buck-registry: src/frameworks/CryptoKit/CryptoKit = CryptoKit_dylib
+
+cc_objects(
+    name = "CryptoKit_obj",
+    srcs = [
+        "CryptoKit/src/CryptoKit.c",
+    ],
+    compiler_flags = [
+        "-DCryptoKit_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "CryptoKit_dylib",
+    dylib_name = "CryptoKit",
+    install_name = "/System/Library/Frameworks/CryptoKit.framework/Versions/A/CryptoKit",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        ":CryptoKit_obj",
+    ],
+    siblings = [
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END hand written: CryptoKit
+
+# BEGIN hand written: Charts
+# NOT generated from the reference build. iTerm2 links this framework, and dyld will not start a
+# process whose library is missing whatever it uses from it. See
+# src/darwin/frameworks/Charts/src/Charts.c.
+# buck-registry: src/frameworks/Charts/Charts = Charts_dylib
+
+cc_objects(
+    name = "Charts_obj",
+    srcs = ["Charts/src/Charts.c"],
+    compiler_flags = [
+        "-DCharts_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "Charts_dylib",
+    dylib_name = "Charts",
+    install_name = "/System/Library/Frameworks/Charts.framework/Versions/A/Charts",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":Charts_obj"],
+    siblings = [
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END hand written: Charts
+
+# BEGIN hand written: FoundationModels
+# NOT generated from the reference build. iTerm2 links this framework, and dyld will not start a
+# process whose library is missing whatever it uses from it. See
+# src/darwin/frameworks/FoundationModels/src/FoundationModels.c.
+# buck-registry: src/frameworks/FoundationModels/FoundationModels = FoundationModels_dylib
+
+cc_objects(
+    name = "FoundationModels_obj",
+    srcs = ["FoundationModels/src/FoundationModels.c"],
+    compiler_flags = [
+        "-DFoundationModels_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "FoundationModels_dylib",
+    dylib_name = "FoundationModels",
+    install_name = "/System/Library/Frameworks/FoundationModels.framework/Versions/A/FoundationModels",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":FoundationModels_obj"],
+    siblings = [
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END hand written: FoundationModels
+
+# BEGIN hand written: QuickLookUI
+# NOT generated from the reference build. iTerm2 links this framework, and dyld will not start a
+# process whose library is missing whatever it uses from it. See
+# src/darwin/frameworks/QuickLookUI/src/QuickLookUI.m.
+# buck-registry: src/frameworks/QuickLookUI/QuickLookUI = QuickLookUI_dylib
+
+cc_objects(
+    name = "QuickLookUI_obj",
+    srcs = ["QuickLookUI/src/QuickLookUI.m"],
+    compiler_flags = [
+        "-DQuickLookUI_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_Security",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_UniformTypeIdentifiers",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "QuickLookUI_dylib",
+    dylib_name = "QuickLookUI",
+    install_name = "/System/Library/Frameworks/QuickLookUI.framework/Versions/A/QuickLookUI",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":QuickLookUI_obj"],
+    siblings = [
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END hand written: QuickLookUI
+
+# BEGIN hand written: ScreenCaptureKit
+# NOT generated from the reference build. iTerm2 links this framework, and dyld will not start a
+# process whose library is missing whatever it uses from it. See
+# src/darwin/frameworks/ScreenCaptureKit/src/ScreenCaptureKit.m.
+# buck-registry: src/frameworks/ScreenCaptureKit/ScreenCaptureKit = ScreenCaptureKit_dylib
+
+cc_objects(
+    name = "ScreenCaptureKit_obj",
+    srcs = ["ScreenCaptureKit/src/ScreenCaptureKit.m"],
+    compiler_flags = [
+        "-DScreenCaptureKit_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_Security",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_UniformTypeIdentifiers",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "ScreenCaptureKit_dylib",
+    dylib_name = "ScreenCaptureKit",
+    install_name = "/System/Library/Frameworks/ScreenCaptureKit.framework/Versions/A/ScreenCaptureKit",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":ScreenCaptureKit_obj"],
+    siblings = [
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END hand written: ScreenCaptureKit
+
+# BEGIN hand written: SwiftUI
+# NOT generated from the reference build. iTerm2 links this framework, and dyld will not start a
+# process whose library is missing whatever it uses from it. See
+# src/darwin/frameworks/SwiftUI/src/SwiftUI.c.
+# buck-registry: src/frameworks/SwiftUI/SwiftUI = SwiftUI_dylib
+
+cc_objects(
+    name = "SwiftUI_obj",
+    srcs = ["SwiftUI/src/SwiftUI.c"],
+    compiler_flags = [
+        "-DSwiftUI_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "SwiftUI_dylib",
+    dylib_name = "SwiftUI",
+    install_name = "/System/Library/Frameworks/SwiftUI.framework/Versions/A/SwiftUI",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":SwiftUI_obj"],
+    siblings = [
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END hand written: SwiftUI
