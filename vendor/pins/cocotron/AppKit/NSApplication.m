@@ -159,6 +159,34 @@ static int _CiderPageReadable(const void *page)
     return mincore((void *) page, 4096, &resident) == 0;
 }
 
+/*
+ * WHICH LIBRARY, when dladdr says nothing.
+ *
+ * dladdr only knows Mach-O images, so an unresolved program counter is evidence in itself: the
+ * fault is in a HOST ELF library reached through the bridge, or in memory belonging to no image at
+ * all. /proc is the host's here, so its own maps name the region.
+ */
+static void _CiderAppNameMapping(const void *pc)
+{
+    FILE *maps = fopen("/proc/self/maps", "r");
+    char line[512];
+
+    if (maps == NULL)
+        return;
+
+    while (fgets(line, sizeof(line), maps) != NULL) {
+        unsigned long long low = 0, high = 0;
+
+        if (sscanf(line, "%llx-%llx", &low, &high) != 2)
+            continue;
+        if ((unsigned long long) (uintptr_t) pc < low || (unsigned long long) (uintptr_t) pc >= high)
+            continue;
+        fprintf(stderr, "CIDER_APP mapping %s", line);
+        break;
+    }
+    fclose(maps);
+}
+
 static void _CiderAppFatalSignal(int signo, siginfo_t *info, void *ucontextIn)
 {
     void *frames[32];
@@ -187,8 +215,10 @@ static void _CiderAppFatalSignal(int signo, siginfo_t *info, void *ucontextIn)
             fprintf(stderr, "CIDER_APP faulted at %p, offset %ld into %s\n", pc,
                     (long) ((char *) pc - (char *) pcinfo.dli_fbase),
                     pcinfo.dli_fname ? pcinfo.dli_fname : "?");
-        else
+        else {
             fprintf(stderr, "CIDER_APP faulted at %p, unresolved\n", pc);
+            _CiderAppNameMapping(pc);
+        }
 
         /* HISTOGRAM THE STACK INSTEAD OF WALKING IT. The frame pointer is omitted in the code
          * that faulted, so there is no chain to follow; a stack that ran out of room is however

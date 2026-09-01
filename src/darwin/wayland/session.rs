@@ -460,7 +460,13 @@ pub fn start_waker() {
                     unsafe { cider_wayland_wake_main() };
                     // The socket stays readable until the main thread reads it, so waking in a tight
                     // loop would burn a core. This is the smallest pause that cannot outrun a frame.
-                    std::thread::sleep(std::time::Duration::from_millis(4));
+                    //
+                    // poll WITH NO DESCRIPTORS, not thread::sleep. Rust's sleep asserts that a
+                    // nanosleep which fails failed with EINTR, and here it comes back EINVAL, so the
+                    // assert killed this thread outright and with it every wake this loop exists to
+                    // send. The same poll the loop already turns on has no such opinion. See the
+                    // nanosleep task for why that errno is wrong.
+                    unsafe { poll(std::ptr::null_mut(), 0, 4) };
                     last_idle_wake = std::time::Instant::now();
                 } else if last_idle_wake.elapsed() >= IDLE_TICK {
                     unsafe { cider_wayland_wake_main() };
