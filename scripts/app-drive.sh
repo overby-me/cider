@@ -106,8 +106,13 @@ EOF
 # Which socket is OURS is decided by difference: sway picks the next free wayland-N, so record the
 # set before starting it and take whatever is new. Guessing a name races the compositor.
 before=$(ls "$XDG_RUNTIME_DIR"/wayland-[0-9]* 2>/dev/null | grep -v '\.lock$' | sort)
+# HEADLESS, NOT NESTED IN A WINDOW. On the wayland backend the output is a window in the user's
+# tiling manager, and neither the mode in this config nor a later swaymsg output mode changes its
+# size: two captures taken either side of a resize came back identically 930x1028, the size the
+# parent had chosen. Headless owns its own output, so the size asked for is the size captured, and
+# the resize criterion becomes measurable.
 WAYLAND_DISPLAY=$PARENT_DISPLAY XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
-	WLR_BACKENDS=wayland "$SWAY" -c "$SHOTS/sway.conf" -d >"$SHOTS/sway.log" 2>&1 &
+	WLR_BACKENDS=headless WLR_HEADLESS_OUTPUTS=1 "$SWAY" -c "$SHOTS/sway.conf" -d >"$SHOTS/sway.log" 2>&1 &
 SWAYPID=$!
 NEW=""
 for _ in $(seq 1 60); do
@@ -118,6 +123,10 @@ for _ in $(seq 1 60); do
 done
 [ -n "$NEW" ] || { echo "nested compositor never came up, see $SHOTS/sway.log" >&2; kill $SWAYPID 2>/dev/null; exit 4; }
 say "nested compositor on $NEW"
+# swaymsg finds its IPC socket through SWAYSOCK, not through WAYLAND_DISPLAY: without it the resize
+# step failed with "Unable to retrieve socket path" and the output never changed size.
+SWAYSOCK=$(ls -t "$XDG_RUNTIME_DIR"/sway-ipc.*.sock 2>/dev/null | head -1)
+export SWAYSOCK
 
 shoot() { WAYLAND_DISPLAY=$NEW "$GRIM" "$SHOTS/$1.png" 2>>"$SHOTS/driver.log" && say "shot $1"; }
 
@@ -153,18 +162,29 @@ APPPID=$!
 sleep "$SETTLE"
 shoot d1-start
 
-if [ -n "$CLICK" ]; then
-	x=${CLICK%,*}; y=${CLICK#*,}
+# A SEQUENCE, not a click. Showing that the keyboard works needs a text field, and a text field is
+# several clicks deep in most applications: Swift Publisher wants the welcome window closed, a
+# template picked and Choose pressed before anything will take a keystroke. Semicolons separate.
+for STEP in ${CLICK//;/ }; do
+	x=${STEP%,*}; y=${STEP#*,}
 	say "click at $x,$y"
-	printf 'move %s %s\nclick\n' "$x" "$y" | WAYLAND_DISPLAY=$NEW "$VPTR" "$WIDTH" "$HEIGHT" \
-		>>"$SHOTS/driver.log" 2>&1
-	sleep 3
-	shoot d2-click
-fi
+	# The vocabulary is abs/rel/press/release/scroll/sleep. "move" and "click" were ignored in
+	# silence, which reads exactly like a click that landed and did nothing.
+	printf 'abs %s %s\nsleep 200\npress left\nsleep 80\nrelease left\n' "$x" "$y" \
+		| WAYLAND_DISPLAY=$NEW "$VPTR" "$WIDTH" "$HEIGHT" >>"$SHOTS/driver.log" 2>&1
+	sleep 4
+done
+[ -n "$CLICK" ] && shoot d2-click
 
 if [ -n "$TYPE" ]; then
-	say "typing"
-	WAYLAND_DISPLAY=$NEW "$WTYPE" "$TYPE" >>"$SHOTS/driver.log" 2>&1
+	say "typing $TYPE"
+	# key:<name> sends a named key rather than text. Proving the keyboard works needs something
+	# whose effect is VISIBLE, and in an application whose text fields are several clicks deep the
+	# cheapest such thing is Return on a selection.
+	case "$TYPE" in
+		key:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -k "${TYPE#key:}" >>"$SHOTS/driver.log" 2>&1 ;;
+		*)     WAYLAND_DISPLAY=$NEW "$WTYPE" "$TYPE" >>"$SHOTS/driver.log" 2>&1 ;;
+	esac
 	sleep 3
 	shoot d3-typed
 fi
