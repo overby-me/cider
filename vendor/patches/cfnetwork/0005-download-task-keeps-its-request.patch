@@ -1,0 +1,31 @@
+--- a/src/URL/NSCFURLSession.m
++++ b/src/URL/NSCFURLSession.m
+@@ -305,7 +305,11 @@
+ 
+ - (NSURLSessionDownloadTask *)downloadTaskWithResumeData:(NSData *)resumeData completionHandler:(void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
+ {
+-    NSURLSessionDownloadTask *task = [[NSURLSessionDownloadTask alloc] initWithResumeData:resumeData completionHandler:completionHandler];
++    /* Resuming a partial download is not implemented, and a task with no request answers the
++     * completion handler with an error rather than raising on an initialiser that is not there. */
++    (void) resumeData;
++    NSURLSessionDownloadTask *task = [[NSURLSessionDownloadTask alloc] initWithRequest:nil
++                                                                    completionHandler:completionHandler];
+ 
+     return [task autorelease];
+ }
+@@ -327,7 +331,14 @@
+ 
+ - (NSURLSessionDownloadTask *)downloadTaskWithRequest:(NSURLRequest *)request completionHandler:(void (^)(NSData *data, NSURLResponse *response, NSError *error))completionHandler
+ {
+-    NSURLSessionDownloadTask *task = [[NSURLSessionDownloadTask alloc] initWithCompletionHandler:completionHandler];
++    /*
++     * THE REQUEST WAS BEING THROWN AWAY, and the initialiser this used does not exist. Every caller
++     * of downloadTaskWithURL: or downloadTaskWithRequest: died on an unrecognized selector, which is
++     * where Swift Publisher 5 stopped. NSURLSessionTask already has the initialiser that takes both,
++     * and it is the one the data task path uses.
++     */
++    NSURLSessionDownloadTask *task = [[NSURLSessionDownloadTask alloc] initWithRequest:request
++                                                                    completionHandler:completionHandler];
+ 
+     return [task autorelease];
+ }
