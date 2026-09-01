@@ -2,9 +2,14 @@
 #import <CoreText/CTFontDescriptor.h>
 #import <CoreText/CTFontTraits.h>
 #import <CoreFoundation/CoreFoundation.h>
+#import <fontconfig/fontconfig.h>
 #import <ft2build.h>
 #import FT_FREETYPE_H
+#import <limits.h>
 #import <stdio.h>
+#import <stdlib.h>
+#import <string.h>
+#import <sys/stat.h>
 #import <unistd.h>
 
 extern const CFStringRef kCTFontSymbolicTrait;
@@ -129,21 +134,75 @@ CFArrayRef CTFontManagerCopyAvailableFontFamilyNames(void)
     return nil;
 }
 
-bool CTFontManagerRegisterFontsForURL(CFURLRef fontURL, CTFontManagerScope scope, CFErrorRef * error)
+/*
+ * A PATH HANDED TO A NATIVE LIBRARY MUST BE A HOST PATH.
+ *
+ * libfontconfig is /usr/lib/native/libfontconfig.dylib, the ELF bridge, so its open() is an ordinary
+ * Linux one with no vchroot in front of it. A guest stat() of the same name succeeds while
+ * fontconfig gets ENOENT, because the host has no /Applications: every registration of a bundled
+ * font failed on a file the host's own fc-query parses.
+ *
+ * __darling_vchroot_expand is the translation the emulation already uses, and hdiutil hands host
+ * paths to a host tool the same way.
+ */
+extern int __darling_vchroot_expand(const char *path, char *out);
+
+static void CTFontManagerHostPath(const char *path, char *out, size_t outSize)
 {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
-    /*
-     * A FAILING FUNCTION MUST STILL HONOUR ITS OUT PARAMETER. The contract is that on failure
-     * *error points to a CFError the caller owns, and callers are written for it: LibreOffice's
-     * AddTempDevFont does CFRelease(error) the moment this returns false. Returning false while
-     * leaving error untouched therefore handed CFRelease an uninitialised pointer, and CFRelease
-     * meets that with HALT, an int3 that names nothing.
-     *
-     * That is a stub failing in a way the real function cannot, which is the worst kind: the
-     * caller was correct and the crash landed three frames away from the cause.
-     */
+    char expanded[4096];
+    if (__darling_vchroot_expand(path, expanded) >= 0 && expanded[0] != '\0') {
+        strlcpy(out, expanded, outSize);
+    } else {
+        strlcpy(out, path, outSize);
+    }
+}
+
+/*
+ * A FAILING FUNCTION MUST STILL HONOUR ITS OUT PARAMETER. Callers are written for the contract:
+ * LibreOffice's AddTempDevFont does CFRelease(error) the moment this returns false, so leaving
+ * *error untouched handed CFRelease an uninitialised pointer and it answered with HALT.
+ */
+static bool CTFontManagerFail(CFErrorRef *error, CFIndex code, const char *reason)
+{
+    if (reason != NULL && getenv("CIDER_TRACE_FONT") != NULL) {
+        printf("CIDER_FONT register=FAILED reason=%s\n", reason);
+    }
     if (error != NULL) {
-        *error = CFErrorCreate(kCFAllocatorDefault, kCFErrorDomainCocoa, -1, NULL);
+        *error = CFErrorCreate(kCFAllocatorDefault, kCFErrorDomainCocoa, code, NULL);
     }
     return false;
+}
+
+/*
+ * The config must be the CURRENT one, which is what Onyx2D renders from (O2FontSharedFontConfig).
+ *
+ * Failing here is worse than most stubs: fontconfig never fails a lookup, it SUBSTITUTES, so an
+ * application whose own typefaces were refused still draws its text, in a face it never asked for
+ * and did not lay out against.
+ */
+bool CTFontManagerRegisterFontsForURL(CFURLRef fontURL, CTFontManagerScope scope, CFErrorRef * error)
+{
+    char path[PATH_MAX];
+
+    if (fontURL == NULL) return CTFontManagerFail(error, -1, "no url");
+    if (!CFURLGetFileSystemRepresentation(fontURL, true, (UInt8 *) path, sizeof(path))) {
+        return CTFontManagerFail(error, -1, "url is not a file path");
+    }
+
+    struct stat info;
+    bool isDirectory = stat(path, &info) == 0 && S_ISDIR(info.st_mode);
+
+    char hostPath[4096];
+    CTFontManagerHostPath(path, hostPath, sizeof(hostPath));
+
+    FcConfig *config = FcConfigGetCurrent();
+    FcBool added = isDirectory
+            ? FcConfigAppFontAddDir(config, (const FcChar8 *) hostPath)
+            : FcConfigAppFontAddFile(config, (const FcChar8 *) hostPath);
+
+    if (getenv("CIDER_TRACE_FONT") != NULL) {
+        printf("CIDER_FONT register=%s guest=%s host=%s\n", added ? "ok" : "FAILED", path, hostPath);
+    }
+    if (!added) return CTFontManagerFail(error, -1, NULL);
+    return true;
 }

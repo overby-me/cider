@@ -109,6 +109,12 @@ FT_Library O2FontSharedFreeTypeLibrary() {
     return library;
 }
 
+/*
+ * fontconfig is the ELF bridge library, so it opens HOST paths and a bundle path means nothing to
+ * it. Same translation, and the same reason, as CTFontManagerRegisterFontsForURL.
+ */
+extern int __darling_vchroot_expand(const char *path, char *out);
+
 static void addAppFont(FcConfig *config, NSString *path) {
     path = [[NSBundle mainBundle] pathForResource: path ofType: nil];
     if (path == nil) {
@@ -118,18 +124,34 @@ static void addAppFont(FcConfig *config, NSString *path) {
     BOOL isDirectory;
     [[NSFileManager defaultManager] fileExistsAtPath: path
                                          isDirectory: &isDirectory];
+
+    char host[4096];
+    const char *guest = [path UTF8String];
+    if (__darling_vchroot_expand(guest, host) < 0 || host[0] == '\0') {
+        strlcpy(host, guest, sizeof(host));
+    }
+
     if (isDirectory) {
-        FcConfigAppFontAddDir(config, (const FcChar8 *) [path UTF8String]);
+        FcConfigAppFontAddDir(config, (const FcChar8 *) host);
     } else {
-        FcConfigAppFontAddFile(config, (const FcChar8 *) [path UTF8String]);
+        FcConfigAppFontAddFile(config, (const FcChar8 *) host);
     }
 }
 
+/*
+ * ONE FONTCONFIG CONFIG FOR THE PROCESS, and it must be the CURRENT one.
+ *
+ * FcInitLoadConfigAndFonts builds a PRIVATE config, so fonts looked up here were invisible to
+ * CoreText, which passes NULL and means the default. An application that registers its own faces at
+ * startup had them accepted and then rendered with something else.
+ *
+ * The returned config is owned by fontconfig, so it is never destroyed here.
+ */
 FcConfig *O2FontSharedFontConfig() {
     static FcConfig *fontConfig = NULL;
 
     if (fontConfig == NULL) {
-        fontConfig = FcInitLoadConfigAndFonts();
+        fontConfig = FcConfigGetCurrent();
 
         id appFontsPath = [[NSBundle mainBundle]
                 objectForInfoDictionaryKey: @"ATSApplicationFontsPath"];

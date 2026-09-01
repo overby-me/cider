@@ -160,6 +160,9 @@ say "launching $APPBIN"
 		DSERVER_PATH="$(realpath "$CIDERD")" DSERVER_MLDR_PATH="$(realpath "$MLDR")" \
 		DSERVER_LIBEXEC_PATH="$(realpath "$RT")/libexec/cider" \
 		timeout "$LIMIT" "$CIDER" shell "$APPBIN"
+	# A quiet exit and a process still running at the limit leave the same silence in the log, and
+	# they want opposite work. 124 is the timeout's own code: still alive.
+	echo "cider-app exit=$?"
 ) >"$SHOTS/app.log" 2>&1 &
 APPPID=$!
 

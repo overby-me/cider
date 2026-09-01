@@ -133,6 +133,9 @@ NSString *const NSTextMovementUserInfoKey = @"NSTextMovement";
     CGFloat _pointSize;
     NSInteger _weight;
     NSInteger _scale;
+    NSArray *_paletteColors;
+    NSColor *_hierarchicalColor;
+    NSInteger _renderingMode;
 }
 
 + (instancetype) configurationWithPointSize: (CGFloat) pointSize
@@ -159,6 +162,72 @@ NSString *const NSTextMovementUserInfoKey = @"NSTextMovement";
     return [self configurationWithPointSize: 0 weight: 0 scale: 0];
 }
 
+/*
+ * THE COLOUR CONFIGURATIONS.
+ *
+ * Missing, +configurationWithPaletteColors: raised, NSApplication caught it per event, and the only
+ * sign iA Writer left was a window that never appeared.
+ *
+ * Rendering mode is STORED, NOT APPLIED: nothing in this stack draws SF Symbols. Callers read these
+ * back and combine them, which is what makes carrying the choice worth doing.
+ */
++ (instancetype) configurationWithPaletteColors: (NSArray *) paletteColors {
+    NSImageSymbolConfiguration *configuration = [[[self alloc] init] autorelease];
+
+    configuration->_paletteColors = [paletteColors copy];
+    configuration->_renderingMode = NSImageSymbolRenderingModePalette;
+    return configuration;
+}
+
++ (instancetype) configurationWithHierarchicalColor: (NSColor *) hierarchicalColor {
+    NSImageSymbolConfiguration *configuration = [[[self alloc] init] autorelease];
+
+    configuration->_hierarchicalColor = [hierarchicalColor retain];
+    configuration->_renderingMode = NSImageSymbolRenderingModeHierarchical;
+    return configuration;
+}
+
++ (instancetype) configurationPreferringMonochrome {
+    NSImageSymbolConfiguration *configuration = [[[self alloc] init] autorelease];
+
+    configuration->_renderingMode = NSImageSymbolRenderingModeMonochrome;
+    return configuration;
+}
+
++ (instancetype) configurationPreferringHierarchical {
+    NSImageSymbolConfiguration *configuration = [[[self alloc] init] autorelease];
+
+    configuration->_renderingMode = NSImageSymbolRenderingModeHierarchical;
+    return configuration;
+}
+
++ (instancetype) configurationPreferringMulticolor {
+    NSImageSymbolConfiguration *configuration = [[[self alloc] init] autorelease];
+
+    configuration->_renderingMode = NSImageSymbolRenderingModeMulticolor;
+    return configuration;
+}
+
+/* The argument wins wherever it says anything, which is what makes these composable. */
+- (NSImageSymbolConfiguration *) configurationByApplyingConfiguration:
+        (NSImageSymbolConfiguration *) configuration
+{
+    if (configuration == nil) return self;
+
+    NSImageSymbolConfiguration *combined = [[[[self class] alloc] init] autorelease];
+
+    combined->_pointSize = configuration->_pointSize != 0 ? configuration->_pointSize : _pointSize;
+    combined->_weight = configuration->_weight != 0 ? configuration->_weight : _weight;
+    combined->_scale = configuration->_scale != 0 ? configuration->_scale : _scale;
+    combined->_paletteColors = [(configuration->_paletteColors != nil
+            ? configuration->_paletteColors : _paletteColors) copy];
+    combined->_hierarchicalColor = [(configuration->_hierarchicalColor != nil
+            ? configuration->_hierarchicalColor : _hierarchicalColor) retain];
+    combined->_renderingMode = configuration->_renderingMode != NSImageSymbolRenderingModeAutomatic
+            ? configuration->_renderingMode : _renderingMode;
+    return combined;
+}
+
 - (CGFloat) pointSize {
     return _pointSize;
 }
@@ -169,6 +238,34 @@ NSString *const NSTextMovementUserInfoKey = @"NSTextMovement";
 
 - (NSInteger) scale {
     return _scale;
+}
+
+- (NSArray *) paletteColors {
+    return _paletteColors;
+}
+
+- (NSColor *) hierarchicalColor {
+    return _hierarchicalColor;
+}
+
+- (NSInteger) renderingMode {
+    return _renderingMode;
+}
+
+- (void) dealloc {
+    [_paletteColors release];
+    [_hierarchicalColor release];
+    [super dealloc];
+}
+
+@end
+
+/* No SF Symbol rendering here, so there is nothing to apply; raising instead would cost the caller
+ * its window. */
+@implementation NSImage (NSImageSymbolConfiguration)
+
+- (NSImage *) imageWithSymbolConfiguration: (NSImageSymbolConfiguration *) configuration {
+    return self;
 }
 
 @end
