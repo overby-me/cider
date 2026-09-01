@@ -57,6 +57,11 @@ typedef NS_ENUM(NSInteger, NSImageSymbolRenderingMode) {
 
 @interface NSImage (NSImageSymbolConfiguration)
 - (NSImage *) imageWithSymbolConfiguration: (NSImageSymbolConfiguration *) configuration;
++ (NSImage *) imageWithSymbolName: (NSString *) name
+                           bundle: (NSBundle *) bundle
+                    variableValue: (double) variableValue;
++ (NSImage *) imageWithSystemSymbolName: (NSString *) name
+               accessibilityDescription: (NSString *) description;
 @end
 
 @interface NSSearchToolbarItem : NSToolbarItem

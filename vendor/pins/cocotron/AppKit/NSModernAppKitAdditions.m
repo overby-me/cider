@@ -268,6 +268,35 @@ NSString *const NSTextMovementUserInfoKey = @"NSTextMovement";
     return self;
 }
 
+/*
+ * A SYMBOL BY NAME, which for an application's OWN symbols is a real answer.
+ *
+ * SF Symbols are an Apple font that is not here, so a system symbol name has nothing behind it. A
+ * name from an application bundle is different: custom symbols are ordinary artwork in the same
+ * asset catalog as everything else, and +imageNamed: already reads those. So look it up, and answer
+ * nil when there is nothing, which is what an unavailable symbol is.
+ *
+ * NIL RATHER THAN AN EXCEPTION IS THE POINT. Unimplemented, this selector raised, NSApplication
+ * caught it, and iA Writer finished launching with zero windows: whatever was building the window
+ * was abandoned mid-construction. A caller handed nil draws no icon and keeps its window.
+ */
++ (NSImage *) imageWithSymbolName: (NSString *) name
+                           bundle: (NSBundle *) bundle
+                    variableValue: (double) variableValue
+{
+    if (name == nil)
+        return nil;
+    return [self imageNamed: name];
+}
+
++ (NSImage *) imageWithSystemSymbolName: (NSString *) name
+               accessibilityDescription: (NSString *) description
+{
+    if (name == nil)
+        return nil;
+    return [self imageNamed: name];
+}
+
 @end
 
 /*

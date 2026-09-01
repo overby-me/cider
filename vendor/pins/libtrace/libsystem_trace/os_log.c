@@ -28,6 +28,7 @@
 #include "os_log_s.h"
 #include "libtrace_assert.h"
 #include <asl.h>
+#include <dlfcn.h>
 #include <os/log.h>
 #import <os/object_private.h>
 
@@ -96,6 +97,43 @@ _os_log_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, ui
 	libtrace_precondition(log->magic == OS_LOG_DEFAULT_MAGIC || log->magic == OS_LOG_MAGIC, "Invalid os_log_t pointer parameter passed to _os_log_impl()");
 	libtrace_precondition(type >= OS_LOG_TYPE_DEFAULT && type <= OS_LOG_TYPE_FAULT, "Invalid os_log_type_t parameter passed to _os_log_impl()");
 
+	/*
+	 * A CALL WHOSE ARGUMENTS CANNOT BE TRUSTED, REFUSED HERE RATHER THAN IN EVERY CONSUMER.
+	 *
+	 * iA Writer arrives with size=4292804464, which is -2162832 in a uint32_t, and the format
+	 * pointer is no better: the decoder died on an unmapped page, and so did a strlen of the format
+	 * once the decoder was skipped. Clamping the length would not help, because the decoder walks
+	 * the buffer by the FORMAT STRING rather than by the size.
+	 *
+	 * So when the size is outside os_log's own 1024 byte maximum for one entry, NOTHING from this
+	 * call is read, not even the format. The entry still goes out, saying that much, because a log
+	 * call must never be able to kill the process it is describing.
+	 *
+	 * The return address names the caller, which the arguments cannot.
+	 */
+	bool argumentsReadable = (buf != NULL && size <= 1024);
+
+	if (!argumentsReadable) {
+		static bool reported = false;
+
+		if (!reported) {
+			void *caller = __builtin_return_address(0);
+			Dl_info info;
+
+			reported = true;
+			if (dladdr(caller, &info) != 0 && info.dli_sname != NULL) {
+				fprintf(stderr, "libtrace: os_log arguments unreadable (buf=%p size=%u) from %s + %ld"
+						" in %s\n", buf, size, info.dli_sname,
+						(long) ((char *) caller - (char *) info.dli_saddr),
+						info.dli_fname ? info.dli_fname : "?");
+			} else {
+				fprintf(stderr, "libtrace: os_log arguments unreadable (buf=%p size=%u) from %p\n",
+						buf, size, caller);
+			}
+			fflush(stderr);
+		}
+	}
+
 	aslmsg message = asl_new(ASL_TYPE_MSG);
 	asl_set(message, "os_log(3)", "TRUE");
 
@@ -107,7 +145,7 @@ _os_log_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, ui
 	asl_set(message, "Subsystem", subsystem);
 	asl_set(message, "Category", category);
 
-	const char *buffer_hex = os_log_buffer_to_hex_string(buf, size);
+	const char *buffer_hex = argumentsReadable ? os_log_buffer_to_hex_string(buf, size) : strdup("");
 	asl_set(message, "HexBuffer", buffer_hex);
 
 	int level;
@@ -133,25 +171,31 @@ _os_log_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, ui
 			libtrace_assert(false, "Invalid os_log_type_t not caught by precondition");
 	}
 
-	char *decodedBuffer = os_log_decode_buffer(format, buf, size);
+	char *decodedBuffer = argumentsReadable ? os_log_decode_buffer(format, buf, size)
+	                                        : strdup("(os_log arguments unreadable)");
 	asl_log(get_client(), message, level, "%s", decodedBuffer);
 	asl_release(message);
 	free(decodedBuffer);
 	free((void *)buffer_hex);
 }
 
-// macOS-14 os_log_error()/os_log_debug() expand to these type-fixed entry
-// points instead of _os_log_impl. Bootstrap-tools' libutil (and other 14.0
-// binaries) import them; Darling shipped only the base _os_log_impl. Thin
-// wrappers keep behaviour identical to a call with the matching type.
+// os_log_error()/os_log_debug() expand to these type-fixed entry points instead of
+// _os_log_impl; they differ from it only in being NOT_TAIL_CALLED, so a backtrace keeps
+// the caller's frame.
+//
+// THEY TAKE THE TYPE TOO, and that argument is not redundant even though the entry point
+// implies it: it occupies a register. Declared without it, every later argument arrived one
+// slot early, so format held OS_LOG_TYPE_ERROR and size held half of the buffer pointer.
+// iA Writer's Sparkle logs through this path and the run died first in the buffer decoder
+// and then in a strlen of the "format", with size=4292804464.
 void
-_os_log_error_impl(void *dso, os_log_t log, const char *format, uint8_t *buf, uint32_t size) {
-	_os_log_impl(dso, log, OS_LOG_TYPE_ERROR, format, buf, size);
+_os_log_error_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, uint8_t *buf, uint32_t size) {
+	_os_log_impl(dso, log, type, format, buf, size);
 }
 
 void
-_os_log_debug_impl(void *dso, os_log_t log, const char *format, uint8_t *buf, uint32_t size) {
-	_os_log_impl(dso, log, OS_LOG_TYPE_DEBUG, format, buf, size);
+_os_log_debug_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, uint8_t *buf, uint32_t size) {
+	_os_log_impl(dso, log, type, format, buf, size);
 }
 
 #pragma mark Legacy Functions

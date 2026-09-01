@@ -384,9 +384,18 @@ char *os_log_decode_buffer(const char *formatString, uint8_t *buffer, uint32_t b
 	return retval;
 }
 
+/* The entry point in os_log.c bounds this already; the NULL check keeps a direct caller honest. */
+#define OS_LOG_MAX_BUFFER_SIZE 1024
+
 __XNU_PRIVATE_EXTERN
 const char *os_log_buffer_to_hex_string(const uint8_t *buffer, uint32_t buffer_size) {
 	struct sbuf *sbuf = sbuf_new_auto();
+
+	if (buffer == NULL)
+		buffer_size = 0;
+	else if (buffer_size > OS_LOG_MAX_BUFFER_SIZE)
+		buffer_size = OS_LOG_MAX_BUFFER_SIZE;
+
 	while (buffer_size-- != 0) {
 		sbuf_printf(sbuf, "%02X", buffer[0]);
 		buffer++;

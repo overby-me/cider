@@ -48,11 +48,14 @@ bool os_log_type_enabled(os_log_t log, os_log_type_t type);
 OS_EXPORT OS_NOT_TAIL_CALLED
 void _os_log_impl(void* dso, os_log_t log, os_log_type_t type, const char* format, uint8_t* buffer, uint32_t size);
 
+/* The type is passed even though the entry point already implies it: these differ from
+ * _os_log_impl only in being NOT_TAIL_CALLED, and they take the same six arguments. Declaring five
+ * here shifted every argument by one, so the format pointer was the type constant. */
 OS_EXPORT OS_NOT_TAIL_CALLED
-void _os_log_error_impl(void* dso, os_log_t log, const char* format, uint8_t* buffer, uint32_t size);
+void _os_log_error_impl(void* dso, os_log_t log, os_log_type_t type, const char* format, uint8_t* buffer, uint32_t size);
 
 OS_EXPORT OS_NOT_TAIL_CALLED
-void _os_log_debug_impl(void* dso, os_log_t log, const char* format, uint8_t* buffer, uint32_t size);
+void _os_log_debug_impl(void* dso, os_log_t log, os_log_type_t type, const char* format, uint8_t* buffer, uint32_t size);
 
 OS_EXPORT DEPRECATED_ATTRIBUTE
 void _os_log_internal(void *dso, os_log_t log, os_log_type_t type, const char *message, ...);
