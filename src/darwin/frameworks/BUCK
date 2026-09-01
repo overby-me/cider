@@ -17063,6 +17063,7 @@ cc_objects(
     name = "CryptoKit_obj",
     srcs = [
         "CryptoKit/src/CryptoKit.c",
+        "CryptoKit/src/CryptoKitSymbols.c",
     ],
     compiler_flags = [
         "-DCryptoKit_EXPORTS",

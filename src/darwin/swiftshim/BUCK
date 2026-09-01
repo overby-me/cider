@@ -1,0 +1,239 @@
+# SWIFT OVERLAYS THIS PORT DOES NOT HAVE.
+#
+# The prefix carries 44 prebuilt Apple Swift overlays from a pin. These ten are in no pin and in no
+# application bundle, and dyld will not start a process whose library is missing however little of it
+# is used. Each shim defines exactly the symbols an application binds EAGERLY, as placeholders that
+# name themselves when reached. See src/darwin/swiftshim/<name>.c.
+
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+
+# buck-registry: src/swiftshim/libswiftSystem = libswiftSystem_dylib
+cc_objects(
+    name = "libswiftSystem_obj",
+    srcs = ["libswiftSystem.c"],
+    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libswiftSystem_dylib",
+    dylib_name = "libswiftSystem",
+    install_name = "/usr/lib/swift/libswiftSystem.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":libswiftSystem_obj"],
+    siblings = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# buck-registry: src/swiftshim/libswift_Concurrency = libswift_Concurrency_dylib
+cc_objects(
+    name = "libswift_Concurrency_obj",
+    srcs = ["libswift_Concurrency.c"],
+    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libswift_Concurrency_dylib",
+    dylib_name = "libswift_Concurrency",
+    install_name = "/usr/lib/swift/libswift_Concurrency.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":libswift_Concurrency_obj"],
+    siblings = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# buck-registry: src/swiftshim/libswiftOSLog = libswiftOSLog_dylib
+cc_objects(
+    name = "libswiftOSLog_obj",
+    srcs = ["libswiftOSLog.c"],
+    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libswiftOSLog_dylib",
+    dylib_name = "libswiftOSLog",
+    install_name = "/usr/lib/swift/libswiftOSLog.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":libswiftOSLog_obj"],
+    siblings = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# buck-registry: src/swiftshim/libswiftCoreMIDI = libswiftCoreMIDI_dylib
+cc_objects(
+    name = "libswiftCoreMIDI_obj",
+    srcs = ["libswiftCoreMIDI.c"],
+    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libswiftCoreMIDI_dylib",
+    dylib_name = "libswiftCoreMIDI",
+    install_name = "/usr/lib/swift/libswiftCoreMIDI.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":libswiftCoreMIDI_obj"],
+    siblings = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# buck-registry: src/swiftshim/libswiftQuickLookUI = libswiftQuickLookUI_dylib
+cc_objects(
+    name = "libswiftQuickLookUI_obj",
+    srcs = ["libswiftQuickLookUI.c"],
+    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libswiftQuickLookUI_dylib",
+    dylib_name = "libswiftQuickLookUI",
+    install_name = "/usr/lib/swift/libswiftQuickLookUI.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":libswiftQuickLookUI_obj"],
+    siblings = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# buck-registry: src/swiftshim/libswiftSpatial = libswiftSpatial_dylib
+cc_objects(
+    name = "libswiftSpatial_obj",
+    srcs = ["libswiftSpatial.c"],
+    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libswiftSpatial_dylib",
+    dylib_name = "libswiftSpatial",
+    install_name = "/usr/lib/swift/libswiftSpatial.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":libswiftSpatial_obj"],
+    siblings = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# buck-registry: src/swiftshim/libswiftUniformTypeIdentifiers = libswiftUniformTypeIdentifiers_dylib
+cc_objects(
+    name = "libswiftUniformTypeIdentifiers_obj",
+    srcs = ["libswiftUniformTypeIdentifiers.c"],
+    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libswiftUniformTypeIdentifiers_dylib",
+    dylib_name = "libswiftUniformTypeIdentifiers",
+    install_name = "/usr/lib/swift/libswiftUniformTypeIdentifiers.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":libswiftUniformTypeIdentifiers_obj"],
+    siblings = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# buck-registry: src/swiftshim/libswiftVideoToolbox = libswiftVideoToolbox_dylib
+cc_objects(
+    name = "libswiftVideoToolbox_obj",
+    srcs = ["libswiftVideoToolbox.c"],
+    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libswiftVideoToolbox_dylib",
+    dylib_name = "libswiftVideoToolbox",
+    install_name = "/usr/lib/swift/libswiftVideoToolbox.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":libswiftVideoToolbox_obj"],
+    siblings = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# buck-registry: src/swiftshim/libswiftSystem_Foundation = libswiftSystem_Foundation_dylib
+cc_objects(
+    name = "libswiftSystem_Foundation_obj",
+    srcs = ["libswiftSystem_Foundation.c"],
+    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libswiftSystem_Foundation_dylib",
+    dylib_name = "libswiftSystem_Foundation",
+    install_name = "/usr/lib/swift/libswiftSystem_Foundation.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":libswiftSystem_Foundation_obj"],
+    siblings = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# buck-registry: src/swiftshim/libswiftWebKit = libswiftWebKit_dylib
+cc_objects(
+    name = "libswiftWebKit_obj",
+    srcs = ["libswiftWebKit.c"],
+    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libswiftWebKit_dylib",
+    dylib_name = "libswiftWebKit",
+    install_name = "/usr/lib/swift/libswiftWebKit.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":libswiftWebKit_obj"],
+    siblings = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
