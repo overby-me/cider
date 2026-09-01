@@ -1,0 +1,27 @@
+--- a/CFDictionary.c
++++ b/CFDictionary.c
+@@ -417,6 +417,24 @@
+ 
+ Boolean CFDictionaryGetValueIfPresent(CFHashRef hc, const_any_pointer_t key, const_any_pointer_t *value) {
+ #if CFDictionary
++    /*
++     * __getValue:forKey: IS PRIVATE, AND NOT EVERY BRIDGED DICTIONARY HAS IT. Swift's bridged
++     * classes are the ones that matter here, and _SwiftDeferredNSDictionary does not implement it:
++     * iA Writer died on the main queue with
++     *
++     *     -[_TtGCs26_SwiftDeferredNSDictionary...  __getValue:forKey:]: unrecognized selector
++     *
++     * which no @try above it caught, because a block on the main queue is not inside AppKit's per
++     * event catch. objectForKey: is the public spelling of the same question and every dictionary
++     * has it, so ask for the private one only when the receiver actually answers it.
++     */
++    if (CFDictionary && CF_IS_OBJC(CFDictionaryGetTypeID(), hc)
++        && ![(id)hc respondsToSelector:@selector(__getValue:forKey:)]) {
++        id found = [(NSDictionary *)hc objectForKey:(id)key];
++
++        if (value) *value = (const_any_pointer_t)found;
++        return found != nil;
++    }
+     if (CFDictionary) CF_OBJC_FUNCDISPATCHV(CFDictionaryGetTypeID(), Boolean, (NSDictionary *)hc, __getValue:(id *)value forKey:(id)key);
+ #endif
+ #if CFSet
