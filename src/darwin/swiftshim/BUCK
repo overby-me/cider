@@ -31,15 +31,6 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 
-# buck-registry: src/swiftshim/libswift_Concurrency = libswift_Concurrency_dylib
-cc_objects(
-    name = "libswift_Concurrency_obj",
-    srcs = ["libswift_Concurrency.c"],
-    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
-    toolchain = "toolchains//:darwin_cc",
-    deps = ["//src/darwin:sdk_env"],
-    visibility = ["PUBLIC"],
-)
 
 darwin_dylib(
     name = "libswift_Concurrency_dylib",

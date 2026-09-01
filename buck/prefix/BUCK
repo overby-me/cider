@@ -2554,7 +2554,6 @@ prefix_tree(
         "libexec/cider/usr/lib/swift/libswiftContacts.dylib": "//vendor/src:swift_libswiftContacts.dylib",
         "libexec/cider/usr/lib/swift/libswiftCore.dylib": "//vendor/src:swift_libswiftCore.dylib",
         "libexec/cider/usr/lib/swift/libswiftSystem.dylib": "//src/darwin/swiftshim:libswiftSystem_dylib",
-        "libexec/cider/usr/lib/swift/libswift_Concurrency.dylib": "//src/darwin/swiftshim:libswift_Concurrency_dylib",
         "libexec/cider/usr/lib/swift/libswiftOSLog.dylib": "//src/darwin/swiftshim:libswiftOSLog_dylib",
         "libexec/cider/usr/lib/swift/libswiftCoreMIDI.dylib": "//src/darwin/swiftshim:libswiftCoreMIDI_dylib",
         "libexec/cider/usr/lib/swift/libswiftQuickLookUI.dylib": "//src/darwin/swiftshim:libswiftQuickLookUI_dylib",

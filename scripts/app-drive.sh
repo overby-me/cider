@@ -156,7 +156,7 @@ say "launching $APPBIN"
 	# died with "CIDER_WAYLAND_TRACE_INPUT=1: command not found" and an empty log.
 	env CIDERPREFIX="$PREFIX" WAYLAND_DISPLAY=$NEW XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000} \
 		CIDER_NO_LAUNCHD="${LAUNCHD:-1}" LD_LIBRARY_PATH="$ELF_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-		${TRACE_INPUT:+CIDER_WAYLAND_TRACE_INPUT=1} \
+		${TRACE_INPUT:+CIDER_WAYLAND_TRACE_INPUT=1} ${TRACE_ENV:-} \
 		DSERVER_PATH="$(realpath "$CIDERD")" DSERVER_MLDR_PATH="$(realpath "$MLDR")" \
 		DSERVER_LIBEXEC_PATH="$(realpath "$RT")/libexec/cider" \
 		timeout "$LIMIT" "$CIDER" shell "$APPBIN"

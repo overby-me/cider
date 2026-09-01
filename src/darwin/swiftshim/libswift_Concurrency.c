@@ -39,3 +39,20 @@ CIDER_SHIM_SYMBOL(17, "_$ss9TaskLocalCMn");
 CIDER_SHIM_SYMBOL(18, "_$ss9TaskLocalCMo");
 CIDER_SHIM_SYMBOL(19, "_swift_deletedAsyncMethodErrorTu");
 const char cider_shim_libswift_Concurrency[] = "cider shim libswift_Concurrency";
+
+/*
+ * THIS SHIM IS NOT BUILT, and the file is kept only to say why.
+ *
+ * A stub can stand in for a framework whose symbols an application merely REFERENCES. It cannot
+ * stand in for a runtime library whose functions are CALLED: libswift_Concurrency implements actors,
+ * and swift_defaultActor_initialize runs every time one is created. Mapping this shim into the
+ * prefix shadowed the REAL copy that iA Writer ships inside its own bundle, and turned a working
+ * launch into
+ *
+ *     dyld: Symbol not found: _swift_defaultActor_initialize
+ *       Referenced from: .../AccountCore.framework
+ *       Expected in: /usr/lib/swift/libswift_Concurrency.dylib
+ *
+ * iTerm2 needs a real one too. The answer is a real Swift concurrency runtime in the prefix, not a
+ * stub, and until there is one this file stays out of the build.
+ */

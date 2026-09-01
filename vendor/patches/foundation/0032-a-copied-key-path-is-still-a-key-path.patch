@@ -1,0 +1,22 @@
+--- a/src/NSFunctionExpression.m
++++ b/src/NSFunctionExpression.m
+@@ -108,7 +108,18 @@
+ 
+ - (id)copyWithZone:(NSZone *)zone
+ {
+-    return [[[self class] alloc] initWithExpressionType:NSFunctionExpressionType operand:[self operand] selector:_selector argumentArray:_arguments];
++    /*
++     * THE TYPE IS THE RECEIVER'S, NOT A CONSTANT. NSKeyPathExpression is a subclass of this one and
++     * carries NSKeyPathExpressionType, so hardcoding the function type here turned every COPY of a
++     * key path into a function expression: same class, wrong type. Predicates are copied constantly,
++     * so what a caller got back reported type 4 and answered valueForKeyPath: when asked for its
++     * function, and iA Writer's own predicate to SQL layer raised on it:
++     *
++     *     Cannot generate query for function valueForKeyPath:
++     *
++     * Measured either side of a copy: build class=NSKeyPathExpression type=3, then type=4.
++     */
++    return [[[self class] alloc] initWithExpressionType:[self expressionType] operand:[self operand] selector:_selector argumentArray:_arguments];
+ }
+ 
+ - (id)initWithCoder:(NSCoder *)decoder
