@@ -1,0 +1,62 @@
+aarch64 #40 milestone-5: guest processes signals in-guest when it has no ciderd socket (flag-on).
+
+A checkin-less (daemon-socket-less) process -- a flag-on non-pid-1 process, for which mldr skips
+create_socket+checkin -- cannot reach ciderd, so sigexc_handler's three RPCs (interrupt_enter,
+sigprocess, interrupt_exit) EPIPE and abort it on its first default-action signal. Those RPCs are
+not needed for the self-contained case: interrupt_enter/exit have no ciderd Mach wait to clear
+(in-guest Mach, milestone-1), and sigprocess only rewrites register state to ENTER a handler, which
+the default-action (terminate) path below does not need -- registered handlers already run in-guest
+(0061). __cider_no_daemon() (flag-on AND getpid()!=1, mirroring mldr's socket-less condition) gates
+the three RPCs; the existing in-guest default-effect / handler-forward logic then delivers the signal
+with no daemon. Paired with the mldr socket-less exec path (skip checkin, seed uid/gid locally, record
+the server address without a socket). Socket-less `cider shell` (login chain + bash fork/exec loop)
+soaks 4/4, rc=0. Flag-off and the socketed flag-on path are unchanged (__cider_no_daemon is false
+there). On top of 0064.
+
+diff --git a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+@@ -227,6 +227,14 @@
+ #endif
+ }
+
++extern int __inguest_ipc_on(void);
++// #40: a checkin-less (daemon-socket-less) process is exactly a flag-on non-pid-1 process -- mldr
++// skips create_socket+checkin for those, so their sigexc RPCs would EPIPE. Process the signal
++// in-guest instead: the default-effect / handler-forward logic below needs no ciderd.
++static int __cider_no_daemon(void)
++{
++	return __inguest_ipc_on() && (int) LINUX_SYSCALL0(__NR_getpid) != 1;
++}
+ void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
+ {
+ 	int status = dserver_rpc_interrupt_enter();
+@@ -367,7 +375,7 @@
+
+ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
+ {
+-	int status = dserver_rpc_interrupt_enter();
++	int status = __cider_no_daemon() ? 0 : dserver_rpc_interrupt_enter();
+
+ 	if (status != 0) {
+ 		__simple_printf("*** dserver_rpc_interrupt_enter failed with code %d ***\n", status);
+@@ -414,7 +422,9 @@
+ #endif
+
+ 	state_to_kernel(ctxt, &tstate, &fstate);
+-	int ret = dserver_rpc_sigprocess(bsd_signum, linux_signum, info->si_pid, info->si_code, info->si_addr, &tstate, &fstate, &bsd_signum);
++	// #40: checkin-less -> process the signal in-guest. sigprocess only rewrites reg state to ENTER a
++	// handler, which the default-action (terminate) path does not need; registered handlers use 0061.
++	int ret = __cider_no_daemon() ? 0 : dserver_rpc_sigprocess(bsd_signum, linux_signum, info->si_pid, info->si_code, info->si_addr, &tstate, &fstate, &bsd_signum);
+ 	if (ret < 0) {
+ 		__simple_printf("sigprocess failed internally while processing Linux signal %d: %d", linux_signum, ret);
+ 		__simple_abort();
+@@ -492,7 +502,7 @@
+ 	kern_printf("sigexc: handler (%d) returning\n", linux_signum);
+
+ out:
+-	status = dserver_rpc_interrupt_exit();
++	status = __cider_no_daemon() ? 0 : dserver_rpc_interrupt_exit();
+
+ 	if (status != 0) {
+ 		__simple_printf("*** dserver_rpc_interrupt_exit failed with code %d ***\n", status);

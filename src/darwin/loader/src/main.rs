@@ -291,37 +291,43 @@ fn main() {
             let mut seed_uid: i32 = -1;
             let mut seed_gid: i32 = -1;
             if let Some(ref sockpath) = special.sockpath {
-                let rpcfd = unsafe { rpc::create_socket(sockpath) };
-                if rpcfd >= 0 {
-                    kernfd = rpcfd;
-                    // stack_hint must be a real stack address (the C passes &dummy), not the
-                    // commpage base -- the daemon uses it to locate the thread's stack.
-                    let hint = 0u64;
-                    let checkin =
-                        unsafe { rpc::checkin(rpcfd, sockpath, &hint as *const u64 as u64) };
-                    dlog!(
-                        "[mldr] checkin({sockpath}) -> code={} task_self={:#x} uid={} gid={}",
-                        checkin.code, checkin.task_self, checkin.uid, checkin.gid
-                    );
-                    seed_task_self = checkin.task_self;
-                    seed_host_self = checkin.host_self;
-                    seed_uid = checkin.uid;
-                    seed_gid = checkin.gid;
+                if inguest_ipc() && unsafe { libc::getpid() } != 1 {
+                    // #40: a flag-on non-pid-1 process runs socket-less (no exec checkin). Self Mach
+                    // IPC is in-guest (milestone-1), signals in-guest (sigexc __cider_no_daemon), uid/gid
+                    // seeded locally below; vchroot recovered locally. No RPC.
+                    seed_uid = unsafe { libc::getuid() } as i32;
+                    seed_gid = unsafe { libc::getgid() } as i32;
                     rpc::set_sockpath(sockpath);
-                    rpc::set_thread_socket(rpcfd);
-                    // #23 milestone-4: recover the vchroot prefix locally (see local_vchroot_prefix)
-                    // instead of RPCing it. RPC fallback keeps flag-off unchanged and covers the cases
-                    // local recovery declines.
-                    vchroot_root = if inguest_ipc() {
-                        local_vchroot_prefix(&guest_path, &guest_argv)
-                            .or_else(vchroot_prefix_from_env)
-                            .or_else(|| unsafe { rpc::vchroot_path(rpcfd) })
-                    } else {
-                        unsafe { rpc::vchroot_path(rpcfd) }
-                    };
-                    dlog!("[mldr] vchroot_path -> {vchroot_root:?}");
+                    vchroot_root = local_vchroot_prefix(&guest_path, &guest_argv)
+                        .or_else(vchroot_prefix_from_env);
                 } else {
-                    eprintln!("[mldr] rpc socket creation failed");
+                    let rpcfd = unsafe { rpc::create_socket(sockpath) };
+                    if rpcfd < 0 {
+                        eprintln!("[mldr] rpc socket creation failed");
+                    } else {
+                        kernfd = rpcfd;
+                        let hint = 0u64;
+                        let checkin =
+                            unsafe { rpc::checkin(rpcfd, sockpath, &hint as *const u64 as u64) };
+                        dlog!(
+                            "[mldr] checkin({sockpath}) -> code={} task_self={:#x} uid={} gid={}",
+                            checkin.code, checkin.task_self, checkin.uid, checkin.gid
+                        );
+                        seed_task_self = checkin.task_self;
+                        seed_host_self = checkin.host_self;
+                        seed_uid = checkin.uid;
+                        seed_gid = checkin.gid;
+                        rpc::set_sockpath(sockpath);
+                        rpc::set_thread_socket(rpcfd);
+                        vchroot_root = if inguest_ipc() {
+                            local_vchroot_prefix(&guest_path, &guest_argv)
+                                .or_else(vchroot_prefix_from_env)
+                                .or_else(|| unsafe { rpc::vchroot_path(rpcfd) })
+                        } else {
+                            unsafe { rpc::vchroot_path(rpcfd) }
+                        };
+                        dlog!("[mldr] vchroot_path -> {vchroot_root:?}");
+                    }
                 }
             } else {
                 eprintln!("[mldr] (no __mldr_sockpath; skipping checkin)");

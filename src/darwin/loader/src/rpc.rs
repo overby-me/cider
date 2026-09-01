@@ -34,6 +34,15 @@ std::thread_local! {
 static SOCKPATH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 pub fn set_sockpath(p: &str) {
     let _ = SOCKPATH.set(p.to_string());
+    // #40: also record the server address, so the guest's dserver_socket_address is valid even when
+    // we never create a socket (socket-less exec). sys_execve reads it to build the child's
+    // __mldr_sockpath; without it the guest deref'd a NULL sockaddr (->sun_path == 0x2) and crashed
+    // in strlen. Harmless on the socketed path (create_socket writes the same value).
+    let (server, _slen) = make_server_addr(p);
+    unsafe {
+        SERVER_ADDR.write(server);
+    }
+    SERVER_ADDR_SET.store(true, Ordering::SeqCst);
 }
 pub fn set_thread_socket(fd: c_int) {
     T_SOCKET.with(|s| s.set(fd));
