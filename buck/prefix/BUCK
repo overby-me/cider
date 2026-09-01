@@ -2553,6 +2553,7 @@ prefix_tree(
         "libexec/cider/usr/lib/swift/libswiftCompression.dylib": "//vendor/src:swift_libswiftCompression.dylib",
         "libexec/cider/usr/lib/swift/libswiftContacts.dylib": "//vendor/src:swift_libswiftContacts.dylib",
         "libexec/cider/usr/lib/swift/libswiftCore.dylib": "//vendor/src:swift_libswiftCore.dylib",
+        "libexec/cider/usr/lib/swift/libswiftCompat.dylib": "//src/darwin/swiftshim:libswiftCompat_dylib",
         "libexec/cider/usr/lib/swift/libswiftSystem.dylib": "//src/darwin/swiftshim:libswiftSystem_dylib",
         "libexec/cider/usr/lib/swift/libswiftOSLog.dylib": "//src/darwin/swiftshim:libswiftOSLog_dylib",
         "libexec/cider/usr/lib/swift/libswiftCoreMIDI.dylib": "//src/darwin/swiftshim:libswiftCoreMIDI_dylib",

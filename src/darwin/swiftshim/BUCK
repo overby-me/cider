@@ -228,3 +228,26 @@ darwin_dylib(
     deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
+
+# buck-registry: src/swiftshim/libswiftCompat = libswiftCompat_dylib
+cc_objects(
+    name = "libswiftCompat_obj",
+    srcs = ["libswiftCompat.c"],
+    compiler_flags = ["-fPIC", "-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libswiftCompat_dylib",
+    dylib_name = "libswiftCompat",
+    install_name = "/usr/lib/swift/libswiftCompat.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":libswiftCompat_obj"],
+    siblings = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)

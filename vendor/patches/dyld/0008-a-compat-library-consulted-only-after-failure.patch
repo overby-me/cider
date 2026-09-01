@@ -1,0 +1,40 @@
+--- a/src/ImageLoaderMachOCompressed.cpp
++++ b/src/ImageLoaderMachOCompressed.cpp
+@@ -761,6 +761,37 @@
+ 		return 0;
+ 	}
+ 
++	/*
++	 * A COMPAT LIBRARY, CONSULTED ONLY WHEN THE REAL ONE HAS ALREADY FAILED.
++	 *
++	 * The Swift standard library here is a prebuilt binary, and applications built for a newer macOS
++	 * ask it for entry points it does not have. A TWO LEVEL NAMESPACE means a shim beside it is never
++	 * consulted, so one missing symbol stops the whole process: the same
++	 * _stdlib_isOSVersionAtLeastOrVariantVersion stopped both iTerm2 and iA Writer.
++	 *
++	 * So before failing, and ONLY then, look in one designated image. This is not a flat namespace:
++	 * it is a single named library, so what it can shadow is auditable, and nothing that resolves
++	 * normally ever reaches this code. CIDER_COMPAT_LIBRARY names it; unset means the old behaviour.
++	 */
++	{
++		const char* compatPath = getenv("CIDER_COMPAT_LIBRARY");
++
++		if ( compatPath != NULL && compatPath[0] != '\0' ) {
++			const Symbol* compatSym;
++			const ImageLoader* compatImage = NULL;
++
++			if ( context.flatExportFinder(symbolName, &compatSym, &compatImage) && compatImage != NULL ) {
++				const char* found = compatImage->getPath();
++
++				if ( found != NULL && strcmp(found, compatPath) == 0 ) {
++					if ( context.verboseBind )
++						dyld::log("dyld: %s resolved from the compat library %s\n", symbolName, found);
++					return compatImage->getExportedSymbolAddress(compatSym, context, this, runResolver);
++				}
++			}
++		}
++	}
++
+ 	// nowhere to be found, check if maybe this image is too new for this OS
+ 	char versMismatch[256];
+ 	versMismatch[0] = '\0';
