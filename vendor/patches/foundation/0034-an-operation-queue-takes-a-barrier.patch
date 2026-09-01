@@ -1,0 +1,32 @@
+--- a/src/NSOperation.m
++++ b/src/NSOperation.m
+@@ -852,6 +852,29 @@
+     }
+ }
+ 
++/*
++ * A BARRIER RUNS AFTER WHAT IS ALREADY HERE. macOS also holds back operations added later, which
++ * needs a queue that tracks a barrier generation; this does the half that callers actually depend
++ * on, by making the block wait for every operation currently enqueued. iA Writer uses it while
++ * setting up its library and died on the unrecognized selector.
++ *
++ * The dependency set is taken once, under the queue's own lock, so an operation added while this
++ * runs is neither waited for nor lost.
++ */
++- (void)addBarrierBlock:(void (^)(void))barrier
++{
++    NSBlockOperation *op = [NSBlockOperation blockOperationWithBlock:barrier];
++
++    for (NSOperation *existing in [self operations])
++    {
++        if (existing != op && ![existing isFinished])
++        {
++            [op addDependency:existing];
++        }
++    }
++    [self addOperation:op];
++}
++
+ - (void)addOperationWithBlock:(void (^)(void))block
+ {
+     if (block == nil)

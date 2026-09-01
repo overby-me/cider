@@ -1,0 +1,33 @@
+--- a/NSSharedKeyDictionary.m
++++ b/NSSharedKeyDictionary.m
+@@ -152,11 +152,27 @@
+ 
+     if (remaining > 0)
+     {
+-        memcpy(objects + sideCount, _values, sizeof(id) * remaining);
++        /*
++         * THE VALUE ARRAY IS NOT DENSE, and treating it as if it were handed callers a key with no
++         * value. _values is indexed by KEY MAP SLOT, one entry per key the shared key set knows, and
++         * only _count of them are occupied; the rest are nil. Copying the first "remaining" slots
++         * and pairing them with keyAtIndex: emitted empty slots as if they were entries, and a
++         * dictionary cannot hold nil: iA Writer died in -[NSDictionary initWithDictionary:copyItems:]
++         * on "Tried to init dictionary with nil object" with the key localizedName, which had been
++         * enumerated out of an unoccupied slot. Walk the slots and emit only what is there.
++         */
++        NSUInteger slots = [_keyMap count];
++        NSUInteger emitted = 0;
+ 
+-        for (NSUInteger idx = 0; idx < remaining; idx++)
++        for (NSUInteger slot = 0; slot < slots && emitted < remaining; slot++)
+         {
+-            keys[sideCount + idx] = [_keyMap keyAtIndex:idx];
++            if (_values[slot] == nil)
++            {
++                continue;
++            }
++            objects[sideCount + emitted] = _values[slot];
++            keys[sideCount + emitted] = [_keyMap keyAtIndex:slot];
++            emitted++;
+         }
+     }
+ }

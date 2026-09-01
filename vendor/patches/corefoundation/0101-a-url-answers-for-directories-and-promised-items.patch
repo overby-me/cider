@@ -1,0 +1,41 @@
+--- a/NSURL.m
++++ b/NSURL.m
+@@ -1034,6 +1034,20 @@
+ 
+ @implementation NSURL
+ 
++/*
++ * A TRAILING SLASH IS THE WHOLE ANSWER. macOS records at creation whether a URL names a directory
++ * and reports it here; for a parsed URL that is exactly whether the path ends in a separator.
++ * Without it iA Writer died on an unrecognized selector while building its library location.
++ */
++/*
++ * NOTHING IS CACHED HERE, so clearing the cache is nothing to do rather than something to raise on.
++ * macOS caches resource values on the URL object and these three empty the cache; a port that never
++ * fills one still has to answer, because callers treat them as bookkeeping and not as a question.
++ */
++- (void)removeAllCachedResourceValues
++{
++}
++
+ - (void)removeCachedResourceValueForKey:(NSString *)key
+ {
+     (void) key;
+@@ -1045,6 +1059,17 @@
+     (void) key;
+ }
+ 
++/*
++ * A PROMISED ITEM IS AN ITEM THAT IS NOT THERE YET, which is a cloud idea. Nothing here promises
++ * anything, so every item is present and the answer is the ordinary resource value. That is what
++ * macOS returns for a file that has already arrived, and it is what iA Writer expects while it
++ * inspects its library.
++ */
++- (BOOL)getPromisedItemResourceValue:(id *)value forKey:(NSString *)key error:(NSError **)error
++{
++    return [self getResourceValue:value forKey:key error:error];
++}
++
+ - (NSDictionary *)promisedItemResourceValuesForKeys:(NSArray *)keys error:(NSError **)error
+ {
+     return [self resourceValuesForKeys:keys error:error];

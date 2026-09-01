@@ -1,0 +1,20 @@
+--- a/src/NSHost.m
++++ b/src/NSHost.m
+@@ -712,7 +712,16 @@
+ {
+   NSString      *n = myHostName();
+ 
+-  if (self != [NSHost hostWithName: n])
++  /*
++   * IDENTITY IS THE WRONG TEST, and nil is the wrong answer for the current host. macOS names the
++   * computer here and never returns nil for +currentHost. This compared the receiver POINTER with
++   * whatever +hostWithName: handed back, which is a different object whenever the cache misses, so
++   * the current host answered nil and an application that put the result straight into a dictionary
++   * raised: iA Writer died on "Tried to init dictionary with nil object" with key localizedName.
++   *
++   * Comparing by NAME keeps the intent, which is that only the current host has a localized name.
++   */
++  if (n == nil || [_names containsObject: n] == NO)
+     {
+       n = nil;
+     }
