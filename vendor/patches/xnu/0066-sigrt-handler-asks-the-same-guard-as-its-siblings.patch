@@ -1,0 +1,14 @@
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+@@ -237,7 +237,10 @@
+ }
+ void sigrt_handler(int signum, struct linux_siginfo* info, struct linux_ucontext* ctxt)
+ {
+-	int status = dserver_rpc_interrupt_enter();
++	// The other three call sites in this file ask __cider_no_daemon() first and this one did not,
++	// so a checkin-less process died here on its first real-time signal: the RPC has no socket to
++	// travel over and answers ECONNREFUSED, which the code below can only print.
++	int status = __cider_no_daemon() ? 0 : dserver_rpc_interrupt_enter();
+ 
+ 	if (status != 0) {
+ 		__simple_printf("*** dserver_rpc_interrupt_enter failed with code %d ***\n", status);
