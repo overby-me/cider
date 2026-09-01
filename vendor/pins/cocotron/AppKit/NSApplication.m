@@ -922,21 +922,41 @@ static NSAppearance *_ciderApplicationAppearance = nil;
         needsUntitled = NO;
     }
 
+    BOOL askedShould = NO, answeredShould = NO, askedOpen = NO, answeredOpen = NO;
+
     if (needsUntitled && _delegate &&
         [_delegate respondsToSelector: @selector
                    (applicationShouldOpenUntitledFile:)]) {
-        needsUntitled = [_delegate applicationShouldOpenUntitledFile: self];
+        askedShould = YES;
+        answeredShould = [_delegate applicationShouldOpenUntitledFile: self];
+        needsUntitled = answeredShould;
     }
 
     if (needsUntitled && _delegate &&
         [_delegate
                 respondsToSelector: @selector(applicationOpenUntitledFile:)]) {
-        needsUntitled = ![_delegate applicationOpenUntitledFile: self];
+        askedOpen = YES;
+        answeredOpen = [_delegate applicationOpenUntitledFile: self];
+        needsUntitled = !answeredOpen;
     }
 
     if (needsUntitled && controller &&
         ![controller documentClassForType: [controller defaultType]]) {
         needsUntitled = NO;
+    }
+
+    /* WHOSE DECISION IT WAS THAT NO DOCUMENT OPENS. An application that shows nothing after
+     * launching has either declined an untitled document, intending to open its own window, or was
+     * never asked because it registered no document types. Those want opposite work and the
+     * absence of a window looks identical either way. */
+    if (getenv("CIDER_TRACE_NIB") != NULL) {
+        fprintf(stderr, "CIDER_NIB untitled needed=%d controller=%s types=%lu openfiles=%lu"
+                " should=%s open=%s\n",
+                (int) needsUntitled, (controller != nil) ? "yes" : "no",
+                (unsigned long) [types count], (unsigned long) [[self openFiles] count],
+                askedShould ? (answeredShould ? "YES" : "NO") : "notasked",
+                askedOpen ? (answeredOpen ? "YES" : "NO") : "notasked");
+        fflush(stderr);
     }
 
     if (needsUntitled && controller) {
