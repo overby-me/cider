@@ -14793,3 +14793,43 @@ conformance is null" into the name of the conformance. And the string probe runs
 addresses `dladdr` places inside a loaded image: a write to `/dev/null` answers `EFAULT` for a bad
 pointer on a real kernel, but this emulation copies the buffer in the guest first, so the probe
 faults instead of failing.
+
+## Nothing can run: four layers fixed, and a fifth that is a real regression (2026-09-01)
+
+The goal is that every application works, and the first finding is that the harness and the guest
+were both gone.
+
+**The harness first.** Every driver that verified an application lived in the session scratchpad
+under `/tmp`, together with the status file, the analysis tools and every run log. systemd swept the
+lot because the files were eleven days old and `/tmp` is cleaned by age; the machine had not
+rebooted. None of it was recoverable, because `scratchpad/` here is a **symlink** into that directory
+and was never tracked. `scripts/app-drive.sh` replaces it, in the repository, and writes its captures
+to `captures/`.
+
+**Then the guest.** `cider shell` hung with no output at all, and four separate things were wrong:
+
+1. The launcher execs `/usr/local/bin/ciderd`, gets ENOENT, and then waits forever *printing
+   nothing*. It bakes `CIDER_INSTALL_PREFIX` and only finds the daemon as a sibling, which buck
+   artifacts never are. `DSERVER_PATH` overrides it.
+2. The daemon then wants `DSERVER_LIBEXEC_PATH` and `DSERVER_MLDR_PATH`, and says so only in
+   `<prefix>/ciderd.log` — never on the terminal that is waiting for it.
+3. `//buck/prefix:cider_prefix` would not even load: nine symlinks in the materialised tree escape to
+   the repo root at `darwin/Developer/...`, the spelling from before first-party code moved under
+   `src/`. Repointing them at `src/darwin/...` is **not** enough, because the SDK entry they land on
+   is itself a symlink into `vendor/pins/xnu`, which has no working copy. They have to land on the
+   materialised file, `vendor/src/xnu/...`. buck2 caches the file-to-label mapping, so `buck2 kill`
+   is required before the fix is visible.
+4. Five pinned store paths in `.buckconfig.local` had been garbage collected, including
+   wayland-scanner and the Darwin rust toolchain. `nu scripts/buck-setup.nu` regenerates them.
+
+With all four, the runtime tree builds again — 668 commands — and the container gets far enough to
+fail honestly:
+
+    KMSG send to_pid=-1 id=1000 bits=0x1211
+    KMSG send to_pid=1  id=1100 bits=0x12
+    mach_msg_overwrite failed (internally): -111
+    *** dserver_rpc_interrupt_enter failed with code -111 ***
+
+111 is ECONNREFUSED. It fails identically with `CIDER_INGUEST_IPC` unset and set, and with the
+branch's own validation command `cider shell /usr/bin/true`, which its documentation says exits 0.
+That is the open question, and until it is answered no application can be verified at all.
