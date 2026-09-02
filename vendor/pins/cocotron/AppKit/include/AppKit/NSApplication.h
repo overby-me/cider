@@ -166,6 +166,7 @@ typedef NS_OPTIONS(NSUInteger, NSApplicationPresentationOptions) {
 - (NSWindow *) keyWindow;
 - (NSImage *) applicationIconImage;
 - (BOOL) isActive;
+- (BOOL) didFinishRestoringWindows;
 - (BOOL) isHidden;
 - (BOOL) isRunning;
 

@@ -558,4 +558,38 @@ static NSSpellChecker *shared = nil;
     return 0;
 }
 
+#pragma mark -
+#pragma mark Automatic Substitution
+
+/*
+ * NO IS THE TRUE ANSWER, not a placeholder. None of these substitutions happen here, so an editor
+ * that asks whether they are on and is told yes would leave straight quotes in text it believed had
+ * been curled. They are also not optional to answer: a missing one of these is a CLASS method, so
+ * the raise is +[NSSpellChecker ...] unrecognized selector, and iA Writer died on the quote one
+ * during launch with the whole application gone rather than the feature.
+ */
++ (BOOL) isAutomaticQuoteSubstitutionEnabled {
+    return NO;
+}
+
++ (BOOL) isAutomaticDashSubstitutionEnabled {
+    return NO;
+}
+
++ (BOOL) isAutomaticPeriodSubstitutionEnabled {
+    return NO;
+}
+
++ (BOOL) isAutomaticCapitalizationEnabled {
+    return NO;
+}
+
++ (BOOL) isAutomaticTextCompletionEnabled {
+    return NO;
+}
+
++ (BOOL) isAutomaticInlinePredictionEnabled {
+    return NO;
+}
+
 @end

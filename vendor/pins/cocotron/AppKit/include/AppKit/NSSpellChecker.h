@@ -203,4 +203,12 @@ typedef NSInteger NSCorrectionResponse;
 
 + (BOOL) isAutomaticTextReplacementEnabled;
 
+/* The substitutions this implementation does not perform, and therefore reports as off. */
++ (BOOL) isAutomaticQuoteSubstitutionEnabled;
++ (BOOL) isAutomaticDashSubstitutionEnabled;
++ (BOOL) isAutomaticPeriodSubstitutionEnabled;
++ (BOOL) isAutomaticCapitalizationEnabled;
++ (BOOL) isAutomaticTextCompletionEnabled;
++ (BOOL) isAutomaticInlinePredictionEnabled;
+
 @end

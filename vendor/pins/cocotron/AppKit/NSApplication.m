@@ -55,6 +55,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <CoreGraphics/CGWindow.h>
 #import <objc/message.h>
 #import <pthread.h>
+/* Last: it defines categories, so the classes must already be declared. */
+#import <AppKit/CiderModernAppKit.h>
 
 const NSRunLoopMode NSModalPanelRunLoopMode = @"NSModalPanelRunLoopMode";
 const NSRunLoopMode NSEventTrackingRunLoopMode = @"NSEventTrackingRunLoopMode";
@@ -586,6 +588,13 @@ static BOOL _ciderApplicationActive = NO;
  * before any of them has been shown answers "no visible windows" for a perfectly healthy start. */
 static BOOL _ciderApplicationWindowClosed = NO;
 
+/* A file static for the same reason, and it answers -didFinishRestoringWindows below. */
+static BOOL _ciderDidFinishRestoringWindows = NO;
+
+- (BOOL) didFinishRestoringWindows {
+    return _ciderDidFinishRestoringWindows;
+}
+
 - (BOOL) isActive {
     return _ciderApplicationActive || [self isActiveExcludingWindow: nil];
 }
@@ -931,6 +940,26 @@ static BOOL _ciderApplicationWindowClosed = NO;
                                     repeats: NO];
 
     [self _closeSplashImage];
+
+    /*
+     * WINDOW RESTORATION IS OVER BEFORE IT BEGAN, and saying so is what gets a document opened.
+     *
+     * An application that restores its windows must not also open an untitled one, so it waits to be
+     * told restoration finished. iA Writer's delegate does exactly that: applicationOpenUntitledFile:
+     * is two messages, [self didFinishRestoringWindows] and then _newDocument:, and the flag behind
+     * the first is set by an observer of this notification. Nothing posted it here, so the flag was
+     * never set, the delegate returned YES without making a document, and the application ran its
+     * event loop for ever with no window and no error. It answered the question it was asked.
+     *
+     * There is no state to restore, so restoration IS complete: posting it here, between
+     * WillFinishLaunching and the untitled-document decision, is both true and the macOS order.
+     */
+    _ciderDidFinishRestoringWindows = YES;
+    NS_DURING [[NSNotificationCenter defaultCenter]
+            postNotificationName: NSApplicationDidFinishRestoringWindowsNotification
+                          object: self];
+    NS_HANDLER [self reportException: localException];
+    NS_ENDHANDLER
 
     NSDocumentController *controller = nil;
     id types = [[[NSBundle mainBundle] infoDictionary]
