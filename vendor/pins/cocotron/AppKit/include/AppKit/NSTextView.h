@@ -78,6 +78,7 @@ APPKIT_EXPORT NSString *const NSAllRomanInputSourcesLocaleIdentifier;
 
     id _delegate;
     BOOL _isEditable;
+    NSInteger _inlinePredictionType;
     BOOL _isSelectable;
     BOOL _isRichText;
     NSColor *_backgroundColor;
@@ -305,6 +306,12 @@ APPKIT_EXPORT NSString *const NSAllRomanInputSourcesLocaleIdentifier;
 - (void) setAutomaticLinkDetectionEnabled: (BOOL) value;
 - (void) setAutomaticDataDetectionEnabled: (BOOL) value;
 - (void) setAutomaticTextReplacementEnabled: (BOOL) value;
+
+
+/* Inline prediction is the grey suggestion a newer macOS offers while typing; there is none here,
+ * so the value is only carried. iA Writer sets it and raised on the missing selector. */
+- (NSInteger) inlinePredictionType;
+- (void) setInlinePredictionType: (NSInteger) type;
 
 @end
 

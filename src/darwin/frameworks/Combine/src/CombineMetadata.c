@@ -186,9 +186,17 @@ void *cider_combine_anypublisher_instantiate(const void *descriptor, const void 
     if (cider_combine_trace()) {
         const uintptr_t *w = (const uintptr_t *) metadata;
 
-        fprintf(stderr, "CIDER_COMBINE instantiate -> %p  vwt=%p kind=0x%lx desc=%p args=%p,%p\n",
+        /* SIZE AND STRIDE, because the runtime reads them: _bridgeAnythingToObjectiveC takes the
+         * size at witness table offset 0x40 and allocates that much stack before touching it. */
+        const uintptr_t *vwt = metadata ? (const uintptr_t *) w[-1] : NULL;
+
+        fprintf(stderr,
+                "CIDER_COMBINE instantiate -> %p  vwt=%p size=%lu stride=%lu kind=0x%lx desc=%p "
+                "args=%p,%p\n",
                 metadata,
-                metadata ? (void *) w[-1] : NULL,
+                (void *) vwt,
+                vwt ? (unsigned long) vwt[8] : 0ul,
+                vwt ? (unsigned long) vwt[9] : 0ul,
                 metadata ? (unsigned long) w[0] : 0ul,
                 metadata ? (void *) w[1] : NULL,
                 metadata ? (void *) w[2] : NULL,
@@ -466,6 +474,117 @@ struct cider_class_ro {
     const void *baseProperties;
 };
 
+/*
+ * WHAT THE RUNTIME DOES WITH AN INSTANCE WHOSE COUNT REACHES ZERO. Handing back the storage is the
+ * whole job; there are no stored properties here that own anything.
+ */
+static void cider_combine_destroy_instance(void *object)
+{
+    static void (*dealloc)(void *, size_t, size_t);
+    static int looked;
+
+    if (!looked) {
+        looked = 1;
+        dealloc = (void (*)(void *, size_t, size_t)) dlsym(RTLD_DEFAULT,
+                                                           "swift_deallocClassInstance");
+    }
+    if (dealloc != NULL && object != NULL) {
+        dealloc(object, 16, 7);
+    }
+}
+
+/*
+ * THE TWO WORDS IN FRONT OF A CLASS METADATA, which objc_allocateClassPair cannot give.
+ *
+ * A Swift heap metadata is a FullMetadata: the destroy function at minus sixteen, the value witness
+ * table at minus eight, then the class object. The runtime reads BOTH of them, and an objc
+ * allocated class has a malloc header in front of it instead:
+ *
+ *   swift_release calls destroy the moment the count reaches zero, and it read as null
+ *   _bridgeAnythingToObjectiveC reads the witness table SIZE at offset 0x40 and allocates that
+ *   much stack before touching it, which is how iA Writer died at 0xb7f04d82df8
+ *
+ * So the memory is ours here, prefix included, and objc is told about it the way Swift tells it:
+ * _objc_realizeClassFromSwift, the entry point that exists for exactly this case. It needs a class
+ * whose data() is a class_ro_t, and a metaclass, both of which are built below.
+ *
+ * If any piece of that is missing the old objc_allocateClassPair path still runs, because a class
+ * that cannot be bridged is a great deal better than no class at all.
+ */
+static void *cider_combine_build_class_owned(const void *descriptor, size_t instanceSize,
+                                             const void *arg0, const void *arg1,
+                                             const char *className)
+{
+    static const size_t objcHeader = 5 * sizeof(uintptr_t);
+    static const size_t positiveSize = 96;
+    static const size_t prefix = 2 * sizeof(uintptr_t);
+    Class (*realize)(Class, void *);
+    Class nsobject = objc_getClass("NSObject");
+    Class rootMeta = nsobject != Nil ? (Class) object_getClass((id) nsobject) : Nil;
+    void *emptyCache = dlsym(RTLD_DEFAULT, "_objc_empty_cache");
+    const void *nativeWitnesses = dlsym(RTLD_DEFAULT, "$sBoWV");
+    struct cider_class_ro *ro;
+    struct cider_class_ro *metaRO;
+    uintptr_t *meta;
+    uintptr_t *words;
+    char *block;
+
+    realize = (Class (*)(Class, void *)) dlsym(RTLD_DEFAULT, "_objc_realizeClassFromSwift");
+    if (realize == NULL || nsobject == Nil || rootMeta == Nil || emptyCache == NULL
+        || nativeWitnesses == NULL) {
+        return NULL;
+    }
+
+    meta = (uintptr_t *) calloc(1, objcHeader);
+    metaRO = (struct cider_class_ro *) calloc(1, sizeof *metaRO);
+    block = (char *) calloc(1, prefix + objcHeader + positiveSize);
+    ro = (struct cider_class_ro *) calloc(1, sizeof *ro);
+    if (meta == NULL || metaRO == NULL || block == NULL || ro == NULL) {
+        free(meta);
+        free(metaRO);
+        free(block);
+        free(ro);
+        return NULL;
+    }
+
+    metaRO->flags = 1; /* RO_META */
+    metaRO->instanceStart = (uint32_t) objcHeader;
+    metaRO->instanceSize = (uint32_t) objcHeader;
+    metaRO->name = className;
+    meta[0] = (uintptr_t) rootMeta; /* every metaclass is an instance of the root metaclass */
+    meta[1] = (uintptr_t) rootMeta;
+    meta[2] = (uintptr_t) emptyCache;
+    meta[4] = (uintptr_t) metaRO;
+
+    ro->instanceStart = (uint32_t) (2 * sizeof(uintptr_t)); /* isa and refcount */
+    ro->instanceSize = (uint32_t) instanceSize;
+    ro->name = className;
+
+    words = (uintptr_t *) (block + prefix);
+    words[-2] = (uintptr_t) cider_combine_destroy_instance;
+    words[-1] = (uintptr_t) nativeWitnesses;
+    words[0] = (uintptr_t) meta;
+    words[1] = (uintptr_t) nsobject;
+    words[2] = (uintptr_t) emptyCache;
+    words[4] = (uintptr_t) ro;
+
+    words[5] = 2; /* flags */
+    ((uint32_t *) &words[6])[0] = (uint32_t) instanceSize;
+    ((uint16_t *) &words[6])[2] = 7;
+    ((uint32_t *) &words[7])[0] = (uint32_t) (objcHeader + positiveSize);
+    ((uint32_t *) &words[7])[1] = (uint32_t) prefix; /* the address point is past the prefix */
+    words[8] = (uintptr_t) descriptor;
+    if (arg0 != NULL || arg1 != NULL) {
+        words[10] = (uintptr_t) arg0;
+        words[11] = (uintptr_t) arg1;
+    }
+
+    if (realize((Class) words, NULL) == Nil) {
+        return NULL;
+    }
+    return words;
+}
+
 static void *cider_combine_build_class(const void *descriptor, size_t instanceSize,
                                        const void *arg0, const void *arg1)
 {
@@ -485,11 +604,27 @@ static void *cider_combine_build_class(const void *descriptor, size_t instanceSi
      */
     static const size_t positiveSize = 96;
     static int serial;
-    char className[64];
+    char *className = (char *) calloc(1, 64);
     Class backing;
     uintptr_t *words;
 
-    snprintf(className, sizeof(className), "CiderCombineObject%d", serial++);
+    if (className == NULL) {
+        return NULL;
+    }
+    /* The name outlives this call: objc keeps the pointer, it does not copy the string. */
+    snprintf(className, 64, "CiderCombineObject%d", serial++);
+
+    words = (uintptr_t *) cider_combine_build_class_owned(descriptor, instanceSize, arg0, arg1,
+                                                          className);
+    if (words != NULL) {
+        if (cider_combine_trace()) {
+            fprintf(stderr, "CIDER_COMBINE class %s -> %p owned, vwt=%p destroy=%p\n",
+                    className, (void *) words, (void *) words[-1], (void *) words[-2]);
+            fflush(stderr);
+        }
+        return words;
+    }
+
     backing = objc_allocateClassPair(objc_getClass("NSObject"), className, positiveSize);
     if (backing == Nil) {
         return NULL;

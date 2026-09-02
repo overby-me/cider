@@ -916,6 +916,22 @@ static Class _rulerViewClass = nil;
     _allowsMagnification = value;
 }
 
+- (BOOL) isFindBarVisible {
+    return _findBarVisible;
+}
+
+- (void) setFindBarVisible: (BOOL) visible {
+    _findBarVisible = visible;
+}
+
+- (NSInteger) findBarPosition {
+    return _findBarPosition;
+}
+
+- (void) setFindBarPosition: (NSInteger) position {
+    _findBarPosition = position;
+}
+
 - (void) tile {
     NSRect frame;
 

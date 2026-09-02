@@ -51,6 +51,8 @@ APPKIT_EXPORT NSString *const NSScrollViewDidLiveScrollNotification;
     BOOL _rulersVisible;
     BOOL _scrollsDynamically;
     BOOL _autohidesScrollers;
+    BOOL _findBarVisible;
+    NSInteger _findBarPosition;
     NSCursor *_documentCursor;
     BOOL _allowsMagnification;
     CGFloat _magnification;
@@ -145,6 +147,16 @@ APPKIT_EXPORT NSString *const NSScrollViewDidLiveScrollNotification;
 - (void) setMinMagnification: (CGFloat) value;
 - (void) setMaxMagnification: (CGFloat) value;
 - (void) setAllowsMagnification: (BOOL) value;
+
+/*
+ * THE FIND BAR IS A STRIP THE SCROLL VIEW HOSTS, and nothing hosts one here, so it is never
+ * visible. The state is still carried: iA Writer asks its editor scroll view whether the bar is
+ * showing and RAISED on the missing selector, which ended the process.
+ */
+- (BOOL) isFindBarVisible;
+- (void) setFindBarVisible: (BOOL) visible;
+- (NSInteger) findBarPosition;
+- (void) setFindBarPosition: (NSInteger) position;
 
 - (void) tile;
 - (void) reflectScrolledClipView: (NSClipView *) clipView;

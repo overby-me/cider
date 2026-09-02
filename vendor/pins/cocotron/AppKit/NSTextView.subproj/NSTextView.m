@@ -2681,6 +2681,19 @@ static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourc
     _isEditable = flag;
 }
 
+/*
+ * INLINE PREDICTION is the grey suggestion a newer macOS offers as you type, and there is none
+ * here. The value is carried so a caller can read back what it set: iA Writer sets it on its
+ * editor text view and RAISED on the missing selector, which ended the process.
+ */
+- (NSInteger) inlinePredictionType {
+    return _inlinePredictionType;
+}
+
+- (void) setInlinePredictionType: (NSInteger) type {
+    _inlinePredictionType = type;
+}
+
 - (void) setSelectable: (BOOL) flag {
     _isSelectable = flag;
 }
