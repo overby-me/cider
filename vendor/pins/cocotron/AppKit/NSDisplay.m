@@ -184,7 +184,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     if ([_eventQueue count])
         untilDate = [NSDate date];
 
-    [[NSRunLoop currentRunLoop] runMode: mode beforeDate: untilDate];
+    /*
+     * SERVICE THE RUN LOOP, DO NOT WAIT IN IT.
+     *
+     * -runMode:beforeDate: with a date in the future hands the wait to CFRunLoop, and CFRunLoop
+     * does not wait for the length it was given: __CFRunLoopRun asks
+     * __CFRunLoopServiceMachPort for an INFINITE receive and expects a separate timeout source to
+     * wake it. LibreOffice blocks there forever, sixteen milliseconds after asking for sixteen
+     * milliseconds, with its main thread parked in recvmsg and its Start Center never painted.
+     *
+     * The waiting belongs to the backend, which is where it already is: it polls the ONE
+     * descriptor that can deliver something, bounded, and says so in its own comment. So this runs
+     * the loop for what is ready NOW and returns, and the caller waits afterwards.
+     *
+     * Applications with no CF sources never noticed the difference, because for them CFRunLoop
+     * returned at once anyway.
+     */
+    [[NSRunLoop currentRunLoop] runMode: mode beforeDate: [NSDate date]];
 
     while (result == nil && [_eventQueue count] > 0) {
         NSEvent *event = _eventQueue[0];
