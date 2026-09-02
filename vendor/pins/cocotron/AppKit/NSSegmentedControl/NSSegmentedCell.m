@@ -19,6 +19,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import "NSSegmentItem.h"
 #include <stdio.h>
+#include <execinfo.h>
+#include <dlfcn.h>
+#include <string.h>
 #include <stdlib.h>
 #import <AppKit/NSButtonCell.h>
 #import <AppKit/NSPopUpWindow.h>
@@ -28,6 +31,51 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 @interface NSSegmentedCell (Private)
 - (void) _recomputeSegmentWidths;
 @end
+
+
+/* Who changed the count, which the count alone cannot say. Same dladdr walk NSException.m uses. */
+static void cider_trace_segment_caller(void) {
+    void *frames[10];
+    int count = backtrace(frames, 10);
+
+    for (int i = 2; i < count; i++) {
+        Dl_info info;
+
+        if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+            const char *image = info.dli_fname ? strrchr(info.dli_fname, '/') : NULL;
+
+            fprintf(stderr, "CIDER_FRAME   %-24s %s\n",
+                    image ? image + 1 : "?", info.dli_sname);
+        }
+    }
+}
+
+
+/*
+ * THE SEGMENT AT AN INDEX, OR NIL.
+ *
+ * Out of range answers nil rather than raising. That is a deliberate divergence from a literal
+ * reading of the documentation and it follows the same decision already made for
+ * -[NSPopUpButtonCell selectItemAtIndex:]: a shipping application drives these setters from a KVO
+ * callback, and on a Mac the mismatch is invisible while here an NSRangeException from inside an
+ * observer takes the whole process down. iA Writer creates a one segment control in
+ * -[IANavigationButtonView _loadSubviews] and then enables segment 1 of it.
+ *
+ * What is lost is one segment's state; what was lost before was the application. The count
+ * discrepancy itself is still open, and CIDER_TRACE_FRAMES=NSSegmented reports every count change
+ * and every out of range access with the caller that made it.
+ */
+static NSSegmentItem *_CiderSegmentAt(NSMutableArray *segments, NSInteger segment) {
+    if (segment < 0 || segment >= (NSInteger) [segments count]) {
+        if (getenv("CIDER_TRACE_FRAMES") != NULL) {
+            fprintf(stderr, "CIDER_FRAME NSSegmentedCell segment %ld out of range (%lu)\n",
+                    (long) segment, (unsigned long) [segments count]);
+            cider_trace_segment_caller();
+        }
+        return nil;
+    }
+    return [segments objectAtIndex: segment];
+}
 
 @implementation NSSegmentedCell
 
@@ -100,35 +148,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (NSInteger) tagForSegment: (NSInteger) segment {
-    return [[_segments objectAtIndex: segment] tag];
+    return [_CiderSegmentAt(_segments, segment) tag];
 }
 
 - (NSImage *) imageForSegment: (NSInteger) segment {
-    return [[_segments objectAtIndex: segment] image];
+    return [_CiderSegmentAt(_segments, segment) image];
 }
 
 - (BOOL) isEnabledForSegment: (NSInteger) segment {
-    return [[_segments objectAtIndex: segment] isEnabled];
+    return [_CiderSegmentAt(_segments, segment) isEnabled];
 }
 
 - (NSString *) labelForSegment: (NSInteger) segment {
-    return [[_segments objectAtIndex: segment] label];
+    return [_CiderSegmentAt(_segments, segment) label];
 }
 
 - (NSMenu *) menuForSegment: (NSInteger) segment {
-    return [[_segments objectAtIndex: segment] menu];
+    return [_CiderSegmentAt(_segments, segment) menu];
 }
 
 - (NSString *) toolTipForSegment: (NSInteger) segment {
-    return [[_segments objectAtIndex: segment] toolTip];
+    return [_CiderSegmentAt(_segments, segment) toolTip];
 }
 
 - (CGFloat) widthForSegment: (NSInteger) segment {
-    return [[_segments objectAtIndex: segment] width];
+    return [_CiderSegmentAt(_segments, segment) width];
 }
 
 - (NSImageScaling) imageScalingForSegment: (NSInteger) segment {
-    return [[_segments objectAtIndex: segment] imageScaling];
+    return [_CiderSegmentAt(_segments, segment) imageScaling];
 }
 
 - (NSInteger) selectedSegment {
@@ -145,15 +193,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (BOOL) isSelectedForSegment: (NSInteger) segment {
-    return [[_segments objectAtIndex: segment] isSelected];
+    return [_CiderSegmentAt(_segments, segment) isSelected];
 }
 
 - (void) setSegmentCount: (NSInteger) count {
     int currentCount = [_segments count];
 
-    if (getenv("CIDER_TRACE_FRAMES") != NULL)
-        fprintf(stderr, "CIDER_FRAME NSSegmentedCell setSegmentCount %ld (was %d)\n",
-                (long) count, currentCount);
+    if (getenv("CIDER_TRACE_FRAMES") != NULL) {
+        fprintf(stderr, "CIDER_FRAME NSSegmentedCell %p setSegmentCount %ld (was %d)\n",
+                self, (long) count, currentCount);
+        cider_trace_segment_caller();
+    }
 
     if (count == currentCount)
         return;
@@ -179,52 +229,49 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) setTag: (NSInteger) tag forSegment: (NSInteger) segment {
-    [[_segments objectAtIndex: segment] setTag: tag];
+    [_CiderSegmentAt(_segments, segment) setTag: tag];
 }
 
 - (void) setImage: (NSImage *) image forSegment: (NSInteger) segment {
-    [[_segments objectAtIndex: segment] setImage: image];
+    [_CiderSegmentAt(_segments, segment) setImage: image];
     [self _recomputeSegmentWidths];
 }
 
 - (void) setEnabled: (BOOL) enabled forSegment: (NSInteger) segment {
-    if (getenv("CIDER_TRACE_FRAMES") != NULL)
-        fprintf(stderr, "CIDER_FRAME NSSegmentedCell setEnabled forSegment %ld of %lu\n",
-                (long) segment, (unsigned long) [_segments count]);
-    [[_segments objectAtIndex: segment] setEnabled: enabled];
+    [_CiderSegmentAt(_segments, segment) setEnabled: enabled];
 }
 
 - (void) setLabel: (NSString *) label forSegment: (NSInteger) segment {
-    [[_segments objectAtIndex: segment] setLabel: label];
+    [_CiderSegmentAt(_segments, segment) setLabel: label];
     [self _recomputeSegmentWidths];
 }
 
 /* Carried per segment. Nothing draws the arrow yet, so this is state the control reports back. */
 - (BOOL) showsMenuIndicatorForSegment: (NSInteger) segment {
-    return [[_segments objectAtIndex: segment] showsMenuIndicator];
+    return [_CiderSegmentAt(_segments, segment) showsMenuIndicator];
 }
 
 - (void) setShowsMenuIndicator: (BOOL) flag forSegment: (NSInteger) segment {
-    [[_segments objectAtIndex: segment] setShowsMenuIndicator: flag];
+    [_CiderSegmentAt(_segments, segment) setShowsMenuIndicator: flag];
 }
 
 - (void) setMenu: (NSMenu *) menu forSegment: (NSInteger) segment {
-    [[_segments objectAtIndex: segment] setMenu: menu];
+    [_CiderSegmentAt(_segments, segment) setMenu: menu];
 }
 
 - (void) setToolTip: (NSString *) string forSegment: (NSInteger) segment {
-    [[_segments objectAtIndex: segment] setToolTip: string];
+    [_CiderSegmentAt(_segments, segment) setToolTip: string];
 }
 
 - (void) setWidth: (CGFloat) width forSegment: (NSInteger) segment {
-    [[_segments objectAtIndex: segment] setWidth: width];
+    [_CiderSegmentAt(_segments, segment) setWidth: width];
     [self _recomputeSegmentWidths];
 }
 
 - (void) setImageScaling: (NSImageScaling) value
               forSegment: (NSInteger) segment
 {
-    [[_segments objectAtIndex: segment] setImageScaling: value];
+    [_CiderSegmentAt(_segments, segment) setImageScaling: value];
 }
 
 - (BOOL) selectSegmentWithTag: (NSInteger) tag {
@@ -240,7 +287,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) setSelected: (BOOL) flag forSegment: (NSInteger) segment {
     [self willChangeValueForKey: @"selectedSegment"];
     _selectedSegment = NSNotFound; // will be recomputed in -selectedSegment
-    [[_segments objectAtIndex: segment] setSelected: flag];
+    [_CiderSegmentAt(_segments, segment) setSelected: flag];
     [self didChangeValueForKey: @"selectedSegment"];
 }
 
@@ -249,7 +296,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         [item setSelected: NO];
 
     _selectedSegment = segment;
-    [[_segments objectAtIndex: segment] setSelected: YES];
+    [_CiderSegmentAt(_segments, segment) setSelected: YES];
 }
 
 - (void) makeNextSegmentKey {

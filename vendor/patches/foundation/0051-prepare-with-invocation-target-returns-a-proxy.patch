@@ -1,0 +1,106 @@
+--- a/src/NSUndoManager.m
++++ b/src/NSUndoManager.m
+@@ -16,6 +16,7 @@
+ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
++#import <Foundation/NSProxy.h>
+ #import <Foundation/NSArray.h>
+ #import <Foundation/NSException.h>
+ #import <Foundation/NSInvocation.h>
+@@ -47,6 +48,42 @@
+ NSString *const NSUndoManagerDidRedoChangeNotification =
+         @"NSUndoManagerDidRedoChangeNotification";
+ 
++@interface NSUndoManager (CiderPreparedInvocation)
++- (void) _recordPreparedInvocation: (NSInvocation *) invocation target: (id) target;
++@end
++
++@interface _CiderUndoPrepareProxy : NSProxy {
++    NSUndoManager *_manager;
++    id _target;
++}
++- (id) initWithManager: (NSUndoManager *) manager target: (id) target;
++@end
++
++@implementation _CiderUndoPrepareProxy
++
++- (id) initWithManager: (NSUndoManager *) manager target: (id) target {
++    _manager = manager;
++    _target = [target retain];
++    return self;
++}
++
++- (void) dealloc {
++    [_target release];
++    [super dealloc];
++}
++
++- (NSMethodSignature *) methodSignatureForSelector: (SEL) selector {
++    return [_target methodSignatureForSelector: selector];
++}
++
++- (void) forwardInvocation: (NSInvocation *) invocation {
++    [invocation setTarget: _target];
++    [_manager _recordPreparedInvocation: invocation target: _target];
++}
++
++@end
++
++
+ @implementation NSUndoManager
+ 
+ - (void) _registerPerform {
+@@ -379,10 +416,51 @@
+     }
+ }
+ 
++/*
++ * A PROXY, NOT self.
++ *
++ * Returning the manager works only while nothing else claims the message: the recorded call arrives
++ * as an unrecognised selector and is caught by -forwardInvocation: below. That breaks the moment
++ * something SUBCLASSES the manager and overrides forwardInvocation:, which is exactly what a
++ * swizzling library does. iA Writer runs its undo manager through Aspects, and cocotron's text view
++ * registers with -[... prepareWithInvocationTarget:] undoRedo:], so undoRedo: landed on
++ * IALibraryDocumentUndoManager_Aspects_ and the application died on an unrecognised selector for a
++ * method that was never meant to reach the manager at all.
++ *
++ * macOS returns a private proxy for the same reason. A proxy has no methods of its own beyond
++ * NSProxy's, so the recorded message cannot collide with anything on any subclass.
++ */
+ - (id) prepareWithInvocationTarget: (id) target {
++    [_preparedTarget release];
+     _preparedTarget = [target retain];
+ 
+-    return self;
++    return [[[_CiderUndoPrepareProxy alloc] initWithManager: self
++                                                    target: target] autorelease];
++}
++
++/* The recording half of -forwardInvocation:, which the proxy above calls with the target resolved. */
++- (void) _recordPreparedInvocation: (NSInvocation *) invocation target: (id) target {
++    if (_disableCount > 0)
++        return;
++
++    if (_groupsByEvent && _currentGroup == nil) {
++        [self _registerPerform];
++        [self beginUndoGrouping];
++    }
++
++    if (_currentGroup == nil)
++        [NSException raise: NSInternalInconsistencyException
++                    format: @"an undo was recorded without an open group"];
++
++    [invocation setTarget: target];
++    [invocation retainArguments];
++    [_currentGroup addInvocation: invocation];
++
++    if (_state == NSUndoManagerNormal)
++        [_redoStack removeAllObjects];
++
++    [_preparedTarget release];
++    _preparedTarget = nil;
+ }
+ 
+ - (NSMethodSignature *) methodSignatureForSelector: (SEL) selector {

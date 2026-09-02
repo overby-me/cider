@@ -178,4 +178,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) invalidateRestorableState;
 - (void) encodeRestorableStateWithCoder: (NSCoder *) coder;
 - (void) restoreStateWithCoder: (NSCoder *) coder;
+- (id) touchBar;
+- (void) setTouchBar: (id) touchBar;
+- (id) makeTouchBar;
+
 @end

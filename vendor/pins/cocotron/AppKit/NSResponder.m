@@ -361,4 +361,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) restoreStateWithCoder: (NSCoder *) coder {
 }
 
+/*
+ * NSTouchBar. Nil all the way down, and nil is the honest answer rather than a placeholder: there
+ * is no Touch Bar on this machine, and macOS itself returns nil from -makeTouchBar for a responder
+ * that provides none. What matters is that the getter EXISTS, because AppKit asks every responder
+ * in the chain and an unrecognised selector takes the application with it.
+ */
+- (id) touchBar {
+    return nil;
+}
+
+- (void) setTouchBar: (id) touchBar {
+}
+
+- (id) makeTouchBar {
+    return nil;
+}
+
 @end

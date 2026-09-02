@@ -168,6 +168,7 @@ static int untitled_document_number = 0;
 }
 
 - (void) dealloc {
+    [_displayName release];
     [[NSNotificationCenter defaultCenter] removeObserver: self];
 
     [_windowControllers release];
@@ -472,7 +473,21 @@ static int untitled_document_number = 0;
     [_windowControllers removeObjectIdenticalTo: controller];
 }
 
+/*
+ * A NAME THE DOCUMENT WAS GIVEN wins over the one derived from its file, which is the whole point
+ * of the setter: an application that names an untitled document itself gets that name back, and
+ * without the setter it cannot name one at all.
+ */
+- (void) setDisplayName: (NSString *) displayName {
+    displayName = [displayName copy];
+    [_displayName release];
+    _displayName = displayName;
+}
+
 - (NSString *) displayName {
+    if (_displayName != nil)
+        return _displayName;
+
     if (_fileURL == nil) {
         NSString *untitledName = NSLocalizedStringFromTableInBundle(
                 @"Untitled", nil, [NSBundle bundleForClass: [NSDocument class]],
@@ -1649,6 +1664,33 @@ static int untitled_document_number = 0;
                           completionHandler: (void (^)(NSError *errorOrNil)) completionHandler
 {
     NSUnimplementedMethod();
+}
+
+/*
+ * STATE RESTORATION on a document. NSDocument is not an NSResponder, so the category that gives
+ * every responder these does not reach it. Nothing here writes restorable state, and a document
+ * calls invalidateRestorableState on every change, so a missing one ends the application at the
+ * first edit rather than at startup.
+ */
+- (void) invalidateRestorableState {
+}
+
+- (void) encodeRestorableStateWithCoder: (NSCoder *) coder {
+}
+
+- (void) restoreStateWithCoder: (NSCoder *) coder {
+}
+
++ (NSArray *) restorableStateKeyPaths {
+    return [NSArray array];
+}
+
+/*
+ * Whether this document is open read only, which is true only for a document restored from a
+ * Versions browser. Nothing here browses versions, so NO is the state and not a placeholder.
+ */
+- (BOOL) isInViewingMode {
+    return NO;
 }
 
 @end

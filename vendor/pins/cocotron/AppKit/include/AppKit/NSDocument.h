@@ -44,6 +44,7 @@ typedef enum {
 } NSSaveOperationType;
 
 @interface NSDocument : NSObject {
+    NSString *_displayName;
     NSMutableArray *_windowControllers;
     NSURL *_fileURL;
     NSString *_fileType;
@@ -271,5 +272,12 @@ completionHandler: (void (^)(NSError *errorOrNil)) completionHandler;
 
 - (void)autosaveWithImplicitCancellability: (BOOL) autosavingIsImplicitlyCancellable 
                          completionHandler: (void (^)(NSError *errorOrNil)) completionHandler;
+
+- (BOOL) isInViewingMode;
+- (void) setDisplayName: (NSString *) displayName;
+- (void) invalidateRestorableState;
+- (void) encodeRestorableStateWithCoder: (NSCoder *) coder;
+- (void) restoreStateWithCoder: (NSCoder *) coder;
++ (NSArray *) restorableStateKeyPaths;
 
 @end

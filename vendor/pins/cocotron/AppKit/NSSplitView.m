@@ -384,11 +384,28 @@ NSString *const NSSplitViewWillResizeSubviewsNotification =
         return [NSImage imageNamed: @"NSSplitViewHDimple"];
 }
 
+/*
+ * The colour the divider is filled with. macOS derives one from the style; an application that
+ * wants its own sets this, and the divider is DRAWN with it here rather than merely stored, because
+ * a split view whose divider ignores the colour it was given is the kind of difference that reads
+ * as a rendering bug later.
+ */
+- (NSColor *) dividerColor {
+    return _dividerColor != nil ? _dividerColor : [NSColor controlColor];
+}
+
+- (void) setDividerColor: (NSColor *) color {
+    color = [color retain];
+    [_dividerColor release];
+    _dividerColor = color;
+    [self setNeedsDisplay: YES];
+}
+
 - (void) drawDividerInRect: (NSRect) rect {
 
     if (_dividerStyle != NSSplitViewDividerStylePaneSplitter) {
         // Fill in the view - pane splitter means just draw the dimple
-        [[NSColor controlColor] setFill];
+        [[self dividerColor] setFill];
         NSRectFill(rect);
     }
 

@@ -249,6 +249,9 @@ typedef NSUInteger NSTableViewColumnAutoresizingStyle;
 - (void) endUpdates;
 - (NSView *) makeViewWithIdentifier: (NSUserInterfaceItemIdentifier) identifier
                               owner: (id) owner;
+- (void) enumerateAvailableRowViewsUsingBlock: (void (^)(id rowView, NSInteger row)) handler;
+- (id) viewAtColumn: (NSInteger) column row: (NSInteger) row makeIfNecessary: (BOOL) makeIfNecessary;
+- (id) rowViewAtRow: (NSInteger) row makeIfNecessary: (BOOL) makeIfNecessary;
 - (void) reloadData;
 - (void) tile;
 

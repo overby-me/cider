@@ -33,6 +33,7 @@ typedef enum {
     BOOL _isVertical;
     NSSplitViewDividerStyle _dividerStyle;
     NSString *_autosaveName;
+    NSColor *_dividerColor;
 }
 
 - (id) delegate;
@@ -102,4 +103,7 @@ typedef enum {
 
 - (void) splitViewDidResizeSubviews: (NSNotification *) note;
 - (void) splitViewWillResizeSubviews: (NSNotification *) note;
+- (NSColor *) dividerColor;
+- (void) setDividerColor: (NSColor *) color;
+
 @end

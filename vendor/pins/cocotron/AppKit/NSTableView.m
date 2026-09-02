@@ -1270,6 +1270,27 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
 }
 
 /*
+ * Every row view currently made, which for this table is NONE: the rows are drawn as cells and no
+ * row view is ever created, so the block is not called and that is the complete answer rather than
+ * a stub. A caller uses this to touch what is on screen; here there is nothing to touch.
+ */
+- (void) enumerateAvailableRowViewsUsingBlock: (void (^)(id rowView, NSInteger row)) handler {
+}
+
+/*
+ * The view at a cell, and the view for a row. Nil for the same reason the enumeration above is
+ * empty: this table draws cells, so no view exists at any position and none can be made. makeIfNecessary
+ * cannot change that, and nil is what a caller checks for.
+ */
+- (id) viewAtColumn: (NSInteger) column row: (NSInteger) row makeIfNecessary: (BOOL) makeIfNecessary {
+    return nil;
+}
+
+- (id) rowViewAtRow: (NSInteger) row makeIfNecessary: (BOOL) makeIfNecessary {
+    return nil;
+}
+
+/*
  * THE REST OF THE BATCHED ROW API, none of it animated here.
  *
  * Every one of these describes a change macOS would animate. This table draws from the data source

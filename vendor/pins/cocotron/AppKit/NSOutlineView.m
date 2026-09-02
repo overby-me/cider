@@ -1042,12 +1042,17 @@ static void loadItemIntoMapTables(NSOutlineView *self, id item,
                       byItem: [self itemAtRow: row]];
 }
 
+/*
+ * ASK ONLY IF IT ANSWERS. objectValueForTableColumn:byItem: is what a CELL based outline view wants
+ * and it is OPTIONAL: a view based one supplies its rows through outlineView:viewForTableColumn:item:
+ * and never implements this. Sending it regardless raised on iA Writer's organiser, from inside
+ * drawRow:, so the first draw of the sidebar ended the application. The guarded accessor below it
+ * has always existed; this override went around it.
+ */
 - (id) dataSourceObjectValueForTableColumn: (NSTableColumn *) tableColumn
                                        row: (NSInteger) row
 {
-    return [_dataSource outlineView: self
-            objectValueForTableColumn: tableColumn
-                               byItem: [self itemAtRow: row]];
+    return [self _objectValueForTableColumn: tableColumn byItem: [self itemAtRow: row]];
 }
 
 - (void) _willDisplayCell: (NSCell *) cell
