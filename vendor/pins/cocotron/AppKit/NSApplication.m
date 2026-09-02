@@ -19,6 +19,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSAlert.h>
 #include <stdio.h>
+#include <string.h>
 
 #import <AppKit/NSApplication.h>
 #import <signal.h>
@@ -29,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <dlfcn.h>
 #import <execinfo.h>
 #import <objc/runtime.h>
-#include <objc/runtime.h>
 #include <dlfcn.h>
 #include <execinfo.h>
 #import <AppKit/NSColorPanel.h>
@@ -208,6 +208,31 @@ static void _CiderAppFatalSignal(int signo, siginfo_t *info, void *ucontextIn)
         void *pc = (void *) (uintptr_t) uc->uc_mcontext->__ss.__pc;
 #endif
         Dl_info pcinfo;
+
+#if defined(__x86_64__)
+        /*
+         * WHO WAS BEING MESSAGED, AND WITH WHAT. A fault inside objc_msgSend says only that some
+         * receiver was bad, and the stack scan below cannot tell a live frame from an old value: it
+         * named a forwardInvocation that had not run. The arguments are still in the registers the
+         * signal context carries, and for objc_msgSend those two ARE the answer.
+         *
+         * The selector is read only when it looks like a pointer into a mapped page, because reading
+         * a garbage one inside a signal handler would fault a second time and lose the report.
+         */
+        if (dladdr(pc, &pcinfo) != 0 && pcinfo.dli_sname != NULL &&
+            strncmp(pcinfo.dli_sname, "objc_msgSend", 12) == 0) {
+            uintptr_t receiver = (uintptr_t) uc->uc_mcontext->__ss.__rdi;
+            uintptr_t selector = (uintptr_t) uc->uc_mcontext->__ss.__rsi;
+            const char *name = NULL;
+
+            if (selector > 0x10000 && msync((void *) (selector & ~(uintptr_t) 4095), 4096,
+                                            MS_ASYNC) == 0)
+                name = sel_getName((SEL) selector);
+
+            fprintf(stderr, "CIDER_APP messaging receiver=%p selector=%p (%s)\n",
+                    (void *) receiver, (void *) selector, name ? name : "unreadable");
+        }
+#endif
 
         if (dladdr(pc, &pcinfo) != 0 && pcinfo.dli_sname != NULL)
             fprintf(stderr, "CIDER_APP faulted at %s + %ld in %s\n", pcinfo.dli_sname,

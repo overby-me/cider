@@ -93,3 +93,9 @@ typedef NS_ENUM(NSInteger, NSTitlebarSeparatorStyle) {
 @property (readonly) id device;
 @property (readonly) NSSize deviceSize;
 @end
+
+/* Handoff does not happen here; the responder carries the object so that asking cannot raise. */
+@interface NSResponder (NSUserActivityCarrying)
+@property (nonatomic, retain) id userActivity;
+- (void) updateUserActivityState: (id) activity;
+@end

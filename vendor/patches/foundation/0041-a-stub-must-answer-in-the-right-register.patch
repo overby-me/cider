@@ -1,0 +1,47 @@
+a stub must still answer in the right register
+
+NSUserActivity is a forwarding stub whose methodSignatureForSelector answered v@: for every
+selector. A void return writes nothing, so an initialiser hands back whatever the previous
+call left in the return register, and the caller has an object that is not one.
+
+iA Writer took that value, 0x4e, and sent it setEligibleForHandoff:. The result is a SIGSEGV
+inside objc_msgSend with no frame chain, no exception, and nothing in the log naming
+NSUserActivity at all. The receiver and the selector were still in the registers the signal
+context carries, which is how it was found.
+
+@@: with an explicit nil costs a caller that wanted void nothing, and gives one that wanted
+an object the only safe answer: messaging nil is defined and messaging 0x4e is not.
+
+The same template is used by 9806 generated stub files in this tree, so this is one instance
+of a defect that is present everywhere and fires only when a caller uses the return value.
+
+--- a/src/NSUserActivity.m
++++ b/src/NSUserActivity.m
+@@ -25,13 +25,26 @@
+ 
+ @implementation NSUserActivity
+ 
++/*
++ * A STUB STILL HAS TO ANSWER IN THE RIGHT REGISTER.
++ *
++ * "v@:" says every method returns nothing, so an initialiser writes nothing and the caller keeps
++ * whatever the previous call left in the return register. iA Writer took that value, 0x4e, for its
++ * new activity and sent it setEligibleForHandoff:, which is a SIGSEGV inside objc_msgSend with no
++ * frame chain and nothing in the log to connect it to NSUserActivity.
++ *
++ * "@@:" with an explicit nil costs a caller that wanted void nothing and gives one that wanted an
++ * object the only safe answer, because messaging nil is defined and messaging 0x4e is not.
++ */
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    return [NSMethodSignature signatureWithObjCTypes: "@@:"];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation
+ {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 

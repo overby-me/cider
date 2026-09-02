@@ -12,6 +12,7 @@
  */
 
 #import <AppKit/NSModernAppKitAdditions.h>
+#import <AppKit/NSResponder.h>
 #import <AppKit/NSView.h>
 #import <AppKit/NSGraphics.h>
 #import <AppKit/NSColor.h>
@@ -414,6 +415,43 @@ static NSMapTable *_ciderSeparatorStyles = nil;
                                                  NSIntegerMapValueCallBacks, 0);
     }
     NSMapInsert(_ciderSeparatorStyles, (const void *) self, (const void *) (intptr_t) style);
+}
+
+@end
+
+/*
+ * THE USER ACTIVITY A RESPONDER CARRIES, which is Handoff and does not happen here.
+ *
+ * Nothing continues an activity on another device, so the object is stored and handed back and no
+ * more. Storing it is not optional though: the setter is what a window controller calls while it
+ * builds its window, and unimplemented it raised. iA Writer terminated on
+ * -[IALibraryWindowController setUserActivity:] with its library window half built.
+ *
+ * NSResponder rather than NSWindowController, because that is where the property lives and any
+ * responder in a chain may be asked.
+ */
+@implementation NSResponder (NSUserActivityCarrying)
+
+static NSMapTable *_ciderUserActivities = nil;
+
+- (id) userActivity {
+    if (_ciderUserActivities == nil)
+        return nil;
+    return (id) NSMapGet(_ciderUserActivities, (const void *) self);
+}
+
+- (void) setUserActivity: (id) activity {
+    if (_ciderUserActivities == nil) {
+        _ciderUserActivities = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
+                                                NSObjectMapValueCallBacks, 0);
+    }
+    if (activity == nil)
+        NSMapRemove(_ciderUserActivities, (const void *) self);
+    else
+        NSMapInsert(_ciderUserActivities, (const void *) self, (const void *) activity);
+}
+
+- (void) updateUserActivityState: (id) activity {
 }
 
 @end

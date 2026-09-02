@@ -59,6 +59,12 @@
     return _nibBundle;
 }
 
+/* Asking must not BUILD the view, which is the whole point of the question: a caller uses it to
+ * avoid forcing a load it is not ready for. iA Writer raised on it while building its toolbar. */
+- (BOOL) isViewLoaded {
+    return _view != nil;
+}
+
 - (NSView *) view {
     if (_view == nil)
         [self loadView];
@@ -181,6 +187,104 @@
                        contextInfo: (void *) contextInfo
 {
     NSUnimplementedMethod();
+}
+
+@end
+
+/*
+ * VIEW CONTROLLER CONTAINMENT, kept outside the object.
+ *
+ * A subclass here is compiled against the real AppKit layout, so the children are held in a side
+ * table rather than in new ivars, exactly as the responder's user activity is. What this does is the
+ * bookkeeping and nothing more: it does not add the child's view to a hierarchy, because the parent
+ * is what decides where that goes and every caller seen here does it itself.
+ *
+ * Unimplemented, addChildViewController: raised and took iA Writer with it while it assembled the
+ * library window out of its controllers.
+ */
+@implementation NSViewController (NSViewControllerContainment)
+
+static NSMapTable *_ciderChildren = nil;
+static NSMapTable *_ciderParents = nil;
+
+static NSMutableArray *_CiderChildrenOf(id controller, BOOL create) {
+    if (_ciderChildren == nil) {
+        if (!create)
+            return nil;
+        _ciderChildren = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
+                                          NSObjectMapValueCallBacks, 0);
+    }
+
+    NSMutableArray *children = (NSMutableArray *) NSMapGet(_ciderChildren,
+                                                           (const void *) controller);
+    if (children == nil && create) {
+        children = [NSMutableArray array];
+        NSMapInsert(_ciderChildren, (const void *) controller, (const void *) children);
+    }
+    return children;
+}
+
+- (NSArray *) childViewControllers {
+    NSMutableArray *children = _CiderChildrenOf(self, NO);
+    return children != nil ? children : [NSArray array];
+}
+
+- (void) setChildViewControllers: (NSArray *) children {
+    for (NSViewController *child in [self childViewControllers])
+        [child removeFromParentViewController];
+    for (NSViewController *child in children)
+        [self addChildViewController: child];
+}
+
+- (void) addChildViewController: (NSViewController *) child {
+    [self insertChildViewController: child atIndex: [[self childViewControllers] count]];
+}
+
+- (void) insertChildViewController: (NSViewController *) child atIndex: (NSInteger) index {
+    if (child == nil)
+        return;
+
+    [child removeFromParentViewController];
+
+    NSMutableArray *children = _CiderChildrenOf(self, YES);
+    if (index < 0 || index > (NSInteger) [children count])
+        index = [children count];
+    [children insertObject: child atIndex: index];
+
+    if (_ciderParents == nil) {
+        _ciderParents = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
+                                         NSNonOwnedPointerMapValueCallBacks, 0);
+    }
+    NSMapInsert(_ciderParents, (const void *) child, (const void *) self);
+}
+
+- (void) removeChildViewControllerAtIndex: (NSInteger) index {
+    NSMutableArray *children = _CiderChildrenOf(self, NO);
+
+    if (children == nil || index < 0 || index >= (NSInteger) [children count])
+        return;
+
+    id child = [children objectAtIndex: index];
+    if (_ciderParents != nil)
+        NSMapRemove(_ciderParents, (const void *) child);
+    [children removeObjectAtIndex: index];
+}
+
+- (NSViewController *) parentViewController {
+    if (_ciderParents == nil)
+        return nil;
+    return (NSViewController *) NSMapGet(_ciderParents, (const void *) self);
+}
+
+- (void) removeFromParentViewController {
+    NSViewController *parent = [self parentViewController];
+    if (parent == nil)
+        return;
+
+    NSMutableArray *children = _CiderChildrenOf(parent, NO);
+    NSUInteger index = [children indexOfObjectIdenticalTo: self];
+    if (index != NSNotFound)
+        [parent removeChildViewControllerAtIndex: (NSInteger) index];
 }
 
 @end

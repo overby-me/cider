@@ -18,6 +18,7 @@
 - (NSBundle *) nibBundle;
 
 - (NSView *) view;
+- (BOOL) isViewLoaded;
 - (NSString *) title;
 - representedObject;
 
@@ -36,4 +37,14 @@
                  didCommitSelector: (SEL) didCommitSelector
                        contextInfo: (void *) contextInfo;
 
+@end
+
+@interface NSViewController (NSViewControllerContainment)
+- (NSArray *) childViewControllers;
+- (void) setChildViewControllers: (NSArray *) children;
+- (void) addChildViewController: (NSViewController *) child;
+- (void) insertChildViewController: (NSViewController *) child atIndex: (NSInteger) index;
+- (void) removeChildViewControllerAtIndex: (NSInteger) index;
+- (NSViewController *) parentViewController;
+- (void) removeFromParentViewController;
 @end

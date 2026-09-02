@@ -21,13 +21,27 @@
 
 @implementation UINibEncoder
 
+/*
+ * A STUB STILL HAS TO ANSWER IN THE RIGHT REGISTER.
+ *
+ * "v@:" says the method returns nothing, so nothing is written to the return register and the caller
+ * reads whatever the last call left there. iA Writer took that value, 0x4e, for an object and sent
+ * it a message: SIGSEGV in objc_msgSend with this forwardInvocation three frames down, during nib
+ * decoding, with no other sign of what went wrong.
+ *
+ * "@@:" plus an explicit nil costs a caller that wanted void nothing at all, and gives one that
+ * wanted an object the only safe answer. Same trap as the initialiser that handed back its return
+ * register; the pattern is shared by every generated stub in this tree.
+ */
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return [NSMethodSignature signatureWithObjCTypes: "@@:"];
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
+    id nothing = nil;
+    [anInvocation setReturnValue: &nothing];
     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
 }
 

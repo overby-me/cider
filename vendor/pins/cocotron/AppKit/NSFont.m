@@ -391,6 +391,24 @@ static NSLock *_cacheLock = nil;
     return [self userFixedPitchFontOfSize: size];
 }
 
+/*
+ * THE WEIGHTED SYSTEM FONTS. Only two weights exist here, regular and bold, so the continuous weight
+ * is resolved to the nearer of them at NSFontWeightSemibold. Answering is not optional: these are
+ * CLASS methods, so a missing one takes the whole application rather than the type it asked for, and
+ * iA Writer died on +systemFontOfSize:weight: while building its library window.
+ */
++ (NSFont *) systemFontOfSize: (CGFloat) size weight: (CGFloat) weight {
+    if (weight >= 0.3)
+        return [self boldSystemFontOfSize: size];
+    return [self systemFontOfSize: size];
+}
+
+/* Digits of even width, which this implementation does not have; the system font is the honest
+ * fallback and a caller aligning columns will see them drift rather than see nothing at all. */
++ (NSFont *) monospacedDigitSystemFontOfSize: (CGFloat) size weight: (CGFloat) weight {
+    return [self systemFontOfSize: size weight: weight];
+}
+
 + (NSFont *) userFixedPitchFontOfSize: (CGFloat) size {
     return [NSFont
             fontWithName: [O2Font postscriptNameForDisplayName: @"Courier New"]
