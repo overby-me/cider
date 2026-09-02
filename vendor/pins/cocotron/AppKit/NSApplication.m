@@ -245,24 +245,41 @@ static void _CiderAppFatalSignal(int signo, siginfo_t *info, void *ucontextIn)
         {
             uintptr_t rbp = (uintptr_t) uc->uc_mcontext->__ss.__rbp;
             uintptr_t rsp = (uintptr_t) uc->uc_mcontext->__ss.__rsp;
-            uintptr_t candidates[2] = { rbp + 8, rsp };
-            const char *labels[2] = { "rbp+8", "rsp" };
-            int i;
+            int depth;
 
-            for (i = 0; i < 2; i++) {
-                Dl_info callerinfo;
+            /* The routine that faulted may not have pushed a frame yet, so its own return address
+             * is still at rsp; from there the rbp chain is walked. */
+            if (rsp >= 4096 && msync((void *) (rsp & ~(uintptr_t) 4095), 4096, MS_ASYNC) == 0) {
+                Dl_info at;
+                void *ret = *(void **) rsp;
+
+                if (dladdr(ret, &at) != 0 && at.dli_sname != NULL)
+                    fprintf(stderr, "CIDER_APP frame rsp %s + %ld in %s\n", at.dli_sname,
+                            (long) ((char *) ret - (char *) at.dli_saddr),
+                            at.dli_fname ? at.dli_fname : "?");
+            }
+
+            for (depth = 0; depth < 12 && rbp >= 4096; depth++) {
+                Dl_info at;
                 void *ret;
+                uintptr_t next;
 
-                if (candidates[i] < 4096 ||
-                    msync((void *) (candidates[i] & ~(uintptr_t) 4095), 4096, MS_ASYNC) != 0)
-                    continue;
+                if (msync((void *) (rbp & ~(uintptr_t) 4095), 4096, MS_ASYNC) != 0)
+                    break;
 
-                ret = *(void **) candidates[i];
-                if (dladdr(ret, &callerinfo) != 0 && callerinfo.dli_sname != NULL)
-                    fprintf(stderr, "CIDER_APP called from %s (%s + %ld in %s)\n", labels[i],
-                            callerinfo.dli_sname,
-                            (long) ((char *) ret - (char *) callerinfo.dli_saddr),
-                            callerinfo.dli_fname ? callerinfo.dli_fname : "?");
+                ret = *(void **) (rbp + 8);
+                next = *(uintptr_t *) rbp;
+
+                if (dladdr(ret, &at) != 0 && at.dli_sname != NULL)
+                    fprintf(stderr, "CIDER_APP frame %2d %s + %ld in %s\n", depth, at.dli_sname,
+                            (long) ((char *) ret - (char *) at.dli_saddr),
+                            at.dli_fname ? at.dli_fname : "?");
+                else
+                    fprintf(stderr, "CIDER_APP frame %2d %p\n", depth, ret);
+
+                if (next <= rbp)
+                    break;
+                rbp = next;
             }
         }
 #endif
