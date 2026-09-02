@@ -2,6 +2,7 @@
 
 #import <AppKit/NSView.h>
 #import <AppKit/NSImage.h>
+#import <AppKit/NSWindow.h>
 #import <AppKit/NSToolbarItem.h>
 #import <Foundation/Foundation.h>
 
@@ -62,6 +63,18 @@ typedef NS_ENUM(NSInteger, NSImageSymbolRenderingMode) {
                     variableValue: (double) variableValue;
 + (NSImage *) imageWithSystemSymbolName: (NSString *) name
                accessibilityDescription: (NSString *) description;
+@end
+
+
+typedef NS_ENUM(NSInteger, NSTitlebarSeparatorStyle) {
+    NSTitlebarSeparatorStyleAutomatic = 0,
+    NSTitlebarSeparatorStyleNone = 1,
+    NSTitlebarSeparatorStyleLine = 2,
+    NSTitlebarSeparatorStyleShadow = 3,
+};
+
+@interface NSWindow (NSTitlebarSeparator)
+@property NSTitlebarSeparatorStyle titlebarSeparatorStyle;
 @end
 
 @interface NSSearchToolbarItem : NSToolbarItem

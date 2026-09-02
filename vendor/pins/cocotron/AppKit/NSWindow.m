@@ -2706,6 +2706,7 @@ static void CiderDumpViewTree(NSView *view, int depth, CGFloat windowHeight) {
                               withObject: self];
 
     [self postNotificationName: NSWindowWillCloseNotification];
+    [[NSApplication sharedApplication] _ciderWindowDidClose];
 
     if (_releaseWhenClosed)
         [self autorelease];

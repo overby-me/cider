@@ -481,6 +481,7 @@ typedef NS_OPTIONS(NSUInteger, NSTouchTypeMask) {
 - (void) _collectTrackingAreasForWindowInto: (NSMutableArray *) collector;
 
 - (NSAppearance *) effectiveAppearance;
+- (NSSize) fittingSize;
 @end
 
 @interface NSObject (NSView_toolTipOwner)

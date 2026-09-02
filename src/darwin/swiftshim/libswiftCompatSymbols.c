@@ -83,7 +83,8 @@ CIDER_COMPAT_SYMBOL(57, "_FSEventStreamFlushSync");
 CIDER_COMPAT_SYMBOL(58, "_FSGetCatalogInfo");
 CIDER_COMPAT_SYMBOL(59, "_GetCurrentKeyModifiers");
 CIDER_COMPAT_SYMBOL(60, "_LSCanURLAcceptURL");
-CIDER_COMPAT_SYMBOL(61, "_LSSetDefaultHandlerForURLScheme");
+/* 61 was _LSSetDefaultHandlerForURLScheme, now a real function in LaunchServices: it is CALLED,
+ * and a placeholder that is called is a crash rather than a missing feature. */
 CIDER_COMPAT_SYMBOL(62, "_LSSetDefaultRoleHandlerForContentType");
 CIDER_COMPAT_SYMBOL(63, "_NSAccessibilityRoleDescriptionForUIElement");
 CIDER_COMPAT_SYMBOL(64, "_SecTrustCopyCertificateChain");

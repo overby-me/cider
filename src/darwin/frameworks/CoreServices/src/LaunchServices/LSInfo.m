@@ -344,6 +344,22 @@ CFArrayRef LSCopyAllRoleHandlersForContentType(CFStringRef inContentType, LSRole
 	return NULL;
 }
 
+/*
+ * REGISTERING AS THE HANDLER FOR A URL SCHEME, accepted and forgotten.
+ *
+ * There is no LaunchServices database here, so there is nothing to record and nothing that would
+ * ever consult it. noErr is the answer that lets an application get on with starting: iTerm2 claims
+ * its scheme while it launches and does not expect to be argued with.
+ *
+ * IT MUST EXIST AS A FUNCTION rather than as a placeholder address. It was in the compat library as
+ * one of the loader placeholders, which is enough to link and fatal to CALL: iTerm2 jumped to the
+ * poison and died with SIGSEGV at LSSetDefaultHandlerForURLScheme + 0.
+ */
+OSStatus LSSetDefaultHandlerForURLScheme(CFStringRef inURLScheme, CFStringRef inHandlerBundleID)
+{
+	return 0;
+}
+
 CFStringRef LSCopyDefaultHandlerForURLScheme(CFStringRef inURLScheme)
 {
 	puts("LSCopyDefaultHandlerForURLScheme STUB");

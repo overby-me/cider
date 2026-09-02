@@ -85,6 +85,7 @@ typedef enum {
 + (NSFont *) toolTipsFontOfSize: (CGFloat) size;
 + (NSFont *) userFontOfSize: (CGFloat) size;
 + (NSFont *) userFixedPitchFontOfSize: (CGFloat) size;
++ (NSFont *) monospacedSystemFontOfSize: (CGFloat) size weight: (CGFloat) weight;
 
 + (void) setUserFont: (NSFont *) value;
 + (void) setUserFixedPitchFont: (NSFont *) value;

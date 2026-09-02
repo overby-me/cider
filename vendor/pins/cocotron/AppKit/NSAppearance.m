@@ -70,6 +70,28 @@ static NSAppearance *_ciderCurrentAppearance = nil;
     }
 }
 
+/*
+ * RUN A BLOCK WITH THIS APPEARANCE CURRENT, which is how macOS 11 replaced setting it by hand.
+ *
+ * The old pair is still here and is exactly what this does: make it current, run the block, put the
+ * previous one back even if the block raises. iTerm2 draws through this while building its window,
+ * and unimplemented it terminated the process on an uncaught exception with four windows already
+ * made.
+ */
+- (void) performAsCurrentDrawingAppearance: (void (^)(void)) block {
+    if (block == NULL)
+        return;
+
+    NSAppearance *previous = [NSAppearance currentAppearance];
+
+    [NSAppearance setCurrentAppearance: self];
+    @try {
+        block();
+    } @finally {
+        [NSAppearance setCurrentAppearance: previous];
+    }
+}
+
 + (NSAppearance *) currentAppearance {
     if (_ciderCurrentAppearance != nil) {
         return _ciderCurrentAppearance;

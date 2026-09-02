@@ -61,6 +61,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                  keyEquivalent: (NSString *) keyEquivalent;
 
 - (NSMenu *) menu;
+- (NSMenuItem *) parentItem;
 - (NSString *) title;
 - (NSAttributedString *) attributedTitle;
 - (NSString *) mnemonic;

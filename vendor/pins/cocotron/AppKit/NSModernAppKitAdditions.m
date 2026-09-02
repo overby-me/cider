@@ -387,3 +387,33 @@ NSString *const NSTextMovementUserInfoKey = @"NSTextMovement";
 }
 
 @end
+
+/*
+ * THE TITLEBAR SEPARATOR, carried rather than drawn.
+ *
+ * macOS 11 added the hairline between a titlebar and the content below it, and an application sets
+ * the style while it builds its window. Nothing here draws that line, so the value is stored and
+ * read back; what matters is that asking does not raise. Unimplemented, it did: iTerm2 built its
+ * window, set the style, and the process terminated on an uncaught exception with the window it had
+ * just made still on screen.
+ */
+@implementation NSWindow (NSTitlebarSeparator)
+
+static NSMapTable *_ciderSeparatorStyles = nil;
+
+- (NSTitlebarSeparatorStyle) titlebarSeparatorStyle {
+    if (_ciderSeparatorStyles == nil)
+        return NSTitlebarSeparatorStyleAutomatic;
+    return (NSTitlebarSeparatorStyle) (NSInteger) (intptr_t)
+            NSMapGet(_ciderSeparatorStyles, (const void *) self);
+}
+
+- (void) setTitlebarSeparatorStyle: (NSTitlebarSeparatorStyle) style {
+    if (_ciderSeparatorStyles == nil) {
+        _ciderSeparatorStyles = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
+                                                 NSIntegerMapValueCallBacks, 0);
+    }
+    NSMapInsert(_ciderSeparatorStyles, (const void *) self, (const void *) (intptr_t) style);
+}
+
+@end

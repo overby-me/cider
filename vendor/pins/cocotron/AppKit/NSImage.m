@@ -1835,6 +1835,19 @@ static NSImage *_CiderImageFromAssetCatalog(NSString *name) {
              fraction: fraction];
 }
 
+/*
+ * THE WHOLE IMAGE INTO A RECT, which is the shorthand every other drawInRect: is built on.
+ *
+ * NSZeroRect for the source means the entire image, source over is what a plain draw does, and the
+ * fraction is 1. iTerm2 calls this while it builds its window and the raise terminated it.
+ */
+- (void) drawInRect: (NSRect) rect {
+    [self drawInRect: rect
+            fromRect: NSZeroRect
+           operation: NSCompositeSourceOver
+            fraction: 1.0];
+}
+
 - (void) drawInRect: (NSRect) rect
            fromRect: (NSRect) source
           operation: (NSCompositingOperation) operation

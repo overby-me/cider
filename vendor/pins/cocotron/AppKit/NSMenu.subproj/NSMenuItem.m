@@ -184,6 +184,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return copy;
 }
 
+/*
+ * THE ITEM THIS ITEM'S MENU HANGS OFF, which is the item in the SUPERMENU whose submenu is my menu.
+ *
+ * nil for an item in the main menu or in a menu with no parent, which is what macOS answers. iTerm2
+ * walks up from an item while it builds its menus and the raise terminated it.
+ */
+- (NSMenuItem *) parentItem {
+    NSMenu *owner = [self menu];
+    NSMenu *parent = [owner supermenu];
+
+    for (NSMenuItem *candidate in [parent itemArray]) {
+        if ([candidate submenu] == owner) {
+            return candidate;
+        }
+    }
+    return nil;
+}
+
 - (NSMenu *) menu {
     return _menu;
 }

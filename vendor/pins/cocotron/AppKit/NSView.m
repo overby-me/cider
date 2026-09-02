@@ -3767,4 +3767,24 @@ static NSView *viewBeingPrinted = nil;
     }
 }
 
+/*
+ * THE SIZE THIS VIEW WOULD LIKE, which for a control is the size its cell asks for and for anything
+ * else is the size it already has.
+ *
+ * Auto Layout computes this from constraints on macOS. There is only enough of it here to exist, so
+ * the honest fallback is what the view can say about itself: a control knows its cell size, and a
+ * plain view knows its frame. Answering nothing at all was worse, since it raised: iTerm2 asks a
+ * text field for its fitting size while laying out and the process terminated.
+ */
+- (NSSize) fittingSize {
+    if ([self respondsToSelector: @selector(cell)]) {
+        id cell = [(id) self cell];
+
+        if (cell != nil && [cell respondsToSelector: @selector(cellSize)]) {
+            return [cell cellSize];
+        }
+    }
+    return [self frame].size;
+}
+
 @end

@@ -277,6 +277,7 @@ typedef NS_OPTIONS(NSUInteger, NSApplicationPresentationOptions) {
 
 // private
 - (void) _addWindow: (NSWindow *) window;
+- (void) _ciderWindowDidClose;
 
 - (void) _windowWillBecomeActive: (NSWindow *) window;
 - (void) _windowDidBecomeActive: (NSWindow *) window;

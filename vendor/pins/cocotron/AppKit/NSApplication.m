@@ -581,6 +581,11 @@ static NSAppearance *_ciderApplicationAppearance = nil;
  */
 static BOOL _ciderApplicationActive = NO;
 
+/* Set when a window CLOSES, which is the event macOS attaches this question to. Registration is not
+ * enough: an application builds windows during launch and shows them a moment later, and asking
+ * before any of them has been shown answers "no visible windows" for a perfectly healthy start. */
+static BOOL _ciderApplicationWindowClosed = NO;
+
 - (BOOL) isActive {
     return _ciderApplicationActive || [self isActiveExcludingWindow: nil];
 }
@@ -1015,7 +1020,30 @@ static BOOL _ciderApplicationActive = NO;
     }
 }
 
+/*
+ * QUITTING BECAUSE THE LAST WINDOW CLOSED IS A DELEGATE'S DECISION, AND ONLY AFTER ONE HAS CLOSED.
+ *
+ * This ran on every pass of the run loop and terminated the application whenever no window was
+ * visible, which includes the whole of startup before the first window exists. An application that
+ * takes a moment to open its window was therefore asked to quit immediately and repeatedly:
+ * iTerm2 reached the loop with no window and left with status 0 on the first pass, and iA Writer
+ * was asked on every pass for as long as it ran and only survived because its delegate says no.
+ *
+ * macOS asks applicationShouldTerminateAfterLastWindowClosed:, the answer is NO when the delegate
+ * does not implement it, and the question is only ever asked after a window has CLOSED. Both halves
+ * matter: the default keeps an application alive while it is still starting, and the ordering keeps
+ * it alive if it never opens a window at all.
+ */
+/* Called by -[NSWindow close], which is the only thing that should arm the check below. */
+- (void) _ciderWindowDidClose {
+    _ciderApplicationWindowClosed = YES;
+}
+
 - (void) _checkForTerminate {
+    if (!_ciderApplicationWindowClosed) {
+        return;
+    }
+
     int count = [_windows count];
 
     while (--count >= 0) {
@@ -1024,6 +1052,12 @@ static BOOL _ciderApplicationActive = NO;
         if (![check isKindOfClass: [NSPanel class]] && [check isVisible]) {
             return;
         }
+    }
+
+    if (_delegate == nil ||
+        ![_delegate respondsToSelector: @selector(applicationShouldTerminateAfterLastWindowClosed:)] ||
+        ![_delegate applicationShouldTerminateAfterLastWindowClosed: self]) {
+        return;
     }
 
     [self terminate: self];

@@ -382,6 +382,15 @@ static NSLock *_cacheLock = nil;
                            size: (size == 0) ? 12.0 : size];
 }
 
+/*
+ * THE MONOSPACED SYSTEM FACE, which macOS 10.15 added and this stack answers with the fixed pitch
+ * user font: the same request, made before the constant existed. The weight is not applied because
+ * there is one fixed pitch face here to give, and a wrong weight is a worse answer than a plain one.
+ */
++ (NSFont *) monospacedSystemFontOfSize: (CGFloat) size weight: (CGFloat) weight {
+    return [self userFixedPitchFontOfSize: size];
+}
+
 + (NSFont *) userFixedPitchFontOfSize: (CGFloat) size {
     return [NSFont
             fontWithName: [O2Font postscriptNameForDisplayName: @"Courier New"]
