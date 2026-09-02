@@ -186,8 +186,22 @@ static void CiderFillBackground(NSColor *color, NSRect rect, const char *where) 
     return NSMakeRect(0, 0, 0, 0);
 }
 
+/*
+ * THE VISIBLE PORTION OF THE DOCUMENT, which is not the same as the clip view bounds.
+ *
+ * When the document is SMALLER than the clip view, the clip bounds cover area where there is no
+ * document, and returning them says the invisible part is visible. macOS intersects, and callers
+ * depend on it: iTerm2 turns this rectangle into a range of terminal LINES, so a rectangle two
+ * points taller than its text view asks for one line past the end of the screen, and a line that is
+ * not there has no cells and no background colour runs.
+ */
 - (NSRect) documentVisibleRect {
-    return [self convertRect: [self bounds] toView: _docView];
+    NSRect visible = [self convertRect: [self bounds] toView: _docView];
+
+    if (_docView != nil) {
+        visible = NSIntersectionRect(visible, [_docView bounds]);
+    }
+    return visible;
 }
 
 - (NSPoint) constrainScrollPoint: (NSPoint) point {
