@@ -303,6 +303,8 @@ typedef struct __VFlags {
 
     // TODO: decode this
     _translatesAutoresizingMaskIntoConstraints = YES;
+    /* BEFORE the branch: a view decoded by a non keyed coder would otherwise be born transparent. */
+    _alphaValue = 1.0;
 
     if ([coder allowsKeyedCoding]) {
         NSKeyedUnarchiver *keyed = (NSKeyedUnarchiver *) coder;
@@ -539,6 +541,7 @@ typedef struct __VFlags {
     _frame = frame;
     _bounds.origin = NSMakePoint(0, 0);
     _bounds.size = frame.size;
+    _alphaValue = 1.0;
     _window = nil;
     _menu = nil;
     _superview = nil;
@@ -910,13 +913,28 @@ static inline void buildTransformsIfNeeded(NSView *self) {
     return NO;
 }
 
+/*
+ * ONE IS OPAQUE, AND ZERO WAS THE ANSWER HERE. The getter returned 0 and the setter did nothing, so
+ * an application that set a view to 1.0 and read it back was told the view is fully TRANSPARENT.
+ * iTerm2 sets this on PTYTextView, its clip view, its wrapper and its image view, sixty three times
+ * in one startup, and those are the views that drew nothing.
+ *
+ * The value multiplies the context alpha around drawRect:, so it is honoured and not merely stored.
+ */
 - (CGFloat) alphaValue {
-    NSUnimplementedMethod();
-    return 0.;
+    return _alphaValue;
 }
 
 - (void) setAlphaValue: (CGFloat) alpha {
-    NSUnimplementedMethod();
+    if (alpha < 0)
+        alpha = 0;
+    if (alpha > 1)
+        alpha = 1;
+    if (alpha == _alphaValue)
+        return;
+
+    _alphaValue = alpha;
+    [self setNeedsDisplay: YES];
 }
 
 - (int) gState {
@@ -3179,8 +3197,19 @@ static NSView *viewBeingPrinted = nil;
             /* HOW MANY DRAWING OPERATIONS THE APPLICATION ISSUES INSIDE ITS OWN drawRect:.
              * Zero here means an empty model, not a clipped or misplaced one. */
             unsigned long ciderDrawOpsBefore = cider_o2_draw_ops;
+            CGContextRef ciderAlphaPort =
+                    _alphaValue < 1.0
+                            ? (CGContextRef) [[NSGraphicsContext currentContext] graphicsPort]
+                            : NULL;
 
+            if (ciderAlphaPort != NULL) {
+                CGContextSaveGState(ciderAlphaPort);
+                CGContextSetAlpha(ciderAlphaPort, _alphaValue);
+            }
             [self drawRect: rect];
+            if (ciderAlphaPort != NULL) {
+                CGContextRestoreGState(ciderAlphaPort);
+            }
             {
                 const char *watchDone = getenv("CIDER_TRACE_FRAMES");
 
