@@ -201,7 +201,28 @@ __attribute__((swiftcall)) void *cider_combine_publisher_sink(
         }
     }
     if (allocObject != NULL) {
+        static void (*retain)(void *);
+
         cancellable = allocObject(cider_combine_anycancellable_metadata(), 16, 7);
+        /*
+         * ONE EXTRA RETAIN, SO IT IS NEVER DESTROYED.
+         *
+         * The word at metadata minus eight is the DESTROY function for a heap object, not the value
+         * witness table a value type keeps there. Our class metadata is built on an objc class
+         * object, and there is nothing of ours in front of it to put a destructor in, so that word
+         * reads as zero. swift_release calls it the moment the refcount reaches zero, and iA Writer
+         * did exactly that one line after store(in:): SEGV at address 0.
+         *
+         * The caller owns the +1 it is handed and releases it in the ordinary way; this second
+         * reference is the one that keeps the count off zero. It leaks the object, which this
+         * framework already does deliberately for the subscription itself.
+         */
+        if (retain == NULL) {
+            retain = (void (*)(void *)) dlsym(RTLD_DEFAULT, "swift_retain");
+        }
+        if (retain != NULL && cancellable != NULL) {
+            retain(cancellable);
+        }
     }
     if (cider_combine_subject_trace()) {
         fprintf(stderr, "CIDER_COMBINE sink -> cancellable=%p\n", cancellable);
