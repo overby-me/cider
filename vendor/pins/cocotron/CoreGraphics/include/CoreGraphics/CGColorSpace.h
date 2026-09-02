@@ -62,6 +62,9 @@ COREGRAPHICS_EXPORT CGColorSpaceRef CGColorSpaceCreateDeviceRGB();
 COREGRAPHICS_EXPORT CGColorSpaceRef CGColorSpaceCreateDeviceGray();
 COREGRAPHICS_EXPORT CGColorSpaceRef CGColorSpaceCreateDeviceCMYK();
 COREGRAPHICS_EXPORT CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace);
+COREGRAPHICS_EXPORT CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint,
+                                                          const CGFloat *blackPoint,
+                                                          const CGFloat *range);
 
 COREGRAPHICS_EXPORT CGColorSpaceModel CGColorSpaceGetModel(CGColorSpaceRef self);
 COREGRAPHICS_EXPORT size_t CGColorSpaceGetNumberOfComponents(CGColorSpaceRef self);

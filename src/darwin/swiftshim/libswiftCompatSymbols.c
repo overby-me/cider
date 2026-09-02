@@ -66,7 +66,7 @@ CIDER_COMPAT_SYMBOL(40, "_CFFileDescriptorCreate");
 CIDER_COMPAT_SYMBOL(41, "_CFFileDescriptorCreateRunLoopSource");
 CIDER_COMPAT_SYMBOL(42, "_CFFileDescriptorEnableCallBacks");
 CIDER_COMPAT_SYMBOL(43, "_CFFileDescriptorGetNativeDescriptor");
-CIDER_COMPAT_SYMBOL(44, "_CGColorSpaceCreateLab");
+/* CGColorSpaceCreateLab is implemented in CoreGraphics now, so no placeholder for it. */
 CIDER_COMPAT_SYMBOL(45, "_CGEventGetFlags");
 CIDER_COMPAT_SYMBOL(46, "_CGEventSetFlags");
 CIDER_COMPAT_SYMBOL(47, "_CGSessionCopyCurrentDictionary");

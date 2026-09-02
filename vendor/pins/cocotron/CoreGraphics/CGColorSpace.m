@@ -70,6 +70,23 @@ CGColorSpaceRef CGColorSpaceCreateDeviceCMYK() {
     return (CGColorSpaceRef)O2ColorSpaceCreateDeviceCMYK();
 }
 
+/*
+ * A LAB SPACE ANSWERED WITH sRGB, WHICH IS A REAL SPACE AND NOT THE RIGHT ONE.
+ *
+ * There is no CIE Lab space in this implementation, and the alternative to answering is what used to
+ * happen: the symbol resolved to a placeholder in the compat library, and iTerm2 jumped to it and
+ * died with its nine windows already up, inside
+ * +[iTermTextDrawingHelper colorForLineStyleMark:backgroundColor:].
+ *
+ * THE DIVERGENCE IS IN THE COLOUR, not in whether the program runs. A caller that converts through
+ * this space gets its components interpreted as RGB, so a perceptual computation comes out
+ * approximate. The white point and range arguments are accepted and ignored for the same reason.
+ */
+CGColorSpaceRef CGColorSpaceCreateLab(const CGFloat *whitePoint, const CGFloat *blackPoint,
+                                      const CGFloat *range) {
+    return (CGColorSpaceRef) O2ColorSpaceCreateDeviceRGB();
+}
+
 CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace) {
     return (CGColorSpaceRef)O2ColorSpaceCreatePattern((O2ColorSpaceRef)baseSpace);
 }
