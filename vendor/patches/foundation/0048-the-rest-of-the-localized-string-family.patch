@@ -1,0 +1,24 @@
+the rest of the localized string family on a locale
+
+iTerm2 asks a locale for localizedStringForCountryCode: while building its list of
+locales, and it did not exist, so the raise ended the process. Each member of the family
+is the same delegation to displayNameForKey:value: with its own key, and the keys were all
+already defined here, so the whole family is filled in rather than the one selector.
+
+--- a/include/Foundation/NSLocale.h
++++ b/include/Foundation/NSLocale.h
+@@ -47,6 +47,14 @@
+ 
+ - (id)objectForKey:(id)key;
+ - (NSString *)displayNameForKey:(id)key value:(id)value;
++- (NSString *)localizedStringForCountryCode:(NSString *)countryCode;
++- (NSString *)localizedStringForLanguageCode:(NSString *)languageCode;
++- (NSString *)localizedStringForScriptCode:(NSString *)scriptCode;
++- (NSString *)localizedStringForVariantCode:(NSString *)variantCode;
++- (NSString *)localizedStringForCurrencyCode:(NSString *)currencyCode;
++- (NSString *)localizedStringForCalendarIdentifier:(NSString *)calendarIdentifier;
++- (NSString *)localizedStringForCollationIdentifier:(NSString *)collationIdentifier;
++- (NSString *)localizedStringForCollatorIdentifier:(NSString *)collatorIdentifier;
+ 
+ @end
+ 

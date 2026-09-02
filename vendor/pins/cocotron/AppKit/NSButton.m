@@ -83,6 +83,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return [_cell imagePosition];
 }
 
+- (NSImageScaling) imageScaling {
+    return [_cell imageScaling];
+}
+
 - (NSString *) title {
     return [_cell title];
 }
@@ -148,6 +152,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (void) setImagePosition: (NSCellImagePosition) value {
     [_cell setImagePosition: value];
+    [self setNeedsDisplay: YES];
+}
+
+- (void) setImageScaling: (NSImageScaling) value {
+    [_cell setImageScaling: value];
     [self setNeedsDisplay: YES];
 }
 

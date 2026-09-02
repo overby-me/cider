@@ -1252,6 +1252,23 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
         [self _setSelectedRowIndexes: selection];
 }
 
+/*
+ * A REUSABLE VIEW FOR A ROW, or nil so the caller makes one.
+ *
+ * The documented contract is that nil means make your own and tag it with the identifier, and every
+ * caller is written that way:
+ *
+ *     NSTextField *v = [table makeViewWithIdentifier: @"x" owner: self];
+ *     if (v == nil) { v = [[NSTextField alloc] init...]; [v setIdentifier: @"x"]; }
+ *
+ * so nil is a complete answer, not a stub. It is also the only answer this table can give: the rows
+ * are drawn as cells, so no view is ever held to hand back. Registering a nib for an identifier is
+ * not supported, and iTerm2 does not do it.
+ */
+- (NSView *) makeViewWithIdentifier: (NSUserInterfaceItemIdentifier) identifier owner: (id) owner {
+    return nil;
+}
+
 - (void) reloadData {
     [self noteNumberOfRowsChanged];
     [self setNeedsDisplay: YES];

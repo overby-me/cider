@@ -239,6 +239,8 @@ typedef NSUInteger NSTableViewColumnAutoresizingStyle;
 
 - (void) noteNumberOfRowsChanged;
 - (void) noteHeightOfRowsWithIndexesChanged: (NSIndexSet *) indexSet;
+- (NSView *) makeViewWithIdentifier: (NSUserInterfaceItemIdentifier) identifier
+                              owner: (id) owner;
 - (void) reloadData;
 - (void) tile;
 

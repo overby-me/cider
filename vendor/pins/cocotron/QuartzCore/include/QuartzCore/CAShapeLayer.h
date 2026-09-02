@@ -28,5 +28,50 @@ CA_EXPORT NSString *const kCALineCapButt;
 CA_EXPORT NSString *const kCALineCapRound;
 CA_EXPORT NSString *const kCALineCapSquare;
 
-@interface CAShapeLayer : CALayer
+@interface CAShapeLayer : CALayer {
+    CGPathRef _path;
+    CGColorRef _fillColor;
+    CGColorRef _strokeColor;
+    NSString *_fillRule;
+    NSString *_lineCap;
+    NSString *_lineJoin;
+    NSArray *_lineDashPattern;
+    CGFloat _lineWidth;
+    CGFloat _lineDashPhase;
+    CGFloat _miterLimit;
+    CGFloat _strokeStart;
+    CGFloat _strokeEnd;
+}
+
+- (CGPathRef) path;
+- (void) setPath: (CGPathRef) path;
+
+- (CGColorRef) fillColor;
+- (void) setFillColor: (CGColorRef) color;
+- (CGColorRef) strokeColor;
+- (void) setStrokeColor: (CGColorRef) color;
+
+- (CGFloat) lineWidth;
+- (void) setLineWidth: (CGFloat) width;
+- (CGFloat) miterLimit;
+- (void) setMiterLimit: (CGFloat) limit;
+
+- (NSString *) fillRule;
+- (void) setFillRule: (NSString *) rule;
+- (NSString *) lineCap;
+- (void) setLineCap: (NSString *) cap;
+- (NSString *) lineJoin;
+- (void) setLineJoin: (NSString *) join;
+
+- (NSArray *) lineDashPattern;
+- (void) setLineDashPattern: (NSArray *) pattern;
+- (CGFloat) lineDashPhase;
+- (void) setLineDashPhase: (CGFloat) phase;
+
+/* Carried, but the stroke is not trimmed to them. */
+- (CGFloat) strokeStart;
+- (void) setStrokeStart: (CGFloat) start;
+- (CGFloat) strokeEnd;
+- (void) setStrokeEnd: (CGFloat) end;
+
 @end
