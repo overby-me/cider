@@ -670,8 +670,20 @@ static NSLock *_cacheLock = nil;
                            size: (CGFloat) size
                   textTransform: (NSAffineTransform *) transform
 {
-    NSUnimplementedMethod();
-    return 0;
+    /* No text transform is applied to a font here, so the size decides everything. */
+    return [self fontWithDescriptor: descriptor size: size];
+}
+
+/* The two-argument form takes its size from the descriptor, which is where a caller that omits it
+ * has already put it. iTerm2 asks for this one, and unimplemented it is a CLASS method, so the
+ * raise took the whole application after its nine windows were already up. */
++ (NSFont *) fontWithDescriptor: (NSFontDescriptor *) descriptor
+                  textTransform: (NSAffineTransform *) transform
+{
+    NSNumber *size = [[descriptor fontAttributes] objectForKey: NSFontSizeAttribute];
+
+    return [self fontWithDescriptor: descriptor
+                               size: size != nil ? [size doubleValue] : 0.0];
 }
 
 - copyWithZone: (NSZone *) zone {

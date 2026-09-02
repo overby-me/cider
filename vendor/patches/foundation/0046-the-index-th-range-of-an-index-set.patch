@@ -1,0 +1,67 @@
+the index'th contiguous range of an index set
+
+-[NSIndexSet rangeAtIndex:] did not exist and iTerm2 asks for it while laying out its
+terminal, with its nine windows already up. It is walked the same way rangeCount counts: one
+range answers directly, otherwise the cache rangeCount builds is an array of the same nodes,
+and without a cache the ranges are a linked list. Out of bounds answers an empty range rather
+than reading past the end, which is what a caller trusting a stale count would do.
+
+--- a/src/NSIndexSet.m
++++ b/src/NSIndexSet.m
+@@ -557,6 +557,56 @@
+     }
+ }
+ 
++/*
++ * THE INDEX'TH CONTIGUOUS RANGE, walked the same way rangeCount counts them.
++ *
++ * A set with one range answers it directly; otherwise the ranges are a linked list, and the cache
++ * that rangeCount builds is an array of the same ranges, so it is used when it is there. Out of
++ * bounds returns an empty range at zero rather than reading past the end, which is what a caller
++ * that trusted a stale rangeCount would otherwise do.
++ *
++ * iTerm2 asks for this while laying out its terminal, and unimplemented it raised with its nine
++ * windows already on screen.
++ */
++- (NSRange)rangeAtIndex:(NSUInteger)index
++{
++    NSRange empty = NSMakeRange(0, 0);
++
++    if (IS_EMPTY(self) || index >= [self rangeCount])
++    {
++        return empty;
++    }
++
++    if (HAS_SINGLE_RANGE(self))
++    {
++        return SINGLE_RANGE(self);
++    }
++
++    if (BUILD_CACHE(self))
++    {
++        /* The cache array holds the RangeList nodes themselves, which is what rangeCount counts. */
++        RangeList *entry = (RangeList *)CFArrayGetValueAtIndex(CACHE(self)->ranges, index);
++
++        return entry != NULL ? entry->range : empty;
++    }
++    else
++    {
++        RangeList *ptr = MULTIPLE_RANGE_DATA(self);
++        NSUInteger i = 0;
++
++        while (ptr != NULL)
++        {
++            if (i == index)
++            {
++                return ptr->range;
++            }
++            i++;
++            ptr = ptr->next;
++        }
++    }
++    return empty;
++}
++
+ - (NSUInteger)firstIndex
+ {
+     if (IS_EMPTY(self))

@@ -99,6 +99,8 @@ typedef enum {
 + (NSFont *) fontWithDescriptor: (NSFontDescriptor *) descriptor
                            size: (CGFloat) size
                   textTransform: (NSAffineTransform *) transform;
++ (NSFont *) fontWithDescriptor: (NSFontDescriptor *) descriptor
+                  textTransform: (NSAffineTransform *) transform;
 
 + (NSArray *) preferredFontNames;
 + (void) setPreferredFontNames: (NSArray *) fontNames;
