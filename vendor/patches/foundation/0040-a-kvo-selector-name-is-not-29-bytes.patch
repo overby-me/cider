@@ -1,0 +1,65 @@
+a KVO selector name is not 29 bytes long
+
+Both sites that build the original-implementation selector name passed strlcpy the length the
+string NEEDED into a buffer of 29 bytes, so any setter name longer than that overflowed it.
+Fortify catches it and turns it into SIGILL at __chk_fail_overflow, which is where iTerm2 died
+while building its windows: Swift generated setter names are long.
+
+The name is allocated to the length it needs now, at both the site that writes it and the site
+that reads it back, because the two have to agree. sel_registerName copies, so it is freed.
+
+--- a/src/NSKeyValueObserving.m
++++ b/src/NSKeyValueObserving.m
+@@ -1163,10 +1163,24 @@
+                     const char *methodName = sel_getName(selector);
+                     int nameLength = strlen(methodName);
+                     const char *prefix = kOriginalImplementationMethodNamePrefix;
+-                    char buffer[29] = {0};
+-                    strlcpy(buffer, prefix, nameLength+strlen(prefix));
+-                    strlcat(buffer, methodName, nameLength+strlen(prefix));
++                    /*
++                     * THE LENGTH PASSED WAS THE ONE NEEDED, NOT THE ONE AVAILABLE, and the buffer
++                     * was 29 bytes. Any setter name longer than that overflowed it, which fortify
++                     * catches and turns into SIGILL at __chk_fail_overflow: iTerm2 dies there while
++                     * building its windows, because Swift generated setter names are long.
++                     */
++                    size_t needed = nameLength + strlen(prefix) + 1;
++                    char *buffer = malloc(needed);
++
++                    if (buffer == NULL)
++                    {
++                        return;
++                    }
++                    buffer[0] = '\0';
++                    strlcpy(buffer, prefix, needed);
++                    strlcat(buffer, methodName, needed);
+                     SEL newForwardingSelector = sel_registerName(buffer);
++                    free(buffer);
+                     IMP originalIMP = method_getImplementation(m);
+                     const char *originalTypeEncoding = method_getTypeEncoding(m);
+                     class_addMethod(otherClass, newForwardingSelector, originalIMP, originalTypeEncoding);
+@@ -1223,10 +1237,21 @@
+         [self willChangeValueForKey:key];
+         const char *methodName = sel_getName(selector);
+         int nameLength = strlen(methodName);
+-        char buffer[29] = {0};
+-        strlcpy(buffer, kOriginalImplementationMethodNamePrefix, nameLength+strlen(kOriginalImplementationMethodNamePrefix));
+-        strlcat(buffer, methodName, nameLength+strlen(kOriginalImplementationMethodNamePrefix));
++        /* Same fixed 29 byte buffer and the same wrong length as the site that builds this name;
++         * this is the one that READS it back, so both have to agree. */
++        size_t needed = nameLength + strlen(kOriginalImplementationMethodNamePrefix) + 1;
++        char *buffer = malloc(needed);
++
++        if (buffer == NULL)
++        {
++            [key release];
++            return;
++        }
++        buffer[0] = '\0';
++        strlcpy(buffer, kOriginalImplementationMethodNamePrefix, needed);
++        strlcat(buffer, methodName, needed);
+         SEL newForwardingSelector = sel_registerName(buffer);
++        free(buffer);
+         [invocation setSelector:newForwardingSelector];
+         [invocation invoke];
+         [self didChangeValueForKey:key];
