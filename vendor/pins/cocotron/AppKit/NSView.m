@@ -2698,6 +2698,17 @@ static void clearNeedsDisplay(NSView *self) {
     self->_needsDisplay = NO;
 }
 
+/*
+ * THE LAYOUT PASS, which is a no-op on a plain view and the hook every container overrides.
+ *
+ * There is no deferred layout here, so nothing calls this on its own; a container calls it when its
+ * own geometry changes. It has to EXIST on NSView, because a subclass ends its own layout with
+ * [super layout] and NSStackView did exactly that: -[NSStackView layout] came back unrecognized and
+ * took iA Writer.
+ */
+- (void) layout {
+}
+
 - (void) setNeedsDisplay: (BOOL) flag {
     _needsDisplay = flag;
 

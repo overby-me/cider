@@ -1,47 +1,112 @@
-a stub must still answer in the right register
+an activity, a duration and a null string
 
-NSUserActivity is a forwarding stub whose methodSignatureForSelector answered v@: for every
-selector. A void return writes nothing, so an initialiser hands back whatever the previous
-call left in the return register, and the caller has an object that is not one.
+NSUserActivity and NSDateComponentsFormatter were forwarding stubs, so an initialiser answered
+nil and a formatter answered nil, and the application that used those results crashed rather
+than degraded: first a message to a leftover register value, then CFStringCreateCopy on a null
+string, called from CFAttributedStringCreate.
 
-iA Writer took that value, 0x4e, and sent it setEligibleForHandoff:. The result is a SIGSEGV
-inside objc_msgSend with no frame chain, no exception, and nothing in the log naming
-NSUserActivity at all. The receiver and the selector were still in the registers the signal
-context carries, which is how it was found.
+Neither needs a real implementation to be safe, only an honest one. The activity holds the
+values it is given, because nothing here hands an activity to another device. The formatter
+renders the components it is given in the plain 1h 2m 3s shape; it does not consult
+allowedUnits, and what it guarantees is a string.
 
-@@: with an explicit nil costs a caller that wanted void nothing, and gives one that wanted
-an object the only safe answer: messaging nil is defined and messaging 0x4e is not.
-
-The same template is used by 9806 generated stub files in this tree, so this is one instance
-of a defect that is present everywhere and fires only when a caller uses the return value.
-
+--- a/include/Foundation/NSUserActivity.h
++++ b/include/Foundation/NSUserActivity.h
+@@ -23,5 +23,38 @@
+ // Nothing here continues an activity, but the name is bound before main.
+ FOUNDATION_EXPORT NSString * const NSUserActivityDocumentURLKey;
+ 
+-@interface NSUserActivity : NSObject
++/*
++ * A HANDOFF ACTIVITY THAT IS NEVER HANDED OFF, and therefore just an object that holds its values.
++ *
++ * It was a forwarding stub, so -initWithActivityType: answered nil, and an application that copied a
++ * string off the result crashed inside CFStringCreateCopy on null. Holding the values costs nothing
++ * and every getter answers what was set.
++ */
++@interface NSUserActivity : NSObject {
++    NSString *_activityType;
++    NSString *_title;
++    NSDictionary *_userInfo;
++    NSURL *_webpageURL;
++    BOOL _eligibleForHandoff;
++    BOOL _eligibleForSearch;
++    BOOL _eligibleForPublicIndexing;
++    BOOL _needsSave;
++    BOOL _valid;
++}
++
++- (instancetype) initWithActivityType: (NSString *) activityType;
++
++@property (readonly, copy) NSString *activityType;
++@property (copy) NSString *title;
++@property (copy) NSDictionary *userInfo;
++@property (copy) NSURL *webpageURL;
++@property (getter=isEligibleForHandoff) BOOL eligibleForHandoff;
++@property (getter=isEligibleForSearch) BOOL eligibleForSearch;
++@property (getter=isEligibleForPublicIndexing) BOOL eligibleForPublicIndexing;
++@property BOOL needsSave;
++
++- (void) becomeCurrent;
++- (void) resignCurrent;
++- (void) invalidate;
++
+ @end
 --- a/src/NSUserActivity.m
 +++ b/src/NSUserActivity.m
-@@ -25,13 +25,26 @@
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSUserActivity.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -25,14 +26,41 @@
  
  @implementation NSUserActivity
  
-+/*
-+ * A STUB STILL HAS TO ANSWER IN THE RIGHT REGISTER.
-+ *
-+ * "v@:" says every method returns nothing, so an initialiser writes nothing and the caller keeps
-+ * whatever the previous call left in the return register. iA Writer took that value, 0x4e, for its
-+ * new activity and sent it setEligibleForHandoff:, which is a SIGSEGV inside objc_msgSend with no
-+ * frame chain and nothing in the log to connect it to NSUserActivity.
-+ *
-+ * "@@:" with an explicit nil costs a caller that wanted void nothing and gives one that wanted an
-+ * object the only safe answer, because messaging nil is defined and messaging 0x4e is not.
-+ */
- - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
- {
+-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+-{
 -    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
-+    return [NSMethodSignature signatureWithObjCTypes: "@@:"];
++@synthesize activityType = _activityType;
++@synthesize title = _title;
++@synthesize userInfo = _userInfo;
++@synthesize webpageURL = _webpageURL;
++@synthesize eligibleForHandoff = _eligibleForHandoff;
++@synthesize eligibleForSearch = _eligibleForSearch;
++@synthesize eligibleForPublicIndexing = _eligibleForPublicIndexing;
++@synthesize needsSave = _needsSave;
++
++- (instancetype) initWithActivityType: (NSString *) activityType {
++    if ((self = [super init]) == nil)
++        return nil;
++
++    _activityType = [activityType copy];
++    _valid = YES;
++    return self;
  }
  
- - (void)forwardInvocation:(NSInvocation *)anInvocation
- {
-+    id nothing = nil;
-+    [anInvocation setReturnValue: &nothing];
-     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+-- (void)forwardInvocation:(NSInvocation *)anInvocation
+-{
+-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
++- (void) dealloc {
++    [_activityType release];
++    [_title release];
++    [_userInfo release];
++    [_webpageURL release];
++    [super dealloc];
++}
++
++/* Nothing continues an activity, so becoming current is bookkeeping and invalidating is final. */
++- (void) becomeCurrent {
++}
++
++- (void) resignCurrent {
++}
++
++- (void) invalidate {
++    _valid = NO;
  }
  
+ @end

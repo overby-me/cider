@@ -371,6 +371,7 @@ typedef NS_OPTIONS(NSUInteger, NSTouchTypeMask) {
 
 - (BOOL) needsDisplay;
 - (void) setNeedsDisplay: (BOOL) flag;
+- (void) layout;
 - (void) setNeedsDisplayInRect: (NSRect) rect;
 - (void) setKeyboardFocusRingNeedsDisplayInRect: (NSRect) rect;
 - (void) translateRectsNeedingDisplayInRect: (NSRect) rect by: (NSSize) delta;

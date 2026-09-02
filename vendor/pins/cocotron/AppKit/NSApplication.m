@@ -232,6 +232,39 @@ static void _CiderAppFatalSignal(int signo, siginfo_t *info, void *ucontextIn)
             fprintf(stderr, "CIDER_APP messaging receiver=%p selector=%p (%s)\n",
                     (void *) receiver, (void *) selector, name ? name : "unreadable");
         }
+
+        /*
+         * WHO CALLED THE FUNCTION THAT FAULTED, which the scan below cannot say.
+         *
+         * A fault inside a library routine names the routine and nothing else: CFStringCreateCopy
+         * on a null string is true of hundreds of call sites. A function that has set up a frame
+         * keeps its return address at rbp+8, and one that faulted before doing so leaves it at rsp,
+         * so both are read and resolved. Each read is checked with msync first, because faulting
+         * inside the handler loses the report entirely.
+         */
+        {
+            uintptr_t rbp = (uintptr_t) uc->uc_mcontext->__ss.__rbp;
+            uintptr_t rsp = (uintptr_t) uc->uc_mcontext->__ss.__rsp;
+            uintptr_t candidates[2] = { rbp + 8, rsp };
+            const char *labels[2] = { "rbp+8", "rsp" };
+            int i;
+
+            for (i = 0; i < 2; i++) {
+                Dl_info callerinfo;
+                void *ret;
+
+                if (candidates[i] < 4096 ||
+                    msync((void *) (candidates[i] & ~(uintptr_t) 4095), 4096, MS_ASYNC) != 0)
+                    continue;
+
+                ret = *(void **) candidates[i];
+                if (dladdr(ret, &callerinfo) != 0 && callerinfo.dli_sname != NULL)
+                    fprintf(stderr, "CIDER_APP called from %s (%s + %ld in %s)\n", labels[i],
+                            callerinfo.dli_sname,
+                            (long) ((char *) ret - (char *) callerinfo.dli_saddr),
+                            callerinfo.dli_fname ? callerinfo.dli_fname : "?");
+            }
+        }
 #endif
 
         if (dladdr(pc, &pcinfo) != 0 && pcinfo.dli_sname != NULL)

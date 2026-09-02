@@ -1,0 +1,201 @@
+the visual format language, and a duration as text
+
++constraintsWithVisualFormat: did not exist and iA Writer calls it while building its library
+window. H:|-8-[sidebar(200)]-[content]-| is a row of items with the gaps between them, and this
+reads it into exactly those constraints: each adjacency becomes one relation, and a predicate
+in parentheses becomes a width or a height. They are RECORDED, not solved, which is true of
+every constraint here. Parsing rather than answering with an empty array is what lets a caller
+read back what it asked for and count the right number.
+
+--- a/include/Foundation/NSLayoutConstraint.h
++++ b/include/Foundation/NSLayoutConstraint.h
+@@ -72,6 +72,11 @@
+                          multiplier: (double) multiplier
+                            constant: (double) constant;
+ 
+++ (NSArray *) constraintsWithVisualFormat: (NSString *) format
++                                  options: (NSUInteger) options
++                                  metrics: (NSDictionary *) metrics
++                                    views: (NSDictionary *) views;
++
+ + (void) activateConstraints: (NSArray *) constraints;
+ + (void) deactivateConstraints: (NSArray *) constraints;
+ 
+--- a/src/NSLayoutConstraint.m
++++ b/src/NSLayoutConstraint.m
+@@ -17,6 +17,13 @@
+  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#import <Foundation/NSValue.h>
++#import <Foundation/NSScanner.h>
++#import <Foundation/NSCharacterSet.h>
++#import <Foundation/NSNull.h>
++#import <Foundation/NSDictionary.h>
++#import <Foundation/NSArray.h>
++#import <Foundation/NSString.h>
+ #import <Foundation/NSLayoutConstraint.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -55,6 +62,161 @@
+     return result;
+ }
+ 
++/*
++ * THE VISUAL FORMAT LANGUAGE, parsed into the constraints it describes.
++ *
++ * "H:|-8-[sidebar(200)]-[content]-|" is a row of items with the gaps between them, and this reads it
++ * into exactly those constraints: each adjacency becomes one relation between the trailing edge of
++ * what came before and the leading edge of what comes next, and a predicate in parentheses becomes a
++ * width or a height.
++ *
++ * They are RECORDED, not solved, which is true of every constraint here: layout comes from the
++ * autoresizing masks. So the value of parsing rather than answering with an empty array is that a
++ * caller which reads back what it asked for finds it, and one that counts them gets the right
++ * number. iA Writer calls this while building its library window and it raised.
++ *
++ * What is understood: the H: and V: prefixes, | for the superview, [name], (N) and (==N) and (>=N)
++ * and (<=N) predicates, - for the standard gap and -N- for a given one. Priorities after @ are
++ * parsed and ignored, as they would be by a solver that does not exist.
++ */
+++ (NSArray *) constraintsWithVisualFormat: (NSString *) format
++                                  options: (NSUInteger) options
++                                  metrics: (NSDictionary *) metrics
++                                    views: (NSDictionary *) views
++{
++    NSMutableArray *result = [NSMutableArray array];
++    NSScanner *scanner = [NSScanner scannerWithString: format != nil ? format : @""];
++    BOOL vertical = NO;
++    id previousItem = nil;
++    NSLayoutAttribute previousEdge = NSLayoutAttributeNotAnAttribute;
++    BOOL pendingGap = NO;
++    CGFloat pendingGapSize = 0.0;
++
++    [scanner setCharactersToBeSkipped: nil];
++
++    if ([format hasPrefix: @"V:"]) {
++        vertical = YES;
++        [scanner setScanLocation: 2];
++    } else if ([format hasPrefix: @"H:"]) {
++        [scanner setScanLocation: 2];
++    }
++
++    NSLayoutAttribute leadingEdge = vertical ? NSLayoutAttributeTop : NSLayoutAttributeLeading;
++    NSLayoutAttribute trailingEdge = vertical ? NSLayoutAttributeBottom : NSLayoutAttributeTrailing;
++    NSLayoutAttribute sizeAttribute = vertical ? NSLayoutAttributeHeight : NSLayoutAttributeWidth;
++
++    while ([scanner isAtEnd] == NO) {
++        NSString *rest = [format substringFromIndex: [scanner scanLocation]];
++        unichar c = [rest characterAtIndex: 0];
++        id item = nil;
++
++        if (c == '|') {
++            [scanner setScanLocation: [scanner scanLocation] + 1];
++            /* The superview is whatever the views in the format share; the item is nil until one is
++             * known, so it is filled in from the first view below. */
++            item = [NSNull null];
++        } else if (c == '-') {
++            double gap = 0;
++
++            [scanner setScanLocation: [scanner scanLocation] + 1];
++            if ([scanner scanDouble: &gap]) {
++                pendingGapSize = (CGFloat) gap;
++                if ([scanner isAtEnd] == NO &&
++                    [format characterAtIndex: [scanner scanLocation]] == '-')
++                    [scanner setScanLocation: [scanner scanLocation] + 1];
++            } else {
++                pendingGapSize = 8.0; /* the standard gap */
++            }
++            pendingGap = YES;
++            continue;
++        } else if (c == '[') {
++            NSString *name = nil;
++
++            [scanner setScanLocation: [scanner scanLocation] + 1];
++            if ([scanner scanUpToCharactersFromSet:
++                                 [NSCharacterSet characterSetWithCharactersInString: @"](" ]
++                                        intoString: &name] == NO)
++                break;
++
++            item = [views objectForKey: name];
++
++            /* A predicate: a size for this view, with an optional relation in front of it. */
++            if ([scanner isAtEnd] == NO &&
++                [format characterAtIndex: [scanner scanLocation]] == '(') {
++                NSString *predicate = nil;
++
++                [scanner setScanLocation: [scanner scanLocation] + 1];
++                [scanner scanUpToString: @")" intoString: &predicate];
++                if ([scanner isAtEnd] == NO)
++                    [scanner setScanLocation: [scanner scanLocation] + 1];
++
++                if (item != nil && predicate != nil) {
++                    NSLayoutRelation relation = NSLayoutRelationEqual;
++                    NSString *value = predicate;
++                    double size = 0;
++
++                    if ([predicate hasPrefix: @">="]) {
++                        relation = NSLayoutRelationGreaterThanOrEqual;
++                        value = [predicate substringFromIndex: 2];
++                    } else if ([predicate hasPrefix: @"<="]) {
++                        relation = NSLayoutRelationLessThanOrEqual;
++                        value = [predicate substringFromIndex: 2];
++                    } else if ([predicate hasPrefix: @"=="]) {
++                        value = [predicate substringFromIndex: 2];
++                    }
++
++                    /* A name here is a metric rather than a number. */
++                    if ([[NSScanner scannerWithString: value] scanDouble: &size] == NO) {
++                        NSNumber *metric = [metrics objectForKey: value];
++
++                        size = metric != nil ? [metric doubleValue] : 0;
++                    }
++
++                    [result addObject: [self constraintWithItem: item
++                                                      attribute: sizeAttribute
++                                                      relatedBy: relation
++                                                         toItem: nil
++                                                      attribute: NSLayoutAttributeNotAnAttribute
++                                                     multiplier: 1.0
++                                                       constant: (CGFloat) size]];
++                }
++            }
++
++            if ([scanner isAtEnd] == NO &&
++                [format characterAtIndex: [scanner scanLocation]] == ']')
++                [scanner setScanLocation: [scanner scanLocation] + 1];
++        } else {
++            [scanner setScanLocation: [scanner scanLocation] + 1];
++            continue;
++        }
++
++        /* Join this item to the one before it across whatever gap was between them. */
++        if (previousItem != nil && item != nil) {
++            id first = item == [NSNull null] ? previousItem : item;
++            id second = previousItem == [NSNull null] ? item : previousItem;
++
++            if (first != [NSNull null] && second != [NSNull null] && first != second) {
++                [result addObject: [self constraintWithItem: first
++                                                  attribute: leadingEdge
++                                                  relatedBy: NSLayoutRelationEqual
++                                                     toItem: second
++                                                  attribute: trailingEdge
++                                                 multiplier: 1.0
++                                                   constant: pendingGap ? pendingGapSize : 0.0]];
++            }
++        }
++
++        previousItem = item;
++        previousEdge = trailingEdge;
++        pendingGap = NO;
++        pendingGapSize = 0.0;
++    }
++
++    (void) previousEdge;
++    (void) options;
++    return result;
++}
++
+ + (void) activateConstraints: (NSArray *) constraints
+ {
+     for (NSLayoutConstraint *constraint in constraints) {

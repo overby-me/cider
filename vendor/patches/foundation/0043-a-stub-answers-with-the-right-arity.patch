@@ -1,0 +1,1487 @@
+a stub answers with the right arity, in the right register, and a duration is text
+
+Every generated stub here declared its methods v@:, meaning no arguments and no return. That
+is wrong twice over and both were fatal:
+
+  the ARITY. A caller passing arguments writes through slots the invocation does not have:
+      NSForwardSignatureError: invoked with 4 args, but 2 expected. Selector addView:inGravity:
+  and the run ended in SIGSEGV inside objc_retain on a value that was never an object.
+
+  the RETURN. Nothing is written to the return register, so an initialiser hands back
+  whatever was in it. iA Writer sent a message to 0x4e and died in objc_msgSend.
+
+The selector carries the arity: one argument per colon. Assuming every argument is an object
+is wrong for a primitive, but it keeps the frame the right SIZE, which is the difference
+between a wrong value and a crash. forwardInvocation now sets a nil return.
+
+25 classes here and 81 more in cocotron, all from the same template. NSForwardSignatureError
+went from dozens in a run to one.
+
+NSDateComponentsFormatter gets a real answer as well, because nil was its whole behaviour and
+a caller that copied the result died in CFStringCreateCopy on a null string. It renders the
+components it is given in the plain 1h 2m 3s shape; it does not consult allowedUnits, and what
+it guarantees is a string.
+
+--- a/src/NSAppleEventDescriptor.m
++++ b/src/NSAppleEventDescriptor.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSObject.h>
+ 
+ #import <Foundation/NSInvocation.h>
+@@ -10,11 +11,28 @@
+ @implementation NSAppleEventDescriptor
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+-	return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++	/* The arity comes from the selector's colons and the return is an object: "v@:" claimed every
++	 * method took none and returned nothing, so a caller passing arguments wrote through slots the
++	 * invocation did not have, and one using the result read the leftover return register. */
++	const char *name = sel_getName(aSelector);
++	char types[256];
++	size_t n = 0;
++
++	types[n++] = '@';
++	types[n++] = '@';
++	types[n++] = ':';
++	for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++		if (*p == ':')
++			types[n++] = '@';
++	}
++	types[n] = '\0';
++	return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation
+ {
++	id nothing = nil;
++	[anInvocation setReturnValue: &nothing];
+ 	NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ @end
+--- a/src/NSAppleEventManager.m
++++ b/src/NSAppleEventManager.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSAppleEventManager.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -17,10 +18,28 @@
+ }
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSAppleScript.m
++++ b/src/NSAppleScript.m
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSAppleScript.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -36,10 +37,28 @@
+ }
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSDateComponentsFormatter.m
++++ b/src/NSDateComponentsFormatter.m
+@@ -17,6 +17,10 @@
+  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#import <Foundation/NSDate.h>
++#import <Foundation/NSString.h>
++#import <Foundation/NSCalendar.h>
++#import <objc/runtime.h>
+ #import <Foundation/NSDateComponentsFormatter.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -24,12 +28,77 @@
+ @implementation NSDateComponentsFormatter
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+ 
++/*
++ * A DURATION AS TEXT, which is what every caller of this class wants and nil is not.
++ *
++ * The stub answered nil for everything, and a caller that copies the result crashed inside
++ * CFStringCreateCopy on a null string. This formats the components it was given in the plain
++ * "1h 2m 3s" shape, largest unit first, skipping the ones that are zero. It does not consult
++ * allowedUnits or the zero-formatting behaviour, which a real formatter would; what it guarantees
++ * is a string.
++ */
++- (NSString *) stringFromDateComponents: (NSDateComponents *) components {
++    NSMutableString *result = [NSMutableString string];
++    NSInteger parts[4];
++    const char *suffixes[4] = { "d", "h", "m", "s" };
++    NSInteger i;
++
++    if (components == nil)
++        return @"";
++
++    parts[0] = [components day];
++    parts[1] = [components hour];
++    parts[2] = [components minute];
++    parts[3] = [components second];
++
++    for (i = 0; i < 4; i++) {
++        if (parts[i] == NSIntegerMax || parts[i] <= 0)
++            continue;
++        if ([result length] > 0)
++            [result appendString: @" "];
++        [result appendFormat: @"%ld%s", (long) parts[i], suffixes[i]];
++    }
++    return [result length] > 0 ? result : @"0s";
++}
++
++- (NSString *) stringFromTimeInterval: (NSTimeInterval) interval {
++    NSInteger total = (NSInteger) (interval < 0 ? -interval : interval);
++    NSInteger hours = total / 3600;
++    NSInteger minutes = (total % 3600) / 60;
++    NSInteger seconds = total % 60;
++
++    if (hours > 0)
++        return [NSString stringWithFormat: @"%ldh %ldm %lds", (long) hours, (long) minutes,
++                                           (long) seconds];
++    if (minutes > 0)
++        return [NSString stringWithFormat: @"%ldm %lds", (long) minutes, (long) seconds];
++    return [NSString stringWithFormat: @"%lds", (long) seconds];
++}
++
+ @end
+--- a/src/NSDimension.m
++++ b/src/NSDimension.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSDimension.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -5,10 +6,28 @@
+ @implementation NSDimension
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSExtensionContext.m
++++ b/src/NSExtensionContext.m
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSExtensionContext.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -30,10 +31,28 @@
+ @implementation NSExtensionContext
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -42,10 +61,28 @@
+ @implementation NSExtension
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSFormatter.m
++++ b/src/NSFormatter.m
+@@ -5,6 +5,7 @@
+ //  Copyright (c) 2014 Apportable. All rights reserved.
+ //
+ 
++#import <objc/runtime.h>
+ #import <Foundation/FoundationErrors.h>
+ #import <Foundation/NSError.h>
+ #import <Foundation/NSDictionary.h>
+@@ -129,10 +130,28 @@
+ @implementation NSDateIntervalFormatter
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -144,10 +163,28 @@
+ @implementation NSEnergyFormatter
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -165,10 +202,28 @@
+ @implementation NSLengthFormatter
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -186,10 +241,28 @@
+ @implementation NSMassFormatter
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSISO8601DateFormatter.m
++++ b/src/NSISO8601DateFormatter.m
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSISO8601DateFormatter.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -24,10 +25,28 @@
+ @implementation NSISO8601DateFormatter
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSMeasurementFormatter.m
++++ b/src/NSMeasurementFormatter.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSMeasurementFormatter.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -5,10 +6,28 @@
+ @implementation NSMeasurementFormatter
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSMeasurement.m
++++ b/src/NSMeasurement.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSMeasurement.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -5,10 +6,28 @@
+ @implementation NSMeasurement
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSScriptClassDescription.m
++++ b/src/NSScriptClassDescription.m
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSScriptClassDescription.h>
+ 
+ #import <Foundation/NSInvocation.h>
+@@ -25,11 +26,28 @@
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:" claimed every
++     * method took none and returned nothing, so a caller passing arguments wrote through slots the
++     * invocation did not have, and one using the result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation
+ {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSScriptCoercionHandler.m
++++ b/src/NSScriptCoercionHandler.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSScriptCoercionHandler.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -6,11 +7,28 @@
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:" claimed every
++     * method took none and returned nothing, so a caller passing arguments wrote through slots the
++     * invocation did not have, and one using the result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation
+ {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSScriptCommandDescription.m
++++ b/src/NSScriptCommandDescription.m
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http//www.gnu.org/licenses/>.
+ */
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSScriptCommandDescription.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -24,10 +25,28 @@
+ @implementation NSScriptCommandDescription
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSScriptCommand.m
++++ b/src/NSScriptCommand.m
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http//www.gnu.org/licenses/>.
+ */
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSScriptCommand.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -24,10 +25,28 @@
+ @implementation NSScriptCommand
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSScriptExecutionContext.m
++++ b/src/NSScriptExecutionContext.m
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSScriptExecutionContext.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -25,11 +26,28 @@
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:" claimed every
++     * method took none and returned nothing, so a caller passing arguments wrote through slots the
++     * invocation did not have, and one using the result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation
+ {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSScriptObjectSpecifiers.m
++++ b/src/NSScriptObjectSpecifiers.m
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http//www.gnu.org/licenses/>.
+ */
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSScriptObjectSpecifiers.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -24,10 +25,28 @@
+ @implementation NSScriptObjectSpecifier
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -55,10 +74,28 @@
+ @implementation NSIndexSpecifier
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -67,10 +104,28 @@
+ @implementation NSMiddleSpecifier
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -79,10 +134,28 @@
+ @implementation NSNameSpecifier
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -91,10 +164,28 @@
+ @implementation NSPositionalSpecifier
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -103,10 +194,28 @@
+ @implementation NSPropertySpecifier
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -115,10 +224,28 @@
+ @implementation NSRandomSpecifier
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -127,10 +254,28 @@
+ @implementation NSRangeSpecifier
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -139,10 +284,28 @@
+ @implementation NSRelativeSpecifier
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -151,10 +314,28 @@
+ @implementation NSUniqueIDSpecifier
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -163,10 +344,28 @@
+ @implementation NSWhoseSpecifier
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSScriptStandardSuiteCommands.m
++++ b/src/NSScriptStandardSuiteCommands.m
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSScriptStandardSuiteCommands.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -25,11 +26,28 @@
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:" claimed every
++     * method took none and returned nothing, so a caller passing arguments wrote through slots the
++     * invocation did not have, and one using the result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation
+ {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSScriptSuiteRegistry.m
++++ b/src/NSScriptSuiteRegistry.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSScriptSuiteRegistry.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -6,11 +7,28 @@
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:" claimed every
++     * method took none and returned nothing, so a caller passing arguments wrote through slots the
++     * invocation did not have, and one using the result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation
+ {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSSocketPortNameServer.m
++++ b/src/NSSocketPortNameServer.m
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSPortNameServer.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -25,11 +26,28 @@
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:" claimed every
++     * method took none and returned nothing, so a caller passing arguments wrote through slots the
++     * invocation did not have, and one using the result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation
+ {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSUnitConverterLinear.m
++++ b/src/NSUnitConverterLinear.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSUnitConverterLinear.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -5,10 +6,28 @@
+ @implementation NSUnitConverterLinear
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSUnitConverter.m
++++ b/src/NSUnitConverter.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSUnitConverter.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -5,10 +6,28 @@
+ @implementation NSUnitConverter
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSUnitDuration.m
++++ b/src/NSUnitDuration.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSUnitDuration.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -5,10 +6,28 @@
+ @implementation NSUnitDuration
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSUnitLength.m
++++ b/src/NSUnitLength.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSUnitLength.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -5,10 +6,28 @@
+ @implementation NSUnitLength
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSUnit.m
++++ b/src/NSUnit.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSUnit.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -5,10 +6,28 @@
+ @implementation NSUnit
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:"
++     * claimed every method took none and returned nothing, so a caller passing
++     * arguments wrote through slots the invocation did not have, and one using the
++     * result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+--- a/src/NSUserScriptTask.m
++++ b/src/NSUserScriptTask.m
+@@ -1,3 +1,4 @@
++#import <objc/runtime.h>
+ #import <Foundation/NSUserScriptTask.h>
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+@@ -6,11 +7,28 @@
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:" claimed every
++     * method took none and returned nothing, so a caller passing arguments wrote through slots the
++     * invocation did not have, and one using the result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation
+ {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
+@@ -21,11 +39,28 @@
+ 
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++    /* The arity comes from the selector's colons and the return is an object: "v@:" claimed every
++     * method took none and returned nothing, so a caller passing arguments wrote through slots the
++     * invocation did not have, and one using the result read the leftover return register. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
+ }
+ 
+ - (void)forwardInvocation:(NSInvocation *)anInvocation
+ {
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
+     NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+ }
+ 
