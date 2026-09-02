@@ -21,12 +21,22 @@
 #import <Foundation/NSObject.h>
 
 @interface NSAnimationContext : NSObject <NSCopying> {
+    NSTimeInterval _duration;
+    void (^_completionHandler)(void);
+    id _timingFunction;
 }
 
 + (void) beginGrouping;
 + (void) endGrouping;
 
 + (NSAnimationContext *) currentContext;
+
+- (void) setCompletionHandler: (void (^)(void)) completionHandler;
+- (void (^)(void)) completionHandler;
+- (void) setTimingFunction: (id) timingFunction;
+- (id) timingFunction;
+- (void) setAllowsImplicitAnimation: (BOOL) flag;
+- (BOOL) allowsImplicitAnimation;
 
 + (void) runAnimationGroup: (void (^)(NSAnimationContext *context)) changes
          completionHandler: (void (^)(void)) completionHandler;

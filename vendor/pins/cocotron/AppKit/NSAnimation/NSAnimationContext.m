@@ -27,26 +27,86 @@
     return self;
 }
 
-+ (void) beginGrouping {
-    NSUnimplementedMethod();
+/*
+ * A REAL STACK, because +currentContext returning nil is not the same as returning a context that
+ * animates nothing. The caller sets a duration and a completion handler on what it gets back, and a
+ * nil answer swallows both silently; on macOS there is ALWAYS a current context on the main thread,
+ * which is why nothing guards it.
+ *
+ * Nothing here animates, so a duration is carried and reported and the changes take effect at once.
+ */
+static NSMutableArray *_CiderAnimationContextStack(void) {
+    static NSMutableArray *stack = nil;
+
+    if (stack == nil)
+        stack = [[NSMutableArray alloc] init];
+    return stack;
 }
+
++ (void) beginGrouping {
+    [_CiderAnimationContextStack() addObject: [[[self alloc] init] autorelease]];
+}
+
 + (void) endGrouping {
-    NSUnimplementedMethod();
+    NSMutableArray *stack = _CiderAnimationContextStack();
+    NSAnimationContext *context = [stack lastObject];
+    void (^completionHandler)(void) = [[[context completionHandler] copy] autorelease];
+
+    if ([stack count] > 0)
+        [stack removeLastObject];
+    if (completionHandler != NULL)
+        completionHandler();
 }
 
 + (NSAnimationContext *) currentContext {
-    NSUnimplementedMethod();
-    return nil;
+    NSMutableArray *stack = _CiderAnimationContextStack();
+
+    if ([stack count] == 0)
+        [stack addObject: [[[self alloc] init] autorelease]];
+    return [stack lastObject];
+}
+
+- (void) dealloc {
+    [_timingFunction release];
+    [_completionHandler release];
+    [super dealloc];
 }
 
 - (void) setDuration: (NSTimeInterval) duration {
-    NSUnimplementedMethod();
-}
-- (NSTimeInterval) duration {
-    NSUnimplementedMethod();
-    return 0;
+    _duration = duration;
 }
 
+- (NSTimeInterval) duration {
+    return _duration;
+}
+
+- (void) setCompletionHandler: (void (^)(void)) completionHandler {
+    completionHandler = [completionHandler copy];
+    [_completionHandler release];
+    _completionHandler = completionHandler;
+}
+
+- (void (^)(void)) completionHandler {
+    return _completionHandler;
+}
+
+/* Carried. Nothing here animates, so the curve is state the caller can read back. */
+- (void) setTimingFunction: (id) timingFunction {
+    timingFunction = [timingFunction retain];
+    [_timingFunction release];
+    _timingFunction = timingFunction;
+}
+
+- (id) timingFunction {
+    return _timingFunction;
+}
+
+- (void) setAllowsImplicitAnimation: (BOOL) flag {
+}
+
+- (BOOL) allowsImplicitAnimation {
+    return NO;
+}
 
 /*
  * THE GROUPED FORM, run rather than animated.
@@ -62,12 +122,11 @@
          completionHandler: (void (^)(void)) completionHandler
 {
     [self beginGrouping];
+    if (completionHandler != NULL)
+        [[self currentContext] setCompletionHandler: completionHandler];
     if (changes != NULL)
         changes([self currentContext]);
     [self endGrouping];
-
-    if (completionHandler != NULL)
-        completionHandler();
 }
 
 + (void) runAnimationGroup: (void (^)(NSAnimationContext *context)) changes {

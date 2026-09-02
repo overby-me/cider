@@ -18,6 +18,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import "NSSegmentItem.h"
+#include <stdio.h>
+#include <stdlib.h>
 #import <AppKit/NSButtonCell.h>
 #import <AppKit/NSPopUpWindow.h>
 #import <AppKit/NSRaise.h>
@@ -47,9 +49,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (id) initWithCoder: (NSCoder *) coder {
     [super initWithCoder: coder];
 
-    _segments = [[coder decodeObjectForKey: @"NSSegmentImages"] retain];
+    /* The archive hands back an IMMUTABLE array; every per-segment setter mutates it. */
+    _segments = [[coder decodeObjectForKey: @"NSSegmentImages"] mutableCopy];
     if (!_segments)
-        _segments = [[NSMutableArray arrayWithCapacity: 5] retain];
+        _segments = [[NSMutableArray alloc] initWithCapacity: 5];
+
+    if (getenv("CIDER_TRACE_FRAMES") != NULL)
+        fprintf(stderr, "CIDER_FRAME NSSegmentedCell decoded %lu segment(s)\n",
+                (unsigned long) [_segments count]);
 
     if ([coder containsValueForKey: @"NSSelectedSegment"])
         _selectedSegment = [coder decodeIntForKey: @"NSSelectedSegment"];
@@ -143,6 +150,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (void) setSegmentCount: (NSInteger) count {
     int currentCount = [_segments count];
+
+    if (getenv("CIDER_TRACE_FRAMES") != NULL)
+        fprintf(stderr, "CIDER_FRAME NSSegmentedCell setSegmentCount %ld (was %d)\n",
+                (long) count, currentCount);
+
     if (count == currentCount)
         return;
     if (count > currentCount) {
@@ -176,6 +188,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) setEnabled: (BOOL) enabled forSegment: (NSInteger) segment {
+    if (getenv("CIDER_TRACE_FRAMES") != NULL)
+        fprintf(stderr, "CIDER_FRAME NSSegmentedCell setEnabled forSegment %ld of %lu\n",
+                (long) segment, (unsigned long) [_segments count]);
     [[_segments objectAtIndex: segment] setEnabled: enabled];
 }
 
