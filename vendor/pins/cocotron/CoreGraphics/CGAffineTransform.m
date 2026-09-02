@@ -28,6 +28,10 @@ bool CGAffineTransformIsIdentity(CGAffineTransform xform) {
            xform.tx == 0 && xform.ty == 0;
 }
 
+bool CGAffineTransformEqualToTransform(CGAffineTransform a, CGAffineTransform b) {
+    return a.a == b.a && a.b == b.b && a.c == b.c && a.d == b.d && a.tx == b.tx && a.ty == b.ty;
+}
+
 CGAffineTransform CGAffineTransformMakeRotation(CGFloat radians) {
     CGAffineTransform xform = {
             cos(radians), sin(radians), -sin(radians), cos(radians), 0, 0};

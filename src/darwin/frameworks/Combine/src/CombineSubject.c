@@ -76,10 +76,14 @@ static const void *cider_combine_subject_output(const void *self)
 
 size_t cider_combine_subject_instance_size(const void *output)
 {
+    const struct CiderWitnesses *witnesses;
+
     if (output == NULL) {
         return CIDER_COMBINE_SUBJECT_PAYLOAD;
     }
-    return CIDER_COMBINE_SUBJECT_PAYLOAD + cider_combine_witnesses(output)->stride;
+    /* Same hazard as the box: the table before the metadata may not be there. */
+    witnesses = cider_combine_witnesses(output);
+    return CIDER_COMBINE_SUBJECT_PAYLOAD + (witnesses != NULL ? witnesses->stride : 0);
 }
 
 static int cider_combine_subject_trace(void)
@@ -278,23 +282,32 @@ static void *cider_combine_box(const char *what, const void *selfMetadata, const
 {
     struct CiderCombineBox *box = calloc(1, sizeof *box);
     const struct CiderWitnesses *witnesses;
+    size_t stride;
 
     if (box == NULL || selfMetadata == NULL) {
         return box;
     }
+    /*
+     * A METADATA NEED NOT CARRY A VALUE WITNESS TABLE HERE. The table sits in the word BEFORE the
+     * metadata, and every metadata this framework builds by hand has one, but iA Writer hands in
+     * one that does not: the load faulted at cider_combine_box+92 and killed the process. Without a
+     * table there is no way to copy the upstream, so the box keeps its own empty storage. The chain
+     * still exists and still delivers; what is lost is the copy of a value nothing here reads.
+     */
     witnesses = cider_combine_witnesses(selfMetadata);
+    stride = (witnesses != NULL && witnesses->stride != 0) ? witnesses->stride : 8;
     box->magic = CIDER_COMBINE_BOX_MAGIC;
     box->upstreamMetadata = selfMetadata;
-    box->upstream = calloc(1, witnesses->stride ? witnesses->stride : 8);
+    box->upstream = calloc(1, stride);
     box->transforms = transforms;
     box->what = what;
-    if (box->upstream != NULL && selfValue != NULL) {
+    if (witnesses != NULL && box->upstream != NULL && selfValue != NULL) {
         ((CiderCopyWitness) witnesses->initializeWithCopy)(box->upstream, (void *) selfValue,
                                                            selfMetadata);
     }
     if (cider_combine_subject_trace()) {
-        fprintf(stderr, "CIDER_COMBINE %s box=%p upstream=%p meta=%p stride=%zu\n",
-                what, (void *) box, box->upstream, selfMetadata, witnesses->stride);
+        fprintf(stderr, "CIDER_COMBINE %s box=%p upstream=%p meta=%p stride=%zu witnesses=%p\n",
+                what, (void *) box, box->upstream, selfMetadata, stride, (const void *) witnesses);
         fflush(stderr);
     }
     return box;

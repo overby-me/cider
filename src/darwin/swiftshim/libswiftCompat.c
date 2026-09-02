@@ -98,5 +98,31 @@ bool swift_isUniquelyReferenced_nonNull_bridgeObject(uintptr_t bridgeObject)
     return real != NULL ? real(bridgeObject) : false;
 }
 
+/*
+ * swift_task_deinitOnExecutor(object, work, executor, flags)
+ *
+ * The entry point a Swift 5.9 compiler emits for the deinit of an actor or of an isolated class: it
+ * runs the deinit body on the actor's executor rather than wherever the last release happened.
+ *
+ * iA Writer's main binary imports this and NOTHING in the prefix exports it, not even the
+ * libswift_Concurrency it carries in its own bundle, because that copy predates the entry point.
+ *
+ * RUNNING THE WORK HERE IS THE RUNTIME'S OWN FAST PATH, not a shortcut: the real implementation
+ * calls it directly when the caller is already on the target executor, and only enqueues otherwise.
+ * What is lost is the hop, so a deinit that would have been serialised onto another actor runs on
+ * the releasing thread instead. Doing nothing at all would leak every actor and skip every deinit.
+ */
+void swift_task_deinitOnExecutor(void *object, void (*work)(void *), void *executor,
+                                 uintptr_t flags);
+
+void swift_task_deinitOnExecutor(void *object, void (*work)(void *), void *executor,
+                                 uintptr_t flags)
+{
+    (void) executor;
+    (void) flags;
+    if (work != NULL)
+        work(object);
+}
+
 const char cider_swift_compat[] = "cider swift compat";
 
