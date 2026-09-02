@@ -1,18 +1,16 @@
-trace platform semaphore lifetime: order, refcount, namespace, identity and reply port
+trace platform semaphore lifetime, with a control for every probe
 
-Each field exists because the one before it was not enough to say what happens, and three
-conclusions drawn from a subset were wrong. In order:
+The cached path creates in libplatform, not libdispatch, so a trace there reported created=0
+for a name that was plainly in use. Each field exists because the one before it was not enough,
+and THREE of the probes needed controls of their own before anything could be concluded:
 
-  seq          an atomic counter: several threads write these lines
-  refs         with its own control, because a query that answers 1 for everything says
-               nothing. mod_refs(+1) then re-reading proves it is a counter
-  names        the namespace size BEFORE and AFTER, which is what shows that the call adds
-               no entry at all
-  preexisting  whether the name was already held, and as what right
-  reply        the thread MIG reply port, which turned out to be correctly per thread
+  refs      mod_refs(+1) then re-read, because a query that answers 1 for everything is not
+            reading a counter. It is real: 1 becomes 3, and the task port reads 10
+  kotype    mach_port_kobject answers 0 even for the HOST port, so it says nothing at all,
+            and kohost in the same line is what shows that
+  names     allocate a port, ask again, put it back. It sees the new port (found=1), so the
+            count can be trusted -- as a count of THIS table, which is not the daemon's
 
-kotype is present but says nothing: mach_port_kobject answers 0 even for the host port, which
-the kohost control shows in the same line.
 --- a/src/os/semaphore.c
 +++ b/src/os/semaphore.c
 @@ -19,7 +19,11 @@
@@ -27,7 +25,7 @@ the kohost control shows in the same line.
  #include <mach/semaphore.h>
  #include <mach/task.h>
  #include <mach/thread_switch.h>
-@@ -36,14 +40,90 @@
+@@ -36,14 +40,120 @@
  		} \
  	} while (0)
  
@@ -76,6 +74,36 @@ the kohost control shows in the same line.
 +		/* WAS THE NAME ALREADY THERE, and what is it? A name the task held BEFORE the call cannot
 +		 * have been created by it, and the right type says whose it is: a receive right means the
 +		 * task was handed the name of something it owns. */
++		/*
++		 * THE CONTROL FOR mach_port_names ITSELF, which every conclusion here rests on.
++		 *
++		 * Allocate a port, ask again, and put it back: a namespace query that cannot see a port this
++		 * thread just made cannot be trusted to say that semaphore_create made none.
++		 */
++		{
++			mach_port_t probe = MACH_PORT_NULL;
++			mach_port_name_array_t pn = NULL;
++			mach_port_type_array_t pt = NULL;
++			mach_msg_type_number_t pnc = 0, ptc = 0;
++			kern_return_t akr = mach_port_allocate(mach_task_self(),
++			                                       MACH_PORT_RIGHT_RECEIVE, &probe);
++			int found = 0;
++			mach_msg_type_number_t i;
++
++			if (akr == KERN_SUCCESS) {
++				mach_port_names(mach_task_self(), &pn, &pnc, &pt, &ptc);
++				for (i = 0; pn != NULL && i < pnc; i++) {
++					if (pn[i] == probe) { found = 1; break; }
++				}
++				fprintf(stderr, "CIDER_SEM control allocate name=%d names=%d->%d found=%d\n",
++				        (int) probe, (int) ncount, (int) pnc, found);
++				mach_port_mod_refs(mach_task_self(), probe, MACH_PORT_RIGHT_RECEIVE, -1);
++			} else {
++				fprintf(stderr, "CIDER_SEM control allocate FAILED kr=%d\n", (int) akr);
++			}
++			fflush(stderr);
++		}
++
 +		/* THE CONTROL FOR refs. If the query answers 1 for a name whose count was just raised, it
 +		 * is not reading a counter and nothing may be concluded from it. taskrefs is a second
 +		 * control: the task port is held many times over, so a 1 there means the same. */
@@ -118,7 +146,7 @@ the kohost control shows in the same line.
  	return (os_semaphore_t)s4;
  }
  
-@@ -51,6 +131,13 @@
+@@ -51,6 +161,13 @@
  _os_semaphore_dispose(os_semaphore_t sema)
  {
  	semaphore_t s4 = (semaphore_t)sema;

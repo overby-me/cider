@@ -1,19 +1,18 @@
-trace the semaphore port a guest is given, and the name it is copied out to
+name the process a right is copied into, and count the space on both sides
 
-The guest sees ONE port name for every semaphore it creates and its own namespace never
-grows, so the question is where between the two sides the name is lost. These two traces
-answer it in one run, and the answer is that this side is right:
+The guest says its port namespace never grows when semaphore_create runs, and the daemon says
+it copied a send right into that task. Both are true, and the reason is that they are NOT
+counting the same table:
 
-    convert semaphore=0x..5bc0 port=0x..5c40 owner=0x..2740
-    convert semaphore=0x..5d20 port=0x..7e20 owner=0x..2740
-    copyout  space=0x..c3f0 task=0x..2740 object=0x..5c40 name=5379
-    copyout  space=0x..c3f0 task=0x..2740 object=0x..7e20 name=7427
+    guest   mach_port_names ....... 59 to 61 names
+    daemon  space->is_table_hashed .. 1, then 2
 
-Distinct semaphores, distinct ports, distinct names, and every copyout lands in the space of
-the task that owns the semaphore. The guest meanwhile read one name three times.
+for the same pid, with the daemon's two entries being names 259 and 515, which are exactly the
+task port and the host port the guest reports. So the two sides agree about the well known
+ports and disagree about everything else.
 
-convert is unconditional because it runs a handful of times in a whole run. copyout is gated:
-every right a guest receives passes through it.
+The pid is what makes this readable at all: before it, the copyout trace named a task pointer
+and there was no way to tell whose it was.
 
 --- a/osfmk/kern/ipc_sync.c
 +++ b/osfmk/kern/ipc_sync.c
@@ -26,15 +25,16 @@ every right a guest receives passes through it.
  #include <kern/ipc_sync.h>
  #include <ipc/port.h>
  #include <ipc/ipc_space.h>
-@@ -143,6 +145,11 @@
+@@ -143,6 +145,12 @@
  	    (ipc_kobject_t) semaphore, IKOT_SEMAPHORE, IPC_KOBJECT_ALLOC_NONE, false, 0)) {
  		semaphore_dereference(semaphore);
  	}
 +	/* CIDER_TRACE_SEM: the guest sees ONE name for every semaphore it creates and its namespace
 +	 * never grows, so the question this answers is whether the ports handed back here are distinct
 +	 * objects at all. */
-+	xnu_sys_log(2, "CIDER_SEM daemon convert semaphore=%p port=%p owner=%p",
-+	            (void *) semaphore, (void *) semaphore->port, (void *) semaphore->owner);
++	xnu_sys_log(2, "CIDER_SEM daemon convert semaphore=%p port=%p owner=%p pid=%d",
++	            (void *) semaphore, (void *) semaphore->port, (void *) semaphore->owner,
++	            semaphore->owner != TASK_NULL ? (int) task_pid(semaphore->owner) : -1);
  	return semaphore->port;
  }
  
@@ -49,7 +49,7 @@ every right a guest receives passes through it.
  #include <ipc/ipc_hash.h>
  #include <ipc/ipc_right.h>
  #include <ipc/ipc_notify.h>
-@@ -1022,6 +1024,20 @@
+@@ -1022,6 +1024,27 @@
  		ipc_object_destroy(object, msgt_name);
  	}
  
@@ -62,8 +62,15 @@ every right a guest receives passes through it.
 +		trace = getenv("CIDER_TRACE_SEM") != NULL;
 +	}
 +	if (trace)
-+	xnu_sys_log(2, "CIDER_SEM copyout space=%p task=%p object=%p kr=%d name=%u",
++	/* WHICH PROCESS the right lands in, which is the whole question when a guest says its own
++	 * namespace never grew. */
++	/* AND HOW BIG THE SPACE IS ON THIS SIDE. The guest counts its own namespace with
++	 * mach_port_names and says it never grows; if the two counts disagree they are not looking at
++	 * the same table. */
++	xnu_sys_log(2, "CIDER_SEM copyout space=%p task=%p pid=%d entries=%u object=%p kr=%d name=%u",
 +	            (void *) space, (void *) (space ? space->is_task : NULL),
++	            (space && space->is_task) ? (int) task_pid(space->is_task) : -1,
++	            space ? (unsigned) space->is_table_hashed : 0u,
 +	            (void *) object, (int) kr,
 +	            (unsigned) (kr == KERN_SUCCESS ? name : 0));
 +
