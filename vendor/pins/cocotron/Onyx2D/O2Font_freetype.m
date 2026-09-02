@@ -115,6 +115,23 @@ FT_Library O2FontSharedFreeTypeLibrary() {
  */
 extern int __darling_vchroot_expand(const char *path, char *out);
 
+/*
+ * HOW MANY TIMES AN APPLICATION FONT HAS BEEN ADDED.
+ *
+ * AppKit builds its font family list ONCE and keeps it in a static, so a font registered after that
+ * moment does not exist as far as any family lookup is concerned. iA Writer registers 19 of its own
+ * and then asks for one by descriptor: the descriptor matched nothing, fontWithDescriptor: answered
+ * nil, and the nil went into a typing-attributes dictionary as NSFontAttributeName, which raised.
+ *
+ * The counter is the seam: this layer cannot call AppKit, and AppKit can ask whether anything has
+ * changed since it last built.
+ */
+int _O2FontAppFontGeneration = 0;
+
+int O2FontAppFontGeneration(void) {
+    return _O2FontAppFontGeneration;
+}
+
 static void addAppFont(FcConfig *config, NSString *path) {
     path = [[NSBundle mainBundle] pathForResource: path ofType: nil];
     if (path == nil) {
@@ -133,6 +150,7 @@ static void addAppFont(FcConfig *config, NSString *path) {
 
     if (isDirectory) {
         FcConfigAppFontAddDir(config, (const FcChar8 *) host);
+    _O2FontAppFontGeneration++;
     } else {
         FcConfigAppFontAddFile(config, (const FcChar8 *) host);
     }

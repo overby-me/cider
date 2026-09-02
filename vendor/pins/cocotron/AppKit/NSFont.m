@@ -604,6 +604,14 @@ static NSLock *_cacheLock = nil;
         result = [[[NSFont alloc] initWithName: name size: size] autorelease];
     }
 
+    /* A NAME THAT RESOLVES TO NOTHING, which a caller usually puts straight into a dictionary.
+     * Registering a font FILE is not the same as being able to find it by name, and the difference
+     * is otherwise invisible: CIDER_TRACE_FONT names what was asked for and not found. */
+    if (result == nil && getenv("CIDER_TRACE_FONT") != NULL) {
+        fprintf(stderr, "CIDER_FONT lookup=NIL name=%s\n", [name UTF8String] ?: "?");
+        fflush(stderr);
+    }
+
     return result;
 }
 

@@ -1,0 +1,43 @@
+a nil string is not a segmentation fault
+
+CFAttributedStringCreate copies the string it is given, so nil reached CFStringCreateCopy and
+killed the process with nothing named: iA Writer died that way four frames under
+-[NSViewController view] and the fault address was the only clue.
+
+A DELIBERATE DIVERGENCE: macOS raises NSInvalidArgumentException and this answers an empty
+string, because the caller is usually filling in a label and losing the whole application over
+one is the worse of the two failures. It is announced once per process rather than silently, so
+the caller's bug stays findable.
+
+--- a/src/NSAttributedString.m
++++ b/src/NSAttributedString.m
+@@ -508,6 +508,29 @@
+ 
+ - (id)initWithString:(NSString *)str attributes:(NSDictionary *)attrs
+ {
++    /*
++     * A NIL STRING IS THE CALLER'S MISTAKE, and it must not be a segmentation fault.
++     *
++     * CFAttributedStringCreate simply copies the string, so nil reached CFStringCreateCopy and
++     * killed the process with nothing named: iA Writer died that way four frames under
++     * -[NSViewController view], and the fault address was the only clue.
++     *
++     * A DELIBERATE DIVERGENCE: macOS raises NSInvalidArgumentException here and this answers an
++     * empty string, because the caller is usually filling in a label and losing the whole
++     * application over one is the worse of the two failures. It is announced once per process
++     * rather than silently, so the caller's bug stays findable; CIDER_TRACE_APP prints the frames.
++     */
++    if (str == nil) {
++        static BOOL announced = NO;
++
++        if (!announced) {
++            announced = YES;
++            NSLog(@"-[%@ initWithString:attributes:]: nil string, using an empty one",
++                  NSStringFromClass([self class]));
++        }
++        str = @"";
++    }
++
+     CFAttributedStringRef string = CFAttributedStringCreate(kCFAllocatorDefault, (CFStringRef)str, (CFDictionaryRef)attrs);
+     _CFAttributedStringSetMutable(string, self == mutablePlaceholder);
+     return (id)string;

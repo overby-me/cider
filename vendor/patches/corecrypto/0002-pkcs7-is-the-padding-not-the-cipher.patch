@@ -1,0 +1,155 @@
+pkcs7 is the padding, not the cipher
+
+Every function in this file was a stub that decrypted nothing and answered 8, so a caller got
+eight bytes of whatever was already in its output buffer. iA Writer keeps its Markdown regular
+expressions in an encrypted resource and decrypts them at startup, so the expressions were nil
+strings and the failure surfaced as
+
+    NSInvalidArgumentException: Nil string passed to NSRegularExpression API
+
+from inside a dispatch_once, with nothing to say that a cipher was involved.
+
+Decrypting is the whole of it: run the blocks through the mode, then read the last byte of the
+plaintext as the number of bytes that were added and drop them. A CORRUPT PAD IS NOT A CRASH:
+if the last byte is not a length this cipher could have written, the whole plaintext is
+returned rather than a negative length, because the caller decides what a bad decryption means
+and an underflow here would be a very long memcpy somewhere else.
+
+--- a/src/ccpad.c
++++ b/src/ccpad.c
+@@ -1,5 +1,7 @@
+ #include <corecrypto/ccpad.h>
+ #include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
+ 
+ size_t ccpad_cts1_decrypt(const struct ccmode_cbc *cbc, cccbc_ctx *ctx, cccbc_iv *iv,
+                        size_t nbytes, const void *in, void *out) {
+@@ -35,23 +37,103 @@
+ 	return 8;
+ }
+ 
++/*
++ * PKCS#7 IS THE PADDING, NOT THE CIPHER: decrypt every block, then take the last byte of the
++ * plaintext as the number of bytes that were added and drop them.
++ *
++ * This was a stub that decrypted nothing and answered 8, so a caller got 8 bytes of whatever was in
++ * its output buffer. iA Writer keeps its Markdown regular expressions in an encrypted resource, and
++ * that is where they came from: the regexes were nil strings, and the failure surfaced as
++ * "Nil string passed to NSRegularExpression API" from inside a dispatch_once, with nothing to say
++ * that a cipher was involved.
++ *
++ * A CORRUPT PAD IS NOT A CRASH. If the last byte is not a length this cipher could have written, the
++ * whole plaintext is returned rather than a negative length, because the caller decides what a bad
++ * decryption means and an underflow here would be a very long memcpy somewhere else.
++ */
+ size_t ccpad_pkcs7_decrypt(const struct ccmode_cbc *cbc, cccbc_ctx *ctx, cccbc_iv *iv,
+                            size_t nbytes, const void *in, void *out) {
+-	printf("DARLING CRYPTO STUB: %s\n", __PRETTY_FUNCTION__);
+-	return 8;
++	size_t block_size = cbc->block_size;
++	const uint8_t *plaintext;
++	size_t padding;
++	size_t i;
++
++	if (nbytes == 0 || block_size == 0 || nbytes % block_size != 0)
++		return 0;
++
++	if (cbc->cbc(ctx, iv, nbytes / block_size, in, out) != 0)
++		return 0;
++
++	plaintext = (const uint8_t *) out;
++	padding = plaintext[nbytes - 1];
++
++	if (padding == 0 || padding > block_size || padding > nbytes)
++		return nbytes;
++
++	for (i = 0; i < padding; i++) {
++		if (plaintext[nbytes - 1 - i] != padding)
++			return nbytes;
++	}
++
++	return nbytes - padding;
+ }
+ 
++/* The other direction: fill the final block with the count of bytes added, which is a whole block
++ * when the input already ends on a boundary, and encrypt the lot. */
+ size_t ccpad_pkcs7_encrypt(const struct ccmode_cbc *cbc, cccbc_ctx *ctx, cccbc_iv *iv,
+                          size_t nbytes, const void *in, void *out) {
+-	printf("DARLING CRYPTO STUB: %s\n", __PRETTY_FUNCTION__);
+-	return 8;
++	size_t block_size = cbc->block_size;
++	size_t padding = block_size - (nbytes % block_size);
++	size_t total = nbytes + padding;
++	uint8_t *buffer;
++	size_t i;
++
++	if (block_size == 0)
++		return 0;
++
++	buffer = (uint8_t *) malloc(total);
++	if (buffer == NULL)
++		return 0;
++
++	memcpy(buffer, in, nbytes);
++	for (i = 0; i < padding; i++)
++		buffer[nbytes + i] = (uint8_t) padding;
++
++	if (cbc->cbc(ctx, iv, total / block_size, buffer, out) != 0) {
++		free(buffer);
++		return 0;
++	}
++	free(buffer);
++	return total;
+ }
+ 
+ 
++/* The same padding over ECB, which has no chaining and so no iv. */
+ size_t ccpad_pkcs7_ecb_decrypt(const struct ccmode_ecb *ecb, ccecb_ctx *ecb_key,
+                                size_t nbytes, const void *in, void *out) {
+-	printf("DARLING CRYPTO STUB: %s\n", __PRETTY_FUNCTION__);
+-	return 8;
++	size_t block_size = ecb->block_size;
++	const uint8_t *plaintext;
++	size_t padding;
++	size_t i;
++
++	if (nbytes == 0 || block_size == 0 || nbytes % block_size != 0)
++		return 0;
++
++	if (ecb->ecb(ecb_key, nbytes / block_size, in, out) != 0)
++		return 0;
++
++	plaintext = (const uint8_t *) out;
++	padding = plaintext[nbytes - 1];
++
++	if (padding == 0 || padding > block_size || padding > nbytes)
++		return nbytes;
++
++	for (i = 0; i < padding; i++) {
++		if (plaintext[nbytes - 1 - i] != padding)
++			return nbytes;
++	}
++
++	return nbytes - padding;
+ }
+ 
+ size_t ccpad_pkcs7_ecb_encrypt(const struct ccmode_ecb *ecb, ccecb_ctx *ctx,
+@@ -60,9 +142,15 @@
+ 	return 8;
+ }
+ 
++/* How many bytes the padding claims, with no plaintext to check it against. */
+ size_t ccpad_pkcs7_decode(const size_t block_size, const uint8_t* last_block) {
+-	printf("DARLING CRYPTO STUB: %s\n", __PRETTY_FUNCTION__);
+-	return 8;
++	size_t padding;
++
++	if (block_size == 0 || last_block == NULL)
++		return 0;
++
++	padding = last_block[block_size - 1];
++	return (padding == 0 || padding > block_size) ? 0 : padding;
+ }
+ 
+ size_t ccpad_xts_decrypt(const struct ccmode_xts *xts, ccxts_ctx *ctx, ccxts_tweak *tweak,

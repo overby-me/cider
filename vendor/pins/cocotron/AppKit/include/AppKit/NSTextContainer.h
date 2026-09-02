@@ -60,6 +60,8 @@ typedef enum {
 - (NSUInteger) maximumNumberOfLines;
 
 - (void) setContainerSize: (NSSize) size;
+- (NSSize) size;
+- (void) setSize: (NSSize) size;
 
 - (void) setTextView: (NSTextView *) textView;
 - (void) setWidthTracksTextView: (BOOL) flag;

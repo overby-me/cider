@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSFontTypeface.h>
 #import <AppKit/NSGraphicsContext.h>
 
+extern int O2FontAppFontGeneration(void);
+
 @interface NSFontFamily ()
 + (NSMutableArray *) fontFamilies;
 + (void) buildFontFamilies;
@@ -32,9 +34,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 + (NSMutableArray *) fontFamilies {
     static NSMutableArray *shared = nil;
+    static int builtGeneration = -1;
 
-    if (shared == nil) {
+    /* REBUILD WHEN AN APPLICATION HAS REGISTERED FONTS SINCE THIS WAS LAST BUILT.
+     *
+     * The list used to be built once and kept for ever, so a font registered after the first lookup
+     * did not exist for any family search. iA Writer registers 19 of its own during launch and then
+     * asks for one by descriptor: nothing matched, +fontWithDescriptor:size: answered nil, and the
+     * nil became NSFontAttributeName in a typing-attributes dictionary, which raised. */
+    if (shared == nil || builtGeneration != O2FontAppFontGeneration()) {
+        [shared release];
         shared = [NSMutableArray new];
+        builtGeneration = O2FontAppFontGeneration();
         [self buildFontFamilies];
     }
 

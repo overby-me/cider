@@ -1,0 +1,22 @@
+name the key whose value is nil
+
+"Tried to init dictionary with nil object" is true of every dictionary in the process. The key
+names the value that was not built, and for an attributes dictionary it names the attribute:
+one run went straight from that message to NSFontAttributeName, which is what led to a font
+descriptor that named a FACE rather than a family.
+
+--- a/NSDictionary.m
++++ b/NSDictionary.m
+@@ -358,7 +358,11 @@
+                 fflush(stderr);
+             }
+             [self release];
+-            [NSException raise:NSInvalidArgumentException format:@"Tried to init dictionary with nil object"];
++            /* WHICH ONE IS NIL. The message alone is true of every dictionary in the process; the
++             * key names the value that was not built, and for attributes it names the attribute. */
++            [NSException raise:NSInvalidArgumentException
++                        format:@"Tried to init dictionary with nil object at index %lu, for key %@",
++                               (unsigned long)idx, keys[idx]];
+             return nil;
+         }
+         if (keys[idx] == nil)

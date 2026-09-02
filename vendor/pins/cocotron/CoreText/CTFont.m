@@ -183,10 +183,30 @@ CTFontRef CTFontCreateWithFontDescriptor(CTFontDescriptorRef descriptor, CGFloat
     CFStringRef family = CTFontDescriptorCopyAttribute(descriptor, kCTFontFamilyNameAttribute);
     CTFontRef font = NULL;
 
+    /*
+     * A DESCRIPTOR MAY NAME A FACE INSTEAD OF A FAMILY, and only the family was ever read here.
+     *
+     * iA Writer asks for its own iAWriterMono-Regular with a descriptor carrying nothing but
+     * NSFontNameAttribute, so family was NULL, both lookups below failed, and the NULL came back as
+     * a nil NSFont that the application put into a typing-attributes dictionary. The raise was
+     * "Tried to init dictionary with nil object", four layers away from anything about fonts.
+     *
+     * The PostScript name is what CTFontCreateWithName takes, so ask for it first and keep the
+     * family as the fallback, which is the order +[NSFont fontWithDescriptor:size:] already uses.
+     */
+    {
+        CFStringRef name = CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute);
+
+        if (name != NULL) {
+            font = _CiderFontCreateForFamily(name, size);
+            CFRelease(name);
+        }
+    }
+
     /* STYLE FIRST, FAMILY AS THE FALLBACK. A family with no bold face on disk must still produce a
      * font rather than nothing, and fontconfig would happily substitute a DIFFERENT family for the
      * style, which is worse than the regular weight of the right one. */
-    CFStringRef pattern =
+    CFStringRef pattern = font != NULL ? NULL :
             _CiderPatternForFamilyWithTraits(family, _CiderSymbolicTraitsOfDescriptor(descriptor));
     if (pattern != NULL) {
         font = _CiderFontCreateForFamily(pattern, size);
@@ -195,6 +215,23 @@ CTFontRef CTFontCreateWithFontDescriptor(CTFontDescriptorRef descriptor, CGFloat
     if (font == NULL) {
         font = _CiderFontCreateForFamily(family, size);
     }
+    /* WHAT WAS ASKED FOR WHEN NOTHING CAME BACK. A descriptor may name a FACE rather than a family,
+     * and this only ever looks the family up, so the answer is NULL and the caller has a nil font
+     * that raises somewhere else entirely: iA Writer put one into a typing-attributes dictionary as
+     * NSFontAttributeName. */
+    if (font == NULL && getenv("CIDER_TRACE_FONT") != NULL) {
+        CFStringRef described = CFCopyDescription(descriptor);
+        char buffer[1024];
+
+        if (described != NULL &&
+            CFStringGetCString(described, buffer, sizeof(buffer), kCFStringEncodingUTF8))
+            fprintf(stderr, "CIDER_FONT ctfont=NULL descriptor=%s\n", buffer);
+        else
+            fprintf(stderr, "CIDER_FONT ctfont=NULL descriptor=?\n");
+        if (described != NULL) CFRelease(described);
+        fflush(stderr);
+    }
+
     if (family != NULL) CFRelease(family);
     return font;
 }

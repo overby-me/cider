@@ -136,6 +136,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return _maximumNumberOfLines;
 }
 
+/* The names this has had: containerSize since the beginning, size since 10.11. iA Writer uses the
+ * newer one and raised on it, so both spell the same value. */
+- (NSSize) size {
+    return [self containerSize];
+}
+
+- (void) setSize: (NSSize) size {
+    [self setContainerSize: size];
+}
+
 - (void) setContainerSize: (NSSize) size {
     if (!NSEqualSizes(_size, size)) {
         _size = size;

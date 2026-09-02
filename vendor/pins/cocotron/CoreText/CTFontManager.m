@@ -3,6 +3,8 @@
 #import <CoreText/CTFontTraits.h>
 #import <CoreFoundation/CoreFoundation.h>
 #import <fontconfig/fontconfig.h>
+
+extern int _O2FontAppFontGeneration;
 #import <ft2build.h>
 #import FT_FREETYPE_H
 #import <limits.h>
@@ -199,6 +201,10 @@ bool CTFontManagerRegisterFontsForURL(CFURLRef fontURL, CTFontManagerScope scope
     FcBool added = isDirectory
             ? FcConfigAppFontAddDir(config, (const FcChar8 *) hostPath)
             : FcConfigAppFontAddFile(config, (const FcChar8 *) hostPath);
+
+    /* AppKit builds its family list once; this tells it that the list is now out of date. */
+    if (added)
+        _O2FontAppFontGeneration++;
 
     if (getenv("CIDER_TRACE_FONT") != NULL) {
         printf("CIDER_FONT register=%s guest=%s host=%s\n", added ? "ok" : "FAILED", path, hostPath);
