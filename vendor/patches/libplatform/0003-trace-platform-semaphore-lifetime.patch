@@ -1,12 +1,17 @@
-trace platform semaphore lifetime, in a total order, with the refcount
+trace platform semaphore lifetime: order, refcount, namespace and identity
 
 The cached path creates in libplatform, not libdispatch, so a trace in libdispatch reported
-created=0 for a name that was plainly in use. Several threads write these lines, so an atomic
-sequence number makes the order unambiguous, and the thread port names which thread.
+created=0 for a name that was plainly in use. Four facts are needed to say what happens, and
+each of the first three was consistent with a wrong conclusion on its own:
 
-refs is what separates the two possible causes of a repeated name. Mach gives one name per
-port, so the same port copied out twice repeats the name with refs=2; an allocator handing
-out a name that is already in use repeats it with refs=1.
+  seq        an atomic counter, because several threads write these lines and the order
+             they appear in is not the order they happened
+  refs       one port copied out twice repeats the name with refs=2, an allocator handing
+             out a live name repeats it with refs=1
+  names      the size of the task namespace before and after, which says whether the call
+             added an entry at all
+  preexist   whether the returned name was in the namespace BEFORE the call, and its right
+             type, which says whose name it is
 
 --- a/src/os/semaphore.c
 +++ b/src/os/semaphore.c
@@ -22,7 +27,7 @@ out a name that is already in use repeats it with refs=1.
  #include <mach/semaphore.h>
  #include <mach/task.h>
  #include <mach/thread_switch.h>
-@@ -36,6 +40,10 @@
+@@ -36,14 +40,63 @@
  		} \
  	} while (0)
  
@@ -33,7 +38,16 @@ out a name that is already in use repeats it with refs=1.
  os_semaphore_t
  _os_semaphore_create(void)
  {
-@@ -44,6 +52,22 @@
+ 	semaphore_t s4;
+ 	kern_return_t kr;
++	/* BEFORE AND AFTER, because a count on its own cannot say whether the create added an entry. */
++	mach_msg_type_number_t before = 0;
++	mach_port_name_array_t bn = NULL;
++	mach_port_type_array_t bt = NULL;
++	mach_msg_type_number_t btc = 0;
++	if (getenv("CIDER_TRACE_SEM")) {
++		mach_port_names(mach_task_self(), &bn, &before, &bt, &btc);
++	}
  	kr = semaphore_create(mach_task_self(), &s4, SYNC_POLICY_FIFO, 0);
  	OS_VERIFY_MIG(kr, "Allocating semaphore failed with MIG_REPLY_MISMATCH");
  	OS_SEMAPHORE_VERIFY_KR(kr, "Creating semaphore failed, possible port leak");
@@ -47,16 +61,37 @@ out a name that is already in use repeats it with refs=1.
 +		kern_return_t rkr = mach_port_get_refs(mach_task_self(), s4,
 +		                                       MACH_PORT_RIGHT_SEND, &refs);
 +		mach_port_t self = mach_thread_self();
-+		fprintf(stderr, "CIDER_SEM seq=%d pid=%d thread=%d platform created name=%d refs=%d rkr=%d\n",
++		/* HOW BIG THE NAMESPACE IS separates a wrong space from a broken free list: a real task's
++		 * space holds many names, so allocating a live one is a bug in the allocator; a space
++		 * holding one or two means the copyout went somewhere that is not the task's space. */
++		mach_port_name_array_t names = NULL;
++		mach_port_type_array_t types = NULL;
++		mach_msg_type_number_t ncount = 0, tcount = 0;
++		kern_return_t nkr = mach_port_names(mach_task_self(), &names, &ncount,
++		                                    &types, &tcount);
++		/* WAS THE NAME ALREADY THERE, and what is it? A name the task held BEFORE the call cannot
++		 * have been created by it, and the right type says whose it is: a receive right means the
++		 * task was handed the name of something it owns. */
++		int preexisting = 0, type = 0;
++		for (mach_msg_type_number_t i = 0; bn != NULL && i < before; i++) {
++			if (bn[i] == s4) {
++				preexisting = 1;
++				if (bt != NULL && i < btc) type = (int) bt[i];
++				break;
++			}
++		}
++		fprintf(stderr, "CIDER_SEM seq=%d pid=%d thread=%d platform created name=%d refs=%d rkr=%d "
++		                "names=%d->%d nkr=%d preexisting=%d type=0x%x\n",
 +		        __sync_fetch_and_add(&_cider_sem_seq, 1), (int)getpid(), (int)self,
-+		        (int)s4, (int)refs, (int)rkr);
++		        (int)s4, (int)refs, (int)rkr, (int)before, (int)ncount, (int)nkr,
++		        preexisting, type);
 +		fflush(stderr);
 +		mach_port_deallocate(mach_task_self(), self);
 +	}
  	return (os_semaphore_t)s4;
  }
  
-@@ -51,6 +75,13 @@
+@@ -51,6 +104,13 @@
  _os_semaphore_dispose(os_semaphore_t sema)
  {
  	semaphore_t s4 = (semaphore_t)sema;
