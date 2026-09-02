@@ -1,0 +1,71 @@
+a command buffer descriptor, which is a class and therefore fatal
+
+LibreOffice ships Skia with a Metal backend and libskialo.dylib names the CLASS
+MTLCommandBufferDescriptor. A class symbol is an eager bind, so dyld refused to start the
+process, and SAL_DISABLESKIA does not help because the library is LINKED, not dlopened.
+
+It is a plain settings object on macOS too: retainedReferences, which defaults to YES, and
+errorOptions. Nothing here executes Metal commands, so the values are carried and read back.
+It goes in the existing MTLCommandBuffer files so no new build entry is needed.
+
+--- a/include/Metal/MTLCommandBuffer.h
++++ b/include/Metal/MTLCommandBuffer.h
+@@ -48,6 +48,26 @@
+ 
+ @end
+ 
++/*
++ * THE DESCRIPTOR A COMMAND BUFFER IS MADE FROM. LibreOffice ships Skia with a Metal backend, and
++ * libskialo.dylib names this CLASS, which is an eager bind: dyld refuses to start the process
++ * without it, whatever SAL_DISABLESKIA says, because the library is linked and not dlopened.
++ *
++ * It is a plain settings object on macOS too. Nothing here executes Metal commands, so the values
++ * are carried and read back and no more.
++ */
++typedef NS_OPTIONS(NSUInteger, MTLCommandBufferErrorOption) {
++    MTLCommandBufferErrorOptionNone = 0,
++    MTLCommandBufferErrorOptionEncoderExecutionStatus = 1 << 0,
++};
++
++@interface MTLCommandBufferDescriptor : NSObject <NSCopying>
++
++@property(readwrite) BOOL retainedReferences;
++@property(readwrite) MTLCommandBufferErrorOption errorOptions;
++
++@end
++
+ METAL_DECLARATIONS_END
+ 
+ #endif // _METAL_MTLCOMMANDBUFFER_H_
+--- a/src/Metal/MTLCommandBuffer.mm
++++ b/src/Metal/MTLCommandBuffer.mm
+@@ -145,3 +145,29 @@
+ #endif
+ 
+ @end
++
++@implementation MTLCommandBufferDescriptor
++
++@synthesize retainedReferences = _retainedReferences;
++@synthesize errorOptions = _errorOptions;
++
++- (instancetype)init
++{
++    if ((self = [super init]) == nil)
++        return nil;
++
++    /* macOS retains references by default; only an explicit opt out gives them up. */
++    _retainedReferences = YES;
++    return self;
++}
++
++- (id)copyWithZone:(NSZone *)zone
++{
++    MTLCommandBufferDescriptor *copy = [[[self class] allocWithZone: zone] init];
++
++    copy.retainedReferences = _retainedReferences;
++    copy.errorOptions = _errorOptions;
++    return copy;
++}
++
++@end

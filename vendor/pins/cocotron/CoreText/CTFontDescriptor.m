@@ -1,4 +1,6 @@
 #import <CoreText/CTFontDescriptor.h>
+#import <CoreText/CTFontCollection.h>
+#include <stdlib.h>
 
 #include <stdio.h>
 
@@ -67,4 +69,85 @@ CTFontDescriptorRef CTFontDescriptorCreateWithAttributes(CFDictionaryRef attribu
 {
     if (attributes == NULL) return NULL;
     return (CTFontDescriptorRef) CFDictionaryCreateCopy(kCFAllocatorDefault, attributes);
+}
+
+/*
+ * WHICH INSTALLED FACES ANSWER A DESCRIPTION. A descriptor here is its attribute dictionary and the
+ * collection of available fonts is an array of exactly such dictionaries, so matching is comparing
+ * the attributes the caller cares about against each face.
+ *
+ * MANDATORY ATTRIBUTES ARE THE ONES THAT MUST AGREE. macOS matches on those and treats the rest as
+ * preferences to rank by; with none given it matches on every attribute the query carries, and a
+ * face that has no opinion on an attribute is not rejected for it. Nothing here ranks, so the order
+ * is the collection's.
+ *
+ * LibreOffice ships Skia, which asks for these two by name and cannot start without them.
+ */
+static Boolean _CiderDescriptorMatches(CFDictionaryRef face, CFDictionaryRef query,
+                                       CFSetRef mandatory)
+{
+    CFIndex count = CFDictionaryGetCount(query);
+    const void **keys = malloc(sizeof(void *) * (count > 0 ? count : 1));
+    const void **values = malloc(sizeof(void *) * (count > 0 ? count : 1));
+    Boolean matches = true;
+
+    CFDictionaryGetKeysAndValues(query, keys, values);
+    for (CFIndex i = 0; i < count && matches; i++) {
+        const void *faceValue;
+
+        if (mandatory != NULL && !CFSetContainsValue(mandatory, keys[i]))
+            continue;
+        if (!CFDictionaryGetValueIfPresent(face, keys[i], &faceValue)) {
+            /* Unknown to the face: mandatory means it fails, otherwise it is simply not an opinion. */
+            matches = (mandatory == NULL);
+            continue;
+        }
+        matches = CFEqual(faceValue, values[i]);
+    }
+    free(keys);
+    free(values);
+    return matches;
+}
+
+CFArrayRef CTFontDescriptorCreateMatchingFontDescriptors(CTFontDescriptorRef descriptor,
+                                                         CFSetRef mandatoryAttributes)
+{
+    CTFontCollectionRef collection;
+    CFArrayRef available;
+    CFMutableArrayRef result;
+    CFIndex count;
+
+    if (descriptor == NULL) return NULL;
+
+    collection = CTFontCollectionCreateFromAvailableFonts(NULL);
+    if (collection == NULL) return NULL;
+
+    available = CTFontCollectionCreateMatchingFontDescriptors(collection);
+    CFRelease(collection);
+    if (available == NULL) return NULL;
+
+    result = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+    count = CFArrayGetCount(available);
+    for (CFIndex i = 0; i < count; i++) {
+        CFDictionaryRef face = (CFDictionaryRef) CFArrayGetValueAtIndex(available, i);
+
+        if (_CiderDescriptorMatches(face, (CFDictionaryRef) descriptor, mandatoryAttributes))
+            CFArrayAppendValue(result, face);
+    }
+    CFRelease(available);
+    return result;
+}
+
+CTFontDescriptorRef CTFontDescriptorCreateMatchingFontDescriptor(CTFontDescriptorRef descriptor,
+                                                                 CFSetRef mandatoryAttributes)
+{
+    CFArrayRef all = CTFontDescriptorCreateMatchingFontDescriptors(descriptor, mandatoryAttributes);
+    CTFontDescriptorRef first = NULL;
+
+    if (all != NULL) {
+        if (CFArrayGetCount(all) > 0)
+            first = (CTFontDescriptorRef) CFRetain(CFArrayGetValueAtIndex(all, 0));
+        CFRelease(all);
+    }
+    return first;
 }

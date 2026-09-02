@@ -106,3 +106,30 @@ CGColorSpaceRef CGColorSpaceCreateWithName(CFStringRef name) {
 CFStringRef CGColorSpaceGetName(CGColorSpaceRef colorSpace) {
     return O2ColorSpaceGetName((O2ColorSpaceRef)colorSpace);
 }
+
+CFStringRef CGColorSpaceCopyName(CGColorSpaceRef colorSpace) {
+    CFStringRef name = O2ColorSpaceGetName((O2ColorSpaceRef) colorSpace);
+
+    return name != NULL ? CFRetain(name) : NULL;
+}
+
+/*
+ * NO PROFILE IS AN HONEST ANSWER, and callers are written for it: Skia asks for the ICC data of a
+ * space and treats NULL as "this is sRGB, carry on". A fabricated profile would be worse than none.
+ */
+CFDataRef CGColorSpaceCopyICCData(CGColorSpaceRef colorSpace) {
+    return NULL;
+}
+
+/*
+ * The ALTERNATE space is what a reader that cannot parse the profile is told to use, so it is the
+ * right answer here rather than a failure; with none given, three components mean RGB and one grey.
+ */
+CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *range,
+                                           CGDataProviderRef profile,
+                                           CGColorSpaceRef alternate) {
+    if (alternate != NULL) {
+        return (CGColorSpaceRef) O2ColorSpaceRetain((O2ColorSpaceRef) alternate);
+    }
+    return nComponents == 1 ? CGColorSpaceCreateDeviceGray() : CGColorSpaceCreateDeviceRGB();
+}
