@@ -26,6 +26,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <ApplicationServices/ApplicationServices.h>
 #import <CoreGraphics/CGSubWindow.h>
 #import <AppKit/NSUserInterfaceItemIdentification.h>
+
+@class NSViewController;
+
+typedef NS_ENUM(NSInteger, NSWindowToolbarStyle) {
+    NSWindowToolbarStyleAutomatic = 0,
+    NSWindowToolbarStyleExpanded = 1,
+    NSWindowToolbarStylePreference = 2,
+    NSWindowToolbarStyleUnified = 3,
+    NSWindowToolbarStyleUnifiedCompact = 4,
+};
 #import <AppKit/NSAccessibilityProtocols.h>
 
 @class NSAppearance;
@@ -178,6 +188,8 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
     NSMenu *_menu;
     NSView *_menuView;
     NSView *_contentView;
+    NSViewController *_contentViewController;
+    NSWindowToolbarStyle _toolbarStyle;
     NSColor *_backgroundColor;
 
     id<NSWindowDelegate> _delegate;
@@ -693,6 +705,13 @@ typedef NS_OPTIONS(NSUInteger, NSWindowOcclusionState) {
 
 @interface NSWindow (Darling)
 - (CGWindow *) platformWindow;
++ (instancetype) windowWithContentViewController: (NSViewController *) contentViewController;
+- (NSViewController *) contentViewController;
+- (void) setContentViewController: (NSViewController *) contentViewController;
+
+- (NSWindowToolbarStyle) toolbarStyle;
+- (void) setToolbarStyle: (NSWindowToolbarStyle) toolbarStyle;
+
 @end
 
 // private

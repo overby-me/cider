@@ -105,6 +105,29 @@ static void CiderFillBackground(NSColor *color, NSRect rect, const char *where) 
     [super dealloc];
 }
 
+/*
+ * The margin a scroll view keeps between its clip view's bounds and the document. Zero here, and
+ * zero is the correct default: only a window that puts content under a titlebar or a sidebar sets
+ * it. What matters is that the getter EXISTS, because it returns a struct, and an unrecognised
+ * selector that returns a struct used to take the process down inside the report itself.
+ */
+- (NSEdgeInsets) contentInsets {
+    return _contentInsets;
+}
+
+- (void) setContentInsets: (NSEdgeInsets) insets {
+    _contentInsets = insets;
+    [self setNeedsDisplay: YES];
+}
+
+- (BOOL) automaticallyAdjustsContentInsets {
+    return _automaticallyAdjustsContentInsets;
+}
+
+- (void) setAutomaticallyAdjustsContentInsets: (BOOL) flag {
+    _automaticallyAdjustsContentInsets = flag;
+}
+
 - (BOOL) drawsBackground {
     return _drawsBackground;
 }

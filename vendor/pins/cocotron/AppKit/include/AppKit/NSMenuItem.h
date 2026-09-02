@@ -55,6 +55,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 @property BOOL allowsKeyEquivalentWhenHidden;
 
 + (NSMenuItem *) separatorItem;
++ (instancetype) sectionHeaderWithTitle: (NSString *) title;
 
 - (instancetype) initWithTitle: (NSString *) title
                         action: (SEL) action

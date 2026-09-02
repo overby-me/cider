@@ -2727,6 +2727,48 @@ static void clearNeedsDisplay(NSView *self) {
 - (void) layout {
 }
 
+/*
+ * The size a view wants when nothing else constrains it. NSViewNoIntrinsicMetric in both directions
+ * means "I have none", which is the truthful answer for a plain view and what macOS returns; a
+ * subclass that has one overrides this. Invalidating it schedules a layout, which is all it can do
+ * while nothing here solves constraints.
+ */
+- (NSSize) intrinsicContentSize {
+    return NSMakeSize(NSViewNoIntrinsicMetric, NSViewNoIntrinsicMetric);
+}
+
+- (void) invalidateIntrinsicContentSize {
+    [self setNeedsLayout: YES];
+}
+
+/*
+ * The rect layout aligns, which is the frame less whatever visual padding the view draws outside
+ * its content (a button's shadow, a focus ring). Zero insets here means the two are the same, and
+ * that is right for a view that draws no such padding; a subclass with one overrides the insets and
+ * gets both conversions for free.
+ */
+- (NSEdgeInsets) alignmentRectInsets {
+    NSEdgeInsets zero = { 0, 0, 0, 0 };
+
+    return zero;
+}
+
+- (NSRect) alignmentRectForFrame: (NSRect) frame {
+    NSEdgeInsets insets = [self alignmentRectInsets];
+
+    return NSMakeRect(frame.origin.x + insets.left, frame.origin.y + insets.bottom,
+                      frame.size.width - insets.left - insets.right,
+                      frame.size.height - insets.top - insets.bottom);
+}
+
+- (NSRect) frameForAlignmentRect: (NSRect) alignmentRect {
+    NSEdgeInsets insets = [self alignmentRectInsets];
+
+    return NSMakeRect(alignmentRect.origin.x - insets.left, alignmentRect.origin.y - insets.bottom,
+                      alignmentRect.size.width + insets.left + insets.right,
+                      alignmentRect.size.height + insets.top + insets.bottom);
+}
+
 - (void) setNeedsDisplay: (BOOL) flag {
     _needsDisplay = flag;
 

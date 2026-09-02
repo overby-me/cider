@@ -1,0 +1,20 @@
+--- a/src/NSLayoutConstraint.m
++++ b/src/NSLayoutConstraint.m
+@@ -31,6 +31,17 @@
+ 
+ @implementation NSLayoutConstraint
+ 
++/*
++ * The animation the animator proxy uses for a key, from NSAnimatablePropertyContainer. Nil means
++ * "this key does not animate by itself", which is the right answer while nothing here animates a
++ * constant, and it is what macOS returns for keys it has no default for. The method has to EXIST
++ * because the proxy asks the CLASS before it asks the instance anything.
++ */
+++ (id) defaultAnimationForKey: (NSString *) key {
++    return nil;
++}
++
++
+ @synthesize firstItem = _firstItem;
+ @synthesize secondItem = _secondItem;
+ @synthesize firstAttribute = _firstAttribute;

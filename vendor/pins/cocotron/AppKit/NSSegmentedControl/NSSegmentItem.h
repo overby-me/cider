@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     NSString *_toolTip;
     CGFloat _width;
     NSImageScaling _imageScaling;
+    BOOL _showsMenuIndicator;
 }
 
 - (NSInteger) tag;
@@ -53,5 +54,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) setToolTip: (NSString *) toolTip;
 - (void) setWidth: (CGFloat) width;
 - (void) setImageScaling: (NSImageScaling) value;
+
+- (BOOL) showsMenuIndicator;
+- (void) setShowsMenuIndicator: (BOOL) flag;
 
 @end

@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
     BOOL _drawsBackground;
     BOOL _copiesOnScroll;
+    NSEdgeInsets _contentInsets;
+    BOOL _automaticallyAdjustsContentInsets;
 }
 
 - (BOOL) drawsBackground;
@@ -37,6 +39,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (NSColor *) backgroundColor;
 - (NSCursor *) documentCursor;
 - documentView;
+- (NSEdgeInsets) contentInsets;
+- (void) setContentInsets: (NSEdgeInsets) insets;
+- (BOOL) automaticallyAdjustsContentInsets;
+- (void) setAutomaticallyAdjustsContentInsets: (BOOL) flag;
 
 - (void) setDrawsBackground: (BOOL) value;
 - (void) setCopiesOnScroll: (BOOL) value;

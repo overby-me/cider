@@ -1,0 +1,97 @@
+--- a/CFForwardingPrep.S
++++ b/CFForwardingPrep.S
+@@ -203,11 +203,9 @@
+ 
+ .section __TEXT,__text,regular,pure_instructions
+ .globl __CF_forwarding_prep_0
+-.globl __CF_forwarding_prep_1
+ .align 4, 0x90
+ 
+ __CF_forwarding_prep_0:
+-__CF_forwarding_prep_1:
+     .cfi_startproc
+     .cfi_personality 155, ___objc_personality_v0
+     push %rbp
+@@ -283,6 +281,82 @@
+ 
+     .cfi_endproc
+ 
++/*
++ * THE STRET FORWARD IS A DIFFERENT FUNCTION, and sharing one was a crash rather than an
++ * inelegance: %rdi is the RETURN BUFFER here and self is in %rsi, so ___forwarding___ read the
++ * buffer as the receiver and faulted in objc_class::demangledName before it could name the
++ * selector. Every unrecognised selector that returns a struct died that way, and silently, because
++ * the report is what crashed. i386 and ARM always had the two apart; only x86_64 aliased them.
++ *
++ * Every integer argument shifts down one register, and the caller's buffer becomes the return
++ * storage rather than the scratch space on this frame.
++ */
++.globl __CF_forwarding_prep_1
++.align 4, 0x90
++
++__CF_forwarding_prep_1:
++    .cfi_startproc
++    .cfi_personality 155, ___objc_personality_v0
++    push %rbp
++    .cfi_def_cfa_offset 16
++    .cfi_offset %rbp, -16
++    movq %rsp, %rbp
++    .cfi_def_cfa_register rbp
++
++    subq   $0xd0, %rsp
++    movq   %rdi, 0xc0(%rsp)
++    movq   %rax, 0xb0(%rsp)
++    movapd %xmm7, 0xa0(%rsp)
++    movapd %xmm6, 0x90(%rsp)
++    movapd %xmm5, 0x80(%rsp)
++    movapd %xmm4, 0x70(%rsp)
++    movapd %xmm3, 0x60(%rsp)
++    movapd %xmm2, 0x50(%rsp)
++    movapd %xmm1, 0x40(%rsp)
++    movapd %xmm0, 0x30(%rsp)
++    movq   $0,   0x28(%rsp)
++    movq   %r9,  0x20(%rsp)
++    movq   %r8,  0x18(%rsp)
++    movq   %rcx, 0x10(%rsp)
++    movq   %rdx, 8(%rsp)
++    movq   %rsi, (%rsp)
++
++    movq   %rsp, %rdi
++    movq   0xc0(%rsp), %rsi
++    call   ____forwarding___
++
++    cmpq   $0, %rax
++    jne    Lstretfail
++
++    movq   0xc0(%rsp), %rax
++    movq   %rbp, %rsp
++    pop    %rbp
++    ret
++
++Lstretfail:
++    movq   %rax, %rsi
++    movq   0xc0(%rsp), %rdi
++    movq   0xb0(%rsp), %rax
++    movapd 0xa0(%rsp), %xmm7
++    movapd 0x90(%rsp), %xmm6
++    movapd 0x80(%rsp), %xmm5
++    movapd 0x70(%rsp), %xmm4
++    movapd 0x60(%rsp), %xmm3
++    movapd 0x50(%rsp), %xmm2
++    movapd 0x40(%rsp), %xmm1
++    movapd 0x30(%rsp), %xmm0
++    movq   0x20(%rsp), %r9
++    movq   0x18(%rsp), %r8
++    movq   0x10(%rsp), %rcx
++    movq   8(%rsp), %rdx
++
++    movq   %rbp, %rsp
++    pop    %rbp
++
++    jmp    _objc_msgSend_stret
++
++    .cfi_endproc
++
+ .globl __CF_forwarding_prep_b
+ .align 4, 0x90
+ 

@@ -20,6 +20,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSCell.h>
 #import <AppKit/NSControl.h>
 
+/*
+ * The tracking mode lives HERE, not in NSSegmentedCell.h, because that header imports this one: an
+ * import back the other way is a cycle, and whichever header a translation unit reaches first wins,
+ * so the type was missing exactly half the time.
+ */
+typedef enum {
+    NSSegmentSwitchTrackingSelectOne,
+    NSSegmentSwitchTrackingSelectAny,
+    NSSegmentSwitchTrackingMomentary
+} NSSegmentSwitchTracking;
+
 enum {
     NSSegmentStyleAutomatic = 0,
     NSSegmentStyleRounded = 1,
@@ -31,7 +42,9 @@ enum {
 };
 typedef NSInteger NSSegmentStyle;
 
-@interface NSSegmentedControl : NSControl
+@interface NSSegmentedControl : NSControl {
+    BOOL _springLoaded;
+}
 
 - (NSInteger) segmentCount;
 - (NSSegmentStyle) segmentStyle;
@@ -64,5 +77,17 @@ typedef NSInteger NSSegmentStyle;
 - (BOOL) selectSegmentWithTag: (NSInteger) tag;
 - (void) setSelected: (BOOL) flag forSegment: (NSInteger) segment;
 - (void) setSelectedSegment: (NSInteger) segment;
+
+- (BOOL) showsMenuIndicatorForSegment: (NSInteger) segment;
+- (void) setShowsMenuIndicator: (BOOL) flag forSegment: (NSInteger) segment;
+
+- (NSSegmentSwitchTracking) trackingMode;
+- (void) setTrackingMode: (NSSegmentSwitchTracking) trackingMode;
+
+- (void) compressWithPrioritizedCompressionOptions: (NSArray *) prioritizedOptions;
+- (NSSize) minimumSizeWithPrioritizedCompressionOptions: (NSArray *) prioritizedOptions;
+
+- (BOOL) isSpringLoaded;
+- (void) setSpringLoaded: (BOOL) flag;
 
 @end

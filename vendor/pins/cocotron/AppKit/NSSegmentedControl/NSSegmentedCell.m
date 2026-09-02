@@ -184,6 +184,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [self _recomputeSegmentWidths];
 }
 
+/* Carried per segment. Nothing draws the arrow yet, so this is state the control reports back. */
+- (BOOL) showsMenuIndicatorForSegment: (NSInteger) segment {
+    return [[_segments objectAtIndex: segment] showsMenuIndicator];
+}
+
+- (void) setShowsMenuIndicator: (BOOL) flag forSegment: (NSInteger) segment {
+    [[_segments objectAtIndex: segment] setShowsMenuIndicator: flag];
+}
+
 - (void) setMenu: (NSMenu *) menu forSegment: (NSInteger) segment {
     [[_segments objectAtIndex: segment] setMenu: menu];
 }

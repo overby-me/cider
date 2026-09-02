@@ -44,10 +44,14 @@ typedef NS_ENUM(NSInteger, NSStackViewDistribution) {
 
 typedef float NSStackViewVisibilityPriority;
 
+/* macOS spells "this view has no spacing of its own" as FLT_MAX, not as a flag. */
+#define NSStackViewSpacingUseDefault ((CGFloat) 3.40282347e+38F)
+
 @interface NSStackView : NSView {
     NSMutableArray *_arrangedSubviews;
     NSMutableDictionary *_gravities;
     NSMutableDictionary *_visibilityPriorities;
+    NSMutableDictionary *_customSpacings;
     NSUserInterfaceLayoutOrientation _orientation;
     NSStackViewDistribution _distribution;
     NSLayoutAttribute _alignment;
@@ -73,6 +77,9 @@ typedef float NSStackViewVisibilityPriority;
           inGravity: (NSStackViewGravity) gravity;
 - (void) removeView: (NSView *) view;
 - (NSArray *) viewsInGravity: (NSStackViewGravity) gravity;
+
+- (void) setCustomSpacing: (CGFloat) spacing afterView: (NSView *) view;
+- (CGFloat) customSpacingAfterView: (NSView *) view;
 
 - (NSStackViewVisibilityPriority) visibilityPriorityForView: (NSView *) view;
 - (void) setVisibilityPriority: (NSStackViewVisibilityPriority) priority

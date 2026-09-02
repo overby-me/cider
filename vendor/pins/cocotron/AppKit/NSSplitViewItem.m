@@ -205,4 +205,36 @@ const CGFloat NSSplitViewItemUnspecifiedDimension = -1.0;
     _allowsFullHeightLayout = allows;
 }
 
+/*
+ * NSAnimatablePropertyContainer. A split view item is asked for these before a sidebar is collapsed
+ * or revealed, and the ask comes first to the CLASS and then to the instance.
+ *
+ * -animator returns self, so a change made through the proxy is applied at once instead of over a
+ * duration. That is a policy answer and the visible consequence is that a sidebar snaps rather than
+ * slides; the alternative, returning nil, loses the change entirely.
+ */
+- (NSDictionary *) animations {
+    return _animations != nil ? _animations : [NSDictionary dictionary];
+}
+
+- (void) setAnimations: (NSDictionary *) animations {
+    animations = [animations copy];
+    [_animations release];
+    _animations = animations;
+}
+
+- (id) animationForKey: (NSString *) key {
+    id animation = [_animations objectForKey: key];
+
+    return animation != nil ? animation : [[self class] defaultAnimationForKey: key];
+}
+
++ (id) defaultAnimationForKey: (NSString *) key {
+    return nil;
+}
+
+- (id) animator {
+    return self;
+}
+
 @end

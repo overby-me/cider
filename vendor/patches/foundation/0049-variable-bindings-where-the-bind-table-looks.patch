@@ -1,0 +1,61 @@
+--- a/src/NSDictionary.m
++++ b/src/NSDictionary.m
+@@ -6,6 +6,8 @@
+ //
+ 
+ #import <Foundation/NSDictionary.h>
++#import <Foundation/NSCharacterSet.h>
++#include <stdarg.h>
+ 
+ #import <Foundation/NSArray.h>
+ #import "NSCoderInternal.h"
+@@ -383,3 +385,49 @@
+ }
+ 
+ @end
++
++/*
++ * _NSDictionaryOfVariableBindings(names, values...)
++ *
++ * What the NSDictionaryOfVariableBindings macro compiles to: the variable NAMES arrive as one comma
++ * separated string and their values as varargs, and the job is to pair them up. AppKit has the same
++ * function, but a two level namespace means the copy that counts is the one in the library the
++ * application's bind table names, and iA Writer names Foundation. Without it here the process
++ * aborts at the first Auto Layout visual format call, not at launch.
++ *
++ * The names are trimmed and any receiver prefix is dropped, because the macro passes the expression
++ * text verbatim and self.view names the key view.
++ */
++NSDictionary *_NSDictionaryOfVariableBindings(NSString *commaSeparatedKeysString, id firstValue, ...)
++{
++    if (commaSeparatedKeysString == nil)
++        return [NSDictionary dictionary];
++
++    NSMutableDictionary *bindings = [NSMutableDictionary dictionary];
++    NSArray *names = [commaSeparatedKeysString componentsSeparatedByString: @","];
++    NSCharacterSet *space = [NSCharacterSet whitespaceAndNewlineCharacterSet];
++    va_list args;
++    id value = firstValue;
++
++    va_start(args, firstValue);
++
++    for (NSString *rawName in names) {
++        if (value == nil) /* fewer values than names: the caller ended the list early */
++            break;
++
++        NSString *name = [rawName stringByTrimmingCharactersInSet: space];
++        NSRange dot = [name rangeOfString: @"." options: NSBackwardsSearch];
++
++        if (dot.location != NSNotFound)
++            name = [name substringFromIndex: NSMaxRange(dot)];
++
++        if ([name length] > 0)
++            [bindings setObject: value forKey: name];
++
++        value = va_arg(args, id);
++    }
++
++    va_end(args);
++
++    return bindings;
++}

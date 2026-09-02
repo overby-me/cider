@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSToolbar.h>
 #import <AppKit/NSTrackingArea.h>
 #import <AppKit/NSView.h>
+#import <AppKit/NSViewController.h>
 #import <AppKit/NSWindow-Private.h>
 #import <AppKit/NSWindow.h>
 #import <objc/runtime.h>
@@ -1469,6 +1470,54 @@ static BOOL _allowsAutomaticWindowTabbing;
 
     if ([self _isApplicationWindow])
         [NSApp changeWindowsItem: self title: filename filename: YES];
+}
+
+/*
+ * THE VIEW CONTROLLER FORM OF A WINDOW, which is how a modern application builds one: the window
+ * takes its content view from the controller and keeps the controller alive. The convenience
+ * constructor sizes the window to the view it is given, since there is no other hint.
+ */
++ (instancetype) windowWithContentViewController: (NSViewController *) contentViewController {
+    NSView *view = [contentViewController view];
+    NSRect frame = view != nil ? [view frame] : NSMakeRect(0, 0, 480, 270);
+    NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
+            | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
+    NSWindow *window = [[[self alloc] initWithContentRect: frame
+                                                styleMask: style
+                                                  backing: NSBackingStoreBuffered
+                                                    defer: NO] autorelease];
+
+    [window setContentViewController: contentViewController];
+    return window;
+}
+
+/*
+ * How the titlebar and the toolbar share their space. Carried and reported, not acted on: the
+ * chrome here draws one way. An application sets it and asks for it back, and a window that cannot
+ * answer takes the process down.
+ */
+- (NSWindowToolbarStyle) toolbarStyle {
+    return _toolbarStyle;
+}
+
+- (void) setToolbarStyle: (NSWindowToolbarStyle) toolbarStyle {
+    _toolbarStyle = toolbarStyle;
+}
+
+- (NSViewController *) contentViewController {
+    return _contentViewController;
+}
+
+- (void) setContentViewController: (NSViewController *) contentViewController {
+    if (contentViewController == _contentViewController)
+        return;
+
+    [contentViewController retain];
+    [_contentViewController release];
+    _contentViewController = contentViewController;
+
+    if (contentViewController != nil)
+        [self setContentView: [contentViewController view]];
 }
 
 - (void) setContentView: (NSView *) view {

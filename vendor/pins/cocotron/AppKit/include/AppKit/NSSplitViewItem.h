@@ -51,6 +51,7 @@ APPKIT_EXPORT const CGFloat NSSplitViewItemUnspecifiedDimension;
     BOOL _canCollapse;
     BOOL _springLoaded;
     BOOL _allowsFullHeightLayout;
+    NSDictionary *_animations;
 }
 
 + (instancetype) splitViewItemWithViewController: (NSViewController *) viewController;
@@ -93,5 +94,11 @@ APPKIT_EXPORT const CGFloat NSSplitViewItemUnspecifiedDimension;
 
 - (BOOL) allowsFullHeightLayout;
 - (void) setAllowsFullHeightLayout: (BOOL) allows;
+
+- (NSDictionary *) animations;
+- (void) setAnimations: (NSDictionary *) animations;
+- (id) animationForKey: (NSString *) key;
++ (id) defaultAnimationForKey: (NSString *) key;
+- (id) animator;
 
 @end

@@ -27,4 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) setRecentSearches: (NSArray *) searches;
 - (void) setRecentsAutosaveName: (NSString *) name;
 
+- (BOOL) sendsSearchStringImmediately;
+- (void) setSendsSearchStringImmediately: (BOOL) flag;
+- (BOOL) sendsWholeSearchString;
+- (void) setSendsWholeSearchString: (BOOL) flag;
+- (NSInteger) maximumRecents;
+- (void) setMaximumRecents: (NSInteger) maximum;
+
 @end

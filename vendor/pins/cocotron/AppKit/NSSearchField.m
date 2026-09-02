@@ -49,6 +49,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [[self _searchCell] setRecentSearches: searches];
 }
 
+/* The cell holds the search behaviour; the control is what an application talks to. */
+- (BOOL) sendsSearchStringImmediately {
+    return [[self _searchCell] sendsSearchStringImmediately];
+}
+
+- (void) setSendsSearchStringImmediately: (BOOL) flag {
+    [[self _searchCell] setSendsSearchStringImmediately: flag];
+}
+
+- (BOOL) sendsWholeSearchString {
+    return [[self _searchCell] sendsWholeSearchString];
+}
+
+- (void) setSendsWholeSearchString: (BOOL) flag {
+    [[self _searchCell] setSendsWholeSearchString: flag];
+}
+
+- (NSInteger) maximumRecents {
+    return [[self _searchCell] maximumRecents];
+}
+
+- (void) setMaximumRecents: (NSInteger) maximum {
+    [[self _searchCell] setMaximumRecents: (int) maximum];
+}
+
 - (void) setRecentsAutosaveName: (NSString *) name {
     [[self _searchCell] setRecentsAutosaveName: name];
 }

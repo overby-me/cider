@@ -43,6 +43,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                           keyEquivalent: nil] autorelease];
 }
 
+/*
+ * A heading inside a menu: a disabled item carrying the title, which is exactly what it is on macOS
+ * as well. Disabled is what keeps it from being chosen; nothing here draws it in a smaller font.
+ */
++ (instancetype) sectionHeaderWithTitle: (NSString *) title {
+    NSMenuItem *item = [[[self alloc] initWithTitle: title action: NULL
+                                      keyEquivalent: @""] autorelease];
+
+    [item setEnabled: NO];
+    return item;
+}
+
 - (void) encodeWithCoder: (NSCoder *) coder {
     [coder encodeObject: _title forKey: @"NSTitle"];
     [coder encodeObject: _keyEquivalent forKey: @"NSKeyEquiv"];

@@ -20,12 +20,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSActionCell.h>
 #import <AppKit/NSSegmentedControl.h>
 
-typedef enum {
-    NSSegmentSwitchTrackingSelectOne,
-    NSSegmentSwitchTrackingSelectAny,
-    NSSegmentSwitchTrackingMomentary
-} NSSegmentSwitchTracking;
-
 @interface NSSegmentedCell : NSActionCell {
     NSMutableArray *_segments;
     NSMutableArray *_segmentComputedWidths;
@@ -77,5 +71,8 @@ typedef enum {
 - (void) drawSegment: (NSInteger) segment
              inFrame: (NSRect) frame
             withView: (NSView *) view;
+
+- (BOOL) showsMenuIndicatorForSegment: (NSInteger) segment;
+- (void) setShowsMenuIndicator: (BOOL) flag forSegment: (NSInteger) segment;
 
 @end

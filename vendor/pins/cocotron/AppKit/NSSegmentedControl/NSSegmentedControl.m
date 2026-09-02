@@ -19,6 +19,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSSegmentedCell.h>
 #import <AppKit/NSSegmentedControl.h>
+#import <AppKit/NSWindow.h>
+#import <AppKit/CiderModernAppKit.h>
 
 @interface NSSegmentedCell (PrivateToControlView)
 - (void) _wasDrawnWithFrame: (NSRect) cellFrame inView: (NSView *) controlView;
@@ -201,4 +203,51 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 + (NSSet *) keyPathsForValuesAffectingSelectedIndex {
     return [NSSet setWithObject: @"cell.selectedSegment"];
 }
+/* Whether a click selects one segment, toggles it, or only highlights while held. The cell holds it. */
+/*
+ * NSUserInterfaceSpringLoading: whether a drag hovering over a segment activates it. Carried, since
+ * nothing here springs; the control still has to answer.
+ */
+- (BOOL) isSpringLoaded {
+    return _springLoaded;
+}
+
+- (void) setSpringLoaded: (BOOL) flag {
+    _springLoaded = flag;
+}
+
+/*
+ * NSUserInterfaceCompression. A toolbar asks a control to give up width before it truncates. Doing
+ * nothing is honest here: nothing in this port compresses, so the control keeps its natural size
+ * and the toolbar clips instead. The methods have to exist because the toolbar asks the control
+ * directly and an answer of "unrecognised" is fatal.
+ */
+- (void) compressWithPrioritizedCompressionOptions: (NSArray *) prioritizedOptions {
+}
+
+- (NSSize) minimumSizeWithPrioritizedCompressionOptions: (NSArray *) prioritizedOptions {
+    return [self frame].size;
+}
+
+- (NSUserInterfaceCompressionOptions *) activeCompressionOptions {
+    return [[[NSUserInterfaceCompressionOptions alloc] init] autorelease];
+}
+
+- (NSSegmentSwitchTracking) trackingMode {
+    return [[self cell] trackingMode];
+}
+
+- (void) setTrackingMode: (NSSegmentSwitchTracking) trackingMode {
+    [[self cell] setTrackingMode: trackingMode];
+}
+
+- (BOOL) showsMenuIndicatorForSegment: (NSInteger) segment {
+    return [[self cell] showsMenuIndicatorForSegment: segment];
+}
+
+- (void) setShowsMenuIndicator: (BOOL) flag forSegment: (NSInteger) segment {
+    [[self cell] setShowsMenuIndicator: flag forSegment: segment];
+    [self setNeedsDisplay: YES];
+}
+
 @end

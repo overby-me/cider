@@ -54,6 +54,7 @@
     _arrangedSubviews = [[NSMutableArray alloc] init];
     _gravities = [[NSMutableDictionary alloc] init];
     _visibilityPriorities = [[NSMutableDictionary alloc] init];
+    _customSpacings = [[NSMutableDictionary alloc] init];
     _orientation = NSUserInterfaceLayoutOrientationHorizontal;
     _distribution = NSStackViewDistributionGravityAreas;
     _alignment = NSLayoutAttributeCenterY;
@@ -69,6 +70,7 @@
     _arrangedSubviews = [[NSMutableArray alloc] init];
     _gravities = [[NSMutableDictionary alloc] init];
     _visibilityPriorities = [[NSMutableDictionary alloc] init];
+    _customSpacings = [[NSMutableDictionary alloc] init];
     _spacing = 8.0;
     _detachesHiddenViews = YES;
 
@@ -178,6 +180,28 @@ static NSNumber *_CiderViewKey(NSView *view) {
     NSNumber *held = [_visibilityPriorities objectForKey: _CiderViewKey(view)];
 
     return held != nil ? (NSStackViewVisibilityPriority) [held floatValue] : 1000;
+}
+
+/*
+ * A gap that applies AFTER one view only, overriding the stack's own spacing there. The layout
+ * below reads it; NSStackViewSpacingUseDefault means the view has none of its own, and macOS uses
+ * FLT_MAX for that sentinel rather than a flag.
+ */
+- (void) setCustomSpacing: (CGFloat) spacing afterView: (NSView *) view {
+    if (view == nil)
+        return;
+    if (spacing == NSStackViewSpacingUseDefault)
+        [_customSpacings removeObjectForKey: _CiderViewKey(view)];
+    else
+        [_customSpacings setObject: [NSNumber numberWithDouble: spacing]
+                            forKey: _CiderViewKey(view)];
+    [self setNeedsLayout: YES];
+}
+
+- (CGFloat) customSpacingAfterView: (NSView *) view {
+    NSNumber *value = view != nil ? [_customSpacings objectForKey: _CiderViewKey(view)] : nil;
+
+    return value != nil ? [value doubleValue] : NSStackViewSpacingUseDefault;
 }
 
 - (void) setVisibilityPriority: (NSStackViewVisibilityPriority) priority
