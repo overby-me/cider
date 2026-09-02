@@ -118,7 +118,50 @@ void *cider_combine_anypublisher_instantiate(const void *descriptor, const void 
                 descriptor, (const void *) arguments, pattern, (void *) allocate);
         fflush(stderr);
     }
-    if (allocate != NULL) {
+    /*
+     * OUR OWN STORAGE, BECAUSE METADATA IS IMMORTAL AND THIS BLOCK WAS NOT.
+     *
+     * swift_allocateGenericValueMetadata hands back memory the runtime can reclaim, and here it did:
+     * the same ReceiveOn metadata answered swift_checkMetadataState once and then, later in the same
+     * run, its two generic-argument words read back as (block + 0x50, 0), which is a free-list node
+     * written into a freed block. After that the cache lookup inside swift_checkMetadataState misses
+     * and the runtime dereferences the null it got, at byte 9, killing the process.
+     *
+     * The accessor arguments were IDENTICAL across both calls and the metadata pointer was the same,
+     * so this is not a wrong key and not a cache too small: the storage went away underneath a live
+     * entry. Type metadata is immortal by design, so allocating it here and never freeing it is what
+     * the ABI intends rather than a way around the runtime.
+     *
+     * Only for the value types this file builds, identified by the descriptor kind, and only when
+     * the generic header says how many arguments to copy. Anything else still goes to the runtime.
+     */
+    if (metadata == NULL) {
+        const uint32_t flags = *(const uint32_t *) descriptor;
+
+        if ((flags & 0x1Fu) == 0x11u) { /* ContextDescriptorKind::Struct */
+            /* +40 is NumKeyArguments in the generic header of a struct descriptor built here. */
+            const uint16_t keyArguments = *(const uint16_t *) ((const char *) descriptor + 40);
+
+            if (keyArguments <= 4) {
+                /* One spare word before the address point holds the value witness table. */
+                uintptr_t *block = (uintptr_t *) calloc(2u + keyArguments + 1u, sizeof(uintptr_t));
+
+                if (block != NULL) {
+                    const int32_t *vwtSlot = (const int32_t *) ((const char *) pattern + 12);
+                    uintptr_t *words = block + 1;
+                    uint16_t i;
+
+                    words[-1] = (uintptr_t) ((const char *) vwtSlot + *vwtSlot);
+                    for (i = 0; i < keyArguments; i++) {
+                        words[2 + i] = (uintptr_t) arguments[i];
+                    }
+                    metadata = (void *) words;
+                }
+            }
+        }
+    }
+
+    if (metadata == NULL && allocate != NULL) {
         metadata = allocate(descriptor, arguments, pattern, 0);
     }
     if (metadata != NULL) {
@@ -281,8 +324,17 @@ static CiderMetadataResponse cider_combine_generic_metadata(const void *descript
                         dlsym(RTLD_DEFAULT, "swift_checkMetadataState");
             }
             if (check != NULL && answer.metadata != NULL) {
-                CiderResponse state = check(0x100, answer.metadata);
+                const uintptr_t *w = (const uintptr_t *) answer.metadata;
+                CiderResponse state;
 
+                /* THE KEY IS REBUILT FROM THE METADATA, not from what was passed in, so print what
+                 * it carries: the descriptor and the generic arguments the lookup will hash. */
+                fprintf(stderr, "CIDER_COMBINE %s   words kind=0x%lx desc=%p args=%p,%p\n",
+                        name, (unsigned long) w[0], (const void *) w[1],
+                        (const void *) w[2], (const void *) w[3]);
+                fflush(stderr);
+
+                state = check(0x100, answer.metadata);
                 fprintf(stderr, "CIDER_COMBINE %s   checkMetadataState -> metadata=%p state=%zu\n",
                         name, state.metadata, state.state);
             }
