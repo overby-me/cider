@@ -1,18 +1,18 @@
-trace platform semaphore lifetime: order, refcount, namespace and identity
+trace platform semaphore lifetime: order, refcount, namespace, identity and reply port
 
-The cached path creates in libplatform, not libdispatch, so a trace in libdispatch reported
-created=0 for a name that was plainly in use. Four facts are needed to say what happens, and
-each of the first three was consistent with a wrong conclusion on its own:
+Each field exists because the one before it was not enough to say what happens, and three
+conclusions drawn from a subset were wrong. In order:
 
-  seq        an atomic counter, because several threads write these lines and the order
-             they appear in is not the order they happened
-  refs       one port copied out twice repeats the name with refs=2, an allocator handing
-             out a live name repeats it with refs=1
-  names      the size of the task namespace before and after, which says whether the call
-             added an entry at all
-  preexist   whether the returned name was in the namespace BEFORE the call, and its right
-             type, which says whose name it is
+  seq          an atomic counter: several threads write these lines
+  refs         with its own control, because a query that answers 1 for everything says
+               nothing. mod_refs(+1) then re-reading proves it is a counter
+  names        the namespace size BEFORE and AFTER, which is what shows that the call adds
+               no entry at all
+  preexisting  whether the name was already held, and as what right
+  reply        the thread MIG reply port, which turned out to be correctly per thread
 
+kotype is present but says nothing: mach_port_kobject answers 0 even for the host port, which
+the kohost control shows in the same line.
 --- a/src/os/semaphore.c
 +++ b/src/os/semaphore.c
 @@ -19,7 +19,11 @@
@@ -27,7 +27,7 @@ each of the first three was consistent with a wrong conclusion on its own:
  #include <mach/semaphore.h>
  #include <mach/task.h>
  #include <mach/thread_switch.h>
-@@ -36,14 +40,63 @@
+@@ -36,14 +40,90 @@
  		} \
  	} while (0)
  
@@ -61,6 +61,10 @@ each of the first three was consistent with a wrong conclusion on its own:
 +		kern_return_t rkr = mach_port_get_refs(mach_task_self(), s4,
 +		                                       MACH_PORT_RIGHT_SEND, &refs);
 +		mach_port_t self = mach_thread_self();
++		/* THE REPLY PORT IS PER THREAD, in TSD. If two threads report the SAME one they can each
++		 * receive the other's reply, which is what a shared name would look like from up here. */
++		extern mach_port_t mig_get_reply_port(void);
++		mach_port_t reply = mig_get_reply_port();
 +		/* HOW BIG THE NAMESPACE IS separates a wrong space from a broken free list: a real task's
 +		 * space holds many names, so allocating a live one is a bug in the allocator; a space
 +		 * holding one or two means the copyout went somewhere that is not the task's space. */
@@ -72,6 +76,28 @@ each of the first three was consistent with a wrong conclusion on its own:
 +		/* WAS THE NAME ALREADY THERE, and what is it? A name the task held BEFORE the call cannot
 +		 * have been created by it, and the right type says whose it is: a receive right means the
 +		 * task was handed the name of something it owns. */
++		/* THE CONTROL FOR refs. If the query answers 1 for a name whose count was just raised, it
++		 * is not reading a counter and nothing may be concluded from it. taskrefs is a second
++		 * control: the task port is held many times over, so a 1 there means the same. */
++		mach_port_urefs_t bumped = 0, taskrefs = 0;
++		mach_port_mod_refs(mach_task_self(), s4, MACH_PORT_RIGHT_SEND, 1);
++		mach_port_get_refs(mach_task_self(), s4, MACH_PORT_RIGHT_SEND, &bumped);
++		mach_port_mod_refs(mach_task_self(), s4, MACH_PORT_RIGHT_SEND, -1);
++		mach_port_get_refs(mach_task_self(), mach_task_self(), MACH_PORT_RIGHT_SEND, &taskrefs);
++
++		/* WHAT SITS BEHIND THE NAME. IKOT_SEMAPHORE means the port is a semaphore and the question
++		 * is why the same one; anything else names the port that was copied out by mistake. */
++		/* WHICH WELL-KNOWN PORT IS IT? The name is the same for every thread, so it is a port the
++		 * whole task shares. kohost is the control for kotype: the host port IS a kernel object, so
++		 * a 0 there means mach_port_kobject answers 0 for everything and says nothing. */
++		mach_port_t host = mach_host_self();
++		unsigned int kohost = 0;
++		mach_vm_address_t hoaddr = 0;
++		mach_port_kobject(mach_task_self(), host, &kohost, &hoaddr);
++		unsigned int kotype = 0;
++		mach_vm_address_t kaddr = 0;
++		mach_port_kobject(mach_task_self(), s4, &kotype, &kaddr);
++
 +		int preexisting = 0, type = 0;
 +		for (mach_msg_type_number_t i = 0; bn != NULL && i < before; i++) {
 +			if (bn[i] == s4) {
@@ -81,17 +107,18 @@ each of the first three was consistent with a wrong conclusion on its own:
 +			}
 +		}
 +		fprintf(stderr, "CIDER_SEM seq=%d pid=%d thread=%d platform created name=%d refs=%d rkr=%d "
-+		                "names=%d->%d nkr=%d preexisting=%d type=0x%x\n",
++		                "names=%d->%d nkr=%d preexisting=%d type=0x%x bumped=%d taskrefs=%d kotype=%u host=%d kohost=%u task=%d reply=%d\n",
 +		        __sync_fetch_and_add(&_cider_sem_seq, 1), (int)getpid(), (int)self,
 +		        (int)s4, (int)refs, (int)rkr, (int)before, (int)ncount, (int)nkr,
-+		        preexisting, type);
++		        preexisting, type, (int)bumped, (int)taskrefs, kotype,
++		        (int)host, kohost, (int)mach_task_self(), (int)reply);
 +		fflush(stderr);
 +		mach_port_deallocate(mach_task_self(), self);
 +	}
  	return (os_semaphore_t)s4;
  }
  
-@@ -51,6 +104,13 @@
+@@ -51,6 +131,13 @@
  _os_semaphore_dispose(os_semaphore_t sema)
  {
  	semaphore_t s4 = (semaphore_t)sema;
