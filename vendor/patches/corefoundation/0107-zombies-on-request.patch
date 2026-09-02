@@ -1,0 +1,39 @@
+zombies on request, so a freed object says which one it was
+
+The zombie machinery is compiled in here, ENABLE_ZOMBIES is defined at the top of this
+file, and nothing ever called _CFEnableZombies. So a message to a freed object crashed
+inside objc_class::demangledName naming a garbage class, and the selector and the class
+were both lost, which is the one thing that would have identified it.
+
+___forwarding___ already prints the original class and selector when the receiver is a
+zombie. It only needed switching on. NSZombieEnabled does that, read once at CF
+initialisation. Present but EMPTY is off, and so is 0 or n, because a shell writes VAR=
+for an unset variable and nobody means that as yes.
+
+--- a/CFRuntime.c
++++ b/CFRuntime.c
+@@ -982,6 +982,24 @@
+         __CFTSDLinuxInitialize();
+ #endif
+         
++        /*
++         * ZOMBIES ON REQUEST. The machinery is compiled in and nothing ever switched it on, so a
++         * message to a freed object crashed inside objc naming a garbage class instead of saying
++         * which object and which selector. ___forwarding___ already prints exactly that when the
++         * receiver is a zombie.
++         *
++         * Present but EMPTY is off, which is what a shell writes for VAR= and not what anyone
++         * means by it. Off by default: zombies never free anything.
++         */
++        {
++            const char *zombies = getenv("NSZombieEnabled");
++
++            if (zombies != NULL && zombies[0] != '\0' && zombies[0] != '0'
++                && zombies[0] != 'n' && zombies[0] != 'N') {
++                _CFEnableZombies();
++            }
++        }
++
+         __CFProphylacticAutofsAccess = true;
+ 
+         for (CFIndex idx = 0; idx < sizeof(__CFEnv) / sizeof(__CFEnv[0]); idx++) {
