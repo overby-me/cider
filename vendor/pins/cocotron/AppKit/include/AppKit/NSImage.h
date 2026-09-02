@@ -59,6 +59,10 @@ typedef enum {
 
 + imageNamed: (NSString *) name;
 
++ (NSImage *) imageWithSize: (NSSize) size
+                    flipped: (BOOL) flipped
+             drawingHandler: (BOOL (^)(NSRect dstRect)) drawingHandler;
+
 - initWithSize: (NSSize) size;
 - initWithData: (NSData *) data;
 - initWithContentsOfFile: (NSString *) path;

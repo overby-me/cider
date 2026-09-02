@@ -273,6 +273,60 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
 }
 - (id) initWithFlipped: (BOOL) flipped;
 @end
+/*
+ * A representation whose drawing IS a block, which is what +imageWithSize:flipped:drawingHandler:
+ * hands back. The handler runs on every draw rather than once into a bitmap, because that is what
+ * callers rely on when the block reads the current appearance or a tint colour.
+ */
+@interface CiderBlockImageRep : NSImageRep {
+    BOOL (^_handler)(NSRect dstRect);
+    BOOL _handlerWantsFlipped;
+}
+- initWithSize: (NSSize) size
+       flipped: (BOOL) flipped
+       handler: (BOOL (^)(NSRect dstRect)) handler;
+@end
+
+@implementation CiderBlockImageRep
+
+- initWithSize: (NSSize) size
+       flipped: (BOOL) flipped
+       handler: (BOOL (^)(NSRect dstRect)) handler
+{
+    if ((self = [super init]) == nil)
+        return nil;
+    [self setSize: size];
+    _handlerWantsFlipped = flipped;
+    _handler = [handler copy];
+    return self;
+}
+
+- (void) dealloc {
+    [_handler release];
+    [super dealloc];
+}
+
+- (BOOL) draw {
+    NSSize size = [self size];
+    NSRect rect = NSMakeRect(0, 0, size.width, size.height);
+
+    if (_handler == NULL)
+        return NO;
+
+    if (!_handlerWantsFlipped)
+        return _handler(rect);
+
+    CGContextRef context = NSCurrentGraphicsPort();
+    CGContextSaveGState(context);
+    CGContextTranslateCTM(context, 0, size.height);
+    CGContextScaleCTM(context, 1, -1);
+    BOOL result = _handler(rect);
+    CGContextRestoreGState(context);
+    return result;
+}
+
+@end
+
 @implementation NSImageCacheView
 - (id) initWithFlipped: (BOOL) flipped {
     if ((self = [super init])) {
@@ -911,6 +965,19 @@ static NSImage *_CiderImageFromAssetCatalog(NSString *name) {
     }
 
     return result;
+}
+
++ (NSImage *) imageWithSize: (NSSize) size
+                    flipped: (BOOL) flipped
+             drawingHandler: (BOOL (^)(NSRect dstRect)) drawingHandler
+{
+    NSImage *image = [[[NSImage alloc] initWithSize: size] autorelease];
+    NSImageRep *rep = [[CiderBlockImageRep alloc] initWithSize: size
+                                                       flipped: flipped
+                                                       handler: drawingHandler];
+
+    [image addRepresentation: [rep autorelease]];
+    return image;
 }
 
 + imageNamed: (NSString *) name {

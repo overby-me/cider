@@ -78,6 +78,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     if (self != nil) {
         _trackingNumber = tracking;
         _userData = userData;
+        _eventNumber = eventNumber;
     }
     return self;
 }
@@ -97,6 +98,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
             modifierFlags: modifierFlags
                    window: (id) windowNumber];
     _clickCount = clickCount;
+    _eventNumber = eventNumber;
     return self;
 }
 
@@ -140,6 +142,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     }
 
     return _userData;
+}
+
+/* Identifies one press-drag-release. Zero for an event that was never given one, as macOS does. */
+- (NSInteger) eventNumber {
+    return _eventNumber;
 }
 
 - (NSInteger) buttonNumber {

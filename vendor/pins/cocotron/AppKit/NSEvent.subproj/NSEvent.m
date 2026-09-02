@@ -56,6 +56,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return [[NSDisplay currentDisplay] currentModifierFlags];
 }
 
+/*
+ * Which buttons are held RIGHT NOW, outside any event. The Wayland backend does not track button
+ * state, so this answers "none", and that is a policy answer with a consequence: an application
+ * polling it to ask whether a drag is under way is told there is none. Reporting a button held
+ * instead would be worse, because it never becomes false and the drag never ends.
+ */
++ (NSUInteger) pressedMouseButtons {
+    return 0;
+}
+
+/* Overridden by NSEvent_mouse, which is the only kind that is given one. */
+- (NSInteger) eventNumber {
+    return 0;
+}
+
 - (instancetype) initWithType: (NSEventType) type
                      location: (NSPoint) location
                 modifierFlags: (NSEventModifierFlags) modifierFlags

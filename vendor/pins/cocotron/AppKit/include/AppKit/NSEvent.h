@@ -212,6 +212,7 @@ enum { NSApplicationActivated = 0, NSApplicationDeactivated = 1 };
 
 + (NSPoint) mouseLocation;
 + (NSEventModifierFlags) modifierFlags;
++ (NSUInteger) pressedMouseButtons;
 
 - (instancetype) initWithType: (NSEventType) type
                      location: (NSPoint) location
@@ -306,6 +307,7 @@ enum { NSApplicationActivated = 0, NSApplicationDeactivated = 1 };
 - (BOOL) isARepeat;
 @property(readonly) NSInteger buttonNumber;
 - (NSInteger) buttonNumber;
+- (NSInteger) eventNumber;
 
 
 /* The scroll event properties an application reads before it will look at a wheel event at all.
