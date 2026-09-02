@@ -566,8 +566,23 @@ static NSAppearance *_ciderApplicationAppearance = nil;
     return NO;
 }
 
+/*
+ * AN APPLICATION IS ACTIVE BECAUSE IT WAS LAUNCHED, not because it already has a window.
+ *
+ * isActive was derived purely from the windows: active meant "some window of mine is active". That
+ * is a deadlock for any application that waits to become active before building its FIRST window,
+ * because with no windows there is nothing to be active. On macOS the activation comes from outside
+ * the process entirely, at launch, and applicationDidBecomeActive: is where a great many
+ * applications open what they show.
+ *
+ * A FILE STATIC RATHER THAN AN IVAR, for the same reason the appearance is one: applications
+ * SUBCLASS NSApplication, and adding an ivar here would move every ivar in a subclass compiled
+ * against the real layout.
+ */
+static BOOL _ciderApplicationActive = NO;
+
 - (BOOL) isActive {
-    return [self isActiveExcludingWindow: nil];
+    return _ciderApplicationActive || [self isActiveExcludingWindow: nil];
 }
 
 - (BOOL) isHidden {
@@ -969,6 +984,10 @@ static NSAppearance *_ciderApplicationAppearance = nil;
                           object: self];
     NS_HANDLER [self reportException: localException];
     NS_ENDHANDLER
+
+    /* AND THEN IT IS ACTIVE, which is what launching an application does. Sent after
+     * DidFinishLaunching, in the order macOS uses. */
+    [self _ciderBecomeActive];
 
             [pool release];
 }
@@ -1386,7 +1405,31 @@ static void _CiderAppNote(const char *what, id sender)
 }
 
 - (void) activateIgnoringOtherApps: (BOOL) flag {
-    NSUnimplementedMethod();
+    [self _ciderBecomeActive];
+}
+
+/* The pair of notifications an activation carries, posted once. */
+- (void) _ciderBecomeActive {
+    if (_ciderApplicationActive)
+        return;
+    _ciderApplicationActive = YES;
+
+    if (getenv("CIDER_TRACE_NIB") != NULL) {
+        fprintf(stderr, "CIDER_NIB application became active\n");
+        fflush(stderr);
+    }
+
+    NS_DURING [[NSNotificationCenter defaultCenter]
+            postNotificationName: NSApplicationWillBecomeActiveNotification
+                          object: self];
+    NS_HANDLER [self reportException: localException];
+    NS_ENDHANDLER
+
+    NS_DURING [[NSNotificationCenter defaultCenter]
+            postNotificationName: NSApplicationDidBecomeActiveNotification
+                          object: self];
+    NS_HANDLER [self reportException: localException];
+    NS_ENDHANDLER
 }
 
 - (void) deactivate {
