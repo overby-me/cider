@@ -451,6 +451,21 @@ static void cider_combine_class_destroy(void *object)
  * immediate members keeps them at words ten and eleven, and the block has to be big enough to hold
  * them. That is what CurrentValueSubject's descriptor says next door.
  */
+/* The layout objc reads a class's read-only part with; only the fields used here are named. */
+struct cider_class_ro {
+    uint32_t flags;
+    uint32_t instanceStart;
+    uint32_t instanceSize;
+    uint32_t reserved;
+    const uint8_t *ivarLayout;
+    const char *name;
+    const void *baseMethodList;
+    const void *baseProtocols;
+    const void *ivars;
+    const uint8_t *weakIvarLayout;
+    const void *baseProperties;
+};
+
 static void *cider_combine_build_class(const void *descriptor, size_t instanceSize,
                                        const void *arg0, const void *arg1)
 {
@@ -483,9 +498,41 @@ static void *cider_combine_build_class(const void *descriptor, size_t instanceSi
      * _objc_realizeClassFromSwift expects, so that entry point does not bridge the two halves
      * either. What is needed is a class_ro_t of our own and the realize call over that.
      */
-    words[0] = (uintptr_t) words;
-    words[1] = 0;
-    words[4] = 2;                       /* objc data: the low bit says this is a Swift class */
+    {
+        /*
+         * A REGISTERED CLASS'S HEADER, BECAUSE THIS CLASS IS HANDED TO OBJECTIVE-C.
+         *
+         * The isa used to point at the metadata itself, on the premise that objc would never see
+         * one of these. iA Writer disproves it: it stores the observer in an ObjC property and the
+         * setter retains it. objc_msgSend loads the isa, reads the method cache at class + 0x10,
+         * finds a zero and dereferences it.
+         *
+         * A Swift class metadata opens with the same five words as an ObjC class, so a class made
+         * and REGISTERED through the runtime supplies them: isa, superclass, the two cache words
+         * and the data pointer. Registration is the part that matters and the part that cannot be
+         * faked; a hand-built class_ro_t with a valid name and an empty cache gets as far as the
+         * lookup and then fails, because objc searches tables this class is not in.
+         *
+         * One class per metadata: those five words include the method cache, and sharing a cache
+         * between two classes lets one poison the other's lookups.
+         */
+        static int serial;
+        char className[64];
+        Class backing;
+
+        snprintf(className, sizeof(className), "CiderCombineObject%d", serial++);
+        backing = objc_allocateClassPair(objc_getClass("NSObject"), className, 0);
+        if (backing != Nil) {
+            objc_registerClassPair(backing);
+            memcpy(words, (const void *) backing, 5 * sizeof(uintptr_t));
+        } else {
+            words[0] = (uintptr_t) words;
+            words[1] = 0;
+        }
+    }
+
+    /* words[4] is the registered class's data pointer. The Swift bit is deliberately NOT set:
+     * with it, objc refuses to look anything up on a class it has not realized. */
     words[5] = 2;                       /* flags */
     ((uint32_t *) &words[6])[0] = (uint32_t) instanceSize;
     ((uint16_t *) &words[6])[2] = 7;    /* alignment mask, eight byte alignment */

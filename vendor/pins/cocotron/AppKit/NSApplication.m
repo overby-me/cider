@@ -238,9 +238,35 @@ static void _CiderAppFatalSignal(int signo, siginfo_t *info, void *ucontextIn)
             if (readable)
                 isa = *(const void **) receiver;
 
-            fprintf(stderr, "CIDER_APP messaging receiver=%p selector=%p (%s) isa=%s%p\n",
+            /*
+             * WHOSE CLASS IT IS. An ObjC class keeps its data at +0x20 and the read-only part holds
+             * the name at +24, so a class that objc could ever message has a readable name there.
+             * That is what says whether a bad receiver came from the application or from us.
+             */
+            const char *className = NULL;
+            Dl_info isainfo;
+
+            if (isa != NULL && msync((void *) ((uintptr_t) isa & ~(uintptr_t) 4095), 4096,
+                                     MS_ASYNC) == 0) {
+                uintptr_t data = ((const uintptr_t *) isa)[4] & ~(uintptr_t) 7;
+
+                if (data > 0x1000 && msync((void *) (data & ~(uintptr_t) 4095), 4096,
+                                           MS_ASYNC) == 0) {
+                    const char *candidate = ((const char *const *) data)[3];
+
+                    if (candidate != NULL &&
+                        msync((void *) ((uintptr_t) candidate & ~(uintptr_t) 4095), 4096,
+                              MS_ASYNC) == 0)
+                        className = candidate;
+                }
+            }
+
+            fprintf(stderr, "CIDER_APP messaging receiver=%p selector=%p (%s) isa=%s%p class=%s%s\n",
                     (void *) receiver, (void *) selector, name ? name : "unreadable",
-                    readable ? "" : "unreadable ", isa);
+                    readable ? "" : "unreadable ", isa,
+                    className ? className : "unreadable",
+                    (isa != NULL && dladdr((void *) isa, &isainfo) != 0) ? " (in an image)"
+                                                                        : " (heap)");
         }
 
         /*
