@@ -1269,6 +1269,48 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
     return nil;
 }
 
+/*
+ * THE REST OF THE BATCHED ROW API, none of it animated here.
+ *
+ * Every one of these describes a change macOS would animate. This table draws from the data source
+ * on demand, so asking it to draw again produces the right CONTENT for all of them; the animation
+ * is what is lost. They are here because iA Writer calls them between beginUpdates and endUpdates
+ * and a missing one raises.
+ */
+- (void) reloadDataForRowIndexes: (NSIndexSet *) rows columnIndexes: (NSIndexSet *) columns {
+    [self reloadData];
+}
+
+- (void) insertRowsAtIndexes: (NSIndexSet *) indexes withAnimation: (NSUInteger) animation {
+    [self reloadData];
+}
+
+- (void) removeRowsAtIndexes: (NSIndexSet *) indexes withAnimation: (NSUInteger) animation {
+    [self reloadData];
+}
+
+- (void) moveRowAtIndex: (NSInteger) oldIndex toIndex: (NSInteger) newIndex {
+    [self reloadData];
+}
+
+/*
+ * A BATCH OF ROW CHANGES. macOS coalesces the inserts, removes and moves between these two and
+ * animates them as one; nothing here animates, so the pair only has to NEST correctly and leave the
+ * table reloaded when the outermost one closes.
+ *
+ * iA Writer brackets its library updates with these and raised on the missing selector.
+ */
+- (void) beginUpdates {
+    _updateNesting++;
+}
+
+- (void) endUpdates {
+    if (_updateNesting > 0)
+        _updateNesting--;
+    if (_updateNesting == 0)
+        [self reloadData];
+}
+
 - (void) reloadData {
     [self noteNumberOfRowsChanged];
     [self setNeedsDisplay: YES];

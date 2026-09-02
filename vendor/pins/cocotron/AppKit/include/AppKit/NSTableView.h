@@ -103,6 +103,7 @@ typedef NSUInteger NSTableViewColumnAutoresizingStyle;
     NSColor *_backgroundColor;
     NSColor *_gridColor;
     BOOL _allowsColumnReordering;
+    NSInteger _updateNesting;
     BOOL _allowsColumnResizing;
     BOOL _autoresizesAllColumnsToFit;
     NSTableViewColumnAutoresizingStyle _columnAutoresizingStyle;
@@ -239,6 +240,13 @@ typedef NSUInteger NSTableViewColumnAutoresizingStyle;
 
 - (void) noteNumberOfRowsChanged;
 - (void) noteHeightOfRowsWithIndexesChanged: (NSIndexSet *) indexSet;
+- (void) reloadDataForRowIndexes: (NSIndexSet *) rows columnIndexes: (NSIndexSet *) columns;
+- (void) insertRowsAtIndexes: (NSIndexSet *) indexes withAnimation: (NSUInteger) animation;
+- (void) removeRowsAtIndexes: (NSIndexSet *) indexes withAnimation: (NSUInteger) animation;
+- (void) moveRowAtIndex: (NSInteger) oldIndex toIndex: (NSInteger) newIndex;
+- (void) noteHeightOfRowsWithIndexesChanged: (NSIndexSet *) indexes;
+- (void) beginUpdates;
+- (void) endUpdates;
 - (NSView *) makeViewWithIdentifier: (NSUserInterfaceItemIdentifier) identifier
                               owner: (id) owner;
 - (void) reloadData;

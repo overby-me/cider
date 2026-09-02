@@ -498,6 +498,37 @@ static inline id childOfItemAtIndex(NSOutlineView *self, id item,
     [super reloadData];
 }
 
+/*
+ * THE ANIMATED TREE EDITS, which here are not animated.
+ *
+ * macOS moves the affected rows with an animation and leaves the rest alone. Nothing here animates,
+ * and the tree this view keeps is rebuilt from the data source anyway, so each of these asks for
+ * that rebuild. The CONTENT ends up right, which is what a caller depends on; the animation is what
+ * is lost. iA Writer brackets its library edits with beginUpdates and raised on the missing
+ * selector before any of them ran.
+ */
+- (void) insertItemsAtIndexes: (NSIndexSet *) indexes
+                     inParent: (id) parent
+                withAnimation: (NSUInteger) animation
+{
+    [self reloadData];
+}
+
+- (void) removeItemsAtIndexes: (NSIndexSet *) indexes
+                     inParent: (id) parent
+                withAnimation: (NSUInteger) animation
+{
+    [self reloadData];
+}
+
+- (void) moveItemAtIndex: (NSInteger) fromIndex
+                inParent: (id) oldParent
+                 toIndex: (NSInteger) toIndex
+                inParent: (id) newParent
+{
+    [self reloadData];
+}
+
 - (void) reloadItem: (id) item reloadChildren: (BOOL) reloadChildren {
     [self _resetMapTables];
     [self invalidateRowCache];
@@ -523,12 +554,29 @@ static inline id childOfItemAtIndex(NSOutlineView *self, id item,
 // override for new outline-related selectors.
 // FIX: Cocoa checks for selectors as they are needed, see -[NSTableView
 // setDataSource].
+- (BOOL) stronglyReferencesItems {
+    return _stronglyReferencesItems;
+}
+
+- (void) setStronglyReferencesItems: (BOOL) strongly {
+    _stronglyReferencesItems = strongly;
+}
+
 - (void) setDataSource: dataSource {
+    /*
+     * THREE, NOT FOUR. objectValueForTableColumn:byItem: is what a CELL based outline view asks for,
+     * and a view based one never does: its delegate hands back views from
+     * outlineView:viewForTableColumn:item: instead. Demanding it here rejected a data source macOS
+     * accepts, and iA Writer died on exactly that with its library outline.
+     *
+     * Nothing downstream needs it either: -_objectValueForTableColumn:byItem: above already asks
+     * the data source, then the delegate, and answers nil when neither implements it.
+     *
+     * The other three describe the TREE, and an outline view cannot do anything without them.
+     */
     SEL requiredSelectors[] = {@selector(outlineView:child:ofItem:),
                                @selector(outlineView:isItemExpandable:),
                                @selector(outlineView:numberOfChildrenOfItem:),
-                               @selector(outlineView:
-                                       objectValueForTableColumn:byItem:),
                                NULL};
     NSInteger i;
 

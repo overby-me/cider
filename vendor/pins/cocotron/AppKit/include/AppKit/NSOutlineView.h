@@ -55,6 +55,7 @@ APPKIT_EXPORT NSString *const NSOutlineViewDisclosureButtonKey;
     CGFloat _indentationPerLevel;
     BOOL _indentationMarkerFollowsCell;
     BOOL _autoresizesOutlineColumn;
+    BOOL _stronglyReferencesItems;
     BOOL _autosaveExpandedItems;
     CGFloat _editingCellPadding;
 }
@@ -93,6 +94,22 @@ APPKIT_EXPORT NSString *const NSOutlineViewDisclosureButtonKey;
 - (BOOL) shouldCollapseAutoExpandedItemsForDeposited: (BOOL) collapse;
 
 - (NSRect) frameOfOutlineCellAtRow: (NSInteger) row;
+
+
+/* Whether the view keeps its items alive. Nothing here holds them weakly, so it is already true in
+ * effect; the value is carried because iA Writer sets it and raised on the missing selector. */
+- (void) insertItemsAtIndexes: (NSIndexSet *) indexes
+                     inParent: (id) parent
+                withAnimation: (NSUInteger) animation;
+- (void) removeItemsAtIndexes: (NSIndexSet *) indexes
+                     inParent: (id) parent
+                withAnimation: (NSUInteger) animation;
+- (void) moveItemAtIndex: (NSInteger) fromIndex
+                inParent: (id) oldParent
+                 toIndex: (NSInteger) toIndex
+                inParent: (id) newParent;
+- (BOOL) stronglyReferencesItems;
+- (void) setStronglyReferencesItems: (BOOL) strongly;
 
 @end
 
