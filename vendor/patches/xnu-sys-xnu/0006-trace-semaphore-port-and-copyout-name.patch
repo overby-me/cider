@@ -1,0 +1,72 @@
+trace the semaphore port a guest is given, and the name it is copied out to
+
+The guest sees ONE port name for every semaphore it creates and its own namespace never
+grows, so the question is where between the two sides the name is lost. These two traces
+answer it in one run, and the answer is that this side is right:
+
+    convert semaphore=0x..5bc0 port=0x..5c40 owner=0x..2740
+    convert semaphore=0x..5d20 port=0x..7e20 owner=0x..2740
+    copyout  space=0x..c3f0 task=0x..2740 object=0x..5c40 name=5379
+    copyout  space=0x..c3f0 task=0x..2740 object=0x..7e20 name=7427
+
+Distinct semaphores, distinct ports, distinct names, and every copyout lands in the space of
+the task that owns the semaphore. The guest meanwhile read one name three times.
+
+convert is unconditional because it runs a handful of times in a whole run. copyout is gated:
+every right a guest receives passes through it.
+
+--- a/osfmk/kern/ipc_sync.c
++++ b/osfmk/kern/ipc_sync.c
+@@ -33,6 +33,8 @@
+ #include <kern/sync_sema.h>
+ #include <kern/sync_lock.h>
+ #include <kern/ipc_kobject.h>
++#include <stdlib.h>
++extern void xnu_sys_log(int level, const char* format, ...);
+ #include <kern/ipc_sync.h>
+ #include <ipc/port.h>
+ #include <ipc/ipc_space.h>
+@@ -143,6 +145,11 @@
+ 	    (ipc_kobject_t) semaphore, IKOT_SEMAPHORE, IPC_KOBJECT_ALLOC_NONE, false, 0)) {
+ 		semaphore_dereference(semaphore);
+ 	}
++	/* CIDER_TRACE_SEM: the guest sees ONE name for every semaphore it creates and its namespace
++	 * never grows, so the question this answers is whether the ports handed back here are distinct
++	 * objects at all. */
++	xnu_sys_log(2, "CIDER_SEM daemon convert semaphore=%p port=%p owner=%p",
++	            (void *) semaphore, (void *) semaphore->port, (void *) semaphore->owner);
+ 	return semaphore->port;
+ }
+ 
+--- a/osfmk/ipc/ipc_object.c
++++ b/osfmk/ipc/ipc_object.c
+@@ -86,6 +86,8 @@
+ #include <ipc/ipc_space.h>
+ #include <ipc/ipc_entry.h>
+ #include <ipc/ipc_object.h>
++#include <stdlib.h>
++extern void xnu_sys_log(int level, const char* format, ...);
+ #include <ipc/ipc_hash.h>
+ #include <ipc/ipc_right.h>
+ #include <ipc/ipc_notify.h>
+@@ -1022,6 +1024,20 @@
+ 		ipc_object_destroy(object, msgt_name);
+ 	}
+ 
++	/* CIDER_SEM: which name a copied-out right is given, and for which object. The guest sees one
++	 * name for every semaphore it creates while five distinct ports are made here. */
++	/* CIDER_TRACE_SEM, read once: every right the guest receives comes through here, so this is
++	 * far too hot to leave on. */
++	static int trace = -1;
++	if (trace < 0) {
++		trace = getenv("CIDER_TRACE_SEM") != NULL;
++	}
++	if (trace)
++	xnu_sys_log(2, "CIDER_SEM copyout space=%p task=%p object=%p kr=%d name=%u",
++	            (void *) space, (void *) (space ? space->is_task : NULL),
++	            (void *) object, (int) kr,
++	            (unsigned) (kr == KERN_SUCCESS ? name : 0));
++
+ 	return kr;
+ }
+ 
