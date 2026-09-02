@@ -167,6 +167,19 @@ CiderMetadataResponse cider_combine_anypublisher_metadata_accessor(size_t reques
     CiderMetadataResponse answer;
 
     if (cider_combine_trace()) {
+        /* The same question as for the other accessors: are these really metadata? The runtime walks
+         * them transitively once this type is built, and one that is not costs a fault far away. */
+        {
+            const uintptr_t *o = (const uintptr_t *) output;
+            const uintptr_t *f = (const uintptr_t *) failure;
+
+            fprintf(stderr, "CIDER_COMBINE anypublisher out=%p kind=0x%lx desc=%p  "
+                            "fail=%p kind=0x%lx desc=%p\n",
+                    (const void *) o, o ? (unsigned long) o[0] : 0UL,
+                    o ? (const void *) o[1] : NULL,
+                    (const void *) f, f ? (unsigned long) f[0] : 0UL,
+                    f ? (const void *) f[1] : NULL);
+        }
         fprintf(stderr, "CIDER_COMBINE accessor request=%zu output=%p failure=%p get=%p\n",
                 request, output, failure, (void *) get);
         fflush(stderr);
@@ -220,9 +233,25 @@ static CiderMetadataResponse cider_combine_generic_metadata(const void *descript
         return none;
     }
     if (cider_combine_trace()) {
+        size_t i;
+
         fprintf(stderr, "CIDER_COMBINE %s accessor request=%zu args=%p,%p (array at %p)\n",
                 name, request, arguments[0], count > 1 ? arguments[1] : NULL,
                 (const void *) arguments);
+
+        /* IS EACH ARGUMENT REALLY METADATA? The runtime walks them transitively after instantiating,
+         * so one that is not costs a fault deep inside checkTransitiveCompleteness with nothing to
+         * say which argument it came from. The first word of metadata is its kind. */
+        for (i = 0; i < count; i++) {
+            const uintptr_t *word = (const uintptr_t *) arguments[i];
+
+            if (word == NULL) {
+                fprintf(stderr, "CIDER_COMBINE %s   arg %zu = NULL\n", name, i);
+                continue;
+            }
+            fprintf(stderr, "CIDER_COMBINE %s   arg %zu = %p kind=0x%lx desc=%p\n",
+                    name, i, (const void *) word, (unsigned long) word[0], (const void *) word[1]);
+        }
         fflush(stderr);
     }
     answer = get(request, arguments, descriptor);
