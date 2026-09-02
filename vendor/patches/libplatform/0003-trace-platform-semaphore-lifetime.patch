@@ -1,23 +1,16 @@
-trace platform semaphore lifetime, in a total order
+trace platform semaphore lifetime, in a total order, with the refcount
 
 The cached path creates in libplatform, not libdispatch, so a trace in libdispatch reported
 created=0 for a name that was plainly in use. Several threads write these lines, so an atomic
-sequence number makes the order unambiguous rather than merely apparent.
+sequence number makes the order unambiguous, and the thread port names which thread.
 
-What it shows, in one iTerm2 run:
-
-    seq=0 created name=11779
-    seq=1 created name=11779     <- the same name, with no destroy between
-    seq=2 destroying name=11779
-    seq=3 created name=11779
-
-Every _os_semaphore_create in the run returned the SAME name, which in Mach means the same
-PORT was copied out each time: one semaphore handed to every caller. One holder destroys it
-and the others are left waiting on a dead name.
+refs is what separates the two possible causes of a repeated name. Mach gives one name per
+port, so the same port copied out twice repeats the name with refs=2; an allocator handing
+out a name that is already in use repeats it with refs=1.
 
 --- a/src/os/semaphore.c
 +++ b/src/os/semaphore.c
-@@ -19,6 +19,9 @@
+@@ -19,7 +19,11 @@
   */
  
  #include "os/internal.h"
@@ -25,9 +18,11 @@ and the others are left waiting on a dead name.
 +#include <stdlib.h>
 +#include <unistd.h>
  #include <mach/mach_init.h>
++#include <mach/mach_port.h>
  #include <mach/semaphore.h>
  #include <mach/task.h>
-@@ -36,6 +39,10 @@
+ #include <mach/thread_switch.h>
+@@ -36,6 +40,10 @@
  		} \
  	} while (0)
  
@@ -38,28 +33,39 @@ and the others are left waiting on a dead name.
  os_semaphore_t
  _os_semaphore_create(void)
  {
-@@ -44,6 +51,13 @@
+@@ -44,6 +52,22 @@
  	kr = semaphore_create(mach_task_self(), &s4, SYNC_POLICY_FIFO, 0);
  	OS_VERIFY_MIG(kr, "Allocating semaphore failed with MIG_REPLY_MISMATCH");
  	OS_SEMAPHORE_VERIFY_KR(kr, "Creating semaphore failed, possible port leak");
 +	/* THE CACHED PATH CREATES HERE, not in libdispatch, which is why a trace there saw nothing.
 +	 * CIDER_TRACE_SEM, off by default: this is a hot path. */
 +	if (getenv("CIDER_TRACE_SEM")) {
-+		fprintf(stderr, "CIDER_SEM seq=%d pid=%d platform created name=%d\n",
-+		        __sync_fetch_and_add(&_cider_sem_seq, 1), (int)getpid(), (int)s4);
++		/* refs SEPARATES THE TWO CAUSES of a repeated name. Mach gives one name per port, so if
++		 * the same port is copied out twice the name repeats with refs=2; a name allocator handing
++		 * out a name that is already in use repeats it with refs=1. */
++		mach_port_urefs_t refs = 0;
++		kern_return_t rkr = mach_port_get_refs(mach_task_self(), s4,
++		                                       MACH_PORT_RIGHT_SEND, &refs);
++		mach_port_t self = mach_thread_self();
++		fprintf(stderr, "CIDER_SEM seq=%d pid=%d thread=%d platform created name=%d refs=%d rkr=%d\n",
++		        __sync_fetch_and_add(&_cider_sem_seq, 1), (int)getpid(), (int)self,
++		        (int)s4, (int)refs, (int)rkr);
 +		fflush(stderr);
++		mach_port_deallocate(mach_task_self(), self);
 +	}
  	return (os_semaphore_t)s4;
  }
  
-@@ -51,6 +65,11 @@
+@@ -51,6 +75,13 @@
  _os_semaphore_dispose(os_semaphore_t sema)
  {
  	semaphore_t s4 = (semaphore_t)sema;
 +	if (getenv("CIDER_TRACE_SEM")) {
-+		fprintf(stderr, "CIDER_SEM seq=%d pid=%d platform destroying name=%d\n",
-+		        __sync_fetch_and_add(&_cider_sem_seq, 1), (int)getpid(), (int)s4);
++		mach_port_t self = mach_thread_self();
++		fprintf(stderr, "CIDER_SEM seq=%d pid=%d thread=%d platform destroying name=%d\n",
++		        __sync_fetch_and_add(&_cider_sem_seq, 1), (int)getpid(), (int)self, (int)s4);
 +		fflush(stderr);
++		mach_port_deallocate(mach_task_self(), self);
 +	}
  	kern_return_t kr = semaphore_destroy(mach_task_self(), s4);
  	OS_SEMAPHORE_VERIFY_KR(kr, "Destroying semaphore failed");

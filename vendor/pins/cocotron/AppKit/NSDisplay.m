@@ -81,9 +81,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     // Discover the installed backends.
     NSBundle *appKitBundle = [NSBundle bundleForClass: [NSDisplay class]];
     NSMutableArray *backends = [NSMutableArray new];
-    for (NSString *path in
-         [appKitBundle pathsForResourcesOfType: @"backend"
-                                   inDirectory: @"Backends"]) {
+    NSArray *candidates = [appKitBundle pathsForResourcesOfType: @"backend"
+                                                    inDirectory: @"Backends"];
+    for (NSString *path in candidates) {
         NSBundle *backendBundle = [NSBundle bundleWithPath: path];
         if ([backendBundle load]) {
             [backends addObject: backendBundle];
@@ -108,11 +108,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         }
     }
 
-    // None of the backends can be used.
+    // None of the backends can be used. NAME WHERE IT LOOKED: an empty list means either that the
+    // search found no bundle or that every bundle failed to load, and the two want opposite work.
     [NSException raise: NSWindowServerCommunicationException
                 format: @"Failed to connect to a window server. Available "
-                        @"backends are: %@",
-                        backends];
+                        @"backends are: %@. Searched %@ (resources %@), which "
+                        @"offered %lu candidate(s): %@",
+                        backends, [appKitBundle bundlePath],
+                        [appKitBundle resourcePath],
+                        (unsigned long) [candidates count], candidates];
 
     [backends release];
     return nil;

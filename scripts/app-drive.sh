@@ -149,6 +149,12 @@ done
 # buck-setup.nu already computes the list; it is the same one the compiler links against.
 ELF_LIBS=$(grep '^elf_lib_dirs' "$REPO/.buckconfig.local" 2>/dev/null | sed 's/^elf_lib_dirs *= *//')
 
+# THE ENTRY POINTS A NEWER SWIFT EXPECTS. Nothing links this library, so it has to be inserted, and
+# dyld's last-resort lookup matches the image by its exact path, which is why the same string is
+# both variables. Without it iTerm2 and iA Writer die in dyld before any window:
+# "Symbol not found: _$ss042_stdlib_isOSVersionAtLeastOrVariantVersion..., expected in libswiftCore".
+COMPAT=${COMPAT:-/usr/lib/swift/libswiftCompat.dylib}
+
 say "launching $APPBIN"
 (
 	# env, NOT an assignment prefix. An unquoted ${VAR:+NAME=value} is expanded AFTER the line is
@@ -162,6 +168,7 @@ say "launching $APPBIN"
 	UNSET=$(env | awk -F= '/^[A-Za-z_][A-Za-z0-9_]*=/ && length($0)>400 && $1!="PATH" && $1!="LD_LIBRARY_PATH" {printf "-u %s ", $1}')
 	env $UNSET CIDERPREFIX="$PREFIX" WAYLAND_DISPLAY=$NEW XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000} \
 		CIDER_NO_LAUNCHD="${LAUNCHD:-1}" LD_LIBRARY_PATH="$ELF_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+		DYLD_INSERT_LIBRARIES="$COMPAT" CIDER_COMPAT_LIBRARY="$COMPAT" \
 		${TRACE_INPUT:+CIDER_WAYLAND_TRACE_INPUT=1} ${TRACE_ENV:-} \
 		DSERVER_PATH="$(realpath "$CIDERD")" DSERVER_MLDR_PATH="$(realpath "$MLDR")" \
 		DSERVER_LIBEXEC_PATH="$(realpath "$RT")/libexec/cider" \
