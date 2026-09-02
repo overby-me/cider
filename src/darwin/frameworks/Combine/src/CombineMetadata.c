@@ -469,75 +469,40 @@ struct cider_class_ro {
 static void *cider_combine_build_class(const void *descriptor, size_t instanceSize,
                                        const void *arg0, const void *arg1)
 {
-    static const size_t addressPoint = 24;
+    /*
+     * THE CLASS IS CREATED BY OBJC, NOT BY US, because objc checks the class POINTER against its
+     * own tables and refuses one it never registered: "Attempt to use unknown class". Copying a
+     * registered class's five words into a block of our own is not enough, and neither is a
+     * hand-built class_ro_t: registration is the part that cannot be faked.
+     *
+     * objc_allocateClassPair takes extra bytes AFTER the class object, which is exactly where a
+     * Swift class metadata keeps everything that is not the ObjC header: flags, the sizes, the
+     * descriptor and the generic arguments. So the two views share one allocation, objc owns the
+     * front of it and this owns the back.
+     *
+     * The value witness table a value type keeps at minus eight has nowhere to live here, and a
+     * class does not need one to be allocated, retained or released.
+     */
     static const size_t positiveSize = 96;
-    char *block = calloc(1, addressPoint + positiveSize);
+    static int serial;
+    char className[64];
+    Class backing;
     uintptr_t *words;
-    const void *nativeWitnesses = dlsym(RTLD_DEFAULT, "$sBoWV");
 
-    if (block == NULL) {
+    snprintf(className, sizeof(className), "CiderCombineObject%d", serial++);
+    backing = objc_allocateClassPair(objc_getClass("NSObject"), className, positiveSize);
+    if (backing == Nil) {
         return NULL;
     }
-    words = (uintptr_t *) (block + addressPoint);
-    words[-2] = (uintptr_t) cider_combine_class_destroy;
-    words[-1] = (uintptr_t) nativeWitnesses;
+    objc_registerClassPair(backing);
+    words = (uintptr_t *) backing;
 
-    /*
-     * THE ISA POINTS AT THE METADATA ITSELF, and that is NOT enough once Objective-C sees it.
-     *
-     * MEASURED, so that the next attempt does not start from scratch: iA Writer stores the observer
-     * this framework returns in an ObjC property and the setter retains it. objc_msgSend loads the
-     * isa, reads the method cache at class + 0x10, finds the zero left here, and dereferences it:
-     * SIGSEGV at address 0 with a receiver whose isa looks perfectly valid.
-     *
-     * Copying the first five words of a registered class pair over this header (isa, superclass,
-     * two cache words, data) DOES make the message dispatch, and then it fails differently: with
-     * the Swift bit cleared the object reaches _bridgeAnythingToObjectiveC and aborts there, and
-     * with the bit set objc refuses to look anything up because the class was never realized. The
-     * data word copied from a registered class is already a realized class_rw_t, which is not what
-     * _objc_realizeClassFromSwift expects, so that entry point does not bridge the two halves
-     * either. What is needed is a class_ro_t of our own and the realize call over that.
-     */
-    {
-        /*
-         * A REGISTERED CLASS'S HEADER, BECAUSE THIS CLASS IS HANDED TO OBJECTIVE-C.
-         *
-         * The isa used to point at the metadata itself, on the premise that objc would never see
-         * one of these. iA Writer disproves it: it stores the observer in an ObjC property and the
-         * setter retains it. objc_msgSend loads the isa, reads the method cache at class + 0x10,
-         * finds a zero and dereferences it.
-         *
-         * A Swift class metadata opens with the same five words as an ObjC class, so a class made
-         * and REGISTERED through the runtime supplies them: isa, superclass, the two cache words
-         * and the data pointer. Registration is the part that matters and the part that cannot be
-         * faked; a hand-built class_ro_t with a valid name and an empty cache gets as far as the
-         * lookup and then fails, because objc searches tables this class is not in.
-         *
-         * One class per metadata: those five words include the method cache, and sharing a cache
-         * between two classes lets one poison the other's lookups.
-         */
-        static int serial;
-        char className[64];
-        Class backing;
-
-        snprintf(className, sizeof(className), "CiderCombineObject%d", serial++);
-        backing = objc_allocateClassPair(objc_getClass("NSObject"), className, 0);
-        if (backing != Nil) {
-            objc_registerClassPair(backing);
-            memcpy(words, (const void *) backing, 5 * sizeof(uintptr_t));
-        } else {
-            words[0] = (uintptr_t) words;
-            words[1] = 0;
-        }
-    }
-
-    /* words[4] is the registered class's data pointer. The Swift bit is deliberately NOT set:
-     * with it, objc refuses to look anything up on a class it has not realized. */
     words[5] = 2;                       /* flags */
     ((uint32_t *) &words[6])[0] = (uint32_t) instanceSize;
     ((uint16_t *) &words[6])[2] = 7;    /* alignment mask, eight byte alignment */
-    ((uint32_t *) &words[7])[0] = (uint32_t) (addressPoint + positiveSize);
-    ((uint32_t *) &words[7])[1] = (uint32_t) addressPoint;
+    /* The class object is the address point, so nothing precedes it. */
+    ((uint32_t *) &words[7])[0] = (uint32_t) (5 * sizeof(uintptr_t) + positiveSize);
+    ((uint32_t *) &words[7])[1] = 0;
     words[8] = (uintptr_t) descriptor;
     if (arg0 != NULL || arg1 != NULL) {
         words[10] = (uintptr_t) arg0;
