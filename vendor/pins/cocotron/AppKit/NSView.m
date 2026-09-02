@@ -3039,13 +3039,10 @@ static NSView *viewBeingPrinted = nil;
     }
 
     /*
-     * NEVER ANSWER ZERO. A view that is being drawn always has at least one rect being drawn, and
-     * an empty answer is not "nothing is dirty", it is "this view has no idea", which is what the
-     * paths above leave behind once the display cycle has cleared _needsDisplay and the invalid
+     * NEVER ANSWER ZERO: an empty answer here is not "nothing is dirty", it is "no idea", which is
+     * what the paths above leave once the display cycle has cleared _needsDisplay and the invalid
      * rects. -needsToDrawRect: reads a zero count as NO for every rect, and iTerm2 turns it into an
-     * EMPTY range of columns, builds no background colour runs for the line, then asks the empty
-     * result for the run under the cursor and dereferences the nil it gets back (measured:
-     * rectCount 0, withinRange {0, 0}, 25 lines with 0 runs each).
+     * empty range of columns and then dereferences the run it did not get.
      */
     if (*count == 0) {
         *rects = &_visibleRect;

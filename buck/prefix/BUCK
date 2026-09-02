@@ -2552,7 +2552,10 @@ prefix_tree(
         "libexec/cider/usr/lib/swift/libswiftCloudKit.dylib": "//vendor/src:swift_libswiftCloudKit.dylib",
         "libexec/cider/usr/lib/swift/libswiftCompression.dylib": "//vendor/src:swift_libswiftCompression.dylib",
         "libexec/cider/usr/lib/swift/libswiftContacts.dylib": "//vendor/src:swift_libswiftContacts.dylib",
-        "libexec/cider/usr/lib/swift/libswiftCore.dylib": "//vendor/src:swift_libswiftCore.dylib",
+        # 5.5.3, not the 5.2.2 pin the overlays beside it come from: see
+        # vendor/prebuilt/swift-5.5.3/PROVENANCE.md for the one symbol that seam costs.
+        "libexec/cider/usr/lib/swift/libswiftCore.dylib": "//vendor/prebuilt/swift-5.5.3:libswiftCore.dylib",
+        "libexec/cider/usr/lib/swift/libswift_Concurrency.dylib": "//vendor/prebuilt/swift-5.5.3:libswift_Concurrency.dylib",
         "libexec/cider/usr/lib/swift/libswiftCompat.dylib": "//src/darwin/swiftshim:libswiftCompat_dylib",
         "libexec/cider/usr/lib/swift/libswiftSystem.dylib": "//src/darwin/swiftshim:libswiftSystem_dylib",
         "libexec/cider/usr/lib/swift/libswiftOSLog.dylib": "//src/darwin/swiftshim:libswiftOSLog_dylib",

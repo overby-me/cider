@@ -1,0 +1,10 @@
+load("//buck/rules:files.bzl", "export_file")
+
+# See PROVENANCE.md: the standard library moves to 5.5.3, the 44 overlays stay on the 5.2.2 pin.
+[
+    export_file(name = _f, src = _f, visibility = ["PUBLIC"])
+    for _f in [
+        "libswiftCore.dylib",
+        "libswift_Concurrency.dylib",
+    ]
+]
