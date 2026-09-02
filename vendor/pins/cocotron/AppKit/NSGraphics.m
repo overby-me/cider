@@ -18,6 +18,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSColor.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #import <AppKit/NSGraphics.h>
@@ -222,30 +223,53 @@ void NSDottedFrameRect(NSRect rect) {
 
         Fortunately this is not used heavily...
      */
-    if (rect.size.width <= 0 || rect.size.height <= 0)
+    /*
+     * A NaN SIZE MOVED THE STACK POINTER BY A TERABYTE.
+     *
+     * `<= 0` is false for NaN, so a control with a NaN frame got past the guard, `(int) NaN` is
+     * INT_MIN, and the variable-length array below was declared with INT_MIN + INT_MIN + 4
+     * elements. The allocation subtracted about 2^40 from rsp and the first store faulted on the
+     * new stack pointer itself. iTerm2 died there one second in, every run.
+     */
+    if (!(rect.size.width > 0) || !(rect.size.height > 0) ||
+        !isfinite(rect.origin.x) || !isfinite(rect.origin.y))
         return; {
-        NSRect rects[(int) rect.size.width + 2 + (int) rect.size.height + 2];
+        /* Fixed batch, flushed as it fills: the perimeter is the caller's number, not ours. */
+        NSRect rects[256];
         int count = 0;
         int x, y, maxx = NSMaxX(rect), maxy = NSMaxY(rect);
         BOOL on = NO;
+        CGContextRef port = NSCurrentGraphicsPort();
+
+#define CIDER_EMIT(r)                                     \
+    do {                                                  \
+        rects[count++] = (r);                             \
+        if (count == (int) (sizeof(rects) / sizeof(rects[0]))) { \
+            CGContextFillRects(port, rects, count);       \
+            count = 0;                                    \
+        }                                                 \
+    } while (0)
 
         for (x = rect.origin.x; x < maxx; x++, on = !on)
             if (on)
-                rects[count++] = NSMakeRect(x, rect.origin.y, 1, 1);
+                CIDER_EMIT(NSMakeRect(x, rect.origin.y, 1, 1));
 
         for (y = rect.origin.y; y < maxy; y++, on = !on)
             if (on)
-                rects[count++] = NSMakeRect(maxx - 1, y, 1, 1);
+                CIDER_EMIT(NSMakeRect(maxx - 1, y, 1, 1));
 
         for (x = maxx; --x >= rect.origin.x; on = !on)
             if (on)
-                rects[count++] = NSMakeRect(x, maxy, 1, 1);
+                CIDER_EMIT(NSMakeRect(x, maxy, 1, 1));
 
         for (y = maxy; --y >= rect.origin.y; on = !on)
             if (on)
-                rects[count++] = NSMakeRect(rect.origin.x, y, 1, 1);
+                CIDER_EMIT(NSMakeRect(rect.origin.x, y, 1, 1));
 
-        CGContextFillRects(NSCurrentGraphicsPort(), rects, count);
+#undef CIDER_EMIT
+
+        if (count > 0)
+            CGContextFillRects(port, rects, count);
     }
 }
 
