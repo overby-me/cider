@@ -19,8 +19,79 @@
 
 #import <objc/runtime.h>
 #import <AppKit/NSTableCellView.h>
+#import <AppKit/NSTextField.h>
+#import <AppKit/NSImageView.h>
+#import <Foundation/NSArray.h>
 
 @implementation NSTableCellView
+
+/*
+ * THE REAL SHAPE, not just a forwarder.
+ *
+ * This class was nothing but a message swallower, so every one of these returned nil quietly: a
+ * table that vends cell views got views whose textField was nil, which is why iA Writer's library
+ * rows drew as empty stripes with the outline structure around them intact. The outlets are what a
+ * nib connects and what a delegate fills in.
+ *
+ * The stub forwarder below still catches everything else, so this is strictly more than there was.
+ */
+- (id) objectValue {
+    return _objectValue;
+}
+
+- (void) setObjectValue: (id) objectValue {
+    objectValue = [objectValue retain];
+    [_objectValue release];
+    _objectValue = objectValue;
+}
+
+- (NSTextField *) textField {
+    return _textField;
+}
+
+- (void) setTextField: (NSTextField *) textField {
+    textField = [textField retain];
+    [_textField release];
+    _textField = textField;
+}
+
+- (NSImageView *) imageView {
+    return _imageView;
+}
+
+- (void) setImageView: (NSImageView *) imageView {
+    imageView = [imageView retain];
+    [_imageView release];
+    _imageView = imageView;
+}
+
+- (NSBackgroundStyle) backgroundStyle {
+    return _backgroundStyle;
+}
+
+- (void) setBackgroundStyle: (NSBackgroundStyle) backgroundStyle {
+    _backgroundStyle = backgroundStyle;
+    [self setNeedsDisplay: YES];
+}
+
+- (NSInteger) rowSizeStyle {
+    return _rowSizeStyle;
+}
+
+- (void) setRowSizeStyle: (NSInteger) rowSizeStyle {
+    _rowSizeStyle = rowSizeStyle;
+}
+
+- (NSArray *) draggingImageComponents {
+    return [NSArray array];
+}
+
+- (void) dealloc {
+    [_objectValue release];
+    [_textField release];
+    [_imageView release];
+    [super dealloc];
+}
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {

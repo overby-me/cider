@@ -25,6 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSImageCell.h>
 #import <AppKit/NSInterfaceStyle.h>
 #import <AppKit/NSOutlineView.h>
+#include <stdio.h>
+#include <stdlib.h>
+#import <objc/runtime.h>
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSStringDrawing.h>
 #import <AppKit/NSTableColumn.h>
@@ -1043,6 +1046,33 @@ static void loadItemIntoMapTables(NSOutlineView *self, id item,
 }
 
 /*
+ * An outline vends its views by ITEM, not by row, so both halves of the view based path are
+ * redirected. Everything else about it is the table's.
+ */
+- (BOOL) _isViewBased {
+    BOOL viewBased = [_delegate respondsToSelector: @selector(outlineView:viewForTableColumn:item:)];
+
+    if (getenv("CIDER_TRACE_FRAMES") != NULL) {
+        static BOOL said = NO;
+
+        if (!said) {
+            said = YES;
+            fprintf(stderr, "CIDER_FRAME NSOutlineView viewBased=%d delegate=%s dataSource=%s\n",
+                    viewBased, object_getClassName(_delegate), object_getClassName(_dataSource));
+        }
+    }
+    return viewBased;
+}
+
+- (NSView *) _viewForTableColumn: (NSTableColumn *) column row: (NSInteger) row {
+    if (![self _isViewBased])
+        return nil;
+    return [_delegate outlineView: self
+               viewForTableColumn: column
+                             item: [self itemAtRow: row]];
+}
+
+/*
  * ASK ONLY IF IT ANSWERS. objectValueForTableColumn:byItem: is what a CELL based outline view wants
  * and it is OPTIONAL: a view based one supplies its rows through outlineView:viewForTableColumn:item:
  * and never implements this. Sending it regardless raised on iA Writer's organiser, from inside
@@ -1052,7 +1082,17 @@ static void loadItemIntoMapTables(NSOutlineView *self, id item,
 - (id) dataSourceObjectValueForTableColumn: (NSTableColumn *) tableColumn
                                        row: (NSInteger) row
 {
-    return [self _objectValueForTableColumn: tableColumn byItem: [self itemAtRow: row]];
+    SEL byItem = @selector(outlineView:objectValueForTableColumn:byItem:);
+
+    if ([_dataSource respondsToSelector: byItem] || [_delegate respondsToSelector: byItem])
+        return [self _objectValueForTableColumn: tableColumn byItem: [self itemAtRow: row]];
+
+    /*
+     * NOT nil: the superclass consults the column's value BINDING when no data source method
+     * answers, and an outline driven by an NSTreeController has nothing else. Returning nil here
+     * drew every row as an empty stripe.
+     */
+    return [super dataSourceObjectValueForTableColumn: tableColumn row: row];
 }
 
 - (void) _willDisplayCell: (NSCell *) cell

@@ -1332,7 +1332,86 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
         [self reloadData];
 }
 
+
+/*
+ * VIEW BASED ROWS.
+ *
+ * A modern table does not draw cells at all: it asks its delegate for a VIEW per cell and puts that
+ * view in the table. iA Writer's library sidebar is one, which is why its rows drew as empty
+ * stripes here: the structure was right and every label was missing, because nothing ever asked for
+ * a view.
+ *
+ * The rule is which methods the delegate has. If it can vend a view, this is a view based table and
+ * the cell path is skipped entirely; otherwise nothing changes for the cell based tables that
+ * already work. The views are kept in a dictionary keyed by row and column and reused, which is
+ * what the identifier based reuse on macOS amounts to from the table's side.
+ */
+- (BOOL) _isViewBased {
+    return [_delegate respondsToSelector: @selector(tableView:viewForTableColumn:row:)];
+}
+
+- (NSView *) _viewForTableColumn: (NSTableColumn *) column row: (NSInteger) row {
+    if (![self _isViewBased])
+        return nil;
+    return [_delegate tableView: self viewForTableColumn: column row: row];
+}
+
+static NSString *_CiderCellViewKey(NSInteger column, NSInteger row) {
+    return [NSString stringWithFormat: @"%ld.%ld", (long) column, (long) row];
+}
+
+- (void) _updateCellViewsInRect: (NSRect) clipRect {
+    if (![self _isViewBased])
+        return;
+
+    if (_cellViews == nil)
+        _cellViews = [[NSMutableDictionary alloc] init];
+
+    NSRange rows = [self rowsInRect: clipRect];
+    NSRange columns = [self columnsInRect: clipRect];
+    NSInteger numberOfRows = [self numberOfRows];
+    NSMutableSet *live = [NSMutableSet set];
+
+    for (NSInteger row = rows.location; row < NSMaxRange(rows) && row < numberOfRows; row++) {
+        for (NSInteger col = columns.location; col < NSMaxRange(columns); col++) {
+            NSTableColumn *column = [_tableColumns objectAtIndex: col];
+            NSString *key = _CiderCellViewKey(col, row);
+            NSView *view = [_cellViews objectForKey: key];
+
+            if (view == nil) {
+                view = [self _viewForTableColumn: column row: row];
+                if (getenv("CIDER_TRACE_FRAMES") != NULL)
+                    fprintf(stderr, "CIDER_FRAME cellView row %ld col %ld -> %s\n",
+                            (long) row, (long) col,
+                            view != nil ? object_getClassName(view) : "nil");
+                if (view == nil)
+                    continue;
+                [_cellViews setObject: view forKey: key];
+                [self addSubview: view];
+            }
+
+            [live addObject: key];
+            [view setFrame: [self frameOfCellAtColumn: col row: row]];
+        }
+    }
+
+    /* Anything scrolled away goes, so a row does not keep a view from a position it no longer has. */
+    for (NSString *key in [_cellViews allKeys]) {
+        if ([live containsObject: key])
+            continue;
+        [[_cellViews objectForKey: key] removeFromSuperview];
+        [_cellViews removeObjectForKey: key];
+    }
+}
+
+- (void) _discardCellViews {
+    for (NSView *view in [_cellViews allValues])
+        [view removeFromSuperview];
+    [_cellViews removeAllObjects];
+}
+
 - (void) reloadData {
+    [self _discardCellViews];
     [self noteNumberOfRowsChanged];
     [self setNeedsDisplay: YES];
     [_headerView setNeedsDisplay: YES];
@@ -1452,6 +1531,10 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
     if (row < 0 || row >= numberOfRows)
         [NSException raise: NSInvalidArgumentException
                     format: @"invalid row in drawRow:clipRect:"];
+
+    /* A view based row is drawn by its own subviews; there is no cell to draw. */
+    if ([self _isViewBased])
+        return;
 
     for (; drawThisColumn < NSMaxRange(visibleColumns); drawThisColumn++) {
 
@@ -1807,6 +1890,7 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
     NSInteger drawThisRow, numberOfRows = [self numberOfRows];
 
     [self drawBackgroundInClipRect: clipRect];
+    [self _updateCellViewsInRect: clipRect];
 
     if (numberOfRows > 0) {
         [self highlightSelectionInClipRect: clipRect];
