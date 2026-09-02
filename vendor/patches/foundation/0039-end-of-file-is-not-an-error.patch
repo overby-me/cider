@@ -1,0 +1,45 @@
+end of file is not an error for availableData
+
+A pipe whose writer has finished answers 0 bytes, which is what happens every time a child
+process exits, and macOS returns empty data for it. This raised NSFileHandleOperationException
+carrying whatever errno was left over from before, so the message read "No such file or
+directory" for a read that never touched a path.
+
+iTerm2's pidinfo service died on it, inside -[pidinfo reallyRunShellScript:shell:completion:]:
+it runs a shell script and reads the output to the end, and the last read is always this one.
+errno is cleared before the read so a real failure is still reported.
+
+--- a/src/NSFileHandle.m
++++ b/src/NSFileHandle.m
+@@ -1281,12 +1281,29 @@
+         {
+             return nil;
+         }
++        /*
++         * END OF FILE IS NOT AN ERROR, and treating it as one raised out of an ordinary read. A pipe
++         * whose writer has finished answers 0 bytes, which is what happens every time a child
++         * process exits, and macOS returns empty data for it. This raised
++         * NSFileHandleOperationException carrying whatever errno was left over from before, which is
++         * why the message read "No such file or directory" for a read that never touched a path.
++         *
++         * iTerm2's pidinfo service died on it: it runs a shell script and reads the output to the
++         * end, and the last read is always this one.
++         */
++        errno = 0;
+         NSUInteger length = _NSReadFromFileDescriptor(_fd, buf, PAGE_SIZE);
+         if (length == 0)
+         {
++            int failure = errno;
++
+             free(buf);
+-            FAIL();
+-            return nil;
++            if (failure != 0)
++            {
++                FAIL();
++                return nil;
++            }
++            return [NSData data];
+         }
+         return [NSData dataWithBytesNoCopy:buf length:length];
+     }
