@@ -2971,6 +2971,22 @@ static NSView *viewBeingPrinted = nil;
                         _rectsBeingRedrawn[rectsCount++] = r;
                     }
                 }
+                /*
+                 * THE COUNT THAT IS KEPT MUST BE THE COUNT THAT WAS FILLED.
+                 *
+                 * _rectsBeingRedrawnCount still held the ANCESTOR's count here, while the array
+                 * only ever received the rects that survived the visible-rect filter. This call
+                 * returned the right number, and the NEXT one took the early path at the top of
+                 * this method and returned the ancestor's larger count over an array with fewer
+                 * entries in it. The rest are zero, because the array is callocated, so the caller
+                 * was handed NSZeroRects and told they were dirty.
+                 *
+                 * iTerm2 turns each of those into a range of COLUMNS and builds the background
+                 * colour runs for it. An empty range builds no runs, and it then asks the empty
+                 * result for the run under the cursor and dereferences the answer. The opaque
+                 * branch below always got this right; only this one did not.
+                 */
+                _rectsBeingRedrawnCount = rectsCount;
                 *rects = _rectsBeingRedrawn;
                 *count = rectsCount;
             }
