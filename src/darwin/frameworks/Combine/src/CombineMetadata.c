@@ -258,6 +258,35 @@ static CiderMetadataResponse cider_combine_generic_metadata(const void *descript
     if (cider_combine_trace()) {
         fprintf(stderr, "CIDER_COMBINE %s accessor request=%zu -> metadata=%p state=%zu\n",
                 name, request, answer.metadata, answer.state);
+
+        /*
+         * IS THE CACHE ENTRY FINDABLE THE MOMENT IT IS MADE?
+         *
+         * swift_checkMetadataState looks this metadata up in its descriptor's generic cache and
+         * dereferences the result WITHOUT CHECKING IT: a miss is a read of byte 9 of NULL, which is
+         * exactly how iA Writer dies while the runtime walks these types transitively. Asking here,
+         * immediately after swift_getGenericMetadata returned, says whether the entry was ever
+         * inserted or whether only the later lookup fails to find it.
+         *
+         * Under the trace only, because it is the same call that faults.
+         */
+        {
+            typedef struct { const void *metadata; size_t state; } CiderResponse;
+            static CiderResponse (*check)(size_t, const void *);
+            static int looked;
+
+            if (!looked) {
+                looked = 1;
+                check = (CiderResponse (*)(size_t, const void *))
+                        dlsym(RTLD_DEFAULT, "swift_checkMetadataState");
+            }
+            if (check != NULL && answer.metadata != NULL) {
+                CiderResponse state = check(0x100, answer.metadata);
+
+                fprintf(stderr, "CIDER_COMBINE %s   checkMetadataState -> metadata=%p state=%zu\n",
+                        name, state.metadata, state.state);
+            }
+        }
         fflush(stderr);
     }
     return answer;
