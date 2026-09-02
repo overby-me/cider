@@ -1,0 +1,32 @@
+low power mode is a question that can be answered
+
+iTerm2 asks NSProcessInfo whether the machine is in low power mode and the selector did not
+exist, so the raise killed the process with its windows already built. There is no battery
+policy in the container, so the answer is the one a plugged-in Mac gives. The binary asks for
+this one selector and neither thermalState nor the power notification, so nothing else is added.
+
+--- a/include/Foundation/NSProcessInfo.h
++++ b/include/Foundation/NSProcessInfo.h
+@@ -46,6 +46,7 @@
+ - (NSUInteger)processorCount;
+ - (NSUInteger)activeProcessorCount;
+ - (unsigned long long)physicalMemory;
++- (BOOL)isLowPowerModeEnabled;
+ - (NSTimeInterval)systemUptime;
+ - (NSOperatingSystemVersion)operatingSystemVersion;
+ - (BOOL)isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion)version;
+--- a/src/NSProcessInfo.m
++++ b/src/NSProcessInfo.m
+@@ -288,6 +288,12 @@
+     
+ }
+ 
++/* No battery policy exists in the container, so the answer is the one a plugged-in Mac gives. */
++- (BOOL)isLowPowerModeEnabled
++{
++    return NO;
++}
++
+ - (unsigned long long)physicalMemory
+ {
+     unsigned long long amt = 1;

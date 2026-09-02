@@ -6633,6 +6633,8 @@ darwin_dylib(
         "//vendor/src/objc4:objc_final",
         "//vendor/src:system_final",
         "//vendor/src:Foundation_dylib",
+        # CIColor holds a CGColor, as it does on macOS.
+        "//vendor/src:CoreGraphics_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [

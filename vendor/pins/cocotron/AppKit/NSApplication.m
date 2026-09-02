@@ -210,6 +210,36 @@ static void _CiderAppFatalSignal(int signo, siginfo_t *info, void *ucontextIn)
         Dl_info pcinfo;
 
 #if defined(__x86_64__)
+        /* THE ARGUMENT REGISTERS, for a fault in code this tree did not write. A null dereference in
+         * an application's own method says nothing about WHICH value was null; these four are where
+         * it came from. */
+        /* rsi is the selector in every ObjC call, so name it whenever it looks like one: a fault in
+         * an application's own method usually follows a message that answered nil, and the selector
+         * still in the register says which one. */
+        {
+            uintptr_t sel = (uintptr_t) uc->uc_mcontext->__ss.__rsi;
+
+            if (sel > 0x10000 &&
+                msync((void *) (sel & ~(uintptr_t) 4095), 4096, MS_ASYNC) == 0) {
+                const char *selname = sel_getName((SEL) sel);
+
+                if (selname != NULL &&
+                    msync((void *) ((uintptr_t) selname & ~(uintptr_t) 4095), 4096,
+                          MS_ASYNC) == 0)
+                    fprintf(stderr, "CIDER_APP rsi as a selector: %s\n", selname);
+            }
+        }
+
+        fprintf(stderr, "CIDER_APP regs rdi=%p rsi=%p rdx=%p rcx=%p rax=%p rbx=%p\n",
+                (void *) (uintptr_t) uc->uc_mcontext->__ss.__rdi,
+                (void *) (uintptr_t) uc->uc_mcontext->__ss.__rsi,
+                (void *) (uintptr_t) uc->uc_mcontext->__ss.__rdx,
+                (void *) (uintptr_t) uc->uc_mcontext->__ss.__rcx,
+                (void *) (uintptr_t) uc->uc_mcontext->__ss.__rax,
+                (void *) (uintptr_t) uc->uc_mcontext->__ss.__rbx);
+#endif
+
+#if defined(__x86_64__)
         /*
          * WHO WAS BEING MESSAGED, AND WITH WHAT. A fault inside objc_msgSend says only that some
          * receiver was bad, and the stack scan below cannot tell a live frame from an old value: it

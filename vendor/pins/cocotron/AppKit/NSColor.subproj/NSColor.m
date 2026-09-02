@@ -42,6 +42,12 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
 - (NSColorName) colorName;
 @end
 
+/* CIColor is CoreImage and AppKit does not link it, so its accessors are declared, not imported. */
+@interface NSObject (CiderCIColorComponents)
+- (const CGFloat *) components;
+- (size_t) numberOfComponents;
+@end
+
 @implementation NSColor
 
 - (void) encodeWithCoder: (NSCoder *) coder {
@@ -714,6 +720,53 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
 
 + (NSColor *) colorWithWhite: (CGFloat) white alpha: (CGFloat) alpha {
     return [self colorWithDeviceWhite: white alpha: alpha];
+}
+
+/*
+ * WRAPS the CGColor rather than reading its components back out, so nothing is lost on the way in.
+ * NSColor_CGColor is keyed by an AppKit space NAME and a CGColor carries a space but no name, so
+ * the model is what chooses one. iTerm2 converts a blend back with this and raised without it.
+ */
+/* The counterpart of colorWithCGColor:, and the one iTerm2 uses to turn a blend back into a colour. */
++ (NSColor *) colorWithCIColor: (id) ciColor {
+    const CGFloat *components;
+
+    if (![ciColor respondsToSelector: @selector(components)] ||
+        ![ciColor respondsToSelector: @selector(numberOfComponents)])
+        return nil;
+
+    components = [ciColor components];
+    if (components == NULL || [ciColor numberOfComponents] < 4)
+        return nil;
+
+    return [NSColor colorWithDeviceRed: components[0]
+                                 green: components[1]
+                                  blue: components[2]
+                                 alpha: components[3]];
+}
+
++ (NSColor *) colorWithCGColor: (CGColorRef) cgColor {
+    NSString *spaceName;
+
+    if (cgColor == NULL)
+        return nil;
+
+    switch (CGColorSpaceGetModel(CGColorGetColorSpace(cgColor))) {
+    case kCGColorSpaceModelMonochrome:
+        spaceName = NSDeviceWhiteColorSpace;
+        break;
+    case kCGColorSpaceModelCMYK:
+        spaceName = NSDeviceCMYKColorSpace;
+        break;
+    case kCGColorSpaceModelPattern:
+        spaceName = NSPatternColorSpace;
+        break;
+    default:
+        spaceName = NSDeviceRGBColorSpace;
+        break;
+    }
+
+    return [NSColor_CGColor colorWithColorRef: cgColor spaceName: spaceName];
 }
 
 + (NSColor *) colorWithDeviceRed: (CGFloat) red

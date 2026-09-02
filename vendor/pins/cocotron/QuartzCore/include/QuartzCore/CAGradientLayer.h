@@ -23,5 +23,29 @@ CA_EXPORT NSString *const kCAGradientLayerAxial;
 CA_EXPORT NSString *const kCAGradientLayerRadial;
 CA_EXPORT NSString *const kCAGradientLayerConic;
 
-@interface CAGradientLayer : CALayer
+@interface CAGradientLayer : CALayer {
+    NSArray *_colors;
+    NSArray *_locations;
+    NSString *_type;
+    CGPoint _startPoint;
+    CGPoint _endPoint;
+}
+
+/* CGColorRefs, and at least two of them or nothing is drawn. */
+- (NSArray *) colors;
+- (void) setColors: (NSArray *) colors;
+
+/* NSNumbers in 0..1; when absent or the wrong length the stops are spread evenly. */
+- (NSArray *) locations;
+- (void) setLocations: (NSArray *) locations;
+
+/* In the unit square of the layer, not in its coordinates. */
+- (CGPoint) startPoint;
+- (void) setStartPoint: (CGPoint) point;
+- (CGPoint) endPoint;
+- (void) setEndPoint: (CGPoint) point;
+
+- (NSString *) type;
+- (void) setType: (NSString *) type;
+
 @end

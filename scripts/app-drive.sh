@@ -172,7 +172,7 @@ say "launching $APPBIN"
 		${TRACE_INPUT:+CIDER_WAYLAND_TRACE_INPUT=1} ${TRACE_ENV:-} \
 		DSERVER_PATH="$(realpath "$CIDERD")" DSERVER_MLDR_PATH="$(realpath "$MLDR")" \
 		DSERVER_LIBEXEC_PATH="$(realpath "$RT")/libexec/cider" \
-		timeout "$LIMIT" "$CIDER" shell "$APPBIN"
+		${WRAP:-} timeout "$LIMIT" "$CIDER" shell "$APPBIN"
 	# A quiet exit and a process still running at the limit leave the same silence in the log, and
 	# they want opposite work. 124 is the timeout's own code: still alive.
 	echo "cider-app exit=$?"

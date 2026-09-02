@@ -104,6 +104,14 @@ NSString *const _NSColorCoreUICatalogNamePrefix =
     return [self genericCMYKColorSpace];
 }
 
+/* The class form of the initialiser below, which is the spelling every caller uses. iTerm2 wraps
+ * the space it makes for its LAB colour work this way. */
++ (NSColorSpace *) colorSpaceWithCGColorSpace: (CGColorSpaceRef) cgColorSpace {
+    if (cgColorSpace == NULL)
+        return nil;
+    return [[[self alloc] initWithCGColorSpace: cgColorSpace] autorelease];
+}
+
 - initWithCGColorSpace: (CGColorSpaceRef) cgColorSpace {
     _cgColorSpace = CGColorSpaceRetain(cgColorSpace);
     return self;

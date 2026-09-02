@@ -18,7 +18,36 @@
 */
 
 #include <Foundation/Foundation.h>
+#include <CoreGraphics/CGColor.h>
 
 @interface CIColor : NSObject
+
++ (instancetype) colorWithCGColor: (CGColorRef) cgColor;
++ (instancetype) colorWithRed: (CGFloat) red green: (CGFloat) green blue: (CGFloat) blue;
++ (instancetype) colorWithRed: (CGFloat) red
+                        green: (CGFloat) green
+                         blue: (CGFloat) blue
+                        alpha: (CGFloat) alpha;
+
+- (instancetype) initWithCGColor: (CGColorRef) cgColor;
+- (instancetype) initWithRed: (CGFloat) red green: (CGFloat) green blue: (CGFloat) blue;
+- (instancetype) initWithRed: (CGFloat) red
+                       green: (CGFloat) green
+                        blue: (CGFloat) blue
+                       alpha: (CGFloat) alpha;
+/* An NSColor, typed id because CoreImage does not link AppKit. */
+- (instancetype) initWithColor: (id) color;
+
+/* Always four, so [0] through [3] are in bounds whatever space the colour came from. */
+- (const CGFloat *) components;
+- (size_t) numberOfComponents;
+
+- (CGColorRef) CGColor;
+- (CGColorSpaceRef) colorSpace;
+- (CGFloat) red;
+- (CGFloat) green;
+- (CGFloat) blue;
+- (CGFloat) alpha;
+- (NSString *) stringRepresentation;
 
 @end
