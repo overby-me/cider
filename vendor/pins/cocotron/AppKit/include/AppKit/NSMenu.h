@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSUserInterfaceItemIdentification.h>
 
 @class NSScreen, NSMenu, NSMenuItem, NSWindow, NSEvent, NSView;
+@class NSFont;
 
 @protocol NSMenuDelegate;
 
@@ -34,6 +35,7 @@ APPKIT_EXPORT const NSNotificationName NSMenuDidRemoveItemNotification;
 APPKIT_EXPORT const NSNotificationName NSMenuDidChangeItemNotification;
 
 @interface NSMenu : NSObject <NSCopying, NSUserInterfaceItemIdentification> {
+    NSFont *_ciderMenuFont;
     NSMenu *_supermenu;
     NSString *_title;
     NSString *_name;
@@ -77,6 +79,9 @@ APPKIT_EXPORT const NSNotificationName NSMenuDidChangeItemNotification;
 
 - (void) setSupermenu: (NSMenu *) value;
 - (void) setTitle: (NSString *) title;
+- (NSFont *) font;
+- (void) setFont: (NSFont *) font;
+
 - (void) setAutoenablesItems: (BOOL) flag;
 - (void) setMenuChangedMessagesEnabled: (BOOL) flag;
 

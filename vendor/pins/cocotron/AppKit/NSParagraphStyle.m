@@ -237,6 +237,22 @@ static inline id mutableCopyWithZone(NSParagraphStyle *self, NSZone *zone) {
     return _alignment;
 }
 
+/*
+ * TIGHTENING AND THE LINE BREAK STRATEGY, carried rather than applied.
+ *
+ * The typesetter here neither tightens a line to avoid truncating it nor varies its break strategy,
+ * so these are stored and reported. Both are settable on the mutable subclass, and setting one that
+ * does not exist takes the application: iA Writer raised on
+ * -[NSMutableParagraphStyle setAllowsDefaultTighteningForTruncation:] with its window fully built.
+ */
+- (BOOL) allowsDefaultTighteningForTruncation {
+    return _allowsDefaultTighteningForTruncation;
+}
+
+- (NSInteger) lineBreakStrategy {
+    return _lineBreakStrategy;
+}
+
 - (NSLineBreakMode) lineBreakMode {
     return _lineBreakMode;
 }

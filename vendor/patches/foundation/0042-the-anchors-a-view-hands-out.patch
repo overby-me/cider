@@ -1,0 +1,239 @@
+the anchors a view hands out
+
+NSLayoutAnchor was an empty class and the axis subclasses did not exist, so -[NSView topAnchor]
+raised and took iA Writer with its window otherwise built. An anchor is a pair, the item and
+which attribute of it, and every method makes an NSLayoutConstraint out of that pair, which is
+all an anchor does on macOS either. There is no solver behind it, exactly as for the
+constraints themselves, so a caller gets a real object recording the relation it asked for
+while the layout still comes from the autoresizing masks.
+
+The names live in Foundation because NSLayoutConstraint does: a second class of the same name
+in AppKit is a coin toss the runtime resolves however it likes.
+
+--- a/include/Foundation/NSLayoutAnchor.h
++++ b/include/Foundation/NSLayoutAnchor.h
+@@ -18,9 +18,63 @@
+ */
+ 
+ #import <Foundation/Foundation.h>
++#import <Foundation/NSLayoutConstraint.h>
+ 
+-@interface NSLayoutAnchor : NSObject
++/*
++ * ONE EDGE OF ONE VIEW, and the constraints you can make from it.
++ *
++ * An anchor is a pair: the item it belongs to and which attribute of it. Every method here builds an
++ * NSLayoutConstraint out of that pair and hands it back, which is all an anchor does on macOS too.
++ * There is no solver behind it, exactly as for the constraints themselves, so what a caller gets is
++ * a real constraint object that records the relation it asked for.
++ *
++ * The names live in Foundation because NSLayoutConstraint does; a second class of the same name in
++ * AppKit would be a coin toss the runtime resolves however it likes.
++ */
++@interface NSLayoutAnchor : NSObject {
++    id _item;
++    NSLayoutAttribute _attribute;
++}
++
+++ (instancetype) anchorWithItem: (id) item attribute: (NSLayoutAttribute) attribute;
++
++@property (readonly, assign) id item;
++@property (readonly) NSLayoutAttribute attribute;
++
++- (NSLayoutConstraint *) constraintEqualToAnchor: (NSLayoutAnchor *) anchor;
++- (NSLayoutConstraint *) constraintEqualToAnchor: (NSLayoutAnchor *) anchor
++                                        constant: (CGFloat) constant;
++- (NSLayoutConstraint *) constraintGreaterThanOrEqualToAnchor: (NSLayoutAnchor *) anchor;
++- (NSLayoutConstraint *) constraintGreaterThanOrEqualToAnchor: (NSLayoutAnchor *) anchor
++                                                     constant: (CGFloat) constant;
++- (NSLayoutConstraint *) constraintLessThanOrEqualToAnchor: (NSLayoutAnchor *) anchor;
++- (NSLayoutConstraint *) constraintLessThanOrEqualToAnchor: (NSLayoutAnchor *) anchor
++                                                  constant: (CGFloat) constant;
++
++@end
++
++/* The axes exist so that a horizontal anchor cannot be constrained to a vertical one; they add no
++ * behaviour of their own, which is why they are empty here as they are in the real header. */
++@interface NSLayoutXAxisAnchor : NSLayoutAnchor
++@end
++
++@interface NSLayoutYAxisAnchor : NSLayoutAnchor
+ @end
+ 
++/* A dimension can also be constrained to a plain number, which an edge cannot. */
+ @interface NSLayoutDimension : NSLayoutAnchor
++
++- (NSLayoutConstraint *) constraintEqualToConstant: (CGFloat) constant;
++- (NSLayoutConstraint *) constraintGreaterThanOrEqualToConstant: (CGFloat) constant;
++- (NSLayoutConstraint *) constraintLessThanOrEqualToConstant: (CGFloat) constant;
++- (NSLayoutConstraint *) constraintEqualToAnchor: (NSLayoutDimension *) anchor
++                                      multiplier: (CGFloat) multiplier;
++- (NSLayoutConstraint *) constraintEqualToAnchor: (NSLayoutDimension *) anchor
++                                      multiplier: (CGFloat) multiplier
++                                        constant: (CGFloat) constant;
++- (NSLayoutConstraint *) constraintGreaterThanOrEqualToAnchor: (NSLayoutDimension *) anchor
++                                                   multiplier: (CGFloat) multiplier;
++- (NSLayoutConstraint *) constraintLessThanOrEqualToAnchor: (NSLayoutDimension *) anchor
++                                                multiplier: (CGFloat) multiplier;
++
+ @end
+--- a/src/NSLayoutAnchor.m
++++ b/src/NSLayoutAnchor.m
+@@ -18,29 +18,147 @@
+ */
+ 
+ #import <Foundation/NSLayoutAnchor.h>
+-#import <Foundation/NSMethodSignature.h>
+-#import <Foundation/NSInvocation.h>
+ 
+ @implementation NSLayoutAnchor
+ 
+-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+++ (instancetype) anchorWithItem: (id) item attribute: (NSLayoutAttribute) attribute {
++    NSLayoutAnchor *anchor = [[[self alloc] init] autorelease];
++
++    anchor->_item = item;
++    anchor->_attribute = attribute;
++    return anchor;
++}
++
++- (id) item {
++    return _item;
++}
++
++- (NSLayoutAttribute) attribute {
++    return _attribute;
++}
++
++/* Every method below is this one with a relation and a constant filled in. */
++- (NSLayoutConstraint *) _constraintRelatedBy: (NSLayoutRelation) relation
++                                     toAnchor: (NSLayoutAnchor *) anchor
++                                   multiplier: (CGFloat) multiplier
++                                     constant: (CGFloat) constant
++{
++    return [NSLayoutConstraint constraintWithItem: _item
++                                        attribute: _attribute
++                                        relatedBy: relation
++                                           toItem: [anchor item]
++                                        attribute: anchor != nil ? [anchor attribute]
++                                                                 : NSLayoutAttributeNotAnAttribute
++                                       multiplier: multiplier
++                                         constant: constant];
++}
++
++- (NSLayoutConstraint *) constraintEqualToAnchor: (NSLayoutAnchor *) anchor {
++    return [self constraintEqualToAnchor: anchor constant: 0.0];
++}
++
++- (NSLayoutConstraint *) constraintEqualToAnchor: (NSLayoutAnchor *) anchor
++                                        constant: (CGFloat) constant
++{
++    return [self _constraintRelatedBy: NSLayoutRelationEqual
++                             toAnchor: anchor
++                           multiplier: 1.0
++                             constant: constant];
++}
++
++- (NSLayoutConstraint *) constraintGreaterThanOrEqualToAnchor: (NSLayoutAnchor *) anchor {
++    return [self constraintGreaterThanOrEqualToAnchor: anchor constant: 0.0];
++}
++
++- (NSLayoutConstraint *) constraintGreaterThanOrEqualToAnchor: (NSLayoutAnchor *) anchor
++                                                     constant: (CGFloat) constant
++{
++    return [self _constraintRelatedBy: NSLayoutRelationGreaterThanOrEqual
++                             toAnchor: anchor
++                           multiplier: 1.0
++                             constant: constant];
++}
++
++- (NSLayoutConstraint *) constraintLessThanOrEqualToAnchor: (NSLayoutAnchor *) anchor {
++    return [self constraintLessThanOrEqualToAnchor: anchor constant: 0.0];
+ }
+ 
+-- (void)forwardInvocation:(NSInvocation *)anInvocation {
+-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
++- (NSLayoutConstraint *) constraintLessThanOrEqualToAnchor: (NSLayoutAnchor *) anchor
++                                                  constant: (CGFloat) constant
++{
++    return [self _constraintRelatedBy: NSLayoutRelationLessThanOrEqual
++                             toAnchor: anchor
++                           multiplier: 1.0
++                             constant: constant];
+ }
+ 
+ @end
+ 
++@implementation NSLayoutXAxisAnchor
++@end
++
++@implementation NSLayoutYAxisAnchor
++@end
++
+ @implementation NSLayoutDimension
+ 
+-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
+-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
++/* A constant relates to NO second item, which is what NotAnAttribute means in a constraint. */
++- (NSLayoutConstraint *) _constraintRelatedBy: (NSLayoutRelation) relation
++                                   toConstant: (CGFloat) constant
++{
++    return [NSLayoutConstraint constraintWithItem: [self item]
++                                        attribute: [self attribute]
++                                        relatedBy: relation
++                                           toItem: nil
++                                        attribute: NSLayoutAttributeNotAnAttribute
++                                       multiplier: 1.0
++                                         constant: constant];
++}
++
++- (NSLayoutConstraint *) constraintEqualToConstant: (CGFloat) constant {
++    return [self _constraintRelatedBy: NSLayoutRelationEqual toConstant: constant];
++}
++
++- (NSLayoutConstraint *) constraintGreaterThanOrEqualToConstant: (CGFloat) constant {
++    return [self _constraintRelatedBy: NSLayoutRelationGreaterThanOrEqual toConstant: constant];
++}
++
++- (NSLayoutConstraint *) constraintLessThanOrEqualToConstant: (CGFloat) constant {
++    return [self _constraintRelatedBy: NSLayoutRelationLessThanOrEqual toConstant: constant];
++}
++
++- (NSLayoutConstraint *) constraintEqualToAnchor: (NSLayoutDimension *) anchor
++                                      multiplier: (CGFloat) multiplier
++{
++    return [self constraintEqualToAnchor: anchor multiplier: multiplier constant: 0.0];
++}
++
++- (NSLayoutConstraint *) constraintEqualToAnchor: (NSLayoutDimension *) anchor
++                                      multiplier: (CGFloat) multiplier
++                                        constant: (CGFloat) constant
++{
++    return [self _constraintRelatedBy: NSLayoutRelationEqual
++                             toAnchor: anchor
++                           multiplier: multiplier
++                             constant: constant];
++}
++
++- (NSLayoutConstraint *) constraintGreaterThanOrEqualToAnchor: (NSLayoutDimension *) anchor
++                                                   multiplier: (CGFloat) multiplier
++{
++    return [self _constraintRelatedBy: NSLayoutRelationGreaterThanOrEqual
++                             toAnchor: anchor
++                           multiplier: multiplier
++                             constant: 0.0];
+ }
+ 
+-- (void)forwardInvocation:(NSInvocation *)anInvocation {
+-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
++- (NSLayoutConstraint *) constraintLessThanOrEqualToAnchor: (NSLayoutDimension *) anchor
++                                                multiplier: (CGFloat) multiplier
++{
++    return [self _constraintRelatedBy: NSLayoutRelationLessThanOrEqual
++                             toAnchor: anchor
++                           multiplier: multiplier
++                             constant: 0.0];
+ }
+ 
+ @end

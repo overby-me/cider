@@ -40,6 +40,8 @@ typedef enum {
     CGFloat _tailIndent;
     NSTextAlignment _alignment;
     NSLineBreakMode _lineBreakMode;
+    BOOL _allowsDefaultTighteningForTruncation;
+    NSInteger _lineBreakStrategy;
     CGFloat _minimumLineHeight;
     CGFloat _maximumLineHeight;
     CGFloat _lineHeightMultiple;
@@ -70,6 +72,8 @@ typedef enum {
 
 - (NSTextAlignment) alignment;
 - (NSLineBreakMode) lineBreakMode;
+- (BOOL) allowsDefaultTighteningForTruncation;
+- (NSInteger) lineBreakStrategy;
 
 - (CGFloat) minimumLineHeight;
 - (CGFloat) maximumLineHeight;

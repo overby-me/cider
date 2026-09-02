@@ -431,6 +431,23 @@ static BOOL _ciderMenuBarVisible = YES;
     _supermenu = value;
 }
 
+/*
+ * THE MENU'S OWN FONT, carried so that setting it cannot raise.
+ *
+ * Items are drawn in the menu font here, so the value is carried and reported rather than used. It
+ * is a setter an application calls while building a menu, and unimplemented it took iA Writer after
+ * its whole window was assembled.
+ */
+- (NSFont *) font {
+    return _ciderMenuFont != nil ? _ciderMenuFont : [NSFont menuFontOfSize: 0];
+}
+
+- (void) setFont: (NSFont *) font {
+    [font retain];
+    [_ciderMenuFont release];
+    _ciderMenuFont = font;
+}
+
 - (void) setTitle: (NSString *) title {
     title = [title copy];
     [_title release];

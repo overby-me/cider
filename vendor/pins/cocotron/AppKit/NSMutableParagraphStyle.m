@@ -49,6 +49,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     _tailIndent = other->_tailIndent;
     _alignment = other->_alignment;
     _lineBreakMode = other->_lineBreakMode;
+    _allowsDefaultTighteningForTruncation = other->_allowsDefaultTighteningForTruncation;
+    _lineBreakStrategy = other->_lineBreakStrategy;
     _minimumLineHeight = other->_minimumLineHeight;
     _maximumLineHeight = other->_maximumLineHeight;
     _lineHeightMultiple = other->_lineHeightMultiple;
@@ -101,6 +103,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (void) setAlignment: (NSTextAlignment) alignment {
     _alignment = alignment;
+}
+
+- (void) setAllowsDefaultTighteningForTruncation: (BOOL) allows {
+    _allowsDefaultTighteningForTruncation = allows;
+}
+
+- (void) setLineBreakStrategy: (NSInteger) strategy {
+    _lineBreakStrategy = strategy;
 }
 
 - (void) setLineBreakMode: (NSLineBreakMode) mode {

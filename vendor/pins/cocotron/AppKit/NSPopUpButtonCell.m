@@ -94,6 +94,22 @@ static const void *kCiderSelectingItemKey = &kCiderSelectingItemKey;
     return NO;
 }
 
+/*
+ * WHETHER THE BUTTON SHOWS THE SELECTED ITEM, which a pop-up does and a pull-down does not.
+ *
+ * The ivar was already decoded from the nib and there was nothing to read or write it with, so an
+ * application that sets it in code raised: iA Writer stopped at
+ * -[IAToolbarPopUpButtonCell setUsesItemFromMenu:] while building its toolbar. The cell already
+ * draws the selected item for a pop-up, so the flag is carried and reported.
+ */
+- (BOOL) usesItemFromMenu {
+    return _usesItemFromMenu;
+}
+
+- (void) setUsesItemFromMenu: (BOOL) uses {
+    _usesItemFromMenu = uses;
+}
+
 - (BOOL) pullsDown {
     return _pullsDown;
 }

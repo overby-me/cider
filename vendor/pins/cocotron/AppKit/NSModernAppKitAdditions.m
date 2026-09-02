@@ -17,6 +17,7 @@
 #import <AppKit/NSTextView.h>
 #import <AppKit/NSView.h>
 #import <AppKit/NSGraphics.h>
+#import <Foundation/NSLayoutAnchor.h>
 #import <AppKit/NSAppearance.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSWindow.h>
@@ -794,6 +795,83 @@ static void _CiderSetTextViewFlag(id view, NSInteger bit, BOOL on) {
 
     resolved = provider(appearance);
     return resolved != nil ? resolved : [NSColor clearColor];
+}
+
+@end
+
+/*
+ * THE ANCHORS A VIEW HANDS OUT, which is how a modern application states its layout.
+ *
+ * Each is the view paired with one attribute, and the anchor makes constraints from that pair. As
+ * with the constraints themselves there is no solver here, so the objects are real and record what
+ * was asked for while the actual layout still comes from the autoresizing masks. iA Writer builds
+ * its library window this way and raised on -[NSView topAnchor] with everything else in place.
+ *
+ * leading and trailing are left and right: nothing here lays out right to left.
+ */
+@interface NSView (NSViewAnchors)
+- (NSLayoutXAxisAnchor *) leadingAnchor;
+- (NSLayoutXAxisAnchor *) trailingAnchor;
+- (NSLayoutXAxisAnchor *) leftAnchor;
+- (NSLayoutXAxisAnchor *) rightAnchor;
+- (NSLayoutXAxisAnchor *) centerXAnchor;
+- (NSLayoutYAxisAnchor *) topAnchor;
+- (NSLayoutYAxisAnchor *) bottomAnchor;
+- (NSLayoutYAxisAnchor *) centerYAnchor;
+- (NSLayoutYAxisAnchor *) firstBaselineAnchor;
+- (NSLayoutYAxisAnchor *) lastBaselineAnchor;
+- (NSLayoutDimension *) widthAnchor;
+- (NSLayoutDimension *) heightAnchor;
+@end
+
+@implementation NSView (NSViewAnchors)
+
+- (NSLayoutXAxisAnchor *) leadingAnchor {
+    return [NSLayoutXAxisAnchor anchorWithItem: self attribute: NSLayoutAttributeLeading];
+}
+
+- (NSLayoutXAxisAnchor *) trailingAnchor {
+    return [NSLayoutXAxisAnchor anchorWithItem: self attribute: NSLayoutAttributeTrailing];
+}
+
+- (NSLayoutXAxisAnchor *) leftAnchor {
+    return [NSLayoutXAxisAnchor anchorWithItem: self attribute: NSLayoutAttributeLeft];
+}
+
+- (NSLayoutXAxisAnchor *) rightAnchor {
+    return [NSLayoutXAxisAnchor anchorWithItem: self attribute: NSLayoutAttributeRight];
+}
+
+- (NSLayoutXAxisAnchor *) centerXAnchor {
+    return [NSLayoutXAxisAnchor anchorWithItem: self attribute: NSLayoutAttributeCenterX];
+}
+
+- (NSLayoutYAxisAnchor *) topAnchor {
+    return [NSLayoutYAxisAnchor anchorWithItem: self attribute: NSLayoutAttributeTop];
+}
+
+- (NSLayoutYAxisAnchor *) bottomAnchor {
+    return [NSLayoutYAxisAnchor anchorWithItem: self attribute: NSLayoutAttributeBottom];
+}
+
+- (NSLayoutYAxisAnchor *) centerYAnchor {
+    return [NSLayoutYAxisAnchor anchorWithItem: self attribute: NSLayoutAttributeCenterY];
+}
+
+- (NSLayoutYAxisAnchor *) firstBaselineAnchor {
+    return [NSLayoutYAxisAnchor anchorWithItem: self attribute: NSLayoutAttributeFirstBaseline];
+}
+
+- (NSLayoutYAxisAnchor *) lastBaselineAnchor {
+    return [NSLayoutYAxisAnchor anchorWithItem: self attribute: NSLayoutAttributeLastBaseline];
+}
+
+- (NSLayoutDimension *) widthAnchor {
+    return [NSLayoutDimension anchorWithItem: self attribute: NSLayoutAttributeWidth];
+}
+
+- (NSLayoutDimension *) heightAnchor {
+    return [NSLayoutDimension anchorWithItem: self attribute: NSLayoutAttributeHeight];
 }
 
 @end

@@ -40,6 +40,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (void) setAlignment: (NSTextAlignment) alignment;
 - (void) setLineBreakMode: (NSLineBreakMode) mode;
+- (void) setAllowsDefaultTighteningForTruncation: (BOOL) allows;
+- (void) setLineBreakStrategy: (NSInteger) strategy;
 
 - (void) setMinimumLineHeight: (CGFloat) height;
 - (void) setMaximumLineHeight: (CGFloat) height;
