@@ -47,4 +47,31 @@
     return 0;
 }
 
+
+/*
+ * THE GROUPED FORM, run rather than animated.
+ *
+ * Nothing here animates, so the block is applied immediately and the completion handler follows it.
+ * That is the END STATE the caller asked for, reached in one step instead of over a duration, and it
+ * is what makes the difference visible: unimplemented, this class method raised and took iA Writer
+ * while it was laying out its library window.
+ *
+ * The handler runs AFTER the changes and on this thread, which is the ordering callers rely on.
+ */
++ (void) runAnimationGroup: (void (^)(NSAnimationContext *context)) changes
+         completionHandler: (void (^)(void)) completionHandler
+{
+    [self beginGrouping];
+    if (changes != NULL)
+        changes([self currentContext]);
+    [self endGrouping];
+
+    if (completionHandler != NULL)
+        completionHandler();
+}
+
++ (void) runAnimationGroup: (void (^)(NSAnimationContext *context)) changes {
+    [self runAnimationGroup: changes completionHandler: NULL];
+}
+
 @end

@@ -18,8 +18,80 @@
 */
 
 #import <AppKit/AppKitExport.h>
+#import <AppKit/NSLayoutConstraint.h>
+#import <AppKit/NSViewController.h>
 #import <Foundation/Foundation.h>
 
-@interface NSSplitViewItem : NSObject <NSCoding>
+typedef NS_ENUM(NSInteger, NSSplitViewItemBehavior) {
+    NSSplitViewItemBehaviorDefault = 0,
+    NSSplitViewItemBehaviorSidebar = 1,
+    NSSplitViewItemBehaviorContentList = 2,
+    NSSplitViewItemBehaviorInspector = 3,
+};
+
+typedef NS_ENUM(NSInteger, NSSplitViewItemCollapseBehavior) {
+    NSSplitViewItemCollapseBehaviorDefault = 0,
+    NSSplitViewItemCollapseBehaviorPreferResizingSplitViewWithFixedSiblings = 1,
+    NSSplitViewItemCollapseBehaviorPreferResizingSiblingsWithFixedSplitView = 2,
+    NSSplitViewItemCollapseBehaviorUseConstraints = 3,
+};
+
+APPKIT_EXPORT const CGFloat NSSplitViewItemUnspecifiedDimension;
+
+@interface NSSplitViewItem : NSObject <NSCoding> {
+    NSViewController *_viewController;
+    CGFloat _minimumThickness;
+    CGFloat _maximumThickness;
+    CGFloat _preferredThicknessFraction;
+    CGFloat _automaticMaximumThickness;
+    NSLayoutPriority _holdingPriority;
+    NSSplitViewItemBehavior _behavior;
+    NSSplitViewItemCollapseBehavior _collapseBehavior;
+    BOOL _collapsed;
+    BOOL _canCollapse;
+    BOOL _springLoaded;
+    BOOL _allowsFullHeightLayout;
+}
+
++ (instancetype) splitViewItemWithViewController: (NSViewController *) viewController;
++ (instancetype) sidebarWithViewController: (NSViewController *) viewController;
++ (instancetype) contentListWithViewController: (NSViewController *) viewController;
++ (instancetype) inspectorWithViewController: (NSViewController *) viewController;
+
+- (NSViewController *) viewController;
+- (void) setViewController: (NSViewController *) viewController;
+
+- (NSSplitViewItemBehavior) behavior;
+- (void) setBehavior: (NSSplitViewItemBehavior) behavior;
+
+- (NSSplitViewItemCollapseBehavior) collapseBehavior;
+- (void) setCollapseBehavior: (NSSplitViewItemCollapseBehavior) behavior;
+
+- (BOOL) isCollapsed;
+- (void) setCollapsed: (BOOL) collapsed;
+
+- (BOOL) canCollapse;
+- (void) setCanCollapse: (BOOL) canCollapse;
+
+- (CGFloat) minimumThickness;
+- (void) setMinimumThickness: (CGFloat) thickness;
+
+- (CGFloat) maximumThickness;
+- (void) setMaximumThickness: (CGFloat) thickness;
+
+- (CGFloat) preferredThicknessFraction;
+- (void) setPreferredThicknessFraction: (CGFloat) fraction;
+
+- (CGFloat) automaticMaximumThickness;
+- (void) setAutomaticMaximumThickness: (CGFloat) thickness;
+
+- (NSLayoutPriority) holdingPriority;
+- (void) setHoldingPriority: (NSLayoutPriority) priority;
+
+- (BOOL) isSpringLoaded;
+- (void) setSpringLoaded: (BOOL) springLoaded;
+
+- (BOOL) allowsFullHeightLayout;
+- (void) setAllowsFullHeightLayout: (BOOL) allows;
 
 @end

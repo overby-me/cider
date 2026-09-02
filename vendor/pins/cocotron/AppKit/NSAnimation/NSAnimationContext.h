@@ -28,6 +28,10 @@
 
 + (NSAnimationContext *) currentContext;
 
++ (void) runAnimationGroup: (void (^)(NSAnimationContext *context)) changes
+         completionHandler: (void (^)(void)) completionHandler;
++ (void) runAnimationGroup: (void (^)(NSAnimationContext *context)) changes;
+
 - (void) setDuration: (NSTimeInterval) duration;
 - (NSTimeInterval) duration;
 

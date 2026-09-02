@@ -99,3 +99,20 @@ typedef NS_ENUM(NSInteger, NSTitlebarSeparatorStyle) {
 @property (nonatomic, retain) id userActivity;
 - (void) updateUserActivityState: (id) activity;
 @end
+
+/* Switches a modern application sets on a view while building it. See the .m for what each does. */
+@interface NSView (NSModernViewSwitches)
+- (BOOL) clipsToBounds;
+- (void) setClipsToBounds: (BOOL) clips;
+- (BOOL) canDrawSubviewsIntoLayer;
+- (void) setCanDrawSubviewsIntoLayer: (BOOL) canDraw;
+- (BOOL) needsLayout;
+- (void) setNeedsLayout: (BOOL) needsLayout;
+- (void) layoutSubtreeIfNeeded;
+- (void) setContentHuggingPriority: (float) priority forOrientation: (NSInteger) orientation;
+- (float) contentHuggingPriorityForOrientation: (NSInteger) orientation;
+- (void) setContentCompressionResistancePriority: (float) priority
+                                  forOrientation: (NSInteger) orientation;
+- (float) contentCompressionResistancePriorityForOrientation: (NSInteger) orientation;
+@end
+

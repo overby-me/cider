@@ -23,9 +23,20 @@
 
 @class NSSplitView;
 
-@interface NSSplitViewController : NSViewController
+@class NSSplitViewItem;
+
+@interface NSSplitViewController : NSViewController {
+    NSMutableArray *_ciderSplitViewItems;
+}
 
 - (NSSplitView *) splitView;
 - (void) setSplitView: (NSSplitView *) splitView;
+
+- (NSArray *) splitViewItems;
+- (void) setSplitViewItems: (NSArray *) items;
+- (void) addSplitViewItem: (NSSplitViewItem *) item;
+- (void) insertSplitViewItem: (NSSplitViewItem *) item atIndex: (NSInteger) index;
+- (void) removeSplitViewItem: (NSSplitViewItem *) item;
+- (NSSplitViewItem *) splitViewItemForViewController: (NSViewController *) controller;
 
 @end

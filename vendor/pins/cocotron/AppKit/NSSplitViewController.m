@@ -19,6 +19,8 @@
 
 #import <AppKit/NSSplitView.h>
 #import <AppKit/NSSplitViewController.h>
+#import <AppKit/NSSplitViewItem.h>
+#import <AppKit/NSWindow.h>
 
 @implementation NSSplitViewController
 
@@ -44,7 +46,17 @@
     NSSplitView *splitView = [[[NSSplitView alloc]
             initWithFrame: NSMakeRect(0, 0, 0, 0)] autorelease];
 
+    [splitView setDelegate: self];
     [self setView: splitView];
+
+    /* Items added before the view existed have no pane yet, so place them now. */
+    for (NSSplitViewItem *item in [self splitViewItems]) {
+        NSView *view = [[item viewController] view];
+
+        if (view != nil)
+            [splitView addSubview: view];
+    }
+    [splitView adjustSubviews];
 }
 
 - (NSSplitView *) splitView {
@@ -57,14 +69,134 @@
     [self setView: splitView];
 }
 
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
-{
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+/*
+ * THE ITEMS, which is what the controller is FOR.
+ *
+ * An item is a description: a controller and the sizes it will accept. Adding one puts that
+ * controller's view into the split view, in the item's order, and the split view does the rest.
+ * The items are held here rather than in the split view because collapsing an item must not lose
+ * its place, and because the application asks for them back.
+ */
+- (NSArray *) splitViewItems {
+    if (_ciderSplitViewItems == nil)
+        _ciderSplitViewItems = [[NSMutableArray alloc] init];
+    return _ciderSplitViewItems;
 }
 
-- (void)forwardInvocation:(NSInvocation *)anInvocation
+- (void) setSplitViewItems: (NSArray *) items {
+    while ([[self splitViewItems] count] > 0)
+        [self removeSplitViewItem: [[self splitViewItems] objectAtIndex: 0]];
+
+    for (NSSplitViewItem *item in items)
+        [self addSplitViewItem: item];
+}
+
+- (void) addSplitViewItem: (NSSplitViewItem *) item {
+    [self insertSplitViewItem: item atIndex: [[self splitViewItems] count]];
+}
+
+- (void) insertSplitViewItem: (NSSplitViewItem *) item atIndex: (NSInteger) index {
+    if (item == nil)
+        return;
+
+    NSMutableArray *items = (NSMutableArray *) [self splitViewItems];
+    if (index < 0 || index > (NSInteger) [items count])
+        index = [items count];
+    [items insertObject: item atIndex: index];
+
+    NSViewController *controller = [item viewController];
+    if (controller != nil) {
+        [self insertChildViewController: controller atIndex: index];
+
+        /* -view builds it, which is the point at which the pane exists at all. */
+        NSView *view = [controller view];
+        NSSplitView *splitView = [self splitView];
+
+        if (view != nil && splitView != nil) {
+            NSArray *panes = [splitView subviews];
+
+            if (index >= (NSInteger) [panes count])
+                [splitView addSubview: view];
+            else
+                [splitView addSubview: view
+                          positioned: NSWindowBelow
+                          relativeTo: [panes objectAtIndex: index]];
+            [splitView adjustSubviews];
+        }
+    }
+}
+
+- (void) removeSplitViewItem: (NSSplitViewItem *) item {
+    NSMutableArray *items = (NSMutableArray *) [self splitViewItems];
+    NSUInteger index = [items indexOfObjectIdenticalTo: item];
+
+    if (index == NSNotFound)
+        return;
+
+    NSViewController *controller = [item viewController];
+    if (controller != nil) {
+        [[controller view] removeFromSuperview];
+        [controller removeFromParentViewController];
+    }
+    [items removeObjectAtIndex: index];
+    [[self splitView] adjustSubviews];
+}
+
+- (NSSplitViewItem *) splitViewItemForViewController: (NSViewController *) controller {
+    for (NSSplitViewItem *item in [self splitViewItems]) {
+        if ([item viewController] == controller)
+            return item;
+    }
+    return nil;
+}
+
+/*
+ * The minimum and maximum a pane will accept, which the item carries and the split view asks for by
+ * divider index. An unspecified dimension leaves the proposed position alone.
+ */
+- (CGFloat) splitView: (NSSplitView *) splitView
+        constrainMinCoordinate: (CGFloat) proposed
+                   ofSubviewAt: (NSInteger) dividerIndex
 {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    NSArray *items = [self splitViewItems];
+
+    if (dividerIndex < (NSInteger) [items count]) {
+        NSSplitViewItem *item = [items objectAtIndex: dividerIndex];
+        CGFloat minimum = [item minimumThickness];
+
+        if (minimum != NSSplitViewItemUnspecifiedDimension && minimum > proposed)
+            return minimum;
+    }
+    return proposed;
+}
+
+- (CGFloat) splitView: (NSSplitView *) splitView
+        constrainMaxCoordinate: (CGFloat) proposed
+                   ofSubviewAt: (NSInteger) dividerIndex
+{
+    NSArray *items = [self splitViewItems];
+
+    if (dividerIndex < (NSInteger) [items count]) {
+        NSSplitViewItem *item = [items objectAtIndex: dividerIndex];
+        CGFloat maximum = [item maximumThickness];
+
+        if (maximum != NSSplitViewItemUnspecifiedDimension && maximum < proposed)
+            return maximum;
+    }
+    return proposed;
+}
+
+- (BOOL) splitView: (NSSplitView *) splitView canCollapseSubview: (NSView *) subview {
+    for (NSSplitViewItem *item in [self splitViewItems]) {
+        if ([[item viewController] view] == subview)
+            return [item canCollapse];
+    }
+    return NO;
+}
+
+- (void) dealloc {
+    [_ciderSplitViewItems release];
+    [super dealloc];
 }
 
 @end

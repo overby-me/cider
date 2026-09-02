@@ -13,8 +13,11 @@
 
 #import <AppKit/NSModernAppKitAdditions.h>
 #import <AppKit/NSResponder.h>
+#import <AppKit/NSScrollView.h>
+#import <AppKit/NSTextView.h>
 #import <AppKit/NSView.h>
 #import <AppKit/NSGraphics.h>
+#import <AppKit/NSAppearance.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSWindow.h>
 #import <AppKit/NSToolbarItem.h>
@@ -452,6 +455,345 @@ static NSMapTable *_ciderUserActivities = nil;
 }
 
 - (void) updateUserActivityState: (id) activity {
+}
+
+@end
+
+/*
+ * THE MODERN NSVIEW SWITCHES, carried and answered rather than acted on.
+ *
+ * Each of these is a setter an application calls while building a view, and each one unimplemented
+ * takes the whole application rather than the effect it asked for: iA Writer raised on
+ * -[NSView setClipsToBounds:] with its split view already assembled.
+ *
+ * What they mean here:
+ *   clipsToBounds       drawing is clipped to the view's bounds already, so the flag is stored and
+ *                       reported. YES by default is what this implementation actually does.
+ *   canDrawSubviewsIntoLayer, layerContentsRedrawPolicy
+ *                       hints about layer-backed drawing, which is a performance choice and changes
+ *                       nothing about what appears.
+ *   needsLayout, layoutSubtreeIfNeeded
+ *                       there is no deferred layout pass here; laying out now is the honest answer
+ *                       and leaves the view hierarchy in the state the caller is about to read.
+ *   hugging and compression resistance
+ *                       Auto Layout priorities, carried per orientation so that a view asked for
+ *                       one back gets what it set.
+ */
+@implementation NSView (NSModernViewSwitches)
+
+static NSMapTable *_ciderViewFlags = nil;
+
+enum {
+    _CiderViewClipsToBounds = 1 << 0,
+    _CiderViewClipsSet = 1 << 1,
+    _CiderViewSubviewsIntoLayer = 1 << 2,
+};
+
+static NSInteger _CiderViewFlagsOf(id view) {
+    if (_ciderViewFlags == nil)
+        return 0;
+    return (NSInteger) (intptr_t) NSMapGet(_ciderViewFlags, (const void *) view);
+}
+
+static void _CiderSetViewFlags(id view, NSInteger flags) {
+    if (_ciderViewFlags == nil) {
+        _ciderViewFlags = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
+                                           NSIntegerMapValueCallBacks, 0);
+    }
+    NSMapInsert(_ciderViewFlags, (const void *) view, (const void *) (intptr_t) flags);
+}
+
+- (BOOL) clipsToBounds {
+    NSInteger flags = _CiderViewFlagsOf(self);
+
+    if ((flags & _CiderViewClipsSet) == 0)
+        return YES;
+    return (flags & _CiderViewClipsToBounds) != 0;
+}
+
+- (void) setClipsToBounds: (BOOL) clips {
+    NSInteger flags = _CiderViewFlagsOf(self) | _CiderViewClipsSet;
+
+    if (clips)
+        flags |= _CiderViewClipsToBounds;
+    else
+        flags &= ~_CiderViewClipsToBounds;
+    _CiderSetViewFlags(self, flags);
+}
+
+- (BOOL) canDrawSubviewsIntoLayer {
+    return (_CiderViewFlagsOf(self) & _CiderViewSubviewsIntoLayer) != 0;
+}
+
+- (void) setCanDrawSubviewsIntoLayer: (BOOL) canDraw {
+    NSInteger flags = _CiderViewFlagsOf(self);
+
+    if (canDraw)
+        flags |= _CiderViewSubviewsIntoLayer;
+    else
+        flags &= ~_CiderViewSubviewsIntoLayer;
+    _CiderSetViewFlags(self, flags);
+}
+
+- (void) setNeedsLayout: (BOOL) needsLayout {
+    if (needsLayout)
+        [self setNeedsDisplay: YES];
+}
+
+- (BOOL) needsLayout {
+    return NO;
+}
+
+- (void) layoutSubtreeIfNeeded {
+    [self layout];
+    for (NSView *subview in [self subviews])
+        [subview layoutSubtreeIfNeeded];
+}
+
+static NSMapTable *_ciderViewPriorities = nil;
+
+static NSString *_CiderPriorityKey(id view, NSInteger orientation, BOOL hugging) {
+    return [NSString stringWithFormat: @"%p-%ld-%d", view, (long) orientation, hugging ? 1 : 0];
+}
+
+static void _CiderSetPriority(id view, NSInteger orientation, BOOL hugging, float priority) {
+    if (_ciderViewPriorities == nil) {
+        _ciderViewPriorities = NSCreateMapTable(NSObjectMapKeyCallBacks,
+                                                NSIntegerMapValueCallBacks, 0);
+    }
+    NSMapInsert(_ciderViewPriorities, (const void *) _CiderPriorityKey(view, orientation, hugging),
+                (const void *) (intptr_t) (NSInteger) priority);
+}
+
+static float _CiderPriority(id view, NSInteger orientation, BOOL hugging, float fallback) {
+    if (_ciderViewPriorities == nil)
+        return fallback;
+
+    NSString *key = _CiderPriorityKey(view, orientation, hugging);
+    if (NSMapGet(_ciderViewPriorities, (const void *) key) == NULL)
+        return fallback;
+    return (float) (NSInteger) (intptr_t) NSMapGet(_ciderViewPriorities, (const void *) key);
+}
+
+- (void) setContentHuggingPriority: (float) priority forOrientation: (NSInteger) orientation {
+    _CiderSetPriority(self, orientation, YES, priority);
+}
+
+- (float) contentHuggingPriorityForOrientation: (NSInteger) orientation {
+    return _CiderPriority(self, orientation, YES, 250);
+}
+
+- (void) setContentCompressionResistancePriority: (float) priority
+                                  forOrientation: (NSInteger) orientation
+{
+    _CiderSetPriority(self, orientation, NO, priority);
+}
+
+- (float) contentCompressionResistancePriorityForOrientation: (NSInteger) orientation {
+    return _CiderPriority(self, orientation, NO, 750);
+}
+
+@end
+
+/*
+ * SCROLL VIEW CONTENT INSETS, carried and honoured where it is cheap to do so.
+ *
+ * macOS 10.10 let a scroll view hold its content clear of a titlebar or a toolbar. Nothing here
+ * overlays a scroll view that way, so the insets are stored and reported rather than applied to the
+ * document view, and automaticallyAdjustsContentInsets is NO because nothing adjusts them.
+ *
+ * Storing is not optional: iA Writer sets them on its document scroll view while building the
+ * library window, and unimplemented the setter raised and took the application.
+ */
+@interface NSScrollView (NSModernScrollInsets)
+- (NSEdgeInsets) contentInsets;
+- (void) setContentInsets: (NSEdgeInsets) insets;
+- (NSEdgeInsets) scrollerInsets;
+- (void) setScrollerInsets: (NSEdgeInsets) insets;
+- (BOOL) automaticallyAdjustsContentInsets;
+- (void) setAutomaticallyAdjustsContentInsets: (BOOL) adjusts;
+@end
+
+@implementation NSScrollView (NSModernScrollInsets)
+
+static NSMapTable *_ciderContentInsets = nil;
+static NSMapTable *_ciderScrollerInsets = nil;
+
+static NSEdgeInsets _CiderInsetsFor(NSMapTable *table, id view) {
+    NSEdgeInsets zero = { 0, 0, 0, 0 };
+    NSValue *value;
+
+    if (table == nil)
+        return zero;
+
+    value = (NSValue *) NSMapGet(table, (const void *) view);
+    if (value == nil)
+        return zero;
+    [value getValue: &zero];
+    return zero;
+}
+
+static void _CiderSetInsets(NSMapTable **table, id view, NSEdgeInsets insets) {
+    if (*table == nil) {
+        *table = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks, NSObjectMapValueCallBacks, 0);
+    }
+    NSMapInsert(*table, (const void *) view,
+                (const void *) [NSValue valueWithBytes: &insets objCType: @encode(NSEdgeInsets)]);
+}
+
+- (NSEdgeInsets) contentInsets {
+    return _CiderInsetsFor(_ciderContentInsets, self);
+}
+
+- (void) setContentInsets: (NSEdgeInsets) insets {
+    _CiderSetInsets(&_ciderContentInsets, self, insets);
+}
+
+- (NSEdgeInsets) scrollerInsets {
+    return _CiderInsetsFor(_ciderScrollerInsets, self);
+}
+
+- (void) setScrollerInsets: (NSEdgeInsets) insets {
+    _CiderSetInsets(&_ciderScrollerInsets, self, insets);
+}
+
+- (BOOL) automaticallyAdjustsContentInsets {
+    return NO;
+}
+
+- (void) setAutomaticallyAdjustsContentInsets: (BOOL) adjusts {
+}
+
+@end
+
+/*
+ * TEXT VIEW SWITCHES a modern editor sets, carried rather than acted on.
+ *
+ * A link tooltip, a completion popover and the dark-appearance colour mapping are all things this
+ * implementation does not do, so the flags are stored and reported and the link attributes are kept
+ * for whoever asks. Each setter unimplemented raised: iA Writer stopped at
+ * -[IAEditorTextView setDisplaysLinkToolTips:] with its editor otherwise built.
+ */
+@interface NSTextView (NSModernTextViewSwitches)
+- (BOOL) displaysLinkToolTips;
+- (void) setDisplaysLinkToolTips: (BOOL) displays;
+- (BOOL) usesAdaptiveColorMappingForDarkAppearance;
+- (void) setUsesAdaptiveColorMappingForDarkAppearance: (BOOL) uses;
+- (BOOL) isAutomaticTextCompletionEnabled;
+- (void) setAutomaticTextCompletionEnabled: (BOOL) enabled;
+- (NSDictionary *) linkTextAttributes;
+- (void) setLinkTextAttributes: (NSDictionary *) attributes;
+@end
+
+@implementation NSTextView (NSModernTextViewSwitches)
+
+static NSMapTable *_ciderTextViewFlags = nil;
+static NSMapTable *_ciderLinkAttributes = nil;
+
+enum {
+    _CiderTextViewLinkToolTips = 1 << 0,
+    _CiderTextViewAdaptiveColor = 1 << 1,
+    _CiderTextViewTextCompletion = 1 << 2,
+};
+
+static BOOL _CiderTextViewFlag(id view, NSInteger bit) {
+    if (_ciderTextViewFlags == nil)
+        return NO;
+    return ((NSInteger) (intptr_t) NSMapGet(_ciderTextViewFlags, (const void *) view) & bit) != 0;
+}
+
+static void _CiderSetTextViewFlag(id view, NSInteger bit, BOOL on) {
+    NSInteger flags;
+
+    if (_ciderTextViewFlags == nil) {
+        _ciderTextViewFlags = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
+                                               NSIntegerMapValueCallBacks, 0);
+    }
+    flags = (NSInteger) (intptr_t) NSMapGet(_ciderTextViewFlags, (const void *) view);
+    if (on)
+        flags |= bit;
+    else
+        flags &= ~bit;
+    NSMapInsert(_ciderTextViewFlags, (const void *) view, (const void *) (intptr_t) flags);
+}
+
+- (BOOL) displaysLinkToolTips {
+    return _CiderTextViewFlag(self, _CiderTextViewLinkToolTips);
+}
+
+- (void) setDisplaysLinkToolTips: (BOOL) displays {
+    _CiderSetTextViewFlag(self, _CiderTextViewLinkToolTips, displays);
+}
+
+- (BOOL) usesAdaptiveColorMappingForDarkAppearance {
+    return _CiderTextViewFlag(self, _CiderTextViewAdaptiveColor);
+}
+
+- (void) setUsesAdaptiveColorMappingForDarkAppearance: (BOOL) uses {
+    _CiderSetTextViewFlag(self, _CiderTextViewAdaptiveColor, uses);
+}
+
+- (BOOL) isAutomaticTextCompletionEnabled {
+    return _CiderTextViewFlag(self, _CiderTextViewTextCompletion);
+}
+
+- (void) setAutomaticTextCompletionEnabled: (BOOL) enabled {
+    _CiderSetTextViewFlag(self, _CiderTextViewTextCompletion, enabled);
+}
+
+- (NSDictionary *) linkTextAttributes {
+    if (_ciderLinkAttributes == nil)
+        return nil;
+    return (NSDictionary *) NSMapGet(_ciderLinkAttributes, (const void *) self);
+}
+
+- (void) setLinkTextAttributes: (NSDictionary *) attributes {
+    if (_ciderLinkAttributes == nil) {
+        _ciderLinkAttributes = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
+                                                NSObjectMapValueCallBacks, 0);
+    }
+    if (attributes == nil)
+        NSMapRemove(_ciderLinkAttributes, (const void *) self);
+    else
+        NSMapInsert(_ciderLinkAttributes, (const void *) self, (const void *) attributes);
+}
+
+@end
+
+/*
+ * A COLOUR THAT ASKS THE APPEARANCE, resolved once instead of on every use.
+ *
+ * macOS 10.15 lets an application supply a block that answers a colour for whatever appearance is
+ * current, which is how a light and a dark value live under one name. Nothing here switches
+ * appearance while running, so the block is called once with the appearance in force and the answer
+ * IS the colour. That is a real colour rather than a placeholder, and it is right for as long as the
+ * appearance does not change.
+ *
+ * Unimplemented it raised, and it is a class method, so iA Writer went with it while building the
+ * colours for its editor.
+ */
+@interface NSColor (NSDynamicColor)
++ (NSColor *) colorWithName: (NSString *) name
+            dynamicProvider: (NSColor * (^)(NSAppearance *appearance)) provider;
+@end
+
+@implementation NSColor (NSDynamicColor)
+
++ (NSColor *) colorWithName: (NSString *) name
+            dynamicProvider: (NSColor * (^)(NSAppearance *appearance)) provider
+{
+    NSAppearance *appearance;
+    NSColor *resolved;
+
+    if (provider == NULL)
+        return [NSColor clearColor];
+
+    appearance = [NSAppearance currentAppearance];
+    if (appearance == nil)
+        appearance = [NSAppearance appearanceNamed: NSAppearanceNameAqua];
+
+    resolved = provider(appearance);
+    return resolved != nil ? resolved : [NSColor clearColor];
 }
 
 @end
