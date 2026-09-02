@@ -1,0 +1,59 @@
+an error handed through an out parameter must be autoreleased
+
+submitIntent created the NSError owned, passed it to the user block, and released it. The block
+writes it straight into the caller's NSError** without retaining, because that is the convention,
+so the caller was left holding a freed object and ARC retained it the instant the call returned.
+iA Writer died in objc_retain, called from -[IALibraryObserver _createDirectoryAndAddFilePresenter].
+
+It is autoreleased at the handover, on the thread that invokes the block, because the async path
+runs later on another queue and a pool from here would be long gone.
+
+--- a/src/NSFileCoordinator.m
++++ b/src/NSFileCoordinator.m
+@@ -338,6 +338,16 @@
+ 	NSFileAccessCancellationToken* cancellationToken = [[NSUUID UUID] UUIDString];
+ 	dispatch_semaphore_t waiter = NULL;
+ 	BOOL blocking = queue == nil;
++	/*
++	 * OWNED HERE, AUTORELEASED WHERE IT IS HANDED OVER. The user block writes this straight into the
++	 * caller's NSError** out parameter without retaining it, which is the convention, so releasing it
++	 * afterwards left the caller holding a freed object. ARC retains what the out parameter points at
++	 * the moment the call returns, and iA Writer died in objc_retain doing exactly that.
++	 *
++	 * It cannot be autoreleased at creation either: the reply block runs on the XPC reply queue while
++	 * the non-blocking path invokes the user block LATER on another queue, so the pool it was put in
++	 * is long gone by then.
++	 */
+ 	__block NSError* errorPointer = nil;
+ 	__block xpc_object_t replyObject = NULL;
+ 	block = [[block copy] autorelease];
+@@ -398,11 +408,10 @@
+ 		} else {
+ 			[queue addOperationWithBlock: ^{
+ 				FCDebug(@"invoking user block %p on user queue %p with error %p", (void*)block, (void*)queue, (void*)errorPointer);
+-				block(errorPointer);
++				NSError* error = [errorPointer autorelease];
++				block(error);
+ 				FCDebug(@"user block complete");
+-				if (errorPointer) {
+-					[errorPointer release];
+-				} else {
++				if (!error) {
+ 					completeBlock();
+ 				}
+ 			}];
+@@ -414,11 +423,10 @@
+ 		dispatch_semaphore_wait(waiter, DISPATCH_TIME_FOREVER);
+ 
+ 		FCDebug(@"invoking user block %p synchronously with error %p", (void*)block, (void*)errorPointer);
+-		block(errorPointer);
++		NSError* error = [errorPointer autorelease];
++		block(error);
+ 		FCDebug(@"user block complete");
+-		if (errorPointer) {
+-			[errorPointer release];
+-		} else {
++		if (!error) {
+ 			completeBlock();
+ 
+ 			dispatch_semaphore_wait(waiter, DISPATCH_TIME_FOREVER);

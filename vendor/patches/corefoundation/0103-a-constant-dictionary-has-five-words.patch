@@ -1,0 +1,64 @@
+a constant dictionary has five words, not four
+
+The layouts were read out of a binary that has these instances rather than inferred from a fault.
+iTerm2 carries 459 constant arrays, 42 constant dictionaries and 907 constant integers in
+__DATA_CONST, and the bind records give every address.
+
+  ARRAY        stride 0x18   isa, count, objects              already right
+  DICTIONARY   stride 0x28   isa, options, count, keys, objs  was wrong by one field
+  INTEGER      stride 0x18   isa, encoding, value             had the two swapped
+
+word1 of the dictionary is 1 in all 42 instances so it is not the count, and word2 satisfies
+objects - keys == word2 * 8 in 42 of 42. The integer's word1 is a pointer into __TEXT shared
+between instances of the same type, and word2 is the value.
+
+--- a/NSConstantLiterals.m
++++ b/NSConstantLiterals.m
+@@ -21,17 +21,26 @@
+ #import <Foundation/NSException.h>
+ #import <Foundation/NSEnumerator.h>
+ 
+-/* The layouts clang emits.
++/* The layouts clang emits, READ OUT OF A BINARY rather than inferred from a fault.
+  *
+- * THE TWO COLLECTIONS DO NOT AGREE ABOUT WHERE THE COUNT GOES, and both orders were established
+- * from the fault address rather than from a document. A dictionary with the count first died in
+- * -[NSConstantDictionary keyEnumerator] dereferencing 1, and it works with the count last. An array
+- * with the count LAST then died in -[NSConstantArray objectAtIndex:] dereferencing 5, which is a
+- * count being used as a pointer, so the array keeps the count first.
++ * iTerm2 carries 459 constant arrays and 42 constant dictionaries in __DATA_CONST, in the sections
++ * __objc_arrayobj and __objc_dictobj, and the bind records name every instance. The strides settle
++ * the sizes and the contents settle the fields:
+  *
+- * That is evidence, not understanding, and it is worth saying so: the reliable way to settle both is
+- * to read a constant instance out of the __DATA section of a binary that has one and look at the
+- * words. Until that is done, treat these two layouts as measured guesses. */
++ *   ARRAY, stride 0x18, three words:  isa, count, objects
++ *     word1 varies across instances (1, 2, 3, 4, 5, 28), word2 is always a pointer.
++ *
++ *   DICTIONARY, stride 0x28, FIVE words:  isa, options, count, keys, objects
++ *     word1 is 1 in all 42, so it is not the count. word2 varies (1, 2, 3, 4, 9, 16) and
++ *     objects - keys == word2 * 8 in 42 of 42, which identifies both the count and the fact that
++ *     the two arrays are consecutive.
++ *
++ * THE DICTIONARY WAS WRONG BEFORE THIS, by one field. _count read the keys pointer, so a constant
++ * dictionary reported a count of 4317355096, and -[NSDictionary allKeys] asked for an array of that
++ * capacity and raised. iTerm2 hands a constant dictionary to setVolatileDomain:forName: while it
++ * launches, Foundation validates it with NSIsPlistType, and the raise came out of the enumeration
++ * underneath, inside applicationWillFinishLaunching:.
++ */
+ 
+ @interface NSConstantArray : NSArray {
+ @public
+@@ -42,9 +51,10 @@
+ 
+ @interface NSConstantDictionary : NSDictionary {
+ @public
++    unsigned long _options;
++    unsigned long _count;
+     const id *_keys;
+     const id *_objects;
+-    unsigned long _count;
+ }
+ @end
+ 

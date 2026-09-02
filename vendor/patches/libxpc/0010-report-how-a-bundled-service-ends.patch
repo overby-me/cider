@@ -1,0 +1,61 @@
+report how a bundled service ends, and reap it
+
+waitpid is a one-shot: with nobody asking, an exit status is lost with the zombie, and a service
+that quits on startup looks identical to one that is running and silent.
+
+A ZOMBIE LEADER IS NOT A DEAD SERVICE. xpc_main ends in dispatch_main, which pthread_exits the main
+thread, so a healthy service shows its leader in state Z with its workers still in S. Reading that
+leader alone as "the service died" cost an hour; ask the reaper instead.
+
+--- a/src/connection.m
++++ b/src/connection.m
+@@ -29,6 +29,7 @@
+ #include <stdlib.h>
+ #include <unistd.h>
+ #include <spawn.h>
++#include <sys/wait.h>
+ #import <xpc/objects/bundle.h>
+ #import <xpc/objects/array.h>
+ #import <xpc/objects/string.h>
+@@ -771,6 +772,41 @@
+ 				fflush(stderr);
+ 			}
+ 
++			/*
++			 * AND HOW IT ENDS, IF IT ENDS. waitpid is a one-shot: with nobody asking, an exit status
++			 * is lost with the zombie, and a service that quits on startup then looks identical to
++			 * one that is running and silent.
++			 *
++			 * A ZOMBIE LEADER IS NOT A DEAD SERVICE, and reading one as dead cost an hour here.
++			 * xpc_main ends in dispatch_main, which pthread_exits the main thread, so a perfectly
++			 * healthy service shows its leader in state Z with its worker threads still in S. Ask
++			 * this reaper, or look at the other threads; do not read the leader's state alone.
++			 */
++			if (spawned && pid > 0) {
++				pid_t child = pid;
++
++				dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
++					int status = 0;
++
++					if (waitpid(child, &status, 0) != child) {
++						return;
++					}
++					if (getenv("CIDER_TRACE_XPC") == NULL) {
++						return;
++					}
++					if (WIFEXITED(status)) {
++						fprintf(stderr, "CIDER_XPC service pid %d exited with %d\n",
++							(int)child, WEXITSTATUS(status));
++					} else if (WIFSIGNALED(status)) {
++						fprintf(stderr, "CIDER_XPC service pid %d killed by signal %d\n",
++							(int)child, WTERMSIG(status));
++					} else {
++						fprintf(stderr, "CIDER_XPC service pid %d ended, status 0x%x\n",
++							(int)child, status);
++					}
++					fflush(stderr);
++				});
++			}
+ 		}
+ 		break;
+ 	}

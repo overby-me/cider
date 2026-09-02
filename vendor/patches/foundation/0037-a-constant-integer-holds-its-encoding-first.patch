@@ -1,0 +1,42 @@
+a constant integer holds its encoding first
+
+The layouts were read out of a binary that has these instances rather than inferred from a fault.
+iTerm2 carries 459 constant arrays, 42 constant dictionaries and 907 constant integers in
+__DATA_CONST, and the bind records give every address.
+
+  ARRAY        stride 0x18   isa, count, objects              already right
+  DICTIONARY   stride 0x28   isa, options, count, keys, objs  was wrong by one field
+  INTEGER      stride 0x18   isa, encoding, value             had the two swapped
+
+word1 of the dictionary is 1 in all 42 instances so it is not the count, and word2 satisfies
+objects - keys == word2 * 8 in 42 of 42. The integer's word1 is a pointer into __TEXT shared
+between instances of the same type, and word2 is the value.
+
+--- a/src/NSConstantNumbers.m
++++ b/src/NSConstantNumbers.m
+@@ -26,10 +26,24 @@
+  * it wants and the class converts: iTerm2 asked a constant integer for shortValue and the missing
+  * accessor was an unrecognized selector that terminated the application on its main nib. */
+ 
++/*
++ * THE ENCODING COMES FIRST, READ OUT OF A BINARY rather than assumed.
++ *
++ * iTerm2 carries 907 of these in __DATA_CONST,__objc_intobj, 24 bytes apart, and the words say
++ * which field is which:
++ *
++ *     0x101554190: isa=0  w1=0x101024b1d (a pointer into __TEXT)  w2=0x32
++ *     0x1015541a8: isa=0  w1=0x101024b1d                          w2=0x19
++ *     0x1015541c0: isa=0  w1=0x10102861d                          w2=0x10000
++ *
++ * w1 is the type encoding string, shared between instances of the same type, and w2 is the value.
++ * Declared the other way round, every constant integer read its value as a string pointer: a
++ * constant 1 became a pointer to address 1, and iTerm2 died in -[NSNumber hash] dereferencing it.
++ */
+ @interface NSConstantIntegerNumber : NSNumber {
+ @public
+-    long long _value;
+     const char *_encoding;
++    long long _value;
+ }
+ @end
+ 

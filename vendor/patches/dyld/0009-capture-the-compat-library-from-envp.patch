@@ -1,0 +1,55 @@
+capture the compat library from envp, because dyld has no getenv
+
+dyld links against no libc, so its getenv walks an environment it does not have and faults.
+iTerm2 died at _getenv+0x22 reading address 0, inside a lazy bind, because the compat fallback
+called it. The value is captured from envp at launch instead, beside LD_LIBRARY_PATH, so the
+failure path reads a pointer rather than making a call.
+
+--- a/src/dyld2.h
++++ b/src/dyld2.h
+@@ -64,6 +64,9 @@
+ 
+ 
+ 	extern ImageLoader::LinkContext			gLinkContext;
++	/* CIDER_COMPAT_LIBRARY, captured with the other environment variables. It cannot be read at
++	   bind time: dyld links against no libc, so its getenv has no environment and faults. */
++	extern const char*						gCiderCompatLibrary;
+ 	extern struct dyld_all_image_infos*		gProcessInfo;
+ 	extern bool								gLogAPIs;
+ #if SUPPORT_ACCELERATE_TABLES
+--- a/src/dyld2.cpp
++++ b/src/dyld2.cpp
+@@ -317,6 +317,7 @@
+ static const char*					sSharedCacheOverrideDir;
+        bool							gSharedCacheOverridden = false;
+ ImageLoader::LinkContext			gLinkContext;
++const char*							gCiderCompatLibrary = NULL;
+ bool								gLogAPIs = false;
+ #if SUPPORT_ACCELERATE_TABLES
+ bool								gLogAppAPIs = false;
+@@ -2517,6 +2518,11 @@
+ 				processDyldEnvironmentVariable(key, value, NULL);
+ 			}
+ 		}
++		else if ( strncmp(keyEqualsValue, "CIDER_COMPAT_LIBRARY=", 21) == 0 ) {
++			const char* path = &keyEqualsValue[21];
++			if ( path[0] != '\0' )
++				gCiderCompatLibrary = path;
++		}
+ 		else if ( strncmp(keyEqualsValue, "LD_LIBRARY_PATH=", 16) == 0 ) {
+ 			const char* path = &keyEqualsValue[16];
+ 			sEnv.LD_LIBRARY_PATH = parseColonList(path, NULL);
+--- a/src/ImageLoaderMachOCompressed.cpp
++++ b/src/ImageLoaderMachOCompressed.cpp
+@@ -774,7 +774,10 @@
+ 	 * normally ever reaches this code. CIDER_COMPAT_LIBRARY names it; unset means the old behaviour.
+ 	 */
+ 	{
+-		const char* compatPath = getenv("CIDER_COMPAT_LIBRARY");
++		/* NOT getenv. dyld links against no libc, so its getenv walks an environment it never has
++		 * and faults on the first call: iA Writer died at _getenv+0x22 reading address 0, inside a
++		 * lazy bind, and it was this line. The value is captured from envp at launch instead. */
++		const char* compatPath = dyld::gCiderCompatLibrary;
+ 
+ 		if ( compatPath != NULL && compatPath[0] != '\0' ) {
+ 			const Symbol* compatSym;

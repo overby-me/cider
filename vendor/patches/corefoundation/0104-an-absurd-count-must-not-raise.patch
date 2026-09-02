@@ -1,0 +1,66 @@
+an absurd count must not turn a key walk into an exception
+
+A capacity is a HINT and must not be able to raise. This sized an array from [self count], and a
+receiver whose count is wrong turned a walk over the keys into an exception thrown from underneath
+the caller: a constant dictionary reported 4317355096 entries and iTerm2 died on
+
+    Please rethink the size of the capacity of the array you are creating
+
+while setting a volatile defaults domain during launch. The enumeration does not depend on the
+hint, so dropping it costs a few reallocations. A count that cannot be right is still REPORTED,
+once, because a dictionary that miscounts is a defect of its own.
+
+--- a/NSDictionary.m
++++ b/NSDictionary.m
+@@ -794,10 +794,39 @@
+     }
+ }
+ 
++/*
++ * A CAPACITY IS A HINT AND MUST NOT BE ABLE TO RAISE.
++ *
++ * This asked for an array sized by [self count], and a count that is wrong turns a walk over the
++ * keys into an exception thrown from underneath the caller. iTerm2 sets a volatile defaults domain
++ * while it launches, Foundation validates it with NSIsPlistType, that enumerates, and the walk died
++ * here on
++ *
++ *     Please rethink the size of the capacity of the array you are creating: 22387800
++ *
++ * with the real number larger still, since the message prints an NSUInteger through %d. The
++ * enumeration itself is unaffected by the hint, so dropping it costs a few reallocations and makes
++ * this correct for a receiver whose count cannot be trusted.
++ *
++ * The count is still REPORTED once when it is absurd, because a dictionary that miscounts is a
++ * defect of its own and this is the only place it has ever been seen.
++ */
++static void _CiderCheckDictionaryCount(id dictionary, NSUInteger count)
++{
++    static BOOL reported = NO;
++
++    if (count > (NSUInteger) 0x40000000 && !reported) {
++        reported = YES;
++        fprintf(stderr, "cider: dictionary of class %s reports a count of %llu\n",
++                object_getClassName(dictionary), (unsigned long long) count);
++        fflush(stderr);
++    }
++}
++
+ - (NSArray *)allKeys
+ {
+-    NSUInteger count = [self count];
+-    NSMutableArray *keys = [[NSMutableArray alloc] initWithCapacity:count];
++    _CiderCheckDictionaryCount(self, [self count]);
++    NSMutableArray *keys = [[NSMutableArray alloc] init];
+     NSEnumerator *enumerator = [self keyEnumerator];
+     id key = nil;
+ 
+@@ -813,8 +842,7 @@
+ 
+ - (NSArray *)allKeysForObject:(id)anObject
+ {
+-    NSUInteger count = [self count];
+-    NSMutableArray *keys = [[NSMutableArray alloc] initWithCapacity:count];
++    NSMutableArray *keys = [[NSMutableArray alloc] init];
+     NSEnumerator *enumerator = [self keyEnumerator];
+     id key = nil;
+ 
