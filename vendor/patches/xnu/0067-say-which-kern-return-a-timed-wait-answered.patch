@@ -1,0 +1,35 @@
+say which kern_return a timed semaphore wait answered
+
+libdispatch retries on KERN_ABORTED, returns on KERN_OPERATION_TIMED_OUT and TRAPS on anything
+else, so a fourth value is a SIGILL inside _dispatch_sema4_timedwait with nothing said about
+why. iTerm2 dies there while building its windows.
+
+Reported once, with the port name, the timeout and the pid, because the value is the whole
+question. Measured: name=20483 with a 30ms timeout answers 15, KERN_INVALID_NAME, for a name
+that is plainly not zero.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -563,6 +563,22 @@
+ 		__simple_abort();
+ 	}
+ 
++	/*
++	 * WHAT WE HAND BACK MATTERS TO THE CALLER, and only three answers are legal here. libdispatch
++	 * retries on KERN_ABORTED, returns on KERN_OPERATION_TIMED_OUT, and TRAPS on anything else, so
++	 * a fourth value is a SIGILL in _dispatch_sema4_timedwait with nothing said about why. iTerm2
++	 * dies there. Reported once, because the value is the whole question.
++	 */
++	if (code != KERN_SUCCESS && code != KERN_ABORTED && code != 49 /* KERN_OPERATION_TIMED_OUT */) {
++		static int reported = 0;
++
++		if (!reported) {
++			reported = 1;
++			__simple_printf("CIDER_SEM pid=%d semaphore_timedwait(name=%d, %us %uns) answered %d, which libdispatch will trap on\n",
++			                (int) getpid(), (int) wait_name, (unsigned) sec, (unsigned) nsec, code);
++		}
++	}
++
+ 	return code;
+ }
+ 
