@@ -1,9 +1,19 @@
-trace when a platform semaphore is created and destroyed
+trace platform semaphore lifetime, in a total order
 
-The cached path creates in libplatform, not libdispatch, so a trace in libdispatch saw nothing:
-created=0 for a name plainly in use. In the right place the lifetime is visible, and it shows
-the same name created TWICE with no destroy between, then destroyed once, which is how a live
-waiter ends up on a dead name.
+The cached path creates in libplatform, not libdispatch, so a trace in libdispatch reported
+created=0 for a name that was plainly in use. Several threads write these lines, so an atomic
+sequence number makes the order unambiguous rather than merely apparent.
+
+What it shows, in one iTerm2 run:
+
+    seq=0 created name=11779
+    seq=1 created name=11779     <- the same name, with no destroy between
+    seq=2 destroying name=11779
+    seq=3 created name=11779
+
+Every _os_semaphore_create in the run returned the SAME name, which in Mach means the same
+PORT was copied out each time: one semaphore handed to every caller. One holder destroys it
+and the others are left waiting on a dead name.
 
 --- a/src/os/semaphore.c
 +++ b/src/os/semaphore.c
@@ -17,25 +27,38 @@ waiter ends up on a dead name.
  #include <mach/mach_init.h>
  #include <mach/semaphore.h>
  #include <mach/task.h>
-@@ -44,6 +47,12 @@
+@@ -36,6 +39,10 @@
+ 		} \
+ 	} while (0)
+ 
++/* A TOTAL ORDER FOR THE TRACE. Several threads write these lines, so the order they appear in is
++ * not the order they happened; an atomic counter makes the sequence unambiguous. */
++static int _cider_sem_seq = 0;
++
+ os_semaphore_t
+ _os_semaphore_create(void)
+ {
+@@ -44,6 +51,13 @@
  	kr = semaphore_create(mach_task_self(), &s4, SYNC_POLICY_FIFO, 0);
  	OS_VERIFY_MIG(kr, "Allocating semaphore failed with MIG_REPLY_MISMATCH");
  	OS_SEMAPHORE_VERIFY_KR(kr, "Creating semaphore failed, possible port leak");
 +	/* THE CACHED PATH CREATES HERE, not in libdispatch, which is why a trace there saw nothing.
 +	 * CIDER_TRACE_SEM, off by default: this is a hot path. */
 +	if (getenv("CIDER_TRACE_SEM")) {
-+		fprintf(stderr, "CIDER_SEM pid=%d platform created name=%d\n", (int)getpid(), (int)s4);
++		fprintf(stderr, "CIDER_SEM seq=%d pid=%d platform created name=%d\n",
++		        __sync_fetch_and_add(&_cider_sem_seq, 1), (int)getpid(), (int)s4);
 +		fflush(stderr);
 +	}
  	return (os_semaphore_t)s4;
  }
  
-@@ -51,6 +60,10 @@
+@@ -51,6 +65,11 @@
  _os_semaphore_dispose(os_semaphore_t sema)
  {
  	semaphore_t s4 = (semaphore_t)sema;
 +	if (getenv("CIDER_TRACE_SEM")) {
-+		fprintf(stderr, "CIDER_SEM pid=%d platform destroying name=%d\n", (int)getpid(), (int)s4);
++		fprintf(stderr, "CIDER_SEM seq=%d pid=%d platform destroying name=%d\n",
++		        __sync_fetch_and_add(&_cider_sem_seq, 1), (int)getpid(), (int)s4);
 +		fflush(stderr);
 +	}
  	kern_return_t kr = semaphore_destroy(mach_task_self(), s4);
