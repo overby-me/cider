@@ -124,5 +124,19 @@ void swift_task_deinitOnExecutor(void *object, void (*work)(void *), void *execu
         work(object);
 }
 
+/*
+ * _swift_classIsSwiftMask
+ *
+ * The bit a Swift 5 overlay tests to tell a Swift class from a plain ObjC one. Swift 5.2 exported
+ * it; later runtimes keep it private, so every one of the 44 prebuilt overlays here fails to bind
+ * against a newer libswiftCore, and it is the ONLY one that does: of the 3024 symbols the overlays
+ * take from the standard library, 5.5.3 provides 3023.
+ *
+ * TWO, not one. One is the pre-stable-ABI value for macOS before 10.14.4, and this prefix reports a
+ * far later version than that, so a Swift class carries the stable bit.
+ */
+__attribute__((visibility("default")))
+unsigned long long cider_swift_class_is_swift_mask __asm__("__swift_classIsSwiftMask") = 2;
+
 const char cider_swift_compat[] = "cider swift compat";
 
