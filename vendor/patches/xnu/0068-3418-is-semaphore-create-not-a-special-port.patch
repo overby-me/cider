@@ -1,0 +1,45 @@
+3418 is semaphore_create, and a reply for it must never be replayed
+
+The guest caches MIG replies for a small list of message ids and replays them for later calls
+to the same destination. The list was built for idempotent queries and 3418 was on it as a
+task special port. It is not one: the generated server says
+__DeclareRcvRpc(3418, "semaphore_create"), and every call to that must make a NEW semaphore
+and hand back a NEW name.
+
+Cached, the first reply came back for every later create, so libdispatch held one name for
+three semaphores. The consequence is written in the comment directly below the list: a
+replayed hit copies the NAME and adds no right. When the first holder disposed of it the name
+died for all of them, and the next wait answered KERN_INVALID_NAME, which
+_dispatch_sema4_timedwait traps on. That was the end of iTerm2 for this whole task.
+
+Measured before: the daemon made two semaphores for the process and copied out 9731 and
+21251, and the caller received 21251 three times and never saw 9731. Measured after: four
+creates, four distinct names, no trap, and the application runs on to build its nine windows.
+
+--- a/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -161,7 +161,23 @@
+ static libsimple_rwlock_t g_mach_msg_cache_lock = LIBSIMPLE_RWLOCK_INITIALIZER;
+ 
+ static _Bool mach_msg_id_cacheable(mach_msg_id_t id) {
+-	return id == 200 || id == 206 || id == 3409 || id == 3418;
++	/*
++	 * 3418 IS semaphore_create, NOT A TASK SPECIAL PORT, and caching it is why iTerm2 died.
++	 *
++	 * A reply may be replayed only for a routine that answers the same thing every time. The
++	 * comment on this list called 3418 a special-port query, and the generated server says
++	 * otherwise: __DeclareRcvRpc(3418, "semaphore_create"). Every call to that MUST make a new
++	 * semaphore and hand back a new name.
++	 *
++	 * Cached, the first reply was replayed for every later create, so libdispatch got one name for
++	 * three semaphores. The consequence is spelled out just below: a replayed hit copies the NAME
++	 * and adds no right, so when the first holder disposed of it the name died for all of them and
++	 * the next wait answered KERN_INVALID_NAME, which _dispatch_sema4_timedwait traps on.
++	 *
++	 * Measured: the daemon made two semaphores for that process and copied out two distinct names,
++	 * 9731 and 21251, and the caller received 21251 three times and never saw 9731.
++	 */
++	return id == 200 || id == 206 || id == 3409;
+ }
+ 
+ // A cached port-return reply carries a real send right from the FIRST query only; a replayed hit
