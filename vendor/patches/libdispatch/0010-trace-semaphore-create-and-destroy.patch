@@ -1,0 +1,44 @@
+trace when libdispatch creates or destroys a semaphore
+
+The companion to the libplatform trace: with the cache off, libdispatch is where the port is
+made, and the two ends have to be watched together to tell a destroyed port from one that was
+never valid.
+
+--- a/src/shims/lock.c
++++ b/src/shims/lock.c
+@@ -19,6 +19,8 @@
+  */
+ 
+ #include "internal.h"
++#include <stdio.h>
++#include <stdlib.h>
+ 
+ #if TARGET_OS_MAC
+ dispatch_static_assert(DLOCK_LOCK_DATA_CONTENTION ==
+@@ -101,6 +103,14 @@
+ 
+ 	kern_return_t kr = semaphore_create(mach_task_self(), &tmp, policy, 0);
+ 	DISPATCH_SEMAPHORE_VERIFY_KR(kr);
++	/* WHICH NAMES EXIST AND WHEN THEY STOP EXISTING. A timed wait here answers KERN_INVALID_NAME for
++	 * a name that is not zero, and the only way to tell a destroyed port from one that was never
++	 * valid is to watch both ends. CIDER_TRACE_SEM, off by default: this is a hot path. */
++	if (getenv("CIDER_TRACE_SEM")) {
++		fprintf(stderr, "CIDER_SEM pid=%d created name=%d policy=%d\n",
++		        (int)getpid(), (int)tmp, policy);
++		fflush(stderr);
++	}
+ 
+ 	if (!os_atomic_cmpxchg(s4, MACH_PORT_NULL, tmp, relaxed)) {
+ 		kr = semaphore_destroy(mach_task_self(), tmp);
+@@ -118,6 +128,11 @@
+ 		return os_put_cached_semaphore((os_semaphore_t)sema_port);
+ 	}
+ #endif
++	if (getenv("CIDER_TRACE_SEM")) {
++		fprintf(stderr, "CIDER_SEM pid=%d destroying name=%d policy=%d\n",
++		        (int)getpid(), (int)sema_port, policy);
++		fflush(stderr);
++	}
+ 	kern_return_t kr = semaphore_destroy(mach_task_self(), sema_port);
+ 	DISPATCH_SEMAPHORE_VERIFY_KR(kr);
+ }

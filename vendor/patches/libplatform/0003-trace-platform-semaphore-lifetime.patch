@@ -1,0 +1,43 @@
+trace when a platform semaphore is created and destroyed
+
+The cached path creates in libplatform, not libdispatch, so a trace in libdispatch saw nothing:
+created=0 for a name plainly in use. In the right place the lifetime is visible, and it shows
+the same name created TWICE with no destroy between, then destroyed once, which is how a live
+waiter ends up on a dead name.
+
+--- a/src/os/semaphore.c
++++ b/src/os/semaphore.c
+@@ -19,6 +19,9 @@
+  */
+ 
+ #include "os/internal.h"
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h>
+ #include <mach/mach_init.h>
+ #include <mach/semaphore.h>
+ #include <mach/task.h>
+@@ -44,6 +47,12 @@
+ 	kr = semaphore_create(mach_task_self(), &s4, SYNC_POLICY_FIFO, 0);
+ 	OS_VERIFY_MIG(kr, "Allocating semaphore failed with MIG_REPLY_MISMATCH");
+ 	OS_SEMAPHORE_VERIFY_KR(kr, "Creating semaphore failed, possible port leak");
++	/* THE CACHED PATH CREATES HERE, not in libdispatch, which is why a trace there saw nothing.
++	 * CIDER_TRACE_SEM, off by default: this is a hot path. */
++	if (getenv("CIDER_TRACE_SEM")) {
++		fprintf(stderr, "CIDER_SEM pid=%d platform created name=%d\n", (int)getpid(), (int)s4);
++		fflush(stderr);
++	}
+ 	return (os_semaphore_t)s4;
+ }
+ 
+@@ -51,6 +60,10 @@
+ _os_semaphore_dispose(os_semaphore_t sema)
+ {
+ 	semaphore_t s4 = (semaphore_t)sema;
++	if (getenv("CIDER_TRACE_SEM")) {
++		fprintf(stderr, "CIDER_SEM pid=%d platform destroying name=%d\n", (int)getpid(), (int)s4);
++		fflush(stderr);
++	}
+ 	kern_return_t kr = semaphore_destroy(mach_task_self(), s4);
+ 	OS_SEMAPHORE_VERIFY_KR(kr, "Destroying semaphore failed");
+ }
