@@ -375,10 +375,15 @@ CFDictionaryRef CTFontCopyTraits(CTFontRef font)
     return nil;
 }
 
+/*
+ * THE FONTS TO FALL BACK TO for characters this one does not have. There is no cascade list here,
+ * and the honest answer to that is an EMPTY list, not nil: the name says Copy, so a caller owns the
+ * result and is entitled to send it CFArrayGetCount. Returning nil put a null where an array was
+ * expected and the crash landed inside objc, two frames below CoreFoundation, nowhere near here.
+ */
 CFArrayRef CTFontCopyDefaultCascadeListForLanguages(CTFontRef font, CFArrayRef languagePrefList)
 {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
-    return nil;
+    return CFArrayCreate(kCFAllocatorDefault, NULL, 0, &kCFTypeArrayCallBacks);
 }
 
 CFStringRef CTFontCopyPostScriptName(CTFontRef font)

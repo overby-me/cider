@@ -480,17 +480,17 @@ struct cider_class_ro {
  */
 static void cider_combine_destroy_instance(void *object)
 {
-    static void (*dealloc)(void *, size_t, size_t);
-    static int looked;
-
-    if (!looked) {
-        looked = 1;
-        dealloc = (void (*)(void *, size_t, size_t)) dlsym(RTLD_DEFAULT,
-                                                           "swift_deallocClassInstance");
-    }
-    if (dealloc != NULL && object != NULL) {
-        dealloc(object, 16, 7);
-    }
+    /*
+     * NOTHING, AND THAT IS THE DESIGN. This framework hands out objects nobody here tracks and
+     * frees none of them, which is written down next door as the price of having no subscription
+     * machinery. A destructor that actually deallocated turned that deliberate leak into a
+     * use-after-free: iA Writer went on messaging an object whose storage had been handed back,
+     * and the crash surfaced in CF forwarding reading a garbage isa, nowhere near here.
+     *
+     * What matters is that this word is a REAL FUNCTION rather than the zero an objc allocated
+     * class has in front of it, because swift_release calls it the moment a count reaches zero.
+     */
+    (void) object;
 }
 
 /*
