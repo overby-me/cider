@@ -173,10 +173,36 @@ _os_log_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, ui
 
 	char *decodedBuffer = argumentsReadable ? os_log_decode_buffer(format, buf, size)
 	                                        : strdup("(os_log arguments unreadable)");
-	asl_log(get_client(), message, level, "%s", decodedBuffer);
-	asl_release(message);
-	free(decodedBuffer);
-	free((void *)buffer_hex);
+
+	/*
+	 * LOGGING MUST NOT BLOCK THE CALLER, and here it did.
+	 *
+	 * asl_log sends to the logging service and waits for it. With no syslogd running the send goes
+	 * to a port nobody reads and never returns, so a single os_log call stops the thread that made
+	 * it forever. iTerm2 hung exactly there, inside -[NSXPCConnection _sendInvocation...], with its
+	 * main thread in mach_msg_overwrite underneath syslog and vsnprintf, before its first window.
+	 *
+	 * On macOS os_log never blocks its caller: the entry goes into a buffer and a daemon drains it.
+	 * A serial queue is the same shape. If the service is absent the queue backs up and the entries
+	 * are lost, which is what "no logging daemon" should cost, rather than the process.
+	 */
+	static dispatch_queue_t queue = NULL;
+	static dispatch_once_t queueToken;
+	dispatch_once(&queueToken, ^{
+		queue = dispatch_queue_create("org.cider.os_log", DISPATCH_QUEUE_SERIAL);
+	});
+
+	aslmsg owned = message;
+	char *text = decodedBuffer;
+	const char *hex = buffer_hex;
+	int sendLevel = level;
+
+	dispatch_async(queue, ^{
+		asl_log(get_client(), owned, sendLevel, "%s", text);
+		asl_release(owned);
+		free(text);
+		free((void *)hex);
+	});
 }
 
 // os_log_error()/os_log_debug() expand to these type-fixed entry points instead of
