@@ -1,18 +1,15 @@
-name the process a right is copied into, and count the space on both sides
+count a port space by walking it, not by reading is_table_hashed
 
-The guest says its port namespace never grows when semaphore_create runs, and the daemon says
-it copied a send right into that task. Both are true, and the reason is that they are NOT
-counting the same table:
+The previous version of this trace printed space->is_table_hashed and called it the number of
+entries. It is not: it is hash bookkeeping. It reads 14 for a space holding 59 names, and on
+that basis I claimed the guest and the daemon kept different namespaces, which is FALSE.
 
-    guest   mach_port_names ....... 59 to 61 names
-    daemon  space->is_table_hashed .. 1, then 2
+Walking the table and counting live entries agrees with the guest exactly:
 
-for the same pid, with the daemon's two entries being names 259 and 515, which are exactly the
-task port and the host port the guest reports. So the two sides agree about the well known
-ports and disagree about everything else.
+    guest   mach_port_names ... 59 to 60
+    daemon  live .............. 59        (hashed reads 14)
 
-The pid is what makes this readable at all: before it, the copyout trace named a task pointer
-and there was no way to tell whose it was.
+One namespace, shared, and the count grows as rights are copied in: 30, then 48, then 59.
 
 --- a/osfmk/kern/ipc_sync.c
 +++ b/osfmk/kern/ipc_sync.c
@@ -49,7 +46,7 @@ and there was no way to tell whose it was.
  #include <ipc/ipc_hash.h>
  #include <ipc/ipc_right.h>
  #include <ipc/ipc_notify.h>
-@@ -1022,6 +1024,27 @@
+@@ -1022,6 +1024,45 @@
  		ipc_object_destroy(object, msgt_name);
  	}
  
@@ -67,12 +64,30 @@ and there was no way to tell whose it was.
 +	/* AND HOW BIG THE SPACE IS ON THIS SIDE. The guest counts its own namespace with
 +	 * mach_port_names and says it never grows; if the two counts disagree they are not looking at
 +	 * the same table. */
-+	xnu_sys_log(2, "CIDER_SEM copyout space=%p task=%p pid=%d entries=%u object=%p kr=%d name=%u",
-+	            (void *) space, (void *) (space ? space->is_task : NULL),
-+	            (space && space->is_task) ? (int) task_pid(space->is_task) : -1,
-+	            space ? (unsigned) space->is_table_hashed : 0u,
-+	            (void *) object, (int) kr,
-+	            (unsigned) (kr == KERN_SUCCESS ? name : 0));
++	/*
++	 * COUNT THE SPACE THE WAY THE GUEST DOES, by walking the table and counting live entries.
++	 * is_table_hashed is a hash bookkeeping figure, not the number of names, and reading it as one
++	 * is how I came to believe the two sides kept different namespaces.
++	 */
++	{
++		unsigned live = 0;
++
++		if (space != IS_NULL && space->is_table != NULL) {
++			mach_port_index_t i;
++
++			for (i = 0; i < space->is_table_size; i++) {
++				if (IE_BITS_TYPE(space->is_table[i].ie_bits) != MACH_PORT_TYPE_NONE)
++					live++;
++			}
++		}
++		xnu_sys_log(2, "CIDER_SEM copyout space=%p task=%p pid=%d live=%u hashed=%u object=%p "
++		               "kr=%d name=%u",
++		            (void *) space, (void *) (space ? space->is_task : NULL),
++		            (space && space->is_task) ? (int) task_pid(space->is_task) : -1,
++		            live, space ? (unsigned) space->is_table_hashed : 0u,
++		            (void *) object, (int) kr,
++		            (unsigned) (kr == KERN_SUCCESS ? name : 0));
++	}
 +
  	return kr;
  }
