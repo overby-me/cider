@@ -26,6 +26,8 @@
 #include <string.h>
 #include <dlfcn.h>
 #include <stdio.h>
+#import <objc/runtime.h>
+#include <string.h>
 #include <stdlib.h>
 
 /* The two-word answer a Swift metadata accessor returns: the metadata and how complete it is. */
@@ -464,8 +466,23 @@ static void *cider_combine_build_class(const void *descriptor, size_t instanceSi
     words = (uintptr_t *) (block + addressPoint);
     words[-2] = (uintptr_t) cider_combine_class_destroy;
     words[-1] = (uintptr_t) nativeWitnesses;
-    /* The isa has to be a class, and this class is never handed to Objective-C, so it points at
-     * itself: a metaclass of last resort that keeps every "is this a class" test true. */
+
+    /*
+     * THE ISA POINTS AT THE METADATA ITSELF, and that is NOT enough once Objective-C sees it.
+     *
+     * MEASURED, so that the next attempt does not start from scratch: iA Writer stores the observer
+     * this framework returns in an ObjC property and the setter retains it. objc_msgSend loads the
+     * isa, reads the method cache at class + 0x10, finds the zero left here, and dereferences it:
+     * SIGSEGV at address 0 with a receiver whose isa looks perfectly valid.
+     *
+     * Copying the first five words of a registered class pair over this header (isa, superclass,
+     * two cache words, data) DOES make the message dispatch, and then it fails differently: with
+     * the Swift bit cleared the object reaches _bridgeAnythingToObjectiveC and aborts there, and
+     * with the bit set objc refuses to look anything up because the class was never realized. The
+     * data word copied from a registered class is already a realized class_rw_t, which is not what
+     * _objc_realizeClassFromSwift expects, so that entry point does not bridge the two halves
+     * either. What is needed is a class_ro_t of our own and the realize call over that.
+     */
     words[0] = (uintptr_t) words;
     words[1] = 0;
     words[4] = 2;                       /* objc data: the low bit says this is a Swift class */

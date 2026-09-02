@@ -229,8 +229,18 @@ static void _CiderAppFatalSignal(int signo, siginfo_t *info, void *ucontextIn)
                                             MS_ASYNC) == 0)
                 name = sel_getName((SEL) selector);
 
-            fprintf(stderr, "CIDER_APP messaging receiver=%p selector=%p (%s)\n",
-                    (void *) receiver, (void *) selector, name ? name : "unreadable");
+            /* AND WHAT THE RECEIVER IS. A null isa means an allocated but uninitialised object,
+             * which is a different bug from a freed one or a small integer used as a pointer. */
+            const void *isa = NULL;
+            int readable = receiver > 0x1000 &&
+                           msync((void *) (receiver & ~(uintptr_t) 4095), 4096, MS_ASYNC) == 0;
+
+            if (readable)
+                isa = *(const void **) receiver;
+
+            fprintf(stderr, "CIDER_APP messaging receiver=%p selector=%p (%s) isa=%s%p\n",
+                    (void *) receiver, (void *) selector, name ? name : "unreadable",
+                    readable ? "" : "unreadable ", isa);
         }
 
         /*
