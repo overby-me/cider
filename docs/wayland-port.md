@@ -15433,11 +15433,21 @@ The dump says what they are:
     NSTextField 137x17@0,257   NSTextField 137x17@0,225      <- the two that clip
     NSTextField 134x17@18,299  NSTextField 134x17@18,423     <- the short ones, fine
 
-The frames are what the nib stores, at x=0 and 137 wide, and the right aligned text overflows its own
-frame to the left by roughly 28 points. So our text is about 20 percent wider than the frame the nib
-was designed around. Twenty percent is too much for a face substitution alone and points at a point
-SIZE rather than a face, which is worth measuring before anyone changes the UI font: a label the nib
-sets in the small system font drawn at the regular size would be about this much wider.
+CORRECTED, by measuring instead of guessing. The first reading of this blamed the font, and the
+numbers refute it. The dump now prints the font and what the text measures in it beside the frame,
+and the three labels that clip are not short of room, they are OUTSIDE THE WINDOW:
+
+    NSTextField 259x17@-17,388  font=.AppleSystemUIFont 13.0 measured=105 text: Number of Pages:
+    NSTextField 259x17@-17,347  font=.AppleSystemUIFont 13.0 measured=115 text: Page Spread Mode:
+    NSTextField 154x17@-17,186  font=.AppleSystemUIFont 13.0 measured=34  text: Units:
+    NSTextField 134x17@18,423   font=.AppleSystemUIFont 13.0 measured=41  text: Pages:
+
+Every label is left aligned and 13 point, and the text fits its frame with room to spare. Three of
+them sit at x=-17 where the rest sit at x=18, so the first 17 points are off the left edge of the
+window: exactly the Nu of Number, the Pa of Page and the Un of Units that the capture is missing.
+Their widths differ too, 259 and 154 against 134, so these three were positioned by something other
+than the nib values the others kept. That is the question to answer next, and it is not a font
+question.
 
 **The instrument could not see this window at all until now.** `CIDER_TRACE_TREE` throttled on ONE
 shared timestamp, so the windows that flush often ate every slot and a dialog, which is exactly the

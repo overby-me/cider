@@ -231,6 +231,26 @@ static void _CiderDumpViewTree(NSView *view, int depth)
     else if ([view respondsToSelector: @selector(string)])
         text = [(id) view string];
 
+    /* THE FONT AND WHAT THE TEXT MEASURES IN IT, next to the frame that has to hold it. A label
+     * clipped by its own frame is either the wrong face, the wrong size, or a frame the nib meant
+     * for something else, and the three are one number apart. */
+    char fontNote[160];
+
+    fontNote[0] = (char) 0;
+    if ([view respondsToSelector: @selector(font)] && text != nil && [text length] > 0) {
+        id font = [(id) view font];
+
+        if (font != nil && [font respondsToSelector: @selector(pointSize)]) {
+            NSSize measured = [text sizeWithAttributes:
+                                       [NSDictionary dictionaryWithObject: font
+                                                                   forKey: NSFontAttributeName]];
+
+            snprintf(fontNote, sizeof(fontNote), " font=%s %.1f measured=%.0f",
+                     [[font fontName] UTF8String] ?: "?", (double) [font pointSize],
+                     (double) measured.width);
+        }
+    }
+
     /* The mask belongs next to the frame: a subview that stays empty while its container grows is
      * either masked to stay that way or was never given a size to grow from, and the two look
      * identical in a frame-only dump. */
@@ -244,6 +264,7 @@ static void _CiderDumpViewTree(NSView *view, int depth)
             frame.origin.x, frame.origin.y, (unsigned) [view autoresizingMask], (int) [view isHidden],
             (int) [view translatesAutoresizingMaskIntoConstraints],
             (unsigned long) [[view constraints] count],
+            fontNote,
             (text != nil && [text length] > 0) ? " text: " : "",
             (text != nil && [text length] > 0) ? [text UTF8String] : "");
 
@@ -2500,16 +2521,42 @@ static void CiderDumpViewTree(NSView *view, int depth, CGFloat windowHeight) {
     memset(indent, ' ', pad);
     indent[pad] = (char) 0;
 
+    /* THE FONT AND WHAT THE TEXT MEASURES IN IT, next to the frame that has to hold it. A label
+     * clipped by its own frame is either the wrong face, the wrong size, or a frame the nib meant
+     * for something else, and those are one number apart. */
+    NSString *text = nil;
+    char fontNote[160];
+
+    fontNote[0] = (char) 0;
+    if ([view respondsToSelector: @selector(stringValue)])
+        text = [(id) view stringValue];
+
+    if ([view respondsToSelector: @selector(font)] && text != nil && [text length] > 0) {
+        id font = [(id) view font];
+
+        if (font != nil && [font respondsToSelector: @selector(pointSize)]) {
+            NSSize measured = [text sizeWithAttributes:
+                                       [NSDictionary dictionaryWithObject: font
+                                                                   forKey: NSFontAttributeName]];
+
+            snprintf(fontNote, sizeof(fontNote), " font=%s %.1f measured=%.0f",
+                     [[font fontName] UTF8String] ?: "?", (double) [font pointSize],
+                     (double) measured.width);
+        }
+    }
+
     /* TRANSLATES ANSWERS WHO OWNS THE FRAME. A view nothing ever sized and a view whose constraints
      * nobody solved are the same zero without it, and they need opposite fixes. */
     fprintf(stderr,
-            "CIDER_TREE %s%s %.0fx%.0f@%.0f,%.0f win %.0fx%.0f@%.0f,%.0f top %.0f..%.0f hidden=%d opaque=%d mask=%lu translates=%d cons=%lu\n",
+            "CIDER_TREE %s%s %.0fx%.0f@%.0f,%.0f win %.0fx%.0f@%.0f,%.0f top %.0f..%.0f hidden=%d opaque=%d mask=%lu translates=%d cons=%lu%s%s%s\n",
             indent, object_getClassName(view), frame.size.width, frame.size.height,
             frame.origin.x, frame.origin.y, win.size.width, win.size.height, win.origin.x,
             win.origin.y, top, top + win.size.height, (int) [view isHidden], (int) [view isOpaque],
             (unsigned long) [view autoresizingMask],
             (int) [view translatesAutoresizingMaskIntoConstraints],
-            (unsigned long) [[view constraints] count]);
+            (unsigned long) [[view constraints] count], fontNote,
+            (text != nil && [text length] > 0) ? " text: " : "",
+            (text != nil && [text length] > 0) ? [text UTF8String] : "");
 
     for (NSView *child in [view subviews])
         CiderDumpViewTree(child, depth + 1, windowHeight);
