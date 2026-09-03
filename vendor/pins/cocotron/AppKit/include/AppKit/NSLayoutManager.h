@@ -125,6 +125,9 @@ typedef NS_ENUM(NSInteger, NSTextLayoutOrientation) {
 - (NSTextContainer *) textContainerForGlyphAtIndex: (NSUInteger) glyphIndex
                                     effectiveRange: (NSRangePointer)
                                                             effectiveGlyphRange;
+- (NSTextContainer *) textContainerForGlyphAtIndex: (NSUInteger) glyphIndex
+                                    effectiveRange: (NSRangePointer) effectiveGlyphRange
+                           withoutAdditionalLayout: (BOOL) withoutAdditionalLayout;
 - (NSRect) lineFragmentRectForGlyphAtIndex: (NSUInteger) glyphIndex
                             effectiveRange:
                                     (NSRangePointer) effectiveGlyphRange;

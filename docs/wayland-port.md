@@ -15214,13 +15214,45 @@ runs the marked views once before it draws, top down, calling `-viewWillLayout`,
 The pass is not re-entrant and is bounded to four rounds, because a view's layout may draw, and
 drawing comes back through `-displayIfNeeded`.
 
-**It is off by default, and that is a measured decision, not caution.** With the pass on, iA Writer
-gets a real editor and then goes further than it ever has into text layout, where it raises `range
-(-1,0) beyond NSAttributedString bounds (0)` and ends with an empty window. Three columns beat an
-empty window, so `CIDER_LAYOUT_PASS=1` turns it on and that exception is the next thing to fix.
+**It was off for one build, and it is on now.** With the pass on, iA Writer got a real editor and
+then went further than it ever has into text layout, where it raised `range (-1,0) beyond
+NSAttributedString bounds (0)` and ended with an empty window. Both causes are fixed below, so the
+pass is on and `CIDER_LAYOUT_PASS=0` turns it off, which is how to tell a layout regression here
+from one in the application.
 
 Two NaN guards came out of the same run. A bounds that is not a number poisons every conversion out
 of that view, so the editor's clip view converted to nan and drew nowhere; `-setBounds:` now
 replaces a NaN component with the one it already had, per component, because a caller that gets the
 origin wrong may still be setting a good size. `-[NSClipView scrollToPoint:]` refuses a NaN
 outright. `CIDER_TRACE_NAN=1` names the setter and its caller.
+
+
+## Two answers a text layout manager must not give (task #115)
+
+Reaching the editor's own drawing raised twice, and both were ours.
+
+**An empty result is not a missing one.** `-[NSLayoutManager glyphRangeForBoundingRect:inTextContainer:]`
+started with `NSMakeRange(NSNotFound, 0)` and returned it unchanged when no line fragment intersects
+the rectangle, which for an empty document is every time. Callers do not test that: iA Writer's
+layout manager takes the range for the rectangle it is drawing and enumerates attributes over it, so
+NSNotFound arrived at NSAttributedString as a location and raised `range (-1,0) beyond
+NSAttributedString bounds (0)`, from inside `-drawRect:`, which terminated the application. The
+printed -1 is `%d` on an NSUInteger holding NSNotFound, which is worth remembering when reading these
+messages. No glyphs is now an empty range at 0.
+
+**A private method that exists on macOS.** `-textContainerForGlyphAtIndex:effectiveRange:withoutAdditionalLayout:`
+was missing, and the app calls it while drawing, precisely so that laying out more text cannot
+invalidate the run being drawn. Ours does no layout beyond the fragment table, so the flag decides
+only whether to validate first.
+
+With those two fixed the layout pass runs clean: no exception, the editor scroll view is 625x594 and
+its text view 610x594 at the right place in the window, and the NaN that used to poison every
+conversion out of the clip view is gone. Command N gives a document and the window titles itself
+Untitled.
+
+**What is left for iA Writer.** The editor draws its background and no text: typed characters are not
+reaching the text storage, which is a first responder question rather than a layout one, and the
+file list rows are still not built (the column and its title bar are, and `_IALibraryDocumentScrollView`
+is hidden and lives in the editor column). Verified with the pass on, by looking at every capture:
+Swift Publisher, MoneyMoney, LibreOffice and iTerm2 are all unchanged, iTerm2 with a live shell that
+takes a typed command.

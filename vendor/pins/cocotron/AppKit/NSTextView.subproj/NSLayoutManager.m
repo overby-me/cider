@@ -584,6 +584,28 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
     return fragment->container;
 }
 
+/* The same answer without provoking layout: a caller drawing inside -drawRect: uses this so that
+ * laying out more text cannot invalidate the run it is already drawing. Ours does no layout beyond
+ * what the fragment table already holds, so the flag only decides whether to validate first. */
+- (NSTextContainer *) textContainerForGlyphAtIndex: (NSUInteger) glyphIndex
+                                    effectiveRange: (NSRangePointer) effectiveGlyphRange
+                           withoutAdditionalLayout: (BOOL) withoutAdditionalLayout
+{
+    if (!withoutAdditionalLayout)
+        return [self textContainerForGlyphAtIndex: glyphIndex
+                                   effectiveRange: effectiveGlyphRange];
+
+    NSGlyphFragment *fragment = fragmentAtGlyphIndex(self, glyphIndex, effectiveGlyphRange);
+
+    if (fragment == NULL)
+        return nil;
+
+    if (effectiveGlyphRange != NULL)
+        *effectiveGlyphRange = [self _currentGlyphRangeForTextContainer: fragment->container];
+
+    return fragment->container;
+}
+
 - (NSRect) lineFragmentRectForGlyphAtIndex: (NSUInteger) glyphIndex
                             effectiveRange: (NSRangePointer) effectiveGlyphRange
 {
@@ -1387,6 +1409,17 @@ static inline NSGlyphFragment *fragmentAtGlyphIndex(NSLayoutManager *self,
 #if DEBUG_glyphRangeForBoundingRect_inTextContainer
         NSLog(@"returning: %@", NSStringFromRange(result));
 #endif
+        /*
+         * NO GLYPHS IS AN EMPTY RANGE, NOT A MISSING ONE.
+         *
+         * Callers convert this result and go on using it, so NSNotFound as a location travels: iA
+         * Writer's layout manager takes the range this returns for the rectangle it is drawing and
+         * enumerates attributes over it, which raised range (-1,0) beyond NSAttributedString bounds
+         * (0) on an empty document and terminated the application from inside -drawRect:.
+         */
+        if (result.location == NSNotFound)
+            result = NSMakeRange(0, 0);
+
         return result;
     }
 }

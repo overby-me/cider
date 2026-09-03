@@ -4301,21 +4301,21 @@ int _CiderPendingConstraintSolves(void) {
 
 /* Top down: a container settles its own size before its children are asked to fit inside it. */
 /*
- * OFF BY DEFAULT, and the reason is measured rather than cautious. Running -layout is what finally
- * gives iA Writer's editor a width (0 becomes 625, because its controller sizes it in
- * -viewDidLayout), but it also carries the application into text layout it has never reached here,
- * where it raises range (-1,0) beyond NSAttributedString bounds (0) and ends with an empty window.
- * That is worse than the three columns it draws without the pass, so this waits for that exception
- * to be fixed. CIDER_LAYOUT_PASS=1 turns it on.
+ * ON, because the two exceptions that reaching this far uncovered are fixed: an empty bounding
+ * rectangle answered NSNotFound as a glyph range, and the layout manager had no
+ * -textContainerForGlyphAtIndex:effectiveRange:withoutAdditionalLayout:. Running -layout is what
+ * gives iA Writer's editor a width at all, 0 becomes 625, because its controller sizes it in
+ * -viewDidLayout. CIDER_LAYOUT_PASS=0 turns it off, which is how to tell whether a layout
+ * regression is this or the application.
  */
 static BOOL CiderLayoutPassEnabled(void) {
-    static BOOL enabled = NO, asked = NO;
+    static BOOL enabled = YES, asked = NO;
 
     if (!asked) {
         const char *value = getenv("CIDER_LAYOUT_PASS");
 
         asked = YES;
-        enabled = value != NULL && value[0] != '\0' && strcmp(value, "0") != 0;
+        enabled = !(value != NULL && strcmp(value, "0") == 0);
     }
     return enabled;
 }
