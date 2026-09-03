@@ -142,6 +142,16 @@ pub struct WindowState {
     /// two means one row short and then the true size, which is what a drag of a window edge looks
     /// like and is the only thing this application acts on.
     pub nudge_pending: u8,
+    /// When this window was first mapped, and whether it has had its ONE late nudge.
+    ///
+    /// The nudge above happens at the first configure, which for a tiling compositor is before the
+    /// application has finished building what goes in the window. iTerm2 makes its session after
+    /// that: the session takes the 80x25 from the profile, the window keeps the size the compositor
+    /// gave it, and nothing tells the session again, so the terminal draws 25 rows in a window that
+    /// fits 43 and the prompt sits 270 pixels down. A second resize of any kind fixes it at once,
+    /// which is why the drive only ever saw this in the startup frame.
+    pub mapped_at: Option<std::time::Instant>,
+    pub late_nudge_done: bool,
     /// The popup role, when this window is a menu or a tooltip rather than a document window.
     pub popup: *mut wl::XdgPopup,
     /// The title AppKit gave this window, which it may have given before the toplevel existed.
@@ -212,6 +222,8 @@ impl WindowState {
             pending_size: None,
             configured_size: None,
             nudged: false,
+            mapped_at: None,
+            late_nudge_done: false,
             nudge_pending: 0,
             popup: std::ptr::null_mut(),
             title: None,
@@ -322,6 +334,39 @@ pub fn deliver_pending_configures() {
      * So the list is scanned under the lock first, allocating nothing, and the work only starts if
      * some window actually has some.
      */
+    /*
+     * ONE LATE NUDGE, two seconds after a window is first mapped.
+     *
+     * The nudge below happens at the FIRST configure, which on a tiling compositor arrives before
+     * the application has finished building what goes in the window. iTerm2 creates its session
+     * after that, takes 80x25 from the profile, and is never told again: the terminal draws 25 rows
+     * in a window that fits 43 and the prompt sits 270 pixels down. Any later resize fixes it at
+     * once, which is why only the startup frame ever showed it.
+     *
+     * Once per window, and only while the frame still matches what the compositor asked for, so
+     * this never argues with an application that has chosen its own size.
+     */
+    if let Ok(list) = WINDOWS.lock() {
+        for &p in list.iter() {
+            let Some(st) = (unsafe { (p as *mut WindowState).as_mut() }) else { continue };
+            if st.late_nudge_done || !st.mapped || !st.popup.is_null() {
+                continue;
+            }
+            let Some(at) = st.mapped_at else { continue };
+            if at.elapsed() < std::time::Duration::from_secs(2) {
+                continue;
+            }
+            st.late_nudge_done = true;
+            if st.configured_size
+                == Some((st.frame.size.width as i32, st.frame.size.height as i32))
+            {
+                st.nudged = false;
+                st.nudge_pending = 2;
+                st.pending_size =
+                    Some((st.frame.size.width as i32, st.frame.size.height as i32));
+            }
+        }
+    }
     let anything = match WINDOWS.lock() {
         Ok(list) => list.iter().any(|&p| {
             unsafe { (p as *mut WindowState).as_ref() }.is_some_and(|st| {
@@ -1950,6 +1995,7 @@ fn present(st: &mut WindowState) {
     session::flush();
     if !st.mapped {
         st.mapped = true;
+        st.mapped_at = Some(std::time::Instant::now());
         println!(
             "cider-wayland-window mapped=yes number={} size={}x{} t={:.2}",
             st.number, st.buffer_w, st.buffer_h, elapsed()
