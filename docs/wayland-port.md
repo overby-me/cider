@@ -15005,5 +15005,25 @@ whatever reads it. What is known:
 - Passing the document path in argv does not open it either, because that is LaunchServices' job
   and nothing here does it.
 
-Until the list has a row there is no document to type into, which is the only one of the three
-criteria iA Writer does not meet. It renders, it resizes, and it takes both a click and a key.
+**THEN THE APPLICATION TOLD ME, and it had been telling me the whole time.** Four lines sat in
+every run log:
+
+    DB Error: 1 "near "?": syntax error"
+    DB Query: SELECT Item.path FROM Item JOIN Content ON Item.rowid = Content.rowid
+              JOIN Location ON Item.locationid = Location.rowid WHERE Item.path IN (???)
+
+`IN (???)`, three placeholders with no commas. `-[NSArray componentsJoinedByString:]` appended the
+separator for every element that was not the same OBJECT as `-lastObject`, a pointer comparison, so
+an array of three interned `@"?"` joined into one run with no separators at all. Fixed to join by
+position. Four DB errors per run before, zero after, and running the same join by hand against the
+index returns all four rows.
+
+I ruled out the indexer, FSEvents, KVO, NSMetadataQuery, folder permissions, key equivalent
+matching and slowness one at a time before grepping the application's own log for its database
+errors. That grep should have been the first move.
+
+The file list is STILL empty with the SQL layer sound, so this was one link and not the whole
+chain. What is left is between a query that now returns rows and an outline view that vends only
+the five sidebar cell views. Until it has a row there is no document to type into, which is the
+only one of the three criteria iA Writer does not meet. It renders, it resizes, and it takes both a
+click and a key.
