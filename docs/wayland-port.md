@@ -15023,7 +15023,31 @@ matching and slowness one at a time before grepping the application's own log fo
 errors. That grep should have been the first move.
 
 The file list is STILL empty with the SQL layer sound, so this was one link and not the whole
-chain. What is left is between a query that now returns rows and an outline view that vends only
-the five sidebar cell views. Until it has a row there is no document to type into, which is the
-only one of the three criteria iA Writer does not meet. It renders, it resizes, and it takes both a
-click and a key.
+chain. **And the next link turns out not to be a data question at all.**
+
+`CIDER_TRACE_FRAMES=IA` names a class I had missed: `IATableView`, the file list, distinct from the
+`IAOutlineView` in the sidebar. It is created, handed to a clip view as its document view, and
+`-[NSTableView noteNumberOfRowsChanged]` resizes it to **100x62**. At the row height in use that is
+two rows. THE LIST HAS ITS ROWS.
+
+What it does not have is a size. The chain printed at the moment the table is added is
+
+    IATableView  ADDED own 100x32 mask=0x2 by -[NSClipView setDocumentView:]
+      0 NSClipView   0x1  mask=0x12 subviews=1
+      1 NSScrollView 1x1  mask=0x12 subviews=2
+
+and it stops there, so the scroll view had no superview yet: the subtree is built detached and
+inserted later. The wrapper it belongs in IS sized correctly, `IAWrapperView 310x594 at 315,0`,
+which is exactly the empty middle pane in every capture. So the size stops somewhere between that
+wrapper and this scroll view, and a table 1x1 has nothing to draw into, which is also why
+`_updateCellViewsInRect:` vends five cell views and all five are the sidebar's.
+
+`CIDER_TRACE_ADDSUB=1` shows it from the other side: scroll views arriving at 1x1 and 0x0 into
+`NSView` containers that are themselves 1x1 and 0x0. The `CIDER_SVFILL` mutation probe cannot help
+and fires zero times, because it only sizes a scroll view added to a container with non-empty
+bounds and this container is empty too.
+
+So the question is no longer why the list is empty but what should size that subtree, the same
+shape as the Swift Publisher document scroll view that arrived at zero. iA Writer renders, resizes
+and takes both a click and a key; the list having no VISIBLE row is the only thing between it and
+the third criterion.
