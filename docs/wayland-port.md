@@ -14928,9 +14928,16 @@ good commit still failed; reverting the Swift 5.5.3 bump appeared to fix it and 
 unreverted tree passed 2 of 2 as well. **A prefix is state, and a failure that survives a
 rebuild is not thereby a code failure.**
 
-Where LibreOffice stands, measured: the start centre renders in full, resizes to 1000x600 and
-reflows, and a click on Create opens Calc with its toolbar, formula bar, sidebar and grid.
-Typing kills it, but only with a document window open; with just the start centre it types and
-survives. `UCKeyTranslate` and the Text Input Sources layout are RULED OUT: no binary in the
-LibreOffice bundle references either, so the crash is in the document window path, not in key
-translation. That is the next thing to find.
+**LibreOffice meets the three criteria too.** The start centre renders in full; a click on
+Create opens Calc with its toolbar, formula bar, sidebar and grid; dismissing the Tip of the
+Day dialog and typing puts `Hello` in cell J19 and in the formula bar with the accept and
+reject icons live; resizing the output to 1000x600 reflows the sheet.
+
+What is left is narrower than it first looked. Typing WHILE the Tip of the Day dialog is up
+ends the process, and dismissing it first and then typing works, twice out of twice each way.
+So this is the modal dialog key path, not the document window and not key translation.
+`UCKeyTranslate` and the Text Input Sources layout are RULED OUT: no binary in the LibreOffice
+bundle references `UCKeyTranslate`, `TISCopyCurrentKeyboardLayoutInputSource` or
+`kTISPropertyUnicodeKeyLayoutData`, so the fault that killed iTerm2 on its first key is not
+this one. The other defect is cosmetic: after the output shrinks, the strip above the resized
+document window still shows the pre-resize frame.
