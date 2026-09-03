@@ -2,6 +2,8 @@
 #import <Onyx2D/O2Context_builtin_FT.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <execinfo.h>
+#include <dlfcn.h>
 #include <freetype/ftoutln.h>
 #import <Onyx2D/O2Font_freetype.h>
 #import <Onyx2D/O2GraphicsState.h>
@@ -307,6 +309,23 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
             O2argb8u *got = surface->_read_argb8u(surface, minX, minY, probe, 1);
 
             (*printedBack)++;
+            /* WHO DRAWS THE CONTENT, which the fill trace already answers for the background. The
+             * two backtraces together give the order the views are painted in. A handful is
+             * enough; the rest would only repeat the same chain. */
+            if (*printedBack <= 3) {
+                void *frames[24];
+                int depth = backtrace(frames, 24);
+
+                fprintf(stderr, "CIDER_GLYPHFROM");
+                for (int i = 1; i < depth; i++) {
+                    Dl_info info;
+
+                    if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+                        fprintf(stderr, " <- %s", info.dli_sname);
+                    }
+                }
+                fprintf(stderr, "\n");
+            }
             fprintf(stderr,
                     "CIDER_GLYPHBACK seq=%ld vph=%d surface=%p dstaddr=%p %zux%zu at=%ld,%ld "
                     "direct=%s rgba=%u,%u,%u,%u\n",
