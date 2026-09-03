@@ -1900,9 +1900,11 @@ fn present(st: &mut WindowState) {
 
                 out.push_str(&format!(" {},{}=0x{:08x}", x, y, v));
             }
+            // The glyph trace prints the surface it wrote into; this prints the memory the
+            // compositor reads, so "drawn but not presented" is one comparison, not a guess.
             eprintln!(
-                "cider-wayland-sample number={} stride={} buffer={}x{} bitmap={}x{}{}",
-                st.number, stride, st.buffer_w, st.buffer_h, st.draw_w, st.draw_h, out
+                "cider-wayland-sample number={} stride={} buffer={}x{} bitmap={}x{} pixels={:p}{}",
+                st.number, stride, st.buffer_w, st.buffer_h, st.draw_w, st.draw_h, st.pixels, out
             );
         }
     }

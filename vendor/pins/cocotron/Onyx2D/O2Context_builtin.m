@@ -942,10 +942,39 @@ ONYX2D_STATIC void O2ApplyCoverageToSpan_largb32f_PRE(O2argb32f *dst,
  * pixels which aren't generated and positive chunk for pixels that are. We need
  * to make sure we cover the entire span so we loop until the span is complete.
  */
+/* ORDERING, not presence, is the question a glyph that lands and then disappears asks. This shares
+ * one counter with the glyph blit so the two traces interleave: a wide span written into the same
+ * rows AFTER the glyphs is the thing painting over them. Same gate as the glyph traces. */
+long ciderPaintSeq;
+
+static BOOL ciderTraceSpans(void)
+{
+    static int cached = -1;
+
+    if (cached < 0) {
+        const char *value = getenv("CIDER_TRACE_GLYPHRUN");
+
+        cached = (value != NULL && value[0] != '\0') ? 1 : 0;
+    }
+    return cached ? YES : NO;
+}
+
 ONYX2D_STATIC_INLINE void O2RasterizeWriteCoverageSpan8888_Normal(
         O2Surface *surface, O2Surface *mask, O2Paint *paint, int x, int y,
         int coverage, int length, O2BlendSpan_argb8u blendFunction)
 {
+    if (ciderTraceSpans() && length >= 400 && y > 64) {
+        static int printedSpan;
+
+        if (printedSpan < 60) {
+            printedSpan++;
+            fprintf(stderr, "CIDER_SPAN seq=%ld y=%d x=%d len=%d coverage=%d surface=%zux%zu\n",
+                    ++ciderPaintSeq, y, x, length, coverage,
+                    (size_t) O2ImageGetWidth(surface), (size_t) O2ImageGetHeight(surface));
+            fflush(stderr);
+        }
+    }
+
     O2argb8u *dst = __builtin_alloca(length * sizeof(O2argb8u));
     O2argb8u *direct = surface->_read_argb8u(surface, x, y, dst, length);
 

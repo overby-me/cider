@@ -111,6 +111,23 @@ static BOOL ciderTraceGlyphRun(void)
     return cached ? YES : NO;
 }
 
+/* CIDER_GLYPH_RED repaints every glyph red at the one place all callers reach, rather than in one
+ * CoreGraphics entry point: iTerm2 draws through CTFontDrawGlyphs, so a probe in
+ * CGContextShowGlyphsAtPositions said "no glyphs" about a terminal that was drawing them. */
+extern long ciderPaintSeq;
+
+static BOOL ciderGlyphRed(void)
+{
+    static int cached = -1;
+
+    if (cached < 0) {
+        const char *value = getenv("CIDER_GLYPH_RED");
+
+        cached = (value != NULL && value[0] != '\0') ? 1 : 0;
+    }
+    return cached ? YES : NO;
+}
+
 static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
                                  FT_Bitmap *bitmap, NSInteger x, NSInteger y,
                                  O2Paint *paint, BOOL flipped)
@@ -143,11 +160,61 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
                     (void *) self);
             fflush(stderr);
         }
+
+        /* THE PER-LINE CAP ONLY EVER DESCRIBES STARTUP, and reading it as the whole run said
+         * every glyph in iTerm2 went to the menu bar when the first 200 were simply the chrome
+         * being drawn first. These counters cover the run: one row per distinct viewport, so
+         * "did anything draw into the document area" is a number rather than an inference. */
+        enum { kBuckets = 12 };
+        static struct { int y, h, w; size_t sw, sh; long rendered, clipped; } buckets[kBuckets];
+        static int bucketCount;
+        static long blits;
+        size_t surfaceW = O2ImageGetWidth(surface);
+        size_t surfaceH = O2ImageGetHeight(surface);
+        int i;
+
+        for (i = 0; i < bucketCount; i++) {
+            if (buckets[i].y == self->_vpy && buckets[i].h == self->_vpheight &&
+                buckets[i].w == self->_vpwidth && buckets[i].sw == surfaceW &&
+                buckets[i].sh == surfaceH)
+                break;
+        }
+        if (i == bucketCount && bucketCount < kBuckets) {
+            buckets[bucketCount].y = self->_vpy;
+            buckets[bucketCount].h = self->_vpheight;
+            buckets[bucketCount].w = self->_vpwidth;
+            buckets[bucketCount].sw = surfaceW;
+            buckets[bucketCount].sh = surfaceH;
+            bucketCount++;
+        }
+        if (i < kBuckets) {
+            if (renderWidth > 0 && renderHeight > 0) buckets[i].rendered++;
+            else buckets[i].clipped++;
+        }
+
+        if ((++blits % 100) == 0) {
+            for (i = 0; i < bucketCount; i++) {
+                fprintf(stderr,
+                        "CIDER_GLYPHSUM vp=%d,%d %dx%d surface=%zux%zu rendered=%ld clipped=%ld\n",
+                        0, buckets[i].y, buckets[i].w, buckets[i].h, buckets[i].sw, buckets[i].sh,
+                        buckets[i].rendered, buckets[i].clipped);
+            }
+            fflush(stderr);
+        }
     }
 
     if (renderWidth <= 0 || renderHeight <= 0) {
         // Fully clipped.
         return;
+    }
+
+    if (ciderGlyphRed()) {
+        static O2Paint *red;
+
+        if (red == nil)
+            red = [[O2Paint_color alloc] initWithRed: 1 green: 0 blue: 0 alpha: 1
+                             surfaceToPaintTransform: O2AffineTransformIdentity];
+        paint = red;
     }
 
     O2argb8u *dstBuffer = __builtin_alloca(renderWidth * sizeof(O2argb8u));
@@ -230,14 +297,22 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
      * nobody presents or being painted over, and those two are told apart by looking again later,
      * not by looking harder here. */
     if (ciderTraceGlyphRun()) {
-        static int printedBack;
+        /* The chrome draws first and would spend a single budget before the document area drew
+         * anything, which is how a cap became a false conclusion once already. */
+        static int printedBackChrome, printedBackBody;
+        int *printedBack = (self->_vpheight > 64) ? &printedBackBody : &printedBackChrome;
 
-        if (printedBack < 200) {
+        if (*printedBack < 40) {
             O2argb8u probe[1];
             O2argb8u *got = surface->_read_argb8u(surface, minX, minY, probe, 1);
 
-            printedBack++;
-            fprintf(stderr, "CIDER_GLYPHBACK at=%ld,%ld direct=%s rgba=%u,%u,%u,%u\n",
+            (*printedBack)++;
+            fprintf(stderr,
+                    "CIDER_GLYPHBACK seq=%ld vph=%d surface=%p dstaddr=%p %zux%zu at=%ld,%ld "
+                    "direct=%s rgba=%u,%u,%u,%u\n",
+                    ++ciderPaintSeq, (int) self->_vpheight, (void *) surface,
+                    (void *) got,
+                    (size_t) O2ImageGetWidth(surface), (size_t) O2ImageGetHeight(surface),
                     (long) minX, (long) minY, got ? "yes" : "no",
                     (unsigned) (got ? got[0].r : probe[0].r),
                     (unsigned) (got ? got[0].g : probe[0].g),
