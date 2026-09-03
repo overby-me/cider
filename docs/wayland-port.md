@@ -14941,3 +14941,50 @@ bundle references `UCKeyTranslate`, `TISCopyCurrentKeyboardLayoutInputSource` or
 `kTISPropertyUnicodeKeyLayoutData`, so the fault that killed iTerm2 on its first key is not
 this one. The other defect is cosmetic: after the output shrinks, the strip above the resized
 document window still shows the pre-resize frame.
+
+## The FMDB coin toss, and where iA Writer's library actually stops (2026-09-03)
+
+Three premises in the brief did not survive measurement on this tree, and the corrections matter
+because two of them would have sent the work somewhere there is nothing to find:
+
+- **iA Writer opens.** It draws its library window with the Locations sidebar, takes a click and a
+  Down key press, and resizes. It is not past Swift and dying; it runs.
+- **LibreOffice is installed**, at `/tmp/cider-lo-1000/prefix/Applications/LibreOffice.app`, and it
+  opens Calc and takes typed text into a cell.
+- **The 2026-09-01 merge is already an ancestor of main**, aarch64 work and all, so every
+  measurement here is a measurement of the merged guest.
+
+**What the brief was right about is the mechanism.** The named exception,
+`Cannot generate query for function valueForKeyPath:` from
+`-[IALibraryIndex indexingProgressWithLocationIdentifiers:]` through `FMDatabaseQueue`, is not in
+any source here because it is iA Writer's own. It was reachable because of a fault that IS ours,
+and the application says so in its log:
+
+    objc[2]: Class FMDatabaseQueue is implemented in both
+      /System/Library/PrivateFrameworks/FMDB.framework/Versions/A/FMDB and
+      /Applications/iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Kit.
+      One of the two will be used. Which one is undefined.
+
+The ObjC runtime registers class names per image and picks arbitrarily between duplicates. iA
+Writer carries its own FMDB in Kit.framework and runs its library indexing through it, so whenever
+our copy won the toss its queries were served by a different build than the one it was compiled
+against. macOS ships this framework too and does not collide, because a system copy of third party
+code is renamed before it ships. Ours is renamed now, `CiderFMDatabaseQueue` and the rest, and the
+duplicate line is gone from every run.
+
+**Where the library still stops, measured rather than inferred.** Delete the index and let it
+rebuild and `Location` and `Item` fill correctly: the scanner finds `/Users/root/Documents` as On My
+Mac and both documents under it. But every item stays `indexed = -1`, the location stays
+`indexingState = 1` with `totalItemCount = 0`, and the file list therefore has no rows.
+`CIDER_TRACE_FRAMES=1` shows the table vending exactly five cell views, and all five are the
+sidebar: four `IAOutlineTableCellHeaderView` and one `IAOutlineTableCellSingleLineView`. The file
+list vends none, because it has none to vend.
+
+Two things are ruled out for that. The `does not respond to
+tableView:objectValueForTableColumn:row:` warnings are column auto-sizing, not drawing:
+`drawRow:clipRect:` returns early for a view based table. And `uthread_is_cancelled` answers 0, not
+cancelled, so a cancellable worker is not being told to stop.
+
+So the content indexer inserts rows and never runs, and finding why is the next step. Until it
+does, iA Writer has no document to type into, which is the only one of the three criteria it does
+not meet.
