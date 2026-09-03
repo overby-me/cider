@@ -33,6 +33,9 @@ void *cider_wl_registry_bind(struct wl_registry *registry, uint32_t name,
 }
 
 // The interface objects, reached through a function because a stub forwards code, not data.
+/* The name is a field of a struct the Rust side cannot lay out, so it is read here. */
+const char *cider_wl_interface_name(const struct wl_interface *i) { return i ? i->name : 0; }
+
 const struct wl_interface *cider_wl_compositor_interface(void) { return &wl_compositor_interface; }
 const struct wl_interface *cider_wl_shm_interface(void) { return &wl_shm_interface; }
 const struct wl_interface *cider_wl_seat_interface(void) { return &wl_seat_interface; }

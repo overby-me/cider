@@ -391,12 +391,51 @@ pub fn pump() {
     }
 }
 
+/// Say that the connection is dead, and what killed it, ONCE.
+///
+/// A protocol error ends the connection: every later request is dropped and every roundtrip
+/// returns at once, so a client that never asks sees nothing but events that stop arriving. Six
+/// Swift Publisher dialogs in a row reported "never configured" for that reason, and the screen
+/// went black because the compositor had already dropped every surface.
+///
+/// Returns true once the display is dead, so callers can stop waiting for an answer.
+pub fn display_failed() -> bool {
+    let d = display();
+    if d.is_null() {
+        return false;
+    }
+    let err = unsafe { wl::wl_display_get_error(d) };
+    if err == 0 {
+        return false;
+    }
+    static SAID: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if !SAID.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        let mut interface: *const wl::WlInterface = std::ptr::null();
+        let mut id: u32 = 0;
+        let code = unsafe { wl::wl_display_get_protocol_error(d, &mut interface, &mut id) };
+        let name = unsafe {
+            let p = wl::cider_wl_interface_name(interface);
+            if p.is_null() {
+                "(none)".to_string()
+            } else {
+                std::ffi::CStr::from_ptr(p).to_string_lossy().into_owned()
+            }
+        };
+        println!(
+            "cider-wayland-session display=DEAD errno={} protocol_error={} interface={} object={}",
+            err, code, name, id
+        );
+    }
+    true
+}
+
 /// Flush and wait for the server to catch up. Used where the next step depends on an event that
 /// has already been asked for, which is the only honest way to wait in this protocol.
 pub fn roundtrip() {
     let d = display();
     if !d.is_null() {
         unsafe { wl::wl_display_roundtrip(d) };
+        display_failed();
     }
 }
 

@@ -1024,13 +1024,19 @@ fn create_surface(st: &mut WindowState) -> bool {
         wl::cider_wl_surface_commit(st.surface);
         for _ in 0..20 {
             session::roundtrip();
-            if st.configured {
+            // A dead connection never configures anything, so waiting half a second for each of
+            // the next dozen windows only hides the one fact that matters.
+            if st.configured || session::display_failed() {
                 break;
             }
             std::thread::sleep(std::time::Duration::from_millis(25));
         }
         if !st.configured {
-            println!("cider-wayland-window create=FAILED reason=never-configured");
+            println!(
+                "cider-wayland-window create=FAILED reason=never-configured number={} display_dead={}",
+                st.number,
+                session::display_failed()
+            );
             return false;
         }
     }
@@ -3023,6 +3029,19 @@ extern "C" fn hide_window(this: Object, _cmd: Sel) {
                 st.popup = std::ptr::null_mut();
             }
             if !st.toplevel.is_null() {
+                /*
+                 * AND FORGET IT AS A PARENT. LAST_TITLED_TOPLEVEL is a raw pointer kept so a dialog
+                 * can be parented to the document it belongs to, and nothing cleared it here, so
+                 * closing that document left every later dialog naming a destroyed object in
+                 * xdg_toplevel.set_parent. The compositor answers a protocol error and DROPS THE
+                 * CONNECTION: after that every request is discarded and every surface is gone, which
+                 * is Swift Publisher going black the moment Choose builds its first window and six
+                 * more reporting "never configured" behind it.
+                 */
+                if LAST_TITLED_TOPLEVEL.load(Ordering::Acquire) == st.toplevel as usize {
+                    LAST_TITLED_TOPLEVEL.store(0, Ordering::Release);
+                    PARENT_XDG_SURFACE.store(0, Ordering::Release);
+                }
                 wl::cider_xdg_toplevel_destroy(st.toplevel);
                 st.toplevel = std::ptr::null_mut();
             }

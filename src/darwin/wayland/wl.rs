@@ -115,6 +115,14 @@ unsafe extern "C" {
     /// from the client's point of view, so without asking, a missing event and a dead socket look
     /// the same.
     pub fn wl_display_get_error(display: *mut WlDisplay) -> c_int;
+    /// The three facts a protocol error carries: which object, which request, and which of that
+    /// interface's error codes. Without them "the connection died" names nothing.
+    pub fn wl_display_get_protocol_error(
+        display: *mut WlDisplay,
+        interface: *mut *const WlInterface,
+        id: *mut u32,
+    ) -> u32;
+    pub fn cider_wl_interface_name(interface: *const WlInterface) -> *const c_char;
     pub fn wl_display_flush(display: *mut WlDisplay) -> c_int;
     pub fn cider_wl_surface_frame(s: *mut WlSurface) -> *mut WlCallback;
     pub fn cider_wl_callback_add_listener(c: *mut WlCallback, l: *const WlCallbackListener, data: *mut c_void) -> c_int;
