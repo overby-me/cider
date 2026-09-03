@@ -667,6 +667,18 @@ impl rpc_wire::RpcHandler for Handler {
     /// receive) copy it OUT to the caller's `rcv_msg` buffer -- both in the caller's own
     /// address space via the memory hooks. The reply carries only the mach_msg_return_t.
     fn mach_msg_overwrite(&mut self, call: &CallMachMsgOverwrite, _fds: &[RawFd]) -> Result<(), i32> {
+        // DSERVER_TRACE_MSG also reports every mach_msg as it is ENTERED, because a call that
+        // blocks forever never reaches the timed-out branch below: the last line printed for a
+        // stuck guest names the receive it is waiting on. Guest pid first, so one process can be
+        // picked out of a container.
+        let trace = std::env::var_os("DSERVER_TRACE_MSG").is_some();
+        if trace {
+            eprintln!(
+                "ciderd: mach_msg ENTER pid={} option={:#x} send={} rcv={} rcv_name={} timeout={}",
+                self.current_pid, call.option, call.send_size, call.rcv_size, call.rcv_name,
+                call.timeout
+            );
+        }
         let code = unsafe {
             mach::msg_overwrite(
                 call.msg,
@@ -684,7 +696,10 @@ impl rpc_wire::RpcHandler for Handler {
         // a lead worth checking when a guest hangs. MACH_RCV_TIMED_OUT == 0x10004003. (Note:
         // the M1 config.status hang is NOT this -- it is a guest bash here-doc pipe deadlock
         // with the daemon idle; see docs/changelog.md "M1 status 2026-07-27".)
-        if code as u32 == 0x10004003 && std::env::var_os("DSERVER_TRACE_MSG").is_some() {
+        if trace {
+            eprintln!("ciderd: mach_msg LEAVE pid={} code={:#x}", self.current_pid, code as u32);
+        }
+        if code as u32 == 0x10004003 && trace {
             eprintln!(
                 "ciderd: mach_msg RCV TIMED_OUT rcv_name={} option={:#x} timeout={}",
                 call.rcv_name, call.option, call.timeout
