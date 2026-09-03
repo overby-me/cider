@@ -1132,7 +1132,7 @@ void O2ContextSetBlendMode(O2ContextRef self, O2BlendMode blendMode) {
     if (blendMode != kO2BlendModeNormal && getenv("CIDER_TRACE_BLEND") != NULL) {
         static int printed;
 
-        if (printed < 30) {
+        if (printed < 400) {
             void *frames[6];
             int depth = backtrace(frames, 6);
 
@@ -1255,6 +1255,8 @@ void O2ContextFillRect(O2ContextRef self, O2Rect rect) {
  * drawing went somewhere else. Plain counter, no gate, so reading it costs nothing. */
 unsigned long cider_o2_draw_ops = 0;
 
+extern long ciderPaintSeq;
+
 void O2ContextFillRects(O2ContextRef self, const O2Rect *rects,
                         NSUInteger count)
 {
@@ -1274,8 +1276,11 @@ void O2ContextFillRects(O2ContextRef self, const O2Rect *rects,
         int wantW = 0, wantH = 0;
         int bySize = (sscanf(want, "%dx%d", &wantW, &wantH) == 2);
         int byBlack = (strcmp(want, "black") == 0);
+        /* "all" is the mode that has no opinion. Filtering on black said the background was never
+         * painted when a probe that only prints dark fills cannot see a light one. */
+        int byAll = (strcmp(want, "all") == 0);
 
-        if (bySize || byBlack) {
+        if (bySize || byBlack || byAll) {
             int w = (int) rects[0].size.width, h = (int) rects[0].size.height;
             O2GState *probe = O2ContextCurrentGState(self);
             const O2Float *pc = probe->_fillColor ? O2ColorGetComponents(probe->_fillColor) : NULL;
@@ -1286,14 +1291,15 @@ void O2ContextFillRects(O2ContextRef self, const O2Rect *rects,
             int isBlack = (pn == 0)
                     || (pc != NULL && pn >= 3 && pc[0] < 0.02 && pc[1] < 0.02 && pc[2] < 0.02)
                     || (pc != NULL && pn == 2 && pc[0] < 0.02);
-            int matches = bySize
+            int matches = byAll ? (w > 20 && h > 6)
+                    : bySize
                     ? (w >= wantW - 8 && w <= wantW + 8 && h >= wantH - 6 && h <= wantH + 6)
                     : (isBlack && w > 20 && h > 6);
 
             if (matches) {
                 static int printed;
 
-                if (printed < 30) {
+                if (printed < 400) {
                     O2GState *gState = O2ContextCurrentGState(self);
                     const O2Float *comp = O2ColorGetComponents(gState->_fillColor);
                     size_t n = gState->_fillColor
@@ -1303,7 +1309,7 @@ void O2ContextFillRects(O2ContextRef self, const O2Rect *rects,
                     int depth = backtrace(frames, 7);
 
                     printed++;
-                    fprintf(stderr, "CIDER_FILL %dx%d n=%zu c=%.3f,%.3f,%.3f,%.3f", w, h, n,
+                    fprintf(stderr, "CIDER_FILL seq=%ld %dx%d n=%zu c=%.3f,%.3f,%.3f,%.3f", ++ciderPaintSeq, w, h, n,
                             (n > 0 && comp) ? (double) comp[0] : -1.0,
                             (n > 1 && comp) ? (double) comp[1] : -1.0,
                             (n > 2 && comp) ? (double) comp[2] : -1.0,
@@ -1362,7 +1368,7 @@ void O2ContextDrawPath(O2ContextRef self, O2PathDrawingMode pathMode) {
             int count = backtrace(frames, 7);
             char **names = backtrace_symbols(frames, count);
 
-            fprintf(stderr, "CIDER_FILLPATH %dx%d at %d,%d mode=%d n=%zu",
+            fprintf(stderr, "CIDER_FILLPATH seq=%ld %dx%d at %d,%d mode=%d n=%zu", ++ciderPaintSeq,
                     (int) bb.size.width, (int) bb.size.height, (int) bb.origin.x,
                     (int) bb.origin.y, (int) pathMode, pn);
             for (int i = 2; i < count && names != NULL; i++) {

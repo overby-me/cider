@@ -28,6 +28,8 @@ APPBIN=""
 NAME=""
 SETTLE=${SETTLE:-25}       # seconds to let the application draw before the first capture
 LIMIT=${LIMIT:-120}        # hard stop for the whole run
+# Arguments for the application itself. NSUserDefaults consults the ARGUMENT DOMAIN before the
+# plist, so APPARGS="-someSetting YES" sets a default that an externally written plist cannot.
 WIDTH=${WIDTH:-1256}
 HEIGHT=${HEIGHT:-684}
 CLICK=${CLICK:-}           # "x,y" to click after the first capture, empty to skip
@@ -172,7 +174,7 @@ say "launching $APPBIN"
 		${TRACE_INPUT:+CIDER_WAYLAND_TRACE_INPUT=1} ${TRACE_ENV:-} \
 		DSERVER_PATH="$(realpath "$CIDERD")" DSERVER_MLDR_PATH="$(realpath "$MLDR")" \
 		DSERVER_LIBEXEC_PATH="$(realpath "$RT")/libexec/cider" \
-		${WRAP:-} timeout "$LIMIT" "$CIDER" shell "$APPBIN"
+		${WRAP:-} timeout "$LIMIT" "$CIDER" shell "$APPBIN" ${APPARGS:-}
 	# A quiet exit and a process still running at the limit leave the same silence in the log, and
 	# they want opposite work. 124 is the timeout's own code: still alive.
 	echo "cider-app exit=$?"

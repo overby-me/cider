@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSClipView.h>
 #import <AppKit/NSColor.h>
+#import <QuartzCore/CALayer.h>
 #import <AppKit/NSCursor.h>
 #import <AppKit/NSCursorRect.h>
 #import <AppKit/NSDragging.h>
@@ -2484,6 +2485,129 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
     return _layer;
 }
 
+/*
+ * A LAYER BACKED VIEW DRAWS INTO ITS OWN BUFFER, which is the whole reason Core Animation lets a
+ * view fill itself with clearColor in Copy mode and still look right: the fill clears THAT view's
+ * layer, and the layer's own backgroundColor, and everything behind it, are untouched.
+ *
+ * Every view here draws into one window buffer, so the same call punches a hole through the window
+ * and destroys whatever the parent painted. iTerm2's terminal is exactly that and comes out as a
+ * transparent hole with its glyphs wiped by the next pass.
+ *
+ * Gated on CIDER_LAYER_BACKING while it is proven, because it changes the drawing path of every
+ * layer backed view in every application. Empty is OFF, as for every other switch here.
+ */
+static BOOL ciderLayerBacking(void) {
+    static int cached = -1;
+
+    /* ON by default now that it is proved: Swift Publisher, iA Writer, MoneyMoney and LibreOffice
+     * render identically with it (344, 357, 823 and 175 distinct colours either way) and iTerm2's
+     * terminal stops being a hole. CIDER_LAYER_BACKING=0 turns it off. */
+    if (cached < 0) {
+        const char *value = getenv("CIDER_LAYER_BACKING");
+
+        cached = (value != NULL && strcmp(value, "0") == 0) ? 0 : 1;
+    }
+    return cached ? YES : NO;
+}
+
+/*
+ * THE ONLY THING SUCH A VIEW HAS TO SHOW IS ITS LAYER BACKGROUND, so painting it cannot cover
+ * anything the view would otherwise have drawn: today it draws nothing at all.
+ *
+ * iTerm2 puts the terminal background on iTermSessionBackgroundColorView, a layer backed view with
+ * no drawRect: of its own, sitting BEHIND PTYTextView. Core Animation composites the two layers;
+ * here both draw into one buffer and PTYTextView's clearColor fill in Copy mode erases the
+ * background that was never painted in the first place.
+ *
+ * Restricted to views that override no drawRect: because filling for every layer backed view
+ * covered LibreOffice's document and blacked its window out in three runs of three.
+ */
+BOOL ciderLayerBackingEnabled(void) {
+    return ciderLayerBacking();
+}
+
+- (BOOL) _ciderDrawsNothingButItsLayerBackground {
+    CGColorRef background;
+
+    if (!ciderLayerBacking() || !_wantsLayer || _layer == nil) {
+        return NO;
+    }
+    if (class_getMethodImplementation([self class], @selector(drawRect:))
+            != class_getMethodImplementation([NSView class], @selector(drawRect:))) {
+        return NO;
+    }
+    background = [_layer backgroundColor];
+    return background != NULL && CGColorGetAlpha(background) > 0.0;
+}
+
+- (void) _ciderPaintLayerBackgroundInRect: (NSRect) rect {
+    CGContextRef port = (CGContextRef) [[NSGraphicsContext currentContext] graphicsPort];
+
+    if (port == NULL) {
+        return;
+    }
+    CGContextSaveGState(port);
+    CGContextSetFillColorWithColor(port, [_layer backgroundColor]);
+    CGContextFillRect(port, rect);
+    CGContextRestoreGState(port);
+}
+
+- (BOOL) _ciderWantsLayerBacking {
+    return NO;
+}
+
+- (void) _ciderDrawThroughLayerBacking: (NSRect) rect {
+    NSRect bounds = [self bounds];
+    size_t width = (size_t) ceil(bounds.size.width);
+    size_t height = (size_t) ceil(bounds.size.height);
+    CGColorSpaceRef space;
+    CGContextRef backing;
+    CGColorRef background;
+    NSGraphicsContext *saved;
+    CGImageRef image;
+
+    /* A view with no area, or one large enough that a full size copy would cost more than the
+     * drawing, keeps the direct path. */
+    if (width == 0 || height == 0 || width > 4096 || height > 4096) {
+        [self drawRect: rect];
+        return;
+    }
+    space = CGColorSpaceCreateDeviceRGB();
+    backing = CGBitmapContextCreate(NULL, width, height, 8, width * 4, space,
+                                    kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host);
+    CGColorSpaceRelease(space);
+    if (backing == NULL) {
+        [self drawRect: rect];
+        return;
+    }
+
+    background = [_layer backgroundColor];
+    if (background != NULL && CGColorGetAlpha(background) > 0.0) {
+        CGContextSetFillColorWithColor(backing, background);
+        CGContextFillRect(backing, CGRectMake(0, 0, width, height));
+    }
+
+    saved = [NSGraphicsContext currentContext];
+    [NSGraphicsContext setCurrentContext:
+            [NSGraphicsContext graphicsContextWithGraphicsPort: backing
+                                                       flipped: [self isFlipped]]];
+    CGContextTranslateCTM(backing, -bounds.origin.x, -bounds.origin.y);
+    [self drawRect: rect];
+    [NSGraphicsContext setCurrentContext: saved];
+
+    image = CGBitmapContextCreateImage(backing);
+    if (image != NULL) {
+        CGContextRef port = (CGContextRef) [saved graphicsPort];
+
+        if (port != NULL) {
+            CGContextDrawImage(port, bounds, image);
+        }
+        CGImageRelease(image);
+    }
+    CGContextRelease(backing);
+}
+
 - (CALayer *) makeBackingLayer {
     return [NSViewBackingLayer layer];
 }
@@ -3297,6 +3421,9 @@ static NSView *viewBeingPrinted = nil;
             if (ciderAlphaPort != NULL) {
                 CGContextSaveGState(ciderAlphaPort);
                 CGContextSetAlpha(ciderAlphaPort, [self alphaValue]);
+            }
+            if ([self _ciderDrawsNothingButItsLayerBackground]) {
+                [self _ciderPaintLayerBackgroundInRect: rect];
             }
             [self drawRect: rect];
             if (ciderAlphaPort != NULL) {

@@ -21,6 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#import <Onyx2D/O2Context.h>
+#import <Onyx2D/O2Color.h>
+#import <QuartzCore/CALayer.h>
 #import <AppKit/NSGraphics.h>
 #import <AppKit/NSGraphicsContextFunctions.h>
 #import <AppKit/NSRaise.h>
@@ -159,11 +162,75 @@ void NSEraseRect(NSRect rect) {
     CGContextRestoreGState(context);
 }
 
+/*
+ * A COPY FILL WITH A TRANSPARENT COLOUR IS A HOLE THROUGH THE WINDOW, and on macOS it is not.
+ *
+ * Copy writes the alpha instead of blending it. On macOS such a fill clears the view's OWN layer,
+ * and the layer behind it, which is a different buffer, still shows. Every view here draws into one
+ * window buffer, so the same call erases whatever is behind, and what is behind is usually the very
+ * background the application meant to keep.
+ *
+ * iTerm2 is the case that found this: iTermSessionBackgroundColorView is a layer backed sibling
+ * BEHIND PTYTextView carrying the terminal background, and PTYTextView fills itself with clearColor
+ * in Copy on every pass. Resolving the fill to that background is what the compositor would have
+ * shown. Nearest first: siblings drawn before this view, then the view's own layer, then upwards.
+ *
+ * Gated on CIDER_LAYER_BACKING with the rest of the layer work.
+ */
+extern BOOL ciderLayerBackingEnabled(void);
+
+static CGColorRef ciderLayerBackgroundBehindFocusView(void) {
+    NSView *view = [NSView focusView];
+    NSView *node;
+
+    for (node = view; node != nil; node = [node superview]) {
+        NSView *parent = [node superview];
+        CGColorRef own;
+
+        if (parent != nil) {
+            NSArray *siblings = [parent subviews];
+            NSInteger index = (NSInteger) [siblings count] - 1;
+
+            /* Back to front, so the LAST one before this view is the nearest behind it. */
+            for (; index >= 0; index--) {
+                NSView *sibling = [siblings objectAtIndex: index];
+                CGColorRef colour;
+
+                if (sibling == node) continue;
+                if ([siblings indexOfObjectIdenticalTo: sibling]
+                        > [siblings indexOfObjectIdenticalTo: node])
+                    continue;
+                colour = [[sibling layer] backgroundColor];
+                if (colour != NULL && CGColorGetAlpha(colour) > 0.0) {
+                    return colour;
+                }
+            }
+        }
+        own = [[node layer] backgroundColor];
+        if (own != NULL && CGColorGetAlpha(own) > 0.0) {
+            return own;
+        }
+    }
+    return NULL;
+}
+
 void NSRectFillListUsingOperation(const NSRect *rects, int count,
                                   NSCompositingOperation operation)
 {
     CGContextRef context = NSCurrentGraphicsPort();
+    CGColorRef behind = NULL;
+
+    if (operation == NSCompositeCopy && ciderLayerBackingEnabled()) {
+        O2ColorRef fill = O2ContextFillColor((O2ContextRef) context);
+
+        if (fill != NULL && O2ColorGetAlpha(fill) <= 0.0) {
+            behind = ciderLayerBackgroundBehindFocusView();
+        }
+    }
     CGContextSaveGState(context);
+    if (behind != NULL) {
+        CGContextSetFillColorWithColor(context, behind);
+    }
     CGContextSetBlendMode(context, blendModeForCompositeOp(operation));
     CGContextFillRects(NSCurrentGraphicsPort(), rects, count);
     CGContextRestoreGState(context);
