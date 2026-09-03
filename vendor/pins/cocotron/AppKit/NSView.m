@@ -3156,8 +3156,14 @@ static NSView *viewBeingPrinted = nil;
                     NSRect r = [opaqueAncestor convertRect: ancestorRects[i]
                                                     toView: self];
                     // No need for the rects that are outside of the visibleRect
+                    /* CLIPPED, not merely tested. A rect converted down from an ancestor is
+                     * in the ancestor's SIZE, so passing it through unclipped hands the view a
+                     * rectangle larger than itself with a negative origin, and a caller that turns
+                     * dirty rects into content coordinates then works on a region that is not
+                     * there. iTerm2 was told 1256x684 at 0,-317 for a 1241x367 view and drew no
+                     * text for it. */
                     if (NSIntersectsRect(r, _visibleRect)) {
-                        _rectsBeingRedrawn[rectsCount++] = r;
+                        _rectsBeingRedrawn[rectsCount++] = NSIntersectionRect(r, _visibleRect);
                     }
                 }
                 /*
@@ -3200,7 +3206,8 @@ static NSView *viewBeingPrinted = nil;
                         // No need for the rects that are outside of the
                         // visibleRect
                         if (NSIntersectsRect(r, _visibleRect)) {
-                            _rectsBeingRedrawn[rectsCount++] = r;
+                            _rectsBeingRedrawn[rectsCount++] =
+                                    NSIntersectionRect(r, _visibleRect);
                         }
                     }
                     for (int i = 0; i < _invalidRectCount; ++i) {
@@ -3236,6 +3243,25 @@ static NSView *viewBeingPrinted = nil;
     if (*count == 0) {
         *rects = &_visibleRect;
         *count = 1;
+    }
+
+    /* WHAT THE CALLER IS TOLD IS DIRTY, which decides how much it redraws. iTerm2 turns these rects
+     * into a range of lines, so an answer that is right in shape but wrong in size is a frame that
+     * clears and draws nothing. Same gate as the other frame traces. */
+    {
+        const char *watch = getenv("CIDER_TRACE_FRAMES");
+
+        if (watch != NULL && watch[0] != (char) 0 &&
+            strstr(object_getClassName(self), watch) != NULL) {
+            fprintf(stderr, "CIDER_RECTS %s count=%ld first=%.0fx%.0f at %.0f,%.0f visible=%.0fx%.0f\n",
+                    object_getClassName(self), (long) *count,
+                    (*count > 0) ? (*rects)[0].size.width : -1.0,
+                    (*count > 0) ? (*rects)[0].size.height : -1.0,
+                    (*count > 0) ? (*rects)[0].origin.x : -1.0,
+                    (*count > 0) ? (*rects)[0].origin.y : -1.0,
+                    _visibleRect.size.width, _visibleRect.size.height);
+            fflush(stderr);
+        }
     }
 }
 

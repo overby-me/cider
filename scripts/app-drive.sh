@@ -168,7 +168,13 @@ say "launching $APPBIN"
 	# no session ever starts. The failure never mentions size. PATH and LD_LIBRARY_PATH stay because
 	# the runtime needs them.
 	UNSET=$(env | awk -F= '/^[A-Za-z_][A-Za-z0-9_]*=/ && length($0)>400 && $1!="PATH" && $1!="LD_LIBRARY_PATH" {printf "-u %s ", $1}')
-	env $UNSET CIDERPREFIX="$PREFIX" WAYLAND_DISPLAY=$NEW XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000} \
+	# PIN THE LOCALE, because the host's leaks in and decides whether an application starts. This
+	# host is en_DK.UTF-8, and Darwin ships no en_DK: iTerm2 checks locale -a for its language and
+	# country, finds nothing, and opens a MODAL prompt over the terminal before any session runs.
+	# That is what a Mac set to English/Denmark does too, so it is not a bug to fix in the port,
+	# but it does make a drive depend on whose machine it runs on.
+	env $UNSET LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
+		CIDERPREFIX="$PREFIX" WAYLAND_DISPLAY=$NEW XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000} \
 		CIDER_NO_LAUNCHD="${LAUNCHD:-1}" LD_LIBRARY_PATH="$ELF_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 		DYLD_INSERT_LIBRARIES="$COMPAT" CIDER_COMPAT_LIBRARY="$COMPAT" \
 		${TRACE_INPUT:+CIDER_WAYLAND_TRACE_INPUT=1} ${TRACE_ENV:-} \

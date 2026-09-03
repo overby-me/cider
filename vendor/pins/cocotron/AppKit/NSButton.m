@@ -29,6 +29,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 @implementation NSButton
 
+/* Appearance only on macOS: it tints an alert's button red. Stored, because a button
+ * that does not answer at all throws, and AppKit swallows the throw with the rest of the
+ * event: iTerm2 built its terminal window inside that event and lost the whole session. */
+- (BOOL) hasDestructiveAction {
+    return _hasDestructiveAction;
+}
+
+- (void) setHasDestructiveAction: (BOOL) value {
+    _hasDestructiveAction = value;
+}
+
 + (Class) cellClass {
     return [NSButtonCell class];
 }

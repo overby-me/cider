@@ -20,7 +20,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSButtonCell.h>
 #import <AppKit/NSControl.h>
 
-@interface NSButton : NSControl
+@interface NSButton : NSControl {
+    BOOL _hasDestructiveAction;
+}
+
+- (BOOL) hasDestructiveAction;
+- (void) setHasDestructiveAction: (BOOL) value;
 
 - (BOOL) isTransparent;
 - (NSString *) keyEquivalent;

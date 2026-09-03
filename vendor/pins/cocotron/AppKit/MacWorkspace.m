@@ -1,5 +1,6 @@
 #import "MacWorkspace.h"
 #import <AppKit/NSApplication.h>
+#import <AppKit/NSRunningApplication.h>
 #import <AppKit/NSRaise.h>
 #include <LaunchServices/LaunchServices.h>
 
@@ -12,6 +13,10 @@
 @end
 
 @implementation MacWorkspace
+
+- (NSRunningApplication *) frontmostApplication {
+    return [NSRunningApplication currentApplication];
+}
 
 - (NSImage *) iconForFile: (NSString *) path {
     // TODO: call GetIconRefFromFileInfo()
