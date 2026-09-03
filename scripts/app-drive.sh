@@ -217,6 +217,10 @@ if [ -n "$TYPE" ]; then
 		# long enough for the application to attach, and -d spaces the keys so none is lost to the
 		# same race.
 		case "$TYPE" in
+			# Raw wtype arguments, for a shortcut: "raw:-M logo n -m logo" is Command and N, since
+			# the backend maps Mod4 to NSCommandKeyMask. A menu item several clicks deep is not
+			# reachable any other way from here.
+			raw:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 ${TYPE#raw:} >>"$SHOTS/driver.log" 2>&1 ;;
 			key:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -k "${TYPE#key:}" >>"$SHOTS/driver.log" 2>&1 ;;
 			*)     WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -d 120 "$TYPE" >>"$SHOTS/driver.log" 2>&1 ;;
 		esac

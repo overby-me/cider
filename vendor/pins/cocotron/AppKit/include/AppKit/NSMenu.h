@@ -64,6 +64,8 @@ APPKIT_EXPORT const NSNotificationName NSMenuDidChangeItemNotification;
 - (NSString *) title;
 - (NSInteger) numberOfItems;
 - (NSArray *) itemArray;
+- (void) setItemArray: (NSArray *) itemArray;
+- (NSMenuItem *) highlightedItem;
 - (BOOL) autoenablesItems;
 
 - (NSMenuItem *) itemAtIndex: (NSInteger) index;

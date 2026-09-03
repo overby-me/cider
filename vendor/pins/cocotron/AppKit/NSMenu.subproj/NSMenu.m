@@ -323,6 +323,33 @@ static BOOL _ciderMenuBarVisible = YES;
     return _itemArray;
 }
 
+/*
+ * SET EVERY ITEM AT ONCE, which is how an application rebuilds a menu it owns.
+ *
+ * Missing, this raised, and AppKit catches an application's exception per event: iA Writer's menus
+ * were left empty, so Command and N matched no key equivalent and the File menu did nothing. Each
+ * item still goes through -addItem: so it learns its menu and the notifications are posted, which
+ * is the difference between this and the private -_setItemArray: below that only swaps the array.
+ */
+- (void) setItemArray: (NSArray *) itemArray {
+    NSArray *items = [itemArray copy];
+
+    [self removeAllItems];
+    for (NSMenuItem *item in items)
+        [self addItem: item];
+    [items release];
+}
+
+/*
+ * NOTHING IS HIGHLIGHTED, which is true of a menu that is not open and is the only answer this
+ * class can give: the selection lives in NSMenuView while it tracks, and an NSMenu here has no way
+ * back to the view showing it. iA Writer asks on the way to building its File menu, so answering
+ * at all is the whole point; answering nil is what a closed menu would say anyway.
+ */
+- (NSMenuItem *) highlightedItem {
+    return nil;
+}
+
 - (void) _setItemArray: itemArray {
     if (_itemArray != itemArray) {
         [_itemArray release];
