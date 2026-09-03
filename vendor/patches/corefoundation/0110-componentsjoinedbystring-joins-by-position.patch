@@ -1,0 +1,45 @@
+componentsJoinedByString joins by position, not by identity.
+
+The separator was appended for every element that was not the same OBJECT as -lastObject, a
+pointer comparison. An array whose elements are all one interned instance therefore joined into a
+single run with no separators at all.
+
+iA Writer builds its library query placeholders as three @"?" and got
+
+  SELECT Item.path FROM Item JOIN Content ON Item.rowid = Content.rowid
+  JOIN Location ON Item.locationid = Location.rowid WHERE Item.path IN (???)
+
+which sqlite rejects with near "?": syntax error. FMDB reports that and returns nil rather than
+raising, so the file list simply stayed empty and the only sign was a DB Error line in the
+application's own log.
+
+--- a/NSArray.m
++++ b/NSArray.m
+@@ -878,14 +878,24 @@
+     CFMutableStringRef str = CFStringCreateMutable(kCFAllocatorDefault, 0);
+     if ([sep isKindOfClass:objc_lookUpClass("NSString")])
+     {
+-        id last = [self lastObject];
++        /*
++         * BY POSITION, NOT BY IDENTITY.
++         *
++         * This used to append the separator for every element that was not the same OBJECT as
++         * -lastObject, so an array whose elements are all one interned instance joined into a
++         * single run with no separators at all. iA Writer builds its library query placeholders as
++         * three @"?" and got IN (???), which sqlite rejects with near "?": syntax error. The file
++         * list stayed empty and the only sign was the DB Error line in the application's own FMDB
++         * log.
++         */
++        NSUInteger index = 0;
+         for (id obj in self)
+         {
+-            CFStringAppend(str, (CFStringRef)[obj description]);
+-            if (obj != last)
++            if (index++ > 0)
+             {
+                 CFStringAppend(str, (CFStringRef)sep);
+             }
++            CFStringAppend(str, (CFStringRef)[obj description]);
+         }
+     }
+     else
