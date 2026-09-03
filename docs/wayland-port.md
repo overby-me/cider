@@ -15452,3 +15452,10 @@ question.
 **The instrument could not see this window at all until now.** `CIDER_TRACE_TREE` throttled on ONE
 shared timestamp, so the windows that flush often ate every slot and a dialog, which is exactly the
 window worth dumping, was never dumped. The throttle is per window now.
+
+Narrowed further: `CIDER_TRACE_SVFRAME=NSTextField` over the whole run prints TWO setFrame calls in
+total, neither of them these labels, so nothing repositions them at runtime and the x=-17 comes
+straight out of the nib decode. They are siblings of the labels that are correct, in the same content
+view, with no box or container between them, so it is not a lost superview offset either: three
+sibling labels decode with a different origin and a different width (259 and 154 against 134) from
+the same archive. That is where to look next, in the nib decoding of these specific views.
