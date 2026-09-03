@@ -1,0 +1,50 @@
+hw.model, which every Mac has and no application checks.
+
+-[IAAppStats hardwareModel] reads it and hands the answer straight to
++[NSString stringWithUTF8String:], which raises on NULL, on a dispatch queue where nothing
+catches it. iA Writer terminated about two minutes into every run with "null terminated c
+strings should not be NULL" and no other clue, whether or not anything had been typed.
+
+The value names what this actually is rather than imitating a machine that is not here, which
+is what a Mac in a virtual machine reports too.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_hw.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_hw.c
+@@ -39,6 +39,7 @@
+ static sysctl_handler(handle_cputhreadtype);
+ static sysctl_handler(handle_cpu64bitcapable);
+ static sysctl_handler(handle_machine);
++static sysctl_handler(handle_model);
+ static sysctl_handler(handle_cpufrequency);
+ 
+ const struct known_sysctl sysctls_hw[] = {
+@@ -55,6 +56,7 @@
+ 	{ .oid = _HW_CPUTHREADTYPE, .type = CTLTYPE_INT, .exttype = "", .name = "cputhreadtype", .handler = handle_cputhreadtype },
+ 	{ .oid = _HW_64BITCAPABLE, .type = CTLTYPE_INT, .exttype = "", .name = "cpu64bit_capable", .handler = handle_cpu64bitcapable },
+ 	{ .oid = HW_MACHINE, .type = CTLTYPE_STRING, .exttype = "S", .name = "machine", .handler = handle_machine },
++	{ .oid = HW_MODEL, .type = CTLTYPE_STRING, .exttype = "S", .name = "model", .handler = handle_model },
+ 	{ .oid = _HW_CPUFREQUENCY, .type = CTLTYPE_INT, .exttype = "", .name = "cpufrequency", .handler = handle_cpufrequency },
+ 	{ .oid = -1 }
+ };
+@@ -192,4 +194,19 @@
+ {
+ 	copyout_string(need_uname()->machine, (char*) old, oldlen);
+ 	return 0;
+-}
+\ No newline at end of file
++}
++
++/*
++ * EVERY MAC HAS ONE, and an application that asks for it does not check.
++ * -[IAAppStats hardwareModel] hands the answer straight to +[NSString stringWithUTF8String:],
++ * which raises on NULL, on a dispatch queue where nothing catches it: iA Writer terminated about
++ * two minutes in with "null terminated c strings should not be NULL" and no other clue.
++ *
++ * The value names what this actually is rather than imitating a machine that is not here, which is
++ * what a Mac in a virtual machine reports too.
++ */
++sysctl_handler(handle_model)
++{
++	copyout_string("Cider1,1", (char*) old, oldlen);
++	return 0;
++}
