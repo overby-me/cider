@@ -1,0 +1,47 @@
+A forwarded signal handler must bracket itself with interrupt_enter.
+
+The pair was skipped whenever in-guest IPC was on, justified by sigexc having no daemon Mach wait to
+clear. But interrupt_enter has a second job: it tells the daemon to hold replies while a handler
+runs. Without it, a signal delivered while a call is waiting lets the handler's own calls consume
+the reply the interrupted call was waiting for. The request and reply streams then sit one out of
+step for the rest of the process's life, and a later call waits for a reply that was already taken.
+
+iTerm2 sets the pty window size after laying out its window, so SIGWINCH reaches login in the middle
+of mach_reply_port. The trace showed it exactly: 110 requests against 111 replies, no interrupt_enter
+anywhere, and login waiting forever in recvmsg. With the bracket restored the same run counts 110
+against 110.
+
+That is the whole claim. login still does not reach the shell, so this removes the skew rather than
+the symptom.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c
+@@ -175,14 +175,21 @@
+ #endif
+ 
+ static void handler_linux_to_bsd_wrapper(int linux_signum, struct linux_siginfo* info, void* ctxt) {
+-	// Self-contained (flag-on): interrupt is a no-op -- sigexc_enter has no ciderd Mach wait to clear,
+-	// and its user_state is read only by thread_get_state, which a forwarded handler never calls.
+-	int inguest = __inguest_ipc_on();
+-	if (!inguest)
+-		dserver_rpc_interrupt_enter();
++	/*
++	 * THE PAIR IS NOT ONLY ABOUT sigexc, WHICH IS WHY IT USED TO BE SKIPPED WITH IN-GUEST IPC ON.
++	 *
++	 * interrupt_enter also tells the daemon to hold replies while a handler runs. Without it, a
++	 * signal delivered while a call is waiting lets the handler's own calls consume the reply the
++	 * interrupted call was waiting for: the request and reply streams go one out of step and stay
++	 * that way, so a later call waits for a reply that was already taken.
++	 *
++	 * iTerm2 sets the pty window size after laying out its window, SIGWINCH reaches login in the
++	 * middle of mach_reply_port, and login then waits forever and never execs the shell. The trace
++	 * shows it exactly: 110 requests, 111 replies, no interrupt_enter anywhere.
++	 */
++	dserver_rpc_interrupt_enter();
+ 	handler_linux_to_bsd(linux_signum, info, ctxt);
+-	if (!inguest)
+-		dserver_rpc_interrupt_exit();
++	dserver_rpc_interrupt_exit();
+ };
+ 
+ static int sigflags_bsd_to_linux(int flags)

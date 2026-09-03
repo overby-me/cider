@@ -1,0 +1,57 @@
+CIDER_TRACE_AFTER, which counts dispatch_after calls against the ones that run.
+
+A timer that never fires and one that was never asked for look identical from the caller, and that
+difference decided a whole investigation: iTerm2's saved terminal grid expires on a dispatch_after,
+and if it never expired the terminal would be drawn blank forever. The counters said 26 scheduled
+and 24 fired, which ruled the theory out in one run.
+
+--- a/src/source.c
++++ b/src/source.c
+@@ -534,6 +534,19 @@
+ 	uint64_t prev = os_atomic_xchg2o(dr, ds_pending_data, 0, relaxed);
+ 
+ 	if (dr->du_is_timer && (dr->du_timer_flags & DISPATCH_TIMER_AFTER)) {
++		static int traced = -1;
++
++		if (traced < 0) {
++			const char *value = getenv("CIDER_TRACE_AFTER");
++
++			traced = (value != NULL && value[0] != '\0') ? 1 : 0;
++		}
++		if (traced) {
++			static long fired;
++
++			fprintf(stderr, "CIDER_AFTER fire #%ld\n", ++fired);
++			fflush(stderr);
++		}
+ 		_dispatch_trace_item_pop(cq, dc); // see _dispatch_after
+ 	}
+ 	switch (dux_type(dr)->dst_action) {
+@@ -1371,6 +1384,27 @@
+ 		return;
+ 	}
+ 
++	/* CIDER_TRACE_AFTER counts dispatch_after calls and the ones that actually run. A timer that
++	 * never fires and one that was never asked for are indistinguishable from the caller, and
++	 * iTerm2's terminal hangs on exactly that difference: its saved grid expires on a
++	 * dispatch_after and is drawn forever until it does. */
++	{
++		static int traced = -1;
++
++		if (traced < 0) {
++			const char *value = getenv("CIDER_TRACE_AFTER");
++
++			traced = (value != NULL && value[0] != '\0') ? 1 : 0;
++		}
++		if (traced) {
++			static long scheduled;
++
++			fprintf(stderr, "CIDER_AFTER schedule #%ld delta=%lluns queue=%p\n", ++scheduled,
++					(unsigned long long) _dispatch_timeout(when), (void *) dq);
++			fflush(stderr);
++		}
++	}
++
+ 	delta = _dispatch_timeout(when);
+ 	if (delta == 0) {
+ 		if (block) {
