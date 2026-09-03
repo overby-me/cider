@@ -99,6 +99,7 @@ APPKIT_EXPORT const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPre
     NSView *_previousKeyView;
     BOOL _isHidden;
     CGFloat _alphaValue;
+    BOOL _alphaValueSet;
     BOOL _postsNotificationOnFrameChange;
     BOOL _postsNotificationOnBoundsChange;
     BOOL _autoresizesSubviews;

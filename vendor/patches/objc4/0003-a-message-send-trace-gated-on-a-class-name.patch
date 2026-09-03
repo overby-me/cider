@@ -1,0 +1,79 @@
+A message send trace gated on a class name.
+
+CIDER_TRACE_MSGSEND=<substring> prints the first send of each selector to a class whose name
+contains the substring, on stderr. It answers "was this method ever called" for an application
+whose source is not available: it is what showed that iTerm2 does reach
+-[PTYTask launchWithPath:...] and the multiserver fork request, contradicting a note that said
+the launch was never asked for.
+
+The gate is read lazily, at the first cache miss, rather than in _objc_init: getenv answers NULL
+that early, because libc has not published environ yet, and the probe stayed silent through two
+whole runs. Logging returns "cache it", so each (class, selector) pair reports once and the
+application still runs fast enough to finish a drive.
+
+--- a/runtime/objc-class.mm
++++ b/runtime/objc-class.mm
+@@ -734,6 +734,30 @@
+ bool objcMsgLogEnabled = false;
+ static int objcMsgLogFD = -1;
+ 
++/*
++ * CIDER_TRACE_MSGSEND=<substring> reports the first send of each selector to a class whose name
++ * contains the substring. Reporting EVERY send needs the method cache left cold, which costs a full
++ * lookup on every message in the process; one line per pair answers "was this ever called" and
++ * leaves the application fast enough to finish a drive.
++ */
++static const char *msgLogClassFilter(void)
++{
++    static const char *filter;
++    static bool looked;
++
++    if (!looked) {
++        const char *value = getenv("CIDER_TRACE_MSGSEND");
++        looked = true;
++        filter = (value != NULL && value[0] != '\0') ? value : NULL;
++    }
++    return filter;
++}
++
++bool objcMsgLogWanted(void)
++{
++    return msgLogClassFilter() != NULL;
++}
++
+ bool logMessageSend(bool isClassMethod,
+                     const char *objectsClass,
+                     const char *implementingClass,
+@@ -741,6 +765,15 @@
+ {
+     char	buf[ 1024 ];
+ 
++    const char *filter = msgLogClassFilter();
++    if (filter != NULL) {
++        if (objectsClass == NULL || strstr(objectsClass, filter) == NULL) return true;
++        fprintf(stderr, "msgsend %c[%s %s] (in %s)\n", isClassMethod ? '+' : '-',
++                objectsClass, sel_getName(selector), implementingClass);
++        fflush(stderr);
++        return true;
++    }
++
+     // Create/open the log file
+     if (objcMsgLogFD == (-1))
+     {
+--- a/runtime/objc-runtime-new.mm
++++ b/runtime/objc-runtime-new.mm
+@@ -6290,11 +6290,13 @@
+ * cls is the method whose cache should be filled. 
+ * implementer is the class that owns the implementation in question.
+ **********************************************************************/
++extern bool objcMsgLogWanted(void);
++
+ static void
+ log_and_fill_cache(Class cls, IMP imp, SEL sel, id receiver, Class implementer)
+ {
+ #if SUPPORT_MESSAGE_LOGGING
+-    if (slowpath(objcMsgLogEnabled && implementer)) {
++    if (slowpath(objcMsgLogWanted() && implementer)) {
+         bool cacheIt = logMessageSend(implementer->isMetaClass(), 
+                                       cls->nameForLogging(),
+                                       implementer->nameForLogging(), 

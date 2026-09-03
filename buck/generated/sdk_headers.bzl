@@ -877,6 +877,7 @@ SDK_ROOT = {
     "darling/emulation/xnu_syscall/bsd/impl/audit/audit_session_join.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_audit_audit_session_join.h",
     "darling/emulation/xnu_syscall/bsd/impl/audit/audit_session_port.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_audit_audit_session_port.h",
     "darling/emulation/xnu_syscall/bsd/impl/audit/audit_session_self.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_audit_audit_session_self.h",
+    "darling/emulation/xnu_syscall/bsd/impl/audit/auditon.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_audit_auditon.h",
     "darling/emulation/xnu_syscall/bsd/impl/bsdthread/bsdthread_create.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_bsdthread_bsdthread_create.h",
     "darling/emulation/xnu_syscall/bsd/impl/bsdthread/bsdthread_ctl.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_bsdthread_bsdthread_ctl.h",
     "darling/emulation/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.h": "//vendor/src/xnu:darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_bsdthread_bsdthread_register.h",

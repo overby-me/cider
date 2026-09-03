@@ -192,6 +192,16 @@ _os_log_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, ui
 		queue = dispatch_queue_create("org.cider.os_log", DISPATCH_QUEUE_SERIAL);
 	});
 
+	/*
+	 * An application's own os_log calls are the cheapest trace there is, and with no logging daemon
+	 * they are otherwise dropped. The gate must be NON-EMPTY: drivers export every switch as "".
+	 */
+	const char *osLogTrace = getenv("CIDER_TRACE_OSLOG");
+	if (osLogTrace != NULL && osLogTrace[0] != '\0') {
+		fprintf(stderr, "oslog[%s/%s] %s\n", subsystem, category, decodedBuffer);
+		fflush(stderr);
+	}
+
 	aslmsg owned = message;
 	char *text = decodedBuffer;
 	const char *hex = buffer_hex;

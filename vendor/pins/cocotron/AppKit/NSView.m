@@ -305,6 +305,7 @@ typedef struct __VFlags {
     _translatesAutoresizingMaskIntoConstraints = YES;
     /* BEFORE the branch: a view decoded by a non keyed coder would otherwise be born transparent. */
     _alphaValue = 1.0;
+    _alphaValueSet = YES;
 
     if ([coder allowsKeyedCoding]) {
         NSKeyedUnarchiver *keyed = (NSKeyedUnarchiver *) coder;
@@ -550,6 +551,7 @@ typedef struct __VFlags {
     _bounds.origin = NSMakePoint(0, 0);
     _bounds.size = frame.size;
     _alphaValue = 1.0;
+    _alphaValueSet = YES;
     _window = nil;
     _menu = nil;
     _superview = nil;
@@ -930,7 +932,19 @@ static inline void buildTransformsIfNeeded(NSView *self) {
  * The value multiplies the context alpha around drawRect:, so it is honoured and not merely stored.
  */
 - (CGFloat) alphaValue {
-    return _alphaValue;
+    /*
+     * ONE MEANS UNSET, and the flag is what says which.
+     *
+     * _alphaValue is an ivar and a fresh object's ivars are zero, so any view built by an
+     * initialiser that does not run one of the two that set it to 1.0 was fully TRANSPARENT.
+     * iTerm2's PTYTextView is one: its own view dump, which the application writes to
+     * Library/Application Support/iTerm2/log.1.txt, showed every view in the window at
+     * alphaValue=1.00 and the text view alone at 0.00, over a live session with a 175x44 grid.
+     * The terminal was not empty. It was invisible.
+     *
+     * Zero is a legitimate alpha, so the ivar cannot carry "unset" by itself.
+     */
+    return _alphaValueSet ? _alphaValue : 1.0;
 }
 
 - (void) setAlphaValue: (CGFloat) alpha {
@@ -938,10 +952,11 @@ static inline void buildTransformsIfNeeded(NSView *self) {
         alpha = 0;
     if (alpha > 1)
         alpha = 1;
-    if (alpha == _alphaValue)
+    if (_alphaValueSet && alpha == _alphaValue)
         return;
 
     _alphaValue = alpha;
+    _alphaValueSet = YES;
     [self setNeedsDisplay: YES];
 }
 
@@ -3275,13 +3290,13 @@ static NSView *viewBeingPrinted = nil;
              * Zero here means an empty model, not a clipped or misplaced one. */
             unsigned long ciderDrawOpsBefore = cider_o2_draw_ops;
             CGContextRef ciderAlphaPort =
-                    _alphaValue < 1.0
+                    [self alphaValue] < 1.0
                             ? (CGContextRef) [[NSGraphicsContext currentContext] graphicsPort]
                             : NULL;
 
             if (ciderAlphaPort != NULL) {
                 CGContextSaveGState(ciderAlphaPort);
-                CGContextSetAlpha(ciderAlphaPort, _alphaValue);
+                CGContextSetAlpha(ciderAlphaPort, [self alphaValue]);
             }
             [self drawRect: rect];
             if (ciderAlphaPort != NULL) {

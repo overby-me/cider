@@ -645,6 +645,7 @@ EXPORTS = {
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_audit_audit_session_join.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/audit/audit_session_join.h",
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_audit_audit_session_port.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/audit/audit_session_port.h",
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_audit_audit_session_self.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/audit/audit_session_self.h",
+    "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_audit_auditon.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/audit/auditon.h",
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_bsdthread_bsdthread_create.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/bsdthread/bsdthread_create.h",
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_bsdthread_bsdthread_ctl.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/bsdthread/bsdthread_ctl.h",
     "darling_src_libsystem_kernel_emulation_include_xnu_syscall_bsd_impl_bsdthread_bsdthread_register.h": "darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.h",

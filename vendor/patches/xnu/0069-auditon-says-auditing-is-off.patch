@@ -1,0 +1,61 @@
+auditon, which says auditing is off.
+
+Syscall 351 was unimplemented, so login printed "Unimplemented syscall (351)" and never reached the
+shell it was asked to exec. There is no audit subsystem here and saying so is the useful answer: a
+caller told AUC_NOAUDIT does no further audit work at all, where an error reads as a broken audit
+setup rather than an absent one.
+
+With this, login -fp root execs -sh.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
+@@ -4,6 +4,7 @@
+ #include <darling/emulation/xnu_syscall/bsd/impl/audit/audit_session_join.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/audit/audit_session_port.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/audit/audit_session_self.h>
++#include <darling/emulation/xnu_syscall/bsd/impl/audit/auditon.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/bsdthread/bsdthread_create.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/bsdthread/bsdthread_ctl.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.h>
+@@ -418,6 +419,7 @@
+ 	[347] = sys_getfsstat64,
+ 	[348] = sys_pthread_chdir,
+ 	[349] = sys_pthread_fchdir,
++	[351] = sys_auditon,
+ 	[357] = sys_getaudit_addr,
+ 	[358] = sys_setaudit_addr,
+ 	[360] = sys_bsdthread_create,
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/auditon.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/auditon.c
+@@ -0,0 +1,22 @@
++#include <darling/emulation/xnu_syscall/bsd/impl/audit/auditon.h>
++#include <darling/emulation/conversion/duct_errno.h>
++
++#define A_GETCOND    37
++#define AUC_NOAUDIT  2
++
++/*
++ * There is no audit subsystem here, and saying so is the useful answer: a caller told auditing is
++ * off does no further audit work at all. Answering ENOSYS instead left login treating the audit
++ * setup as broken rather than absent, and it never reached the shell it was asked to exec.
++ */
++long sys_auditon(int cmd, void* data, int length)
++{
++	if (cmd == A_GETCOND) {
++		if (data == 0 || length < (int) sizeof(int))
++			return -EINVAL;
++		*(int*) data = AUC_NOAUDIT;
++		return 0;
++	}
++
++	return -EINVAL;
++}
+--- a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/audit/auditon.h
++++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/audit/auditon.h
+@@ -0,0 +1,6 @@
++#ifndef _DARLING_EMULATION_AUDIT_AUDITON_H
++#define _DARLING_EMULATION_AUDIT_AUDITON_H
++
++long sys_auditon(int cmd, void* data, int length);
++
++#endif // _DARLING_EMULATION_AUDIT_AUDITON_H

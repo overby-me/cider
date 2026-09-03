@@ -1,0 +1,31 @@
+A log call must not block the process making it.
+
+syslog(3) sends to /var/run/syslog with a blocking send. macOS always has syslogd draining that
+socket; here nothing does, so the datagram buffer fills and the send waits forever.
+
+iTermServer froze on message 170, in the middle of logging a launch request's environment, and so
+never forked the pty or started iTerm2's shell. Its last syscall in a 110 second run was a sendto
+that never returned, while the rest of the container kept going. With MSG_DONTWAIT it finishes the
+log, opens /dev/ptmx and execs login.
+
+A dropped entry is what "no logging daemon" should cost, rather than the caller.
+
+--- a/gen/oldsyslog.c
++++ b/gen/oldsyslog.c
+@@ -242,7 +242,15 @@
+ 	/* Get connected, output the message to the local logger. */
+ 	if (!_sl_connected)
+ 		openlog(_sl_LogTag, _sl_LogStat | LOG_NDELAY, 0);
+-	if (send(_sl_LogFile, tbuf, cnt, 0) >= 0)
++	/*
++	 * MSG_DONTWAIT, because a log call must never be able to stop the process making it.
++	 *
++	 * macOS always has syslogd draining /var/run/syslog. Here nothing does, so the datagram
++	 * buffer fills and a blocking send waits forever: iTermServer froze on message 170, in the
++	 * middle of logging a launch request's environment, and so never started iTerm2's shell.
++	 * A dropped entry is what "no logging daemon" should cost, rather than the caller.
++	 */
++	if (send(_sl_LogFile, tbuf, cnt, MSG_DONTWAIT) >= 0)
+ 		return;
+ 
+ 	/*
