@@ -15325,3 +15325,21 @@ CIDER_FORCE_REDRAW is the upper bound on that cost and it is affordable.
 
 Checked with the CALayer change in: iTerm2 takes a typed command, LibreOffice and Swift Publisher are
 unchanged, all by looking.
+
+
+## And the property setters were not it either (task #115)
+
+The smaller of the two fixes above was tried and reverted: marking the delegate view from every
+visual CALayer setter (position, bounds, contents, opacity, hidden, background, the rest) left iA
+Writer at exactly three frames. So the application is not touching its layers between events either.
+It answers the click, and does nothing visible with it.
+
+That narrows what is left to two possibilities, and the next session should decide between them
+before writing any code: either the click is delivered to a window or view that does not act on it
+(the menu bar is drawn by our NSMainMenuView, so a File click should highlight and open a menu, and
+it does not), or the application defers all of it to work that never runs here. Note that a
+CIDER_FORCE_REDRAW run still shows no open menu, so the missing menu is not a paint problem.
+
+Reverted rather than kept, because a change that adds a redraw on every layer property change and
+fixes nothing is cost without benefit. `-[CALayer setNeedsDisplay]` telling its delegate view stays,
+because that one is correct on its own terms.
