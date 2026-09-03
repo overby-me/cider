@@ -1,0 +1,101 @@
+Reading the ASL store is a round trip nobody answers, so say so instead of waiting.
+
+com.apple.system.logger is registered by launchd from the syslogd job, and that job is Disabled
+upstream with "temporary workaround for darlingserver; until I can figure out why syslogd keeps
+crashing". launchd therefore holds the receive right and nothing ever replies. A client cannot tell:
+bootstrap hands back a live looking name and mach_msg blocks for ever.
+
+login reads the store to print "Last login:" -- asl_ipc routine 121, _asl_server_query_2, which is a
+routine and not a simpleroutine, so it waits for a reply. It hung there and never exec'd the shell,
+which is why iTerm2 had no shell at all. Standalone login does not hang because with stdin not a
+tty it never displays the last login.
+
+Reporting "no records" is what an absent store actually means, and it is what these callers already
+handle: every one of them returns the empty answer when the service port is null. Three call sites,
+all reads: _do_server_match and _do_server_query in asl_client.c, and the legacy asl search and
+store-location probes in asl.c.
+
+WRITES ARE UNTOUCHED. _asl_server_message is a simpleroutine with no reply and cannot block.
+Dropping a log line is not the same as refusing to read a store that does not exist.
+
+Measured: with this, login execs -sh and the shell writes its prompt. iTerm2's own session log
+(profile keys "Automatically Log" and "Log Directory") holds "Cider [~]#" where it used to hold
+62 bytes of mldr's dyld warning and nothing else.
+
+Enabling the syslogd job instead was tried and reverted: launchd never starts it, so the change was
+inert, and the upstream comment warns that syslogd crashes. Making launchd start it is task #143.
+
+--- a/libsystem_asl.tproj/src/asl.c
++++ b/libsystem_asl.tproj/src/asl.c
+@@ -1944,6 +1944,8 @@
+ 	static const char ctlstr[] = "1\nQ [= ASLOption control]\n";
+ 
+ 	_asl_global_init();
++	/* No ASL server here, so a query is a Mach round trip nobody answers. See asl_client.c. */
++	if (1) return NULL;
+ 	if (_asl_global.server_port == MACH_PORT_NULL) return NULL;
+ 
+ 	len = strlen(ctlstr) + 1;
+@@ -1983,6 +1985,8 @@
+ 	uint64_t cmax;
+ 
+ 	_asl_global_init();
++	/* Same: with no server, the store is a file, which is what this answers without asking. */
++	if (1) return ASL_STORE_LOCATION_FILE;
+ 	if (_asl_global.server_port == MACH_PORT_NULL) return ASL_STORE_LOCATION_FILE;
+ 
+ 	res = NULL;
+--- a/libsystem_asl.tproj/src/asl_client.c
++++ b/libsystem_asl.tproj/src/asl_client.c
+@@ -203,6 +203,27 @@
+ 	return asl_client_internal_send((asl_object_t)client, (asl_object_t)msg, __builtin_return_address(0));
+ }
+ 
++/*
++ * NOTHING SERVES THE ASL STORE HERE, and a read from it is a Mach round trip that waits for a reply.
++ *
++ * com.apple.system.logger is registered by launchd from the syslogd job, and that job is disabled
++ * upstream ("until I can figure out why syslogd keeps crashing"), so launchd holds the receive right
++ * and no one ever answers. A sender does not learn that: bootstrap hands back a live-looking name
++ * and mach_msg blocks forever.
++ *
++ * login reads the store to print "Last login:" (asl_ipc routine 121, _asl_server_query_2) and hangs
++ * there, which is why iTerm2 never gets a shell. Reporting "no records" is what an absent store
++ * actually means, and it is what the callers already handle: both of these functions return NULL
++ * when the service port is null.
++ *
++ * WRITES are untouched. _asl_server_message is a simpleroutine with no reply, so it cannot block,
++ * and dropping log lines is not the same as refusing to read a store that does not exist.
++ */
++static int _cider_asl_store_is_unavailable(void)
++{
++	return 1;
++}
++
+ static asl_msg_list_t *
+ _do_server_match(asl_msg_list_t *qlist, size_t *last, size_t start, size_t count, uint32_t duration, int dir)
+ {
+@@ -212,7 +233,10 @@
+ 	kern_return_t kstatus;
+ 	asl_msg_list_t *out;
+ 	caddr_t vmstr;
+-	mach_port_t asl_server_port = asl_core_get_service_port(0);
++	mach_port_t asl_server_port;
++
++	if (_cider_asl_store_is_unavailable()) return NULL;
++	asl_server_port = asl_core_get_service_port(0);
+ 
+ 	if (asl_server_port == MACH_PORT_NULL) return NULL;
+ 
+@@ -258,7 +282,10 @@
+ 	uint64_t cmax = 0;
+ 	kern_return_t kstatus;
+ 	caddr_t vmstr;
+-	mach_port_t asl_server_port = asl_core_get_service_port(0);
++	mach_port_t asl_server_port;
++
++	if (_cider_asl_store_is_unavailable()) return NULL;
++	asl_server_port = asl_core_get_service_port(0);
+ 
+ 	if (asl_server_port == MACH_PORT_NULL) return NULL;
+ 

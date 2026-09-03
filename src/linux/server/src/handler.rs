@@ -673,10 +673,34 @@ impl rpc_wire::RpcHandler for Handler {
         // picked out of a container.
         let trace = std::env::var_os("DSERVER_TRACE_MSG").is_some();
         if trace {
+            // The HEADER is what identifies the call: msgh_id names the MIG routine and
+            // msgh_remote_port names the service being asked. rcv_name alone cannot say who a
+            // blocked sender is waiting for. Read from the guest, so it is what was really sent.
+            let mut header = [0u8; 24];
+            let executable = self
+                .procs
+                .get(&self.current_pid)
+                .map(|p| (p.host_pid, p.executable_path.clone()))
+                .unwrap_or((0, String::new()));
+            let got = call.send_size > 0
+                && executable.0 != 0
+                && unsafe {
+                    sched::read_process_memory(executable.0, call.msg as usize, &mut header)
+                };
+            let word = |i: usize| {
+                u32::from_le_bytes([header[i], header[i + 1], header[i + 2], header[i + 3]])
+            };
             eprintln!(
-                "ciderd: mach_msg ENTER pid={} option={:#x} send={} rcv={} rcv_name={} timeout={}",
-                self.current_pid, call.option, call.send_size, call.rcv_size, call.rcv_name,
-                call.timeout
+                "ciderd: mach_msg ENTER pid={} option={:#x} send={} rcv={} rcv_name={} \
+                 remote={:#x} id={} exe={}",
+                self.current_pid,
+                call.option,
+                call.send_size,
+                call.rcv_size,
+                call.rcv_name,
+                if got { word(8) } else { 0 },
+                if got { word(20) as i32 } else { 0 },
+                executable.1
             );
         }
         let code = unsafe {
