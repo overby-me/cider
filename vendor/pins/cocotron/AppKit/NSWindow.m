@@ -1294,6 +1294,11 @@ static BOOL _allowsAutomaticWindowTabbing;
 
     [self _updatePlatformWindowTitle];
 
+    /* The title is drawn by the frame view, so changing it is a redraw request: iA Writer renamed
+     * its window to Untitled when a document opened and the bar kept the old text until something
+     * else forced a full redraw. */
+    [_backgroundView setNeedsDisplay: YES];
+
     if ([self _isApplicationWindow])
         [NSApp changeWindowsItem: self title: title filename: NO];
 }
@@ -2271,12 +2276,19 @@ static BOOL _allowsAutomaticWindowTabbing;
     if (_firstResponder != self && [_firstResponder respondsToSelector: _cmd])
         [_firstResponder performSelector: _cmd];
 
+    /* The frame view draws the title and the buttons differently when the window is key, so the
+     * transition is a redraw. Nothing here asked for one, and a window that changed nothing else
+     * therefore kept the inactive chrome it started with. */
+    [_backgroundView setNeedsDisplay: YES];
+
     [self postNotificationName: NSWindowDidBecomeKeyNotification];
 }
 
 - (void) resignKeyWindow {
     if (_firstResponder != self && [_firstResponder respondsToSelector: _cmd])
         [_firstResponder performSelector: _cmd];
+
+    [_backgroundView setNeedsDisplay: YES];
 
     [self postNotificationName: NSWindowDidResignKeyNotification];
 }
@@ -2291,10 +2303,14 @@ static BOOL _allowsAutomaticWindowTabbing;
     [NSApp _setMainWindow: self];
     [mainWindow resignMainWindow];
 
+    [_backgroundView setNeedsDisplay: YES];
+
     [self postNotificationName: NSWindowDidBecomeMainNotification];
 }
 
 - (void) resignMainWindow {
+    [_backgroundView setNeedsDisplay: YES];
+
     [self postNotificationName: NSWindowDidResignMainNotification];
 }
 
@@ -2940,6 +2956,23 @@ extern int _CiderPendingConstraintSolves(void);
     // So make sure self lives at least through this current run loop...
     [[self retain] autorelease];
 
+    /* WHERE A CLICK LANDS. A window that answers events and does nothing with them needs the view
+     * the hit test chose, not just the fact that the event arrived: the backend trace already says
+     * that much. CIDER_TRACE_MOUSE. */
+    if (getenv("CIDER_TRACE_MOUSE") != NULL && getenv("CIDER_TRACE_MOUSE")[0] != (char) 0) {
+        NSEventType type = [event type];
+
+        if (type == NSLeftMouseDown || type == NSLeftMouseUp || type == NSRightMouseDown) {
+            NSPoint where = [event locationInWindow];
+            NSView *hit = [_backgroundView hitTest: where];
+
+            fprintf(stderr, "cider-mouse window=%s type=%ld at=%.0f,%.0f hit=%s key=%d\n",
+                    object_getClassName(self), (long) type, where.x, where.y,
+                    hit != nil ? object_getClassName(hit) : "none", (int) [self isKeyWindow]);
+            fflush(stderr);
+        }
+    }
+
     if (_sheetContext != nil) {
         NSView *view = [_backgroundView hitTest: [event locationInWindow]];
 
@@ -2970,6 +3003,28 @@ extern int _CiderPendingConstraintSolves(void);
                     sendEvent: [(NSEvent_CoreGraphics *)
                                                event coreGraphicsEvent]];
             return;
+        }
+    }
+
+    /*
+     * THE MENU BAR IS AN INSERTION, SO IT IS ROUTED BY GEOMETRY, NOT BY HIT TEST.
+     *
+     * Linux has no global menu bar, so this port puts one inside the window, under a frame view the
+     * application may have replaced. iA Writer subclasses it, and IATitlebarThemeFrame answers its
+     * own hit test for the whole titlebar strip, so a click on File reached the frame view and the
+     * menu never opened: the menu bar drew with a selected index of NSNotFound all run. Where the
+     * frame view is ours the hit test already lands here, so this changes nothing for it.
+     */
+    if (_menuView != nil && ![_menuView isHidden] && [event type] == NSLeftMouseDown) {
+        NSPoint where = [event locationInWindow];
+
+        if (NSMouseInRect(where, [_menuView frame], [_backgroundView isFlipped])) {
+            NSView *hit = [_backgroundView hitTest: where];
+
+            if (hit != _menuView && ![hit isDescendantOf: _menuView]) {
+                [_menuView mouseDown: event];
+                return;
+            }
         }
     }
 

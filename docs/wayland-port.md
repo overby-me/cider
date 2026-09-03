@@ -15343,3 +15343,41 @@ CIDER_FORCE_REDRAW run still shows no open menu, so the missing menu is not a pa
 Reverted rather than kept, because a change that adds a redraw on every layer property change and
 fixes nothing is cost without benefit. `-[CALayer setNeedsDisplay]` telling its delegate view stays,
 because that one is correct on its own terms.
+
+## CORRECTED: it was our hit test and our missing invalidations, not the layer tree (task #115)
+
+The previous section blamed the layer path for iA Writer painting three frames and then nothing. That
+was the right measurement and the wrong suspect, and the correction came from running a CONTROL: the
+same driver click on iTerm2's Shell menu opens a full menu, items, key equivalents, submenu arrows
+and all, with no resize. So clicks, menu tracking and presentation were never broken. The fault was
+specific to iA Writer, and it was two of ours.
+
+**One. The menu bar is an insertion, and the hit test belongs to the application.** Linux has no
+global menu bar so this port puts one inside the window, under a frame view an application may have
+replaced. `CIDER_TRACE_MOUSE=1` printed the answer in one line:
+
+    cider-mouse window=NSKVONotifying_IATitlebarWindow type=1 at=97,648 hit=IATitlebarThemeFrame key=0
+
+iA Writer subclasses the theme frame and its hit test answers itself for the whole titlebar strip, so
+the click never reached NSMainMenuView, which is why the menu bar drew all run with a selected index
+of NSNotFound. `-[NSWindow sendEvent:]` now routes a left mouse down inside the menu bar's frame to
+the menu bar by GEOMETRY, and only when the hit test did not already land there, so nothing changes
+for a window whose frame view is ours. iA Writer's File menu opens, with its key equivalents, its
+disabled items greyed and its submenu arrows.
+
+**Two. Three things that change what a window looks like asked for no redraw.** A frame change (a
+view that moved or resized leaves pixels behind and covers new ones, and AppKit marks the old area
+and the new), a title change (the title is drawn by the frame view), and becoming or resigning key or
+main (the chrome is drawn differently). All three now mark. Command N titles the window Untitled with
+active traffic lights BEFORE any resize, which is exactly what CIDER_FORCE_REDRAW forced before.
+
+**What the layer note got right and wrong.** Right: the application marks nothing dirty itself, and
+`viewsNeed=1` in 4 samples of 119 is real. Wrong: the conclusion that it drives its interface through
+layer properties. It was tested directly, by marking the delegate view from every visual CALayer
+setter, and that changed nothing at all; the observable difference in a forced redraw was window
+chrome, which is ours to invalidate. CIDER_FORCE_REDRAW and CIDER_TRACE_DIRTY stay, they earned their
+place, and CIDER_TRACE_MOUSE joins them.
+
+Verified by looking, with all of it in: iA Writer opens its File menu and titles itself Untitled on
+Command N, iTerm2 opens its Shell menu and takes a typed command, Swift Publisher, MoneyMoney and
+LibreOffice unchanged.

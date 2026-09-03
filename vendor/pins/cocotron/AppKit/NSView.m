@@ -1575,6 +1575,7 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
         return;
 
     NSSize oldSize = _bounds.size;
+    NSRect previousFrame = _frame;
 
     if (_bounds.size.width == 0 || _bounds.size.height == 0) {
         // No valid current bounds value - just update it to use the frame size
@@ -1608,6 +1609,21 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
     [_layerContext setFrame: layerFrame];
 
     invalidateTransform(self);
+
+    /*
+     * A FRAME CHANGE IS A REDRAW REQUEST, and nothing here made one.
+     *
+     * A view that moved or resized leaves pixels behind it and covers new ones, so AppKit marks the
+     * old area and the new one; this marked neither. Applications that also call -setNeedsDisplay:
+     * of their own accord hid it, and one that does not was frozen: iA Writer processed events,
+     * changed its title, opened documents and laid out panes, and painted three frames in its first
+     * second and nothing after, until a compositor resize forced the whole tree through -display.
+     * Only when the frame really changed, so a layout pass that settles costs nothing extra.
+     */
+    if (!NSEqualRects(previousFrame, _frame)) {
+        [_superview setNeedsDisplayInRect: NSUnionRect(previousFrame, _frame)];
+        [self setNeedsDisplay: YES];
+    }
 
     if (_postsNotificationOnFrameChange)
         [[NSNotificationCenter defaultCenter]
