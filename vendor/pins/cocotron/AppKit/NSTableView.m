@@ -1381,9 +1381,11 @@ static NSString *_CiderCellViewKey(NSInteger column, NSInteger row) {
             if (view == nil) {
                 view = [self _viewForTableColumn: column row: row];
                 if (getenv("CIDER_TRACE_FRAMES") != NULL)
-                    fprintf(stderr, "CIDER_FRAME cellView row %ld col %ld -> %s\n",
+                    fprintf(stderr, "CIDER_FRAME cellView row %ld col %ld -> %s subviews=%lu constraints=%lu\n",
                             (long) row, (long) col,
-                            view != nil ? object_getClassName(view) : "nil");
+                            view != nil ? object_getClassName(view) : "nil",
+                            (unsigned long) [[view subviews] count],
+                            (unsigned long) [[view constraints] count]);
                 if (view == nil)
                     continue;
                 [_cellViews setObject: view forKey: key];
@@ -1392,6 +1394,31 @@ static NSString *_CiderCellViewKey(NSInteger column, NSInteger row) {
 
             [live addObject: key];
             [view setFrame: [self frameOfCellAtColumn: col row: row]];
+            /* The cell view has just been given its size; whatever it lays out with constraints
+             * inside itself is solved from that. See -[NSView _ciderSolveConstraints]. */
+            [view layoutSubtreeIfNeeded];
+            if (getenv("CIDER_TRACE_FRAMES") != NULL) {
+                NSRect f = [view frame];
+
+                fprintf(stderr, "CIDER_FRAME   cell %s %gx%g at %g,%g\n",
+                        object_getClassName(view), f.size.width, f.size.height, f.origin.x, f.origin.y);
+                for (NSView *sub in [view subviews]) {
+                    NSRect sf = [sub frame];
+
+                    fprintf(stderr, "CIDER_FRAME     sub %s %gx%g at %g,%g mask=0x%lx hidden=%d\n",
+                            object_getClassName(sub), sf.size.width, sf.size.height,
+                            sf.origin.x, sf.origin.y,
+                            (unsigned long) [sub autoresizingMask], [sub isHidden]);
+                    if ([sub respondsToSelector: @selector(stringValue)]) {
+                        NSString *value = [(id) sub stringValue];
+                        NSSize fitting = [sub fittingSize];
+
+                        fprintf(stderr, "CIDER_FRAME       string=\"%s\" fitting=%gx%g\n",
+                                [value UTF8String] ?: "(nil)", fitting.width, fitting.height);
+                    }
+                }
+            }
+
         }
     }
 

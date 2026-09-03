@@ -375,6 +375,9 @@ typedef NS_OPTIONS(NSUInteger, NSTouchTypeMask) {
 - (void) layout;
 - (NSSize) intrinsicContentSize;
 - (void) invalidateIntrinsicContentSize;
+- (void) layoutSubtreeIfNeeded;
+- (void) _ciderSolveConstraints;
+- (void) _ciderSizeDegenerateSubviews;
 - (NSEdgeInsets) alignmentRectInsets;
 - (NSRect) alignmentRectForFrame: (NSRect) frame;
 - (NSRect) frameForAlignmentRect: (NSRect) alignmentRect;

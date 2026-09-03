@@ -819,4 +819,21 @@ static NSMutableDictionary *cellClassDictionary = nil;
     [self abortEditing];
 }
 
+/*
+ * A control's natural size is its cell's. Without this every label solved to a height of zero when
+ * its constraints pinned only the sides, which is the usual way a row label is laid out.
+ */
+- (NSSize) intrinsicContentSize {
+    NSCell *cell = [self cell];
+
+    if (cell == nil)
+        return [super intrinsicContentSize];
+
+    NSSize size = [cell cellSize];
+
+    if (size.width <= 0 || size.height <= 0)
+        return [super intrinsicContentSize];
+    return size;
+}
+
 @end

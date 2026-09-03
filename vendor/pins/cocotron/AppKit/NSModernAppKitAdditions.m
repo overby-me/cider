@@ -546,7 +546,10 @@ static void _CiderSetViewFlags(id view, NSInteger flags) {
 }
 
 - (void) layoutSubtreeIfNeeded {
+    /* Constraints first, then the view's own layout, then whatever it left degenerate. */
+    [self _ciderSolveConstraints];
     [self layout];
+    [self _ciderSizeDegenerateSubviews];
     for (NSView *subview in [self subviews])
         [subview layoutSubtreeIfNeeded];
 }

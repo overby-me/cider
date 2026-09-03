@@ -389,7 +389,15 @@ typedef struct __VFlags {
         [self setCanDrawConcurrently:
                         [keyed decodeBoolForKey: @"NSViewCanDrawConcurrently"]];
 
-        // TODO: NSViewConstraints, NSViewLayoutGuides, ...
+        /*
+         * THE CONSTRAINTS IN THE ARCHIVE, which were decoded into nothing and dropped. A view laid
+         * out in Interface Builder carries them here and has no autoresizing mask to fall back on,
+         * so every subview of one stayed at the size it was archived with, usually 1x1.
+         */
+        for (NSLayoutConstraint *constraint in [keyed decodeObjectForKey: @"NSViewConstraints"])
+            [self addConstraint: constraint];
+
+        // TODO: NSViewLayoutGuides, ...
 
         _needsDisplay = YES;
         _invalidRectCount = 0;
@@ -3806,6 +3814,259 @@ static NSView *viewBeingPrinted = nil;
     NSUnimplementedMethod();
 }
 
+
+
+/*
+ * A CONSTRAINT SOLVER, for the subset that puts text in a row.
+ *
+ * NSLayoutConstraint existed and was retained and nothing ever READ it, so any view positioned by
+ * constraints sat at 0x0. That is why iA Writer's library rows drew as empty stripes with the
+ * outline structure around them intact: the row views were vended, added and framed correctly, and
+ * every label inside them had no size.
+ *
+ * This is not a simplex. It solves each subview independently on each axis from the constraints
+ * whose other side is already known (the container, or a sibling solved earlier in the pass), and
+ * repeats a few passes so a chain of siblings settles. Two unknowns per axis, origin and size, and
+ * any two of {origin, far edge, size, centre} determine both. What is not covered: inequalities
+ * beyond treating them as equalities, priorities beyond ignoring anything below required, and
+ * cycles. Those are worth adding when something needs them; this is what a pinned label needs.
+ *
+ * Deliberately NOT called from -layout, so it changes nothing for the springs and struts layout
+ * every other application here uses. The caller asks for it.
+ */
+typedef struct {
+    BOOL hasOrigin, hasSize, hasFar, hasCenter;
+    CGFloat origin, size, far, center;
+} CiderAxisSolution;
+
+static BOOL CiderAxisIsHorizontal(NSLayoutAttribute attribute) {
+    switch (attribute) {
+    case NSLayoutAttributeLeft:
+    case NSLayoutAttributeRight:
+    case NSLayoutAttributeLeading:
+    case NSLayoutAttributeTrailing:
+    case NSLayoutAttributeWidth:
+    case NSLayoutAttributeCenterX:
+        return YES;
+    default:
+        return NO;
+    }
+}
+
+/* The value an attribute of `item` has, in the coordinate space of `container`. */
+static BOOL CiderAttributeValue(NSView *container, id item, NSLayoutAttribute attribute,
+                                CGFloat *out)
+{
+    NSRect rect;
+
+    if (item == container)
+        rect = [container bounds];
+    else if ([item isKindOfClass: [NSView class]])
+        rect = [(NSView *) item frame];
+    else
+        return NO;
+
+    BOOL flipped = [container isFlipped];
+
+    switch (attribute) {
+    case NSLayoutAttributeLeft:
+    case NSLayoutAttributeLeading:  *out = NSMinX(rect); return YES;
+    case NSLayoutAttributeRight:
+    case NSLayoutAttributeTrailing: *out = NSMaxX(rect); return YES;
+    case NSLayoutAttributeWidth:    *out = NSWidth(rect); return YES;
+    case NSLayoutAttributeCenterX:  *out = NSMidX(rect); return YES;
+    case NSLayoutAttributeHeight:   *out = NSHeight(rect); return YES;
+    case NSLayoutAttributeCenterY:  *out = NSMidY(rect); return YES;
+    case NSLayoutAttributeTop:      *out = flipped ? NSMinY(rect) : NSMaxY(rect); return YES;
+    case NSLayoutAttributeBottom:
+    case NSLayoutAttributeFirstBaseline:
+    case NSLayoutAttributeLastBaseline:
+        *out = flipped ? NSMaxY(rect) : NSMinY(rect);
+        return YES;
+    default:
+        return NO;
+    }
+}
+
+static void CiderRecordAttribute(CiderAxisSolution *axis, NSLayoutAttribute attribute,
+                                 CGFloat value, BOOL flipped)
+{
+    switch (attribute) {
+    case NSLayoutAttributeLeft:
+    case NSLayoutAttributeLeading:  axis->hasOrigin = YES; axis->origin = value; break;
+    case NSLayoutAttributeRight:
+    case NSLayoutAttributeTrailing: axis->hasFar = YES;    axis->far = value;    break;
+    case NSLayoutAttributeWidth:
+    case NSLayoutAttributeHeight:   axis->hasSize = YES;   axis->size = value;   break;
+    case NSLayoutAttributeCenterX:
+    case NSLayoutAttributeCenterY:  axis->hasCenter = YES; axis->center = value; break;
+    case NSLayoutAttributeTop:
+        if (flipped) { axis->hasOrigin = YES; axis->origin = value; }
+        else         { axis->hasFar = YES;    axis->far = value; }
+        break;
+    case NSLayoutAttributeBottom:
+    case NSLayoutAttributeFirstBaseline:
+    case NSLayoutAttributeLastBaseline:
+        if (flipped) { axis->hasFar = YES;    axis->far = value; }
+        else         { axis->hasOrigin = YES; axis->origin = value; }
+        break;
+    default:
+        break;
+    }
+}
+
+/* Two of origin, far, size and centre fix the other two. */
+static void CiderResolveAxis(CiderAxisSolution *axis, CGFloat currentOrigin, CGFloat currentSize,
+                             CGFloat intrinsic)
+{
+    if (!axis->hasSize) {
+        if (axis->hasOrigin && axis->hasFar) {
+            axis->size = axis->far - axis->origin;
+            axis->hasSize = YES;
+        } else if (axis->hasCenter && axis->hasOrigin) {
+            axis->size = 2 * (axis->center - axis->origin);
+            axis->hasSize = YES;
+        } else if (axis->hasCenter && axis->hasFar) {
+            axis->size = 2 * (axis->far - axis->center);
+            axis->hasSize = YES;
+        } else if (intrinsic >= 0) {
+            axis->size = intrinsic;
+            axis->hasSize = YES;
+        } else {
+            axis->size = currentSize;
+        }
+    }
+
+    if (!axis->hasOrigin) {
+        if (axis->hasFar)
+            axis->origin = axis->far - axis->size;
+        else if (axis->hasCenter)
+            axis->origin = axis->center - axis->size / 2;
+        else
+            axis->origin = currentOrigin;
+    }
+
+    if (axis->size < 0)
+        axis->size = 0;
+}
+
+- (void) _ciderSolveConstraints {
+    /*
+     * BOTH LISTS. A constraint is filed on its first item's superview, so one activated BEFORE the
+     * view was added to anything ends up on the view itself. Swift code that builds a subview,
+     * constrains it and only then inserts it does exactly that, and iA Writer's row labels are
+     * built that way: the cell view held none and every label held its own.
+     */
+    NSMutableArray *all = [NSMutableArray arrayWithArray: _constraints ? _constraints : [NSArray array]];
+
+    for (NSView *subview in [self subviews])
+        [all addObjectsFromArray: [subview constraints]];
+
+    if ([all count] == 0)
+        return;
+
+    NSRect bounds = [self bounds];
+    BOOL flipped = [self isFlipped];
+
+    /* Three passes, so a view pinned to a sibling settles after the sibling does. */
+    for (int pass = 0; pass < 3; pass++) {
+        for (NSView *subview in [self subviews]) {
+            CiderAxisSolution x = { 0 }, y = { 0 };
+            NSRect frame = [subview frame];
+
+            for (NSLayoutConstraint *constraint in all) {
+                if (![constraint isActive] || [constraint firstItem] != subview)
+                    continue;
+                if ([constraint priority] < NSLayoutPriorityRequired)
+                    continue;
+
+                NSLayoutAttribute first = [constraint firstAttribute];
+                id second = [constraint secondItem];
+                CGFloat value = 0;
+
+                if (second == nil) {
+                    value = [constraint constant];
+                } else {
+                    CGFloat other = 0;
+
+                    if (!CiderAttributeValue(self, second, [constraint secondAttribute], &other))
+                        continue;
+                    value = other * [constraint multiplier] + [constraint constant];
+                }
+
+                CiderRecordAttribute(CiderAxisIsHorizontal(first) ? &x : &y, first, value, flipped);
+            }
+
+            if (!x.hasOrigin && !x.hasSize && !x.hasFar && !x.hasCenter &&
+                !y.hasOrigin && !y.hasSize && !y.hasFar && !y.hasCenter)
+                continue;
+
+            NSSize intrinsic = [subview intrinsicContentSize];
+
+            CiderResolveAxis(&x, NSMinX(frame), NSWidth(frame),
+                             intrinsic.width == NSViewNoIntrinsicMetric ? -1 : intrinsic.width);
+            CiderResolveAxis(&y, NSMinY(frame), NSHeight(frame),
+                             intrinsic.height == NSViewNoIntrinsicMetric ? -1 : intrinsic.height);
+
+            NSRect solved = NSMakeRect(x.origin, y.origin, x.size, y.size);
+
+            if (!NSEqualRects(solved, frame))
+                [subview setFrame: solved];
+        }
+    }
+
+    (void) bounds;
+}
+
+/*
+ * A SUBVIEW THAT ENDED LAYOUT DEGENERATE TAKES THE SIZE IT SAYS IT WANTS.
+ *
+ * Measured on iA Writer's library rows: the cell view's own -layout runs and POSITIONS its label,
+ * moving it to y=8 to centre it, and never SIZES it, because on macOS the size arrives from
+ * somewhere this port does not have. The label is not short of anything else. It knows its text,
+ * "Locations", and its fitting size, 57x17. It is 1x1.
+ *
+ * So a view left at a degenerate size after layout, which knows a sensible fitting size, is given
+ * it, keeping the origin its container chose and clamped to the container. The consequence to be
+ * aware of: a view that is legitimately one pixel wide is resized. That is why this is reached ONLY
+ * from -layoutSubtreeIfNeeded, which nothing calls except the view based table path.
+ */
+- (void) _ciderSizeDegenerateSubviews {
+    NSSize bounds = [self bounds].size;
+
+    for (NSView *subview in [self subviews]) {
+        NSRect frame = [subview frame];
+
+        if (frame.size.width > 1 && frame.size.height > 1)
+            continue;
+
+        NSSize fitting = [subview fittingSize];
+
+        if (getenv("CIDER_TRACE_FRAMES") != NULL)
+            fprintf(stderr, "CIDER_FRAME degenerate %s %gx%g fitting %gx%g bounds %gx%g\n",
+                    object_getClassName(subview), frame.size.width, frame.size.height,
+                    fitting.width, fitting.height, bounds.width, bounds.height);
+
+        if (!(fitting.width > 0) || !(fitting.height > 0))
+            continue;
+        /* An image view answers with its unbounded maximum; the container is the real limit. */
+        if (fitting.width > bounds.width)
+            fitting.width = bounds.width - frame.origin.x;
+        if (fitting.height > bounds.height)
+            fitting.height = bounds.height;
+        if (!(fitting.width > 0) || !(fitting.height > 0))
+            continue;
+
+        frame.size = fitting;
+        [subview setFrame: frame];
+    }
+}
+
+/*
+ * -layoutSubtreeIfNeeded lives in the NSModernViewSwitches CATEGORY, not here, and a category's
+ * method REPLACES the class's rather than adding to it. Defining it here as well silently did
+ * nothing at all: the category won and the two methods above were never reached.
+ */
 
 /*
  * THE CONSTRAINTS A VIEW HOLDS, and nothing that solves them. An application that only builds
