@@ -1190,6 +1190,7 @@ SDK_ROOT = {
     "firehose/private.h": "//vendor/src/xnu:libkern_firehose_private.h",
     "firehose/tracepoint_private.h": "//vendor/src/xnu:libkern_firehose_tracepoint_private.h",
     "fmdb/FMDB.h": "fmdb/src/fmdb/FMDB.h",
+    "fmdb/FMDBCiderRename.h": "fmdb/src/fmdb/FMDBCiderRename.h",
     "fmdb/FMDatabase.h": "fmdb/src/fmdb/FMDatabase.h",
     "fmdb/FMDatabaseAdditions.h": "fmdb/src/fmdb/FMDatabaseAdditions.h",
     "fmdb/FMDatabasePool.h": "fmdb/src/fmdb/FMDatabasePool.h",
