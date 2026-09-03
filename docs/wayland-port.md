@@ -15075,7 +15075,22 @@ constraints on containers that had been laid out by autoresizing moves what auto
 already placed. Reverted. The guard is kept, since it makes the solver free for the views that hold
 no constraints.
 
-What that leaves is the real question: on macOS the size of a view controller's view inside a pane
-comes from the layout pass, and this port has no layout pass outside the table path. Adding one
-means deciding, per view, whether constraints or autoresizing owns it, which is exactly what
-`translatesAutoresizingMaskIntoConstraints` answers and what nothing here reads yet.
+**AND THE SECOND ATTEMPT, which was the right design and still failed.**
+`translatesAutoresizingMaskIntoConstraints` is exactly the answer to "who owns this frame", it is
+stored here and defaults to YES, and nothing read it. So: a separate path that solves ONLY the
+subviews whose flag is NO, called from `-setFrame:` after autoresizing, leaving
+`-_ciderSolveConstraints` untouched for the table cell labels that need it whatever their flag
+says.
+
+It regressed identically. The sidebar dropped to y=485 again, the same capture byte for byte as the
+ungated attempt. **That is the informative part**: gating on the flag changed nothing, which proves
+the views being moved really are constraint owned, and that our solver simply computes the wrong
+frame for them. It gives the sidebar about 199 points of height where it should have 594, anchored
+to the bottom rather than the top.
+
+So the remaining work on iA Writer's library is not wiring, it is a constraint solver good enough to
+OWN a frame. The one here resolves a useful subset in three passes and was built for a label inside
+a table cell, where the container is small, the constraints few and the answer forgiving. Asked to
+place a pane inside a window it is wrong, and being wrong is worse than not running, because
+autoresizing already places those panes correctly. Both attempts are reverted; only the allocation
+free guard on the solver is kept.
