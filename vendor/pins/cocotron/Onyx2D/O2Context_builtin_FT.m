@@ -302,7 +302,7 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
         static int printedBackChrome, printedBackBody;
         int *printedBack = (self->_vpheight > 64) ? &printedBackBody : &printedBackChrome;
 
-        if (*printedBack < 40) {
+        if (*printedBack < 600) {
             O2argb8u probe[1];
             O2argb8u *got = surface->_read_argb8u(surface, minX, minY, probe, 1);
 

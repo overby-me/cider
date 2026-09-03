@@ -225,6 +225,13 @@ WAYLAND_DISPLAY=$NEW "$SWAYMSG" output '*' mode $((WIDTH - 256))x$((HEIGHT - 84)
 sleep 5
 shoot d4-resized
 
+# A LAST FRAME, because a pass that clears and defers its content to the next one looks exactly like
+# a pass that drew nothing. POST_SETTLE seconds later, d5 says which it was.
+if [ -n "${POST_SETTLE:-}" ]; then
+	sleep "$POST_SETTLE"
+	shoot d5-settled
+fi
+
 kill $APPPID 2>/dev/null
 kill $SWAYPID 2>/dev/null
 say "captures in $SHOTS"
