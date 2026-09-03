@@ -15419,3 +15419,26 @@ menu opens with its key equivalents and greyed items and a click activates the w
 reaches the application, Command N creates a document and the window retitles itself Untitled
 without a resize. Typing into the editor is refused by the application, above. The library file list
 rows are still not built, which is the remaining open question.
+
+## Swift Publisher's New Document dialog clips two labels, and the tree dump could not see it
+
+Driving Swift Publisher with two clicks (Close on the welcome window, then Choose) opens the New
+Document dialog: pages stepper, page spread segmented control, page size pop-up, width and height
+fields, portrait and landscape radio buttons, units pop-up, margins and the Cancel and Create
+buttons, all correct. Two labels are cut off on the left, `Number of Pages:` and `Page Spread Mode:`,
+identically before and after a resize, so it is not a resize artefact.
+
+The dump says what they are:
+
+    NSTextField 137x17@0,257   NSTextField 137x17@0,225      <- the two that clip
+    NSTextField 134x17@18,299  NSTextField 134x17@18,423     <- the short ones, fine
+
+The frames are what the nib stores, at x=0 and 137 wide, and the right aligned text overflows its own
+frame to the left by roughly 28 points. So our text is about 20 percent wider than the frame the nib
+was designed around. Twenty percent is too much for a face substitution alone and points at a point
+SIZE rather than a face, which is worth measuring before anyone changes the UI font: a label the nib
+sets in the small system font drawn at the regular size would be about this much wider.
+
+**The instrument could not see this window at all until now.** `CIDER_TRACE_TREE` throttled on ONE
+shared timestamp, so the windows that flush often ate every slot and a dialog, which is exactly the
+window worth dumping, was never dumped. The throttle is per window now.

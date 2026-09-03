@@ -2544,15 +2544,32 @@ extern int _CiderPendingConstraintSolves(void);
     if (spec == NULL || spec[0] == (char) 0)
         return;
 
-    static NSTimeInterval last = 0.0;
+    /* PER WINDOW. One shared timestamp meant the windows that flush often ate every slot and a
+     * dialog was never dumped at all, which is exactly the window worth dumping. */
+    static NSInteger numbers[32];
+    static NSTimeInterval last[32];
+    static int count = 0;
     NSTimeInterval every = atof(spec);
     NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
+    NSInteger number = [self windowNumber];
+    int slot = -1;
 
     if (every <= 0.0)
         every = 5.0;
-    if (last != 0.0 && now - last < every)
+
+    for (int i = 0; i < count; i++)
+        if (numbers[i] == number)
+            slot = i;
+    if (slot < 0 && count < 32) {
+        slot = count++;
+        numbers[slot] = number;
+        last[slot] = 0.0;
+    }
+    if (slot < 0)
         return;
-    last = now;
+    if (last[slot] != 0.0 && now - last[slot] < every)
+        return;
+    last[slot] = now;
 
     /* KEY AND FIRST RESPONDER, because a window that draws correctly and takes no typing is a
      * different fault from one that draws wrongly, and nothing in a frame dump distinguishes them. */
