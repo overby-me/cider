@@ -4118,7 +4118,24 @@ static void CiderResolveAxis(CiderAxisSolution *axis, CGFloat currentOrigin, CGF
         axis->size = 0;
 }
 
+/* Allocation free, because the solver below is now reached from every resize. */
+- (BOOL) _ciderHoldsConstraints {
+    return _constraints != nil && [_constraints count] > 0;
+}
+
 - (void) _ciderSolveConstraints {
+    if (![self _ciderHoldsConstraints]) {
+        BOOL any = NO;
+
+        for (NSView *subview in _subviews) {
+            if ([subview _ciderHoldsConstraints]) {
+                any = YES;
+                break;
+            }
+        }
+        if (!any)
+            return;
+    }
     /*
      * BOTH LISTS. A constraint is filed on its first item's superview, so one activated BEFORE the
      * view was added to anything ends up on the view itself. Swift code that builds a subview,

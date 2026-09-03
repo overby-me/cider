@@ -15051,3 +15051,31 @@ So the question is no longer why the list is empty but what should size that sub
 shape as the Swift Publisher document scroll view that arrived at zero. iA Writer renders, resizes
 and takes both a click and a key; the list having no VISIBLE row is the only thing between it and
 the third criterion.
+
+## The split views are innocent, and one layout attempt that made it worse (2026-09-03)
+
+Chasing the 1x1 file list further with `CIDER_TRACE_SPLIT=1` clears the split views entirely. They
+lay out correctly: the outer `IASplitView` is 1256x594 under `IATitlebarThemeFrame`, the inner
+`NSKVONotifying_IASplitView` gets 625x594, and after the drive resizes the output they become
+1000x510 and 497x510. That matches the `IAWrapperView 310x594 at 315,0` pane exactly.
+
+So the panes are right and the failure is INSIDE the middle pane: a view controller's view is built
+detached at 1x1, inserted into a pane that is already the right size, and never sized again.
+Autoresizing cannot help, because `addSubview:` does not resize and there is no later superview
+change to propagate. `CIDER_TRACE_ADDSUB=1` shows the same from the other side, and the
+`_IALibraryDocumentScrollView` carries mask 0x15, both margins flexible and the width FIXED, so
+even a resize would leave its width alone.
+
+**An attempt that was measured and REJECTED, do not repeat it.** `-_ciderSolveConstraints` only
+ever runs from `-layoutSubtreeIfNeeded`, which nothing calls but the view based table path, so the
+obvious move is to call it at the end of `-setFrame:` after `resizeSubviewsWithOldSize:`, guarded
+by a cheap allocation free check so views with no constraints pay nothing. That builds and runs and
+it is WORSE: iA Writer's sidebar drops from y=90 to y=485 and every pane shortens, because solving
+constraints on containers that had been laid out by autoresizing moves what autoresizing had
+already placed. Reverted. The guard is kept, since it makes the solver free for the views that hold
+no constraints.
+
+What that leaves is the real question: on macOS the size of a view controller's view inside a pane
+comes from the layout pass, and this port has no layout pass outside the table path. Adding one
+means deciding, per view, whether constraints or autoresizing owns it, which is exactly what
+`translatesAutoresizingMaskIntoConstraints` answers and what nothing here reads yet.
