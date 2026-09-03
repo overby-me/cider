@@ -1648,6 +1648,32 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
 }
 
 - (void) setBounds: (NSRect) bounds {
+    /* A BOUNDS THAT IS NOT A NUMBER POISONS EVERY CONVERSION OUT OF THIS VIEW, and the view then
+     * draws nowhere: iA Writer's editor clip view read nan and looked like an empty document. */
+    if (isnan(bounds.origin.x) || isnan(bounds.origin.y) || isnan(bounds.size.width) ||
+        isnan(bounds.size.height)) {
+        const char *watch = getenv("CIDER_TRACE_NAN");
+
+        /* Per component: a caller that gets the origin wrong may still be setting a good size, and
+         * dropping the whole rectangle loses that. */
+        if (isnan(bounds.origin.x)) bounds.origin.x = _bounds.origin.x;
+        if (isnan(bounds.origin.y)) bounds.origin.y = _bounds.origin.y;
+        if (isnan(bounds.size.width)) bounds.size.width = _bounds.size.width;
+        if (isnan(bounds.size.height)) bounds.size.height = _bounds.size.height;
+
+        if (watch != NULL && watch[0] != '\0') {
+            Dl_info one, two;
+            void *a = __builtin_return_address(0), *b = __builtin_return_address(1);
+
+            fprintf(stderr, "cider-nan setBounds %s {%g %g %g %g} from %s <- %s\n",
+                    object_getClassName(self), bounds.origin.x, bounds.origin.y,
+                    bounds.size.width, bounds.size.height,
+                    (dladdr(a, &one) != 0 && one.dli_sname != NULL) ? one.dli_sname : "?",
+                    (b != NULL && dladdr(b, &two) != 0 && two.dli_sname != NULL) ? two.dli_sname : "?");
+            fflush(stderr);
+        }
+    }
+
     if (!NSEqualRects(bounds, _bounds)) {
         _bounds = bounds;
         invalidateTransform(self);
@@ -4274,16 +4300,68 @@ int _CiderPendingConstraintSolves(void) {
 }
 
 /* Top down: a container settles its own size before its children are asked to fit inside it. */
+/*
+ * OFF BY DEFAULT, and the reason is measured rather than cautious. Running -layout is what finally
+ * gives iA Writer's editor a width (0 becomes 625, because its controller sizes it in
+ * -viewDidLayout), but it also carries the application into text layout it has never reached here,
+ * where it raises range (-1,0) beyond NSAttributedString bounds (0) and ends with an empty window.
+ * That is worse than the three columns it draws without the pass, so this waits for that exception
+ * to be fixed. CIDER_LAYOUT_PASS=1 turns it on.
+ */
+static BOOL CiderLayoutPassEnabled(void) {
+    static BOOL enabled = NO, asked = NO;
+
+    if (!asked) {
+        const char *value = getenv("CIDER_LAYOUT_PASS");
+
+        asked = YES;
+        enabled = value != NULL && value[0] != '\0' && strcmp(value, "0") != 0;
+    }
+    return enabled;
+}
+
 - (void) _ciderRunPendingConstraintSolves {
     if (_ciderNeedsConstraintSolve) {
         _ciderNeedsConstraintSolve = NO;
         if (CiderPendingConstraintSolves > 0)
             CiderPendingConstraintSolves--;
         [self _ciderSolveConstraintOwnedSubviews];
+
+        /*
+         * AND THE VIEW'S OWN LAYOUT, which nothing here has ever called: -layout was reachable only
+         * from the table row path, so no application's override ran and no view controller was told
+         * its view had been laid out. That is where a modern application sizes what constraints do
+         * not, and iA Writer's editor is one: a fixed width centred column its controller sets, so
+         * the text view stayed zero wide and there was nothing to type into.
+         */
+        if (CiderLayoutPassEnabled()) {
+            id controller = _ciderViewController;
+
+            if (CiderLayoutTracing()) {
+                fprintf(stderr, "cider-layout pass=%s %p controller=%s\n",
+                        class_getName([self class]), self,
+                        controller != nil ? class_getName([controller class]) : "none");
+                fflush(stderr);
+            }
+            if (controller != nil)
+                [controller viewWillLayout];
+            [self layout];
+            if (controller != nil)
+                [controller viewDidLayout];
+        }
     }
 
     for (NSView *subview in [self subviews])
         [subview _ciderRunPendingConstraintSolves];
+}
+
+/* Unretained: the controller owns the view, so the view cannot own it back. */
+- (BOOL) _ciderNeedsLayout {
+    return _ciderNeedsConstraintSolve;
+}
+
+- (void) _ciderSetViewController: (id) controller {
+    _ciderViewController = controller;
 }
 
 - (void) _ciderSolveConstraintOwnedSubviews {

@@ -2504,10 +2504,22 @@ static void CiderDumpViewTree(NSView *view, int depth, CGFloat windowHeight) {
 extern int _CiderPendingConstraintSolves(void);
 
 - (void) _ciderRunConstraintSolves {
-    if (_CiderPendingConstraintSolves() <= 0)
+    /*
+     * NOT RE-ENTRANT, AND BOUNDED. A view's -layout may draw, and drawing comes back through
+     * -displayIfNeeded, so without the guard the pass calls itself forever: iA Writer stopped dead
+     * after its first present. Laying out also marks views, which is legitimate (a container sizes
+     * a child, the child now needs its own layout) but cannot be allowed to run without end.
+     */
+    static BOOL running = NO;
+    NSView *root = _backgroundView != nil ? _backgroundView : _contentView;
+
+    if (running || root == nil || _CiderPendingConstraintSolves() <= 0)
         return;
 
-    [(_backgroundView != nil ? _backgroundView : _contentView) _ciderRunPendingConstraintSolves];
+    running = YES;
+    for (int pass = 0; pass < 4 && _CiderPendingConstraintSolves() > 0; pass++)
+        [root _ciderRunPendingConstraintSolves];
+    running = NO;
 }
 
 - (void) _ciderDumpViewTreeIfAsked {

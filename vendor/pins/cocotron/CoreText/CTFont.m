@@ -526,6 +526,28 @@ CGRect CTFontGetBoundingRectsForGlyphs(CTFontRef font, CTFontOrientation orienta
     return union_;
 }
 
+/* KTFont and NSFont are both handed to these functions and only one of them answers -fontName. */
+static const char *CiderFontNameOf(id object) {
+    if (![object respondsToSelector: @selector(fontName)])
+        return object_getClassName(object);
+    return [[object fontName] UTF8String] ?: "?";
+}
+
+/* A metric of zero is a defect that reads as a hang: iA Writer multiplies the width of one
+ * character by a counter until it reaches the viewport width, so a zero advance never terminates.
+ * Only the zero cases print. */
+static BOOL CiderTraceFontMetric(void) {
+    static BOOL on = NO, asked = NO;
+
+    if (!asked) {
+        const char *value = getenv("CIDER_TRACE_FONTMETRIC");
+
+        asked = YES;
+        on = (value != NULL && value[0] != '\0');
+    }
+    return on;
+}
+
 /* THE SAME TWO CLASSES, THE SAME SELECTOR, AND THE MISMATCH RUNS THE OTHER WAY.
  *
  * -getGlyphs: above is about what the method WRITES. This one is about what it READS: KTFont takes
@@ -550,8 +572,31 @@ double CTFontGetAdvancesForGlyphs(CTFontRef font, CTFontOrientation orientation,
     double sum = 0.0;
     CFIndex i;
 
-    if (object == nil || advances == NULL || glyphs == NULL || count <= 0) {
+    if (object == nil || glyphs == NULL || count <= 0) {
         return 0.0;
+    }
+
+    /*
+     * THE ADVANCES ARRAY IS OPTIONAL, and answering zero when it is NULL is not a safe refusal: the
+     * RETURN is the total advance and a caller that only wants the total passes NULL, exactly as it
+     * does for the bounding rects above. iA Writer measures the width of one character that way to
+     * get its en width, then divides its viewport by it, and a zero came back as a layout loop that
+     * stepped by nothing and never reached the far edge. The application span 100 percent of a core
+     * inside -[IATypographyLayout initWithViewportWidth:viewportSizeClass:enWidth:...].
+     */
+    CGSize local[64];
+    CGSize *owned = NULL;
+
+    if (advances == NULL) {
+        if (count <= (CFIndex) (sizeof(local) / sizeof(local[0]))) {
+            advances = local;
+        } else {
+            owned = (CGSize *) calloc((size_t) count, sizeof(CGSize));
+            if (owned == NULL) {
+                return 0.0;
+            }
+            advances = owned;
+        }
     }
 
     if (cider_glyph_arg_is_wide(object, @selector(getAdvancements:forGlyphs:count:), 3)) {
@@ -559,6 +604,7 @@ double CTFontGetAdvancesForGlyphs(CTFontRef font, CTFontOrientation orientation,
                    ? stack
                    : (uintptr_t *) calloc((size_t) count, sizeof(uintptr_t));
         if (wide == NULL) {
+            free(owned);
             return 0.0;
         }
         for (i = 0; i < count; i++) {
@@ -575,6 +621,17 @@ double CTFontGetAdvancesForGlyphs(CTFontRef font, CTFontOrientation orientation,
     for (i = 0; i < count; i++) {
         sum += advances[i].width;
     }
+
+    if (owned != NULL) {
+        free(owned);
+    }
+
+    if (count == 1 && CiderTraceFontMetric())
+        fprintf(stderr, "cider-fontmetric advance font=%s size=%g glyph=%u w=%g h=%g sum=%g\n",
+                CiderFontNameOf(object),
+                [object respondsToSelector: @selector(pointSize)] ? (double) [object pointSize] : -1,
+                (unsigned) glyphs[0], (double) advances[0].width, (double) advances[0].height,
+                sum);
 
     return sum;
 }
@@ -687,6 +744,9 @@ bool CTFontGetGlyphsForCharacters(CTFontRef font, const UniChar *characters,
         /* NSControlGlyph is 0xFFFFFF and does not fit. CoreText answers 0 for a character it
          * cannot map, so say that rather than truncating to a real glyph index. */
         glyphs[i] = (wide[i] > 0xFFFF) ? 0 : (CGGlyph) wide[i];
+        if (glyphs[i] == 0 && CiderTraceFontMetric())
+            fprintf(stderr, "cider-fontmetric noglyph font=%s char=U+%04X\n",
+                    CiderFontNameOf(object), (unsigned) characters[i]);
     }
 
     if (wide != stack) {

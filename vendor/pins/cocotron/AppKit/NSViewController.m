@@ -115,6 +115,15 @@
     value = [value retain];
     [_view release];
     _view = value;
+    /* The layout pass tells the controller about its own view, and only a back pointer can say
+     * which controller that is. */
+    [_view _ciderSetViewController: self];
+}
+
+- (void) viewWillLayout {
+}
+
+- (void) viewDidLayout {
 }
 
 - (void) loadView {

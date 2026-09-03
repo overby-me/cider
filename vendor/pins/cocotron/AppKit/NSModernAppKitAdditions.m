@@ -537,12 +537,14 @@ static void _CiderSetViewFlags(id view, NSInteger flags) {
 }
 
 - (void) setNeedsLayout: (BOOL) needsLayout {
-    if (needsLayout)
+    if (needsLayout) {
+        [self _ciderMarkNeedsConstraintSolve];
         [self setNeedsDisplay: YES];
+    }
 }
 
 - (BOOL) needsLayout {
-    return NO;
+    return [self _ciderNeedsLayout];
 }
 
 - (void) layoutSubtreeIfNeeded {

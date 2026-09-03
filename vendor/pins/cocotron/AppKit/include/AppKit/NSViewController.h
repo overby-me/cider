@@ -29,6 +29,8 @@
 - (void) setView: (NSView *) value;
 
 - (void) loadView;
+- (void) viewWillLayout;
+- (void) viewDidLayout;
 
 - (void) discardEditing;
 

@@ -15163,3 +15163,64 @@ iTerm2, the last with LAUNCHD=0 and a live shell taking keystrokes.
 The tree dump gained the field that decides all of this. CIDER_TRACE_TREE=<seconds> now prints
 translates and the constraint count per view, because a view nothing ever sized and a view whose
 constraints nobody solved are the same zero without it and need opposite fixes.
+
+## The optional out parameter that span a core (task #115)
+
+Wiring the layout pass in (below) made iA Writer stop dead after its first present, at 102 percent of
+one core. There is no perf here, so the loop was found this way, which is worth keeping:
+
+1. `ps -eo pid,pcpu,comm --sort=-pcpu` names the busy mldr, and reading utime and stime from
+   `/proc/<pid>/task/*/stat` three seconds apart names the busy thread, which was the main one.
+2. `gdb -p <pid> -batch -ex "thread apply 1 bt 8"` three times gave a program counter that moved
+   inside a 13 byte range: a tight loop, not a wait.
+3. `/proc/<pid>/maps` said which image that address is in, and the mapping line gives the file
+   offset of the segment, so the instructions can be read straight out of the file.
+4. `llvm-mc --disassemble --triple=x86_64-apple-darwin` on those bytes, and
+   `llvm-objdump --macho --arch=x86_64 -d` for the surrounding function, named it:
+   `-[IATypographyLayout initWithViewportWidth:viewportSizeClass:enWidth:maxLineCharacterCount:preferredMarginCharacterCount:]`.
+
+The loop is `while (ceil(viewportWidth - 2 * margin) > ceil(i * enWidth)) i++`, counting how many
+characters fit across the editor. With enWidth zero it never advances, and the counter is capped at
+INT64_MAX, so it runs effectively forever.
+
+`_IATypographyWidthOfCharacter` computes that width with `CTFontGetGlyphsForCharacters` followed by
+`CTFontGetAdvancesForGlyphs`, and the disassembly shows it passing **NULL** for the advances array:
+it wants only the return value, which is the total advance. Our implementation treated a NULL
+advances array as a bad argument and returned 0.0. The same file gets this right one function
+earlier, for the bounding rects, with the comment that the out parameter is optional.
+
+So the fix is four lines: measure into a local buffer when the caller does not want the per glyph
+array. The effect is larger than the loop, because that width is what the editor lays itself out
+from: `NSKVONotifying_IAEditorScrollView` went from `0x594`, zero points wide, to `625x594`, and the
+text view with it. iA Writer opens a document with Command N and the window titles itself Untitled.
+
+**A probe must not raise.** The first version of the font metric trace called `-fontName` on the
+font it was given, and KTFont_FT does not answer that selector, so the application terminated inside
+the instrument. `CIDER_TRACE_FONTMETRIC=1` now asks before it prints, and reports the class name for
+a font that has no name.
+
+## The layout pass, which no application here has ever had (task #115)
+
+`-layout` existed on NSView and was reachable only from the view based table path and NSAlert, and
+`-viewWillLayout` and `-viewDidLayout` did not exist at all. The comment on `-layout` said as much:
+there is no deferred layout here, so nothing calls this on its own. That is where a modern
+application sizes whatever its constraints do not, and iA Writer's editor is exactly that: a fixed
+width centred column its view controller sets in `-viewDidLayout`.
+
+The pass built for the constraint solver is the place for it. A view carries a needs layout flag,
+set by `-setFrame:`, by insertion, by activating a constraint and by `-setNeedsLayout:`; the window
+runs the marked views once before it draws, top down, calling `-viewWillLayout`, `-layout` and
+`-viewDidLayout`. NSViewController registers itself on its view so the hooks have somewhere to go.
+The pass is not re-entrant and is bounded to four rounds, because a view's layout may draw, and
+drawing comes back through `-displayIfNeeded`.
+
+**It is off by default, and that is a measured decision, not caution.** With the pass on, iA Writer
+gets a real editor and then goes further than it ever has into text layout, where it raises `range
+(-1,0) beyond NSAttributedString bounds (0)` and ends with an empty window. Three columns beat an
+empty window, so `CIDER_LAYOUT_PASS=1` turns it on and that exception is the next thing to fix.
+
+Two NaN guards came out of the same run. A bounds that is not a number poisons every conversion out
+of that view, so the editor's clip view converted to nan and drew nowhere; `-setBounds:` now
+replaces a NaN component with the one it already had, per component, because a caller that gets the
+origin wrong may still be setting a good size. `-[NSClipView scrollToPoint:]` refuses a NaN
+outright. `CIDER_TRACE_NAN=1` names the setter and its caller.

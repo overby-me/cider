@@ -17,6 +17,8 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
+#include <math.h>
+#include <dlfcn.h>
 #import <AppKit/NSClipView.h>
 #import <AppKit/NSColor.h>
 #import <AppKit/NSCursor.h>
@@ -353,6 +355,20 @@ static void CiderFillBackground(NSColor *color, NSRect rect, const char *where) 
 }
 
 - (void) scrollToPoint: (NSPoint) point {
+    /* A SCROLL ORIGIN IS A NUMBER. One NaN here makes every later conversion out of this view NaN,
+     * so the document draws nowhere and reads as an empty editor rather than as a bad number. */
+    if (isnan(point.x) || isnan(point.y)) {
+        if (getenv("CIDER_TRACE_FRAMES") != NULL) {
+            Dl_info info;
+            void *caller = __builtin_return_address(0);
+
+            fprintf(stderr, "cider-clip nan scrollToPoint %g,%g from %s\n", point.x, point.y,
+                    (dladdr(caller, &info) != 0 && info.dli_sname != NULL) ? info.dli_sname : "?");
+            fflush(stderr);
+        }
+        return;
+    }
+
     point = [self constrainScrollPoint: point];
     // Not need for more work and a full redislay if we don't really scroll
     if (!NSEqualPoints(point, _bounds.origin)) {
