@@ -14889,3 +14889,48 @@ typed text with a caret in it.
 `CryptoKit.framework`, which exists nowhere in this project, and everything it binds from it is
 `Curve25519.Signing.PublicKey`: a metadata accessor, `init(rawRepresentation:)` and
 `isValidSignature(_:for:)`. That is the Combine pattern at a much smaller scale (#171).
+
+## iTerm2 is a terminal, and LibreOffice was never broken (2026-09-03)
+
+**iTerm2 meets all three criteria.** Four faults stood between the session and the window,
+each hiding the next, and all four are fixed:
+
+1. `-[NSButton setHasDestructiveAction:]` did not exist. AppKit catches an application
+   exception per event, and the event that raised it built the terminal window, so no session
+   was created and iTerm2 reported "A session ended very soon after starting."
+2. `getRectsBeingDrawn:` converted an ancestor rect down into the view and only TESTED the
+   intersection, handing iTerm2 1256x684 at 0,-317 for a view 1241x367 tall.
+3. A transparent Copy fill was resolved to the nearest layer background. That produced the
+   right terminal background and then painted over the 315 glyphs `iTermLegacyView` had drawn
+   in between: the fill from `-[PTYTextView drawRect:]` was seq 422 and the last glyph 421. In
+   one shared buffer what is behind is already drawn, so the fill is now a no-op.
+4. `TISCopyCurrentKeyboardLayoutInputSource` returned NULL because the Wayland display has no
+   Carbon `uchr` resource, and iTerm2 passed that NULL to `TISGetInputSourceProperty`. The
+   first key press killed the process with nothing in the log.
+
+Verified by looking: the window shows `Cider [~]# echo HELLO` / `HELLO` / `Cider [~]#` with a
+block cursor, and resizing the output to 1000x600 reflows the terminal.
+
+Two things iTerm2 still wants. At startup the session grid is 25 rows while the window fits
+43, so `-[SessionView updateLegacyViewFrame]` sizes the drawing view to 1241x367 and the text
+sits low; any resize corrects it. And iTerm2 needs launchd (`LAUNCHD=0`): without it the
+bootstrap port is null, iTermServer reports `CheckIfBootstrapPortIsDead` and quits, and the
+application starts six daemons over six sockets.
+
+**LibreOffice was never a code regression, and I said it was.** It failed 8 runs of 8 today
+with the same shape, drawing its start centre and exiting 0 after two seconds, and yesterday's
+runs were fine, so I recorded it in a commit message as a regression somewhere in the eleven
+commits between. It was not. Moving the prefix's LibreOffice user profile aside
+(`Users/root/Library/Application Support/LibreOffice`) restored it: **6 runs of 6 succeed on
+the same tree that had just failed**, and two bisect builds that each looked like they had
+found something were measuring that state change, not the code. Restoring cocotron to the last
+good commit still failed; reverting the Swift 5.5.3 bump appeared to fix it and then the
+unreverted tree passed 2 of 2 as well. **A prefix is state, and a failure that survives a
+rebuild is not thereby a code failure.**
+
+Where LibreOffice stands, measured: the start centre renders in full, resizes to 1000x600 and
+reflows, and a click on Create opens Calc with its toolbar, formula bar, sidebar and grid.
+Typing kills it, but only with a document window open; with just the start centre it types and
+survives. `UCKeyTranslate` and the Text Input Sources layout are RULED OUT: no binary in the
+LibreOffice bundle references either, so the crash is in the document window path, not in key
+translation. That is the next thing to find.
