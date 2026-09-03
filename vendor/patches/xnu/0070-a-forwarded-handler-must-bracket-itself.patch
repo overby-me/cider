@@ -1,22 +1,53 @@
-A forwarded signal handler must bracket itself with interrupt_enter.
+A forwarded signal handler must bracket itself, and every signal is forwarded.
+
+interrupt_enter/interrupt_exit tell the daemon a handler is running. Two things were wrong.
 
 The pair was skipped whenever in-guest IPC was on, justified by sigexc having no daemon Mach wait to
-clear. But interrupt_enter has a second job: it tells the daemon to hold replies while a handler
-runs. Without it, a signal delivered while a call is waiting lets the handler's own calls consume
-the reply the interrupted call was waiting for. The request and reply streams then sit one out of
-step for the rest of the process's life, and a later call waits for a reply that was already taken.
+clear. But interrupt_enter also asks the daemon to hold replies while the handler runs, and without
+it a signal arriving mid-call lets the handler's own calls consume the reply the interrupted call
+was waiting for. The two streams then sit one out of step for the rest of the process's life.
 
-iTerm2 sets the pty window size after laying out its window, so SIGWINCH reaches login in the middle
-of mach_reply_port. The trace showed it exactly: 110 requests against 111 replies, no interrupt_enter
-anywhere, and login waiting forever in recvmsg. With the bracket restored the same run counts 110
-against 110.
+And the bracketed wrapper was installed for SIGCHLD and SIGTTOU only. Every other signal, SIGWINCH
+among them, went straight to the bare handler with no bracket at all, so the protection that did
+exist covered two signals out of thirty-one.
 
-That is the whole claim. login still does not reach the shell, so this removes the skew rather than
-the symptom.
+iTerm2 finds it: it sets the pty window size after laying out its window, so SIGWINCH reaches login
+in the middle of mach_reply_port. Standalone login never gets one, which is why it execs a shell
+there and hangs here. The trace showed 110 requests against 111 replies with no interrupt_enter
+anywhere.
+
+THIS IS NOT THE WHOLE FIX AND LOGIN STILL HANGS. ciderd says why in its own comment on
+interrupt_enter: "the getcontext dance for a signal that interrupts a BLOCKED daemon call, running
+that call's continuation nested and deferring its reply, is a later refinement". That refinement is
+the missing half, and it is exactly the case here.
+
+Regression: Swift Publisher 344 distinct colours, iA Writer 357, MoneyMoney 823, LibreOffice 175,
+zero faults in all four.
 
 --- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c
 +++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c
-@@ -175,14 +175,21 @@
+@@ -136,7 +136,10 @@
+ 		else*/ if (nsa->sa_sigaction != SIG_DFL && nsa->sa_sigaction != SIG_IGN
+ 				&& nsa->sa_sigaction != SIG_ERR)
+ 		{
+-			sa.sa_sigaction = &handler_linux_to_bsd;
++			/* EVERY forwarded signal needs the interrupt bracket, not just the two that had it.
++			 * SIGCHLD and SIGTTOU got the wrapper and the rest went straight to the handler, so a
++			 * SIGWINCH arriving mid-call left the request and reply streams one out of step. */
++			sa.sa_sigaction = &handler_linux_to_bsd_wrapper;
+ 		}
+ 		else
+ 			sa.sa_sigaction = (linux_sig_handler*) nsa->sa_sigaction;
+@@ -154,7 +157,7 @@
+ 
+ 	if (osa != NULL)
+ 	{
+-		if (olsa.sa_sigaction == handler_linux_to_bsd)
++		if (olsa.sa_sigaction == handler_linux_to_bsd_wrapper)
+ 			osa->sa_sigaction = sig_handlers[linux_signum];
+ 		else // values such as SIG_DFL
+ 			osa->sa_sigaction = (bsd_sig_handler*) olsa.sa_sigaction;
+@@ -175,14 +178,21 @@
  #endif
  
  static void handler_linux_to_bsd_wrapper(int linux_signum, struct linux_siginfo* info, void* ctxt) {
