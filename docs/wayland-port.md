@@ -14985,6 +14985,25 @@ tableView:objectValueForTableColumn:row:` warnings are column auto-sizing, not d
 `drawRow:clipRect:` returns early for a view based table. And `uthread_is_cancelled` answers 0, not
 cancelled, so a cancellable worker is not being told to stop.
 
-So the content indexer inserts rows and never runs, and finding why is the next step. Until it
-does, iA Writer has no document to type into, which is the only one of the three criteria it does
-not meet.
+**CORRECTION, made an hour later: the content indexer DOES run.** Reading the database once, early,
+showed every item at `indexed = -1` and I called the indexer stuck. Reading it again after the run
+finished shows `Content` with one row per item, three of three. The `-1` was mid-flight. A single
+read of a table a background worker is still writing is not a measurement of what that worker did.
+
+So the index is COMPLETE and the list is still empty, which moves the question from the indexer to
+whatever reads it. What is known:
+
+- `Location` stays `state = 0`, `indexingState = 1`, `totalItemCount = 0` even with three items and
+  three content rows present, so the counts the UI would read are never written.
+- No exception is raised at all in a full drive: `CIDER_TRACE_EXCEPTIONS=1` reports zero. The
+  `_FBKVOSharedController` raise that was there earlier went with the hw.model fix.
+- `IAFetchController` is built and asked for its `request`, `result` and `resultSource`, and it
+  drives its updates through FBKVOController. Our KVO is NOT sending an unsolicited initial
+  notification: `-addObserver:forProperty:options:context:` tests
+  `NSKeyValueObservingOptionInitial` correctly, so that chain was the application asking for one.
+- A 200 second settle changes nothing, so it is not slowness.
+- Passing the document path in argv does not open it either, because that is LaunchServices' job
+  and nothing here does it.
+
+Until the list has a row there is no document to type into, which is the only one of the three
+criteria iA Writer does not meet. It renders, it resizes, and it takes both a click and a key.
