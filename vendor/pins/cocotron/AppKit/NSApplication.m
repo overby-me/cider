@@ -1387,6 +1387,31 @@ static void _CiderAppNote(const char *what, id sender)
 
 // This method is used by NSWindow
 - (void) _displayAllWindowsIfNeeded {
+    /*
+     * A DIAGNOSIS SWITCH, NOT A FIX. An application that drives its interface through layer
+     * properties marks no view dirty, and nothing here composites a layer tree, so it paints once
+     * and then never again: iA Writer answers events and repaints only when a compositor resize
+     * forces the whole view tree through the ordinary path. CIDER_FORCE_REDRAW=1 forces that path
+     * every pass, which is the way to tell that diagnosis from a dead event loop.
+     */
+    static int force = -1;
+
+    if (force < 0) {
+        const char *value = getenv("CIDER_FORCE_REDRAW");
+
+        force = (value != NULL && value[0] != (char) 0 && strcmp(value, "0") != 0) ? 1 : 0;
+    }
+    if (force) {
+        /* The VIEW has to be dirty, not just the window: -displayIfNeeded asks the frame view, and
+         * the window flag alone leaves it with nothing to draw. */
+        for (NSWindow *window in [NSApp windows]) {
+            NSView *content = [window contentView];
+
+            [content setNeedsDisplay: YES];
+            [[content superview] setNeedsDisplay: YES];
+        }
+    }
+
     [[NSApp windows] makeObjectsPerformSelector: @selector(displayIfNeeded)];
 }
 

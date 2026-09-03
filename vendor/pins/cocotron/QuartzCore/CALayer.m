@@ -365,12 +365,29 @@ NSString *const kCAContentsFormatGray8Uint = @"Gray8";
     [self _setContext: nil];
 }
 
+/*
+ * A DIRTY LAYER HAS TO MARK THE PATH THAT ACTUALLY DRAWS.
+ *
+ * Nothing here composites a layer tree, so setting this flag alone reached the screen never: iA
+ * Writer marks its layers rather than its views, and painted three frames in its first second and
+ * then nothing at all, however many events it processed, until a compositor resize forced the whole
+ * window through the ordinary display path. That path draws layer backed views correctly, which is
+ * what the resize frame proves, so a dirty layer tells its delegate view, which is what AppKit sets
+ * a layer backed view up as.
+ */
+- (void) _ciderMarkDelegateViewNeedsDisplay {
+    if ([_delegate respondsToSelector: @selector(setNeedsDisplay:)])
+        [(id) _delegate setNeedsDisplay: YES];
+}
+
 - (void) setNeedsDisplay {
     _needsDisplay = YES;
+    [self _ciderMarkDelegateViewNeedsDisplay];
 }
 
 - (void) setNeedsDisplayInRect: (CGRect) rect {
     _needsDisplay = YES;
+    [self _ciderMarkDelegateViewNeedsDisplay];
 }
 
 - (void) addAnimation: (CAAnimation *) animation forKey: (NSString *) key {

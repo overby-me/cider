@@ -2584,6 +2584,22 @@ extern int _CiderPendingConstraintSolves(void);
 - (void) displayIfNeeded {
     [self _ciderRunConstraintSolves];
 
+    /* IS THE WINDOW EVER DIRTY. An application that processes events and paints nothing is either
+     * not marking anything or not reaching the flush, and only this tells the two apart. Throttled,
+     * because every window is asked on every pass through the event loop. */
+    if (getenv("CIDER_TRACE_DIRTY") != NULL && getenv("CIDER_TRACE_DIRTY")[0] != (char) 0) {
+        static NSTimeInterval last = 0.0;
+        NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
+
+        if (now - last >= 0.5) {
+            last = now;
+            fprintf(stderr, "cider-dirty window=%ld visible=%d mini=%d viewsNeed=%d t=%.1f\n",
+                    (long) [self windowNumber], (int) [self isVisible],
+                    (int) [self isMiniaturized], (int) [self viewsNeedDisplay], now);
+            fflush(stderr);
+        }
+    }
+
     if (![self isVisible] || [self isMiniaturized] ||
         ![self viewsNeedDisplay]) {
         return;

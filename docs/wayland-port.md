@@ -15287,3 +15287,41 @@ Which leaves: nothing marks the window as needing display, or the drawing goes s
 never composited. The prime suspect is the layer path, because every iA Writer run logs
 `CGLCreateContext failed with 10004` from `CALayerContext.m`, and a layer backed view draws into an
 offscreen bitmap that something else has to composite. See the note on a layer with no subwindow.
+
+## Why a layer driven application paints once and then stops (task #115)
+
+iA Writer paints three frames inside its first 1.4 seconds and then no frame at all until the
+compositor resizes the window, whatever it is asked to do in between. Everything easy was measured
+and ruled out first:
+
+- The keys arrive: `TRACE_INPUT=1` prints `text=Some("o")` for each one, at window=1.
+- The clicks arrive: `button=0x110 pressed=true x=97 y=36 type=1 clicks=1 window=1`.
+- The main thread is idle in a kernel wait, not spinning and not deadlocked, which is what an event
+  loop looks like between events.
+- `-[NSApplication nextEventMatchingMask:...]` runs `_displayAllWindowsIfNeeded` before every wait,
+  and `CIDER_TRACE_DIRTY=1` shows `-[NSWindow displayIfNeeded]` being asked continuously.
+
+And it prints the answer: `viewsNeed=1` in 4 samples out of 119, all four in the first second.
+**The application marks nothing dirty.** It drives its interface through layer properties and
+expects Core Animation to recomposite, and nothing here composites a layer tree, so the drawing
+never happens at all. A compositor resize is the one thing that forces the whole view tree through
+the ordinary display path, which is why the window is correct again afterwards and why every earlier
+capture of a change in this application was taken after a resize without anyone noticing.
+
+Confirmed rather than argued: `CIDER_FORCE_REDRAW=1` marks the frame view and the content view dirty
+on every pass, and the frame count for the same run goes from 3 to 16. The first attempt at that
+switch set only the window flag and changed nothing, which is its own lesson: `-displayIfNeeded`
+asks the frame VIEW, so the window flag alone leaves it with nothing to draw.
+
+`-[CALayer setNeedsDisplay]` and `-setNeedsDisplayInRect:` now tell the delegate view, which is what
+AppKit makes a layer backed view, so a layer that asks to be redrawn reaches the path that draws.
+That is correct and it is not sufficient, because this application does not ask: it sets properties.
+
+**What a real fix looks like**, for whoever takes it: either a composite pass driven from the event
+loop that walks the layer tree and draws changed layers, or property setters on CALayer that mark
+the delegate view dirty the way `-setNeedsDisplay` now does. The second is much smaller and fits how
+this port already draws layer backed views, and the risk to measure is redraw cost, not correctness.
+CIDER_FORCE_REDRAW is the upper bound on that cost and it is affordable.
+
+Checked with the CALayer change in: iTerm2 takes a typed command, LibreOffice and Swift Publisher are
+unchanged, all by looking.
