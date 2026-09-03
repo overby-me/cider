@@ -1,0 +1,36 @@
+--- a/CFRunLoop.c
++++ b/CFRunLoop.c
+@@ -2352,6 +2352,24 @@
+     mach_port_name_t dispatchPort = MACH_PORT_NULL;
+     Boolean libdispatchQSafe = pthread_main_np() && ((HANDLE_DISPATCH_ON_BASE_INVOCATION_ONLY && NULL == previousMode) || (!HANDLE_DISPATCH_ON_BASE_INVOCATION_ONLY && 0 == _CFGetTSD(__CFTSDKeyIsInGCDMainQ)));
+     if (libdispatchQSafe && (CFRunLoopGetMain() == rl) && CFSetContainsValue(rl->_commonModes, rlm->_name)) dispatchPort = _dispatch_get_main_queue_port_4CF();
++
++    /*
++     * CIDER_TRACE_DISPATCH reports whether this run loop pass is even WATCHING the libdispatch main
++     * queue, and separately whether it ever drains one. A callback handed to the main queue that is
++     * never drained is indistinguishable from an application that received data and ignored it,
++     * which is what iTerm2's session handshake looks like.
++     */
++    if (getenv("CIDER_TRACE_DISPATCH") != NULL) {
++        static int said = 0;
++
++        if (said < 4) {
++            said++;
++            fprintf(stderr, "CIDER_DISPATCH mode pass: main=%d common=%d port=0x%x\n",
++                    (int) (CFRunLoopGetMain() == rl),
++                    (int) CFSetContainsValue(rl->_commonModes, rlm->_name),
++                    (unsigned) dispatchPort);
++        }
++    }
+     
+ #if USE_DISPATCH_SOURCE_FOR_TIMERS
+     mach_port_name_t modeQueuePort = MACH_PORT_NULL;
+@@ -2580,6 +2598,8 @@
+         }
+ #endif
+         else if (livePort == dispatchPort) {
++            if (getenv("CIDER_TRACE_DISPATCH") != NULL)
++                fprintf(stderr, "CIDER_DISPATCH draining the main queue\n");
+             CFRUNLOOP_WAKEUP_FOR_DISPATCH();
+             __CFRunLoopModeUnlock(rlm);
+             __CFRunLoopUnlock(rl);
