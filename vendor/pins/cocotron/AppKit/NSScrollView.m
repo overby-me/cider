@@ -932,6 +932,27 @@ static Class _rulerViewClass = nil;
     _findBarPosition = position;
 }
 
+/*
+ * FIRST RESPONDER BELONGS TO WHAT IS INSIDE. A scroll view edits nothing, so AppKit hands the
+ * status to the document view when that view will take it: an application that makes its scroll
+ * view first responder means the text view in it. iA Writer does exactly that after opening a
+ * document, and without this every key went to a view that does not insert text.
+ */
+- (BOOL) acceptsFirstResponder {
+    id document = [self documentView];
+
+    return document != nil && [document acceptsFirstResponder];
+}
+
+- (BOOL) becomeFirstResponder {
+    id document = [self documentView];
+
+    if (document != nil && [document acceptsFirstResponder])
+        return [[self window] makeFirstResponder: document];
+
+    return [super becomeFirstResponder];
+}
+
 - (void) tile {
     NSRect frame;
 

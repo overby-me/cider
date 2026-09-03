@@ -2538,9 +2538,13 @@ extern int _CiderPendingConstraintSolves(void);
         return;
     last = now;
 
-    fprintf(stderr, "CIDER_TREE ==== window %ld %.0fx%.0f at %.0f,%.0f t=%.2f\n",
+    /* KEY AND FIRST RESPONDER, because a window that draws correctly and takes no typing is a
+     * different fault from one that draws wrongly, and nothing in a frame dump distinguishes them. */
+    fprintf(stderr,
+            "CIDER_TREE ==== window %ld %.0fx%.0f at %.0f,%.0f t=%.2f key=%d main=%d responder=%s\n",
             (long) [self windowNumber], _frame.size.width, _frame.size.height, _frame.origin.x,
-            _frame.origin.y, now);
+            _frame.origin.y, now, (int) [self isKeyWindow], (int) [self isMainWindow],
+            [self firstResponder] != nil ? object_getClassName([self firstResponder]) : "none");
     CiderDumpViewTree(_backgroundView != nil ? _backgroundView : _contentView, 0,
                       _frame.size.height);
     fflush(stderr);

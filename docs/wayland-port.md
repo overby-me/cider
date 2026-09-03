@@ -15256,3 +15256,34 @@ file list rows are still not built (the column and its title bar are, and `_IALi
 is hidden and lives in the editor column). Verified with the pass on, by looking at every capture:
 Swift Publisher, MoneyMoney, LibreOffice and iTerm2 are all unchanged, iTerm2 with a live shell that
 takes a typed command.
+
+## The first responder was the scroll view, and what still stops iA Writer typing (task #115)
+
+A window that draws correctly and takes no typing is a different fault from one that draws wrongly,
+and nothing in a frame dump tells them apart, so `CIDER_TRACE_TREE` now prints `key`, `main` and the
+first responder class on its header line. That answered the question at once: the window was key and
+main, and the first responder was `NSKVONotifying_IAEditorScrollView`. A scroll view edits nothing.
+
+AppKit hands first responder status to the document view when that view will take it, and an
+application that makes its scroll view first responder means the text view inside it. Ours did not,
+so every key went to a view that does not insert text. `-[NSScrollView acceptsFirstResponder]` and
+`-becomeFirstResponder` now defer to the document view, and the responder is
+`NSKVONotifying_IAEditorTextView`. iTerm2 and Swift Publisher are unchanged by it, checked by
+looking.
+
+**What is still in the way, stated precisely so the next session does not re-derive it.** iA Writer
+paints exactly three frames, all within the first 1.4 seconds, and then nothing until the compositor
+resizes the window. That is not an input problem and not a wake problem, both were measured:
+
+- `TRACE_INPUT=1` shows the keys arriving at the application:
+  `cider-wayland-input key=5 keysym=0x6f carbon=31 pressed=true window=1 text=Some("o")`.
+- Command N is acted on, because the window is titled Untitled afterwards, and it reuses the one
+  window rather than opening a second (the menu item is New in Library in Window).
+- A stray Shift press 30 seconds later produces no frame either, so an event alone does not do it.
+- `-[NSApplication nextEventMatchingMask:...]` calls `_displayAllWindowsIfNeeded` before every wait,
+  so the display pass IS running on each event.
+
+Which leaves: nothing marks the window as needing display, or the drawing goes somewhere that is
+never composited. The prime suspect is the layer path, because every iA Writer run logs
+`CGLCreateContext failed with 10004` from `CALayerContext.m`, and a layer backed view draws into an
+offscreen bitmap that something else has to composite. See the note on a layer with no subwindow.
