@@ -16,6 +16,7 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+#include <math.h>
 #import <CoreText/KTFont.h>
 #import <Onyx2D/O2Context.h>
 #import <Foundation/NSArray.h>
@@ -150,6 +151,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     CGFloat leading = CGFontGetLeading(_font);
 
     return (leading / _unitsPerEm) * _size;
+}
+
+/*
+ * A CORETEXT FONT ANSWERS THE APPKIT METRIC TOO. CTFont and NSFont are the same object on macOS, so
+ * an application is free to put either in a text attribute and AppKit asks whichever it gets. Ours
+ * are separate classes, and a layout manager handed a CTFont raised: iA Writer terminated on
+ * -[KTFont_FT defaultLineHeightForFont] while laying out a document.
+ */
+- (CGFloat) defaultLineHeightForFont {
+    return roundf([self ascender] + fabs([self descender]) + [self leading]);
 }
 
 - (CGFloat) underlineThickness {

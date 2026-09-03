@@ -15381,3 +15381,41 @@ place, and CIDER_TRACE_MOUSE joins them.
 Verified by looking, with all of it in: iA Writer opens its File menu and titles itself Untitled on
 Command N, iTerm2 opens its Shell menu and takes a typed command, Swift Publisher, MoneyMoney and
 LibreOffice unchanged.
+
+## iA Writer's editor is read only because the application says so (task #115)
+
+Typing into the document reaches the text view and is dropped. `CIDER_TRACE_TEXT=1` prints the state
+that decides it, and it is unambiguous, 3 runs of 3:
+
+    CIDER_TEXTKEY NSKVONotifying_IAEditorTextView type=10 editable=0 selectable=1 fieldEditor=0
+                  delegate=NSKVONotifying_IAEditorViewController chars=H
+
+`-[NSTextView keyDown:]` drops every key when the view is not editable. A trace on `-setEditable:`
+shows the application calling it with NO, twice, and never with YES, from
+`-[IAEditorViewController updateEditabilityForDocument:]`. Disassembling that method (imp at
+0x100048720, so file offset 0x4c720 with the fat slice) gives the whole decision in two branches:
+
+    if ([document isInViewingMode])  [self setEditable: NO];
+    else                             [self setEditable: [[IAAccount sharedAccount] isReadWrite]];
+
+Ours answers `isInViewingMode` NO, correctly, so the second branch is the one taken, and
+`CIDER_TRACE_MSGSEND=Account` shows both sends happening on a real object:
+
+    msgsend +[_TtC6Writer9IAAccount sharedAccount] (in _TtC6Writer9IAAccount)
+    msgsend -[Writer.IAAccount isReadWrite] (in Writer.IAAccount)
+
+So the application's own Swift account object answers that this copy is not read write, and iA Writer
+opens documents read only. **That is a licence state, not a defect in this port, and it will not be
+faked here.** Anyone re-testing typing in iA Writer should expect this until the copy is licensed.
+
+Fixed on the way to that answer: `-[KTFont defaultLineHeightForFont]` did not exist. CTFont and
+NSFont are the same object on macOS so an application may put either in a text attribute, and a
+layout manager handed a CTFont raised `-[KTFont_FT defaultLineHeightForFont]` and terminated the
+application while laying out a document.
+
+**Where iA Writer stands against the three criteria.** Renders: yes, three columns, both title bars,
+sidebar, menu bar, verified by looking many times. Resizable: yes. Interactive: mouse yes, the File
+menu opens with its key equivalents and greyed items and a click activates the window; keyboard
+reaches the application, Command N creates a document and the window retitles itself Untitled
+without a resize. Typing into the editor is refused by the application, above. The library file list
+rows are still not built, which is the remaining open question.

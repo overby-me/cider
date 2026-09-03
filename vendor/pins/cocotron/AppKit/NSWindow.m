@@ -2970,6 +2970,12 @@ extern int _CiderPendingConstraintSolves(void);
                     object_getClassName(self), (long) type, where.x, where.y,
                     hit != nil ? object_getClassName(hit) : "none", (int) [self isKeyWindow]);
             fflush(stderr);
+        } else if (type == NSKeyDown) {
+            fprintf(stderr, "cider-mouse key window=%s responder=%s key=%d chars=%s\n",
+                    object_getClassName(self),
+                    _firstResponder != nil ? object_getClassName(_firstResponder) : "none",
+                    (int) [self isKeyWindow], [[event characters] UTF8String] ?: "?");
+            fflush(stderr);
         }
     }
 

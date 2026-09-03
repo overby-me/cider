@@ -52,6 +52,7 @@ enum { CGNullGlyph = 0x0 };
 - (CGFloat) ascender;
 - (CGFloat) descender;
 - (CGFloat) leading;
+- (CGFloat) defaultLineHeightForFont;
 - (CGFloat) underlineThickness;
 - (CGFloat) underlinePosition;
 - (CGFloat) italicAngle;

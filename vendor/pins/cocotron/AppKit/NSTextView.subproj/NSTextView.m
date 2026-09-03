@@ -2678,6 +2678,21 @@ static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourc
 }
 
 - (void) setEditable: (BOOL) flag {
+    /* WHO DECIDES A TEXT VIEW TAKES TYPING. -keyDown: drops every key when this is NO, silently, so
+     * an editor that ignores the keyboard is either never told YES or told NO afterwards, and only
+     * the caller tells those apart. Same gate as the key trace. */
+    const char *watch = getenv("CIDER_TRACE_TEXT");
+
+    if (watch != NULL && watch[0] != (char) 0) {
+        Dl_info info;
+        void *caller = __builtin_return_address(0);
+
+        fprintf(stderr, "CIDER_TEXTEDITABLE %s %p -> %d from %s\n", object_getClassName(self),
+                self, (int) flag,
+                (dladdr(caller, &info) != 0 && info.dli_sname != NULL) ? info.dli_sname : "app");
+        fflush(stderr);
+    }
+
     _isEditable = flag;
 }
 

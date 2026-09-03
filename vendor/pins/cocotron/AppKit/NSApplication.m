@@ -1380,6 +1380,19 @@ static void _CiderAppNote(const char *what, id sender)
         if (modifierFlags & (NSCommandKeyMask | NSAlternateKeyMask))
             if ([self _performKeyEquivalent: event])
                 return;
+
+        /* WHICH WINDOW A KEY IS ADDRESSED TO. Delivery is [[event window] sendEvent:], so an event
+         * carrying no window is dropped in silence and looks exactly like an application ignoring
+         * the keyboard. CIDER_TRACE_MOUSE, with the mouse probe in NSWindow. */
+        if (getenv("CIDER_TRACE_MOUSE") != NULL && getenv("CIDER_TRACE_MOUSE")[0] != (char) 0) {
+            NSWindow *target = [event window];
+
+            fprintf(stderr, "cider-appkey chars=%s window=%s keyWindow=%s\n",
+                    [[event characters] UTF8String] ?: "?",
+                    target != nil ? object_getClassName(target) : "NIL",
+                    [self keyWindow] != nil ? object_getClassName([self keyWindow]) : "none");
+            fflush(stderr);
+        }
     }
 
     [[event window] sendEvent: event];
