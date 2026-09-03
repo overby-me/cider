@@ -3,6 +3,7 @@
 #include <CoreFoundation/CFData.h>
 #include <os/lock.h>
 #import <AppKit/NSDisplay.h>
+#import <Foundation/Foundation.h>
 
 static os_unfair_lock g_keyboardLock = OS_UNFAIR_LOCK_INIT;
 static int g_lastKeyboardLayoutId = -1;
@@ -42,22 +43,31 @@ TISInputSourceRef TISCopyCurrentKeyboardLayoutInputSource(void)
 		os_unfair_lock_unlock(&g_keyboardLock);
 	}
 
-	uint32_t length;
+	/* A MAC ALWAYS HAS A CURRENT KEYBOARD INPUT SOURCE, whether or not a uchr resource can be
+	 * produced for it. The Wayland backend has an xkb keymap and no uchr, so returning NULL here
+	 * left iTerm2 passing NULL to TISGetInputSourceProperty on the FIRST key press and the process
+	 * died with nothing in the log. The source is built either way; only the layout data is
+	 * omitted when there is none, which is the honest answer for that one key. */
+	uint32_t length = 0;
 	UCKeyboardLayout* layout = [display keyboardLayout: &length];
-	if (!layout)
-		return NULL;
+	CFDataRef data = NULL;
 
-	CFDataRef data = CFDataCreate(NULL, (UInt8*) layout, length);
-	free(layout);
+	if (layout)
+	{
+		data = CFDataCreate(NULL, (UInt8*) layout, length);
+		free(layout);
+	}
 
 	NSString *name, *fullName;
 	[display keyboardLayoutName: &name fullName:&fullName];
 
-	const void* keys[] = { kTISPropertyUnicodeKeyLayoutData, kTISPropertyLocalizedName, kTISPropertyInputSourceLanguages };
-	const void* values[] = { data, fullName, @[name] };
-	CFDictionaryRef dict = CFDictionaryCreate(NULL, keys, values, 3, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	NSString* sourceID = [NSString stringWithFormat: @"com.apple.keylayout.%@", name];
+	const void* keys[4] = { kTISPropertyInputSourceID, kTISPropertyLocalizedName, kTISPropertyInputSourceLanguages, kTISPropertyUnicodeKeyLayoutData };
+	const void* values[4] = { sourceID, fullName, @[name], data };
+	CFDictionaryRef dict = CFDictionaryCreate(NULL, keys, values, data ? 4 : 3, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
-	CFRelease(data);
+	if (data)
+		CFRelease(data);
 
 	os_unfair_lock_lock(&g_keyboardLock);
 
@@ -74,6 +84,10 @@ TISInputSourceRef TISCopyCurrentKeyboardLayoutInputSource(void)
 
 void* TISGetInputSourceProperty(TISInputSourceRef inputSourceRef, CFStringRef key)
 {
+	/* CFDictionaryGetValue faults on a NULL container, and callers pass whatever the Copy
+	 * functions gave them without checking. */
+	if (!inputSourceRef || !key)
+		return NULL;
 	return (void*) CFDictionaryGetValue((CFDictionaryRef)inputSourceRef, key);
 }
 
