@@ -236,9 +236,14 @@ static void _CiderDumpViewTree(NSView *view, int depth)
      * identical in a frame-only dump. */
     /* HIDDEN BELONGS HERE TOO: a view the nib hides takes no clicks and draws nothing, and without
      * it a tree dump cannot tell that from a view that is simply behind another. */
-    fprintf(stderr, "CIDER_VIEW %*s%s %.0fx%.0f at %.0f,%.0f mask=0x%x hidden=%d%s%s\n", depth * 2,
-            "", object_getClassName(view), frame.size.width, frame.size.height,
+    /* TRANSLATES ANSWERS WHO OWNS THE FRAME, which is the question a degenerate view raises: a mask
+     * owner that nothing sized and a constraint owner nothing solved look the same without it. */
+    fprintf(stderr,
+            "CIDER_VIEW %*s%s %.0fx%.0f at %.0f,%.0f mask=0x%x hidden=%d translates=%d cons=%lu%s%s\n",
+            depth * 2, "", object_getClassName(view), frame.size.width, frame.size.height,
             frame.origin.x, frame.origin.y, (unsigned) [view autoresizingMask], (int) [view isHidden],
+            (int) [view translatesAutoresizingMaskIntoConstraints],
+            (unsigned long) [[view constraints] count],
             (text != nil && [text length] > 0) ? " text: " : "",
             (text != nil && [text length] > 0) ? [text UTF8String] : "");
 
@@ -2479,15 +2484,30 @@ static void CiderDumpViewTree(NSView *view, int depth, CGFloat windowHeight) {
     memset(indent, ' ', pad);
     indent[pad] = (char) 0;
 
+    /* TRANSLATES ANSWERS WHO OWNS THE FRAME. A view nothing ever sized and a view whose constraints
+     * nobody solved are the same zero without it, and they need opposite fixes. */
     fprintf(stderr,
-            "CIDER_TREE %s%s %.0fx%.0f@%.0f,%.0f win %.0fx%.0f@%.0f,%.0f top %.0f..%.0f hidden=%d opaque=%d mask=%lu\n",
+            "CIDER_TREE %s%s %.0fx%.0f@%.0f,%.0f win %.0fx%.0f@%.0f,%.0f top %.0f..%.0f hidden=%d opaque=%d mask=%lu translates=%d cons=%lu\n",
             indent, object_getClassName(view), frame.size.width, frame.size.height,
             frame.origin.x, frame.origin.y, win.size.width, win.size.height, win.origin.x,
             win.origin.y, top, top + win.size.height, (int) [view isHidden], (int) [view isOpaque],
-            (unsigned long) [view autoresizingMask]);
+            (unsigned long) [view autoresizingMask],
+            (int) [view translatesAutoresizingMaskIntoConstraints],
+            (unsigned long) [[view constraints] count]);
 
     for (NSView *child in [view subviews])
         CiderDumpViewTree(child, depth + 1, windowHeight);
+}
+
+/* Auto Layout runs before drawing, so the constraints a view controller activated after inserting
+ * its view are all in place by the time anything is asked to draw. */
+extern int _CiderPendingConstraintSolves(void);
+
+- (void) _ciderRunConstraintSolves {
+    if (_CiderPendingConstraintSolves() <= 0)
+        return;
+
+    [(_backgroundView != nil ? _backgroundView : _contentView) _ciderRunPendingConstraintSolves];
 }
 
 - (void) _ciderDumpViewTreeIfAsked {
@@ -2546,6 +2566,8 @@ static void CiderDumpViewTree(NSView *view, int depth, CGFloat windowHeight) {
 }
 
 - (void) displayIfNeeded {
+    [self _ciderRunConstraintSolves];
+
     if (![self isVisible] || [self isMiniaturized] ||
         ![self viewsNeedDisplay]) {
         return;

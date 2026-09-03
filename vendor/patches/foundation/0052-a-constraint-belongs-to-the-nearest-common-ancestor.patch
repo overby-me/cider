@@ -1,0 +1,60 @@
+--- a/src/NSLayoutConstraint.m
++++ b/src/NSLayoutConstraint.m
+@@ -263,6 +263,39 @@
+ }
+ 
+ /*
++ * A CONSTRAINT BELONGS TO THE NEAREST VIEW THAT CONTAINS BOTH ITS ITEMS.
++ *
++ * Taking the first item's superview is right only while the first item is the child. Written the
++ * other way round, which is how a container pins a child's far edge, it filed the constraint one
++ * level too high, and the grandparent then read it as a rule about its OWN child: iA Writer's file
++ * list pane took the width of the stack view inside it and the split view lost a column.
++ */
++static id CiderConstraintSuperview(id item) {
++    if (![item respondsToSelector: @selector(superview)]) {
++        return nil;
++    }
++    return [item performSelector: @selector(superview)];
++}
++
++static id CiderConstraintOwner(id first, id second) {
++    if (first == nil) {
++        return second;
++    }
++    if (second == nil) {
++        return CiderConstraintSuperview(first) ?: first;
++    }
++
++    for (id up = first; up != nil; up = CiderConstraintSuperview(up)) {
++        for (id down = second; down != nil; down = CiderConstraintSuperview(down)) {
++            if (up == down) {
++                return up;
++            }
++        }
++    }
++    return CiderConstraintSuperview(first) ?: first;
++}
++
++/*
+  * ACTIVATING A CONSTRAINT IS WHAT PUTS IT ON A VIEW, and macOS picks the nearest common ancestor of
+  * the two items. Holding it on the first item is enough here, because nothing reads the list back
+  * except the view that owns it, and what an application can otherwise notice is the constraint being
+@@ -278,16 +311,7 @@
+     }
+     _active = active;
+ 
+-    id owner = nil;
+-
+-    if ([_firstItem respondsToSelector: @selector(superview)]) {
+-        owner = [_firstItem performSelector: @selector(superview)];
+-        if (owner == nil) {
+-            owner = _firstItem;
+-        }
+-    } else if ([_secondItem respondsToSelector: @selector(superview)]) {
+-        owner = _secondItem;
+-    }
++    id owner = CiderConstraintOwner(_firstItem, _secondItem);
+     if (owner == nil) {
+         return;
+     }

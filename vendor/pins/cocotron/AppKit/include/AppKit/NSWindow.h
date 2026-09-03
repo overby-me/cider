@@ -584,6 +584,7 @@ typedef NS_OPTIONS(NSUInteger, NSWindowOcclusionState) {
 - (void) flushWindow;
 - (void) flushWindowIfNeeded;
 - (void) displayIfNeeded;
+- (void) _ciderRunConstraintSolves;
 - (void) display;
 
 - (void) invalidateShadow;

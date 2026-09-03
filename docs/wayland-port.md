@@ -15094,3 +15094,72 @@ a table cell, where the container is small, the constraints few and the answer f
 place a pane inside a window it is wrong, and being wrong is worse than not running, because
 autoresizing already places those panes correctly. Both attempts are reverted; only the allocation
 free guard on the solver is kept.
+
+## Seven defects between a constraint and a frame (task #115)
+
+Three attempts at wiring the constraint solver into a frame had been reverted, and the conclusion
+drawn from them, that the solver was not good enough to own a frame, was right. What it was missing
+turned out to be seven separate things, each hiding the next. A dry run switch found them:
+`CIDER_LAYOUT_OWNED=trace` solves and prints without applying, `=0` turns the whole path off, and
+`CIDER_TRACE_LAYOUT=1` prints every constraint a container holds with its items, relation,
+multiplier, priority and active flag. The switch is what made the difference: each defect was named
+from a printed line rather than inferred from a capture.
+
+In the order they were found:
+
+1. **An inequality was read as an equality.** iA Writer files one constraint on its window,
+   IASplitView.height >= 200, and taking that as the height resized a correct 594 point split view
+   to its own floor. That was the regression all three earlier attempts had produced. A relation is
+   now a bound that clamps whatever the equalities decided, and a view constrained only by
+   inequalities keeps the frame it had.
+
+2. **Only constraints whose first item was the subview were solved.** The container is often the
+   first item, and dropping those left a view pinned top and bottom with just its top. Solving the
+   relation the other way round costs one division and a flip of the relation when the multiplier is
+   positive.
+
+3. **The trigger was wrong.** A pane that is already the right size is never resized again, so
+   solving from setFrame alone never ran for a view controller view inserted into it. Insertion is
+   the second trigger and constraint activation the third.
+
+4. **Solving happened at the edit that made it necessary.** Swift builds a view, inserts it, and
+   only then activates its constraints, so any immediate solve runs with part of the set. Views now
+   carry a needs solve flag, the window runs the marks once before it draws, and a counter keeps the
+   walk off every application that has no constraints at all.
+
+5. **A constraint added through the view API was never active.** -setActive: adds a constraint to
+   its owner, but -addConstraint: is the other direction and left isActive answering NO. iA Writer
+   pins its file list column to all four edges of the pane that way and every one of the four read
+   active=0, so a solver that honours the flag saw nothing. Membership now means active.
+
+6. **Everything below required priority was skipped.** Pinning bottom and trailing at 999 so the
+   layout can break them under pressure is the ordinary idiom, and those are the two constraints
+   that give a pane its size. Priority now decides who wins a slot: a weaker constraint fills only a
+   slot no stronger one claimed.
+
+7. **Constraints were applied across coordinate spaces.** A subview frame is measured in its
+   superview, so a constraint between two views one level down is a statement about a different
+   space. The constraints filed on the editor pane relate that pane to its own children, and
+   applying them from the split view above set the pane to the width of a child, one point, which
+   cost the window its third column. Both items must now be the container or a direct subview.
+
+Two more followed once the column had a size. NSStackView laid out only when its arranged views
+changed, never when its own size did, and -setFrameSize: calls -setFrame: here rather than the
+reverse, so the override has to be on -setFrame:. Then -fittingSize answered with the frame the view
+already had, which is circular: a stack asks a child how tall it wants to be and a child nothing has
+sized yet says zero forever. A size constraint on the view itself is its fitting size. Finally the
+stack now gives what is left to the items that named no size, so the column comes out 38 plus 472 in
+a 510 point pane instead of a title bar and a body hanging off the bottom.
+
+Also fixed in passing: -setNeedsUpdateConstraints: and its family did not exist, and reaching that
+far into iA Writer's layout raised an unrecognised selector.
+
+**Where iA Writer stands.** The file list column is now a real column: the pane, its stack view, its
+title bar at 246x38 and its body at 246x472 all have their sizes, and the editor column has its
+title bar too, both visible in the capture. The rows themselves are still not drawn, which is the
+next layer down. Verified by looking: no regression in Swift Publisher, MoneyMoney, LibreOffice or
+iTerm2, the last with LAUNCHD=0 and a live shell taking keystrokes.
+
+The tree dump gained the field that decides all of this. CIDER_TRACE_TREE=<seconds> now prints
+translates and the constraint count per view, because a view nothing ever sized and a view whose
+constraints nobody solved are the same zero without it and need opposite fixes.

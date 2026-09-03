@@ -298,6 +298,17 @@ static NSNumber *_CiderViewKey(NSView *view) {
     _detachesHiddenViews = detaches;
 }
 
+/* The arrangement is a function of the bounds, so a stack view that is resized has to redo it: the
+ * setters below were the only callers, and a stack given its size by a constraint kept an empty
+ * arrangement. */
+- (void) setFrame: (NSRect) frame {
+    NSSize old = [self frame].size;
+
+    [super setFrame: frame];
+    if (!NSEqualSizes(old, frame.size))
+        [self layout];
+}
+
 /* Each view keeps its fitting size along the axis and fills the stack across it. */
 - (void) layout {
     NSRect bounds = [self bounds];
@@ -306,9 +317,44 @@ static NSNumber *_CiderViewKey(NSView *view) {
                                : _edgeInsets.top;
     BOOL first = YES;
 
+    /*
+     * WHAT IS LEFT GOES TO THE ITEMS THAT NAMED NO SIZE.
+     *
+     * Laying every view out at its fitting size and stopping there leaves a stack either short of
+     * its bounds or running past them; iA Writer's library column came out one title bar plus a
+     * body hanging 38 points off the bottom. A view holding an explicit size constraint is fixed,
+     * anything else shares the remainder, which is what fill distribution means here.
+     */
+    BOOL vertical = _orientation == NSUserInterfaceLayoutOrientationVertical;
+    CGFloat available = vertical ? bounds.size.height - _edgeInsets.top - _edgeInsets.bottom
+                                 : bounds.size.width - _edgeInsets.left - _edgeInsets.right;
+    CGFloat used = 0;
+    NSInteger flexible = 0, laid = 0;
+
+    for (NSView *view in _arrangedSubviews) {
+        NSSize explicit;
+
+        if (_detachesHiddenViews && [view isHidden])
+            continue;
+        if (laid++ > 0)
+            used += _spacing;
+
+        explicit = [view _ciderExplicitSize];
+        if ((vertical ? explicit.height : explicit.width) >= 0)
+            used += vertical ? explicit.height : explicit.width;
+        else
+            flexible++;
+    }
+
+    CGFloat share = 0;
+
+    if (flexible > 0 && available > used)
+        share = (available - used) / flexible;
+
     for (NSView *view in _arrangedSubviews) {
         NSSize fitting;
         NSRect frame;
+        NSSize explicit;
 
         if (_detachesHiddenViews && [view isHidden])
             continue;
@@ -318,6 +364,14 @@ static NSNumber *_CiderViewKey(NSView *view) {
         first = NO;
 
         fitting = [view fittingSize];
+        explicit = [view _ciderExplicitSize];
+
+        if (flexible > 0) {
+            if (vertical)
+                fitting.height = explicit.height >= 0 ? explicit.height : share;
+            else
+                fitting.width = explicit.width >= 0 ? explicit.width : share;
+        }
 
         if (_orientation == NSUserInterfaceLayoutOrientationHorizontal) {
             frame.origin.x = position;

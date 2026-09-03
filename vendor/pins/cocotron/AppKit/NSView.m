@@ -1597,6 +1597,8 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
     if (_autoresizesSubviews) {
         [self resizeSubviewsWithOldSize: oldSize];
     }
+    /* Autoresizing has just placed the mask owned subviews; this places the ones it does not own. */
+    [self _ciderMarkNeedsConstraintSolve];
 
     NSRect layerFrame = _frame;
 
@@ -1795,6 +1797,13 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
 
     if (_wantsLayer)
         [view setWantsLayer: YES];
+
+    /*
+     * INSERTION IS THE OTHER TRIGGER. A pane that is already the right size is never resized again,
+     * so a constraint owned view controller view added to it would keep the 1x1 it was built at.
+     */
+    if (![view translatesAutoresizingMaskIntoConstraints])
+        [self _ciderMarkNeedsConstraintSolve];
 }
 
 - (void) addSubview: (NSView *) view {
@@ -3999,13 +4008,31 @@ static NSView *viewBeingPrinted = nil;
  * beyond treating them as equalities, priorities beyond ignoring anything below required, and
  * cycles. Those are worth adding when something needs them; this is what a pinned label needs.
  *
+ * PRIORITY DECIDES WHO WINS A SLOT, and skipping everything below required was wrong: pinning
+ * bottom and trailing at 999 so the layout can break them under pressure is the ordinary idiom, and
+ * those are the two constraints that give a pane its size. A weaker constraint now fills only a
+ * slot no stronger one claimed, which is what optional is supposed to mean.
+ *
  * Deliberately NOT called from -layout, so it changes nothing for the springs and struts layout
  * every other application here uses. The caller asks for it.
  */
 typedef struct {
     BOOL hasOrigin, hasSize, hasFar, hasCenter;
     CGFloat origin, size, far, center;
+    BOOL hasMinSize, hasMaxSize, hasMinOrigin, hasMaxOrigin, hasMinFar, hasMaxFar;
+    CGFloat minSize, maxSize, minOrigin, maxOrigin, minFar, maxFar;
+    /* Which priority claimed each slot, so a weaker constraint cannot overwrite a stronger one. */
+    CGFloat originPrio, sizePrio, farPrio, centerPrio;
 } CiderAxisSolution;
+
+/* first REL second becomes second REV first, and dividing by a negative multiplier flips it back. */
+static NSLayoutRelation CiderReverseRelation(NSLayoutRelation relation) {
+    if (relation == NSLayoutRelationGreaterThanOrEqual)
+        return NSLayoutRelationLessThanOrEqual;
+    if (relation == NSLayoutRelationLessThanOrEqual)
+        return NSLayoutRelationGreaterThanOrEqual;
+    return relation;
+}
 
 static BOOL CiderAxisIsHorizontal(NSLayoutAttribute attribute) {
     switch (attribute) {
@@ -4019,6 +4046,21 @@ static BOOL CiderAxisIsHorizontal(NSLayoutAttribute attribute) {
     default:
         return NO;
     }
+}
+
+/*
+ * BOTH ITEMS MUST LIVE IN THE CONTAINER'S COORDINATE SPACE.
+ *
+ * A subview frame is measured in its superview, so a constraint between two views one level down is
+ * a statement about a different space and reading it here is meaningless arithmetic. It is not
+ * hypothetical: the constraints filed on iA Writer's editor pane relate that pane to its own
+ * children, and applying them from the split view above set the pane to the width of a child, 1
+ * point, which cost the window its third column.
+ */
+static BOOL CiderItemInScope(NSView *container, id item) {
+    if (item == nil || item == container)
+        return YES;
+    return [item isKindOfClass: [NSView class]] && [(NSView *) item superview] == container;
 }
 
 /* The value an attribute of `item` has, in the coordinate space of `container`. */
@@ -4056,29 +4098,78 @@ static BOOL CiderAttributeValue(NSView *container, id item, NSLayoutAttribute at
     }
 }
 
+/*
+ * AN INEQUALITY IS A BOUND, NOT AN ANSWER.
+ *
+ * Reading a relation as an equality is not a safe approximation, it is a wrong number: iA Writer
+ * files one constraint on its window, IASplitView.height >= 200, and taking that as the height
+ * resized a correct 594 point split view to its own floor. With no cost function to minimise there
+ * is no defensible point to pick inside a range, so a bound only clamps whatever the equalities
+ * decided, and a view constrained by nothing but inequalities keeps the frame it had.
+ */
 static void CiderRecordAttribute(CiderAxisSolution *axis, NSLayoutAttribute attribute,
-                                 CGFloat value, BOOL flipped)
+                                 CGFloat value, BOOL flipped, NSLayoutRelation relation,
+                                 CGFloat priority)
 {
+    enum { kOrigin, kFar, kSize, kCenter } slot;
+
     switch (attribute) {
     case NSLayoutAttributeLeft:
-    case NSLayoutAttributeLeading:  axis->hasOrigin = YES; axis->origin = value; break;
+    case NSLayoutAttributeLeading:  slot = kOrigin; break;
     case NSLayoutAttributeRight:
-    case NSLayoutAttributeTrailing: axis->hasFar = YES;    axis->far = value;    break;
+    case NSLayoutAttributeTrailing: slot = kFar;    break;
     case NSLayoutAttributeWidth:
-    case NSLayoutAttributeHeight:   axis->hasSize = YES;   axis->size = value;   break;
+    case NSLayoutAttributeHeight:   slot = kSize;   break;
     case NSLayoutAttributeCenterX:
-    case NSLayoutAttributeCenterY:  axis->hasCenter = YES; axis->center = value; break;
-    case NSLayoutAttributeTop:
-        if (flipped) { axis->hasOrigin = YES; axis->origin = value; }
-        else         { axis->hasFar = YES;    axis->far = value; }
-        break;
+    case NSLayoutAttributeCenterY:  slot = kCenter; break;
+    case NSLayoutAttributeTop:      slot = flipped ? kOrigin : kFar; break;
     case NSLayoutAttributeBottom:
     case NSLayoutAttributeFirstBaseline:
     case NSLayoutAttributeLastBaseline:
-        if (flipped) { axis->hasFar = YES;    axis->far = value; }
-        else         { axis->hasOrigin = YES; axis->origin = value; }
+        slot = flipped ? kFar : kOrigin;
         break;
     default:
+        return;
+    }
+
+    if (relation == NSLayoutRelationEqual) {
+        switch (slot) {
+        case kOrigin:
+            if (axis->hasOrigin && priority < axis->originPrio) return;
+            axis->hasOrigin = YES; axis->origin = value; axis->originPrio = priority;
+            break;
+        case kFar:
+            if (axis->hasFar && priority < axis->farPrio) return;
+            axis->hasFar = YES; axis->far = value; axis->farPrio = priority;
+            break;
+        case kSize:
+            if (axis->hasSize && priority < axis->sizePrio) return;
+            axis->hasSize = YES; axis->size = value; axis->sizePrio = priority;
+            break;
+        case kCenter:
+            if (axis->hasCenter && priority < axis->centerPrio) return;
+            axis->hasCenter = YES; axis->center = value; axis->centerPrio = priority;
+            break;
+        }
+        return;
+    }
+
+    BOOL lower = (relation == NSLayoutRelationGreaterThanOrEqual);
+
+    switch (slot) {
+    case kOrigin:
+        if (lower) { axis->hasMinOrigin = YES; axis->minOrigin = value; }
+        else       { axis->hasMaxOrigin = YES; axis->maxOrigin = value; }
+        break;
+    case kFar:
+        if (lower) { axis->hasMinFar = YES; axis->minFar = value; }
+        else       { axis->hasMaxFar = YES; axis->maxFar = value; }
+        break;
+    case kSize:
+        if (lower) { axis->hasMinSize = YES; axis->minSize = value; }
+        else       { axis->hasMaxSize = YES; axis->maxSize = value; }
+        break;
+    case kCenter:
         break;
     }
 }
@@ -4114,8 +4205,114 @@ static void CiderResolveAxis(CiderAxisSolution *axis, CGFloat currentOrigin, CGF
             axis->origin = currentOrigin;
     }
 
+    if (axis->hasMinSize && axis->size < axis->minSize)
+        axis->size = axis->minSize;
+    if (axis->hasMaxSize && axis->size > axis->maxSize)
+        axis->size = axis->maxSize;
+
+    /* An edge bound moves the view rather than resizing it: the size is already settled. */
+    if (axis->hasMinOrigin && axis->origin < axis->minOrigin)
+        axis->origin = axis->minOrigin;
+    if (axis->hasMaxOrigin && axis->origin > axis->maxOrigin)
+        axis->origin = axis->maxOrigin;
+    if (axis->hasMinFar && axis->origin + axis->size < axis->minFar)
+        axis->origin = axis->minFar - axis->size;
+    if (axis->hasMaxFar && axis->origin + axis->size > axis->maxFar)
+        axis->origin = axis->maxFar - axis->size;
+
     if (axis->size < 0)
         axis->size = 0;
+}
+
+/*
+ * SOLVE ONLY WHAT THE APPLICATION TOOK OFF AUTORESIZING.
+ *
+ * translatesAutoresizingMaskIntoConstraints answers "who owns this frame", and nothing here read
+ * it. A view controller's view is built detached at 1x1, inserted into a pane that is already the
+ * right size, and never sized again: addSubview: does not resize and there is no later superview
+ * change for autoresizing to propagate. iA Writer's library file list sits in such a view.
+ *
+ * Separate from -_ciderSolveConstraints, which the view based table path calls for every subview
+ * holding a constraint whatever its flag says, because that is what makes the row labels take
+ * their text size.
+ */
+static const char *CiderLayoutMode(void) {
+    static const char *mode = NULL;
+    static BOOL asked = NO;
+
+    if (!asked) {
+        const char *value = getenv("CIDER_LAYOUT_OWNED");
+
+        asked = YES;
+        mode = (value != NULL && value[0] != '\0') ? value : "1";
+        if (strcmp(mode, "0") == 0)
+            mode = NULL;
+    }
+    return mode;
+}
+
+/*
+ * SOLVING BELONGS AT DISPLAY TIME, NOT AT THE EDIT THAT MADE IT NECESSARY.
+ *
+ * Swift builds a view, inserts it and only then activates its constraints, so every trigger that
+ * solves on the spot solves with part of the set: the first of four constraints alone put iA
+ * Writer's file list column at a size the remaining three would have corrected. Marking instead
+ * costs one flag, and the window runs the marks once before it draws, by which time the set is
+ * whole. The counter keeps the walk off every other application: nothing marks, nothing walks.
+ */
+static int CiderPendingConstraintSolves = 0;
+
+int _CiderPendingConstraintSolves(void) {
+    return CiderPendingConstraintSolves;
+}
+
+- (void) _ciderMarkNeedsConstraintSolve {
+    if (_ciderNeedsConstraintSolve)
+        return;
+    _ciderNeedsConstraintSolve = YES;
+    CiderPendingConstraintSolves++;
+}
+
+/* Top down: a container settles its own size before its children are asked to fit inside it. */
+- (void) _ciderRunPendingConstraintSolves {
+    if (_ciderNeedsConstraintSolve) {
+        _ciderNeedsConstraintSolve = NO;
+        if (CiderPendingConstraintSolves > 0)
+            CiderPendingConstraintSolves--;
+        [self _ciderSolveConstraintOwnedSubviews];
+    }
+
+    for (NSView *subview in [self subviews])
+        [subview _ciderRunPendingConstraintSolves];
+}
+
+- (void) _ciderSolveConstraintOwnedSubviews {
+    const char *mode = CiderLayoutMode();
+    BOOL any = NO;
+
+    if (mode == NULL)
+        return;
+
+    /*
+     * The constraints that place a subview are filed on whichever view is the FIRST item's
+     * superview, so a stack view pinned to its container by the container holds none itself: iA
+     * Writer's file list column is exactly that, an NSStackView with cons=0 inside an IAWrapperView
+     * with cons=4, and requiring the subview to hold them left it at 0x0.
+     */
+    BOOL selfHolds = [self _ciderHoldsConstraints];
+
+    for (NSView *subview in _subviews) {
+        if ([subview translatesAutoresizingMaskIntoConstraints])
+            continue;
+        if (selfHolds || [subview _ciderHoldsConstraints]) {
+            any = YES;
+            break;
+        }
+    }
+    if (!any)
+        return;
+
+    [self _ciderSolveConstraintsApplying: strcmp(mode, "trace") != 0];
 }
 
 /* Allocation free, because the solver below is now reached from every resize. */
@@ -4124,6 +4321,39 @@ static void CiderResolveAxis(CiderAxisSolution *axis, CGFloat currentOrigin, CGF
 }
 
 - (void) _ciderSolveConstraints {
+    [self _ciderSolveConstraintsApplying: YES];
+}
+
+static const char *CiderAttributeName(NSLayoutAttribute attribute) {
+    switch (attribute) {
+    case NSLayoutAttributeLeft:     return "left";
+    case NSLayoutAttributeRight:    return "right";
+    case NSLayoutAttributeTop:      return "top";
+    case NSLayoutAttributeBottom:   return "bottom";
+    case NSLayoutAttributeLeading:  return "leading";
+    case NSLayoutAttributeTrailing: return "trailing";
+    case NSLayoutAttributeWidth:    return "width";
+    case NSLayoutAttributeHeight:   return "height";
+    case NSLayoutAttributeCenterX:  return "centerX";
+    case NSLayoutAttributeCenterY:  return "centerY";
+    case NSLayoutAttributeNotAnAttribute: return "none";
+    default: return "other";
+    }
+}
+
+static BOOL CiderLayoutTracing(void) {
+    static BOOL tracing = NO, asked = NO;
+
+    if (!asked) {
+        const char *value = getenv("CIDER_TRACE_LAYOUT");
+
+        asked = YES;
+        tracing = (value != NULL && value[0] != '\0');
+    }
+    return tracing;
+}
+
+- (void) _ciderSolveConstraintsApplying: (BOOL) apply {
     if (![self _ciderHoldsConstraints]) {
         BOOL any = NO;
 
@@ -4152,6 +4382,26 @@ static void CiderResolveAxis(CiderAxisSolution *axis, CGFloat currentOrigin, CGF
 
     NSRect bounds = [self bounds];
     BOOL flipped = [self isFlipped];
+    BOOL tracing = CiderLayoutTracing();
+
+    if (tracing) {
+        fprintf(stderr, "cider-layout container=%s %p bounds=%gx%g flipped=%d apply=%d n=%lu\n",
+                class_getName([self class]), self, NSWidth(bounds), NSHeight(bounds), flipped,
+                apply, (unsigned long) [all count]);
+
+        /* EVERY constraint, not just the ones that matched a subview: one written against a layout
+         * guide matches nothing and is the reason a container can hold four and place none. */
+        for (NSLayoutConstraint *constraint in all)
+            fprintf(stderr, "cider-layout   all: %s %p .%s %s %s %p .%s * %g + %g active=%d prio=%g\n",
+                    [constraint firstItem] ? class_getName([[constraint firstItem] class]) : "nil",
+                    [constraint firstItem], CiderAttributeName([constraint firstAttribute]),
+                    [constraint relation] == NSLayoutRelationEqual ? "==" :
+                        ([constraint relation] == NSLayoutRelationGreaterThanOrEqual ? ">=" : "<="),
+                    [constraint secondItem] ? class_getName([[constraint secondItem] class]) : "nil",
+                    [constraint secondItem], CiderAttributeName([constraint secondAttribute]),
+                    [constraint multiplier], [constraint constant], (int) [constraint isActive],
+                    (double) [constraint priority]);
+    }
 
     /* Three passes, so a view pinned to a sibling settles after the sibling does. */
     for (int pass = 0; pass < 3; pass++) {
@@ -4160,30 +4410,79 @@ static void CiderResolveAxis(CiderAxisSolution *axis, CGFloat currentOrigin, CGF
             NSRect frame = [subview frame];
 
             for (NSLayoutConstraint *constraint in all) {
-                if (![constraint isActive] || [constraint firstItem] != subview)
-                    continue;
-                if ([constraint priority] < NSLayoutPriorityRequired)
+                if (![constraint isActive])
                     continue;
 
-                NSLayoutAttribute first = [constraint firstAttribute];
-                id second = [constraint secondItem];
+
+                id firstItem = [constraint firstItem];
+                id secondItem = [constraint secondItem];
+                NSLayoutAttribute solveFor;
                 CGFloat value = 0;
 
-                if (second == nil) {
-                    value = [constraint constant];
-                } else {
+                NSLayoutRelation relation = [constraint relation];
+
+                if (!CiderItemInScope(self, firstItem) || !CiderItemInScope(self, secondItem))
+                    continue;
+
+                if (firstItem == subview) {
+                    solveFor = [constraint firstAttribute];
+                    if (secondItem == nil) {
+                        value = [constraint constant];
+                    } else {
+                        CGFloat other = 0;
+
+                        if (!CiderAttributeValue(self, secondItem, [constraint secondAttribute],
+                                                 &other))
+                            continue;
+                        value = other * [constraint multiplier] + [constraint constant];
+                    }
+                } else if (secondItem == subview && firstItem != nil) {
+                    /*
+                     * THE CONTAINER IS OFTEN THE FIRST ITEM, and dropping those constraints is
+                     * what made this solver unfit to own a frame.
+                     *
+                     * [container.bottomAnchor constraintEqualToAnchor: view.bottomAnchor] files a
+                     * constraint whose FIRST item is the container, and only the ones with the
+                     * subview first were read. A view pinned top and bottom that way kept just its
+                     * top, fell through to currentSize, and was placed by that one edge: iA
+                     * Writer's sidebar came out 199 points tall against the bottom of a 594 point
+                     * pane. Solving the relation the other way round costs one division.
+                     */
+                    CGFloat multiplier = [constraint multiplier];
                     CGFloat other = 0;
 
-                    if (!CiderAttributeValue(self, second, [constraint secondAttribute], &other))
+                    if (multiplier == 0)
                         continue;
-                    value = other * [constraint multiplier] + [constraint constant];
+                    if (!CiderAttributeValue(self, firstItem, [constraint firstAttribute], &other))
+                        continue;
+                    solveFor = [constraint secondAttribute];
+                    value = (other - [constraint constant]) / multiplier;
+                    if (multiplier > 0)
+                        relation = CiderReverseRelation(relation);
+                } else {
+                    continue;
                 }
 
-                CiderRecordAttribute(CiderAxisIsHorizontal(first) ? &x : &y, first, value, flipped);
+                if (tracing && pass == 0)
+                    fprintf(stderr, "cider-layout   %s %p: %s.%s = %s.%s * %g + %g -> %s = %g\n",
+                            class_getName([subview class]), subview,
+                            firstItem ? class_getName([firstItem class]) : "nil",
+                            CiderAttributeName([constraint firstAttribute]),
+                            secondItem ? class_getName([secondItem class]) : "nil",
+                            CiderAttributeName([constraint secondAttribute]),
+                            [constraint multiplier], [constraint constant],
+                            CiderAttributeName(solveFor), value);
+
+                CiderRecordAttribute(CiderAxisIsHorizontal(solveFor) ? &x : &y, solveFor, value,
+                                     flipped, relation, [constraint priority]);
             }
 
             if (!x.hasOrigin && !x.hasSize && !x.hasFar && !x.hasCenter &&
-                !y.hasOrigin && !y.hasSize && !y.hasFar && !y.hasCenter)
+                !x.hasMinSize && !x.hasMaxSize && !x.hasMinOrigin && !x.hasMaxOrigin &&
+                !x.hasMinFar && !x.hasMaxFar &&
+                !y.hasOrigin && !y.hasSize && !y.hasFar && !y.hasCenter &&
+                !y.hasMinSize && !y.hasMaxSize && !y.hasMinOrigin && !y.hasMaxOrigin &&
+                !y.hasMinFar && !y.hasMaxFar)
                 continue;
 
             NSSize intrinsic = [subview intrinsicContentSize];
@@ -4195,7 +4494,14 @@ static void CiderResolveAxis(CiderAxisSolution *axis, CGFloat currentOrigin, CGF
 
             NSRect solved = NSMakeRect(x.origin, y.origin, x.size, y.size);
 
-            if (!NSEqualRects(solved, frame))
+            if (tracing && !NSEqualRects(solved, frame))
+                fprintf(stderr, "cider-layout   %s %p pass=%d translates=%d {%g %g %g %g} -> "
+                        "{%g %g %g %g}\n", class_getName([subview class]), subview, pass,
+                        [subview translatesAutoresizingMaskIntoConstraints],
+                        NSMinX(frame), NSMinY(frame), NSWidth(frame), NSHeight(frame),
+                        solved.origin.x, solved.origin.y, solved.size.width, solved.size.height);
+
+            if (apply && !NSEqualRects(solved, frame))
                 [subview setFrame: solved];
         }
     }
@@ -4262,6 +4568,31 @@ static void CiderResolveAxis(CiderAxisSolution *axis, CGFloat currentOrigin, CGF
     return _constraints ? [NSArray arrayWithArray: _constraints] : [NSArray array];
 }
 
+/*
+ * UPDATE CONSTRAINTS IS A DIRTY FLAG, and the pass it schedules is the solve this port already
+ * runs before drawing. -updateConstraints is the application's hook to add its own, so it must run
+ * before that solve; marking here is what puts the container in the pass.
+ */
+- (BOOL) needsUpdateConstraints {
+    return _ciderNeedsConstraintSolve;
+}
+
+- (void) setNeedsUpdateConstraints: (BOOL) flag {
+    if (flag)
+        [self _ciderMarkNeedsConstraintSolve];
+}
+
+- (void) updateConstraints {
+}
+
+- (void) updateConstraintsForSubtreeIfNeeded {
+    for (NSView *subview in [self subviews])
+        [subview updateConstraintsForSubtreeIfNeeded];
+
+    if (_ciderNeedsConstraintSolve)
+        [self updateConstraints];
+}
+
 - (void) addConstraint: (NSLayoutConstraint *) constraint {
     if (constraint == nil) {
         return;
@@ -4272,6 +4603,18 @@ static void CiderResolveAxis(CiderAxisSolution *axis, CGFloat currentOrigin, CGF
     if (![_constraints containsObject: constraint]) {
         [_constraints addObject: constraint];
     }
+
+    /*
+     * MEMBERSHIP IS WHAT ACTIVE MEANS. -setActive: adds the constraint to its owner, but the older
+     * API is the other direction and left isActive answering NO, so a solver that honours the flag
+     * saw nothing: iA Writer pins its file list column to all four edges of the pane this way and
+     * every one of the four read active=0. The recursion stops on the second entry, because
+     * -setActive: records the flag before it calls back here.
+     */
+    if (![constraint isActive]) {
+        [constraint setActive: YES];
+    }
+    [self _ciderMarkNeedsConstraintSolve];
 }
 
 - (void) addConstraints: (NSArray *) constraints {
@@ -4282,6 +4625,9 @@ static void CiderResolveAxis(CiderAxisSolution *axis, CGFloat currentOrigin, CGF
 
 - (void) removeConstraint: (NSLayoutConstraint *) constraint {
     [_constraints removeObject: constraint];
+    if ([constraint isActive]) {
+        [constraint setActive: NO];
+    }
 }
 
 - (void) removeConstraints: (NSArray *) constraints {
@@ -4331,15 +4677,61 @@ static void CiderResolveAxis(CiderAxisSolution *axis, CGFloat currentOrigin, CGF
  * plain view knows its frame. Answering nothing at all was worse, since it raised: iTerm2 asks a
  * text field for its fitting size while laying out and the process terminated.
  */
+/* -1 where the view states no size of its own, so a container can tell a fixed item from one that
+ * should take what is left. */
+- (NSSize) _ciderExplicitSize {
+    NSSize size = NSMakeSize(-1, -1);
+
+    for (NSLayoutConstraint *constraint in _constraints) {
+        if (![constraint isActive] || [constraint secondItem] != nil ||
+            [constraint firstItem] != self)
+            continue;
+        if ([constraint relation] != NSLayoutRelationEqual)
+            continue;
+        if ([constraint firstAttribute] == NSLayoutAttributeWidth)
+            size.width = [constraint constant];
+        else if ([constraint firstAttribute] == NSLayoutAttributeHeight)
+            size.height = [constraint constant];
+    }
+    return size;
+}
+
 - (NSSize) fittingSize {
+    NSSize size = [self frame].size;
+
     if ([self respondsToSelector: @selector(cell)]) {
         id cell = [(id) self cell];
 
         if (cell != nil && [cell respondsToSelector: @selector(cellSize)]) {
-            return [cell cellSize];
+            size = [cell cellSize];
         }
     }
-    return [self frame].size;
+
+    NSSize intrinsic = [self intrinsicContentSize];
+
+    if (size.width <= 0 && intrinsic.width != NSViewNoIntrinsicMetric)
+        size.width = intrinsic.width;
+    if (size.height <= 0 && intrinsic.height != NSViewNoIntrinsicMetric)
+        size.height = intrinsic.height;
+
+    /*
+     * A SIZE CONSTRAINT ON THE VIEW ITSELF IS ITS FITTING SIZE, and without this the answer is
+     * circular: a stack view asks a child how tall it wants to be, the child answers with the
+     * height it already has, and a child nothing has sized yet says zero forever. iA Writer's
+     * library column is a stack of views whose heights are constraints of exactly this shape.
+     */
+    for (NSLayoutConstraint *constraint in _constraints) {
+        if (![constraint isActive] || [constraint secondItem] != nil ||
+            [constraint firstItem] != self)
+            continue;
+        if ([constraint relation] == NSLayoutRelationLessThanOrEqual)
+            continue;
+        if ([constraint firstAttribute] == NSLayoutAttributeWidth)
+            size.width = [constraint constant];
+        else if ([constraint firstAttribute] == NSLayoutAttributeHeight)
+            size.height = [constraint constant];
+    }
+    return size;
 }
 
 @end

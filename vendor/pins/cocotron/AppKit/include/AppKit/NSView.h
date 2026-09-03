@@ -117,6 +117,7 @@ APPKIT_EXPORT const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPre
     CGFloat _boundsRotation;
     BOOL _translatesAutoresizingMaskIntoConstraints;
     NSMutableArray *_constraints;
+    BOOL _ciderNeedsConstraintSolve;
 
     BOOL _validTrackingAreas;
     BOOL _validTransforms;
@@ -378,6 +379,15 @@ typedef NS_OPTIONS(NSUInteger, NSTouchTypeMask) {
 - (void) invalidateIntrinsicContentSize;
 - (void) layoutSubtreeIfNeeded;
 - (BOOL) _ciderHoldsConstraints;
+- (void) _ciderSolveConstraintOwnedSubviews;
+- (BOOL) needsUpdateConstraints;
+- (void) setNeedsUpdateConstraints: (BOOL) flag;
+- (void) updateConstraints;
+- (void) updateConstraintsForSubtreeIfNeeded;
+- (NSSize) _ciderExplicitSize;
+- (void) _ciderMarkNeedsConstraintSolve;
+- (void) _ciderRunPendingConstraintSolves;
+- (void) _ciderSolveConstraintsApplying: (BOOL) apply;
 - (void) _ciderSolveConstraints;
 - (void) _ciderSizeDegenerateSubviews;
 - (NSEdgeInsets) alignmentRectInsets;
