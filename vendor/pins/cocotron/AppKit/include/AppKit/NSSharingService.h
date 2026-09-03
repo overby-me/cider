@@ -37,6 +37,7 @@ APPKIT_EXPORT NSSharingServiceName const NSSharingServiceNamePostOnTwitter;
 @interface NSSharingService : NSObject
 
 + (NSSharingService *) sharingServiceNamed: (NSSharingServiceName) serviceName;
++ (NSArray *) sharingServicesForItems: (NSArray *) items;
 @end
 
 @interface NSSharingServicePicker : NSObject

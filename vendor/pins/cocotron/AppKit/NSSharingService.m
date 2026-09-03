@@ -41,6 +41,18 @@ NSSharingServiceName const NSSharingServiceNamePostOnLinkedIn = @"com.apple.shar
  * -[NSWindowController window] and the window was never finished, so a share button nobody asked
  * for took the whole document with it.
  */
+/*
+ * AND AN EMPTY LIST IS THE TRUE ANSWER TO "WHAT CAN SHARE THIS".
+ *
+ * The same shape as +sharingServiceNamed: below and written out for the same reason: a class
+ * method has no forwarding fallback. iA Writer asks while building its File menu, the raise took
+ * the whole menu with it, and an application whose menus are empty has no key equivalents either.
+ * Nothing here can share anything, so the list is empty rather than absent.
+ */
++ (NSArray *) sharingServicesForItems: (NSArray *) items {
+    return [NSArray array];
+}
+
 + (NSSharingService *) sharingServiceNamed: (NSSharingServiceName) serviceName
 {
     return nil;
