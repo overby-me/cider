@@ -16430,3 +16430,31 @@ it either.
 
 Instrument `-[NSView setFrame:]` for one view rather than the solver: everything inside the solver is
 now known to be right.
+
+## NOTHING UNDOES THE SOLVE: IT IS A DIFFERENT VIEW (task #184)
+
+`CIDER_TRACE_FRAMES=NSStackView` prints every `setFrame:` on a stack view with its two callers, and
+it settles the question the previous section left open. Each solve invocation walks the stack through
+three writes and ENDS where it should:
+
+    NSStackView -> 0x17    at 207,0  (was 146x17)  from setFrame: <- _ciderSolveConstraintsApplying:
+    NSStackView -> 207x17  at 0,0    (was 0x17)    from setFrame: <- _ciderSolveConstraintsApplying:
+    NSStackView -> 207x17  at 0,42   (was 207x17)  from setFrame: <- _ciderSolveConstraintsApplying:
+
+**No write puts it back.** Every `at 0,0` in the run PRECEDES a 42 in the same cycle, and the only
+other setter that appears at all is `-[NSStackView initWithFrame:]`. So the earlier framing, that
+something later undoes the solve, is wrong and I am correcting it.
+
+**What is actually happening is that the view being drawn is not the view being solved.** The frame
+dump for a library cell shows its stack at `146x17 at 0,0`, and the very next line in the log is
+
+    CIDER_FRAME NSStackView BORN 1x1 at 0,0 from -[NSStackView initWithFrame:]
+
+a FRESH stack view created after that cell was laid out. The instances the solver moves to y=42 are
+not the instances on screen. `146` is the fitting width from `-_ciderSizeDegenerateSubviews`, which
+is the state of a cell that has been laid out but never solved with a real width.
+
+**So this is a lifecycle question, not a layout one**, and that is a different search: why a library
+row builds a new cell view and a new stack after the pass that would have placed it, and which of
+those instances `-_updateCellViewsInRect:` ends up installing. The constraint pipeline is verified
+correct and should not be touched again for this.
