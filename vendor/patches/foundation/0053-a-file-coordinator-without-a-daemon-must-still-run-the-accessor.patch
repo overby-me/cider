@@ -1,0 +1,72 @@
+a file coordinator without a daemon must still run the accessor
+
+submitIntent turned any XPC error into an NSError, and coordinateReadingItemAtURL treats an error as
+a reason NOT to call the reader. filecoordinationd is a LaunchDaemon, so without launchd there is no
+daemon at all, and every coordinated read in the process silently did nothing.
+
+That is what stopped iA Writer indexing. Its library rows all read Updating forever, which the
+application chooses when the excerpt string is empty, and the excerpt was empty because the body
+column of its own index was NULL for every file. FC_DEBUG=1 named it once per document:
+
+    FC:355: submitting intent for path /Users/root/Documents/IndexProbe.md with options 5
+    FC:394: daemon replied to intent message with message: <OS_xpc_error: Connection invalid>
+    FC:397: daemon indicated failure/denial to perform operation
+    FC:425: invoking user block synchronously with error
+
+Coordination is ADVISORY. A daemon that cannot be reached means nobody is coordinating, so the
+accessor must still run: refusing the read loses the access entirely, which is far worse than taking
+it uncoordinated. A daemon that answers and DENIES is a different thing and still errors as before.
+
+The completion handshake is skipped in that case because there is no reply object to build it from,
+and because the wait it arms would never be signalled.
+
+--- a/src/NSFileCoordinator.m
++++ b/src/NSFileCoordinator.m
+@@ -350,6 +350,11 @@
+ 	 */
+ 	__block NSError* errorPointer = nil;
+ 	__block xpc_object_t replyObject = NULL;
++	/*
++	 * There is no completion handshake to make when the daemon never answered, and no reply object
++	 * to build it from.
++	 */
++	__block BOOL daemonAbsent = NO;
+ 	block = [[block copy] autorelease];
+ 
+ 	FCDebug(@"submitting intent for path %@ with options %llu", [intent.URL path], (long long unsigned)intent.options);
+@@ -393,7 +398,16 @@
+ 
+ 		FCDebug(@"daemon replied to intent message with message: %@", xpc_nsdescription(reply));
+ 
+-		if (xpc_get_type(reply) == XPC_TYPE_ERROR || xpc_dictionary_get_uint64(reply, DaemonIntentReplyResultKey) != DaemonIntentReplyResultOk) {
++		if (xpc_get_type(reply) == XPC_TYPE_ERROR) {
++			/*
++			 * NOT an error to report. Coordination is advisory, and an unreachable daemon means
++			 * nobody is coordinating at all, so the accessor must still run: handing the caller an
++			 * error instead loses the access entirely. iA Writer read no file at all this way, and
++			 * every row in its library said Updating forever.
++			 */
++			FCDebug(@"no coordination daemon (%@); proceeding uncoordinated", xpc_nsdescription(reply));
++			daemonAbsent = YES;
++		} else if (xpc_dictionary_get_uint64(reply, DaemonIntentReplyResultKey) != DaemonIntentReplyResultOk) {
+ 			FCDebug(@"daemon indicated failure/denial to perform operation");
+ 			// TODO: more detailed errors
+ 			errorPointer = [[NSError alloc] initWithDomain: @"org.darlinghq.Foundation.FileCoordination" // bogus error domain
+@@ -411,7 +425,7 @@
+ 				NSError* error = [errorPointer autorelease];
+ 				block(error);
+ 				FCDebug(@"user block complete");
+-				if (!error) {
++				if (!error && !daemonAbsent) {
+ 					completeBlock();
+ 				}
+ 			}];
+@@ -426,7 +440,7 @@
+ 		NSError* error = [errorPointer autorelease];
+ 		block(error);
+ 		FCDebug(@"user block complete");
+-		if (!error) {
++		if (!error && !daemonAbsent) {
+ 			completeBlock();
+ 
+ 			dispatch_semaphore_wait(waiter, DISPATCH_TIME_FOREVER);
