@@ -4706,12 +4706,24 @@ static BOOL CiderLayoutTracing(void) {
 
             NSRect solved = NSMakeRect(x.origin, y.origin, x.size, y.size);
 
-            if (tracing && !NSEqualRects(solved, frame))
+            /*
+             * PRINTED EVEN WHEN NOTHING MOVED, with what each axis was told.
+             *
+             * This printed only when the solved rect DIFFERED, so a solve that resolves back to the
+             * frame it started from was silent and read exactly like a solve that never ran. That is
+             * the state task #184 is stuck in: a stack view with a far edge of 59 recorded and a
+             * frame that stays at y=0, and no line either way.
+             */
+            if (tracing)
                 fprintf(stderr, "cider-layout   %s %p pass=%d translates=%d {%g %g %g %g} -> "
-                        "{%g %g %g %g}\n", class_getName([subview class]), subview, pass,
+                        "{%g %g %g %g}%s y[o%d s%d f%d c%d]=%g,%g,%g,%g\n",
+                        class_getName([subview class]), subview, pass,
                         [subview translatesAutoresizingMaskIntoConstraints],
                         NSMinX(frame), NSMinY(frame), NSWidth(frame), NSHeight(frame),
-                        solved.origin.x, solved.origin.y, solved.size.width, solved.size.height);
+                        solved.origin.x, solved.origin.y, solved.size.width, solved.size.height,
+                        NSEqualRects(solved, frame) ? " unchanged" : "",
+                        y.hasOrigin, y.hasSize, y.hasFar, y.hasCenter,
+                        y.origin, y.size, y.far, y.center);
 
             if (apply && !NSEqualRects(solved, frame))
                 [subview setFrame: solved];

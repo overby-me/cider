@@ -16386,3 +16386,16 @@ that step is now known to be right.
 
 Reverted, rebuilt, iA Writer back at 25953. The three prerequisite fixes are committed and stand on
 their own.
+
+## A SOLVE THAT CHANGES NOTHING WAS SILENT (task #184)
+
+The frame line in the constraint solver printed only when the solved rect DIFFERED from the current
+one. A solve that resolves back to the frame it started from was therefore silent, and read exactly
+like a solve that never ran, which is the state #184 is stuck in: a stack view with a far edge of 59
+recorded and a frame that stays at y=0, with no line either way.
+
+It prints every time now, says `unchanged` when nothing moved, and carries what the vertical axis was
+actually told: `y[o0 s0 f1 c0]=0,17,59,0` reads as no origin, no size, a far edge of 59, no centre.
+
+Measured: **1632 frame lines, 1279 of them previously invisible**. iA Writer unchanged at 25953, and
+the switch is off by default.
