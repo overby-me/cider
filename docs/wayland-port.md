@@ -16007,3 +16007,22 @@ All five re-run and looked at, none of them changed: MoneyMoney 15657, Swift Pub
 
 Still truncated: the group title reads `Locatio...`, and it did before this change too, so it is a
 separate question about what sizes an `IAOutlineTableCellHeaderView`.
+
+### Locations truncates and a longer title does not (task #186)
+
+Worth writing down because two obvious theories are already refuted by measurement.
+
+iA Writer's sidebar draws its first group title as `Locatio...` while `Smart Folders`, which is
+LONGER, draws in full. So it is not a general exact-fit problem.
+
+**Not fractional rounding.** `CIDER_TRACE_FRAMES` now prints the fitting size at three significant
+figures and it is exactly `57x17`, not `56.6`. A `ceil` on the degenerate sizing changed the capture
+not at all, and was reverted rather than kept unverified.
+
+**Not the cell arithmetic.** `-[NSTextFieldCell cellSize]` adds 4 to an unbezeled, unbordered field
+and `_valueRectForBounds` insets by exactly 2 a side, so the two agree.
+
+What is left, untested: the field is **16 tall where its fitting height is 17**, because
+`-_ciderSizeDegenerateSubviews` clamps the height to the container, and whether a line that does not
+fit vertically makes the draw truncate horizontally has not been checked. The other difference is
+that the Locations row is the one with the expanded triangle.

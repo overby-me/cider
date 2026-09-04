@@ -4690,9 +4690,10 @@ static BOOL CiderLayoutTracing(void) {
         NSSize fitting = [subview fittingSize];
 
         if (getenv("CIDER_TRACE_FRAMES") != NULL)
-            fprintf(stderr, "CIDER_FRAME degenerate %s %gx%g fitting %gx%g bounds %gx%g\n",
+            fprintf(stderr, "CIDER_FRAME degenerate %s %gx%g fitting %.3gx%.3g bounds %gx%g\n",
                     object_getClassName(subview), frame.size.width, frame.size.height,
                     fitting.width, fitting.height, bounds.width, bounds.height);
+
 
         if (!(fitting.width > 0) || !(fitting.height > 0))
             continue;
