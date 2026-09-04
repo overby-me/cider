@@ -15524,3 +15524,34 @@ MoneyMoney's File menu opens with its items, separators, key equivalents and cor
 entries, over its main window with the account sidebar and the trial banner. Checked by looking, with
 this in: iTerm2's Shell menu unchanged, iA Writer's File menu unchanged, LibreOffice opens Calc and
 resizes with our menu bar intact, Swift Publisher unchanged.
+
+## A view that adds a subview while drawing killed the rest of the window (task #115)
+
+`CIDER_TRACE_EXCEPTIONS=1` on iA Writer prints eleven raises, and ten are the application asking for
+keys it does not have. The eleventh is ours:
+
+    RAISE NSGenericException: *** Collection <__NSCFArray> was mutated while being enumerated
+      -[__NSFastEnumerationEnumerator nextObject]
+      -[NSView _displayIfNeededWithoutViewWillDraw]   (seven deep)
+      -[NSWindow displayIfNeeded]
+      -[NSApplication _displayAllWindowsIfNeeded]
+
+`-_subviewsInDisplayOrderEnumerator` returned `[_subviews objectEnumerator]`, an enumerator over the
+LIVE array. Drawing is allowed to change the tree, a view may add or remove subviews while it lays
+out, and AppKit copes because it walks a snapshot. Ours raised, and the raise unwound out of the
+whole display pass, so every view after that one in the window went undrawn, silently. It returns a
+snapshot now.
+
+That is worth stating plainly because of what it is NOT: it did not fix iA Writer's file list, and
+the rows are still absent. It is a general correctness fix that happened to be visible here, and any
+application that builds views during layout was losing part of a frame to it.
+
+**What the file list is waiting for, narrowed.** The list is `Writer.LibraryTreeViewController`,
+whose view is an NSScrollView, and `CIDER_TRACE_VIEWS` shows that view being created. A new trace,
+`CIDER_TRACE_INSERT=<class substring>`, prints every insertion of a matching view with the container
+it went into, and over a whole run the only scroll views ever inserted are the editor's and the
+hidden library document preview. **The tree controller's view is never added to anything.** The
+application configures it fully (rootURL, openURL, view options, delegate, `reloadAllRowsIfViewLoaded`)
+and asks `IALibraryTableCellView` for row heights, so the data source has rows. Then
+`-[IANavigationViewController dealloc]` runs: the container that would install it is created,
+KVO registered for `topViewController`, and destroyed. That is the next thread to pull.

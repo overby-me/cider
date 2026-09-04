@@ -1769,6 +1769,19 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
 }
 
 - (void) _insertSubview: (NSView *) view atIndex: (NSInteger) index {
+    /* EVERY INSERTION OF A WATCHED CLASS, with the container it went into. A view controller whose
+     * view exists and never appears on screen was either never added or added to something that is
+     * itself not in a window, and only the container tells them apart. CIDER_TRACE_INSERT holds a
+     * class name substring matched against the view being added. */
+    const char *watchInsert = getenv("CIDER_TRACE_INSERT");
+
+    if (watchInsert != NULL && watchInsert[0] != (char) 0 &&
+        strstr(object_getClassName(view), watchInsert) != NULL) {
+        fprintf(stderr, "cider-insert %s %p into %s %p window=%s\n", object_getClassName(view),
+                view, object_getClassName(self), self,
+                [self window] != nil ? "yes" : "NONE");
+        fflush(stderr);
+    }
 
     [view retain];
     if ([view superview] == self)
@@ -3339,8 +3352,14 @@ static NSView *viewBeingPrinted = nil;
 }
 
 - (NSEnumerator *) _subviewsInDisplayOrderEnumerator {
-    // Subviews are ordered back to front -
-    return [_subviews objectEnumerator];
+    /*
+     * A SNAPSHOT, because drawing is allowed to change the tree. A view may add or remove subviews
+     * while it lays out, and AppKit copes; enumerating the live array does not, and the whole
+     * display pass died with "Collection was mutated while being enumerated" from inside
+     * -_displayIfNeededWithoutViewWillDraw. Everything after that view in the window went undrawn,
+     * silently, because the raise unwound to the application.
+     */
+    return [[NSArray arrayWithArray: _subviews] objectEnumerator];
 }
 
 - (void) _displayIfNeededWithoutViewWillDraw {
