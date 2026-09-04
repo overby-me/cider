@@ -1,0 +1,41 @@
+report a send to a class that is not initialised yet
+
+The message send trace was structurally blind to exactly the sends it is most often used to look
+for. lookUpImpOrForward sets LOOKUP_NOCACHE when the receiver class is not initialised yet:
+
+    if (slowpath(!cls->isInitialized())) {
+        // The first message sent to a class is often +new or +alloc, or +self
+        ...
+        behavior |= LOOKUP_NOCACHE;
+    }
+
+and the done block only calls log_and_fill_cache when that flag is CLEAR. So the first message sent
+to a class, which is the one that answers "was this class ever reached", was never reported.
+
+Measured on iA Writer with CIDER_TRACE_MSGSEND=IAText: 533 sends recorded before, 591 after, and
+IATextNormalization went from ABSENT to eleven lines, the first of them +initialize, which is the
+pre initialisation window itself.
+
+This matters beyond one application. A trace that answers a question with silence has to be able to
+speak first, and this one could not for a whole class of sends.
+
+Logging without caching is the whole change: the NOCACHE decision is deliberate, so it is left
+alone.
+
+--- a/runtime/objc-runtime-new.mm
++++ b/runtime/objc-runtime-new.mm
+@@ -6505,6 +6505,14 @@
+         }
+ #endif
+         log_and_fill_cache(cls, imp, sel, inst, curClass);
++    } else if (slowpath(objcMsgLogWanted() && curClass)) {
++        /*
++         * A send to a class that is not initialized yet takes LOOKUP_NOCACHE above, and that is
++         * exactly the FIRST send to that class, which is what a trace asking "was this ever called"
++         * needs most. Report it without caching it.
++         */
++        logMessageSend(curClass->isMetaClass(), cls->nameForLogging(),
++                       curClass->nameForLogging(), sel);
+     }
+  done_unlock:
+     runtimeLock.unlock();
