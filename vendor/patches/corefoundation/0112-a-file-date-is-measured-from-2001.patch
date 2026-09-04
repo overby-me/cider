@@ -1,0 +1,74 @@
+a file date is measured from 2001, not 1970
+
+CFURLCreatePropertyForKey read a stat time and handed it straight to CFDateCreate, which takes a
+CFAbsoluteTime. Every date a URL reported was therefore 978307200 seconds late, and an application
+reading timeIntervalSince1970 back off it got a date 62 years in the future.
+
+iA Writer records the file date in its own library index, so the application is the instrument:
+
+    before   Item.dateModified = 2766792321.5332756   mtime = 1788485121.5332758   delta 978307200.0
+    after    Item.dateModified = 1788485121.5332758   mtime = 1788485121.5332758   delta 0.0000000
+
+The fractional part survives on both sides, which is what makes the delta exact rather than close.
+
+Four keys were wrong the same way: creation, content access, content modification and attribute
+modification. Doing the arithmetic in one place also keeps the nanoseconds out of a double that was
+already holding 1.8e18, which is past where a double counts by ones.
+
+--- a/NSURL.m
++++ b/NSURL.m
+@@ -182,6 +182,14 @@
+     return false;
+ }
+ 
++/* stat reports seconds since 1970 and CFDateCreate takes seconds since 2001. */
++static CFDateRef CFDateCreateFromFileTime(time_t seconds, long nanoseconds)
++{
++    CFTimeInterval unix = (CFTimeInterval)seconds + (CFTimeInterval)nanoseconds / (CFTimeInterval)NSEC_PER_SEC;
++
++    return CFDateCreate(kCFAllocatorDefault, unix - kCFAbsoluteTimeIntervalSince1970);
++}
++
+ static pthread_mutex_t resInfoLock = PTHREAD_MUTEX_INITIALIZER;
+ 
+ static CFTypeRef CFURLCreatePropertyForKey(CFURLRef url, CFStringRef key, CFErrorRef *error)
+@@ -298,8 +306,7 @@
+         // Key for the resource’s creation date, returned as a CFDate object if the volume supports creation dates, or nil if creation dates are unsupported.
+         if (CFURLStat(url, &info))
+         {
+-            CFTimeInterval t = (CFTimeInterval)(info.st_ctime * NSEC_PER_SEC + info.st_ctimespec.tv_nsec) / (CFTimeInterval)NSEC_PER_SEC;
+-            value = CFDateCreate(kCFAllocatorDefault, t);
++            value = CFDateCreateFromFileTime(info.st_ctime, info.st_ctimespec.tv_nsec);
+         }
+         else
+         {
+@@ -310,8 +317,7 @@
+     {
+         if (CFURLStat(url, &info))
+         {
+-            CFTimeInterval t = (CFTimeInterval)(info.st_atime * NSEC_PER_SEC + info.st_atimespec.tv_nsec) / (CFTimeInterval)NSEC_PER_SEC;
+-            value = CFDateCreate(kCFAllocatorDefault, t);
++            value = CFDateCreateFromFileTime(info.st_atime, info.st_atimespec.tv_nsec);
+         }
+         else
+         {
+@@ -322,8 +328,7 @@
+     {
+         if (CFURLStat(url, &info))
+         {
+-            CFTimeInterval t = (CFTimeInterval)(info.st_mtime * NSEC_PER_SEC + info.st_mtimespec.tv_nsec) / (CFTimeInterval)NSEC_PER_SEC;
+-            value = CFDateCreate(kCFAllocatorDefault, t);
++            value = CFDateCreateFromFileTime(info.st_mtime, info.st_mtimespec.tv_nsec);
+         }
+         else
+         {
+@@ -334,8 +339,7 @@
+     {
+         if (CFURLStat(url, &info))
+         {
+-            CFTimeInterval t = (CFTimeInterval)(info.st_mtime * NSEC_PER_SEC + info.st_mtimespec.tv_nsec) / (CFTimeInterval)NSEC_PER_SEC;
+-            value = CFDateCreate(kCFAllocatorDefault, t);
++            value = CFDateCreateFromFileTime(info.st_mtime, info.st_mtimespec.tv_nsec);
+         }
+         else
+         {
