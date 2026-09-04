@@ -15787,3 +15787,35 @@ All five applications re-run and every capture looked at:
   sitting on `Opening database...` happened in **1 of 6** runs with the pair on and **2 of 5** with
   `CIDER_VC_LIFECYCLE=1`, against a previously measured baseline of about 3 of 12. Those samples
   cannot tell the two apart, so the honest claim is that nothing here moved it either way.
+
+## A ROW HEIGHT WAS FETCHED AND THEN IGNORED (task #115)
+
+`-[NSTableView noteHeightOfRowsWithIndexesChanged:]` asks the delegate for `tableView:heightOfRow:`
+and stores every answer in `_rowHeights`. Nothing ever raised `_rowHeightsCount` above the zero it is
+born with, and `rowHeightAtIndex` reads
+
+    if (index < self->_rowHeightsCount) return self->_rowHeights[index];
+    return self->_standardRowHeight;
+
+so **every row of every table has always been the standard height**, and the delegate answer was
+computed, written and never looked at. One line sets the count.
+
+iA Writer is where it showed. Its file rows put the name on one line and a status on a second, which
+`CIDER_TRACE_LAYOUT=1` spells out as constraints:
+
+    NSTextField .height == 34
+    NSTextField .top    == IAFileNameTextField .bottom + 0
+    IAFileNameTextField .top == cell .top + 6
+
+That asks for about 57 points and the rows were drawn in 31, so the status drew into the row above.
+They are 65 now, which is what the application asks for, and the rows no longer collide.
+
+All five re-run and looked at: Swift Publisher, iTerm2 and LibreOffice unchanged, MoneyMoney reached
+its main window in 1 of 3 and is within its usual range.
+
+**Still wrong, and it is the next thing here:** the two lines are in the wrong order, name below
+status. Both vertical constraints name `IAFileNameTextField`, which is a GRANDCHILD of the cell (it
+sits inside the stack view), and `CiderItemInScope` only accepts the container itself or a direct
+subview, so both are skipped and each view keeps y=0. Solving a constraint that reaches through a
+level of nesting means translating the descendant attribute into the container's coordinates, and
+that is a change to the solver rather than a patch to a caller.

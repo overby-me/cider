@@ -1183,6 +1183,15 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
                             indexSet, (long) numberOfRows];
 
     _rowHeights = realloc(_rowHeights, sizeof(CGFloat) * numberOfRows);
+    /*
+     * WITHOUT THE COUNT THE ARRAY IS UNREADABLE. rowHeightAtIndex answers _standardRowHeight for any
+     * index at or past _rowHeightsCount, and nothing had ever raised it above the zero it starts at,
+     * so every height asked of a delegate here was stored and then ignored, in every table.
+     *
+     * iA Writer is where it showed: its file rows put the name on one line and a status on a second,
+     * asked for 57 points and were drawn in 31, so the status drew into the row above.
+     */
+    _rowHeightsCount = numberOfRows;
 
     row = [indexSet firstIndex];
     if (_delegate != nil && [_delegate respondsToSelector: @selector
