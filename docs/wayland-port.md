@@ -15819,3 +15819,25 @@ sits inside the stack view), and `CiderItemInScope` only accepts the container i
 subview, so both are skipped and each view keeps y=0. Solving a constraint that reaches through a
 level of nesting means translating the descendant attribute into the container's coordinates, and
 that is a change to the solver rather than a patch to a caller.
+
+### TRIED AND REVERTED: solving a constraint that names a grandchild
+
+Written, built, run, and taken out again, so nobody spends the afternoon on it twice.
+
+The shape looked right. `CiderScopeSubview` maps any descendant to the direct subview it sits in,
+`CiderFrameInContainer` carries a descendant frame up into the container, a constraint with BOTH ends
+under the same subview is skipped as that subview's own business, a SIZE asked of a descendant is
+refused, and the position asked of a descendant is turned into one for the subview by subtracting the
+gap the two currently have.
+
+It made iA Writer worse, in one run and unmistakably: names truncated to `Index...` and `Sec...`, the
+stack view 65 points tall instead of 17, and the hidden image view at **y = -4963**. The capture went
+from 25197 to 18754.
+
+The reason it cannot work as written: the adjustment reads the CURRENT gap, and the inner arrangement
+is not fixed. A stack view re-lays its children whenever its size changes, so the gap the solver
+subtracts is a value the solve itself moves, and the pass feeds back into the next one. Making this
+work needs the descendant relation expressed as something the inner layout cannot move under it, not
+a delta sampled per pass.
+
+Reverted with `jj restore`, rebuilt, and iA Writer is back at 25197 with its names.
