@@ -385,17 +385,61 @@ const NSTimeInterval kMouseMovementThreshold = .001f;
                             delaySubmenu = nil;
                         }
 
-                        // If it's got a cascading menu then push that on the
-                        // stack
-                        // Do this with a delay to improve performance - this is what toolkits commonly do
-                        double delay = (count == 0) ? 0 : 0.5;
+                        /*
+                         * If it has a cascading menu, push that on the stack, after a delay for a
+                         * SUBMENU only: dragging across a row of items should not open every one on
+                         * the way past. The first level is the menu bar and has to open at once.
+                         *
+                         * The test was count == 0 and the stack always holds self, so count is never
+                         * 0 and EVERY menu waited half a second for a timer, including the bar. An
+                         * application whose tracking ends before that fires opened nothing at all:
+                         * MoneyMoney selected File, updated its eight items, and never created a
+                         * menu window, while iA Writer stayed in the loop long enough and looked
+                         * fine.
+                         */
+                        double delay = (count <= 1) ? 0 : 0.5;
+
+                        /*
+                         * NO DELAY MEANS NOW, NOT A TIMER OF ZERO. This loop takes its own events
+                         * and blocks until one arrives, so a timer scheduled in the tracking mode
+                         * only runs if something else happens to happen. iA Writer moved the
+                         * pointer enough to give the loop a turn and its menu opened; MoneyMoney
+                         * did not, and its timer never fired at all, so File highlighted and no
+                         * menu was ever created. The first level is the menu bar and opens here.
+                         */
+                        if (delay <= 0.0) {
+                            NSMenuView *branch = [checkView
+                                    viewAtSelectedIndexPositionOnScreen: screen];
+
+                            if (getenv("CIDER_TRACE_MENU") != NULL) {
+                                fprintf(stderr, "CIDER_MENU submenuNow index=%ld branch=%s\n",
+                                        (long) [checkView selectedItemIndex],
+                                        branch != nil ? "yes" : "NIL");
+                                fflush(stderr);
+                            }
+                            if (branch != nil)
+                                [viewStack addObject: branch];
+
+                            break;
+                        }
+
                         delaySubmenu = [[NSTimer timerWithTimeInterval: delay repeats: NO block: ^(NSTimer* timer){
 
-                            NSMenuView *branch;
+                            NSMenuView *branch = [checkView
+                                    viewAtSelectedIndexPositionOnScreen: screen];
 
-                            if ((branch = [checkView
-                                        viewAtSelectedIndexPositionOnScreen:
-                                                screen]) != nil) {
+                            /* WHETHER THE SUBMENU WAS EVER BUILT. The timer firing and the branch
+                             * being nil are different faults and both end with no menu on screen. */
+                            if (getenv("CIDER_TRACE_MENU") != NULL) {
+                                fprintf(stderr,
+                                        "CIDER_MENU submenuTimer index=%ld branch=%s screen=%s\n",
+                                        (long) [checkView selectedItemIndex],
+                                        branch != nil ? "yes" : "NIL",
+                                        screen != nil ? "yes" : "nil");
+                                fflush(stderr);
+                            }
+
+                            if (branch != nil) {
                                 MENUDEBUG(@"adding a new cascading view: %@",
                                         branch);
                                 [viewStack addObject: branch];
@@ -960,6 +1004,15 @@ const NSTimeInterval kMouseMovementThreshold = .001f;
     [[self window] setAcceptsMouseMovedEvents: YES];
     item = [self trackForEvent: event];
     [[self window] setAcceptsMouseMovedEvents: didAccept];
+
+    /* HOW LONG TRACKING LASTED AND WHAT IT FOUND. A menu that never appears is either a track that
+     * ended before the submenu could be pushed or one that never found a submenu to push, and the
+     * two want opposite work. */
+    if (getenv("CIDER_TRACE_MENU") != NULL) {
+        fprintf(stderr, "CIDER_MENU trackDone on %s item=%s\n", object_getClassName(self),
+                item != nil ? [[item title] UTF8String] ?: "?" : "(none)");
+        fflush(stderr);
+    }
 
     if (item != nil)
         [NSApp sendAction: [item action] to: [item target] from: item];

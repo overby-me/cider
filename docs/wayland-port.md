@@ -15494,3 +15494,33 @@ right aligned in their boxes, the section headers left, the buttons centred. Thi
 decoded from every nib in every application, so all five were re-run and looked at: iA Writer's menu
 (items left, key equivalents right) unchanged, iTerm2 typing unchanged, MoneyMoney unchanged,
 LibreOffice types into A1 unchanged.
+
+## A menu bar that opened only if something else happened (task #117)
+
+MoneyMoney highlighted a menu title and dropped no menu. The click was fine, and so was everything
+around it: `CIDER_TRACE_MENU` showed `mouseDown on NSMainMenuView at 127,14 items=10`, the bar redrew
+with `index=1` selected, and `CIDER_MENUUPDATE File items=8` says the menu was populated and
+validated. No `NSMenuWindow` was ever created, while the identical path creates one for iA Writer.
+
+Two faults, one behind the other, and both in `-[NSMenuView trackForEvent:]`.
+
+**The delay applied to the menu bar as well as to submenus.** The line read
+
+    double delay = (count == 0) ? 0 : 0.5;
+
+and `viewStack` always holds `self`, so `count` is never 0 and every menu waited half a second,
+including the first level. The intent is clear from the comment beside it, no delay at the top and a
+delay for cascading submenus so dragging across a row does not open every one on the way past. It is
+`count <= 1`.
+
+**And a timer in this loop only fires if something else happens.** The tracking loop takes its own
+events and blocks in `nextEventMatchingMask` until one arrives, so a timer scheduled for
+`NSEventTrackingRunLoopMode` runs only when an unrelated event gives the loop a turn. iA Writer got
+enough of those and its timer fired once, `submenuTimer index=1 branch=yes`; MoneyMoney got none and
+its timer never fired at all. So a zero delay must not go through a timer: the first level now pushes
+its submenu view synchronously, which is what the bar does on macOS anyway.
+
+MoneyMoney's File menu opens with its items, separators, key equivalents and correctly greyed
+entries, over its main window with the account sidebar and the trial banner. Checked by looking, with
+this in: iTerm2's Shell menu unchanged, iA Writer's File menu unchanged, LibreOffice opens Calc and
+resizes with our menu bar intact, Swift Publisher unchanged.
