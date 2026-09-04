@@ -79,8 +79,18 @@ typedef NS_OPTIONS(unsigned int, NSCellAppleFlags2) {
     NSCellAppleFlag2WasSelectable         = 1u << 31,
     NSCellAppleFlag2RichText              = 1u << 30,
     NSCellAppleFlag2Reserved1             = 1u << 29,
-    //NSCellAppleFlag2ImportsGraph          = 1u << 28, // clearly wrong, since this would overlap with TextAlignmentMask
-    NSCellAppleFlag2TextAlignmentShift    = 16,
+    /*
+     * ALIGNMENT IS BITS 26 TO 28, and it was 16 to 18, which overlapped ControlSize at 17 to 19 and
+     * read zero for everything, so every cell in every nib came out left aligned.
+     *
+     * Measured on Swift Publisher's New Document dialog, where the value the bits give matches what
+     * each cell visibly is: Cancel and Create read centre, every label that sits left of a field
+     * (Top, Left, Units, Page Spread Mode) reads right, the Margins section header reads left, and
+     * the numeric fields read right. At 16 to 18 all of them read left, which is what we drew: three
+     * right aligned labels are 259 points wide at x=-17 in that nib, so drawing them from the left
+     * put their first two characters outside the window.
+     */
+    NSCellAppleFlag2TextAlignmentShift    = 26,
     NSCellAppleFlag2TextAlignmentMask     = 0x07u << NSCellAppleFlag2TextAlignmentShift,
     NSCellAppleFlag2RefusesFirstResponder = 1u << 25,
     NSCellAppleFlag2AllowsMixedState      = 1u << 24,

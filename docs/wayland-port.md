@@ -15459,3 +15459,38 @@ straight out of the nib decode. They are siblings of the labels that are correct
 view, with no box or container between them, so it is not a lost superview offset either: three
 sibling labels decode with a different origin and a different width (259 and 154 against 134) from
 the same archive. That is where to look next, in the nib decoding of these specific views.
+
+## Every cell in every nib was left aligned, and the bit field says otherwise (task #116)
+
+The three clipped labels in Swift Publisher's New Document dialog are not a font problem and not a
+decoding accident: the nib really does place them at x=-17, 259 points wide, and BOTH archives in the
+bundle agree, the legacy `keyedobjects.nib` and the versioned `keyedobjects-101300.nib`. So macOS
+draws those same frames correctly, which means it draws the TEXT somewhere else inside them.
+
+It does. The alignment is in `NSCellFlags2`, and ours reads the wrong bits:
+
+    NSCellAppleFlag2TextAlignmentShift = 16      <- bits 16 to 18
+    NSCellAppleFlag2ControlSizeShift   = 17      <- bits 17 to 19, overlapping it
+
+The table contradicted itself, and the overlap is the tell. Alignment is bits 26 to 28. The proof is
+that every cell in that dialog then reads as what it visibly is, which is the control the guess never
+had:
+
+    NSButtonCell    Cancel              0x8000a00   centre
+    NSButtonCell    Create              0x8000a00   centre
+    NSTextFieldCell Page Spread Mode:   0x44400a00  right
+    NSTextFieldCell Margins:            0x40400a00  left
+    NSTextFieldCell Top:                0x44400a00  right
+    NSTextFieldCell 9999.9 mm           0x84400400  right
+    NSPopUpButtonCell Inches            0xa00       left
+
+At bits 16 to 18 every one of those reads left, which is exactly what this port drew. A right aligned
+label 259 points wide at x=-17 draws its text from 137 to 242, next to the field it labels; drawing
+it from the left instead put its first 17 points outside the window, which is the two characters each
+that were missing.
+
+The dialog now matches the design: every label right aligned against its field, the numeric values
+right aligned in their boxes, the section headers left, the buttons centred. This affects every cell
+decoded from every nib in every application, so all five were re-run and looked at: iA Writer's menu
+(items left, key equivalents right) unchanged, iTerm2 typing unchanged, MoneyMoney unchanged,
+LibreOffice types into A1 unchanged.
