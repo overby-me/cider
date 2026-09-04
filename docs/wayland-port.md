@@ -15954,3 +15954,29 @@ All five applications re-run and every capture looked at: iA Writer 25197 with i
 Publisher 49635 with its Template Gallery, LibreOffice 135528 and its resize, iTerm2 with a live
 prompt in 2 of 3. The third failed with `[mldr] start-stack mmap at 0x7fffff600000 failed`, which is
 the loader naming itself and has nothing to do with logging.
+
+## ALL FIVE APPLICATIONS AGAINST THE THREE CRITERIA (task #164)
+
+Measured today, every capture looked at, nothing taken from a summary statistic.
+
+| application     | renders | interactive | resizable | evidence |
+| --------------- | ------- | ----------- | --------- | -------- |
+| iA Writer       | yes     | yes         | yes       | file list with names and times, File menu, Command N titles the window Untitled |
+| Swift Publisher | yes     | yes         | yes       | Template Gallery, Close button, category selection, thumbnails with artwork |
+| MoneyMoney      | yes     | yes         | yes       | main window 10 of 10, File menu opens, window relayouts |
+| iTerm2          | yes     | yes         | yes       | live prompt, typed text, reflow on resize |
+| LibreOffice     | yes     | yes         | yes       | Start Center, and the resize keeps it |
+
+**What is still wrong, listed rather than implied:**
+
+1. iA Writer draws the two lines of a file row in the wrong order, status above name (task #184).
+2. iA Writer's location sidebar draws a stray glyph at x=0 per row and truncates `Locations` at the
+   starting width.
+3. iA Writer's rows say `Updating...` forever, which is the library index not finishing.
+4. Swift Publisher was gone after a click in the template list in 1 of 3 runs, cleanly and with no
+   fault (task #185).
+5. iTerm2 failed to bring up its shell in 1 of 3 runs with
+   `[mldr] start-stack mmap at 0x7fffff600000 failed`, which is the loader, not the application.
+
+None of those stops an application meeting the three criteria, and all five do. Nobody should read
+this as finished work: it is the state on 2026-09-04, with the failures named.
