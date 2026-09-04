@@ -553,8 +553,39 @@ static NSAppearance *_ciderApplicationAppearance = nil;
     return [NSAppearance currentAppearance];
 }
 
+/*
+ * WHOEVER CALLS exit, NAMED, WHEREVER IT IS.
+ *
+ * Both AppKit paths to status 0, -terminate: and -replyToApplicationShouldTerminate:, already print
+ * their frames, and Swift Publisher has now left through NEITHER: it was simply gone, with no
+ * exception, no signal and no fault in ciderd.log. A handler here is the only place that sees an
+ * exit called by the application itself or by a library, and a process leaving has one chance to
+ * say so. Ungated for the same reason -terminate: is.
+ */
+static void CiderReportExit(void) {
+    void *frames[24];
+    int count = backtrace(frames, 24);
+
+    fprintf(stderr, "CIDER_APP exit, frames follow\n");
+    for (int i = 1; i < count; i++) {
+        Dl_info info;
+
+        if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
+            const char *image = info.dli_fname ? strrchr(info.dli_fname, '/') : NULL;
+
+            fprintf(stderr, "CIDER_APP   %-26s %s\n", image ? image + 1 : "?", info.dli_sname);
+        }
+    }
+    fflush(stderr);
+}
+
 + (NSApplication *) sharedApplication {
     if (NSApp == nil) {
+        static dispatch_once_t exitToken;
+
+        dispatch_once(&exitToken, ^{
+            atexit(CiderReportExit);
+        });
         [[self alloc] init]; // NSApp must be nil inside init
     }
     return NSApp;
@@ -2134,6 +2165,12 @@ static void _CiderAppNote(const char *what, id sender)
 
         [NSClassFromString(@"Win32RunningCopyPipe")
                 performSelector: @selector(invalidateRunningCopyPipe)];
+
+        /* Said between the notification and the exit, because Command Q reached HERE and the
+         * application carried on: that separates an observer that never returned from an exit that
+         * did not take. */
+        fprintf(stderr, "CIDER_APP calling exit(0)\n");
+        fflush(stderr);
 
         exit(0);
     }

@@ -768,11 +768,26 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
     NSMutableSet *ret = [NSMutableSet set];
 
     for (int i = 0; i < set->nfont; i++) {
-        FcChar8 *family;
+        FcChar8 *family = NULL;
         if (FcPatternGetString(set->fonts[i], FC_FAMILY, 0, &family) ==
             FcResultMatch) {
-            [ret addObject: [NSString stringWithUTF8String: (const char *)
-                                                                    family]];
+            NSString *name = family != NULL
+                    ? [NSString stringWithUTF8String: (const char *) family]
+                    : nil;
+
+            /*
+             * A NAME THAT IS NOT UTF-8 ARRIVES AS NIL, and a set takes it: +stringWithUTF8String
+             * answers nil for bytes it cannot decode, one font installed here has such a family
+             * name, and the nil travelled all the way into -[NSFontFamily allFontFamilyNames],
+             * where sortUsingSelector: raised "Cannot insert nil into array". That killed Command Q
+             * in Swift Publisher, since the raise unwound out of applicationWillTerminate and the
+             * exit was never reached.
+             */
+            if (name == nil) {
+                NSLog(@"font family name is not UTF-8, skipping it");
+                continue;
+            }
+            [ret addObject: name];
         }
     }
 

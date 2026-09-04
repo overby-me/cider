@@ -1,0 +1,47 @@
+say which side of a sort holds the nil
+
+-[NSMutableArray sortRange:options:usingComparator:] hands its permuted buffer to
+replaceObjectsInRange, which raises "Cannot insert nil into array" if any entry is nil. The frames
+then name only the sort, so an array that arrived holding a nil looks exactly like a sort that lost
+an element, and the two want opposite work.
+
+That cost a whole afternoon on Swift Publisher: Command Q raised here, the raise unwound out of
+-[CCDocumentController applicationWillTerminate:], the run loop caught it, and the application
+simply carried on without quitting. The answer, once measured, was nilsIn=1 with a valid
+permutation: +[NSFontFamily allFontFamilyNames] had built the array around a font family that had
+no name.
+
+The scan is O(n) against a sort that is O(n log n), and it prints nothing unless something is wrong.
+
+--- a/NSArray.m
++++ b/NSArray.m
+@@ -662,9 +662,29 @@
+         return (CFComparisonResult)comparator(objs[i1], objs[i2]);
+     });
+     assert(sizeof(id) == sizeof(CFIndex));
++    /*
++     * A NIL HERE RAISES INSIDE replaceObjectsInRange AND THE FRAMES NAME ONLY THE SORT, which is
++     * how -[NSFontFamily allFontFamilyNames] came to kill Command Q in Swift Publisher with
++     * "Cannot insert nil into array". Say which side holds it: the array we were handed, or the
++     * permutation this sort built.
++     */
++    NSUInteger nilsIn = 0, nilsOut = 0, badIndex = 0;
++    for (NSUInteger i = 0; i < count; i++) {
++        if (objs[i] == nil) nilsIn++;
++        if (indexes[i] < 0 || (NSUInteger)indexes[i] >= count) badIndex++;
++    }
+     for (int i = 0; i < count; i++) {
+         indexes[i] = (CFIndex)objs[indexes[i]]; // re-use indexes allocation
+     }
++    for (NSUInteger i = 0; i < count; i++) {
++        if (((id *)indexes)[i] == nil) nilsOut++;
++    }
++    if (nilsIn != 0 || nilsOut != 0 || badIndex != 0) {
++        fprintf(stderr, "CIDER_SORT %s count=%lu nilsIn=%lu nilsOut=%lu badIndex=%lu\n",
++                object_getClassName(self), (unsigned long)count,
++                (unsigned long)nilsIn, (unsigned long)nilsOut, (unsigned long)badIndex);
++        fflush(stderr);
++    }
+     [self replaceObjectsInRange:range withObjects:(id *)indexes count:count];
+     free(indexes);
+     free(objs);

@@ -57,8 +57,23 @@ extern int O2FontAppFontGeneration(void);
     NSArray *families = [self fontFamilies];
     int i, count = [families count];
 
-    for (i = 0; i < count; i++)
-        [result addObject: [[families objectAtIndex: i] name]];
+    for (i = 0; i < count; i++) {
+        NSFontFamily *family = [families objectAtIndex: i];
+        NSString *name = [family name];
+
+        /*
+         * A FAMILY WITH NO NAME IS NOT A NAME, and this array is CF backed, so adding the nil
+         * succeeded here and raised later: -sortUsingSelector: reported "Cannot insert nil into
+         * array" with only the sort in the frames. That unwound out of
+         * -[CCDocumentController applicationWillTerminate:] and Command Q stopped quitting Swift
+         * Publisher at all.
+         */
+        if (name == nil) {
+            NSLog(@"font family %d of %d has no name, skipping it", i, count);
+            continue;
+        }
+        [result addObject: name];
+    }
 
     [result sortUsingSelector: @selector(compare:)];
 
@@ -88,6 +103,15 @@ extern int O2FontAppFontGeneration(void);
 + (NSFontFamily *) fontFamilyWithName: (NSString *) name {
     NSArray *families = [self fontFamilies];
     int i, count = [families count];
+
+    /*
+     * THERE IS NO FAMILY WITH NO NAME. Pretending below is what this method does for a family it
+     * has not heard of, and asked for nil it pretended to have THAT and registered it for the rest
+     * of the process: one nameless family sat at the end of the list and every later
+     * +allFontFamilyNames carried a nil.
+     */
+    if (name == nil)
+        return nil;
 
     for (i = 0; i < count; i++) {
         NSFontFamily *check = [families objectAtIndex: i];

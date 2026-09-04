@@ -16026,3 +16026,51 @@ What is left, untested: the field is **16 tall where its fitting height is 17**,
 `-_ciderSizeDegenerateSubviews` clamps the height to the container, and whether a line that does not
 fit vertically makes the draw truncate horizontally has not been checked. The other difference is
 that the Locations row is the one with the expanded triangle.
+
+## A FONT FAMILY WITH NO NAME STOPPED COMMAND Q (tasks #116, #185)
+
+Swift Publisher would not quit. Command Q reached `-[NSApplication terminate:]`, reached
+`-replyToApplicationShouldTerminate: 1`, and the application carried on drawing.
+
+**How it was narrowed, since every step ruled something out:**
+
+1. `-terminate:` and `-replyToApplicationShouldTerminate:` already print their frames ungated. Both
+   fired, so the decision to quit was made.
+2. A print added between the notification post and the `exit(0)` did NOT appear, so control left the
+   method in between while the main thread kept running: an exception, not a block.
+3. `CIDER_TRACE_EXCEPTIONS=1` named it:
+
+       RAISE NSInvalidArgumentException: Cannot insert nil into array
+         -[NSMutableArray(NSExtendedMutableArray) sortRange:options:usingComparator:]
+         -[NSMutableArray(NSExtendedMutableArray) sortUsingSelector:]
+         +[NSFontFamily allFontFamilyNames]
+         -[NSFontPanel buildFamilyMatrix]
+         -[CCDocumentController applicationWillTerminate:]
+         -[NSApplication replyToApplicationShouldTerminate:]
+
+   The raise unwound out of the application's own `applicationWillTerminate:`, the run loop caught
+   it, and the exit was never reached.
+4. Those frames name only the sort, and an array that ARRIVED holding a nil looks identical to a
+   sort that lost one. A counter added inside the sort settled it in a single run:
+   `CIDER_SORT __NSCFArray count=280 nilsIn=1 nilsOut=1 badIndex=0`. The array was already wrong and
+   the permutation was valid, so the sort was innocent. That counter is kept, as
+   `vendor/patches/corefoundation/0111-say-which-side-of-a-sort-holds-the-nil.patch`.
+5. A guard in `+allFontFamilyNames` then named the offender: `font family 279 of 280 has no name`.
+
+**The defect.** `+[NSFontFamily fontFamilyWithName:]` ends with a comment reading
+`// Pretend to have this family` and registers whatever it was asked for. Asked for **nil** it
+pretended to have that too, and the nameless family stayed in the static list for the life of the
+process, so every later `+allFontFamilyNames` carried a nil. It answers nil for a nil name now, and
+`+allFontFamilyNames` skips a nameless family rather than adding it, since this array is CF backed
+and takes a nil without complaint.
+
+**Measured after:** no nameless family, no `CIDER_SORT` line, `exit(0)` reached, and Command Q quits
+the application. The Template Gallery also draws **six** thumbnails with artwork where it drew four
+and two dashed placeholders, which is what a font lookup falling over a nil family costs.
+
+An `atexit` handler was added to `NSApplication` at the same time and is what proved the exit is now
+reached. It prints the frames of any exit, including one the application or a library makes, which
+neither existing trace can see.
+
+Also guarded, though it never fired here: `-[X11Display allFontFamilyNames]` fed
+`+stringWithUTF8String:` straight into a set, and that answers nil for bytes it cannot decode.
