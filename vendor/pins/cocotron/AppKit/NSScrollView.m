@@ -953,6 +953,11 @@ static Class _rulerViewClass = nil;
     return [super becomeFirstResponder];
 }
 
+/* The overlay scrollers briefly showing themselves. There are no overlay scrollers here, the
+ * scrollers are always present, so there is nothing to flash and nothing to animate. */
+- (void) flashScrollers {
+}
+
 - (void) tile {
     NSRect frame;
 

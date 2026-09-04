@@ -159,6 +159,7 @@ APPKIT_EXPORT NSString *const NSScrollViewDidLiveScrollNotification;
 - (void) setFindBarPosition: (NSInteger) position;
 
 - (void) tile;
+- (void) flashScrollers;
 - (void) reflectScrolledClipView: (NSClipView *) clipView;
 
 @end

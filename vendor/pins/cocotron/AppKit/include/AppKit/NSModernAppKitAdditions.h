@@ -116,3 +116,7 @@ typedef NS_ENUM(NSInteger, NSTitlebarSeparatorStyle) {
 - (float) contentCompressionResistancePriorityForOrientation: (NSInteger) orientation;
 @end
 
+@interface NSControl (CiderContentTint)
+- (NSColor *) contentTintColor;
+- (void) setContentTintColor: (NSColor *) color;
+@end

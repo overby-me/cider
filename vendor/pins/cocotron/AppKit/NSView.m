@@ -20,6 +20,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <objc/message.h>
+#import <AppKit/NSViewController.h>
 #import <objc/runtime.h>
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSClipView.h>
@@ -2302,7 +2303,10 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
 }
 
 - (void) viewDidMoveToWindow {
-    // Default implementation does nothing
+    /* A CONTROLLER LEARNS ITS VIEW IS ON SCREEN HERE. AppKit pairs viewWillAppear and viewDidAppear
+     * with the view joining a window, and their absence is why setup deferred to them never ran. */
+    if (_ciderViewController != nil)
+        [_ciderViewController _ciderSendAppearance: _window != nil];
 }
 
 - (BOOL) shouldDelayWindowOrderingForEvent: (NSEvent *) event {

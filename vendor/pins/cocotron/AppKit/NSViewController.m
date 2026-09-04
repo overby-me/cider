@@ -1,3 +1,4 @@
+#include <string.h>
 #import <AppKit/NSNib.h>
 #import <AppKit/NSNibLoading.h>
 #import <AppKit/NSRaise.h>
@@ -69,7 +70,96 @@
     if (_view == nil)
         [self loadView];
 
+    [self _ciderSendViewDidLoadIfNeeded];
+
     return _view;
+}
+
+/*
+ * THE LIFECYCLE NOTHING HERE HAS EVER SENT.
+ *
+ * AppKit calls -viewDidLoad once, after the view is loaded, and it is where a controller does the
+ * setup its nib cannot: installing child controllers, wiring data sources, pushing a first screen.
+ * None of it existed here, and iA Writer implements the method on THIRTY SIX classes, so that much
+ * of the application never ran. The appearance pair is the same story on a smaller scale.
+ */
+- (void) viewDidLoad {
+}
+
+- (void) viewWillAppear {
+}
+
+- (void) viewDidAppear {
+}
+
+- (void) viewWillDisappear {
+}
+
+- (void) viewDidDisappear {
+}
+
+/*
+ * -viewDidLoad ON, the appearance pair OFF, and the split is measured rather than cautious.
+ *
+ * AppKit sends -viewDidLoad once after the view loads and it is where a controller does the setup
+ * its nib cannot. Nothing here ever sent it, and 36 classes in iA Writer implement it, so that much
+ * of the application had never run. It now fires for 31 controllers there and the window is
+ * unchanged, so it is on.
+ *
+ * The appearance pair is a different story: with viewWillAppear and viewDidAppear as well, iA
+ * Writer runs further, past two selectors this port was missing, and then QUITS three seconds in, 2
+ * runs of 2. Losing the window is worse than not running that setup, so it waits for whoever finds
+ * what the application decides there.
+ *
+ * CIDER_VC_LIFECYCLE=0 turns everything off, =all adds the appearance pair back.
+ */
+static int CiderViewControllerLifecycle(void) {
+    static int mode = -1;
+
+    if (mode < 0) {
+        const char *value = getenv("CIDER_VC_LIFECYCLE");
+
+        if (value != NULL && (strcmp(value, "0") == 0 || strcmp(value, "off") == 0))
+            mode = 0;
+        else if (value != NULL && strcmp(value, "all") == 0)
+            mode = 2;
+        else
+            mode = 1;
+    }
+    return mode;
+}
+
+- (void) _ciderSendViewDidLoadIfNeeded {
+    if (CiderViewControllerLifecycle() < 1)
+        return;
+    if (_ciderDidSendViewDidLoad || _view == nil)
+        return;
+
+    _ciderDidSendViewDidLoad = YES;
+
+    if (getenv("CIDER_TRACE_VIEWS") != NULL && getenv("CIDER_TRACE_VIEWS")[0] != (char) 0) {
+        fprintf(stderr, "CIDER_VIEW viewDidLoad %s\n", object_getClassName(self));
+        fflush(stderr);
+    }
+
+    [self viewDidLoad];
+}
+
+/* Once each way, so a view that moves between windows does not repeat the pair. */
+- (void) _ciderSendAppearance: (BOOL) appearing {
+    if (CiderViewControllerLifecycle() < 2)
+        return;
+    if (appearing == _ciderDidSendViewDidAppear)
+        return;
+
+    _ciderDidSendViewDidAppear = appearing;
+    if (appearing) {
+        [self viewWillAppear];
+        [self viewDidAppear];
+    } else {
+        [self viewWillDisappear];
+        [self viewDidDisappear];
+    }
 }
 
 - (NSString *) title {
@@ -118,6 +208,7 @@
     /* The layout pass tells the controller about its own view, and only a back pointer can say
      * which controller that is. */
     [_view _ciderSetViewController: self];
+    [self _ciderSendViewDidLoadIfNeeded];
 }
 
 - (void) viewWillLayout {

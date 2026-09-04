@@ -15645,3 +15645,28 @@ data has been restored to the prefix.
 **Trap worth naming:** counting a trace line in runs where its gate was off proves nothing. The
 `lookup failed for service` line only exists when `CIDER_TRACE_XPC` is set, so comparing its count
 between a traced and an untraced run is meaningless, and I nearly read that as evidence.
+
+## The view controller lifecycle nothing here has ever sent (task #115)
+
+`-viewDidLoad` did not exist in this port. Not unimplemented, absent: `-[NSViewController view]`
+called `loadView` and returned, and nothing ever sent the callback AppKit sends once afterwards. It
+is where a controller does the setup its nib cannot, installing children, wiring data sources,
+pushing a first screen, and **36 classes in iA Writer implement it**. The appearance pair,
+`viewWillAppear` and `viewDidAppear`, was missing in the same way, with 4 and 8 implementors.
+
+Now sent, and the split between them is measured rather than cautious:
+
+- **`viewDidLoad` is ON.** It fires for **31 controllers** in iA Writer, named in the trace under
+  `CIDER_TRACE_VIEWS` (IALibraryViewController, IAEditorViewController, IAOrganizerViewController and
+  the rest), and the window is unchanged. All five applications re-run and looked at with it on.
+- **The appearance pair is OFF**, behind `CIDER_VC_LIFECYCLE=all`. With it, iA Writer runs further
+  than it ever has, past two selectors this port was missing, and then QUITS three seconds in, 2 runs
+  of 2. Losing the window is worse than not running that setup.
+
+Two selectors that newly-reached code needed, both real AppKit API:
+`-[NSScrollView flashScrollers]`, which has nothing to do here because these scrollers are always
+present, and `contentTintColor` on NSControl, which is stored and returned rather than pretended
+away.
+
+**What it did not do:** the file list is still empty. `viewDidLoad` running for the library
+controllers did not install the tree view controller, so the missing link recorded above stands.

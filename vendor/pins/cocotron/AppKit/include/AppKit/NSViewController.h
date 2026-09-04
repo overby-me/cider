@@ -9,6 +9,8 @@
     id _representedObject;
     NSString *_title;
     NSView *_view;
+    BOOL _ciderDidSendViewDidLoad;
+    BOOL _ciderDidSendViewDidAppear;
     NSUserInterfaceItemIdentifier _identifier;
 }
 
@@ -19,6 +21,13 @@
 
 - (NSView *) view;
 - (BOOL) isViewLoaded;
+- (void) viewDidLoad;
+- (void) viewWillAppear;
+- (void) viewDidAppear;
+- (void) viewWillDisappear;
+- (void) viewDidDisappear;
+- (void) _ciderSendViewDidLoadIfNeeded;
+- (void) _ciderSendAppearance: (BOOL) appearing;
 - (NSString *) title;
 - representedObject;
 

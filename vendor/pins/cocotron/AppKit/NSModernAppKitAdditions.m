@@ -11,6 +11,7 @@
  * one macOS gives when that system is unavailable: no files promised, no touches, no glass.
  */
 
+#import <AppKit/NSControl.h>
 #import <AppKit/NSModernAppKitAdditions.h>
 #import <AppKit/NSResponder.h>
 #import <AppKit/NSScrollView.h>
@@ -877,6 +878,36 @@ static void _CiderSetTextViewFlag(id view, NSInteger bit, BOOL on) {
 
 - (NSLayoutDimension *) heightAnchor {
     return [NSLayoutDimension anchorWithItem: self attribute: NSLayoutAttributeHeight];
+}
+
+@end
+
+/*
+ * CONTENT TINT COLOUR, which a 10.14 application sets on a template image or a button and expects to
+ * read back. Nothing here draws with it yet, so it is stored and returned rather than pretended
+ * away: the alternative was an unrecognised selector, which terminated iA Writer the moment its
+ * viewDidLoad code ran for the first time.
+ */
+static NSMapTable *_ciderContentTints = nil;
+
+@implementation NSControl (CiderContentTint)
+
+- (NSColor *) contentTintColor {
+    if (_ciderContentTints == nil)
+        return nil;
+
+    return (NSColor *) NSMapGet(_ciderContentTints, (const void *) self);
+}
+
+- (void) setContentTintColor: (NSColor *) color {
+    if (_ciderContentTints == nil) {
+        _ciderContentTints = NSCreateMapTable(NSNonRetainedObjectMapKeyCallBacks,
+                                              NSObjectMapValueCallBacks, 0);
+    }
+    if (color == nil)
+        NSMapRemove(_ciderContentTints, (const void *) self);
+    else
+        NSMapInsert(_ciderContentTints, (const void *) self, (const void *) color);
 }
 
 @end
