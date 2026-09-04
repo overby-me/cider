@@ -1194,18 +1194,25 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
     _rowHeightsCount = numberOfRows;
 
     row = [indexSet firstIndex];
-    if (_delegate != nil && [_delegate respondsToSelector: @selector
-                                       (tableView:heightOfRow:)] == YES) {
-        while (row != NSNotFound) {
-            _rowHeights[row] = [_delegate tableView: self heightOfRow: row];
-            row = [indexSet indexGreaterThanIndex: row];
-        }
-    } else {
-        while (row != NSNotFound) {
-            _rowHeights[row] = _standardRowHeight;
-            row = [indexSet indexGreaterThanIndex: row];
-        }
+    while (row != NSNotFound) {
+        CGFloat height = [self _ciderHeightOfRow: row];
+
+        /* A delegate asked this early can answer zero, and iA Writer's does for the one row under
+         * Locations: the intercell spacing then comes off again and the row is a NEGATIVE one point
+         * tall, which drew as a blue hairline where a selected row had been. */
+        _rowHeights[row] = height > 0 ? height : _standardRowHeight;
+        row = [indexSet indexGreaterThanIndex: row];
     }
+}
+
+/* The single place a row height comes from, so a subclass whose delegate is asked differently has
+ * one thing to override. NSOutlineView asks by item. */
+- (CGFloat) _ciderHeightOfRow: (NSInteger) row {
+    if (_delegate != nil &&
+        [_delegate respondsToSelector: @selector(tableView:heightOfRow:)] == YES)
+        return [_delegate tableView: self heightOfRow: row];
+
+    return _standardRowHeight;
 }
 
 - (void) noteNumberOfRowsChanged {

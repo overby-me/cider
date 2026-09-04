@@ -34,6 +34,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSTextFieldCell.h>
 #import <Foundation/NSKeyedArchiver.h>
 
+/* The delegate protocol in this port does not carry this one, and without a declaration the
+ * compiler reads its answer as an id. */
+@interface NSObject (CiderOutlineRowHeight)
+- (CGFloat) outlineView: (NSOutlineView *) outlineView heightOfRowByItem: (id) item;
+@end
+
 NSString *const NSOutlineViewItemWillExpandNotification =
         @"NSOutlineViewItemWillExpandNotification";
 NSString *const NSOutlineViewItemDidExpandNotification =
@@ -1050,6 +1056,19 @@ static void loadItemIntoMapTables(NSOutlineView *self, id item,
  * An outline vends its views by ITEM, not by row, so both halves of the view based path are
  * redirected. Everything else about it is the table's.
  */
+/*
+ * AN OUTLINE VIEW IS ASKED BY ITEM, and nothing here ever asked. iA Writer's location sidebar
+ * implements outlineView:heightOfRowByItem:, so every group row stayed at the standard height and
+ * its label, which wants 17 points, was clamped into 16.
+ */
+- (CGFloat) _ciderHeightOfRow: (NSInteger) row {
+    if (_delegate != nil &&
+        [_delegate respondsToSelector: @selector(outlineView:heightOfRowByItem:)] == YES)
+        return [_delegate outlineView: self heightOfRowByItem: [self itemAtRow: row]];
+
+    return [super _ciderHeightOfRow: row];
+}
+
 - (BOOL) _isViewBased {
     BOOL viewBased = [_delegate respondsToSelector: @selector(outlineView:viewForTableColumn:item:)];
 

@@ -256,6 +256,7 @@ typedef NSUInteger NSTableViewColumnAutoresizingStyle;
 /* View based rows. NSOutlineView overrides the two below to ask its own delegate methods. */
 - (BOOL) _isViewBased;
 - (NSView *) _viewForTableColumn: (NSTableColumn *) column row: (NSInteger) row;
+- (CGFloat) _ciderHeightOfRow: (NSInteger) row;
 - (id) viewAtColumn: (NSInteger) column row: (NSInteger) row makeIfNecessary: (BOOL) makeIfNecessary;
 - (id) rowViewAtRow: (NSInteger) row makeIfNecessary: (BOOL) makeIfNecessary;
 - (void) reloadData;

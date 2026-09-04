@@ -16059,3 +16059,34 @@ neither existing trace can see.
 
 Also guarded, though it never fired here: `-[X11Display allFontFamilyNames]` fed
 `+stringWithUTF8String:` straight into a set, and that answers nil for bytes it cannot decode.
+
+## AN OUTLINE VIEW IS ASKED BY ITEM (task #115)
+
+The row height fix above went into `NSTableView`, which asks `tableView:heightOfRow:`. An outline
+view's delegate is asked `outlineView:heightOfRowByItem:` instead, and `NSOutlineView.m` did not
+contain that selector anywhere, so iA Writer's location sidebar kept the standard 16 points while the
+application asks for 22.
+
+The height query now lives in one place, `-_ciderHeightOfRow:`, and `NSOutlineView` overrides it. The
+group rows are 22 points, and the label inside gets its full 17 point height rather than being
+clamped into 16.
+
+**One guard came out of it.** Asked this early, iA Writer's delegate answers **0** for the one row
+under `Locations`. The intercell spacing then comes off again and the row is a NEGATIVE one point
+tall, which drew as a blue hairline where a selected row had been. A non-positive answer keeps the
+standard height.
+
+**Two more theories about the `Locatio...` truncation, both refuted here:**
+
+- Not the height clamp. The label is 17 points tall now, its full fitting height, and it still
+  truncates.
+- Not a missing redraw. It truncates in the resized capture too, and a compositor resize is the one
+  thing that forces the whole tree through the ordinary display path.
+
+There is one observation left for whoever picks it up: in the run BEFORE the zero-height guard,
+`Locations` drew in full, and that is the run where the row below it had a negative height. Same cell
+frame, same label frame `57x17`, same `fitting=57x17` in both. So whatever truncates is not the
+geometry this trace prints.
+
+All five re-run and looked at. MoneyMoney's sidebar row is taller now, which is its own answer, and
+iTerm2 hit the `start-stack mmap` loader flake once in three again.
