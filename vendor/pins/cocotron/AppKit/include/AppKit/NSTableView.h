@@ -93,6 +93,7 @@ typedef NSUInteger NSTableViewColumnAutoresizingStyle;
     id _delegate;
     id _dataSource;
     NSMutableDictionary *_cellViews;
+    NSMutableArray *_cellViewPool;
 
     NSTableHeaderView *_headerView;
     NSView *_cornerView;

@@ -15671,7 +15671,67 @@ away.
 **What it did not do:** the file list is still empty. `viewDidLoad` running for the library
 controllers did not install the tree view controller, so the missing link recorded above stands.
 
-One more measurement on the quit, for whoever picks it up: with the appearance pair on the process
-ends at about 2.3 seconds with status 0, no uncaught exception, and no `terminate:` seen under
-`CIDER_TRACE_MSGSEND=NSApplication`. So `-[NSApplication run]` returns rather than the application
-being killed, which points at the run loop being stopped rather than at a crash.
+**CORRECTED, and both halves of that paragraph were wrong.** I wrote that with the appearance pair
+on the process ends at about 2.3 seconds with status 0 and no `terminate:`, so `-[NSApplication run]`
+returns rather than the application being killed, which points at the run loop being stopped rather
+than at a crash. It is a crash. `prefix/ciderd.log` records `sigexc_handler(11, ...)` for the run,
+and counting the faults in that file before and after one appearance-pair run takes it from 20 to 21,
+which attributes the SIGSEGV to that run. The `NSApplication` filter printed nothing because the
+application object is `NSKVONotifying_NSApplication`, so the absence of `terminate:` was never
+evidence of anything.
+
+The other half is corrected below: the appearance pair is exactly what fills the file list.
+
+## A VENDED ROW VIEW MUST OUTLIVE ITS ROW (task #115)
+
+The appearance pair was never the fault. It reached code that had never run here, and that code hit
+a use after free this port has had since the view based table was added.
+
+**What the appearance pair does.** Two matched runs, the only difference `CIDER_VC_LIFECYCLE=all`,
+both with `CIDER_TRACE_FRAMES=1`, counting what the delegate vends:
+
+    appearance off   9 cell views, all IAOutlineTableCellHeaderView / SingleLineView (section headers)
+    appearance on   15 cell views, and IALibraryTableCellView at rows 0, 2 and 3
+
+So `viewWillAppear` and `viewDidAppear` are what make iA Writer build its file rows at all. Every
+earlier note saying the list is empty was measuring an application that had not been told its views
+were on screen.
+
+**Where it died.** The registers are in `ciderd.log` already, in Linux `gregs` order, and the block
+that follows them names `rip`, `rax`, `rbx`, `rcx`, `rdx`, `rdi`, `rsi`, `rbp` and `rsp` so the
+decode can be checked rather than assumed. `DYLD_PRINT_SEGMENTS=1` on the same run gives every mapped
+segment, which is what turns a raw `rip` into a name:
+
+    rip 0x721E3A24E75D -> /usr/lib/libobjc.A.dylib __TEXT +0x3D75D   = _objc_msgSend +0x1D
+    trapno 0xE, err 0x4, cr2 0x721CDE43318 = r10 + 0x18, and r10 was loaded from (%rdi)
+
+`objc_msgSend+0x1D` is `andl 0x18(%r10), %r11d`, one instruction after `andq (%rdi), %r10`. So the
+receiver was readable and **its isa was not**: a message to a freed object. `r13` held the selector
+`nameAccessoryIndicatorView`, which belongs to `IALibraryTableCellView`.
+
+**The defect.** `-[NSTableView _updateCellViewsInRect:]` released a cell view when its row scrolled
+out of the live set, and `-makeViewWithIdentifier:owner:` always answered nil, so the application
+allocated a fresh view for every vend and ours dropped the last reference to the old one. The trace
+shows rows 0 and 3 vending twice, and `-[IALibraryTableCellView dealloc]` as the last message before
+the process dies. macOS keeps vended views for reuse and hands them back through
+`makeViewWithIdentifier:`; that is now what happens here, in `-_retireCellView:`.
+
+Two comments in that file also had to go: they said the rows are drawn as cells so no view is ever
+held and none exists at any position. That stopped being true when the view based path was added, and
+`-viewAtColumn:row:makeIfNecessary:` now returns the view that is actually installed.
+
+**The second hole, closed at the same time.** A constraint does not retain its items, and
+`-removeFromSuperview` did not remove the constraints that mention the view from the ancestors it is
+leaving, which macOS does. Any one left behind names freed memory, and the next solve messages it
+from `CiderItemInScope`. `-_ciderRemoveConstraintsMentioningSubtree` removes them; constraints inside
+the view are untouched, because they travel with it.
+
+**Measured, with a control in the same build.** `CIDER_TABLE_NO_POOL=1` restores the release:
+
+    pool on    faults 25 -> 25, 1492 library cell views, capture 18630
+    pool off   faults 25 -> 26,    6 library cell views, capture 2578 (empty)
+    pool on    faults 26 -> 26, 1582 library cell views, capture 18519
+
+**What is on screen now.** Four file rows in the middle column, each drawing its accessory label,
+which reads `Updating...`. They survive a compositor resize and the application stays up. The row
+NAMES are still blank, and that is the next question rather than a solved one.

@@ -234,6 +234,8 @@ static void CiderFillBackground(NSColor *color, NSRect rect, const char *where) 
     [_selectedRowIndexes release];
     [_selectedColumns release];
     [_sortDescriptors release];
+    [_cellViews release];
+    [_cellViewPool release];
     [super dealloc];
 }
 
@@ -1252,6 +1254,8 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
         [self _setSelectedRowIndexes: selection];
 }
 
+static NSString *_CiderCellViewKey(NSInteger column, NSInteger row);
+
 /*
  * A REUSABLE VIEW FOR A ROW, or nil so the caller makes one.
  *
@@ -1261,29 +1265,42 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
  *     NSTextField *v = [table makeViewWithIdentifier: @"x" owner: self];
  *     if (v == nil) { v = [[NSTextField alloc] init...]; [v setIdentifier: @"x"]; }
  *
- * so nil is a complete answer, not a stub. It is also the only answer this table can give: the rows
- * are drawn as cells, so no view is ever held to hand back. Registering a nib for an identifier is
- * not supported, and iTerm2 does not do it.
+ * so nil remains a complete answer. What can be handed back is a view this table vended earlier and
+ * has since retired. Registering a nib for an identifier is not supported.
  */
 - (NSView *) makeViewWithIdentifier: (NSUserInterfaceItemIdentifier) identifier owner: (id) owner {
-    return nil;
+    NSView *reusable = nil;
+
+    for (NSView *view in _cellViewPool) {
+        if (identifier == nil || [identifier isEqual: [view identifier]]) {
+            reusable = view;
+            break;
+        }
+    }
+    if (reusable == nil)
+        return nil;
+
+    [[reusable retain] autorelease];
+    [_cellViewPool removeObjectIdenticalTo: reusable];
+
+    return reusable;
 }
 
 /*
- * Every row view currently made, which for this table is NONE: the rows are drawn as cells and no
- * row view is ever created, so the block is not called and that is the complete answer rather than
- * a stub. A caller uses this to touch what is on screen; here there is nothing to touch.
+ * Every ROW view currently made, which is none: a view based table here installs a view per cell and
+ * never wraps a row in one, so the block is not called.
  */
 - (void) enumerateAvailableRowViewsUsingBlock: (void (^)(id rowView, NSInteger row)) handler {
 }
 
 /*
- * The view at a cell, and the view for a row. Nil for the same reason the enumeration above is
- * empty: this table draws cells, so no view exists at any position and none can be made. makeIfNecessary
- * cannot change that, and nil is what a caller checks for.
+ * The view installed at a cell, which a view based table has and a cell based one does not.
+ *
+ * makeIfNecessary is not honoured: a view made here would belong to no row and be released again at
+ * once, so an answer of nil is the truthful one until the position is laid out.
  */
 - (id) viewAtColumn: (NSInteger) column row: (NSInteger) row makeIfNecessary: (BOOL) makeIfNecessary {
-    return nil;
+    return [_cellViews objectForKey: _CiderCellViewKey(column, row)];
 }
 
 - (id) rowViewAtRow: (NSInteger) row makeIfNecessary: (BOOL) makeIfNecessary {
@@ -1426,14 +1443,41 @@ static NSString *_CiderCellViewKey(NSInteger column, NSInteger row) {
     for (NSString *key in [_cellViews allKeys]) {
         if ([live containsObject: key])
             continue;
-        [[_cellViews objectForKey: key] removeFromSuperview];
+        [self _retireCellView: [_cellViews objectForKey: key]];
         [_cellViews removeObjectForKey: key];
     }
 }
 
+/*
+ * A VENDED VIEW OUTLIVES THE ROW IT WAS MADE FOR, so the table keeps it instead of releasing it.
+ *
+ * Dropping the last reference here deallocated a view the application was still using: iA Writer
+ * vends a library row, scrolls it away and vends it again, and the next message to the old one
+ * faulted inside objc_msgSend reading an isa that had been freed. macOS holds vended views for
+ * reuse, which is also what -makeViewWithIdentifier:owner: hands back.
+ *
+ * CIDER_TABLE_NO_POOL restores the release, which is how to tell this apart from an application
+ * fault in one run.
+ */
+- (void) _retireCellView: (NSView *) view {
+    const char *noPool = getenv("CIDER_TABLE_NO_POOL");
+
+    if (view == nil)
+        return;
+
+    [view removeFromSuperview];
+    if (noPool != NULL && noPool[0] != '\0')
+        return;
+
+    if (_cellViewPool == nil)
+        _cellViewPool = [[NSMutableArray alloc] init];
+    if (![_cellViewPool containsObject: view])
+        [_cellViewPool addObject: view];
+}
+
 - (void) _discardCellViews {
     for (NSView *view in [_cellViews allValues])
-        [view removeFromSuperview];
+        [self _retireCellView: view];
     [_cellViews removeAllObjects];
 }
 

@@ -2278,10 +2278,48 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
     [_subviews removeObjectIdenticalTo: view];
 }
 
+static BOOL CiderViewIsInSubtree(NSView *view, NSView *root) {
+    for (NSView *up = view; up != nil; up = [up superview]) {
+        if (up == root)
+            return YES;
+    }
+    return NO;
+}
+
+/*
+ * LEAVING A SUPERVIEW TAKES THE CONSTRAINTS THAT MENTION THIS VIEW WITH IT, as it does on macOS.
+ *
+ * A constraint does not retain its items, so one left behind on an ancestor names memory that is
+ * about to be freed, and the next solve messages it: that is a fault inside objc_msgSend on an isa
+ * that no longer exists. Constraints inside this view are untouched, since they travel with it.
+ */
+- (void) _ciderRemoveConstraintsMentioningSubtree {
+    for (NSView *ancestor = _superview; ancestor != nil; ancestor = [ancestor superview]) {
+        NSMutableArray *doomed = nil;
+
+        for (NSLayoutConstraint *constraint in [ancestor constraints]) {
+            id first = [constraint firstItem];
+            id second = [constraint secondItem];
+
+            if (!([first isKindOfClass: [NSView class]] && CiderViewIsInSubtree(first, self)) &&
+                !([second isKindOfClass: [NSView class]] && CiderViewIsInSubtree(second, self)))
+                continue;
+
+            if (doomed == nil)
+                doomed = [NSMutableArray array];
+            [doomed addObject: constraint];
+        }
+
+        if (doomed != nil)
+            [ancestor removeConstraints: doomed];
+    }
+}
+
 - (void) removeFromSuperviewWithoutNeedingDisplay {
     NSView *removeFrom = _superview;
     NSWindow *window = [self window];
 
+    [self _ciderRemoveConstraintsMentioningSubtree];
     [self _deepResignFirstResponder];
     [self _setSuperview: nil];
     [self _setWindow: nil];
