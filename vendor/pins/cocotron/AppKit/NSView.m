@@ -4634,8 +4634,13 @@ static BOOL CiderLayoutTracing(void) {
                     continue;
                 }
 
-                if (tracing && pass == 0)
-                    fprintf(stderr, "cider-layout   %s %p: %s.%s = %s.%s * %g + %g -> %s = %g\n",
+                /* EVERY PASS, WITH THE PASS SAID. This printed only on pass 0, so a rule that ran
+                 * later produced no resolved output at all and three attempts at one were debugged
+                 * on numbers nothing accounted for. A trace that excludes the new path is worse than
+                 * none, because it reads as coverage. */
+                if (tracing)
+                    fprintf(stderr,
+                            "cider-layout   p%d %s %p: %s.%s = %s.%s * %g + %g -> %s = %g\n", pass,
                             class_getName([subview class]), subview,
                             firstItem ? class_getName([firstItem class]) : "nil",
                             CiderAttributeName([constraint firstAttribute]),

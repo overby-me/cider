@@ -16274,3 +16274,16 @@ what the descendant branch actually resolves for `NSImageView .centerY == IAFile
 
 Cost so far: three builds, three reverts and no progress on the symptom. The next person should
 start with the trace, not with a rule.
+
+## A TRACE THAT EXCLUDES THE NEW PATH READS AS COVERAGE (task #184)
+
+`CIDER_TRACE_LAYOUT` printed its resolved lines under `if (tracing && pass == 0)`. Three attempts at
+a rule that deliberately ran on pass 2 therefore produced **no resolved output at all**, and each was
+debugged on a number nothing accounted for.
+
+It prints on every pass now, with the pass in the line:
+
+    cider-layout   p2 NSImageView 0x...: NSImageView.centerY = IAFileNameTextField.centerY * 1 + 1 -> centerY = ...
+
+Measured: 1693 resolved lines per pass instead of 1693 on pass 0 and none after, and iA Writer's
+capture is unchanged at 25953. The switch is off by default, so nothing else can be affected.
