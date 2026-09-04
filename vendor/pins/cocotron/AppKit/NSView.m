@@ -4167,6 +4167,27 @@ static BOOL CiderItemInScope(NSView *container, id item) {
     return [item isKindOfClass: [NSView class]] && [(NSView *) item superview] == container;
 }
 
+
+static NSView *CiderScopeSubview(NSView *container, id item) {
+    if (item == nil || item == container || ![item isKindOfClass: [NSView class]])
+        return nil;
+    for (NSView *view = item; view != nil; view = [view superview]) {
+        if ([view superview] == container)
+            return view;
+    }
+    return nil;
+}
+
+static NSRect CiderFrameInContainer(NSView *container, NSView *item) {
+    NSRect rect = [item frame];
+    for (NSView *view = [item superview]; view != nil && view != container;
+         view = [view superview]) {
+        rect.origin.x += NSMinX([view frame]);
+        rect.origin.y += NSMinY([view frame]);
+    }
+    return rect;
+}
+
 /* The value an attribute of `item` has, in the coordinate space of `container`. */
 static BOOL CiderAttributeValue(NSView *container, id item, NSLayoutAttribute attribute,
                                 CGFloat *out)
@@ -4176,7 +4197,7 @@ static BOOL CiderAttributeValue(NSView *container, id item, NSLayoutAttribute at
     if (item == container)
         rect = [container bounds];
     else if ([item isKindOfClass: [NSView class]])
-        rect = [(NSView *) item frame];
+        rect = CiderFrameInContainer(container, (NSView *) item);
     else
         return NO;
 
@@ -4200,6 +4221,21 @@ static BOOL CiderAttributeValue(NSView *container, id item, NSLayoutAttribute at
     default:
         return NO;
     }
+}
+
+static BOOL CiderDescendantAdjust(NSView *container, NSView *subview, id item,
+                                  NSLayoutAttribute attribute, CGFloat *value)
+{
+    CGFloat itemValue = 0, subviewValue = 0;
+    NSRect frame = [subview frame];
+
+    if (item == subview) return YES;
+    if (attribute == NSLayoutAttributeWidth || attribute == NSLayoutAttributeHeight) return NO;
+    if (!(frame.size.width > 1) || !(frame.size.height > 1)) return NO;
+    if (!CiderAttributeValue(container, item, attribute, &itemValue) ||
+        !CiderAttributeValue(container, subview, attribute, &subviewValue)) return NO;
+    *value -= itemValue - subviewValue;
+    return YES;
 }
 
 /*
@@ -4624,10 +4660,25 @@ static BOOL CiderLayoutTracing(void) {
 
                 NSLayoutRelation relation = [constraint relation];
 
-                if (!CiderItemInScope(self, firstItem) || !CiderItemInScope(self, secondItem))
-                    continue;
+                BOOL deep = (pass == 2);
+                NSView *firstOwner = deep ? CiderScopeSubview(self, firstItem) : nil;
+                NSView *secondOwner = deep ? CiderScopeSubview(self, secondItem) : nil;
 
-                if (firstItem == subview) {
+                if (!deep) {
+                    if (!CiderItemInScope(self, firstItem) ||
+                        !CiderItemInScope(self, secondItem))
+                        continue;
+                    firstOwner = (firstItem == self) ? nil : firstItem;
+                    secondOwner = (secondItem == self) ? nil : secondItem;
+                } else {
+                    if ((firstItem != nil && firstItem != self && firstOwner == nil) ||
+                        (secondItem != nil && secondItem != self && secondOwner == nil))
+                        continue;
+                    if (firstOwner != nil && firstOwner == secondOwner)
+                        continue;
+                }
+
+                if (firstOwner == subview) {
                     solveFor = [constraint firstAttribute];
                     if (secondItem == nil) {
                         value = [constraint constant];
@@ -4641,7 +4692,9 @@ static BOOL CiderLayoutTracing(void) {
                                 CiderConstantForAxis(solveFor, flipped,
                                                      [constraint constant]);
                     }
-                } else if (secondItem == subview && firstItem != nil) {
+                    if (!CiderDescendantAdjust(self, subview, firstItem, solveFor, &value))
+                        continue;
+                } else if (secondOwner == subview && firstItem != nil) {
                     /*
                      * THE CONTAINER IS OFTEN THE FIRST ITEM, and dropping those constraints is
                      * what made this solver unfit to own a frame.
@@ -4664,6 +4717,8 @@ static BOOL CiderLayoutTracing(void) {
                     value = (other -
                              CiderConstantForAxis(solveFor, flipped,
                                                   [constraint constant])) / multiplier;
+                    if (secondItem != subview)
+                        continue;
                     if (multiplier > 0)
                         relation = CiderReverseRelation(relation);
                 } else {

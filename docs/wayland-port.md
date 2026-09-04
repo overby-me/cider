@@ -16489,3 +16489,51 @@ dumps on one timeline. That is the whole remaining question, and no code needs c
 All five re-run and looked at, unchanged: iA Writer 25953, MoneyMoney 15657, iTerm2 with a live
 prompt. The traces are gated on `CIDER_TRACE_FRAMES` and add only an address to lines that already
 existed.
+
+## A CONSTRAINT MAY NAME A VIEW FURTHER DOWN, AND NOW IT WORKS (task #184)
+
+The descendant rule is committed, on the sixth attempt, and iA Writer's file rows read in the right
+order at last:
+
+    IndexProbe.md        1:25 AM
+    Updating...
+
+**The rule.** A constraint whose item is not a direct subview is mapped to the direct subview it sits
+in, `CiderScopeSubview`, and the value is translated by the gap the two currently have,
+`CiderDescendantAdjust`. It runs only on the LAST pass, so the gap it reads has settled. A SIZE asked
+of a descendant is refused, since it is not the subview's to answer, and a descendant on the RIGHT of
+a constraint is skipped, because that constraint exists to place the other item, which is a direct
+subview and gets its own turn.
+
+**Why five attempts failed, and none of it was this rule.** Each failure was a separate defect, all
+now fixed and committed:
+
+1. `CIDER_TRACE_LAYOUT` printed resolved lines only on pass 0, so a pass 2 rule produced no output.
+2. The frame line printed only when the rect changed, hiding 1279 of 1632 solves.
+3. `NSStackView`'s arranged subviews were placed by the solver as well as by the stack.
+4. `NSCell cellSize` answers 10000 when it does not measure itself, `NSControl` passed that on as an
+   intrinsic content size, and a correct centre of 9.5 became an origin of -4990.5.
+5. A Y constant is measured downward whatever the flippedness: 48 of 48 positional Y solves landed
+   outside their container.
+6. A descendant on the right of a constraint was being solved for the wrong item.
+
+**The measurement that closed it**, joining the writes and the dumps by pointer in one run:
+
+    WRITE  NSStackView 0x777ab1d4d840 -> 146x17 at 0,0    <- _ciderSolveConstraintsApplying:
+    DUMP   in cell 0x777ab1d49680     146x17 at 0,0
+    WRITE  NSStackView 0x777ab1d4d840 -> 207x17 at 0,42   <- _ciderSolveConstraintsApplying:
+    DUMP   in cell 0x777ab1d49680     207x17 at 0,42
+    ... every later dump at 0,42
+
+**CORRECTED, twice over.** I claimed the solve was being undone, then that a different view was being
+drawn. Neither is true. The stack reaches y=42 and stays there, and the earlier readings came from a
+build with no rule, where nothing moves it at all.
+
+The final layout, from the cell dump:
+
+    cell IALibraryTableCellView 207x65 at 14,195
+      sub NSStackView  271x17 at 0,42     the name and its time, at the top
+      sub NSTextField  207x34 at 0,8      the status, below it
+
+All five applications re-run and every capture looked at: MoneyMoney 15657, Swift Publisher's gallery
+151460, LibreOffice 135528, iTerm2 with a live prompt, and iA Writer at 25875 with the rows in order.
