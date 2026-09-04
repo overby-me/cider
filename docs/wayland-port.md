@@ -15735,3 +15735,55 @@ the view are untouched, because they travel with it.
 **What is on screen now.** Four file rows in the middle column, each drawing its accessory label,
 which reads `Updating...`. They survive a compositor resize and the application stays up. The row
 NAMES are still blank, and that is the next question rather than a solved one.
+
+## A STACK VIEW IS AS BIG AS WHAT IT ARRANGES (task #115)
+
+The blank names were one number. `CIDER_TRACE_FRAMES=1` prints every subview of a vended cell with
+its string and its fitting size, and the row said this:
+
+    cell IALibraryTableCellView 207x31 at 14,0
+      sub NSStackView 1x1 at 0,0
+      sub NSImageView 207x31 at 0,0
+      sub NSTextField 66x34 at 141,0   string="Updating..."
+    degenerate IAFileNameTextField_Aspects_ 0x1 fitting 87x17 bounds 1x1
+
+The name was never missing. It was in a stack view that was **one point square**, so everything in it
+was clamped to a one point container, while the accessory beside it, which is not in the stack, drew
+correctly.
+
+`-_ciderSizeDegenerateSubviews` exists for exactly this and could not help, because it asks for the
+fitting size and `-[NSView fittingSize]` starts from the frame and only falls back to the intrinsic
+size when that frame is **empty**. A frame of 1x1 is not empty, so 1x1 was the answer, forever.
+
+A stack view is the one view whose size is a function of its contents, so it now works it out:
+`-_ciderArrangedSize` sums the fitting sizes along the axis with the spacing and takes the maximum
+across, `-intrinsicContentSize` and `-fittingSize` both answer with it, and an explicit size
+constraint on the stack still wins. The rows then measure 146x17 and 110x17, one per name.
+
+**The file list, which has been empty for the whole port, now reads:**
+
+    IndexProbe.md   1:25 AM
+    probe.txt       3:34 PM
+    Second.md       1:18 PM
+    Cider.md       11:07 AM
+
+Still wrong there: the `Updating...` accessory is 34 points tall in a 31 point row and sits about
+half a row high, so it draws into the row above.
+
+## THE VIEW CONTROLLER LIFECYCLE IS ON BY DEFAULT
+
+`CIDER_VC_LIFECYCLE` now defaults to the whole lifecycle. `=0` turns it off and `=1` leaves only
+`-viewDidLoad`, which is the previous default and the control to reach for.
+
+All five applications re-run and every capture looked at:
+
+- **iA Writer** draws its file list, above.
+- **Swift Publisher** opens the Template Gallery with its category list and the welcome window.
+- **iTerm2** has a live prompt, types `echo cider`, and reflows on a compositor resize. Note the
+  driver needs `LAUNCHD=0`, which turns launchd ON; without it the session ends immediately and that
+  is the harness, not the application.
+- **LibreOffice** draws the Start Center in full.
+- **MoneyMoney** is unchanged, including its intermittency. Reaching the main window rather than
+  sitting on `Opening database...` happened in **1 of 6** runs with the pair on and **2 of 5** with
+  `CIDER_VC_LIFECYCLE=1`, against a previously measured baseline of about 3 of 12. Those samples
+  cannot tell the two apart, so the honest claim is that nothing here moved it either way.

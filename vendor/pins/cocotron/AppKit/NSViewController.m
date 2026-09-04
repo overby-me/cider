@@ -99,19 +99,21 @@
 }
 
 /*
- * -viewDidLoad ON, the appearance pair OFF, and the split is measured rather than cautious.
+ * THE WHOLE LIFECYCLE IS ON, and each half of it was measured before it got there.
  *
  * AppKit sends -viewDidLoad once after the view loads and it is where a controller does the setup
  * its nib cannot. Nothing here ever sent it, and 36 classes in iA Writer implement it, so that much
  * of the application had never run. It now fires for 31 controllers there and the window is
- * unchanged, so it is on.
+ * unchanged.
  *
- * The appearance pair is a different story: with viewWillAppear and viewDidAppear as well, iA
- * Writer runs further, past two selectors this port was missing, and then QUITS three seconds in, 2
- * runs of 2. Losing the window is worse than not running that setup, so it waits for whoever finds
- * what the application decides there.
+ * viewWillAppear and viewDidAppear were held back while they killed iA Writer three seconds in. The
+ * fault was not theirs: they reach the code that builds the file rows, and that code met a use after
+ * free in the view based table, fixed in -[NSTableView _retireCellView:]. With the pair on, iA
+ * Writer vends IALibraryTableCellView at rows 0, 2 and 3 and draws them; without it, only the
+ * section headers exist.
  *
- * CIDER_VC_LIFECYCLE=0 turns everything off, =all adds the appearance pair back.
+ * CIDER_VC_LIFECYCLE=0 turns everything off and =1 leaves only -viewDidLoad, which is how to tell a
+ * lifecycle regression from an application fault in one run.
  */
 static int CiderViewControllerLifecycle(void) {
     static int mode = -1;
@@ -121,10 +123,10 @@ static int CiderViewControllerLifecycle(void) {
 
         if (value != NULL && (strcmp(value, "0") == 0 || strcmp(value, "off") == 0))
             mode = 0;
-        else if (value != NULL && strcmp(value, "all") == 0)
-            mode = 2;
-        else
+        else if (value != NULL && strcmp(value, "1") == 0)
             mode = 1;
+        else
+            mode = 2;
     }
     return mode;
 }

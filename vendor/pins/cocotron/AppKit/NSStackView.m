@@ -298,6 +298,63 @@ static NSNumber *_CiderViewKey(NSView *view) {
     _detachesHiddenViews = detaches;
 }
 
+/*
+ * A STACK VIEW IS AS BIG AS WHAT IT ARRANGES, which is the one size NSView cannot work out.
+ *
+ * -fittingSize starts from the frame and only falls back to the intrinsic size when that frame is
+ * empty, so a stack nothing has sized yet answers with the 1x1 it was born with, forever. iA Writer
+ * keeps each file name in a stack view: the row was 207 points wide, the stack inside it was 1x1,
+ * and every label was clamped to that one point container while the accessory beside it drew fine.
+ */
+- (NSSize) _ciderArrangedSize {
+    BOOL vertical = _orientation == NSUserInterfaceLayoutOrientationVertical;
+    NSSize size = NSMakeSize(_edgeInsets.left + _edgeInsets.right,
+                             _edgeInsets.top + _edgeInsets.bottom);
+    CGFloat along = 0, across = 0;
+    NSInteger laid = 0;
+
+    for (NSView *view in _arrangedSubviews) {
+        NSSize fitting;
+
+        if (_detachesHiddenViews && [view isHidden])
+            continue;
+
+        fitting = [view fittingSize];
+        if (laid++ > 0)
+            along += _spacing;
+        along += vertical ? fitting.height : fitting.width;
+        if ((vertical ? fitting.width : fitting.height) > across)
+            across = vertical ? fitting.width : fitting.height;
+    }
+
+    if (vertical) {
+        size.width += across;
+        size.height += along;
+    } else {
+        size.width += along;
+        size.height += across;
+    }
+
+    return size;
+}
+
+- (NSSize) intrinsicContentSize {
+    return [self _ciderArrangedSize];
+}
+
+/* A size the stack was given outright still wins over what it would choose. */
+- (NSSize) fittingSize {
+    NSSize size = [self _ciderArrangedSize];
+    NSSize explicit = [self _ciderExplicitSize];
+
+    if (explicit.width >= 0)
+        size.width = explicit.width;
+    if (explicit.height >= 0)
+        size.height = explicit.height;
+
+    return size;
+}
+
 /* The arrangement is a function of the bounds, so a stack view that is resized has to redo it: the
  * setters below were the only callers, and a stack given its size by a constraint kept an empty
  * arrangement. */
