@@ -1,0 +1,80 @@
+a coordination wait must be bounded
+
+With launchd running, launchd registers com.apple.FileCoordination as a MachService NAME and never
+starts the job, so the send succeeds, the port is valid, and no reply ever arrives. The synchronous
+path then sat in dispatch_semaphore_wait with DISPATCH_TIME_FOREVER on the very FIRST intent, for
+the whole run.
+
+Measured, with the daemon proved absent rather than assumed: /var/log/fcdaemon.log, which the job
+plist asks for by name with FCD_DEBUG set, is never created, and no filecoordinationd process exists
+when the guest is inspected from the host by /proc/pid/exe.
+
+Coordination is advisory, so giving up and proceeding is the lesser failure. The first caller pays
+the whole timeout and latches, so later callers pay a token wait instead of the full five seconds
+each.
+
+The semaphore needed an owner for this to be safe: a bounded wait can return before the reply
+arrives, so the reply block now holds its own reference and releases it, rather than signalling a
+semaphore the waiting frame has already freed.
+
+WHAT THIS DOES NOT DO, stated because the capture was looked at: iA Writer under launchd still shows
+an EMPTY file list. The hang is gone and the timeout fires twice as designed, and the list is empty
+anyway, so that has a second cause which is not this one. Without launchd, where the daemon answers
+with an error immediately, nothing changes: a fresh index still fills every body column and the
+counters still read four of four.
+
+--- a/src/NSFileCoordinator.m
++++ b/src/NSFileCoordinator.m
+@@ -90,6 +90,8 @@
+ static xpc_connection_t daemonConnection = NULL;
+ static dispatch_queue_t notificationQueue = NULL;
+ static dispatch_queue_t replyQueue = NULL;
++/* Latched once the daemon has failed to answer, so only the first caller pays the whole timeout. */
++static BOOL daemonUnresponsive = NO;
+ 
+ static void handle_xpc_error(xpc_object_t error) {
+ 	// do nothing with it for now
+@@ -361,6 +363,11 @@
+ 
+ 	if (blocking) {
+ 		waiter = dispatch_semaphore_create(0);
++		/*
++		 * OWNED BY THE REPLY BLOCK TOO. A bounded wait can return before the reply arrives, so the
++		 * block needs its own reference or a late reply signals a semaphore this frame has freed.
++		 */
++		dispatch_retain(waiter);
+ 	}
+ 
+ 	void (^completeBlock)() = [[^{
+@@ -419,6 +426,7 @@
+ 
+ 		if (blocking) {
+ 			dispatch_semaphore_signal(waiter);
++			dispatch_release(waiter);
+ 		} else {
+ 			[queue addOperationWithBlock: ^{
+ 				FCDebug(@"invoking user block %p on user queue %p with error %p", (void*)block, (void*)queue, (void*)errorPointer);
+@@ -434,7 +442,22 @@
+ 	xpc_release(message);
+ 
+ 	if (blocking) {
+-		dispatch_semaphore_wait(waiter, DISPATCH_TIME_FOREVER);
++		/*
++		 * BOUNDED, because launchd registers com.apple.FileCoordination as a MachService name and
++		 * then never starts the job, so the send succeeds, the port is valid and no reply ever
++		 * comes. Waiting forever on that made iA Writer show an EMPTY library rather than a slow
++		 * one. Coordination is advisory, so giving up and proceeding is the lesser failure.
++		 *
++		 * The first caller pays the full wait; once the daemon is known not to answer, later
++		 * callers pay a token wait instead of the whole timeout each.
++		 */
++		int64_t timeout = daemonUnresponsive ? (NSEC_PER_SEC / 10) : (5 * NSEC_PER_SEC);
++
++		if (dispatch_semaphore_wait(waiter, dispatch_time(DISPATCH_TIME_NOW, timeout)) != 0) {
++			FCDebug(@"no reply from the coordination daemon; proceeding uncoordinated");
++			daemonUnresponsive = YES;
++			daemonAbsent = YES;
++		}
+ 
+ 		FCDebug(@"invoking user block %p synchronously with error %p", (void*)block, (void*)errorPointer);
+ 		NSError* error = [errorPointer autorelease];
