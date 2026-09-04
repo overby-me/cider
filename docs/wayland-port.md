@@ -15841,3 +15841,30 @@ work needs the descendant relation expressed as something the inner layout canno
 a delta sampled per pass.
 
 Reverted with `jj restore`, rebuilt, and iA Writer is back at 25197 with its names.
+
+## IA WRITER AGAINST THE THREE CRITERIA (task #115)
+
+**RENDERS.** The window has its menu bar, the location sidebar, and the file list, which reads
+`IndexProbe.md 1:25 AM`, `probe.txt 3:34 PM`, `Second.md 1:18 PM`, `Cider.md 11:07 AM`. Captures
+`ia-rowh` and `ia-back`, 25197 bytes.
+
+**INTERACTIVE.** A click at 97,36 opens the File menu with all of its items, its key equivalents
+(Command N, shift Command N, option Command N, Command O, Command W, Command S, shift Command S), its
+greyed items and its submenu arrows. Command N on its own creates a document: the window title
+becomes `Untitled` and the window takes key. Capture `ia-inter/d2-click`, `ia-new4/d3-typed`.
+
+Typing into the EDITOR still does nothing, and that is the application refusing, not the port:
+`-[IAEditorViewController updateEditabilityForDocument:]` sets editable from
+`[[IAAccount sharedAccount] isReadWrite]`, which answers NO on this unlicensed copy. Not faked.
+
+**RESIZABLE.** The compositor resize relayouts: the window narrows, the columns follow it and the
+file list keeps its rows, with the times clipped by the narrower column as they should be. Capture
+`ia-back/d4-resized`.
+
+**What is still wrong, in one place so it is not lost:**
+
+1. The two lines of a file row are in the wrong order, status above name, because both vertical
+   constraints name a grandchild. The attempt at that is written up above, refuted.
+2. The location sidebar draws a stray glyph at x=0 on every row, and `Locations` is truncated to
+   `Locatio...` at the starting width although it fits after a resize.
+3. `Updating...` never becomes anything else, which is the library index not finishing.
