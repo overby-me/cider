@@ -1,0 +1,41 @@
+say which localized key was asked for and by whom
+
+CIDER_TRACE_LOCALIZED prints every key a bundle is asked for, what it answered, and the CALLER, from
+__builtin_return_address. The caller is the point: a stripped application will not tell you which of
+its call sites wanted a string, and a message send trace cannot help because it filters on the
+receiver class, and NSBundle is the receiver for every one of them.
+
+It settled a question that four rounds of static reading got WRONG. iA Writer shows Updating under
+every filename in its library, and the disassembly appeared to say that the only reference to
+Library_Snippet_Updating sat after a call to normalizedTextFromText:name: that a calibrated message
+trace showed was never sent. One line closed it:
+
+    CIDER_LOCALIZED Library_Snippet_Updating -> Updating... (from 0x100146563)
+
+That return address belongs to the OTHER branch, the one taken when excerptProvider is nil. The
+literal pool comment in the disassembly names the string at the naive lea target, and the code forms
+its Swift String differently, so reading the comment instead of the running program pointed at the
+wrong branch for four iterations.
+
+--- a/src/NSBundle.m
++++ b/src/NSBundle.m
+@@ -691,7 +691,18 @@
+ 
+ - (NSString *)localizedStringForKey:(NSString *)key value:(NSString *)value table:(NSString *)tableName
+ {
+-    return [(NSString *)CFBundleCopyLocalizedString(_cfBundle, (CFStringRef)key, (CFStringRef)value, (CFStringRef)tableName) autorelease];
++    NSString *result = [(NSString *)CFBundleCopyLocalizedString(_cfBundle, (CFStringRef)key, (CFStringRef)value, (CFStringRef)tableName) autorelease];
++    const char *trace = getenv("CIDER_TRACE_LOCALIZED");
++
++    /* The return address names the caller, which is what a stripped application will not tell you. */
++    if (trace != NULL && trace[0] != '\0')
++    {
++        fprintf(stderr, "CIDER_LOCALIZED %s -> %s (from %p)\n", [key UTF8String], [result UTF8String],
++                __builtin_return_address(0));
++        fflush(stderr);
++    }
++
++    return result;
+ }
+ 
+ - (id)objectForInfoDictionaryKey:(NSString *)key
