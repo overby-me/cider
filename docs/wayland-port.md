@@ -15589,3 +15589,26 @@ State` keyed archive in `pro.writer.mac.plist`, and moving the whole plist aside
 fresh one gives exactly the same empty column. So the restore path fails on a default record, not on
 a stale saved one, and nobody needs to spend a build bisecting prefix state for this the way
 LibreOffice cost two.
+
+### What the file list is NOT waiting for, eliminated one at a time
+
+Each of these was a plausible cause and each is now ruled out by measurement, so nobody needs to
+re-tread them:
+
+- **The index is not empty and not stale.** `index.db` holds 2 locations and 4 items, and adding a
+  new file to `/Users/root/Documents` and relaunching puts it in the Item table, with the table
+  rebuilt that run. The scan works.
+- **The indexing operation completes.** `CIDER_TRACE_MSGSEND=IndexingOperation` shows
+  `-[IALibraryIndexingOperation start]`, `isExecuting`, and `-[IAAsynchronousOperation finish]`. Our
+  NSOperation machinery is not leaving it unfinished.
+- **KVO delivers.** `willChangeValueForKey:` and `didChangeValueForKey:` fire on the
+  `NSKVONotifying_` subclasses of both the navigation history and the library controller.
+- **It is not prefix state**, as above: a fresh preferences plist gives the same empty column.
+- **There are no database errors left.** The `DB Error` lines that the
+  `componentsJoinedByString:` fix removed have not come back; the count is 0.
+
+What remains is the one link already named: the tree view controller's view exists, fully configured,
+and is never inserted, because the navigation container that would install it is never asked for its
+view. `Location.state` stays 0 and `Location.indexingState` stays 1 with `totalItemCount` 0 while the
+Item rows are correct, so the location is never marked ready either, and those two may be the same
+fault seen from two sides.
