@@ -16250,3 +16250,27 @@ MoneyMoney 15657, Swift Publisher's gallery 151460, iTerm2 with a live prompt, L
 That removes the reason both descendant attempts spread their error. The two lines of a file row are
 still in the wrong order, since the constraints that order them still name a grandchild, but a third
 attempt now starts from a name field that is where its stack put it.
+
+### TRIED AND REVERTED A THIRD TIME, and my stated reason for the first two was wrong (task #184)
+
+I wrote above that the prerequisite for the descendant solve was the name field being misplaced
+inside its own stack, and that fixing it would let a third attempt work. **It did not.** With
+arranged subviews left to `NSStackView`, and the pass gating and the degenerate refusal in place, the
+third attempt produced the SAME numbers as the first two: the hidden image view at **y = -4990.5**,
+the accessory at y = -34, the capture at 19948 against 25953.
+
+So the inner placement was a real defect, worth fixing on its own merits and now committed, but it
+was **not** the cause of this one. That correction matters more than the attempt.
+
+**And the instrument cannot see the path.** `CIDER_TRACE_LAYOUT` prints its resolved lines under
+
+    if (tracing && pass == 0)
+
+so a rule that only runs on pass 2 produces no resolved output at all. Three attempts were made
+without ever seeing a single value the new code computed, which is why each one ended with a number
+nobody could account for. **Widen that gate before touching this again**, print the pass, and read
+what the descendant branch actually resolves for `NSImageView .centerY == IAFileNameTextField
+.centerY + 1`, which is the constraint that produces the -4990.
+
+Cost so far: three builds, three reverts and no progress on the symptom. The next person should
+start with the trace, not with a rule.
