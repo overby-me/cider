@@ -4203,6 +4203,38 @@ static BOOL CiderAttributeValue(NSView *container, id item, NSLayoutAttribute at
 }
 
 /*
+ * A Y CONSTANT IS MEASURED DOWNWARD, whatever the container's flippedness.
+ *
+ * Auto Layout works in a top left origin space, so a positive constant on top, bottom or centerY
+ * always moves an edge DOWN the screen. This solver reads top as NSMaxY in an unflipped view, where
+ * down is a subtraction, and the constant was added regardless. Both of these land outside their
+ * container by exactly the constant, and both are from one iA Writer run:
+ *
+ *   IATitlebarBackgroundView.top = NSView.top * 1 + 38 -> top = 548   (the container is 510 tall)
+ *   NSView.bottom = NSStackView.bottom * 1 + 1 -> bottom = -1
+ *
+ * POSITIONS ONLY. A height constant has no direction, and 786 of the 1659 Y solves in that run are
+ * sizes. Every one of the 48 positional ones has a multiplier of 1, which is what makes a plain
+ * negation exact: with m != 1 the coordinate flip leaves an extra H(1-m) term, and nothing here
+ * writes one.
+ */
+static CGFloat CiderConstantForAxis(NSLayoutAttribute attribute, BOOL flipped, CGFloat constant) {
+    if (flipped)
+        return constant;
+
+    switch (attribute) {
+    case NSLayoutAttributeTop:
+    case NSLayoutAttributeBottom:
+    case NSLayoutAttributeCenterY:
+    case NSLayoutAttributeFirstBaseline:
+    case NSLayoutAttributeLastBaseline:
+        return -constant;
+    default:
+        return constant;
+    }
+}
+
+/*
  * AN INEQUALITY IS A BOUND, NOT AN ANSWER.
  *
  * Reading a relation as an equality is not a safe approximation, it is a wrong number: iA Writer
@@ -4605,7 +4637,9 @@ static BOOL CiderLayoutTracing(void) {
                         if (!CiderAttributeValue(self, secondItem, [constraint secondAttribute],
                                                  &other))
                             continue;
-                        value = other * [constraint multiplier] + [constraint constant];
+                        value = other * [constraint multiplier] +
+                                CiderConstantForAxis(solveFor, flipped,
+                                                     [constraint constant]);
                     }
                 } else if (secondItem == subview && firstItem != nil) {
                     /*
@@ -4627,7 +4661,9 @@ static BOOL CiderLayoutTracing(void) {
                     if (!CiderAttributeValue(self, firstItem, [constraint firstAttribute], &other))
                         continue;
                     solveFor = [constraint secondAttribute];
-                    value = (other - [constraint constant]) / multiplier;
+                    value = (other -
+                             CiderConstantForAxis(solveFor, flipped,
+                                                  [constraint constant])) / multiplier;
                     if (multiplier > 0)
                         relation = CiderReverseRelation(relation);
                 } else {

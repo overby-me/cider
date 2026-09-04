@@ -16322,3 +16322,29 @@ constant of +6 moves the edge six points ABOVE the top of the cell rather than s
 Layout measures its Y constants downward whatever the view's flippedness, so the constant needs the
 sign the container's coordinate system implies. That is the fourth thing to check, and it is one
 line of arithmetic rather than a new rule.
+
+## A Y CONSTANT IS MEASURED DOWNWARD (task #184)
+
+Auto Layout works in a top left origin space, so a positive constant on `top`, `bottom` or `centerY`
+always moves an edge DOWN the screen. This solver reads `top` as `NSMaxY` in an unflipped view, where
+down is a subtraction, and it added the constant regardless.
+
+**Reachable today, without any uncommitted rule.** From one iA Writer run:
+
+    IATitlebarBackgroundView.top = NSView.top * 1 + 38 -> top = 548   (the container is 510 tall)
+    NSView.bottom = NSStackView.bottom * 1 + 1 -> bottom = -1
+
+Each lands outside its container by exactly the constant. Counting the whole run:
+
+    before   48 positional Y solves with a constant in an unflipped container, 48 land OUTSIDE it
+    after    48 positional Y solves with a constant in an unflipped container,  0 land outside it
+
+**Positions only.** A height constant has no direction, and 786 of the 1659 Y solves in that run are
+sizes. Every one of the 48 positional ones has a multiplier of 1, which is what makes a plain
+negation exact: with a multiplier the coordinate flip leaves an extra `H(1-m)` term, and nothing in
+these applications writes one.
+
+All five applications re-run and every capture looked at, all unchanged: iA Writer 25953, MoneyMoney
+15657, Swift Publisher's gallery 151460, LibreOffice 135528, iTerm2 with a live prompt. So these
+constraints were being overridden or clamped before they reached the screen; the solver is right now
+regardless, and the next thing that reads one will get the right answer.
