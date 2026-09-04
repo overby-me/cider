@@ -15915,3 +15915,42 @@ place. That is the residual, and it is task #162 territory rather than a claim o
 
 All five applications re-run and every capture looked at: iA Writer 25197 with its file list, Swift
 Publisher 49641, iTerm2 with a live prompt and typed text, LibreOffice 135528.
+
+### CORRECTED: the 9 of 10 above was my own instrument
+
+I published "1 of 6 before, 9 of 10 after" for the bounded log queue. **Those ten runs all had
+`CIDER_TRACE_ASYNC=1` set**, and that trace does an `fprintf` and an `fflush` per dispatch. It
+throttles the very producer whose rate is the fault, so the measurement partly measured the probe.
+Three runs immediately afterwards without it went straight back to the splash.
+
+Re-measured with no instrument at all:
+
+    before any change          2 of 9
+    bounded queue only         4 of 10
+    ASL send off by default   10 of 10
+
+So the cap helps and does not cure. The cure is not sending at all: **nothing in this port drains the
+log socket**, so `asl_log` was pure cost, and it is now behind `CIDER_OSLOG_ASL=1` for anyone who
+runs a logging daemon. `CIDER_TRACE_OSLOG` still prints every entry, which is the useful half.
+
+That is also the general lesson, and it is not the first time: an instrument that writes to stderr
+per event changes the timing of the thing it measures. When a rate is the answer, the final number
+must come from a run with the probe OFF.
+
+## MONEYMONEY AGAINST THE THREE CRITERIA (task #117)
+
+**RENDERS.** The main window, its sidebar, its toolbar and its trial banner, 10 of 10 runs, capture
+15657.
+
+**INTERACTIVE.** A click at 137,36 opens the File menu with its items, their greyed state and their
+key equivalents. Capture `mm-crit4/d2-click`.
+
+**RESIZABLE.** The window narrows and relayouts: the toolbar search field follows the new width and
+the status bar with it. Capture `mm-crit4/d4-resized`.
+
+No credentials were used anywhere in this, and none ever will be.
+
+All five applications re-run and every capture looked at: iA Writer 25197 with its file list, Swift
+Publisher 49635 with its Template Gallery, LibreOffice 135528 and its resize, iTerm2 with a live
+prompt in 2 of 3. The third failed with `[mldr] start-stack mmap at 0x7fffff600000 failed`, which is
+the loader naming itself and has nothing to do with logging.

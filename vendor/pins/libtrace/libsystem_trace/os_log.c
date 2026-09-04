@@ -210,12 +210,23 @@ _os_log_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, ui
 	int sendLevel = level;
 
 	/*
-	 * THE QUEUE MUST HAVE A FLOOR, and losing entries is the documented cost above rather than a
-	 * new one. asl_log drains at about 21 a second with no daemon to take them and MoneyMoney
-	 * produced about 150, so the queue grew to 11884 pending blocks and the one that mattered,
-	 * com.moneymoney-app.sqlcipher, was queued behind them and never ran. The application sat on
-	 * its splash and its database was never opened.
+	 * NOTHING DRAINS THE LOG SOCKET HERE, so the send is pure cost and it is opt in.
+	 *
+	 * asl_log managed about 21 entries a second against the 150 MoneyMoney produced, so its serial
+	 * queue grew to 11884 pending blocks, kept a worker busy continuously, and the one block that
+	 * mattered, com.moneymoney-app.sqlcipher, never got scheduled: the application sat on its
+	 * splash and never opened its database. CIDER_OSLOG_ASL=1 restores the send for anyone who
+	 * runs a logging daemon, and CIDER_TRACE_OSLOG prints the entries regardless.
 	 */
+	const char *aslWanted = getenv("CIDER_OSLOG_ASL");
+	if (aslWanted == NULL || aslWanted[0] == '\0') {
+		asl_release(owned);
+		free(text);
+		free((void *) hex);
+		return;
+	}
+
+	/* A floor as well, because losing entries is the documented cost above rather than a new one. */
 	if (__atomic_load_n(&pendingEntries, __ATOMIC_RELAXED) >= kMaxPendingEntries) {
 		long dropped = __atomic_add_fetch(&droppedEntries, 1, __ATOMIC_RELAXED);
 
