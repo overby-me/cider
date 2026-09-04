@@ -1298,6 +1298,8 @@ static NSString *_CiderCellViewKey(NSInteger column, NSInteger row);
 
     [[reusable retain] autorelease];
     [_cellViewPool removeObjectIdenticalTo: reusable];
+    if (getenv("CIDER_TRACE_FRAMES") != NULL)
+        fprintf(stderr, "CIDER_FRAME reuse %s %p\n", object_getClassName(reusable), reusable);
 
     return reusable;
 }
@@ -1414,9 +1416,9 @@ static NSString *_CiderCellViewKey(NSInteger column, NSInteger row) {
             if (view == nil) {
                 view = [self _viewForTableColumn: column row: row];
                 if (getenv("CIDER_TRACE_FRAMES") != NULL)
-                    fprintf(stderr, "CIDER_FRAME cellView row %ld col %ld -> %s subviews=%lu constraints=%lu\n",
+                    fprintf(stderr, "CIDER_FRAME cellView row %ld col %ld -> %s %p subviews=%lu constraints=%lu\n",
                             (long) row, (long) col,
-                            view != nil ? object_getClassName(view) : "nil",
+                            view != nil ? object_getClassName(view) : "nil", view,
                             (unsigned long) [[view subviews] count],
                             (unsigned long) [[view constraints] count]);
                 if (view == nil)
@@ -1433,13 +1435,14 @@ static NSString *_CiderCellViewKey(NSInteger column, NSInteger row) {
             if (getenv("CIDER_TRACE_FRAMES") != NULL) {
                 NSRect f = [view frame];
 
-                fprintf(stderr, "CIDER_FRAME   cell %s %gx%g at %g,%g\n",
-                        object_getClassName(view), f.size.width, f.size.height, f.origin.x, f.origin.y);
+                fprintf(stderr, "CIDER_FRAME   cell %s %p %gx%g at %g,%g\n",
+                        object_getClassName(view), view, f.size.width, f.size.height,
+                        f.origin.x, f.origin.y);
                 for (NSView *sub in [view subviews]) {
                     NSRect sf = [sub frame];
 
-                    fprintf(stderr, "CIDER_FRAME     sub %s %gx%g at %g,%g mask=0x%lx hidden=%d\n",
-                            object_getClassName(sub), sf.size.width, sf.size.height,
+                    fprintf(stderr, "CIDER_FRAME     sub %s %p %gx%g at %g,%g mask=0x%lx hidden=%d\n",
+                            object_getClassName(sub), sub, sf.size.width, sf.size.height,
                             sf.origin.x, sf.origin.y,
                             (unsigned long) [sub autoresizingMask], [sub isHidden]);
                     if ([sub respondsToSelector: @selector(stringValue)]) {
@@ -1482,6 +1485,8 @@ static NSString *_CiderCellViewKey(NSInteger column, NSInteger row) {
         return;
 
     [view removeFromSuperview];
+    if (getenv("CIDER_TRACE_FRAMES") != NULL)
+        fprintf(stderr, "CIDER_FRAME retire %s %p\n", object_getClassName(view), view);
     if (noPool != NULL && noPool[0] != '\0')
         return;
 

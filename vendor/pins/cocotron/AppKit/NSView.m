@@ -1401,8 +1401,8 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
         void *retUp = __builtin_return_address(1);
 
         fprintf(stderr,
-                "CIDER_FRAME %s -> %.0fx%.0f at %.0f,%.0f (was %.0fx%.0f) from %s <- %s\n",
-                object_getClassName(self), frame.size.width, frame.size.height,
+                "CIDER_FRAME %s %p -> %.0fx%.0f at %.0f,%.0f (was %.0fx%.0f) from %s <- %s\n",
+                object_getClassName(self), self, frame.size.width, frame.size.height,
                 frame.origin.x, frame.origin.y, _frame.size.width, _frame.size.height,
                 (dladdr(ret, &info) != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
                 (retUp != NULL && dladdr(retUp, &infoUp) != 0 && infoUp.dli_sname != NULL)

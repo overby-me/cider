@@ -16458,3 +16458,34 @@ is the state of a cell that has been laid out but never solved with a real width
 row builds a new cell view and a new stack after the pass that would have placed it, and which of
 those instances `-_updateCellViewsInRect:` ends up installing. The constraint pipeline is verified
 correct and should not be touched again for this.
+
+## CORRECTED AGAIN: THE CELL AND ITS STACK ARE BOTH STABLE (task #184)
+
+I wrote in the previous section that the view being drawn is not the view being solved, on the
+strength of an `NSStackView BORN` line appearing just after a cell dump. **That was wrong**, and
+printing the pointers says so plainly.
+
+Every cell view and every subview in the table traces now carries its address, and `-_retireCellView:`
+and the reuse path each print one line. One iA Writer run:
+
+    vends 23, retires 14, reuses 14
+    library cells vended: four addresses, one per row, dumped 13 times each
+    library cells retired or reused: NONE, the pool only recycles the sidebar rows
+    the stack inside each cell: ONE address across all 13 dumps
+
+So the cell is stable, its stack is stable, and the `BORN` line belonged to a different cell being
+built at that moment. The instance the solver moves IS the instance on screen.
+
+**What the same measurement shows instead.** Across those 13 dumps the stack keeps `y = 0` while its
+WIDTH grows, 146 then 271. Put beside the solver trace, which walks the same view
+`0x17 at 207,0` then `207x17 at 0,0` then `207x17 at 0,42`, the dump is catching it after the second
+write and before the third. So the dump is not seeing the end of a solve, and the y=42 write belongs
+to an invocation whose result something later replaces with a fresh cycle.
+
+**The one thing still missing is a single run that carries both.** The `setFrame:` trace now prints
+the view address as well, so the next run can join the two by pointer and put the writes and the
+dumps on one timeline. That is the whole remaining question, and no code needs changing to ask it.
+
+All five re-run and looked at, unchanged: iA Writer 25953, MoneyMoney 15657, iTerm2 with a live
+prompt. The traces are gated on `CIDER_TRACE_FRAMES` and add only an address to lines that already
+existed.
