@@ -760,19 +760,20 @@ static void loadItemIntoMapTables(NSOutlineView *self, id item,
     return cellRect;
 }
 
+/*
+ * THE INDENT IS THE ROW'S, NOT ITS CONTENT'S. This asked for an object value first and indented only
+ * rows that had one, so a VIEW BASED outline view, which has no object values at all, put every cell
+ * at x=0 on top of its own disclosure triangle: iA Writer's location sidebar drew a triangle through
+ * the first letter of Locations, Favorites and Hashtags. The object value is not used by the
+ * adjustment either, only by a branch that is compiled out.
+ */
 - (NSRect) frameOfCellAtColumn: (NSInteger) column row: (NSInteger) row {
     NSTableColumn *tableColumn = [_tableColumns objectAtIndex: column];
 
-    if (tableColumn == _outlineTableColumn) {
-        id objectValue =
-                [self _objectValueForTableColumn: tableColumn
-                                          byItem: [self itemAtRow: row]];
-
-        if (objectValue != nil)
-            return [self _adjustedFrameOfCellAtColumn: column
-                                                  row: row
-                                          objectValue: objectValue];
-    }
+    if (tableColumn == _outlineTableColumn)
+        return [self _adjustedFrameOfCellAtColumn: column
+                                              row: row
+                                      objectValue: nil];
 
     return [super frameOfCellAtColumn: column row: row];
 }

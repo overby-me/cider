@@ -15980,3 +15980,30 @@ Measured today, every capture looked at, nothing taken from a summary statistic.
 
 None of those stops an application meeting the three criteria, and all five do. Nobody should read
 this as finished work: it is the state on 2026-09-04, with the failures named.
+
+## A VIEW BASED OUTLINE ROW WAS NEVER INDENTED (task #115)
+
+iA Writer's location sidebar drew a small dark mark through the first letter of every group row. It
+was the disclosure triangle, and the row was sitting on top of it.
+
+`-[NSOutlineView frameOfCellAtColumn:row:]` asked the data source for an object value first and
+indented only rows that had one:
+
+    id objectValue = [self _objectValueForTableColumn: tableColumn byItem: [self itemAtRow: row]];
+    if (objectValue != nil)
+        return [self _adjustedFrameOfCellAtColumn: ... objectValue: objectValue];
+    return [super frameOfCellAtColumn: column row: row];
+
+A view based outline view has NO object values at all, so every cell went to the unindented frame at
+x=0 while the triangle was drawn in its own column, also at x=0. The object value is not used by the
+adjustment either: the only branch that reads it is compiled out.
+
+The adjustment now runs for the outline column whatever the object value is. Two things came right at
+once: the triangles sit in their own column, `Locations` and `Favorites` and `Hashtags` start after
+them, and the child row reads **`On My Mac`** rather than the clipped `My Mac` it had been showing.
+
+All five re-run and looked at, none of them changed: MoneyMoney 15657, Swift Publisher's gallery
+151460, iTerm2 with a live prompt, LibreOffice 135528.
+
+Still truncated: the group title reads `Locatio...`, and it did before this change too, so it is a
+separate question about what sizes an `IAOutlineTableCellHeaderView`.
