@@ -16197,3 +16197,32 @@ returns. So it steps down a slot at a time until one is free, and says so.
 a page that is certainly mapped, which forces the path for every guest process in the run. With it
 set, iTerm2 relocates its stack three times over and still reaches a live shell prompt, so a
 relocated stack runs. Fourteen normal runs relocate zero times and are unaffected.
+
+### TRIED AND REVERTED A SECOND TIME: the descendant solve, gated to the last pass (task #184)
+
+The first attempt sampled the gap between a descendant and its ancestor on EVERY pass, which fed the
+solve back into itself. The obvious repair is to do it once, at the end, when the frames have stopped
+moving: passes 0 and 1 direct subviews only, pass 2 with descendants, plus a refusal to read a gap
+from a subview still sitting at 1x1.
+
+It failed the same way. The hidden image view landed at **y = -4990**, the accessory went to y = -34,
+and the capture fell from 25953 to 19948. Reverted, rebuilt, iA Writer back at 25801 with MoneyMoney
+and iTerm2 spot checked.
+
+**What the second failure located, which the first did not.** The descendant this all hangs off is
+already in the wrong place INSIDE its own stack view. From `CIDER_TRACE_LAYOUT` on the good build:
+
+    container=NSStackView 0x766824020520 bounds=146x17
+      all: NSImageView .centerY == IAFileNameTextField .centerY * 1 + 2
+      IAFileNameTextField: NSImageView.centerY = IAFileNameTextField.centerY * 1 + 2 -> centerY = -1.5
+
+The solver takes a constraint whose FIRST item is the image view, inverts it to solve for the name
+field, and reads the image view's centre before anything has laid it out. The name field is placed at
+**y = -10 inside a 17 point stack**. Carrying that up into the cell can only spread the error, which
+is exactly what both attempts did.
+
+**So the prerequisite is not the descendant mapping.** It is that a view which arranges its own
+children, an `NSStackView` here, must be the authority on where they go: either the solver leaves
+arranged subviews alone, or `-[NSStackView layout]` runs after the solve rather than only when the
+size changes. Do that first, confirm the name field sits inside its stack, and only then revisit
+constraints that name a grandchild.
