@@ -16348,3 +16348,41 @@ All five applications re-run and every capture looked at, all unchanged: iA Writ
 15657, Swift Publisher's gallery 151460, LibreOffice 135528, iTerm2 with a live prompt. So these
 constraints were being overridden or clamped before they reached the screen; the solver is right now
 regardless, and the next thing that reads one will get the right answer.
+
+### THE FOURTH AND FIFTH ATTEMPTS, and where the descendant solve actually stands (task #184)
+
+With the trace covering every pass, the arranged subviews left to the stack, the 10000 sentinel
+rejected and the Y constant sign right, the descendant rule was tried twice more.
+
+**It reads the constraint correctly now.** The number that defeated the first three attempts is gone,
+and the value is exactly the one the layout wants:
+
+    p2 NSStackView: IAFileNameTextField.top = IALibraryTableCellView.top * 1 + 6 -> top = 59
+
+59 is right: the cell is 65 tall, six points down from its top edge, in a container whose top is
+NSMaxY. A stack 17 points tall placed at that top edge sits at y = 42, which is where the name
+belongs.
+
+**One more real defect found and fixed inside the attempt.** `NSImageView.centerY ==
+IAFileNameTextField.centerY + 1` also matched the REVERSED branch while solving the stack, because
+the name field is under it, so the solver recorded a centre for the stack from a constraint whose
+whole purpose is to place the image view. The stack was then given a centre and a far edge that
+disagreed. A descendant on the right belongs to the other item's solve, and skipping it took the
+capture from 19829 to 25875 against a good 25953.
+
+**And it still does not move.** The stack stays at y = 0 with `top = 59` recorded, so the remaining
+question is no longer about reading a constraint. It is about what happens between
+`CiderRecordAttribute` and `[subview setFrame:]`, and the trace prints nothing there: the frame line
+is only printed when the solved rect DIFFERS, so a solve that resolves back to the current frame is
+silent and looks identical to one that never ran.
+
+**The next instrument, and it is not another rule.** Print the resolved rect for a subview
+unconditionally, with the axis flags, at the point of
+
+    if (apply && !NSEqualRects(solved, frame))
+
+Then read what `CiderResolveAxis` did with `hasFar = 59` and a 17 point height. Everything before
+that step is now known to be right.
+
+Reverted, rebuilt, iA Writer back at 25953. The three prerequisite fixes are committed and stand on
+their own.
