@@ -260,7 +260,7 @@ tracks below.
   prefix bootstrap, spawns the daemon as container init, shellspawn client, teardown. Owns
   NO mounts/vchroot (the daemon does).
 - **daemon** (`src/linux/server`): single-threaded epoll loop + a **stackful microthread
-  scheduler** (`sched.rs`) — not async, because xnu-sys suspends microthreads
+  scheduler** (`sched.rs`), not async, because xnu-sys suspends microthreads
   synchronously from inside C stacks; single-worker is correct (xnu-sys locks are
   cooperative). RPC codec (`rpc_wire.rs`) is generated from the calls list, 162/162
   byte-identical to C. Wire = SOCK_DGRAM + SO_PASSCRED (sender pid via SCM_CREDENTIALS, used
@@ -270,18 +270,17 @@ tracks below.
   `src/linux/server/build.rs`: bindgen generates the 36-field `xnu_sys_hooks_t` from source
   headers; static libs (`libciderd_xnu_sys.a`, `liblibsimple_ciderd.a`)
   come via the `XNU_SYS_LIB` env var. The Rust/C seam is the frozen `xnu_sys_*` API +
-  `xnu_sys_hooks` vtable — Rust above, C+XNU below.
-- **mldr loader** (`src/darwin/loader`, libc + goblin): guest Mach-O loader — segment mmap/slide,
+  `xnu_sys_hooks` vtable, Rust above, C+XNU below.
+- **mldr loader** (`src/darwin/loader`, libc + goblin): guest Mach-O loader, segment mmap/slide,
   commpage, the elfcalls vtable (ELF↔Mach-O), start stack, daemon checkin, jump to dyld.
 - **Container model:** an overlayfs prefix (`~/.cider`, macOS FS hierarchy) entered
   **rootless** via unprivileged user namespaces (needs
-  `kernel.unprivileged_userns_clone=1`, kernel ≥5.11). **One command per fresh container** —
-  a sibling userns cannot join a running container's mount ns.
+  `kernel.unprivileged_userns_clone=1`, kernel ≥5.11). **One command per fresh container**,   a sibling userns cannot join a running container's mount ns.
 - **Shared store:** guest `/nix/store` is the host store via a `/nix →
   /Volumes/SystemRoot/nix` symlink (the host root is mounted at `/Volumes/SystemRoot`);
   `/nix/var` stays Darling-local to avoid db/schema conflicts.
 - **apple-sdk `.tbd` stubs:** binaries link against stub symbols, resolved at runtime from
-  Darling's reimplemented libraries — so derivation hashes never depend on Darling.
+  Darling's reimplemented libraries, so derivation hashes never depend on Darling.
 - **sandbox-exec** is a parse-and-ignore stub (the Linux container already isolates).
 - **Nix packaging:** `nix/lib/cider-src.nix` assembles the tree from the 147 pins +
   `patches/<name>/`; `nix/package.nix` builds the Darwin userland and installs the Rust
@@ -316,14 +315,14 @@ referenced is completed. Git history holds them.
 What follows is only what is still OPEN.
 
 
-### D — Correctness oracle (the keystone remaining) [ARCH-FREE]
+### D, Correctness oracle (the keystone remaining) [ARCH-FREE]
 "It built" → "it built **correctly**." The project's core value proposition.
 - **D.1** `scripts/oracle.nu <attr>` = `nix build --rebuild` vs cache.nixos.org, JSON
   (match / mismatch / build-failure / known-nondeterministic).
 - **D.2** oracle column in `tests/nix/compatibility-matrix.sh`; a justified
   non-determinism allowlist.
 - **D.3** on mismatch: diffoscope + classify (codegen vs metadata vs fs-ordering vs
-  miscompile). **A codegen-class divergence is stop-the-line** — the shim is lying to the
+  miscompile). **A codegen-class divergence is stop-the-line**, the shim is lying to the
   compiler (math, memory layout, or a syscall result) and everything above is suspect.
 
 
@@ -337,9 +336,9 @@ What follows is only what is still OPEN.
   recurs.)
 
 
-### E — Climb the package ladder [ARCH-FREE]
+### E, Climb the package ladder [ARCH-FREE]
 - **E.1** dependency-weighted 26.05 x86_64-darwin target list (CLI-only; GUI *runtime* out
-  of scope — building GUI apps against link-time framework stubs is fine).
+  of scope, building GUI apps against link-time framework stubs is fine).
 - **E.2** grind loop per package: build → triage (syscall / symbol / stall / semantic
   divergence) → fix with a regression test → oracle → append to matrix.
 - **E.3** milestone packages: `python3` (pip-stall class), `git`, `cmake`, `openssl`, a
@@ -348,19 +347,19 @@ What follows is only what is still OPEN.
   in CI, reproducibly from a clean prefix.
 
 
-### F — ARM readiness (prep only, do not start the port) [ARCH-PARAM]
+### F, ARM readiness (prep only, do not start the port) [ARCH-PARAM]
 - **F.1** salvage-assess the three `feature/arm-support*` branches → `PLAN.md`.
 - **F.2** arch-boundary audit (syscall numbers, ucontext layouts, asm, page size). Audit
-  host-page-size vs Darwin `vm_page_size`: arm64 userland assumes **16K pages** — plan to
+  host-page-size vs Darwin `vm_page_size`: arm64 userland assumes **16K pages**, plan to
   report 16K from libSystem regardless of host, and prefer `CONFIG_ARM64_16K_PAGES` guests.
 - **F.3** parameterize harness / VM tests / matrix / oracle / symbol tooling by arch.
-  aarch64-darwin outputs carry ad-hoc code signatures (nixpkgs signs via sigtool) — the
+  aarch64-darwin outputs carry ad-hoc code signatures (nixpkgs signs via sigtool), the
   oracle must handle signature bytes correctly, not diff them naively.
 - **F.4** document the QEMU aarch64 dev recipe (share `/nix/store` via virtiofs; never run
-  ciderd under qemu-user — signal/TLS fidelity).
+  ciderd under qemu-user, signal/TLS fidelity).
 
 
-### CI + remote builder (built in Campaign 1, unvalidated — needs rework)
+### CI + remote builder (built in Campaign 1, unvalidated, needs rework)
 Machinery exists but was **never validated end-to-end on a live prefix** and predates the
 Rust rewrite / launchd-bypass / 26.05 pin / submodule removal:
 - CI: `.tangled/workflows/ci.yml` (tangled.org), `tests/*.nix`,
@@ -368,19 +367,19 @@ Rust rewrite / launchd-bypass / 26.05 pin / submodule removal:
 - Remote builder: `nix/ciderBuilderModule.nix` (`services.cider-builder`, sshd in prefix,
   `nix.buildMachines`), `scripts/cider-build-hook`, VM tests. Design (host
   `nix.buildMachines` → sshd in Darling → guest nix-daemon, shared store avoids SSH copy) is
-  the north star but unexercised — and conflicts with one-command-per-container.
+  the north star but unexercised, and conflicts with one-command-per-container.
 
 
 ### Performance (measure during E; acceptable-if-slow for CI)
 Baseline: spawn ~11–12× native (~28 ms/proc), compute ~7.6×. Spawn tax: ~22 ms (78%) = the
 daemon fork/exec/RPC path. Landed and done: P0 ucred cache, P1 sigmask-free context switch,
 P2 epoll re-arm memoize.
-- **P0.7 spawn-path round-trips** — batch the fork/exec/registration RPCs. THE biggest
+- **P0.7 spawn-path round-trips**, batch the fork/exec/registration RPCs. THE biggest
   wall-clock lever (~22 ms/spawn). High risk (IPC core).
-- **P3 mach_msg same-task fast path** — handle same-task/local-port sends+recvs in-process.
+- **P3 mach_msg same-task fast path**, handle same-task/local-port sends+recvs in-process.
   High risk. **P4** userspace signal deferral (drop the per-RPC sigmask pair). **P5** psynch
   uncontended CAS fast path. **P6** inline small OOL payloads into the datagram. **P8**
-  scheduler futex contention (lock-free hot path) — deepest, do last.
+  scheduler futex contention (lock-free hot path), deepest, do last.
 - P0.5 dyld shared cache: DOWNGRADED to low (saves ~1.8 ms/spawn only).
 - **Meta-blocker:** P3–P8 are core-cutting and not isolate-testable → gated on a reliable
   non-flaky spawn/IPC stress harness + fast daemon iteration (nix-ninja). Build that first.
@@ -409,8 +408,7 @@ to "still crash on trivial cases as recently as Nix 2.34.x", which is the versio
   guest busy-spin band-aids (sigexc.c, mach_traps.c) are vestigial there but needed on
   qlen=512. Proper host-independent fix (open): the daemon drains the socket to EAGAIN
   (recvmmsg loop) into an internal queue so it never backs up.
-- **SIGFPE exec-fidelity flake (#44):** intermittent signal-8 in guest build/test binaries —
-  retryable (nix build ×4), not a real error nor a Rust regression.
+- **SIGFPE exec-fidelity flake (#44):** intermittent signal-8 in guest build/test binaries,   retryable (nix build ×4), not a real error nor a Rust regression.
 
 
 ### Upstream adoption
@@ -510,11 +508,11 @@ concrete failure justifies it:
   `nix build .#default` first (or assert `test -x $out/bin/ciderd`). The same drift
   happens dirty→committed (a dirty-tree build and its commit hash differ).
 - **mldr debug is gated** behind `MLDR_DEBUG=1` (default off). Do NOT grep for `[mldr]` to
-  confirm a boot with the gate off — grep guest stdout (`Darwin`/`uname` output). The ungated
+  confirm a boot with the gate off, grep guest stdout (`Darwin`/`uname` output). The ungated
   ~15-line-per-process flood interleaving with stdout under `2>&1` was the false
   "concurrent-output flake"; measure output completeness with stdout/stderr SEPARATED.
 - **mldr elfcall movaps constraint:** the guest calls elfcalls on an 8-byte-misaligned
-  stack, so elfcall-reachable loader code must be movaps-free — no `mem::zeroed`/`Default` of
+  stack, so elfcall-reachable loader code must be movaps-free, no `mem::zeroed`/`Default` of
   a >8-byte struct on the stack (emits an aligned SSE store that #GPs); use `MaybeUninit` +
   scalar fills.
 - **xnu-sys two-phase init:** `xnu_sys_init` then `xnu_sys_init_in_thread` on a kernel
@@ -523,7 +521,7 @@ concrete failure justifies it:
 - **RPC socket fork-safety:** sockets live at high fds + FD_CLOEXEC (so a forked subshell's
   low-fd dup2/close can't clobber them); the child does a socket-refresh.
 - **One command per fresh container** (kill the stale daemon first). Keep the prefix path
-  short — the daemon/shellspawn AF_UNIX socket lives under `<prefix>/var/run/` and overflows
+  short, the daemon/shellspawn AF_UNIX socket lives under `<prefix>/var/run/` and overflows
   `sockaddr_un.sun_path` (~108 chars) on long paths; use `~/.cider`. Export
   `TMPDIR=$HOME/tmp` (the default Darwin temp dir EACCESes). Two-boot warm flow; harness
   output must be file-based, never piped through a reader (a leaked container holds the pipe
@@ -536,10 +534,10 @@ concrete failure justifies it:
   Cherry-pick upstream fixes onto our patched xnu; don't bump the pin blindly.
 - **nix-ninja / mig gotchas:** merged `$out` conflates a checked-in `osfmk/**/X.h` with the
   same-named mig-generated header (10 collisions; `notify.h` is
-  `_MIG_KERNEL_SPECIFIC_CODE_`-sensitive — force it to 1 via a xnu-sys patch); mig edges
+  `_MIG_KERNEL_SPECIFIC_CODE_`-sensitive, force it to 1 via a xnu-sys patch); mig edges
   need `-DKERNEL_USER -DMACH_KERNEL -DKERNEL`; `lower.nix` must `rm -f` a staged read-only
   source symlink at a declared output path (else mig `fopen`→EACCES). Full-graph nix-ninja is
-  ~26k derivations — keep it OUT of `nix flake check`.
+  ~26k derivations, keep it OUT of `nix flake check`.
 
 ---
 

@@ -10852,7 +10852,7 @@ Two things about how this was found are worth keeping.
 
 The zoom is written in two places and both were eliminated by measurement rather than by reading.
 `-[CCMainWindowController restoreEmbeddedData]` writes `displayModeFactor * defaultZoom`, and a
-probe calling both exactly as the application does returned 1.5 and 0.75 — and that write is skipped
+probe calling both exactly as the application does returned 1.5 and 0.75, and that write is skipped
 regardless, because `embeddedViewPersistenceDesc` is nil for a document with no embedded state, for
 a blank document and a template alike. What remained was the constructor, and the constructor asks
 the screen.
@@ -10860,13 +10860,13 @@ the screen.
 And one measurement of mine was wrong in a way worth naming: I reported `+[CCEnvironment
 defaultZoom]` as returning zero. It does not. My probe called a double-returning method through a
 float-typed function pointer, and 0.75 as a double is `0x3FE8000000000000`, whose low 32 bits are
-zero — so the probe printed exactly `0.0` and I read it as the application returning nothing. Our
+zero, so the probe printed exactly `0.0` and I read it as the application returning nothing. Our
 `NSUserDefaults` was correct throughout: `FTDefaultZoom` reads back as an `__NSCFNumber` of 0.75 on
 every read.
 
 The general rule this belongs to: **a framework getter that returns an empty collection is a policy
 answer, not a placeholder.** Callers do not check; they subscript and send. The same shape appears
-in [[stub-return-is-a-policy-answer]] — a stub that returns nil or zero silently disables a whole
+in [[stub-return-is-a-policy-answer]], a stub that returns nil or zero silently disables a whole
 feature, and the only way to see it is to ask what the application does with the answer.
 
 ### What is left for Swift Publisher: the keyboard
@@ -10906,7 +10906,7 @@ if (_scanRect.size.height < wantedHeight)
     _scanRect = NSZeroRect;      // too small for our text
 ```
 
-That is correct for a *later* line — the container has run out of vertical room and the remaining
+That is correct for a *later* line, the container has run out of vertical room and the remaining
 text belongs to the next container. For the *first* line it means the view shows nothing, which is
 not what AppKit does: Cocoa lays the line out and lets the view clip it.
 
@@ -10917,7 +10917,7 @@ container 190×13; the fragment went from `0x0` to `26x16@82,0`, the glyph range
 to `0+5`, and the used rect from `1x0` to `26x16`.
 
 The fix was never only about typing. The same capture now shows the Author field reading `root`, all
-four Document Margins spinners reading `9`, and the canvas toolbar's page field reading `0` — every
+four Document Margins spinners reading `9`, and the canvas toolbar's page field reading `0`, every
 one of them silently blank before and easy to mistake for an empty field. MoneyMoney gained the key
 equivalents in its File menu (`R` beside Refresh All Accounts, `P` beside Page Setup) for the same
 reason.
@@ -10936,7 +10936,7 @@ Re-measured rather than recalled. iA Writer starts, runs its `+load` methods and
 `AccountCore` framework, and that faults at `addr=0xfffffffffffffff8`.
 
 The address is the diagnosis, not just a symptom. Swift keeps a type's value witness table at
-`metadata - 8`, so a read at `-8` means the metadata pointer itself came back **NULL** — which is
+`metadata - 8`, so a read at `-8` means the metadata pointer itself came back **NULL**, which is
 precisely what a zero-valued placeholder symbol yields. The bundle's Combine imports are exactly
 those placeholders: they get the process past dyld and fault at the first real use.
 
@@ -10973,11 +10973,11 @@ what the disassembly had claimed: those pixels are the unwritten part of the blo
 allocates and only partly draws into.
 
 That sharpens the question into a contradiction worth stating exactly. With the probe off, the
-unwritten area is transparent, so blitting it source-over should leave the window alone — and the
+unwritten area is transparent, so blitting it source-over should leave the window alone, and the
 window there is erased. Tracing that strip alone (`CIDER_TRACE_PAINT=246,68,4,110`) gives 24 fills
 of 985×549 and 23 of 973×532, every one `blend=17` (Copy) with `c=0.000,0.000,0.000,0.000`, both
-covering the strip, plus the row blits at `blend=0`. The colour paint never returns a skip span — it
-always returns `length` — so those fills really do write transparent black. The strip is therefore
+covering the strip, plus the row blits at `blend=0`. The colour paint never returns a skip span, it
+always returns `length`, so those fills really do write transparent black. The strip is therefore
 erased exactly like the terminal beside it, and it presents `(238,238,238)` while the terminal
 presents `(0,0,0)`.
 
@@ -10992,8 +10992,8 @@ was not a compositing defect at all.
 cocotron backs image caching with a **real window**. `NSCachedImageRep` creates an `NSWindow` and
 marks it `NSAppKitPrivateWindow` (`0x8000000`), and everything drawn into an `NSImage` through
 `lockFocus` lands in one of those. This backend cleared such a window to the same opaque light grey
-a visible window starts at, so any part of an image the application never drew arrived — wherever
-that image was later composited — as an opaque light rectangle.
+a visible window starts at, so any part of an image the application never drew arrived, wherever
+that image was later composited, as an opaque light rectangle.
 
 iTerm2 shows it plainly: it allocates a 245×126 block for an inline image, draws a 240×120 picture
 into it, and the five-by-six-pixel remainder came out as *our* clear colour in the middle of a black
@@ -11001,7 +11001,7 @@ terminal. An offscreen drawing surface is not a window on the screen; it has to 
 the result is composited somewhere else.
 
 What finally separated this from the compositing theories was a mutation rather than another trace.
-With `CIDER_WAYLAND_CLEAR=0xff00ff00` the remainder came out **green** — not grey, not black, but
+With `CIDER_WAYLAND_CLEAR=0xff00ff00` the remainder came out **green**, not grey, not black, but
 exactly the value the backend fills fresh pages with. After that the only open question was which
 surface, and the geometry trace answered it by naming windows of 245×14 being allocated: the image
 row slices.
@@ -11019,7 +11019,7 @@ and fill the new pages with the clear colour, leaving AppKit to repaint all of i
 preserves its backing store across a resize, and this one now does, aligned on the inner rectangle.
 And `CIDER_WAYLAND_SAMPLE=x,y` prints window-bitmap pixels at the moment a frame is handed over,
 which is what showed the remainder was black for twenty-five frames and turned grey exactly when the
-image was drawn — disproving my own earlier conclusion that nobody painted there.
+image was drawn, disproving my own earlier conclusion that nobody painted there.
 
 ### The alert chrome, measured against the reference instead of compared by eye
 
@@ -11027,7 +11027,7 @@ The permission alert was recorded as differing "in chrome only", and that was tr
 act on. Measuring both captures turned it into three numbers.
 
 The reference (`Downloads/macos-images/iterm2-with-imgcat-perm-dialog.png`) is a JPEG despite its
-name, and a 2× capture: its alert is 520×372 pixels — 260×186 points — against our 289×182, which is
+name, and a 2× capture: its alert is 520×372 pixels, 260×186 points, against our 289×182, which is
 the same dialog. `magick` converts both to PPM and a short script fits a circle to the corner profile
 row by row.
 
@@ -11038,7 +11038,7 @@ row by row.
   `(215,215,215)`.
 
 The radius has a lesson in it worth keeping. The panel background in `NSThemeFrame` is filled with a
-rounded path, so raising *that* radius from 10 to 28 was the obvious first move — and the measurement
+rounded path, so raising *that* radius from 10 to 28 was the obvious first move, and the measurement
 came back completely unchanged. The visible corner of an alert is not its background: something in
 the alert content paints opaque out to the window rectangle, and what actually shapes the corner is
 the punch the Wayland backend makes in the buffer. Both agree on 28 now, and menus keep the smaller
@@ -11054,8 +11054,7 @@ is slightly smaller.
 ## The testsuite is wired, and it found two gaps before running a single case
 
 `darling-testsuite` is pinned (`darlinghq/darling-testsuite` @ `82fcb690`, in `nix/submodules.json`
-beside the other 148), its twelve harness sources compile with `darwin_cc`, and one case —
-`test_NSString_stringByRemovingPercentEncoding` — builds as an ordinary guest binary and **exits 0 in
+beside the other 148), its twelve harness sources compile with `darwin_cc`, and one case, `test_NSString_stringByRemovingPercentEncoding`, builds as an ordinary guest binary and **exits 0 in
 the container**. For this harness that is the pass: assertions print only on failure and then abort,
 so a pass is silence and a zero. I read the failure path before trusting that.
 
@@ -11065,7 +11064,7 @@ merely getting things to compile:
 - **Our CoreFoundation does not provide `CGFloat`.** The smallest C case (`close(100)` must fail with
   `EBADF`) will not compile: the harness header includes only `<CoreFoundation/CoreFoundation.h>`,
   and on macOS that is where `CGFloat` comes from, via `CFCGTypes.h`. We have no such header. It is
-  not a one-line fix — our `CGBase.h` defines `CGFloat` unguarded, while macOS coordinates the two
+  not a one-line fix, our `CGBase.h` defines `CGFloat` unguarded, while macOS coordinates the two
   definitions with a `CGFLOAT_DEFINED`-style guard. This blocks the 24 C cases; the 54 Objective-C
   ones reach `CGFloat` through Foundation, which is why the first case wired here is one of those.
 - **`-[NSDictionary writeToURL:error:]` does not exist in our Foundation.** The second case tried
@@ -11076,7 +11075,7 @@ iTerm2 happens to call them, so both would have sat there indefinitely. That is 
 argument for the suite.
 
 Three things about the wiring cost a build each and are worth knowing. The pin's `include/` is a farm
-of **directory symlinks** into `lib/`, so the header roots point at the real directories — staging a
+of **directory symlinks** into `lib/`, so the header roots point at the real directories, staging a
 directory symlink is a trap this repo has hit before. The header glob needs `**` or it silently
 misses `darling-testsuite/objc/NSCoder.h`. And a Foundation-using guest target needs the *whole*
 framework root set, not just `fw_Foundation`, or the headers cascade one missing framework per build.
@@ -11101,32 +11100,31 @@ demonstration into a measurement. Counting **cases**, not buck actions:
 The four that pass are `NSDistributedLock`, `NSString stringByRemovingPercentEncoding`, libobjc's
 `basic_verify_return_values` and libsystem_m's `sqrt`.
 
-**The harness spoke, and that matters more than the passes.** One case exited 134 — an abort from a
-fired assertion — printing `Expected: 1 (YES) Actual: 0 (NO)`. Until that happened, four zero exits
+**The harness spoke, and that matters more than the passes.** One case exited 134, an abort from a
+fired assertion, printing `Expected: 1 (YES) Actual: 0 (NO)`. Until that happened, four zero exits
 proved nothing: a harness that cannot fail is not a harness.
 
 The three failures are all real. `_UIDataLooksLikeNibArchive` answers NO where macOS answers YES for
 a minimal archive, and `UIArchiveHeaderIdentifier` is not an exported symbol here at all (both
-task #130). `PubSub.framework` does not exist — `dlopen` says image not found, which is an honest
+task #130). `PubSub.framework` does not exist, `dlopen` says image not found, which is an honest
 absence rather than a defect.
 
 The twenty-five that do not build are evidence too: eight fail to link, four are the
-`NSDictionary writeToURL:error:` family (task #129), and the rest are undeclared SearchKit constants
-— `kSKSearchOptionDefault` and a dozen siblings — so our SearchKit headers carry the functions but
+`NSDictionary writeToURL:error:` family (task #129), and the rest are undeclared SearchKit constants, `kSKSearchOptionDefault` and a dozen siblings, so our SearchKit headers carry the functions but
 not the option and index-type constants.
 
 Two groups are skipped deliberately and the generator says so in its own source: the C cases, which
 cannot compile until CoreFoundation provides `CGFloat` (task #128), and the eighteen that include
 `test_shared_data.h`, which upstream CMake produces with `configure_file` so it exists only inside a
 CMake build. Eighteen identical "file not found" errors read like a missing API and are nothing of
-the kind — worth skipping precisely so the failure list stays honest.
+the kind, worth skipping precisely so the failure list stays honest.
 
 ### CoreFoundation gets the CG types back, and the suite triples
 
 `CGFloat` and the four geometry structs belong to CoreFoundation as much as to CoreGraphics: on a
 real system `CoreFoundation/CFCGTypes.h` defines them and CoreGraphics defers through the
 `CGFLOAT_DEFINED` family of guards, so a plain C file that includes only CoreFoundation gets them.
-Ours had them **only** in `CoreGraphics/CGBase.h` — whose own comment says they were "moved over from
+Ours had them **only** in `CoreGraphics/CGBase.h`, whose own comment says they were "moved over from
 our CoreFoundation", so this was a regression with a note attached.
 
 They are back in `CFBase.h`, chosen over a new `CFCGTypes.h` because the framework header map is
@@ -11146,8 +11144,7 @@ The effect on the suite is the measurement:
 | passed | 4 | 18 |
 
 **Two of my own counting errors are worth recording**, because both inflated the failure list.
-`test_exit_return_1` is a `main` that calls `exit(1)`, and upstream marks it `WILL_FAIL` in CTest —
-a non-zero exit *is* its pass; the generator reads that property now. And `test_read_file` exited 139,
+`test_exit_return_1` is a `main` that calls `exit(1)`, and upstream marks it `WILL_FAIL` in CTest, a non-zero exit *is* its pass; the generator reads that property now. And `test_read_file` exited 139,
 a segfault, which looked alarming and was my rig: the harness looks for resources under
 `DARLING_TESTSUITE_RESOURCE_PATH` or `./resource`, I had staged neither, and the case then
 dereferenced a container the harness returned as NULL without checking. With the tree staged it
@@ -11163,7 +11160,7 @@ Wiring the twelve AppKit cases brings the suite to 69 wired, 35 built, 34 run an
 eleven of the twelve AppKit cases build and six pass. That is the first automated coverage over the
 framework this port spends most of its time in.
 
-The first result was a lie I almost wrote down. Run headless, eight AppKit cases exit 139 — a
+The first result was a lie I almost wrote down. Run headless, eight AppKit cases exit 139, a
 segfault, which reads as AppKit crashing on calls as ordinary as `[NSColor labelColor]`. The backend
 says otherwise in the case output itself:
 
@@ -11178,14 +11175,13 @@ six. The runner is `scratchpad/run-dts-wayland.sh`, and any future AppKit case h
 
 Five AppKit failures remain and are real (task #132): `NSColorList availableColorLists` and
 `colorListNamed` fire assertions, `NSColor colorUsingColorSpaceNamed` for a device space exits 1, and
-both `NSCursor` coder cases fail — `initWithCoder` on `assert_equals_CGFloat`, so a coordinate such as
+both `NSCursor` coder cases fail, `initWithCoder` on `assert_equals_CGFloat`, so a coordinate such as
 the hotspot does not survive the round trip. A sixth does not compile at all:
 `NSColorListNotEditableException` is not declared in our AppKit.
 
 One build note: QuartzCore was the entire AppKit build problem, because `AppKit.h` reaches it and
 every case stopped at `QuartzCore/CIImage.h file not found` before saying anything about AppKit. The
-generator adds that header root and the AppKit dylib **only** for cases under `AppKit.framework` —
-pulling the GUI framework into a libc test would drag the display path somewhere it has no business.
+generator adds that header root and the AppKit dylib **only** for cases under `AppKit.framework`, pulling the GUI framework into a libc test would drag the display path somewhere it has no business.
 
 ### What those five AppKit failures actually were (task #132)
 
@@ -11227,8 +11223,8 @@ would have "passed" while proving nothing.
 names it carried is safe because a colour class method goes to the DISPLAY for its value
 (`NSColor_catalog` asks `[[NSDisplay currentDisplay] colorWithName:]`), not to this list; what is in
 the list decides what a colour panel offers and nothing else. Nineteen of the 51 had no `NSColor`
-class method at all — the whole modern `system*Color` palette, the five fill levels,
-`quinaryLabelColor` and `findHighlightColor` — and a missing one is an unrecognised selector, which
+class method at all, the whole modern `system*Color` palette, the five fill levels,
+`quinaryLabelColor` and `findHighlightColor`, and a missing one is an unrecognised selector, which
 raises, which most applications catch, which turns a feature off with no message. Three more had a
 method but no recipe (`gridColor`, `keyboardFocusIndicatorColor`,
 `unemphasizedSelectedTextBackgroundColor`) and so answered nil, which is worse than wrong: AppKit
@@ -11242,8 +11238,7 @@ chars and reads float, float, signed short, image.
 Verified under the nested compositor, and the proof is not the exit codes. `run.sh` caps each case at
 two lines of output and an AppKit case spends both on the backend saying hello, so the one case that
 prints on its happy path looked as silent as one that did nothing. With the cap raised it prints all
-five refusals by name — `color list System is not editable`, then Apple, Crayons and Web Safe Colors
-— which is what makes the zeros mean anything. Swift Publisher's document window is **byte-identical**
+five refusals by name, `color list System is not editable`, then Apple, Crayons and Web Safe Colors, which is what makes the zeros mean anything. Swift Publisher's document window is **byte-identical**
 to its capture from before the change, so none of this moved a pixel in an application.
 
 Left behind, seen in that capture and not caused here: Swift Publisher's "Simulate paper color" well
@@ -11334,7 +11329,7 @@ which had been sitting inside the erased region.
 "simply never painted rather than painted and cleared", and offered the absence of transparent fills
 as evidence. The pixel history from `CIDER_WAYLAND_SAMPLE` shows cleared, then `0xffe9e9e9` for two
 frames, then back to `0x00000000`: painted, then erased. And the fill that erased it was in the
-trace all along — the search that missed it was mine, but the deeper mistake was reading `blend=17`
+trace all along, the search that missed it was mine, but the deeper mistake was reading `blend=17`
 as decoration when it is `kCGBlendModeCopy`. A transparent fill is invisible under source-over and
 destructive under copy, so **the blend mode is not a detail beside the colour, it is the finding**.
 
@@ -11347,7 +11342,7 @@ where macOS also clamps its height, which is true and also not this.
 
 **New instrument, and it is the one that was missing.** `CIDER_TRACE_TREE=<seconds>` dumps a
 window's view tree from its frame view on flush, throttled so the useful dump is the last one, with
-every frame in view coordinates **and counted from the top** — the capture, the bitmap sampler and
+every frame in view coordinates **and counted from the top**, the capture, the bitmap sampler and
 the drawing trace are all top-down while a view frame is bottom-up, and converting by hand is where
 three wrong conclusions came from. It named the scroll view over the hole in one run.
 
@@ -11382,7 +11377,7 @@ written down and not applied.
 
 Measured again on the reference in `Downloads/macos-images`, a 2x capture: the default button is
 219 by 55 pixels and a plain one 220 by 56 once the title glyphs that interrupt a row scan are
-allowed for — 110 by 28 points for both. A first reading of that row reported two grey buttons 47
+allowed for, 110 by 28 points for both. A first reading of that row reported two grey buttons 47
 points wide, which was **one button cut in half by its own label**; if a scan for a flat colour
 returns two short runs with a gap, check whether the gap is text before believing the runs.
 
@@ -11391,7 +11386,7 @@ third of the time an iTerm2 session needs, so it is the faster loop. All three b
 90 by 24 before and 110 by 28 after, and the panel widened with them so the message sets on one line.
 
 **The text size in that task is not a defect.** Ink height on the message line is 13 px at 1x here
-against 25 and 24 px at 2x in the reference, so 12.0 to 12.5 — ours is if anything a touch larger.
+against 25 and 24 px at 2x in the reference, so 12.0 to 12.5, ours is if anything a touch larger.
 The two captures show different strings so it is approximate, but not in the direction the note
 claimed.
 
@@ -11407,15 +11402,15 @@ under Cider, which is expected". It was not expected and it was ours.
 
 The message is `FatalError.CodeSign` in the app's `Localizable.strings`, and the app uses exactly
 three code-signing calls: `SecStaticCodeCreateWithPath`, `SecStaticCodeCheckValidity`,
-`SecCodeCopySigningInformation`. **The bundle is intact** — parsing `_CodeSignature/CodeResources`
-and hashing every sealed file gives 497 checked, 0 mismatched, 0 missing — so macOS would have
+`SecCodeCopySigningInformation`. **The bundle is intact**, parsing `_CodeSignature/CodeResources`
+and hashing every sealed file gives 497 checked, 0 mismatched, 0 missing, so macOS would have
 validated it.
 
 A guest probe (`//src/darwin/probes:codesign-probe`, kept) answered in one run what reading Apple's
 `libsecurity_codesigning` could not: `SecStaticCodeCreateWithPath` = **100102**, which is
 `errSecErrnoBase + EOPNOTSUPP`, before any signature is read. Bisecting with the probe: `/bin/ls`
 gives `errSecCSUnsigned` (correct), the same universal binary copied to `/tmp` opens fine, and a
-minimal unsigned `.app` fails — so it is neither the FAT format nor the location but **bundle**
+minimal unsigned `.app` fails, so it is neither the FAT format nor the location but **bundle**
 handling. `BundleDiskRep::setup` starts with `filehasExtendedAttribute(root, XATTR_FINDERINFO_NAME)`,
 and `checkFork` in `unix++.cpp` accepts only `ENOATTR` and `EPERM` and **throws on anything else**.
 Our `getxattr` answered `EOPNOTSUPP`.
@@ -11427,7 +11422,7 @@ chose ENODATA, right for the stream calls and wrong for these. And a filesystem 
 answers ENOTSUP, which macOS has no filesystem to produce, so nothing is written to handle it. The
 six get/remove/list calls now translate through their own helper: missing *and* unsupported both
 become ENOATTR, and a listing on such a filesystem is empty rather than an error. Setting is left
-alone — an application told its attribute was stored when nothing was stored has been lied to.
+alone, an application told its attribute was stored when nothing was stored has been lied to.
 
 Two plain bugs fell out of the same reading. `listxattr` passed the **guest** path to the host
 syscall instead of the expanded one, so every listing answered ENOENT for a file that plainly
@@ -11440,7 +11435,7 @@ the app reaches its own startup screen** with its logo, toolbar icons and search
 
 Captured for nix as `vendor/patches/xnu/0018-*.patch` (verified by applying it to a pristine
 upstream tree and comparing byte-for-byte), and the new header needed entries in **two** generated
-maps, `buck/generated/exports_xnu.bzl` and `buck/generated/sdk_headers.bzl` — the same shape as the
+maps, `buck/generated/exports_xnu.bzl` and `buck/generated/sdk_headers.bzl`, the same shape as the
 AppKit `header_map` lesson from #132.
 
 **Still open, and the next thing in the way:** `SecStaticCodeCheckValidity` on that bundle does not
@@ -11459,18 +11454,18 @@ not start anyway.
 With the code-signature check fixed the app reaches its own startup screen and stops there. It is
 **not** deadlocked and **not** computing: all six threads are asleep, the main thread sits in its run
 loop (the File menu still opens while it waits), there are **no TCP sockets at all**, and one thread
-has burned zero CPU while blocked in `recvmsg` on an abstract-namespace socket — the shape of a Mach
+has burned zero CPU while blocked in `recvmsg` on an abstract-namespace socket, the shape of a Mach
 reply that never comes.
 
 Disassembling the app named the step. `-[LockViewController applicationDidFinishLaunching:]` runs an
 OS-compatibility check (with `MMDisableOSCompatibilityCheck` and `MMDisableOS2026Check` as its own
 escape hatches), posts its lock notifications, and then calls **`readAutoLoginPassword`,
-`readTouchIdPassword`, `readIWatchPassword`** — keychain reads — immediately before the
+`readTouchIdPassword`, `readIWatchPassword`**, keychain reads, immediately before the
 `FatalError.CodeSign` path we already fixed. `-[LockViewController loadView]` is where
 "Starting MoneyMoney…" is set, so the splash is simply what is on screen while that runs.
 
 A probe settles it. `//src/darwin/probes:keychain-probe` asks `SecItemCopyMatching` for a service
-name that cannot exist, requests no data, and prints only the OSStatus — **it talks to banks, so the
+name that cannot exist, requests no data, and prints only the OSStatus, **it talks to banks, so the
 probe never touches a real secret by construction.** It prints that it called and **never returns**:
 killed at 120 s, and again at 180 s.
 
@@ -11480,7 +11475,7 @@ The reason is that **`/usr/sbin/securityd` aborts on startup**, with or without 
 `Error::check(int)`, and walking the callers gives the chain
 `MachServer::MachServer` → `ReceivePort::ReceivePort(name, bootstrap)` → `Bootstrap::registerAs`.
 So securityd cannot register its service name. It fails identically with `DARLING_NO_LAUNCHD=0`, so
-"launchd is not running" is **not** the explanation — the registration itself fails, and Apple's
+"launchd is not running" is **not** the explanation, the registration itself fails, and Apple's
 securityd uses the old `bootstrap_register` rather than a launchd check-in.
 
 Two separable defects fall out, and #135 (`SecStaticCodeCheckValidity` never returning) is plausibly
@@ -11494,8 +11489,8 @@ vanishes; stage it somewhere else (`/probe`).
 
 ### Why securityd cannot start: it registers a name launchd owns (task #137)
 
-launchd **does** load `com.apple.securityd` — `RunAtLoad`, `ProgramArguments /usr/sbin/securityd -i`,
-`MachServices com.apple.SecurityServer` — and `launchctl list` shows it with **status 1 and no PID**:
+launchd **does** load `com.apple.securityd`, `RunAtLoad`, `ProgramArguments /usr/sbin/securityd -i`,
+`MachServices com.apple.SecurityServer`, and `launchctl list` shows it with **status 1 and no PID**:
 started, and gone. Run by hand with `-i` under launchd it aborts identically (exit 134, core dumped).
 
 `//src/darwin/probes:bootstrap-probe` (kept; the name is `argv[1]`) makes exactly the three calls a
@@ -11505,7 +11500,7 @@ started, and gone. Run by hand with `-i` under launchd it aborts identically (ex
 |---|---|---|---|
 | a name of its own | yes | 0 | 0 |
 | `com.apple.SecurityServer` | yes | **1100 `BOOTSTRAP_NOT_PRIVILEGED`** | **0, returns a port** |
-| a name of its own | no | 268435459 `MACH_SEND_INVALID_DEST` (`bootstrap_port` is `0x0`) | — |
+| a name of its own | no | 268435459 `MACH_SEND_INVALID_DEST` (`bootstrap_port` is `0x0`) |, |
 
 So launchd owns that name from the plist and expects the job to **check in**, not to register; this
 securityd registers, is refused, and `MachPlusPlus::Error::check` turns the refusal into an uncaught
@@ -11513,7 +11508,7 @@ C++ exception, which is the abort.
 
 **I had this wrong in the previous entry and said so in a commit:** "it fails identically with
 `DARLING_NO_LAUNCHD=0`, so launchd not running is *not* the explanation." Both configurations do
-abort — that part was observed — but for **different reasons**, and only the probe separated them.
+abort, that part was observed, but for **different reasons**, and only the probe separated them.
 
 That also explains why the keychain **hangs** instead of failing: `bootstrap_look_up` succeeds, so the
 client gets a port from launchd and waits forever for a server that died. Two separable fixes:
@@ -11531,14 +11526,14 @@ Measured three ways with `//src/darwin/probes:keychain-probe`:
 | not running | started by hand | **hangs** (killed at 150 s) |
 | running | started by hand | **returns** `-50 errSecParam` for a query built to match nothing |
 
-So both are needed — secd is the server and launchd is how a client finds it — and `SecItem*` talks
+So both are needed, secd is the server and launchd is how a client finds it, and `SecItem*` talks
 to **secd**, not to the legacy `SecurityServer`. With securityd running (pid 9) the keychain still
 hangs.
 
 **That corrects the previous entry.** I wrote that securityd's abort in `Bootstrap::registerAs` was
 the root cause. It is real but it is not the blocker, and it is not even a defect in the case I
 measured: `ReceivePort` tries `bootstrap_check_in` **first** and only falls back to registering when
-`checkInOptional` answers nothing — and that helper swallows `SERVICE_ACTIVE`, `UNKNOWN_SERVICE` and
+`checkInOptional` answers nothing, and that helper swallows `SERVICE_ACTIVE`, `UNKNOWN_SERVICE` and
 `NOT_PRIVILEGED` into "nothing". A hand-started process is not the launchd job that owns
 `com.apple.SecurityServer`, so its check-in is *correctly* refused, and launchd even logs the case:
 "bootstrap_register() erroneously called instead of bootstrap_check_in()". A probe job with its own
@@ -11558,12 +11553,12 @@ under launchd (`launchctl list` shows a PID and `LastExitStatus = 0`, and its st
 once the plist sets `StandardOutPath`). With it alive, `SecItemCopyMatching` **still hangs**. The
 case that worked had **no job declaring those names**, so the hand-started secd registered them
 itself and clients found it. So a launchd-started secd is not serving its declared MachServices, and
-that is where the next attempt starts — not with "start secd", which is done.
+that is where the next attempt starts, not with "start secd", which is done.
 
 Its startup is also intermittent: two runs exited with status 1, two later ones stayed up.
 
 **A separate launchd defect fell out of trying to instrument this** (task #139): a job with
-`ProgramArguments = ["/bin/sh", "-c", …]` **never runs at all** — no output, no side effect, and
+`ProgramArguments = ["/bin/sh", "-c", …]` **never runs at all**, no output, no side effect, and
 `LastExitStatus = 256`. The absence of the redirect target is what proves it: a shell that started
 would create it before failing to find `date`. It is not a general spawn or redirect failure, since
 a job whose program is a plain guest binary runs and its `StandardOutPath` file is written. It
@@ -11578,9 +11573,9 @@ probe run 8 seconds after boot catches it before it is ready. Measured:
 
 | wait before asking | secd job | `SecItemCopyMatching` |
 |---|---|---|
-| 8 s | 1 of 5 runs had a PID | that one still hung — up but not ready |
+| 8 s | 1 of 5 runs had a PID | that one still hung, up but not ready |
 | 25 s | 3 of 4 runs had a PID | **returned in all 3** |
-| 12 s, with `KeepAlive` | — | **returned in 3 of 5** |
+| 12 s, with `KeepAlive` |, | **returned in 3 of 5** |
 
 So the fix is not "make secd serve", it is "make secd start, and start early". `KeepAlive` on the job
 raises the odds but does not settle it.
@@ -11590,7 +11585,7 @@ did: there is no harness yet that both guarantees secd is up *and* launches the 
 `cider shell` into the same container fails with "Cannot join mnt namespace", so the readiness check
 cannot be a separate invocation. Inside one invocation, `sh -c 'exec <app>'` launches the app
 normally (2 windows mapped), but a gate loop before the `exec` produced runs where the app never
-mapped a window at all — 25 `launchctl` checks in a loop, and then a three-check version that
+mapped a window at all, 25 `launchctl` checks in a loop, and then a three-check version that
 printed nothing whatsoever. Those are harness failures that read exactly like app failures.
 
 **So whether MoneyMoney gets past its splash once the keychain answers is still unknown.** It showed
@@ -11600,7 +11595,7 @@ the splash in every run looked at this rung, but not one of those runs had confi
 
 **Correcting the table in the previous entry.** It reported "the keychain returned" as evidence that
 a launchd-started secd serves. That inference does not hold: `SecItemCopyMatching` also returned
-**with no secd PID at all** (two runs). So `-50` never proved that anything answered — the client can
+**with no secd PID at all** (two runs). So `-50` never proved that anything answered, the client can
 reject and return without reaching a server, and my query was malformed (no return attribute), which
 made that the likely path.
 
@@ -11626,25 +11621,25 @@ path.
 
 **What is therefore still unknown:** what distinguishes a run where `SecItemCopyMatching` returns
 from one where it blocks forever, and whether MoneyMoney's splash is that same block. The next step
-is an instrument that can tell "the server answered" from "the client answered locally" — the current
+is an instrument that can tell "the server answered" from "the client answered locally", the current
 one cannot, and every conclusion drawn from it needs that caveat.
 
 ### A connection that cannot be made now says so (libxpc)
 
 The instrument the previous entry asked for exists: `//src/darwin/probes:xpc-probe` sends an XPC
-message with a reply handler, bounded by a semaphore timeout, and **carries its own control** — a
+message with a reply handler, bounded by a semaphore timeout, and **carries its own control**, a
 second name that nothing can possibly serve. A probe with no control is how the keychain probe lied
 for two rungs.
 
 Its first run named a defect immediately: **the control TIMED OUT**, where macOS answers
 `XPC_ERROR_CONNECTION_INVALID` promptly. `xpc_connection_create_mach_service` against a name nothing
 serves produced a connection that looked alive and answered nothing. Activation looks the service up,
-fails, and jumps to `error_out`, which released the ports and set `activated = false` — and nothing
+fails, and jumps to `error_out`, which released the ports and set `activated = false`, and nothing
 else. The mach context is never connected on that path, so a later send never reaches libdispatch,
 libdispatch therefore never calls the async reply handler, and the caller waits forever.
 
-`com.apple.security.syspolicy` — the one service MoneyMoney looks up, and the one its XPC trace shows
-failing — behaved exactly like the control. Fixed in `vendor/src/libxpc/src/connection.m`: the
+`com.apple.security.syspolicy`, the one service MoneyMoney looks up, and the one its XPC trace shows
+failing, behaved exactly like the control. Fixed in `vendor/src/libxpc/src/connection.m`: the
 failed-activation path records it, tells the event handler `XPC_ERROR_CONNECTION_INVALID`, and
 `sendMessage:queue:withReply:` answers with the same rather than sending into nothing.
 
@@ -11657,7 +11652,7 @@ Captured as `vendor/patches/libxpc/0003-*.patch`, verified by applying it to the
 comparing both files byte-for-byte.
 
 **MoneyMoney still sits on its splash with this fixed**, and Swift Publisher renders unchanged. So
-this is one defect on the way rather than the whole story — but a client that waits forever for a
+this is one defect on the way rather than the whole story, but a client that waits forever for a
 service that cannot exist is wrong on its own terms, and every app that talks to a missing service
 was hanging the same way.
 
@@ -11665,8 +11660,8 @@ was hanging the same way.
 
 `ciderd.log` from one MoneyMoney run was **303.7 MB**, and 1,268,727 of its lines were the same one:
 `stub: proc_get_effective_thread_policy: unimplemented flavor`. The stub's *answer* is already
-right — every XNU caller treats the result as a boolean flag or a small non-negative tier, and 0 is
-the neutral value — so the repetition bought nothing and cost the write bandwidth of every run. The
+right, every XNU caller treats the result as a boolean flag or a small non-negative tier, and 0 is
+the neutral value, so the repetition bought nothing and cost the write bandwidth of every run. The
 logger's own comment says "cold path by construction", which a million calls falsify.
 
 It now logs once, keeping the one line that is worth knowing. Measured on a full app run:
@@ -11680,7 +11675,7 @@ Looked at afterwards: MoneyMoney still reaches its splash (unchanged), and Swift
 exactly as before, so nothing depended on the noise.
 
 **A caution for reading the same evidence:** the app's main thread burns about 13% CPU at the splash
-in a send-and-wait loop, and I first read that as a retry storm. It is not — with
+in a send-and-wait loop, and I first read that as a retry storm. It is not, with
 `CIDER_TRACE_XPC` on, the whole run makes **one** XPC lookup. The likeliest explanation is the
 splash's own animated spinner, which redraws continuously. A busy thread is not evidence of retrying
 until you have counted what it is sending.
@@ -11708,14 +11703,14 @@ The modern back end (`secd`, over XPC) answers promptly with `errSecMissingEntit
 succeeds and returns a real port, and the **first MIG call to that port never gets a reply**. MIG
 has no timeout, so the caller waits forever and no log anywhere says so.
 
-**Two corrections.** secd is not the blocker and never was — I had it as the prime suspect for two
+**Two corrections.** secd is not the blocker and never was. I had it as the prime suspect for two
 rungs. And `securityd`'s startup abort, which I wrote down as "a side story and not even a defect",
 is exactly where this chain ends, so it is the thing to fix.
 
 **And a third, about a log I misread.** `secd`'s log ends every life with `semaphore_timedwait
 failed (internally): -111`, which I read as a crash loop. It is not: sampling the host while the
 guest runs shows `rpclog=0` for the whole life of the container and 8 lines appearing at the
-instant `ciderd` goes away. `-111` is `ECONNREFUSED` from `sendmsg` — **teardown**, a guest process
+instant `ciderd` goes away. `-111` is `ECONNREFUSED` from `sendmsg`, **teardown**, a guest process
 outliving its daemon. The eleven "crashtrace installed" lines were eleven container runs, not
 eleven restarts.
 
@@ -11723,15 +11718,15 @@ eleven restarts.
 `kill-stale-prefix.sh` matched `/proc/<pid>/exe` against the *prefix*, but the mm and sp containers
 execute `mldr` and `ciderd` out of the **shared runtime** under `/tmp/cider-appkit-1000/rt`. No
 guest process of `/tmp/cider-mm-1000/prefix` has that prefix anywhere in its exe path, so every
-sweep of a non-appkit prefix reported "STALE KILLED 0" and killed nothing — and the next run then
+sweep of a non-appkit prefix reported "STALE KILLED 0" and killed nothing, and the next run then
 joined a container it thought it had killed (`Cannot join mnt namespace`). It needs **both**
 signals: the exe says what the process *is* (no shell can be `mldr`), the cmdline says which prefix
 it belongs to. Matching on cmdline alone kills the caller, which is the older trap.
 
 ### What MoneyMoney waits for is not the keychain either
 
-With `CIDER_TRACE_SECITEM=1` and a `Security.framework` whose trace is **proven to speak** — the
-same binary prints the full chain for `/probe/keychain-probe` in the same prefix — a MoneyMoney run
+With `CIDER_TRACE_SECITEM=1` and a `Security.framework` whose trace is **proven to speak**, the
+same binary prints the full chain for `/probe/keychain-probe` in the same prefix, a MoneyMoney run
 produces **zero** `CIDER_SECITEM` lines. It never reaches `SecItemCopyMatching`. So #136's
 conclusion, that it waits on the keychain after the code-sign check, does not survive.
 
@@ -11748,7 +11743,7 @@ returns at all:
 | securityd | 4, then 3 | 6, then 4 |
 | secd | 5, then 4 | 6, then 4 |
 
-`launchctl list` names the failure exactly — `-  1  com.apple.securityd`, no PID, last exit status
+`launchctl list` names the failure exactly, `-  1  com.apple.securityd`, no PID, last exit status
 **1**, with an empty `StandardErrorPath`. An uncaught C++ exception would abort with a signal, not
 exit 1, so the `registerAs` story recorded under #137 does not fit this failure and needs
 re-deriving.
@@ -11773,11 +11768,11 @@ MoneyMoney's background thread waits for, and the keychain is downstream of a st
 reaches.
 
 The host thread sample says the rest. The **main** thread is `state=R`, ticks 9 → 231 → 577 → 924
-over 75 s — about 14% of a core, which is the spinner and finally explains the CPU figure. A
+over 75 s, about 14% of a core, which is the spinner and finally explains the CPU figure. A
 background thread sits at **zero ticks** parked in syscall 47, `recvmsg`, on the dserver socket:
 one RPC issued, no reply. That is a guest thread inside a blocking kernel call.
 
-`scripts/sample-threads.sh` is the instrument, and it needs no guest build at all — `/proc/<pid>/
+`scripts/sample-threads.sh` is the instrument, and it needs no guest build at all, `/proc/<pid>/
 task/<tid>/{syscall,wchan,stat}` names the syscall every thread is parked in.
 
 **Do not read a black capture as a blank app.** The captures from that run are fully black because
@@ -11786,7 +11781,7 @@ demonstrably alive: 956 spinner frames.
 
 ### The container does not always boot, and that has been read as the app failing
 
-`cider shell /bin/echo` — the simplest thing a container can do — measured over 8 runs each:
+`cider shell /bin/echo`, the simplest thing a container can do, measured over 8 runs each:
 
 | | boots |
 |---|---|
@@ -11797,7 +11792,7 @@ A failed boot produces **no output at all** and times out, which from outside is
 from the application failing to start. Three MoneyMoney runs in a row were read that way before this
 was measured. Photographed mid-hang, twice, identically: `launchd` parked in `recvmsg`, `launchctl
 bootstrap -S System` in `epoll_wait`, the jobs parked behind them, and the requested command never
-spawned at all. With `DSERVER_TRACE_CALLS=1` it went 6/6 — the trace perturbs the timing, so this is
+spawned at all. With `DSERVER_TRACE_CALLS=1` it went 6/6, the trace perturbs the timing, so this is
 a race rather than a fixed deadlock (0.75⁶ ≈ 18% by luck, so suggestive, not proof).
 
 `scripts/run-with-retry.sh` now runs a driver, watches its log for the backend's own "I am alive"
@@ -11810,7 +11805,7 @@ runs where the app never mapped a window.
 1. **`xpc_connection_send_message_with_reply_sync` never answered a failed connection.** Patch 0003
    fixed the async twin; the sync one had no guard, and a caller that asked for a synchronous reply
    has nowhere else to be. Code signing registers a stapled notarization ticket **before it
-   validates anything**, over that call, to a syspolicy service we do not run — so *every* static
+   validates anything**, over that call, to a syspolicy service we do not run, so *every* static
    validation stopped on its first step. Fixed (`vendor/patches/libxpc/0004`); `registerStapledTicket
    back` now appears.
 
@@ -11843,8 +11838,7 @@ but nothing guards garbage, so this faulted **every time any process asked to re
 
 **launchd is one of them, and that made it recursive.** launchd is pid 1, so its own fatal-signal
 handler ends in `reboot(0)`. The fault inside `sys_reboot` re-entered `sys_reboot` through
-`sigexc_handler`, six frames at a time, until the stack ran out. The core shows the cycle plainly —
-the same six addresses repeating:
+`sigexc_handler`, six frames at a time, until the stack ran out. The core shows the cycle plainly, the same six addresses repeating:
 
 ```
 __simple_vsnprintf   <- faults
@@ -11871,7 +11865,7 @@ turns the core's NT_FILE offsets into names.
 
 **Correction: "no cores any more" is not "launchd stopped crashing."** The reboot fix turned a
 stack-overflow core into a clean exit; the underlying fatal signal is still there. There is no
-`About to call: reboot` on the console, so the reboot does not come from an orderly shutdown — it
+`About to call: reboot` on the console, so the reboot does not come from an orderly shutdown, it
 comes from `launchd.c`'s **pid 1 crash handler**: fatal signal → diagnose → `sleep(3)` →
 `reboot(0)`. `CIDER_LAUNCHD_FATAL` (a bare `write(2)`, the only reporting safe in a fatal handler)
 now names it:
@@ -11889,23 +11883,23 @@ Also on the console just before: a crashtrace for `/bin/launchctl` faulting insi
 
 ### MoneyMoney reaches its own dialog for the first time
 
-With `DARLING_NO_LAUNCHD=1` — so launchd cannot abort the run — MoneyMoney survives the whole run
+With `DARLING_NO_LAUNCHD=1`, so launchd cannot abort the run, MoneyMoney survives the whole run
 (1699 spinner frames, exit 137 from the harness timeout rather than a crash) and **draws its own
 alert**: *"The MoneyMoney application file seems to be damaged."* Looked at: menu bar, splash and
 alert all rendered.
 
 **A correction to how I read my own instrument.** `validateNonResourceComponents call` with no
-`back` line — I read that as hung, for a rung. It had not blocked at all; it **threw**. With the
+`back` line. I read that as hung, for a rung. It had not blocked at all; it **threw**. With the
 catch blocks instrumented the answer is one line:
 
 ```
 CIDER_CSSTEP core threw MacOSError error=-67061      errSecCSSignatureFailed
 ```
 
-So a `call` with no `back` means **hung *or* threw** — instrument the catch as well as the return.
+So a `call` with no `back` means **hung *or* threw**, instrument the catch as well as the return.
 
 The frontier is now precise (task #143): `validateNonResourceComponents` rejects a signature macOS
-accepts. This is *not* the old damaged-bundle bug — that was `getxattr` answering `EOPNOTSUPP` where
+accepts. This is *not* the old damaged-bundle bug, that was `getxattr` answering `EOPNOTSUPP` where
 macOS answers `ENOATTR` (`xnu/0018`), and it is still fixed. The check now gets far enough to
 actually verify a signature and fail on it.
 
@@ -11924,7 +11918,7 @@ CIDER_CSSTEP CMS signer status=3 (kCMSSignerInvalidSignature)
 CIDER_CSSTEP core threw MacOSError error=-67061
 ```
 
-No `CIDER_CDIR` line, so the CodeDirectory blob is structurally fine — it is the **CMS signature
+No `CIDER_CDIR` line, so the CodeDirectory blob is structurally fine, it is the **CMS signature
 over it** that we judge invalid. Not a certificate or trust problem either: that would be
 `kCMSSignerInvalidCert`.
 
@@ -11938,14 +11932,14 @@ asked the same question of two other signed bundles in the same container:
 | LibreOffice.app | −67061 | `kCMSSignerInvalidSignature` |
 
 Three of three. So this is **our CMS verification refusing every third-party signature**, not
-anything about the bundle MoneyMoney ships — a far better-scoped defect, and it explains why the
+anything about the bundle MoneyMoney ships, a far better-scoped defect, and it explains why the
 other apps run: they never check their own signature at startup. MoneyMoney does, and shows the
 result as "this file seems to be damaged".
 
 Next: `verifySignature` feeds the CodeDirectory to `CMSDecoderSetDetachedContent` and asks
 `CMSDecoderCopySignerStatus`. Either the detached content we hand it is not byte-for-byte what was
 signed, or our digest/RSA verification is wrong. Compare the digest we compute over `mBaseDir`
-against the `messageDigest` attribute inside the CMS blob — those two disagreeing localises it to
+against the `messageDigest` attribute inside the CMS blob, those two disagreeing localises it to
 one side or the other in a single run.
 
 ### The signature is good. The timestamp is what we cannot check.
@@ -11961,10 +11955,10 @@ CIDER_CODESIGN SecStaticCodeCheckValidity=-67061
 ```
 
 1. `SecCmsSignerInfoVerifyWithPolicy` verifies the signature → **`GoodSignature`**.
-2. It then verifies the **unauthenticated** attributes — Apple's secure timestamp countersignature
-   — and gets **`errSecTimestampNotTrusted` (−67884)**.
+2. It then verifies the **unauthenticated** attributes, Apple's secure timestamp countersignature,
+   and gets **`errSecTimestampNotTrusted` (−67884)**.
 3. So it does `goto loser` **with `vs` still `GoodSignature`** and returns `SECFailure`.
-4. `CMSDecoderCopySignerStatus` turns any nonzero return into `kCMSSignerInvalidSignature` — its own
+4. `CMSDecoderCopySignerStatus` turns any nonzero return into `kCMSSignerInvalidSignature`, its own
    comment says it *assumes* that.
 5. `verifySignature` throws `errSecCSSignatureFailed` (−67061).
 6. The app tells its user the file seems to be damaged.
@@ -11977,10 +11971,10 @@ trustd. That also explains the three-of-three result: every third-party bundle i
 
 - **Report on every exit.** Reporting only on the success path made the failing call print nothing,
   which reads exactly like the call not happening.
-- **Tag who.** Two verifications are in flight at once, so adjacent lines belong to different calls
-  — the log is not a timeline. The signer pointer pairs them.
+- **Tag who.** Two verifications are in flight at once, so adjacent lines belong to different calls,
+  the log is not a timeline. The signer pointer pairs them.
 - **An instrument compiled out is silent in the same way a passing check is.** The status I needed
-  was already syslogged — inside `#if SECTRUST_VERBOSE_DEBUG`, which is off.
+  was already syslogged, inside `#if SECTRUST_VERBOSE_DEBUG`, which is off.
 
 ### One missing selector stopped trustd, and with trustd stopped nothing can evaluate trust
 
@@ -12013,8 +12007,7 @@ methods write XML, these write **binary**, which is what Foundation changed to i
 **Measured:** trustd's stderr goes from **2,328 bytes of repeated NSException to zero**, and
 `launchctl` reports it as **pid 9** rather than `-  0` (dead).
 
-**Two things this exposed and did not fix.** trustd only runs because I gave its plist `RunAtLoad`
-— Apple ships it demand-launched via its MachService, and our launchd does not demand-start (the
+**Two things this exposed and did not fix.** trustd only runs because I gave its plist `RunAtLoad`, Apple ships it demand-launched via its MachService, and our launchd does not demand-start (the
 same gap noted for securityd under #137). And with trustd actually alive, the codesign probe stops
 completing inside a container that has launchd, where it used to fail fast; the trust evaluation now
 does a real XPC round trip, and something in that path does not come back.
@@ -12035,17 +12028,17 @@ CIDER_LAUNCHD dispatch returned port=0x2307        <- cleanly
 
 The filter registers, the loop fires, it finds a member with mail, it dispatches a real job, and the
 dispatch **returns**. Then launchd calls `abort()` and dies. Its own `fatal_signal_handler` does not
-list SIGABRT, so the handler returns and `abort()` proceeds to its illegal instruction — which is the
+list SIGABRT, so the handler returns and `abort()` proceeds to its illegal instruction, which is the
 `sig=4` reported earlier, one layer removed from the actual event.
 
 **Two corrections to things I said an hour ago.**
 
-- `kevent_mod` returns **1 on success** — `EV_RECEIPT` makes `kevent` always hand back one event, and
+- `kevent_mod` returns **1 on success**, `EV_RECEIPT` makes `kevent` always hand back one event, and
   every failure path returns −1. My first trace printed `rc=1 errno=2` and I read that as the filter
   failing to register. It was registering all along, and the `errno` was stale: **never print errno
   beside a value that did not fail, it reads as a reason.**
 - The null check around the dispatch is `#if 0`-ed out in the source, and I thought a null `udata`
-  was the crash. It is not — `job=0x71d45d887010` and the dispatch returned. The guard is restored
+  was the crash. It is not, `job=0x71d45d887010` and the dispatch returned. The guard is restored
   anyway, because calling through a null function pointer from pid 1 is never right, but it was not
   this bug.
 
@@ -12057,11 +12050,11 @@ whatever job the loop dispatched, it was not trustd's.
 Making launchd's silent abort audible took three instruments, each because the last one named the
 messenger rather than the sender:
 
-1. `os_crash_function` — libc's `os_crash` records the message and then calls
+1. `os_crash_function`, libc's `os_crash` records the message and then calls
    `dlsym(RTLD_MAIN_ONLY, "os_crash_function")`. Nothing defined it, so **every `os_assert` in
    launchd died with no explanation at all.** Defined now. (It stayed silent here, which was itself
    the answer: the abort was not launchd's own assert.)
-2. `dladdr` on the faulting PC — gave `linux_syscall +9`, i.e. the `raise()` inside `abort()`. The
+2. `dladdr` on the faulting PC, gave `linux_syscall +9`, i.e. the `raise()` inside `abort()`. The
    messenger again.
 3. A **stack scan** with `dladdr` on every slot, the trick the AppKit fatal handler already uses:
 
@@ -12073,7 +12066,7 @@ kevent64_impl +1275
 
 `linux_kevent_copyout` calls `abort()` when a filter cannot copy an event out, under an upstream
 comment that says the quiet part out loud: `/* XXX-FIXME: hard to handle this without losing events
-*/`. That trades one lost event for the whole process — and when the process is **pid 1**, its crash
+*/`. That trades one lost event for the whole process, and when the process is **pid 1**, its crash
 handler reboots the container and every guest dies with it. **Measured: one fatal signal per run
 before, zero over four runs after.**
 
@@ -12090,7 +12083,7 @@ So the read/send/read exchange on the kqchan socket goes out of step, and a fail
 the unread message behind for the next call to trip over.
 
 **What the change trades, plainly:** the event is still lost and epoll keeps reporting the same fd
-readable, so launchd now *drops* steadily rather than dying — about 25 events a second. That is a
+readable, so launchd now *drops* steadily rather than dying, about 25 events a second. That is a
 livelock rather than a crash, it stops nothing else in the container, and the real fix is the
 out-of-step exchange this makes visible for the first time.
 
@@ -12113,7 +12106,7 @@ On the client, a failed exchange now **drains** rather than returning immediatel
 gets back in step instead of wedging for the life of the process.
 
 **A number I got wrong.** I reported the drop rate as "about 25 events a second". It was
-**3,042,592 failures in one sixty-second run** — I had counted the log *while the daemon was still
+**3,042,592 failures in one sixty-second run**. I had counted the log *while the daemon was still
 writing it*, which is no measurement at all. Counting only once the daemon is gone:
 
 | | drops in one run |
@@ -12139,7 +12132,7 @@ CIDER_KQCHAN SEND number=3 read reply from the fill body
                                                        and nothing more, ever
 ```
 
-Two clean exchanges, totals of exactly 2/2/2 — while the client failed millions of times. So the
+Two clean exchanges, totals of exactly 2/2/2, while the client failed millions of times. So the
 client was not mis-reading the server; it was reading **nothing**:
 
 ```c
@@ -12161,15 +12154,15 @@ the knote be deleted, which `EV_ONESHOT` arranges in the caller's post-processin
 | drop with drain | 78,644 / 63 / 79,082 |
 | **EOF handled** | **0 / 0 / 0** (with 1, 3, 7 clean `EV_EOF` events; daemon log 11 MB → 33 KB) |
 
-**Still true:** trustd is *not* demand-started by this, so #143/#144 do not end here after all — that
+**Still true:** trustd is *not* demand-started by this, so #143/#144 do not end here after all, that
 guess was wrong and the two remain open.
 
 ### trustd exits 3 because the container has no `_trustd` user
 
 Two corrections to what I wrote last rung, both from naming things the trace only had numbers for.
 
-**"trustd is never demand-started" was wrong.** Giving the demand loop the *service name* — a small
-exported `job_service_name_by_port` beside the lookup that already finds the job — shows launchd
+**"trustd is never demand-started" was wrong.** Giving the demand loop the *service name*, a small
+exported `job_service_name_by_port` beside the lookup that already finds the job, shows launchd
 doing exactly the right thing:
 
 ```
@@ -12189,8 +12182,7 @@ PROBE after:  -  3  com.apple.trustd      ran, exited 3
 ```
 
 `com.apple.trustd.plist` asks for `UserName = _trustd`, and the container's `/etc/master.passwd`
-holds **only root and nobody**. A launchd job that names a user it cannot resolve does not run —
-silently, because that plist ships no `StandardErrorPath`. Adding `_trustd` (and `_lp`, which
+holds **only root and nobody**. A launchd job that names a user it cannot resolve does not run, silently, because that plist ships no `StandardErrorPath`. Adding `_trustd` (and `_lp`, which
 `cups-lpd` needs for the identical reason) to `src/darwin/etc/master.passwd` and `group`:
 
 ```
@@ -12205,7 +12197,7 @@ refused, because with no trustd there is no trust evaluation at all.
 With the pid-1 fixes in place, MoneyMoney no longer dies at ~7 s: 1554 spinner frames, exit 137 from
 the harness timeout, **zero** launchd fatal signals and zero reboots. Looked at the capture: window
 chrome, menu bar, splash, and the toolbar relaid out with its overflow chevron after the resize. It
-is still at the splash — `SecTrustEvaluate` now *blocks* where it used to fail fast, because a live
+is still at the splash, `SecTrustEvaluate` now *blocks* where it used to fail fast, because a live
 launchd hands out a send right for a name whose job is not running. That is #140's shape exactly.
 
 ### trustd runs and still does not answer, and a diagnostic that did not work
@@ -12219,16 +12211,16 @@ PROBE codesign:                                 and then it blocks
 ```
 
 So the daemon is alive and does not serve within the probe's 20 s. `ciderd.log` shows it exec'd and
-then says nothing at all — no crash, no message. That is the same shape as securityd under #137: a
+then says nothing at all, no crash, no message. That is the same shape as securityd under #137: a
 Security daemon that runs but never answers, while launchd hands its name out to clients.
 
 **A change I made and withdrew.** launchd logs a job's nonzero exit at `LOG_ERR`, which goes to
-syslog — a sink this container does not have, which is why every failed daemon has died silently.
+syslog, a sink this container does not have, which is why every failed daemon has died silently.
 Adding `| LOG_CONSOLE` (the file's own idiom for what an operator must see) looked obviously right.
 It does not work: with a control job that runs `/usr/bin/false`, `launchctl` records
 `-  1  com.cider.exitprobe` and **no console line appears**. `job_logv` passes the priority through
 unmasked and `launchd_vsyslog` decodes `LOG_CONSOLE` at its top, so the reason is somewhere I did
-not find inside a sensible budget. **Reverted rather than shipped** — an instrument that is silent
+not find inside a sensible budget. **Reverted rather than shipped**, an instrument that is silent
 when it should speak is worse than none, because its silence reads as good news.
 
 The control is the part worth keeping: a job whose only purpose is to fail, in the same run, is what
@@ -12269,7 +12261,7 @@ libdispatch
 trustd _main +0x149
 ```
 
-`dispatch_main()` parks the main thread by `pthread_exit()`ing it — that is what it is for — and our
+`dispatch_main()` parks the main thread by `pthread_exit()`ing it, that is what it is for, and our
 `_pthread_tsd_cleanup` then runs objc's `tls_dealloc`, which drains that thread's autorelease pool
 and releases an object whose class pointer is already dead.
 
@@ -12297,15 +12289,15 @@ is a use-after-free (`objc_release` on an object whose isa is already dead) rath
 structural about `dispatch_main`.
 
 **And the first version of this probe measured nothing.** Its main-queue block called `exit(0)`, so
-the process ended *before* `dispatch_main` ever parked the main thread — the only thing under test.
+the process ended *before* `dispatch_main` ever parked the main thread, the only thing under test.
 It printed a clean run and would have been read as "no crash". A probe that exits before reaching
 the code it is aimed at is worse than no probe; the fix is the `dispatch_after` that lets it survive
 to be parked and still terminate.
 
 ### A running trustd answers nothing, and a plist trap that hid my instruments
 
-**The sharpest statement yet.** Poking trustd twice — once to demand-start it, once six seconds
-later when it has a pid — gives:
+**The sharpest statement yet.** Poking trustd twice, once to demand-start it, once six seconds
+later when it has a pid, gives:
 
 ```
 poke 1 → TIMEOUT          (this is what starts it)
@@ -12315,23 +12307,23 @@ trustd still: 31 -        same pid
 ```
 
 So a **running, checked-in trustd with a stable pid answers neither poke**. Not a startup race, and
-not the intermittent crash — which is worth stating plainly, because the crash was where I was
+not the intermittent crash, which is worth stating plainly, because the crash was where I was
 looking. (That crash is ~1 in 6; five runs in a row survived with the pool trace on, which is
 consistent with the rate and proves nothing either way.)
 
 **A plist trap that cost most of this rung.** My prefix-local trustd override added a *second*
 `EnvironmentVariables` key rather than merging into the existing one. A duplicate-key dict silently
-resolves to one of them, so my trace variables were being dropped — and the traces then printed
+resolves to one of them, so my trace variables were being dropped, and the traces then printed
 nothing, which reads exactly like the code not running. Merging into the existing dict fixed it, and
 `CIDER_TRACE_POOL` started speaking immediately.
 
 **Two instruments, one verified and one not.**
 
-- `CIDER_TRACE_POOL` (objc4) names every object as the autorelease pool drains — the crash cannot
+- `CIDER_TRACE_POOL` (objc4) names every object as the autorelease pool drains, the crash cannot
   name the object it faults on, because by then its isa is unreadable, but the line printed just
   *before* the fault can. **Verified speaking** on a non-crashing run:
   `CIDER_POOL releasing 0x786f6367c980 isa=0x786f64933168 __NSCFString`.
-- libxpc now prints when a listener **drops a non-checkin message** — a real silent path, since a
+- libxpc now prints when a listener **drops a non-checkin message**, a real silent path, since a
   listener throws away anything that is not a check-in and says so only via `xpc_log_fault` →
   syslog. **This one has not fired yet**, so where trustd's messages actually go is still open. It
   is recorded as an instrument, not as a finding.
@@ -12354,7 +12346,7 @@ CIDER_TRUSTD loc: calling mbr_uid_to_uuid for euid 282
 
 It stops inside `trustd_init_server`, several calls before `trustd_xpc_init`, so it **never creates
 an XPC listener**. A "running, checked-in trustd that answers nothing" is a daemon with nothing
-listening — not a daemon whose replies are lost.
+listening, not a daemon whose replies are lost.
 
 The blocking call is a membership lookup: libinfo asks opendirectoryd to translate uid 282 to a
 UUID, over an XPC pipe whose round trip has no timeout.
@@ -12371,7 +12363,7 @@ CIDER_XPC check-in for service com.apple.system.opendirectoryd.membership = 0 (c
 CIDER_ODD listener resumed, entering dispatch_main
 ```
 
-Listener created, service claimed, parked in `dispatch_main` — and while a client sits blocked in
+Listener created, service claimed, parked in `dispatch_main`, and while a client sits blocked in
 `xpc_pipe_routine`, **the listener's event handler never fires**. It is not the listener discarding
 the message either: libxpc drops any non-checkin message a listener receives, that path is
 instrumented and deployed, and it does not fire. The message is lost before it gets that far.
@@ -12394,7 +12386,7 @@ So the same sentence now describes two daemons: up, checked in, and never handed
    the write end open, so the reader never sees EOF and the driver hangs long after the run ended.
    Redirect to a file and grep the file.
 2. **A grep pattern can hide the answer.** An unconditional environment dump was printing for three
-   runs while I read the log through `PROBE\|CIDER_MBR\|opendirect` — which those lines do not
+   runs while I read the log through `PROBE\|CIDER_MBR\|opendirect`, which those lines do not
    match. It read exactly like the daemon not running my binary.
 3. **Give a probe a case that is not short-circuited.** The first membership probe asked for uid 0
    twice (once deliberately, once as its own euid, which in a container shell is also 0). libinfo
@@ -12403,7 +12395,7 @@ So the same sentence now describes two daemons: up, checked in, and never handed
 
 ### A minimal XPC listener gets its message about half the time
 
-Every service poked so far timed out, and none of those runs had a **positive control** — without a
+Every service poked so far timed out, and none of those runs had a **positive control**, without a
 service known to answer, "nothing replied" cannot separate a broken delivery path from a container
 where no daemon would have answered anyway. So: an echo service we own end to end, one binary with a
 server mode and a client mode (`src/darwin/probes/xpcecho-probe.c`), registered in launchd with its
@@ -12428,12 +12420,12 @@ dictionary` → `replied`.
 
 **So this is not a Security problem.** It is the substrate under every daemon in the container, and
 it is the plausible shared root of #135, #137 and #140. Two of the eighteen runs produced no result
-at all — the container itself died — which is separate from a timeout and matches #141.
+at all, the container itself died, which is separate from a timeout and matches #141.
 
 **A correction worth recording, because I nearly shipped it.** opendirectoryd targets its listener at
 a `DISPATCH_QUEUE_CONCURRENT`, which my echo did not, so I added that mode and measured: **3 of 4
 default against 1 of 4 concurrent**. That is exactly the shape of a finding. Nine runs each say **5
-of 9 and 3 of 9** — noise. The concurrent queue is not the discriminator, and a rate measured on four
+of 9 and 3 of 9**, noise. The concurrent queue is not the discriminator, and a rate measured on four
 runs was not a rate.
 
 Two other candidates are already refuted for this: the message is not being dropped by the listener
@@ -12449,16 +12441,16 @@ eleven runs kept with full logs:
 | outcome | runs |
 | --- | --- |
 | replied | 5 |
-| **the server never started** — no `server starting` line at all | 4 |
+| **the server never started**, no `server starting` line at all | 4 |
 | the server was up, listener resumed, event handler never fired | 2 |
 
 Only the last two are a delivery failure. **The commonest one is a launchd job that simply does not
-run** — which is exactly #137's signature, now reproduced on a 150-line first-party daemon whose
+run**, which is exactly #137's signature, now reproduced on a 150-line first-party daemon whose
 whole body is "reply to a dictionary". That takes securityd out of #137 entirely: it is not
 securityd's bug.
 
 It also explains the ciderd side. In a failing run the mach-port channels show **13 `OPEN` and zero
-`NOTIFY`, zero `SEND`, zero `RECV`** — every channel registered and watching, and no message landing
+`NOTIFY`, zero `SEND`, zero `RECV`**, every channel registered and watching, and no message landing
 anywhere. With no listener process alive, that is the expected picture, not a second mystery.
 
 `CIDER_TRACE_KQUEUE` now names the channel (`port=0x… fd=…`) and logs `OPEN`, `NOTIFY` and `CLOSE`
@@ -12467,7 +12459,7 @@ exchange stopped" cannot be attributed to any one of them; without `OPEN`, silen
 a channel that was never created from one that was created and never had anything to carry.
 
 **And a snapshot lied again, in the same way it did for trustd.** `launchctl list` reported
-`-  1  com.cider.xpcecho` — no pid, last exit 1 — in a run that replied *and* in one that did not.
+`-  1  com.cider.xpcecho`, no pid, last exit 1, in a run that replied *and* in one that did not.
 With `KeepAlive` the job restarts, so a listing taken at one instant is not the state during the
 poke.
 
@@ -12475,7 +12467,7 @@ poke.
 
 **Looked at, twice, and the alert is gone.** MoneyMoney now draws its menu bar (its own ten menus),
 its toolbar, its logo, and "Starting MoneyMoney…" with a spinner. Zero occurrences of "damaged" in
-the run log, where before it drew that alert. It still does not finish starting — said plainly.
+the run log, where before it drew that alert. It still does not finish starting, said plainly.
 
 **The signature was never the problem.** Three signers; two verify clean; the third carries a
 timestamp countersignature whose trust cannot be evaluated, and its good verdict left through the
@@ -12488,15 +12480,15 @@ CIDER_CMS VerifySignerInfo signer=0x…7a40 signature=-1 certificate=0
 CIDER_CSSTEP core threw MacOSError error=-67061
 ```
 
-`CMSDecoderCopySignerStatus` flattens any nonzero into `kCMSSignerInvalidSignature` — its own comment
-admits that is an assumption — so an unverifiable *timestamp* was reported as a bad *code signature*.
+`CMSDecoderCopySignerStatus` flattens any nonzero into `kCMSSignerInvalidSignature`, its own comment
+admits that is an assumption, so an unverifiable *timestamp* was reported as a bad *code signature*.
 Measured on three bundles in one container: MoneyMoney, iTerm and LibreOffice all gave −67061. The
 other two only run because they never check their own signature at startup.
 
 Two changes (`vendor/patches/security/0007`), each defensible on its own terms:
 
 - `cmssiginfo.c` no longer discards a good signature because the *unauthenticated* attributes failed.
-  A timestamp says **when** something was signed, not **whether**. A bad signature still fails — `vs`
+  A timestamp says **when** something was signed, not **whether**. A bad signature still fails, `vs`
   is untouched and the `SecCmsVSBadSignature` path is unchanged.
 - `StaticCode.cpp` treats `errSecTimestampNotTrusted` like `errSecTimestampMissing`, which was
   already tolerated one line above. Nothing is claimed that we do not have: `mSigningTimestamp` stays
@@ -12510,17 +12502,17 @@ Two changes (`vendor/patches/security/0007`), each defensible on its own terms:
 CIDER_TSA SecTrustEvaluate result=0 trustResult=0 cssmResultCode=0 (getCssm=0)
 ```
 
-`trustResult` 0 is `kSecTrustResultInvalid` — the header defines it as "`SecTrustEvaluate` has not yet
+`trustResult` 0 is `kSecTrustResultInvalid`, the header defines it as "`SecTrustEvaluate` has not yet
 been called", and `tsaSupport` handles it under an `assert(false)` marked *should never happen*.
 `SecTrustEvaluate` returns **success** while leaving it, and exactly one code path can do that:
 `TRUSTD_XPC(sec_trust_evaluate)` fails with `errSecNotAvailable` and Apple's ramdisk fallback returns
-`true` having set only the leaf — in its own words, "to make it seem like we did a cert evaluation".
+`true` having set only the leaf, in its own words, "to make it seem like we did a cert evaluation".
 
 So **every trust evaluation in this container is a lie, and each caller mishandles it differently**:
 −67884 in the timestamp path, −50 in `validateDirectory`, `assert(false)` in a third place. The
 bundle is still not valid (`SecStaticCodeCheckValidity` = −50 now instead of −67061). What these
 changes buy is a **true label instead of a false one**, and an application that gets past the alert.
-The one thing left is a trust evaluation that actually happens, which needs trustd to answer — #143.
+The one thing left is a trust evaluation that actually happens, which needs trustd to answer, #143.
 
 ### Correction: MoneyMoney does NOT get past the damaged alert
 
@@ -12533,54 +12525,53 @@ seen did not.** They are not comparable, and the difference decides the outcome:
 | configuration | codesign check | what the user sees |
 | --- | --- | --- |
 | `DARLING_NO_LAUNCHD=1` | completes: `codesign SecTrustEvaluate gave trustResult=0` → throws −50 | **the damaged alert** |
-| launchd enabled | stops at `VerifyUnAuthAttrs returned -67882` and never returns | no alert — nothing answered |
+| launchd enabled | stops at `VerifyUnAuthAttrs returned -67882` and never returns | no alert, nothing answered |
 
 So with launchd the alert is absent because the check **hangs**, not because it passes. Looking at
 the capture in the matching configuration shows the alert still there, word for word.
 
 **A summary statistic lied here too, and looking is what caught it.** `grep -c damaged` returned 0 in
-both runs — the alert text is *drawn*, never logged — so the grep could not have found it either way.
+both runs, the alert text is *drawn*, never logged, so the grep could not have found it either way.
 
 **What is actually true of the change in `vendor/patches/security/0007`:** it moves the verdict from
 −67061 (a false label: "bad signature") to −50 (a true one: trust could not be evaluated). The
 application treats **both** as damaged, so it is an honesty fix, not a functional one, and MoneyMoney
 is no closer to opening than before.
 
-**What is new and useful:** with launchd, `bootstrap_look_up` for `com.apple.trustd` *succeeds* —
-launchd hands out a send right and demand-starts the job — and trustd then never checks in, so the
+**What is new and useful:** with launchd, `bootstrap_look_up` for `com.apple.trustd` *succeeds*, launchd hands out a send right and demand-starts the job, and trustd then never checks in, so the
 XPC call blocks forever with no timeout. Without launchd the lookup fails fast, `errSecNotAvailable`
 takes Apple's ramdisk fallback, and the check completes wrongly but quickly. That is a much sharper
 statement of #135 than "staticValidate never returns": **it returns iff there is no launchd**.
 
 ### A pipe client and a connection client, and why that is still not an answer
 
-libinfo reaches opendirectoryd with a raw `xpc_pipe`, not an `xpc_connection` — and a pipe sends a
+libinfo reaches opendirectoryd with a raw `xpc_pipe`, not an `xpc_connection`, and a pipe sends a
 plain `XPC_MSGH_ID_MESSAGE` where a connection first sends `XPC_MSGH_ID_CHECKIN`, which matters
 because a libxpc **listener drops anything that is not a check-in**. That would neatly explain why
 every membership lookup hangs while an echo reached by a connection answers much of the time.
 
 So the echo probe now asks the same service both ways in the same run, with the connection client as
-the control. `xpc_pipe_routine` has no timeout — the very thing under investigation — so it runs on a
+the control. `xpc_pipe_routine` has no timeout, the very thing under investigation, so it runs on a
 detached thread with a deadline rather than being allowed to hang the probe.
 
 **Two runs looked like a finding: the pipe client returned `rc=0` with a reply while the connection
 client timed out, and the server logged two peer dictionaries and two replies. Three runs later,
 both clients timed out, and in two of those the server was up with no listener event at all.**
 
-Two runs is not a rate. This is the second time in two rungs that a four-run split evaporated — the
+Two runs is not a rate. This is the second time in two rungs that a four-run split evaporated, the
 concurrent target queue did the same thing (3/4 vs 1/4 became 5/9 vs 3/9). **The pipe/connection
 difference is unestablished.** What *is* established is that the service fails in at least two
 independent ways: the job does not start, or it starts and its listener is never handed the message.
 
 The server now names the payload of each message it receives (`from=ping` vs `from=ping-by-pipe`),
 because with two clients served in one run and two separate log streams, counting events cannot say
-which client arrived — and the question that matters is whether the connection client's message
+which client arrived, and the question that matters is whether the connection client's message
 reaches the server at all, or only its reply goes missing.
 
 ### trustd starts for the first time, and then answers exactly once
 
 **A registered service that never answers must not hang its client forever.** On macOS these XPC
-round trips have no timeout because launchd guarantees the service — the name resolves only when
+round trips have no timeout because launchd guarantees the service, the name resolves only when
 something is there to serve it. That guarantee does not hold here, and the difference was the whole
 blocker:
 
@@ -12592,8 +12583,7 @@ no deadline. Security then waited on trustd, forever, and MoneyMoney sat on its 
 
 `vendor/patches/libxpc/0006` gives the pipe round trip a bounded wait (15 s default,
 `CIDER_XPC_PIPE_TIMEOUT_MS`, 0 restores the macOS behaviour). Nothing new is invented:
-`MACH_RCV_TIMED_OUT` was already mapped to `EIO`, and every caller on this path has an error route —
-libinfo builds a compatibility UUID in-process, Security has its no-trustd path.
+`MACH_RCV_TIMED_OUT` was already mapped to `EIO`, and every caller on this path has an error route, libinfo builds a compatibility UUID in-process, Security has its no-trustd path.
 
 **Measured, and it is the first time this has happened at all:**
 
@@ -12616,7 +12606,7 @@ and the client got `CIDER_XPCPROBE com.apple.trustd=REPLY`.
 
 **What it does not fix, said plainly: trustd answers exactly ONE request and then goes deaf.** Pokes
 2 and 3 time out while it is still alive at the same pid, reproducibly. So MoneyMoney is still not
-open — its `verifySignature` still stalls, now with zero pipe timeouts, because it is waiting on a
+open, its `verifySignature` still stalls, now with zero pipe timeouts, because it is waiting on a
 trustd that has stopped listening.
 
 **And the remaining defect is now split cleanly.** A new trace sits *above* the branching in libxpc's
@@ -12630,7 +12620,7 @@ CIDER_XPC channel event reason=2 (received) listener=1 service=com.apple.trustd 
 ```
 
 The listener channel is handed exactly one message and nothing after it. **libxpc is not discarding
-anything — the message never arrives.**
+anything, the message never arrives.**
 
 `CIDER_TRACE_KQUEUE` now names the owning guest pid, because a mach port *name* is per-task and two
 channels both called `port=0x803` belong to different processes. That was not cosmetic: the read
@@ -12652,7 +12642,7 @@ machport copyout port=0x803: delivering an event   → NOTHING, no libxpc event 
 ```
 
 - **ciderd is innocent.** The listener's channel shows a read reply that *carries an event* for the
-  second request as well as the first — the trace now prints the reply code, because `0xdead` ("no
+  second request as well as the first, the trace now prints the reply code, because `0xdead` ("no
   event available") and a real delivery were otherwise indistinguishable in it.
 - **libkqueue is innocent.** Its copyout says `delivering an event to the caller` the third time too.
 - **libxpc is innocent.** The trace above the branching in `dispatch_mach_handler` shows the listener
@@ -12661,7 +12651,7 @@ machport copyout port=0x803: delivering an event   → NOTHING, no libxpc event 
 **So libdispatch receives the event and never calls the channel handler.** That is the next look.
 
 Two supporting details worth keeping. The kqueue trace now names the **owning guest pid**, because a
-mach port *name* is per-task — two channels both called `port=0x803` belong to different processes.
+mach port *name* is per-task, two channels both called `port=0x803` belong to different processes.
 That was not cosmetic: the read reply's trace resolved the owner *inside* the microthread closure,
 where the thread-local task table is a different, empty map, so every read reply was reported as
 `pid=0` and trustd's channel looked as though it never got a reply at all.
@@ -12673,7 +12663,7 @@ spurious wakeup that the guest reads and discards.
 ### Refinement: libdispatch was handed an error, not a message
 
 The section above ends "libdispatch receives the event and never calls the channel handler", and
-points there as the next look. Printing the flags shows that is the wrong place — **libdispatch is
+points there as the next look. Printing the flags shows that is the wrong place, **libdispatch is
 behaving correctly, because what it receives is not a message-available event at all.**
 
 | | fflags | data |
@@ -12683,15 +12673,14 @@ behaving correctly, because what it receives is not a message-available event at
 
 (Both constants read out of `vendor/src/xnu/.../message.h`, not from memory.)
 
-`MACH_RCV_TOO_LARGE` with the port name is the normal signal — "there is a message, it does not fit
+`MACH_RCV_TOO_LARGE` with the port name is the normal signal, "there is a message, it does not fit
 your 64-byte buffer, here is the port, go and receive it". `MACH_RCV_INVALID_DATA` with `data = 0`
 carries nothing to receive, so a handler that ignores it is right to.
 
 **So the defect is in `xnu_sys_kqchan_mach_port_fill`**: for the second message on the same listener
 port it produces an error where it produced the port name the first time.
 
-**One obvious cause is refuted by measurement.** The guest's receive buffer looked like the suspect —
-hand XNU somewhere it cannot write and `MACH_RCV_INVALID_DATA` is exactly what you would get. It is
+**One obvious cause is refuted by measurement.** The guest's receive buffer looked like the suspect, hand XNU somewhere it cannot write and `MACH_RCV_INVALID_DATA` is exactly what you would get. It is
 the same buffer every time:
 
 ```
@@ -12700,7 +12689,7 @@ port=0x803 READ number=64 with a buffer → read reply, code=0xdead, NO event (s
 port=0x803 READ number=64 with a buffer → read reply, carries an event      (poke 2, but INVALID_DATA)
 ```
 
-Same size, non-NULL, all three times. Next look is inside the fill itself — what differs about the
+Same size, non-NULL, all three times. Next look is inside the fill itself, what differs about the
 second message on a port, given a check-in message carries port rights that must be copied into the
 receiving task.
 
@@ -12708,7 +12697,7 @@ receiving task.
 
 The refinement above concluded the defect is in `xnu_sys_kqchan_mach_port_fill`, because the lost
 delivery came back `MACH_RCV_INVALID_DATA / data=0` where working ones are `MACH_RCV_TOO_LARGE` with
-the port name — the signature of a failed inline copyout into a guest address made from the daemon.
+the port name, the signature of a failed inline copyout into a guest address made from the daemon.
 
 That reasoning was sound and **the result is negative.** Offering no inline buffer
 (`CIDER_KQ_NO_INLINE`, default off) makes `filt_machportprocess` report every message by name, and
@@ -12719,7 +12708,7 @@ copyout port=0x803: delivering an event to the caller, flags=0x181 fflags=0x1000
 ```
 
 **And the listener still never hears it.** libxpc logs no channel event for it, exactly as before. So
-a *well-formed* event is dropped above libkqueue just as the malformed one was — the malformed event
+a *well-formed* event is dropped above libkqueue just as the malformed one was, the malformed event
 was not the whole defect, and fixing it alone does not make trustd answer twice.
 
 Which puts libdispatch back in the frame, and this time not by elimination: it is handed a
@@ -12729,7 +12718,7 @@ much as the change would have been.
 
 ### The whole chain, and it ends in our own mach_msg receive
 
-The four-layer localisation above pointed at libdispatch. It is not libdispatch either — and the
+The four-layer localisation above pointed at libdispatch. It is not libdispatch either, and the
 reason it looked like it is worth stating, because it is the same shape as everything else in this
 investigation: **on a `MACH_RCV_TOO_LARGE` event libdispatch does not receive anything from the
 kevent at all.** It reads the *port name* out of `ke->data` and goes and receives the message itself
@@ -12751,14 +12740,14 @@ receive from the same port, with the same size and the same code path as the fir
 So nothing above is at fault: the daemon delivered, libkqueue delivered, libdispatch asked the kernel
 for the message and was refused, and libxpc was correctly never called for a message that was never
 received. **The defect is in our `mach_msg` receive path**, which is where it should have been two
-corrections ago — and it took making three separate silent failure paths speak to get there.
+corrections ago, and it took making three separate silent failure paths speak to get there.
 
 Note what this also explains: the earlier `MACH_RCV_INVALID_DATA` seen coming *out of the kqueue
 fill* is the **same failure in the same place**, reached by the fill's inline-copy attempt rather
 than by libdispatch's explicit receive. `CIDER_KQ_NO_INLINE` moved which of the two hit it first; it
 could never have avoided it.
 
-### Correction: trustd is not deaf, it has exited — and launchd does not restart it
+### Correction: trustd is not deaf, it has exited, and launchd does not restart it
 
 Everything above chases a message that goes missing between the daemon and libxpc. The message is
 real and the traces are accurate, but **the client-visible symptom has a much simpler cause, and I
@@ -12772,13 +12761,13 @@ PROBE poke 2                         → TIMEOUT
 PROBE trustd pid after poke 2 = -    → still gone, never restarted
 ```
 
-trustd exits after answering one request. That is **correct behaviour on its part** — its plist sets
+trustd exits after answering one request. That is **correct behaviour on its part**, its plist sets
 `EnableTransactions` and `EnablePressuredExit`, and `listen_for_sigterm` ends in
 `xpc_transaction_exit_clean()`, so an idle daemon is supposed to go away and be brought back on the
 next message. **launchd never brings it back.**
 
 So "trustd answers exactly once and then goes deaf" was the wrong description throughout. It answers
-once and then *leaves*, and the next client waits on a name whose job is no longer running — the
+once and then *leaves*, and the next client waits on a name whose job is no longer running, the
 same shape as [[registered-service-is-not-a-live-one]], one level up.
 
 **What that makes of the earlier findings, stated plainly:**
@@ -12787,13 +12776,13 @@ same shape as [[registered-service-is-not-a-live-one]], one level up.
   the process having gone, not the cause. A write into a departed process failing with `ESRCH` is
   correct.
 - The four-layer localisation is still true as a description of *those* traces, and the instruments
-  it added are worth keeping — three separate silent failure paths now speak. But it was answering
+  it added are worth keeping, three separate silent failure paths now speak. But it was answering
   "where does this message go" when the question should have been "is anyone there to receive it".
 - `CIDER_KQ_NO_INLINE` remains a negative result, unaffected.
 
 This also revises #144, which was marked done: launchd **does** demand-start a MachService job the
 first time, and does **not** start it again once the job has exited. The next look is what launchd
-does with the service port when a checked-in job dies — `machservice_resetport` and
+does with the service port when a checked-in job dies, `machservice_resetport` and
 `machservice_watch` are the machinery, and whether the port goes back into launchd's demand port set
 decides whether a second message can ever wake it.
 
@@ -12829,17 +12818,16 @@ CIDER_VMWRITE the map that failed belongs to guest nsid 30
 ```
 
 **The host pid ciderd holds for a live guest process is dead.** That is not a consequence of anything
-above it — it is the defect. `launchd`'s own trace confirms the surrounding state is sane: it watched
+above it, it is the defect. `launchd`'s own trace confirms the surrounding state is sane: it watched
 `com.apple.trustd` at boot (`machservice_watch com.apple.trustd recv=1`, one of 20 services) and
 never logged a returned receive right, which is correct for a job that did not die.
 
 Next: find why that pid goes stale for a live task. `set_host_pid` runs on every incoming RPC from
-the guest, and a daemon parked in `dispatch_main` sends none — so the value is whatever its last RPC
+the guest, and a daemon parked in `dispatch_main` sends none, so the value is whatever its last RPC
 carried. Propagating updates into the live `TaskCtx` (done, and it did not fix this) was necessary
 but not sufficient; the recorded value itself is wrong.
 
-The launchd trace is gated on the **file** `/probe/launchd-trace`, not an environment variable —
-`CIDER_TRACE_LAUNCHD` demonstrably does not reach pid 1, and a run with it set produced zero lines,
+The launchd trace is gated on the **file** `/probe/launchd-trace`, not an environment variable, `CIDER_TRACE_LAUNCHD` demonstrably does not reach pid 1, and a run with it set produced zero lines,
 which is silence and not evidence. launchd's stderr lands in `ciderd.log`, not in the shell output.
 
 ### Settled from the host: trustd does exit, and the guest's liveness check lies
@@ -12847,7 +12835,7 @@ which is silence and not evidence. launchd's stderr lands in `ciderd.log`, not i
 I have now claimed both answers to this and one of them is wrong, so here it is settled with an
 instrument that cannot be fooled by the emulation. The previous section says trustd is "usually still
 alive" and its recorded host pid is stale. **That was measured with `launchctl list` and `kill -0`,
-both of which run inside the guest** — and ciderd's tasks are leak-lived, so a departed process is
+both of which run inside the guest**, and ciderd's tasks are leak-lived, so a departed process is
 still a live-looking task.
 
 Watching the **host** process table once per second, three runs of three:
@@ -12866,15 +12854,15 @@ and the stale host pid is a symptom, not the defect.** The correction two sectio
 wrong; the one before it was right.
 
 Sixteen seconds is not arbitrary: fifteen of them are the `xpc_pipe` timeout it spends on the
-membership lookup, so it creates its listener at ~15 s, answers immediately, and — having no
-outstanding transaction — exits about a second later. That is `EnableTransactions` working as
+membership lookup, so it creates its listener at ~15 s, answers immediately, and, having no
+outstanding transaction, exits about a second later. That is `EnableTransactions` working as
 designed. **What is missing is launchd bringing it back**, which is #144 reopened: launchd
 demand-starts a `MachService` job the first time and never again once the job has gone.
 
 **The rule this cost three reversals to learn: never measure liveness from inside the thing under test.**
 `launchctl` and `kill -0` are the guest's account of its own kernel; `ps` on the host is not.
 
-The first version of the host watcher was also wrong in a way worth recording — `pgrep -af trustd`
+The first version of the host watcher was also wrong in a way worth recording, `pgrep -af trustd`
 matched `/probe/trustd-steps.sh` and the driver itself and reported "8 trustd processes", most of
 them me. Match the binary (`libexec/trustd`), and exclude your own scripts.
 
@@ -12905,12 +12893,12 @@ no exit notification → ports never re-armed → **no later message can demand-
 `launchctl list` keeps reporting a pid for a process that has gone.
 
 Measured, in the same run: launchd sees `NOTE_EXIT` and reaps secd, securityd, xpc-probe, launchctl
-and sh — and **never** trustd. Its own `EVFILT_PROC` registration for trustd *succeeded*
+and sh, and **never** trustd. Its own `EVFILT_PROC` registration for trustd *succeeded*
 (`EVFILT_PROC add rc=1 errno=0`), and ciderd's `pidfd_open` *succeeded* too. Both sides did their job;
 they were talking about different processes.
 
 Next: re-arm (or resolve lazily) the `ProcKqchan` target when a task's host pid changes. The two
-records should not exist independently at all — the memory path's value is the one `ps` agrees with.
+records should not exist independently at all, the memory path's value is the one `ps` agrees with.
 
 ### The re-arm fired zero times, so that explanation is wrong too
 
@@ -12923,7 +12911,7 @@ change for the task in question, and the two records differ **from the start** r
 The explanation is wrong; the divergence itself (`watching … 3840122` against a real daemon at
 `3840326`) is measured and still unexplained.
 
-The re-arm is kept — a watch that does not follow its process is wrong regardless — but it is **not
+The re-arm is kept, a watch that does not follow its process is wrong regardless, but it is **not
 the fix** and the code says so.
 
 Next, and this time comparing the two directly rather than reasoning about them: print both
@@ -12937,19 +12925,18 @@ Four causes removed in one pass, each one measured before and after. The verdict
 
 | verdict | what it was |
 | --- | --- |
-| −67061 | a **false label** — an unverifiable timestamp discarding a good signature (patch security/0007) |
+| −67061 | a **false label**, an unverifiable timestamp discarding a good signature (patch security/0007) |
 | −50 | the trust evaluation never happened, so there was no chain to check |
-| 100022 | `errSecErrnoBase + EINVAL` — `fcntl(F_NOCACHE)` (patch xnu/0020) |
+| 100022 | `errSecErrnoBase + EINVAL`, `fcntl(F_NOCACHE)` (patch xnu/0020) |
 | −67055 | `errSecCSResourcesInvalid`, the sealed resource directory |
 
-**`verifySignature` now returns normally, `validateExecutable` passes — every page hash of the main
-executable verifies — and `staticValidate` returns for the first time.** MoneyMoney still shows its
+**`verifySignature` now returns normally, `validateExecutable` passes, every page hash of the main
+executable verifies, and `staticValidate` returns for the first time.** MoneyMoney still shows its
 damaged-file alert, said plainly and looked at: −67055 is still a failure.
 
 **What changed, and what it costs.**
 
-`SecTrustEvaluateIfNecessary`'s "we failed to talk to securityd" branch already lies deliberately —
-Apple's comment says it returns success "to make it seem like we did a cert evaluation". What it does
+`SecTrustEvaluateIfNecessary`'s "we failed to talk to securityd" branch already lies deliberately, Apple's comment says it returns success "to make it seem like we did a cert evaluation". What it does
 not do is set a trust result, so callers get success plus `kSecTrustResultInvalid`, which the header
 defines as *"SecTrustEvaluate has not yet been called"*, and each mishandles it differently. In this
 container that branch is not a fallback but the **only** path. Two changes on it, both reversible
@@ -12957,7 +12944,7 @@ with `CIDER_TRUST_STRICT=1`:
 
 - report `kSecTrustResultUnspecified` instead of leaving `Invalid`. **This is a real divergence and
   gives something up**: nothing was verified, and "no chain objection" is being said about an
-  evaluation that did not happen — the same thing the surrounding code already decided when it chose
+  evaluation that did not happen, the same thing the surrounding code already decided when it chose
   to return `true`.
 - build the chain from **all** the certificates the caller supplied, not just the leaf. Apple keeps
   one element for an ASR case that only wants the leaf's public key; a one-element chain is not a
@@ -12965,7 +12952,7 @@ with `CIDER_TRUST_STRICT=1`:
 
 And `isAppleDeveloperCert` no longer fails a whole validation by throwing. It parses a fixed
 requirement string and evaluates it, and here it throws −50 every time. It is a **consistency check,
-not the signature check** — its only use is deciding whether to cross-check the team identifier — so
+not the signature check**, its only use is deciding whether to cross-check the team identifier, so
 it is now reported and treated as "not a developer certificate". A bad signature still fails, from
 the CMS layer above, untouched.
 
@@ -12975,13 +12962,13 @@ one cost a while to recognise.
 
 `F_NOCACHE`, `F_RDAHEAD`, `F_NODIRECT` and `F_SINGLE_WRITER` had no Linux equivalent and fell through
 to `EINVAL`. They ask for a *caching preference*, not a guarantee; succeeding and doing nothing is
-what an advisory hint permits. That is not code-signing-specific — any guest asking for one was
+what an advisory hint permits. That is not code-signing-specific, any guest asking for one was
 getting an error.
 
 ### No requirement in this system has ever been parseable
 
 `errSecCSResourcesInvalid` says "the sealed resource directory is invalid", which points at the
-application's plist. **It is not the plist.** The seal parses perfectly — 499 files, 13 rules. The
+application's plist. **It is not the plist.** The seal parses perfectly, 499 files, 13 rules. The
 throw is in `validateNestedCode`, parsing the designated requirement that seals each piece of nested
 code:
 
@@ -12991,7 +12978,7 @@ nested code requirement REFUSED rc=-50 for: anchor apple generic and identifier 
 ```
 
 That is an ordinary Apple designated requirement. And the same parser had already refused a **fixed,
-Apple-authored** string inside `isAppleDeveloperCert` with the same −50 — so this is **one defect
+Apple-authored** string inside `isAppleDeveloperCert` with the same −50, so this is **one defect
 appearing twice**, not two coincidences.
 
 The requirement language is parsed by a loadable bundle, `csparser.bundle`, inside
@@ -13002,7 +12989,7 @@ Security.framework. **Four things were wrong, each hiding the next:**
 2. **No `PlugIns` symlink** at the framework root, so the computed
    `Security.framework/PlugIns/csparser.bundle` did not resolve.
 3. **`csparser.bundle` is never installed** into the framework, though it is built.
-4. With the first three fixed by hand the plugin loads — and the entry point still does not resolve,
+4. With the first three fixed by hand the plugin loads, and the entry point still does not resolve,
    because **the bundle is 4112 bytes of nothing**. `csparser.cpp` is twenty-three lines whose entire
    body is `asm(".reference _findAntlrPlugin")`: a stub that *references* the symbol. The buck target
    links the stub and none of the ANTLR sources that define it.
@@ -13010,14 +12997,14 @@ Security.framework. **Four things were wrong, each hiding the next:**
 So every requirement string in the system is refused, always, and each caller reports it as its own
 kind of failure.
 
-**Next**: give `csparser.bundle` its actual contents — `antlrplugin.cpp`, the generated
-`RequirementLexer`/`RequirementParser`, and the `antlr2` runtime that already has a target — then wire
+**Next**: give `csparser.bundle` its actual contents, `antlrplugin.cpp`, the generated
+`RequirementLexer`/`RequirementParser`, and the `antlr2` runtime that already has a target, then wire
 all four pieces into `buck/prefix/BUCK` together. The three hand-installed pieces are in the runtime
 now for iteration speed but are **not in the build**, so a fresh deploy loses them.
 
 Instruments added (all `CIDER_TRACE_SECITEM`, `vendor/patches/security/0009`): the plugin host says
 whether the framework bundle was found, where it loads from, whether the load succeeded, and whether
-the **entry point** resolved — a separate failure from the load, and my first version of that trace
+the **entry point** resolved, a separate failure from the load, and my first version of that trace
 sat before the lookup and so printed "loaded" while the lookup was failing. The parser's own error
 text is printed instead of being thrown into a CFError nobody reads. `ResourceSeal` names which of its
 four identical refusals fired, and the collecting context names every resource problem as it is
@@ -13027,7 +13014,7 @@ gathered. Both stayed silent, which is how the search narrowed to the parser.
 
 The four gaps above are all real, but the fix is none of them: **`antlrplugin.cpp` and the whole
 antlr2 runtime are compiled into `security_codesigning_obj`, which is linked into Security itself.**
-`findAntlrPlugin` was right there — merely absent from the export list, which is exactly why looking
+`findAntlrPlugin` was right there, merely absent from the export list, which is exactly why looking
 it up *through a bundle* could never work. Apple splits the grammar out so the ANTLR runtime is only
 paged in when a requirement is compiled; this build does not split it. So ask for it directly, and
 keep the bundle route below for a build that does.
@@ -13041,13 +13028,13 @@ keep the bundle route below for a build that does.
           /Applications/MoneyMoney.app/Contents/XPCServices/com.moneymoney-app.update.xpc
 ```
 
-`isAppleDeveloperCert` now **returns** a value instead of throwing — and returns false. **The failure
+`isAppleDeveloperCert` now **returns** a value instead of throwing, and returns false. **The failure
 has moved from *parsing* a requirement to *evaluating* one**, which is different work: the evaluator
 has to match `anchor apple generic` and the certificate-field clauses against the chain. The chain we
 supply comes from the CMS signature (4 certs) rather than from a verified trust evaluation, so that
 is the obvious first place to look.
 
-MoneyMoney still shows its damaged-file alert — looked at, in the comparable no-launchd
+MoneyMoney still shows its damaged-file alert, looked at, in the comparable no-launchd
 configuration. −67021 is still a failure.
 
 **Two of the three hand-installed runtime pieces are now unnecessary** (the framework `Info.plist`
@@ -13060,7 +13047,7 @@ runtime and still not in the build; nothing depends on them.
 gone, and the application now reaches **"Opening database…"**.
 
 The last cause was ordering. The CMS carries a **set** of certificates with no order; producing an
-ordered chain — leaf first, root last — is one of the things a real trust evaluation does, and the
+ordered chain, leaf first, root last, is one of the things a real trust evaluation does, and the
 no-trustd fallback was copying the set verbatim. "anchor" in the requirement language means the
 **last** entry, so every requirement mentioning an anchor was asking whether MoneyMoney's own leaf
 was an Apple certificate authority:
@@ -13082,7 +13069,7 @@ anchor apple generic: anchor subject=Apple Root CA isAppleCA=1
 **And one mistake of mine in the middle of that, kept because it looked so reasonable.** The first
 version appended any certificate not on the path, on the grounds that an odd certificate set should
 not silently lose entries. MoneyMoney's set contains the leaf **twice**, so the chain came out
-`[leaf, DevID CA, Apple Root, leaf]` — with the duplicate leaf last, which is exactly the entry
+`[leaf, DevID CA, Apple Root, leaf]`, with the duplicate leaf last, which is exactly the entry
 "anchor" means, and the anchor test failed identically to before the ordering. **A chain is a path,
 not a set.**
 
@@ -13093,15 +13080,15 @@ not a set.**
 | −67061 | a false label: an unverifiable timestamp discarding a good signature | security/0007 |
 | −50 | the trust evaluation never happened | security/0008 |
 | 100022 | `errSecErrnoBase + EINVAL` from `fcntl(F_NOCACHE)` | xnu/0020 |
-| −67055 | **no requirement could be parsed** — the parser was never reachable | security/0009 |
+| −67055 | **no requirement could be parsed**, the parser was never reachable | security/0009 |
 | −67021 | two nested components failed a requirement that could not match | security/0010 |
 | **0** | **valid** | |
 
 **Where it stops now:** "Could not delete the temporary database file … /Users/root/Library/Application
 Support/MoneyMoney/Database/MoneyMoney-Temp.sqlite … check the file permissions of the database
-directory." That is a filesystem question — an unlink — and an entirely fresh piece of work.
+directory." That is a filesystem question, an unlink, and an entirely fresh piece of work.
 
-### NSFileManager could not delete a file — any file, for any application
+### NSFileManager could not delete a file, any file, for any application
 
 MoneyMoney stopped on *"Could not delete the temporary database file … Please check the file
 permissions of the database directory."* The directory was writable and `rm` removed that exact file
@@ -13110,13 +13097,13 @@ delete.** The only unlinks in a whole run were our own Wayland shm files. Its wo
 about the cause, not a diagnosis.
 
 `-[NSFileManager removeItemAtPath:error:]` hands the job to `NSFilesystemItemRemoveOperation`, which
-does not call `unlink` itself — it **walks** the path with `nftw()` and calls `remove()` from the
+does not call `unlink` itself, it **walks** the path with `nftw()` and calls `remove()` from the
 callback. And `nftw()` refuses any root that is not a directory. That is Apple's own libc source, not
 something this port did: under `__DARWIN_UNIX03` it stats the path and, when an nftw-style callback
 is supplied, returns −1/`ENOTDIR` for anything that is not a directory, before `fts_open` is ever
 called.
 
-Measured, with a directory in the **same run** as the control — because "nftw is broken" and "nftw
+Measured, with a directory in the **same run** as the control, because "nftw is broken" and "nftw
 does not like plain files" are different findings, and only the second explains why a
 directory-based instrument would have looked healthy:
 
@@ -13130,8 +13117,7 @@ non-directory is removed directly, through the same callback function, so the de
 identically for one file. (`vendor/patches/foundation/0026`; the probe is
 `src/darwin/probes/nftw-probe.c`.)
 
-**MoneyMoney now opens its main window.** It deletes its temporary database, creates a real one —
-307,200 bytes and a journal, where the file had been zero bytes — and draws a toolbar, sidebar,
+**MoneyMoney now opens its main window.** It deletes its temporary database, creates a real one, 307,200 bytes and a journal, where the file had been zero bytes, and draws a toolbar, sidebar,
 search field and status bar. The splash is gone.
 
 It then raises `-[NSUserNotificationCenter removeAllDeliveredNotifications]: unrecognized selector`,
@@ -13139,11 +13125,10 @@ which is the next piece of work and exactly the shape of a missing method rather
 
 ### MoneyMoney opens
 
-**Looked at: the main window is up with no error dialog** — menu bar, toolbar, search field, status
+**Looked at: the main window is up with no error dialog**, menu bar, toolbar, search field, status
 bar reading "Free update for MoneyMoney available". Zero unrecognized selectors in the run.
 
-The last thing in the way was `NSUserNotificationCenter`, which had exactly **two** methods —
-`deliverNotification:` and `removeDeliveredNotification:`, both of which only logged. Everything else
+The last thing in the way was `NSUserNotificationCenter`, which had exactly **two** methods, `deliverNotification:` and `removeDeliveredNotification:`, both of which only logged. Everything else
 was absent, so `removeAllDeliveredNotifications` (documented API since 10.8) raised
 `NSInvalidArgumentException` and the app showed "An internal error occured."
 
@@ -13389,8 +13374,8 @@ implemented: nothing here restricts input sources, but an application that sets 
 back gets its list. Kept in an **associated object rather than an ivar**, because applications
 subclass `NSTextView` and an ivar added here would move theirs.
 
-Then `+[CBUUID UUIDWithString:]`. **A CBUUID is a value, not a connection** — 2, 4 or 16 bytes and a
-few conversions, none of which needs a Bluetooth stack — so it is now real while the rest of
+Then `+[CBUUID UUIDWithString:]`. **A CBUUID is a value, not a connection**, 2, 4 or 16 bytes and a
+few conversions, none of which needs a Bluetooth stack, so it is now real while the rest of
 CoreBluetooth stays a stub: the string, data, `NSUUID` and `CFUUID` constructors, and equality and
 `UUIDString` through the full 128 bits so a 16-bit UUID and the long form it stands for compare
 equal. MoneyMoney builds several the moment the add-account flow starts, for the card readers it can
@@ -13415,8 +13400,8 @@ So the object is neither nil nor tagged, and dereferencing it faults. `si_code` 
 and `si_addr` is 0, which on Linux is what a **general protection fault** reports, that is, a
 non-canonical pointer. Something garbage is being autoreleased.
 
-**I considered a misaligned stack hitting a `movaps`** — the elfcall class of bug this port has hit
-before — **and the disassembly rules it out**: `+34` is an ordinary quadword load and `rsp` was
+**I considered a misaligned stack hitting a `movaps`**, the elfcall class of bug this port has hit
+before, **and the disassembly rules it out**: `+34` is an ordinary quadword load and `rsp` was
 16-byte aligned at the fault. It is a lifetime question, not an alignment one. Filed as its own task.
 
 ### The add-account window opens
@@ -13435,7 +13420,7 @@ Its `-methodSignatureForSelector:` answered `"v@:"` for everything, so `initWith
 forwarded, produced no return value, and the caller autoreleased whatever was in the return register.
 It is a real class now: it keeps its delegate and queue, returns **self**, and delivers
 `centralManagerDidUpdateState:` asynchronously on that queue reporting `CBManagerStateUnsupported`.
-That is the truthful answer here — there is no Bluetooth transport in this container, and
+That is the truthful answer here, there is no Bluetooth transport in this container, and
 `PoweredOff` would be a different kind of lie, one that invites an application to ask the user to
 switch something on.
 
@@ -13495,7 +13480,7 @@ The arithmetic agrees: black at alpha 0.32 over the panel's 253 is 172, and the 
 (`autohidesScrollers = YES`). And the knob is 202 wide in a roughly 243 wide track, so something also
 believes the content is a fifth wider than the clip.
 
-**The same symptom is in the main window** — a 2-point horizontal scroller under the sidebar, where
+**The same symptom is in the main window**, a 2-point horizontal scroller under the sidebar, where
 `MainTree` is 329 wide in a 327 clip. Two instances of one defect. Filed as its own task rather than
 started at the end of a rung.
 
@@ -13530,7 +13515,7 @@ public methods, each caught by `NSApplication` and turned into MoneyMoney's own 
 
 - **`-[NSTableView setDraggingSourceOperationMask:forLocal:]`**, public since 10.0, which had a
   hardcoded getter and no setter. Stored in an **associated object**, because applications subclass
-  `NSTableView` — `TransactionList` is one. The fallback when nothing is set is the answer the getter
+  `NSTableView`, `TransactionList` is one. The fallback when nothing is set is the answer the getter
   always gave, so a table nobody configures behaves exactly as before.
 - **`-[NSTextView setConstrainedFrameSize:]`**, public since 10.0. Apple documents the constraint
   precisely: an axis the view cannot resize in keeps the size it has, the rest is clamped between
@@ -13547,7 +13532,7 @@ across itself.
 **Re-verified after all of it**, because waking 1088 objects is not a small change. MoneyMoney still
 meets the three criteria: the File menu opens on a click, typing puts `Giro` in the search field with
 a caret and a focus ring, and 1000x600 and 1400x900 both relayout. Swift Publisher's document window
-came out byte-identical. **iTerm2 was black on one run and fully healthy on the next** — that matches
+came out byte-identical. **iTerm2 was black on one run and fully healthy on the next**, that matches
 the known container boot flakiness this repo already tracks, and at n=2 it cannot be separated from
 noise, but a working run is enough to say the change did not break it.
 
@@ -13580,7 +13565,7 @@ view and the text goes into the model.
 The storage is the application's own subclass, the layout manager sees the same object, and the
 storage has exactly one layout manager, so the wiring is right. Two characters in the model produce
 **zero glyphs**. That is the signature this port has seen before, and the container is 19 points tall
-while the typing attributes report a line height of 17 — but the text is Menlo 16, whose line height
+while the typing attributes report a line height of 17, but the text is Menlo 16, whose line height
 is a little over 19. Next rung.
 
 ### A text view with two storages
@@ -13611,14 +13596,14 @@ sheet.
 
 **Re-verified after the storage fix**: Swift Publisher's document window byte-identical, including the
 text in its Author field; iTerm2's session live on the first try. The task was filed as "draw the
-missing bezel" and the premise was wrong — there is no bezel to draw. **A task title is a hypothesis
+missing bezel" and the premise was wrong, there is no bezel to draw. **A task title is a hypothesis
 too.**
 
 ### No pop-up button with a delegate had ever opened its menu
 
 Pressing MoneyMoney's toolbar pop-up and **holding it** produced nothing. The hold is the point: a
 pop-up menu only exists between the press and the release, so a click that does both in one place can
-never photograph it — the menu opens and closes inside the gesture and whatever was under the pointer
+never photograph it, the menu opens and closes inside the gesture and whatever was under the pointer
 gets chosen. `holdshot` in the driver presses, waits, captures, and only then releases.
 
 With the menu held open for three seconds the capture was byte-identical to the one before it, and
@@ -13635,7 +13620,7 @@ menu's delegate and does not implement it, so the raise unwound `trackMouse:` be
 was ever created, `NSApplication` caught it, and the button did nothing at all.
 
 **An optional delegate method is sent only after asking.** Both it and `menuWillOpen:` are guarded
-now. **Looked at: the menu opens** — three items with their icons, a rounded panel, a shadow and a
+now. **Looked at: the menu opens**, three items with their icons, a rounded panel, a shadow and a
 separator, and it closes again on release.
 
 Choosing an item from it needs a press on the button and a release on the item, which is what
@@ -13659,17 +13644,17 @@ not:
 
 **The title string is already truncated when the menu measures it**, and the ellipsis is `U+2026`.
 Cocotron's only tail truncation appends three ASCII dots, never `U+2026`, and it builds a temporary
-string rather than mutating the original — so our AppKit did not produce this. The application's own
+string rather than mutating the original, so our AppKit did not produce this. The application's own
 `Localizable.strings` holds `New standing order` with no ellipsis at all.
 
 So MoneyMoney truncated them itself, presumably from a width it measured or was handed, and the same
 pattern shows on the button: `CIDER_BUTTON_TITLE title=Batch transfer titleSize=82x19` inside
-`titleRect=80x19`, two points over. **Not every menu is affected** — the add-account menu on the plus
+`titleRect=80x19`, two points over. **Not every menu is affected**, the add-account menu on the plus
 button shows its five titles in full. Filed with the measurements rather than guessed at.
 
 **The wizard also advances.** Choosing an item from the Other pop-up and clicking Next reaches page
 two, `Credentials`, which renders correctly: two bezeled text fields, a `Save password` checkbox,
-Cancel and a blue default Next. **It is a login form and it was not driven** — the standing
+Cancel and a blue default Next. **It is a login form and it was not driven**, the standing
 instruction is that no credential goes near this application, and looking at the page is the whole
 test. That the fields there DO have bezels is also the last word on the IBAN field: borderless was the
 design.
@@ -13682,7 +13667,7 @@ window byte-identical, iTerm2's session live.
 Following it properly took three steps and ended outside our code.
 
 `CIDER_MENUTITLE`, behind `CIDER_TRACE_MENU`, prints every `-[NSMenuItem setTitle:]` with its caller
-and, when the caller has no symbol, the image and the offset — an application binary has no symbol for
+and, when the caller has no symbol, the image and the offset, an application binary has no symbol for
 an ordinary method, so the address is the only way on. The titles **arrive already truncated**:
 
     CIDER_MENUTITLE set New stand<U+2026> from ? in …/MacOS/MoneyMoney +0x21b66a
@@ -13699,7 +13684,7 @@ is MoneyMoney's own property, set and read by MoneyMoney.
 
 **So the truncation is its decision, not our layout.** Our only possible influence is the three widths
 it subtracts, and over-measurement is not the obvious culprit: our text is if anything *narrower* than
-macOS — `titleSize=82x19` for `Batch transfer` at 13pt where macOS is nearer 88.
+macOS, `titleSize=82x19` for `Batch transfer` at 13pt where macOS is nearer 88.
 
 What is left is a narrower question than the one filed: find which of the three widths it measures and
 compare that single number with macOS. **Trace the measuring call, not the truncation.**
@@ -13708,8 +13693,8 @@ compare that single number with macOS. **Trace the measuring call, not the trunc
 
 The `menuNeedsUpdate:` fix was tested against MoneyMoney; a second application is what says it was a
 framework fix rather than one application's shape. **Looked at: Swift Publisher's zoom pop-up opens**
-with eleven items — 25%, 50%, 75%, 100%, 125%, 150%, 200%, 300%, a separator, Fit Width, Fit Height,
-Fit Page — in full, on a rounded panel with a shadow.
+with eleven items, 25%, 50%, 75%, 100%, 125%, 150%, 200%, 300%, a separator, Fit Width, Fit Height,
+Fit Page, in full, on a rounded panel with a shadow.
 
 That also **corrects something I wrote last rung**. I noted MoneyMoney's menu came out "exactly as
 wide as its button" and implied our sizing was wrong. It is not: this menu is 94 wide for a ~50 wide
@@ -13722,13 +13707,13 @@ global point, the view point and the index each pass:
     global=275,565  index=-1           x172     after the drag
 
 The pointer does move. The menu spans Cocoa y 316..625; the press at top-y 120 reads 633, correctly 8
-above the menu, and the drag to top-y 236 should read 517 but reads 565 — **68 too high, which is the
+above the menu, and the drag to top-y 236 should read 517 but reads 565, **68 too high, which is the
 oversize-window offset this port already knows**. `-[NSEvent mouseLocation]` and the event path are
 applying different flips for the same window. Filed as its own task with the numbers.
 
 **Two of my own readings were wrong on the way and are corrected here.** "The pointer never moves"
 came from a trace capped at 24 lines, and the loop runs about 20 times a second while the driver holds
-the button for 900 ms — 24 lines cover the first second, entirely before the move. And "the Wayland
+the button for 900 ms, 24 lines cover the first second, entirely before the move. And "the Wayland
 pump is starved by periodic events" was refuted before it reached the page: the `nextevent` counter
 shows 21 calls a second across the menu, so `session::pump()` runs on essentially every pass and the
 2 ms `skip_work` shortcut never fires. **A cap is a lie about anything slower than the cap.**
@@ -13770,7 +13755,7 @@ answers each item's action; Swift Publisher's zoom items carry an action literal
 no target, nothing answers it, and every one is set disabled. **The application ships and works on
 macOS with those items**, which is the evidence that macOS does not autoenable a pop-up's menu.
 
-**Two changes, and neither was the fix — said plainly rather than implied.** `-[NSMenu update]` no
+**Two changes, and neither was the fix, said plainly rather than implied.** `-[NSMenu update]` no
 longer force-disables an item with a NULL action, which is right on its own terms (a submenu parent
 has no action either) and is why the separator was the one enabled item. And
 `-[NSPopUpButtonCell setMenu:]` sets `autoenablesItems` to NO, which measurably took effect and left
@@ -13787,7 +13772,7 @@ initialiser. Twelve items, before and after:
     CIDER_POPUPENABLED 000000001000
     CIDER_POPUPENABLED 111111111111
 
-**A trace that says nothing about the thing you are chasing is itself the answer** — but only because
+**A trace that says nothing about the thing you are chasing is itself the answer**, but only because
 it spoke 166 times about everything else in the same run. Cf. the rule that silence proves nothing
 until the instrument has spoken once on the happy path.
 
@@ -14812,7 +14797,7 @@ to `captures/`.
    nothing*. It bakes `CIDER_INSTALL_PREFIX` and only finds the daemon as a sibling, which buck
    artifacts never are. `DSERVER_PATH` overrides it.
 2. The daemon then wants `DSERVER_LIBEXEC_PATH` and `DSERVER_MLDR_PATH`, and says so only in
-   `<prefix>/ciderd.log` — never on the terminal that is waiting for it.
+   `<prefix>/ciderd.log`, never on the terminal that is waiting for it.
 3. `//buck/prefix:cider_prefix` would not even load: nine symlinks in the materialised tree escape to
    the repo root at `darwin/Developer/...`, the spelling from before first-party code moved under
    `src/`. Repointing them at `src/darwin/...` is **not** enough, because the SDK entry they land on
@@ -14822,7 +14807,7 @@ to `captures/`.
 4. Five pinned store paths in `.buckconfig.local` had been garbage collected, including
    wayland-scanner and the Darwin rust toolchain. `nu scripts/buck-setup.nu` regenerates them.
 
-With all four, the runtime tree builds again — 668 commands — and the container gets far enough to
+With all four, the runtime tree builds again, 668 commands, and the container gets far enough to
 fail honestly:
 
     KMSG send to_pid=-1 id=1000 bits=0x1211

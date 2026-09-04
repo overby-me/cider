@@ -1,6 +1,6 @@
 # Setting Up a Darling-Based Darwin Builder
 
-> Build `x86_64-darwin` Nix packages on Linux — no Apple hardware required.
+> Build `x86_64-darwin` Nix packages on Linux, no Apple hardware required.
 
 This guide walks you through setting up [Darling](https://www.darlinghq.org/)
 as a Nix remote builder so your Linux machine can build macOS (`x86_64-darwin`)
@@ -361,11 +361,11 @@ levels of complexity:
 ./scripts/build/build-trivial.nu --level 1 --debug
 
 # Levels:
-#   1. Echo to $out — minimal: sandbox-exec → bash → file creation
-#   2. Multi-line builder — mkdir, chmod, loops, multiple output files
-#   3. Input transformation — builtins.toFile, sort, wc
-#   4. Derivation dependency — one derivation consumes another's output
-#   5. Binary substitution — fetch pre-built package from cache.nixos.org
+#   1. Echo to $out, minimal: sandbox-exec → bash → file creation
+#   2. Multi-line builder, mkdir, chmod, loops, multiple output files
+#   3. Input transformation, builtins.toFile, sort, wc
+#   4. Derivation dependency, one derivation consumes another's output
+#   5. Binary substitution, fetch pre-built package from cache.nixos.org
 ```
 
 ### NixOS VM Tests
@@ -641,14 +641,14 @@ See [Performance Tuning](#performance-tuning) above. The most common causes are:
 
 - **sshd inside Darling**: The SSH server only listens on `127.0.0.1` (loopback),
   so it's not accessible from the network. Only key-based authentication is
-  allowed — no passwords.
+  allowed, no passwords.
 
 - **Root inside Darling**: The builder runs as root inside the Darling prefix,
   but this is a *virtual* root. Darling uses Linux user namespaces, so the
   "root" inside Darling maps to an unprivileged user on the host.
 
 - **Store integrity**: When sharing `/nix/store`, Nix's content-addressed paths
-  provide integrity guarantees — a path's name includes a hash of its contents,
+  provide integrity guarantees, a path's name includes a hash of its contents,
   so tampering is detectable.
 
 - **Network access**: Derivations built inside Darling can access the network
@@ -694,9 +694,9 @@ See [Performance Tuning](#performance-tuning) above. The most common causes are:
 | **ciderd** | Userspace daemon that translates macOS syscalls to Linux |
 | **Darling prefix** | Virtual macOS filesystem tree (overlayfs-based) |
 | **sandbox-exec stub** | Passes through commands without sandboxing (Darling provides Linux-level isolation) |
-| **Directory Services stubs** | `dscl`, `dseditgroup`, `sysadminctl` — translate macOS user/group commands to `/etc/passwd` + `/etc/group` |
+| **Directory Services stubs** | `dscl`, `dseditgroup`, `sysadminctl`, translate macOS user/group commands to `/etc/passwd` + `/etc/group` |
 | **diskutil stub** | Returns expected filesystem info for the Nix installer |
-| **cider-build-hook** | Alternative to SSH — invokes `cider shell` directly |
+| **cider-build-hook** | Alternative to SSH, invokes `cider shell` directly |
 | **ciderBuilderModule.nix** | NixOS module that wires everything together declaratively |
 
 For more technical details, see [changelog.md](../changelog.md).
@@ -705,7 +705,7 @@ For more technical details, see [changelog.md](../changelog.md).
 
 ## Further Reading
 
-- [Project plan](../changelog.md) — development plan, known blockers and the syscall triage table
-- [Darling documentation](https://docs.darlinghq.org/) — upstream Darling docs
-- [Nix remote builders](https://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html) — Nix manual on distributed builds
-- [Blog: Nix All The Way Down](https://ersei.net/en/blog/nix-all-the-way-down) — early exploration of Nix-in-Darling
+- [Project plan](../changelog.md), development plan, known blockers and the syscall triage table
+- [Darling documentation](https://docs.darlinghq.org/), upstream Darling docs
+- [Nix remote builders](https://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html), Nix manual on distributed builds
+- [Blog: Nix All The Way Down](https://ersei.net/en/blog/nix-all-the-way-down), early exploration of Nix-in-Darling

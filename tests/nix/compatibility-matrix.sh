@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tests/nix/compatibility-matrix.sh — Nix package compatibility test matrix
+# tests/nix/compatibility-matrix.sh, Nix package compatibility test matrix
 #
 # Systematically tests building an expanding set of Nixpkgs packages inside
 # Darling and tracks pass/fail rates over time.  Produces a JSON report and
@@ -48,14 +48,14 @@ fi
 
 # ── Package tiers ────────────────────────────────────────────────────
 
-# Tier 1 — Must pass: simple packages, mostly fetched from binary cache
+# Tier 1, Must pass: simple packages, mostly fetched from binary cache
 TIER1_PACKAGES=(
     hello
     which
     yes
 )
 
-# Tier 2 — Should pass: simple C programs, moderate complexity
+# Tier 2, Should pass: simple C programs, moderate complexity
 TIER2_PACKAGES=(
     tree
     jq
@@ -66,7 +66,7 @@ TIER2_PACKAGES=(
     bash
 )
 
-# Tier 3 — Stretch: complex builds, many dependencies
+# Tier 3, Stretch: complex builds, many dependencies
 TIER3_PACKAGES=(
     curl
     git
@@ -77,7 +77,7 @@ TIER3_PACKAGES=(
     nodejs
 )
 
-# Tier 4 — Aspirational: very complex builds (expected to fail initially)
+# Tier 4, Aspirational: very complex builds (expected to fail initially)
 TIER4_PACKAGES=(
     go
     rustc
@@ -386,7 +386,7 @@ Environment:
   COMPAT_SUBSTITUTERS  Binary cache URL (default: https://cache.nixos.org)
 
 Examples:
-  # Test tier 1 packages (should be quick — mostly binary substitution)
+  # Test tier 1 packages (should be quick, mostly binary substitution)
   ./tests/nix/compatibility-matrix.sh --tier 1
 
   # Test specific packages with verbose output
@@ -491,7 +491,7 @@ main() {
     if [[ "$DRY_RUN" -eq 0 ]]; then
         debug "Verifying Darling is functional ..."
         if ! "$DARLING" shell true &>/dev/null; then
-            die "Cannot run 'cider shell true' — is Darling installed and the prefix initialised?"
+            die "Cannot run 'cider shell true', is Darling installed and the prefix initialised?"
         fi
     fi
 
@@ -618,7 +618,7 @@ ENDJSON
             fi
         done
         if [[ "$tier1_failures" -gt 0 ]]; then
-            log "${RED}${BOLD}$tier1_failures tier-1 package(s) failed — this is a critical regression!${RESET}"
+            log "${RED}${BOLD}$tier1_failures tier-1 package(s) failed, this is a critical regression!${RESET}"
             exit 2
         fi
         exit 1

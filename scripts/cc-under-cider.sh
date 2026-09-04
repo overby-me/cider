@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cc-under-cider.sh — compile a C source with the x86_64-darwin bootstrap
+# cc-under-cider.sh, compile a C source with the x86_64-darwin bootstrap
 # clang *inside* rootless Darling, link it against the apple-sdk libSystem, and
 # run the result. Demonstrates the Phase C keystone: the nixpkgs Darwin
 # toolchain (clang + ld + libSystem) works under Darling, so `hello` can be

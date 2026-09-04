@@ -1,5 +1,5 @@
 #!/bin/sh
-# test_dirserv.sh — Regression tests for Directory Services stubs
+# test_dirserv.sh, Regression tests for Directory Services stubs
 #
 # Tests dseditgroup, sysadminctl, and dscl stubs that translate
 # macOS Directory Services commands to /etc/passwd and /etc/group
@@ -9,8 +9,8 @@
 #   sh test_dirserv.sh
 #
 # Exit code:
-#   0 — all tests passed
-#   1 — one or more tests failed
+#   0, all tests passed
+#   1, one or more tests failed
 #
 # See: docs/changelog.md (Task 5.1)
 
@@ -30,7 +30,7 @@ pass() {
 
 fail() {
     TESTS_FAILED=$((TESTS_FAILED + 1))
-    echo "  FAIL: $CURRENT_TEST — $1"
+    echo "  FAIL: $CURRENT_TEST, $1"
 }
 
 run_test() {
@@ -64,7 +64,7 @@ nobody:x:-2:
 staff:x:20:root
 EOF
 
-# Find the scripts — they could be in a few locations
+# Find the scripts, they could be in a few locations
 SCRIPT_DIR=""
 for candidate in \
     "$(dirname "$0")/../../src/dirserv" \
@@ -107,7 +107,7 @@ SYSADMINCTL="$WORKDIR/bin/sysadminctl"
 DSCL="$WORKDIR/bin/dscl"
 
 echo "═══════════════════════════════════════════════════════════"
-echo "  Directory Services Stubs — Regression Tests"
+echo "  Directory Services Stubs, Regression Tests"
 echo "═══════════════════════════════════════════════════════════"
 echo ""
 echo "  Tools:       $SCRIPT_DIR"
@@ -136,7 +136,7 @@ fi
 
 run_test "dseditgroup: create is idempotent (no error on duplicate)"
 if $DSEDITGROUP -o create -q -i 30000 nixbld 2>/dev/null; then
-    # Count how many nixbld lines exist — should be exactly 1
+    # Count how many nixbld lines exist, should be exactly 1
     count=$(grep -c "^nixbld:" "$GROUP_FILE")
     if [ "$count" -eq 1 ]; then
         pass
@@ -934,7 +934,7 @@ else
     fail "duplicates found: groups=$group_count, users=$user_count, memberships=$member_count"
 fi
 
-run_test "integration: cleanup — delete all build users"
+run_test "integration: cleanup, delete all build users"
 ALL_OK=1
 for i in 1 2 3 4 5; do
     if ! $SYSADMINCTL -deleteUser "_nixbld${i}" 2>/dev/null; then
@@ -953,7 +953,7 @@ else
     fail "deleteUser failed"
 fi
 
-run_test "integration: cleanup — delete nixbld group"
+run_test "integration: cleanup, delete nixbld group"
 if $DSEDITGROUP -o delete nixbld 2>/dev/null; then
     if grep -q "^nixbld:" "$GROUP_FILE"; then
         fail "group still exists"

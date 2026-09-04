@@ -136,12 +136,12 @@ and consider filing an issue upstream.
 
 ### Build is very slow
 
-1. **Enable binary substitution** — most `x86_64-darwin` packages are already
+1. **Enable binary substitution**, most `x86_64-darwin` packages are already
    on `cache.nixos.org`. Ensure `builders-use-substitutes = true` is set in
    the host's `nix.conf`.
-2. **Enable store sharing** — set `shareStore = true` to avoid copying store
+2. **Enable store sharing**, set `shareStore = true` to avoid copying store
    paths over SSH.
-3. **Use fast storage** — put the Darling prefix on SSD/NVMe.
+3. **Use fast storage**, put the Darling prefix on SSD/NVMe.
 
 ## Further Reading
 

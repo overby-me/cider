@@ -1,5 +1,5 @@
 #!/bin/sh
-# test_sandbox_exec.sh — Regression tests for the sandbox-exec stub binary
+# test_sandbox_exec.sh, Regression tests for the sandbox-exec stub binary
 #
 # Run inside cider shell:
 #   sh /path/to/test_sandbox_exec.sh
@@ -23,7 +23,7 @@ pass() {
 fail() {
     FAIL=$((FAIL + 1))
     TOTAL=$((TOTAL + 1))
-    printf "  TEST %2d: %-55s \033[31mFAIL\033[0m — %s\n" "$TOTAL" "$1" "$2"
+    printf "  TEST %2d: %-55s \033[31mFAIL\033[0m, %s\n" "$TOTAL" "$1" "$2"
 }
 
 # ── Locate sandbox-exec ─────────────────────────────────────────────────────

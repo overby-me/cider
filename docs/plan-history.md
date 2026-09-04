@@ -628,7 +628,7 @@ ordinary revision bump in c99441f1, verified on both bisect targets plus rungs 1
 
 ## Archived from changelog.md lines 1759 to 1858
 
-## Grouped build: eval speed (done) vs incremental rebuild (open) — task #80
+## Grouped build: eval speed (done) vs incremental rebuild (open), task #80
 
 The grouped lowering (task #78) built every ninja edge's command + staging script as a Nix
 string DURING EVAL, so whole-Darling eval was ~15-40 min, paid on every build (the graph-json
@@ -648,12 +648,12 @@ couplings that all rehash on any source change:
 - every bt group derivation reads `graphDrv` (and mounts the rewrite roots) → **all ~900 groups
   rebuild**.
 
-So per-component source staging alone cannot deliver incrementality — `graphDrv` is the dominant
+So per-component source staging alone cannot deliver incrementality, `graphDrv` is the dominant
 blocker. The full fix is three pieces, in order:
 1. **Relativise the graph** so `graphDrv` is content-stable across source edits (strip the
    rewrite-root prefixes in the graph-json derivation; make it content-addressed so a re-config
    that yields byte-identical relative content keeps the same store path). This is the key
-   enabler — without it (2)/(3) are moot.
+   enabler, without it (2)/(3) are moot.
 2. **Per-component source subtrees** (`builtins.path` slice of `cmakeSrcStore/<component>`,
    content-addressed): a group depends only on its component's subtree, so editing one `.c`
    re-keys just that component. Keeps eval fast (no per-file `indivOf`/`readDir` in eval).
@@ -664,7 +664,7 @@ Honest architectural note: this is exactly where the nix-ninja + IFD approach hi
 structural ceiling. Even done perfectly, it re-evaluates every build (~58 s) and its
 incrementality is per-*derivation* (whole component recompiles), never per-*action* (one `.o` +
 relink). **Buck2's persistent daemon avoids all of these store-path-rehash couplings by design**
-(no configure/eval per build, per-action deps) — so the fast edit->rebuild inner loop is the
+(no configure/eval per build, per-action deps), so the fast edit->rebuild inner loop is the
 genuine case FOR a Buck2 port, distinct from the eval-speed problem (which was a fixable Nix
 issue, now fixed). Recommendation: finish the full-green grind (#2) + implement (1)-(3) to get a
 ~1-3 min component-incremental loop with no port; treat Buck2 as the deliberate next step only if
@@ -739,7 +739,7 @@ rather than edited, because this file is a record of what was known when.
 Moved out of changelog.md to keep it short. This is the working record: what was measured, what
 turned out false, and the traps that cost time.
 
-### #66 — get the lowering out of the evaluator
+### #66, get the lowering out of the evaluator
 
 A general buck2-graph to dynamic-derivation bridge, worth having for OTHER projects.
 GENERALITY IS THE REQUIREMENT; cider is the first consumer, not the target. Nothing in the
@@ -1719,7 +1719,7 @@ scripts/build/build-hello-bypass.nu --mono $rt --prefix /tmp/cider-hello-m1-buck
 ## Blockers
 
 Active blockers get a dated entry here (repro steps + what's stuck); resolved ones fold into
-Gotchas or Open work. The known standing limitations are already tracked above — the launchd
+Gotchas or Open work. The known standing limitations are already tracked above, the launchd
 portset deadlock (#47, bypassed by `CIDER_NO_LAUNCHD=1`), the SIGFPE exec-fidelity flake
 (#44, retryable), and the nix-ninja full-graph `migHeaderIncsFor` blocker. Nothing else is
 currently un-tracked.

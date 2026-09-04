@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run-darwin-under-cider.sh — run a host Nix-store x86_64-darwin binary under
+# run-darwin-under-cider.sh, run a host Nix-store x86_64-darwin binary under
 # rootless Darling, mapping the host store path through Darling's host-root
 # mount (/Volumes/SystemRoot). Used to demonstrate milestone M0: a substituted
 # nixpkgs `hello` (from cache.nixos.org) executes under Darling.

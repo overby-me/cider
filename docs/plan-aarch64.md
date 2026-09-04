@@ -286,7 +286,7 @@ Order the build surfaces the gaps, component by component. Landed so far:
 - **libmalloc (A12 done):** the nanozone address-field widths guard now accepts arm64 (same
   widths as x86_64, per the PR); patch.
 
-**Update, second M2 pass — landed:**
+**Update, second M2 pass, landed:**
 
 - **libm ARM Source (A13 done):** the ~100-file `Source/ARM` list imported and the libm BUCK
   made arch-conditional; all libm object targets and the static archive build for arm64.
@@ -306,7 +306,7 @@ Order the build surfaces the gaps, component by component. Landed so far:
 builds `//buck/prefix:cider_prefix`, so M2/M3 pull the **whole guest tier** including objc4,
 not just the minimal bash link the plan's D9 assumed. objc4 is therefore on the critical path.
 
-**Update, third M2 pass — landed:**
+**Update, third M2 pass, landed:**
 
 - **objc4 isa (A12 done):** a DARLING/macOS arm64 branch in isa.h (x86_64 layout, 44-bit
   shiftcls) matches cider's arm64 MACH_VM_MAX_ADDRESS; patch.
@@ -320,12 +320,12 @@ not just the minimal bash link the plan's D9 assumed. objc4 is therefore on the 
   (bsd/mach/machdep syscall, linux-syscall thunk, sig_restorer, xtrace-hooks) gain arm64
   blocks.
 - **Guest emulation conversions (A8/D4, patch 0021):** the arch-guarded half of the PR's
-  emulation delta — the tid-keyed TSD table (tls.c, the D4 mechanism), sigexc.c, the arm64
+  emulation delta, the tid-keyed TSD table (tls.c, the D4 mechanism), sigexc.c, the arm64
   Linux stat layout, sigaction, the base.h fast-syscall gate, the open.h flag values. Every
   hunk `__aarch64__`-guarded; x86 byte-identical. The PR's new-syscall/behavioral changes are
   excluded (they alter the frozen x86 build and add un-globbed files).
 
-**Update, fourth M2 pass — the xnu guest kernel builds and links (A8 done):**
+**Update, fourth M2 pass, the xnu guest kernel builds and links (A8 done):**
 
 - **open → openat (patch 0022):** arm64 dropped the `open` syscall, so `execve.c`,
   `vchroot_userspace.c`, `file_handle.c`, `dserver-rpc-defs.c` call `openat(AT_FDCWD, …)`.
@@ -341,10 +341,10 @@ not just the minimal bash link the plan's D9 assumed. objc4 is therefore on the 
   `_select`/`_pselect` on arm64 (no `$UNIX2003` versioning) that duplicated the modern
   wrapper; `libsyscall_obj5` is empty on arm64.
 
-`//vendor/src/xnu:system_kernel_final` — the guest libsystem_kernel dylib — now links for
+`//vendor/src/xnu:system_kernel_final`, the guest libsystem_kernel dylib, now links for
 arm64. That is the largest single component of the port.
 
-**Update, fifth M2 pass — bash links as an arm64 Mach-O (A11, A15, A16 essentially done):**
+**Update, fifth M2 pass, bash links as an arm64 Mach-O (A11, A15, A16 essentially done):**
 
 - **libpthread (A11):** `_getsectiondata` (from the arm64-only JIT-write-protect path) resolved
   by adding libmacho as an arm64-only sibling of the pthread final link.
@@ -355,17 +355,17 @@ arm64. That is the largest single component of the port.
   behind `_POSIX_C_SOURCE`, but the `OSSwap*` macros call the plain names; the PR drops the
   underscore variants and keeps the plain ones (patch, xnu 0025).
 - **`//vendor/src:bash` BUILD SUCCEEDED.** `file` reports *Mach-O 64-bit arm64 executable,
-  NOUNDEFS|DYLDLINK|TWOLEVEL|PIE* — fully linked, no undefined symbols. The libSystem umbrella
+  NOUNDEFS|DYLDLINK|TWOLEVEL|PIE*, fully linked, no undefined symbols. The libSystem umbrella
   and every dependency it pulls now build and link for arm64.
 
-**Current blocker (M3 prefix assembly — build-infra, arch-independent):** `buck2 build
+**Current blocker (M3 prefix assembly, build-infra, arch-independent):** `buck2 build
 //buck/prefix:cider_prefix` hits a chain of symlink-materialization issues, none of them arm64
 code:
 
 1. `security/darling/include/Security/CSCommon.h` had a `.`-component symlink
-   (`../.././../OSX/…`) buck2 rejects — fixed by running `cider-src-normalise` on that pin.
+   (`../.././../OSX/…`) buck2 rejects, fixed by running `cider-src-normalise` on that pin.
 2. `libnotify/darling/src/notify.defs` is a symlink to `../../../../../darwin/Developer/…/mach/
-   notify.defs` — five `../` reach the repo root, but the SDK lives at `src/darwin`, not
+   notify.defs`, five `../` reach the repo root, but the SDK lives at `src/darwin`, not
    `darwin`, so it dangles. `cider-src-normalise` does **not** repoint it (no `.` component, and
    it does not verify the target exists). The `.#cider-src` assembled tree places the SDK at a
    layout where the symlink is correct; `buck-src.nu --all` copies it verbatim into the repo's
@@ -374,8 +374,8 @@ code:
 The lesson: `buck-src.nu --all` leaves the raw assembled-tree symlinks, and a **whole-tree**
 `cider-src-normalise` pass is the wrong fix (it expands directory symlinks the direct-buck2
 build was relying on staying opaque). The right path for M3/M4 is almost certainly the **nix
-endpoint** — `nix build .#cider-buck2-prefix` (or `.#cider`), which materializes and lowers the
-graph with the SDK layout its own lowering expects — rather than a direct `buck2 build
+endpoint**, `nix build .#cider-buck2-prefix` (or `.#cider`), which materializes and lowers the
+graph with the SDK layout its own lowering expects, rather than a direct `buck2 build
 //buck/prefix:cider_prefix`. That also aligns with M4, which is a nix build anyway. Next pass:
 try the nix endpoint on aarch64 for the prefix, then run `buck-bash-check.nu --prefix
 <result>` (its `--prefix` path takes a pre-built tree) to boot it (M3), then the guest-nix goal
@@ -385,7 +385,7 @@ try the nix endpoint on aarch64 for the prefix, then run `buck-bash-check.nu --p
 against build and link for arm64 today (`//vendor/src:bash` → a fully-linked arm64 Mach-O).
 What remains is prefix *assembly* and *boot*, not guest-code compilation.
 
-**Update, sixth pass — the loader, wrapgen, and the nix endpoint (A16, A17):**
+**Update, sixth pass, the loader, wrapgen, and the nix endpoint (A16, A17):**
 
 - **mldr loader (A17 done for what compiles):** the host Rust loader builds as an aarch64 ELF.
   `jump.rs` switches the guest stack with `mov sp` / `br`; `threads.rs` starts a Darwin thread
@@ -393,7 +393,7 @@ What remains is prefix *assembly* and *boot*, not guest-code compilation.
   `commpage.rs` maps the commpage at the arm64 macOS base `0xFFFFFC000`, packs the two
   page-shift bytes at the arm offsets, and fills the capability word from `AT_HWCAP`
   (NEON/VFP/FMA + crypto/atomics/crc) instead of cpuid; the fault reporter reads `mcontext.pc`.
-  The register ABI and commpage still need a *boot* to validate against — only compilation is
+  The register ABI and commpage still need a *boot* to validate against, only compilation is
   proven so far.
 - **wrapgen (A16):** it gated `e_machine` to `EM_X86_64` and rejected every aarch64 host `.so`
   ("is not an ELF for x86-64"), which failed all `*_wrap` elf-stub targets (X11, wayland,
@@ -410,10 +410,10 @@ What remains is prefix *assembly* and *boot*, not guest-code compilation.
 targeting `../darwin/…` where the repo has `src/darwin`) that exist on x86 too; the nix
 endpoint materializes and lowers the graph correctly and resolves `notify.defs` via the
 `//vendor/src/xnu:osfmk_mach_notify.defs` export label. **`nix build .#cider-buck2-prefix-min`
-is building now** — the real M3 gate. When it lands, boot it with `scripts/checks/
+is building now**, the real M3 gate. When it lands, boot it with `scripts/checks/
 buck-bash-check.nu --prefix <result>` (M3), then the guest-nix goal (M4).
 
-**Update, seventh pass — the ObjC framework stack builds for arm64 (the prefix compiles):**
+**Update, seventh pass, the ObjC framework stack builds for arm64 (the prefix compiles):**
 
 The prefix-min nix build got past the bash tier and failed compiling the higher frameworks
 (CoreFoundation, Foundation, CFNetwork, IOKit, Security) that every prefix tool links (the CUPS
@@ -423,14 +423,14 @@ classes of arm64 breakage, all landed the disciplined way (arm64-guarded hunks, 
 
 - **CF message forwarding + NSInvocation** (corefoundation 0021, 0022): `CFForwardingPrep.S` and
   `NSInvoke-x86.S` had i386/x86_64 only and `#error`-ed on every other arch. Added the arm64
-  trampolines — spill x0-x7 / d0-d7 into a 128-byte marg_list, call `___forwarding___` /
+  trampolines, spill x0-x7 / d0-d7 into a 128-byte marg_list, call `___forwarding___` /
   `__invoke__`, restart `objc_msgSend` on a forwarding target. Known runtime-only follow-up:
   `NSMethodSignature._argInfo` still computes marg offsets with the x86_64 register file (0xe0
   frame, 6 GP + 8 SSE), so 7+ register args and HFA returns are not yet correct on arm64. The
   reference PR has the same limitation; scalar forwarding is fine (GP args land at index*8 in both).
 - **Uncast objc dispatch** (foundation 0025, cfnetwork 0004): arm64 forces
   `OBJC_OLD_DISPATCH_PROTOTYPES` to 0 (objc-api.h), because the arm64 variadic ABI puts varargs on
-  the stack while the messenger reads registers — so every `objc_msgSend`/`objc_msgSendSuper`/
+  the stack while the messenger reads registers, so every `objc_msgSend`/`objc_msgSendSuper`/
   `method_invoke`/stored-IMP call MUST be cast to its real signature. Cast the sites in KVO, the
   predicate operators, NSThread, NSKeyValueAccessor, and CFURLCache. Inert on x86.
 - **method_invoke_stret** (foundation 0025): `OBJC_ARM64_UNAVAILABLE`. arm64 has no stret
@@ -443,7 +443,7 @@ classes of arm64 breakage, all landed the disciplined way (arm64-guarded hunks, 
   public-key impl to plain `_SecCertificateCopyPublicKey`, so exporting `_SecCertificateCopyPublicKey_ios`
   fails to resolve. Guard that export with `!TARGET_CPU_ARM64`.
 - **`_DARWIN_NO_64_BIT_INODE`** (cc.bzl) and **bzip2 crc32** (bzip2/BUCK): arm64 has only 64-bit
-  inodes, so defining the macro is a hard `#error` in sys/cdefs.h — folded `-D_DARWIN_NO_64_BIT_INODE`
+  inodes, so defining the macro is a hard `#error` in sys/cdefs.h, folded `-D_DARWIN_NO_64_BIT_INODE`
   into the existing x86-only-flag drop filter so all framework groups lose it at once (libc keeps
   handling its own noinode64 *variant* targets by emptying them, A12). bzip2's accelerated CRC has a
   per-arch asm; `bz264_obj` now selects `bzip2/arm64/crc32vec.S` (from the upstream pin) so
@@ -452,14 +452,14 @@ classes of arm64 breakage, all landed the disciplined way (arm64-guarded hunks, 
 Method for the pin patches: cider's cfnetwork/security pins are byte-identical to the reference
 PR's *base*, so those hunks came straight from the PR head. **Trap worth remembering:** a pin patch
 that lands after other patches must be diffed against the *materialised* tree (pin + earlier
-patches), NOT the pristine pin — foundation 0025 first failed in nix because NSKeyValueObserving.m
+patches), NOT the pristine pin, foundation 0025 first failed in nix because NSKeyValueObserving.m
 (also touched by 0020/0024) and NSKeyValueAccessor.m (0017) carried pristine context that collided.
 `scripts/gen`-style: reconstruct the materialised base by reverse-applying the edits, then diff.
 `nix build .#cider-src` is the fast patch-application smoke test (materialise only, no compile).
 
 `nix build .#cider-buck2-prefix-min` is re-running with all six fixes; next is the boot check.
 
-**Update, eighth pass — the prefix nix build clears the arm64 framework wall and hits an
+**Update, eighth pass, the prefix nix build clears the arm64 framework wall and hits an
 arch-independent endpoint gap (cocotron / bundled-pin staging).**
 
 With the six framework fixes in, `nix build .#cider-buck2-prefix-min` compiled the whole ObjC
@@ -482,7 +482,7 @@ failed derivations; almost all are ONE cascade:
   `ciderSrc.pinPaths`, which only holds the fetched `submodules.json` pins. So a bundled pin reaches
   the graph analysis but never the per-target derivations. That is why only NON-Foundation targets
   (libsimple_ciderd, the earlier nix validation) have ever nix-built: nothing before needed CGBase.h.
-  This gap is **arch-independent** — it blocks the x86 nix prefix identically, and the full
+  This gap is **arch-independent**, it blocks the x86 nix prefix identically, and the full
   prefix-min nix build has evidently never completed on any arch.
 
 - Four genuinely arm64 compile issues sit behind the cascade, to fix once the prefix can build:
@@ -492,14 +492,14 @@ failed derivations; almost all are ONE cascade:
 **Where this leaves the port.** The arm64-SPECIFIC work is done and verified end to end by a direct
 `buck2 build //vendor/src:lp`: host tier, guest toolchain, the bash tier, the loader/wrapgen, the
 nix-endpoint arch threading, and now the whole ObjC framework stack all build and link as arm64. The
-one thing between here and buck-bash-check is NOT arm64 code — it is teaching the nix endpoint (the
+one thing between here and buck-bash-check is NOT arm64 code, it is teaching the nix endpoint (the
 `cider-graph-sources` Rust tool plus the `ciderBuck2Lower.nix` pin farm) to stage bundled in-tree
 pins per target, the same way the graph build already stages them. The direct-buck2 prefix path is
 no shortcut: it has its own pre-existing, arch-independent broken-pin-symlink blockers (libnotify
 `notify.defs`, the security `.`-component), also latent on x86. Either route to a full prefix is
 general endpoint work, not aarch64 support.
 
-**Update, ninth pass — the bundled-pin endpoint gap is fixed, and the last arm64 compile gaps land.**
+**Update, ninth pass, the bundled-pin endpoint gap is fixed, and the last arm64 compile gaps land.**
 
 Decision (checked with the user, who asked for a recommendation and took it): fix the nix endpoint,
 since it is the supported prefix path and the gap was fully diagnosed. The fix mirrors the graph's
@@ -524,7 +524,7 @@ ciderBuck2Graph.nix is `builtins.path` over the whole tree (only docs/nix/tests-
 editing any `src/darwin` .c/.h rehashes it and the graph dump reruns. Batch source edits before a
 prefix build. The comprehensive build (cocotron + the three fixes) is running now.
 
-**Update, tenth pass — the prefix build clears to two roots, both fixed.**
+**Update, tenth pass, the prefix build clears to two roots, both fixed.**
 
 The cocotron fix held: the ~1200-target `CGBase.h` cascade and the libxpc AppKit failure went to zero,
 and the three arm64 compile fixes (CarbonCore, launchd, xtrace.cpp) all built. `--keep-going` left

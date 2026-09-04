@@ -1,5 +1,5 @@
 #!/bin/sh
-# test_sw_vers.sh — Verify sw_vers and the Nix-visible system identity report
+# test_sw_vers.sh, Verify sw_vers and the Nix-visible system identity report
 # the macOS 14 (Sonoma) class version. Run inside `darling shell`.
 #
 # Expected after Phase A.2 (baseline 11.7.4 makes this FAIL by design):
