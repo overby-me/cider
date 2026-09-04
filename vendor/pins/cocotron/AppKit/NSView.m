@@ -4683,15 +4683,32 @@ static BOOL CiderLayoutTracing(void) {
 
     for (NSView *subview in [self subviews]) {
         NSRect frame = [subview frame];
+        BOOL degenerate = frame.size.width <= 1 || frame.size.height <= 1;
+        NSSize fitting;
 
-        if (frame.size.width > 1 && frame.size.height > 1)
+        /*
+         * A REUSED VIEW STILL HOLDS THE WIDTH OF THE ROW IT WAS MADE FOR, and only the degenerate
+         * test above would notice, which a recycled view fails. -[NSTableView _retireCellView:] hands
+         * a cell view back with its label already sized, and a label sized 56 for Hashtags is one
+         * point too narrow for Locations: the draw then measures 53 against a 52 point title rect and
+         * puts an ellipsis in. Measured both ways, since CIDER_TABLE_NO_POOL=1 gives each string
+         * exactly one width and the pool gives Locations two, 56 and 57.
+         *
+         * TEXT ONLY. An image view answers its unbounded maximum, so growing every subview to its
+         * fitting size would hand each one the whole row.
+         */
+        if (!degenerate &&
+            ![subview respondsToSelector: @selector(stringValue)])
             continue;
 
-        NSSize fitting = [subview fittingSize];
+        fitting = [subview fittingSize];
+        if (!degenerate && !(fitting.width > frame.size.width))
+            continue;
 
         if (getenv("CIDER_TRACE_FRAMES") != NULL)
-            fprintf(stderr, "CIDER_FRAME degenerate %s %gx%g fitting %.3gx%.3g bounds %gx%g\n",
-                    object_getClassName(subview), frame.size.width, frame.size.height,
+            fprintf(stderr, "CIDER_FRAME %s %s %gx%g fitting %.3gx%.3g bounds %gx%g\n",
+                    degenerate ? "degenerate" : "toonarrow", object_getClassName(subview),
+                    frame.size.width, frame.size.height,
                     fitting.width, fitting.height, bounds.width, bounds.height);
 
 

@@ -16142,3 +16142,58 @@ prefixes share one runtime.
 **Not claimed:** that this explains any particular failure. A stale process cannot collide with a new
 process's address space, so it is not the `start-stack mmap` failure. It is a confound removed, not a
 cause found.
+
+## THE TRUNCATION WAS MY REUSE POOL (task #186)
+
+`Locatio...` is solved, and I caused it. Four theories were refuted before the measurement that
+mattered, so the sequence is worth keeping.
+
+**What it was not.** Not fractional rounding, not the cell arithmetic, not the height clamp, not a
+missing redraw. Each was refuted in turn and is written up above.
+
+**Two numbers ended it.** A trace at the one place that decides an ellipsis,
+`-[NSAttributedString _clipAndDrawInRect:truncatingTail:]`, prints the measured width against the
+rect:
+
+    CIDER_TEXTFIT "Locations" measures 53.00, rect 53.00, truncate=0
+
+**truncate=0.** Our ellipsis path was never taken, and the two ellipsis producers in AppKit are that
+one and `NSTabViewItem`. So the dots came from a draw that had a NARROWER rect, and the frames say
+which:
+
+    13 CIDER_TEXT IAOutlineTextField at 0,0 56x17 draws: Locations     <- one point too narrow
+     5 CIDER_TEXT IAOutlineTextField at 0,0 57x17 draws: Locations
+     4 CIDER_TEXT IAOutlineTextField at 0,0 56x17 draws: Hashtags
+     9 CIDER_TEXT IAOutlineTextField at 0,0 57x17 draws: Hashtags
+
+One string, two widths. `CIDER_TABLE_NO_POOL=1` gives each string exactly one:
+`Locations 57, Hashtags 56, Favorites 54, Smart Folders 80`.
+
+**So the reuse pool added for the use after free caused this.** A recycled cell view comes back with
+its label already sized for the row it was made for, and a label sized 56 for `Hashtags` leaves a 52
+point title rect for `Locations`, which measures 53. `-_ciderSizeDegenerateSubviews` never noticed,
+because it only sizes a subview that is DEGENERATE and a recycled one is not.
+
+It now also grows a subview whose fitting width exceeds its frame, TEXT ONLY: an image view answers
+its unbounded maximum and would take the whole row. Zero truncations after, and the sidebar reads
+`Locations`, `On My Mac`, `Favorites`, `Smart Folders`, `Hashtags`, all in full.
+
+## THE GUEST STACK LOST A RACE WITH THE HOST STACK (task #187)
+
+The diagnostic from the previous session fired on a real occurrence and named it outright:
+
+    [mldr] start-stack mmap at 0x7fffff600000 size 0x800000 failed: File exists (os error 17)
+      in the way: 7fffffb54000-7fffffb77000 rw-p 00000000 00:00 0    [stack]
+
+The guest start stack is mapped `MAP_FIXED_NOREPLACE` at a FIXED address just below the commpage,
+inside a process whose OWN stack the kernel places by ASLR. About one run in ten the host `[stack]`
+lands in those 8 MB, and iTerm2 then opened a window with no shell behind it.
+
+Nothing requires that exact address: libpthread learns where the main stack is from the `apple[]`
+`main_stack` entry, and both that entry and the argv strings are written from whatever the mapping
+returns. So it steps down a slot at a time until one is free, and says so.
+
+**Validated on purpose rather than by luck.** `CIDER_MLDR_STACK_FORCE_CLASH=1` starts the search on
+a page that is certainly mapped, which forces the path for every guest process in the run. With it
+set, iTerm2 relocates its stack three times over and still reaches a live shell prompt, so a
+relocated stack runs. Fourteen normal runs relocate zero times and are unaffected.

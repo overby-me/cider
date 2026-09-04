@@ -257,6 +257,16 @@ const CGFloat NSStringDrawerLargeDimension = 1000000.;
     // attribute, but that's not supported for now by Cocotron
     NSAttributedString *string = self;
     NSSize size = [string size];
+
+    /* THE TWO NUMBERS THAT DECIDE AN ELLIPSIS, which is one measurement of the string against a rect
+     * that was computed from ANOTHER measurement of it, in -[NSTextFieldCell cellSize]. */
+    if (getenv("CIDER_TRACE_TEXT") != NULL && [string length] > 0) {
+        fprintf(stderr, "CIDER_TEXTFIT \"%s\" measures %.2f, rect %.2f, truncate=%d\n",
+                [[string string] UTF8String] ?: "(nil)", size.width, rect.size.width,
+                (int) (truncateTail && size.width > rect.size.width));
+        fflush(stderr);
+    }
+
     if (truncateTail && size.width > rect.size.width && [string length]) {
         // Create a "..." attributed string with the attributes of the last char
         // of this string

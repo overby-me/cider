@@ -69,21 +69,45 @@ pub unsafe fn setup_stack(
     seed_vchroot: &str,
 ) -> u64 {
     let size = stack_size();
-    let base = stack_top - size;
-    let p = libc::mmap(
-        base as *mut c_void,
-        size as usize,
-        libc::PROT_READ | libc::PROT_WRITE,
-        libc::MAP_ANONYMOUS | libc::MAP_PRIVATE | libc::MAP_FIXED_NOREPLACE | libc::MAP_GROWSDOWN,
-        -1,
-        0,
-    );
-    if p == libc::MAP_FAILED {
+    // JUST BELOW THE COMMPAGE IS WHERE A DARWIN MAIN STACK LIVES, but it is a FIXED address inside a
+    // process whose OWN stack the kernel places by ASLR, and about one run in ten the host [stack]
+    // landed inside it:
+    //
+    //   start-stack mmap at 0x7fffff600000 size 0x800000 failed: File exists (os error 17)
+    //     in the way: 7fffffb54000-7fffffb77000 rw-p 00000000 00:00 0   [stack]
+    //
+    // iTerm2 then opened a window with no shell behind it. Nothing requires the exact address:
+    // libpthread learns where the main stack is from the apple[] main_stack entry below, and both
+    // that entry and the strings are written from the mapping this returns. So step down a slot at a
+    // time until one is free, and say so, rather than dying at a collision the caller cannot avoid.
+    let mut base = stack_top - size;
+    // The collision is rare and placed by the kernel, so the relocation below is otherwise only
+    // exercised by luck. This starts the search on a page that is certainly mapped, which forces it.
+    if std::env::var_os("CIDER_MLDR_STACK_FORCE_CLASH").is_some_and(|v| !v.is_empty()) {
+        base = (setup_stack as usize as u64) & !0xfff;
+    }
+    let mut p = libc::MAP_FAILED;
+    let mut attempts = 0;
+    while attempts < 64 {
+        p = libc::mmap(
+            base as *mut c_void,
+            size as usize,
+            libc::PROT_READ | libc::PROT_WRITE,
+            libc::MAP_ANONYMOUS
+                | libc::MAP_PRIVATE
+                | libc::MAP_FIXED_NOREPLACE
+                | libc::MAP_GROWSDOWN,
+            -1,
+            0,
+        );
+        if p != libc::MAP_FAILED {
+            break;
+        }
+
         let err = std::io::Error::last_os_error();
 
         eprintln!("[mldr] start-stack mmap at {base:#x} size {size:#x} failed: {err}");
-        // MAP_FIXED_NOREPLACE only says EEXIST, and this address is fixed while the HOST mappings
-        // around it are not, so the useful half is which mapping is already sitting there.
+        // MAP_FIXED_NOREPLACE only says EEXIST, so the useful half is what is already sitting there.
         if let Ok(maps) = std::fs::read_to_string("/proc/self/maps") {
             for line in maps.lines() {
                 let Some((range, _)) = line.split_once(' ') else { continue };
@@ -93,12 +117,23 @@ pub unsafe fn setup_stack(
                 else {
                     continue;
                 };
-                if lo < stack_top && hi > base {
+                if lo < base + size && hi > base {
                     eprintln!("[mldr]   in the way: {line}");
                 }
             }
         }
+        base -= size;
+        attempts += 1;
+    }
+    if p == libc::MAP_FAILED {
+        eprintln!("[mldr] start-stack: no free slot in {attempts} tries, giving up");
         std::process::exit(1);
+    }
+    // Everything below is written from the mapping, so this is the top of the stack that actually
+    // exists rather than the one that was asked for.
+    let stack_top = base + size;
+    if attempts > 0 {
+        eprintln!("[mldr] start-stack relocated to {base:#x}, top {stack_top:#x}");
     }
 
     let apple = [
