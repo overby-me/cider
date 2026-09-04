@@ -15583,3 +15583,9 @@ Every link measured, none assumed:
 So the restore validates a record it does not have, the stack ends empty, nothing is pushed, and the
 column stays blank. The next step is to find where that record should come from, which is inside the
 application's own restore path and wants the same disassembly treatment as the editability gate.
+
+Ruled out by experiment, not by argument: the prefix's saved state. iA Writer keeps a `Library Window
+State` keyed archive in `pro.writer.mac.plist`, and moving the whole plist aside and launching with a
+fresh one gives exactly the same empty column. So the restore path fails on a default record, not on
+a stale saved one, and nobody needs to spend a build bisecting prefix state for this the way
+LibreOffice cost two.
