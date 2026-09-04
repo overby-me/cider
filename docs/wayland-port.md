@@ -15868,3 +15868,50 @@ file list keeps its rows, with the times clipped by the narrower column as they 
 2. The location sidebar draws a stray glyph at x=0 on every row, and `Locations` is truncated to
    `Locatio...` at the starting width although it fits after a resize.
 3. `Updating...` never becomes anything else, which is the library index not finishing.
+
+## THE LOG QUEUE STARVED THE DATABASE (tasks #117, #162)
+
+MoneyMoney reached its main window in about one run in four and sat on `Opening database...` in the
+rest. It is not slowness: a run settled for **240 seconds** shows exactly the same 35 `Database`
+messages as one settled for 60, ending at
+`-[Database initialize:onUpgrade:onInitialization:onFatalError:]`.
+
+Disassembling that method says why nothing follows it: its first call is `dispatch_async`. It hands
+the work to a queue and returns, so the absence of later `Database` messages means **the block never
+ran**, not that the method blocked.
+
+`CIDER_TRACE_ASYNC` was added to say which of those two it is. It counts what `dispatch_async`
+queues against what starts and what finishes, so queued past started is a block nothing scheduled and
+started past finished is a block running and stuck. A stuck run:
+
+    queued 13824   started 1940   finished 1940
+
+Nothing was stuck inside a block; 11884 blocks were simply waiting. By queue label:
+
+    13815  org.cider.os_log
+        4  com.apportable.notify.userdefaults
+        2  com.apple.root.utility-qos
+        1  com.moneymoney-app.sqlcipher      <- queued #13824, last, and never run
+        1  com.apple.root.default-qos
+        1  com.apple.main-thread
+
+**The queue is ours.** `_os_log_impl` dispatches one block per entry onto a serial queue whose block
+calls `asl_log`, which was the fix for os_log blocking its caller when no logging daemon answers. The
+comment there already said the queue would back up and the entries would be lost. It did back up, and
+what was lost was not the entries: it drained at about 21 a second while the application produced
+about 150, and the one block that mattered was behind eleven thousand of them.
+
+So the queue has a floor now: at 256 pending, an entry is dropped rather than queued, which is the
+cost the comment already claimed. `CIDER_TRACE_OSLOG` reports the drops.
+
+**Measured, main window rather than splash:**
+
+    before   1 of 6   (and about 3 of 12 historically)
+    after    9 of 10
+
+In all nine the queue fully drained, `queued == started`. The one failure sat at exactly the cap,
+which says the drop floor bounds the damage without curing whatever makes `asl_log` slow in the first
+place. That is the residual, and it is task #162 territory rather than a claim of victory.
+
+All five applications re-run and every capture looked at: iA Writer 25197 with its file list, Swift
+Publisher 49641, iTerm2 with a live prompt and typed text, LibreOffice 135528.

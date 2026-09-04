@@ -186,6 +186,8 @@ _os_log_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, ui
 	 * A serial queue is the same shape. If the service is absent the queue backs up and the entries
 	 * are lost, which is what "no logging daemon" should cost, rather than the process.
 	 */
+	static const long kMaxPendingEntries = 256;
+	static long pendingEntries, droppedEntries;
 	static dispatch_queue_t queue = NULL;
 	static dispatch_once_t queueToken;
 	dispatch_once(&queueToken, ^{
@@ -207,11 +209,33 @@ _os_log_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, ui
 	const char *hex = buffer_hex;
 	int sendLevel = level;
 
+	/*
+	 * THE QUEUE MUST HAVE A FLOOR, and losing entries is the documented cost above rather than a
+	 * new one. asl_log drains at about 21 a second with no daemon to take them and MoneyMoney
+	 * produced about 150, so the queue grew to 11884 pending blocks and the one that mattered,
+	 * com.moneymoney-app.sqlcipher, was queued behind them and never ran. The application sat on
+	 * its splash and its database was never opened.
+	 */
+	if (__atomic_load_n(&pendingEntries, __ATOMIC_RELAXED) >= kMaxPendingEntries) {
+		long dropped = __atomic_add_fetch(&droppedEntries, 1, __ATOMIC_RELAXED);
+
+		if (osLogTrace != NULL && osLogTrace[0] != '\0' && (dropped % 1000) == 1) {
+			fprintf(stderr, "oslog dropped %ld entries, queue is full\n", dropped);
+			fflush(stderr);
+		}
+		asl_release(owned);
+		free(text);
+		free((void *) hex);
+		return;
+	}
+
+	__atomic_add_fetch(&pendingEntries, 1, __ATOMIC_RELAXED);
 	dispatch_async(queue, ^{
 		asl_log(get_client(), owned, sendLevel, "%s", text);
 		asl_release(owned);
 		free(text);
 		free((void *)hex);
+		__atomic_sub_fetch(&pendingEntries, 1, __ATOMIC_RELAXED);
 	});
 }
 
