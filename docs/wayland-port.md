@@ -15670,3 +15670,8 @@ away.
 
 **What it did not do:** the file list is still empty. `viewDidLoad` running for the library
 controllers did not install the tree view controller, so the missing link recorded above stands.
+
+One more measurement on the quit, for whoever picks it up: with the appearance pair on the process
+ends at about 2.3 seconds with status 0, no uncaught exception, and no `terminate:` seen under
+`CIDER_TRACE_MSGSEND=NSApplication`. So `-[NSApplication run]` returns rather than the application
+being killed, which points at the run loop being stopped rather than at a crash.
