@@ -830,9 +830,23 @@ static NSMutableDictionary *cellClassDictionary = nil;
         return [super intrinsicContentSize];
 
     NSSize size = [cell cellSize];
+    NSSize none = [super intrinsicContentSize];
 
     if (size.width <= 0 || size.height <= 0)
-        return [super intrinsicContentSize];
+        return none;
+
+    /*
+     * 10000 IS NOT A SIZE. It is what -[NSCell cellSize] answers when it does not measure itself,
+     * which every cell that does not override it inherits, NSImageCell among them. Reported as an
+     * intrinsic content size it is taken for a real one: a solved centre of 9.5 became an origin of
+     * 9.5 - 10000/2 = -4990.5, and that is the number three attempts at descendant constraints kept
+     * producing. Per axis, because a cell may know one and not the other.
+     */
+    if (size.width >= 10000)
+        size.width = none.width;
+    if (size.height >= 10000)
+        size.height = none.height;
+
     return size;
 }
 

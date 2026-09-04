@@ -16287,3 +16287,38 @@ It prints on every pass now, with the pass in the line:
 
 Measured: 1693 resolved lines per pass instead of 1693 on pass 0 and none after, and iA Writer's
 capture is unchanged at 25953. The switch is off by default, so nothing else can be affected.
+
+## 10000 IS NOT A SIZE (task #184)
+
+Widening the trace paid for itself immediately. With the resolved lines printing on every pass, the
+descendant rule turned out to be solving its constraint **correctly**:
+
+    p2 NSImageView 0x...: NSImageView.centerY = IAFileNameTextField.centerY * 1 + 1 -> centerY = 9.5
+    deep IAFileNameTextField_Aspects_ in NSStackView: item 8.50 subview 8.50 value 8.50 -> 8.50
+
+A centre of 9.5 and a translation that is a no-op, which is right. And **-4990.5 = 9.5 - 10000/2**.
+
+`-[NSControl intrinsicContentSize]` answers `[cell cellSize]`, and `-[NSCell cellSize]` returns
+`NSMakeSize(10000, 10000)` when a cell does not measure itself. `NSImageCell` never overrides it, so
+an image view reports an intrinsic content size of ten thousand points, and `CiderResolveAxis` takes
+it for a real one whenever a centre is known and a size is not.
+
+It is rejected per axis now, since a cell may know one and not the other. Measured in the diagnostic
+build: the hidden image view moves from **y = -4990.5 to y = 9**. That is the number three attempts
+at descendant constraints kept producing, and it was never about descendants.
+
+**Said plainly: this changes nothing visible today.** The centre is only recorded when the descendant
+rule is present, and that rule is not committed. All five applications are byte identical after it:
+iA Writer 25953, MoneyMoney 15657, Swift Publisher 151460, LibreOffice 135528, iTerm2 with a live
+prompt. The evidence for it is the diagnostic measurement above, not a capture that changed.
+
+**The next question, now visible for the first time.** With the sentinel gone, the stack view finally
+resolves its own constraint, and the answer is out of range:
+
+    p2 NSStackView: IAFileNameTextField.top = IALibraryTableCellView.top * 1 + 6 -> top = 71
+
+The cell is 65 points tall. `CiderAttributeValue` reads `top` as `NSMaxY` in an unflipped view, so a
+constant of +6 moves the edge six points ABOVE the top of the cell rather than six below it. Auto
+Layout measures its Y constants downward whatever the view's flippedness, so the constant needs the
+sign the container's coordinate system implies. That is the fourth thing to check, and it is one
+line of arithmetic rather than a new rule.
