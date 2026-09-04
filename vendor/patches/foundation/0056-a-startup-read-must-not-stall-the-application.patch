@@ -1,0 +1,69 @@
+a startup read must not stall the application
+
+CORRECTION to the previous patch. Bounding the coordination wait at five seconds removed the
+infinite hang, and I reported that the empty library list under launchd therefore had a second
+cause. It does not. The five second value WAS the remaining cause: the stall lands during startup,
+at the moment the library first loads, and the application has a deadline of its own there.
+
+Measured on iA Writer under launchd, capture bytes for the library list, 15787 empty against about
+27000 populated:
+
+    CIDER_FC_TIMEOUT_MS=200    27047   populated
+    CIDER_FC_TIMEOUT_MS=500    27047   populated
+    CIDER_FC_TIMEOUT_MS=1000   15787   EMPTY
+    CIDER_FC_TIMEOUT_MS=2000   15787   EMPTY
+
+so the application deadline sits between 500ms and 1000ms. The default becomes 250ms, a factor of
+two below the largest value that worked. A local XPC round trip is well under a millisecond, so a
+daemon that answers at all is not cut off, and the whole cost of an absent daemon is now a quarter
+of a second once.
+
+CIDER_FC_TIMEOUT_MS overrides it, which is how the numbers above were taken and how the next such
+question should be answered.
+
+Verified at the default with no override: launchd on gives 27047 and the four files are on screen,
+launchd off gives 26966 and is unchanged.
+
+--- a/src/NSFileCoordinator.m
++++ b/src/NSFileCoordinator.m
+@@ -93,6 +93,31 @@
+ /* Latched once the daemon has failed to answer, so only the first caller pays the whole timeout. */
+ static BOOL daemonUnresponsive = NO;
+ 
++/*
++ * How long a startup read may stall, which is the whole cost of an absent daemon. Measured on iA
++ * Writer under launchd, capture bytes for its library list: 200ms and 500ms both populate it, 1000ms
++ * and 2000ms leave it EMPTY, so the application has a deadline of its own between those. 250 keeps
++ * a factor of two below the largest value that worked, and a local XPC round trip is well under a
++ * millisecond, so nothing that answers at all is cut off. CIDER_FC_TIMEOUT_MS overrides it.
++ */
++static int64_t _NSFileCoordinationTimeoutMsec(void)
++{
++	static int64_t msec = 250;
++	static dispatch_once_t once;
++
++	dispatch_once(&once, ^{
++		const char* value = getenv("CIDER_FC_TIMEOUT_MS");
++
++		if (value != NULL && value[0] != '\0') {
++			long parsed = strtol(value, NULL, 10);
++
++			if (parsed > 0) msec = parsed;
++		}
++	});
++
++	return msec;
++}
++
+ static void handle_xpc_error(xpc_object_t error) {
+ 	// do nothing with it for now
+ };
+@@ -451,7 +476,7 @@
+ 		 * The first caller pays the full wait; once the daemon is known not to answer, later
+ 		 * callers pay a token wait instead of the whole timeout each.
+ 		 */
+-		int64_t timeout = daemonUnresponsive ? (NSEC_PER_SEC / 10) : (5 * NSEC_PER_SEC);
++		int64_t timeout = daemonUnresponsive ? (NSEC_PER_SEC / 10) : (_NSFileCoordinationTimeoutMsec() * NSEC_PER_MSEC);
+ 
+ 		if (dispatch_semaphore_wait(waiter, dispatch_time(DISPATCH_TIME_NOW, timeout)) != 0) {
+ 			FCDebug(@"no reply from the coordination daemon; proceeding uncoordinated");
