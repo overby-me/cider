@@ -16399,3 +16399,34 @@ actually told: `y[o0 s0 f1 c0]=0,17,59,0` reads as no origin, no size, a far edg
 
 Measured: **1632 frame lines, 1279 of them previously invisible**. iA Writer unchanged at 25953, and
 the switch is off by default.
+
+## THE SOLVE IS RIGHT AND SOMETHING LATER UNDOES IT (task #184)
+
+With the apply step printing even when nothing moved, the descendant rule was run once more as a
+diagnostic, and the answer is unambiguous. In the cell view's own solve:
+
+    container=IALibraryTableCellView 0x... bounds=207x65 flipped=0 apply=1 n=16
+      p2 NSStackView 0x...: IAFileNameTextField.top = IALibraryTableCellView.top * 1 + 6 -> top = 59
+      NSStackView 0x... pass=2 {0 0 207 17} -> {0 42 207 17} y[o0 s1 f1 c0]=42,17,59,0
+
+**Read, translated, recorded, resolved and applied, all correct.** A far edge of 59 and a height of
+17 give an origin of 42, and the frame is set to it. The name belongs at 42.
+
+**Two things that are NOT the cause, each measured rather than argued:**
+
+- The application's own `-[IALibraryTableCellView layout]`, which runs after the solve in
+  `-layoutSubtreeIfNeeded`, does not touch it. Printing every subview frame either side of that call
+  gives `solved {0 0 1 17}` and `after layout {0 0 1 17}`, identical.
+- An earlier sampling mistake of mine: the first stack view I looked at had only two `.leading`
+  constraints in scope, because it came from a DIFFERENT solve invocation. Match the container block,
+  not just the pointer: the same view is solved many times over from different containers.
+
+**What is left.** Most invocations reach `-layout` with the stack still `{0 0 1 17}`, one point wide,
+so their solve has nothing to work with, and the one invocation that produces `{0 42 207 17}` is not
+the last word: the final frame is `146x17 at 0,0`. So the question is now narrow and mechanical:
+which write, after that successful solve, puts the origin back to 0 and the width to 146. The width
+is `-_ciderSizeDegenerateSubviews` giving the fitting size, which keeps the origin, so that is not
+it either.
+
+Instrument `-[NSView setFrame:]` for one view rather than the solver: everything inside the solver is
+now known to be right.
