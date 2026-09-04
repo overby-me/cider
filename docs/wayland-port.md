@@ -15612,3 +15612,36 @@ and is never inserted, because the navigation container that would install it is
 view. `Location.state` stays 0 and `Location.indexingState` stays 1 with `totalItemCount` 0 while the
 Item rows are correct, so the location is never marked ready either, and those two may be the same
 fault seen from two sides.
+
+## MoneyMoney sits at Opening database, and what that is NOT (task #117, #140)
+
+Measured rather than asserted: **3 runs of about 12 today reached the main window**, the rest stayed
+on the splash with the spinner animating. There is no reliable predictor yet, and the settle time is
+not it, since successes happened at 45 and 55 seconds and failures at 60, 70 and 90.
+
+`CIDER_TRACE_XPC=1` names what fails underneath:
+
+    CIDER_XPC lookup failed for service com.apple.securityd.xpc
+    CIDER_SECXPC send operation=1 connection=0x...
+    CIDER_SECXPC reply operation=1 reply=0x... type=error tries_left=4
+    Error returned: <OS_xpc_error: Connection invalid>
+
+securityd is not running, the bootstrap lookup fails, and the Security client sends anyway and takes
+an error back. It does NOT spin: `tries_left` stays at 4 because the retry only covers
+CONNECTION_INTERRUPTED, and a run makes 3 to 12 such calls in total. So the keychain is unavailable
+and the application decides what to do about it, which is where task #140 sits. With launchd ON, so
+that securityd could be demand started, the container did not boot at all in that run, which is task
+#141.
+
+**Ruled out:** the hot journal. Every killed run leaves a 12824 byte `MoneyMoney.sqlite-journal`, and
+removing just the journal changes nothing.
+
+**CORRECTION, in the same breath as the claim.** One run with the whole `Application Support/
+MoneyMoney` directory moved aside reached the main window, and I wrote that the poisoned database was
+the blocker. The NEXT run with an equally fresh directory sat on the splash. One run is not a rate
+and that conclusion was wrong; the database state is not established as the cause. The application
+data has been restored to the prefix.
+
+**Trap worth naming:** counting a trace line in runs where its gate was off proves nothing. The
+`lookup failed for service` line only exists when `CIDER_TRACE_XPC` is set, so comparing its count
+between a traced and an untraced run is meaningless, and I nearly read that as evidence.
