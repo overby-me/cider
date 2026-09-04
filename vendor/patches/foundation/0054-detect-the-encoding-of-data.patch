@@ -1,0 +1,410 @@
+detect the encoding of data
+
++[NSString stringEncodingForData:encodingOptions:convertedString:usedLossyConversion:] did not
+exist, and iA Writer called it on the very first document it read:
+
+    Terminating app due to uncaught exception, reason:
+    +[NSString stringEncodingForData:encodingOptions:convertedString:usedLossyConversion:]:
+    unrecognized selector sent to instance
+
+All seven NSStringEncodingDetection option keys were already defined and exported, so only the
+method was missing; the application imports NSStringEncodingDetectionAllowLossyKey, so it does pass
+options.
+
+There was already an ICU detector inside -_initWithBytesOfUnknownEncoding:, so it moves out to a
+function both callers share rather than being written twice. It answers 0 when nothing recognises
+the bytes, which lets each caller keep its own fallback: the initialiser still falls back to non
+lossy ASCII, and the new method falls back to Latin 1, which maps every byte and so always answers,
+reported as lossy because it is a guess rather than a reading.
+
+Moving it also fixes a mapping in the copy that was taken: UTF-16LE was mapped to
+NSUTF16BigEndianStringEncoding.
+
+--- a/src/NSString.m
++++ b/src/NSString.m
+@@ -640,6 +640,135 @@
+ 
+ @end
+ 
++/* Answers 0 when nothing recognises the bytes, so a caller can pick its own fallback. */
++static NSStringEncoding _NSDetectEncodingOfBytes(const void *bytes, NSUInteger length)
++{
++    NSStringEncoding encoding = 0;
++    uint32_t BOM;
++
++    if (length > 4)
++    {
++        memcpy(&BOM, bytes, 4);
++        _NSDetectEncodingFromBOM(BOM, &encoding, NULL);
++    }
++
++    if (encoding == 0)
++    {
++        UCharsetDetector *csd = NULL;
++        const UCharsetMatch *ucm;
++        UErrorCode status = U_ZERO_ERROR;
++        const char *matchName = NULL;
++        do {
++            csd = ucsdet_open(&status);
++            if (csd == NULL || status != U_ZERO_ERROR)
++            {
++                break;
++            }
++
++            ucsdet_setText(csd, bytes, length, &status);
++            if (status != U_ZERO_ERROR) {
++                break;
++            }
++
++            ucsdet_enableInputFilter(csd, TRUE);
++
++            ucm = ucsdet_detect(csd, &status);
++            if (ucm == NULL || status != U_ZERO_ERROR)
++            {
++                break;
++            }
++
++            matchName = ucsdet_getName(ucm, &status);
++            if (matchName == NULL || status != U_ZERO_ERROR)
++            {
++                break;
++            }
++
++            if (strcmp(matchName, "UTF-8") == 0)
++            {
++                encoding = NSUTF8StringEncoding;
++            }
++            else if (strcmp(matchName, "UTF-16BE") == 0)
++            {
++                encoding = NSUTF16BigEndianStringEncoding;
++            }
++            else if (strcmp(matchName, "UTF-16LE") == 0)
++            {
++                encoding = NSUTF16LittleEndianStringEncoding;
++            }
++            else if (strcmp(matchName, "UTF-32BE") == 0)
++            {
++                encoding = NSUTF32BigEndianStringEncoding;
++            }
++            else if (strcmp(matchName, "UTF-32LE") == 0)
++            {
++                encoding = NSUTF32LittleEndianStringEncoding;
++            }
++            else if (strcmp(matchName, "Shift_JIS") == 0)
++            {
++                encoding = NSShiftJISStringEncoding;
++            }
++            else if (strcmp(matchName, "ISO-2022-JP") == 0)
++            {
++                encoding = NSISO2022JPStringEncoding;
++            }
++            else if (strcmp(matchName, "ISO-8859-1") == 0)
++            {
++                encoding = NSISOLatin1StringEncoding;
++            }
++            else if (strcmp(matchName, "ISO-8859-2") == 0)
++            {
++                encoding = NSISOLatin2StringEncoding;
++            }
++            else if (strcmp(matchName, "windows-1250") == 0)
++            {
++                encoding = NSWindowsCP1250StringEncoding;
++            }
++            else if (strcmp(matchName, "windows-1251") == 0)
++            {
++                encoding = NSWindowsCP1251StringEncoding;
++            }
++            else if (strcmp(matchName, "windows-1252") == 0)
++            {
++                encoding = NSWindowsCP1252StringEncoding;
++            }
++            else if (strcmp(matchName, "windows-1253") == 0)
++            {
++                encoding = NSWindowsCP1253StringEncoding;
++            }
++            else if (strcmp(matchName, "windows-1254") == 0)
++            {
++                encoding = NSWindowsCP1254StringEncoding;
++            }
++            /*
++            The following encodings need homes?
++            ISO-2022-CN
++            ISO-2022-KR
++            GB18030
++            Big5
++            EUC-JP
++            EUC-KR
++            ISO-8859-5
++            ISO-8859-6
++            ISO-8859-7
++            ISO-8859-8
++            ISO-8859-9
++            windows-1255
++            windows-1256
++            KOI8-R
++            IBM420
++            IBM424
++            */
++        } while (0);
++        if (csd != NULL)
++        {
++            ucsdet_close(csd);
++        }
++    }
++
++    return encoding;
++}
++
+ @implementation NSString (NSStringExtensionMethods)
+ 
+ + (NSStringEncoding)defaultCStringEncoding
+@@ -648,6 +777,96 @@
+     return NSUTF8StringEncoding;
+ }
+ 
+++ (NSStringEncoding)stringEncodingForData:(NSData *)data
++                          encodingOptions:(NSDictionary *)options
++                          convertedString:(NSString **)convertedString
++                      usedLossyConversion:(BOOL *)usedLossyConversion
++{
++    if (convertedString != NULL)
++    {
++        *convertedString = nil;
++    }
++    if (usedLossyConversion != NULL)
++    {
++        *usedLossyConversion = NO;
++    }
++
++    if ([data length] == 0)
++    {
++        return 0;
++    }
++
++    NSArray *suggested = [options objectForKey:NSStringEncodingDetectionSuggestedEncodingsKey];
++    NSArray *disallowed = [options objectForKey:NSStringEncodingDetectionDisallowedEncodingsKey];
++    BOOL onlySuggested = [[options objectForKey:NSStringEncodingDetectionUseOnlySuggestedEncodingsKey] boolValue];
++    id allowLossy = [options objectForKey:NSStringEncodingDetectionAllowLossyKey];
++    NSMutableArray *candidates = [NSMutableArray array];
++
++    [candidates addObjectsFromArray:suggested];
++    if (!onlySuggested)
++    {
++        NSStringEncoding detected = _NSDetectEncodingOfBytes([data bytes], [data length]);
++
++        if (detected != 0)
++        {
++            [candidates addObject:[NSNumber numberWithUnsignedInteger:detected]];
++        }
++        [candidates addObject:[NSNumber numberWithUnsignedInteger:NSUTF8StringEncoding]];
++    }
++
++    for (NSNumber *candidate in candidates)
++    {
++        NSStringEncoding encoding = [candidate unsignedIntegerValue];
++
++        if (encoding == 0 || [disallowed containsObject:candidate])
++        {
++            continue;
++        }
++
++        NSString *string = [[NSString alloc] initWithData:data encoding:encoding];
++
++        if (string != nil)
++        {
++            if (convertedString != NULL)
++            {
++                *convertedString = [string autorelease];
++            }
++            else
++            {
++                [string release];
++            }
++            return encoding;
++        }
++    }
++
++    // Lossy conversion is allowed unless the caller says otherwise.
++    if (allowLossy != nil && ![allowLossy boolValue])
++    {
++        return 0;
++    }
++
++    // Latin 1 maps every byte, so it always answers, and it is a guess rather than a reading.
++    NSString *lossy = [[NSString alloc] initWithData:data encoding:NSISOLatin1StringEncoding];
++
++    if (lossy == nil)
++    {
++        return 0;
++    }
++    if (convertedString != NULL)
++    {
++        *convertedString = [lossy autorelease];
++    }
++    else
++    {
++        [lossy release];
++    }
++    if (usedLossyConversion != NULL)
++    {
++        *usedLossyConversion = YES;
++    }
++    return NSISOLatin1StringEncoding;
++}
++
+ + (const NSStringEncoding *)availableStringEncodings
+ {
+ #warning TODO https://code.google.com/p/apportable/issues/detail?id=269
+@@ -837,127 +1056,7 @@
+ 
+ - (id)_initWithBytesOfUnknownEncoding:(void *)bytes length:(NSUInteger)length copy:(BOOL)shouldCopy usedEncoding:(NSStringEncoding *)usedEncoding
+ {
+-    NSStringEncoding encoding = 0;
+-    uint32_t BOM;
+-    if (length > 4)
+-    {
+-        memcpy(&BOM, bytes, 4);
+-        _NSDetectEncodingFromBOM(BOM, &encoding, NULL);
+-    }
+-
+-    if (encoding == 0)
+-    {
+-        UCharsetDetector *csd;
+-        const UCharsetMatch *ucm;
+-        UErrorCode status = U_ZERO_ERROR;
+-        const char *matchName = NULL;
+-        do {
+-            csd = ucsdet_open(&status);
+-            if (csd == NULL || status != U_ZERO_ERROR)
+-            {
+-                break;
+-            }
+-
+-            ucsdet_setText(csd, bytes, length, &status);
+-            if (status != U_ZERO_ERROR) {
+-                break;
+-            }
+-
+-            ucsdet_enableInputFilter(csd, TRUE);
+-
+-            ucm = ucsdet_detect(csd, &status);
+-            if (ucm == NULL || status != U_ZERO_ERROR)
+-            {
+-                break;
+-            }
+-
+-            matchName = ucsdet_getName(ucm, &status);
+-            if (matchName == NULL || status != U_ZERO_ERROR)
+-            {
+-                break;
+-            }
+-
+-            if (strcmp(matchName, "UTF-8") == 0)
+-            {
+-                encoding = NSUTF8StringEncoding;
+-            }
+-            else if (strcmp(matchName, "UTF-16BE") == 0)
+-            {
+-                encoding = NSUTF16BigEndianStringEncoding;
+-            }
+-            else if (strcmp(matchName, "UTF-16LE") == 0)
+-            {
+-                encoding = NSUTF16BigEndianStringEncoding;
+-            }
+-            else if (strcmp(matchName, "UTF-32BE") == 0)
+-            {
+-                encoding = NSUTF32BigEndianStringEncoding;
+-            }
+-            else if (strcmp(matchName, "UTF-32LE") == 0)
+-            {
+-                encoding = NSUTF32LittleEndianStringEncoding;
+-            }
+-            else if (strcmp(matchName, "Shift_JIS") == 0)
+-            {
+-                encoding = NSShiftJISStringEncoding;
+-            }
+-            else if (strcmp(matchName, "ISO-2022-JP") == 0)
+-            {
+-                encoding = NSISO2022JPStringEncoding;
+-            }
+-            else if (strcmp(matchName, "ISO-8859-1") == 0)
+-            {
+-                encoding = NSISOLatin1StringEncoding;
+-            }
+-            else if (strcmp(matchName, "ISO-8859-2") == 0)
+-            {
+-                encoding = NSISOLatin2StringEncoding;
+-            }
+-            else if (strcmp(matchName, "windows-1250") == 0)
+-            {
+-                encoding = NSWindowsCP1250StringEncoding;
+-            }
+-            else if (strcmp(matchName, "windows-1251") == 0)
+-            {
+-                encoding = NSWindowsCP1251StringEncoding;
+-            }
+-            else if (strcmp(matchName, "windows-1252") == 0)
+-            {
+-                encoding = NSWindowsCP1252StringEncoding;
+-            }
+-            else if (strcmp(matchName, "windows-1253") == 0)
+-            {
+-                encoding = NSWindowsCP1253StringEncoding;
+-            }
+-            else if (strcmp(matchName, "windows-1254") == 0)
+-            {
+-                encoding = NSWindowsCP1254StringEncoding;
+-            }
+-            /*
+-            The following encodings need homes?
+-            ISO-2022-CN
+-            ISO-2022-KR
+-            GB18030
+-            Big5
+-            EUC-JP
+-            EUC-KR
+-            ISO-8859-5
+-            ISO-8859-6
+-            ISO-8859-7
+-            ISO-8859-8
+-            ISO-8859-9
+-            windows-1255
+-            windows-1256
+-            KOI8-R
+-            IBM420
+-            IBM424
+-            */
+-        } while (0);
+-        if (csd != NULL)
+-        {
+-            ucsdet_close(csd);
+-        }
+-    }
++    NSStringEncoding encoding = _NSDetectEncodingOfBytes(bytes, length);
+ 
+     if (encoding == 0)
+     {
+--- a/include/Foundation/NSString.h
++++ b/include/Foundation/NSString.h
+@@ -82,9 +82,21 @@
+ 
+ @end
+ 
++FOUNDATION_EXPORT NSString* const NSStringEncodingDetectionSuggestedEncodingsKey;
++FOUNDATION_EXPORT NSString* const NSStringEncodingDetectionDisallowedEncodingsKey;
++FOUNDATION_EXPORT NSString* const NSStringEncodingDetectionUseOnlySuggestedEncodingsKey;
++FOUNDATION_EXPORT NSString* const NSStringEncodingDetectionAllowLossyKey;
++FOUNDATION_EXPORT NSString* const NSStringEncodingDetectionFromWindowsKey;
++FOUNDATION_EXPORT NSString* const NSStringEncodingDetectionLossySubstitutionKey;
++FOUNDATION_EXPORT NSString* const NSStringEncodingDetectionLikelyLanguageKey;
++
+ @interface NSString (NSStringExtensionMethods)
+ 
+ + (NSStringEncoding)defaultCStringEncoding;
+++ (NSStringEncoding)stringEncodingForData:(NSData *)data
++                          encodingOptions:(NSDictionary *)options
++                          convertedString:(NSString **)convertedString
++                      usedLossyConversion:(BOOL *)usedLossyConversion;
+ + (const NSStringEncoding *)availableStringEncodings;
+ + (NSString *)localizedNameOfStringEncoding:(NSStringEncoding)encoding;
+ + (instancetype)string;
