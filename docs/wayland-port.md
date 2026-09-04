@@ -16090,3 +16090,29 @@ geometry this trace prints.
 
 All five re-run and looked at. MoneyMoney's sidebar row is taller now, which is its own answer, and
 iTerm2 hit the `start-stack mmap` loader flake once in three again.
+
+## A FIXED ADDRESS THAT LOSES A RACE SAYS NOTHING (task #187)
+
+iTerm2 opens its window and shows no prompt in about 2 runs of 16, with
+
+    dyld: shared cache not used: shared cache file open() failed
+    [mldr] start-stack mmap at 0x7fffff600000 failed
+
+and nothing else. `src/darwin/loader/src/stack.rs` maps the guest start stack at a FIXED address
+just below the commpage with `MAP_FIXED_NOREPLACE`, and on failure printed that one line and exited.
+`MAP_FIXED_NOREPLACE` fails with `EEXIST`, which means something is already there, and the whole
+question is WHAT. The address is fixed; the host mappings around it are not.
+
+It now prints the errno and every `/proc/self/maps` line that overlaps the range it wanted, so the
+next occurrence names the conflict rather than leaving a silent empty terminal.
+
+**Not validated by a forced collision, and worth saying so.** Pointing `base` at a page that is
+certainly mapped does break every guest, which is the point, but the run produced an EMPTY app.log
+rather than the message, and chasing that further was not worth the builds. The two real occurrences
+prove the existing line reaches `app.log`, and the added lines are printed immediately after it.
+
+**Housekeeping found on the way, and it may matter more than the diagnostic:** seventeen stale
+`mldr`, `cider` and `ciderd` processes had accumulated across the session, most of them with
+`(deleted)` executables from earlier builds. `scripts/kill-cider-container.sh` had not reaped them.
+A stale `ciderd` is shared, so this is a plausible source of intermittency in ANY of the
+measurements here. The way to find them is `readlink /proc/<pid>/exe`, not the command line.

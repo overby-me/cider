@@ -79,7 +79,25 @@ pub unsafe fn setup_stack(
         0,
     );
     if p == libc::MAP_FAILED {
-        eprintln!("[mldr] start-stack mmap at {base:#x} failed");
+        let err = std::io::Error::last_os_error();
+
+        eprintln!("[mldr] start-stack mmap at {base:#x} size {size:#x} failed: {err}");
+        // MAP_FIXED_NOREPLACE only says EEXIST, and this address is fixed while the HOST mappings
+        // around it are not, so the useful half is which mapping is already sitting there.
+        if let Ok(maps) = std::fs::read_to_string("/proc/self/maps") {
+            for line in maps.lines() {
+                let Some((range, _)) = line.split_once(' ') else { continue };
+                let Some((lo, hi)) = range.split_once('-') else { continue };
+                let (Ok(lo), Ok(hi)) =
+                    (u64::from_str_radix(lo, 16), u64::from_str_radix(hi, 16))
+                else {
+                    continue;
+                };
+                if lo < stack_top && hi > base {
+                    eprintln!("[mldr]   in the way: {line}");
+                }
+            }
+        }
         std::process::exit(1);
     }
 
