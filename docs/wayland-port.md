@@ -15555,3 +15555,31 @@ application configures it fully (rootURL, openURL, view options, delegate, `relo
 and asks `IALibraryTableCellView` for row heights, so the data source has rows. Then
 `-[IANavigationViewController dealloc]` runs: the container that would install it is created,
 KVO registered for `topViewController`, and destroyed. That is the next thread to pull.
+
+### The file list, traced to the step that does not happen
+
+Every link measured, none assumed:
+
+1. The list is `Writer.LibraryTreeViewController`. `CIDER_TRACE_VIEWS` shows its view being created,
+   an NSScrollView, and `CIDER_TRACE_MSGSEND=LibraryTree` shows it fully configured: rootURL,
+   openURL, contentInsets, viewOptions, delegate, `reloadAllRowsIfViewLoaded`.
+2. The data source has rows: the application asks `+[IALibraryTableCellView
+   heightWithNumberOfLinesWithText:layoutStyle:]`, `lineHeight` and `fontSize`.
+3. That view is never added to anything. `CIDER_TRACE_INSERT=ScrollView` over a whole run shows only
+   two scroll views ever inserted, the editor and the hidden library document preview, and
+   `CIDER_TRACE_INSERT=IAView` shows the column body receiving its two toolbars and one empty
+   container and nothing else.
+4. The container that would install it, `IANavigationViewController`, is created, KVO registered for
+   `topViewController`, and deallocated. It never appears in the `setView` trace, so it was never
+   asked for its view at all.
+5. `-[IALibraryViewController _updateNavigation]` is never called, and neither are the history
+   delegate callbacks `navigationHistoryDidSetStack:` and `navigationHistory:didPushRecords:`,
+   although the history itself is built and `restoreRecordStack:` runs.
+6. `restoreRecordStack:` calls `_validateStack:records:`, which calls the delegate's
+   `navigationHistory:validateRecord:`. That method is six instructions,
+   `return [record hasValidLibraryDestination]`, and **that message is never sent to anything**,
+   which is what a nil record looks like from outside.
+
+So the restore validates a record it does not have, the stack ends empty, nothing is pushed, and the
+column stays blank. The next step is to find where that record should come from, which is inside the
+application's own restore path and wants the same disassembly treatment as the editability gate.

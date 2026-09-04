@@ -1776,7 +1776,8 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
     const char *watchInsert = getenv("CIDER_TRACE_INSERT");
 
     if (watchInsert != NULL && watchInsert[0] != (char) 0 &&
-        strstr(object_getClassName(view), watchInsert) != NULL) {
+        (strstr(object_getClassName(view), watchInsert) != NULL ||
+         strstr(object_getClassName(self), watchInsert) != NULL)) {
         fprintf(stderr, "cider-insert %s %p into %s %p window=%s\n", object_getClassName(view),
                 view, object_getClassName(self), self,
                 [self window] != nil ? "yes" : "NONE");
