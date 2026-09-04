@@ -16116,3 +16116,29 @@ prove the existing line reaches `app.log`, and the added lines are printed immed
 `(deleted)` executables from earlier builds. `scripts/kill-cider-container.sh` had not reaped them.
 A stale `ciderd` is shared, so this is a plausible source of intermittency in ANY of the
 measurements here. The way to find them is `readlink /proc/<pid>/exe`, not the command line.
+
+## THE REAPER REAPED NOTHING (task #187)
+
+`scripts/kill-cider-container.sh` runs before every single application launch in this harness, and
+by the end of one long session **seventeen** `mldr`, `cider` and `ciderd` processes were still alive.
+Every intermittency measured around them had that as a possible confound.
+
+Three reasons, all found by listing what was actually running rather than by reading the script:
+
+1. **`readlink` appends `" (deleted)"`** once the binary has been rebuilt, so the `*/mldr` pattern
+   stopped matching exactly the processes left over from an EARLIER build, which is the set the
+   script exists for. After fifteen rebuilds in a session, that is most of them.
+2. The **cider launcher was not in the list** at all, only `mldr` and `ciderd`.
+3. The launcher **does not carry the prefix on its command line**. It is `cider shell <app>`, and its
+   prefix is in the ENVIRONMENT as `CIDERPREFIX`, so the second signal could never match it either.
+
+All three are fixed, and the environment is read as a third place to look for the prefix.
+
+**Verified both ways.** Reaping the prefix that was running took 6 live processes to 0, because
+killing the launcher takes its group with it. Reaping a DIFFERENT prefix killed 0 and left all 8 of
+the running container's processes alive, which is the property that matters: containers of different
+prefixes share one runtime.
+
+**Not claimed:** that this explains any particular failure. A stale process cannot collide with a new
+process's address space, so it is not the `start-stack mmap` failure. It is a confound removed, not a
+cause found.
