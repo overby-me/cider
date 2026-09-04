@@ -16226,3 +16226,27 @@ children, an `NSStackView` here, must be the authority on where they go: either 
 arranged subviews alone, or `-[NSStackView layout]` runs after the solve rather than only when the
 size changes. Do that first, confirm the name field sits inside its stack, and only then revisit
 constraints that name a grandchild.
+
+## A CONTAINER THAT ARRANGES ITS CHILDREN OWNS THEIR FRAMES (task #184)
+
+This is the prerequisite the second failed attempt located, and it stands on its own.
+
+`NSStackView` places every arranged subview in `-layout`, from the sizes their own constraints give
+it. The constraint solver was placing them as well, and whichever ran last won. Here the solver won
+and was wrong: it took
+
+    NSImageView .centerY == IAFileNameTextField .centerY * 1 + 2
+
+inverted it to solve for the NAME field, and read the image view's centre before anything had laid
+the image view out. iA Writer's file name ended up at **y = -10 inside a 17 point stack**.
+
+`-_ciderSolveConstraintsApplying:` now skips a subview its container arranges, asked by selector so
+AppKit's own layering is not disturbed.
+
+**Measured:** the count of solver placements of that field goes from **40623 to 0** in one run, and
+iA Writer's capture is byte identical at 25953. All five applications re-run and looked at:
+MoneyMoney 15657, Swift Publisher's gallery 151460, iTerm2 with a live prompt, LibreOffice 135528.
+
+That removes the reason both descendant attempts spread their error. The two lines of a file row are
+still in the wrong order, since the constraints that order them still name a grandchild, but a third
+attempt now starts from a name field that is where its stack put it.

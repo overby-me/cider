@@ -4565,6 +4565,21 @@ static BOOL CiderLayoutTracing(void) {
             CiderAxisSolution x = { 0 }, y = { 0 };
             NSRect frame = [subview frame];
 
+            /*
+             * A CONTAINER THAT ARRANGES ITS CHILDREN OWNS THEIR FRAMES. NSStackView places every
+             * arranged subview in -layout, from the sizes their own constraints give it, and solving
+             * them here as well means whichever ran last wins.
+             *
+             * Here the solver won and was wrong: it took NSImageView.centerY == FileName.centerY + 2,
+             * inverted it to solve for the NAME field, and read the image view's centre before
+             * anything had laid the image view out. The name field ended up at y = -10 inside a 17
+             * point stack, which is also what made two attempts at descendant constraints spread the
+             * error rather than fix it.
+             */
+            if ([self respondsToSelector: @selector(arrangedSubviews)] &&
+                [[(id) self arrangedSubviews] containsObject: subview])
+                continue;
+
             for (NSLayoutConstraint *constraint in all) {
                 if (![constraint isActive])
                     continue;
