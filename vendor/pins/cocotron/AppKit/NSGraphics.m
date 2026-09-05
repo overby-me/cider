@@ -661,3 +661,63 @@ BOOL NSFocusRingDrawAroundRect(NSRect bounds) {
 
     return YES;
 }
+
+void NSRectFillListWithColorsUsingOperation(const NSRect *rects, NSColor *const *colors,
+                                            NSInteger count, NSCompositingOperation operation)
+{
+    CGContextRef context = NSCurrentGraphicsPort();
+    NSInteger i;
+
+    CGContextSaveGState(context);
+    CGContextSetBlendMode(context, blendModeForCompositeOp(operation));
+    for (i = 0; i < count; i++) {
+        [colors[i] setFill];
+        /* A transparent Copy fill is a NO-OP, not a hole punched through what is underneath. */
+        if (operation == NSCompositeCopy && ciderLayerBackingEnabled()) {
+            O2ColorRef fill = O2ContextFillColor((O2ContextRef) context);
+
+            if (fill != NULL && O2ColorGetAlpha(fill) <= 0.0) {
+                continue;
+            }
+        }
+        if (rects[i].size.width > 0 && rects[i].size.height > 0) {
+            CGContextFillRect(context, rects[i]);
+        }
+    }
+    CGContextRestoreGState(context);
+}
+
+/* The three this backend can actually allocate, smallest first, terminated by zero as callers expect. */
+static const NSWindowDepth _ciderWindowDepths[] = {
+    NSWindowDepthTwentyfourBitRGB,
+    NSWindowDepthSixtyfourBitRGB,
+    NSWindowDepthOnehundredtwentyeightBitRGB,
+    0
+};
+
+const NSWindowDepth *NSAvailableWindowDepths(void) {
+    return _ciderWindowDepths;
+}
+
+NSWindowDepth NSBestDepth(NSString *colorSpace, NSInteger bps, NSInteger bpp, BOOL planar,
+                          BOOL *exactMatch)
+{
+    NSWindowDepth chosen;
+    NSInteger got;
+
+    if (bps <= 8) {
+        chosen = NSWindowDepthTwentyfourBitRGB;
+        got = 8;
+    } else if (bps <= 16) {
+        chosen = NSWindowDepthSixtyfourBitRGB;
+        got = 16;
+    } else {
+        chosen = NSWindowDepthOnehundredtwentyeightBitRGB;
+        got = 32;
+    }
+    /* Every depth here is packed RGB, so a planar request is answered but never matched. */
+    if (exactMatch != NULL) {
+        *exactMatch = (got == bps) && !planar;
+    }
+    return chosen;
+}

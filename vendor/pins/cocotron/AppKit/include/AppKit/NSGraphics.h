@@ -64,6 +64,13 @@ typedef enum NSWindowDepth : int32_t {
     NSWindowDepthTwentyfourBitRGB = 0x208
 } NSWindowDepth;
 
+APPKIT_EXPORT const NSWindowDepth *NSAvailableWindowDepths(void);
+APPKIT_EXPORT NSWindowDepth NSBestDepth(NSString *colorSpace, NSInteger bps, NSInteger bpp,
+                                        BOOL planar, BOOL *exactMatch);
+APPKIT_EXPORT void NSRectFillListWithColorsUsingOperation(const NSRect *rects,
+                                                          NSColor *const *colors, NSInteger count,
+                                                          NSCompositingOperation operation);
+
 enum {
     NSAnimationEffectDisappearingItemDefault = 0,
     NSAnimationEffectPoof = 10,
