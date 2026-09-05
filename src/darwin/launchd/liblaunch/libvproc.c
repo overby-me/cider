@@ -481,6 +481,15 @@ _vproc_post_fork_ping(void)
 {
 	mach_port_t session = MACH_PORT_NULL;
 
+	/*
+	 * DIAGNOSTIC ONLY, task #196. Gated on a FILE and not an environment variable, because
+	 * this runs in a child of pid 1 and the environment does not reach pid 1, which is why
+	 * CIDER_LD is file gated too.
+	 */
+	if (bootstrap_port == MACH_PORT_NULL && access("/probe/launchd-skip-ping", F_OK) == 0) {
+		return NULL;
+	}
+
 	kern_return_t kr = vproc_mig_post_fork_ping(bootstrap_port, mach_task_self(), &session);
 	if (kr) {
 		/* SILENT UNTIL NOW, and it is fatal: launchd _exit(EXIT_FAILURE)s the forked child on this,
