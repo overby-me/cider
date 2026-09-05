@@ -152,8 +152,9 @@ pub unsafe extern "C" fn xnu_sys_task_create(
     crate::xnu::misc::log(
         bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
         &format!(
-            "xnu_sys_task_create: nsid={} parent={:p} parent_bootstrap={:p}",
+            "xnu_sys_task_create: nsid={} self={:p} parent={:p} parent_bootstrap={:p}",
             nsid,
+            task,
             parent_task,
             if parent_task.is_null() {
                 ptr::null_mut()

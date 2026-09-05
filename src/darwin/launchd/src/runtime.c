@@ -734,10 +734,14 @@ runtime_fork(mach_port_t bsport)
 	{
 		kern_return_t _sk = launchd_set_bport(bsport);
 		mach_port_t _rb = MACH_PORT_NULL;
-		(void) task_get_bootstrap_port(mach_task_self(), &_rb);
+		/* The get kr was discarded, so a null readback could not be told apart from a failed
+		 * call. It has to be printed: the task struct holds a non-null itk_bootstrap while
+		 * this readback is null, and only the kr says whether get failed or returned nothing. */
+		kern_return_t _gk = task_get_bootstrap_port(mach_task_self(), &_rb);
 		if (access("/probe/launchd-trace", F_OK) == 0) {
-			fprintf(stderr, "CIDER_LD runtime_fork bsport=0x%x set_kr=0x%x readback=0x%x\n",
-				(unsigned) bsport, (unsigned) _sk, (unsigned) _rb);
+			fprintf(stderr, "CIDER_LD runtime_fork bsport=0x%x set_kr=0x%x get_kr=0x%x readback=0x%x self=0x%x\n",
+				(unsigned) bsport, (unsigned) _sk, (unsigned) _gk, (unsigned) _rb,
+				(unsigned) mach_task_self());
 			fflush(stderr);
 		}
 	}

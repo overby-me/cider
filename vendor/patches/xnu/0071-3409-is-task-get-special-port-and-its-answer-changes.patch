@@ -1,0 +1,52 @@
+3409 is task_get_special_port, and its answer changes
+
+The guest caches MIG replies for a small list of message ids and replays them for later calls
+to the same destination. Patch 0068 took 3418 off that list for exactly this reason and the
+same argument rules out 3409: a reply may be replayed only for a routine that answers the same
+thing every time, and task_set_special_port (3410) writes the very field task_get_special_port
+(3409) reads.
+
+launchd calls the two one after the other. runtime_fork sets the job bootstrap port and reads
+it back before forking, so the child inherits it. The cache key is (dest, id) and carries
+neither the stored port nor which, which lives in the message body, so ONE cached reply answers
+every special port for the life of the process.
+
+launchd queries its own bootstrap port at startup, when it correctly has none. That null was
+cached and replayed for every later read, and a forked child inherits the cache array, so
+_vproc_post_fork_ping sent to MACH_PORT_NULL, got MACH_SEND_INVALID_DEST, and launchd exited
+the child with 1 before posix_spawn. No daemon ever ran, which is task #196 and the reason
+launchd has been unusable.
+
+Measured before: 103 set messages reached the daemon and only 7 gets, the rest served from the
+cache; the kernel held itk_bootstrap non-null while runtime_fork read back 0x0, and 17 children
+died with post_fork_ping failed kr=0x10000003. Measured after: readback equals the port that
+was set, 26 gets reach the daemon, 0 ping failures, one job exit and it is code 0, and
+securityd and memberd are live host processes for the first time.
+--- a/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
++++ b/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c
+@@ -176,8 +176,24 @@
+ 	 *
+ 	 * Measured: the daemon made two semaphores for that process and copied out two distinct names,
+ 	 * 9731 and 21251, and the caller received 21251 three times and never saw 9731.
++	 *
++	 * 3409 IS task_get_special_port, AND ITS ANSWER CHANGES, which is task #196.
++	 *
++	 * The rule above is the whole story again. task_set_special_port (3410) writes the very value
++	 * 3409 reads, and launchd calls them one after the other: runtime_fork sets the job bootstrap
++	 * port and reads it back before forking, so the child inherits it. The key here is (dest, id)
++	 * and carries neither the port that was stored nor `which`, which lives in the message body,
++	 * so ONE cached reply answers every special port for the life of the process.
++	 *
++	 * launchd queries its own bootstrap port at startup, when it correctly has none. That null was
++	 * cached and replayed for every later read, and forked children inherit the cache array, so
++	 * _vproc_post_fork_ping sent to MACH_PORT_NULL, got MACH_SEND_INVALID_DEST, and launchd
++	 * _exit(1)ed the child before posix_spawn. No daemon ever ran.
++	 *
++	 * Measured: 103 set messages reached the daemon and only 7 gets, because the rest were served
++	 * from this cache; the kernel held itk_bootstrap=0x...450 while the caller kept reading null.
+ 	 */
+-	return id == 200 || id == 206 || id == 3409;
++	return id == 200 || id == 206;
+ }
+ 
+ // A cached port-return reply carries a real send right from the FIRST query only; a replayed hit
