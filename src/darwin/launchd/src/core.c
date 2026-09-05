@@ -4671,7 +4671,9 @@ job_start_child(job_t j)
 
 	(void)job_assumes_zero(j, posix_spawnattr_init(&spattr));
 
+	CIDER_LD("job_child_before_attrs %s", j->label);
 	job_setup_attributes(j);
+	CIDER_LD("job_child_after_attrs %s", j->label);
 
 	bool use_xpcproxy = false;
 	struct waiting4attach *w4a = waiting4attach_find(j->mgr, j);
@@ -4849,6 +4851,7 @@ job_start_child(job_t j)
 #endif
 #endif
 
+	CIDER_LD("job_child_before_psf %s", j->label);
 	psf = j->prog ? posix_spawn : posix_spawnp;
 
 	if (likely(!(j->inetcompat || use_xpcproxy))) {
