@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSCursor.h>
 #import <AppKit/NSDragging.h>
 #import <AppKit/NSPasteboard.h>
+#import <AppKit/NSTableView.h>
 #import <AppKit/NSTextField.h>
 #import <objc/runtime.h>
 #import <AppKit/NSTextFieldCell.h>
@@ -366,7 +367,34 @@ static const void *kCiderAllowsEditingTextAttributesKey = &kCiderAllowsEditingTe
     if (![cell isEnabled])
         return;
 
+    /* A FIRST CLICK IN A TABLE SELECTS THE ROW, it does not begin editing.
+     *
+     * This method made itself first responder unconditionally, which creates the editor, so a click
+     * on a file name in a view based table opened an inline RENAME instead of selecting the row.
+     * macOS arbitrates this with validateProposedFirstResponder:forEvent:, which this AppKit does
+     * not have; the part that matters is that a cell view field takes the click only once its row
+     * is already current, and the click that makes it current belongs to the table.
+     *
+     * Scoped deliberately: a field with no enclosing table (an inspector field, a search field) is
+     * untouched, and a click on an ALREADY selected row still begins editing, which is how a rename
+     * is started. */
     if ([[self window] firstResponder] != self) {
+        NSView *enclosing = [self superview];
+
+        while (enclosing != nil && ![enclosing isKindOfClass: [NSTableView class]])
+            enclosing = [enclosing superview];
+
+        if (enclosing != nil) {
+            NSTableView *table = (NSTableView *) enclosing;
+            NSPoint inTable = [table convertPoint: [event locationInWindow] fromView: nil];
+            NSInteger row = [table rowAtPoint: inTable];
+
+            if (row < 0 || ![table isRowSelected: row]) {
+                [table mouseDown: event];
+                return;
+            }
+        }
+
         // This will create our editor if needed
         [[self window] makeFirstResponder: self];
     }
