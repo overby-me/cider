@@ -132,6 +132,12 @@ static int untitled_document_number = 0;
                                 ofType: (NSString *) type
                                  error: (NSError **) error
 {
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC init3arg doc=%s url=%s\n", class_getName([self class]),
+                [[url absoluteString] UTF8String] ?: "(nil)");
+        fflush(stderr);
+    }
+
     if ([self _isSelectorOverridden: @selector(initWithContentsOfFile:
                                                                ofType:)]) {
         if ([self initWithContentsOfFile: [url path] ofType: type] == nil)
@@ -1344,6 +1350,16 @@ static int untitled_document_number = 0;
 
 - (id) initWithContentsOfURL: (NSURL *) url ofType: (NSString *) type {
     NSError *error;
+
+    /* WHICH DOOR DID THE DOCUMENT COME IN BY. A created document whose readFromURL trace never
+     * fired is either an application initializer that bypassed this entirely or an application
+     * readFromURL override that does not call super, and only an entry print tells those apart. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC init2arg doc=%s url=%s\n", class_getName([self class]),
+                [[url absoluteString] UTF8String] ?: "(nil)");
+        fflush(stderr);
+    }
+
     [self init];
 
     error = nil;
