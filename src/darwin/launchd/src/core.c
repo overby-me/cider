@@ -4527,7 +4527,9 @@ job_start(job_t j)
 		}
 		break;
 	case 0:
+		CIDER_LD("job_child_entry %s", j->label);
 		if (unlikely(_vproc_post_fork_ping())) {
+			CIDER_LD("job_child_ping_failed %s exiting %d", j->label, EXIT_FAILURE);
 			_exit(EXIT_FAILURE);
 		}
 
@@ -4850,6 +4852,10 @@ job_start_child(job_t j)
 	}
 
 	errno = psf(NULL, file2exec, NULL, &spattr, (char *const *)argv, environ);
+	/* posix_spawn RETURNS its error rather than setting errno, and this _exit is what launchd
+	 * reads back as the job's exit status, so a spawn that fails looks exactly like a daemon that
+	 * chose to exit. */
+	CIDER_LD("job_spawn %s rc=%d prog=%s", j->label, errno, file2exec ? file2exec : "(null)");
 
 #if HAVE_SANDBOX && !TARGET_OS_EMBEDDED
 out_bad:
