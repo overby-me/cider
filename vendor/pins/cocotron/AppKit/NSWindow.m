@@ -3030,9 +3030,26 @@ extern int _CiderPendingConstraintSolves(void);
             NSPoint where = [event locationInWindow];
             NSView *hit = [_backgroundView hitTest: where];
 
-            fprintf(stderr, "cider-mouse window=%s type=%ld at=%.0f,%.0f hit=%s key=%d\n",
+            /* THE CLASS ALONE DOES NOT SAY WHY. An NSImageView answering the hit test over a table
+             * is either a small icon inside the row or a full size overlay covering it, and those
+             * want opposite fixes, so print the frame and the ancestry too. */
+            NSRect hitFrame = hit != nil ? [hit convertRect: [hit bounds] toView: nil] : NSZeroRect;
+            char ancestry[256];
+            size_t used = 0;
+            ancestry[0] = (char) 0;
+            for (NSView *up = hit != nil ? [hit superview] : nil; up != nil; up = [up superview]) {
+                const char *name = object_getClassName(up);
+                int wrote = snprintf(ancestry + used, sizeof(ancestry) - used, "%s<", name);
+                if (wrote <= 0 || (size_t) wrote >= sizeof(ancestry) - used)
+                    break;
+                used += (size_t) wrote;
+            }
+
+            fprintf(stderr, "cider-mouse window=%s type=%ld at=%.0f,%.0f hit=%s frame=%.0fx%.0f+%.0f+%.0f key=%d up=%s\n",
                     object_getClassName(self), (long) type, where.x, where.y,
-                    hit != nil ? object_getClassName(hit) : "none", (int) [self isKeyWindow]);
+                    hit != nil ? object_getClassName(hit) : "none",
+                    hitFrame.size.width, hitFrame.size.height, hitFrame.origin.x, hitFrame.origin.y,
+                    (int) [self isKeyWindow], ancestry);
             fflush(stderr);
         } else if (type == NSKeyDown) {
             fprintf(stderr, "cider-mouse key window=%s responder=%s key=%d chars=%s\n",

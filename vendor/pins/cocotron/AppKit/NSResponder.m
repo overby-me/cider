@@ -295,6 +295,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) mouseDown: (NSEvent *) event {
+    /* THE HOP IS THE EVIDENCE. This default forwards to the next responder, and a nil one drops the
+     * event in total silence, which looks exactly like a control that decided to ignore the click.
+     * Printing each hop says where a click actually stops. CIDER_TRACE_MOUSE. */
+    if (getenv("CIDER_TRACE_MOUSE") != NULL && getenv("CIDER_TRACE_MOUSE")[0] != (char) 0) {
+        fprintf(stderr, "cider-responder mouseDown %s -> %s\n", object_getClassName(self),
+                _nextResponder != nil ? object_getClassName(_nextResponder) : "NIL (dropped)");
+        fflush(stderr);
+    }
     [_nextResponder performSelector: _cmd withObject: event];
 }
 

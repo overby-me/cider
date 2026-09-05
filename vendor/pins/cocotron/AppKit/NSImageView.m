@@ -80,6 +80,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return [_cell isEditable];
 }
 
+/* A STATIC IMAGE IS NOT A CLICK TARGET, and this is what stopped a table row selecting.
+ *
+ * NSImageView is an NSControl, so it inherited -[NSControl mouseDown:], which tracks the cell until
+ * mouse up and never forwards to the next responder. An image view filling a table cell therefore
+ * swallowed the click, the enclosing table never saw it, and the row did not select. The tracking
+ * loop also ate the mouse UP, so the window only ever saw the DOWN.
+ *
+ * Measured in iA Writer: a click at 380,476 hit an NSImageView of 271x65 inside an
+ * IALibraryTableCellView, the row did not select, and the capture did not change by a single byte.
+ *
+ * macOS does not behave that way: a plain image inside a cell view lets the click reach the table.
+ * Declining the hit test is the faithful and least invasive way to say so. An image view that is
+ * editable (it accepts drags) or that carries an action is a real target and still takes the hit. */
+- (NSView *) hitTest: (NSPoint) point {
+    if (![self isEditable] && _action == NULL)
+        return nil;
+
+    return [super hitTest: point];
+}
+
 - (void) setAllowsCutCopyPaste: (BOOL) allow {
     if (allow != NO)
         NSUnimplementedMethod();
