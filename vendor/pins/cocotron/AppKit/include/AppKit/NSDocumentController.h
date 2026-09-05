@@ -71,6 +71,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - openDocumentWithContentsOfURL: (NSURL *) url
                         display: (BOOL) display
                           error: (NSError **) error;
+- (void) openDocumentWithContentsOfURL: (NSURL *) url
+                               display: (BOOL) display
+                     completionHandler:
+                             (void (^)(NSDocument *document,
+                                       BOOL documentWasAlreadyOpen,
+                                       NSError *error)) completionHandler;
 
 - (BOOL) reopenDocumentForURL: (NSURL *) url
             withContentsOfURL: (NSURL *) contentsUL

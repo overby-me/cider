@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSDocument.h>
 #import <AppKit/NSDocumentController.h>
+#import <dispatch/dispatch.h>
+#include <dlfcn.h>
 #include <objc/runtime.h>
 #include <stdlib.h>
 #import <AppKit/NSMenu.h>
@@ -334,6 +336,31 @@ static NSDocumentController *shared = nil;
             return [fileType objectForKey: @"CFBundleTypeName"];
         }
     }
+
+    /* UTIs FORM A HIERARCHY AND EQUALITY CANNOT MATCH IT. A .txt resolves to public.plain-text
+     * and iA Writer declares its Text type as public.text, so the exact comparison above can
+     * never pair them although plain-text CONFORMS to text; the app then opened nothing, with
+     * no error anywhere. LaunchServices is reached the way NSURL.m already reaches it, by
+     * dlopen, because AppKit does not link CoreServices. */
+    static Boolean (*conformsTo)(CFStringRef, CFStringRef);
+    static dispatch_once_t oncePredicate;
+    dispatch_once(&oncePredicate, ^{
+        void *handle = dlopen("/System/Library/Frameworks/CoreServices.framework/Frameworks/"
+                              "LaunchServices.framework/LaunchServices",
+                              RTLD_LAZY | RTLD_LOCAL);
+        if (handle != NULL)
+            conformsTo = dlsym(handle, "UTTypeConformsTo");
+    });
+
+    if (conformsTo != NULL) {
+        for (NSDictionary *fileType in _fileTypes) {
+            for (NSString *declared in [fileType objectForKey: @"LSItemContentTypes"]) {
+                if (conformsTo((CFStringRef) UTI, (CFStringRef) declared))
+                    return [fileType objectForKey: @"CFBundleTypeName"];
+            }
+        }
+    }
+
     return nil;
 }
 
@@ -528,6 +555,36 @@ static NSDocumentController *shared = nil;
 
         return result;
     }
+}
+
+/* THE MODERN ENTRY POINT, and its absence emptied a whole feature. iA Writer opens the document
+ * for a selected library row through this selector; unimplemented, the send raised, NSApplication
+ * caught the exception per event, and selecting a file simply did nothing while the log said
+ * unrecognized selector once per click. Synchronous wrapping is faithful enough here: the caller
+ * is on the main thread and macOS promises the handler on the main queue. */
+- (void) openDocumentWithContentsOfURL: (NSURL *) url
+                               display: (BOOL) display
+                     completionHandler:
+                             (void (^)(NSDocument *document,
+                                       BOOL documentWasAlreadyOpen,
+                                       NSError *error)) completionHandler
+{
+    BOOL wasOpen = [self documentForURL: url] != nil;
+    NSError *error = nil;
+    NSDocument *document = [self openDocumentWithContentsOfURL: url
+                                                       display: display
+                                                         error: &error];
+
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        fprintf(stderr, "CIDER_DOC openURL %s wasOpen=%d -> doc=%s error=%s\n",
+                [[url absoluteString] UTF8String] ?: "(nil)", (int) wasOpen,
+                document != nil ? class_getName([document class]) : "nil",
+                error != nil ? [[error description] UTF8String] : "none");
+        fflush(stderr);
+    }
+
+    if (completionHandler != NULL)
+        completionHandler(document, wasOpen, document != nil ? nil : error);
 }
 
 - (BOOL) reopenDocumentForURL: (NSURL *) url
