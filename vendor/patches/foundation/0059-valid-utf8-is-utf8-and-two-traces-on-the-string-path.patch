@@ -1,0 +1,79 @@
+Valid UTF-8 is UTF-8, and two traces on the data to string path
+
+ICU ucsdet answers ISO-8859-1 for plain ASCII, so a five byte text file detected as Latin-1 here
+where a Mac answers UTF-8. The detector now prefers UTF-8 whenever the whole buffer validates as
+it, with a NUL guard so BOM-less UTF-16, whose zero bytes are individually valid UTF-8, still falls
+through to ICU. Measured: the same five bytes now detect as encoding 4 where they detected as 5.
+
+Two traces under CIDER_TRACE_TEXT paid for themselves finding this and stay. CIDER_STRDETECT prints
+what the detector chose and the converted string length, low volume since it only fires on a file
+read. CIDER_STRBYTES prints ONLY a nil conversion, since every ObjC data to string call funnels
+through initWithBytes and printing success would drown the log.
+
+For the record of task #194: this was suspect one and it is now dead in both forms. The conversion
+was never failing, and with the encoding corrected to match macOS the iA Writer editor storage
+still measures len=0, so the starvation lies in the application hand-off, not in data to string.
+--- a/src/NSString.m
++++ b/src/NSString.m
+@@ -433,7 +433,20 @@
+ 
+ - (id)initWithBytes:(const void *)bytes length:(NSUInteger)len encoding:(NSStringEncoding)encoding
+ {
+-    return (id)CFStringCreateWithBytes(kCFAllocatorDefault, bytes, len, CFStringConvertNSStringEncodingToEncoding(encoding), true);
++    id result = (id)CFStringCreateWithBytes(kCFAllocatorDefault, bytes, len, CFStringConvertNSStringEncodingToEncoding(encoding), true);
++
++    /* Every ObjC data to string conversion funnels through here, so a print on every call would
++     * drown the log; a NIL is the only interesting answer and the only one printed. Task #194:
++     * five bytes of file content reach the process and never become the editor string. */
++    if (result == nil && getenv("CIDER_TRACE_TEXT") != NULL &&
++        getenv("CIDER_TRACE_TEXT")[0] != (char) 0)
++    {
++        fprintf(stderr, "CIDER_STRBYTES NIL len=%lu encoding=%lu\n",
++                (unsigned long)len, (unsigned long)encoding);
++        fflush(stderr);
++    }
++
++    return result;
+ }
+ 
+ - (id)initWithData:(NSData *)data encoding:(NSStringEncoding)encoding
+@@ -652,6 +665,22 @@
+         _NSDetectEncodingFromBOM(BOM, &encoding, NULL);
+     }
+ 
++    /* VALID UTF-8 IS UTF-8, and ICU does not think so. ucsdet answers ISO-8859-1 for plain
++     * ASCII, so a five byte text file detected as Latin-1 here where a Mac answers UTF-8, and an
++     * application that branches on the detected encoding takes the wrong arm. The NUL guard keeps
++     * BOM-less UTF-16 out of this: its zero bytes are individually valid UTF-8, but no text file
++     * is UTF-8 with NULs, and ICU still catches UTF-16 below. */
++    if (encoding == 0 && length > 0 && memchr(bytes, 0, length) == NULL)
++    {
++        CFStringRef probe = CFStringCreateWithBytes(kCFAllocatorDefault, bytes, length,
++                                                    kCFStringEncodingUTF8, false);
++        if (probe != NULL)
++        {
++            CFRelease(probe);
++            encoding = NSUTF8StringEncoding;
++        }
++    }
++
+     if (encoding == 0)
+     {
+         UCharsetDetector *csd = NULL;
+@@ -827,6 +856,16 @@
+ 
+         if (string != nil)
+         {
++            /* Low volume, only fires on a file read, and it is the one number task #194 needs:
++             * what the detector chose and how long the converted string is. Printed before the
++             * ownership handoff below, which may release the string. */
++            if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0)
++            {
++                fprintf(stderr, "CIDER_STRDETECT len=%lu -> encoding=%lu stringLen=%lu\n",
++                        (unsigned long)[data length], (unsigned long)encoding,
++                        (unsigned long)[string length]);
++                fflush(stderr);
++            }
+             if (convertedString != NULL)
+             {
+                 *convertedString = [string autorelease];
