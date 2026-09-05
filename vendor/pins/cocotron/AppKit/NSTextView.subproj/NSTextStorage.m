@@ -169,6 +169,13 @@ NSString *const NSTextStorageDidProcessEditingNotification =
     return _editedRange;
 }
 
+/* iA Writer hooks this with Aspects on its text storage, and the base method did not exist, so
+ * the very first edit raised and AppKit swallowed it per event. macOS records the range for a
+ * later lazy fix; fixing eagerly is the same contract kept immediately. */
+- (void) invalidateAttributesInRange: (NSRange) range {
+    [self fixAttributesInRange: range];
+}
+
 - (void) processEditing {
     int i, count;
 

@@ -19,6 +19,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <math.h>
 #import <CoreText/KTFont.h>
 #import <Onyx2D/O2Context.h>
+#import <Onyx2D/O2Font.h>
 #import <Foundation/NSArray.h>
 #import <Onyx2D/O2Exceptions.h>
 
@@ -120,6 +121,41 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (CFStringRef) copyName {
     return CGFontCopyFullName(_font);
+}
+
+/* CTFont AND NSFont ARE TOLL FREE BRIDGED ON MACOS, so an application casts a CTFontRef to
+ * NSFont and calls NSFont API on it. Here KTFont is its own class and every such call raised;
+ * AppKit catches the raise per event, so iA Writer opening a document died in silence at
+ * coveredCharacterSet. Answer the ones that only need the underlying O2Font, the same way
+ * NSFont itself does. */
+- (NSCharacterSet *) coveredCharacterSet {
+    return O2FontGetCoveredCharacterSet((O2FontRef) _font);
+}
+
+/* NSGlyph is 8 bytes and CGGlyph is 2, and mixing the widths has bitten before, so the glyph is
+ * truncated explicitly here and nowhere else. */
+- (NSSize) advancementForGlyph: (NSUInteger) glyph {
+    CGGlyph cgGlyph = (CGGlyph) glyph;
+    CGSize advance = CGSizeZero;
+
+    [self getAdvancements: &advance forGlyphs: &cgGlyph count: 1];
+
+    return NSMakeSize(advance.width, advance.height);
+}
+
+- (NSSize) maximumAdvancement {
+    NSUInteger glyphCount = [self numberOfGlyphs];
+    NSSize max = NSZeroSize;
+
+    for (NSUInteger glyph = 0; glyph < glyphCount; glyph++) {
+        CGGlyph cgGlyph = (CGGlyph) glyph;
+        CGSize advance = CGSizeZero;
+
+        [self getAdvancements: &advance forGlyphs: &cgGlyph count: 1];
+        max.width = MAX(max.width, advance.width);
+        max.height = MAX(max.height, advance.height);
+    }
+    return max;
 }
 
 - (CGFloat) pointSize {
