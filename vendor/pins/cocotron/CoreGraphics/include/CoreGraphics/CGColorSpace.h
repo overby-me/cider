@@ -79,4 +79,8 @@ COREGRAPHICS_EXPORT CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponent
                                                                CGDataProviderRef profile,
                                                                CGColorSpaceRef alternate);
 
+COREGRAPHICS_EXPORT CGColorSpaceRef CGColorSpaceGetBaseColorSpace(CGColorSpaceRef space);
+COREGRAPHICS_EXPORT size_t CGColorSpaceGetColorTableCount(CGColorSpaceRef space);
+COREGRAPHICS_EXPORT void CGColorSpaceGetColorTable(CGColorSpaceRef space, uint8_t *table);
+
 CF_IMPLICIT_BRIDGING_DISABLED

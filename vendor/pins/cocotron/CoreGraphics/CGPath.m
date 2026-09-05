@@ -179,3 +179,49 @@ CGPathRef CGPathCreateCopyByTransformingPath(CGPathRef path,
     O2PathApplyTransform(copy, *(O2AffineTransform *) transform);
     return (CGPathRef)copy;
 }
+
+/*
+ * Equivalent to CGPathAddArc with an end angle of start plus delta, and the direction taken from
+ * the sign of delta, which is how the documented behaviour is defined.
+ */
+void CGPathAddRelativeArc(CGMutablePathRef self, const CGAffineTransform *xform,
+                          CGFloat x, CGFloat y, CGFloat radius, CGFloat startRadian,
+                          CGFloat deltaRadian)
+{
+    CGPathAddArc(self, xform, x, y, radius, startRadian, startRadian + deltaRadian,
+                 deltaRadian < 0);
+}
+
+void CGPathAddRoundedRect(CGMutablePathRef self, const CGAffineTransform *xform,
+                          CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight)
+{
+    /* Four elliptical quarter arcs, so a corner wider than it is tall is drawn as one. */
+    const CGFloat kappa = 0.5522847498307933;
+    CGFloat minX = CGRectGetMinX(rect), maxX = CGRectGetMaxX(rect);
+    CGFloat minY = CGRectGetMinY(rect), maxY = CGRectGetMaxY(rect);
+    CGFloat cw = cornerWidth, ch = cornerHeight;
+
+    if (CGRectIsEmpty(rect)) {
+        return;
+    }
+    /* A corner cannot take more than half the side it sits on, which is what macOS clamps to. */
+    if (cw > CGRectGetWidth(rect) / 2) cw = CGRectGetWidth(rect) / 2;
+    if (ch > CGRectGetHeight(rect) / 2) ch = CGRectGetHeight(rect) / 2;
+    if (cw < 0) cw = 0;
+    if (ch < 0) ch = 0;
+
+    CGPathMoveToPoint(self, xform, minX + cw, minY);
+    CGPathAddLineToPoint(self, xform, maxX - cw, minY);
+    CGPathAddCurveToPoint(self, xform, maxX - cw + cw * kappa, minY,
+                          maxX, minY + ch - ch * kappa, maxX, minY + ch);
+    CGPathAddLineToPoint(self, xform, maxX, maxY - ch);
+    CGPathAddCurveToPoint(self, xform, maxX, maxY - ch + ch * kappa,
+                          maxX - cw + cw * kappa, maxY, maxX - cw, maxY);
+    CGPathAddLineToPoint(self, xform, minX + cw, maxY);
+    CGPathAddCurveToPoint(self, xform, minX + cw - cw * kappa, maxY,
+                          minX, maxY - ch + ch * kappa, minX, maxY - ch);
+    CGPathAddLineToPoint(self, xform, minX, minY + ch);
+    CGPathAddCurveToPoint(self, xform, minX, minY + ch - ch * kappa,
+                          minX + cw - cw * kappa, minY, minX + cw, minY);
+    CGPathCloseSubpath(self);
+}

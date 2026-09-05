@@ -19,6 +19,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <CoreGraphics/CGColorSpace.h>
 #import <Onyx2D/O2ColorSpace.h>
+#include <string.h>
 
 const CFStringRef kCGColorSpaceDisplayP3 = CFSTR("kCGColorSpaceDisplayP3");
 const CFStringRef kCGColorSpaceGenericGray = CFSTR("kCGColorSpaceGenericGray");
@@ -132,4 +133,32 @@ CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *ra
         return (CGColorSpaceRef) O2ColorSpaceRetain((O2ColorSpaceRef) alternate);
     }
     return nComponents == 1 ? CGColorSpaceCreateDeviceGray() : CGColorSpaceCreateDeviceRGB();
+}
+
+/*
+ * A NON INDEXED SPACE ANSWERS NULL AND ZERO rather than raising, which is what macOS does and what
+ * lets a caller ask any space whether it has a palette.
+ */
+CGColorSpaceRef CGColorSpaceGetBaseColorSpace(CGColorSpaceRef self) {
+    if (self == NULL || O2ColorSpaceGetModel((O2ColorSpaceRef) self) != kO2ColorSpaceModelIndexed) {
+        return NULL;
+    }
+    return (CGColorSpaceRef) [(O2ColorSpace_indexed *) self baseColorSpace];
+}
+
+size_t CGColorSpaceGetColorTableCount(CGColorSpaceRef self) {
+    if (self == NULL || O2ColorSpaceGetModel((O2ColorSpaceRef) self) != kO2ColorSpaceModelIndexed) {
+        return 0;
+    }
+    /* hival is the LAST index, so the table holds one more entry than that. */
+    return [(O2ColorSpace_indexed *) self hival] + 1;
+}
+
+void CGColorSpaceGetColorTable(CGColorSpaceRef self, uint8_t *table) {
+    if (table == NULL || CGColorSpaceGetColorTableCount(self) == 0) {
+        return;
+    }
+    O2ColorSpace_indexed *indexed = (O2ColorSpace_indexed *) self;
+    size_t components = O2ColorSpaceGetNumberOfComponents([indexed baseColorSpace]);
+    memcpy(table, [indexed paletteBytes], components * ([indexed hival] + 1));
 }

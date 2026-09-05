@@ -115,4 +115,12 @@ COREGRAPHICS_EXPORT CGRect CGPathGetPathBoundingBox(CGPathRef path);
 COREGRAPHICS_EXPORT CGPathRef CGPathCreateCopyByTransformingPath(
         CGPathRef path, CGAffineTransform *transform);
 
+COREGRAPHICS_EXPORT void CGPathAddRelativeArc(CGMutablePathRef path,
+        const CGAffineTransform *transform, CGFloat x, CGFloat y, CGFloat radius,
+        CGFloat startAngle, CGFloat delta);
+
+COREGRAPHICS_EXPORT void CGPathAddRoundedRect(CGMutablePathRef path,
+        const CGAffineTransform *transform, CGRect rect, CGFloat cornerWidth,
+        CGFloat cornerHeight);
+
 CF_IMPLICIT_BRIDGING_DISABLED
