@@ -28,14 +28,19 @@ SHOTS=captures
 SETTLE=${SETTLE:-30}
 LIMIT=${LIMIT:-140}
 
-# tag | prefix | app binary | launchd (0 = ON) | extra TRACE_ENV
+# tag | prefix | app binary | launchd (0 = ON) | resize WxH | extra TRACE_ENV
+#
+# THE RESIZE TARGET MUST CLEAR THE WINDOW MINIMUM. Below it the application answers its minimum,
+# the extra height hangs off the output, and the capture shows a clipped title bar that reads as a
+# window ignoring the configure. Measured minimum heights: Swift Publisher 618, LibreOffice 739.
+# Above them both follow the request exactly, frame equal to surface.
 roster() {
 	cat <<'EOF'
-ia|/tmp/cider-ia-1000/prefix|/Applications/iA Writer.app/Contents/MacOS/iA Writer|1|
-sp|/tmp/cider-sp-1000/prefix|/Applications/Swift Publisher 5.app/Contents/MacOS/Swift Publisher 5|1|
-mm|/tmp/cider-mm-1000/prefix|/Applications/MoneyMoney.app/Contents/MacOS/MoneyMoney|1|
-it|/tmp/cider-it-1000/prefix|/Applications/iTerm2.app/Contents/MacOS/iTerm2|0|
-lo|/tmp/cider-lo-1000/prefix|/Applications/LibreOffice.app/Contents/MacOS/soffice|1|SAL_DISABLE_OPENCL=1
+ia|/tmp/cider-ia-1000/prefix|/Applications/iA Writer.app/Contents/MacOS/iA Writer|1|1000x600|
+sp|/tmp/cider-sp-1000/prefix|/Applications/Swift Publisher 5.app/Contents/MacOS/Swift Publisher 5|1|900x650|
+mm|/tmp/cider-mm-1000/prefix|/Applications/MoneyMoney.app/Contents/MacOS/MoneyMoney|1|1000x600|
+it|/tmp/cider-it-1000/prefix|/Applications/iTerm2.app/Contents/MacOS/iTerm2|0|1000x600|
+lo|/tmp/cider-lo-1000/prefix|/Applications/LibreOffice.app/Contents/MacOS/soffice|1|900x800|SAL_DISABLE_OPENCL=1
 EOF
 }
 
@@ -52,7 +57,7 @@ reap() {
 
 want=${*:-}
 rc=0
-while IFS='|' read -r tag prefix app launchd extra; do
+while IFS='|' read -r tag prefix app launchd resize extra; do
 	[ -n "$tag" ] || continue
 	if [ -n "$want" ]; then case " $want " in *" $tag "*) ;; *) continue ;; esac; fi
 	if [ ! -d "$prefix/Applications" ]; then
@@ -61,7 +66,8 @@ while IFS='|' read -r tag prefix app launchd extra; do
 	fi
 	reap
 	rm -f "$prefix/ciderd.log"
-	env SETTLE="$SETTLE" LIMIT="$LIMIT" LAUNCHD="$launchd" ${extra:+TRACE_ENV="$extra"} \
+	env SETTLE="$SETTLE" LIMIT="$LIMIT" LAUNCHD="$launchd" \
+		RESIZE_W="${resize%x*}" RESIZE_H="${resize#*x}" ${extra:+TRACE_ENV="$extra"} \
 		scripts/app-drive.sh --prefix "$prefix" --app "$app" --name "sweep-$tag" \
 		>"$SHOTS/sweep-$tag.drive.log" 2>&1 || rc=1
 	shot="$SHOTS/sweep-$tag/d1-start.png"

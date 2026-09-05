@@ -32,6 +32,10 @@ LIMIT=${LIMIT:-120}        # hard stop for the whole run
 # plist, so APPARGS="-someSetting YES" sets a default that an externally written plist cannot.
 WIDTH=${WIDTH:-1256}
 HEIGHT=${HEIGHT:-684}
+# The resize target. Default is the old subtraction, but it must clear the window MINIMUM or the
+# capture shows a clipped title bar and reads as a broken resize. See the note at the resize step.
+RESIZE_W=${RESIZE_W:-$((WIDTH - 256))}
+RESIZE_H=${RESIZE_H:-$((HEIGHT - 84))}
 CLICK=${CLICK:-}           # "x,y" to click after the first capture, empty to skip
 TYPE=${TYPE:-}             # text to type after the click, empty to skip
 
@@ -230,8 +234,16 @@ if [ -n "$TYPE" ]; then
 	shoot d3-typed
 fi
 
-say "resizing the output to $((WIDTH - 256))x$((HEIGHT - 84))"
-WAYLAND_DISPLAY=$NEW "$SWAYMSG" output '*' mode $((WIDTH - 256))x$((HEIGHT - 84)) >>"$SHOTS/driver.log" 2>&1
+# A RESIZE BELOW THE APPLICATION MINIMUM IS NOT A FAILED RESIZE, and reading one as a failure cost
+# a whole investigation. Asked for 1000x600, Swift Publisher answered 1000x618 and LibreOffice
+# 900x739, because that is each window minimum height; the extra height then hangs off the output
+# and the capture shows the TITLE BAR CLIPPED, which looks exactly like a window that ignored the
+# configure. Above the minimum both follow the request exactly (900x650 and 900x800, frame equal to
+# surface). Measured minimums: Swift Publisher 618, LibreOffice 739, iTerm2 none reached.
+# So set RESIZE_W and RESIZE_H per application rather than trusting the default subtraction, and
+# read the verdict from CIDER_WAYLAND_TRACE_GEOMETRY (frame must equal surface), never from pixels.
+say "resizing the output to ${RESIZE_W}x${RESIZE_H}"
+WAYLAND_DISPLAY=$NEW "$SWAYMSG" output '*' mode "${RESIZE_W}x${RESIZE_H}" >>"$SHOTS/driver.log" 2>&1
 sleep 5
 shoot d4-resized
 
