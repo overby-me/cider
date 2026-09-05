@@ -480,8 +480,14 @@ vproc_err_t
 _vproc_post_fork_ping(void)
 {
 	mach_port_t session = MACH_PORT_NULL;
+
 	kern_return_t kr = vproc_mig_post_fork_ping(bootstrap_port, mach_task_self(), &session);
 	if (kr) {
+		/* SILENT UNTIL NOW, and it is fatal: launchd _exit(EXIT_FAILURE)s the forked child on this,
+		 * so a failure here means the job never reaches posix_spawn and no daemon ever runs. */
+		fprintf(stderr, "vproc: post_fork_ping failed kr=0x%x bootstrap_port=0x%x pid=%d\n",
+				(unsigned) kr, (unsigned) bootstrap_port, (int) getpid());
+		fflush(stderr);
 		return _vproc_post_fork_ping;
 	}
 
