@@ -1,0 +1,33 @@
+declare the nine url keys
+
+The definitions go in the corefoundation pin, next to every other URL key, and these are the
+declarations that go with them. Seven resource keys and two error keys, all of which a whole tree
+symbol sweep found nothing exporting.
+
+--- a/include/Foundation/NSURL.h
++++ b/include/Foundation/NSURL.h
+@@ -70,6 +70,13 @@
+ FOUNDATION_EXPORT NSString * const NSURLVolumeSupportsRootDirectoryDatesKey;
+ FOUNDATION_EXPORT NSString * const NSURLVolumeSupportsVolumeSizesKey;
+ FOUNDATION_EXPORT NSString * const NSURLVolumeSupportsRenamingKey;
++FOUNDATION_EXPORT NSString * const NSURLVolumeSupportsAccessPermissionsKey;
++FOUNDATION_EXPORT NSString * const NSURLVolumeSupportsExclusiveRenamingKey;
++FOUNDATION_EXPORT NSString * const NSURLVolumeSupportsFileCloningKey;
++FOUNDATION_EXPORT NSString * const NSURLVolumeSupportsImmutableFilesKey;
++FOUNDATION_EXPORT NSString * const NSURLVolumeSupportsSwapRenamingKey;
++FOUNDATION_EXPORT NSString * const NSURLThumbnailKey;
++FOUNDATION_EXPORT NSString * const NSURLThumbnailDictionaryKey;
+ FOUNDATION_EXPORT NSString * const NSURLVolumeSupportsAdvisoryFileLockingKey;
+ FOUNDATION_EXPORT NSString * const NSURLVolumeSupportsExtendedSecurityKey;
+ FOUNDATION_EXPORT NSString * const NSURLVolumeIsBrowsableKey;
+--- a/include/Foundation/NSURLError.h
++++ b/include/Foundation/NSURLError.h
+@@ -6,6 +6,8 @@
+ 
+ FOUNDATION_EXPORT NSString * const NSURLErrorDomain;
+ FOUNDATION_EXPORT NSString * const NSURLErrorFailingURLErrorKey;
++FOUNDATION_EXPORT NSString * const NSURLErrorBackgroundTaskCancelledReasonKey;
++FOUNDATION_EXPORT NSString * const NSURLErrorNetworkUnavailableReasonKey;
+ FOUNDATION_EXPORT NSString * const NSURLErrorFailingURLStringErrorKey;
+ FOUNDATION_EXPORT NSString * const NSErrorFailingURLStringKey;
+ FOUNDATION_EXPORT NSString * const NSURLErrorFailingURLPeerTrustErrorKey;

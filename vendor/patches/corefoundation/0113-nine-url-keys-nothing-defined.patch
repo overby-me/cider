@@ -1,0 +1,30 @@
+nine url keys nothing defined
+
+A whole tree sweep of the runtime, undefined minus defined across all 1349 Mach-O files, leaves 300
+symbols that NOTHING exports. Nine of them are NSURL constants, and a constant is the worst kind to
+be missing: dyld stops on the first one an application touches, in an order nobody controls, and the
+application dies before it can report anything useful.
+
+They were neither defined nor declared here, so the value is the name, which is the convention every
+other key in this file already follows.
+
+Measured by the sweep: GAP 300 to 291, defined total 416162 to 416171, exactly nine either way.
+
+--- a/NSURL.m
++++ b/NSURL.m
+@@ -92,6 +92,15 @@
+ NSString *const NSURLVolumeSupportsRootDirectoryDatesKey = @"NSURLVolumeSupportsRootDirectoryDatesKey";
+ NSString *const NSURLVolumeSupportsVolumeSizesKey = @"NSURLVolumeSupportsVolumeSizesKey";
+ NSString *const NSURLVolumeSupportsRenamingKey = @"NSURLVolumeSupportsRenamingKey";
++NSString *const NSURLVolumeSupportsAccessPermissionsKey = @"NSURLVolumeSupportsAccessPermissionsKey";
++NSString *const NSURLVolumeSupportsExclusiveRenamingKey = @"NSURLVolumeSupportsExclusiveRenamingKey";
++NSString *const NSURLVolumeSupportsFileCloningKey = @"NSURLVolumeSupportsFileCloningKey";
++NSString *const NSURLVolumeSupportsImmutableFilesKey = @"NSURLVolumeSupportsImmutableFilesKey";
++NSString *const NSURLVolumeSupportsSwapRenamingKey = @"NSURLVolumeSupportsSwapRenamingKey";
++NSString *const NSURLThumbnailKey = @"NSURLThumbnailKey";
++NSString *const NSURLThumbnailDictionaryKey = @"NSURLThumbnailDictionaryKey";
++NSString *const NSURLErrorBackgroundTaskCancelledReasonKey = @"NSURLErrorBackgroundTaskCancelledReasonKey";
++NSString *const NSURLErrorNetworkUnavailableReasonKey = @"NSURLErrorNetworkUnavailableReasonKey";
+ NSString *const NSURLVolumeSupportsAdvisoryFileLockingKey = @"NSURLVolumeSupportsAdvisoryFileLockingKey";
+ NSString *const NSURLVolumeSupportsExtendedSecurityKey = @"NSURLVolumeSupportsExtendedSecurityKey";
+ NSString *const NSURLVolumeIsBrowsableKey = @"NSURLVolumeIsBrowsableKey";
