@@ -63,6 +63,100 @@ static CFArrayRef arrayForStringColumn0(FMResultSet* rs)
 		return NULL;
 }
 
+/* THE SYSTEM TYPES MUST NOT DEPEND ON THE DATABASE. launchservices.db is built by
+ * launchservicesd, and a prefix that never booted launchd has no database at all, so every
+ * UTType answer was NULL: a .txt had no UTI, NSDocumentController matched no type, and
+ * opening a document from the iA Writer library silently produced nil. macOS ships the
+ * public.* declarations inside CoreServices itself; the app database only ADDS to them.
+ * This is that built-in core, consulted when the database is absent or has no answer. */
+static const struct {
+	const char* extension;
+	const char* uti;
+} kBuiltinExtensionToUTI[] = {
+	{"txt", "public.plain-text"},   {"text", "public.plain-text"},
+	{"md", "net.daringfireball.markdown"},
+	{"markdown", "net.daringfireball.markdown"},
+	{"mdown", "net.daringfireball.markdown"},
+	{"html", "public.html"},        {"htm", "public.html"},
+	{"xml", "public.xml"},          {"rtf", "public.rtf"},
+	{"csv", "public.comma-separated-values-text"},
+	{"png", "public.png"},          {"jpg", "public.jpeg"},
+	{"jpeg", "public.jpeg"},        {"tiff", "public.tiff"},
+	{"tif", "public.tiff"},         {"gif", "com.compuserve.gif"},
+	{"pdf", "com.adobe.pdf"},       {"zip", "com.pkware.zip-archive"},
+	{"docx", "org.openxmlformats.wordprocessingml.document"},
+};
+
+static const struct {
+	const char* uti;
+	const char* conformsTo;
+} kBuiltinConformance[] = {
+	{"public.plain-text", "public.text"},
+	{"net.daringfireball.markdown", "public.plain-text"},
+	{"public.html", "public.text"},
+	{"public.xml", "public.text"},
+	{"public.rtf", "public.text"},
+	{"public.comma-separated-values-text", "public.plain-text"},
+	{"public.text", "public.data"},
+	{"public.png", "public.image"},
+	{"public.jpeg", "public.image"},
+	{"public.tiff", "public.image"},
+	{"com.compuserve.gif", "public.image"},
+	{"public.image", "public.data"},
+	{"com.adobe.pdf", "public.data"},
+	{"com.pkware.zip-archive", "public.data"},
+	{"org.openxmlformats.wordprocessingml.document", "public.data"},
+	{"public.data", "public.item"},
+};
+
+static Boolean builtinConformsTo(CFStringRef uti, CFStringRef target)
+{
+	if (CFStringCompare(uti, target, kCFCompareCaseInsensitive) == kCFCompareEqualTo)
+		return TRUE;
+
+	char buf[128];
+	if (!CFStringGetCString(uti, buf, sizeof(buf), kCFStringEncodingUTF8))
+		return FALSE;
+
+	/* One parent per type here, so the walk up cannot loop. */
+	for (size_t i = 0; i < sizeof(kBuiltinConformance) / sizeof(kBuiltinConformance[0]); i++)
+	{
+		if (strcasecmp(buf, kBuiltinConformance[i].uti) == 0)
+		{
+			CFStringRef parent = CFStringCreateWithCString(NULL,
+				kBuiltinConformance[i].conformsTo, kCFStringEncodingUTF8);
+			Boolean rv = builtinConformsTo(parent, target);
+			CFRelease(parent);
+			return rv;
+		}
+	}
+	return FALSE;
+}
+
+static _Nullable CFArrayRef builtinIdentifiersForExtension(CFStringRef inTagClass, CFStringRef inTag)
+{
+	if (CFStringCompare(inTagClass, CFSTR("public.filename-extension"),
+	                    kCFCompareCaseInsensitive) != kCFCompareEqualTo)
+		return NULL;
+
+	char ext[64];
+	if (inTag == NULL || !CFStringGetCString(inTag, ext, sizeof(ext), kCFStringEncodingUTF8))
+		return NULL;
+
+	for (size_t i = 0; i < sizeof(kBuiltinExtensionToUTI) / sizeof(kBuiltinExtensionToUTI[0]); i++)
+	{
+		if (strcasecmp(ext, kBuiltinExtensionToUTI[i].extension) == 0)
+		{
+			CFStringRef uti = CFStringCreateWithCString(NULL,
+				kBuiltinExtensionToUTI[i].uti, kCFStringEncodingUTF8);
+			CFArrayRef rv = CFArrayCreate(NULL, (const void**) &uti, 1, &kCFTypeArrayCallBacks);
+			CFRelease(uti);
+			return rv;
+		}
+	}
+	return NULL;
+}
+
 _Nullable CFArrayRef
 UTTypeCreateAllIdentifiersForTag(
   CFStringRef inTagClass,
@@ -71,7 +165,7 @@ UTTypeCreateAllIdentifiersForTag(
 {
 	FMDatabaseQueue* dq = getDatabaseQueue();
 	if (!dq)
-		return NULL;
+		return builtinIdentifiersForExtension(inTagClass, inTag);
 
 	__block CFArrayRef retval;
 	[dq inDatabase:^(FMDatabase* db) {
@@ -90,6 +184,9 @@ UTTypeCreateAllIdentifiersForTag(
 
 		[rs close];
 	}];
+
+	if (retval == NULL)
+		retval = builtinIdentifiersForExtension(inTagClass, inTag);
 
 	return retval;
 }
@@ -144,9 +241,14 @@ UTTypeConformsTo(
   CFStringRef inUTI,
   CFStringRef inConformsToUTI)
 {
+	/* A type conforms to itself, and the database only knows DIRECT edges, so equality and
+	 * the built-in walk both belong here rather than in every caller. */
+	if (CFStringCompare(inUTI, inConformsToUTI, kCFCompareCaseInsensitive) == kCFCompareEqualTo)
+		return TRUE;
+
 	FMDatabaseQueue* dq = getDatabaseQueue();
 	if (!dq)
-		return FALSE;
+		return builtinConformsTo(inUTI, inConformsToUTI);
 
 	__block Boolean retval;
 	[dq inDatabase:^(FMDatabase* db) {
@@ -156,6 +258,9 @@ UTTypeConformsTo(
 		retval = [rs next];
 		[rs close];
 	}];
+
+	if (!retval)
+		retval = builtinConformsTo(inUTI, inConformsToUTI);
 
 	return retval;
 }
