@@ -3759,6 +3759,13 @@ job_reap(job_t j)
 		}
 	}
 
+	/* NOTE_EXIT says a process died, not HOW, and the two want opposite work. */
+	CIDER_LD("job_exit %s pid=%d raw=0x%x %s=%d", j->label, (int) j->p,
+			(unsigned) j->last_exit_status,
+			WIFSIGNALED(j->last_exit_status) ? "signal" : "code",
+			WIFSIGNALED(j->last_exit_status) ? WTERMSIG(j->last_exit_status)
+											 : WEXITSTATUS(j->last_exit_status));
+
 	if (j->exit_timeout) {
 		(void)kevent_mod((uintptr_t)&j->exit_timeout, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
 	}
