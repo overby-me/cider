@@ -2080,6 +2080,29 @@ static NSString *_CiderCellViewKey(NSInteger column, NSInteger row) {
     _clickedColumn = [self columnAtPoint: location];
     _clickedRow = [self rowAtPoint: location];
 
+    if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
+        fprintf(stderr, "CIDER_TABLE mouseDown class=%s at=%.1f,%.1f column=%ld row=%ld rows=%ld columns=%lu\n",
+                object_getClassName(self), (double) location.x, (double) location.y,
+                (long) _clickedColumn, (long) _clickedRow, (long) numberOfRows,
+                (unsigned long) [_tableColumns count]);
+        fflush(stderr);
+    }
+
+    /* NO COLUMN IS NOT COLUMN ZERO. columnAtPoint answers -1 when the point is in no column at all,
+     * and the row guard below never covered it, so objectAtIndex:-1 raised NSRangeException. AppKit
+     * catches an application exception per event, so the click simply did nothing and said nothing.
+     * A view based table can legitimately have a click land outside every column. */
+    if (_clickedColumn < 0) {
+        if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
+            fprintf(stderr, "CIDER_TABLE mouseDown guarded: no column at point\n");
+            fflush(stderr);
+        }
+        if (_clickedRow >= 0)
+            [self selectRowIndexes: [NSIndexSet indexSetWithIndex: _clickedRow]
+              byExtendingSelection: NO];
+        return;
+    }
+
     if (_clickedRow < 0) { // click beyond the end of the table
         if (_editingCell != nil)
             [self textDidEndEditing: nil];
