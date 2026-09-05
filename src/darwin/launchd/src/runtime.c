@@ -731,7 +731,16 @@ runtime_fork(mach_port_t bsport)
 	sigemptyset(&emptyset);
 
 	(void)os_assumes_zero(launchd_mport_make_send(bsport));
-	(void)os_assumes_zero(launchd_set_bport(bsport));
+	{
+		kern_return_t _sk = launchd_set_bport(bsport);
+		mach_port_t _rb = MACH_PORT_NULL;
+		(void) task_get_bootstrap_port(mach_task_self(), &_rb);
+		if (access("/probe/launchd-trace", F_OK) == 0) {
+			fprintf(stderr, "CIDER_LD runtime_fork bsport=0x%x set_kr=0x%x readback=0x%x\n",
+				(unsigned) bsport, (unsigned) _sk, (unsigned) _rb);
+			fflush(stderr);
+		}
+	}
 	(void)os_assumes_zero(launchd_mport_deallocate(bsport));
 
 	__OS_COMPILETIME_ASSERT__(SIG_ERR == (typeof(SIG_ERR))-1);
