@@ -1,0 +1,56 @@
+--- a/osfmk/kern/task_ident.c
++++ b/osfmk/kern/task_ident.c
+@@ -38,6 +38,12 @@
+ #ifdef __DARLING__
+ #include <ciderd/xnu-sys/task.h>
+ 
++extern void xnu_sys_log(int level, const char* format, ...);
++
++/* task_identity_token_get_task_port has four ways to answer KERN_INVALID_ARGUMENT and the caller
++   cannot tell them apart. stdio is unusable here: glibc's types collide with xnu's. */
++#define CIDER_TIDT(fmt, ...) xnu_sys_log(2, "CIDER_TIDT " fmt, ##__VA_ARGS__)
++
+ kern_return_t
+ task_get_special_port(
+ 	task_t          task,
+@@ -173,6 +179,7 @@
+ 	kern_return_t kr;
+ 
+ 	if (token == TASK_ID_TOKEN_NULL) {
++		CIDER_TIDT("got a null token");
+ 		return KERN_INVALID_ARGUMENT;
+ 	}
+ 
+@@ -193,8 +200,11 @@
+ 		return KERN_INVALID_ARGUMENT;
+ 	}
+ 
++	CIDER_TIDT("ident eid=%llu flavor=%d",
++		(unsigned long long) token->ident.eid, (int) flavor);
+ 	void* p = proc_find_ident(&token->ident);
+ 	if (p == NULL) {
++		CIDER_TIDT("proc_find_ident found nothing");
+ 		return KERN_INVALID_ARGUMENT;
+ 	}
+ 	task = proc_task(p);
+@@ -202,6 +212,7 @@
+ 	proc_rele(p);
+ 
+ 	if (task == TASK_NULL) {
++		CIDER_TIDT("proc_task was null");
+ 		return KERN_INVALID_ARGUMENT;
+ 	}
+ 
+@@ -210,9 +221,12 @@
+ 		return KERN_SUCCESS;
+ 	}
+ 	if (flavor <= TASK_FLAVOR_INSPECT && task_conversion_eval(current_task(), task)) {
++		CIDER_TIDT("task_conversion_eval denied, caller=%p victim=%p",
++			(void *) current_task(), (void *) task);
+ 		task_deallocate(task);
+ 		return KERN_INVALID_ARGUMENT;
+ 	}
++	CIDER_TIDT("past the eval, asking for special port %d", which);
+ 
+ #if CONFIG_MACF
+ 	if (task != current_task()) {

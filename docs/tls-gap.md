@@ -262,13 +262,41 @@ running. Write to a file under the prefix instead, and include an entry line as 
 securityd itself is definitely alive: `mldr!/usr/sbin/securityd -i` was in 19 of 20 samples of the
 host process table during a run.
 
-ONE MEASUREMENT STILL DECIDES THE FIX. The client's `self_token_create` falls back to passing
-`mach_task_self()` when `task_create_identity_token` answers MIG_BAD_ID, and a task port will never
-resolve as an identity token. So:
+The client is NOT at fault, which was the other candidate: `self_token_create` falls back to sending
+`mach_task_self()` on an old kernel, and a task port would never resolve as a token. It did not fall
+back. Measured, `task_create_identity_token kr=0x0 token=0x3803 self=0x103`, so the token is real and
+distinct from the task port.
 
-  * if `task_create_identity_token` returned MIG_BAD_ID, the client is sending a task port and the
-    fix is a matching server-side fallback, symmetrical with the one the client already has;
-  * if it returned 0, the token is real and ciderd's `proc_find_ident` is what is broken.
+## ROOT CAUSE: task_lookup_eternal is a stub that always returns NULL
+
+Probing every KERN_INVALID_ARGUMENT branch in ciderd's `task_identity_token_get_task_port`
+(patch `vendor/patches/xnu-sys-xnu/0007`) names it in two lines:
+
+    [xnu_sys] CIDER_TIDT ident eid=6 flavor=0
+    [xnu_sys] CIDER_TIDT proc_find_ident found nothing
+
+cider's `struct proc_ident` is a single `xnu_sys_eternal_id_t eid` (not xnu's pid/uniqueid/idversion),
+and `proc_find_ident` is `task_lookup_eternal(eid, true)`. In `src/linux/server/src/sched.rs`, BOTH
+halves of that identity are stubs:
+
+    pub(super) unsafe extern "C" fn task_lookup_eternal(_eid, _retain) -> *mut xnu_sys_task_t {
+        std::ptr::null_mut()
+    }
+    pub(super) unsafe extern "C" fn task_eternal_id(_c: *mut c_void) -> xnu_sys_eternal_id_t {
+        NEXT_EID.fetch_add(1, Ordering::Relaxed)
+    }
+
+`task_eternal_id` ignores the task it is asked about and hands back a fresh counter value, so the
+"eternal id" is not an identity: the same task gets a different number every call, nothing records
+the mapping, and the lookup returns NULL unconditionally. An identity token therefore can never be
+resolved back to a task by anyone.
+
+THIS IS BIGGER THAN CERTIFICATES. `ClientSession::activate` is the front door of every securityd
+call, so this one stub is why keychain, code signing and trust work all arrive at the same
+manufactured -50 or hang. The certificate path is just the one that led here.
+
+THE FIX: give a task a stable eternal id and a registry to look it up in, in
+`src/linux/server/src/sched.rs`. Both hooks are in the same file, next to each other.
 
 A PLACEMENT LESSON, learned twice in this file: a probe placed after the first call in a function
 cannot tell a throw inside that call from the function never running. Both times the fix was an entry
@@ -278,10 +306,11 @@ The fix in commit 8b53add7 does not depend on which of those it is: the modern
 `SecCertificateCopyKey` answers correctly, so the legacy answer is only a fallback away.
 ## Where to look next
 
-Print what `task_create_identity_token` answers on the client, which decides between the two fixes
-listed above. Then fix whichever one it names.
+Implement the two `sched.rs` hooks above: a stable per-task eternal id, and a registry
+`task_lookup_eternal` can read. `thread_lookup_eternal` and `thread_eternal_id` are stubbed the same
+way and are worth doing in the same pass.
 
-Two things worth fixing regardless of what that finds:
+Two things worth fixing regardless:
 
   * `ModuleNexusCommon::do_create` swallowing the real error. Even keeping the generic throw, the
     caught error should be logged, because right now a first failure erases the only evidence and
