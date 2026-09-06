@@ -1,18 +1,47 @@
 --- a/securityd/src/clientid.cpp
 +++ b/securityd/src/clientid.cpp
-@@ -316,7 +316,14 @@
+@@ -24,6 +24,8 @@
+ // clientid - track and manage identity of securityd clients
+ //
+ #include "clientid.h"
++#include <stdio.h>
++#include <stdlib.h>
+ #include "server.h"
+ #include <Security/SecCodePriv.h>
+ #include <Security/oidsattr.h>
+@@ -313,11 +315,33 @@
+ //
+ // Bonus function: get the path out of a SecCodeRef
+ //
++/* A positive control for task #200: say what the path came back as, success or failure. */
++static void _CiderCodePathProbe(const char *what)
++{
++	if (!getenv("CIDER_TRACE_CODESIGN"))
++		return;
++	FILE *f = fopen("/tmp/cider-secd-setup.log", "a");
++	if (f == NULL)
++		return;
++	fprintf(f, "codePath -> %s\n", what);
++	fclose(f);
++}
++
  std::string codePath(SecStaticCodeRef code)
  {
  	CFRef<CFURLRef> path;
 -	MacOSError::check(SecCodeCopyPath(code, kSecCSDefaultFlags, &path.aref()));
+-	return cfString(path);
 +	/* MUST NOT THROW. Its only caller is the secinfo line that names a new client, and throwing
 +	   there aborts Process construction, which fails ucsp_server_setup, which leaves every
 +	   securityd client unable to connect (task #199). dumpCode below already tolerates this. */
 +	if (OSStatus rc = SecCodeCopyPath(code, kSecCSDefaultFlags, &path.aref())) {
 +		char buf[64];
 +		snprintf(buf, sizeof(buf), "unknown(rc=%d)", int32_t(rc));
++		_CiderCodePathProbe(buf);
 +		return buf;
 +	}
- 	return cfString(path);
++	std::string answer = cfString(path);
++	_CiderCodePathProbe(answer.c_str());
++	return answer;
  }
+ 
  

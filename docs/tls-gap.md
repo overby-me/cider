@@ -456,3 +456,32 @@ container root.
 So `proc_pidpath` answers `/Volumes/SystemRoot` for EVERY process in the container. Code signing is
 just where it happened to show: crash reporting, LaunchServices, sandboxing and anything else that
 asks a pid for its executable get the same wrong answer.
+
+### FIXED: mldr now tells the daemon what it loaded
+
+`src/darwin/loader/src/rpc.rs` gains the `set_executable_path` call (number 25, the one the wire
+already defined and nobody sent), and `main.rs` sends it once per process, right after it has
+resolved the binary.
+
+IT MUST BE THE HOST PATH, and getting that wrong is worth recording because it looked like a fix.
+Sending the guest path (`/Applications/Swift Publisher 5.app/Contents/MacOS/...`) made the
+bundle-format error disappear, which read like success. It was not: the emulation runs
+`vchroot_unexpand` over whatever is stored, and that maps HOST to GUEST, so a guest path came back
+mangled and `SecCodeCopyPath` answered `errSecCSStaticCodeNotFound` (-67068) instead. Only a
+positive control caught it, because the failing branch was in a part of the code the probes did not
+cover, and its silence read as success.
+
+Measured with the host path, and this is the positive control, not an absence:
+
+    [mldr] set_executable_path(/tmp/cider-sp-1000/prefix/Applications/Swift Publisher 5.app/Contents/MacOS/Swift Publisher 5) -> 0
+    bestGuess path=/Applications/Swift Publisher 5.app/Contents/MacOS/Swift Publisher 5 isdir=0
+    bestGuess exec-url bundle=0x71ed7ac7fa20
+    codePath -> /Applications/Swift Publisher 5.app
+
+So `proc_pidpath` answers the real executable, `bestGuess` recognises it as a bundle's main
+executable, and securityd identifies its client as the application bundle. All five roster
+applications still render and resize, LOOKED at.
+
+WHAT THIS DOES NOT COVER: guest `execve`. mldr sends the path when it loads an image, which is the
+initial exec of every process here, but a process that execs through the emulation without a fresh
+mldr would keep its parent's path. Nothing in the roster does that today.

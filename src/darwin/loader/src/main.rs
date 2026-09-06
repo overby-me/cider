@@ -392,6 +392,18 @@ fn main() {
             .unwrap_or_else(|| guest_path.clone());
             dlog!("[mldr] root={root} exe host={guest_path} guest={guest_exe_path}");
 
+            // Tell the daemon which Mach-O this is. Nothing else ever did, so every process kept
+            // the empty default and proc_pidpath answered the container root, which is why code
+            // signing could not find a client's bundle (task #200). Best effort: a failure here
+            // must not stop the program from starting.
+            // The HOST path, not the guest one: the reader is proc_pidpath, whose emulation runs
+            // vchroot_unexpand over whatever is stored, and that maps host to guest. Sending the
+            // guest path made it answer errSecCSStaticCodeNotFound instead of a bundle error.
+            if kernfd >= 0 {
+                let rc = unsafe { rpc::set_executable_path(kernfd, &guest_path) };
+                dlog!("[mldr] set_executable_path({guest_path}) -> {rc}");
+            }
+
             // M3b: recursive dyld load (LC_LOAD_DYLINKER); dyld's entry is the real jump target.
             let mut final_entry = r.entry;
             if macho.header.filetype == 2 {

@@ -288,6 +288,77 @@ pub unsafe fn vchroot_path(fd: c_int) -> Option<String> {
     Some(String::from_utf8_lossy(&buf[..len]).into_owned())
 }
 
+const SET_EXECUTABLE_PATH: u32 = 25;
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct CallSetExecutablePath {
+    buffer: u64,
+    buffer_size: u64,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct RpcCallSetExecutablePath {
+    header: DserverRpcCallhdr,
+    body: CallSetExecutablePath,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct RpcReplySetExecutablePath {
+    header: DserverRpcReplyhdr,
+}
+
+/// Tell the daemon which Mach-O this process is, as the GUEST sees it. Nothing else ever set this,
+/// so proc_pidpath answered the container root for every process and code signing could not find a
+/// client's bundle (task #200). The daemon reads the string out of our memory, so `path` must stay
+/// alive across the call.
+pub unsafe fn set_executable_path(fd: c_int, path: &str) -> i32 {
+    let sockpath = match SOCKPATH.get() {
+        Some(p) => p.clone(),
+        None => return -1,
+    };
+    let (server, slen) = make_server_addr(&sockpath);
+    let mut buf: Vec<u8> = path.as_bytes().to_vec();
+    buf.push(0);
+    let call = RpcCallSetExecutablePath {
+        header: DserverRpcCallhdr {
+            number: SET_EXECUTABLE_PATH,
+            pid: libc::getpid(),
+            tid: gettid(),
+            architecture: GUEST_ARCH,
+        },
+        body: CallSetExecutablePath {
+            buffer: buf.as_ptr() as u64,
+            buffer_size: buf.len() as u64,
+        },
+    };
+    let bytes = std::slice::from_raw_parts(
+        &call as *const _ as *const u8,
+        std::mem::size_of::<RpcCallSetExecutablePath>(),
+    );
+    if libc::sendto(
+        fd,
+        bytes.as_ptr() as *const c_void,
+        bytes.len(),
+        0,
+        &server as *const _ as *const libc::sockaddr,
+        slen,
+    ) < 0
+    {
+        return -1;
+    }
+    let mut reply: RpcReplySetExecutablePath = std::mem::zeroed();
+    if libc::recv(
+        fd,
+        &mut reply as *mut _ as *mut c_void,
+        std::mem::size_of::<RpcReplySetExecutablePath>(),
+        0,
+    ) < 0
+    {
+        return -1;
+    }
+    reply.header.code
+}
+
 /// Create the RPC socket (SOCK_DGRAM) and autobind it so the daemon can reply.
 pub unsafe fn create_socket(sockpath: &str) -> c_int {
     let fd = libc::socket(libc::AF_UNIX, libc::SOCK_DGRAM, 0);
