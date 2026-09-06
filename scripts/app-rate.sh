@@ -48,6 +48,7 @@ for i in $(seq 1 "$N"); do
 	env SETTLE="${SETTLE:-20}" LIMIT="${LIMIT:-70}" POST_SETTLE="${POST_SETTLE:-3}" \
 		${RESIZE_W:+RESIZE_W=$RESIZE_W} ${RESIZE_H:+RESIZE_H=$RESIZE_H} \
 		${CLICKS:+CLICK="$CLICKS"} ${TYPETEXT:+TYPE="$TYPETEXT"} \
+		${TRACE_ENV:+TRACE_ENV="$TRACE_ENV"} \
 		scripts/app-drive.sh --prefix "$PREFIX" --app "$APP" --name "$NAME-$i" \
 		>"captures/$NAME-$i.drive.log" 2>&1
 
