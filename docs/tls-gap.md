@@ -145,9 +145,32 @@ Make the legacy path work, or make it stop being the path.
 
 FIXED 2026-09-06 (commit 8b53add7, `vendor/patches/security/0013`): the legacy call now falls back
 to `SecCertificateCopyKey`. Measured, `pubkey=-50 key=NULL` became `pubkey=0 key=OK size=256`, and the
-handshake moved from `-9808` errSSLBadCert to `-9846` errSSLBadRecordMac. HTTPS still does not work,
-one layer further along, and a bad record MAC means the two sides derived different symmetric keys.
-Suspect the crypto provider next, since AppleCSP is missing from the same plugin family, and note
-that this is a HYPOTHESIS and not yet measured.
+handshake moved from `-9808` errSSLBadCert to `-9846` errSSLBadRecordMac.
+
+## Where it stops now: the record we receive, not the one we send
+
+HTTPS still does not work, one layer further along. The record trace names the stopping point, and it
+rules out most of what a bad record MAC usually means:
+
+    read want=331 got=331 head=0c 00 01 47 03    ServerKeyExchange, so the exchange is EPHEMERAL
+    read want=4   got=4   head=0e 00 00 00       ServerHelloDone
+                                                 (we send ClientKeyExchange, ChangeCipherSpec, Finished)
+    read want=5   got=5   head=14 03 01 00 01    server ChangeCipherSpec
+    read want=48  got=48  head=5a 38 6e 4e ff    server Finished, encrypted, 48 bytes
+    SSLHandshake result=-9846                    errSSLBadRecordMac
+
+THE SERVER ANSWERED WITH ChangeCipherSpec AND Finished, NOT AN ALERT. A server that could not verify
+the client Finished sends a fatal alert and stops. This one verified ours, so both sides agree on the
+premaster secret, the master secret and the client-write keys, and the key exchange is fine.
+
+What fails is the FIRST record we have to decrypt and authenticate in the other direction. So the
+fault is in the server-write half of the record protection: the read-side keys, the read sequence
+number, or the explicit IV handling.
+
+That also weakens the earlier guess that a missing AppleCSP explains this. If the crypto provider
+could not compute, our own Finished would not have verified either.
+
+The record layer here is coretls, which is COMPILED FROM OUR TREE, so this is ours to debug and fix
+rather than something to work around.
 
 Do not re-test the read callback, certificate parsing or trust creation. All three are measured good.
