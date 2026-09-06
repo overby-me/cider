@@ -523,7 +523,31 @@ static const void *kCiderAllowedInputSourceLocalesKey = &kCiderAllowedInputSourc
     return _selectedRanges;
 }
 
+/* THE PRIVATE INVALIDATION, and the fifth swallowed raise on the open path of task #194. AppKit
+ * itself calls this on macOS and applications inherit the habit; iA Writer sends it to the freshly
+ * made editor view carrying the document text, the send raised, NSApplication ate the raise per
+ * event, and the swap-in died with the text already in place one view away from the screen. The
+ * flag only permits skipping extra layout during invalidation, so the plain invalidation is a
+ * faithful answer. */
+- (void) setNeedsDisplayInRect: (NSRect) rect avoidAdditionalLayout: (BOOL) avoidAdditionalLayout {
+    [self setNeedsDisplayInRect: rect];
+}
+
 - (void) setTextContainer: (NSTextContainer *) container {
+    /* Task #194: the document text landed in one storage while the editor view drew another, and
+     * this is the only place a view adopts a different stack. Printed BEFORE the change guard,
+     * because a call that hands the view its OWN container back is precisely the interesting
+     * failure and an inside print showed nothing for it. */
+    if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
+        NSTextStorage *incoming = [[container layoutManager] textStorage];
+
+        fprintf(stderr, "CIDER_TEXTADOPT %s(%p) container=%p changed=%d storage=%p len=%lu\n",
+                object_getClassName(self), (void *) self, (void *) container,
+                (int) (container != _textContainer), (void *) incoming,
+                (unsigned long) [incoming length]);
+        fflush(stderr);
+    }
+
     if (container != _textContainer) {
         container = [container retain];
         [_textContainer release];

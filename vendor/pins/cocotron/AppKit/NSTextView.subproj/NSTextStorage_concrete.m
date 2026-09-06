@@ -171,6 +171,17 @@ replaceCharactersInRangeWithAttributedString(NSTextStorage_concrete *self,
              withAttributedString: (NSAttributedString *) other
 {
     replaceCharactersInRangeWithAttributedString(self, replaced, other);
+
+    /* Task #194: an editor storage measured len=0 at drawRect although this replace was sent to
+     * it. The base Foundation implementation is overridden here, so the trace lives here too:
+     * length in and length after say whether the write brought nothing or lost what it brought. */
+    if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
+        fprintf(stderr, "CIDER_STORREPLACE %s(%p) range=%lu+%lu in=%lu after=%lu\n",
+                object_getClassName(self), (void *) self, (unsigned long) replaced.location,
+                (unsigned long) replaced.length, (unsigned long) [other length],
+                (unsigned long) [self length]);
+        fflush(stderr);
+    }
 }
 
 - (void) setAttributedString: (NSAttributedString *) attributedString {

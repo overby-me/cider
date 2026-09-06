@@ -1,0 +1,95 @@
+Two traces on the delivery paths, which cleared two suspects of task #194
+
+CIDER_NOTIFY prints every application notification post with its observer match count, filtered to
+names containing IA or Library since AppKit posts hundreds of its own a second. What it answered:
+IADocumentContentChanged IS posted and delivered to five observers, so the observation layer works
+and the starvation is not a missing post.
+
+CIDER_ATTRREPLACE prints length in and length after on the base attributed string replace. What it
+answered is that it never fires for text storages at all, because NSTextStorage_concrete overrides
+the selector, which is itself worth having on record: an instrument on the base class says nothing
+about storages.
+--- a/src/NSNotificationCenter.m
++++ b/src/NSNotificationCenter.m
+@@ -12,6 +12,8 @@
+ #import "NSNotificationInternal.h"
+ #import <dispatch/dispatch.h>
+ #import <pthread.h>
++#include <stdio.h>
++#include <stdlib.h>
+ 
+ @interface _NSNotificationObserver : NSObject
+ {
+@@ -136,11 +138,13 @@
+ {
+     NSString *name = [notification name];
+     id object = [notification object];
+-    
++
+     pthread_mutex_lock(&_observersLock);
+     NSArray *observers = [_observers copy];
+     pthread_mutex_unlock(&_observersLock);
+ 
++    NSUInteger delivered = 0;
++
+     for (_NSNotificationObserver *observer in observers)
+     {
+         if (name == nil || observer.name == nil || [observer.name isEqualToString:name])
+@@ -149,9 +153,25 @@
+             if (object == nil || obj == nil || object == obj)
+             {
+                 [observer postNotification:notification];
++                delivered++;
+             }
+         }
+     }
++
++    /* Every post funnels through here, and the one question a starved observer raises is whether
++     * its notification was POSTED WITH NO MATCH or never posted at all; those look identical from
++     * the observer side. Application names only, since AppKit posts hundreds a second of its own.
++     * CIDER_TRACE_NOTIFY. Task #194. */
++    if (getenv("CIDER_TRACE_NOTIFY") != NULL && getenv("CIDER_TRACE_NOTIFY")[0] != (char) 0 &&
++        name != nil &&
++        ([name rangeOfString:@"IA"].location != NSNotFound ||
++         [name rangeOfString:@"Library"].location != NSNotFound))
++    {
++        fprintf(stderr, "CIDER_NOTIFY post %s delivered=%lu of %lu\n", [name UTF8String],
++                (unsigned long)delivered, (unsigned long)[observers count]);
++        fflush(stderr);
++    }
++
+     [observers release];
+ }
+ 
+--- a/src/NSAttributedString.m
++++ b/src/NSAttributedString.m
+@@ -10,6 +10,9 @@
+ #import "NSStringInternal.h"
+ #import <Foundation/NSPortCoder.h>
+ #import <dispatch/dispatch.h>
++#include <objc/runtime.h>
++#include <stdio.h>
++#include <stdlib.h>
+ 
+ @implementation NSAttributedString
+ 
+@@ -445,6 +448,19 @@
+     [attrString enumerateAttributesInRange:NSMakeRange(0, [attrString length]) options:0 usingBlock:^(NSDictionary *attrs, NSRange replaceRange, BOOL *stop) {
+         [self setAttributes:attrs range:NSMakeRange(range.location + replaceRange.location, replaceRange.length)];
+     }];
++
++    /* Task #194: an editor storage measured len=0 at drawRect although this replace was CALLED on
++     * it, so the one question is whether the write brought zero characters or brought them and
++     * lost them. Printing length in and length after answers it from a single run. */
++    if (__builtin_expect(getenv("CIDER_TRACE_TEXT") != NULL, 0) &&
++        getenv("CIDER_TRACE_TEXT")[0] != (char) 0)
++    {
++        fprintf(stderr, "CIDER_ATTRREPLACE %s range=%lu+%lu in=%lu after=%lu\n",
++                object_getClassName(self), (unsigned long)range.location,
++                (unsigned long)range.length, (unsigned long)[attrString length],
++                (unsigned long)[self length]);
++        fflush(stderr);
++    }
+ }
+ 
+ - (void)insertAttributedString:(NSAttributedString *)attrString atIndex:(NSUInteger)loc
