@@ -738,6 +738,11 @@ static NSMutableDictionary *cellClassDictionary = nil;
 }
 
 - (void) drawRect: (NSRect) rect {
+    if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
+        NSLog(@"CIDER_CONTROL drawRect self=%p class=%s frame=%@ window=%p layer=%d",
+              (void *) self, object_getClassName(self), NSStringFromRect([self frame]),
+              (void *) [self window], (int) [self wantsLayer]);
+    }
     [_cell setControlView: self];
     [_cell drawWithFrame: _bounds inView: self];
 }
