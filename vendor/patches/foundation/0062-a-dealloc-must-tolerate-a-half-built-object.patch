@@ -1,0 +1,33 @@
+--- a/src/NSOperation.m
++++ b/src/NSOperation.m
+@@ -520,16 +520,22 @@
+ }
+ 
+ - (void)dealloc {
+-    if (_internal->_state == NSOperationStateExecuting)
++    /* _internal is created in -init and NOWHERE ELSE, but dealloc runs on any allocated object,
++       including one whose init never completed or whose subclass never called super. Dereferencing
++       it unguarded read offset 0x38 of NULL and killed iA Writer under launchd, 8 runs out of 8. */
++    if (_internal != nil)
+     {
+-        DEBUG_BREAK();
++        if (_internal->_state == NSOperationStateExecuting)
++        {
++            DEBUG_BREAK();
++        }
++        [self removeObserver:_internal forKeyPath:@"isExecuting"];
++        [self removeObserver:_internal forKeyPath:@"isReady"];
++        [self removeObserver:_internal forKeyPath:@"isFinished"];
++        _internal->_operation = nil;
++        [_internal release];
++        _internal = nil;
+     }
+-    [self removeObserver:_internal forKeyPath:@"isExecuting"];
+-    [self removeObserver:_internal forKeyPath:@"isReady"];
+-    [self removeObserver:_internal forKeyPath:@"isFinished"];
+-    _internal->_operation = nil;
+-    [_internal release];
+-    _internal = nil;
+     [super dealloc];
+ }
+ 

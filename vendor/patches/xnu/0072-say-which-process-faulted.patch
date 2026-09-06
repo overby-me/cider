@@ -1,0 +1,15 @@
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+@@ -408,7 +408,11 @@
+ 	}
+ 
+ #ifdef __x86_64__
+-	kern_printf("sigexc: have RIP 0x%llx\n", ctxt->uc_mcontext.gregs.rip);
++	/* ciderd.log is CONTAINER WIDE, so a bare RIP cannot say which process faulted, and two
++	   unrelated faults in one run read as one process crashing twice. app.log tags every line
++	   with the same guest pid, so this is what joins the two logs. */
++	kern_printf("sigexc: have RIP 0x%llx pid %d sig %d\n",
++		ctxt->uc_mcontext.gregs.rip, getpid(), bsd_signum);
+ #endif
+ 
+ 	thread_t thread = mach_thread_self();
