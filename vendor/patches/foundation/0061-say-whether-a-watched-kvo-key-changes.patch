@@ -1,0 +1,36 @@
+Say whether a watched KVO key actually changes, cached on the hot path
+
+An application that lays out in a KVO callback is invisible to every other instrument: nothing
+draws, nothing raises, and a key that never fires reads as missing layout code. The registration
+trace already names who watches what; this names whether the key then changes.
+
+didChangeValueForKey is hot, so the env read is cached in a static rather than scanning environ on
+every key change.
+
+Task #194: it measured that iA Writer registers an FBKVO observer on lastKnownCurrentDocument of
+IALibraryDocumentController and that key NEVER fires during a row click, so the observer stays
+asleep and the editor pane never fills. The trigger that should change it is app code and the seam
+is inside the application.
+--- a/src/NSKeyValueObserving.m
++++ b/src/NSKeyValueObserving.m
+@@ -104,6 +104,20 @@
+ 
+ - (void)didChangeValueForKey:(NSString *)key
+ {
++    /* DID THE WATCHED KEY ACTUALLY CHANGE. An application that lays out in a KVO callback needs the
++     * key to fire; a key that never changes leaves the observer asleep and the screen empty with
++     * nothing else to see. Task #194: iA Writer watches lastKnownCurrentDocument and its editor
++     * pane never fills. This runs on EVERY key change, so the env read is cached once rather than
++     * scanning environ per notification. */
++    static int kvoTrace = -1;
++    if (kvoTrace == -1)
++        kvoTrace = (getenv("CIDER_TRACE_KVO") != NULL) ? 1 : 0;
++    if (kvoTrace) {
++        fprintf(stderr, "CIDER_KVO didChange %s of %s\n", [key UTF8String] ?: "(nil)",
++                object_getClassName(self));
++        fflush(stderr);
++    }
++
+     pthread_key_t pthreadKVOKey = _NSGetKVOPthreadKey();
+     NSKeyValueObservingTSD *kvoTSD = pthread_getspecific(pthreadKVOKey);
+     if (kvoTSD != NULL && kvoTSD->pendingNotifications != NULL)
