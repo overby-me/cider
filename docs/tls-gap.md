@@ -1,4 +1,29 @@
-# The TLS gap: a handshake that runs and rejects the certificate
+# The TLS gap: FIXED, and the spinner behind it was never ours
+
+RESOLVED 2026-09-06. Two bugs, both in cider, both measured and fixed:
+
+  1. `SecCertificateCopyPublicKey` answered errSecParam with a NULL key, because its legacy route
+     needs CSSM plugins that do not exist on disk. It now falls back to `SecCertificateCopyKey`
+     (commit 8b53add7). `pubkey=-50 key=NULL` became `pubkey=0 key=OK size=256`.
+  2. `kCFStreamSocketSecurityLevelNegotiatedSSL` called `SSLSetProtocolVersion(kTLSProtocol1)`, which
+     is a CEILING of TLS 1.0, so every HTTPS connection was pinned to a TLS 1.0 CBC path that could
+     not authenticate the first record it read. It now asks for a range up to TLS 1.2
+     (commit 6a5af7fb). `protocol=4 cipher=0xc013 result=-9846` became
+     `protocol=8 cipher=0xc02f result=0`, a completed handshake on AES-GCM.
+
+AND THE SPINNER THAT STARTED ALL THIS IS NOT A CIDER DEFECT. With TLS working, the trace shows the
+response arrive (`17 03 03` application data) followed by an alert. The URL the application fetches,
+`https://www.belightsoft.com/appsupport/swiftpublisher/welcome55/`, answers **HTTP 403** with a static
+795 byte error page last modified in 2022, and it does so for the application User-Agent, for a Safari
+User-Agent and for curl, while the site root answers 200. The vendor retired the endpoint. Real macOS
+would get the same 403 today.
+
+That verdict was only reachable AFTER the TLS fixes, because before them no response arrived at all.
+
+The rest of this document is the investigation that got there, kept because the eliminations are worth
+more than the conclusion.
+
+# The original problem: a handshake that ran and rejected the certificate
 
 An HTTPS fetch under cider connects, exchanges TLS records, and then fails. The visible symptom is a
 spinner that never resolves: Swift Publisher shows one in its welcome window, which loads remote
