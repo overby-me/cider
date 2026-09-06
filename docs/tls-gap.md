@@ -153,11 +153,21 @@ So the absence of bundles under `/System/Library/Security` was never evidence of
 missing FILE as a missing FEATURE, which is the same shape of mistake as reading a missing string or
 a missing export as missing code.
 
-WHERE THE FAILURE ACTUALLY IS, as far as it has been measured: the legacy ItemImpl certificate is
-created SUCCESSFULLY. `CIDER_TRACE_SECCERT=1` prints `ItemImpl create -> OK`, with a positive control
-on that line so its silence would have been readable. The throw that becomes errSecParam therefore
-happens in the step after it, inside `Certificate::publicKey()`, which is where the CL and CSP key
-extraction lives. That is as far as this went, and it is NOT localised further.
+WHERE THE FAILURE ACTUALLY IS, narrowed twice by measurement:
+
+  * The legacy ItemImpl certificate IS created. `CIDER_TRACE_SECCERT=1` prints `ItemImpl create -> OK`
+    with a positive control on that line, so its silence would have been readable.
+  * `Certificate::publicKey()` is NEVER REACHED. The same switch prints `publicKey CL field -> ...` on
+    entry to that function and that line never appears, in a run where the ItemImpl line does. So the
+    throw is not in the CL field extraction and not in the CSP either.
+
+That leaves the step BETWEEN them, `Certificate::required(__itemImplRef)`, the handle to object lookup
+that BEGIN_SECCERTAPI performs on the reference it just created. A freshly created ItemImpl whose
+handle does not resolve is a lifetime or registration question, and it is the next thing to look at:
+`SecCertificateCreateItemImplInstance` returns `certificatePtr->handle()` from a SecPointer that goes
+out of scope on the next line, so whether `handle()` hands out an owning reference is the question.
+
+That is as far as this went. NOT localised further, and the fix does not depend on it.
 
 The fix in commit 8b53add7 does not depend on which of those it is: the modern
 `SecCertificateCopyKey` answers correctly, so the legacy answer is only a fallback away.

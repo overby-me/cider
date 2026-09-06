@@ -1,0 +1,26 @@
+--- a/OSX/libsecurity_keychain/lib/Certificate.cpp	2026-09-06 20:21:53.323765616 +0200
++++ b/OSX/libsecurity_keychain/lib/Certificate.cpp	2026-09-06 20:21:53.310744102 +0200
+@@ -1204,12 +1204,23 @@
+ 	// call OSStatus SecKeyGetCSSMKey(SecKeyRef key, const CSSM_KEY **cssmKey); to retrieve
+ 
+ 	CSSM_DATA_PTR keyPtr = copyFirstFieldValue(CSSMOID_CSSMKeyStruct);
++	/* Two steps that fail the same way from outside (task #199): the CL handing back the key struct,
++	 * and the CSP taking it. This says which one, and prints on the way in so silence is readable. */
++	if (getenv("CIDER_TRACE_SECCERT")) {
++		fprintf(stderr, "CIDER_SECCERT publicKey CL field -> %s\n",
++				(keyPtr && keyPtr->Data) ? "OK" : "EMPTY");
++		fflush(stderr);
++	}
+ 	if (keyPtr && keyPtr->Data)
+ 	{
+ 		CssmClient::CSP csp(gGuidAppleCSP);
+ 		CssmKey *cssmKey = reinterpret_cast<CssmKey *>(keyPtr->Data);
+ 		CssmClient::Key key(csp, *cssmKey);
+ 		keyItem = new KeyItem(key);
++		if (getenv("CIDER_TRACE_SECCERT")) {
++			fprintf(stderr, "CIDER_SECCERT publicKey CSP key -> OK\n");
++			fflush(stderr);
++		}
+ 		// Clear out KeyData since KeyItem() takes over ownership of the key, and we don't want it getting released.
+ 		cssmKey->KeyData.Data = NULL;
+ 		cssmKey->KeyData.Length = 0;
