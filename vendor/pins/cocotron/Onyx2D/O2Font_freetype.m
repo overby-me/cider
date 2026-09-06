@@ -258,12 +258,14 @@ static NSString *_CiderPreferredFamilies(NSString *family)
      * question is repeated for every miss.
      */
     static NSMutableDictionary *cache = nil;
-    static pthread_mutex_t cacheLock = PTHREAD_MUTEX_INITIALIZER;
+    /* Guarded by O2FontHostLock, never a pthread mutex: a contended pthread mutex fails psynch -111
+     * in this guest (see the file header), which let the main thread and Swift Publisher's preview
+     * worker mutate this dictionary at once and fault in its hash. */
     NSString *key = (pattern != nil) ? pattern : @"";
 
-    pthread_mutex_lock(&cacheLock);
+    O2FontHostLock();
     NSString *hit = [[cache objectForKey: key] retain];
-    pthread_mutex_unlock(&cacheLock);
+    O2FontHostUnlock();
     if (hit != nil) {
         return [[hit autorelease] length] != 0 ? hit : nil;
     }
@@ -313,12 +315,12 @@ static NSString *_CiderPreferredFamilies(NSString *family)
 
         FcPatternDestroy(pat);
         O2FontHostUnlock();
-        pthread_mutex_lock(&cacheLock);
+        O2FontHostLock();
         if (cache == nil) {
             cache = [[NSMutableDictionary alloc] init];
         }
         [cache setObject: (direct != nil) ? direct : @"" forKey: key];
-        pthread_mutex_unlock(&cacheLock);
+        O2FontHostUnlock();
         return direct;
     }
 
@@ -352,12 +354,12 @@ static NSString *_CiderPreferredFamilies(NSString *family)
     FcPatternDestroy(match);
     O2FontHostUnlock();
 
-    pthread_mutex_lock(&cacheLock);
+    O2FontHostLock();
     if (cache == nil) {
         cache = [[NSMutableDictionary alloc] init];
     }
     [cache setObject: (res != nil) ? res : @"" forKey: key];
-    pthread_mutex_unlock(&cacheLock);
+    O2FontHostUnlock();
     return res;
 }
 
