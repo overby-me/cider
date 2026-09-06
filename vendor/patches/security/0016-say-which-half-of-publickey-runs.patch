@@ -1,11 +1,19 @@
---- a/OSX/libsecurity_keychain/lib/Certificate.cpp	2026-09-06 20:21:53.323765616 +0200
-+++ b/OSX/libsecurity_keychain/lib/Certificate.cpp	2026-09-06 20:21:53.310744102 +0200
-@@ -1204,12 +1204,23 @@
+--- a/OSX/libsecurity_keychain/lib/Certificate.cpp	2026-09-06 20:35:30.505309354 +0200
++++ b/OSX/libsecurity_keychain/lib/Certificate.cpp	2026-09-06 20:35:30.479301395 +0200
+@@ -1203,13 +1203,31 @@
+ 	// Caller must call releaseFieldValue to free the storage allocated by this call.
  	// call OSStatus SecKeyGetCSSMKey(SecKeyRef key, const CSSM_KEY **cssmKey); to retrieve
  
++	/* ENTRY, before anything can throw. Without this line the trace below cannot tell being called
++	 * and throwing inside copyFirstFieldValue apart from never being called at all (task #199). */
++	if (getenv("CIDER_TRACE_SECCERT")) {
++		fprintf(stderr, "CIDER_SECCERT publicKey entered\n");
++		fflush(stderr);
++	}
++
  	CSSM_DATA_PTR keyPtr = copyFirstFieldValue(CSSMOID_CSSMKeyStruct);
 +	/* Two steps that fail the same way from outside (task #199): the CL handing back the key struct,
-+	 * and the CSP taking it. This says which one, and prints on the way in so silence is readable. */
++	 * and the CSP taking it. This says which one. */
 +	if (getenv("CIDER_TRACE_SECCERT")) {
 +		fprintf(stderr, "CIDER_SECCERT publicKey CL field -> %s\n",
 +				(keyPtr && keyPtr->Data) ? "OK" : "EMPTY");

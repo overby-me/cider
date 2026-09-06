@@ -153,21 +153,23 @@ So the absence of bundles under `/System/Library/Security` was never evidence of
 missing FILE as a missing FEATURE, which is the same shape of mistake as reading a missing string or
 a missing export as missing code.
 
-WHERE THE FAILURE ACTUALLY IS, narrowed twice by measurement:
+WHERE THE FAILURE ACTUALLY IS, narrowed three times, the last of which CORRECTED the second:
 
-  * The legacy ItemImpl certificate IS created. `CIDER_TRACE_SECCERT=1` prints `ItemImpl create -> OK`
-    with a positive control on that line, so its silence would have been readable.
-  * `Certificate::publicKey()` is NEVER REACHED. The same switch prints `publicKey CL field -> ...` on
-    entry to that function and that line never appears, in a run where the ItemImpl line does. So the
-    throw is not in the CL field extraction and not in the CSP either.
+  * The legacy ItemImpl certificate IS created, and it is ALIVE when handed back:
+    `ItemImpl create -> OK alive=1 rc=1`. So the SecPointer going out of scope does not kill it, which
+    was a hypothesis worth testing because `handle()` deliberately does not retain a new object.
+  * `Certificate::publicKey()` IS entered: `publicKey entered`, printed before anything can throw.
+  * `copyFirstFieldValue(CSSMOID_CSSMKeyStruct)` THROWS. The line after it never prints.
 
-That leaves the step BETWEEN them, `Certificate::required(__itemImplRef)`, the handle to object lookup
-that BEGIN_SECCERTAPI performs on the reference it just created. A freshly created ItemImpl whose
-handle does not resolve is a lifetime or registration question, and it is the next thing to look at:
-`SecCertificateCreateItemImplInstance` returns `certificatePtr->handle()` from a SecPointer that goes
-out of scope on the next line, so whether `handle()` hands out an owning reference is the question.
+CORRECTION, because it was published: an earlier commit said publicKey is never reached and the throw
+is the handle lookup before it. THAT WAS WRONG. The probe that said so sat AFTER the first call inside
+the function, so its silence could not tell being called and throwing from never being called. An
+entry probe settled it in one run. A trace answers the question it is placed at, not the question you
+had in mind.
 
-That is as far as this went. NOT localised further, and the fix does not depend on it.
+So the failure is the CL field extraction: the Certificate Library is asked for the CSSM key struct of
+this certificate and throws instead of answering. The CL itself is reachable, being built into
+Security and registered in modloader, so this is that one call, not the plugin.
 
 The fix in commit 8b53add7 does not depend on which of those it is: the modern
 `SecCertificateCopyKey` answers correctly, so the legacy answer is only a fallback away.
