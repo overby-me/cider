@@ -1,0 +1,80 @@
+--- a/src/Stream/CFSocketStream.c	2026-09-06 16:42:54.233115331 +0200
++++ b/src/Stream/CFSocketStream.c	2026-09-06 16:43:23.052273283 +0200
+@@ -463,6 +463,31 @@
+ static Boolean _CONNECTSetInfo_NoLock(_CFSocketStreamContext* ctxt, CFDictionaryRef settings);
+ 
+ 
++/*
++ * CIDER_TRACE_TLS names the step an HTTPS stream stops at (task #199): a connected socket with no
++ * bytes looks identical whether the security level was never applied, the SSL context was never
++ * built, the handshake was never registered, or it ran and returned an error nobody prints.
++ */
++static int _CiderTraceTLS(void) {
++	static int on = -1;
++
++	if (on < 0) {
++		const char* value = getenv("CIDER_TRACE_TLS");
++
++		on = (value != NULL && value[0] != '\0') ? 1 : 0;
++	}
++	return on;
++}
++
++#define CIDER_TLS_LOG(...)                                     \
++	do {                                                       \
++		if (_CiderTraceTLS()) {                                \
++			fprintf(stderr, "CIDER_TLS " __VA_ARGS__);         \
++			fflush(stderr);                                    \
++		}                                                      \
++	} while (0)
++
++
+ #if 0
+ #pragma mark *SSL Support
+ #endif
+@@ -1529,6 +1554,7 @@
+ 		if (settings) {
+             CFDictionaryAddValue(settings, kCFStreamSSLLevel, propertyValue);
+             result = _SocketStreamSecuritySetInfo_NoLock(ctxt, settings);
++            CIDER_TLS_LOG("security-level applied ok=%d\n", (int) result);
+             CFRelease(settings);
+ 			
+ 			if (result) {
+@@ -3811,8 +3837,11 @@
+ 
+ /* static */ Boolean
+ _SocketStreamAddHandshake_NoLock(_CFSocketStreamContext* ctxt, _CFSocketStreamPerformHandshakeCallBack fn) {
+-	
++
+ 	CFIndex i;
++
++	CIDER_TLS_LOG("handshake registered fn=%p security=%d\n", (void*) fn,
++				  (int) (fn == _PerformSecurityHandshake_NoLock));
+ 	
+ 	/* Get the existing list of handshakes. */
+ 	CFMutableArrayRef handshakes = (CFMutableArrayRef)CFDictionaryGetValue(ctxt->_properties, _kCFStreamPropertyHandshakes);
+@@ -5984,11 +6013,13 @@
+ 
+ /* static */ void
+ _PerformSecurityHandshake_NoLock(_CFSocketStreamContext* ctxt) {
+-	
++
+ 	OSStatus result;
+ 	const void* peerid = NULL;
+ 	size_t peeridlen;
+ 
++	CIDER_TLS_LOG("handshake running\n");
++
+ 	SSLContextRef ssl = *((SSLContextRef*)CFDataGetBytePtr((CFDataRef)CFDictionaryGetValue(ctxt->_properties,
+ 																						   kCFStreamPropertySocketSSLContext)));
+ 	
+@@ -6076,7 +6107,8 @@
+ 	
+ 	/* Perform the SSL handshake. */
+ 	result = SSLHandshake(ssl);
+-	
++	CIDER_TLS_LOG("SSLHandshake result=%d\n", (int) result);
++
+ 	/* If not blocking, can do something. */
+ 	if (result != errSSLWouldBlock) {
+ 		
