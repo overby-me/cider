@@ -60,16 +60,26 @@ Certificate message we receive. The leaf is entirely ordinary: X.509 v3, sha256W
 RSA 2048, standard extensions, and currently inside its validity window. Nothing there needs a modern
 parser.
 
-## The provenance trap, which cost real time
+## A provenance claim that was WRONG, and how it went wrong
 
-The TLS engine is APPLE PREBUILT, not built from `vendor/src/security`. The built Security.framework
-contains no string from `OSX/libsecurity_ssl` (no `parseIncomingCerts`, no `empty incoming cert
-array`) and defines no coretls symbol (`tls_handshake_negotiate` is absent). It is also not a dev stub
-(zero STUB strings). Reading `vendor/src/security` to explain the error is reading code that is not in
-the build, and that is exactly the detour this investigation took before checking. Check what is in
-the binary first.
+An earlier version of this document said the TLS engine is Apple prebuilt and that
+`vendor/src/security` therefore could not explain the error. THAT WAS WRONG, and it cost a detour.
 
-## Where to look next
+Security IS built from our own tree. The prefix takes it from `//vendor/src:Security_final`, there is
+a `libSecurity_x86_64_firstpass.dylib` from the same build, and the shipped binary carries 113
+`AppleX509CL` and 58 `MDSSession` strings, which only our sources put there. `libsecurity_keychain`
+and coretls are both compiled.
+
+The two observations behind the wrong claim were real and the inferences from them were not:
+
+  * `parseIncomingCerts` does not appear as a string, but it is a FUNCTION NAME that only reaches the
+    binary through `sslErrorLog`, which `sslDebug.h` compiles out under NDEBUG.
+  * `tls_handshake_negotiate` is not in the exported symbols, but a statically linked component keeps
+    its symbols local, so an export list cannot prove absence.
+
+The lesson is narrower than the one first written here: a missing STRING and a missing EXPORT are both
+weak evidence about what is in a binary. A build-graph question (what does the prefix install, and
+from which target) answers it directly, and that is what settled it.
 
 ## The fault: the legacy public key call returns nothing
 
@@ -97,7 +107,7 @@ Without a peer public key there is no key exchange, and a certificate you cannot
 reported as a bad certificate. That is the errSSLBadCert.
 
 CAUTION, stated as a hypothesis rather than a measurement: that SecureTransport itself takes the
-legacy path is an inference from the two facts above, not something traced inside the prebuilt binary.
+legacy path is an inference from the two facts above, not something traced inside Security itself.
 It is consistent with everything measured, and the legacy failure is real either way.
 
 ## Why the legacy call fails: the CSSM plugins are not there
@@ -105,7 +115,7 @@ It is consistent with everything measured, and the legacy failure is real either
 The legacy key path runs on CSSM, which reaches the Certificate Library plugin, `AppleX509CL`, and
 that plugin is a bundle on disk. Three measurements finish the chain:
 
-  * The prebuilt Security DOES carry CSSM: 243 `CSSM_` entry points, including `CSSM_Init`,
+  * The built Security DOES carry CSSM: 243 `CSSM_` entry points, including `CSSM_Init`,
     `CSSM_ModuleLoad`, `CSSM_ModuleAttach` and `CSSM_CL_CertGetKeyInfo`. The dispatcher is present.
   * MDS, the module directory CSSM looks modules up in, EXISTS and is populated. The databases under
     `private/var/db/mds/system` carry records for `AppleCSP`, `AppleCSPDL`, `AppleX509CL` and
@@ -118,7 +128,7 @@ So the directory advertises four modules and the filesystem has none of them. A 
 cannot find its bundle is exactly the `errSecParam` the legacy call returns.
 
 That last link, that the load fails BECAUSE the bundle is missing, is the standard CSSM architecture
-rather than something traced inside the prebuilt binary. Everything either side of it is measured.
+rather than something traced inside Security itself. Everything either side of it is measured.
 
 ## Where to look next
 
@@ -133,5 +143,11 @@ Make the legacy path work, or make it stop being the path.
    function inside the same binary is direct and does not go through the symbol table, so a redirect
    helps outside callers and may not help Security talk to itself.
 
-Do not go back to `vendor/src/security` to explain the ERROR, do not re-test the read callback, and
-do not re-test certificate parsing or trust creation. All three are measured good.
+FIXED 2026-09-06 (commit 8b53add7, `vendor/patches/security/0013`): the legacy call now falls back
+to `SecCertificateCopyKey`. Measured, `pubkey=-50 key=NULL` became `pubkey=0 key=OK size=256`, and the
+handshake moved from `-9808` errSSLBadCert to `-9846` errSSLBadRecordMac. HTTPS still does not work,
+one layer further along, and a bad record MAC means the two sides derived different symmetric keys.
+Suspect the crypto provider next, since AppleCSP is missing from the same plugin family, and note
+that this is a HYPOTHESIS and not yet measured.
+
+Do not re-test the read callback, certificate parsing or trust creation. All three are measured good.
