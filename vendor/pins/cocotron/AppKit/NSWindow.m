@@ -3051,6 +3051,51 @@ extern int _CiderPendingConstraintSolves(void);
                     hitFrame.size.width, hitFrame.size.height, hitFrame.origin.x, hitFrame.origin.y,
                     (int) [self isKeyWindow], ancestry);
             fflush(stderr);
+
+            /* THE TREE, ON DEMAND. Two views of the same class can sit in two different pane
+             * chains, and every per-view instrument answers for one of them at a time; only a walk
+             * over the WHOLE tree at a known moment shows both chains side by side, hidden flags
+             * and zero widths included. Matching nodes print with every ancestor above them so the
+             * divergence point of two chains is on screen. CIDER_TRACE_TREE holds the class
+             * substring; fires per mouse DOWN, so one click is one dump. */
+            const char *watchTree = getenv("CIDER_TRACE_TREE");
+
+            if (watchTree != NULL && watchTree[0] != (char) 0 && type == NSLeftMouseDown) {
+                NSMutableArray *stack = [NSMutableArray arrayWithObject: _backgroundView];
+                NSMutableArray *depths = [NSMutableArray arrayWithObject: @0];
+
+                while ([stack count] > 0) {
+                    NSView *node = [[[stack lastObject] retain] autorelease];
+                    int depth = [[depths lastObject] intValue];
+
+                    [stack removeLastObject];
+                    [depths removeLastObject];
+
+                    if (strstr(object_getClassName(node), watchTree) != NULL) {
+                        char chain[512];
+                        size_t used = 0;
+                        chain[0] = (char) 0;
+                        for (NSView *up = node; up != nil; up = [up superview]) {
+                            NSRect f = [up frame];
+                            int wrote = snprintf(chain + used, sizeof(chain) - used,
+                                                 " <- %s(%p) %.0fx%.0f@%.0f,%.0f%s",
+                                                 object_getClassName(up), up, f.size.width,
+                                                 f.size.height, f.origin.x, f.origin.y,
+                                                 [up isHidden] ? " HIDDEN" : "");
+                            if (wrote <= 0 || (size_t) wrote >= sizeof(chain) - used)
+                                break;
+                            used += (size_t) wrote;
+                        }
+                        fprintf(stderr, "cider-tree depth=%d%s\n", depth, chain);
+                        fflush(stderr);
+                    }
+
+                    for (NSView *child in [node subviews]) {
+                        [stack addObject: child];
+                        [depths addObject: @(depth + 1)];
+                    }
+                }
+            }
         } else if (type == NSKeyDown) {
             fprintf(stderr, "cider-mouse key window=%s responder=%s key=%d chars=%s\n",
                     object_getClassName(self),
