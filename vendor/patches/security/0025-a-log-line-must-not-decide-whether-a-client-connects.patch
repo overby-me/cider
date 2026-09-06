@@ -1,0 +1,18 @@
+--- a/securityd/src/clientid.cpp
++++ b/securityd/src/clientid.cpp
+@@ -316,7 +316,14 @@
+ std::string codePath(SecStaticCodeRef code)
+ {
+ 	CFRef<CFURLRef> path;
+-	MacOSError::check(SecCodeCopyPath(code, kSecCSDefaultFlags, &path.aref()));
++	/* MUST NOT THROW. Its only caller is the secinfo line that names a new client, and throwing
++	   there aborts Process construction, which fails ucsp_server_setup, which leaves every
++	   securityd client unable to connect (task #199). dumpCode below already tolerates this. */
++	if (OSStatus rc = SecCodeCopyPath(code, kSecCSDefaultFlags, &path.aref())) {
++		char buf[64];
++		snprintf(buf, sizeof(buf), "unknown(rc=%d)", int32_t(rc));
++		return buf;
++	}
+ 	return cfString(path);
+ }
+ 

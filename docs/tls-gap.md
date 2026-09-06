@@ -316,11 +316,48 @@ Measured before and after, same app, same probes:
 So the token resolves, securityd gets the client's task port, and the Mach half is done. Swift
 Publisher still renders and resizes correctly, LOOKED at, so nothing regressed.
 
-THE CERTIFICATE PATH STILL FAILS. `0xfffefa2c` is -67028, `errSecCSBadBundleFormat`. securityd now
-gets far enough into `setupConnection` to inspect the client's code signature and rejects the bundle,
-so `ucsp_server_setup` still answers non-zero and the ModuleNexus still manufactures the same -50 above
-it. This is a real advance (a Mach-layer gap closed, and a specific new error where there was a
-generic one) but it is not the end of the chain.
+## FIXED, and it was a log line: the legacy path now works end to end
+
+`0xfffefa2c` is -67028, `errSecCSBadBundleFormat`. Probing each step of `Process::Process`
+(patch 0024) puts it somewhere unexpected:
+
+    Process codePath threw osStatus=-67028
+
+Everything functional had already succeeded: the session, `Process::setup`, `ClientIdentification::setup`
+and `processCode()`. The throw is in the LAST LINE of the constructor, the `secinfo` that names the new
+client, whose argument is `codePath(this->processCode())`:
+
+    std::string codePath(SecStaticCodeRef code)
+    {
+        CFRef<CFURLRef> path;
+        MacOSError::check(SecCodeCopyPath(code, kSecCSDefaultFlags, &path.aref()));   // THROWS
+        return cfString(path);
+    }
+
+A DIAGNOSTIC WAS LOAD BEARING. `codePath` is commented in Apple's own source as a "bonus function", its
+only caller is that log line, and `dumpCode` twenty lines below it already tolerates the same failure
+with `unknown(rc=%d)`. Patch 0025 makes `codePath` do the same instead of throwing.
+
+Measured after, one run of Swift Publisher, and the trace no longer contains a single -50:
+
+    setup back kr=0x0 rcode=0x0                     securityd accepts the client
+    MDS DbOpen path: .../mdsDirectory.db            the MDS database opens
+    mdsclient DbOpen cdsa -> 0x00000000
+    loadModule path: *AppleX509CL                   the built-in CL loads
+    CSSM_ModuleLoad -> 0x00000000
+    CSSM_ModuleAttach -> 0x00000000                 the attach this document once guessed at
+    copyFirstFieldValue clHandle=0x75df6ec6c239
+    loadModule path: *AppleCSP                      and the CSP
+    CertGetFirstCachedFieldValue result=0x0 fields=1
+    publicKey CL field -> OK
+    publicKey CSP key -> OK                         the LEGACY public key, working
+
+So the legacy `SecCertificateCopyPublicKey` works now; the modern fallback from 8b53add7 stays as a
+safety net rather than the load-bearing path. Swift Publisher renders and resizes correctly, LOOKED at.
+
+THIS IS NOT ONLY ABOUT CERTIFICATES. `ClientSession::activate` is the front door of every securityd
+call, so until now no application could complete a securityd connection at all. Keychain, code
+signing and trust all went through this.
 
 A PLACEMENT LESSON, learned twice in this file: a probe placed after the first call in a function
 cannot tell a throw inside that call from the function never running. Both times the fix was an entry
@@ -330,9 +367,9 @@ The fix in commit 8b53add7 does not depend on which of those it is: the modern
 `SecCertificateCopyKey` answers correctly, so the legacy answer is only a fallback away.
 ## Where to look next
 
-Find why securityd calls the client's bundle format bad (`errSecCSBadBundleFormat`, -67028). That is
-now the only thing between an application and a working securityd connection, and securityd is built
-from this tree so it can be probed the same way everything else here was.
+`SecCodeCopyPath` still answers `errSecCSBadBundleFormat` for a running client. Nothing depends on it
+now, but it means securityd's view of a client's code signature is wrong, and that WILL matter for
+anything that actually checks a signature rather than logs one.
 
 `thread_lookup_eternal` and `thread_eternal_id` in `sched.rs` are still stubbed exactly the way the
 task pair was, and will fail the same way the moment anything resolves a thread identity token.

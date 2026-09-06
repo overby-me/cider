@@ -1,0 +1,68 @@
+--- a/securityd/src/process.cpp
++++ b/securityd/src/process.cpp
+@@ -34,6 +34,24 @@
+ #include <security_utilities/ccaudit.h>
+ #include <security_utilities/logging.h>	//@@@ debug only
+ #include "agentquery.h"
++#include <stdio.h>
++#include <stdarg.h>
++
++/* Process construction has several steps that can throw and END_IPCN collapses them into one
++   rcode, so name the step. A file, not Syslog: securityd's Syslog does not reach system.log in a
++   container and its stderr is not collected. */
++static void _CiderSecdProbe(const char *fmt, ...)
++{
++	FILE *f = fopen("/tmp/cider-secd-setup.log", "a");
++	if (f == NULL)
++		return;
++	va_list ap;
++	va_start(ap, fmt);
++	vfprintf(f, fmt, ap);
++	va_end(ap);
++	fputc('\n', f);
++	fclose(f);
++}
+ 
+ 
+ //
+@@ -42,9 +60,12 @@
+ Process::Process(TaskPort taskPort,	const ClientSetupInfo *info, const CommonCriteria::AuditToken &audit)
+  :  mTaskPort(taskPort), mByteFlipped(false), mPid(audit.pid()), mUid(audit.euid()), mGid(audit.egid()), mAudit(audit)
+ {
++	const char *phase = "lock";
++	try {
+ 	StLock<Mutex> _(*this);
+     xpc_transaction_begin();
+ 	// set parent session
++	phase = "Session::find";
+ 	parent(Session::find(audit.sessionId(), true));
+ 	
+ 	// let's take a look at our wannabe client...
+@@ -59,8 +80,11 @@
+ 		CssmError::throwMe(CSSMERR_CSSM_ADDIN_AUTHENTICATE_FAILED);	// you lied!
+ 	}
+ 	
++	phase = "setup";
+ 	setup(info);
++	phase = "ClientIdentification::setup";
+ 	ClientIdentification::setup(this->audit_token());
++	phase = "processCode";
+ 	
+ 	if(!processCode()) {
+ 		// This can happen if the process died in the meantime.
+@@ -79,8 +103,15 @@
+         || ServerChild::find<ServerChild>(this->pid()))   // securityd's child; do not mark this txn dirty
+         xpc_transaction_end();
+ 
++    phase = "codePath";
+     secinfo("SecServer", "%p client new: pid:%d session:%d %s taskPort:%d uid:%d gid:%d", this, this->pid(), this->session().sessionId(),
+              (char *)codePath(this->processCode()).c_str(), taskPort.port(), mUid, mGid);
++	_CiderSecdProbe("Process built ok pid=%d", (int) mPid);
++	}
++	catch (const CommonError &err) {
++		_CiderSecdProbe("Process %s threw osStatus=%d", phase, (int) err.osStatus());
++		throw;
++	}
+ }
+ 
+ 
