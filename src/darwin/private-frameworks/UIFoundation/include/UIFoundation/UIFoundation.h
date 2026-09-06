@@ -150,7 +150,14 @@ void* UIAppendBytesForValueToData(void);
 void* UIAppendVInt32ToData(void);
 void* UIArrayByKeepingObjectsInSet(void);
 void* UICreateOrderedAndStrippedCoderValues(void);
-void* UIDataLooksLikeNibArchive(void);
+/* The nib archive magic, and the coder versions that go with it. macOS exports the identifier as a
+   CHARACTER ARRAY, not a pointer: dlsym gives the string itself, so a const char * here would hand
+   callers the address of a pointer. */
+extern const char UIArchiveHeaderIdentifier[];
+extern const uint32_t UIMaximumCompatibleFormatVersion;
+extern const uint32_t UICurrentCoderVersion;
+
+BOOL UIDataLooksLikeNibArchive(NSData *data);
 void* UIDistanceBetweenPointAndRect(void);
 void* UIFixedByteLengthForType(void);
 void* UINibArchiveIndexFromNumber(void);

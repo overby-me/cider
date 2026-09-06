@@ -21,6 +21,7 @@
 #include <UIFoundation/UIFoundation.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 static int verbose = 0;
 
@@ -95,10 +96,22 @@ void* UICreateOrderedAndStrippedCoderValues(void)
     return NULL;
 }
 
-void* UIDataLooksLikeNibArchive(void)
+const char UIArchiveHeaderIdentifier[] = "NIBArchive";
+const uint32_t UIMaximumCompatibleFormatVersion = 1;
+const uint32_t UICurrentCoderVersion = 10;
+
+/* Magic only. macOS answers YES for anything whose first ten bytes are the identifier, whatever
+   follows, and NO for anything shorter, so ten is the length of the identifier and not a header
+   size. Measured against the darling-testsuite case, which checks 9, 10 and 11 bytes and a valid
+   header followed by garbage. */
+BOOL UIDataLooksLikeNibArchive(NSData *data)
 {
-    if (verbose) puts("STUB: UIDataLooksLikeNibArchive called");
-    return NULL;
+    const NSUInteger identifierLength = sizeof(UIArchiveHeaderIdentifier) - 1;
+
+    if (data.length < identifierLength)
+        return NO;
+
+    return memcmp(data.bytes, UIArchiveHeaderIdentifier, identifierLength) == 0;
 }
 
 void* UIDistanceBetweenPointAndRect(void)
