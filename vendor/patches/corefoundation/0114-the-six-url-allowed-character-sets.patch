@@ -1,0 +1,88 @@
+the six url allowed character sets
+
+Our CoreFoundation defined NONE of the six _CFURLComponentsGetURL*AllowedCharacterSet functions and
+the prebuilt libswiftFoundation.dylib imports ALL SIX. They are what Swift's
+CharacterSet.urlQueryAllowed and its five siblings resolve to, so any Swift code that percent
+encodes a URL needs them, and libswiftFoundation loads in every Swift application.
+
+They were missing because Apple's opensource CoreFoundation has no CFURLComponents.c at all.
+
+THE SIX STRINGS ARE COPIED VERBATIM from swift-corelibs-foundation's
+CoreFoundation/URL.subproj/CFURLComponents_URIParser.c, including the path comment, and a check
+compared all six against that source byte for byte before this was built. Re-deriving them from RFC
+3986 was the tempting shortcut and it is the wrong one: a set that is slightly too permissive does
+not fail, it silently emits wrong URLs.
+
+Measured by scripts/symbol-gap.py: GAP 170 to 164, defined 415812 to 415826, and
+libswiftFoundation's own share 31 to 25. Exactly six either way. All five roster applications still
+render and resize, LOOKED at.
+
+--- a/CFURL.c
++++ b/CFURL.c
+@@ -5036,3 +5036,66 @@
+     return rv;
+ }
+ 
++
++/*
++ * The six URL component allowed-character sets.
++ *
++ * Swift's CharacterSet.urlQueryAllowed and its five siblings resolve to these, so any Swift code
++ * that percent-encodes a URL needs them, and libswiftFoundation imports all six. Apple's opensource
++ * CoreFoundation has no CFURLComponents.c, so nothing here defined them.
++ *
++ * THE SIX STRINGS ARE COPIED VERBATIM from swift-corelibs-foundation's
++ * CoreFoundation/URL.subproj/CFURLComponents_URIParser.c, INCLUDING the path comment, so the sets
++ * are right by provenance. Do not re-derive them from RFC 3986: a set that is slightly too
++ * permissive does not fail, it silently emits wrong URLs.
++ */
++#define kURLUserAllowedCharacters       "!$&'()*+,-.0123456789;=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~"
++#define kURLPasswordAllowedCharacters   "!$&'()*+,-.0123456789;=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~"
++#define kURLHostAllowedCharacters       "!$&'()*+,-.0123456789:;=ABCDEFGHIJKLMNOPQRSTUVWXYZ[]_abcdefghijklmnopqrstuvwxyz~"
++#define kURLPathAllowedCharacters       "!$&'()*+,-./0123456789:=@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~" // ";" is disallowed in paths for compatibility with API which uses rfc1808 parsing where ";" was the separator between path and param. ":" is allowed only after a "/" (it cannot be in the first segment in some cases)
++#define kURLQueryAllowedCharacters      "!$&'()*+,-./0123456789:;=?@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~"
++#define kURLFragmentAllowedCharacters   "!$&'()*+,-./0123456789:;=?@ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz~"
++
++enum {
++    kCiderURLUserAllowed = 0,
++    kCiderURLPasswordAllowed,
++    kCiderURLHostAllowed,
++    kCiderURLPathAllowed,
++    kCiderURLQueryAllowed,
++    kCiderURLFragmentAllowed,
++    kCiderURLAllowedCount
++};
++
++static CFCharacterSetRef sCiderURLAllowedSets[kCiderURLAllowedCount];
++
++static CFCharacterSetRef _CiderURLAllowedSet(CFIndex which) {
++    static dispatch_once_t once = 0;
++    dispatch_once(&once, ^{
++        sCiderURLAllowedSets[kCiderURLUserAllowed] = CFCharacterSetCreateWithCharactersInString(kCFAllocatorDefault, CFSTR(kURLUserAllowedCharacters));
++        sCiderURLAllowedSets[kCiderURLPasswordAllowed] = CFCharacterSetCreateWithCharactersInString(kCFAllocatorDefault, CFSTR(kURLPasswordAllowedCharacters));
++        sCiderURLAllowedSets[kCiderURLHostAllowed] = CFCharacterSetCreateWithCharactersInString(kCFAllocatorDefault, CFSTR(kURLHostAllowedCharacters));
++        sCiderURLAllowedSets[kCiderURLPathAllowed] = CFCharacterSetCreateWithCharactersInString(kCFAllocatorDefault, CFSTR(kURLPathAllowedCharacters));
++        sCiderURLAllowedSets[kCiderURLQueryAllowed] = CFCharacterSetCreateWithCharactersInString(kCFAllocatorDefault, CFSTR(kURLQueryAllowedCharacters));
++        sCiderURLAllowedSets[kCiderURLFragmentAllowed] = CFCharacterSetCreateWithCharactersInString(kCFAllocatorDefault, CFSTR(kURLFragmentAllowedCharacters));
++    });
++    return (which >= 0 && which < kCiderURLAllowedCount) ? sCiderURLAllowedSets[which] : NULL;
++}
++
++CF_EXPORT CFCharacterSetRef _CFURLComponentsGetURLUserAllowedCharacterSet(void) {
++    return _CiderURLAllowedSet(kCiderURLUserAllowed);
++}
++CF_EXPORT CFCharacterSetRef _CFURLComponentsGetURLPasswordAllowedCharacterSet(void) {
++    return _CiderURLAllowedSet(kCiderURLPasswordAllowed);
++}
++CF_EXPORT CFCharacterSetRef _CFURLComponentsGetURLHostAllowedCharacterSet(void) {
++    return _CiderURLAllowedSet(kCiderURLHostAllowed);
++}
++CF_EXPORT CFCharacterSetRef _CFURLComponentsGetURLPathAllowedCharacterSet(void) {
++    return _CiderURLAllowedSet(kCiderURLPathAllowed);
++}
++CF_EXPORT CFCharacterSetRef _CFURLComponentsGetURLQueryAllowedCharacterSet(void) {
++    return _CiderURLAllowedSet(kCiderURLQueryAllowed);
++}
++CF_EXPORT CFCharacterSetRef _CFURLComponentsGetURLFragmentAllowedCharacterSet(void) {
++    return _CiderURLAllowedSet(kCiderURLFragmentAllowed);
++}
