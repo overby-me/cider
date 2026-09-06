@@ -425,3 +425,34 @@ The record layer here is coretls, which is COMPILED FROM OUR TREE, so this is ou
 rather than something to work around.
 
 Do not re-test the read callback, certificate parsing or trust creation. All three are measured good.
+
+## Postscript: proc_pidpath answers the container root for every process
+
+Task #200, found with `CIDER_TRACE_CODESIGN=1` (patches 0026 and 0027). The reason
+`SecCodeCopyPath` calls a live client's bundle badly formatted is that it is not looking at the
+client's bundle at all:
+
+    bestGuess path=/Volumes/SystemRoot isdir=1
+    BundleDiskRep(path) path=/Volumes/SystemRoot bundle=0x7a31ffc7fa20
+    setup found nothing signable, resourcesRoot=/Volumes/SystemRoot
+
+`/Volumes/SystemRoot` is the container root. It is a directory, so `bestGuess` takes it for a bundle,
+CFBundle happily makes one, and `setup` then finds no main executable in it. Nothing is wrong with
+the bundle machinery or with Swift Publisher's bundle.
+
+WHERE THE PATH COMES FROM. `cskernel.cpp` uses `::proc_pidpath(guest->pid(), ...)`, which is
+`__proc_info(PROC_PIDPATHINFO)`, which in the guest emulation is `_proc_pidinfo_pathinfo`:
+
+    int rv = dserver_rpc_get_executable_path(pid, args.path, sizeof(args.path), &fullLength);
+    ...
+    rv = vchroot_unexpand(&args);
+
+The server's `get_executable_path` returns `Process::executable_path`, which is initialised to
+`String::new()` and set only by the `set_executable_path` RPC. **Nothing in the tree ever calls that
+RPC.** It exists in `generate-rpc-wrappers.py` and is implemented in `handler.rs`, and no guest code
+invokes it, so every process's path is the empty string, and `vchroot_unexpand("")` renders as the
+container root.
+
+So `proc_pidpath` answers `/Volumes/SystemRoot` for EVERY process in the container. Code signing is
+just where it happened to show: crash reporting, LaunchServices, sandboxing and anything else that
+asks a pid for its executable get the same wrong answer.

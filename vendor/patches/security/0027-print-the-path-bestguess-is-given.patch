@@ -1,0 +1,51 @@
+--- a/OSX/libsecurity_codesigning/lib/diskrep.cpp
++++ b/OSX/libsecurity_codesigning/lib/diskrep.cpp
+@@ -32,6 +32,28 @@
+ #include "filediskrep.h"
+ #include "bundlediskrep.h"
+ #include "slcrep.h"
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <stdarg.h>
++
++/* Which branch refuses a bundle. Gated on CIDER_TRACE_CODESIGN and written to a file, because the
++   caller that matters is securityd, whose stderr is not collected. */
++static void _CiderTraceDR(const char *fmt, ...)
++{
++	if (!getenv("CIDER_TRACE_CODESIGN"))
++		return;
++	FILE *f = fopen("/tmp/cider-codesign.log", "a");
++	if (f == NULL)
++		return;
++	va_list ap;
++	va_start(ap, fmt);
++	vfprintf(f, fmt, ap);
++	va_end(ap);
++	fputc('\n', f);
++	fclose(f);
++}
++
+ #if TARGET_OS_OSX
+ #include "diskimagerep.h"
+ #endif
+@@ -97,13 +119,17 @@
+ 				UnixError::throwMe();
+ 				
+ 			// if it's a directory, assume it's a bundle
++			_CiderTraceDR("bestGuess path=%s isdir=%d", path ? path : "(null)", (int) ((st.st_mode & S_IFMT) == S_IFDIR));
+ 			if ((st.st_mode & S_IFMT) == S_IFDIR)	// directory - assume bundle
+ 				return new BundleDiskRep(path, ctx);
+ 			
+ 			// see if it's the main executable of a recognized bundle
+-			if (CFRef<CFURLRef> pathURL = makeCFURL(path))
+-				if (CFRef<CFBundleRef> bundle = _CFBundleCreateWithExecutableURLIfMightBeBundle(NULL, pathURL))
++			if (CFRef<CFURLRef> pathURL = makeCFURL(path)) {
++				CFRef<CFBundleRef> bundle = _CFBundleCreateWithExecutableURLIfMightBeBundle(NULL, pathURL);
++				_CiderTraceDR("bestGuess exec-url bundle=%p", (void *) (CFBundleRef) bundle);
++				if (bundle)
+ 						return new BundleDiskRep(bundle, ctx);
++			}
+ 		}
+ 		
+ 		// try the various single-file representations

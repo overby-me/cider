@@ -1,0 +1,47 @@
+--- a/OSX/libsecurity_codesigning/lib/bundlediskrep.cpp
++++ b/OSX/libsecurity_codesigning/lib/bundlediskrep.cpp
+@@ -24,6 +24,28 @@
+ #include "filediskrep.h"
+ #include "dirscanner.h"
+ #include "notarization.h"
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <stdarg.h>
++
++/* Which branch refuses a bundle. Gated on CIDER_TRACE_CODESIGN and written to a file, because the
++   caller that matters is securityd, whose stderr is not collected. */
++static void _CiderTraceCS(const char *fmt, ...)
++{
++	if (!getenv("CIDER_TRACE_CODESIGN"))
++		return;
++	FILE *f = fopen("/tmp/cider-codesign.log", "a");
++	if (f == NULL)
++		return;
++	va_list ap;
++	va_start(ap, fmt);
++	vfprintf(f, fmt, ap);
++	va_end(ap);
++	fputc('\n', f);
++	fclose(f);
++}
++
+ #include "csutilities.h"
+ #include <CoreFoundation/CFBundlePriv.h>
+ #include <CoreFoundation/CFURLAccess.h>
+@@ -51,6 +73,7 @@
+ BundleDiskRep::BundleDiskRep(const char *path, const Context *ctx)
+ 	: mBundle(_CFBundleCreateUnique(NULL, CFTempURL(path))), forcePlatform(false)
+ {
++	_CiderTraceCS("BundleDiskRep(path) path=%s bundle=%p", path ? path : "(null)", (void *) (CFBundleRef) mBundle);
+ 	if (!mBundle)
+ 		MacOSError::throwMe(errSecCSBadBundleFormat);
+ 	setup(ctx);
+@@ -208,6 +231,7 @@
+ 	}
+ 	
+ 	// this bundle cannot be signed
++	_CiderTraceCS("setup found nothing signable, resourcesRoot=%s", this->resourcesRootPath().c_str());
+ 	MacOSError::throwMe(errSecCSBadBundleFormat);
+ }
+ 
