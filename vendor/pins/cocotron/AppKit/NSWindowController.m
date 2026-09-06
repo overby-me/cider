@@ -331,24 +331,24 @@ static const void *kCiderNibLoadedKey = &kCiderNibLoadedKey;
      * reached. That is why the document window is not on screen.
      */
     if (getenv("CIDER_TRACE_CONTROL") != NULL) {
-        fprintf(stderr, "CIDER_DOC showWindow ENTER controller=%s\n",
-                class_getName([self class]));
+        fprintf(stderr, "CIDER_DOC showWindow ENTER controller=%s(%p)\n",
+                class_getName([self class]), (void *) self);
         fflush(stderr);
     }
 
     NSWindow *window = [self window];
 
     if (getenv("CIDER_TRACE_CONTROL") != NULL) {
-        fprintf(stderr, "CIDER_DOC showWindow HAVE-WINDOW controller=%s window=%p\n",
-                class_getName([self class]), window);
+        fprintf(stderr, "CIDER_DOC showWindow HAVE-WINDOW controller=%s(%p) window=%p\n",
+                class_getName([self class]), (void *) self, window);
         fflush(stderr);
     }
 
     [window makeKeyAndOrderFront: sender];
 
     if (getenv("CIDER_TRACE_CONTROL") != NULL) {
-        fprintf(stderr, "CIDER_DOC showWindow ORDERED controller=%s\n",
-                class_getName([self class]));
+        fprintf(stderr, "CIDER_DOC showWindow ORDERED controller=%s(%p)\n",
+                class_getName([self class]), (void *) self);
 
         /* THE SAME PROBE AS IN -[NSDocument addWindowController:], BUT LATER. The one there runs
          * before the window is on screen, so a value that is filled in during the nib load or on
