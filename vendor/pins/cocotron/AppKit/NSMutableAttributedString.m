@@ -29,23 +29,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                           userFont: (NSFont *) font
                     usingFontNames: (NSArray *) fontnameList
 {
-    // We are caching the fontName->charset info, to prevent the
-    // creation/conversion of plenty of fonts
+    // Cache of fontName -> covered charset. Process-shared and reached from more than one text-layout
+    // thread at once, so guard every touch with O2FontHostLock; an unguarded dictionary faults in its
+    // hash, and a pthread mutex fails under contention in this guest (see O2Font_freetype.m).
+    extern void O2FontHostLock(void);
+    extern void O2FontHostUnlock(void);
     static NSMutableDictionary *sNameToCharacterSetCache = nil;
+    O2FontHostLock();
     if (sNameToCharacterSetCache == nil) {
         sNameToCharacterSetCache = [[NSMutableDictionary alloc] init];
     }
+    O2FontHostUnlock();
 
     NSFont *substitute = nil;
     for (NSString *name in fontnameList) {
 
+        O2FontHostLock();
         NSCharacterSet *fontCharSet =
                 [sNameToCharacterSetCache objectForKey: name];
+        O2FontHostUnlock();
         if (fontCharSet == nil) {
             NSFont *fontCandidate =
                     [[NSFontManager sharedFontManager] convertFont: font
                                                             toFace: name];
             fontCharSet = [fontCandidate coveredCharacterSet];
+            O2FontHostLock();
             if (fontCharSet != nil) {
                 // Cache the info
                 [sNameToCharacterSetCache setObject: fontCharSet forKey: name];
@@ -57,6 +65,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                                                                           0, 0)]
                            forKey: name];
             }
+            O2FontHostUnlock();
         }
         if (fontCharSet) {
             if ([fontCharSet characterIsMember: c]) {
