@@ -1,0 +1,49 @@
+--- a/OSX/libsecurity_cssm/lib/manager.cpp
++++ b/OSX/libsecurity_cssm/lib/manager.cpp
+@@ -28,6 +28,18 @@
+ #include "manager.h"
+ #include "module.h"
+ #include <security_utilities/debugging.h>
++#include <stdio.h>
++#include <stdlib.h>
++
++/* loadModule has three steps that can throw and END_API collapses them into one CSSM_RETURN,
++   so name the step. Gated on CIDER_TRACE_SECCERT, the switch the certificate path uses. */
++static void _CiderTraceLoad(const char *step, const char *detail)
++{
++	if (getenv("CIDER_TRACE_SECCERT")) {
++		fprintf(stderr, "CIDER_SECCERT loadModule %s: %s\n", step, detail);
++		fflush(stderr);
++	}
++}
+ 
+ 
+ //
+@@ -132,7 +144,10 @@
+     ModuleMap::iterator it = moduleMap.find(guid);
+     Module *module;
+     if (it == moduleMap.end()) {
++        const char *phase = "MdsComponent";
++        try {
+         MdsComponent info(guid);
++        phase = "info.path";
+ #if defined(RESTRICTED_CSP_LOADING)
+ 		// An abominable temporary hack for legal reasons. They made me do it!
+ 		if (info.supportsService(CSSM_SERVICE_CSP)) {
+@@ -146,7 +161,16 @@
+ #endif
+ 		secinfo("cssm", "loading module %s(%s) from %s",
+ 			info.name().c_str(), info.description().c_str(), info.path().c_str());
++        _CiderTraceLoad("path", info.path().c_str());
++        phase = "loader";
+         module = new Module(this, info, loader(info.path()));
++        }
++        catch (const CommonError &err) {
++            char detail[64];
++            snprintf(detail, sizeof(detail), "threw osStatus=%d", (int) err.osStatus());
++            _CiderTraceLoad(phase, detail);
++            throw;
++        }
+         moduleMap[guid] = module;
+     } else {
+         module = it->second;

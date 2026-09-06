@@ -1,0 +1,77 @@
+--- a/OSX/libsecurity_cdsa_client/lib/cssmclient.cpp
++++ b/OSX/libsecurity_cdsa_client/lib/cssmclient.cpp
+@@ -31,9 +31,21 @@
+ //
+ #include <security_cdsa_client/cssmclient.h>
+ #include <utilities/debugging.h>
++#include <stdio.h>
++#include <stdlib.h>
+ 
+ using namespace CssmClient;
+ 
++/* check() discards the CSSM_RETURN and the caller sees only a mapped OSStatus, so print the raw
++   one. Gated on CIDER_TRACE_SECCERT, the switch the certificate path above it already uses. */
++static void _CiderTraceCssm(const char *step, unsigned rc)
++{
++	if (getenv("CIDER_TRACE_SECCERT")) {
++		fprintf(stderr, "CIDER_SECCERT %s -> 0x%08x\n", step, rc);
++		fflush(stderr);
++	}
++}
++
+ //
+ // Exception model
+ //
+@@ -203,9 +215,11 @@
+ 	{
+ 		// currently, no choices on PVC mode and key hierarchy
+ 		CSSM_PVC_MODE pvc = CSSM_PVC_NONE;
+-		switch (CSSM_RETURN rc = CSSM_Init(&mVersion,
++		CSSM_RETURN rc = CSSM_Init(&mVersion,
+ 				mScope, &mCallerGuid,
+-				CSSM_KEY_HIERARCHY_NONE, &pvc, NULL)) {
++				CSSM_KEY_HIERARCHY_NONE, &pvc, NULL);
++		_CiderTraceCssm("CSSM_Init", rc);
++		switch (rc) {
+ 		case CSSMERR_CSSM_PVC_ALREADY_CONFIGURED:
+ 		case CSSM_OK:
+ 			break;
+@@ -407,11 +421,14 @@
+         StLock<Mutex> _(mActivateMutex);
+         if (!mActive)
+         {
++            _CiderTraceCssm("ModuleImpl activate entered", 0);
+             session()->init();
+             // @@@ install handler here (use central dispatch with override)
+             secinfo("callback","In ModuleImpl::activate, mAppNotifyCallback=%p, mAppNotifyCallbackCtx=%p",
+                 mAppNotifyCallback, mAppNotifyCallbackCtx);
+-            check(CSSM_ModuleLoad(&guid(), CSSM_KEY_HIERARCHY_NONE, mAppNotifyCallback, mAppNotifyCallbackCtx));
++            CSSM_RETURN loadrc = CSSM_ModuleLoad(&guid(), CSSM_KEY_HIERARCHY_NONE, mAppNotifyCallback, mAppNotifyCallbackCtx);
++            _CiderTraceCssm("CSSM_ModuleLoad", loadrc);
++            check(loadrc);
+             mActive = true;
+         }
+     }
+@@ -483,9 +500,10 @@
+     StLock<Mutex> _(mActivateMutex);
+ 	if (!mActive)
+ 	{
++		_CiderTraceCssm("AttachmentImpl activate entered", 0);
+ 		module()->load();
+ 		mMemoryFunctions = CssmAllocatorMemoryFunctions(allocator());
+-		check(CSSM_ModuleAttach(&guid(), &mVersion,
++		CSSM_RETURN attachrc = CSSM_ModuleAttach(&guid(), &mVersion,
+ 			  &mMemoryFunctions,
+ 			  mSubserviceId,
+ 			  mSubserviceType,
+@@ -493,7 +511,9 @@
+ 			  CSSM_KEY_HIERARCHY_NONE,
+ 			  NULL, 0,	// no function pointer table return
+ 			  NULL,		// reserved
+-			  &mHandle));
++			  &mHandle);
++		_CiderTraceCssm("CSSM_ModuleAttach", attachrc);
++		check(attachrc);
+ 		mActive = true;
+ 	}
+ }

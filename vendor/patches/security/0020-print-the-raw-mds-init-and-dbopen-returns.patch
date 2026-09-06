@@ -1,0 +1,57 @@
+--- a/OSX/libsecurity_cdsa_client/lib/mdsclient.cpp
++++ b/OSX/libsecurity_cdsa_client/lib/mdsclient.cpp
+@@ -21,11 +21,22 @@
+ //
+ #include <security_cdsa_client/mdsclient.h>
+ #include <Security/mdspriv.h>
++#include <stdio.h>
++#include <stdlib.h>
+ 
+ 
+ namespace Security {
+ namespace MDSClient {
+ 
++/* CssmError::check discards the CSSM_RETURN, so print the raw one. Gated on
++   CIDER_TRACE_SECCERT, the switch the certificate path uses. */
++static void _CiderTraceMdsClient(const char *step, unsigned rc)
++{
++	if (getenv("CIDER_TRACE_SECCERT")) {
++		fprintf(stderr, "CIDER_SECCERT mdsclient %s -> 0x%08x\n", step, rc);
++		fflush(stderr);
++	}
++}
+ 
+ //
+ // The MDS access object singleton
+@@ -40,8 +51,10 @@
+ 	: mMemoryFunctions(Allocator::standard())
+ {
+ 	StLock<Mutex> _(mInitLock);
+-	CssmError::check(MDS_Initialize(&mCallerGuid, &mMemoryFunctions,
+-		this, &mCDSA.DLHandle));
++	CSSM_RETURN initrc = MDS_Initialize(&mCallerGuid, &mMemoryFunctions,
++		this, &mCDSA.DLHandle);
++	_CiderTraceMdsClient("MDS_Initialize", initrc);
++	CssmError::check(initrc);
+ 	mCDSA.DBHandle = CSSM_INVALID_HANDLE;
+ }
+ 
+@@ -64,12 +77,15 @@
+ {
+ 	if (mCDSA.DBHandle == CSSM_INVALID_HANDLE) {
+ 		StLock<Mutex> _(mInitLock);
+-		if (mCDSA.DBHandle == CSSM_INVALID_HANDLE)
+-			CssmError::check(DbOpen(mCDSA.DLHandle, MDS_CDSA_DIRECTORY_NAME, NULL,
++		if (mCDSA.DBHandle == CSSM_INVALID_HANDLE) {
++			CSSM_RETURN openrc = DbOpen(mCDSA.DLHandle, MDS_CDSA_DIRECTORY_NAME, NULL,
+ 				CSSM_DB_ACCESS_READ,	// access mode
+ 				NULL,					// credentials
+ 				NULL,					// OpenParameters
+-				&mCDSA.DBHandle));
++				&mCDSA.DBHandle);
++			_CiderTraceMdsClient("DbOpen cdsa", openrc);
++			CssmError::check(openrc);
++		}
+ 	}
+ 	return mCDSA;
+ }

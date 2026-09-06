@@ -169,8 +169,43 @@ TWO HYPOTHESES DIED ON THE WAY, both worth recording:
   * The SecPointer destroys the ItemImpl. NO: it is alive with rc=1 when handed back. Worth testing
     because `handle()` deliberately does not retain a NEW object.
   * The plugin is missing. NO: the CL is linked into Security and registered in modloader as a static
-    plugin. The attach fails for some other reason, and naming it is the next step, inside `clHandle`
-    and the CSSM_ModuleAttach under it.
+    plugin.
+
+## The failing call, named: DbOpen on the MDS directory returns -50
+
+Walked the rest of the way with the same switch, adding a probe at each step that can throw
+(patches 0017 to 0020). The full chain, one run of Swift Publisher:
+
+    publicKey entered                      Certificate::publicKey
+    copyFirstFieldValue entered
+    AttachmentImpl activate entered        CssmClient, so the attach IS attempted
+    ModuleImpl activate entered
+    CSSM_Init -> 0x00000000                the CSSM session starts fine
+    mdsclient MDS_Initialize -> 0x00000000 MDS starts fine too
+    mdsclient DbOpen cdsa -> 0xffffffce    THIS IS THE FAILING CALL, 0xffffffce is -50
+    MdsComponent fetch: threw osStatus=-50
+    loadModule MdsComponent: threw osStatus=-50
+    CSSM_ModuleLoad -> 0xffffffce
+    clHandle threw osStatus=-50
+
+So the -50 is born in `MDSSession::DbOpen` on the "CDSA" directory and is passed up unchanged. It is
+NOT a CSSM error code: `END_API(CSSM)` only rebases a CSSM_RETURN in the common range, and a
+`CommonError` that is not a CssmError comes out as its raw `osStatus()`. A CSSM entry point returning
+a Security OSStatus therefore means something inside threw a MacOSError, not a CSSM error.
+
+CORRECTED FROM THE PREVIOUS SECTION: the failing step is `CSSM_ModuleLoad`, not `CSSM_ModuleAttach`.
+The attach is never reached. The earlier note naming the attach was a guess from the call chain, not
+a measurement.
+
+THREE MORE THINGS THAT ARE NOT THE CAUSE, each measured rather than argued:
+
+  * The MDS databases are missing or empty. NO. `mdsObject.db` (4.1K) and `mdsDirectory.db` (47.2K)
+    exist in the prefix, and both list all six built-in modules by name, `AppleX509CL`,
+    `*AppleX509CL` and "Apple built-in CL" among them. The record being looked up is there.
+  * securityd is absent. `MDSSession::DbOpen` contacts securityd first, so this was the obvious
+    suspect. Driven with launchd ON and with launchd OFF the trace is character for character
+    identical, so it does not separate the two.
+  * MDS itself failed to start. NO: `MDS_Initialize` returns 0 in the same run.
 
 A PLACEMENT LESSON, learned twice in this file: a probe placed after the first call in a function
 cannot tell a throw inside that call from the function never running. Both times the fix was an entry
@@ -180,7 +215,13 @@ The fix in commit 8b53add7 does not depend on which of those it is: the modern
 `SecCertificateCopyKey` answers correctly, so the legacy answer is only a fallback away.
 ## Where to look next
 
-Make the legacy path work, or make it stop being the path.
+Inside `MDSSession::DbOpen` (`vendor/src/security/OSX/libsecurity_mds/lib/MDSSession.cpp:685`). It has
+four steps that can throw and the -50 comes from one of them: the securityd handshake, the
+`updateDataBases()` rescan, the DbName mapping, and `DatabaseSession::DbOpen` on the real file. The
+name mapping can be ruled out by reading, since a bad name throws `CSSMERR_DL_INVALID_DB_NAME`, so
+the next probe only has to separate three.
+
+Then: make the legacy path work, or make it stop being the path.
 
 1. Ship the CSSM plugins. The sources are in the tree already:
    `vendor/src/security/OSX/libsecurity_apple_x509_cl` is the Certificate Library, with

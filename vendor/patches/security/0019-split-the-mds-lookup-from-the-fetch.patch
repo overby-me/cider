@@ -1,0 +1,42 @@
+--- a/OSX/libsecurity_cssm/lib/cssmmds.cpp
++++ b/OSX/libsecurity_cssm/lib/cssmmds.cpp
+@@ -28,17 +28,39 @@
+ #include "cssmmds.h"
+ #include <ctype.h>
+ #include <security_cdsa_client/dlquery.h>
++#include <stdio.h>
++#include <stdlib.h>
+ 
+ 
+ //
+ // Construct a MdsComponent.
+ // This will perform an MDS lookup in the Common table
+ //
++/* mds() and fetch() throw the same way and the caller only sees one status, so name the half.
++   Gated on CIDER_TRACE_SECCERT, the switch the certificate path uses. */
++static void _CiderTraceMds(const char *step, const char *detail)
++{
++	if (getenv("CIDER_TRACE_SECCERT")) {
++		fprintf(stderr, "CIDER_SECCERT MdsComponent %s: %s\n", step, detail);
++		fflush(stderr);
++	}
++}
++
+ MdsComponent::MdsComponent(const Guid &guid) : mMyGuid(guid)
+ {
+ 	using namespace MDSClient;
++	const char *phase = "mds";
++	try {
+ 	Table<Common> common(mds());	// MDS "CDSA Common" table
++	phase = "fetch";
+ 	mCommon = common.fetch(Attribute("ModuleID") == mMyGuid, CSSMERR_CSSM_MDS_ERROR);
++	}
++	catch (const CommonError &err) {
++		char detail[64];
++		snprintf(detail, sizeof(detail), "threw osStatus=%d", (int) err.osStatus());
++		_CiderTraceMds(phase, detail);
++		throw;
++	}
+ }
+ 
+ MdsComponent::~MdsComponent()
