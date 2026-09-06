@@ -1,5 +1,5 @@
---- a/src/Stream/CFSocketStream.c	2026-09-06 17:18:37.131931252 +0200
-+++ b/src/Stream/CFSocketStream.c	2026-09-06 17:18:21.532620063 +0200
+--- a/src/Stream/CFSocketStream.c	2026-09-06 17:42:41.105312271 +0200
++++ b/src/Stream/CFSocketStream.c	2026-09-06 17:42:22.222672026 +0200
 @@ -463,6 +463,31 @@
  static Boolean _CONNECTSetInfo_NoLock(_CFSocketStreamContext* ctxt, CFDictionaryRef settings);
  
@@ -53,7 +53,7 @@
  	
  	/* Get the existing list of handshakes. */
  	CFMutableArrayRef handshakes = (CFMutableArrayRef)CFDictionaryGetValue(ctxt->_properties, _kCFStreamPropertyHandshakes);
-@@ -5761,7 +5790,29 @@
+@@ -5761,7 +5790,79 @@
  			CFSocketEnableCallBacks(ctxt->_socket, kCFSocketReadCallBack);
  		
  		/* If no bytes read, return closed.  If couldn't read all, return "would block." */
@@ -78,13 +78,63 @@
 +				/* A 5 byte read is a TLS record header: type, version major/minor, length. */
 +				CIDER_TLS_LOG("read want=%u got=%u left=%ld rc=%d head=%s\n", (unsigned) try,
 +							  (unsigned) *dataLength, (long) i, (int) rc, head);
++
++				/* PROBE (task #199): the Certificate handshake message starts 0b <len24>, then a
++				 * 24 bit list length, then a 24 bit length and the DER of the first certificate.
++				 * Hand that DER straight to Security and see whether it can make a certificate of
++				 * it at all, which is the question the errSSLBadCert verdict turns on. */
++				if (*dataLength > 10 && seen[0] == 0x0b) {
++					unsigned certlen = (seen[7] << 16) | (seen[8] << 8) | seen[9];
++
++					if (certlen > 0 && certlen + 10 <= *dataLength) {
++						CFDataRef der = CFDataCreate(kCFAllocatorDefault, seen + 10, certlen);
++						SecCertificateRef parsed = der ? SecCertificateCreateWithData(kCFAllocatorDefault, der) : NULL;
++
++						CIDER_TLS_LOG("cert parse len=%u -> %s\n", certlen, parsed ? "OK" : "NULL");
++
++						/* SecureTransport builds a SecTrust for the chain even when evaluation is
++						 * off, so a failure to CREATE one lands as a certificate verdict too. */
++						if (parsed) {
++							SecPolicyRef policy = SecPolicyCreateSSL(true, NULL);
++							CFArrayRef certs = CFArrayCreate(kCFAllocatorDefault, (const void**) &parsed, 1,
++															 &kCFTypeArrayCallBacks);
++							SecTrustRef trust = NULL;
++							OSStatus tst = (policy && certs)
++									? SecTrustCreateWithCertificates(certs, policy, &trust)
++									: -1;
++
++							SecKeyRef pub = NULL;
++							OSStatus kst = SecCertificateCopyPublicKey(parsed, &pub);
++							/* The modern entry point is a DIFFERENT implementation in this binary,
++							 * so ask both: one may work where the legacy shim does not. */
++							SecKeyRef modern = SecCertificateCopyKey(parsed);
++
++							CIDER_TLS_LOG("policy=%s trust create=%d trust=%s pubkey=%d key=%s size=%ld modern=%s msize=%ld\n",
++										  policy ? "OK" : "NULL", (int) tst, trust ? "OK" : "NULL",
++										  (int) kst, pub ? "OK" : "NULL",
++										  pub ? (long) SecKeyGetBlockSize(pub) : -1L,
++										  modern ? "OK" : "NULL",
++										  modern ? (long) SecKeyGetBlockSize(modern) : -1L);
++							if (modern) CFRelease(modern);
++							if (pub) CFRelease(pub);
++							if (trust) CFRelease(trust);
++							if (certs) CFRelease(certs);
++							if (policy) CFRelease(policy);
++						}
++						if (parsed) CFRelease(parsed);
++						if (der) CFRelease(der);
++					}
++					else {
++						CIDER_TLS_LOG("cert parse skipped certlen=%u got=%u\n", certlen, (unsigned) *dataLength);
++					}
++				}
 +			}
 +			return rc;
 +		}
  	}
  	
  	/* Error condition means no bytes read. */
-@@ -5984,11 +6035,13 @@
+@@ -5984,11 +6085,13 @@
  
  /* static */ void
  _PerformSecurityHandshake_NoLock(_CFSocketStreamContext* ctxt) {
@@ -99,7 +149,7 @@
  	SSLContextRef ssl = *((SSLContextRef*)CFDataGetBytePtr((CFDataRef)CFDictionaryGetValue(ctxt->_properties,
  																						   kCFStreamPropertySocketSSLContext)));
  	
-@@ -6076,7 +6129,8 @@
+@@ -6076,7 +6179,8 @@
  	
  	/* Perform the SSL handshake. */
  	result = SSLHandshake(ssl);

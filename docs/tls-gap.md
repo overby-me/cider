@@ -71,18 +71,45 @@ the binary first.
 
 ## Where to look next
 
-Both of the obvious candidates are now dead: the bytes are right, and the certificate is ordinary. So
-the rejection is something SecureTransport does with correct input, inside prebuilt Apple code, and
-the next probe has to be in there rather than around it.
+## The fault: the legacy public key call returns nothing
 
-The most direct question is whether `SecCertificateCreateWithData` works at all under cider. If it
-returns NULL for a perfectly good DER certificate, every chain is a bad certificate and the verdict
-follows with no mystery. Two ways in:
+CFNetwork already links Security, so the probe asks Security directly, feeding it the certificate
+bytes taken straight out of the Certificate message on the wire. Every step works except one:
 
-1. From our own code, which already links Security: call it from CFNetwork on a certificate we
-   construct, and print whether the result is NULL. A self test beats a hook, and it needs no
-   symbolication.
-2. In the prebuilt binary, the way `symbolicate a prebuilt dylib from your own trace` describes:
-   anchor the slide with one dlsym of a known export, then break on the certificate entry points.
+    cert parse len=1687 -> OK
+    policy=OK trust create=0 trust=OK pubkey=-50 key=NULL size=-1 modern=OK msize=256
 
-Do not go back to `vendor/src/security` for the answer, and do not re-test the read callback.
+Read that line carefully, because it is the whole answer:
+
+  * `SecCertificateCreateWithData` PARSES the certificate. Not a decode failure.
+  * `SecPolicyCreateSSL` and `SecTrustCreateWithCertificates` both SUCCEED, status 0.
+  * `SecCertificateCopyPublicKey`, the LEGACY entry point, returns -50 (`errSecParam`, `SecBase.h:335`)
+    and hands back a NULL key.
+  * `SecCertificateCopyKey`, the MODERN entry point, returns a correct key whose block size is 256
+    bytes, which is exactly the RSA 2048 key the certificate carries.
+
+So the certificate is good, the modern API reads it correctly, and only the legacy shim fails. In the
+built Security the two live far apart (`SecCertificateCopyKey` at 0x6dd00, `SecCertificateCopyPublicKey`
+at 0x2362e0), so they are different implementations, and the legacy one is the CSSM and CDSA path that
+cider has never wired up.
+
+Without a peer public key there is no key exchange, and a certificate you cannot take a key out of is
+reported as a bad certificate. That is the errSSLBadCert.
+
+CAUTION, stated as a hypothesis rather than a measurement: that SecureTransport itself takes the
+legacy path is an inference from the two facts above, not something traced inside the prebuilt binary.
+It is consistent with everything measured, and the legacy failure is real either way.
+
+## Where to look next
+
+Make the legacy path work, or make it stop being the path.
+
+1. Find out why `SecCertificateCopyPublicKey` answers `errSecParam`. It is the CSSM and CDSA layer,
+   so the question is which module lookup returns nothing under cider.
+2. If the legacy implementation cannot be fixed, the loader can redirect the symbol, which this tree
+   has done before for a stdlib symbol (task #172). Note the limit: a call SecureTransport makes to
+   its OWN function inside the same binary is direct and does not go through the symbol table, so a
+   redirect helps callers and may not help Security talk to itself.
+
+Do not go back to `vendor/src/security` for the answer, do not re-test the read callback, and do not
+re-test certificate parsing or trust creation. All three are measured good.
