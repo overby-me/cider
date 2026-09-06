@@ -1,0 +1,21 @@
+--- a/OSX/libsecurity_keychain/lib/SecItem.cpp	2026-09-06 19:58:11.974283749 +0200
++++ b/OSX/libsecurity_keychain/lib/SecItem.cpp	2026-09-06 19:58:11.956283650 +0200
+@@ -3243,6 +3243,18 @@
+ 				(itemParams->attrList->count == 0) ? NULL : itemParams->attrList,
+ 				(SecKeychainSearchRef*)&itemParams->search);
+ 		CIDER_SECITEM("osx SearchCreateFromAttributes back status=%d", (int) status);
++		/*
++		 * NO KEYCHAIN IS NOT A MALFORMED QUERY. This container has no keychain file at all, so the
++		 * legacy search cannot build a cursor over the default list and BEGIN_SECAPI turns the throw
++		 * into errSecParam. An application asking whether a secret is saved must hear no, which is
++		 * errSecItemNotFound, and then ask its user; errSecParam tells it its own query was wrong
++		 * and invites it to report a bug instead (task #140). Only the DEFAULT list is remapped, so
++		 * a caller that names a keychain still gets the real error.
++		 */
++		if (status == errSecParam && itemParams->searchList == NULL) {
++			status = errSecItemNotFound;
++			CIDER_SECITEM("osx no keychain, reporting errSecItemNotFound");
++		}
+ 	}
+ 
+ error_exit:
