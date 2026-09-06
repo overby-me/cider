@@ -182,17 +182,46 @@ extern int O2FontAppFontGeneration(void);
     return nil;
 }
 
+/*
+ * BOLD AND ITALIC ARE THE ONLY TRAITS A CALLER IS ASKING ABOUT, so match on those two bits and
+ * score the rest, the way Apple picks a face rather than demanding an identical mask.
+ *
+ * An exact == here found nothing for any real family, because our faces carry the fontconfig
+ * derived extras: DejaVu Sans Bold is NSUnitalicFontMask|NSBoldFontMask, not NSBoldFontMask, and
+ * a caller adding NSItalicFontMask to it produces a mask that contradicts itself (both italic and
+ * unitalic) and can never equal any face. That is why convertFont:toHaveTrait: failed 1059 times in
+ * one Swift Publisher startup and every styled run fell back to the plain face.
+ */
 - (NSFontTypeface *) typefaceWithTraits: (NSFontTraitMask) traits {
     int i, count = [_typefaces count];
+    BOOL wantBold = (traits & NSBoldFontMask) && !(traits & NSUnboldFontMask);
+    BOOL wantItalic = (traits & NSItalicFontMask) && !(traits & NSUnitalicFontMask);
+    NSFontTypeface *best = nil;
+    int bestScore = -1;
 
     for (i = 0; i < count; i++) {
         NSFontTypeface *typeface = [_typefaces objectAtIndex: i];
+        NSFontTraitMask have = [typeface traits];
+        BOOL isBold = (have & NSBoldFontMask) != 0;
+        BOOL isItalic = (have & NSItalicFontMask) != 0;
 
-        if ([typeface traits] == traits)
-            return typeface;
+        if (isBold != wantBold || isItalic != wantItalic)
+            continue;
+
+        /* Among the faces that carry the asked-for bold and italic, prefer the one that matches the
+         * width the caller asked for, so a plain request never lands on a condensed face. */
+        int score = 0;
+        if ((traits & NSNarrowFontMask) == (have & NSNarrowFontMask))
+            score++;
+        if ((traits & NSExpandedFontMask) == (have & NSExpandedFontMask))
+            score++;
+        if (score > bestScore) {
+            bestScore = score;
+            best = typeface;
+        }
     }
 
-    return nil;
+    return best;
 }
 
 - (void) addTypeface: (NSFontTypeface *) typeface {

@@ -444,6 +444,10 @@ static Class _fontPanelFactory;
 {
     NSFontFamily *family =
             [NSFontFamily fontFamilyWithTypefaceName: [font fontName]];
+    /* Same name-is-not-a-typeface-name fallback as convertFont:toHaveTrait:, so the menu item
+     * enable state agrees with what the conversion will actually do. */
+    if (family == nil)
+        family = [NSFontFamily fontFamilyWithName: [font familyName]];
     NSFontTypeface *typeface = [family typefaceWithName: [font fontName]];
     NSFontTraitMask traits = [typeface traits];
 
@@ -476,6 +480,14 @@ static Class _fontPanelFactory;
 
     NSFontFamily *family =
             [NSFontFamily fontFamilyWithTypefaceName: [font fontName]];
+    /*
+     * A FONT NAME IS NOT A TYPEFACE NAME. Our typefaces are named by their full fontconfig
+     * descriptor, so a plain name like San Francisco matches none of them and the lookup above
+     * answers nil, which then made every trait below start from an empty mask on a nil family.
+     * convertFont:toNotHaveTrait: in this same file already goes by family name for that reason.
+     */
+    if (family == nil)
+        family = [NSFontFamily fontFamilyWithName: [font familyName]];
     NSFontTypeface *typeface = [family typefaceWithName: [font fontName]];
     NSFontTraitMask traits = [typeface traits];
     NSFontTypeface *newface;
