@@ -1,5 +1,5 @@
---- a/src/Stream/CFSocketStream.c	2026-09-06 17:42:41.105312271 +0200
-+++ b/src/Stream/CFSocketStream.c	2026-09-06 17:42:22.222672026 +0200
+--- A/src/Stream/CFSocketStream.c	2026-09-06 19:36:21.515944410 +0200
++++ B/src/Stream/CFSocketStream.c	2026-09-06 19:36:21.516343728 +0200
 @@ -463,6 +463,31 @@
  static Boolean _CONNECTSetInfo_NoLock(_CFSocketStreamContext* ctxt, CFDictionaryRef settings);
  
@@ -149,12 +149,23 @@
  	SSLContextRef ssl = *((SSLContextRef*)CFDataGetBytePtr((CFDataRef)CFDictionaryGetValue(ctxt->_properties,
  																						   kCFStreamPropertySocketSSLContext)));
  	
-@@ -6076,7 +6179,8 @@
+@@ -6076,7 +6179,19 @@
  	
  	/* Perform the SSL handshake. */
  	result = SSLHandshake(ssl);
 -	
 +	CIDER_TLS_LOG("SSLHandshake result=%d\n", (int) result);
++
++	/* On anything but would-block, name the version and suite that were actually negotiated: which
++	 * record layer path runs depends on both, and the record header version alone is not it. */
++	if (_CiderTraceTLS() && result != errSSLWouldBlock) {
++		SSLProtocol negotiated = kSSLProtocolUnknown;
++		SSLCipherSuite suite = 0;
++
++		(void) SSLGetNegotiatedProtocolVersion(ssl, &negotiated);
++		(void) SSLGetNegotiatedCipher(ssl, &suite);
++		CIDER_TLS_LOG("negotiated protocol=%d cipher=0x%04x\n", (int) negotiated, (unsigned) suite);
++	}
 +
  	/* If not blocking, can do something. */
  	if (result != errSSLWouldBlock) {

@@ -1,0 +1,20 @@
+--- B/src/Stream/CFSocketStream.c	2026-09-06 19:36:21.516343728 +0200
++++ C/src/Stream/CFSocketStream.c	2026-09-06 19:36:21.516628993 +0200
+@@ -6392,7 +6392,16 @@
+ 		
+ 		/* Figure out the correct security level to set and set it. */
+         value = CFDictionaryGetValue(settings, kCFStreamSSLLevel);
+-        if ((!value || CFEqual(value, kCFStreamSocketSecurityLevelNegotiatedSSL)) && SSLSetProtocolVersion(security, kTLSProtocol1))
++        /*
++         * NEGOTIATED MEANS THE BEST AVAILABLE, and SSLSetProtocolVersion(kTLSProtocol1) means TLS 1.0
++         * AND BELOW, which is a ceiling rather than a floor. It was the best available when this code
++         * was written; today it pins every HTTPS connection in cider to TLS 1.0 with CBC, which is
++         * both deprecated and the path a handshake was dying on (task #199). Ask for the range
++         * instead, so a modern server can offer TLS 1.2 and AEAD.
++         */
++        if ((!value || CFEqual(value, kCFStreamSocketSecurityLevelNegotiatedSSL)) &&
++            (SSLSetProtocolVersionMin(security, kTLSProtocol1) ||
++             SSLSetProtocolVersionMax(security, kTLSProtocol12)))
+             break;
+ 
+         else if (value) {
