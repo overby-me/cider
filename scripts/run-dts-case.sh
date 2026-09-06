@@ -4,11 +4,14 @@
 #   buck2 build //vendor/src:<case-target> --show-output      # note the path it prints
 #   scripts/run-dts-case.sh <that path>
 #
-# EXIT CODE IS THE RESULT: 0 passed, 134 an assertion fired, 1 the case could not even load its
-# framework. The cases print nothing on success, so ALWAYS check a known-failing one before
-# believing a zero. `dts_System_Library_PrivateFrameworks_PubSub_framework_test_test_PubSub_variable`
-# is a good negative control: PubSub.framework genuinely does not exist here, so it exits 1 with
-# "image not found".
+# THE VERDICT IS THE OUTPUT, NOT THE EXIT CODE. `cider shell` does NOT propagate a case that dies
+# on a signal: a fired assertion aborts the guest process and cider still exits 0. Measured, after
+# I briefly reported a pass on that basis. So this reads the output for the failure markers and
+# prints PASS or FAIL itself, and exits 1 on FAIL.
+#
+# The cases print NOTHING on success, so always check a known-failing one before believing a pass.
+# `dts_System_Library_PrivateFrameworks_PubSub_framework_test_test_PubSub_variable` is the negative
+# control: PubSub.framework genuinely does not exist here, so it reports "image not found".
 #
 # The binary lives in buck-out on the host, which the container sees under /Volumes/SystemRoot.
 # The env block mirrors scripts/app-drive.sh so the case runs against the tree you just built
@@ -40,6 +43,9 @@ mkdir -p "$(dirname "$PREFIX")"
 pkill -9 -x 'mldr|cider|ciderd|shellspawn' 2>/dev/null
 sleep 1
 
+out=$(mktemp)
+trap 'rm -f "$out"' EXIT
+
 env LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
 	CIDERPREFIX="$PREFIX" CIDER_NO_LAUNCHD="${LAUNCHD:-1}" \
 	LD_LIBRARY_PATH="$ELF_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
@@ -48,9 +54,20 @@ env LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
 	${TRACE_ENV:-} \
 	DSERVER_PATH="$(realpath "$CIDERD")" DSERVER_MLDR_PATH="$(realpath "$MLDR")" \
 	DSERVER_LIBEXEC_PATH="$(realpath "$RT")/libexec/cider" \
-	timeout "${LIMIT:-120}" "$CIDER" shell "/Volumes/SystemRoot$(realpath "$hostbin")"
-rc=$?
+	timeout "${LIMIT:-120}" "$CIDER" shell "/Volumes/SystemRoot$(realpath "$hostbin")" 2>&1 \
+	| tee /dev/stderr | grep -v '^dyld: shared cache' > "$out"
+rc=${PIPESTATUS[0]}
 
 pkill -9 -x 'mldr|cider|ciderd|shellspawn' 2>/dev/null
-echo "TEST EXIT=$rc"
-exit "$rc"
+
+# Anything the harness prints is a failure; silence is the pass.
+if grep -qE 'Assertion failed|has failed|Unable to get|image not found' "$out"; then
+	echo "FAIL (cider exit $rc)"
+	exit 1
+fi
+if [ "$rc" -ne 0 ]; then
+	echo "FAIL: cider exit $rc with no diagnostic"
+	exit 1
+fi
+echo "PASS"
+
