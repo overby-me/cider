@@ -2,9 +2,10 @@
 
 RESOLVED 2026-09-06. Two bugs, both in cider, both measured and fixed:
 
-  1. `SecCertificateCopyPublicKey` answered errSecParam with a NULL key, because its legacy route
-     needs CSSM plugins that do not exist on disk. It now falls back to `SecCertificateCopyKey`
-     (commit 8b53add7). `pubkey=-50 key=NULL` became `pubkey=0 key=OK size=256`.
+  1. `SecCertificateCopyPublicKey` answered errSecParam with a NULL key. It now falls back to
+     `SecCertificateCopyKey` (commit 8b53add7). `pubkey=-50 key=NULL` became
+     `pubkey=0 key=OK size=256`. The throw is inside `Certificate::publicKey()`, NOT in the ItemImpl
+     creation before it and NOT in a missing CSSM plugin; see the correction below.
   2. `kCFStreamSocketSecurityLevelNegotiatedSSL` called `SSLSetProtocolVersion(kTLSProtocol1)`, which
      is a CEILING of TLS 1.0, so every HTTPS connection was pinned to a TLS 1.0 CBC path that could
      not authenticate the first record it read. It now asks for a range up to TLS 1.2
@@ -125,8 +126,9 @@ Read that line carefully, because it is the whole answer:
 
 So the certificate is good, the modern API reads it correctly, and only the legacy shim fails. In the
 built Security the two live far apart (`SecCertificateCopyKey` at 0x6dd00, `SecCertificateCopyPublicKey`
-at 0x2362e0), so they are different implementations, and the legacy one is the CSSM and CDSA path that
-cider has never wired up.
+at 0x2362e0), so they are different implementations, and the legacy one goes through CSSM and CDSA.
+Which part of that path throws is answered in the correction below, and it is not what this paragraph
+originally guessed.
 
 Without a peer public key there is no key exchange, and a certificate you cannot take a key out of is
 reported as a bad certificate. That is the errSSLBadCert.
@@ -135,26 +137,30 @@ CAUTION, stated as a hypothesis rather than a measurement: that SecureTransport 
 legacy path is an inference from the two facts above, not something traced inside Security itself.
 It is consistent with everything measured, and the legacy failure is real either way.
 
-## Why the legacy call fails: the CSSM plugins are not there
+## CORRECTION: the CSSM plugins are NOT missing, and that story was wrong
 
-The legacy key path runs on CSSM, which reaches the Certificate Library plugin, `AppleX509CL`, and
-that plugin is a bundle on disk. Three measurements finish the chain:
+An earlier version of this document said the legacy call fails because the CSSM plugin bundles
+(AppleX509CL and friends) do not exist on disk. THAT WAS WRONG. Measured afterwards:
 
-  * The built Security DOES carry CSSM: 243 `CSSM_` entry points, including `CSSM_Init`,
-    `CSSM_ModuleLoad`, `CSSM_ModuleAttach` and `CSSM_CL_CertGetKeyInfo`. The dispatcher is present.
-  * MDS, the module directory CSSM looks modules up in, EXISTS and is populated. The databases under
-    `private/var/db/mds/system` carry records for `AppleCSP`, `AppleCSPDL`, `AppleX509CL` and
-    `AppleX509TP`.
-  * NONE of those four bundles exists, in the app prefix or in the runtime. The only thing under
-    `/System/Library/Security` is `Certificates.bundle`, which is the trust store, a plist and
-    resources, not a CSSM plugin.
+  * The plugin CODE is linked into Security: 123 `AppleX509CL` symbols and 71 CSP symbols.
+  * `modloader.cpp` registers all six as built-ins,
+    `mPlugins["*AppleX509CL"] = new StaticPlugin(builtin__apple_x509_cl)`, and `NO_BUILTIN_PLUGINS`
+    is not defined anywhere in the build.
+  * The installed `cl_common.mdsinfo` says `BuiltIn: true` with `Path: *AppleX509CL`, which is
+    Apple's convention for a built-in module. A bundle on disk is NOT supposed to exist.
 
-So the directory advertises four modules and the filesystem has none of them. A module load that
-cannot find its bundle is exactly the `errSecParam` the legacy call returns.
+So the absence of bundles under `/System/Library/Security` was never evidence of anything. I read a
+missing FILE as a missing FEATURE, which is the same shape of mistake as reading a missing string or
+a missing export as missing code.
 
-That last link, that the load fails BECAUSE the bundle is missing, is the standard CSSM architecture
-rather than something traced inside Security itself. Everything either side of it is measured.
+WHERE THE FAILURE ACTUALLY IS, as far as it has been measured: the legacy ItemImpl certificate is
+created SUCCESSFULLY. `CIDER_TRACE_SECCERT=1` prints `ItemImpl create -> OK`, with a positive control
+on that line so its silence would have been readable. The throw that becomes errSecParam therefore
+happens in the step after it, inside `Certificate::publicKey()`, which is where the CL and CSP key
+extraction lives. That is as far as this went, and it is NOT localised further.
 
+The fix in commit 8b53add7 does not depend on which of those it is: the modern
+`SecCertificateCopyKey` answers correctly, so the legacy answer is only a fallback away.
 ## Where to look next
 
 Make the legacy path work, or make it stop being the path.

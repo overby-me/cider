@@ -1,0 +1,40 @@
+--- a/OSX/libsecurity_keychain/lib/SecCertificate.cpp	2026-09-06 20:12:51.287732028 +0200
++++ b/OSX/libsecurity_keychain/lib/SecCertificate.cpp	2026-09-06 20:12:51.271139561 +0200
+@@ -104,8 +104,36 @@
+ 		SecPointer<Certificate> certificatePtr(new Certificate(cssmCertData, CSSM_CERT_X_509v3, CSSM_CERT_ENCODING_DER));
+ 		implCertRef = certificatePtr->handle();
+ 	}
+-	catch (...) {}
++	/*
++	 * A SILENT CATCH HIDES THE WHOLE LEGACY CERTIFICATE PATH. Returning NULL here makes every caller
++	 * that goes through BEGIN_SECCERTAPI answer errSecParam, which reads as a bad argument rather
++	 * than as whatever actually went wrong in here (task #199).
++	 */
++	catch (const MacOSError &err) {
++		if (getenv("CIDER_TRACE_SECCERT")) {
++			fprintf(stderr, "CIDER_SECCERT ItemImpl create threw MacOSError %d\n", (int) err.osStatus());
++			fflush(stderr);
++		}
++	}
++	catch (const CommonError &err) {
++		if (getenv("CIDER_TRACE_SECCERT")) {
++			fprintf(stderr, "CIDER_SECCERT ItemImpl create threw CommonError %d\n", (int) err.osStatus());
++			fflush(stderr);
++		}
++	}
++	catch (...) {
++		if (getenv("CIDER_TRACE_SECCERT")) {
++			fprintf(stderr, "CIDER_SECCERT ItemImpl create threw something else\n");
++			fflush(stderr);
++		}
++	}
+ 	CFRelease(data);
++	/* Positive control for the traces above: silence here would otherwise be unreadable, because a
++	 * throw and a path never taken look identical from outside. */
++	if (getenv("CIDER_TRACE_SECCERT")) {
++		fprintf(stderr, "CIDER_SECCERT ItemImpl create -> %s\n", implCertRef ? "OK" : "NULL");
++		fflush(stderr);
++	}
+ 	return implCertRef;
+ }
+ 
