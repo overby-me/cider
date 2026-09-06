@@ -39,6 +39,27 @@ across a full run, while `TRACE_ENV` forwarding was proven working in the same s
 
 **Not a missing symbol.** `scripts/macho-undefined.py` on Security.framework reports zero unresolved.
 
+**Not our read callback, and not the partial read.** `CIDER_TRACE_TLS` also logs every read with the
+requested length, the delivered length and the first bytes. The wire is framed correctly and every
+byte asked for is delivered:
+
+    read want=5    got=5    rc=0     head=16 03 01 00 61     record header, handshake, length 0x61
+    read want=97   got=97   rc=0     head=02 00 00 5d 03     ServerHello
+    read want=5    got=5    rc=0     head=16 03 01 19 75     record header, length 0x1975
+    read want=6517 got=5397 rc=-9803 head=0b 00 19 71 00     Certificate, delivered short
+    read want=1120 got=1120 rc=0                             the remaining 1120 bytes, 5397+1120=6517
+    SSLHandshake result=-9808
+
+Forcing the callback to hand back the whole request or nothing (a second temporary probe, also not
+committed) made the certificate arrive in ONE piece, `want=6517 got=6517 rc=0`, and the handshake
+still failed with the same -9808. So the chunking is not the problem either.
+
+**Not an exotic certificate.** The peer is `www.belightsoft.com` (from the welcome URL baked into the
+application), and its chain is four certificates ending at USERTrust, which matches the 6513 byte
+Certificate message we receive. The leaf is entirely ordinary: X.509 v3, sha256WithRSAEncryption,
+RSA 2048, standard extensions, and currently inside its validity window. Nothing there needs a modern
+parser.
+
 ## The provenance trap, which cost real time
 
 The TLS engine is APPLE PREBUILT, not built from `vendor/src/security`. The built Security.framework
@@ -50,15 +71,18 @@ the binary first.
 
 ## Where to look next
 
-The failure is on the decode side of the certificate, inside prebuilt Apple code. Two candidates, in
-order:
+Both of the obvious candidates are now dead: the bytes are right, and the certificate is ordinary. So
+the rejection is something SecureTransport does with correct input, inside prebuilt Apple code, and
+the next probe has to be in there rather than around it.
 
-1. The bytes SecureTransport is handed are not the bytes on the wire. The read callback is ours:
-   `_SecurityReadFunc_NoLock` in `CFSocketStream.c`, which buffers and returns `errSSLWouldBlock` on a
-   partial read. A length or offset error there would present as a malformed certificate.
-2. The certificate itself is one this vintage of SecureTransport will not parse. The peer is a modern
-   server, so a signature algorithm or extension it predates is plausible.
+The most direct question is whether `SecCertificateCreateWithData` works at all under cider. If it
+returns NULL for a perfectly good DER certificate, every chain is a bad certificate and the verdict
+follows with no mystery. Two ways in:
 
-Trace inside the prebuilt binary the way `symbolicate a prebuilt dylib from your own trace` describes:
-anchor the slide with one dlsym of a known export, then hook the certificate entry points and see
-which call produces the verdict. Do not go back to `vendor/src/security` for the answer.
+1. From our own code, which already links Security: call it from CFNetwork on a certificate we
+   construct, and print whether the result is NULL. A self test beats a hook, and it needs no
+   symbolication.
+2. In the prebuilt binary, the way `symbolicate a prebuilt dylib from your own trace` describes:
+   anchor the slide with one dlsym of a known export, then break on the certificate entry points.
+
+Do not go back to `vendor/src/security` for the answer, and do not re-test the read callback.

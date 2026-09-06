@@ -1,5 +1,5 @@
---- a/src/Stream/CFSocketStream.c	2026-09-06 16:42:54.233115331 +0200
-+++ b/src/Stream/CFSocketStream.c	2026-09-06 16:43:23.052273283 +0200
+--- a/src/Stream/CFSocketStream.c	2026-09-06 17:18:37.131931252 +0200
++++ b/src/Stream/CFSocketStream.c	2026-09-06 17:18:21.532620063 +0200
 @@ -463,6 +463,31 @@
  static Boolean _CONNECTSetInfo_NoLock(_CFSocketStreamContext* ctxt, CFDictionaryRef settings);
  
@@ -53,7 +53,38 @@
  	
  	/* Get the existing list of handshakes. */
  	CFMutableArrayRef handshakes = (CFMutableArrayRef)CFDictionaryGetValue(ctxt->_properties, _kCFStreamPropertyHandshakes);
-@@ -5984,11 +6013,13 @@
+@@ -5761,7 +5790,29 @@
+ 			CFSocketEnableCallBacks(ctxt->_socket, kCFSocketReadCallBack);
+ 		
+ 		/* If no bytes read, return closed.  If couldn't read all, return "would block." */
+-        return (!*dataLength ? errSSLClosedAbort : (try == *dataLength) ? 0 : errSSLWouldBlock);
++		{
++			OSStatus rc = (!*dataLength ? errSSLClosedAbort : (try == *dataLength) ? 0 : errSSLWouldBlock);
++
++			/* Capped: SecureTransport asks per record, and an unbounded print changes the timing
++			 * this is meant to observe. The first calls are the ones that carry the certificate. */
++			static int reads = 0;
++
++			if (_CiderTraceTLS() && reads < 40) {
++				const UInt8* seen = (const UInt8*) data;
++				unsigned n = (*dataLength < 5) ? *dataLength : 5;
++				char head[24];
++				unsigned k;
++
++				reads++;
++				for (k = 0; k < n; k++)
++					snprintf(head + k * 3, 4, "%02x ", seen[k]);
++				head[n * 3] = '\0';
++				/* A 5 byte read is a TLS record header: type, version major/minor, length. */
++				CIDER_TLS_LOG("read want=%u got=%u left=%ld rc=%d head=%s\n", (unsigned) try,
++							  (unsigned) *dataLength, (long) i, (int) rc, head);
++			}
++			return rc;
++		}
+ 	}
+ 	
+ 	/* Error condition means no bytes read. */
+@@ -5984,11 +6035,13 @@
  
  /* static */ void
  _PerformSecurityHandshake_NoLock(_CFSocketStreamContext* ctxt) {
@@ -68,7 +99,7 @@
  	SSLContextRef ssl = *((SSLContextRef*)CFDataGetBytePtr((CFDataRef)CFDictionaryGetValue(ctxt->_properties,
  																						   kCFStreamPropertySocketSSLContext)));
  	
-@@ -6076,7 +6107,8 @@
+@@ -6076,7 +6129,8 @@
  	
  	/* Perform the SSL handshake. */
  	result = SSLHandshake(ssl);
