@@ -288,8 +288,9 @@ typedef struct __VFlags {
         //[coder encodeObject: _backgroundFilters
         //             forKey: @"NSViewBackgroundFilters"];
         [coder encodeObject: _animations forKey: @"NSViewAnimations"];
-        //[coder encodeBool: _canDrawConcurrently
-        //           forKey: @"NSViewCanDrawConcurrently"];
+        /* The decoder reads this key back, so encoding it keeps the round trip whole. */
+        [coder encodeBool: _canDrawConcurrently
+                   forKey: @"NSViewCanDrawConcurrently"];
         [coder encodeBool: _wantsLayer forKey: @"NSViewIsLayerTreeHost"];
         [coder encodeInteger: _layerContentsRedrawPolicy
                       forKey: @"NSViewLayerContentsRedrawPolicy"];
@@ -3105,9 +3106,17 @@ static NSView *viewBeingPrinted = nil;
            (_window != nil && ![self isHiddenOrHasHiddenAncestor]);
 }
 
+/*
+ * THE ANSWER IS WHATEVER WAS SET, not a constant NO.
+ *
+ * Both halves were NSUnimplementedMethod, so the setter dropped the value and the getter denied it
+ * had ever been set. An application that turns concurrent drawing on and reads it back was told no,
+ * and the nib decoder above sets this key too, so a view archived with it lost the flag as well.
+ * We still draw on the main thread only, which is allowed: the flag is permission, not a promise.
+ * Swift Publisher sets it on 20 views at startup.
+ */
 - (BOOL) canDrawConcurrently {
-    NSUnimplementedMethod();
-    return NO;
+    return _canDrawConcurrently;
 }
 
 - (void) viewWillDraw {
@@ -3115,7 +3124,7 @@ static NSView *viewBeingPrinted = nil;
 }
 
 - (void) setCanDrawConcurrently: (BOOL) canDraw {
-    NSUnimplementedMethod();
+    _canDrawConcurrently = canDraw;
 }
 
 /*

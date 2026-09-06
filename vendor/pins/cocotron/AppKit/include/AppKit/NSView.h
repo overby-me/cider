@@ -128,6 +128,7 @@ APPKIT_EXPORT const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPre
     NSRect _visibleRect;
     NSFocusRingType _focusRingType;
 
+    BOOL _canDrawConcurrently;
     BOOL _wantsLayer;
     CALayer *_layer;
     NSArray *_contentFilters;
