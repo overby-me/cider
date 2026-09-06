@@ -1,6 +1,15 @@
 --- a/OSX/libsecurityd/lib/ssclient.cpp
 +++ b/OSX/libsecurityd/lib/ssclient.cpp
-@@ -186,9 +186,18 @@
+@@ -92,6 +92,8 @@
+     task_id_token_t self_token = TASK_ID_TOKEN_NULL;
+ 
+     kern_return_t kr = task_create_identity_token(mach_task_self(), &self_token);
++    CIDER_SSCLNT("task_create_identity_token kr=0x%x token=0x%x self=0x%x", (unsigned) kr,
++        (unsigned) self_token, (unsigned) mach_task_self());
+     if (kr == MIG_BAD_ID) {
+         self_token = mach_task_self();
+     } else {
+@@ -186,9 +188,18 @@
  	
  	task_id_token_t token = self_token_create();
  	CIDER_SSCLNT("setup call");

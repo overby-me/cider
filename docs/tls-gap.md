@@ -236,19 +236,39 @@ with the same manufactured -50 and never retries.
 So chasing -50 as if it were a parameter error was chasing a placeholder. The real error is rcode=1
 from securityd, and it is only visible in securityd's syslog line or with a probe below the nexus.
 
-## Where the fault is now: securityd's setup handler
+## The bottom of it: an identity token that does not resolve to a task
 
-`ucsp_server_setup` in `vendor/src/security/securityd/src/transition.cpp:241` does two things that
-can fail before it answers:
+`ucsp_server_setup` in `vendor/src/security/securityd/src/transition.cpp` does two things before it
+answers, and the first one fails (patch 0023):
 
-    kern_return_t kr = task_identity_token_get_task_port(taskToken, TASK_FLAVOR_CONTROL, &taskPort);
-    MachPlusPlus::check(kr);
-    Server::active().setupConnection(Server::connectNewProcess, replyPort, taskPort, auditToken, &info);
+    setup entered
+    get_task_port token=0x1e03 kr=0x4 taskPort=0x0
 
-`END_IPCN(CSSM)` maps a MachPlusPlus::Error's default case to `CSSM_ERRCODE_INTERNAL_ERROR`, which is
-exactly the 1 we measure, so the task-port conversion is the first thing to probe. It is NOT ruled
-out by the routine existing: `task_ident.c` is compiled into ciderd (`vendor/pins/ciderd/xnu-sys/BUCK`),
-but compiled in is not the same as working, and `setupConnection` can produce a 1 as well.
+`kr=0x4` is `KERN_INVALID_ARGUMENT`, from
+`task_identity_token_get_task_port(taskToken, TASK_FLAVOR_CONTROL, &taskPort)`. There is no
+`setupConnection returned` line, so `MachPlusPlus::check(kr)` throws, `END_IPCN(CSSM)` maps a
+MachPlusPlus::Error's default case to `CSSM_ERRCODE_INTERNAL_ERROR`, and that is the 1 the client
+reads. So the whole -50 stands on this one kern_return.
+
+The routine IS compiled into ciderd (`task_ident.c`, `vendor/pins/ciderd/xnu-sys/BUCK`), and it has
+four ways to answer KERN_INVALID_ARGUMENT. A null token and an unknown flavor are both ruled out by
+the trace: the token is 0x1e03 and the flavor is `TASK_FLAVOR_CONTROL`, which the switch handles. What
+is left is `proc_find_ident(&token->ident)` returning NULL, or the task behind it being TASK_NULL.
+
+HOW TO PROBE SECURITYD, because this cost a build: **its `Syslog::notice` does not reach
+`var/log/system.log` in a container, and its stderr is not collected either.** The first version of
+patch 0023 used Syslog and printed nothing, which is indistinguishable from the handler never
+running. Write to a file under the prefix instead, and include an entry line as a positive control.
+securityd itself is definitely alive: `mldr!/usr/sbin/securityd -i` was in 19 of 20 samples of the
+host process table during a run.
+
+ONE MEASUREMENT STILL DECIDES THE FIX. The client's `self_token_create` falls back to passing
+`mach_task_self()` when `task_create_identity_token` answers MIG_BAD_ID, and a task port will never
+resolve as an identity token. So:
+
+  * if `task_create_identity_token` returned MIG_BAD_ID, the client is sending a task port and the
+    fix is a matching server-side fallback, symmetrical with the one the client already has;
+  * if it returned 0, the token is real and ciderd's `proc_find_ident` is what is broken.
 
 A PLACEMENT LESSON, learned twice in this file: a probe placed after the first call in a function
 cannot tell a throw inside that call from the function never running. Both times the fix was an entry
@@ -258,10 +278,8 @@ The fix in commit 8b53add7 does not depend on which of those it is: the modern
 `SecCertificateCopyKey` answers correctly, so the legacy answer is only a fallback away.
 ## Where to look next
 
-Inside securityd's `ucsp_server_setup`, as described above: print `kr` from
-`task_identity_token_get_task_port` and separate it from `setupConnection`. securityd is built from
-this tree (`vendor/src/security/securityd/src`, `securityd_exe` in `vendor/src/BUCK`), so it can be
-probed the same way everything above it was.
+Print what `task_create_identity_token` answers on the client, which decides between the two fixes
+listed above. Then fix whichever one it names.
 
 Two things worth fixing regardless of what that finds:
 

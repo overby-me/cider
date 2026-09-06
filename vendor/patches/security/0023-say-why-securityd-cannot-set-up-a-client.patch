@@ -1,0 +1,49 @@
+--- a/securityd/src/transition.cpp
++++ b/securityd/src/transition.cpp
+@@ -30,6 +30,8 @@
+ // conspiracy that is securityd, anchored in the Server object.
+ //
+ #include <securityd_client/ss_types.h>
++#include <stdio.h>
++#include <stdarg.h>
+ #include <securityd_client/ucsp.h>
+ #include "server.h"
+ #include "session.h"
+@@ -231,6 +233,21 @@
+     }
+ }
+ 
++/* A file, not Syslog: securityd's Syslog output does not reach var/log/system.log in a container,
++   and its stderr is not collected either. The path is in the writable prefix overlay. */
++static void _CiderSecdProbe(const char *fmt, ...)
++{
++	FILE *f = fopen("/tmp/cider-secd-setup.log", "a");
++	if (f == NULL)
++		return;
++	va_list ap;
++	va_start(ap, fmt);
++	vfprintf(f, fmt, ap);
++	va_end(ap);
++	fputc('\n', f);
++	fclose(f);
++}
++
+ //
+ // Setup/Teardown functions.
+ //
+@@ -243,10 +260,15 @@
+ 	mach_port_t taskPort = MACH_PORT_NULL;
+ 	BEGIN_IPCN
+     secinfo("SecServer", "request entry: setup");
++	_CiderSecdProbe("setup entered");
+ 	kern_return_t kr = task_identity_token_get_task_port(taskToken, TASK_FLAVOR_CONTROL, &taskPort);
++	/* END_IPCN collapses both steps below into one rcode, so say which one ran. */
++	_CiderSecdProbe("get_task_port token=0x%x kr=0x%x taskPort=0x%x",
++		(unsigned) taskToken, (unsigned) kr, (unsigned) taskPort);
+ 	MachPlusPlus::check(kr);
+ 	Server::active().setupConnection(Server::connectNewProcess, replyPort,
+ 		taskPort, auditToken, &info);
++	_CiderSecdProbe("setupConnection returned");
+ 	END_IPCN(CSSM)
+ 	if (*rcode)
+ 		Syslog::notice("setup(%s) failed rcode=%d", identity ? identity : "<NULL>", *rcode);
