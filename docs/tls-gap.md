@@ -100,16 +100,38 @@ CAUTION, stated as a hypothesis rather than a measurement: that SecureTransport 
 legacy path is an inference from the two facts above, not something traced inside the prebuilt binary.
 It is consistent with everything measured, and the legacy failure is real either way.
 
+## Why the legacy call fails: the CSSM plugins are not there
+
+The legacy key path runs on CSSM, which reaches the Certificate Library plugin, `AppleX509CL`, and
+that plugin is a bundle on disk. Three measurements finish the chain:
+
+  * The prebuilt Security DOES carry CSSM: 243 `CSSM_` entry points, including `CSSM_Init`,
+    `CSSM_ModuleLoad`, `CSSM_ModuleAttach` and `CSSM_CL_CertGetKeyInfo`. The dispatcher is present.
+  * MDS, the module directory CSSM looks modules up in, EXISTS and is populated. The databases under
+    `private/var/db/mds/system` carry records for `AppleCSP`, `AppleCSPDL`, `AppleX509CL` and
+    `AppleX509TP`.
+  * NONE of those four bundles exists, in the app prefix or in the runtime. The only thing under
+    `/System/Library/Security` is `Certificates.bundle`, which is the trust store, a plist and
+    resources, not a CSSM plugin.
+
+So the directory advertises four modules and the filesystem has none of them. A module load that
+cannot find its bundle is exactly the `errSecParam` the legacy call returns.
+
+That last link, that the load fails BECAUSE the bundle is missing, is the standard CSSM architecture
+rather than something traced inside the prebuilt binary. Everything either side of it is measured.
+
 ## Where to look next
 
 Make the legacy path work, or make it stop being the path.
 
-1. Find out why `SecCertificateCopyPublicKey` answers `errSecParam`. It is the CSSM and CDSA layer,
-   so the question is which module lookup returns nothing under cider.
-2. If the legacy implementation cannot be fixed, the loader can redirect the symbol, which this tree
-   has done before for a stdlib symbol (task #172). Note the limit: a call SecureTransport makes to
-   its OWN function inside the same binary is direct and does not go through the symbol table, so a
-   redirect helps callers and may not help Security talk to itself.
+1. Ship the CSSM plugins. The sources are in the tree already:
+   `vendor/src/security/OSX/libsecurity_apple_x509_cl` is the Certificate Library, with
+   `libsecurity_apple_csp`, `libsecurity_cssm` and the TP beside it. `AppleX509CL` alone may be
+   enough for the certificate key path, which makes it the cheapest thing to try first.
+2. If building the plugins is too much, the loader can redirect the symbol, which this tree has done
+   before for a stdlib symbol (task #172). Note the limit: a call SecureTransport makes to its OWN
+   function inside the same binary is direct and does not go through the symbol table, so a redirect
+   helps outside callers and may not help Security talk to itself.
 
-Do not go back to `vendor/src/security` for the answer, do not re-test the read callback, and do not
-re-test certificate parsing or trust creation. All three are measured good.
+Do not go back to `vendor/src/security` to explain the ERROR, do not re-test the read callback, and
+do not re-test certificate parsing or trust creation. All three are measured good.
