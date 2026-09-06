@@ -60,9 +60,12 @@ rc=${PIPESTATUS[0]}
 
 pkill -9 -x 'mldr|cider|ciderd|shellspawn' 2>/dev/null
 
-# Anything the harness prints is a failure; silence is the pass.
-if grep -qE 'Assertion failed|has failed|Unable to get|image not found' "$out"; then
-	echo "FAIL (cider exit $rc)"
+# ANY output is a failure; silence is the pass. A pattern list was tried first and gave false
+# passes twice: an NSDictionary case that prints an expected-versus-actual dump never says
+# "Assertion failed", and it exits 134 in the batch while the pattern list called it a pass.
+if [ -s "$out" ]; then
+	echo "FAIL (cider exit $rc), output:"
+	head -20 "$out"
 	exit 1
 fi
 if [ "$rc" -ne 0 ]; then
