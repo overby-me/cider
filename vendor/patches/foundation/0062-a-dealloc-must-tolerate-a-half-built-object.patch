@@ -31,3 +31,25 @@
      [super dealloc];
  }
  
+@@ -748,13 +754,19 @@
+ - (void)dealloc
+ {
+     pthread_mutex_lock(&_NSOperationLock);
++    /* Same shape as -[NSOperation dealloc] above: _internal exists only for an operation whose
++       -init ran, so this is a nil WRITE for one that did not. No crash has been attributed here,
++       unlike the dealloc one, but the guard costs nothing and the case became reachable the
++       moment a nil-_internal operation could be deallocated at all. */
+     for (NSOperation *op in _pendingOperations)
+     {
+-        op._internal->_queue = nil;
++        if (op._internal != nil)
++            op._internal->_queue = nil;
+     }
+     for (NSOperation *op in _operations)
+     {
+-        op._internal->_queue = nil;
++        if (op._internal != nil)
++            op._internal->_queue = nil;
+     }
+     pthread_mutex_unlock(&_NSOperationLock);
+     [_pendingOperations release];
