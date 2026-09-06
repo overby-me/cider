@@ -2279,6 +2279,11 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) becomeKeyWindow {
+    if (getenv("CIDER_TRACE_MAIN") != NULL) {
+        fprintf(stderr, "CIDER_MAIN becomeKey window=%p title=%s\n", (void *) self,
+                [[self title] UTF8String] ?: "(nil)");
+        fflush(stderr);
+    }
     // The platform should always be told to become key when we want to become
     // key.
     [self makeKeyWindow];
@@ -2315,6 +2320,11 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) becomeMainWindow {
+    if (getenv("CIDER_TRACE_MAIN") != NULL) {
+        fprintf(stderr, "CIDER_MAIN becomeMain window=%p title=%s\n", (void *) self,
+                [[self title] UTF8String] ?: "(nil)");
+        fflush(stderr);
+    }
     if ([self isMainWindow]) {
         return;
     }
@@ -3387,6 +3397,11 @@ extern int _CiderPendingConstraintSolves(void);
 }
 
 - (void) makeKeyAndOrderFront: (id) sender {
+    if (getenv("CIDER_TRACE_MAIN") != NULL) {
+        fprintf(stderr, "CIDER_MAIN makeKeyAndOrderFront window=%p title=%s\n", (void *) self,
+                [[self title] UTF8String] ?: "(nil)");
+        fflush(stderr);
+    }
     if ([self isMiniaturized]) {
         [_platformWindow deminiaturize];
     }
