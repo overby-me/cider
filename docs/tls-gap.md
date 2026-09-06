@@ -295,8 +295,32 @@ THIS IS BIGGER THAN CERTIFICATES. `ClientSession::activate` is the front door of
 call, so this one stub is why keychain, code signing and trust work all arrive at the same
 manufactured -50 or hang. The certificate path is just the one that led here.
 
-THE FIX: give a task a stable eternal id and a registry to look it up in, in
-`src/linux/server/src/sched.rs`. Both hooks are in the same file, next to each other.
+## FIXED, and the failure moved one layer on
+
+`task_eternal_id` turned out to need no change: `xnu_sys_task_create` calls it exactly ONCE per task
+and stores the result in `p_ident`, so the number is already stable. Only the reverse was missing.
+`sched.rs` now keeps a `TASK_BY_EID` table beside the existing `TASK_BY_NSID` one, filled in
+`register_task_lookup` by reading the id back off the task (never by assigning a second one) and
+cleared in `unregister_task_lookup`.
+
+Measured before and after, same app, same probes:
+
+    before   CIDER_TIDT proc_find_ident found nothing
+             get_task_port token=0x2103 kr=0x4 taskPort=0x0
+             setup back kr=0x0 rcode=0x1
+
+    after    CIDER_TIDT past the eval, asking for special port 1
+             get_task_port token=0x2003 kr=0x0 taskPort=0x2303
+             setup back kr=0x0 rcode=0xfffefa2c
+
+So the token resolves, securityd gets the client's task port, and the Mach half is done. Swift
+Publisher still renders and resizes correctly, LOOKED at, so nothing regressed.
+
+THE CERTIFICATE PATH STILL FAILS. `0xfffefa2c` is -67028, `errSecCSBadBundleFormat`. securityd now
+gets far enough into `setupConnection` to inspect the client's code signature and rejects the bundle,
+so `ucsp_server_setup` still answers non-zero and the ModuleNexus still manufactures the same -50 above
+it. This is a real advance (a Mach-layer gap closed, and a specific new error where there was a
+generic one) but it is not the end of the chain.
 
 A PLACEMENT LESSON, learned twice in this file: a probe placed after the first call in a function
 cannot tell a throw inside that call from the function never running. Both times the fix was an entry
@@ -306,9 +330,12 @@ The fix in commit 8b53add7 does not depend on which of those it is: the modern
 `SecCertificateCopyKey` answers correctly, so the legacy answer is only a fallback away.
 ## Where to look next
 
-Implement the two `sched.rs` hooks above: a stable per-task eternal id, and a registry
-`task_lookup_eternal` can read. `thread_lookup_eternal` and `thread_eternal_id` are stubbed the same
-way and are worth doing in the same pass.
+Find why securityd calls the client's bundle format bad (`errSecCSBadBundleFormat`, -67028). That is
+now the only thing between an application and a working securityd connection, and securityd is built
+from this tree so it can be probed the same way everything else here was.
+
+`thread_lookup_eternal` and `thread_eternal_id` in `sched.rs` are still stubbed exactly the way the
+task pair was, and will fail the same way the moment anything resolves a thread identity token.
 
 Two things worth fixing regardless:
 

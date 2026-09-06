@@ -391,6 +391,11 @@ thread_local! {
     // so an entry stays valid for the daemon's life: a lookup after the process exits returns a
     // leaked-but-valid pointer, never a dangling one. Mirrors C++ processRegistry() lookups.
     static TASK_BY_NSID: RefCell<HashMap<u32, (*mut xnu_sys_task_t, libc::pid_t)>> = RefCell::new(HashMap::new());
+    // eternal id -> xnu_sys_task, the reverse of the id stamped into p_ident at task creation.
+    // An identity token (task_create_identity_token) carries ONLY that number, so without this
+    // table task_identity_token_get_task_port can never resolve one, and securityd's
+    // ucsp_server_setup fails for every client (task #199).
+    static TASK_BY_EID: RefCell<HashMap<xnu_sys_eternal_id_t, *mut xnu_sys_task_t>> = RefCell::new(HashMap::new());
     // guest tid (nsid) -> xnu_sys_thread, for the thread_lookup xnu_sys hook. Populated per guest
     // thread by registry::spawn_on, removed on death (xnu_sys_thread_dying). Like the task table,
     // xnu_sys_threads are currently leak-lived (the daemon never xnu_sys_thread_release's them), so
@@ -401,12 +406,21 @@ thread_local! {
 /// Record a guest task in the task_lookup table (called once per task from ensure_task).
 pub fn register_task_lookup(nsid: u32, task: *mut xnu_sys_task_t, host_pid: libc::pid_t) {
     TASK_BY_NSID.with(|m| m.borrow_mut().insert(nsid, (task, host_pid)));
+    // Read the id back rather than assigning one: xnu_sys_task_create already stamped it, and it
+    // must be the same number an identity token will later carry.
+    let eid = unsafe { (*task).p_ident.eid };
+    TASK_BY_EID.with(|m| m.borrow_mut().insert(eid, task));
 }
 
 /// Drop a task's task_lookup entry on real exit so its xnu_sys task can be freed: task #52's
 /// deferred cleanup, without which every exited process leaks ~1MB and ciderd OOMs on build loads.
 pub fn unregister_task_lookup(nsid: u32) -> Option<*mut xnu_sys_task_t> {
-    TASK_BY_NSID.with(|m| m.borrow_mut().remove(&nsid).map(|(t, _)| t))
+    let task = TASK_BY_NSID.with(|m| m.borrow_mut().remove(&nsid).map(|(t, _)| t));
+    if let Some(t) = task {
+        let eid = unsafe { (*t).p_ident.eid };
+        TASK_BY_EID.with(|m| m.borrow_mut().remove(&eid));
+    }
+    task
 }
 
 /// Resolve a task by guest nsid for the RPC handlers (ptrace targets another process), null if
@@ -1082,8 +1096,20 @@ mod hooks {
             _ => std::ptr::null_mut(),
         }
     }
-    pub(super) unsafe extern "C" fn task_lookup_eternal(_eid: xnu_sys_eternal_id_t, _retain: bool) -> *mut xnu_sys_task_t {
-        std::ptr::null_mut()
+    /// Resolve a task by the eternal id an identity token carries. The counterpart of the id
+    /// `task_eternal_id` stamps into `p_ident`; `proc_find_ident` is this and nothing else, so
+    /// task_identity_token_get_task_port answers KERN_INVALID_ARGUMENT whenever this misses.
+    pub(super) unsafe extern "C" fn task_lookup_eternal(eid: xnu_sys_eternal_id_t, retain: bool) -> *mut xnu_sys_task_t {
+        let task = TASK_BY_EID.with(|m| m.borrow().get(&eid).copied());
+        match task {
+            Some(t) if !t.is_null() => {
+                if retain {
+                    xnu_sys_task_retain(t);
+                }
+                t
+            }
+            _ => std::ptr::null_mut(),
+        }
     }
     pub(super) unsafe extern "C" fn task_get_memory_info(ctx: *mut c_void, info: *mut xnu_sys_memory_info_t) {
         if info.is_null() {
@@ -1214,6 +1240,8 @@ mod hooks {
         dserver_fast_setcontext(back_to_top_ptr());
         unreachable!("thread_syscall_return did not transfer control back to the daemon");
     }
+    /// Called ONCE per task, from xnu_sys_task_create, and the result is stored in p_ident. That
+    /// single call is what makes the id stable; the counter alone would not be.
     pub(super) unsafe extern "C" fn task_eternal_id(_c: *mut c_void) -> xnu_sys_eternal_id_t { NEXT_EID.fetch_add(1, Ordering::Relaxed) }
     pub(super) unsafe extern "C" fn thread_eternal_id(_c: *mut c_void) -> xnu_sys_eternal_id_t { NEXT_EID.fetch_add(1, Ordering::Relaxed) }
     pub(super) unsafe extern "C" fn get_load_info(li: *mut xnu_sys_load_info_t) {
