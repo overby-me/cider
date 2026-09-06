@@ -1,0 +1,67 @@
+--- a/OSX/libsecurity_mds/lib/MDSSession.cpp
++++ b/OSX/libsecurity_mds/lib/MDSSession.cpp
+@@ -39,6 +39,8 @@
+ #include <fcntl.h>
+ #include <security_utilities/simulatecrash_assert.h>
+ #include <time.h>
++#include <stdio.h>
++#include <stdlib.h>
+ #include <string>
+ #include <unistd.h>
+ #include <syslog.h>
+@@ -682,6 +684,16 @@
+ }
+ 
+ /* DatabaseSession routines we need to override */
++/* DbOpen has three steps that can throw and the caller only sees one status, so name the step.
++   Gated on CIDER_TRACE_SECCERT, the switch the certificate path uses. */
++static void _CiderTraceDbOpen(const char *step, const char *detail)
++{
++	if (getenv("CIDER_TRACE_SECCERT")) {
++		fprintf(stderr, "CIDER_SECCERT MDS DbOpen %s: %s\n", step, detail);
++		fflush(stderr);
++	}
++}
++
+ void MDSSession::DbOpen(const char *DbName,
+ 		const CSSM_NET_ADDRESS *DbLocation,
+ 		CSSM_DB_ACCESS_TYPE AccessRequest,
+@@ -689,6 +701,8 @@
+ 		const void *OpenParameters,
+ 		CSSM_DB_HANDLE &DbHandle)
+ {
++	const char *phase = "securityd";
++	try {
+ 	if (!mModule.serverMode()) {
+ 		/*
+ 		 * Make sure securityd has finished initializing (system) MDS data.
+@@ -699,8 +713,10 @@
+ 	}
+ 
+ 	/* make sure DBs are up-to-date */
++	phase = "updateDataBases";
+ 	updateDataBases();
+-	
++	phase = "name";
++
+ 	/* 
+ 	 * Only task here is map incoming DbName - specified in the CDSA 
+ 	 * spec - to a filename we actually use (which is a path to either 
+@@ -722,8 +738,17 @@
+ 	char fullPath[MAXPATHLEN];
+ 	dbFullPath(dbName, fullPath);
+ 	MSIoDbg("open %s in dbOpen(name, loc, accessReq...)", dbName);
++	_CiderTraceDbOpen("path", fullPath);
++	phase = "DatabaseSession";
+ 	DatabaseSession::DbOpen(fullPath, DbLocation, AccessRequest, AccessCred,
+ 		OpenParameters, DbHandle);
++	}
++	catch (const CommonError &err) {
++		char detail[64];
++		snprintf(detail, sizeof(detail), "threw osStatus=%d", (int) err.osStatus());
++		_CiderTraceDbOpen(phase, detail);
++		throw;
++	}
+ }
+ 
+ CSSM_HANDLE MDSSession::DataGetFirst(CSSM_DB_HANDLE DBHandle,

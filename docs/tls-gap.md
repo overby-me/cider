@@ -202,10 +202,53 @@ THREE MORE THINGS THAT ARE NOT THE CAUSE, each measured rather than argued:
   * The MDS databases are missing or empty. NO. `mdsObject.db` (4.1K) and `mdsDirectory.db` (47.2K)
     exist in the prefix, and both list all six built-in modules by name, `AppleX509CL`,
     `*AppleX509CL` and "Apple built-in CL" among them. The record being looked up is there.
-  * securityd is absent. `MDSSession::DbOpen` contacts securityd first, so this was the obvious
-    suspect. Driven with launchd ON and with launchd OFF the trace is character for character
-    identical, so it does not separate the two.
+  * securityd is absent. NO, and this is the one that turned out to matter: securityd is found, it
+    answers, and it is the step that fails. See the next section. The launchd ON and OFF traces are
+    character for character identical because securityd is reachable either way.
   * MDS itself failed to start. NO: `MDS_Initialize` returns 0 in the same run.
+
+## The whole chain, and why the error you see is not the error that happened
+
+Two more probes (patches 0021 and 0022) finish the walk. `MDSSession::DbOpen` contacts securityd
+before it touches a file, and that is the step that throws:
+
+    CIDER_SSCLNT findSecurityd back port=0x4907    securityd IS registered and the port is live
+    CIDER_SSCLNT verifyPrivileged2 back origin=..  a full round trip, and it matches serverPort
+    CIDER_SSCLNT setup back kr=0x0 rcode=0x1       kr=0 so the IPC worked; rcode=1 is securityd
+    MDS DbOpen securityd: threw osStatus=-50       and what the caller sees is -50
+
+`rcode=1` is `CSSM_ERRCODE_INTERNAL_ERROR`, from securityd's own `ucsp_server_setup`. securityd logs
+it too, `setup(?:obsolete) failed rcode=1` in `var/log/system.log`. I found that line first, saw its
+timestamp was hours old, and treated it as stale; the live probe printed the same value, so the log
+was right and the doubt was wrong.
+
+THE -50 IS MANUFACTURED, and this is worth knowing on its own. `ClientSession::activate` reaches
+securityd through `ModuleNexus<Global>`, and `ModuleNexusCommon::do_create` is:
+
+    try { pointer = make(); } catch (...) { pointer = NULL; }
+
+so the CssmError(1) carrying securityd's answer is DISCARDED, and `create()` then throws a generic
+`ModuleNexusError`, whose `osStatus()` is a hard-coded `errSecParam`. Every -50 above is that one
+constant, not an error anybody computed. Worse, the nexus is a `dispatch_once`: after the first
+failure `pointer` stays NULL for the life of the process, so every later attempt fails instantly
+with the same manufactured -50 and never retries.
+
+So chasing -50 as if it were a parameter error was chasing a placeholder. The real error is rcode=1
+from securityd, and it is only visible in securityd's syslog line or with a probe below the nexus.
+
+## Where the fault is now: securityd's setup handler
+
+`ucsp_server_setup` in `vendor/src/security/securityd/src/transition.cpp:241` does two things that
+can fail before it answers:
+
+    kern_return_t kr = task_identity_token_get_task_port(taskToken, TASK_FLAVOR_CONTROL, &taskPort);
+    MachPlusPlus::check(kr);
+    Server::active().setupConnection(Server::connectNewProcess, replyPort, taskPort, auditToken, &info);
+
+`END_IPCN(CSSM)` maps a MachPlusPlus::Error's default case to `CSSM_ERRCODE_INTERNAL_ERROR`, which is
+exactly the 1 we measure, so the task-port conversion is the first thing to probe. It is NOT ruled
+out by the routine existing: `task_ident.c` is compiled into ciderd (`vendor/pins/ciderd/xnu-sys/BUCK`),
+but compiled in is not the same as working, and `setupConnection` can produce a 1 as well.
 
 A PLACEMENT LESSON, learned twice in this file: a probe placed after the first call in a function
 cannot tell a throw inside that call from the function never running. Both times the fix was an entry
@@ -215,11 +258,19 @@ The fix in commit 8b53add7 does not depend on which of those it is: the modern
 `SecCertificateCopyKey` answers correctly, so the legacy answer is only a fallback away.
 ## Where to look next
 
-Inside `MDSSession::DbOpen` (`vendor/src/security/OSX/libsecurity_mds/lib/MDSSession.cpp:685`). It has
-four steps that can throw and the -50 comes from one of them: the securityd handshake, the
-`updateDataBases()` rescan, the DbName mapping, and `DatabaseSession::DbOpen` on the real file. The
-name mapping can be ruled out by reading, since a bad name throws `CSSMERR_DL_INVALID_DB_NAME`, so
-the next probe only has to separate three.
+Inside securityd's `ucsp_server_setup`, as described above: print `kr` from
+`task_identity_token_get_task_port` and separate it from `setupConnection`. securityd is built from
+this tree (`vendor/src/security/securityd/src`, `securityd_exe` in `vendor/src/BUCK`), so it can be
+probed the same way everything above it was.
+
+Two things worth fixing regardless of what that finds:
+
+  * `ModuleNexusCommon::do_create` swallowing the real error. Even keeping the generic throw, the
+    caught error should be logged, because right now a first failure erases the only evidence and
+    the `dispatch_once` makes it unrecoverable for the process.
+  * Nothing in this path needs securityd. `MDSSession::DbOpen` contacts it only to wait for system
+    MDS data to be installed, and the MDS databases in the prefix are already complete. If the
+    handshake cannot be made to work, that wait is the thing to skip.
 
 Then: make the legacy path work, or make it stop being the path.
 

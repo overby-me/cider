@@ -1,0 +1,24 @@
+--- a/OSX/libsecurityd/lib/ssclient.cpp
++++ b/OSX/libsecurityd/lib/ssclient.cpp
+@@ -186,9 +186,18 @@
+ 	
+ 	task_id_token_t token = self_token_create();
+ 	CIDER_SSCLNT("setup call");
+-	IPCBASIC(ucsp_client_setup(serverPort, thread.replyPort, &securitydCreds, &rcode,
+-		token, info, extForm));
+-	CIDER_SSCLNT("setup back");
++	/* IPCBASIC hides kr and rcode inside its own block, and both are the answer here. */
++	{
++		CSSM_RETURN rcode = CSSM_ERRCODE_INTERNAL_ERROR;
++		security_token_t securitydCreds = {};
++		kern_return_t kr = ucsp_client_setup(serverPort, thread.replyPort, &securitydCreds, &rcode,
++			token, info, extForm);
++		CIDER_SSCLNT("setup back kr=0x%x rcode=0x%x creds0=%u", (unsigned) kr, (unsigned) rcode,
++			(unsigned) securitydCreds.val[0]);
++		check(kr);
++		IPC_CHECK_VALIDITY;
++		IPC_CHECK_RETCODE;
++	}
+ 	self_token_deallocate(token);
+     thread.registered = true;	// as a side-effect of setup call above
+ 	IFDEBUG(serverPort.requestNotify(thread.replyPort));
