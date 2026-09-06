@@ -3086,7 +3086,7 @@ extern int _CiderPendingConstraintSolves(void);
                                 break;
                             used += (size_t) wrote;
                         }
-                        fprintf(stderr, "cider-tree depth=%d%s\n", depth, chain);
+                        fprintf(stderr, "cider-tree window=%p depth=%d%s\n", (void *) self, depth, chain);
                         fflush(stderr);
                     }
 

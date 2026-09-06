@@ -1779,9 +1779,8 @@ static BOOL _CiderTraceFrameFor(NSView *view) {
     if (watchInsert != NULL && watchInsert[0] != (char) 0 &&
         (strstr(object_getClassName(view), watchInsert) != NULL ||
          strstr(object_getClassName(self), watchInsert) != NULL)) {
-        fprintf(stderr, "cider-insert %s %p into %s %p window=%s\n", object_getClassName(view),
-                view, object_getClassName(self), self,
-                [self window] != nil ? "yes" : "NONE");
+        fprintf(stderr, "cider-insert %s %p into %s %p window=%p\n", object_getClassName(view),
+                view, object_getClassName(self), self, (void *) [self window]);
         fflush(stderr);
     }
 
@@ -2318,6 +2317,27 @@ static BOOL CiderViewIsInSubtree(NSView *view, NSView *root) {
 - (void) removeFromSuperviewWithoutNeedingDisplay {
     NSView *removeFrom = _superview;
     NSWindow *window = [self window];
+
+    /* THE OTHER HALF OF cider-insert, same gate. A tree that is inserted with a window and later
+     * gone was REMOVED, and only the caller says by whom: iA Writer put its new editor tree into
+     * the window and something took it out again before it ever drew. */
+    const char *watchRemove = getenv("CIDER_TRACE_INSERT");
+
+    if (watchRemove != NULL && watchRemove[0] != (char) 0 &&
+        (strstr(object_getClassName(self), watchRemove) != NULL ||
+         (removeFrom != nil && strstr(object_getClassName(removeFrom), watchRemove) != NULL))) {
+        Dl_info info;
+        void *ret = __builtin_return_address(0);
+        int have = dladdr(ret, &info);
+
+        fprintf(stderr, "cider-remove %s %p from %s %p window=%p by %s +%#lx\n",
+                object_getClassName(self), self,
+                removeFrom != nil ? object_getClassName(removeFrom) : "(nil)", removeFrom,
+                (void *) window,
+                (have != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
+                (have != 0) ? (unsigned long) ((char *) ret - (char *) info.dli_fbase) : 0UL);
+        fflush(stderr);
+    }
 
     [self _ciderRemoveConstraintsMentioningSubtree];
     [self _deepResignFirstResponder];
