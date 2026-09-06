@@ -214,6 +214,7 @@ extern NSSize _NSToolbarIconSizeSmall;
 
 - (instancetype) initWithItemIdentifier: (NSToolbarItemIdentifier) identifier {
     _itemIdentifier = [identifier retain];
+    if (getenv("CIDER_TOOLBAR")) NSLog(@"CIDER_TOOLBAR init item=%@ class=%@", identifier, [self class]);
     _toolbar = nil;
     _enclosingView = [[NSToolbarItemView alloc] init];
     [_enclosingView setToolbarItem: self];
@@ -364,6 +365,7 @@ extern NSSize _NSToolbarIconSizeSmall;
         _maxSize = [_view frame].size;
     }
     [_enclosingView setSubview: _view];
+    if (getenv("CIDER_TOOLBAR")) NSLog(@"CIDER_TOOLBAR setView item=%@ view=%@", _itemIdentifier, view ? [view class] : (id) @"nil");
     [self _didChange];
 }
 

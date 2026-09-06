@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #include <stdlib.h>
 #import <AppKit/NSCachedImageRep.h>
 #import <AppKit/NSColor.h>
+#import <AppKit/NSBezierPath.h>
 #import <AppKit/NSCustomImageRep.h>
 #import <AppKit/NSEPSImageRep.h>
 #import <AppKit/NSGraphicsContextFunctions.h>
@@ -980,6 +981,43 @@ static NSImage *_CiderImageFromAssetCatalog(NSString *name) {
     return image;
 }
 
+/* System arrow templates cocotron ships no file for. MoneyMoney's Big Sur toolbar asks imageNamed:
+ * for NSGoLeftTemplate/NSGoRightTemplate for its back and forward segments, and a nil image leaves
+ * the segment blank. Draw the triangle so the control is not empty when no file or catalog has it. */
+static NSImage *_CiderStandardTemplateImage(NSString *name) {
+    BOOL right = [name isEqualToString: @"NSGoRightTemplate"] ||
+                 [name isEqualToString: @"NSGoForwardTemplate"] ||
+                 [name isEqualToString: @"NSRightFacingTriangleTemplate"];
+    BOOL left = [name isEqualToString: @"NSGoLeftTemplate"] ||
+                [name isEqualToString: @"NSGoBackTemplate"] ||
+                [name isEqualToString: @"NSLeftFacingTriangleTemplate"];
+
+    if (!right && !left)
+        return nil;
+
+    CGFloat w = 9, h = 12;
+    NSImage *image = [[[NSImage alloc] initWithSize: NSMakeSize(w, h)] autorelease];
+
+    [image lockFocus];
+    NSBezierPath *path = [NSBezierPath bezierPath];
+
+    if (right) {
+        [path moveToPoint: NSMakePoint(2, 1)];
+        [path lineToPoint: NSMakePoint(2, h - 1)];
+        [path lineToPoint: NSMakePoint(w - 1, h / 2)];
+    } else {
+        [path moveToPoint: NSMakePoint(w - 2, 1)];
+        [path lineToPoint: NSMakePoint(w - 2, h - 1)];
+        [path lineToPoint: NSMakePoint(1, h / 2)];
+    }
+    [path closePath];
+    [[NSColor blackColor] set];
+    [path fill];
+    [image unlockFocus];
+    [image setTemplate: YES];
+    return image;
+}
+
 + imageNamed: (NSString *) name {
     if (name == nil)
         return nil;
@@ -1058,6 +1096,12 @@ static NSImage *_CiderImageFromAssetCatalog(NSString *name) {
             [image setName: name];
             fromCatalog = YES;
         }
+    }
+
+    if (image == nil) {
+        image = _CiderStandardTemplateImage(name);
+        if (image != nil)
+            [image setName: name];
     }
 
     /* WHICH NAMES COME BACK EMPTY, and where the ones that do not came from. A button whose image
