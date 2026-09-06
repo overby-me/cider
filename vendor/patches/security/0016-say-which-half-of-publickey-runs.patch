@@ -1,6 +1,69 @@
---- a/OSX/libsecurity_keychain/lib/Certificate.cpp	2026-09-06 20:35:30.505309354 +0200
-+++ b/OSX/libsecurity_keychain/lib/Certificate.cpp	2026-09-06 20:35:30.479301395 +0200
-@@ -1203,13 +1203,31 @@
+--- a/OSX/libsecurity_keychain/lib/Certificate.cpp	2026-09-06 20:54:25.719419428 +0200
++++ b/OSX/libsecurity_keychain/lib/Certificate.cpp	2026-09-06 20:54:25.687033838 +0200
+@@ -289,13 +289,60 @@
+ Certificate::copyFirstFieldValue(const CSSM_OID &field)
+ {
+ 	StLock<Mutex>_(mMutex);
+-	CSSM_CL_HANDLE clh = clHandle();
++	/* BEFORE clHandle, which attaches the CL module and can throw. Placing the first probe after it
++	 * once already made a throw here look like the function never running (task #199). */
++	if (getenv("CIDER_TRACE_SECCERT")) {
++		fprintf(stderr, "CIDER_SECCERT copyFirstFieldValue entered\n");
++		fflush(stderr);
++	}
++	/* clHandle attaches the CL module and throws when that fails, which is where this actually dies.
++	 * Naming the CSSM code is the whole point; the throw is re-raised untouched. */
++	CSSM_CL_HANDLE clh;
++	try {
++		clh = clHandle();
++	}
++	catch (const CommonError &err) {
++		if (getenv("CIDER_TRACE_SECCERT")) {
++			fprintf(stderr, "CIDER_SECCERT clHandle threw osStatus=%d\n", (int) err.osStatus());
++			fflush(stderr);
++		}
++		throw;
++	}
++	catch (...) {
++		if (getenv("CIDER_TRACE_SECCERT")) {
++			fprintf(stderr, "CIDER_SECCERT clHandle threw a non CommonError\n");
++			fflush(stderr);
++		}
++		throw;
++	}
+ 	CSSM_DATA_PTR fieldValue;
+ 	CSSM_HANDLE resultsHandle = 0;
+ 	uint32 numberOfFields = 0;
+ 	CSSM_RETURN result;
+ 
+-	result = CSSM_CL_CertGetFirstCachedFieldValue(clh, certHandle(), &field, &resultsHandle, &numberOfFields, &fieldValue);
++	/* Three things can fail here and they look identical from outside (task #199): attaching the CL,
++	 * caching the certificate in it, and the field query itself. Hoisting certHandle out of the call
++	 * is what lets the middle one be named. */
++	const bool ciderTraceCert = getenv("CIDER_TRACE_SECCERT") != NULL;
++
++	if (ciderTraceCert) {
++		fprintf(stderr, "CIDER_SECCERT copyFirstFieldValue clHandle=0x%lx\n", (unsigned long) clh);
++		fflush(stderr);
++	}
++
++	CSSM_HANDLE cachedCert = certHandle();
++
++	if (ciderTraceCert) {
++		fprintf(stderr, "CIDER_SECCERT copyFirstFieldValue certHandle=0x%lx\n", (unsigned long) cachedCert);
++		fflush(stderr);
++	}
++
++	result = CSSM_CL_CertGetFirstCachedFieldValue(clh, cachedCert, &field, &resultsHandle, &numberOfFields, &fieldValue);
++	if (ciderTraceCert) {
++		fprintf(stderr, "CIDER_SECCERT CertGetFirstCachedFieldValue result=0x%x fields=%u\n",
++				(unsigned) result, (unsigned) numberOfFields);
++		fflush(stderr);
++	}
+ 	if (result)
+ 	{
+ 		if (result == CSSMERR_CL_NO_FIELD_VALUES)
+@@ -1203,13 +1250,31 @@
  	// Caller must call releaseFieldValue to free the storage allocated by this call.
  	// call OSStatus SecKeyGetCSSMKey(SecKeyRef key, const CSSM_KEY **cssmKey); to retrieve
  

@@ -153,23 +153,28 @@ So the absence of bundles under `/System/Library/Security` was never evidence of
 missing FILE as a missing FEATURE, which is the same shape of mistake as reading a missing string or
 a missing export as missing code.
 
-WHERE THE FAILURE ACTUALLY IS, narrowed three times, the last of which CORRECTED the second:
+WHERE THE FAILURE IS, walked in one line at a time with `CIDER_TRACE_SECCERT=1`:
 
-  * The legacy ItemImpl certificate IS created, and it is ALIVE when handed back:
-    `ItemImpl create -> OK alive=1 rc=1`. So the SecPointer going out of scope does not kill it, which
-    was a hypothesis worth testing because `handle()` deliberately does not retain a new object.
-  * `Certificate::publicKey()` IS entered: `publicKey entered`, printed before anything can throw.
-  * `copyFirstFieldValue(CSSMOID_CSSMKeyStruct)` THROWS. The line after it never prints.
+    ItemImpl create -> OK alive=1 rc=1     the legacy certificate is built AND alive when handed back
+    publicKey entered                      Certificate::required succeeds, publicKey IS called
+    copyFirstFieldValue entered            and it reaches the field query
+    clHandle threw osStatus=-50            THE CL MODULE ATTACH IS WHAT FAILS
 
-CORRECTION, because it was published: an earlier commit said publicKey is never reached and the throw
-is the handle lookup before it. THAT WAS WRONG. The probe that said so sat AFTER the first call inside
-the function, so its silence could not tell being called and throwing from never being called. An
-entry probe settled it in one run. A trace answers the question it is placed at, not the question you
-had in mind.
+So the errSecParam an application finally sees is thrown attaching the Certificate Library, before any
+certificate field is ever asked for. Everything downstream of that (the field query, the CSP taking
+the key) is never reached, and the certificate itself was never the problem.
 
-So the failure is the CL field extraction: the Certificate Library is asked for the CSSM key struct of
-this certificate and throws instead of answering. The CL itself is reachable, being built into
-Security and registered in modloader, so this is that one call, not the plugin.
+TWO HYPOTHESES DIED ON THE WAY, both worth recording:
+
+  * The SecPointer destroys the ItemImpl. NO: it is alive with rc=1 when handed back. Worth testing
+    because `handle()` deliberately does not retain a NEW object.
+  * The plugin is missing. NO: the CL is linked into Security and registered in modloader as a static
+    plugin. The attach fails for some other reason, and naming it is the next step, inside `clHandle`
+    and the CSSM_ModuleAttach under it.
+
+A PLACEMENT LESSON, learned twice in this file: a probe placed after the first call in a function
+cannot tell a throw inside that call from the function never running. Both times the fix was an entry
+probe, and both times it changed the answer. Put the first probe before the first thing that can throw.
 
 The fix in commit 8b53add7 does not depend on which of those it is: the modern
 `SecCertificateCopyKey` answers correctly, so the legacy answer is only a fallback away.
