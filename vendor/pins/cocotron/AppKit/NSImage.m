@@ -985,6 +985,21 @@ static NSImage *_CiderImageFromAssetCatalog(NSString *name) {
  * for NSGoLeftTemplate/NSGoRightTemplate for its back and forward segments, and a nil image leaves
  * the segment blank. Draw the triangle so the control is not empty when no file or catalog has it. */
 static NSImage *_CiderStandardTemplateImage(NSString *name) {
+    if ([name isEqualToString: @"NSAddTemplate"] || [name isEqualToString: @"NSRemoveTemplate"]) {
+        BOOL plus = [name isEqualToString: @"NSAddTemplate"];
+        CGFloat s = 12, t = 2;
+        NSImage *bar = [[[NSImage alloc] initWithSize: NSMakeSize(s, s)] autorelease];
+
+        [bar lockFocus];
+        [[NSColor blackColor] set];
+        [[NSBezierPath bezierPathWithRect: NSMakeRect(1, (s - t) / 2, s - 2, t)] fill];
+        if (plus)
+            [[NSBezierPath bezierPathWithRect: NSMakeRect((s - t) / 2, 1, t, s - 2)] fill];
+        [bar unlockFocus];
+        [bar setTemplate: YES];
+        return bar;
+    }
+
     BOOL right = [name isEqualToString: @"NSGoRightTemplate"] ||
                  [name isEqualToString: @"NSGoForwardTemplate"] ||
                  [name isEqualToString: @"NSRightFacingTriangleTemplate"];
