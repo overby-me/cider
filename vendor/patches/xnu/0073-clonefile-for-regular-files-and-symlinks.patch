@@ -1,0 +1,181 @@
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/clonefile.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/clonefile.c
+@@ -2,16 +2,173 @@
+ 
+ #include <signal.h>
+ #include <sys/errno.h>
++#include <sys/stat.h>
+ 
++#include <darling/emulation/other/mach/lkm.h>
++#include <darling/emulation/common/base.h>
+ #include <darling/emulation/conversion/duct_errno.h>
++#include <darling/emulation/conversion/errno.h>
++#include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
++#include <darling/emulation/conversion/common_at.h>
++#include <darling/emulation/conversion/fcntl/open.h>
++#include <darling/emulation/linux_premigration/vchroot_expand.h>
++#include <darling/emulation/conversion/stat/common.h>
++
++extern char* strcpy(char* dst, const char* src);
++
++#ifndef __NR_fstatat64
++	#define __NR_fstatat64 __NR_newfstatat
++#endif
++
++// sys/clonefile.h, which the guest side of this file cannot include.
++#define CLONE_NOFOLLOW 0x0001
++
++// REGULAR FILES AND SYMLINKS ONLY, and ENOTSUP for everything else on purpose. macOS clones
++// directories recursively and carries ACLs and every extended attribute; this does not. Callers
++// (Nix, copyfile, cp) read ENOTSUP as "cloning is not available here" and fall back to a plain
++// read/write copy, so an unsupported case still gets copied correctly by somebody else. Answering
++// success for a half-done clone is the one outcome that would be worse than the old stub.
++//
++// This is a COPY, not a reflink. Nothing here depends on the underlying filesystem, which is the
++// point: a container prefix on ext4 cannot reflink at all.
++
++static long clone_regular(int src_dfd, const char* src, int dst_dfd, const char* dst, int mode)
++{
++	char buf[65536];
++	long in, out, written, n;
++	long ret = 0;
++
++	in = LINUX_SYSCALL(__NR_openat, src_dfd, src, LINUX_O_RDONLY, 0);
++	if (in < 0)
++		return in;
++
++	// O_EXCL because macOS clonefile fails with EEXIST rather than overwriting.
++	out = LINUX_SYSCALL(__NR_openat, dst_dfd, dst,
++		LINUX_O_WRONLY | LINUX_O_CREAT | LINUX_O_EXCL, mode & 07777);
++	if (out < 0) {
++		LINUX_SYSCALL(__NR_close, in);
++		return out;
++	}
++
++	for (;;) {
++		n = LINUX_SYSCALL(__NR_read, in, buf, sizeof(buf));
++		if (n < 0) {
++			ret = n;
++			break;
++		}
++		if (n == 0)
++			break;
++		for (written = 0; written < n; ) {
++			long w = LINUX_SYSCALL(__NR_write, out, buf + written, n - written);
++			if (w < 0) {
++				ret = w;
++				break;
++			}
++			written += w;
++		}
++		if (ret < 0)
++			break;
++	}
++
++	LINUX_SYSCALL(__NR_close, in);
++	LINUX_SYSCALL(__NR_close, out);
++
++	// Leave no half-written file behind: a caller that sees the error must not also find a file.
++	if (ret < 0)
++		LINUX_SYSCALL(__NR_unlinkat, dst_dfd, dst, 0);
++
++	return ret;
++}
++
++static long clone_symlink(int src_dfd, const char* src, int dst_dfd, const char* dst)
++{
++	char target[4096];
++	long n;
++
++	n = LINUX_SYSCALL(__NR_readlinkat, src_dfd, src, target, sizeof(target) - 1);
++	if (n < 0)
++		return n;
++	target[n] = '\0';
++
++	return LINUX_SYSCALL(__NR_symlinkat, target, dst_dfd, dst);
++}
+ 
+-// ENOTSUP rather than ENOSYS: callers (Nix, copyfile, cp) treat ENOTSUP as
+-// "cloning not supported on this filesystem" and fall back to a regular
+-// read/write copy, whereas ENOSYS looks like a fatal missing syscall.
+ long sys_clonefileat(int src_fd, const char* src_path, int dest_fd, const char* dest_path, uint32_t flags) {
+-	return -ENOTSUP;
++	struct vchroot_expand_args src_vc;
++	struct vchroot_expand_args dst_vc;
++	struct linux_stat st;
++	long ret;
++
++	if (!src_path || !dest_path)
++		return -EFAULT;
++
++	// CLONE_NOFOLLOW clones the LINK; without it the link is resolved and its target is cloned.
++	src_vc.flags = (flags & CLONE_NOFOLLOW) ? 0 : VCHROOT_FOLLOW;
++	src_vc.dfd = atfd(src_fd);
++	strcpy(src_vc.path, src_path);
++	ret = vchroot_expand(&src_vc);
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++
++	// The destination is the name being created, so its own last component is never followed.
++	dst_vc.flags = 0;
++	dst_vc.dfd = atfd(dest_fd);
++	strcpy(dst_vc.path, dest_path);
++	ret = vchroot_expand(&dst_vc);
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++
++	// NOFOLLOW here too: src_vc has already resolved the link if it was supposed to, so this
++	// reports what is actually going to be cloned.
++	ret = LINUX_SYSCALL(__NR_fstatat64, src_vc.dfd, src_vc.path, &st, LINUX_AT_SYMLINK_NOFOLLOW);
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++
++	if (S_ISLNK(st.st_mode))
++		ret = clone_symlink(src_vc.dfd, src_vc.path, dst_vc.dfd, dst_vc.path);
++	else if (S_ISREG(st.st_mode))
++		ret = clone_regular(src_vc.dfd, src_vc.path, dst_vc.dfd, dst_vc.path, st.st_mode);
++	else
++		return -ENOTSUP;
++
++	__vchroot_bump_generation(); // #11: invalidate the vchroot stat cache
++
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++	return 0;
+ }
+ 
+ long sys_fclonefileat(int src_fd, int dest_fd, const char* dest_path, uint32_t flags) {
+-	return -ENOTSUP;
++	// The source is an already open descriptor, so it names a file and never a symlink. Reach it
++	// by its /proc entry, which is what the emulation does elsewhere for fd-relative work.
++	char src[64];
++	struct vchroot_expand_args dst_vc;
++	struct linux_stat st;
++	long ret;
++
++	if (!dest_path)
++		return -EFAULT;
++
++	__simple_sprintf(src, "/proc/self/fd/%d", src_fd);
++
++	dst_vc.flags = 0;
++	dst_vc.dfd = atfd(dest_fd);
++	strcpy(dst_vc.path, dest_path);
++	ret = vchroot_expand(&dst_vc);
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++
++	ret = LINUX_SYSCALL(__NR_fstatat64, src_fd, "", &st, LINUX_AT_EMPTY_PATH);
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++
++	if (!S_ISREG(st.st_mode))
++		return -ENOTSUP;
++
++	ret = clone_regular(LINUX_AT_FDCWD, src, dst_vc.dfd, dst_vc.path, st.st_mode);
++	__vchroot_bump_generation();
++
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++	return 0;
+ }
