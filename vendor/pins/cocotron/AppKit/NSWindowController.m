@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSNibLoading.h>
 #import <AppKit/NSWindow.h>
 #import <AppKit/NSWindowController.h>
+#import <dlfcn.h>
 #import <objc/message.h>
 #import <objc/runtime.h>
 #include <objc/runtime.h>
@@ -167,6 +168,22 @@ static const void *kCiderNibLoadedKey = &kCiderNibLoadedKey;
 }
 
 - (void) setWindow: (NSWindow *) window {
+    /* WHO GIVES A CONTROLLER ITS WINDOW. The iA Writer nib holds no window at all, the window is
+     * built in code, and every controller ended up holding the FIRST window: only the caller says
+     * whether that is the application reusing one window by design or a fallback of ours
+     * misrouting. */
+    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+        Dl_info info;
+        void *ret = __builtin_return_address(0);
+        int have = dladdr(ret, &info);
+
+        fprintf(stderr, "CIDER_WC %s(%p) setWindow %p (was %p) by %s +%#lx\n",
+                class_getName([self class]), (void *) self, (void *) window, (void *) _window,
+                (have != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
+                (have != 0) ? (unsigned long) ((char *) ret - (char *) info.dli_fbase) : 0UL);
+        fflush(stderr);
+    }
+
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 
     if (_window)
@@ -252,6 +269,23 @@ static const void *kCiderNibLoadedKey = &kCiderNibLoadedKey;
          * drawing operations while looking, from every read only instrument, exactly like a
          * document that had failed to load.
          */
+        /* A CONTROLLER MUST ADOPT THE WINDOW ITS NIB MADE. The wiring above relies on the nib
+         * window outlet landing in _window, and for a Swift subclass it does not: the outlet
+         * stores into Swift side storage and _window stays nil. Every controller then answered
+         * some other window from the fallbacks, which was RIGHT for the first controller by
+         * coincidence and WRONG for every one after it: iA Writer opened each document into a
+         * fresh window whose views held the text while showWindow ordered the first window front
+         * again, so no document ever appeared. The nib top level objects still hold the window,
+         * and on macOS the controller owns it either way. */
+        if (_window == nil) {
+            for (id topLevel in _topLevelObjects) {
+                if ([topLevel isKindOfClass: [NSWindow class]]) {
+                    [self setWindow: topLevel];
+                    break;
+                }
+            }
+        }
+
         if (_window != nil)
             [_window setWindowController: self];
 
