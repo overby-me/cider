@@ -1,0 +1,56 @@
+--- a/OSX/libsecurity_keychain/lib/SecCertificate.cpp	2026-09-06 18:02:43.494315697 +0200
++++ b/OSX/libsecurity_keychain/lib/SecCertificate.cpp	2026-09-06 18:02:43.469921740 +0200
+@@ -282,8 +282,8 @@
+ }
+ 
+ /* OS X only (note: iOS version has different arguments and return value) */
+-OSStatus
+-SecCertificateCopyPublicKey(SecCertificateRef certificate, SecKeyRef *key)
++static OSStatus
++SecCertificateCopyPublicKeyLegacy(SecCertificateRef certificate, SecKeyRef *key)
+ {
+     // This macro creates an ItemImpl certificate if it does not exist
+     BEGIN_SECCERTAPI
+@@ -293,6 +293,42 @@
+     END_SECCERTAPI
+ }
+ 
++extern "C" SecKeyRef SecCertificateCopyKey(SecCertificateRef certificate);
++
++/*
++ * THE LEGACY KEY PATH NEEDS A CSSM PLUGIN THAT CIDER DOES NOT SHIP, so fall back to the modern
++ * implementation, which does the same job without CSSM.
++ *
++ * The legacy route builds an ItemImpl certificate and asks it for a public key, and that route runs
++ * on CSSM and its Certificate Library plugin. MDS advertises AppleX509CL, AppleCSP, AppleCSPDL and
++ * AppleX509TP, and not one of those bundles exists here, so the item is never created and the macro
++ * turns the throw into errSecParam with no key. Anything downstream that needs a peer public key
++ * then fails, and TLS is the loud one: SecureTransport cannot take a key out of the server
++ * certificate, calls the certificate bad, and every HTTPS fetch dies with errSSLBadCert (task #199).
++ *
++ * The legacy attempt stays first so a real keychain-backed certificate keeps its existing answer.
++ */
++OSStatus
++SecCertificateCopyPublicKey(SecCertificateRef certificate, SecKeyRef *key)
++{
++    OSStatus status = SecCertificateCopyPublicKeyLegacy(certificate, key);
++
++    if (status == errSecSuccess && key != NULL && *key != NULL) {
++        return status;
++    }
++    if (certificate == NULL || key == NULL) {
++        return errSecParam;
++    }
++
++    SecKeyRef modern = SecCertificateCopyKey(certificate);
++
++    if (modern == NULL) {
++        return status;
++    }
++    *key = modern;
++    return errSecSuccess;
++}
++
+ /* OS X only: DEPRECATED_IN_MAC_OS_X_VERSION_10_7_AND_LATER */
+ OSStatus
+ SecCertificateGetAlgorithmID(SecCertificateRef certificate, const CSSM_X509_ALGORITHM_IDENTIFIER **algid)
