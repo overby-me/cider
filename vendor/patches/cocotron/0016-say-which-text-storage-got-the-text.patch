@@ -1,0 +1,40 @@
+say which text storage got the text
+
+edited:range:changeInLength: is the funnel every mutation of every NSTextStorage goes through, so
+one line here answers a question that took several rounds otherwise: a text view drawing len=0 has
+either been given nothing at all, or been pointed at a DIFFERENT storage from the one the
+application filled. Only the pointer separates those, and nothing printed it.
+
+Measured on iA Writer, whose editor pane is blank. In one run, 875 edits, ALL of them to a single
+storage, and it is not the editor's:
+
+  CIDER_TEXTEDIT NSTextStorage_concrete(0x7c5f54cabaf0) mask=0x3 range=0+0 delta=4 len=4
+  CIDER_TEXTEDIT NSTextStorage_concrete(0x7c5f54cabaf0) mask=0x3 range=0+9 delta=-9 len=0
+  CIDER_TEXTDRAW IAEditorTextView ... storage=NSTextStorage_concrete_Aspects_(0x7c5f54cc4390) len=0
+
+The edited one is cleared and refilled with short strings and never exceeds 113 characters, which is
+the shape of a shared field editor measuring cell text rather than a document. The editor's own
+storage receives ZERO edits in the whole run.
+
+So the document text never reaches ANY text storage. On CIDER_TRACE_TEXT, beside the draw, adopt and
+insert lines already there.
+
+--- a/AppKit/NSTextView.subproj/NSTextStorage.m
++++ b/AppKit/NSTextView.subproj/NSTextStorage.m
+@@ -224,6 +224,16 @@
+                  range: (NSRange) range
+         changeInLength: (int) delta
+ {
++    /* EVERY MUTATION OF EVERY TEXT STORAGE goes through here, so this says which storage got text and
++     * which did not. A text view that draws len=0 has either been given nothing, or been pointed at a
++     * different storage from the one the application filled, and the POINTER is what separates
++     * those. Task #194. */
++    if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
++        fprintf(stderr, "CIDER_TEXTEDIT %s(%p) mask=0x%x range=%lu+%lu delta=%d len=%lu\n",
++                object_getClassName(self), self, editedMask, (unsigned long) range.location,
++                (unsigned long) range.length, delta, (unsigned long) [self length]);
++        fflush(stderr);
++    }
+ 
+     if (_beginEditing == 0) {
+         _editedMask = editedMask;
