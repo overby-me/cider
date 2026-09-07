@@ -1,0 +1,258 @@
+the rasteriser needs the fallback face, and it was the only one that did
+
+Cyrillic and Arabic drew as NOTHING and accented Greek fell out of the middle of a word, because the
+UI family resolves to TeX Gyre Heros here, a Helvetica clone with Latin and basic Greek. The
+machinery to find a face that can draw a character went in with cocotron 0025, and this is what
+finally connects it to the screen.
+
+FOUR ATTEMPTS FAILED FIRST, all reverted, and the reason is one line.
+
+  -[NSLayoutManager showPackedGlyphs:length:glyphRange:atPoint:font:color:printingAdjustment:]
+  uses its FONT ARGUMENT FOR ADVANCES ONLY. The indices then go to
+  CGContextShowGlyphsWithAdvances, whose face comes from the GRAPHICS STATE, and the graphics state
+  is set once per attribute run inside drawSelectionAtPoint by
+  [NSFontAttributeInDictionary(attributes) setInContext: context].
+
+So every attempt that reconciled the font in _fontForGlyphRange: and _drawGlyphs: was reconciling a
+variable the rasteriser never reads. Generation made indices in the substitute face and the
+rasteriser drew them through the original one, which is mojibake: rows that had been blank came out
+as Latin gibberish, and so did their ASCII prefixes.
+
+  attempt 1  substitute in _fontForGlyphRange:, re-derive in _drawGlyphs:.  ABORTED, and #217 later
+             showed that was a cross allocator free, not the design.
+  attempt 2  the same after #217.  0 faults in 6, and MOJIBAKE.
+  attempt 3  record the face per character index on the LAYOUT MANAGER.  Identical mojibake.
+  attempt 4  the same table on the TEXT STORAGE.  Identical mojibake. NSStringDrawer is a thread
+             shared singleton that REPLACES its one storage on every draw, so a table keyed by
+             character index is stale by the next string on either object.
+  attempt 5  no table: decide from the ATTRIBUTE RUN, whose effectiveRange is the same from every
+             index inside it, so both sides agree by construction.  STILL mojibake, which is what
+             finally sent me to read showPackedGlyphs and find that neither side mattered.
+
+THE DECISION IS THE ATTRIBUTE RUN and it is taken in three places that must not disagree: glyph
+generation and metrics through _fontForGlyphRange:, the advances in _drawGlyphs:, and the graphics
+state in drawSelectionAtPoint. One face per run is also what the rasteriser wants, since it puts a
+whole span through one FT_Face.
+
+An all-ASCII run costs one compare per character and no lookup, and O2FontPatternCoveringCharacter
+memoises by code point behind that. Sixty four characters bounds the scan, not the run: both sides
+read the same first sixty four of the same run, so they still agree.
+
+MEASURED, by looking at the Money Manager EX language list:
+
+  before  ar(SA) blank, be(BY) blank, bg(BG) blank, el(GR) drew Ellinik (Ellda)
+  after   ar(SA) al-arabiyya in Arabic script, be(BY) belaruskaya and bg(BG) balgarski in Cyrillic,
+          el(GR) Ellinika (Ellada) COMPLETE with its accents
+
+CIDER_TRACE_FALLBACK prints which face made a set of indices and which face is about to draw them,
+because that is the question and nothing else in the log answers it.
+--- a/AppKit/NSTextView.subproj/NSLayoutManager.m
++++ b/AppKit/NSTextView.subproj/NSLayoutManager.m
+@@ -417,9 +417,35 @@
+  * THE WIDTH COMES FROM THE METHOD, NOT THE CLASS, which is the same rule the fix on the other side
+  * of this pair uses in CTFontGetGlyphsForCharacters: ^S is CGGlyph *, anything wider is fine as is.
+  */
++static BOOL _CiderTraceFallback(void)
++{
++    static int cached = -1;
++
++    if (cached < 0) {
++        const char *value = getenv("CIDER_TRACE_FALLBACK");
++
++        cached = (value != NULL && value[0] != '\0') ? 1 : 0;
++    }
++    return cached ? YES : NO;
++}
++
+ static NSUInteger _CiderGetGlyphsFromFont(NSFont *font, NSGlyph *glyphs,
+                                           unichar *characters, NSUInteger length)
+ {
++    /* WHICH FACE MADE THESE INDICES. A glyph index is face relative, so the only question that
++     * matters is whether this face and the one that draws are the same object (#216). */
++    if (_CiderTraceFallback() && length > 1) {
++        static int said;
++
++        if (said < 40) {
++            said++;
++            fprintf(stderr, "CIDER_FALLBACK make len=%lu first=u+%04x font=%p %s\n",
++                    (unsigned long) length, (unsigned) characters[0], font,
++                    [[font fontName] UTF8String] ?: "?");
++            fflush(stderr);
++        }
++    }
++
+     Method method = class_getInstanceMethod([font class],
+                                             @selector(getGlyphs:forCharacters:length:));
+     char *argumentType = (method != NULL) ? method_copyArgumentType(method, 2) : NULL;
+@@ -443,6 +469,112 @@
+     return length;
+ }
+ 
++/* Declared rather than imported: Onyx2D's header is not on this file's include path. Defined in
++ * O2Font_freetype.m, and an implicit declaration would return int and truncate the pointer. */
++extern NSString *O2FontPatternCoveringCharacter(uint32_t code);
++
++/*
++ * THE FACE THAT CAN ACTUALLY DRAW IT.
++ *
++ * A font attribute names a FAMILY, not a set of characters, and a face without a glyph draws
++ * nothing whatever: no box, no width, no mark in the log. The UI family resolves to TeX Gyre Heros
++ * here, a Helvetica clone with Latin and BASIC Greek, so a Cyrillic or Arabic string comes out
++ * blank and accented Greek falls out of the middle of a word (#216).
++ *
++ * ONE FACE FOR THE RUN, decided by the first character the run's own font cannot draw. That is what
++ * fits the rasteriser, which puts a whole span through one FT_Face, and it is enough for a name
++ * written in one script with Latin around it: a face carrying Arabic or Cyrillic carries Latin too.
++ *
++ * An all-ASCII run costs one compare per character and no lookup, and O2FontPatternCoveringCharacter
++ * memoises by code point behind that.
++ */
++static NSFont *_CiderFontCoveringCharacters(NSFont *font, unichar *characters, NSUInteger length)
++{
++    NSUInteger i;
++
++    if (font == nil || characters == NULL)
++        return font;
++
++    for (i = 0; i < length; i++) {
++        unichar character = characters[i];
++        uint32_t code = character;
++        NSGlyph glyph = 0;
++
++        /* ASCII is in every face, and a trailing surrogate is half a character. */
++        if (character < 0x80 || (character >= 0xDC00 && character <= 0xDFFF))
++            continue;
++        if (character >= 0xD800 && character <= 0xDBFF && i + 1 < length &&
++            characters[i + 1] >= 0xDC00 && characters[i + 1] <= 0xDFFF)
++            code = 0x10000 + ((code - 0xD800) << 10) + (characters[i + 1] - 0xDC00);
++
++        _CiderGetGlyphsFromFont(font, &glyph, &character, 1);
++        if (glyph != NSNullGlyph)
++            continue;
++
++        NSString *pattern = O2FontPatternCoveringCharacter(code);
++        NSFont *substitute = (pattern != nil)
++                ? [NSFont fontWithName: pattern size: [font pointSize]]
++                : nil;
++
++        /* ASK THE SUBSTITUTE THE SAME QUESTION. fontconfig answers about a FILE and this answers
++         * about a loaded face, and the two disagree often enough to matter: a face that cannot be
++         * opened, or opens without the glyph, would swap the font and still draw nothing. */
++        if (substitute != nil) {
++            NSGlyph substituteGlyph = 0;
++
++            _CiderGetGlyphsFromFont(substitute, &substituteGlyph, &character, 1);
++            if (substituteGlyph != NSNullGlyph)
++                return substitute;
++        }
++        return font;
++    }
++    return font;
++}
++
++/*
++ * THE ATTRIBUTE RUN DECIDES, NOT THE RANGE THE CALLER PASSED, and that is the whole of it.
++ *
++ * Glyph generation is asked for one range and drawing for SUB-RANGES of it, so a decision taken
++ * from the passed range differs between them: the sub-run holding no uncovered character keeps the
++ * original face and then draws the SUBSTITUTE face's glyph indices through it, which comes out as
++ * mojibake. Three attempts to reconcile them by recording the face failed, twice because
++ * NSStringDrawer is a thread shared singleton that REPLACES its one text storage on every draw, so
++ * a table keyed by character index is stale by the next string on the manager and on the storage
++ * alike.
++ *
++ * An attribute run needs no table: effectiveRange is the same for every index inside it, so both
++ * sides reach the same answer from different indices, by construction.
++ *
++ * Sixty four characters is a bound on the scan, not on the run: both sides read the same first
++ * sixty four of the same run, so they still agree, and a rare uncovered character beyond that just
++ * means no substitution.
++ */
++static NSFont *_CiderFontCoveringRun(NSTextStorage *storage, NSFont *font,
++                                     NSUInteger characterIndex)
++{
++    NSRange runRange = NSMakeRange(0, 0);
++    unichar buffer[64];
++    NSUInteger storageLength;
++
++    if (font == nil || storage == nil)
++        return font;
++
++    storageLength = [[storage string] length];
++    if (characterIndex >= storageLength)
++        return font;
++
++    [storage attributesAtIndex: characterIndex effectiveRange: &runRange];
++    if (runRange.length == 0 || runRange.location >= storageLength)
++        return font;
++    if (NSMaxRange(runRange) > storageLength)
++        runRange.length = storageLength - runRange.location;
++    if (runRange.length > 64)
++        runRange.length = 64;
++
++    [[storage string] getCharacters: buffer range: runRange];
++    return _CiderFontCoveringCharacters(font, buffer, runRange.length);
++}
++
+ - (NSFont *) _fontForGlyphRange: (NSRange) glyphRange {
+     NSRange characterRange = [self characterRangeForGlyphRange: glyphRange
+                                               actualGlyphRange: NULL];
+@@ -450,7 +582,8 @@
+             [_textStorage attributesAtIndex: characterRange.location
+                              effectiveRange: NULL];
+ 
+-    return NSFontAttributeInDictionary(attributes);
++    return _CiderFontCoveringRun(_textStorage, NSFontAttributeInDictionary(attributes),
++                                 characterRange.location);
+ }
+ 
+ #define DEBUG_LM_LAYOUT 0
+@@ -2252,7 +2385,12 @@
+ #endif
+ 
+     NSColor *color = NSForegroundColorAttributeInDictionary(attributes);
+-    NSFont *font = NSFontAttributeInDictionary(attributes);
++    /* The SAME decision generation made, because both ask the ATTRIBUTE RUN rather than their own
++     * range: a glyph index is face relative, so a run laid out in a fallback face has to be drawn
++     * in it (#216). */
++    NSRange drawCharacterRange = [self characterRangeForGlyphRange: range actualGlyphRange: NULL];
++    NSFont *font = _CiderFontCoveringRun(_textStorage, NSFontAttributeInDictionary(attributes),
++                                         drawCharacterRange.location);
+ 
+     // First draw the packed glyphs
+     char packedGlyphs[length * 2]; // Specs says length*4+1 but needed buffer
+@@ -2260,6 +2398,18 @@
+     NSInteger packedGlyphsLength = NSConvertGlyphsToPackedGlyphs(
+             glyphs, length, NSNativeShortGlyphPacking, packedGlyphs);
+ 
++    if (_CiderTraceFallback() && length > 1) {
++        static int saidShow;
++
++        if (saidShow < 40) {
++            saidShow++;
++            fprintf(stderr, "CIDER_FALLBACK show len=%lu chars=%lu+%lu font=%p %s\n",
++                    (unsigned long) length, (unsigned long) drawCharacterRange.location,
++                    (unsigned long) drawCharacterRange.length, font,
++                    [[font fontName] UTF8String] ?: "?");
++            fflush(stderr);
++        }
++    }
+     [self showPackedGlyphs: packedGlyphs
+                         length: packedGlyphsLength
+                     glyphRange: range
+@@ -2409,7 +2559,14 @@
+ 
+         // Prepare the font - we're within an attribute run - so this font will
+         // be good for this entire range
+-        NSFont *font = NSFontAttributeInDictionary(attributes);
++        /* THIS IS THE FACE THE RASTERISER ACTUALLY USES, and it was the only one that mattered.
++         * showPackedGlyphs:...font: uses its font argument for ADVANCES ONLY and then hands the
++         * indices to CGContextShowGlyphsWithAdvances, which takes its face from the graphics state
++         * set right here. Four attempts to make generation and drawing agree failed because they
++         * reconciled a variable that never reaches the rasteriser (#216). */
++        NSFont *font = _CiderFontCoveringRun(_textStorage,
++                                             NSFontAttributeInDictionary(attributes),
++                                             characterRange.location);
+         [font setInContext: context];
+ 
+         // We intersect with the selection so we apparently need to tread
