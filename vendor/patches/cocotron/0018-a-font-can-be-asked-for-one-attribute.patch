@@ -1,0 +1,131 @@
+a font can be asked for one attribute, and a descriptor is never nothing
+
+CTFontCopyAttribute was a stub returning nil. A stub return is a policy answer rather than an
+absence, and this one was the whole reason Money Manager EX could not start. From its own
+disassembly, wxNativeFontInfo::GetCTWeight is
+
+  movq  _kCTFontTraitsAttribute, %rsi
+  callq _CTFontCopyAttribute
+  movq  _kCTFontWeightTrait, %rsi
+  callq _CFDictionaryGetValue        on whatever came back, with no check in between
+
+so nil became a null dictionary and the process died inside CoreFoundation, eleven frames from
+anything that names a font.
+
+It is implemented as macOS documents it: one attribute of a font is the same attribute of its
+descriptor. That works here without keeping anything in step, because a descriptor in this port IS
+the attribute dictionary.
+
+AND CTFontCopyFontDescriptor NOW ALWAYS ANSWERS for a non-null font. It used to return NULL when the
+font had no family name, which macOS never does and which no caller expects. An unnamed font gets a
+descriptor with no family entry, which is the truthful shape.
+
+THE THREE NUMERIC TRAITS ARE NOT OPTIONAL EITHER. macOS puts weight, width and slant in every font
+derived traits dictionary. A caller that reads one and hands the result to CFNumberGetValue has
+nothing to check against, so leaving them out moves the crash rather than avoiding it. They are
+derived from the symbolic traits, which is all this port knows: normalised, 0 meaning regular.
+
+--- a/CoreText/CTFont.m
++++ b/CoreText/CTFont.m
+@@ -35,6 +35,16 @@
+ 
+ /* Defined in constants.c and declared in no header, the same as in CTFontCollection.m. */
+ extern const CFStringRef kCTFontSymbolicTrait;
++/* All four live in constants.c, which no header declares; CTFontCollection.m carries the same lines. */
++extern const CFStringRef kCTFontWeightTrait;
++extern const CFStringRef kCTFontWidthTrait;
++extern const CFStringRef kCTFontSlantTrait;
++
++/* A normalised trait, which is always a double in a CoreText traits dictionary. */
++static void _CiderSetTrait(CFMutableDictionaryRef traits, CFStringRef key, double value)
++{
++    CFNumberRef number = CFNumberCreate(kCFAllocatorDefault, kCFNumberDoubleType, &value);
++
+     if (number != NULL) {
+         CFDictionarySetValue(traits, key, number);
+         CFRelease(number);
+@@ -322,18 +332,23 @@
+ CTFontDescriptorRef CTFontCopyFontDescriptor(CTFontRef font)
+ {
+     /* A descriptor is the attribute dictionary, the same shape CTFontCollection builds, so
+-     * describing a font is filling one in from what the font already knows. */
++     * describing a font is filling one in from what the font already knows.
++     *
++     * A VALID FONT ALWAYS GETS A DESCRIPTOR. This used to answer NULL when the font had no family
++     * name, and macOS never does: a caller has no reason to expect it and wxWidgets does not check.
++     * mmex died in CFDictionaryGetValue with a NULL dictionary, because wx asks the descriptor for
++     * kCTFontTraitsAttribute and reads kCTFontWeightTrait straight out of the answer. An unnamed
++     * font now yields a descriptor with no family entry, which is the truthful shape. Task #212. */
+     if (font == NULL) return NULL;
+-    CFStringRef family = CTFontCopyFamilyName(font);
+-    if (family == NULL) return NULL;
+     CFMutableDictionaryRef attributes = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+             &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+-    if (attributes == NULL) {
++    if (attributes == NULL) return NULL;
++
++    CFStringRef family = CTFontCopyFamilyName(font);
++    if (family != NULL) {
++        CFDictionarySetValue(attributes, kCTFontFamilyNameAttribute, family);
+         CFRelease(family);
+-        return NULL;
+     }
+-    CFDictionarySetValue(attributes, kCTFontFamilyNameAttribute, family);
+-    CFRelease(family);
+ 
+     int symbolic = (int) [font symbolicTraits];
+     CFMutableDictionaryRef traits = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+@@ -344,16 +359,51 @@
+             CFDictionarySetValue(traits, kCTFontSymbolicTrait, n);
+             CFRelease(n);
+         }
++        /* THE THREE NUMERIC TRAITS ARE NOT OPTIONAL EITHER. macOS puts weight, width and slant in
++         * every font derived traits dictionary, and a caller that reads one and passes the result
++         * to CFNumberGetValue without checking has nothing to check against. Derived from the
++         * symbolic traits, which is all this port knows: normalised, 0 meaning regular. */
++        _CiderSetTrait(traits, kCTFontWeightTrait,
++                       (symbolic & kCTFontTraitBold) != 0 ? 0.4 : 0.0);
++        _CiderSetTrait(traits, kCTFontWidthTrait,
++                       (symbolic & kCTFontTraitCondensed) != 0
++                               ? -0.4
++                               : ((symbolic & kCTFontTraitExpanded) != 0 ? 0.4 : 0.0));
++        _CiderSetTrait(traits, kCTFontSlantTrait,
++                       (symbolic & kCTFontTraitItalic) != 0 ? 0.2 : 0.0);
+         CFDictionarySetValue(attributes, kCTFontTraitsAttribute, traits);
+         CFRelease(traits);
+     }
+     return (CTFontDescriptorRef) attributes;
+ }
+ 
++/*
++ * ONE ATTRIBUTE OF A FONT, which is its descriptor's attribute of the same name. macOS documents it
++ * that way and this port can implement it that way because a descriptor here IS the attribute
++ * dictionary, so there is nothing to keep in step.
++ *
++ * THIS WAS A STUB RETURNING NIL, and a stub return is a policy answer rather than an absence. From
++ * the mmex disassembly, wxNativeFontInfo::GetCTWeight is
++ *
++ *   callq _CTFontCopyAttribute        with kCTFontTraitsAttribute
++ *   callq _CFDictionaryGetValue       with kCTFontWeightTrait, on whatever came back
++ *
++ * with no check in between, so nil became a null dictionary and the process died in CoreFoundation
++ * eleven frames from anything about fonts. Task #212.
++ */
+ CFTypeRef CTFontCopyAttribute(CTFontRef font, CFStringRef attribute)
+ {
+-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+-    return nil;
++    CTFontDescriptorRef descriptor;
++    CFTypeRef value;
++
++    if (font == NULL || attribute == NULL) return NULL;
++
++    descriptor = CTFontCopyFontDescriptor(font);
++    if (descriptor == NULL) return NULL;
++
++    value = CTFontDescriptorCopyAttribute(descriptor, attribute);
++    CFRelease(descriptor);
++    return value;
+ }
+ 
+ CGFloat CTFontGetSize(CTFontRef self) {

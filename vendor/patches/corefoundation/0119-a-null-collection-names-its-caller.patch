@@ -1,0 +1,60 @@
+a null collection names its caller before it dies
+
+CFDictionaryGetValue on a NULL dictionary segfaults inside CoreFoundation, exactly as it does on
+macOS. This does not change that. It changes the crash from an address into a stack.
+
+An application that reads a sub-dictionary out of a Core Foundation object and does not check the
+result lands here, and the only clue is the KEY, which is a pointer into some framework's constant
+data. That is how #212 was read: the key resolved to kCTFontWeightTrait, so the caller had asked
+something for a font traits dictionary and been handed nothing.
+
+With the backtrace it took one run instead:
+
+  CoreFoundation CFDictionaryGetValue on a NULL collection, key 0x78af935e9180
+  CoreFoundation   1  mmex  wxNativeFontInfo::GetCTWeight(__CTFont const*) + 51
+  CoreFoundation   2  mmex  wxFontRefData::Alloc() + 2111
+  CoreFoundation   3  mmex  wxFont::OSXGetCTFont() const + 40
+  CoreFoundation   9  mmex  wxHtmlWinParser::CreateCurrentFont() + 626
+
+__func__ rather than a literal name, because this file is compiled once for CFDictionary and once
+for CFSet.
+
+MEASURED ON THE ROSTER: zero NULL collection lookups across all five applications, so this surfaces
+no latent defect in anything that already works.
+
+--- a/CFDictionary.c
++++ b/CFDictionary.c
+@@ -34,6 +34,7 @@
+ #include <CoreFoundation/CFDictionary.h>
+ #include "CFInternal.h"
+ #include "CFBasicHash.h"
++#include <execinfo.h>
+ #include <CoreFoundation/CFString.h>
+ 
+ 
+@@ -404,6 +405,25 @@
+ }
+ 
+ const_any_pointer_t CFDictionaryGetValue(CFHashRef hc, const_any_pointer_t key) {
++    /* A NULL COLLECTION NAMES ITS CALLER BEFORE IT DIES. macOS crashes here too, so this changes
++     * nothing about what happens; it changes the crash from an address in CoreFoundation into a
++     * stack. An application that reads a sub-dictionary out of a Core Foundation object and does
++     * not check the result lands here, and the only clue is the KEY.
++     *
++     * That is how #212 was read: the key was kCTFontWeightTrait, so the caller had asked something
++     * for a font traits dictionary and been given nothing. __func__ rather than a literal name
++     * because this file is compiled once for CFDictionary and once for CFSet. */
++    if (hc == NULL) {
++        void *frames[24];
++        int count = backtrace(frames, 24);
++        char **names = backtrace_symbols(frames, count);
++
++        fprintf(stderr, "CoreFoundation %s on a NULL collection, key %p\n", __func__, key);
++        for (int i = 1; i < count && names != NULL; i++)
++            fprintf(stderr, "CoreFoundation   %s\n", names[i]);
++        free(names);
++        fflush(stderr);
++    }
+ #if CFDictionary
+     if (CFDictionary) CF_OBJC_FUNCDISPATCHV(CFDictionaryGetTypeID(), const_any_pointer_t, (NSDictionary *)hc, objectForKey:(id)key);
+ #endif
