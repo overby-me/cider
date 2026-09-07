@@ -1,0 +1,137 @@
+one selector, two element widths, and this is the other side of the pair
+
+NSFont writes NSGlyph, which is NSUInteger and EIGHT bytes. KTFont answers the SAME selector,
+getGlyphs:forCharacters:length:, and writes CGGlyph, which is TWO. An attributed string built through
+CoreText legitimately carries a KTFont under NSFontAttributeName, because kCTFontAttributeName IS
+NSFontAttributeName, so this layout manager is handed both kinds and assumed one.
+
+Two byte elements written into an eight byte array leave the first slot holding four packed
+neighbours and every later slot untouched. The layout that comes out is nonsense, and what it looks
+like is a twelve character label drawn as one character at a width that has nothing to do with the
+string. Money Manager EX drew its whole startup screen that way: O, N, O, U, U, Wi, Fm.
+
+The element width is read from the METHOD rather than the class, which is the rule the fix on the
+other side of this pair already uses in CTFontGetGlyphsForCharacters:
+
+  method_copyArgumentType(class_getInstanceMethod([font class], @selector(...)), 2)
+
+and ^S means CGGlyph *. A narrow callee gets a bounce buffer that is widened afterwards; a wide one
+is called directly and costs nothing.
+
+MEASURED, on the same nine labels, before and after:
+
+  "Open Last Opened Database"   183.00 -> 159.00   25 characters
+  "New Database"                 49.00 ->  81.00   12
+  "Open Existing Database"       41.00 -> 132.00   22
+  "User Interface Language"      46.00 -> 135.00   23
+  "User Manual"                  46.00 ->  70.00   11
+  "Website"                      48.00 ->  44.00    7
+  "Forum"                        37.00 ->  35.00    5
+
+Every after value is about 6.3 per character; not one of the before values was. The buttons wx sized
+from those measurements went from 60 points wide to 163, and every label now reads in full.
+
+The trace that found it is kept: CIDER_TRACE_TEXT prints the font CLASS, the glyph range, the
+character count and how many glyphs came back as nothing.
+
+IT IS NOT IN NSGlyphGenerator, which is where I put it first. That class is dead code in this port
+and a probe inside it printed nothing for an application that plainly draws text; the control was
+that the probe string WAS in the built binary. The two live call sites are both in NSLayoutManager.
+
+--- a/AppKit/NSTextView.subproj/NSLayoutManager.m
++++ b/AppKit/NSTextView.subproj/NSLayoutManager.m
+@@ -45,6 +45,7 @@
+ 
+ #import "NSBidiHelper.h"
+ #import "NSRulerMarker+NSTextExtensions.h"
++#import <CoreText/KTFont.h>
+ 
+ typedef struct {
+     NSRect rect;
+@@ -403,6 +404,45 @@
+                                      NSCountRangeEntries(_glyphFragments) - 1);
+ }
+ 
++/*
++ * ONE SELECTOR, TWO ELEMENT WIDTHS. NSFont writes NSGlyph, which is NSUInteger and eight bytes wide;
++ * KTFont answers the SAME selector and writes CGGlyph, which is two. An attributed string built
++ * through CoreText legitimately carries a KTFont under NSFontAttributeName, because
++ * kCTFontAttributeName IS NSFontAttributeName, so this layout manager gets handed both kinds.
++ *
++ * Writing two byte elements into an eight byte array leaves the first slot holding four packed
++ * neighbours and every later slot untouched, so a twelve character button label laid out as one
++ * character with a meaningless width. That is what Money Manager EX drew. Task #212.
++ *
++ * THE WIDTH COMES FROM THE METHOD, NOT THE CLASS, which is the same rule the fix on the other side
++ * of this pair uses in CTFontGetGlyphsForCharacters: ^S is CGGlyph *, anything wider is fine as is.
++ */
++static NSUInteger _CiderGetGlyphsFromFont(NSFont *font, NSGlyph *glyphs,
++                                          unichar *characters, NSUInteger length)
++{
++    Method method = class_getInstanceMethod([font class],
++                                            @selector(getGlyphs:forCharacters:length:));
++    char *argumentType = (method != NULL) ? method_copyArgumentType(method, 2) : NULL;
++    BOOL narrow = (argumentType != NULL) && strcmp(argumentType, "^S") == 0;
++
++    if (argumentType != NULL)
++        free(argumentType);
++
++    if (!narrow)
++        return [font getGlyphs: glyphs forCharacters: characters length: length];
++
++    CGGlyph *narrowGlyphs = calloc(length > 0 ? length : 1, sizeof(CGGlyph));
++
++    if (narrowGlyphs == NULL)
++        return 0;
++
++    [(KTFont *) font getGlyphs: narrowGlyphs forCharacters: characters length: length];
++    for (NSUInteger i = 0; i < length; i++)
++        glyphs[i] = narrowGlyphs[i];
++    free(narrowGlyphs);
++    return length;
++}
++
+ - (NSFont *) _fontForGlyphRange: (NSRange) glyphRange {
+     NSRange characterRange = [self characterRangeForGlyphRange: glyphRange
+                                               actualGlyphRange: NULL];
+@@ -428,9 +468,26 @@
+     unichar buffer[characterRange.length];
+ 
+     [[_textStorage string] getCharacters: buffer range: characterRange];
+-    [font getGlyphs: glyphs
+-            forCharacters: buffer
+-                   length: characterRange.length];
++    _CiderGetGlyphsFromFont(font, glyphs, buffer, characterRange.length);
++
++    /* WHAT THE FONT ANSWERED. A label that draws one character out of twelve is either a range that
++     * was cut short before it got here or glyphs that came back as nothing, and only the numbers
++     * separate those. The font CLASS is printed because KTFont and NSFont answer this selector with
++     * different element widths, which has bitten this port before.
++     *
++     * NOT in NSGlyphGenerator: that class is dead code here, and a probe placed in it printed
++     * nothing for an application that plainly draws text. */
++    if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
++        NSUInteger zeros = 0;
++
++        for (NSUInteger g = 0; g < characterRange.length; g++)
++            if (glyphs[g] == 0) zeros++;
++        fprintf(stderr, "CIDER_TEXTGLYPH font=%s glyphRange=%lu chars=%lu zeros=%lu\n",
++                font != nil ? object_getClassName(font) : "nil",
++                (unsigned long) glyphRange.length, (unsigned long) characterRange.length,
++                (unsigned long) zeros);
++        fflush(stderr);
++    }
+ 
+ #if DEBUG_getGlyphs_range
+     NSLog(@"returning %u", glyphRange.length);
+@@ -485,9 +542,7 @@
+                                 characterRange.length);
+ 
+         NSFont *font = [self _fontForGlyphRange: glyphRange];
+-        result = [font getGlyphs: glyphs
+-                   forCharacters: buffer
+-                          length: characterRange.length];
++        result = _CiderGetGlyphsFromFont(font, glyphs, buffer, characterRange.length);
+         // Reorder the glyph
+         NSBidiHelperProcessLine(baseLevel, glyphs, NULL, bidiLevels, false,
+                                 characterRange.length);
