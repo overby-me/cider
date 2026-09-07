@@ -1,0 +1,78 @@
+a CTFont under NSFontAttributeName is legitimate
+
+kCTFontAttributeName and NSFontAttributeName are the SAME KEY, both CFSTR("NSFont"). An attributed
+string built through CoreText, which is what CTLineCreateWithAttributedString takes, therefore
+carries a CTFontRef where an AppKit one carries an NSFont. On a Mac those are interchangeable; in
+this port KTFont and NSFont are unrelated classes.
+
+NSLayoutManager sends -setInContext: to whatever it finds under that key. A KTFont did not answer:
+
+  cider: UNRECOGNIZED -[KTFont_FT setInContext:]
+  cider:   chain KTFont_FT   A/CoreText
+  cider:   chain KTFont      A/CoreText
+  cider:   chain NSObject    lib/libobjc.A.dylib
+
+which raised inside a draw. Money Manager EX reported only "Unhandled unknown exception; terminating
+the application" and exited 255, with no trace of what had actually happened.
+
+A category on KTFont, in AppKit rather than CoreText because NSGraphicsContext lives here and
+CoreText must not depend on AppKit. It does what -[NSFont setInContext:] does: sets the font, the
+size and the text matrix on the graphics port.
+
+MEASURED: mmex goes from a black screen to a drawn window, title bar and logo and buttons, with zero
+unrecognized selectors and zero unhandled exceptions, and it stays running rather than exiting.
+
+--- a/AppKit/NSFont.m
++++ b/AppKit/NSFont.m
+@@ -29,6 +29,7 @@
+ #import <Foundation/NSKeyedArchiver.h>
+ 
+ #import <Onyx2D/O2Font.h>
++#import <CoreText/KTFont.h>
+ 
+ NSNotificationName NSFontSetChangedNotification =
+         @"NSFontSetChangedNotification";
+@@ -1046,6 +1047,43 @@
+ }
+ 
+ @end
++
++/*
++ * A CTFONT UNDER NSFontAttributeName IS LEGITIMATE, and this is where that stops being a crash.
++ *
++ * kCTFontAttributeName and NSFontAttributeName are the SAME KEY, both CFSTR("NSFont"). An attributed
++ * string built through CoreText, which is what CTLineCreateWithAttributedString takes, therefore
++ * carries a CTFontRef where an AppKit one would carry an NSFont. On a Mac those are interchangeable;
++ * here KTFont and NSFont are unrelated classes.
++ *
++ * NSLayoutManager sends -setInContext: to whatever it finds under that key. A KTFont did not answer,
++ * which raised inside a draw, and Money Manager EX reported it as "Unhandled unknown exception;
++ * terminating the application" with no other trace of what had happened. Task #212.
++ *
++ * This lives in AppKit rather than CoreText because NSGraphicsContext does, and CoreText must not
++ * depend on AppKit.
++ */
++@implementation KTFont (CiderGraphicsContext)
++
++- (void) setInContext: (NSGraphicsContext *) context {
++    CGContextRef cgContext = [context graphicsPort];
++
++    if (cgContext == NULL)
++        return;
++
++    CGContextSetFont(cgContext, [self graphicsFont]);
++    CGContextSetFontSize(cgContext, [self pointSize]);
++    CGContextSetTextMatrix(cgContext,
++                           [[NSGraphicsContext currentContext] isFlipped]
++                                   ? (CGAffineTransform){1, 0, 0, -1, 0, 0}
++                                   : CGAffineTransformIdentity);
++}
++
++- (void) set {
++    [self setInContext: [NSGraphicsContext currentContext]];
++}
++
++@end
+ 
+ #ifndef DARLING
+ @implementation NSFont (PortatibilityAdditions)
