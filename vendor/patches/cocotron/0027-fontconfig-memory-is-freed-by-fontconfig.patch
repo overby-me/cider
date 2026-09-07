@@ -1,0 +1,41 @@
+fontconfig memory is freed by fontconfig
+
+FcNameUnparse returns a string the caller owns, and it was freed with free(). fontconfig here is a
+NATIVE library: it allocates from the HOST allocator, so the guest free() reaches libsystem_malloc,
+which does not recognise the block, reports it and ABORTS.
+
+LIBREOFFICE FOUND IT, and only LibreOffice could have: it is the one application on the roster that
+CALLS CTFontCreateForString, through
+CoreTextGlyphFallbackSubstititution::FindFontSubstitute, for glyph fallback on every font preview
+in its font name box. One click on Writer Document killed the process, 6 runs in 6.
+
+  0 libsystem_c       cider_trace_abort
+  1 libsystem_c       abort
+  2 libsystem_malloc  malloc_vreport
+  3 libsystem_malloc  malloc_report
+  4 Onyx2D            O2FontPatternCoveringCharacter + 877
+  5 CoreText          CTFontCreateForString + 278
+  6 libvclplug_osxlo  CoreTextGlyphFallbackSubstititution::FindFontSubstitute
+
+CORRECTING MYSELF: patch 0025 says nothing calls CTFontCreateForString and names LibreOffice as one
+of the applications that does not import it. That was measured on the LAUNCHER, soffice, which is a
+stub; the code lives in libvclplug_osxlo.dylib and libmergedlo.dylib, and it calls it. Check the
+PLUGIN dylibs, not the executable, before saying an application does not use something.
+
+FcStrFree is the fontconfig free and uses the same allocator.
+--- a/Onyx2D/O2Font_freetype.m
++++ b/Onyx2D/O2Font_freetype.m
+@@ -253,7 +253,12 @@
+ 
+                 if (unparsed != NULL) {
+                     answer = [NSString stringWithUTF8String: (const char *) unparsed];
+-                    free(unparsed);
++                    /* FcStrFree, NOT free. fontconfig is a NATIVE library here and allocates from
++                     * the host allocator, so handing its pointer to the guest free() reaches
++                     * libsystem_malloc, which reports it and ABORTS. LibreOffice found this the
++                     * hard way: it calls CTFontCreateForString for glyph fallback on every font
++                     * preview, and one click on Writer Document killed it (#217). */
++                    FcStrFree(unparsed);
+                 }
+             }
+             FcPatternDestroy(match);

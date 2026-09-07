@@ -1,0 +1,60 @@
+say who aborted
+
+SIGABRT arrives with its RIP inside libsystem_kernel, which names no caller at all, and the core
+records only the re-raise, so a process that aborts leaves nothing to work from. A LibreOffice
+abort was chased for an hour across four wrong suspects on that basis; with this it took one run.
+
+CIDER_TRACE_ABORT prints a backtrace from abort() itself, which is still the aborting thread with
+its stack intact, rather than from a signal handler. Off unless asked for, and deliberately not
+async signal safe: the process is dying either way.
+
+  CIDER_ABORT
+  0 libsystem_c       cider_trace_abort
+  1 libsystem_c       abort
+  2 libsystem_malloc  malloc_vreport
+  3 libsystem_malloc  malloc_report
+  4 Onyx2D            O2FontPatternCoveringCharacter + 877
+  5 CoreText          CTFontCreateForString + 278
+  6 libvclplug_osxlo  CoreTextGlyphFallbackSubstititution::FindFontSubstitute
+--- a/stdlib/FreeBSD/abort.c
++++ b/stdlib/FreeBSD/abort.c
+@@ -48,6 +48,7 @@
+ #include <pthread/workqueue_private.h>
+ #endif
+ #include "un-namespace.h"
++#include <execinfo.h>
+ 
+ #include "libc_private.h"
+ 
+@@ -64,11 +65,31 @@
+ 
+ #define TIMEOUT	10000	/* 10 milliseconds */
+ 
++/*
++ * SAY WHO ABORTED. SIGABRT arrives with its RIP inside libsystem_kernel, which names no caller at
++ * all, and the core records only the re-raise, so a process that aborts leaves nothing to work from
++ * (#217). Printed here rather than from a signal handler because this is still the aborting thread
++ * with its stack intact. Off unless asked for, and unsafe on purpose: the process is dying.
++ */
++static void
++cider_trace_abort(void)
++{
++	const char *value = getenv("CIDER_TRACE_ABORT");
++	void *frames[32];
++
++	if (value == NULL || value[0] == '\0')
++		return;
++	write(2, "CIDER_ABORT\n", 12);
++	backtrace_symbols_fd(frames, backtrace(frames, 32), 2);
++}
++
+ void
+ abort()
+ {
+ 	struct sigaction act;
+ 
++	cider_trace_abort();
++
+ 	if (!CRGetCrashLogMessage())
+ 		CRSetCrashLogMessage("abort() called");
+ 
