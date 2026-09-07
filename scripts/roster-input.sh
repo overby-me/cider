@@ -21,6 +21,12 @@
 #
 # NEVER USE REAL CREDENTIALS WITH MONEYMONEY. It talks to banks. The step here types into the
 # TOOLBAR SEARCH FIELD, which is a local filter over accounts and contacts nothing.
+#
+# CLICK RUNS BEFORE TYPE FOR EVERY ENTRY and that ordering is load bearing twice over. TYPE is what
+# creates the keyboard, so a click-only run has no key window; and a run driven the other way round,
+# TYPE then POST_CLICK, was observed ONCE on mmex to get no pointer capability at all, so the click
+# was never delivered and the application looked unresponsive when it was not. One observation is
+# not a rate and it is not chased here, but every entry below uses the order that is known to work.
 set -u
 
 cd "$(dirname "$0")/.."
@@ -43,6 +49,7 @@ sp|/tmp/cider-sp-1000/prefix|/Applications/Swift Publisher 5.app/Contents/MacOS/
 mm|/tmp/cider-mm-1000/prefix|/Applications/MoneyMoney.app/Contents/MacOS/MoneyMoney|1|1130,75|cider|search field focuses and shows cider
 it|/tmp/cider-it-1000/prefix|/Applications/iTerm2.app/Contents/MacOS/iTerm2|0||echo cider types here|the command appears at the prompt
 lo|/tmp/cider-lo-1000/prefix|/Applications/LibreOffice.app/Contents/MacOS/soffice|1|100,273;813,434;600,550|Cider types into Writer|Writer opens and the text lands on the page
+mx|/tmp/cider-mx-1000/prefix|/Applications/mmex.app/Contents/MacOS/mmex|1|627,313|key:Escape|the User Interface Language dialog opens, then Escape closes it again
 EOF
 }
 
