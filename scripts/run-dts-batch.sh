@@ -41,11 +41,19 @@ while read -r t; do
 done < "$OUT/targets.txt"
 
 RES=$(realpath vendor/src/darling-testsuite)
+# EACH CASE IS COPIED INTO THE PREFIX AND RUN FROM THERE, not run in place from buck-out. A binary
+# executed through /Volumes/SystemRoot gets the HOST spelling of its own path, and CFBundleCreate
+# needs an existing directory, so CFBundleGetMainBundle answers NULL and anything that asks for the
+# main bundle fails. That is what made the Security case trap (task #205). Upstream installs its
+# cases before running them, so this is also closer to how the suite is meant to run.
 {
 	echo '#!/bin/sh'
 	echo "export DARLING_TESTSUITE_RESOURCE_PATH=/Volumes/SystemRoot$RES"
+	echo 'mkdir -p /tmp/dts'
 	while read -r t; do
-		echo "\"/Volumes/SystemRoot$(realpath "$ART")/__${t}__/$t\" >/dev/null 2>&1; echo \"CASE $t EXIT \$?\""
+		src="/Volumes/SystemRoot$(realpath "$ART")/__${t}__/$t"
+		echo "cp \"$src\" /tmp/dts/$t && chmod +x /tmp/dts/$t"
+		echo "\"/tmp/dts/$t\" >/dev/null 2>&1; echo \"CASE $t EXIT \$?\""
 	done < "$OUT/built.txt"
 } > "$OUT/batch.sh"
 chmod +x "$OUT/batch.sh"
