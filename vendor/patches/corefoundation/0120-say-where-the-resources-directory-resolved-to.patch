@@ -1,0 +1,47 @@
+say where the resources directory resolved to
+
+The url this returns is RELATIVE to the bundle by construction, so what a caller gets depends
+entirely on whether it resolves against the base. -[NSBundle resourcePath] is [[self resourceURL]
+path], and for wxWidgets that one string is the WHOLE translation search path: wxStandardPaths
+GetResourcesDir is [[NSBundle mainBundle] resourcePath], read out of the shipping binary.
+
+Bounded to twenty lines and on the existing CIDER_TRACE_MAINBUNDLE gate, next to the line that
+already says what the main bundle was derived from.
+
+MEASURED for Money Manager EX, and it was RIGHT, which is what let the search move on to the table
+that was drawing the answer three pixels wide (#213):
+
+  mainbundle: processPath=/Applications/mmex.app/Contents/MacOS/mmex bundleURL=/Applications/mmex.app
+  mainbundle: resources version=2 path=/Applications/mmex.app/Contents/Resources
+--- a/CFBundle.c
++++ b/CFBundle.c
+@@ -1522,7 +1522,28 @@
+ }
+ 
+ CF_EXPORT CFURLRef CFBundleCopyResourcesDirectoryURL(CFBundleRef bundle) {
+-    return _CFBundleCopyResourcesDirectoryURLInDirectory(bundle->_url, bundle->_version);
++    CFURLRef result = _CFBundleCopyResourcesDirectoryURLInDirectory(bundle->_url, bundle->_version);
++
++    /* The url is RELATIVE to the bundle by construction, so what a caller gets depends entirely on
++     * whether it resolves against the base. Print the resolved path, which is what -[NSBundle
++     * resourcePath] answers and what wxWidgets uses as its whole translation search path (#213). */
++    if (getenv("CIDER_TRACE_MAINBUNDLE")) {
++        static int printed;
++
++        if (printed < 20) {
++            CFURLRef absolute = result ? CFURLCopyAbsoluteURL(result) : NULL;
++            CFStringRef path = absolute ? CFURLCopyFileSystemPath(absolute, PLATFORM_PATH_STYLE) : NULL;
++            char buf[1024] = "(none)";
++
++            printed++;
++            if (path) CFStringGetCString(path, buf, sizeof(buf), kCFStringEncodingUTF8);
++            fprintf(stderr, "mainbundle: resources version=%d path=%s\n", (int) bundle->_version, buf);
++            fflush(stderr);
++            if (path) CFRelease(path);
++            if (absolute) CFRelease(absolute);
++        }
++    }
++    return result;
+ }
+ 
+ CF_PRIVATE CFURLRef _CFBundleCopyAppStoreReceiptURLInDirectory(CFURLRef bundleURL, uint8_t version) {

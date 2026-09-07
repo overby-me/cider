@@ -1,0 +1,61 @@
+name the directory an application opens
+
+An application that looked and found nothing and one that never looked leave the same empty list
+from outside, and four explanations for an empty list in Money Manager EX were chased on that
+ambiguity before this existed (#213). CIDER_TRACE_OPENDIR ends it: every opendir prints its path
+and whether it succeeded.
+
+write(2) rather than stdio, because this is libc and stdio is not safe to reach for from here, and
+bounded at 500 lines because a file dialog opens thousands.
+
+WHAT IT SAID for the case it was written for, which cleared readdir as an explanation for good:
+
+  CIDER_OPENDIR /Applications/mmex.app/Contents/Resources ok
+  CIDER_OPENDIR /Applications/mmex.app/Contents/Resources/en_US.lproj ok
+  CIDER_OPENDIR /usr/local/share/locale FAILED
+  CIDER_OPENDIR /System/Library/CoreServices/SystemVersion.bundle FAILED
+--- a/gen/FreeBSD/opendir.c
++++ b/gen/FreeBSD/opendir.c
+@@ -79,13 +79,41 @@
+ static DIR * __opendir_common(int, int, bool);
+ 
+ /*
++ * NAME THE DIRECTORY, because an application that looked and found nothing and one that never
++ * looked leave the same empty list from outside (#213). write(2) rather than stdio, which is not
++ * safe to reach for from this layer, and bounded because a file dialog opens thousands.
++ */
++static void
++cider_trace_opendir(const char *name, int ok)
++{
++	static int cached = -1;
++	static int printed;
++	char line[1200];
++
++	if (cached < 0) {
++		const char *value = getenv("CIDER_TRACE_OPENDIR");
++
++		cached = (value != NULL && value[0] != '\0') ? 1 : 0;
++	}
++	if (cached == 0 || printed >= 500 || name == NULL)
++		return;
++	printed++;
++	strlcpy(line, "CIDER_OPENDIR ", sizeof(line));
++	strlcat(line, name, sizeof(line));
++	strlcat(line, ok ? " ok\n" : " FAILED\n", sizeof(line));
++	write(2, line, strlen(line));
++}
++
++/*
+  * Open a directory.
+  */
+ DIR *
+ opendir(const char *name)
+ {
++	DIR *result = __opendir2(name, DTF_HIDEW|DTF_NODUP);
+ 
+-	return (__opendir2(name, DTF_HIDEW|DTF_NODUP));
++	cider_trace_opendir(name, result != NULL);
++	return (result);
+ }
+ 
+ /*

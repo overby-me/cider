@@ -1,0 +1,94 @@
+a table column gets its defaults whatever you call
+
+-[NSTableColumn init] fell through to NSObject and left every field zero. That is not a small
+column, it is a column that can never be made bigger: setWidth: clamps against _maxWidth, and a
+_maxWidth of zero pins the width at zero forever, so sizeLastColumnToFit and every autoresize style
+become silent no-ops. initWithIdentifier: also never called [super init], which is fixed here too.
+
+WHO REACHES IT. wxWidgets subclasses NSTableColumn as wxNSTableColumn, and its -init calls
+[super init] rather than initWithIdentifier:, read straight out of the shipping binary:
+
+  -[wxNSTableColumn init]:
+      movq  0xa54212(%rip), %rsi   ## Objc selector ref: init
+      callq 0x100dc2978            ## Objc message: -[[%rdi super] init]
+
+So EVERY wxWidgets list box and list control under this port had a zero width column.
+
+WHAT IT LOOKED LIKE, and it is worth writing down because the appearance named the wrong defect.
+Money Manager EX opens a User Interface Language dialog with correct chrome, a scrollbar and an
+apparently EMPTY list. It was recorded as such, and four explanations were chased and disproved:
+readdir, the main bundle URL, a missing symbol and a CFBundle stub. All four were innocent.
+
+The list was never empty. Asking the table itself:
+
+  before  CIDER_TABLE draw wxNSTableView clip=3x256 rows=42 frame=3x882 super=NSClipView,314x256 cols=0,
+  after   CIDER_TABLE draw wxNSTableView clip=314x256 rows=42 frame=314x882 super=NSClipView,314x256 cols=311,
+
+Forty two rows both times. The rows were three pixels wide, and the blue sliver at the top left of
+the list was the selected row drawn at its true width.
+
+THE TRACE THAT SAID SO is the other half of this patch: CIDER_TABLE draw now prints the frame, the
+clip view it sits in, the autoresizing mask and every column width, because rows=42 alone had
+already been printed and read as a healthy table.
+
+VERIFIED by looking: the dialog now lists System default selected, then ar(SA) through es(ES) with
+their native names, catala, cestina, dansk, Deutsch, English (United Kingdom), espanol. The Arabic,
+Belarusian and Bulgarian rows show their tags and empty brackets, which is font coverage and a
+separate question.
+--- a/AppKit/NSTableColumn.m
++++ b/AppKit/NSTableColumn.m
+@@ -63,6 +63,9 @@
+ // an editor for it.. also theoretically -dealloc could've crashed as the cell
+ // prototypes weren't initialized at all...
+ - (instancetype) initWithIdentifier: (NSUserInterfaceItemIdentifier) identifier {
++    if ((self = [super init]) == nil)
++        return nil;
++
+     _identifier = [identifier retain];
+     _width = 100.0;
+     _minWidth = 10.0;
+@@ -74,6 +77,15 @@
+     return self;
+ }
+ 
++/* A COLUMN GETS ITS DEFAULTS WHATEVER YOU CALL, which is what macOS does. -init reached NSObject
++ * and left every field zero, and a zero maxWidth is a trap rather than a small column: setWidth:
++ * clamps against it, so nothing can ever widen the column again and sizeLastColumnToFit becomes a
++ * silent no-op. wxWidgets subclasses this and its own -init calls [super init], which is how Money
++ * Manager EX drew a list of 42 languages three pixels wide (#213). */
++- (instancetype) init {
++    return [self initWithIdentifier: @""];
++}
++
+ - (void) dealloc {
+     [_identifier release];
+     [_headerCell release];
+--- a/AppKit/NSTableView.m
++++ b/AppKit/NSTableView.m
+@@ -2030,10 +2030,24 @@
+      * no selection wipes the highlight and puts nothing back. Print the pointer: two draws of the
+      * SAME table with different answers is the shape that finding takes. Task #210. */
+     if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
+-        fprintf(stderr, "CIDER_TABLE draw %s %p clip=%.0fx%.0f+%.0f+%.0f rows=%ld selected=%lu\n",
++        /* AND THE WIDTHS, because a table drawing 42 rows three pixels wide looks exactly like an
++         * empty list from outside (#213). The frame, the clip view it sits in and every column,
++         * which is the chain that decides how wide a row is. */
++        NSRect frame = [self frame];
++        NSRect superBounds = [self superview] != nil ? [[self superview] bounds] : NSZeroRect;
++        NSMutableString *columns = [NSMutableString string];
++
++        for (NSTableColumn *column in _tableColumns)
++            [columns appendFormat: @"%.0f,", [column width]];
++        fprintf(stderr,
++                "CIDER_TABLE draw %s %p clip=%.0fx%.0f+%.0f+%.0f rows=%ld selected=%lu "
++                "frame=%.0fx%.0f super=%s,%.0fx%.0f mask=%lu cols=%s\n",
+                 object_getClassName(self), self, clipRect.size.width, clipRect.size.height,
+                 clipRect.origin.x, clipRect.origin.y, (long) numberOfRows,
+-                (unsigned long) [_selectedRowIndexes count]);
++                (unsigned long) [_selectedRowIndexes count], frame.size.width, frame.size.height,
++                [self superview] != nil ? object_getClassName([self superview]) : "(none)",
++                superBounds.size.width, superBounds.size.height,
++                (unsigned long) [self autoresizingMask], [columns UTF8String]);
+         fflush(stderr);
+     }
+ 
