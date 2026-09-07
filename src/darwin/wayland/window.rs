@@ -1811,6 +1811,16 @@ fn release_backing(st: &mut WindowState) {
             objc::msg_send0(st.context, objc::sel_registerName(cstr!("release")));
         }
         st.context = std::ptr::null_mut();
+        /* RELEASING OUR REFERENCE IS NOT ENOUGH, and the X11 backend sends this at the same point.
+         * NSWindow caches an NSGraphicsContext per thread that retains the context, whose surface
+         * is built over the shm mapping and does not own it, so after the munmap below a lockFocus
+         * still hands out the dead one and the next fill stores into freed address space (#214). */
+        if !st.delegate.is_null() {
+            unsafe {
+                let sel = objc::sel_registerName(cstr!("platformWindowDidInvalidateCGContext:"));
+                objc::msg_send_obj(st.delegate, sel, st.owner);
+            }
+        }
     }
     for slot in 0..2 {
         if !st.present_buf[slot].is_null() {

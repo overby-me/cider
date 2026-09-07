@@ -1,0 +1,323 @@
+bound the destination of a span, and name the surface it belongs to
+
+Money Manager EX died every time its save panel was opened and then took the keyboard, 4 runs in 5
+before this. The fault was a store of 0xFF000000 into an unmapped page from
+O2argb8u_copy_by_coverage, and the cause turned out to be in the Wayland backend rather than here,
+so this is the instrument that found it plus the guards that make the same class of defect say
+something instead of dying hundreds of instructions away from its cause.
+
+WHAT THE THREE SPAN WRITERS NOW REFUSE.
+
+O2ImageRead_BGRA8888_to_argb8u returns pixelBytes + y * bytesPerRow + x * 4 on little endian and
+hands that straight back as the destination. scanlineAtY bounds the ROW and nothing bounds
+x + length within it, so a span wider than the surface runs into the next row, and off the last row
+it leaves the mapping entirely. Upstream cocotron knew: there is a viewport assert at the call site
+in O2DContextFillEdgesOnSurface, disabled under an if 0. ciderClampSpan is that assert, awake, and
+it reports rather than aborts.
+
+A paint that reports more pixels than it was asked for is the second way out. Every one of these
+loops does length -= chunk and breaks on length == 0, so one oversized chunk drives length negative
+and the test never fires again while src and dst walk forever. ciderClampChunk ends that, and a
+chunk of zero, which spins instead, with it.
+
+ciderDirectIsSane is the third and it is the one that mattered: the direct pointer must lie inside
+the surface that produced it. It did, every time, which is what ruled out both of the above and
+turned the search towards the surface itself.
+
+WHAT THE TRACE ANSWERS, under CIDER_TRACE_SURFACE.
+
+O2Surface prints itself as it is made, resized and freed, with its size, stride, pixel base and
+whether it OWNS those pixels. The span writer prints one line per buffer it draws into, not per
+span, with a backtrace under it. The process dies mid draw, so the last buffer named is the one it
+died in and the backtrace beneath it is the draw that reached for it. For #214 that read:
+
+  CIDER_SURFACE new self=0x74c95f635640 500x173 row=2192 pixels=0x74c95d5efde0 owns=0
+  CIDER_SPANDIRECT surface=0x74c95f635640 pixels=0x74c95d5efde0+379216 direct=0x74c95d604d7c
+      x=107 y=39 len=1
+  ...
+  1 O2RasterizeWriteCoverageSpan8888_Copy
+  6 NSRectFillListUsingOperation
+  8 -[NSTextView drawInsertionPointInRect:color:turnedOn:]
+  10 -[NSWindow becomeKeyWindow]
+  12 cider_wayland_set_keyboard_focus
+
+owns=0 was the answer: the window surface is built over the Wayland shm mapping and does not own
+it, and release_backing had munmapped it. The fix is in src/darwin/wayland/window.rs.
+
+A PROBE THAT COULD NOT BE USED, recorded so it is not tried again. Nothing in memory can tell a
+live page from a dead one when the object still describes it, so a syscall was tried: write to
+/dev/null and stat of the pointer, either of which answers EFAULT on a real kernel. Run once
+against 0x10 as a control, the guest DIED INSIDE THE PROBE. The syscall emulation does not fault
+protect its copyin, so neither call can be used to ask a question about an address.
+--- a/Onyx2D/O2Context_builtin.m
++++ b/Onyx2D/O2Context_builtin.m
+@@ -959,6 +959,116 @@
+     return cached ? YES : NO;
+ }
+ 
++static void ciderReportSpan(const char *what, int x, int y, int length,
++                            int became, int width, int height)
++{
++    static int printed;
++
++    if (printed >= 40)
++        return;
++    printed++;
++    fprintf(stderr, "CIDER_SPANBOUNDS %s x=%d y=%d len=%d -> %d surface=%dx%d\n",
++            what, x, y, length, became, width, height);
++    fflush(stderr);
++}
++
++/* The direct reader hands back a bare row pointer: O2ImageRead_BGRA8888_to_argb8u returns
++ * pixelBytes + y * bytesPerRow + x * 4 and nothing bounds x + length against the row, so a span
++ * wider than the surface runs into the next row and off the last row it leaves the mapping. The
++ * fault then lands in the blit, a long way from whatever produced the span (#214). */
++ONYX2D_STATIC_INLINE int ciderClampSpan(O2Surface *surface, const char *who, int x, int y,
++                                        int length)
++{
++    int width = (int) O2ImageGetWidth(surface);
++    int height = (int) O2ImageGetHeight(surface);
++    int clamped = length;
++
++    if (x < 0 || y < 0 || y >= height)
++        clamped = 0;
++    else if (x + length > width)
++        clamped = width - x;
++
++    if (clamped < 0)
++        clamped = 0;
++    if (clamped != length)
++        ciderReportSpan(who, x, y, length, clamped, width, height);
++    return clamped;
++}
++
++/* DO NOT ASK A SYSCALL WHETHER AN ADDRESS IS MAPPED. Run against 0x10 as a control, both write to
++ * /dev/null and stat of the pointer killed the guest instead of answering EFAULT: the syscall
++ * emulation does not fault protect its copyin. Naming the surface is what is left. */
++static BOOL ciderTraceSurface(void)
++{
++    static int cached = -1;
++
++    if (cached < 0) {
++        const char *value = getenv("CIDER_TRACE_SURFACE");
++
++        cached = (value != NULL && value[0] != '\0') ? 1 : 0;
++    }
++    return cached ? YES : NO;
++}
++
++/* A direct span pointer must lie inside the surface it came from. It does not once the pixel buffer
++ * is freed under a draw that is still running: the O2Image direct cache keeps the old bytes and the
++ * old length, scanlineAtY passes its own check against those, and the blit stores into an unmapped
++ * page (#214). The backtrace names the draw. */
++ONYX2D_STATIC_INLINE BOOL ciderDirectIsSane(O2Surface *surface, O2argb8u *direct, int x, int y,
++                                            int length)
++{
++    const uint8_t *base = O2SurfaceGetPixelBytes(surface);
++    size_t bytes = O2SurfaceGetBytesPerRow(surface) * O2SurfaceGetHeight(surface);
++    const uint8_t *first = (const uint8_t *) direct;
++    size_t span = (size_t) length * sizeof(O2argb8u);
++    static O2Surface *lastSurface;
++    static const uint8_t *lastBase;
++    static int printedSurface, printedBad;
++    /* One line per buffer, not per span: the process dies mid draw, so the LAST buffer named is the
++     * one it died in, and the backtrace under it is the draw that reached for it. */
++    BOOL newBuffer = (surface != lastSurface || base != lastBase);
++
++    if (newBuffer && printedSurface < 60) {
++        printedSurface++;
++        fprintf(stderr, "CIDER_SPANDIRECT surface=%p pixels=%p+%zu direct=%p x=%d y=%d len=%d\n",
++                surface, base, bytes, direct, x, y, length);
++        fflush(stderr);
++        if (ciderTraceSurface()) {
++            void *frames[24];
++
++            backtrace_symbols_fd(frames, backtrace(frames, 24), 2);
++        }
++    }
++    lastSurface = surface;
++    lastBase = base;
++
++    if (base != NULL && first >= base && first + span <= base + bytes)
++        return YES;
++
++    if (printedBad < 8) {
++        void *frames[24];
++        int count = backtrace(frames, 24);
++
++        printedBad++;
++        fprintf(stderr, "CIDER_SPANDIRECT STALE surface=%p pixels=%p+%zu direct=%p x=%d y=%d "
++                        "len=%d\n",
++                surface, base, bytes, direct, x, y, length);
++        fflush(stderr);
++        backtrace_symbols_fd(frames, count, 2);
++    }
++    return NO;
++}
++
++/* A paint reporting more pixels than it was asked for drives length negative, and the length == 0
++ * test in every one of these loops then never fires. Reporting none of them spins instead. */
++ONYX2D_STATIC_INLINE int ciderClampChunk(const char *who, int chunk, int length)
++{
++    if (chunk > 0 && chunk <= length)
++        return chunk;
++    ciderReportSpan(who, -1, -1, chunk, length, 0, 0);
++    return length;
++}
++
+ ONYX2D_STATIC_INLINE void O2RasterizeWriteCoverageSpan8888_Normal(
+         O2Surface *surface, O2Surface *mask, O2Paint *paint, int x, int y,
+         int coverage, int length, O2BlendSpan_argb8u blendFunction)
+@@ -975,11 +1085,17 @@
+         }
+     }
+ 
++    if ((length = ciderClampSpan(surface, "sover", x, y, length)) <= 0)
++        return;
++
+     O2argb8u *dst = __builtin_alloca(length * sizeof(O2argb8u));
+     O2argb8u *direct = surface->_read_argb8u(surface, x, y, dst, length);
+ 
+-    if (direct != NULL)
++    if (direct != NULL) {
++        if (!ciderDirectIsSane(surface, direct, x, y, length))
++            return;
+         dst = direct;
++    }
+ 
+     O2argb8u *src = __builtin_alloca(length * sizeof(O2argb8u));
+ 
+@@ -987,8 +1103,9 @@
+         int chunk = O2PaintReadSpan_argb8u_PRE(paint, x, y, src, length);
+ 
+         if (chunk < 0) // skip
+-            chunk = -chunk;
++            chunk = ciderClampChunk("sover skip", -chunk, length);
+         else {
++            chunk = ciderClampChunk("sover paint", chunk, length);
+             O2argb8u_sover_by_coverage(src, dst, coverage, chunk);
+             // FIXME: doesnt handle mask if present
+ 
+@@ -1011,11 +1128,17 @@
+         O2Surface *surface, O2Surface *mask, O2Paint *paint, int x, int y,
+         int coverage, int length, O2BlendSpan_argb8u blendFunction)
+ {
++    if ((length = ciderClampSpan(surface, "copy", x, y, length)) <= 0)
++        return;
++
+     O2argb8u *dst = __builtin_alloca(length * sizeof(O2argb8u));
+     O2argb8u *direct = surface->_read_argb8u(surface, x, y, dst, length);
+ 
+-    if (direct != NULL)
++    if (direct != NULL) {
++        if (!ciderDirectIsSane(surface, direct, x, y, length))
++            return;
+         dst = direct;
++    }
+ 
+     O2argb8u *src = __builtin_alloca(length * sizeof(O2argb8u));
+ 
+@@ -1023,8 +1146,9 @@
+         int chunk = O2PaintReadSpan_argb8u_PRE(paint, x, y, src, length);
+ 
+         if (chunk < 0) // skip
+-            chunk = -chunk;
++            chunk = ciderClampChunk("copy skip", -chunk, length);
+         else {
++            chunk = ciderClampChunk("copy paint", chunk, length);
+             O2argb8u_copy_by_coverage(src, dst, coverage, chunk);
+             // FIXME: doesnt handle mask if present
+ 
+@@ -1049,11 +1173,17 @@
+                                  O2Paint *paint, int x, int y, int coverage,
+                                  int length, O2BlendSpan_argb8u blendFunction)
+ {
++    if ((length = ciderClampSpan(surface, "blend", x, y, length)) <= 0)
++        return;
++
+     O2argb8u *dst = __builtin_alloca(length * sizeof(O2argb8u));
+     O2argb8u *direct = surface->_read_argb8u(surface, x, y, dst, length);
+ 
+-    if (direct != NULL)
++    if (direct != NULL) {
++        if (!ciderDirectIsSane(surface, direct, x, y, length))
++            return;
+         dst = direct;
++    }
+ 
+     O2argb8u *src = __builtin_alloca(length * sizeof(O2argb8u));
+ 
+@@ -1061,8 +1191,9 @@
+         int chunk = O2PaintReadSpan_argb8u_PRE(paint, x, y, src, length);
+ 
+         if (chunk < 0) // skip
+-            chunk = -chunk;
++            chunk = ciderClampChunk("blend skip", -chunk, length);
+         else {
++            chunk = ciderClampChunk("blend paint", chunk, length);
+             blendFunction(src, dst, chunk);
+ 
+             // apply masking
+--- a/Onyx2D/O2Surface.m
++++ b/Onyx2D/O2Surface.m
+@@ -29,6 +29,22 @@
+ #import <Onyx2D/O2ColorSpace.h>
+ #import <Onyx2D/O2DataProvider.h>
+ #import <Onyx2D/O2Surface.h>
++#include <stdio.h>
++#include <stdlib.h>
++
++/* Name every surface as it is made and as it goes, because a span writer that faults names only the
++ * pointer it was handed, and whether that buffer is still alive is the whole question (#214). */
++static BOOL ciderTraceSurface(void)
++{
++    static int cached = -1;
++
++    if (cached < 0) {
++        const char *value = getenv("CIDER_TRACE_SURFACE");
++
++        cached = (value != NULL && value[0] != '\0') ? 1 : 0;
++    }
++    return cached ? YES : NO;
++}
+ 
+ @implementation O2Surface
+ 
+@@ -724,6 +740,12 @@
+     if ([provider isDirectAccess])
+         _pixelBytes = (void *) [provider bytes];
+ 
++    if (ciderTraceSurface()) {
++        fprintf(stderr, "CIDER_SURFACE new self=%p %zux%zu row=%zu pixels=%p owns=%d\n", self,
++                width, height, bytesPerRow, _pixelBytes, (int) m_ownsData);
++        fflush(stderr);
++    }
++
+     if (!initFunctionsForParameters(self, bitsPerComponent, _bitsPerPixel,
+                                     colorSpace, bitmapInfo))
+         /*
+@@ -744,6 +766,11 @@
+ }
+ 
+ - (void) dealloc {
++    if (ciderTraceSurface()) {
++        fprintf(stderr, "CIDER_SURFACE free self=%p %zux%zu pixels=%p\n", self, _width, _height,
++                _pixelBytes);
++        fflush(stderr);
++    }
+     _pixelBytes =
+             NULL; // if we own it, it's in the provider, if not, no release
+     pthread_mutex_destroy(&_lock);
+@@ -784,6 +811,12 @@
+         NSMutableData *data = [NSMutableData dataWithLength: size];
+         _provider = O2DataProviderCreateWithCFData((CFDataRef) data);
+         _pixelBytes = [data mutableBytes];
++
++        if (ciderTraceSurface()) {
++            fprintf(stderr, "CIDER_SURFACE resize self=%p %zux%zu pixels=%p\n", self, width, height,
++                    _pixelBytes);
++            fflush(stderr);
++        }
+     }
+ }
+ 
