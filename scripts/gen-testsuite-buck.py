@@ -27,6 +27,7 @@ import sys
 
 ROOT = "vendor/src/darling-testsuite"
 TESTS = f"{ROOT}/testsuite"
+LIBXPC = "usr/lib/system/libxpc.dylib"
 
 FRAMEWORK_DEPS = [
     "//vendor/src:fw_Foundation",
@@ -104,6 +105,17 @@ CASE_FRAMEWORKS = {
     # negative control scripts/run-dts-case.sh relies on.
 }
 
+# A FRAMEWORK UMBRELLA INCLUDES OTHER UMBRELLAS, and the case only names its own framework, so the
+# path rule alone stops one header short. Each entry is the framework the compiler actually asked
+# for, taken from the "file not found" it reported, not from reading the umbrella and guessing.
+EXTRA_HEADERS = {
+    "AVFoundation": [f"{FW}:fw_AVFAudio"],
+    "Carbon": [f"{FW}:fw_HIToolbox"],
+    "PDFKit": [f"{FW}:fw_Quartz"],
+    "QuartzCore": [f"{FW}:fw_CoreVideo", "//vendor/src:fw_Metal"],
+    "WebKit": ["//vendor/src:fw_Cocoa", "//vendor/src:fw_AppKit"],
+}
+
 # AN APPKIT CASE LINKS APPKIT, and only an AppKit case does: pulling the GUI framework into a libc
 # test would drag the whole display path into something that has no business touching it.
 APPKIT_DYLIBS = DYLIBS + ["//vendor/src:AppKit_dylib"]
@@ -126,10 +138,12 @@ def case_frameworks(rel):
     for part in rel.split("/"):
         if not part.endswith(".framework"):
             continue
-        pair = CASE_FRAMEWORKS.get(part[: -len(".framework")])
+        name = part[: -len(".framework")]
+        pair = CASE_FRAMEWORKS.get(name)
         if pair:
             headers.append(pair[0])
             dylibs.append(pair[1])
+        headers.extend(EXTRA_HEADERS.get(name, []))
     return headers, dylibs
 
 
@@ -201,11 +215,16 @@ def main():
             rel = os.path.join(base, f)
             if "AppKit.framework" in rel and not want_appkit:
                 continue
+            # NOT EVERY SOURCE FILE IS A CASE. libxpc.dylib/src/helper/*.c is a library CMake builds
+            # into libxpc_helper_tools and links into the cases; wired as binaries they have no main
+            # and fail at link, which reads as a broken test and is a broken rule.
+            if LIBXPC in rel and f"{LIBXPC}/src/" in rel:
+                continue
             # SKIP THE CASES THAT NEED A GENERATED HEADER. The libxpc group ships
             # include/test_shared_data.h.in and its CMakeLists runs configure_file over it, so the
-            # header only exists inside a CMake build. Eighteen cases include it and every one of
-            # them fails with "test_shared_data.h file not found", which reads like a missing API
-            # and is nothing of the kind. Wiring the configure_file rule for them is its own step.
+            # header only exists inside a CMake build. Five automated cases include it, four of them
+            # client halves that need a launchd-registered server, so wiring configure_file is its
+            # own step and worth one case on its own.
             try:
                 body = open(rel, "rb").read()
             except OSError:
@@ -228,6 +247,7 @@ def main():
     for rel in cases:
         name = target_name(rel)
         is_appkit = "AppKit.framework" in rel
+        is_libxpc = LIBXPC in rel
         own_headers, own_dylibs = case_frameworks(rel)
         out.append("")
         out.append("cc_objects(")
@@ -250,6 +270,8 @@ def main():
                 emitted.add(h)
                 out.append(f'        "{h}",')
         out.append('        ":darling_testsuite_inc",')
+        if is_libxpc:
+            out.append('        ":libxpc_testsuite_inc",')
         out.append("    ],")
         out.append('    visibility = ["PUBLIC"],')
         out.append(")")
@@ -259,6 +281,8 @@ def main():
         out.append("    objs = [")
         out.append(f'        ":{name}_obj",')
         out.append('        ":darling_testsuite_lib_obj",')
+        if is_libxpc:
+            out.append('        ":libxpc_helper_tools_obj",')
         out.append('        "//vendor/src/csu:crt1.10.6_obj2",')
         out.append("    ],")
         out.append("    dylibs = [")

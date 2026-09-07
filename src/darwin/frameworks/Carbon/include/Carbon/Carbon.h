@@ -25,6 +25,8 @@
 #include "CoreServices/MacTypes.h"
 #include "CoreServices/FileManager.h"
 
+#include <HIToolbox/Appearance.h>
+#include <HIToolbox/HITheme.h>
 #include <HIToolbox/CarbonEventsCore.h>
 #include <HIToolbox/CarbonEvents.h>
 #include <HIToolbox/Dialogs.h>

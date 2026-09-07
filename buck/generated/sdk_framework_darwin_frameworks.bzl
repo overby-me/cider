@@ -4559,6 +4559,8 @@ FRAMEWORKS = {
         "HIServices/Processes.h": "ApplicationServices/HIServices/include/HIServices/Processes.h",
     },
     "HIToolbox": {
+        "HIToolbox/Appearance.h": "Carbon/HIToolbox/include/HIToolbox/Appearance.h",
+        "HIToolbox/HITheme.h": "Carbon/HIToolbox/include/HIToolbox/HITheme.h",
         "HIToolbox/CarbonEvents.h": "Carbon/HIToolbox/include/HIToolbox/CarbonEvents.h",
         "HIToolbox/CarbonEventsCore.h": "Carbon/HIToolbox/include/HIToolbox/CarbonEventsCore.h",
         "HIToolbox/Dialogs.h": "Carbon/HIToolbox/include/HIToolbox/Dialogs.h",
