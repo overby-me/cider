@@ -119,6 +119,14 @@ EXTRA_HEADERS = {
                "//vendor/src:fw_Onyx2D"],
 }
 
+# THE SAME PROBLEM ONE LAYER DOWN. A case can reach a second framework's headers through its own
+# umbrella and still not link it. The ImageIO icns case calls CGImageGetWidth and friends, which
+# live in CoreGraphics: it compiles because FRAMEWORK_DEPS hands out the headers, then cannot
+# resolve a single one of them.
+EXTRA_DYLIBS = {
+    "ImageIO": ["//vendor/src:CoreGraphics_dylib"],
+}
+
 # AN APPKIT CASE LINKS APPKIT, and only an AppKit case does: pulling the GUI framework into a libc
 # test would drag the whole display path into something that has no business touching it.
 APPKIT_DYLIBS = DYLIBS + ["//vendor/src:AppKit_dylib"]
@@ -147,6 +155,7 @@ def case_frameworks(rel):
             headers.append(pair[0])
             dylibs.append(pair[1])
         headers.extend(EXTRA_HEADERS.get(name, []))
+        dylibs.extend(EXTRA_DYLIBS.get(name, []))
     return headers, dylibs
 
 

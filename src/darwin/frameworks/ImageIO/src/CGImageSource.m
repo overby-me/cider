@@ -27,7 +27,12 @@ size_t CGImageSourceGetCount(CGImageSourceRef self) {
 }
 
 CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef self,size_t index,CFDictionaryRef options) {
-   return (CGImageRef)[self createImageAtIndex:index options:options];
+   CGImageRef image = (CGImageRef)[self createImageAtIndex:index options:options];
+   // The source is the only thing that knows which decoder produced these pixels, and
+   // CGImageGetUTType is how a caller asks the IMAGE afterwards. Hand it over here or the answer
+   // is lost with the source.
+   O2ImageSetUTType((O2ImageRef)image, CGImageSourceGetType(self));
+   return image;
 }
 
 CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef self, size_t index,CFDictionaryRef options) {

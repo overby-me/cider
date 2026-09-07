@@ -1,0 +1,92 @@
+carry the image format uti onto the decoded image
+
+CGImageGetUTType did not exist anywhere in the tree, so the ImageIO icns case called it, got an
+implicit int back, and failed on the conversion before it could test anything.
+
+The UTI is known only to the image SOURCE: every O2ImageSource subclass already answers it, and
+CGImageSourceGetType returns it. It was simply never carried onto the image the source produced, so
+a caller holding a CGImage had no way back to the format it came from.
+
+An ASSOCIATED OBJECT rather than an O2Image ivar, so the image layout, its copying and its dealloc
+are all untouched for the sake of one string. An image built from raw pixels has no format and
+answers NULL, which is what macOS answers too.
+
+It lives in Onyx2D and not in CoreGraphics because ImageIO links Onyx2D and NOT CoreGraphics: the
+first attempt put the setter in CGImage.m and ImageIO could not resolve it. CGImage.m now forwards,
+which is the same one-line shape as every other accessor in that file.
+
+--- a/Onyx2D/O2Image.m
++++ b/Onyx2D/O2Image.m
+@@ -27,6 +27,7 @@
+  *
+  *-------------------------------------------------------------------*/
+ 
++#import <objc/runtime.h>
+ #import <Foundation/NSData.h>
+ #import <Onyx2D/O2ColorSpace.h>
+ #import <Onyx2D/O2DataProvider.h>
+@@ -694,6 +695,26 @@
+     return self->_isMask;
+ }
+ 
++/* THE UTI OF THE FORMAT THIS IMAGE WAS DECODED FROM, which only the image SOURCE knows. Held as an
++ * ASSOCIATED OBJECT rather than an ivar so the image layout, its copying and its dealloc are all
++ * untouched for the sake of one string. An image built from raw pixels has no format and answers
++ * NULL, which is what macOS answers too. */
++static const char kO2ImageUTTypeKey;
++
++void O2ImageSetUTType(O2Image *self, CFStringRef utType) {
++    if (self == nil) {
++        return;
++    }
++    objc_setAssociatedObject(self, &kO2ImageUTTypeKey, (id)utType, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++}
++
++CFStringRef O2ImageGetUTType(O2Image *self) {
++    if (self == nil) {
++        return NULL;
++    }
++    return (CFStringRef)objc_getAssociatedObject(self, &kO2ImageUTTypeKey);
++}
++
+ size_t O2ImageGetWidth(O2Image *self) {
+     if (self == NULL)
+         return 0;
+--- a/Onyx2D/include/Onyx2D/O2Image.h
++++ b/Onyx2D/include/Onyx2D/O2Image.h
+@@ -193,6 +193,9 @@
+ void O2ImageRelease(O2ImageRef self);
+ BOOL O2ImageIsMask(O2ImageRef self);
+ 
++CFStringRef O2ImageGetUTType(O2ImageRef self);
++void O2ImageSetUTType(O2ImageRef self, CFStringRef utType);
++
+ size_t O2ImageGetWidth(O2ImageRef self);
+ size_t O2ImageGetHeight(O2ImageRef self);
+ 
+--- a/CoreGraphics/CGImage.m
++++ b/CoreGraphics/CGImage.m
+@@ -92,6 +92,12 @@
+     return (CGImageRef)O2ImageCreateWithMaskingColors((O2ImageRef)self, components);
+ }
+ 
++/* The UTI belongs to the image SOURCE, and ImageIO puts it on the O2Image as it decodes. This is
++ * the same one-line forward as every other accessor in this file. */
++CFStringRef CGImageGetUTType(CGImageRef self) {
++    return O2ImageGetUTType((O2ImageRef)self);
++}
++
+ size_t CGImageGetWidth(CGImageRef self) {
+     return O2ImageGetWidth((O2ImageRef)self);
+ }
+--- a/CoreGraphics/include/CoreGraphics/CGImage.h
++++ b/CoreGraphics/include/CoreGraphics/CGImage.h
+@@ -98,6 +98,8 @@
+ COREGRAPHICS_EXPORT CGImageRef
+ CGImageCreateWithMaskingColors(CGImageRef self, const CGFloat *components);
+ 
++COREGRAPHICS_EXPORT CFStringRef CGImageGetUTType(CGImageRef self);
++
+ COREGRAPHICS_EXPORT size_t CGImageGetWidth(CGImageRef self);
+ COREGRAPHICS_EXPORT size_t CGImageGetHeight(CGImageRef self);
+ COREGRAPHICS_EXPORT size_t CGImageGetBitsPerComponent(CGImageRef self);
