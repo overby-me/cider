@@ -11289,6 +11289,8 @@ cc_objects(
         "//src/darwin/frameworks:fw_LangAnalysis",
         "//src/darwin/frameworks:fw_LaunchServices",
         "//src/darwin/frameworks:fw_OpenGL",
+        # Quartz.h umbrellas PDFKit, so Quartz.c needs its headers.
+        "//src/darwin/frameworks:fw_PDFKit",
         "//src/darwin/frameworks:fw_PrintCore",
         "//src/darwin/frameworks:fw_QD",
         "//src/darwin/frameworks:fw_Quartz",

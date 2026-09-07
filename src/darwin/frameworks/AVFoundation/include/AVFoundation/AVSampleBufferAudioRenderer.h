@@ -19,6 +19,8 @@
 
 #include <Foundation/Foundation.h>
 
+extern NSString *const AVSampleBufferAudioRendererWasFlushedAutomaticallyNotification;
+
 @interface AVSampleBufferAudioRenderer : NSObject
 
 @end

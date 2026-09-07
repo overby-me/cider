@@ -21,5 +21,12 @@
 #ifndef _Quartz_H_
 #define _Quartz_H_
 
+// Quartz is an umbrella and this one was empty, so a consumer reaching PDFKit the way macOS
+// documents it, through Quartz rather than PDFKit directly, found nothing at all.
+// GUARDED, because PDFKit is Objective-C and Quartz.h is reachable from plain C. Unguarded it
+// stops this framework's own Quartz.c on the first NSString in Foundation.
+#ifdef __OBJC__
+#import <PDFKit/PDFKit.h>
+#endif
 
 #endif

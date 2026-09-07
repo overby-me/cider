@@ -1,0 +1,17 @@
+the coreanimation umbrella never reached caemitterlayer
+
+kCAEmitterLayerPoint and kCAEmitterLayerAdditive were declared in CAEmitterLayer.h and defined in
+CAEmitterLayer.m with the right values, point and additive. CoreAnimation.h lists every other CA
+layer and not that one, so QuartzCore.h did not reach it and both names read as undeclared to
+anything including only the umbrella.
+
+--- a/QuartzCore/include/QuartzCore/CoreAnimation.h
++++ b/QuartzCore/include/QuartzCore/CoreAnimation.h
+@@ -6,6 +6,7 @@
+ #import <QuartzCore/CATextLayer.h>
+ #import <QuartzCore/CATransaction.h>
+ 
++#import <QuartzCore/CAEmitterLayer.h>
+ #import <QuartzCore/CAGradientLayer.h>
+ #import <QuartzCore/CAMetalDrawable.h>
+ #import <QuartzCore/CAMetalLayer.h>

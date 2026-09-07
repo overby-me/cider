@@ -43,6 +43,10 @@ NSString *const AVErrorPersistentTrackIDKey = @"AVErrorPersistentTrackIDKey";
 NSString *const AVErrorFileTypeKey = @"AVErrorFileTypeKey";
 NSString *const AVFormatIDKey = @"AVFormatIDKey";
 NSString *const AVLinearPCMBitDepthKey = @"AVLinearPCMBitDepthKey";
+NSString *const AVLinearPCMIsBigEndianKey = @"AVLinearPCMIsBigEndianKey";
+NSString *const AVLinearPCMIsFloatKey = @"AVLinearPCMIsFloatKey";
+// NOT AVLinearPCMIsNonInterleavedKey. macOS drops the Key suffix on this one alone.
+NSString *const AVLinearPCMIsNonInterleaved = @"AVLinearPCMIsNonInterleaved";
 NSString *const AVNumberOfChannelsKey = @"AVNumberOfChannelsKey";
 NSString *const AVPlayerItemDidPlayToEndTimeNotification = @"AVPlayerItemFailedToPlayToEndTimeNotification";
 NSString *const AVPlayerItemFailedToPlayToEndTimeNotification = @"AVPlayerItemPlaybackStalledNotification";
@@ -96,3 +100,5 @@ const AVMetadataKey AVMetadataCommonKeyDescription = @"description";
 const AVMetadataKey AVMetadataCommonKeyTitle = @"title";
 
 const AVMetadataKey AVMetadataID3MetadataKeyUserURL = @"WXXX";
+
+NSString *const AVSampleBufferAudioRendererWasFlushedAutomaticallyNotification = @"AVSampleBufferAudioRendererWasFlushedAutomaticallyNotification";
