@@ -1,0 +1,208 @@
+a font can be asked which face covers a character
+
+CTFontCreateForString returned the font it was given, always, and
+CTFontCopyDefaultCascadeListForLanguages returns an empty array. Both were deliberate and both said
+so in their own comments, and together they mean this port has NO font fallback: a character the
+chosen face has no glyph for is drawn as nothing at all.
+
+That is visible. The UI family list resolves to TeX Gyre Heros on this system, a Helvetica clone
+with Latin and BASIC Greek, so Money Manager EX draws its Arabic and Cyrillic language names as
+nothing and drops accented Greek out of the middle of a word while unaccented Greek survives (#216).
+
+O2FontPatternCoveringCharacter asks fontconfig for a face that really has one code point.
+
+  MEMOISED BY CODE POINT, and that is not an optimisation. FcFontMatch measured 28 percent of all
+  samples in a LibreOffice text conversion, and this sits on a path that could run per character.
+  A code point is the right key because what decides the face is the SCRIPT.
+
+  IT CHECKS THE ANSWER. FcFontMatch never fails, it SUBSTITUTES, so for a script nothing installed
+  covers it hands back a face without the character and returning that would swap the face and
+  still draw nothing. FcCharSetHasChar on the match is what makes the reply honest.
+
+  The answer is FcNameUnparse of the match, which carries file=, so everything downstream takes the
+  fast path in +filenameForPattern: rather than matching a second time.
+
+CTFontCreateForString now uses it for the FIRST character in the range the current font has no
+glyph for, which is the contract: the reply only has to cover the beginning of the range. Every
+path still ends at the current font, retained, because a caller asking for a fallback is in a loop
+and nil invites it to ask again.
+
+NOTHING VISIBLE CHANGES YET, and that is measured rather than hoped: iA Writer, LibreOffice and
+Money Manager EX import CTFontCreateForString ZERO times, and nothing in this tree calls it. The
+comment this replaces claimed LibreOffice loops on it; its import table does not agree.
+
+So this is the first half. The second half is making the LAYOUT path use it, and that is recorded
+in #216 rather than started here, because a glyph index is FACE RELATIVE:
+-[O2Context_builtin_FT showGlyphs:advances:count:] rasterises a whole run through one FT_Face, so
+per glyph substitution changes a CGContext level contract and does not belong in a drawing loop.
+
+VERIFIED: roster all six render, take input and resize, every capture looked at; the mmex language
+dialog opened 3 of 3 in a follow up measurement after it missed once in a loaded roster sweep.
+darling-testsuite 64 passed, 1 failed, unchanged.
+--- a/Onyx2D/O2Font_freetype.m
++++ b/Onyx2D/O2Font_freetype.m
+@@ -186,6 +186,78 @@
+ }
+ 
+ /*
++ * A FACE THAT CAN DRAW THIS CHARACTER, which is the half of font selection this port never had.
++ *
++ * The UI family list resolves to TeX Gyre Heros on this system, a Helvetica clone with Latin and
++ * BASIC Greek and nothing else, so Cyrillic and Arabic draw as nothing and accented Greek drops out
++ * of the middle of a word. The host is not short of faces; nothing was asking for one (#216).
++ *
++ * MEMOISED BY CODE POINT, and that is not an optimisation. FcFontMatch measured 28 percent of all
++ * samples in a LibreOffice text conversion, and this sits on a path that runs per character of a
++ * run. A code point is also the right key: what decides the face is the script, and every character
++ * of one script answers the same.
++ *
++ * The answer is FcNameUnparse of the match, which carries file=, so everything downstream takes the
++ * fast path in +filenameForPattern: rather than matching a second time.
++ */
++NSString *O2FontPatternCoveringCharacter(uint32_t code) {
++    static NSMutableDictionary *cache = nil;
++    NSNumber *key = [NSNumber numberWithUnsignedInt: code];
++
++    O2FontHostLock();
++    if (cache == nil)
++        cache = [[NSMutableDictionary alloc] init];
++    NSString *hit = [[cache objectForKey: key] retain];
++    O2FontHostUnlock();
++    if (hit != nil)
++        return [[hit autorelease] length] != 0 ? hit : nil;
++
++    FcConfig *config = O2FontSharedFontConfig();
++    NSString *answer = nil;
++
++    O2FontHostLock();
++    FcCharSet *charset = FcCharSetCreate();
++    FcPattern *pattern = (charset != NULL) ? FcPatternCreate() : NULL;
++
++    if (pattern != NULL && FcCharSetAddChar(charset, code)) {
++        FcResult result;
++
++        FcPatternAddCharSet(pattern, FC_CHARSET, charset);
++        FcPatternAddBool(pattern, FC_SCALABLE, FcTrue);
++        FcConfigSubstitute(config, pattern, FcMatchPattern);
++        FcDefaultSubstitute(pattern);
++
++        FcPattern *match = FcFontMatch(config, pattern, &result);
++
++        if (match != NULL) {
++            /* FcFontMatch NEVER FAILS, it substitutes, so a match that does not actually have the
++             * character is the normal answer for a script nothing installed covers. Returning it
++             * would swap the face and still draw nothing. */
++            FcCharSet *covered = NULL;
++
++            if (FcPatternGetCharSet(match, FC_CHARSET, 0, &covered) == FcResultMatch &&
++                covered != NULL && FcCharSetHasChar(covered, code)) {
++                FcChar8 *unparsed = FcNameUnparse(match);
++
++                if (unparsed != NULL) {
++                    answer = [NSString stringWithUTF8String: (const char *) unparsed];
++                    free(unparsed);
++                }
++            }
++            FcPatternDestroy(match);
++        }
++    }
++    if (pattern != NULL)
++        FcPatternDestroy(pattern);
++    if (charset != NULL)
++        FcCharSetDestroy(charset);
++
++    [cache setObject: (answer != nil) ? answer : @"" forKey: key];
++    O2FontHostUnlock();
++    return answer;
++}
++
++/*
+  * THE APPLE USER INTERFACE FONTS, WHICH ARE NOT HERE AND MUST NOT BECOME DEJAVU.
+  *
+  * AppKit asks for San Francisco, and applications ask for Helvetica Neue and Lucida Grande. None of
+--- a/Onyx2D/include/Onyx2D/O2Font_freetype.h
++++ b/Onyx2D/include/Onyx2D/O2Font_freetype.h
+@@ -35,6 +35,10 @@
+ FT_Library O2FontSharedFreeTypeLibrary();
+ FcConfig *O2FontSharedFontConfig();
+ 
++/* A fontconfig pattern for a face that really has this character, or nil when nothing installed
++ * does. Memoised by code point, because the caller is on a per character path. */
++NSString *O2FontPatternCoveringCharacter(uint32_t code);
++
+ @end
+ 
+ #endif
+--- a/CoreText/CTFont.m
++++ b/CoreText/CTFont.m
+@@ -102,6 +102,8 @@
+  * under another name. Both spellings matter: an implicit declaration returns int, which is what
+  * the compiler assumed the first time and which truncated the pointer. */
+ extern CGFontRef O2FontCreateWithFontName(CFStringRef name);
++/* Same reason: Onyx2D's header is not on this include path. Defined in O2Font_freetype.m. */
++extern NSString *O2FontPatternCoveringCharacter(uint32_t code);
+ 
+ static CTFontRef _CiderFontCreateForFamily(CFStringRef family, CGFloat size)
+ {
+@@ -306,19 +308,54 @@
+ /*
+  * Glyph fallback: which font can render this range of the string.
+  *
+- * THE CURRENT FONT IS THE TERMINATING ANSWER. There is no substitution table here, so the honest
+- * reply is "no better font than the one you have", and it must be a font rather than nil: a
++ * THE CURRENT FONT IS ALWAYS THE TERMINATING ANSWER, and it must be a font rather than nil: a
+  * caller asking for a fallback is in a loop over runs it cannot render, and nil invites it to ask
+- * again. LibreOffice does exactly that kind of loop, and this was a stub returning nil while the
+- * process span at 1.2 cores.
++ * again. LibreOffice does exactly that kind of loop, and the stub that returned nil left the
++ * process spinning at 1.2 cores. So every path below ends at currentFont, retained because the
++ * name says Create and the caller releases it.
+  *
+- * Retained, because the name says Create and the caller releases it. Returning currentFont
+- * WITHOUT retaining would hand back a font the caller then over-releases, which is the same class
+- * of defect as the font manager error parameter.
++ * WHAT IS NEW is that a better answer is now looked for first. The first character in the range the
++ * current font has no glyph for decides, which is the contract: the reply only has to cover the
++ * BEGINNING of the range. Asking fontconfig for a face that really has that character is what
++ * macOS does with its cascade list, and this port had nothing at all (#216).
+  */
+ CTFontRef CTFontCreateForString(CTFontRef currentFont, CFStringRef string, CFRange range)
+ {
+     if (currentFont == NULL) return NULL;
++
++    CFIndex length = (string != NULL) ? CFStringGetLength(string) : 0;
++    CFIndex start = (range.location > 0) ? range.location : 0;
++    CFIndex end = (range.length > 0 && start + range.length < length) ? start + range.length : length;
++    CTFontRef answer = NULL;
++
++    for (CFIndex i = start; i < end && answer == NULL; i++) {
++        UniChar character = CFStringGetCharacterAtIndex(string, i);
++        CGGlyph glyph = 0;
++
++        /* ASCII is in every face, and a surrogate half is not a character: neither is worth a
++         * fontconfig match. A pair is joined so the code point handed over is the real one. */
++        if (character < 0x80 || (character >= 0xDC00 && character <= 0xDFFF))
++            continue;
++
++        uint32_t code = character;
++
++        if (character >= 0xD800 && character <= 0xDBFF && i + 1 < end) {
++            UniChar low = CFStringGetCharacterAtIndex(string, i + 1);
++
++            if (low >= 0xDC00 && low <= 0xDFFF)
++                code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00);
++        }
++        CTFontGetGlyphsForCharacters(currentFont, &character, &glyph, 1);
++        if (glyph != 0)
++            continue;
++
++        NSString *pattern = O2FontPatternCoveringCharacter(code);
++
++        if (pattern != nil)
++            answer = _CiderFontCreateForFamily((CFStringRef) pattern, CTFontGetSize(currentFont));
++    }
++    if (answer != NULL)
++        return answer;
+     return (CTFontRef) CFRetain((CFTypeRef) currentFont);
+ }
+ 
