@@ -1,0 +1,39 @@
+say what a direct pixel writer was handed
+
+O2BitmapContextCreate already reported whether it answered ok or NULL. The other half was missing:
+what the buffer POINTER turned out to be, for a caller that takes it and writes pixels itself.
+
+Money Manager EX does exactly that. It rasterises an SVG with nanosvg, then premultiplies the result
+into a buffer it believes wxBitmap::GetRawData returned, and it faulted on the first byte store. The
+registers said the destination was the integer 3, not a pointer, and CR2 was 1, which is 3 minus the
+instruction offset of 2. Nothing in the port could say whether that 3 had come from here.
+
+With this it can, and the answer is no. Both calls in that run returned real heap pointers:
+
+  CIDER_IMAGESOURCE O2BitmapContextGetData ctx=0x745fe4b9a840 surface=0x745fe4b96930 -> 0x746082137000
+  CIDER_IMAGESOURCE O2BitmapContextGetData ctx=0x745fe4b97e20 surface=0x745fe4b97fe0 -> 0x74608212f000
+
+On CIDER_TRACE_IMAGESOURCE, beside the create line already there.
+
+--- a/Onyx2D/O2BitmapContext.m
++++ b/Onyx2D/O2BitmapContext.m
+@@ -122,8 +122,18 @@
+ 
+ void *O2BitmapContextGetData(O2ContextRef selfX) {
+     O2BitmapContextRef self = (O2BitmapContextRef) selfX;
++    void *bytes = [self->_surface pixelBytes];
+ 
+-    return [self->_surface pixelBytes];
++    /* WHETHER A CALLER THAT WRITES PIXELS DIRECTLY GOT THEM FROM HERE. wxWidgets rasterises an SVG
++     * and premultiplies it into a buffer it believes this returned; when that buffer is not a
++     * pointer at all the fault is eleven frames away and names only the application. Task #212. */
++    if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL &&
++        getenv("CIDER_TRACE_IMAGESOURCE")[0] != '\0') {
++        fprintf(stderr, "CIDER_IMAGESOURCE O2BitmapContextGetData ctx=%p surface=%p -> %p\n",
++                selfX, self->_surface, bytes);
++        fflush(stderr);
++    }
++    return bytes;
+ }
+ 
+ size_t O2BitmapContextGetWidth(O2ContextRef selfX) {
