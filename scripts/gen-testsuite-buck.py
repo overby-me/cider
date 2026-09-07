@@ -13,7 +13,8 @@ registered is still a case we can run.
 Every case becomes two targets, an object and a guest binary, because that is the shape this port
 already builds and runs. They share one dependency list: a Foundation-using guest target needs the
 whole framework root set, not just fw_Foundation, or the headers cascade one missing framework per
-build.
+build. On top of that base each case also gets the headers AND THE DYLIB of the framework its own
+path names, which is the only way a case can resolve the symbols it was written to check.
 
 Usage: scripts/gen-testsuite-buck.py [--appkit] > block.bzl
        --appkit also emits the AppKit cases, which link AppKit and want a display.
@@ -60,6 +61,49 @@ DYLIBS = [
     "//vendor/src:Foundation_dylib",
 ]
 
+# WITHOUT THE DYLIB HALF a case compiles and then cannot resolve the very constants it was written
+# to check. That is why the kCG*, kLS* and Sec* symbols read as missing exports for so long when
+# every one of them is defined and exported.
+# Header and dylib are not always in the same package (SystemConfiguration splits them), and
+# Security's dylib target is Security_final, so both halves are spelled out per framework.
+FW = "//src/darwin/frameworks"
+CASE_FRAMEWORKS = {
+    "AVFoundation": (f"{FW}:fw_AVFoundation", f"{FW}:AVFoundation_dylib"),
+    "AddressBook": (f"{FW}:fw_AddressBook", f"{FW}:AddressBook_dylib"),
+    "AppKit": ("//vendor/src:fw_AppKit", "//vendor/src:AppKit_dylib"),
+    "Carbon": (f"{FW}:fw_Carbon", f"{FW}:Carbon_dylib"),
+    "CoreBluetooth": (f"{FW}:fw_CoreBluetooth", f"{FW}:CoreBluetooth_dylib"),
+    "CoreGraphics": ("//vendor/src:fw_CoreGraphics", "//vendor/src:CoreGraphics_dylib"),
+    "CoreImage": (f"{FW}:fw_CoreImage", f"{FW}:CoreImage_dylib"),
+    "CoreMIDI": (f"{FW}:fw_CoreMIDI", f"{FW}:CoreMIDI_dylib"),
+    "CoreMedia": (f"{FW}:fw_CoreMedia", f"{FW}:CoreMedia_dylib"),
+    "CoreServices": (f"{FW}:fw_CoreServices", f"{FW}:CoreServices_dylib"),
+    "CoreText": ("//vendor/src:fw_CoreText", "//vendor/src:CoreText_dylib"),
+    "CoreVideo": (f"{FW}:fw_CoreVideo", f"{FW}:CoreVideo_dylib"),
+    "Foundation": ("//vendor/src:fw_Foundation", "//vendor/src:Foundation_dylib"),
+    "HIToolbox": (f"{FW}:fw_HIToolbox", f"{FW}:HIToolbox_dylib"),
+    "ImageCaptureCore": (f"{FW}:fw_ImageCaptureCore", f"{FW}:ImageCaptureCore_dylib"),
+    "ImageIO": (f"{FW}:fw_ImageIO", f"{FW}:ImageIO_dylib"),
+    "InstantMessage": (f"{FW}:fw_InstantMessage", f"{FW}:InstantMessage_dylib"),
+    "LaunchServices": (f"{FW}:fw_LaunchServices", f"{FW}:LaunchServices_dylib"),
+    "PDFKit": (f"{FW}:fw_PDFKit", f"{FW}:PDFKit_dylib"),
+    "QuartzCore": ("//vendor/src:fw_QuartzCore", "//vendor/src:QuartzCore_dylib"),
+    "SearchKit": (f"{FW}:fw_SearchKit", f"{FW}:SearchKit_dylib"),
+    "Security": ("//vendor/src:fw_Security", "//vendor/src:Security_final"),
+    "SystemConfiguration": (
+        "//vendor/src:fw_SystemConfiguration",
+        f"{FW}:SystemConfiguration_dylib",
+    ),
+    "UIFoundation": (
+        "//src/darwin/private-frameworks:fw_UIFoundation",
+        "//src/darwin/private-frameworks:UIFoundation_dylib",
+    ),
+    "VideoToolbox": (f"{FW}:fw_VideoToolbox", f"{FW}:VideoToolbox_dylib"),
+    "WebKit": (f"{FW}:fw_WebKit", f"{FW}:WebKit_dylib"),
+    # PubSub deliberately absent: the framework does not exist here, and that case is the
+    # negative control scripts/run-dts-case.sh relies on.
+}
+
 # AN APPKIT CASE LINKS APPKIT, and only an AppKit case does: pulling the GUI framework into a libc
 # test would drag the whole display path into something that has no business touching it.
 APPKIT_DYLIBS = DYLIBS + ["//vendor/src:AppKit_dylib"]
@@ -70,6 +114,23 @@ APPKIT_HEADERS = [
     # "QuartzCore/CIImage.h file not found" before it has said anything about AppKit at all.
     "//vendor/src:fw_QuartzCore",
 ]
+
+
+def case_frameworks(rel):
+    """(headers, dylibs) for every framework named in a case's own path.
+
+    Frameworks nest: a LaunchServices case sits under CoreServices.framework/Frameworks/
+    LaunchServices.framework, and taking just one component picks the wrong one either way.
+    """
+    headers, dylibs = [], []
+    for part in rel.split("/"):
+        if not part.endswith(".framework"):
+            continue
+        pair = CASE_FRAMEWORKS.get(part[: -len(".framework")])
+        if pair:
+            headers.append(pair[0])
+            dylibs.append(pair[1])
+    return headers, dylibs
 
 
 def target_name(rel):
@@ -114,6 +175,9 @@ def will_fail_cases():
 # lines of commented-out intentions and then exit(1), and CMake does NOT mark it WILL_FAIL, so it
 # fails in upstream's own CI exactly as it fails here. It was counted as an AppKit divergence of
 # this port for a while, which it never was: nothing in it touches our AppKit at all.
+# Bodies upstream has not written: every line is commented out and main just exits 1. Upstream
+# registers them as ordinary tests with no WILL_FAIL, so they fail on real macOS too. They cannot
+# pass here and are not evidence of anything about this port.
 UPSTREAM_PLACEHOLDERS = {
     "test_NSColor_colorUsingColorSpaceNamedevice",
 }
@@ -123,6 +187,10 @@ def main():
     want_appkit = "--appkit" in sys.argv
     if "--willfail" in sys.argv:
         for n in sorted(will_fail_cases()):
+            print(n)
+        return
+    if "--placeholders" in sys.argv:
+        for n in sorted(UPSTREAM_PLACEHOLDERS):
             print(n)
         return
     cases = []
@@ -160,6 +228,7 @@ def main():
     for rel in cases:
         name = target_name(rel)
         is_appkit = "AppKit.framework" in rel
+        own_headers, own_dylibs = case_frameworks(rel)
         out.append("")
         out.append("cc_objects(")
         out.append(f'    name = "{name}_obj",')
@@ -175,6 +244,11 @@ def main():
         if is_appkit:
             for d in APPKIT_HEADERS:
                 out.append(f'        "{d}",')
+        emitted = set(FRAMEWORK_DEPS) | (set(APPKIT_HEADERS) if is_appkit else set())
+        for h in own_headers:
+            if h not in emitted:
+                emitted.add(h)
+                out.append(f'        "{h}",')
         out.append('        ":darling_testsuite_inc",')
         out.append("    ],")
         out.append('    visibility = ["PUBLIC"],')
@@ -188,7 +262,11 @@ def main():
         out.append('        "//vendor/src/csu:crt1.10.6_obj2",')
         out.append("    ],")
         out.append("    dylibs = [")
-        for d in (APPKIT_DYLIBS if is_appkit else DYLIBS):
+        linked = list(APPKIT_DYLIBS if is_appkit else DYLIBS)
+        for d in own_dylibs:
+            if d not in linked:
+                linked.append(d)
+        for d in linked:
             out.append(f'        "{d}",')
         out.append("    ],")
         out.append('    toolchain = "toolchains//:darwin_cc",')

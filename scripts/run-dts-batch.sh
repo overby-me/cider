@@ -78,11 +78,19 @@ pkill -9 -x 'mldr|cider|ciderd|shellspawn' 2>/dev/null
 
 # CTest marks these WILL_FAIL: a non-zero exit is the pass.
 WILLFAIL=$(python3 scripts/gen-testsuite-buck.py --willfail 2>/dev/null | tr '\n' ' ')
+# Cases upstream has not written. They exit(1) with every line commented out, so they fail on real
+# macOS too; counting them as failures here reads as a defect in this port and is not one.
+PLACEHOLDER=$(python3 scripts/gen-testsuite-buck.py --placeholders 2>/dev/null | tr '\n' ' ')
 
-pass=0; fail=0
-: > "$OUT/failed.txt"
+pass=0; fail=0; unwritten=0
+: > "$OUT/failed.txt"; : > "$OUT/placeholder.txt"
 while read -r _ t _ rc; do
 	short=${t#dts_}
+	skip=0
+	for p in $PLACEHOLDER; do case "$short" in *"$p") skip=1 ;; esac; done
+	if [ "$skip" = 1 ]; then
+		unwritten=$((unwritten + 1)); echo "$rc $short" >> "$OUT/placeholder.txt"; continue
+	fi
 	expect_fail=0
 	for w in $WILLFAIL; do case "$short" in *"$w") expect_fail=1 ;; esac; done
 	if { [ "$rc" = 0 ] && [ "$expect_fail" = 0 ]; } || { [ "$rc" != 0 ] && [ "$expect_fail" = 1 ]; }; then
@@ -94,10 +102,15 @@ done < <(grep '^CASE ' "$OUT/run.log")
 
 wired=$(wc -l < "$OUT/targets.txt"); built=$(wc -l < "$OUT/built.txt")
 ran=$(grep -c '^CASE ' "$OUT/run.log")
-echo "wired $wired, built $built, ran $ran, passed $pass, failed $fail"
+echo "wired $wired, built $built, ran $ran, passed $pass, failed $fail, unwritten upstream $unwritten"
 echo
 echo "failures (exit code, case):"
 sort -n "$OUT/failed.txt"
+if [ "$unwritten" -gt 0 ]; then
+	echo
+	echo "not counted, upstream never wrote a body:"
+	sort -n "$OUT/placeholder.txt"
+fi
 echo
 echo "did not build: $(wc -l < "$OUT/nobuild.txt"), see $OUT/nobuild.txt and $OUT/build.log"
 [ "$fail" -eq 0 ]

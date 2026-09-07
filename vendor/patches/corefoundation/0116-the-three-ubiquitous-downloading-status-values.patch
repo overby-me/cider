@@ -1,0 +1,29 @@
+the three ubiquitous downloading status values
+
+Foundation declared NSURLUbiquitousItemDownloadingStatusNotDownloaded in NSURL.h and defined it
+nowhere, so the symbol did not exist. The fourteen NSURLUbiquitousItem*Key constants were all
+present; only the VALUES that NSURLUbiquitousItemDownloadingStatusKey takes were missing, which is
+the half an application actually compares against.
+
+A missing constant is the worst kind of gap: dyld stops on the first one an application touches, in
+an order nobody controls.
+
+The values are not guessed. CFURLConstants.c already carries the same three strings under their
+kCFURL names, so the pair now agrees rather than contradicting itself. Downloaded and Current were
+not declared in the header either, and they are added with NotDownloaded because they are one set
+and the next application to reach for one should not hit this again.
+
+--- a/NSURL.m
++++ b/NSURL.m
+@@ -127,6 +127,11 @@
+ NSString *const NSURLTagNamesKey = @"NSURLTagNamesKey";
+ NSString *const NSURLUbiquitousItemDownloadingErrorKey = @"NSURLUbiquitousItemDownloadingErrorKey";
+ NSString *const NSURLUbiquitousItemDownloadingStatusKey = @"NSURLUbiquitousItemDownloadingStatusKey";
++// The VALUES that key takes. Only the key existed, so any app comparing against one of these
++// stopped in dyld. Values from CFURLConstants.c lines 95 to 97, which is the same set macOS ships.
++NSString *const NSURLUbiquitousItemDownloadingStatusNotDownloaded = @"NSURLUbiquitousItemDownloadingStatusNotDownloaded";
++NSString *const NSURLUbiquitousItemDownloadingStatusDownloaded = @"NSURLUbiquitousItemDownloadingStatusDownloaded";
++NSString *const NSURLUbiquitousItemDownloadingStatusCurrent = @"NSURLUbiquitousItemDownloadingStatusCurrent";
+ NSString *const NSURLApplicationIsScriptableKey = @"NSURLApplicationIsScriptableKey";
+ NSString *const NSURLCanonicalPathKey = @"NSURLCanonicalPathKey";
+ NSString *const NSURLDocumentIdentifierKey = @"NSURLDocumentIdentifierKey";

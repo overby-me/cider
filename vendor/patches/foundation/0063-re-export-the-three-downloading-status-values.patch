@@ -1,0 +1,44 @@
+re-export the three downloading status values
+
+CoreFoundation defines these three (patch corefoundation/0116) and Foundation reaches its NSURL
+constants by re-export, which is how all fourteen NSURLUbiquitousItem*Key symbols already arrive.
+Without the .exp entries the definitions exist and Foundation still does not export them, so an
+application linking Foundation sees no change at all.
+
+The header declared only NotDownloaded; the other two are declared here so the set is usable.
+
+--- a/include/Foundation/NSURL.h
++++ b/include/Foundation/NSURL.h
+@@ -105,6 +105,8 @@
+ typedef NSString* NSURLUbiquitousItemDownloadingStatus;
+ 
+ FOUNDATION_EXPORT NSURLUbiquitousItemDownloadingStatus const NSURLUbiquitousItemDownloadingStatusNotDownloaded;
++FOUNDATION_EXPORT NSURLUbiquitousItemDownloadingStatus const NSURLUbiquitousItemDownloadingStatusDownloaded;
++FOUNDATION_EXPORT NSURLUbiquitousItemDownloadingStatus const NSURLUbiquitousItemDownloadingStatusCurrent;
+ 
+ typedef NS_OPTIONS(NSUInteger, NSURLBookmarkCreationOptions) {
+     NSURLBookmarkCreationPreferFileIDResolution           = ( 1UL << 8 ),
+--- a/reexport_x86_64.exp
++++ b/reexport_x86_64.exp
+@@ -84,6 +84,9 @@
+ _NSURLUbiquitousItemDownloadRequestedKey
+ _NSURLUbiquitousItemDownloadingErrorKey
+ _NSURLUbiquitousItemDownloadingStatusKey
++_NSURLUbiquitousItemDownloadingStatusNotDownloaded
++_NSURLUbiquitousItemDownloadingStatusDownloaded
++_NSURLUbiquitousItemDownloadingStatusCurrent
+ _NSURLUbiquitousItemHasUnresolvedConflictsKey
+ _NSURLUbiquitousItemIsDownloadingKey
+ _NSURLUbiquitousItemIsSharedKey
+--- a/reexport_i386.exp
++++ b/reexport_i386.exp
+@@ -84,6 +84,9 @@
+ _NSURLUbiquitousItemDownloadRequestedKey
+ _NSURLUbiquitousItemDownloadingErrorKey
+ _NSURLUbiquitousItemDownloadingStatusKey
++_NSURLUbiquitousItemDownloadingStatusNotDownloaded
++_NSURLUbiquitousItemDownloadingStatusDownloaded
++_NSURLUbiquitousItemDownloadingStatusCurrent
+ _NSURLUbiquitousItemHasUnresolvedConflictsKey
+ _NSURLUbiquitousItemIsDownloadingKey
+ _NSURLUbiquitousItemIsSharedKey
