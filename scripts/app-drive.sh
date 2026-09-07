@@ -38,6 +38,7 @@ RESIZE_W=${RESIZE_W:-$((WIDTH - 256))}
 RESIZE_H=${RESIZE_H:-$((HEIGHT - 84))}
 CLICK=${CLICK:-}           # "x,y" to click after the first capture, empty to skip
 TYPE=${TYPE:-}             # text to type after the click, empty to skip
+POST_CLICK=${POST_CLICK:-}  # "x,y" to click AFTER typing, when a keyboard exists (#210)
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -232,6 +233,22 @@ if [ -n "$TYPE" ]; then
 	send_keys
 	sleep 3
 	shoot d3-typed
+fi
+
+# A CLICK AFTER THE KEYS, which is the only way to click while a keyboard EXISTS. wtype creates its
+# virtual keyboard when it starts, so before TYPE the seat advertises no keyboard at all, no window
+# can be given keyboard focus, and no window is key. A control that declines a click in a non-key
+# window then looks identical to a control that ignores clicks. CLICK cannot answer that because it
+# runs first, by design: it is what opens the field TYPE aims at. Task #210.
+if [ -n "${POST_CLICK:-}" ]; then
+	for STEP in ${POST_CLICK//;/ }; do
+		x=${STEP%,*}; y=${STEP#*,}
+		say "post-click at $x,$y"
+		printf 'abs %s %s\nsleep 200\npress left\nsleep 80\nrelease left\n' "$x" "$y" \
+			| WAYLAND_DISPLAY=$NEW "$VPTR" "$WIDTH" "$HEIGHT" >>"$SHOTS/driver.log" 2>&1
+		sleep 4
+	done
+	shoot d3b-postclick
 fi
 
 # A RESIZE BELOW THE APPLICATION MINIMUM IS NOT A FAILED RESIZE, and reading one as a failure cost
