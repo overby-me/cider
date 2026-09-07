@@ -1,0 +1,45 @@
+the view dump stopped at depth 12 and said nothing
+
+CIDER_TRACE_VIEWS walks the window and names every view and its frame. It stopped at depth 12 and
+returned silently, which is worse than having no limit: iA Writer's tree is deeper than that, so a
+dump taken specifically to find its table views did not contain them, and their absence read as
+"there is no such view".
+
+MEASURED: 116 lines of one dump sat at exactly the limit, and grepping the result for IATableView
+or IAOutlineView returned nothing at all. With the limit raised they are both there with real
+geometry, IATableView_Aspects_ 295x523 at 0,0 and IAOutlineView_Aspects_ 231x510, neither hidden.
+That is what task #210 needed to know: the views exist and are correctly sized, so a click that
+does nothing is not a missing or zero-sized view.
+
+The limit is 32 now, it takes an override from the env var value (CIDER_TRACE_VIEWS=40), and when
+it does stop it SAYS SO on a line of its own rather than just ending.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -220,8 +220,25 @@
+  * and any string it can be asked for. CIDER_TRACE_VIEWS. */
+ static void _CiderDumpViewTree(NSView *view, int depth)
+ {
+-    if (view == nil || depth > 12)
++    /* THE DEPTH LIMIT USED TO BE 12 AND SILENT, which is worse than no limit: iA Writer's tree is
++     * deeper than that, so its table views were absent from a dump taken to find them and the
++     * absence read as "no such view". Raised, and it now SAYS when it stops. Set the env var to a
++     * number to override, e.g. CIDER_TRACE_VIEWS=40. */
++    static int limit = 0;
++
++    if (limit == 0) {
++        const char *want = getenv("CIDER_TRACE_VIEWS");
++        int parsed = (want != NULL) ? atoi(want) : 0;
++        limit = (parsed > 1) ? parsed : 32;
++    }
++
++    if (view == nil)
++        return;
++    if (depth > limit) {
++        fprintf(stderr, "CIDER_VIEW %*sTRUNCATED at depth %d, raise CIDER_TRACE_VIEWS\n",
++                depth * 2, "", limit);
+         return;
++    }
+ 
+     NSRect frame = [view frame];
+     NSString *text = nil;
