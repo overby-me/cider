@@ -1,0 +1,54 @@
+give a CoreFoundation halt its whole stack
+
+A HALT reported one frame, the immediate caller, and that is almost always a CF internal:
+__CFBasicHashAddValue for every collection insert, __CFStringCollectionCopy for every string one. So
+the report said a collection had been given a NULL and could not say who gave it one.
+
+Measured on Money Manager EX, where the one line version was
+
+  CoreFoundation HALT in __CFTypeCollectionRetain, called from __CFBasicHashAddValue+0x487
+
+and the whole stack names the culprit in the same run:
+
+  3 wxFontRefData::SetFont(__CTFont const*)
+  5 wxOSXSystemFontsCacheModule::Get(wxOSXSystemFont)
+  7 wxWindow::DoSetWindowVariant(wxWindowVariant)
+  8 wxNonOwnedWindow::Create(...)
+
+which is a missing UI font eleven frames away.
+
+UNCONDITIONAL, not env gated. The process is a line away from kill(getpid(), 9), so there is nothing
+to spend and no switch anyone would have remembered to set before the crash they did not expect.
+
+--- a/CFBase.c
++++ b/CFBase.c
+@@ -35,6 +35,7 @@
+ #include <malloc/malloc.h>
+ #include <mach/mach.h>
+ #include <dlfcn.h>
++#include <execinfo.h>
+ #endif
+ #include <stdlib.h>
+ #include <string.h>
+@@ -895,6 +896,21 @@
+         fprintf(stderr, "CoreFoundation HALT at %s:%d in %s, called from %p\n",
+                 file, line, func, caller);
+     }
++    /*
++     * AND THE WHOLE STACK, unconditionally. The immediate caller is almost always a CF internal
++     * (__CFBasicHashAddValue for every collection insert), so on its own it says the collection was
++     * given a NULL and not who gave it one. The process is about to die, so there is nothing to
++     * spend and no switch worth honouring.
++     */
++    {
++        void *frames[24];
++        int count = backtrace(frames, 24);
++        char **names = backtrace_symbols(frames, count);
++
++        for (int i = 1; i < count && names != NULL; i++)
++            fprintf(stderr, "CoreFoundation HALT   %s\n", names[i]);
++        free(names);
++    }
+     fflush(stderr);
+ }
+ 

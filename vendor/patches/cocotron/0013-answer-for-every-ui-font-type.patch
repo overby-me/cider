@@ -1,0 +1,264 @@
+answer for every UI font type, and finish the font descriptor API
+
+A sixth application, Money Manager EX, is wxWidgets over Carbon and AppKit rather than Cocoa, and it
+found two gaps in one launch.
+
+kCTStrokeColorAttributeName WAS NOT DEFINED. Its pair, kCTStrokeWidthAttributeName, was. A two level
+namespace binary resolves DATA symbols at load, so one absent CFStringRef aborted the process in dyld
+before any window existed.
+
+AND CTFontCreateUIFontForLanguage ANSWERED FOR TWO TYPES OUT OF TWENTY. KTFont_FT handled
+kCTFontMenuTitleFontType and kCTFontMenuItemFontType and returned nil for everything else, including
+the plain system font.
+
+AppKit hid that completely: +[NSFont _uiFontOfType:size:fallbackName:] catches the nil and falls back
+to San Francisco by name, so no Cocoa application ever saw it. A caller that goes to CoreText
+DIRECTLY gets the nil. wxWidgets put it straight into a CFDictionary and the process died in
+
+  CoreFoundation HALT in __CFTypeCollectionRetain, called from __CFBasicHashAddValue
+    3 wxFontRefData::SetFont(__CTFont const*)
+    5 wxOSXSystemFontsCacheModule::Get(wxOSXSystemFont)
+    7 wxWindow::DoSetWindowVariant(wxWindowVariant)
+    8 wxNonOwnedWindow::Create(...)
+
+eleven frames from anything about fonts.
+
+THE MENU TYPES KEEP 12 AND THAT IS DELIBERATE. A Mac uses 14, and raising it here was MEASURED on the
+roster: every menu bar title moved right, the panes shifted, and a fixed test coordinate that had
+been landing on View landed on Authors. Correcting the menu size deserves its own before and after
+captures, not a side effect of this. The size table only applies when the caller passes 0, so an
+explicit size is untouched either way.
+
+NOT DISTINGUISHED YET, and said in the code rather than left to be discovered: the Emphasized
+variants come back in the same face as their plain siblings, so an emphasized system font is the
+right SIZE and not bold. That beats nil, which is what a caller cannot handle at all.
+
+ALSO, three font descriptor functions mmex needs and this port had never written. A descriptor here
+IS its attribute dictionary, which is what makes them short: CopyAttributes is a dictionary copy,
+CreateCopyWithAttributes is an overlay, and CreateCopyWithSymbolicTraits rewrites the symbolic trait
+inside the kCTFontTraitsAttribute sub-dictionary, honouring the MASK so bits the caller did not
+mention keep the value they had.
+
+MEASURED, on the five application roster, every capture LOOKED at and compared against the run before
+this change: iA Writer opens the View menu with its full item list, Swift Publisher selects Brochures,
+MoneyMoney shows cider in its search field, iTerm2 shows the command at the prompt, LibreOffice has
+the text on the page with 4 words 23 characters. No difference from the previous captures.
+
+--- a/CoreText/KTFont_FT.m
++++ b/CoreText/KTFont_FT.m
+@@ -33,26 +33,66 @@
+ 
+ @implementation KTFont_FT
+ 
++/*
++ * The size to use when the caller passes 0, which means "the default for this role".
++ *
++ * THE MENU TYPES KEEP 12, which is what this file has always answered, NOT the 14 a Mac uses. Raising
++ * it was measured on the roster and moved every menu bar title to the right, which is a chrome change
++ * this task did not ask for and which broke a fixed test coordinate. Correcting it is worth doing
++ * with its own before and after captures rather than as a side effect.
++ */
++static CGFloat _CiderUIFontDefaultSize(CTFontUIFontType uiFontType)
++{
++    switch (uiFontType) {
++    case kCTFontUIFontMiniSystem:
++    case kCTFontUIFontMiniEmphasizedSystem:
++        return 9;
++    case kCTFontUIFontSmallSystem:
++    case kCTFontUIFontSmallEmphasizedSystem:
++    case kCTFontUIFontUtilityWindowTitle:
++    case kCTFontUIFontSystemDetail:
++        return 11;
++    case kCTFontUIFontLabel:
++    case kCTFontUIFontUserFixedPitch:
++        return 10;
++    case kCTFontUIFontAlertHeader:
++        return 17;
++    default:
++        return 12;
++    }
++}
++
++/*
++ * EVERY UI FONT TYPE ANSWERS, which is the whole of this change. Only the two menu types did, and
++ * every other type returned nil.
++ *
++ * AppKit hid that: +[NSFont _uiFontOfType:size:fallbackName:] catches the nil and falls back to San
++ * Francisco by name, so no Cocoa application ever saw it. A caller that uses CoreText DIRECTLY gets
++ * the nil, and wxWidgets puts it straight into a CFDictionary: mmex died in
++ * __CFTypeCollectionRetain with "likely a collection has been corrupted", eleven frames from
++ * anything about fonts. Task #212.
++ *
++ * NOT DISTINGUISHED YET: the Emphasized variants come back in the same face as their plain
++ * siblings, so an emphasized system font is the right SIZE and not bold. Saying so here beats
++ * returning nil, which is what a caller cannot handle at all.
++ */
+ - initWithUIFontType: (CTFontUIFontType) uiFontType
+                 size: (CGFloat) size
+             language: (NSString *) language
+ {
+-    O2Font *font = nil;
++    O2Font *font;
+ 
+-    switch (uiFontType) {
++    if (uiFontType == kCTFontUIFontNone)
++        return nil;
+ 
+-    case kCTFontMenuTitleFontType:
+-    case kCTFontMenuItemFontType:
+-        if (size == 0)
+-            size = 12;
+-        font = O2FontCreateWithFontName(@"San Francisco");
+-        break;
++    if (size == 0)
++        size = _CiderUIFontDefaultSize(uiFontType);
+ 
+-    default:
++    font = O2FontCreateWithFontName(@"San Francisco");
++    if (font == nil)
+         return nil;
+-    }
+ 
+-    self = [self initWithFont: (CGFontRef)font size: size];
++    self = [self initWithFont: (CGFontRef) font size: size];
+ 
+     [font release];
+ 
+--- a/CoreText/CTFontDescriptor.m
++++ b/CoreText/CTFontDescriptor.m
+@@ -4,6 +4,10 @@
+ 
+ #include <stdio.h>
+ 
++/* Defined in constants.c, which no header declares. CTFont.m, CTFontCollection.m and
++ * CTFontManager.m each carry the same line for the same reason. */
++extern const CFStringRef kCTFontSymbolicTrait;
++
+ const CFStringRef kCTFontURLAttribute = CFSTR("NSCTFontFileURLAttribute");
+ const CFStringRef kCTFontNameAttribute = CFSTR("NSFontNameAttribute");
+ const CFStringRef kCTFontDisplayNameAttribute = CFSTR("NSFontVisibleNameAttribute");
+@@ -72,6 +76,98 @@
+ }
+ 
+ /*
++ * THE WHOLE DICTIONARY, since that is all a descriptor is here. Copy, because the name says Copy.
++ */
++CFDictionaryRef CTFontDescriptorCopyAttributes(CTFontDescriptorRef descriptor)
++{
++    if (descriptor == NULL) return NULL;
++    return CFDictionaryCreateCopy(kCFAllocatorDefault, (CFDictionaryRef) descriptor);
++}
++
++/*
++ * THE ORIGINAL OVERLAID WITH THE NEW ATTRIBUTES, which is what macOS documents: keys in attributes
++ * replace those in the descriptor and everything else is carried across.
++ */
++CTFontDescriptorRef CTFontDescriptorCreateCopyWithAttributes(CTFontDescriptorRef descriptor,
++                                                             CFDictionaryRef attributes)
++{
++    CFMutableDictionaryRef merged;
++
++    if (descriptor == NULL) return NULL;
++    if (attributes == NULL)
++        return (CTFontDescriptorRef) CFDictionaryCreateCopy(kCFAllocatorDefault,
++                                                            (CFDictionaryRef) descriptor);
++
++    merged = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, (CFDictionaryRef) descriptor);
++    if (merged == NULL) return NULL;
++
++    CFIndex count = CFDictionaryGetCount(attributes);
++    if (count > 0) {
++        const void **keys = malloc(sizeof(void *) * count);
++        const void **values = malloc(sizeof(void *) * count);
++
++        CFDictionaryGetKeysAndValues(attributes, keys, values);
++        for (CFIndex i = 0; i < count; i++)
++            CFDictionarySetValue(merged, keys[i], values[i]);
++        free(keys);
++        free(values);
++    }
++    return (CTFontDescriptorRef) merged;
++}
++
++/*
++ * THE MASK SAYS WHICH BITS THE CALLER IS SPEAKING ABOUT, so the bits outside it keep the value the
++ * descriptor already had. Passing the value alone would silently clear every trait not mentioned.
++ *
++ * The traits are a SUB-DICTIONARY under kCTFontTraitsAttribute, the same shape
++ * _CiderSymbolicTraitsOfDescriptor in CTFont.m reads, so this writes where that reads.
++ */
++CTFontDescriptorRef CTFontDescriptorCreateCopyWithSymbolicTraits(CTFontDescriptorRef descriptor,
++                                                                 CTFontSymbolicTraits symTraitValue,
++                                                                 CTFontSymbolicTraits symTraitMask)
++{
++    CFMutableDictionaryRef copy, traits;
++    CFDictionaryRef existing;
++    unsigned current = 0, resolved;
++    CFNumberRef number;
++
++    if (descriptor == NULL) return NULL;
++
++    copy = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, (CFDictionaryRef) descriptor);
++    if (copy == NULL) return NULL;
++
++    existing = (CFDictionaryRef) CFDictionaryGetValue(copy, kCTFontTraitsAttribute);
++    if (existing != NULL && CFGetTypeID(existing) == CFDictionaryGetTypeID()) {
++        CFNumberRef n = (CFNumberRef) CFDictionaryGetValue(existing, kCTFontSymbolicTrait);
++
++        if (n != NULL && CFGetTypeID(n) == CFNumberGetTypeID()) {
++            int value = 0;
++            CFNumberGetValue(n, kCFNumberIntType, &value);
++            current = (unsigned) value;
++        }
++        traits = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, existing);
++    } else {
++        traits = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks,
++                                           &kCFTypeDictionaryValueCallBacks);
++    }
++    if (traits == NULL) {
++        CFRelease(copy);
++        return NULL;
++    }
++
++    resolved = (current & ~(unsigned) symTraitMask) | ((unsigned) symTraitValue & (unsigned) symTraitMask);
++    int as_int = (int) resolved;
++    number = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &as_int);
++    if (number != NULL) {
++        CFDictionarySetValue(traits, kCTFontSymbolicTrait, number);
++        CFRelease(number);
++    }
++    CFDictionarySetValue(copy, kCTFontTraitsAttribute, traits);
++    CFRelease(traits);
++    return (CTFontDescriptorRef) copy;
++}
++
++/*
+  * WHICH INSTALLED FACES ANSWER A DESCRIPTION. A descriptor here is its attribute dictionary and the
+  * collection of available fonts is an array of exactly such dictionaries, so matching is comparing
+  * the attributes the caller cares about against each face.
+--- a/CoreText/include/CoreText/CTFontDescriptor.h
++++ b/CoreText/include/CoreText/CTFontDescriptor.h
+@@ -46,5 +46,11 @@
+         CTFontDescriptorRef descriptor, CFSetRef mandatoryAttributes);
+ CORETEXT_EXPORT CTFontDescriptorRef CTFontDescriptorCreateMatchingFontDescriptor(
+         CTFontDescriptorRef descriptor, CFSetRef mandatoryAttributes);
++CORETEXT_EXPORT CFDictionaryRef CTFontDescriptorCopyAttributes(CTFontDescriptorRef descriptor);
++CORETEXT_EXPORT CTFontDescriptorRef CTFontDescriptorCreateCopyWithAttributes(
++        CTFontDescriptorRef descriptor, CFDictionaryRef attributes);
++CORETEXT_EXPORT CTFontDescriptorRef CTFontDescriptorCreateCopyWithSymbolicTraits(
++        CTFontDescriptorRef descriptor, CTFontSymbolicTraits symTraitValue,
++        CTFontSymbolicTraits symTraitMask);
+ 
+ CF_IMPLICIT_BRIDGING_DISABLED
+--- a/CoreText/constants.c
++++ b/CoreText/constants.c
+@@ -24,6 +24,9 @@
+ const CFStringRef kCTFontSymbolicTrait = CFSTR("NSCTFontSymbolicTrait");
+ const CFStringRef kCTForegroundColorFromContextAttributeName = CFSTR("CTForegroundColorFromContext");
+ const CFStringRef kCTStrokeWidthAttributeName = CFSTR("NSStrokeWidth");
++/* The pair of the one above, and the reason mmex could not start: a two level namespace binary
++ * resolves data symbols at LOAD, so one absent CFStringRef aborts in dyld before any window. */
++const CFStringRef kCTStrokeColorAttributeName = CFSTR("NSStrokeColor");
+ const CFStringRef kCTForegroundColorAttributeName = CFSTR("CTForegroundColor");
+ const CFStringRef kCTParagraphStyleAttributeName = CFSTR("NSParagraphStyle");
+ const CFStringRef kCTKernAttributeName = CFSTR("CTKernAttributeName");
