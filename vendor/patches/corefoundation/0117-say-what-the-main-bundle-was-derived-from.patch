@@ -1,0 +1,28 @@
+say what the main bundle was derived from
+
+CFBundleGetMainBundle returning NULL says nothing about which of the four steps failed. With
+CIDER_TRACE_MAINBUNDLE set it prints the process path, the executable URL and the bundle URL, and
+that is what showed all three were derived correctly and _CFBundleCreate rejected the result
+anyway: for a version 3 bundle it requires an existing DIRECTORY, and the path it is handed is the
+HOST spelling, which does not exist inside the container.
+
+The same probe on MoneyMoney prints /Applications/MoneyMoney.app, so an in-prefix application is
+unaffected. Task #205.
+
+--- a/CFBundle.c
++++ b/CFBundle.c
+@@ -828,6 +828,14 @@
+             if (!executableURL) executableURL = CFURLCreateWithFileSystemPath(kCFAllocatorSystemDefault, str, PLATFORM_PATH_STYLE, false);
+         }
+         if (executableURL) bundleURL = _CFBundleCopyBundleURLForExecutableURL(executableURL);
++        if (getenv("CIDER_TRACE_MAINBUNDLE")) {
++            CFStringRef bs = bundleURL ? CFURLCopyFileSystemPath(bundleURL, PLATFORM_PATH_STYLE) : NULL;
++            char bbuf[1024] = "(none)";
++            if (bs) CFStringGetCString(bs, bbuf, sizeof(bbuf), kCFStringEncodingUTF8);
++            fprintf(stderr, "mainbundle: processPath=%s executableURL=%p bundleURL=%s\n",
++                    processPath ? processPath : "(null)", (void*)executableURL, bbuf);
++            if (bs) CFRelease(bs);
++        }
+         if (bundleURL) {
+             // make sure that main bundle has executable path
+             //??? what if we are not the main executable in the bundle?

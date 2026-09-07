@@ -65873,6 +65873,8 @@ cc_objects(
         "//src/darwin/frameworks:fw_WebKit",
         "//vendor/src:fw_Cocoa",
         "//vendor/src:fw_AppKit",
+        "//vendor/src:fw_QuartzCore",
+        "//vendor/src:fw_Onyx2D",
         ":darling_testsuite_inc",
     ],
     visibility = ["PUBLIC"],

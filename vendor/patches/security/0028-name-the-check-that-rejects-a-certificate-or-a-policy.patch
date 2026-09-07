@@ -1,0 +1,97 @@
+name the check that rejects a certificate or a policy
+
+Every check in SecCertificateParse and in SecPolicyCreateSSLWithKeyUsage is a _quiet variant that
+jumps to a single label, so a rejected certificate is indistinguishable from any other rejected
+certificate and a policy that fails to build says nothing at all. Task #205 spent two wrong guesses
+on that silence: first that certificate parsing was broken, then that the certificate loop was the
+one appending NULL.
+
+With CIDER_TRACE_CERTPARSE set, each check names its own line before it jumps. That turned the
+whole thing into two lines of output:
+
+  secpolicy: check failed at line 1607
+  secpolicy: CFBundleGetMainBundle -> 0x0
+
+which is SecPolicyAddPinningRequiredIfInfoSpecified, whose static result is only ever set inside
+if (bundle). No main bundle, no SSL policy, and the NULL reaches CFArrayAppendValue.
+
+The probe in the certificate parser stays even though it printed nothing, because that silence is
+what ruled the parser out, and only after checking the probe string was really in the built binary.
+
+--- a/OSX/sec/Security/SecCertificate.c
++++ b/OSX/sec/Security/SecCertificate.c
+@@ -1526,6 +1526,32 @@
+     return result;
+ }
+ 
++/* THE PARSER IS SILENT BY DESIGN. Every check below is a _quiet variant jumping to one badCert
++ * label, so a rejected certificate is indistinguishable from any other rejected certificate. With
++ * CIDER_TRACE_CERTPARSE set, each check names its own line before it jumps. Task #205. */
++#include <stdio.h>
++#include <stdlib.h>
++#define CIDER_CERTPARSE_ON() (getenv("CIDER_TRACE_CERTPARSE") != NULL)
++#undef require_quiet
++#define require_quiet(cond, label)                                                              \
++	do {                                                                                        \
++		if (!(cond)) {                                                                          \
++			if (CIDER_CERTPARSE_ON())                                                           \
++				fprintf(stderr, "certparse: check failed at line %d\n", __LINE__);               \
++			goto label;                                                                         \
++		}                                                                                       \
++	} while (0)
++#undef require_noerr_quiet
++#define require_noerr_quiet(err, label)                                                         \
++	do {                                                                                        \
++		long _cider_rc = (long)(err);                                                           \
++		if (_cider_rc != 0) {                                                                   \
++			if (CIDER_CERTPARSE_ON())                                                           \
++				fprintf(stderr, "certparse: rc=%ld at line %d\n", _cider_rc, __LINE__);          \
++			goto label;                                                                         \
++		}                                                                                       \
++	} while (0)
++
+ /* AUDIT[securityd]:
+    certificate->_der is a caller provided data of any length (might be 0).
+ 
+--- a/OSX/sec/Security/SecPolicy.c
++++ b/OSX/sec/Security/SecPolicy.c
+@@ -1496,6 +1496,8 @@
+     static dispatch_once_t onceToken;
+     dispatch_once(&onceToken, ^{
+         CFBundleRef bundle = CFBundleGetMainBundle();
++        if (getenv("CIDER_TRACE_CERTPARSE"))
++            fprintf(stderr, "secpolicy: CFBundleGetMainBundle -> %p\n", (void*)bundle);
+         if (bundle) {
+             CFTypeRef value = CFBundleGetValueForInfoDictionaryKey(bundle, CFSTR("SecTrustPinningRequired"));
+             if (isBoolean(value) && CFBooleanGetValue(value)) {
+@@ -1559,6 +1561,30 @@
+ 	return (SecPolicyRef _Nonnull)result;
+ }
+ 
++/* SAME PROBLEM AS THE CERTIFICATE PARSER: the checks here are _quiet and all jump to one errOut,
++ * so a policy that fails to build is indistinguishable from any other. CIDER_TRACE_CERTPARSE makes
++ * each one name its line. Task #205. */
++#include <stdio.h>
++#include <stdlib.h>
++#undef require_quiet
++#define require_quiet(cond, label)                                                              \
++	do {                                                                                        \
++		if (!(cond)) {                                                                          \
++			if (getenv("CIDER_TRACE_CERTPARSE"))                                                \
++				fprintf(stderr, "secpolicy: check failed at line %d\n", __LINE__);               \
++			goto label;                                                                         \
++		}                                                                                       \
++	} while (0)
++#undef require
++#define require(cond, label)                                                                    \
++	do {                                                                                        \
++		if (!(cond)) {                                                                          \
++			if (getenv("CIDER_TRACE_CERTPARSE"))                                                \
++				fprintf(stderr, "secpolicy: require failed at line %d\n", __LINE__);             \
++			goto label;                                                                         \
++		}                                                                                       \
++	} while (0)
++
+ SecPolicyRef SecPolicyCreateSSLWithKeyUsage(Boolean server, CFStringRef hostname, uint32_t keyUsage) {
+ 	CFMutableDictionaryRef options = NULL;
+ 	SecPolicyRef result = NULL;

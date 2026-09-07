@@ -113,7 +113,10 @@ EXTRA_HEADERS = {
     "Carbon": [f"{FW}:fw_HIToolbox"],
     "PDFKit": [f"{FW}:fw_Quartz"],
     "QuartzCore": [f"{FW}:fw_CoreVideo", "//vendor/src:fw_Metal"],
-    "WebKit": ["//vendor/src:fw_Cocoa", "//vendor/src:fw_AppKit"],
+    # WebKit reaches AppKit through Cocoa, and AppKit.h reaches QuartzCore, which is the same hop
+    # APPKIT_HEADERS exists for. A WebKit case is not an AppKit case, so it needs them spelled out.
+    "WebKit": ["//vendor/src:fw_Cocoa", "//vendor/src:fw_AppKit", "//vendor/src:fw_QuartzCore",
+               "//vendor/src:fw_Onyx2D"],
 }
 
 # AN APPKIT CASE LINKS APPKIT, and only an AppKit case does: pulling the GUI framework into a libc
