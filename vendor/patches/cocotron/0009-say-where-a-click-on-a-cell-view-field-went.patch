@@ -1,0 +1,55 @@
+say where a click on a cell view field went
+
+A click on a file row in iA Writer did nothing visible, and the record carried that as "our
+NSTableView mouseDown is never reached". This trace, on the same CIDER_TRACE_MOUSE switch as the
+hit test line above it, prints which branch the field takes and what it found:
+
+  cider-textfield mouseDown on IAFileNameTextField_Aspects_ enabled=1 isFirstResponder=0
+  cider-textfield enclosing table IATableView_Aspects_ row=3 selected=0
+
+which is the forwarding branch working exactly as intended, and it is what showed the table WAS
+reached. Task #210.
+
+--- a/AppKit/NSTextField.m
++++ b/AppKit/NSTextField.m
+@@ -25,6 +25,8 @@
+ #import <AppKit/NSTableView.h>
+ #import <AppKit/NSTextField.h>
+ #import <objc/runtime.h>
++#import <stdio.h>
++#import <stdlib.h>
+ #import <AppKit/NSTextFieldCell.h>
+ #import <AppKit/NSTextStorage.h>
+ #import <AppKit/NSTextView.h>
+@@ -363,6 +365,12 @@
+ 
+ - (void) mouseDown: (NSEvent *) event {
+     NSTextFieldCell *cell = [self selectedCell];
++    BOOL trace = getenv("CIDER_TRACE_MOUSE") != NULL && getenv("CIDER_TRACE_MOUSE")[0] != (char) 0;
++
++    if (trace)
++        fprintf(stderr, "cider-textfield mouseDown on %s enabled=%d isFirstResponder=%d\n",
++                object_getClassName(self), (int) [cell isEnabled],
++                (int) ([[self window] firstResponder] == self));
+ 
+     if (![cell isEnabled])
+         return;
+@@ -389,10 +397,18 @@
+             NSPoint inTable = [table convertPoint: [event locationInWindow] fromView: nil];
+             NSInteger row = [table rowAtPoint: inTable];
+ 
++            if (trace)
++                fprintf(stderr, "cider-textfield enclosing table %s row=%ld selected=%d\n",
++                        object_getClassName(table), (long) row,
++                        row >= 0 ? (int) [table isRowSelected: row] : -1);
++
+             if (row < 0 || ![table isRowSelected: row]) {
+                 [table mouseDown: event];
+                 return;
+             }
++        } else if (trace) {
++            fprintf(stderr, "cider-textfield NO enclosing NSTableView above %s\n",
++                    object_getClassName(self));
+         }
+ 
+         // This will create our editor if needed
