@@ -1,0 +1,192 @@
+straight alpha is not premultiplied alpha, and PNG holds the first one
+
+O2argb8u is premultiplied throughout. The source-over span in O2argb8u.m is
+
+  Cr = Cs + Cd * (255 - As) / 255
+
+with no multiply by As, so a straight sample pushed through it comes out too bright wherever alpha is
+partial. Everything below follows from that one equation.
+
+THREE THINGS WERE WRONG AND THEY COMPOUNDED.
+
+kO2ImageAlphaLast and kO2ImageAlphaPremultipliedLast SHARED A READER. The two labels therefore meant
+the same pixels, and any image that honestly declared straight alpha was composited as though it were
+already multiplied. The icns decoder is exactly such an image, so the modern icon types decoded
+correctly and then drew too bright.
+
+The PNG decoder stored NEITHER FORMAT. It clamped each colour to the alpha,
+
+  pixels[i] = MIN(r, a)
+
+and labelled the result premultiplied. That is right only where the sample is at or above the alpha:
+a half transparent white, r=255 a=128, clamps to 128 and happens to be correct, while r=100 a=128
+stays 100 where premultiplying gives 50. So the data was lossy in one direction and untouched in the
+other.
+
+And the label was wrong against macOS. PNG has no premultiplied variant, and Core Graphics reports
+kCGImageAlphaLast for the same file.
+
+THE FIX PUTS THE MULTIPLY WHERE IT BELONGS. Two new readers premultiply on the way into O2argb8u,
+kO2ImageAlphaLast gets its own case pointing at them, the clamp loop is gone, and the PNG decoder
+says kO2ImageAlphaLast because that is what it holds.
+
+MEASURED. The ImageIO icns case in the darling testsuite goes from failing on the alpha attribute to
+EXIT 0, and the batch goes from 63 passed 2 failed to 64 passed 1 failed, the remaining one being
+PubSub and unrelated.
+
+AND LOOKED AT, because a premultiplication error shows up as haloing or darkened edges rather than as
+a crash. All five roster applications were driven and every capture examined: LibreOffice, whose
+toolbar is the most transparent-PNG-dense surface on the roster, has clean icon edges; Swift
+Publisher renders its template thumbnails in full colour; MoneyMoney, iTerm2 and iA Writer are
+unchanged. No haloing, no dark fringing.
+
+--- a/Onyx2D/O2Image.m
++++ b/Onyx2D/O2Image.m
+@@ -120,7 +120,23 @@
+             case kO2ImageAlphaNone:
+                 break;
+ 
++            /* THE TWO LABELS ARE NOT THE SAME PIXELS. They shared a reader, so an image that
++             * correctly declared straight alpha was composited as though it were premultiplied and
++             * came out too bright at every partial alpha. Task #208. */
+             case kO2ImageAlphaLast:
++                switch (bitmapInfo & kO2BitmapByteOrderMask) {
++                case kO2BitmapByteOrder16Little:
++                case kO2BitmapByteOrder32Little:
++                    self->_read_argb8u = O2ImageRead_ABGR8888_straight_to_argb8u;
++                    return YES;
++
++                case kO2BitmapByteOrder16Big:
++                case kO2BitmapByteOrder32Big:
++                    self->_read_argb8u = O2ImageRead_RGBA8888_straight_to_argb8u;
++                    return YES;
++                }
++                break;
++
+             case kO2ImageAlphaPremultipliedLast:
+                 switch (bitmapInfo & kO2BitmapByteOrderMask) {
+                 case kO2BitmapByteOrder16Little:
+@@ -1065,6 +1081,63 @@
+     }
+     return NULL;
+ }
++
++/*
++ * STRAIGHT ALPHA IN, PREMULTIPLIED OUT, because those are two different things and only one of them
++ * composites. O2argb8u is premultiplied throughout: the source-over span in O2argb8u.m is
++ * Cr = Cs + Cd * (255 - As) / 255, with no multiply by As, so a straight sample drawn through it
++ * comes out too bright wherever alpha is partial.
++ *
++ * kO2ImageAlphaLast used to share the premultiplied reader, which made the two labels mean the same
++ * thing and quietly mis-drew every image that told the truth about holding straight alpha. Task #208.
++ */
++O2argb8u *O2ImageRead_RGBA8888_straight_to_argb8u(O2Image *self, int x, int y,
++                                                  O2argb8u *span, int length)
++{
++    const uint8_t *scanline = scanlineAtY(self, y);
++    int i;
++
++    if (scanline == NULL)
++        return NULL;
++
++    scanline += x * 4;
++    for (i = 0; i < length; i++) {
++        O2argb8u result;
++        uint8_t a = scanline[3];
++
++        result.r = O2Image_8u_mul_8u_div_255(scanline[0], a);
++        result.g = O2Image_8u_mul_8u_div_255(scanline[1], a);
++        result.b = O2Image_8u_mul_8u_div_255(scanline[2], a);
++        result.a = a;
++        *span++ = result;
++        scanline += 4;
++    }
++    return NULL;
++}
++
++O2argb8u *O2ImageRead_ABGR8888_straight_to_argb8u(O2Image *self, int x, int y,
++                                                  O2argb8u *span, int length)
++{
++    const uint8_t *scanline = scanlineAtY(self, y);
++    int i;
++
++    if (scanline == NULL)
++        return NULL;
++
++    scanline += x * 4;
++    for (i = 0; i < length; i++) {
++        O2argb8u result;
++        uint8_t a = scanline[0];
++
++        result.a = a;
++        result.b = O2Image_8u_mul_8u_div_255(scanline[1], a);
++        result.g = O2Image_8u_mul_8u_div_255(scanline[2], a);
++        result.r = O2Image_8u_mul_8u_div_255(scanline[3], a);
++        *span++ = result;
++        scanline += 4;
++    }
++    return NULL;
++}
+ 
+ O2argb8u *O2ImageRead_BGRA8888_to_argb8u(O2Image *self, int x, int y,
+                                          O2argb8u *span, int length)
+--- a/Onyx2D/include/Onyx2D/O2Image.h
++++ b/Onyx2D/include/Onyx2D/O2Image.h
+@@ -250,6 +250,12 @@
+                                          O2argb8u *span, int length);
+ O2argb8u *O2ImageRead_ABGR8888_to_argb8u(O2Image *self, int x, int y,
+                                          O2argb8u *span, int length);
++/* For kO2ImageAlphaLast, whose samples are STRAIGHT: these premultiply on the way into O2argb8u,
++ * which the blend equations require. The two above take samples that are already premultiplied. */
++O2argb8u *O2ImageRead_RGBA8888_straight_to_argb8u(O2Image *self, int x, int y,
++                                                  O2argb8u *span, int length);
++O2argb8u *O2ImageRead_ABGR8888_straight_to_argb8u(O2Image *self, int x, int y,
++                                                  O2argb8u *span, int length);
+ O2argb8u *O2ImageRead_BGRA8888_to_argb8u(O2Image *self, int x, int y,
+                                          O2argb8u *span, int length);
+ O2argb8u *O2ImageRead_RGB888_to_argb8u(O2Image *self, int x, int y,
+--- a/Onyx2D/O2ImageSource_PNG.m
++++ b/Onyx2D/O2ImageSource_PNG.m
+@@ -707,22 +707,17 @@
+     if (pixels == NULL)
+         return nil;
+ 
+-    // clamp premultiplied data, this should probably be moved into the O2Image
+-    // init
+-    int i;
+-    for (i = 0; i < bytesPerRow * height; i += 4) {
+-        unsigned char a = pixels[i + 3];
+-        if (a != 0xff) {
+-            unsigned char r = pixels[i + 0];
+-            unsigned char g = pixels[i + 1];
+-            unsigned char b = pixels[i + 2];
+-
+-            pixels[i + 0] = MIN(r, a);
+-            pixels[i + 1] = MIN(g, a);
+-            pixels[i + 2] = MIN(b, a);
+-        }
+-    }
+-
++    /*
++     * PNG STORES STRAIGHT ALPHA and there is no premultiplied variant of the format, so the samples
++     * go through untouched and the image says kO2ImageAlphaLast. macOS reports kCGImageAlphaLast for
++     * the same file. Premultiplication happens where it belongs, in the reader that fills O2argb8u.
++     *
++     * WHAT WAS HERE BEFORE WAS NEITHER FORMAT. It clamped each colour to the alpha, MIN(r, a), and
++     * labelled the result premultiplied. That is right only when the sample is already at or above
++     * the alpha: a half transparent white, r=255 a=128, clamps to 128 and happens to be correct,
++     * while r=100 a=128 stays 100 where premultiplying gives 50. So partly transparent artwork was
++     * drawn too bright and the label was wrong as well. Task #208.
++     */
+     bitmap = [[NSData alloc] initWithBytesNoCopy: pixels
+                                           length: bytesPerRow * height];
+ 
+@@ -736,7 +731,7 @@
+                               bitsPerPixel: bitsPerPixel
+                                bytesPerRow: bytesPerRow
+                                 colorSpace: colorSpace
+-                                bitmapInfo: kO2ImageAlphaPremultipliedLast |
++                                bitmapInfo: kO2ImageAlphaLast |
+                                             kO2BitmapByteOrder32Big
+                                    decoder: NULL
+                                   provider: provider
