@@ -1,0 +1,68 @@
+say what a file to string conversion detected and produced
+
+An application that reads a file and shows nothing has either got no bytes, or bytes it could not
+decode, and a nil string looks the same to it as an empty file. This prints byte count, the encoding
+DETECTION answered, the encoding actually used and the resulting length, in one line.
+
+Detection answering 0 falls back to NonLossyASCII, which is a guess rather than an answer, so the
+detected value is printed separately from the used one.
+
+ALSO A LATENT USE AFTER FREE, introduced and caught in the same sitting and worth saying out loud:
+the copy path frees bytes before returning, so a trace at the end may not read them again. The
+detection result is captured into its own variable BEFORE the fallback and the free, which is why
+_NSDetectEncodingOfBytes is now called once rather than twice.
+
+MEASURED ON iA WRITER and the answer was ZERO calls. This path is never taken, so whatever the
+application uses to turn Cider.md into text, it is not initWithContentsOfURL:usedEncoding:.
+
+BOTH CONTROLS RUN, because a silent probe proves nothing on its own: CIDER_TRACE_TEXT was demonstrably
+on in that run (871 TEXTEDIT lines, 23 TEXTDRAW, 346 TEXTFIT), and the string CIDER_TEXTREAD is
+present in the built Foundation binary.
+
+--- a/src/NSString.m
++++ b/src/NSString.m
+@@ -1095,7 +1095,8 @@
+ 
+ - (id)_initWithBytesOfUnknownEncoding:(void *)bytes length:(NSUInteger)length copy:(BOOL)shouldCopy usedEncoding:(NSStringEncoding *)usedEncoding
+ {
+-    NSStringEncoding encoding = _NSDetectEncodingOfBytes(bytes, length);
++    NSStringEncoding detected = _NSDetectEncodingOfBytes(bytes, length);
++    NSStringEncoding encoding = detected;
+ 
+     if (encoding == 0)
+     {
+@@ -1107,16 +1108,31 @@
+     {
+         *usedEncoding = encoding;
+     }
++    id result;
+     if (shouldCopy)
+     {
+-        id string = [self initWithBytes:bytes length:length encoding:encoding];
++        result = [self initWithBytes:bytes length:length encoding:encoding];
+         free(bytes);
+-        return string;
+     }
+     else
+     {
+-        return [self initWithBytesNoCopy:bytes length:length encoding:encoding freeWhenDone:YES];
++        result = [self initWithBytesNoCopy:bytes length:length encoding:encoding freeWhenDone:YES];
+     }
++
++    /* THE WHOLE FILE TO STRING CONVERSION IN ONE LINE. An application that reads a file and shows
++     * nothing has either got no bytes, or bytes it could not decode, and a nil here looks the same
++     * to it as an empty file. Detection answering 0 falls back to NonLossyASCII above, which is a
++     * guess, so print what was DETECTED as well as what came out. Task #194.
++     *
++     * bytes is freed above on the copy path, so nothing here may read it again. */
++    if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0)
++    {
++        fprintf(stderr, "CIDER_TEXTREAD bytes=%lu detected=%lu used=%lu -> %s length=%lu\n",
++                (unsigned long) length, (unsigned long) detected, (unsigned long) encoding,
++                result != nil ? "string" : "NIL", (unsigned long) [result length]);
++        fflush(stderr);
++    }
++    return result;
+ }
+ 
+ - (id)_initWithDataOfUnknownEncoding:(NSData *)data
