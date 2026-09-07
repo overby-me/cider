@@ -1,0 +1,55 @@
+writetourl error writes xml like macos
+
+-[NSDictionary writeToURL:error:] and the NSArray twin wrote a BINARY plist. macOS writes XML, and
+the testsuite is the arbiter: its expected resource was captured from a real Mac and begins
+"<plist version=" rather than "bplist00". The two NSDictionary writeToURL cases aborted because the
+comparison read the generated file as empty.
+
+The comment that justified binary is corrected in place rather than deleted, because the reasoning
+in it (reading sniffs the format, so only the bytes on disk differ) is right and only the conclusion
+was wrong.
+
+Measured with scripts/run-dts-batch.sh: 35 passing to 37, exactly the two cases either way.
+
+--- a/NSDictionary.m
++++ b/NSDictionary.m
+@@ -1061,16 +1061,17 @@
+ }
+ 
+ /*
+- * macOS 10.13. Note the FORMAT: the atomically: methods above write XML, this one writes BINARY,
+- * which is what Foundation changed to when it introduced these. A caller that writes with one and
+- * reads with the other still works, because property-list reading sniffs the format, so the choice
+- * only shows up in the bytes on disk -- but the bytes on disk are what fidelity means here.
++ * macOS 10.13. XML, like the atomically: methods above. An earlier version of this wrote BINARY on
++ * the theory that Foundation changed format when it introduced these; the testsuite says otherwise
++ * and it is the arbiter, because its expected resource was captured from a real Mac and begins
++ * "<plist version=" rather than "bplist00". Reading sniffs the format either way, so the choice
++ * only shows up in the bytes on disk, and the bytes on disk are what fidelity means here.
+  */
+ - (BOOL)writeToURL:(NSURL *)url error:(NSError **)error
+ {
+     CFErrorRef cfError = NULL;
+     NSData *data = (NSData *)CFPropertyListCreateData(kCFAllocatorDefault, (CFPropertyListRef)self,
+-                                                     kCFPropertyListBinaryFormat_v1_0, 0, &cfError);
++                                                     kCFPropertyListXMLFormat_v1_0, 0, &cfError);
+ 
+     if (data == nil)
+     {
+--- a/NSArray.m
++++ b/NSArray.m
+@@ -1270,12 +1270,12 @@
+     return success;
+ }
+ 
+-/* The twin of the NSDictionary one, and binary for the same reason. */
++/* The twin of the NSDictionary one, and XML for the same reason. */
+ - (BOOL)writeToURL:(NSURL *)url error:(NSError **)error
+ {
+     CFErrorRef cfError = NULL;
+     NSData *data = (NSData *)CFPropertyListCreateData(kCFAllocatorDefault, (CFPropertyListRef)self,
+-                                                     kCFPropertyListBinaryFormat_v1_0, 0, &cfError);
++                                                     kCFPropertyListXMLFormat_v1_0, 0, &cfError);
+ 
+     if (data == nil)
+     {

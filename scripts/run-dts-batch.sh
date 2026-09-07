@@ -59,7 +59,11 @@ ELF_LIBS=$(grep '^elf_lib_dirs' "$REPO/.buckconfig.local" 2>/dev/null | sed 's/^
 pkill -9 -x 'mldr|cider|ciderd|shellspawn' 2>/dev/null
 sleep 1
 mkdir -p /tmp/cider-dts-1000
-rm -rf /tmp/cider-dts-1000/prefix          # cider refuses a prefix that already exists
+# cider refuses a prefix that already exists. chmod first: a previous run's clonefile cases leave
+# behind copies that inherited a read-only mode from their source, and plain rm -rf cannot remove
+# those from a read-only directory.
+chmod -R u+w /tmp/cider-dts-1000/prefix 2>/dev/null
+rm -rf /tmp/cider-dts-1000/prefix
 
 env LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
 	CIDERPREFIX=/tmp/cider-dts-1000/prefix CIDER_NO_LAUNCHD=1 \
