@@ -1,0 +1,238 @@
+a skipped byte is still in the pixel, and no byte order means the natural one
+
+Four defects in the 32 bit bitmap path, found by disassembling a shipping application rather than by
+reading this code, because from inside every one of them looked like the application misbehaving.
+
+ONE. CGBitmapContextGetBitsPerPixel answered 24 for kCGImageAlphaNoneSkipFirst and NoneSkipLast. The
+skipped byte is still IN the pixel: an 8 bit per component RGB context with a skipped alpha is 32
+bits wide, which is what its own bytesPerRow says and what macOS reports. AlphaOnly answered the
+colour space width instead of one component.
+
+TWO. kCGBitmapByteOrderDefault, which is 0 and is what a caller who does not care passes, matched no
+case in the reader table, so the surface refused to initialise. That refusal is INVISIBLE from
+outside: O2BitmapContextCreate still answers a context, with a NULL surface behind it, and
+CGBitmapContextGetData then hands back NULL. Default now means the order the alpha info already
+names, which is what the Big cases spell.
+
+THREE. kCGImageAlphaPremultipliedFirst had a reader for LITTLE byte order only, so ARGB, one of the
+commonest 32 bit formats an application asks for, could not be read at all. kCGImageAlphaFirst had no
+reader for either order. Three readers added, two of them premultiplying on the way in for the
+straight formats.
+
+FOUR. O2ImageRead_XRGB8888_to_argb8u took the PAD byte as alpha, so an image whose padding happened
+to be zero came out fully transparent. Its little endian sibling BGRX8888 always had this right.
+
+WHAT IT COST, and how it was found. Money Manager EX, a wxWidgets application, died with a SIGSEGV
+in its own SVG rasteriser writing through a null pointer. wxBitmapRefData::GetDepth IS
+CGBitmapContextGetBitsPerPixel, disassembled from the shipping binary:
+
+  1006687f7: movq 0x48(%rbx), %rdi
+  100668800: callq _CGBitmapContextGetBitsPerPixel
+
+and wxBitmap::GetRawData returns NULL when that differs from the 32 it asked for. wx then
+premultiplied an SVG straight into NULL plus three, which is why the fault address was 1.
+
+AND THE REGISTERS HAD TO BE READ TWICE. The faulting store is movb %r9b, -0x2(%rdi,%r8,4) with RDI
+equal to 3, and there is an addq $0x3, %rdi four instructions earlier that I missed the first time
+and briefly concluded the pointer WAS three rather than null. The dump is the arbiter, and so is
+reading all of it.
+
+MEASURED: mmex now gets through wxBitmapBundle, creates its toolbar bitmaps at 737x38 and 744x38, and
+has zero surface failures and zero null surfaces where it had one of each. It still does not open a
+window and this does not claim it does.
+
+NO REGRESSION, and this touches every application because every application decodes images. All five
+roster applications driven and every capture LOOKED at, all identical to the run before this change.
+The darling testsuite is unchanged at 64 passed, 1 failed, the failure being PubSub and unrelated.
+
+--- a/Onyx2D/O2BitmapContext.m
++++ b/Onyx2D/O2BitmapContext.m
+@@ -180,13 +180,21 @@
+         result += O2BitmapContextGetBitsPerComponent(self);
+         break;
+ 
++    /* A SKIPPED BYTE IS STILL IN THE PIXEL. These two say the pixel carries no alpha, not that it is
++     * narrower: an 8 bit per component RGB context with kCGImageAlphaNoneSkipFirst is 32 bits wide
++     * with one byte ignored, which is what its bytesPerRow says and what macOS reports.
++     *
++     * Answering 24 cost Money Manager EX its launch. wxBitmapRefData::GetDepth is
++     * CGBitmapContextGetBitsPerPixel, wxBitmap::GetRawData returns NULL when that differs from the
++     * 32 it asked for, and wx then premultiplied an SVG straight into NULL plus three. Task #212. */
+     case kO2ImageAlphaNoneSkipLast:
+-        break;
+-
+     case kO2ImageAlphaNoneSkipFirst:
++        result += O2BitmapContextGetBitsPerComponent(self);
+         break;
+ 
++    /* One component and nothing else, whatever the colour space claims to have. */
+     case kO2ImageAlphaOnly:
++        result = O2BitmapContextGetBitsPerComponent(self);
+         break;
+     }
+ 
+--- a/Onyx2D/O2Image.m
++++ b/Onyx2D/O2Image.m
+@@ -63,6 +63,19 @@
+                                                  size_t bitsPerPixel,
+                                                  O2BitmapInfo bitmapInfo)
+ {
++    /* NO BYTE ORDER MEANS THE NATURAL ONE, not "unsupported". Every switch below lists only the
++     * explicit Little and Big constants, so kCGBitmapByteOrderDefault, which is 0 and is what a
++     * caller who does not care passes, matched nothing and the surface refused to initialise.
++     *
++     * wxWidgets passes exactly that, and the refusal is silent from outside: O2BitmapContextCreate
++     * still answers a context, with a NULL surface behind it, so CGBitmapContextGetData hands back
++     * NULL and the application draws into it. Task #212.
++     *
++     * Default is the component order the alpha info already names, which is what the Big cases
++     * spell: PremultipliedFirst is A,R,G,B in memory and Last is R,G,B,A. */
++    if ((bitmapInfo & kO2BitmapByteOrderMask) == 0)
++        bitmapInfo |= kO2BitmapByteOrder32Big;
++
+     switch (bitsPerComponent) {
+ 
+     case 32:
+@@ -156,10 +169,28 @@
+                 case kO2BitmapByteOrder32Little:
+                     self->_read_argb8u = O2ImageRead_BGRA8888_to_argb8u;
+                     return YES;
++
++                /* The Big half was simply absent, so the commonest 32 bit format an application
++                 * asks for, ARGB premultiplied, could not be read at all. */
++                case kO2BitmapByteOrder16Big:
++                case kO2BitmapByteOrder32Big:
++                    self->_read_argb8u = O2ImageRead_ARGB8888_to_argb8u;
++                    return YES;
+                 }
+                 break;
+ 
+             case kO2ImageAlphaFirst:
++                switch (bitmapInfo & kO2BitmapByteOrderMask) {
++                case kO2BitmapByteOrder16Little:
++                case kO2BitmapByteOrder32Little:
++                    self->_read_argb8u = O2ImageRead_BGRA8888_straight_to_argb8u;
++                    return YES;
++
++                case kO2BitmapByteOrder16Big:
++                case kO2BitmapByteOrder32Big:
++                    self->_read_argb8u = O2ImageRead_ARGB8888_straight_to_argb8u;
++                    return YES;
++                }
+                 break;
+ 
+             case kO2ImageAlphaNoneSkipLast:
+@@ -1114,6 +1145,81 @@
+     return NULL;
+ }
+ 
++/* A,R,G,B in memory order, already premultiplied: kO2ImageAlphaPremultipliedFirst with the natural
++ * byte order, which is what an application that passes kCGBitmapByteOrderDefault means. */
++O2argb8u *O2ImageRead_ARGB8888_to_argb8u(O2Image *self, int x, int y,
++                                         O2argb8u *span, int length)
++{
++    const uint8_t *scanline = scanlineAtY(self, y);
++    int i;
++
++    if (scanline == NULL)
++        return NULL;
++
++    scanline += x * 4;
++    for (i = 0; i < length; i++) {
++        O2argb8u result;
++
++        result.a = scanline[0];
++        result.r = scanline[1];
++        result.g = scanline[2];
++        result.b = scanline[3];
++        *span++ = result;
++        scanline += 4;
++    }
++    return NULL;
++}
++
++/* The same order with STRAIGHT samples, so they premultiply on the way in. See the note on
++ * O2ImageRead_RGBA8888_straight_to_argb8u for why that has to happen here. */
++O2argb8u *O2ImageRead_ARGB8888_straight_to_argb8u(O2Image *self, int x, int y,
++                                                  O2argb8u *span, int length)
++{
++    const uint8_t *scanline = scanlineAtY(self, y);
++    int i;
++
++    if (scanline == NULL)
++        return NULL;
++
++    scanline += x * 4;
++    for (i = 0; i < length; i++) {
++        O2argb8u result;
++        uint8_t a = scanline[0];
++
++        result.a = a;
++        result.r = O2Image_8u_mul_8u_div_255(scanline[1], a);
++        result.g = O2Image_8u_mul_8u_div_255(scanline[2], a);
++        result.b = O2Image_8u_mul_8u_div_255(scanline[3], a);
++        *span++ = result;
++        scanline += 4;
++    }
++    return NULL;
++}
++
++O2argb8u *O2ImageRead_BGRA8888_straight_to_argb8u(O2Image *self, int x, int y,
++                                                  O2argb8u *span, int length)
++{
++    const uint8_t *scanline = scanlineAtY(self, y);
++    int i;
++
++    if (scanline == NULL)
++        return NULL;
++
++    scanline += x * 4;
++    for (i = 0; i < length; i++) {
++        O2argb8u result;
++        uint8_t a = scanline[3];
++
++        result.b = O2Image_8u_mul_8u_div_255(scanline[0], a);
++        result.g = O2Image_8u_mul_8u_div_255(scanline[1], a);
++        result.r = O2Image_8u_mul_8u_div_255(scanline[2], a);
++        result.a = a;
++        *span++ = result;
++        scanline += 4;
++    }
++    return NULL;
++}
++
+ O2argb8u *O2ImageRead_ABGR8888_straight_to_argb8u(O2Image *self, int x, int y,
+                                                   O2argb8u *span, int length)
+ {
+@@ -1225,10 +1331,14 @@
+     for (i = 0; i < length; i++) {
+         O2argb8u result;
+ 
+-        result.a = *scanline++;
++        /* THE FIRST BYTE IS PADDING, NOT ALPHA. This is the SkipFirst format and it took the pad
++         * byte as alpha, so an image whose padding happened to be zero came out fully transparent.
++         * Its Little sibling O2ImageRead_BGRX8888_to_argb8u always had this right. */
++        scanline++;
+         result.r = *scanline++;
+         result.g = *scanline++;
+         result.b = *scanline++;
++        result.a = 255;
+         *span++ = result;
+     }
+     return NULL;
+--- a/Onyx2D/include/Onyx2D/O2Image.h
++++ b/Onyx2D/include/Onyx2D/O2Image.h
+@@ -256,6 +256,13 @@
+                                                   O2argb8u *span, int length);
+ O2argb8u *O2ImageRead_ABGR8888_straight_to_argb8u(O2Image *self, int x, int y,
+                                                   O2argb8u *span, int length);
++/* Alpha FIRST: A,R,G,B in memory, and its little endian sibling B,G,R,A. */
++O2argb8u *O2ImageRead_ARGB8888_to_argb8u(O2Image *self, int x, int y,
++                                         O2argb8u *span, int length);
++O2argb8u *O2ImageRead_ARGB8888_straight_to_argb8u(O2Image *self, int x, int y,
++                                                  O2argb8u *span, int length);
++O2argb8u *O2ImageRead_BGRA8888_straight_to_argb8u(O2Image *self, int x, int y,
++                                                  O2argb8u *span, int length);
+ O2argb8u *O2ImageRead_BGRA8888_to_argb8u(O2Image *self, int x, int y,
+                                          O2argb8u *span, int length);
+ O2argb8u *O2ImageRead_RGB888_to_argb8u(O2Image *self, int x, int y,
