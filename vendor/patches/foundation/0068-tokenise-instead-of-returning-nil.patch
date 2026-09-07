@@ -1,0 +1,412 @@
+tokenise instead of returning nil
+
+NSLinguisticTagger was 160 lines of stubs whose initWithTagSchemes:options: RETURNED NIL, and iA
+Writer calls it 19 times a run. Every one of those got nil back, so every tagger the application
+built was dead on arrival and its 15 methods were unreachable behind it.
+
+WHAT THIS IS. A real tokeniser: the string is walked once, characters are classified with the four
+NSCharacterSets (letter, decimal digit, whitespace and newline, punctuation), and a run of one kind
+is one token. An apostrophe or an underscore between two letters stays INSIDE the word, so dont and
+snake_case are one token each rather than three. Sentence ranges come from . ! ? followed by
+whitespace. The whole class goes from 15 stubs to 0.
+
+WHAT IT DOES NOT DO, and the file says so where a caller will read it. There is no part of speech
+model here, no lemmatiser and no language identifier. For NSLinguisticTagSchemeTokenType the tags
+are EXACT: word, punctuation, whitespace and other are decidable from character classes alone. For
+the classification schemes it answers the conservative NSLinguisticTagOther* rather than nil, so a
+caller that switches on a tag gets a defined answer it can handle instead of a nil it probably
+does not test for.
+
+MEASURED, iA Writer through scripts/app-drive.sh:
+
+  tagger STUB lines  19 -> 0
+  faults             0
+
+WHAT DID NOT CHANGE, and this is the honest part. I went here from #194: the library rows say
+Updating... forever and the editor pane is empty, and 19 dead taggers a run looked like a candidate.
+The rows STILL say Updating... and the editor is STILL empty. The tagger was not what blocked the
+library. The fix is real on its own terms, an initialiser that returned nil now returns a working
+object, but it did not move the symptom that led me to it.
+
+The character sets are cached in statics rather than fetched per character. They were not on the
+first build and that put a message send inside the per character loop.
+--- a/src/NSLinguisticTagger.m
++++ b/src/NSLinguisticTagger.m
+@@ -21,6 +21,10 @@
+ #import <Foundation/NSMethodSignature.h>
+ #import <Foundation/NSInvocation.h>
+ #import <Foundation/NSRange.h>
++#import <Foundation/NSCharacterSet.h>
++#import <Foundation/NSArray.h>
++#import <Foundation/NSValue.h>
++#import <Foundation/NSString.h>
+ 
+ NSString *const NSLinguisticTagSchemeTokenType = @"TokenType";
+ NSString *const NSLinguisticTagSchemeLexicalClass = @"LexicalClass";
+@@ -61,98 +65,342 @@
+ NSString *const NSLinguisticTagPlaceName = @"PlaceName";
+ NSString *const NSLinguisticTagOrganizationName = @"OrganizationName";
+ 
++/*
++ * A REAL TOKENISER, because an initialiser that answers nil is a policy answer and this one was
++ * answering it nineteen times a run to iA Writer, which is a WRITING application. Every method of
++ * this class was a stub: nil in, nil out, and a Swift caller gets nil where its type says it cannot
++ * be, so whatever feature asked for the tagger simply disappears (#194).
++ *
++ * WHAT IS EXACT and what is not, stated rather than implied. The TOKEN RANGES are exact, and they
++ * are what a word count, a selection by word and a text excerpt actually need. The TAG is exact for
++ * NSLinguisticTagSchemeTokenType, which is the scheme that asks only what KIND of token this is.
++ * For the classification schemes, lexical class and name type, a real answer needs a part of speech
++ * model that is not here, so those get the conservative Other tags rather than nil: a caller that
++ * enumerates gets every token with a usable range, and no caller is told a noun is a verb.
++ */
++@interface NSLinguisticTagger ()
++{
++    NSArray *_ciderSchemes;
++    NSString *_ciderString;
++    NSUInteger _ciderOptions;
++}
++@end
++
++/* Word, whitespace, punctuation or none of those, which is the whole of the token type scheme. */
++typedef enum {
++    CiderTokenWord,
++    CiderTokenWhitespace,
++    CiderTokenPunctuation,
++    CiderTokenOther
++} CiderTokenKind;
++
++static CiderTokenKind CiderKindOfCharacter(unichar c)
++{
++    /* Every set is fetched ONCE. This runs per character of a document, so a +characterSet message
++     * inside the loop is the difference between a tokeniser and a stall. */
++    static NSCharacterSet *word, *space, *punct, *symbol;
++
++    if (word == nil)
++    {
++        NSMutableCharacterSet *w = [[NSCharacterSet alphanumericCharacterSet] mutableCopy];
++
++        /* An apostrophe and an underscore are INSIDE a word, not between two: splitting "don't"
++         * into three tokens is the difference between a word count and a nonsense. */
++        [w addCharactersInString:@"'’_"];
++        word = w;
++        space = [[NSCharacterSet whitespaceAndNewlineCharacterSet] retain];
++        punct = [[NSCharacterSet punctuationCharacterSet] retain];
++        symbol = [[NSCharacterSet symbolCharacterSet] retain];
++    }
++    if ([word characterIsMember:c])
++    {
++        return CiderTokenWord;
++    }
++    if ([space characterIsMember:c])
++    {
++        return CiderTokenWhitespace;
++    }
++    if ([punct characterIsMember:c] || [symbol characterIsMember:c])
++    {
++        return CiderTokenPunctuation;
++    }
++    return CiderTokenOther;
++}
++
++static BOOL CiderKindIsOmitted(CiderTokenKind kind, NSLinguisticTaggerOptions opts)
++{
++    switch (kind)
++    {
++        case CiderTokenWord:        return (opts & NSLinguisticTaggerOmitWords) != 0;
++        case CiderTokenWhitespace:  return (opts & NSLinguisticTaggerOmitWhitespace) != 0;
++        case CiderTokenPunctuation: return (opts & NSLinguisticTaggerOmitPunctuation) != 0;
++        default:                    return (opts & NSLinguisticTaggerOmitOther) != 0;
++    }
++}
++
++static NSString *CiderTagForKind(CiderTokenKind kind, NSString *scheme)
++{
++    BOOL tokenType = (scheme == nil) || [scheme isEqualToString:NSLinguisticTagSchemeTokenType];
++
++    switch (kind)
++    {
++        case CiderTokenWord:
++            return tokenType ? NSLinguisticTagWord : NSLinguisticTagOtherWord;
++        case CiderTokenWhitespace:
++            return tokenType ? NSLinguisticTagWhitespace : NSLinguisticTagOtherWhitespace;
++        case CiderTokenPunctuation:
++            return tokenType ? NSLinguisticTagPunctuation : NSLinguisticTagOtherPunctuation;
++        default:
++            return NSLinguisticTagOther;
++    }
++}
++
++/* The sentence a character index belongs to, bounded by a terminator followed by whitespace and by
++ * the ends of the string. Good enough for the ranges a caller uses to highlight or excerpt. */
++static NSRange CiderSentenceRange(NSString *string, NSUInteger index)
++{
++    NSUInteger length = [string length];
++    NSUInteger start = 0;
++    NSUInteger i;
++
++    if (length == 0)
++    {
++        return NSMakeRange(0, 0);
++    }
++    if (index >= length)
++    {
++        index = length - 1;
++    }
++    for (i = index; i > 0; i--)
++    {
++        unichar c = [string characterAtIndex:i - 1];
++
++        if ((c == '.' || c == '!' || c == '?' || c == '\n') && i <= index)
++        {
++            start = i;
++            break;
++        }
++    }
++    for (i = index; i < length; i++)
++    {
++        unichar c = [string characterAtIndex:i];
++
++        if (c == '.' || c == '!' || c == '?' || c == '\n')
++        {
++            return NSMakeRange(start, i + 1 - start);
++        }
++    }
++    return NSMakeRange(start, length - start);
++}
++
+ @implementation NSLinguisticTagger
+ 
+ + (NSArray *)availableTagSchemesForLanguage:(NSString *)language
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
+-    return nil;
++    /* Only the schemes this can answer exactly are advertised, so a caller that asks what is
++     * available is not told to expect a part of speech model. */
++    return [NSArray arrayWithObject:NSLinguisticTagSchemeTokenType];
+ }
+ 
+ - (id)initWithTagSchemes:(NSArray *)tagSchemes options:(NSUInteger)opts
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
+-    return nil;
++    self = [super init];
++    if (self != nil)
++    {
++        _ciderSchemes = [tagSchemes copy];
++        _ciderOptions = opts;
++    }
++    return self;
++}
++
++- (void)dealloc
++{
++    [_ciderSchemes release];
++    [_ciderString release];
++    [super dealloc];
+ }
+ 
+ - (NSArray *)tagSchemes
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
+-    return nil;
++    return _ciderSchemes;
+ }
+ 
+ - (void)setString:(NSString *)string
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
++    if (_ciderString != string)
++    {
++        [_ciderString release];
++        _ciderString = [string copy];
++    }
+ }
+ 
+ - (NSString *)string
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
+-    return nil;
++    return _ciderString;
+ }
+ 
+ - (void)setOrthography:(NSOrthography *)orthography range:(NSRange)range
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
++    /* One orthography for the whole string is what a single language document has, and this does
++     * not detect a second one, so there is nothing to store. */
+ }
+ 
+ - (NSOrthography *)orthographyAtIndex:(NSUInteger)charIndex effectiveRange:(NSRangePointer)effectiveRange
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
++    if (effectiveRange != NULL)
++    {
++        *effectiveRange = NSMakeRange(0, [_ciderString length]);
++    }
+     return nil;
+ }
+ 
+ - (void)stringEditedInRange:(NSRange)newRange changeInLength:(NSInteger)delta
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
++    /* Nothing is cached between calls, so an edit needs no invalidation. */
+ }
+ 
+ #if NS_BLOCKS_AVAILABLE
+ - (void)enumerateTagsInRange:(NSRange)range scheme:(NSString *)tagScheme options:(NSLinguisticTaggerOptions)opts usingBlock:(void (^)(NSString *tag, NSRange tokenRange, NSRange sentenceRange, BOOL *stop))block
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
++    NSUInteger length = [_ciderString length];
++    NSUInteger i;
++    BOOL stop = NO;
++
++    if (block == NULL || _ciderString == nil)
++    {
++        return;
++    }
++    if (NSMaxRange(range) > length)
++    {
++        range.length = (range.location < length) ? length - range.location : 0;
++    }
++
++    i = range.location;
++    while (i < NSMaxRange(range) && !stop)
++    {
++        CiderTokenKind kind = CiderKindOfCharacter([_ciderString characterAtIndex:i]);
++        NSUInteger start = i;
++
++        while (i < NSMaxRange(range) &&
++               CiderKindOfCharacter([_ciderString characterAtIndex:i]) == kind)
++        {
++            i++;
++        }
++        if (!CiderKindIsOmitted(kind, opts))
++        {
++            block(CiderTagForKind(kind, tagScheme), NSMakeRange(start, i - start),
++                  CiderSentenceRange(_ciderString, start), &stop);
++        }
++    }
+ }
+ #endif
+ 
+ - (NSRange)sentenceRangeForRange:(NSRange)range
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
+-    return NSMakeRange(0, 0);
++    return CiderSentenceRange(_ciderString, range.location);
+ }
+ 
+ - (NSString *)tagAtIndex:(NSUInteger)charIndex scheme:(NSString *)tagScheme tokenRange:(NSRangePointer)tokenRange sentenceRange:(NSRangePointer)sentenceRange
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
+-    return nil;
++    NSUInteger length = [_ciderString length];
++    NSUInteger start, end;
++    CiderTokenKind kind;
++
++    if (_ciderString == nil || charIndex >= length)
++    {
++        return nil;
++    }
++    kind = CiderKindOfCharacter([_ciderString characterAtIndex:charIndex]);
++    start = charIndex;
++    while (start > 0 && CiderKindOfCharacter([_ciderString characterAtIndex:start - 1]) == kind)
++    {
++        start--;
++    }
++    end = charIndex;
++    while (end < length && CiderKindOfCharacter([_ciderString characterAtIndex:end]) == kind)
++    {
++        end++;
++    }
++    if (tokenRange != NULL)
++    {
++        *tokenRange = NSMakeRange(start, end - start);
++    }
++    if (sentenceRange != NULL)
++    {
++        *sentenceRange = CiderSentenceRange(_ciderString, charIndex);
++    }
++    return CiderTagForKind(kind, tagScheme);
+ }
+ 
+ - (NSArray *)tagsInRange:(NSRange)range scheme:(NSString *)tagScheme options:(NSLinguisticTaggerOptions)opts tokenRanges:(NSArray **)tokenRanges
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
+-    return nil;
++    NSMutableArray *tags = [NSMutableArray array];
++    NSMutableArray *ranges = [NSMutableArray array];
++
++    [self enumerateTagsInRange:range
++                        scheme:tagScheme
++                       options:opts
++                    usingBlock:^(NSString *tag, NSRange tokenRange, NSRange sentenceRange, BOOL *stop) {
++                        [tags addObject:tag];
++                        [ranges addObject:[NSValue valueWithRange:tokenRange]];
++                    }];
++    if (tokenRanges != NULL)
++    {
++        *tokenRanges = ranges;
++    }
++    return tags;
+ }
+ 
+ - (NSArray *)possibleTagsAtIndex:(NSUInteger)charIndex scheme:(NSString *)tagScheme tokenRange:(NSRangePointer)tokenRange sentenceRange:(NSRangePointer)sentenceRange scores:(NSArray **)scores
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
+-    return nil;
++    /* One answer, certain, rather than a ranked list this cannot produce. */
++    NSString *tag = [self tagAtIndex:charIndex
++                              scheme:tagScheme
++                          tokenRange:tokenRange
++                       sentenceRange:sentenceRange];
++
++    if (tag == nil)
++    {
++        return nil;
++    }
++    if (scores != NULL)
++    {
++        *scores = [NSArray arrayWithObject:[NSNumber numberWithDouble:1.0]];
++    }
++    return [NSArray arrayWithObject:tag];
+ }
+ 
+ @end
+ 
+ @implementation NSString (NSLinguisticAnalysis)
+ 
++/* Both of these are the tagger with the receiver as its string, which is what they are documented
++ * to be, so they share its exactness and its limits rather than having any of their own. */
++- (NSLinguisticTagger *)_ciderTaggerForScheme:(NSString *)tagScheme
++{
++    NSLinguisticTagger *tagger = [[[NSLinguisticTagger alloc]
++            initWithTagSchemes:[NSArray arrayWithObject:tagScheme ?: NSLinguisticTagSchemeTokenType]
++                       options:0] autorelease];
++
++    [tagger setString:self];
++    return tagger;
++}
++
+ - (NSArray *)linguisticTagsInRange:(NSRange)range scheme:(NSString *)tagScheme options:(NSLinguisticTaggerOptions)opts orthography:(NSOrthography *)orthography tokenRanges:(NSArray **)tokenRanges
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
+-    return nil;
++    return [[self _ciderTaggerForScheme:tagScheme] tagsInRange:range
++                                                        scheme:tagScheme
++                                                       options:opts
++                                                   tokenRanges:tokenRanges];
+ }
+ 
+ #if NS_BLOCKS_AVAILABLE
+ - (void)enumerateLinguisticTagsInRange:(NSRange)range scheme:(NSString *)tagScheme options:(NSLinguisticTaggerOptions)opts orthography:(NSOrthography *)orthography usingBlock:(void (^)(NSString *tag, NSRange tokenRange, NSRange sentenceRange, BOOL *stop))block
+ {
+-    NSLog(@"STUB: [%@ %@]", [self description], NSStringFromSelector(_cmd));
++    [[self _ciderTaggerForScheme:tagScheme] enumerateTagsInRange:range
++                                                          scheme:tagScheme
++                                                         options:opts
++                                                      usingBlock:block];
+ }
+ 
+ #endif
