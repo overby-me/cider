@@ -19,6 +19,9 @@
 
 #include <Foundation/Foundation.h>
 
+extern NSString *const IMPersonStatusChangedNotification;
+extern NSString *const IMPersonScreenNameKey;
+
 @interface IMService : NSObject
 
 @end

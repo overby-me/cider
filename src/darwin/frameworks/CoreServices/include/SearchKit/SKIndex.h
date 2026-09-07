@@ -20,6 +20,15 @@
 #ifndef SKINDEX_H_
 #define SKINDEX_H_
 
+#include <CoreFoundation/CFBase.h>
+
+typedef CF_ENUM(SInt32, SKIndexType) {
+	kSKIndexUnknown = 0,
+	kSKIndexInverted = 1,
+	kSKIndexVector = 2,
+	kSKIndexInvertedVector = 3,
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif

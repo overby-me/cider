@@ -30,3 +30,5 @@ const CFStringRef kVTCompressionPropertyKey_MaxFrameDelayCount = CFSTR("MaxFrame
 const CFStringRef kVTCompressionPropertyKey_ExpectedFrameRate = CFSTR("ExpectedFrameRate");
 
 const CFStringRef kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder = CFSTR("RequireHardwareAcceleratedVideoEncoder");
+
+const CFStringRef kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder = CFSTR("RequireHardwareAcceleratedVideoDecoder");

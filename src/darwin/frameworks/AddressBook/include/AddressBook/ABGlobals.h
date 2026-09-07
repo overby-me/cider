@@ -29,6 +29,7 @@ extern NSString *const kABNicknameProperty;
 extern NSString *const kABOrganizationProperty;
 extern NSString *const kABPersonFlags;
 extern NSString *const kABSuffixProperty;
+extern NSString *const kABUIDProperty;
 
 extern NSString *const kABDeletedRecords;
 extern NSString *const kABInsertedRecords;

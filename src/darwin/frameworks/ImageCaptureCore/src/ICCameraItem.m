@@ -19,6 +19,8 @@
 
 #import <ImageCaptureCore/ICCameraItem.h>
 
+NSString *const ICDownloadsDirectoryURL = @"ICDownloadsDirectoryURL";
+
 @implementation ICCameraItem
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

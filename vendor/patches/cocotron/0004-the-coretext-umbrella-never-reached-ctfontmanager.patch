@@ -1,0 +1,33 @@
+the coretext umbrella never reached ctfontmanager
+
+kCTFontManagerRegisteredFontsChangedNotification was declared in CTFontManager.h and defined in
+CTFontManager.m with the right value all along. Nothing included that header, so anything importing
+only CoreText/CoreText.h saw the name as undeclared and could not compile against it. The constant
+is how an application learns the font set changed, so a font-aware application had no way to
+subscribe.
+
+CTFontManagerScope had to move from NS_ENUM to CF_ENUM in the same change. Once CTFontManager.h is
+reachable from the umbrella, every plain C consumer of CoreText parses it, and NS_ENUM is a
+Foundation macro that a C translation unit does not have. Measured: adding the include alone broke
+the py2app app template, which is C and had been compiling fine.
+
+--- a/CoreText/include/CoreText/CoreText.h
++++ b/CoreText/include/CoreText/CoreText.h
+@@ -11,3 +11,4 @@
+ #import <CoreText/CTParagraphStyle.h>
+ #import <CoreText/CTStringAttributes.h>
+ #import <CoreText/CTFontCollection.h>
++#import <CoreText/CTFontManager.h>
+--- a/CoreText/include/CoreText/CTFontManager.h
++++ b/CoreText/include/CoreText/CTFontManager.h
+@@ -3,7 +3,9 @@
+ 
+ CF_IMPLICIT_BRIDGING_ENABLED
+ 
+-typedef NS_ENUM(uint32_t, CTFontManagerScope)
++// CF_ENUM, not NS_ENUM: CoreText is a C framework and this header is now reachable from
++// CoreText.h, so a plain C translation unit that has no Foundation must still parse it.
++typedef CF_ENUM(uint32_t, CTFontManagerScope)
+ {
+     kCTFontManagerScopeNone = 0,
+     kCTFontManagerScopeProcess = 1,

@@ -17,11 +17,23 @@
  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _CORESERVICES_SEARCHKIT_H_
-#define _CORESERVICES_SEARCHKIT_H_
+#ifndef _SKSEARCH_H_
+#define _SKSEARCH_H_
 
-#include <SearchKit/SKAnalysis.h>
-#include <SearchKit/SKIndex.h>
-#include <SearchKit/SKSearch.h>
+#include <CoreFoundation/CFBase.h>
+
+typedef CF_ENUM(SInt32, SKSearchType) {
+	kSKSearchRanked = 0,
+	kSKSearchBooleanRanked = 1,
+	kSKSearchRequiredRanked = 2,
+	kSKSearchPrefixRanked = 3,
+};
+
+typedef CF_OPTIONS(CFOptionFlags, SKSearchOptions) {
+	kSKSearchOptionDefault = 0,
+	kSKSearchOptionNoRelevanceScores = 1UL << 0,
+	kSKSearchOptionSpaceMeansOR = 1UL << 1,
+	kSKSearchOptionFindSimilar = 1UL << 2,
+};
 
 #endif

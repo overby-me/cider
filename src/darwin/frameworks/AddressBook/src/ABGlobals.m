@@ -39,6 +39,8 @@ NSString *const kABPhoneProperty=@"ABPhoneProperty";
 NSString *const kABTitleProperty=@"ABTitleProperty";
 NSString *const kABURLsProperty=@"ABURLsProperty";
 NSString *const kABSuffixProperty = @"Suffix";
+// kABUIDProperty is defined in capi.c as a CFStringRef. That is the macOS split, one symbol
+// declared NSString * to ObjC and CFStringRef to C, so declare it here but do not define it.
 
 NSString *const kABPersonFlags=@"ABPersonFlags";
 

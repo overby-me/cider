@@ -19,6 +19,10 @@
 
 #import <InstantMessage/IMService.h>
 
+// The double underscore prefix is what macOS ships, not a typo and not an internal name leaking.
+NSString *const IMPersonStatusChangedNotification = @"__kIMPersonStatusChangedNotification";
+NSString *const IMPersonScreenNameKey = @"__kIMPersonScreenNameKey";
+
 @implementation IMService
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector

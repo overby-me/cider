@@ -584,6 +584,9 @@
 #import <AddressBook/ABCardCollectionTableRowView.h>
 #import <AddressBook/ABCardCollectionTableViewController.h>
 #import <AddressBook/_ABPersonView.h>
+// The property-name constants. Declared and defined all along, but no umbrella header reached
+// ABGlobals.h, so kABSuffixProperty read as undeclared to anything including only AddressBook.h.
+#import <AddressBook/ABGlobals.h>
 
 @protocol ABImageClient
 @end

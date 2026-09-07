@@ -34,4 +34,6 @@ extern CFStringRef const kVTCompressionPropertyKey_ExpectedFrameRate;
 
 extern CFStringRef const kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder;
 
+extern CFStringRef const kVTVideoDecoderSpecification_RequireHardwareAcceleratedVideoDecoder;
+
 #endif

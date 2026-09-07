@@ -77,6 +77,15 @@ enum
 };
 
 extern const CFStringRef kCVPixelBufferMetalCompatibilityKey;
+extern const CFStringRef kCVPixelBufferIOSurfacePropertiesKey;
+extern const CFStringRef kCVPixelBufferOpenGLCompatibilityKey;
+extern const CFStringRef kCVPixelBufferPixelFormatTypeKey;
+extern const CFStringRef kCVPixelBufferBytesPerRowAlignmentKey;
+extern const CFStringRef kCVPixelBufferHeightKey;
+extern const CFStringRef kCVPixelBufferWidthKey;
+extern const CFStringRef kCVPixelBufferIOSurfaceOpenGLTextureCompatibilityKey;
+extern const CFStringRef kCVPixelBufferPoolMaximumBufferAgeKey;
+extern const CFStringRef kCVPixelBufferPoolMinimumBufferCountKey;
 
 typedef CVImageBufferRef CVPixelBufferRef;
 typedef void (*CVPixelBufferReleaseBytesCallback)(void *releaseRefCon, const void *baseAddress);

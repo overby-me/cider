@@ -8184,6 +8184,7 @@ FRAMEWORKS = {
     "SearchKit": {
         "SearchKit/SKAnalysis.h": "CoreServices/include/SearchKit/SKAnalysis.h",
         "SearchKit/SKIndex.h": "CoreServices/include/SearchKit/SKIndex.h",
+        "SearchKit/SKSearch.h": "CoreServices/include/SearchKit/SKSearch.h",
         "SearchKit/SearchKit.h": "CoreServices/include/SearchKit/SearchKit.h",
     },
     "SecurityFoundation": {

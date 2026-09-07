@@ -25,4 +25,21 @@ extern CFStringRef const kCVImageBufferTransferFunction_ITU_R_709_2;
 extern CFStringRef const kCVImageBufferTransferFunction_SMPTE_240M_1995;
 extern CFStringRef const kCVImageBufferTransferFunction_UseGamma;
 
+extern CFStringRef const kCVImageBufferYCbCrMatrix_ITU_R_2020;
+extern CFStringRef const kCVImageBufferColorPrimaries_ITU_R_2020;
+extern CFStringRef const kCVImageBufferTransferFunction_ITU_R_2020;
+extern CFStringRef const kCVImageBufferTransferFunction_ITU_R_2100_HLG;
+extern CFStringRef const kCVImageBufferTransferFunction_Linear;
+extern CFStringRef const kCVImageBufferTransferFunction_SMPTE_ST_2084_PQ;
+extern CFStringRef const kCVImageBufferTransferFunction_SMPTE_ST_428_1;
+extern CFStringRef const kCVImageBufferTransferFunction_SMPTE_C;
+extern CFStringRef const kCVImageBufferCGColorSpaceKey;
+extern CFStringRef const kCVImageBufferChromaLocation_Left;
+extern CFStringRef const kCVImageBufferChromaLocation_Bottom;
+extern CFStringRef const kCVImageBufferChromaLocation_BottomLeft;
+extern CFStringRef const kCVImageBufferChromaLocation_Center;
+extern CFStringRef const kCVImageBufferChromaLocation_DV420;
+extern CFStringRef const kCVImageBufferChromaLocation_Top;
+extern CFStringRef const kCVImageBufferChromaLocation_TopLeft;
+
 #endif // _COREVIDEO_CVIMAGEBUFFER_H_
