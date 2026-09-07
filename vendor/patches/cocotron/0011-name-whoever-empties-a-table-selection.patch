@@ -1,0 +1,107 @@
+name whoever empties a table selection, and what a draw was told
+
+A row that is selected and then silently deselected looks EXACTLY like a highlight that was never
+painted, and the two want opposite fixes. Task #210 spent two rounds on the second reading before
+these four traces showed it was the first.
+
+drawRect: fills the background unconditionally and draws the highlight only behind a row count and a
+non-empty selection, so a draw that finds neither wipes the highlight and puts nothing back. The
+draw line prints the view POINTER, because the finding is two draws of the SAME table minutes apart
+answering differently:
+
+  CIDER_TABLE draw IATableView_Aspects_ 0x73ff7027d190 clip=295x524+0+0 rows=4 selected=1
+  CIDER_TABLE draw IATableView_Aspects_ 0x73ff7027d190 clip=295x524+0+0 rows=4 selected=0
+
+_setSelectedRowIndexes: takes a backtrace when a non-empty selection is replaced by an empty one,
+which named the culprit in one run as iA Writer itself via __NSFireDelayedPerform.
+
+clickedRow prints its answer because an application that overrides mouseDown: and sends its own
+action reads it to decide what the click meant, so a wrong answer here is indistinguishable from the
+application ignoring the click. iA Writer got 3, correctly, and deselected anyway.
+
+rowViewAtRow: prints when it is asked. Across a launch and a click iA Writer asks ZERO times, which
+is the measurement that sets how much of #211 is worth building.
+
+All four are on CIDER_TRACE_CONTROL beside the mouseDown, selectedRow and highlight lines already
+here. The gate tests for a non-empty value, not merely a set one, because drivers export every
+switch and an empty value would turn them all on.
+
+--- a/AppKit/NSTableView.m
++++ b/AppKit/NSTableView.m
+@@ -25,6 +25,7 @@
+ #import <AppKit/NSRaise.h>
+ #import <AppKit/NSTableCornerView.h>
+ #import <Foundation/NSKeyedArchiver.h>
++#include <execinfo.h>
+ 
+ NSString *const NSTableViewSelectionIsChangingNotification =
+         @"NSTableViewSelectionIsChangingNotification";
+@@ -893,6 +894,13 @@
+ }
+ 
+ - (NSInteger) clickedRow {
++    /* An application that overrides mouseDown: and sends its own action reads this to decide what
++     * the click meant, so a wrong answer here looks like the application ignoring the click. */
++    if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
++        fprintf(stderr, "CIDER_TABLE clickedRow %s -> %ld\n", object_getClassName(self),
++                (long) _clickedRow);
++        fflush(stderr);
++    }
+     return _clickedRow;
+ }
+ 
+@@ -919,6 +927,22 @@
+ 
+ // Use this so that KVO/Bindings notifications work automatically
+ - (void) _setSelectedRowIndexes: (NSIndexSet *) value {
++    /* A SELECTION THAT IS SET AND THEN SILENTLY EMPTIED looks exactly like a highlight that was
++     * never painted, and the two want opposite fixes. Names whoever empties it. Task #210. */
++    if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0' &&
++        [_selectedRowIndexes count] > 0 && [value count] == 0) {
++        void *frames[10];
++        int count = backtrace(frames, 10);
++        char **names = backtrace_symbols(frames, count);
++
++        fprintf(stderr, "CIDER_TABLE deselect %s %p had %lu\n", object_getClassName(self), self,
++                (unsigned long) [_selectedRowIndexes count]);
++        for (int i = 1; i < count && names != NULL; i++)
++            fprintf(stderr, "CIDER_TABLE deselect   %s\n", names[i]);
++        free(names);
++        fflush(stderr);
++    }
++
+     value = [value copy];
+     [_selectedRowIndexes release];
+     _selectedRowIndexes = value;
+@@ -1322,6 +1346,13 @@
+ }
+ 
+ - (id) rowViewAtRow: (NSInteger) row makeIfNecessary: (BOOL) makeIfNecessary {
++    /* Whether any application ASKS for a row view is what decides how much of #211 is worth
++     * building. iA Writer asks zero times across a launch and a click. */
++    if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
++        fprintf(stderr, "CIDER_TABLE rowViewAtRow %s row=%ld make=%d -> nil\n",
++                object_getClassName(self), (long) row, (int) makeIfNecessary);
++        fflush(stderr);
++    }
+     return nil;
+ }
+ 
+@@ -1995,6 +2026,17 @@
+     NSRange visibleRows;
+     NSInteger drawThisRow, numberOfRows = [self numberOfRows];
+ 
++    /* THE BACKGROUND FILL IS UNCONDITIONAL AND THE HIGHLIGHT IS NOT, so a draw that finds no rows or
++     * no selection wipes the highlight and puts nothing back. Print the pointer: two draws of the
++     * SAME table with different answers is the shape that finding takes. Task #210. */
++    if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
++        fprintf(stderr, "CIDER_TABLE draw %s %p clip=%.0fx%.0f+%.0f+%.0f rows=%ld selected=%lu\n",
++                object_getClassName(self), self, clipRect.size.width, clipRect.size.height,
++                clipRect.origin.x, clipRect.origin.y, (long) numberOfRows,
++                (unsigned long) [_selectedRowIndexes count]);
++        fflush(stderr);
++    }
++
+     [self drawBackgroundInClipRect: clipRect];
+     [self _updateCellViewsInRect: clipRect];
+ 

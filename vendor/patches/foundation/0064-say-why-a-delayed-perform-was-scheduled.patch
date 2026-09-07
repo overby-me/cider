@@ -1,0 +1,75 @@
+say why a delayed perform was scheduled, not just that it fired
+
+A delayed perform runs with its scheduling stack long gone, so a backtrace at fire time names only
+the run loop. That is what made #210 hard: iA Writer undoes its own table selection from one, and
+nothing in the process could say why.
+
+Two traces, both on CIDER_TRACE_PERFORM.
+
+At FIRE time the selector is the whole identity of the work, so it prints target class and selector.
+Twenty one fire in an iA Writer launch and exactly one is the interesting one:
+
+  CIDER_PERFORM fire NSKVONotifying_Writer.LibraryTreeViewController -> deselectSelectedRow:
+
+At SCHEDULE time the stack is still live and carries the reason. An unfiltered backtrace per perform
+buries the answer, so the variable doubles as a filter: set it to a substring of the selector and
+only matching schedules print a stack. CIDER_TRACE_PERFORM=deselect gave the whole chain:
+
+  CIDER_PERFORM schedule ... -> deselectSelectedRow: delay=0.05
+    4 AppKit           -[NSApplication sendAction:to:from:]
+    5 AppKitAdditions  -[IATableView mouseDown:] + 460
+    6 AppKit           -[NSWindow sendEvent:]
+
+which is the application deselecting from its own action handler, not anything this AppKit did.
+
+--- a/src/NSRunLoop.m
++++ b/src/NSRunLoop.m
+@@ -14,6 +14,9 @@
+ #import <Foundation/NSTimer.h>
+ #import "CFInternal.h"
+ #import <libkern/OSAtomic.h>
++#import <objc/runtime.h>
++#include <execinfo.h>
++#include <string.h>
+ 
+ CF_EXPORT CFTypeRef _CFRunLoopGet2(CFRunLoopRef rl); //locking version
+ CF_EXPORT CFTypeRef _CFRunLoopGet2b(CFRunLoopRef rl); //non locking version
+@@ -379,6 +382,14 @@
+ static void __NSFireDelayedPerform(CFRunLoopTimerRef timer, void *info)
+ {
+     NSDelayedPerformer *performer = (NSDelayedPerformer *)info;
++    /* A delayed perform runs with the scheduling stack long gone, so a backtrace here names only the
++     * run loop. The selector is the whole identity of the work. See the schedule side below, which
++     * is where a reason can still be read. */
++    if (getenv("CIDER_TRACE_PERFORM") != NULL && getenv("CIDER_TRACE_PERFORM")[0] != '\0') {
++        fprintf(stderr, "CIDER_PERFORM fire %s -> %s\n", object_getClassName(performer->object),
++                sel_getName(performer->selector));
++        fflush(stderr);
++    }
+     @autoreleasepool {
+         [performer->object performSelector:performer->selector withObject:performer->argument];
+     }
+@@ -396,6 +407,23 @@
+               afterDelay: (NSTimeInterval) delay
+                  inModes: (NSArray<NSRunLoopMode> *) modes
+ {
++    /* WHY a delayed perform was asked for is only readable HERE. Set CIDER_TRACE_PERFORM to a
++     * substring of the selector to get the scheduling stack for just that one; an unfiltered
++     * backtrace per perform buries the answer, since a launch schedules dozens. */
++    const char *want = getenv("CIDER_TRACE_PERFORM");
++    if (want != NULL && want[0] != '\0' && strstr(sel_getName(aSelector), want) != NULL) {
++        void *frames[24];
++        int count = backtrace(frames, 24);
++        char **names = backtrace_symbols(frames, count);
++
++        fprintf(stderr, "CIDER_PERFORM schedule %s -> %s delay=%g\n", object_getClassName(self),
++                sel_getName(aSelector), delay);
++        for (int i = 1; i < count && names != NULL; i++)
++            fprintf(stderr, "CIDER_PERFORM schedule   %s\n", names[i]);
++        free(names);
++        fflush(stderr);
++    }
++
+     NSRunLoop *rl = [NSRunLoop currentRunLoop];
+     CFRunLoopRef loop = [rl getCFRunLoop];
+ 
