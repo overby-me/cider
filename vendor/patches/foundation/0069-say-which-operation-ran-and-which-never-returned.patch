@@ -1,0 +1,92 @@
+say which operation ran, and which one never returned
+
+iA Writer's library rows say Updating... forever, and nothing said whether the work behind them ran
+at all. An operation whose main RAISES never reaches its isFinished, so it stays executing and
+everything that depends on it waits: that failure and a merely slow indexer look identical from
+outside.
+
+CIDER_TRACE_OPS prints four lines per operation: added with whether it is ready, start, main, and
+returned. A concurrent operation, which overrides start and finishes later on its own, shows start
+with no main, which is why after-start prints whether it is finished or STILL RUNNING. The main
+call is wrapped so a raise names the operation and the exception before it is rethrown, and the
+rethrow keeps the behaviour exactly as it was.
+
+WHAT IT SAID ON THE FIRST RUN, and it is what found the defect fixed in 0070:
+
+  CIDER_OP added IALibraryIndexingOperation ready
+  CIDER_OP start IALibraryIndexingOperation
+  CIDER_OP after-start IALibraryIndexingOperation STILL RUNNING
+
+Three lines, and no fourth. Then the run terminated on an unrecognized selector in the unarchiver.
+
+Bounded at 400 lines and gated.
+--- a/src/NSOperation.m
++++ b/src/NSOperation.m
+@@ -22,6 +22,33 @@
+ 
+ #import "CFSortFunctions.h"
+ #import "ForFoundationOnly.h"
++#import <objc/runtime.h>
++#import <stdio.h>
++#import <stdlib.h>
++#import <string.h>
++
++/* An operation whose main RAISES never reaches its isFinished, so it stays executing forever and
++ * everything that depends on it waits: a library that says Updating... and never stops looks
++ * exactly like that (#194). Bounded, and off unless asked for. */
++static BOOL _CiderTraceOps(void)
++{
++    static int cached = -1;
++    if (cached < 0)
++    {
++        const char *value = getenv("CIDER_TRACE_OPS");
++        cached = (value != NULL && strcmp(value, "0") != 0) ? 1 : 0;
++    }
++    return cached == 1;
++}
++
++static void _CiderOp(const char *what, id operation, const char *extra)
++{
++    static int printed;
++    if (!_CiderTraceOps() || printed++ > 400)
++        return;
++    fprintf(stderr, "CIDER_OP %s %s %s\n", what,
++            operation ? class_getName(object_getClass(operation)) : "(nil)", extra ?: "");
++}
+ 
+ enum __NSOperationState {
+     NSOperationStateReady,
+@@ -285,7 +312,14 @@
+         }
+ 
+         //TODO.. set thread priority
+-        [_operation main];
++        _CiderOp("main", _operation, NULL);
++        @try {
++            [_operation main];
++        } @catch (id exception) {
++            _CiderOp("threw", _operation, [[exception description] UTF8String] ?: "?");
++            @throw;
++        }
++        _CiderOp("returned", _operation, NULL);
+ 
+         [_operation willChangeValueForKey:@"isFinished"];
+         if (_state == NSOperationStateExecuting)
+@@ -841,6 +875,7 @@
+     [self didChangeValueForKey:@"operations"];
+     [self didChangeValueForKey:@"operationCount"];
+     pthread_mutex_unlock(&_queuelock);
++    _CiderOp("added", op, [op isReady] ? "ready" : "NOT READY");
+     [op release];
+ 
+     if ([op isReady] && !_suspended)
+@@ -1115,7 +1150,9 @@
+                 NSOperationQueue *previousValue = [threadDictionary objectForKey:NSOperationQueueKey];
+                 [threadDictionary setObject:self forKey:NSOperationQueueKey];
+                 //Lets get to work.
++                _CiderOp("start", o, NULL);
+                 [o start];
++                _CiderOp("after-start", o, [o isFinished] ? "finished" : "STILL RUNNING");
+                 //if the operation is not finished then they must have subclassed and replaced start. Finish will come later.
+                 //if the operation is finished, but KVO didn't fire to let the internal know, lets make sure we catch this to remove the operation
+                 if ([o isFinished] && o._internal->_state != NSOperationStateFinished)

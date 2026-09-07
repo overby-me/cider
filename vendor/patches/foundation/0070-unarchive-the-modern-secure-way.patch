@@ -1,0 +1,168 @@
+unarchive the modern secure way, and let a subclass through
+
+iA Writer TERMINATED, 3 runs of 3, on
+
+  +[NSKeyedUnarchiver unarchivedObjectOfClasses:fromData:error:]: unrecognized selector
+
+Kit.framework calls it and nothing implemented it. The singular form was worse than missing: the
+header DECLARED +unarchivedObjectOfClass:fromData:error: and no implementation existed, so a caller
+that compiled against it got an unrecognized selector at run time.
+
+TWO DEFECTS, and the second would have bitten the moment the first was fixed.
+
+1  The modern form ANSWERS AN ERROR where the old one raises, and it turns secure coding on whether
+   or not the caller asks. Both forms are here now; the singular one is the plural one with a one
+   element set. An exception during the decode becomes NSCoderReadCorruptError with the reason in
+   NSDebugDescriptionErrorKey rather than escaping to the caller.
+
+2  A SUBCLASS OF AN ALLOWED CLASS IS ALLOWED. Both secure coding checks asked
+   [allowedClassSet containsObject:class], which is an exact match, so an archive naming
+   NSMutableArray against an allowed NSArray was rejected. Darwin allows it. classIsAllowed asks
+   isSubclassOfClass: over the set. Turning secure coding on for the new methods without this would
+   have failed every non exact archive.
+
+The five NSCoder error codes were missing from FoundationErrors.h. 4864 was already in this file as
+a bare literal in a userInfo dictionary, which is what it is called.
+
+MEASURED, iA Writer through scripts/app-rate.sh, same configuration both times
+
+  before  3 terminations in 3 runs, all on that selector
+  after   0 in 6, and 6 of 6 survived to the time limit
+
+WHAT DID NOT CHANGE. The library rows still say Updating... and the editor is still empty. This
+removes a crash that was killing the run outright; it is not the end of #194.
+--- a/src/NSKeyedUnarchiver.m
++++ b/src/NSKeyedUnarchiver.m
+@@ -6,6 +6,7 @@
+ //
+ 
+ #import <Foundation/NSKeyedArchiver.h>
++#import <Foundation/FoundationErrors.h>
+ #import "NSArchiver.h"
+ #import <Foundation/NSArray.h>
+ #import "NSCoderInternal.h"
+@@ -28,6 +29,25 @@
+ 
+ NSString *const NSInvalidUnarchiveOperationException = @"NSInvalidUnarchiveOperationException";
+ 
++/* A SUBCLASS OF AN ALLOWED CLASS IS ALLOWED, which containsObject: alone does not say. An archive
++ * naming NSMutableArray decodes against an allowed NSArray on Darwin, and every such archive was
++ * rejected here. */
++static BOOL classIsAllowed(Class class, NSSet *allowed)
++{
++    if ([allowed containsObject:class])
++    {
++        return YES;
++    }
++    for (Class candidate in allowed)
++    {
++        if ([class isSubclassOfClass:candidate])
++        {
++            return YES;
++        }
++    }
++    return NO;
++}
++
+ @interface _NSKeyedUnarchiverHelper : NSObject
+ {
+ @public
+@@ -559,7 +579,7 @@
+         if ([unarchiver requiresSecureCoding])
+         {
+             NSSet *allowedClassSet = [unarchiver allowedClasses];
+-            if (![allowedClassSet containsObject:class]) {
++            if (!classIsAllowed(class, allowedClassSet)) {
+                 exception = [NSException exceptionWithName:NSInvalidUnarchiveOperationException
+                                         reason:[NSString stringWithFormat:@"%@ was unexpected. The expected classes are %@", className, allowedClassSet]
+                                       userInfo: @{@"__NSCoderInternalErrorCode" : @4864}];
+@@ -713,7 +733,7 @@
+     if ([unarchiver requiresSecureCoding])
+     {
+         NSSet *allowedClassSet = [unarchiver allowedClasses];
+-        if (![allowedClassSet containsObject:class]) {
++        if (!classIsAllowed(class, allowedClassSet)) {
+             [[NSException exceptionWithName:NSInvalidUnarchiveOperationException
+                                     reason:[NSString stringWithFormat:@"%@ was unexpected. The expected classes are %@", className, allowedClassSet]
+                                     userInfo: @{@"__NSCoderInternalErrorCode" : @4864} ] raise];
+@@ -851,6 +871,56 @@
+     return [obj autorelease];
+ }
+ 
++/* THE MODERN FORM ANSWERS AN ERROR WHERE THE OLD ONE RAISES, and secure coding is on for it
++ * whether or not the caller says so. Nothing implemented either of these, so iA Writer's library
++ * indexer died on an unrecognized selector (#194). */
+++ (id)unarchivedObjectOfClasses:(NSSet *)classes fromData:(NSData *)data error:(NSError **)outError
++{
++    id object = nil;
++    NSError *failure = nil;
++
++    @autoreleasepool {
++        NSKeyedUnarchiver *unarchiver = nil;
++        @try {
++            NSError *openError = nil;
++            unarchiver = [[NSKeyedUnarchiver alloc] initForReadingFromData:data error:&openError];
++            failure = [openError retain];
++            if (unarchiver != nil && failure == nil)
++            {
++                [unarchiver setRequiresSecureCoding:YES];
++                object = [[unarchiver decodeObjectOfClasses:classes forKey:@"root"] retain];
++                [unarchiver finishDecoding];
++            }
++        } @catch (NSException *exception) {
++            [object release];
++            object = nil;
++            [failure release];
++            failure = [[NSError alloc] initWithDomain:NSCocoaErrorDomain
++                                                 code:NSCoderReadCorruptError
++                                             userInfo:@{NSDebugDescriptionErrorKey:
++                                                            [exception reason] ?: [exception name]}];
++        }
++        [unarchiver release];
++    }
++
++    if (outError != NULL)
++    {
++        *outError = [failure autorelease];
++    }
++    else
++    {
++        [failure release];
++    }
++    return [object autorelease];
++}
++
+++ (id)unarchivedObjectOfClass:(Class)cls fromData:(NSData *)data error:(NSError **)outError
++{
++    return [self unarchivedObjectOfClasses:(cls != Nil ? [NSSet setWithObject:cls] : nil)
++                                  fromData:data
++                                     error:outError];
++}
++
+ + (void)initialize
+ {
+ #warning TODO -- https://code.google.com/p/apportable/issues/detail?id=528
+--- a/include/Foundation/NSKeyedArchiver.h
++++ b/include/Foundation/NSKeyedArchiver.h
+@@ -107,6 +107,7 @@
+ }
+ 
+ + (id)unarchivedObjectOfClass:(Class)cls fromData:(NSData *)data error:(NSError **)error;
+++ (id)unarchivedObjectOfClasses:(NSSet *)classes fromData:(NSData *)data error:(NSError **)error;
+ + (id)unarchiveObjectWithData:(NSData *)data;
+ + (id)unarchiveObjectWithFile:(NSString *)path;
+ - (id)initForReadingWithData:(NSData *)data;
+--- a/include/Foundation/FoundationErrors.h
++++ b/include/Foundation/FoundationErrors.h
+@@ -43,6 +43,11 @@
+     NSPropertyListWriteStreamError             = 3851,
+     NSPropertyListErrorMinimum                 = 3840,
+     NSPropertyListErrorMaximum                 = 4095,
++    NSCoderReadCorruptError                    = 4864,
++    NSCoderValueNotFoundError                  = 4865,
++    NSCoderInvalidValueError                   = 4866,
++    NSCoderErrorMinimum                        = 4864,
++    NSCoderErrorMaximum                        = 4991,
+     NSXPCConnectionInterrupted                 = 4097,
+     NSXPCConnectionInvalid                     = 4099,
+     NSXPCConnectionReplyInvalid                = 4101,
