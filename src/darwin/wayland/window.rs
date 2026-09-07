@@ -1009,9 +1009,17 @@ fn create_surface(st: &mut WindowState) -> bool {
                 std::ffi::CStr::from_ptr(name).to_string_lossy().into_owned()
             }
         };
+        /* AND ITS TITLE, because the class does not separate two dialogs of the same class. Every
+         * LibreOffice window is a SalFrameWindow, so an unexpected one could only be described by
+         * its style bits, and "style 0x3" is a guess about which dialog it is, not a name.
+         *
+         * ASK THE WINDOW, do not read st.title. That field is what came through this backend's own
+         * setTitle path and LibreOffice leaves it empty for every window including the document one,
+         * which is plainly titled Untitled 1 on screen. */
+        let title = window_title(st.delegate);
         println!(
-            "cider-wayland-window role number={} style={:#x} panel={} dialog={} titled={} class={}",
-            st.number, st.style_mask, is_panel, dialog, titled, class_name
+            "cider-wayland-window role number={} style={:#x} panel={} dialog={} titled={} class={} title={:?}",
+            st.number, st.style_mask, is_panel, dialog, titled, class_name, title
         );
         /* WHO MADE THIS WINDOW. The class alone was not enough once: an NSPopUpWindow appeared for
          * every right click while the only code in the framework that can create one was proved
@@ -2731,6 +2739,28 @@ extern "C" fn set_title(this: Object, _cmd: Sel, title: Object) {
     }
 }
 
+/// What the window calls itself RIGHT NOW, for traces that have to name one window among many.
+///
+/// Reading st.title instead would be wrong twice over: LibreOffice leaves it empty for every window
+/// including the document one that plainly says Untitled 1 on screen, and a window is often titled
+/// after it is mapped, so the cached value is stale exactly when an unexplained window appears.
+fn window_title(delegate: Object) -> String {
+    if delegate.is_null() {
+        return "(no delegate)".to_string();
+    }
+    unsafe {
+        let title = objc::msg_send0(delegate, objc::sel_registerName(cstr!("title")));
+        if title.is_null() {
+            return "(nil)".to_string();
+        }
+        let raw = objc::msg_send0(title, objc::sel_registerName(cstr!("UTF8String"))) as *const c_char;
+        if raw.is_null() {
+            return "(no utf8)".to_string();
+        }
+        std::ffi::CStr::from_ptr(raw).to_string_lossy().into_owned()
+    }
+}
+
 /// Put a title on a toplevel that has just been created.
 ///
 /// ASKING THE WINDOW IS MORE RELIABLE THAN REMEMBERING. A title set before this backend had any
@@ -3032,7 +3062,13 @@ extern "C" fn hide_window(this: Object, _cmd: Sel) {
         if !st.visible && !st.mapped {
             return;
         }
-        println!("cider-wayland-window hide number={} visible={}", st.number, st.visible);
+        /* The title again, because a window may be titled after its role line is printed, and a hide
+         * is where an unexplained window is usually first noticed. */
+        let title = window_title(st.delegate);
+        println!(
+            "cider-wayland-window hide number={} visible={} title={:?}",
+            st.number, st.visible, title
+        );
         /* AND WHO ASKED. A window that hides itself two seconds after it appears is being ordered
          * out by somebody, and the name and the number cannot say who. The same recipe that named
          * the print crash: the frames, resolved with dladdr, no debugger involved. */
