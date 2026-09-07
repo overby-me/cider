@@ -1,0 +1,58 @@
+say whether a coordinated read ran, and for what
+
+An application that cannot read a file it can plainly list shows empty content and reports nothing.
+That is what #190 and #192 both looked like from outside, and neither could be told apart from the
+application simply choosing not to read.
+
+Three lines on CIDER_TRACE_FILECOORD: the ask with its URL and options, then either run with the
+resolved URL or REFUSED with the error. A refusal and a read that never happened want opposite fixes.
+
+Measured on iA Writer, where the library rows say Updating and the editor pane is blank, and it
+disproved the obvious explanation in one run: every read RAN, including the clicked document.
+
+  CIDER_FILECOORD read ask Documents options=0x0
+  CIDER_FILECOORD read run Documents
+  CIDER_FILECOORD read ask Documents/Cider.md options=0x1
+  CIDER_FILECOORD read run Documents/Cider.md
+
+So the file contents reach the application and the empty editor is downstream of that.
+
+--- a/src/NSFileCoordinator.m
++++ b/src/NSFileCoordinator.m
+@@ -703,15 +703,36 @@
+ 
+ - (void)coordinateReadingItemAtURL: (NSURL*)url options:(NSFileCoordinatorReadingOptions)options error: (NSError**)outError byAccessor: (void (^)(NSURL* newURL))reader
+ {
++	/* WHETHER THE ACCESSOR RAN, and for which file. An application that cannot read a file it can
++	 * plainly list shows empty content and no error of its own, which is what #190 and #192 both
++	 * looked like from outside. A refusal here and a read that simply never happened want opposite
++	 * fixes, so both are printed. */
++	BOOL trace = getenv("CIDER_TRACE_FILECOORD") != NULL && getenv("CIDER_TRACE_FILECOORD")[0] != '\0';
++	if (trace) {
++		fprintf(stderr, "CIDER_FILECOORD read ask %s options=0x%lx\n",
++		        [[url path] UTF8String] ?: "(nil)", (unsigned long) options);
++		fflush(stderr);
++	}
+ 	// no need to copy `reader` block because we are synchronous
+ 	NSFileAccessIntent* intent = [NSFileAccessIntent readingIntentWithURL: url options: options];
+ 	[self submitIntent: intent onQueue: nil withBlock: ^(NSError* error) {
+ 		if (error) {
++			if (trace) {
++				fprintf(stderr, "CIDER_FILECOORD read REFUSED %s error=%s\n",
++				        [[url path] UTF8String] ?: "(nil)",
++				        [[error description] UTF8String] ?: "(nil)");
++				fflush(stderr);
++			}
+ 			if (outError) {
+ 				*outError = error;
+ 			}
+ 			return;
+ 		} else {
++			if (trace) {
++				fprintf(stderr, "CIDER_FILECOORD read run %s\n",
++				        [[intent.URL path] UTF8String] ?: "(nil)");
++				fflush(stderr);
++			}
+ 			reader(intent.URL);
+ 		}
+ 	}];

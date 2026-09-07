@@ -1,0 +1,37 @@
+say why a window did not become key
+
+becomeKeyWindow and becomeMainWindow are gated separately in platformWindowActivated:, and CIDER_MAIN
+already printed each of them when it ran. What it could not print was the DECISION, so a window that
+became main and never became key looked like a defect with no visible cause.
+
+It also could not tell that apart from platformWindowActivated: never running at all, which is what
+was actually happening.
+
+  CIDER_MAIN activated NSKVONotifying_MMWindow style=0xf visible=1 canKey=1 canMain=1 isMain=1
+  CIDER_MAIN activated NSKVONotifying_IATitlebarWindow style=0x800f visible=1 canKey=1 canMain=1 isMain=1
+
+AND IT CORRECTED A STANDING CLAIM. Task #189 recorded that iA Writer never becomes key, with grey
+traffic lights through a whole run, as unexplained. With this line the absence is visible: on a run
+with no TYPE step there is no activated line at all, and on a run that types there is one, and the
+window becomes key. wtype creates the virtual keyboard when it STARTS, so before any typing the seat
+advertises no keyboard and the compositor can give no surface keyboard focus. The rig, not the port.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -3867,6 +3867,16 @@
+                               withObject: self];
+ 
+     _isActive = YES;
++    /* THE TWO ANSWERS AND THE MASK THEY COME FROM. becomeKeyWindow and becomeMainWindow are gated
++     * separately here, so a window that becomes main and never becomes key is deciding it, and the
++     * decision is invisible from either side. An application may override either method. */
++    if (getenv("CIDER_TRACE_MAIN") != NULL) {
++        fprintf(stderr, "CIDER_MAIN activated %s %p style=0x%lx visible=%d canKey=%d canMain=%d isMain=%d\n",
++                object_getClassName(self), (void *) self, (unsigned long) _styleMask,
++                (int) [self isVisible], (int) [self canBecomeKeyWindow],
++                (int) [self canBecomeMainWindow], (int) [self isMainWindow]);
++        fflush(stderr);
++    }
+     if ([self canBecomeKeyWindow]) {
+         [self becomeKeyWindow];
+     }
