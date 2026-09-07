@@ -1,0 +1,48 @@
+a bitmap face is never a fallback
+
+FcFontMatch NEVER FAILS, it substitutes, and FC_OUTLINE on the pattern is only a PREFERENCE. For a
+character that nothing installed covers with an outline face, fontconfig hands back Noto Color
+Emoji: it answers scalable, it really does have the character, and it is a CBDT bitmap font. This
+renderer needs an outline to scale, so taking it printed
+
+  FreeType font face is not scalable: family=Noto Color Emoji style=Regular glyphs=4027
+
+and Money Manager EX ABORTED, 3 runs in 3, with no window ever drawn.
+
+So the match is now CHECKED as well as preferred: FcPatternGetBool of FC_OUTLINE on the RESULT, next
+to the FcCharSetHasChar check that was already there for the same reason. Preferring a property and
+requiring it are not the same question when the matcher cannot fail.
+
+Found while building the layout half of the font fallback, which is NOT in this patch and is
+recorded in #216: it regressed mmex on its own and was reverted.
+--- a/Onyx2D/O2Font_freetype.m
++++ b/Onyx2D/O2Font_freetype.m
+@@ -224,6 +224,11 @@
+ 
+         FcPatternAddCharSet(pattern, FC_CHARSET, charset);
+         FcPatternAddBool(pattern, FC_SCALABLE, FcTrue);
++        /* OUTLINE AS WELL AS SCALABLE, because they are not the same question and the difference
++         * killed mmex outright. Noto Color Emoji answers scalable, covers half the symbol range,
++         * and is a BITMAP face: the renderer here needs an outline to scale, said "FreeType font
++         * face is not scalable" and the process aborted. */
++        FcPatternAddBool(pattern, FC_OUTLINE, FcTrue);
+         FcConfigSubstitute(config, pattern, FcMatchPattern);
+         FcDefaultSubstitute(pattern);
+ 
+@@ -234,8 +239,15 @@
+              * character is the normal answer for a script nothing installed covers. Returning it
+              * would swap the face and still draw nothing. */
+             FcCharSet *covered = NULL;
++            FcBool outline = FcFalse;
+ 
+-            if (FcPatternGetCharSet(match, FC_CHARSET, 0, &covered) == FcResultMatch &&
++            /* CHECK THE MATCH, do not merely prefer. FC_OUTLINE on the pattern is a preference and
++             * fontconfig never fails: for a character only a colour emoji face covers it hands that
++             * back anyway. This renderer needs an outline to scale, and taking a bitmap face made
++             * mmex print "FreeType font face is not scalable" and abort. */
++            if (FcPatternGetBool(match, FC_OUTLINE, 0, &outline) == FcResultMatch &&
++                outline == FcTrue &&
++                FcPatternGetCharSet(match, FC_CHARSET, 0, &covered) == FcResultMatch &&
+                 covered != NULL && FcCharSetHasChar(covered, code)) {
+                 FcChar8 *unparsed = FcNameUnparse(match);
+ 
