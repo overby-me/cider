@@ -1,0 +1,59 @@
+say which query an application ran, and whether it compiled
+
+A statement naming a function or a table SQLite does not have fails at PREPARE, and an application
+usually swallows that error and shows an empty view. Nothing could see it. CIDER_TRACE_SQL prints
+the SQL text and the return code of every prepare, through sqlite3LockAndPrepare, which is the one
+funnel under sqlite3_prepare, _v2 and _v3.
+
+Errors are printed to a higher bound than successes, so a failing statement is still visible in a
+run that compiles thousands of others.
+
+THE CONTROL, and it is not optional here, because the first application I pointed it at printed
+NOTHING. iTerm2 imports 59 sqlite3 symbols from our libsqlite3 and it says:
+
+  CIDER_SQL rc=0 PRAGMA journal_mode=WAL
+  CIDER_SQL rc=0 create table if not exists Node (key text not null, identifier text not null, ...)
+  CIDER_SQL rc=0 select key, identifier, parent, rowid, data from Node
+  ...24 statements, every one rc=0
+
+WHY IT SAID NOTHING FOR iA WRITER, measured rather than assumed: Kit.framework STATICALLY LINKS its
+own SQLite. llvm-nm says 1061 defined sqlite3 symbols in Kit and ZERO undefined. No call it makes
+can ever reach this file. Of the whole roster only iTerm2 and LibreOffice import ours.
+--- a/sqlite3.c
++++ b/sqlite3.c
+@@ -128709,6 +128709,27 @@
+   sqlite3ParserReset(&sParse);
+   return rc;
+ }
++/* WHICH QUERY AN APPLICATION RAN, AND WHETHER IT COMPILED. iA Writer's library rows say Updating...
++** although its index database on disk is complete, so what the interface asks for and what SQLite
++** answers is the open question (#194). A statement naming a function or a table SQLite does not
++** have fails here, at prepare, and the application usually swallows the error. Off unless asked
++** for, and bounded. */
++static void ciderTraceSql(const char *zSql, int nBytes, int rc){
++  static int cached = -1;
++  static int printed = 0;
++  int n;
++  if( cached<0 ){
++    const char *value = getenv("CIDER_TRACE_SQL");
++    cached = (value!=0 && value[0]!=0 && value[0]!='0') ? 1 : 0;
++  }
++  if( cached==0 || zSql==0 ) return;
++  if( rc==SQLITE_OK && printed>2000 ) return;
++  if( printed++>4000 ) return;
++  n = nBytes<0 ? (int)strlen(zSql) : nBytes;
++  if( n>400 ) n = 400;
++  fprintf(stderr, "CIDER_SQL rc=%d %.*s\n", rc, n, zSql);
++}
++
+ static int sqlite3LockAndPrepare(
+   sqlite3 *db,              /* Database handle. */
+   const char *zSql,         /* UTF-8 encoded SQL statement. */
+@@ -128742,6 +128763,7 @@
+   rc = sqlite3ApiExit(db, rc);
+   assert( (rc&db->errMask)==rc );
+   sqlite3_mutex_leave(db->mutex);
++  ciderTraceSql(zSql, nBytes, rc);
+   return rc;
+ }
+ 

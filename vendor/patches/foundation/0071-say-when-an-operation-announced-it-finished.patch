@@ -1,0 +1,37 @@
+say when an operation announced it finished, and whether a completion block ran
+
+0069 could say an operation STARTED and that start returned with it still running, which is normal
+for a concurrent operation. It could not say whether the operation ever came back. That is the
+difference between an indexer that is stuck and one that finished while the interface ignored it,
+and iA Writer needed exactly that distinction (#194).
+
+Two more lines, on the same gate. kvo prints every isReady, isExecuting and isFinished the
+operation announces, which is how a concurrent subclass reports itself; completion prints whether a
+completion block was set and dispatched.
+
+WHAT IT SAID, and it KILLED my hypothesis rather than confirming it:
+
+  CIDER_OP kvo IALibraryIndexingOperation isFinished
+  CIDER_OP completion IALibraryIndexingOperation none set
+
+Every IALibraryIndexingOperation finishes. Every IAContentBlockProcessingOperation finishes and its
+completion block is dispatched. Nothing in the indexing pipeline is stuck, so the library rows that
+say Updating... forever are not waiting on an operation.
+--- a/src/NSOperation.m
++++ b/src/NSOperation.m
+@@ -343,6 +343,7 @@
+     if (object == _operation)
+     {
+         [_operation retain]; //retain because our actions may cause it to go away.
++        _CiderOp("kvo", _operation, [keyPath UTF8String]);
+         if ([keyPath isEqualToString:@"isFinished"])
+         {
+             if (![_operation isFinished])
+@@ -396,6 +397,7 @@
+             pthread_mutex_lock(&_NSOperationLock);
+             void (^block)(void) =[[_operation completionBlock] retain];
+             pthread_mutex_unlock(&_NSOperationLock);
++            _CiderOp("completion", _operation, block ? "dispatched" : "none set");
+             if (block)
+             {
+                 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
