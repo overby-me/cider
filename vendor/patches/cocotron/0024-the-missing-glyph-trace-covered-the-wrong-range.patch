@@ -1,0 +1,33 @@
+the missing glyph trace covered the wrong range
+
+The threshold was characters above 0x2000, chosen when the question was the Command symbol at
+U+2318. Greek, Cyrillic and Arabic all sit BELOW it, so the one instrument that could have named
+this printed nothing for exactly the case it was needed for. Any character above ASCII now, and
+sixty lines rather than four.
+
+WHAT IT SAID IMMEDIATELY, for the Money Manager EX language list (#216):
+
+  CIDER_NOGLYPH u+0644 face=TeX Gyre Heros style=Regular     Arabic lam
+  CIDER_NOGLYPH u+043b face=TeX Gyre Heros style=Regular     Cyrillic el
+  CIDER_NOGLYPH u+0430 face=TeX Gyre Heros style=Regular     Cyrillic a
+
+The UI font resolves to TeX Gyre Heros, a Helvetica clone with Latin and basic Greek and NO Cyrillic
+and NO Arabic, which is the whole of the symptom: an Arabic or Cyrillic name draws as nothing, and
+accented Greek drops mid word while unaccented Greek survives.
+--- a/CoreText/KTFont_FT.m
++++ b/CoreText/KTFont_FT.m
+@@ -420,10 +420,12 @@
+          * and zero width, so it looks like the string was never there: the Command symbol in every
+          * menu shortcut measured zero and drew nothing. Naming the face separates a font without
+          * the glyph from a lookup that cannot find it. */
+-        if (glyphs[i] == 0 && characters[i] > 0x2000 && getenv("CIDER_TRACE_FONTS") != NULL) {
++        /* ANY character above ASCII, not just above 0x2000. The old threshold was picked for the
++         * Command symbol and it hid Greek, Cyrillic and Arabic, which all sit below it (#216). */
++        if (glyphs[i] == 0 && characters[i] > 0x7F && getenv("CIDER_TRACE_FONTS") != NULL) {
+             static int said = 0;
+ 
+-            if (said < 4) {
++            if (said < 60) {
+                 said++;
+                 fprintf(stderr, "CIDER_NOGLYPH u+%04x face=%s style=%s\n",
+                         (unsigned) characters[i], face ? face->family_name : "nil",
