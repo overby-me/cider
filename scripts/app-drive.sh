@@ -37,6 +37,9 @@ HEIGHT=${HEIGHT:-684}
 RESIZE_W=${RESIZE_W:-$((WIDTH - 256))}
 RESIZE_H=${RESIZE_H:-$((HEIGHT - 84))}
 CLICK=${CLICK:-}           # "x,y" to click after the first capture, empty to skip
+# Milliseconds between creating the virtual pointer and pressing, so the guest has seen the seat
+# capability and attached its listener. See the race described at the click step.
+CLICK_SETTLE=${CLICK_SETTLE:-1500}
 TYPE=${TYPE:-}             # text to type after the click, empty to skip
 POST_CLICK=${POST_CLICK:-}  # "x,y" to click AFTER typing, when a keyboard exists (#210)
 
@@ -203,7 +206,15 @@ for STEP in ${CLICK//;/ }; do
 	say "click at $x,$y"
 	# The vocabulary is abs/rel/press/release/scroll/sleep. "move" and "click" were ignored in
 	# silence, which reads exactly like a click that landed and did nothing.
-	printf 'abs %s %s\nsleep 200\npress left\nsleep 80\nrelease left\n' "$x" "$y" \
+	#
+	# THE POINTER HAS THE SAME RACE THE KEYBOARD DOES, and the sleep below is the same trick as
+	# wtype -s further down. This tool creates the virtual pointer when it starts and destroys it
+	# when it exits, so the seat gains and loses the capability in one breath; the guest attaches
+	# its wl_pointer listener only after it SEES the capability, and a press sent before that is
+	# gone. Measured on mmex: a click on one button opened its dialog 9 times in 12 at 200ms and
+	# never at all in three runs under load, with the guest input trace showing the pointer
+	# attached and released and NO button event in between.
+	printf 'abs %s %s\nsleep %s\npress left\nsleep 80\nrelease left\n' "$x" "$y" "$CLICK_SETTLE" \
 		| WAYLAND_DISPLAY=$NEW "$VPTR" "$WIDTH" "$HEIGHT" >>"$SHOTS/driver.log" 2>&1
 	sleep 4
 done
