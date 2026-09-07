@@ -1,0 +1,64 @@
+a rect can be converted between user and device space
+
+-[O2GState convertRectToDeviceSpace:] and its user space twin were both O2UnimplementedMethod
+returning O2RectZero, while the point and size conversions beside them have been implemented all
+along against the same _deviceSpaceTransform.
+
+This is not a theoretical gap. Money Manager EX imports _CGContextConvertRectToDeviceSpace, and
+before this its app log carried thousands of the unimplemented line per draw, every one of them an
+answer of CGRectZero to a question about a real rectangle.
+
+ALL FOUR CORNERS, then the bounding box, which is what CGRectApplyAffineTransform documents.
+Transforming the origin and the size separately agrees with that only while the transform neither
+rotates nor shears, and hands back a negative width the moment it flips, which is exactly the shape
+of transform a flipped view installs.
+
+MEASURED: the unimplemented line is gone, 0 of thousands. NOTHING VISIBLE CHANGED in the scenario
+that provoked it: the mmex User Interface Language dialog is pixel identical before and after, and
+its list box is still empty, which is #213 and is not this.
+--- a/Onyx2D/O2GraphicsState.m
++++ b/Onyx2D/O2GraphicsState.m
+@@ -154,14 +154,39 @@
+             size, O2AffineTransformInvert(_deviceSpaceTransform));
+ }
+ 
++/* All four corners, then the bounding box, which is what CGRectApplyAffineTransform documents.
++ * Transforming origin and size separately agrees only while the transform neither rotates nor
++ * shears, and gives a negative width the moment it flips. */
++static O2Rect applyToRect(O2Rect rect, O2AffineTransform xform) {
++    O2Point corner[4] = {
++        O2PointApplyAffineTransform(
++                O2PointMake(O2RectGetMinX(rect), O2RectGetMinY(rect)), xform),
++        O2PointApplyAffineTransform(
++                O2PointMake(O2RectGetMaxX(rect), O2RectGetMinY(rect)), xform),
++        O2PointApplyAffineTransform(
++                O2PointMake(O2RectGetMinX(rect), O2RectGetMaxY(rect)), xform),
++        O2PointApplyAffineTransform(
++                O2PointMake(O2RectGetMaxX(rect), O2RectGetMaxY(rect)), xform),
++    };
++    O2Float minX = corner[0].x, maxX = corner[0].x;
++    O2Float minY = corner[0].y, maxY = corner[0].y;
++    int i;
++
++    for (i = 1; i < 4; i++) {
++        minX = MIN(minX, corner[i].x);
++        maxX = MAX(maxX, corner[i].x);
++        minY = MIN(minY, corner[i].y);
++        maxY = MAX(maxY, corner[i].y);
++    }
++    return O2RectMake(minX, minY, maxX - minX, maxY - minY);
++}
++
+ - (O2Rect) convertRectToDeviceSpace: (O2Rect) rect {
+-    O2UnimplementedMethod();
+-    return O2RectZero;
++    return applyToRect(rect, _deviceSpaceTransform);
+ }
+ 
+ - (O2Rect) convertRectToUserSpace: (O2Rect) rect {
+-    O2UnimplementedMethod();
+-    return O2RectZero;
++    return applyToRect(rect, O2AffineTransformInvert(_deviceSpaceTransform));
+ }
+ 
+ void O2GStateSetDeviceSpaceCTM(O2GState *self, O2AffineTransform transform) {
