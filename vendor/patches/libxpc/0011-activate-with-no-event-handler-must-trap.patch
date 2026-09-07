@@ -1,0 +1,41 @@
+activate with no event handler must trap
+
+The dts case libxpc connection_api_misuse_no_event_handler installs a signal handler, creates a
+mach service connection, sets NO event handler and activates. On macOS that is API misuse and the
+library traps, so the handler runs and the case exits 0. Ours forwarded straight to activate with
+no check, the case fell through to its own abort, and the batch read 134.
+
+__builtin_trap covers both arms with no ifdef: ud2 on x86_64 raises SIGILL, brk on arm64 raises
+SIGTRAP, which is exactly the pair the case tests for.
+
+The trap fires on ACTIVATE, not on create. The case asserts the connection is non NULL first, so
+creating one without a handler still has to succeed.
+
+EVERY IN TREE CALLER WAS READ, not sampled, because a trap here could kill a daemon. All ten set
+the handler immediately before activating, which is the pattern macOS requires, so nothing existing
+changes behaviour: security SOSCloudKeychainClient.c 202, otpaird OTPairingClient.m 24 and main.m
+96 and 98, trustd.c 802 and 806, mDNSResponder dnssd.c 1188, dnssd_server.c 456 and 686,
+helper-stubs.c 77. trustd is the one that matters most, since MoneyMoney depends on it.
+
+It names the service before trapping. A bare ud2 inside a daemon reads as an unattributed crash,
+and that exact ambiguity is what made task #197 look intermittent for a long time.
+
+--- a/src/connection.m
++++ b/src/connection.m
+@@ -1504,6 +1504,16 @@
+ XPC_EXPORT
+ void xpc_connection_activate(xpc_connection_t xconn) {
+ 	TO_OBJC_CHECKED(connection, xconn, conn) {
++		/* Activating with no event handler is API misuse and macOS traps on it. __builtin_trap
++		 * emits ud2 on x86_64, raising SIGILL, and brk on arm64, raising SIGTRAP, which is the
++		 * pair callers catch. Name the service first: a bare ud2 inside a daemon looks like an
++		 * unattributed crash, and that ambiguity cost days on task #197. */
++		if (![conn eventHandler]) {
++			const char* name = [conn serviceName];
++			fprintf(stderr, "CIDER_XPC API MISUSE: xpc_connection_activate on %s with no event handler\n",
++			        name ? name : "an anonymous connection");
++			__builtin_trap();
++		}
+ 		if ([conn activate]) {
+ 			[conn decrementSuspensionCount];
+ 		}
