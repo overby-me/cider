@@ -1,0 +1,221 @@
+decode the modern icns icon types
+
+MEASURED with the dts ImageIO icns case, which walks ic04 through ic14 and checks each decoded
+image. Before: the source answered ZERO images for every one of the ten and the case died on its
+first assertion. After: all ten decode, ic04 and ic05 pass every check the case makes, and the run
+reaches ic07.
+
+THE READER KNEW ONLY THE CLASSIC TYPES. Its switch covers twenty two OSTypes, every one of them a
+raw sample format from the classic era: ICON ICN# icm# icm4 icm8 ics# ics4 ics8 is32 s8mk icl4 icl8
+il32 l8mk ich# ich4 ich8 ih32 h8mk it32 t8mk, plus ic08 and ic09 recorded with bitsPerPixel 0,
+which the decode below never handles. Eight of the ten types the case covers were absent entirely.
+Every icon made in the last fifteen years is one of these, so a modern .icns produced nothing at
+all, and that is how every Mac application ships its icon.
+
+DISPATCH IS ON THE PAYLOAD MAGIC, not on the type code, because the encoding is a property of the
+chunk: the same type can appear either way. Measured across the ten fixtures, ic04 and ic05 hold
+RLE compressed ARGB and the other eight hold a whole PNG. Every file also carries an info chunk of
+310 bytes holding a bplist, which matches nothing and is skipped like any other unknown type.
+
+A PNG PAYLOAD IS HANDED TO WHICHEVER SOURCE RECOGNISES IT rather than decoded here.
+O2ImageSource sniffs the data and picks the subclass, so the PNG reader that already exists does
+the work.
+
+THE ARGB PATH IS NOT PREMULTIPLIED, unlike the classic path in the same file. An ARGB chunk stores
+straight alpha and macOS reports kCGImageAlphaLast for these icons. That was wrong in the first
+version and the case caught it.
+
+WHAT STILL DIFFERS, and it is not ICNS: the eight PNG backed types come back as
+kO2ImageAlphaPremultipliedLast because our PNG source premultiplies, where macOS reports
+kCGImageAlphaLast. Changing that touches every PNG in every application, so it belongs in its own
+task rather than here. The case now fails there instead of on the very first count.
+
+CIDER_TRACE_ICNS names each chunk and how it was read, which is what separated "ic04 failed" from
+"ic04 and ic05 passed and ic07 failed" when both produce an identical assertion message.
+
+--- a/Onyx2D/O2ImageSource_ICNS.m
++++ b/Onyx2D/O2ImageSource_ICNS.m
+@@ -21,6 +21,9 @@
+ #import <Onyx2D/O2DataProvider.h>
+ #import <Onyx2D/O2Image.h>
+ #import <Onyx2D/O2ImageSource_ICNS.h>
++#import <string.h>
++#import <stdio.h>
++#import <stdlib.h>
+ 
+ typedef struct O2ICNSNode {
+     struct O2ICNSNode *next;
+@@ -233,6 +236,132 @@
+ }
+ 
+ 
++/* ONE CHANNEL OF THE ICNS RUN LENGTH ENCODING, which ic04 and ic05 use for each of A, R, G and B in
++ * turn. A control byte with the top bit set repeats the next byte (control - 125) times; otherwise
++ * it introduces (control + 1) literal bytes. Returns where it stopped so the next channel can carry
++ * on, and stops early rather than reading past the chunk. */
++static uint32_t decodeICNSChannel(const uint8_t *bytes, uint32_t length, uint32_t offset,
++                                  uint8_t *out, uint32_t pixelCount) {
++    uint32_t written = 0;
++
++    while (written < pixelCount && offset < length) {
++        uint8_t control = bytes[offset++];
++
++        if (control & 0x80) {
++            uint32_t run = (uint32_t)control - 125;
++
++            if (offset >= length)
++                break;
++
++            uint8_t value = bytes[offset++];
++
++            while (run-- > 0 && written < pixelCount)
++                out[written++] = value;
++        } else {
++            uint32_t run = (uint32_t)control + 1;
++
++            while (run-- > 0 && written < pixelCount && offset < length)
++                out[written++] = bytes[offset++];
++        }
++    }
++
++    return offset;
++}
++
++/* An O2Image over RGBA samples. NOT PREMULTIPLIED, unlike the classic path below: an ARGB chunk
++ * stores straight alpha and macOS reports kCGImageAlphaLast for these icons. The buffer is handed
++ * to the NSData and freed with it. */
++- (void) addImageWithPixels: (O2rgba8u_BE *) pixels
++                      width: (uint32_t) width
++                     height: (uint32_t) height {
++    uint32_t pixelCount = width * height;
++
++    O2ColorSpaceRef colorSpace = O2ColorSpaceCreateDeviceRGB();
++    NSData *bitmap = [[NSData alloc] initWithBytesNoCopy: pixels
++                                                  length: pixelCount * sizeof(O2rgba8u_BE)];
++    O2DataProvider *provider = O2DataProviderCreateWithCFData((CFDataRef) bitmap);
++    O2Image *image = [[O2Image alloc]
++               initWithWidth: width
++                      height: height
++            bitsPerComponent: 8
++                bitsPerPixel: 32
++                 bytesPerRow: width * sizeof(O2rgba8u_BE)
++                  colorSpace: colorSpace
++                  bitmapInfo: kO2BitmapByteOrder32Big | kO2ImageAlphaLast
++                     decoder: NULL
++                    provider: provider
++                      decode: NULL
++                 interpolate: NO
++             renderingIntent: kO2RenderingIntentDefault];
++
++    O2ColorSpaceRelease(colorSpace);
++    O2DataProviderRelease(provider);
++    [bitmap release];
++
++    if (image != nil) {
++        [_images addObject: image];
++        O2ImageRelease(image);
++    }
++}
++
++/* ic07 through ic14 hold a whole PNG. Hand it to whichever source recognises it rather than
++ * decoding it here: O2ImageSource sniffs the data and picks the subclass. */
++- (void) addImageFromEncodedPayload: (const uint8_t *) bytes length: (uint32_t) length {
++    NSData *data = [[NSData alloc] initWithBytes: bytes length: length];
++    O2ImageSourceRef source = [O2ImageSource newImageSourceWithData: (CFDataRef) data
++                                                            options: NULL];
++
++    if (source != NULL) {
++        if ([source count] > 0) {
++            O2Image *image = [source createImageAtIndex: 0 options: NULL];
++
++            if (image != NULL) {
++                [_images addObject: image];
++                O2ImageRelease(image);
++            }
++        }
++
++        [source release];
++    }
++
++    [data release];
++}
++
++/* ic04 and ic05 hold RLE compressed ARGB, alpha channel first, at 16x16 and 32x32. */
++- (void) addImageFromARGBPayload: (const uint8_t *) bytes
++                          length: (uint32_t) length
++                           width: (uint32_t) width
++                          height: (uint32_t) height {
++    uint32_t pixelCount = width * height;
++    O2rgba8u_BE *pixels = calloc(pixelCount, sizeof(O2rgba8u_BE));
++    uint8_t *channel = malloc(pixelCount);
++
++    if (pixels == NULL || channel == NULL) {
++        free(pixels);
++        free(channel);
++        return;
++    }
++
++    uint32_t offset = 0, i, slot;
++
++    for (slot = 0; slot < 4; slot++) {
++        memset(channel, 0, pixelCount);
++        offset = decodeICNSChannel(bytes, length, offset, channel, pixelCount);
++
++        for (i = 0; i < pixelCount; i++) {
++            switch (slot) {
++            case 0: pixels[i].a = channel[i]; break;
++            case 1: pixels[i].r = channel[i]; break;
++            case 2: pixels[i].g = channel[i]; break;
++            case 3: pixels[i].b = channel[i]; break;
++            }
++        }
++    }
++
++    free(channel);
++    [self addImageWithPixels: pixels width: width height: height];
++}
++
+ - (void) parseIcon {
+     uint32_t type = nextUnsigned32(self);
+     uint32_t length = nextUnsigned32(self) - 8;
+@@ -244,6 +373,40 @@
+ 
+     // NSLog(@" .icns icon type=%c %c %c %c",type>>24,type>>16,type>>8,type);
+ 
++    /* A MODERN ICON CHUNK CARRIES AN ENCODED IMAGE, not raw samples, so it never goes through the
++     * node and mask machinery below. Every icon made in the last fifteen years is one of these:
++     * ic04 and ic05 hold ARGB, ic07 through ic14 hold a PNG. Dispatch on the payload MAGIC rather
++     * than on the type code, because the encoding is a property of the chunk and the same type can
++     * appear either way. Every one of these files also carries an info chunk holding a bplist,
++     * which matches nothing here and is skipped like any other unknown type. */
++    if (length >= 8 && _position + length <= _length) {
++        static const uint8_t pngMagic[8] = {0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
++        const uint8_t *payload = _bytes + _position;
++
++        if (memcmp(payload, pngMagic, sizeof(pngMagic)) == 0) {
++            if (getenv("CIDER_TRACE_ICNS"))
++                fprintf(stderr, "icns: %c%c%c%c is a PNG payload of %u bytes\n",
++                        type >> 24, type >> 16, type >> 8, type, length);
++            [self addImageFromEncodedPayload: payload length: length];
++            _position += length;
++            return;
++        }
++
++        if (memcmp(payload, "ARGB", 4) == 0) {
++            uint32_t argbWidth = (type == BigEndianOSType('i', 'c', '0', '4')) ? 16 : 32;
++
++            if (getenv("CIDER_TRACE_ICNS"))
++                fprintf(stderr, "icns: %c%c%c%c is ARGB %ux%u of %u bytes\n",
++                        type >> 24, type >> 16, type >> 8, type, argbWidth, argbWidth, length);
++            [self addImageFromARGBPayload: payload + 4
++                                   length: length - 4
++                                    width: argbWidth
++                                   height: argbWidth];
++            _position += length;
++            return;
++        }
++    }
++
+     switch (type) {
+ 
+     case BigEndianOSType('I', 'C', 'O', 'N'):
