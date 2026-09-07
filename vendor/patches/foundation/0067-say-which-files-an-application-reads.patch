@@ -1,0 +1,117 @@
+say which files an application actually reads, and how many bytes
+
+iA Writer opens a document and shows nothing, and the file coordinator says the read RAN, so the
+open question in #194 was what happens to the bytes afterwards. Nothing in the log could say
+whether the bytes ever arrived.
+
+_NSReadBytesFromFile is the funnel under every Foundation file read: NSData initWithContentsOfFile,
+NSString initWithContentsOfFile:encoding:, and the URL forms of both. CIDER_TRACE_READ prints its
+path, its byte count and whether it succeeded. -[NSString initWithData:encoding:] prints the byte
+count, the encoding and the resulting length, because an application that reads bytes ITSELF and
+decodes them there never touches the URL methods at all, and iA Writer is one: initWithData:encoding:
+is the only string from bytes selector its binary and its Kit framework carry, which llvm-nm and
+strings agree on.
+
+WHAT IT SAID IMMEDIATELY, and it removes file reading from #194 with a POSITIVE measurement rather
+than an absence:
+
+  CIDER_READ bytes path=/Users/root/Documents/Cider.md length=40 ok
+
+All forty bytes of the document reach the application through Foundation. And in the same run
+-[NSString initWithData:encoding:] was called ZERO times, so whatever iA Writer does with those
+bytes, it does not decode them through NSString. A Swift application decoding with
+String(decoding:as:) would look exactly like that, and that is pure Swift with no Foundation call.
+
+Bounded at 200 lines each and gated, and the gate is cached rather than a getenv per call because
+this sits under every read an application makes.
+--- a/src/_NSFileIO.m
++++ b/src/_NSFileIO.m
+@@ -21,6 +21,31 @@
+ #import <sys/stat.h>
+ #import "NSErrorInternal.h"
+ 
++/* EVERY FILE READ FOUNDATION MAKES comes through here, so this is the one place that can say
++ * whether an application read a file at all and how many bytes it got. iA Writer opens a document
++ * and shows nothing, and the coordinated read RUNS, so the question is what happens to the bytes
++ * afterwards (#194). Bounded and off unless asked for. */
++static void _CiderTraceRead(NSString *path, NSUInteger length, BOOL ok)
++{
++    static int cached = -1;
++    static int printed;
++
++    if (cached < 0)
++    {
++        const char *value = getenv("CIDER_TRACE_READ");
++
++        cached = (value != NULL && value[0] != '\0') ? 1 : 0;
++    }
++    if (cached == 0 || printed >= 200)
++    {
++        return;
++    }
++    printed++;
++    fprintf(stderr, "CIDER_READ bytes path=%s length=%lu %s\n", [path UTF8String] ?: "(nil)",
++            (unsigned long)length, ok ? "ok" : "FAILED");
++    fflush(stderr);
++}
++
+ void *_NSReadBytesFromFile(NSString *path, NSDataReadingOptions readOptionsMask, NSUInteger *length, BOOL *vm, NSError **err)
+ {
+     *length = 0;
+@@ -28,6 +53,7 @@
+     int fd = open([path UTF8String], O_RDONLY);
+     if (fd < 0)
+     {
++        _CiderTraceRead(path, 0, NO);
+         if (err != NULL)
+         {
+             *err = [NSError errorWithDomain:NSPOSIXErrorDomain code:errno userInfo:@{NSLocalizedDescriptionKey: [NSString stringWithUTF8String:strerror(errno)]}];
+@@ -147,6 +173,7 @@
+ 
+     close(fd);
+ 
++    _CiderTraceRead(path, *length, YES);
+     return bytes;
+ }
+ 
+--- a/src/NSString.m
++++ b/src/NSString.m
+@@ -6,6 +6,7 @@
+ //
+ 
+ #import <Foundation/NSString.h>
++#import <stdio.h>
+ 
+ #import <Foundation/NSArray.h>
+ #import <Foundation/NSCache.h>
+@@ -1041,7 +1042,29 @@
+ 
+ - (id)initWithData:(NSData *)data encoding:(NSStringEncoding)encoding
+ {
+-    return [self initWithBytes:[data bytes] length:[data length] encoding:encoding];
++    /* THE OTHER HALF OF THE READ. An application that reads bytes itself and decodes them here
++     * never touches initWithContentsOfURL:, and iA Writer is one: initWithData:encoding: is the
++     * only string-from-bytes selector its binary and its Kit framework carry (#194). */
++    static int cached = -1;
++    static int printed;
++
++    if (cached < 0)
++    {
++        const char *value = getenv("CIDER_TRACE_READ");
++
++        cached = (value != NULL && value[0] != '\0') ? 1 : 0;
++    }
++    id result = [self initWithBytes:[data bytes] length:[data length] encoding:encoding];
++
++    if (cached != 0 && printed < 200)
++    {
++        printed++;
++        fprintf(stderr, "CIDER_READ decode bytes=%lu encoding=%lu -> length=%lu\n",
++                (unsigned long)[data length], (unsigned long)encoding,
++                (unsigned long)(result != nil ? [result length] : 0));
++        fflush(stderr);
++    }
++    return result;
+ }
+ 
+ - (id)initWithBytes:(const void *)bytes length:(NSUInteger)len encoding:(NSStringEncoding)encoding
