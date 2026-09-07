@@ -1,0 +1,38 @@
+say whether the selection fill happened and in what colour
+
+A selected row that does not look selected is either a fill that never ran or a fill that something
+drew over, and those want opposite fixes. Nothing in this file said which.
+
+On CIDER_TRACE_CONTROL, beside the mouseDown and selectedRow lines already here, it now prints the
+rect and the resolved RGBA. That answered #210 in one run:
+
+  CIDER_TABLE highlight class=IAOutlineView_Aspects_ row=1 col=0 rect=279x16+16+22 rgba=0.00,0.48,1.00,1.00
+  CIDER_TABLE highlight class=IATableView_Aspects_  row=3 col=0 rect=271x65+14+195 rgba=0.00,0.48,1.00,1.00
+
+The same colour and a correct rect for both, and only one of them is visible on screen. So the fill
+runs and the file list is covered by its own cell view afterwards, which is what a row view would
+order properly on macOS and what this AppKit has no row view to do. See #211.
+
+--- a/AppKit/NSTableView.m
++++ b/AppKit/NSTableView.m
+@@ -1551,6 +1551,20 @@
+                                        row: (NSInteger) row
+                                     inRect: (NSRect) rect
+ {
++    /* WHETHER THE FILL HAPPENED AT ALL, and where. A selected row that does not look selected is
++     * either a fill that never ran or a fill that something drew over, and those want opposite
++     * fixes. Task #210. */
++    if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
++        NSColor *fill = [[NSColor selectedControlColor] colorUsingColorSpaceName: NSCalibratedRGBColorSpace];
++
++        fprintf(stderr, "CIDER_TABLE highlight class=%s row=%ld col=%ld rect=%.0fx%.0f+%.0f+%.0f rgba=%.2f,%.2f,%.2f,%.2f\n",
++                object_getClassName(self), (long) row, (long) column, rect.size.width,
++                rect.size.height, rect.origin.x, rect.origin.y,
++                fill != nil ? [fill redComponent] : -1.0, fill != nil ? [fill greenComponent] : -1.0,
++                fill != nil ? [fill blueComponent] : -1.0, fill != nil ? [fill alphaComponent] : -1.0);
++        fflush(stderr);
++    }
++
+     [[NSColor selectedControlColor] setFill];
+     NSRectFill(rect);
+ }
