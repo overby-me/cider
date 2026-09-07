@@ -150,6 +150,32 @@ def case_frameworks(rel):
     return headers, dylibs
 
 
+def darling_identifier(directory):
+    """The DARLING_IDENTIFIER CMake would have for a directory, or None if it does not set one.
+
+    Each CMakeLists appends its own directory name with dots turned into underscores, starting from
+    "testsuite". Only the posix_spawn group turns it into a -D, and only that group needs it: the
+    parent spawns its child BY THAT NAME, so the value is the child's filename and not decoration.
+    """
+    probe = directory
+    while True:
+        cml = os.path.join(probe, "CMakeLists.txt")
+        if os.path.exists(cml):
+            with open(cml, errors="replace") as fh:
+                if "add_compile_definitions(DARLING_IDENTIFIER" not in fh.read():
+                    return None
+                break
+        if probe == TESTS:
+            return None
+        probe = os.path.dirname(probe)
+    # The value belongs to the directory that DECLARES the target, which is the one holding the
+    # CMakeLists. A case under posix_spawn/test/ is declared by posix_spawn/CMakeLists.txt, so
+    # taking the source file's own directory would append a "test" the child filename never has.
+    rel = os.path.relpath(probe, TESTS)
+    parts = [] if rel == "." else rel.split(os.sep)
+    return "_".join(["testsuite"] + [p.replace(".", "_") for p in parts])
+
+
 def target_name(rel):
     """A buck target name from a case path: unique, and readable in a failure list."""
     stem = rel[len(TESTS) + 1 :]
@@ -210,6 +236,19 @@ def main():
         for n in sorted(UPSTREAM_PLACEHOLDERS):
             print(n)
         return
+    if "--cmake-names" in sys.argv:
+        # "<buck target> <name CMake would have built it under>", for the cases where the name is
+        # load bearing rather than cosmetic. The posix_spawn pair compares argv[0] against
+        # cwd plus that exact name, so a runner has to present the binary under it.
+        for base, _dirs, files in os.walk(TESTS):
+            ident = darling_identifier(base)
+            if not ident:
+                continue
+            for f in sorted(files):
+                if f.endswith((".m", ".c")):
+                    stem = f.rsplit(".", 1)[0]
+                    print(f"{target_name(os.path.join(base, f))} {ident}.{stem}")
+        return
     cases = []
     for base, _dirs, files in os.walk(TESTS):
         for f in sorted(files):
@@ -258,7 +297,11 @@ def main():
         out.append("    srcs = [")
         out.append(f'        "{rel[len("vendor/src/"):]}",')
         out.append("    ],")
-        out.append('    compiler_flags = ["-O2", "-Wall"],')
+        ident = darling_identifier(os.path.dirname(rel))
+        flags = '"-O2", "-Wall"'
+        if ident:
+            flags += f', "-DDARLING_IDENTIFIER=\\"{ident}\\""'
+        out.append(f"    compiler_flags = [{flags}],")
         out.append('    toolchain = "toolchains//:darwin_cc",')
         out.append("    deps = [")
         out.append('        "//src/darwin:sdk_env",')

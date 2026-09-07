@@ -46,14 +46,34 @@ RES=$(realpath vendor/src/darling-testsuite)
 # needs an existing directory, so CFBundleGetMainBundle answers NULL and anything that asks for the
 # main bundle fails. That is what made the Security case trap (task #205). Upstream installs its
 # cases before running them, so this is also closer to how the suite is meant to run.
+# A FEW CASES CARE WHAT THEY ARE CALLED. The posix_spawn pair builds
+# "$(getcwd)/<DARLING_IDENTIFIER>.<case>" and compares it against argv[0], and the parent spawns the
+# child by that RELATIVE name, so both have to be present and invoked under the name CMake would
+# have used. Our target names put an underscore where CMake puts a dot.
+python3 scripts/gen-testsuite-buck.py --cmake-names 2>/dev/null > "$OUT/cmake-names.txt" || : > "$OUT/cmake-names.txt"
+runname() {
+	awk -v t="$1" '$1 == t {print $2; found=1} END {if (!found) print t}' "$OUT/cmake-names.txt"
+}
+
+# STAGE EVERYTHING FIRST, then run, so a case that spawns a sibling does not depend on the order
+# the two happen to appear in.
 {
 	echo '#!/bin/sh'
 	echo "export DARLING_TESTSUITE_RESOURCE_PATH=/Volumes/SystemRoot$RES"
 	echo 'mkdir -p /tmp/dts'
+	echo 'cd /tmp/dts'
+	# THE PHYSICAL PATH, not the literal /tmp and not the shell's logical pwd. In the prefix /tmp is
+	# a symlink to private/tmp exactly as on macOS, so getcwd(3) answers /private/tmp/dts while the
+	# pwd BUILTIN answers /tmp/dts. The posix_spawn child compares argv[0] against getcwd plus its
+	# own name, and fails on that difference alone. Measured: via the logical path it aborts, via
+	# the physical path it exits 0.
+	echo 'D=$(pwd -P); cd "$D"'
 	while read -r t; do
 		src="/Volumes/SystemRoot$(realpath "$ART")/__${t}__/$t"
-		echo "cp \"$src\" /tmp/dts/$t && chmod +x /tmp/dts/$t"
-		echo "\"/tmp/dts/$t\" >/dev/null 2>&1; echo \"CASE $t EXIT \$?\""
+		echo "cp \"$src\" \"\$D/$(runname "$t")\" && chmod +x \"\$D/$(runname "$t")\""
+	done < "$OUT/built.txt"
+	while read -r t; do
+		echo "\"\$D/$(runname "$t")\" >/dev/null 2>&1; echo \"CASE $t EXIT \$?\""
 	done < "$OUT/built.txt"
 } > "$OUT/batch.sh"
 chmod +x "$OUT/batch.sh"

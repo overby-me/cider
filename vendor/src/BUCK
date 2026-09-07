@@ -66787,7 +66787,7 @@ cc_objects(
     srcs = [
         "darling-testsuite/testsuite/usr/lib/system/libsystem_kernel.dylib/posix_spawn/test/test_posix_spawn_child_verify_argv0.c",
     ],
-    compiler_flags = ["-O2", "-Wall"],
+    compiler_flags = ["-O2", "-Wall", "-DDARLING_IDENTIFIER=\"testsuite_usr_lib_system_libsystem_kernel_dylib_posix_spawn\""],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//src/darwin:sdk_env",
@@ -66842,7 +66842,7 @@ cc_objects(
     srcs = [
         "darling-testsuite/testsuite/usr/lib/system/libsystem_kernel.dylib/posix_spawn/test/test_posix_spawn_parent_set_arg0.c",
     ],
-    compiler_flags = ["-O2", "-Wall"],
+    compiler_flags = ["-O2", "-Wall", "-DDARLING_IDENTIFIER=\"testsuite_usr_lib_system_libsystem_kernel_dylib_posix_spawn\""],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//src/darwin:sdk_env",
