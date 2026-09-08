@@ -1,0 +1,37 @@
+Name the CONTAINER a controller view was added to, not just its class.
+
+Three editors added to the SAME container means the last one added is in front. Three added to
+DIFFERENT containers means they are separate screenfuls and something one level up decides which
+container is shown. The class name alone cannot tell those apart, and both were live theories.
+
+It answered immediately for iA Writer: three editor scroll views, three DIFFERENT NSView containers,
+2 adds, 2 adds and 9 adds. They are separate screenfuls.
+
+THE COMMENT ALSO RECORDS A NESTING THAT MISLED ME. addSubview logs, then _insertSubview: calls
+removeFromSuperview which logs again, then the window is set and the appearance fires. So a log
+reading "add X, remove X, appear X" is ONE add, not the application taking X away. I read an earlier
+run as the application removing editors and it never removes one at all, which is also why
+viewWillDisappear correctly never fires: nothing is ever taken off screen.
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -1883,10 +1883,18 @@
+     if (view == nil || view->_ciderViewController == nil)
+         return;
+ 
+-    fprintf(stderr, "CIDER_VIEW move %s %s(%p) controller=%s other=%s\n", what,
++    /* THE SUPERVIEW POINTER, not just its class. Three editors added to the SAME container means the
++     * last one added is in front; three added to DIFFERENT containers means they are separate
++     * screenfuls and something else decides which container is shown, and the class name alone
++     * cannot tell those apart (#194).
++     *
++     * NOTE THE NESTING: addSubview logs, then _insertSubview: calls removeFromSuperview which logs
++     * again, then the window is set. So "add X, remove X" in that order is ONE add, not the
++     * application taking X away. */
++    fprintf(stderr, "CIDER_VIEW move %s %s(%p) controller=%s other=%s(%p)\n", what,
+             object_getClassName(view), view,
+             object_getClassName(view->_ciderViewController),
+-            other != nil ? object_getClassName(other) : "(nil)");
++            other != nil ? object_getClassName(other) : "(nil)", other);
+     fflush(stderr);
+ }
+ 
