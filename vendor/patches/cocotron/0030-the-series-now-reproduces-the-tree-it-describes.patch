@@ -1,0 +1,177 @@
+the series now reproduces the tree it describes, and one hunk was in the wrong function
+
+vendor/patches/cocotron is an ORPHAN. scripts/checks/buck-pin-patches-check.nu has been saying so
+for a long time and buck-test.nu prints it every run:
+
+  patches/cocotron: 29 patches -> NOTHING
+  vendor/patches/cocotron (29 patches) is an ORPHAN: no manifest entry names it and no pin basename
+  matches it, so it has never been applied to anything
+
+vendor/pins/cocotron is a BUNDLED pin, checked into git, and scripts/buck-src.nu COPIES it into
+vendor/src/cocotron. vendor/src is not tracked. So every cocotron change lives in exactly one place,
+an untracked directory, and a materialisation silently reverts all of it. The patches are the only
+record, and until now they did not reproduce the tree.
+
+MEASURED, applying the series to a fresh copy of the pin:
+
+  23 of 29 applied.
+  3 were ALREADY IN THE PIN (the aarch64 ones, 0001 to 0003), which is why they refuse.
+  3 applied only in part (0018, 0028, 0029): context drift, one hunk each.
+  FIVE FILES then still differed from vendor/src/cocotron.
+
+AND ONE OF THEM DIFFERED IN A WAY THAT MATTERS. O2Image.m has two near identical functions, and the
+byte order default guard from #212 applied CLEANLY TO THE WRONG ONE: patch matched the context in
+the neighbouring function. Replaying the series would have put the wxWidgets bitmap fix where it
+does nothing, and the build would have succeeded. That is the failure mode the check warns about:
+an unpatched or wrongly patched tree builds and reports as a pass.
+
+WHAT THIS PATCH IS: the exact remaining delta of those five files, which moves the O2Image guard to
+the function it was written for and carries what the three partial patches left behind.
+
+VERIFIED, and this is the point of the patch rather than a note beside it:
+
+  a fresh copy of vendor/pins/cocotron, plus every patch in this directory in order with --forward,
+  plus this one, is BYTE FOR BYTE vendor/src/cocotron.
+
+STILL NOT WIRED. Nothing applies these during materialisation; that is a change to how a pin is
+staged and it has the whole port in its blast radius, so it is a separate deliberate step. What
+changed today is that the record is now exact and replayable BY HAND, which it was not.
+--- a/AppKit/NSTextView.subproj/NSLayoutManager.m
++++ b/AppKit/NSTextView.subproj/NSLayoutManager.m
+@@ -2397,6 +2397,19 @@
+                                    // size is at max length*2 on Cocotron
+     NSInteger packedGlyphsLength = NSConvertGlyphsToPackedGlyphs(
+             glyphs, length, NSNativeShortGlyphPacking, packedGlyphs);
++
++    if (_CiderTraceFallback() && length > 1) {
++        static int saidShow;
++
++        if (saidShow < 40) {
++            saidShow++;
++            fprintf(stderr, "CIDER_FALLBACK show len=%lu chars=%lu+%lu font=%p %s\n",
++                    (unsigned long) length, (unsigned long) drawCharacterRange.location,
++                    (unsigned long) drawCharacterRange.length, font,
++                    [[font fontName] UTF8String] ?: "?");
++            fflush(stderr);
++        }
++    }
+     [self showPackedGlyphs: packedGlyphs
+                         length: packedGlyphsLength
+                     glyphRange: range
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -4437,3 +4437,39 @@
+ }
+ 
+ @end
++
++/*
++ * A CHANGE THROUGH THE PROXY IS APPLIED AT ONCE, because -animator returns self. That is the same
++ * policy NSSplitViewItem takes next door: a window snaps rather than slides, and the alternative,
++ * having no animator at all, loses the change and the process with it.
++ *
++ * The dictionary is an associated object rather than an ivar: applications subclass NSWindow, and
++ * an ivar added here would shift the ones they declare.
++ */
++@implementation NSWindow (CiderAnimatable)
++
++- (id) animator {
++    return self;
++}
++
++- (NSDictionary *) animations {
++    NSDictionary *animations = objc_getAssociatedObject(self, @selector(animations));
++
++    return animations != nil ? animations : [NSDictionary dictionary];
++}
++
++- (void) setAnimations: (NSDictionary *) animations {
++    objc_setAssociatedObject(self, @selector(animations), animations, OBJC_ASSOCIATION_COPY);
++}
++
++- (id) animationForKey: (NSString *) key {
++    id animation = [[self animations] objectForKey: key];
++
++    return animation != nil ? animation : [[self class] defaultAnimationForKey: key];
++}
++
+++ (id) defaultAnimationForKey: (NSString *) key {
++    return nil;
++}
++
++@end
+--- a/CoreText/CTFont.m
++++ b/CoreText/CTFont.m
+@@ -35,6 +35,21 @@
+ 
+ /* Defined in constants.c and declared in no header, the same as in CTFontCollection.m. */
+ extern const CFStringRef kCTFontSymbolicTrait;
++/* All four live in constants.c, which no header declares; CTFontCollection.m carries the same lines. */
++extern const CFStringRef kCTFontWeightTrait;
++extern const CFStringRef kCTFontWidthTrait;
++extern const CFStringRef kCTFontSlantTrait;
++
++/* A normalised trait, which is always a double in a CoreText traits dictionary. */
++static void _CiderSetTrait(CFMutableDictionaryRef traits, CFStringRef key, double value)
++{
++    CFNumberRef number = CFNumberCreate(kCFAllocatorDefault, kCFNumberDoubleType, &value);
++
++    if (number != NULL) {
++        CFDictionarySetValue(traits, key, number);
++        CFRelease(number);
++    }
++}
+ 
+ const CFStringRef kCTFontCopyrightNameKey = CFSTR("CTFontCopyrightName");
+ const CFStringRef kCTFontFamilyNameKey = CFSTR("CTFontFamilyName");
+--- a/Onyx2D/O2Image.m
++++ b/Onyx2D/O2Image.m
+@@ -45,19 +45,6 @@
+                                               size_t bitsPerPixel,
+                                               O2BitmapInfo bitmapInfo)
+ {
+-    /* NO BYTE ORDER MEANS THE NATURAL ONE, not "unsupported". Every switch below lists only the
+-     * explicit Little and Big constants, so kCGBitmapByteOrderDefault, which is 0 and is what a
+-     * caller who does not care passes, matched nothing and the surface refused to initialise.
+-     *
+-     * wxWidgets passes exactly that, and the refusal is silent from outside: O2BitmapContextCreate
+-     * still answers a context, with a NULL surface behind it, so CGBitmapContextGetData hands back
+-     * NULL and the application draws into it. Task #212.
+-     *
+-     * Default is the component order the alpha info already names, which is what the Big cases
+-     * spell: PremultipliedFirst is A,R,G,B in memory and Last is R,G,B,A. */
+-    if ((bitmapInfo & kO2BitmapByteOrderMask) == 0)
+-        bitmapInfo |= kO2BitmapByteOrder32Big;
+-
+     switch (bitsPerComponent) {
+     case 8:
+         switch (bitsPerPixel) {
+@@ -76,6 +63,18 @@
+                                                  size_t bitsPerPixel,
+                                                  O2BitmapInfo bitmapInfo)
+ {
++    /* NO BYTE ORDER MEANS THE NATURAL ONE, not "unsupported". Every switch below lists only the
++     * explicit Little and Big constants, so kCGBitmapByteOrderDefault, which is 0 and is what a
++     * caller who does not care passes, matched nothing and the surface refused to initialise.
++     *
++     * wxWidgets passes exactly that, and the refusal is silent from outside: O2BitmapContextCreate
++     * still answers a context, with a NULL surface behind it, so CGBitmapContextGetData hands back
++     * NULL and the application draws into it. Task #212.
++     *
++     * Default is the component order the alpha info already names, which is what the Big cases
++     * spell: PremultipliedFirst is A,R,G,B in memory and Last is R,G,B,A. */
++    if ((bitmapInfo & kO2BitmapByteOrderMask) == 0)
++        bitmapInfo |= kO2BitmapByteOrder32Big;
+ 
+     switch (bitsPerComponent) {
+ 
+--- a/Onyx2D/O2ImageSource_ICNS.m
++++ b/Onyx2D/O2ImageSource_ICNS.m
+@@ -235,6 +235,7 @@
+     return result;
+ }
+ 
++
+ /* ONE CHANNEL OF THE ICNS RUN LENGTH ENCODING, which ic04 and ic05 use for each of A, R, G and B in
+  * turn. A control byte with the top bit set repeats the next byte (control - 125) times; otherwise
+  * it introduces (control + 1) literal bytes. Returns where it stopped so the next channel can carry
