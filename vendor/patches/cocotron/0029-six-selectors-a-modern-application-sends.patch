@@ -1,0 +1,308 @@
+six selectors a modern application sends, and one of them decided whether it drew at all
+
+iA Writer died on FIVE unrecognized selectors in a row, one per build, once Combine started
+delivering values and took it into interface it had never reached. The last one left it with a
+BLACK SCREEN: no window at all, and exit 0, which reads as a clean run.
+
+  -[NSImage setCapInsets:]                    a resizable image
+  -[NSControl setBaseWritingDirection:]       a cell property the control answers for
+  -[NSTextField setBezelStyle:]               the same, to the text field cell
+  -[NSTextField setLineBreakStrategy:]        macOS 11
+  +[NSColor currentControlTint]               the accent, always blue here
+  -[NSWindow animator]                        NSAnimatablePropertyContainer
+
+WHAT IS REAL AND WHAT IS STORED, said here rather than left to be discovered.
+
+  capInsets            stored. The nine part stretch is not implemented, so the image draws whole.
+  baseWritingDirection FORWARDED to the cell, which already had it. Real.
+  bezelStyle           FORWARDED to the cell, which already had it. Real.
+  lineBreakStrategy    stored. There is no typesetter here with a strategy to follow.
+  currentControlTint   NSBlueControlTint. One appearance, no preference to read, and blue is what a
+                       Mac reports out of the box.
+  animator             returns self, so a change through the proxy is applied AT ONCE. That is the
+                       policy NSSplitViewItem already takes; a panel snaps rather than slides, and
+                       the alternative is losing the change and the process with it.
+
+The three stored ones are associated objects rather than ivars, because applications subclass
+NSTextField and an ivar added here would shift the ones they declare. NSImage keeps a real ivar; it
+is not subclassed by anything on the roster and the value is a struct.
+
+CORRECTING MYSELF WITHIN THIS PATCH: I added preferredMaxLayoutWidth to the same category before
+noticing NSTextField ALREADY declares it as an @property with an ivar that initWithCoder decodes
+into. A category method would have won over the synthesised one and silently thrown that away. It
+is not here. Grepping for the SETTER is what missed it: a property spells no method out.
+
+MEASURED, iA Writer through scripts/app-drive.sh
+
+  before  black capture, 0 windows, exit 0, one fault per run
+  after   the library window with its five rows, 0 faults, 0 unrecognized selectors, 2 runs of 2
+--- a/AppKit/NSImage.m
++++ b/AppKit/NSImage.m
+@@ -1438,6 +1438,14 @@
+     _isTemplate = value;
+ }
+ 
++- (NSEdgeInsets) capInsets {
++    return _capInsets;
++}
++
++- (void) setCapInsets: (NSEdgeInsets) insets {
++    _capInsets = insets;
++}
++
+ - (void) setScalesWhenResized: (BOOL) value {
+     _scalesWhenResized = value;
+ }
+--- a/AppKit/NSControl.m
++++ b/AppKit/NSControl.m
+@@ -227,6 +227,11 @@
+     return [_cell alignment];
+ }
+ 
++/* Another cell property the control answers for. iA Writer sets it on its action panel field. */
++- (NSWritingDirection) baseWritingDirection {
++    return [_cell baseWritingDirection];
++}
++
+ /*
+  * CONTROL SIZE IS A CELL PROPERTY THE CONTROL ALSO ANSWERS FOR, since 10.10. MoneyMoney asks its
+  * text fields for it while laying out the preferences window, and an unrecognized selector inside a
+@@ -362,6 +367,11 @@
+     [self setNeedsDisplay: YES];
+ }
+ 
++- (void) setBaseWritingDirection: (NSWritingDirection) value {
++    [_cell setBaseWritingDirection: value];
++    [self setNeedsDisplay: YES];
++}
++
+ - (void) setFloatingPointFormat: (BOOL) fpp
+                            left: (NSUInteger) left
+                           right: (NSUInteger) right
+--- a/AppKit/NSTextField.m
++++ b/AppKit/NSTextField.m
+@@ -645,3 +645,54 @@
+ }
+ 
+ @end
++
++/*
++ * FOUR MORE THE VIEW ANSWERS FOR. iA Writer configures its action panel field with all of them and
++ * each one was an unrecognized selector, one per run: the delivery fix in Combine took it into UI
++ * it had never reached (#194).
++ *
++ * The two BOOLs and the strategy are STORED AND RETURNED and nothing here acts on them: an
++ * expansion tooltip needs a tracking area over truncated text, completion needs a completion
++ * controller, and the line break strategy needs a typesetter that has one. A caller that sets one
++ * and reads it back gets what it set, and its configuration runs to the end.
++ */
++@implementation NSTextField (CiderModernProperties)
++
++- (NSUInteger) bezelStyle {
++    return (NSUInteger) [[self cell] bezelStyle];
++}
++
++- (void) setBezelStyle: (NSUInteger) style {
++    [[self cell] setBezelStyle: (NSTextFieldBezelStyle) style];
++    [self setNeedsDisplay: YES];
++}
++
++- (BOOL) allowsExpansionToolTips {
++    return [objc_getAssociatedObject(self, @selector(allowsExpansionToolTips)) boolValue];
++}
++
++- (void) setAllowsExpansionToolTips: (BOOL) value {
++    objc_setAssociatedObject(self, @selector(allowsExpansionToolTips),
++                             [NSNumber numberWithBool: value], OBJC_ASSOCIATION_RETAIN);
++}
++
++- (BOOL) isAutomaticTextCompletionEnabled {
++    return [objc_getAssociatedObject(self, @selector(isAutomaticTextCompletionEnabled)) boolValue];
++}
++
++- (void) setAutomaticTextCompletionEnabled: (BOOL) value {
++    objc_setAssociatedObject(self, @selector(isAutomaticTextCompletionEnabled),
++                             [NSNumber numberWithBool: value], OBJC_ASSOCIATION_RETAIN);
++}
++
++- (NSUInteger) lineBreakStrategy {
++    return [objc_getAssociatedObject(self, @selector(lineBreakStrategy)) unsignedIntegerValue];
++}
++
++- (void) setLineBreakStrategy: (NSUInteger) strategy {
++    objc_setAssociatedObject(self, @selector(lineBreakStrategy),
++                             [NSNumber numberWithUnsignedInteger: strategy],
++                             OBJC_ASSOCIATION_RETAIN);
++}
++
++@end
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -4438,3 +4438,38 @@
+ 
+ @end
+ 
++/*
++ * A CHANGE THROUGH THE PROXY IS APPLIED AT ONCE, because -animator returns self. That is the same
++ * policy NSSplitViewItem takes next door: a window snaps rather than slides, and the alternative,
++ * having no animator at all, loses the change and the process with it.
++ *
++ * The dictionary is an associated object rather than an ivar: applications subclass NSWindow, and
++ * an ivar added here would shift the ones they declare.
++ */
++@implementation NSWindow (CiderAnimatable)
++
++- (id) animator {
++    return self;
++}
++
++- (NSDictionary *) animations {
++    NSDictionary *animations = objc_getAssociatedObject(self, @selector(animations));
++
++    return animations != nil ? animations : [NSDictionary dictionary];
++}
++
++- (void) setAnimations: (NSDictionary *) animations {
++    objc_setAssociatedObject(self, @selector(animations), animations, OBJC_ASSOCIATION_COPY);
++}
++
++- (id) animationForKey: (NSString *) key {
++    id animation = [[self animations] objectForKey: key];
++
++    return animation != nil ? animation : [[self class] defaultAnimationForKey: key];
++}
++
+++ (id) defaultAnimationForKey: (NSString *) key {
++    return nil;
++}
++
++@end
+--- a/AppKit/NSColor.subproj/NSColor.m
++++ b/AppKit/NSColor.subproj/NSColor.m
+@@ -326,6 +326,10 @@
+     return [NSColor colorWithCatalogName: @"System" colorName: @"controlColor"];
+ }
+ 
+++ (NSControlTint) currentControlTint {
++    return NSBlueControlTint;
++}
++
+ + (NSColor *) selectedControlColor {
+     return [NSColor colorWithCatalogName: @"System"
+                                colorName: @"selectedControlColor"];
+--- a/AppKit/include/AppKit/NSImage.h
++++ b/AppKit/include/AppKit/NSImage.h
+@@ -37,6 +37,7 @@
+     id _delegate;
+     BOOL _isFlipped;
+     BOOL _isTemplate;
++    NSEdgeInsets _capInsets;
+     BOOL _scalesWhenResized;
+     BOOL _matchesOnMultipleResolution;
+     BOOL _usesEPSOnResolutionMismatch;
+@@ -93,6 +94,11 @@
+ - (void) setBackgroundColor: (NSColor *) value;
+ - (void) setFlipped: (BOOL) value;
+ - (void) setTemplate: (BOOL) value;
++
++/* The nine part stretch is NOT implemented: these store and return the value so a caller that sets
++ * them, asks for them and draws still gets a drawn image rather than an unrecognized selector. */
++- (NSEdgeInsets) capInsets;
++- (void) setCapInsets: (NSEdgeInsets) insets;
+ - (void) setScalesWhenResized: (BOOL) value;
+ - (void) setMatchesOnMultipleResolution: (BOOL) value;
+ - (void) setUsesEPSOnResolutionMismatch: (BOOL) value;
+--- a/AppKit/include/AppKit/NSControl.h
++++ b/AppKit/include/AppKit/NSControl.h
+@@ -51,6 +51,7 @@
+ - (NSControlSize) controlSize;
+ - (NSImage *) image;
+ - (NSTextAlignment) alignment;
++- (NSWritingDirection) baseWritingDirection;
+ - (BOOL) isEnabled;
+ - (BOOL) isEditable;
+ - (BOOL) isSelectable;
+@@ -82,6 +83,7 @@
+ - (void) setControlSize: (NSControlSize) size;
+ - (void) setImage: (NSImage *) image;
+ - (void) setAlignment: (NSTextAlignment) alignment;
++- (void) setBaseWritingDirection: (NSWritingDirection) value;
+ - (void) setFloatingPointFormat: (BOOL) fpp
+                            left: (NSUInteger) left
+                           right: (NSUInteger) right;
+--- a/AppKit/include/AppKit/NSTextField.h
++++ b/AppKit/include/AppKit/NSTextField.h
+@@ -74,3 +74,15 @@
+ - (BOOL) allowsDefaultTighteningForTruncation;
+ - (void) setAllowsDefaultTighteningForTruncation: (BOOL) value;
+ @end
++
++@interface NSTextField (CiderModernProperties)
++- (NSUInteger) bezelStyle;
++- (void) setBezelStyle: (NSUInteger) style;
++
++- (BOOL) allowsExpansionToolTips;
++- (void) setAllowsExpansionToolTips: (BOOL) value;
++- (BOOL) isAutomaticTextCompletionEnabled;
++- (void) setAutomaticTextCompletionEnabled: (BOOL) value;
++- (NSUInteger) lineBreakStrategy;
++- (void) setLineBreakStrategy: (NSUInteger) strategy;
++@end
+--- a/AppKit/include/AppKit/NSWindow.h
++++ b/AppKit/include/AppKit/NSWindow.h
+@@ -704,6 +704,18 @@
+ 
+ @end
+ 
++/*
++ * NSAnimatablePropertyContainer, which a window conforms to on Darwin. iA Writer sends -animator to
++ * its panel and the missing selector ended the process before any window was drawn.
++ */
++@interface NSWindow (CiderAnimatable)
++- (id) animator;
++- (NSDictionary *) animations;
++- (void) setAnimations: (NSDictionary *) animations;
++- (id) animationForKey: (NSString *) key;
+++ (id) defaultAnimationForKey: (NSString *) key;
++@end
++
+ @interface NSWindow (Darling)
+ - (CGWindow *) platformWindow;
+ + (instancetype) windowWithContentViewController: (NSViewController *) contentViewController;
+--- a/AppKit/include/AppKit/NSColor.h
++++ b/AppKit/include/AppKit/NSColor.h
+@@ -18,6 +18,7 @@
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ 
+ #import <AppKit/AppKitExport.h>
++#import <AppKit/NSCell.h>
+ #import <ApplicationServices/ApplicationServices.h>
+ #import <Foundation/Foundation.h>
+ 
+@@ -161,6 +162,10 @@
+ + (NSColor *) alternateSelectedControlColor;
+ + (NSColor *) alternateSelectedControlTextColor;
+ + (NSColor *) controlColor;
++
++/* The accent the user chose for controls. This build has one appearance and no preference to read,
++ * so it is always the blue one, which is what a Mac reports out of the box. */
+++ (NSControlTint) currentControlTint;
+ + (NSColor *) secondarySelectedControlColor;
+ + (NSColor *) selectedControlColor;
+ + (NSColor *) controlTextColor;
+--- a/AppKit/include/AppKit/NSCell.h
++++ b/AppKit/include/AppKit/NSCell.h
+@@ -85,6 +85,13 @@
+ 
+ typedef NSUInteger NSControlTint;
+ 
++enum {
++    NSDefaultControlTint = 0,
++    NSBlueControlTint = 1,
++    NSGraphiteControlTint = 6,
++    NSClearControlTint = 7,
++};
++
+ typedef NS_ENUM(NSInteger, NSBackgroundStyle) {
+     NSBackgroundStyleLight = 0,
+     NSBackgroundStyleDark = 1,

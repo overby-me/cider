@@ -876,14 +876,18 @@ fn create_surface(st: &mut WindowState) -> bool {
          * together are exact. Borderless AND parented is a tooltip; borderless with no mapped
          * parent stays a toplevel, which is what a splash screen wants.
          */
-        let (parent_xdg, parent_left, parent_top) = match mapped_toplevel_anchor() {
-            Some((xdg, left, top)) => (xdg, left, top),
-            None => (
-                std::ptr::null_mut(),
-                PARENT_LEFT.load(Ordering::Acquire),
-                PARENT_TOP.load(Ordering::Acquire),
-            ),
-        };
+        let popup_left = st.frame.origin.x as i64;
+        let popup_top = (st.frame.origin.y + st.frame.size.height) as i64;
+        let (parent_xdg, parent_left, parent_top, parent_number) =
+            match mapped_toplevel_anchor(popup_left, popup_top) {
+                Some((xdg, left, top, number)) => (xdg, left, top, number),
+                None => (
+                    std::ptr::null_mut(),
+                    PARENT_LEFT.load(Ordering::Acquire),
+                    PARENT_TOP.load(Ordering::Acquire),
+                    0,
+                ),
+            };
         let transient = st.level > 0 || st.style_mask == 0;
         let wants_popup = transient && !parent_xdg.is_null() && parent_xdg != st.xdg;
         if wants_popup {
@@ -894,7 +898,7 @@ fn create_surface(st: &mut WindowState) -> bool {
                 wl::cider_xdg_wm_base_create_positioner(base)
             };
             if !positioner.is_null() {
-                fill_positioner(positioner, st, parent_left, parent_top, "create");
+                fill_positioner(positioner, st, parent_left, parent_top, parent_number, "create");
                 st.popup = wl::cider_xdg_surface_get_popup(st.xdg, parent_xdg, positioner);
                 wl::cider_xdg_positioner_destroy(positioner);
             }
@@ -2473,6 +2477,7 @@ unsafe fn fill_positioner(
     st: &WindowState,
     parent_left: i64,
     parent_top: i64,
+    parent_number: i64,
     why: &str,
 ) {
     let w = (st.frame.size.width as i32).max(1);
@@ -2509,7 +2514,7 @@ unsafe fn fill_positioner(
      * Printing the result next to the request is the only way to see which of them is wrong. */
     if crate::env_flag!("CIDER_WAYLAND_TRACE_DISPLAY") {
         println!(
-            "cider-wayland-window popup={why} number={} asked={},{} size={w}x{h} parent-left={parent_left} parent-top={parent_top} local={local_x},{local_y}",
+            "cider-wayland-window popup={why} number={} asked={},{} size={w}x{h} parent={parent_number} parent-left={parent_left} parent-top={parent_top} local={local_x},{local_y}",
             st.number,
             st.frame.origin.x as i64,
             st.frame.origin.y as i64,
@@ -2531,7 +2536,10 @@ fn reposition_popup(st: &mut WindowState) {
     if unsafe { wl::cider_xdg_popup_can_reposition(st.popup) } == 0 {
         return;
     }
-    let Some((_, parent_left, parent_top)) = mapped_toplevel_anchor() else { return };
+    let Some((_, parent_left, parent_top, parent_number)) = mapped_toplevel_anchor(
+        st.frame.origin.x as i64,
+        (st.frame.origin.y + st.frame.size.height) as i64,
+    ) else { return };
     let base = session::wm_base();
     if base.is_null() {
         return;
@@ -2541,16 +2549,12 @@ fn reposition_popup(st: &mut WindowState) {
         if positioner.is_null() {
             return;
         }
-        fill_positioner(positioner, st, parent_left, parent_top, "move");
+        fill_positioner(positioner, st, parent_left, parent_top, parent_number, "move");
         st.reposition_token = st.reposition_token.wrapping_add(1);
         wl::cider_xdg_popup_reposition(st.popup, positioner, st.reposition_token);
         wl::cider_xdg_positioner_destroy(positioner);
     }
     session::flush();
-}
-
-fn mapped_toplevel_xdg() -> Option<*mut wl::XdgSurface> {
-    mapped_toplevel_anchor().map(|(xdg, _, _)| xdg)
 }
 
 /// The mapped parent AND the edges its coordinate space starts from, which have to come from the
@@ -2563,17 +2567,45 @@ fn mapped_toplevel_xdg() -> Option<*mut wl::XdgSurface> {
 /// between sitting below the pointer and sitting UNDER it, and a tooltip under the pointer takes
 /// the click that was meant for the button beneath: measured, the first click on a toolbar dropdown
 /// did nothing at all and the third one opened it.
-fn mapped_toplevel_anchor() -> Option<(*mut wl::XdgSurface, i64, i64)> {
+///
+/// THE MOST RECENT MAPPED TOPLEVEL IS NOT ENOUGH, and it put iA Writer's View menu 350 points to
+/// the right of its title. The application maps two small panels after its document window, and
+/// the anchor is expressed in the PARENT coordinate space and clamped to non-negative, so a parent
+/// down and to the right of where the popup asked to be can only ever say 0,0:
+///
+///   popup=create number=6 asked=271,182 size=196x454 parent=4 parent-left=627 parent-top=342
+///                local=-356,-294
+///
+/// So a candidate must CONTAIN the point the popup anchors at. Testing only the top left corner is
+/// not enough either, and this is the second wrong menu, not the first: a 1x1 panel at the top left
+/// passes left <= x and y <= top and still cannot express 271. Recency decides between candidates
+/// that do contain it, which is what puts a menu on the window in front rather than one behind. If
+/// none contains it the largest is the least wrong, since a bigger window expresses more of the
+/// coordinate space.
+fn mapped_toplevel_anchor(popup_left: i64, popup_top: i64) -> Option<(*mut wl::XdgSurface, i64, i64, i64)> {
     let list = WINDOWS.lock().ok()?;
+    let mut largest: Option<(*mut wl::XdgSurface, i64, i64, i64, i64)> = None;
+
     for &p in list.iter().rev() {
-        let st = unsafe { (p as *mut WindowState).as_ref() }?;
-        if st.mapped && st.popup.is_null() && !st.xdg.is_null() {
-            let left = st.frame.origin.x as i64;
-            let top = (st.frame.origin.y + st.frame.size.height) as i64;
-            return Some((st.xdg, left, top));
+        let Some(st) = (unsafe { (p as *mut WindowState).as_ref() }) else { continue };
+        if !(st.mapped && st.popup.is_null() && !st.xdg.is_null()) {
+            continue;
+        }
+        let left = st.frame.origin.x as i64;
+        let top = (st.frame.origin.y + st.frame.size.height) as i64;
+        let width = st.frame.size.width as i64;
+        let height = st.frame.size.height as i64;
+        if (left..=left + width).contains(&popup_left)
+            && (top - height..=top).contains(&popup_top)
+        {
+            return Some((st.xdg, left, top, st.number));
+        }
+        let area = width * height;
+        if largest.map_or(true, |(_, _, _, _, best)| area > best) {
+            largest = Some((st.xdg, left, top, st.number, area));
         }
     }
-    None
+    largest.map(|(xdg, left, top, number, _)| (xdg, left, top, number))
 }
 
 /// The toplevel of a window that is actually MAPPED, which is the only parent a compositor will

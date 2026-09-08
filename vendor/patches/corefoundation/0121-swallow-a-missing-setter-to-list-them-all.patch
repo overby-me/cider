@@ -1,0 +1,90 @@
+swallow a missing setter, so one run lists them all
+
+A missing setter raises, the process dies, and the NEXT missing setter is only visible after another
+build. Finding four of them on one iA Writer text field cost four builds and about forty minutes.
+
+With CIDER_SWALLOW_SETTERS set, a one argument set... message with no implementation is DROPPED and
+named on stderr as SWALLOWED, so a single run lists every one. Pointed at the same application it
+answered in one run what four builds had been answering one at a time.
+
+ONLY a setter, and only one taking a single argument, because those return void: the caller reads
+nothing back, so dropping the message loses a stored value rather than a computed answer. Anything
+else still raises exactly as before.
+
+IT MUST STAY OFF FOR ANY RUN THAT JUDGES WHETHER AN APPLICATION WORKS. An application configured by
+messages that went nowhere is not the application, and a capture taken with this on is not evidence
+about it.
+--- a/NSForwarding.m
++++ b/NSForwarding.m
+@@ -28,6 +28,9 @@
+ #import <Foundation/NSMethodSignature.h>
+ 
+ #import "NSObjCRuntimeInternal.h"
++#import <stdio.h>
++#import <stdlib.h>
++#import <string.h>
+ #import "NSZombie.h"
+ 
+ #import <objc/runtime.h>
+@@ -43,6 +46,47 @@
+ 
+ static void __NSForwardSignatureError() { __builtin_trap(); }
+ 
++/*
++ * ONE RUN INSTEAD OF ONE BUILD PER SELECTOR, and it is a diagnostic, not a policy.
++ *
++ * A missing setter raises, the process dies, and the next missing setter is only visible after
++ * another build: finding four of them on one iA Writer text field cost four builds. With
++ * CIDER_SWALLOW_SETTERS set, a one argument set... message with no implementation is DROPPED and
++ * named on stderr, so a single run lists all of them.
++ *
++ * ONLY a setter, and only one taking one argument, because those return void: the caller reads
++ * nothing back and dropping the message loses a stored value rather than a computed answer. It is
++ * off unless asked for, and it must stay off for any run that judges whether an application works,
++ * since an application configured by messages that went nowhere is not the application.
++ */
++static BOOL _CiderSwallowSetter(SEL selector)
++{
++    static int cached = -1;
++    const char *name;
++    size_t length;
++
++    if (cached < 0)
++    {
++        const char *value = getenv("CIDER_SWALLOW_SETTERS");
++        cached = (value != NULL && value[0] != '\0' && value[0] != '0') ? 1 : 0;
++    }
++    if (cached == 0)
++    {
++        return NO;
++    }
++    name = sel_getName(selector);
++    if (name == NULL || strncmp(name, "set", 3) != 0 || name[3] < 'A' || name[3] > 'Z')
++    {
++        return NO;
++    }
++    length = strlen(name);
++    if (length < 5 || name[length - 1] != ':')
++    {
++        return NO;
++    }
++    return strchr(name, ':') == name + length - 1;
++}
++
+ struct objc_sendv_margs {
+     uintptr_t a[4];
+     uintptr_t stackArgs[];
+@@ -94,6 +138,13 @@
+ 
+     NSMethodSignature *signature = [target methodSignatureForSelector:_cmd];
+ 
++    if (signature == nil && _CiderSwallowSetter(_cmd))
++    {
++        fprintf(stderr, "cider: SWALLOWED -[%s %s]\n", className, sel_getName(_cmd));
++        fflush(stderr);
++        return target;
++    }
++
+     if (signature == nil)
+     {
+         // DONT EVEN THINK ABOUT REMOVING/HACKING AROUND THIS!
