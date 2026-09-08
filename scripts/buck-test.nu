@@ -392,6 +392,20 @@ def main [flag?: string] {
         say (indent7 ($pinpatch.stdout + $pinpatch.stderr | str substring 0..2000))
     }
 
+    # A BUNDLED PIN'S PATCH SERIES MUST STILL REPRODUCE ITS TREE. cocotron is checked into git
+    # and copied into vendor/src, which is not tracked, and nothing applies vendor/patches/cocotron,
+    # so that directory is the ONLY record of every cocotron change. A record nobody replays rots:
+    # when this was written three patches were already in the pin, three applied in part, and the
+    # byte order guard from #212 had landed in the WRONG ONE of two near identical functions.
+    say "== the bundled pin patch record (no nix either) =="
+    let pinrecord = (do -i { ^nu ./scripts/checks/buck-bundled-patch-record-check.nu } | complete)
+    if $pinrecord.exit_code == 0 {
+        ok "every bundled pin's patch series reproduces its materialised tree"
+    } else {
+        bad $"bundled patch record check FAILED, exit ($pinrecord.exit_code), see the output below"
+        say (indent7 ($pinrecord.stdout + $pinrecord.stderr | str substring 0..2000))
+    }
+
     # THE PIN TREES ON DISK, checked against the manifest rather than against the script that
     # put them there. buck-src.nu once reported "already materialized" about a tree that was
     # still the PREVIOUS revision, which would have made a bisect build compile the old code
