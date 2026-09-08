@@ -106,10 +106,16 @@ static int cider_spy_dump_class(int i)
 
 /* THE RECEIVER IS HALF THE ANSWER. Three IAEditorViewControllers answering three different
  * documents are indistinguishable without it, and correlating which controller holds which document
- * is the whole question in #194. */
+ * is the whole question in #194.
+ *
+ * ITS REAL CLASS IS THE OTHER HALF. Printing only the WATCHED name hid whether a receiver is a
+ * NSKVONotifying_ subclass, which is the difference between "nothing observes this object" and
+ * "something observes it and our notification never arrived". #194 had to leave that open. */
 static void cider_spy_say(struct CiderSpyEntry *e, id self, const char *text)
 {
-	fprintf(stderr, "CIDER_SPY %p %s.%s -> %s\n", self, e->cls, e->sel, text);
+	const char *actual = self != nil ? object_getClassName(self) : "(nil)";
+
+	fprintf(stderr, "CIDER_SPY %p(%s) %s.%s -> %s\n", self, actual, e->cls, e->sel, text);
 	fflush(stderr);
 }
 
