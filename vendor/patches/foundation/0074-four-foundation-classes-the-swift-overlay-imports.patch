@@ -1,0 +1,614 @@
+Four Foundation classes the Swift overlay imports and Foundation never defined.
+
+libswiftFoundation loads in every Swift application and lists 54 ObjC classes as undefined imports.
+Fifty of them Foundation defines. These four it did not, measured with llvm-nm against the built
+framework and with NSDateInterval and NSMeasurement as the control, both of which come back
+defined by the same command:
+
+  NSPersonNameComponents          0
+  NSOrderedCollectionChange       0
+  NSOrderedCollectionDifference   0
+  NSURLSessionWebSocketMessage    0
+  NSDateInterval                  1      <- control
+  NSMeasurement                   1      <- control
+
+They are written out rather than stubbed. All four are plain value objects with no behaviour to
+guess at, and a stub whose accessors answer nil is a WRONG answer rather than a missing one, which
+is harder to find later.
+
+NSOrderedCollectionDifference keeps removals and insertions concatenated in that order, because
+that is the order the changes must be APPLIED in and so the order fast enumeration must yield.
+
+A HEADER IS NOT REACHABLE JUST BY EXISTING. Foundation's own include directory is globbed, but a
+<Foundation/...> include resolves through buck/generated/sdk_framework_buck_src.bzl, an EXPLICIT
+generated map. Without an entry there the compile fails with "file not found" for a header sitting
+in the right directory, and adding the imports to Foundation.h would have broken every consumer.
+The generator, cider-sdk-header-roots --framework-roots, reads src/darwin/framework-include, which
+is NOT present in a materialised working copy, so the four entries are added by hand.
+scripts/checks/buck-pin-paths-check.nu validates that every mapped path exists and reports
+sdk_paths 3578 paths, 0 missing.
+
+--- /dev/null
++++ b/src/NSOrderedCollectionChange.m
+@@ -0,0 +1,97 @@
++/*
++ This file is part of Darling.
++
++ Copyright (C) 2026 Darling developers
++
++ Darling is free software: you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation, either version 3 of the License, or
++ (at your option) any later version.
++
++ Darling is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++
++ You should have received a copy of the GNU General Public License
++ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++#import <Foundation/NSOrderedCollectionChange.h>
++#import <Foundation/NSObjCRuntime.h>
++
++@implementation NSOrderedCollectionChange {
++	id _object;
++	NSCollectionChangeType _changeType;
++	NSUInteger _index;
++	NSUInteger _associatedIndex;
++}
++
+++ (instancetype)changeWithObject:(id)anObject
++                            type:(NSCollectionChangeType)type
++                           index:(NSUInteger)index
++{
++	return [[[self alloc] initWithObject:anObject type:type index:index] autorelease];
++}
++
+++ (instancetype)changeWithObject:(id)anObject
++                            type:(NSCollectionChangeType)type
++                           index:(NSUInteger)index
++                 associatedIndex:(NSUInteger)associatedIndex
++{
++	return [[[self alloc] initWithObject:anObject
++	                                type:type
++	                               index:index
++	                     associatedIndex:associatedIndex] autorelease];
++}
++
++- (instancetype)initWithObject:(id)anObject
++                          type:(NSCollectionChangeType)type
++                         index:(NSUInteger)index
++{
++	return [self initWithObject:anObject type:type index:index associatedIndex:NSNotFound];
++}
++
++- (instancetype)initWithObject:(id)anObject
++                          type:(NSCollectionChangeType)type
++                         index:(NSUInteger)index
++               associatedIndex:(NSUInteger)associatedIndex
++{
++	self = [super init];
++	if (self == nil)
++		return nil;
++
++	_object = [anObject retain];
++	_changeType = type;
++	_index = index;
++	_associatedIndex = associatedIndex;
++	return self;
++}
++
++- (void)dealloc
++{
++	[_object release];
++	[super dealloc];
++}
++
++- (id)object
++{
++	return _object;
++}
++
++- (NSCollectionChangeType)changeType
++{
++	return _changeType;
++}
++
++- (NSUInteger)index
++{
++	return _index;
++}
++
++- (NSUInteger)associatedIndex
++{
++	return _associatedIndex;
++}
++
++@end
+--- /dev/null
++++ b/src/NSOrderedCollectionDifference.m
+@@ -0,0 +1,115 @@
++/*
++ This file is part of Darling.
++
++ Copyright (C) 2026 Darling developers
++
++ Darling is free software: you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation, either version 3 of the License, or
++ (at your option) any later version.
++
++ Darling is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++
++ You should have received a copy of the GNU General Public License
++ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++#import <Foundation/NSOrderedCollectionDifference.h>
++#import <Foundation/NSArray.h>
++#import <Foundation/NSIndexSet.h>
++
++@implementation NSOrderedCollectionDifference {
++	NSArray *_insertions;
++	NSArray *_removals;
++	/* Removals first, then insertions, which is the order the changes must be APPLIED in and so
++	 * the order fast enumeration yields. Kept whole rather than concatenated on demand so an
++	 * enumeration does not allocate. */
++	NSArray *_all;
++}
++
++- (instancetype)initWithChanges:(NSArray *)changes
++{
++	self = [super init];
++	if (self == nil)
++		return nil;
++
++	NSMutableArray *insertions = [[NSMutableArray alloc] init];
++	NSMutableArray *removals = [[NSMutableArray alloc] init];
++
++	for (NSOrderedCollectionChange *change in changes) {
++		if ([change changeType] == NSCollectionChangeInsert)
++			[insertions addObject:change];
++		else
++			[removals addObject:change];
++	}
++
++	_insertions = insertions;
++	_removals = removals;
++	_all = [[removals arrayByAddingObjectsFromArray:insertions] retain];
++	return self;
++}
++
++- (instancetype)initWithInsertIndexes:(NSIndexSet *)inserts
++                      insertedObjects:(NSArray *)insertedObjects
++                        removeIndexes:(NSIndexSet *)removes
++                       removedObjects:(NSArray *)removedObjects
++{
++	NSMutableArray *changes = [[NSMutableArray alloc] init];
++	__block NSUInteger slot = 0;
++
++	[removes enumerateIndexesUsingBlock:^(NSUInteger index, BOOL *stop) {
++		id object = slot < [removedObjects count] ? [removedObjects objectAtIndex:slot] : nil;
++		[changes addObject:[NSOrderedCollectionChange changeWithObject:object
++		                                                         type:NSCollectionChangeRemove
++		                                                        index:index]];
++		slot++;
++	}];
++
++	slot = 0;
++	[inserts enumerateIndexesUsingBlock:^(NSUInteger index, BOOL *stop) {
++		id object = slot < [insertedObjects count] ? [insertedObjects objectAtIndex:slot] : nil;
++		[changes addObject:[NSOrderedCollectionChange changeWithObject:object
++		                                                         type:NSCollectionChangeInsert
++		                                                        index:index]];
++		slot++;
++	}];
++
++	self = [self initWithChanges:changes];
++	[changes release];
++	return self;
++}
++
++- (void)dealloc
++{
++	[_insertions release];
++	[_removals release];
++	[_all release];
++	[super dealloc];
++}
++
++- (NSArray *)insertions
++{
++	return _insertions;
++}
++
++- (NSArray *)removals
++{
++	return _removals;
++}
++
++- (BOOL)hasChanges
++{
++	return [_all count] > 0;
++}
++
++- (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state
++                                  objects:(id *)buffer
++                                    count:(NSUInteger)len
++{
++	return [_all countByEnumeratingWithState:state objects:buffer count:len];
++}
++
++@end
+--- /dev/null
++++ b/src/NSPersonNameComponents.m
+@@ -0,0 +1,96 @@
++/*
++ This file is part of Darling.
++
++ Copyright (C) 2026 Darling developers
++
++ Darling is free software: you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation, either version 3 of the License, or
++ (at your option) any later version.
++
++ Darling is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++
++ You should have received a copy of the GNU General Public License
++ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++#import <Foundation/NSPersonNameComponents.h>
++#import <Foundation/NSCoder.h>
++#import <Foundation/NSString.h>
++
++/* A plain value object. Written out rather than stubbed because libswiftFoundation imports the
++ * CLASS, so a stub whose accessors answer nil would be a silent wrong answer rather than a
++ * missing one. */
++@implementation NSPersonNameComponents
++
++@synthesize namePrefix = _namePrefix;
++@synthesize givenName = _givenName;
++@synthesize middleName = _middleName;
++@synthesize familyName = _familyName;
++@synthesize nameSuffix = _nameSuffix;
++@synthesize nickname = _nickname;
++@synthesize phoneticRepresentation = _phoneticRepresentation;
++
+++ (BOOL)supportsSecureCoding
++{
++	return YES;
++}
++
++- (void)dealloc
++{
++	[_namePrefix release];
++	[_givenName release];
++	[_middleName release];
++	[_familyName release];
++	[_nameSuffix release];
++	[_nickname release];
++	[_phoneticRepresentation release];
++	[super dealloc];
++}
++
++- (id)copyWithZone:(NSZone *)zone
++{
++	NSPersonNameComponents *copy = [[[self class] allocWithZone:zone] init];
++
++	copy.namePrefix = _namePrefix;
++	copy.givenName = _givenName;
++	copy.middleName = _middleName;
++	copy.familyName = _familyName;
++	copy.nameSuffix = _nameSuffix;
++	copy.nickname = _nickname;
++	copy.phoneticRepresentation = _phoneticRepresentation;
++	return copy;
++}
++
++- (instancetype)initWithCoder:(NSCoder *)coder
++{
++	self = [super init];
++	if (self == nil)
++		return nil;
++
++	_namePrefix = [[coder decodeObjectOfClass:[NSString class] forKey:@"NS.namePrefix"] copy];
++	_givenName = [[coder decodeObjectOfClass:[NSString class] forKey:@"NS.givenName"] copy];
++	_middleName = [[coder decodeObjectOfClass:[NSString class] forKey:@"NS.middleName"] copy];
++	_familyName = [[coder decodeObjectOfClass:[NSString class] forKey:@"NS.familyName"] copy];
++	_nameSuffix = [[coder decodeObjectOfClass:[NSString class] forKey:@"NS.nameSuffix"] copy];
++	_nickname = [[coder decodeObjectOfClass:[NSString class] forKey:@"NS.nickname"] copy];
++	_phoneticRepresentation = [[coder decodeObjectOfClass:[NSPersonNameComponents class]
++	                                               forKey:@"NS.phonetic"] copy];
++	return self;
++}
++
++- (void)encodeWithCoder:(NSCoder *)coder
++{
++	[coder encodeObject:_namePrefix forKey:@"NS.namePrefix"];
++	[coder encodeObject:_givenName forKey:@"NS.givenName"];
++	[coder encodeObject:_middleName forKey:@"NS.middleName"];
++	[coder encodeObject:_familyName forKey:@"NS.familyName"];
++	[coder encodeObject:_nameSuffix forKey:@"NS.nameSuffix"];
++	[coder encodeObject:_nickname forKey:@"NS.nickname"];
++	[coder encodeObject:_phoneticRepresentation forKey:@"NS.phonetic"];
++}
++
++@end
+--- /dev/null
++++ b/src/NSURLSessionWebSocketMessage.m
+@@ -0,0 +1,74 @@
++/*
++ This file is part of Darling.
++
++ Copyright (C) 2026 Darling developers
++
++ Darling is free software: you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation, either version 3 of the License, or
++ (at your option) any later version.
++
++ Darling is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++
++ You should have received a copy of the GNU General Public License
++ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++#import <Foundation/NSURLSessionWebSocketMessage.h>
++#import <Foundation/NSData.h>
++#import <Foundation/NSString.h>
++
++@implementation NSURLSessionWebSocketMessage {
++	NSURLSessionWebSocketMessageType _type;
++	NSData *_data;
++	NSString *_string;
++}
++
++- (instancetype)initWithData:(NSData *)data
++{
++	self = [super init];
++	if (self == nil)
++		return nil;
++
++	_type = NSURLSessionWebSocketMessageTypeData;
++	_data = [data copy];
++	return self;
++}
++
++- (instancetype)initWithString:(NSString *)string
++{
++	self = [super init];
++	if (self == nil)
++		return nil;
++
++	_type = NSURLSessionWebSocketMessageTypeString;
++	_string = [string copy];
++	return self;
++}
++
++- (void)dealloc
++{
++	[_data release];
++	[_string release];
++	[super dealloc];
++}
++
++- (NSURLSessionWebSocketMessageType)type
++{
++	return _type;
++}
++
++- (NSData *)data
++{
++	return _data;
++}
++
++- (NSString *)string
++{
++	return _string;
++}
++
++@end
+--- /dev/null
++++ b/include/Foundation/NSOrderedCollectionChange.h
+@@ -0,0 +1,51 @@
++/*
++ This file is part of Darling.
++
++ Copyright (C) 2026 Darling developers
++
++ Darling is free software: you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation, either version 3 of the License, or
++ (at your option) any later version.
++
++ Darling is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++
++ You should have received a copy of the GNU General Public License
++ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++#import <Foundation/NSObject.h>
++
++typedef NS_ENUM(NSInteger, NSCollectionChangeType) {
++	NSCollectionChangeInsert = 0,
++	NSCollectionChangeRemove = 1,
++};
++
++@interface NSOrderedCollectionChange : NSObject
++
++@property (readonly) id object;
++@property (readonly) NSCollectionChangeType changeType;
++@property (readonly) NSUInteger index;
++/* NSNotFound means this change is not half of a move. */
++@property (readonly) NSUInteger associatedIndex;
++
+++ (instancetype)changeWithObject:(id)anObject
++                            type:(NSCollectionChangeType)type
++                           index:(NSUInteger)index;
+++ (instancetype)changeWithObject:(id)anObject
++                            type:(NSCollectionChangeType)type
++                           index:(NSUInteger)index
++                 associatedIndex:(NSUInteger)associatedIndex;
++
++- (instancetype)initWithObject:(id)anObject
++                          type:(NSCollectionChangeType)type
++                         index:(NSUInteger)index;
++- (instancetype)initWithObject:(id)anObject
++                          type:(NSCollectionChangeType)type
++                         index:(NSUInteger)index
++               associatedIndex:(NSUInteger)associatedIndex;
++
++@end
+--- /dev/null
++++ b/include/Foundation/NSOrderedCollectionDifference.h
+@@ -0,0 +1,39 @@
++/*
++ This file is part of Darling.
++
++ Copyright (C) 2026 Darling developers
++
++ Darling is free software: you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation, either version 3 of the License, or
++ (at your option) any later version.
++
++ Darling is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++
++ You should have received a copy of the GNU General Public License
++ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++#import <Foundation/NSObject.h>
++#import <Foundation/NSEnumerator.h>
++#import <Foundation/NSOrderedCollectionChange.h>
++
++@class NSArray;
++@class NSIndexSet;
++
++@interface NSOrderedCollectionDifference : NSObject <NSFastEnumeration>
++
++@property (readonly) NSArray *insertions;
++@property (readonly) NSArray *removals;
++@property (readonly) BOOL hasChanges;
++
++- (instancetype)initWithChanges:(NSArray *)changes;
++- (instancetype)initWithInsertIndexes:(NSIndexSet *)inserts
++               insertedObjects:(NSArray *)insertedObjects
++                 removeIndexes:(NSIndexSet *)removes
++                removedObjects:(NSArray *)removedObjects;
++
++@end
+--- /dev/null
++++ b/include/Foundation/NSPersonNameComponents.h
+@@ -0,0 +1,34 @@
++/*
++ This file is part of Darling.
++
++ Copyright (C) 2026 Darling developers
++
++ Darling is free software: you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation, either version 3 of the License, or
++ (at your option) any later version.
++
++ Darling is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++
++ You should have received a copy of the GNU General Public License
++ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++#import <Foundation/NSObject.h>
++
++@class NSString;
++
++@interface NSPersonNameComponents : NSObject <NSCopying, NSSecureCoding>
++
++@property (copy) NSString *namePrefix;
++@property (copy) NSString *givenName;
++@property (copy) NSString *middleName;
++@property (copy) NSString *familyName;
++@property (copy) NSString *nameSuffix;
++@property (copy) NSString *nickname;
++@property (copy) NSPersonNameComponents *phoneticRepresentation;
++
++@end
+--- /dev/null
++++ b/include/Foundation/NSURLSessionWebSocketMessage.h
+@@ -0,0 +1,41 @@
++/*
++ This file is part of Darling.
++
++ Copyright (C) 2026 Darling developers
++
++ Darling is free software: you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation, either version 3 of the License, or
++ (at your option) any later version.
++
++ Darling is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++
++ You should have received a copy of the GNU General Public License
++ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
++*/
++
++#import <Foundation/NSObject.h>
++
++@class NSData;
++@class NSString;
++
++typedef NS_ENUM(NSInteger, NSURLSessionWebSocketMessageType) {
++	NSURLSessionWebSocketMessageTypeData = 0,
++	NSURLSessionWebSocketMessageTypeString = 1,
++};
++
++/* A frame is EITHER data or string, never both: the initialiser decides the type and the other
++ * accessor answers nil for the life of the object. */
++@interface NSURLSessionWebSocketMessage : NSObject
++
++@property (readonly) NSURLSessionWebSocketMessageType type;
++@property (readonly, copy) NSData *data;
++@property (readonly, copy) NSString *string;
++
++- (instancetype)initWithData:(NSData *)data;
++- (instancetype)initWithString:(NSString *)string;
++
++@end
+--- a/include/Foundation/Foundation.h
++++ b/include/Foundation/Foundation.h
+@@ -86,6 +86,10 @@
+ #import <Foundation/NSISO8601DateFormatter.h>
+ #import <Foundation/NSScriptObjectSpecifiers.h>
+ #import <Foundation/NSDateInterval.h>
++#import <Foundation/NSOrderedCollectionChange.h>
++#import <Foundation/NSOrderedCollectionDifference.h>
++#import <Foundation/NSPersonNameComponents.h>
++#import <Foundation/NSURLSessionWebSocketMessage.h>
+ 
+ #import <Foundation/FoundationErrors.h>
+ 
