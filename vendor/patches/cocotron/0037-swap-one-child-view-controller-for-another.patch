@@ -1,0 +1,111 @@
+Implement transitionFromViewController:toViewController:options:completionHandler:, which was missing.
+
+A container swaps one screenful for another with this method, and cocotron did not have it at all.
+A missing method here is SILENT in the worst way: the selector is sent, the receiver does not
+recognise it, and an application that catches exceptions carries on with the swap simply not done.
+iA Writer catches, which is how cocotron 0031 was found.
+
+The selector IS SENT by iA Writer, not merely mentioned: it appears in __TEXT,__objc_methname,
+which is where a sent selector lives, spelled
+transitionFromViewController:toViewController:options:completionHandler:.
+
+THIS DOES NOT FIX #194, and the run says so plainly. With the method implemented and traced, the
+scenario that leaves the editor pane empty calls it ZERO times, in a run that is otherwise healthy:
+2 pointer events, 50 viewDidLoad lines and 894 CIDER_VIEW lines, so the gate is on and the
+instrument speaks. iA Writer swaps its editor some other way. The selector is in the binary because
+something else in the application uses it.
+
+It is committed anyway because the gap is real: any application that does call it was getting
+nothing, and finding that out later from a silent symptom is expensive.
+
+THE ANIMATION IS NOT PERFORMED. macOS animates the swap; the contract is that the new view ends up
+in the old one's place, inherits its frame and autoresizing mask, and the completion handler runs.
+Doing it immediately keeps that contract, and animating it is a separate question from being
+correct. NSViewControllerTransitionOptions is declared with the documented values so callers
+compile, and ignored.
+
+--- a/AppKit/include/AppKit/NSViewController.h
++++ b/AppKit/include/AppKit/NSViewController.h
+@@ -50,6 +50,18 @@
+ 
+ @end
+ 
++typedef NS_OPTIONS(NSUInteger, NSViewControllerTransitionOptions) {
++    NSViewControllerTransitionNone = 0x0,
++    NSViewControllerTransitionCrossfade = 0x1,
++    NSViewControllerTransitionSlideUp = 0x10,
++    NSViewControllerTransitionSlideDown = 0x20,
++    NSViewControllerTransitionSlideLeft = 0x40,
++    NSViewControllerTransitionSlideRight = 0x80,
++    NSViewControllerTransitionSlideForward = 0x140,
++    NSViewControllerTransitionSlideBackward = 0x180,
++    NSViewControllerTransitionAllowUserInteraction = 0x1000,
++};
++
+ @interface NSViewController (NSViewControllerContainment)
+ - (NSArray *) childViewControllers;
+ - (void) setChildViewControllers: (NSArray *) children;
+@@ -58,4 +70,8 @@
+ - (void) removeChildViewControllerAtIndex: (NSInteger) index;
+ - (NSViewController *) parentViewController;
+ - (void) removeFromParentViewController;
++- (void) transitionFromViewController: (NSViewController *) fromViewController
++                     toViewController: (NSViewController *) toViewController
++                              options: (NSViewControllerTransitionOptions) options
++                    completionHandler: (void (^)(void)) completion;
+ @end
+--- a/AppKit/NSViewController.m
++++ b/AppKit/NSViewController.m
+@@ -4,6 +4,7 @@
+ #import <AppKit/NSRaise.h>
+ #import <AppKit/NSViewController.h>
+ #import <objc/runtime.h>
++#import <stdio.h>
+ 
+ @implementation NSViewController
+ 
+@@ -397,4 +398,44 @@
+         [parent removeChildViewControllerAtIndex: (NSInteger) index];
+ }
+ 
++/*
++ * SWAPPING ONE CHILD FOR ANOTHER, which is how a container shows a different screenful.
++ *
++ * This was missing entirely, and a missing method here is silent: iA Writer sends the selector
++ * (it is in __objc_methname, so it is SENT, not merely mentioned) and CATCHES the resulting
++ * exception, so the new view controller is built and filled and simply never reaches the window.
++ * That is the shape of #194.
++ *
++ * The animation in options is not performed. macOS animates the swap; the CONTRACT is that the new
++ * view ends up in the old one's place and the handler runs, and doing it immediately keeps that
++ * contract. Animating it is a separate question from being correct.
++ */
++- (void) transitionFromViewController: (NSViewController *) fromViewController
++                     toViewController: (NSViewController *) toViewController
++                              options: (NSViewControllerTransitionOptions) options
++                    completionHandler: (void (^)(void)) completion {
++    NSView *fromView = [fromViewController view];
++    NSView *toView = [toViewController view];
++    NSView *parent = [fromView superview];
++
++    if (getenv("CIDER_TRACE_VIEWS") != NULL) {
++        fprintf(stderr,
++                "CIDER_VIEW transition from=%s(%p) to=%s(%p) options=0x%lx parent=%s(%p)\n",
++                object_getClassName(fromViewController), fromViewController,
++                object_getClassName(toViewController), toViewController,
++                (unsigned long) options, parent != nil ? object_getClassName(parent) : "(nil)",
++                parent);
++        fflush(stderr);
++    }
++
++    if (toView != fromView && parent != nil) {
++        [toView setFrame: [fromView frame]];
++        [toView setAutoresizingMask: [fromView autoresizingMask]];
++        [parent replaceSubview: fromView with: toView];
++    }
++
++    if (completion != NULL)
++        completion();
++}
++
+ @end
