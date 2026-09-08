@@ -1184,8 +1184,12 @@ def main [flag?: string] {
     # for a literal name/dylib_name pair. Duplicated data drifts, so assert each pragma list
     # and its table still agree. Without this they silently return to reading as unported the
     # moment someone adds one more.
-    check_wrap_table src/linux/native/BUCK _NATIVE 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*", "[^"]*"),$/\1/p'
-    check_wrap_table src/darwin/CoreAudio/BUCK _AUDIO 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*"),$/\1/p'
+    # THE HYPHEN IN THE CHARACTER CLASS IS LOAD BEARING. Without it wayland-client and
+    # wayland-cursor could not match, so the table read 17 names against the pragmas 19 and this
+    # reported a drift that did not exist, in every run, for as long as the Wayland backend has
+    # had stubs. The pragma side uses a permissive lib\(.*\)\.dylib and always saw them.
+    check_wrap_table src/linux/native/BUCK _NATIVE 's/^    ("\([A-Za-z0-9-]*\)", "lib[^"]*", "[^"]*"),$/\1/p'
+    check_wrap_table src/darwin/CoreAudio/BUCK _AUDIO 's/^    ("\([A-Za-z0-9-]*\)", "lib[^"]*"),$/\1/p'
 
     say "== wrapgen (the host-ELF bridge generator) =="
     # The second host tool (task #8): elf_wrapper() in buck/rules/codegen.bzl runs it over a HOST
