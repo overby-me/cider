@@ -107,6 +107,17 @@
   # vendor/src/BUCK and must be copied. A scan of vendor/pins would sweep both up and break the one
   # that works.
   bundledVendorSrcPins = [ "vendor/pins/cocotron" ];
+  # PATCHED, because a bundled pin is the one kind that does not arrive patched. pinSrc above
+  # hands back a cider-src.nix store path with vendor/patches/<name> already applied; this branch
+  # copied the raw checkout and reverted all 37 cocotron patches (#224).
+  bundledPinSrc = p: let
+    name = builtins.baseNameOf p;
+  in
+    import ./bundled-pin.nix {inherit pkgs;} {
+      inherit name;
+      pin = src + "/${p}";
+      patchDir = src + "/vendor/patches/${name}";
+    };
   # The project as Nix sees it, filtered to what the build can possibly read. BOTH
   # derivations take it whole: the graph dump and the source closure.
   #
@@ -335,9 +346,9 @@
     + lib.concatMapStrings (p: let
         name = builtins.baseNameOf p;
       in ''
-        echo "materializing vendor/src/${name} (vendored in-tree, no manifest entry)"
+        echo "materializing vendor/src/${name} (vendored in-tree, no manifest entry, patched)"
         mkdir -p vendor/src/${name}
-        cp -a --reflink=auto ${p}/. vendor/src/${name}/
+        cp -a --reflink=auto ${bundledPinSrc p}/. vendor/src/${name}/
         chmod -R u+w vendor/src/${name}
         # The same SDK farm link a fetched pin gets, pointing at the copy rather than a second one.
         rm -rf ${p}

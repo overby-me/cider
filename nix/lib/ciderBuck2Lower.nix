@@ -351,9 +351,12 @@
   bundledPins = [ "vendor/pins/cocotron" ];
   bundledStage = lib.concatMapStrings (p: let
       name = builtins.baseNameOf p;
-      store = builtins.path {
-        name = "cider-bundled-${name}";
-        path = srcRaw + "/${p}";
+      # PATCHED. This linked the raw checkout, so a nix built prefix lost all 37 cocotron
+      # patches while reporting a match (#224).
+      store = import ./bundled-pin.nix {inherit pkgs;} {
+        inherit name;
+        pin = srcRaw + "/${p}";
+        patchDir = srcRaw + "/vendor/patches/${name}";
       };
     in ''
       mkdir -p vendor/src
