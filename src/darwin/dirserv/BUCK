@@ -5,7 +5,7 @@ load("//buck/rules:files.bzl", "export_file")
 # Shell scripts, not compiled targets: they translate the macOS Directory Services
 # commands into direct /etc/passwd and /etc/group edits inside the prefix. The
 # reference installs them with install(FILES ... PERMISSIONS ...), so all this
-# package has to do is exist -- scripts/buck-exports.py fills in the export_file
+# package has to do is exist -- cider-exports fills in the export_file
 # rules that name them, and the prefix picks them up from there.
 #
 # tests/cider-smoke.nix stage 7 drives all three.

@@ -2,7 +2,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # The diskutil stub, a shell script the reference installs with
 # install(FILES ... PERMISSIONS ...). This package exists so the file can be named;
-# scripts/buck-exports.py fills in the export_file rule.
+# cider-exports fills in the export_file rule.
 #
 # tests/cider-smoke.nix stage 6 drives it.
 

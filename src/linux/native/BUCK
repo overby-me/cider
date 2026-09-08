@@ -47,7 +47,7 @@ _NATIVE = [
 # What this package produces, for the registry in gen-buck-from-ninja (deleted). That
 # registry is a text scan for a literal `name = ... dylib_name = ...` pair, and the three
 # comprehensions below write neither, so without these lines all sixteen read as UNPORTED
-# in scripts/buck-coverage.py -- which is how they sat in the missing list while being
+# in scripts/buck-coverage.nu -- which is how they sat in the missing list while being
 # built and checked by scripts/buck-test.nu. The list mirrors _NATIVE, and buck-test.nu
 # fails if the two ever disagree.
 #

@@ -98,7 +98,7 @@ cc_binary(
 # ---- Rust ports (#76). These now carry the CANONICAL names, so getuuid and elfdep are the
 # ---- Rust binaries; the C is still built as getuuid_c and elfdep_c.
 #
-# THE C IS KEPT ON PURPOSE, and it is not dead weight: scripts/buck-hosttools-parity.py diffs
+# THE C IS KEPT ON PURPOSE, and it is not dead weight: scripts/buck-hosttools-parity.nu diffs
 # the two on the same inputs, and that comparison is only re-runnable while both exist. Nothing
 # in the buck2 build consumes either tool (the one consumer, cmake/dsym.cmake, belongs to the
 # reference CMake build this port replaces), so carrying the reference costs a compile and
