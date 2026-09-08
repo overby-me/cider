@@ -60,6 +60,31 @@ def say [msg: string] { print -e $msg }
 #     directory: the parent was relocated to vendor/src. Staying in place means copying into a
 #     path with no parent, which fails with "cannot create directory: No such file or directory"
 #     and is exactly what corefoundation/submodules/swift-corelibs-foundation hit.
+# A BUNDLED PIN NEEDS ITS PATCHES TOO, and for years nothing applied them: vendor/patches/cocotron
+# is 37 patches that scripts/checks/buck-bundled-patch-record-check.nu proves are REQUIRED to get
+# from vendor/pins/cocotron to the tree we build, and both copies below took the pin verbatim. A
+# materialisation therefore reverted every cocotron fix silently, which is exactly what
+# scripts/checks/buck-pin-patch-wiring-check.nu has been reporting as an ORPHAN series.
+#
+# Same application as the manifest branch and as nix/lib/cider-src.nix: patches/<name>/*.patch with
+# patch -p1 inside the tree. The copy above is fresh, so there is nothing to reverse.
+def apply_bundled_patches [name: string, dest: string, repo_root: string] {
+  let patch_dir = ($repo_root | path join "vendor" "patches" $name)
+  if ($patch_dir | path type) != "dir" { return }
+  for p in (glob $"($patch_dir)/*.patch" | sort) {
+    print $"vendor/src:   patch ($name): ($p | path basename)"
+    ^patch -p1 --forward -s -d $dest -i $p | ignore
+  }
+  # --forward AND THE SWEEP, both because THE BUNDLED PIN IS PARTIALLY PATCHED ALREADY. Six hunks
+  # across NSApplication.m, NSLayoutManager.m and NSTypesetter_concrete.m are already present in
+  # vendor/pins/cocotron, so they come back as rejects; --forward skips them instead of forcing a
+  # second copy in, and the result is byte identical to vendor/src/cocotron either way (measured,
+  # 0 content differences). The manifest branch uses --force because its pins are freshly fetched
+  # and genuinely unpatched. scripts/checks/buck-bundled-patch-record-check.nu does exactly this
+  # pair and is the authority for bundled pins.
+  ^bash -c $"cd '($dest)' && find . -name '*.rej' -delete && find . -name '*.orig' -delete" | ignore
+}
+
 def pin_dest [sub: string, dest_root: string, repo_root: string, entries: list] {
     let parts = ($sub | split row "/")
     if ($parts | length) == ($PIN_ROOT_DEPTH + 1) {
@@ -184,6 +209,7 @@ def main [--all, ...paths: string] {
                 let base = ($f | path basename)
                 ^cp -a ($saved | path join $base) ($dest | path join $base)
             }
+            apply_bundled_patches ($sub | path basename) $dest $repo_root
             $"($assembled)\n" | save -f $stamp
         }
         # NORMALISE, the same pass the per-path branch runs at the end of every tree (see the
@@ -233,6 +259,7 @@ def main [--all, ...paths: string] {
                     ^cp -a ($saved | path join $base) ($dest | path join $base)
                 }
                 rm -rf $saved
+                apply_bundled_patches ($sub | path basename) $dest $repo_root
                 continue
             }
             say $"no submodule entry for ($sub)"
