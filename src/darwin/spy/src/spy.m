@@ -130,6 +130,18 @@ static id cider_spy_object(id self, SEL _cmd)
 	return v;
 }
 
+/* VOID IS THE COMMON CASE FOR A LIFECYCLE CALLBACK, and leaving it out made the probe refuse
+ * exactly the methods most worth watching: viewWillDisappear, viewDidAppear and the animated
+ * transition pair are all v16@0:8. It said so rather than guessing, which is the design working,
+ * but the answer is to forward it. */
+static void cider_spy_void(id self, SEL _cmd)
+{
+	struct CiderSpyEntry *e = cider_spy_find(_cmd);
+
+	cider_spy_say(e, self, "(void)");
+	((void (*)(id, SEL)) e->original)(self, _cmd);
+}
+
 static double cider_spy_double(id self, SEL _cmd)
 {
 	struct CiderSpyEntry *e = cider_spy_find(_cmd);
@@ -172,6 +184,9 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 		break;
 	case 'd': case 'f':
 		replacement = (IMP) cider_spy_double;
+		break;
+	case 'v':
+		replacement = (IMP) cider_spy_void;
 		break;
 	default:
 		fprintf(stderr, "CIDER_SPY %s.%s returns %c, which this does not forward\n",
