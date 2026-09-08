@@ -1,0 +1,40 @@
+# A probe that can be INSERTED, so a value living in an application's own ivar is readable.
+# See src/darwin/spy/src/spy.m for why no instrument of ours could answer that before.
+# buck-registry: usr/lib/cider-spy.dylib = spy_dylib
+
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+
+cc_objects(
+    name = "spy_obj",
+    srcs = ["src/spy.m"],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "spy_dylib",
+    dylib_name = "cider-spy",
+    install_name = "/usr/lib/cider-spy.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [":spy_obj"],
+    siblings = [
+        # The objc runtime, which crashtrace does not need and this does: the whole probe is
+        # class_getInstanceMethod and method_setImplementation.
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)

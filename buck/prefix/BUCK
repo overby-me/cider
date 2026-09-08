@@ -23,6 +23,9 @@ prefix_tree(
         # prefix: a guest that dies before it draws says nothing without it, which is exactly
         # what a boot failure looks like (#168).
         "libexec/cider/usr/lib/cider-crashtrace.dylib": "//src/darwin/crashtrace:crashtrace_dylib",
+        # Same reason as the crash handler: CIDER_SPY reads a value out of an application's own
+        # ivar, which needs the probe INSERTED into that application, so it has to be in the prefix.
+        "libexec/cider/usr/lib/cider-spy.dylib": "//src/darwin/spy:spy_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/bitcode_strip": "//vendor/src:bitcode_strip",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/check_dylib": "//vendor/src:check_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/checksyms": "//vendor/src:checksyms",
