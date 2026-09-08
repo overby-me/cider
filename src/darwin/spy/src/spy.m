@@ -9,9 +9,10 @@
  * This is inserted with DYLD_INSERT_LIBRARIES and swizzles NAMED METHODS to log what they return.
  * That covers accessors, which is what a question of this shape almost always is.
  *
- *   CIDER_SPY=Class.selector,Class.setSelector:
+ *   CIDER_SPY=Class.selector,Class.setSelector:,Class.setThis:andThat:
  *
- * ZERO OR ONE ARGUMENT, and the one argument must be an integer or an object with a void return.
+ * ZERO, ONE OR TWO ARGUMENTS, each an integer or an object. A single argument forwards any of the
+ * int, object and void returns; two arguments forward a void return only.
  * Forwarding an arbitrary signature safely means unpacking every argument by type encoding, and a
  * probe that can crash the thing it is measuring is worse than no probe, so anything else is
  * refused out loud rather than half handled.
@@ -48,8 +49,10 @@ struct CiderSpyEntry {
 	SEL selector;
 	IMP original;
 	char ret;
-	/* 0 for a zero argument selector, else the encoding of the single argument. */
+	/* 0 where there is no such argument, else its encoding. arg2 is only ever set for a two
+	 * argument selector, which is forwarded for a void return only. */
 	char arg;
+	char arg2;
 	int installed;
 };
 
@@ -64,7 +67,7 @@ static int cider_spy_count;
  * no way to learn the selector names from the file. The RUNTIME still knows them, and this is the
  * only place with a runtime inside that process.
  *
- * Methods CIDER_SPY can forward are marked, which is zero or one colon.
+ * Methods CIDER_SPY can forward are marked, which is up to two colons.
  */
 static char cider_spy_dump_names[CIDER_SPY_MAX][128];
 static int cider_spy_dump_done[CIDER_SPY_MAX];
@@ -85,8 +88,12 @@ static int cider_spy_dump_class(int i)
 		const char *name = sel_getName(method_getName(methods[m]));
 		const char *types = method_getTypeEncoding(methods[m]);
 
-		const char *first = strchr(name, ':');
-		int watchable = first == NULL || first == name + strlen(name) - 1;
+		size_t n = strlen(name);
+		int colons = 0, watchable;
+
+		for (size_t c = 0; c < n; c++)
+			if (name[c] == ':') colons++;
+		watchable = colons <= 2 && (colons == 0 || name[n - 1] == ':');
 
 		fprintf(stderr, "CIDER_SPY_DUMP   %s %-52s %s\n",
 		        watchable ? "watchable" : "         ", name, types ?: "?");
@@ -164,16 +171,20 @@ static double cider_spy_double(id self, SEL _cmd)
 	return v;
 }
 
-/*
- * ONE ARGUMENT, VOID RETURN, and only where the argument is an integer or an object.
- *
- * This started as zero argument only, on the grounds that unpacking an arbitrary signature is how a
- * probe crashes what it measures. That is still true, and everything else is still refused out
- * loud. But the restriction hid the very call #194 needed: the getter
- * -presentedViewControllerIndex is watchable and answers 0, while the method that actually SWITCHES,
- * -presentViewControllerAtIndex:, has a colon and so was never seen. Watching only the getter
- * cannot tell "asked and answered 0" from "never asked to change".
- */
+/* 1 integer family, 0 object, -1 anything this cannot unpack safely. */
+static int cider_spy_is_int(char encoding)
+{
+	switch (encoding) {
+	case 'c': case 'C': case 'B': case 's': case 'S':
+	case 'i': case 'I': case 'l': case 'L': case 'q': case 'Q':
+		return 1;
+	case '@': case '#':
+		return 0;
+	default:
+		return -1;
+	}
+}
+
 static void cider_spy_arg_int(char *out, size_t n, long long a)
 {
 	snprintf(out, n, "arg=%lld", a);
@@ -203,6 +214,29 @@ CIDER_SPY_ONE(cider_spy_object_int, id, long long, cider_spy_arg_int, "%s",
               v ? object_getClassName(v) : "(nil)")
 CIDER_SPY_ONE(cider_spy_object_object, id, id, cider_spy_arg_object, "%s",
               v ? object_getClassName(v) : "(nil)")
+
+/*
+ * TWO ARGUMENTS, VOID RETURN. -[IAEditorViewController setText:annotations:] is the ONE call that
+ * decides whether an editor gets the document's text, and with one argument only it was refused by
+ * name, so #194 could see that three editors were told the document changed and still not see which
+ * of them was given any text.
+ */
+#define CIDER_SPY_TWO(name, t1, t2, f1, f2)                                                     \
+	static void name(id self, SEL _cmd, t1 a, t2 b)                                             \
+	{                                                                                           \
+		struct CiderSpyEntry *e = cider_spy_find(_cmd);                                         \
+		char one[256], two[256], text[600];                                                     \
+		f1(one, sizeof(one), a);                                                                \
+		f2(two, sizeof(two), b);                                                                \
+		snprintf(text, sizeof(text), "(void) %s, %s", one, two);                                \
+		cider_spy_say(e, self, text);                                                           \
+		((void (*)(id, SEL, t1, t2)) e->original)(self, _cmd, a, b);                            \
+	}
+
+CIDER_SPY_TWO(cider_spy_void_oo, id, id, cider_spy_arg_object, cider_spy_arg_object)
+CIDER_SPY_TWO(cider_spy_void_oi, id, long long, cider_spy_arg_object, cider_spy_arg_int)
+CIDER_SPY_TWO(cider_spy_void_io, long long, id, cider_spy_arg_int, cider_spy_arg_object)
+CIDER_SPY_TWO(cider_spy_void_ii, long long, long long, cider_spy_arg_int, cider_spy_arg_int)
 
 /* Void needs its own pair: the macro declares a return value, and it also logs BEFORE the call so a
  * setter that never returns still shows the argument it was given. */
@@ -251,25 +285,50 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 	/* The runtime is the authority on the argument type, not the selector spelling. Argument 2 is
 	 * the first real one, after self and _cmd. */
 	e->arg = 0;
+	e->arg2 = 0;
 	if (strchr(e->sel, ':') != NULL) {
 		char encoding[64] = "";
+
 		method_getArgumentType(m, 2, encoding, sizeof(encoding));
 		e->arg = encoding[0];
+		if (method_getNumberOfArguments(m) > 3) {
+			encoding[0] = (char) 0;
+			method_getArgumentType(m, 3, encoding, sizeof(encoding));
+			e->arg2 = encoding[0];
+		}
+	}
+
+	if (e->arg2 != 0) {
+		int i1 = cider_spy_is_int(e->arg), i2 = cider_spy_is_int(e->arg2);
+		IMP two;
+
+		if (e->ret != 'v') {
+			fprintf(stderr, "CIDER_SPY %s.%s takes two arguments and returns %c; only void is "
+			        "forwarded for those\n", e->cls, e->sel, e->ret);
+			fflush(stderr);
+			return 1;
+		}
+		if (i1 < 0 || i2 < 0) {
+			fprintf(stderr, "CIDER_SPY %s.%s takes %c and %c, which this does not forward\n",
+			        e->cls, e->sel, e->arg, e->arg2);
+			fflush(stderr);
+			return 1;
+		}
+		two = i1 ? (i2 ? (IMP) cider_spy_void_ii : (IMP) cider_spy_void_io)
+		         : (i2 ? (IMP) cider_spy_void_oi : (IMP) cider_spy_void_oo);
+		method_setImplementation(m, two);
+		e->installed = 1;
+		fprintf(stderr, "CIDER_SPY armed on %s.%s taking %c and %c returning v\n",
+		        e->cls, e->sel, e->arg, e->arg2);
+		fflush(stderr);
+		return 1;
 	}
 
 	if (e->arg != 0) {
-		int intarg;
+		int intarg = cider_spy_is_int(e->arg);
 		IMP one;
 
-		switch (e->arg) {
-		case 'c': case 'C': case 'B': case 's': case 'S':
-		case 'i': case 'I': case 'l': case 'L': case 'q': case 'Q':
-			intarg = 1;
-			break;
-		case '@': case '#':
-			intarg = 0;
-			break;
-		default:
+		if (intarg < 0) {
 			fprintf(stderr, "CIDER_SPY %s.%s takes %c, which this does not forward\n",
 			        e->cls, e->sel, e->arg);
 			fflush(stderr);
@@ -402,15 +461,18 @@ static void cider_spy_start(void)
 		size_t len = comma ? (size_t) (comma - p) : strlen(p);
 		const char *dot = memchr(p, '.', len);
 
-		const char *colon = dot ? memchr(dot, ':', len - (size_t) (dot - p)) : NULL;
+		int colons = 0;
+
+		for (size_t i = dot ? (size_t) (dot - p) : 0; i < len; i++)
+			if (p[i] == ':') colons++;
 
 		if (dot == NULL) {
 			fprintf(stderr, "CIDER_SPY ignoring %.*s, expected Class.selector\n", (int) len, p);
-		} else if (colon != NULL && colon != p + len - 1) {
-			/* One argument at most, so exactly one colon and it must END the selector. Two would
+		} else if (colons > 2 || (colons > 0 && p[len - 1] != ':')) {
+			/* Two arguments at most, and a selector taking any must END with a colon. More would
 			 * mean unpacking a signature this cannot see the shape of. */
-			fprintf(stderr, "CIDER_SPY refusing %.*s: zero or ONE argument selectors only\n",
-			        (int) len, p);
+			fprintf(stderr, "CIDER_SPY refusing %.*s: at most TWO arguments, and the selector must "
+			        "end with a colon\n", (int) len, p);
 		} else {
 			struct CiderSpyEntry *e = &cider_spy_entries[cider_spy_count++];
 			size_t clslen = (size_t) (dot - p);
