@@ -417,35 +417,97 @@ fn setup_prefix(ctx: &Ctx) {
     }
     ensure_prefix_dirs(ctx);
     let (name, uid, gid) = get_user_info(ctx.orig_uid);
-    write_prefix_file(
+    // ADD TO THE SHIPPED DATABASES, do not replace them. src/darwin/etc ships
+    // /etc/{passwd,master.passwd,group} carrying the SERVICE ACCOUNTS launchd jobs name as UserName.
+    // Overwriting them left only root, so getpwnam failed and launchd's child exited ESRCH BEFORE
+    // exec: com.apple.trustd never ran, trust evaluations blocked forever, and because the child
+    // died before StandardErrorPath existed, nothing anywhere said "unknown user".
+    add_db_entry(
         ctx,
         "/private/etc/passwd",
-        &format!(
-            "root:*:0:0:System Administrator:/var/root:/bin/sh\n\
-             {name}:*:{uid}:{gid}:Darling User:/Users/{name}:/bin/bash\n"
-        ),
+        &name,
+        uid,
+        &format!("{name}:*:{uid}:{gid}:Darling User:/Users/{name}:/bin/bash\n"),
     );
-    write_prefix_file(
+    add_db_entry(
         ctx,
         "/private/etc/master.passwd",
-        &format!(
-            "root:*:0:0::0:0:System Administrator:/var/root:/bin/sh\n\
-             {name}:*:{uid}:{gid}::0:0:Darling User:/Users/{name}:/bin/bash\n"
-        ),
+        &name,
+        uid,
+        &format!("{name}:*:{uid}:{gid}::0:0:Darling User:/Users/{name}:/bin/bash\n"),
     );
-    write_prefix_file(
+    add_db_entry(
         ctx,
         "/private/etc/group",
-        &format!("wheel:*:0:root,{name}\n{name}:*:{gid}:{name}\n"),
+        &name,
+        gid,
+        &format!("{name}:*:{gid}:{name}\n"),
     );
+    add_wheel_member(ctx, &name);
     unsafe {
         libc::seteuid(0);
         libc::setegid(0);
     }
 }
 
-fn write_prefix_file(ctx: &Ctx, rel: &str, content: &str) {
-    let _ = std::fs::write(format!("{}{}", ctx.prefix, rel), content);
+/// The read-only tree the container overlays, which is where the shipped /etc files live.
+fn guest_root() -> String {
+    match std::env::var("DSERVER_LIBEXEC_PATH") {
+        Ok(p) if !p.is_empty() => p,
+        _ => format!("{INSTALL_PREFIX}/libexec/cider"),
+    }
+}
+
+/// The prefix copy if the container already has one, else what the read-only tree ships.
+fn read_db(ctx: &Ctx, rel: &str) -> String {
+    std::fs::read_to_string(format!("{}{}", ctx.prefix, rel))
+        .or_else(|_| std::fs::read_to_string(format!("{}{}", guest_root(), rel)))
+        .unwrap_or_default()
+}
+
+/// Field 2 is the uid in both passwd formats and the gid in group, so one id check covers all
+/// three: rootless runs are uid 0, which the shipped root entry already is, and a second entry with
+/// the same number would shadow it depending on which the resolver happened to read first.
+fn add_db_entry(ctx: &Ctx, rel: &str, name: &str, id: u32, entry: &str) {
+    let mut db = read_db(ctx, rel);
+    let taken = db.lines().any(|l| {
+        let f: Vec<&str> = l.split(':').collect();
+        f.first() == Some(&name) || f.get(2).and_then(|v| v.parse::<u32>().ok()) == Some(id)
+    });
+    if taken {
+        return;
+    }
+    if !db.is_empty() && !db.ends_with('\n') {
+        db.push('\n');
+    }
+    db.push_str(entry);
+    let _ = std::fs::write(format!("{}{}", ctx.prefix, rel), db);
+}
+
+/// Rootless runs are already uid 0 and land in wheel; a setuid-root run is not, and used to be put
+/// there by the group file this function no longer overwrites.
+fn add_wheel_member(ctx: &Ctx, name: &str) {
+    let db = read_db(ctx, "/private/etc/group");
+    let mut out = String::with_capacity(db.len() + name.len() + 1);
+    let mut changed = false;
+    for line in db.lines() {
+        let f: Vec<&str> = line.splitn(4, ':').collect();
+        if f.len() == 4 && f[0] == "wheel" && !f[3].split(',').any(|m| m == name) {
+            let members = if f[3].is_empty() {
+                name.to_string()
+            } else {
+                format!("{},{name}", f[3])
+            };
+            out.push_str(&format!("{}:{}:{}:{members}", f[0], f[1], f[2]));
+            changed = true;
+        } else {
+            out.push_str(line);
+        }
+        out.push('\n');
+    }
+    if changed {
+        let _ = std::fs::write(format!("{}/private/etc/group", ctx.prefix), out);
+    }
 }
 
 fn get_user_info(uid: u32) -> (String, u32, u32) {
