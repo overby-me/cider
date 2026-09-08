@@ -983,16 +983,19 @@ fn create_surface(st: &mut WindowState) -> bool {
          * AND A TITLED WINDOW WITH NO MINIMISE BUTTON IS A DIALOG, which catches the ones an
          * application builds itself rather than through NSPanel.
          *
-         * The rule used to be "cannot be resized", and that was too narrow. It caught the save
-         * prompt, style 0x3, titled and closable and nothing else. It did NOT catch the Options
-         * window, style 0xb, which is titled, closable and RESIZABLE but has no minimise button:
-         * a tiling compositor gave that one half the screen, LibreOffice would not lay its 967 wide
-         * content out into a 628 wide tile, and the right third of the dialog was simply off the
-         * edge with its buttons on it.
+         * The rule used to be "cannot be resized", and that was too narrow. It did NOT catch the
+         * Options window, style 0xb, which is titled, closable and RESIZABLE but has no minimise
+         * button: a tiling compositor gave that one half the screen, LibreOffice would not lay its
+         * 967 wide content out into a 628 wide tile, and the right third of the dialog was simply
+         * off the edge with its buttons on it.
          *
          * MINIATURIZABLE IS THE SIGNAL because it is the one macOS itself uses. A document window
          * is 0xf and has all four bits; a dialog never has a minimise button, whatever else it has.
-         * Being unresizable is a special case of that, so the save prompt is still caught.
+         * Being unresizable is a special case of that, so those dialogs are still caught.
+         *
+         * A STYLE DOES NOT NAME A DIALOG. 0x3 is titled and closable and nothing more, and every
+         * LibreOffice dialog is a SalFrameWindow, so only the window's own title separates them.
+         * Calling 0x3 the save prompt here sent #209 looking for the wrong window for a week.
          */
         let miniaturizable = st.style_mask & 0x4 != 0;
         let dialog = st.style_mask & 0x1 != 0 && !miniaturizable;

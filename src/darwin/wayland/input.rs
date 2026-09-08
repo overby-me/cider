@@ -178,6 +178,9 @@ struct InputState {
     xkb_state: *mut XkbState,
     /// The last key pressed, to recognise auto repeat the way the X11 backend does.
     last_key: u32,
+    /// Which surface each held key was delivered to. A wl_keyboard.key event carries no surface,
+    /// so a release lands wherever focus is NOW, and focus can move while a key is down.
+    key_targets: Vec<(u32, *mut wl::WlSurface)>,
 }
 
 unsafe impl Send for InputState {}
@@ -199,6 +202,7 @@ static INPUT: std::sync::Mutex<InputState> = std::sync::Mutex::new(InputState {
     xkb_keymap: std::ptr::null_mut(),
     xkb_state: std::ptr::null_mut(),
     last_key: 0,
+    key_targets: Vec::new(),
 });
 
 fn tracing() -> bool {
@@ -249,6 +253,8 @@ extern "C" fn on_seat_capabilities(_data: *mut c_void, seat: *mut wl::WlSeat, ca
             wl::cider_wl_keyboard_release(st.keyboard);
             st.keyboard = std::ptr::null_mut();
             st.keyboard_focus = std::ptr::null_mut();
+            // No keyboard means no release is coming for anything still held.
+            st.key_targets.clear();
             println!("cider-wayland-input keyboard=released");
         }
         if want_pointer && st.pointer.is_null() {
@@ -749,6 +755,24 @@ extern "C" fn on_keyboard_key(
         };
         let repeat = pressed && st.last_key == key;
         st.last_key = if pressed { key } else { 0 };
+        /*
+         * A RELEASE BELONGS TO THE WINDOW THAT TOOK THE PRESS, which AppKit guarantees and Wayland
+         * does not: wl_keyboard.key has no surface, so it resolves against whatever has focus when
+         * it arrives. Measured on the #209 path: LibreOffice tears the Tip of the Day toplevel down
+         * on the space that dismisses it, so the press went to the dialog and the release to the
+         * document window behind it, which had never seen the key go down.
+         */
+        let focus = st.keyboard_focus;
+        let target = if pressed {
+            st.key_targets.retain(|&(held, _)| held != key);
+            st.key_targets.push((key, focus));
+            focus
+        } else {
+            match st.key_targets.iter().position(|&(held, _)| held == key) {
+                Some(i) => st.key_targets.swap_remove(i).1,
+                None => focus,
+            }
+        };
         // THE KEYSYM, which is what the layout resolved this key to. The physical code alone
         // cannot say what the key means on anything but a US keyboard.
         let keysym = if st.xkb_state.is_null() {
@@ -756,7 +780,7 @@ extern "C" fn on_keyboard_key(
         } else {
             unsafe { xkb_state_key_get_one_sym(st.xkb_state, keycode) }
         };
-        (st.keyboard_focus, st.modifiers, text, repeat, keysym)
+        (target, st.modifiers, text, repeat, keysym)
     };
 
     /*
@@ -779,9 +803,20 @@ extern "C" fn on_keyboard_key(
         }
     };
 
-    // A key with no window is not an error: the compositor can deliver one between a focus change
-    // and the surface being registered. Dropping it is right; crashing on it is not.
-    let number = window::window_for_surface(surface).map(|(_, _, _, n)| n).unwrap_or(0);
+    let number = match window::window_for_surface(surface) {
+        Some((_, _, _, n)) => n,
+        // A key with no window is not an error: the compositor can deliver one between a focus
+        // change and the surface being registered. Dropping it is right; crashing on it is not.
+        None if pressed => 0,
+        // But a release whose window has gone must be DROPPED rather than redirected, or the
+        // window that inherited focus gets a keyUp for a key it never saw go down.
+        None => {
+            if tracing() {
+                println!("cider-wayland-input key={key} release=dropped reason=window-gone");
+            }
+            return;
+        }
+    };
     if tracing() {
         println!(
             "cider-wayland-input key={key} keysym={keysym:#x} carbon={carbon} pressed={pressed} window={number} text={:?}",
