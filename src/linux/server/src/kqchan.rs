@@ -139,7 +139,24 @@ impl ProcKqchan {
             eprintln!("CIDER_PROCKQ pidfd_open FAILED for nsid={target_nsid} host pid={target_host_pid}: {e} \
                        -- this process's death will never be reported");
         } else {
-            eprintln!("CIDER_PROCKQ watching nsid={target_nsid} host pid={target_host_pid} pidfd={pidfd}");
+            /*
+             * NAME THE PROCESS, do not just number it. Two internal tables agreeing about a pid
+             * says nothing about whether it is the process the guest meant; /proc does. A watch
+             * armed on a pid whose comm is not the daemon, or which is already GONE, is the whole
+             * of #143, and neither shows up as an error anywhere.
+             */
+            /* comm is "mldr" for EVERY guest process, so it separates nothing. The cmdline is
+             * mldr!<guest path>, and that is the daemon's name. */
+            let comm = std::fs::read(format!("/proc/{target_host_pid}/cmdline"))
+                .map(|b| {
+                    let s = String::from_utf8_lossy(&b).replace('\0', " ");
+                    match s.split_once("mldr!") {
+                        Some((_, rest)) => rest.split_whitespace().next().unwrap_or("?").to_string(),
+                        None => s.split_whitespace().next().unwrap_or("?").to_string(),
+                    }
+                })
+                .unwrap_or_else(|_| "GONE".to_string());
+            eprintln!("CIDER_PROCKQ watching nsid={target_nsid} host pid={target_host_pid}                        comm={comm} pidfd={pidfd}");
         }
         Ok((
             ProcKqchan {

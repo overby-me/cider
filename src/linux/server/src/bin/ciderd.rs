@@ -111,6 +111,18 @@ fn deferred_reply(number: u32, code: c_int, retval: Option<u32>) -> Vec<u8> {
 /// here): when a call blocks via a continuation, thread_syscall_return setcontexts to the
 /// loop top and THIS frame is abandoned (its Message leaks -- rare, acceptable) without
 /// corrupting the loop frame it returns into.
+/// CIDER_HOSTPID: print the captured and the per-message host pid for the first calls, so the
+/// comparison in #143 has a control instead of an absence.
+fn hostpid_trace() -> bool {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    static PRINTED: AtomicUsize = AtomicUsize::new(0);
+    if !*ON.get_or_init(|| std::env::var_os("CIDER_HOSTPID").is_some()) {
+        return false;
+    }
+    PRINTED.fetch_add(1, Ordering::Relaxed) < 60
+}
+
 unsafe fn process_one_call(mb: &Rc<RefCell<Mailbox>>, handler_ptr: *mut Handler, host_pid: c_int) -> bool {
     loop {
         let ready = {
@@ -138,6 +150,34 @@ unsafe fn process_one_call(mb: &Rc<RefCell<Mailbox>>, handler_ptr: *mut Handler,
     }
     let call = mb.borrow_mut().pending.take().unwrap();
     let ch = call.header().unwrap();
+    /*
+     * WHICH HOST PID THE HANDLER IS TOLD, and it is NOT the one on this message.
+     *
+     * host_pid here is CAPTURED BY MOVE when the microthread is created and then reused for every
+     * later call on that guest thread, while the serve loop calls reg.set_host_pid with the fresh
+     * SO_PASSCRED pid of each message. That is the shape #143 has been chasing: the Handler's
+     * procs[nsid].host_pid and the Registry's host_pids[nsid] "differ FROM THE START" and the
+     * re-arm added for drift fired zero times, because set_current is handed the same stale value
+     * every time and never sees a change.
+     *
+     * kqchan_proc_open pidfd_opens the HANDLER's field, so a stale one watches the wrong process,
+     * NOTE_EXIT never fires, job_reap never runs, and launchd cannot demand-start the job again.
+     *
+     * PRINTING BEFORE CHANGING ANYTHING: this passes the captured value exactly as before.
+     */
+    let msg_host_pid = call.host_pid.unwrap_or(host_pid);
+    /*
+     * WITH CIDER_HOSTPID SET IT PRINTS EVERY CALL, bounded, rather than only the disagreements.
+     * A trace that prints only on a difference is silent both when there is none and when the
+     * value it compares is None for structural reasons, and those are opposite answers.
+     */
+    if msg_host_pid != host_pid || hostpid_trace() {
+        eprintln!(
+            "CIDER_HOSTPID captured={host_pid} message={} nsid={} tid={} call=#{}",
+            call.host_pid.map(|p| p.to_string()).unwrap_or_else(|| "none".to_string()),
+            ch.pid, ch.tid, ch.number & !rpc_wire::callnum::UNMANAGED_FLAG
+        );
+    }
     (*handler_ptr).set_current(ch.pid as u32, ch.tid as u64, host_pid, ch.architecture);
     // Tell the S2C layer which guest this dispatch is for, so a VM op it triggers (e.g.
     // task_allocate_pages) can send its S2C mmap to the right guest socket.
