@@ -1,0 +1,96 @@
+Dump the view tree AGAIN, and say when a view controller's view moves in the hierarchy.
+
+Two blind spots, both found while chasing why iA Writer keeps the wrong editor on screen (#194).
+
+THE TREE DUMPED ONCE PER WINDOW, on the first displayIfNeeded. A view built in response to a CLICK
+does not exist yet at that moment, so it is absent from the only tree anyone ever sees, and the
+absence reads as "no such view". CIDER_VIEW_REDUMP=<seconds> dumps again, at most that often. The
+once-per-window default is unchanged.
+
+NOTHING SAID WHEN A CONTAINER SWAPPED ONE SCREENFUL FOR ANOTHER. addSubview and removeFromSuperview
+now print for views that ARE a view controller's root view, which is the container swap and not
+every button:
+
+  CIDER_VIEW move addSubview <class>(<ptr>) controller=<class> other=<superview class>
+
+WHAT IT MEASURED. iA Writer builds THREE editor stacks. The moves, in order, are one add and one
+remove of A, then B added, then A again, then B four more times, then C added and removed, then B,
+then C, then B three more times. B is always the last one added, so B is the one in front, and B is
+the one that draws. The document goes into C. The window is not showing the editor the document was
+loaded into, and the application is choosing that, not us: _insertSubview:atIndex: handles a re-add
+correctly, removing the view from _subviews and re-appending it so it reorders to the front, and it
+detaches from a different superview first.
+
+That last point is worth keeping: addSubview is NOT the defect. It was checked because a duplicate
+subview or a missed detach would look exactly like this from the outside.
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -2724,8 +2724,29 @@
+             if (dumped[i] == self)
+                 seen = YES;
+ 
++        /* CIDER_VIEW_REDUMP=<seconds> DUMPS AGAIN. Once per window answers "did a layout run at
++         * all", and nothing more: a view built in response to a CLICK does not exist yet when that
++         * one dump is taken, so it is absent from the only tree anyone ever sees. iA Writer builds
++         * its third editor after a file row is clicked (#194). */
++        const char *redump = getenv("CIDER_VIEW_REDUMP");
++        NSTimeInterval every = (redump != NULL) ? (NSTimeInterval) atof(redump) : 0.0;
++
++        if (every > 0.0) {
++            static NSTimeInterval lastDump = 0.0;
++            NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
++
++            if (now - lastDump >= every) {
++                lastDump = now;
++                seen = NO;
++            } else {
++                seen = YES;
++            }
++        }
++
+         if (!seen && dumpedCount < 64) {
+-            dumped[dumpedCount++] = self;
++            if (every <= 0.0) {
++                dumped[dumpedCount++] = self;
++            }
+             fprintf(stderr, "CIDER_VIEW tree(displayIfNeeded) of %s title=%s\n",
+                     object_getClassName(self), [[self title] UTF8String] ?: "(none)");
+             fflush(stderr);
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -1863,7 +1863,27 @@
+         [self _ciderMarkNeedsConstraintSolve];
+ }
+ 
++
++/* A CONTROLLER'S VIEW MOVING IN THE HIERARCHY, which is how one screenful is swapped for another.
++ * Only views that ARE a view controller's root view are reported, so this is the container swap and
++ * not every button. iA Writer builds a second editor for the document it opens and the window keeps
++ * the first; nothing else in the tree says whether the new one was ever offered to a superview. */
++static void _CiderNoteControllerMove(NSView *view, const char *what, NSView *other)
++{
++    if (getenv("CIDER_TRACE_VIEWS") == NULL || getenv("CIDER_TRACE_VIEWS")[0] == (char) 0)
++        return;
++    if (view == nil || view->_ciderViewController == nil)
++        return;
++
++    fprintf(stderr, "CIDER_VIEW move %s %s(%p) controller=%s other=%s\n", what,
++            object_getClassName(view), view,
++            object_getClassName(view->_ciderViewController),
++            other != nil ? object_getClassName(other) : "(nil)");
++    fflush(stderr);
++}
++
+ - (void) addSubview: (NSView *) view {
++    _CiderNoteControllerMove(view, "addSubview", self);
+     if (view == nil) // yes, this is silently ignored
+         return;
+ 
+@@ -2270,6 +2290,7 @@
+ }
+ 
+ - (void) removeFromSuperview {
++    _CiderNoteControllerMove(self, "removeFromSuperview", _superview);
+     [_superview setNeedsDisplayInRect: [self frame]];
+     [self removeFromSuperviewWithoutNeedingDisplay];
+ }
