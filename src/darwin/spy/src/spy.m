@@ -174,12 +174,45 @@ static double cider_spy_double(id self, SEL _cmd)
  * -presentViewControllerAtIndex:, has a colon and so was never seen. Watching only the getter
  * cannot tell "asked and answered 0" from "never asked to change".
  */
+static void cider_spy_arg_int(char *out, size_t n, long long a)
+{
+	snprintf(out, n, "arg=%lld", a);
+}
+
+static void cider_spy_arg_object(char *out, size_t n, id a)
+{
+	snprintf(out, n, "arg=%p %s %s", a, a ? object_getClassName(a) : "(nil)",
+	         a ? [[a description] UTF8String] : "");
+}
+
+#define CIDER_SPY_ONE(name, rettype, argtype, fmtarg, retfmt, retexpr)                          \
+	static rettype name(id self, SEL _cmd, argtype a)                                           \
+	{                                                                                           \
+		struct CiderSpyEntry *e = cider_spy_find(_cmd);                                         \
+		char arg[256], text[512];                                                               \
+		rettype v = ((rettype (*)(id, SEL, argtype)) e->original)(self, _cmd, a);                \
+		fmtarg(arg, sizeof(arg), a);                                                            \
+		snprintf(text, sizeof(text), retfmt " %s", retexpr, arg);                               \
+		cider_spy_say(e, self, text);                                                           \
+		return v;                                                                               \
+	}
+
+CIDER_SPY_ONE(cider_spy_int_int, long long, long long, cider_spy_arg_int, "%lld", v)
+CIDER_SPY_ONE(cider_spy_int_object, long long, id, cider_spy_arg_object, "%lld", v)
+CIDER_SPY_ONE(cider_spy_object_int, id, long long, cider_spy_arg_int, "%s",
+              v ? object_getClassName(v) : "(nil)")
+CIDER_SPY_ONE(cider_spy_object_object, id, id, cider_spy_arg_object, "%s",
+              v ? object_getClassName(v) : "(nil)")
+
+/* Void needs its own pair: the macro declares a return value, and it also logs BEFORE the call so a
+ * setter that never returns still shows the argument it was given. */
 static void cider_spy_void_int(id self, SEL _cmd, long long a)
 {
 	struct CiderSpyEntry *e = cider_spy_find(_cmd);
-	char text[64];
+	char arg[256], text[512];
 
-	snprintf(text, sizeof(text), "(void) arg=%lld", a);
+	cider_spy_arg_int(arg, sizeof(arg), a);
+	snprintf(text, sizeof(text), "(void) %s", arg);
 	cider_spy_say(e, self, text);
 	((void (*)(id, SEL, long long)) e->original)(self, _cmd, a);
 }
@@ -187,9 +220,10 @@ static void cider_spy_void_int(id self, SEL _cmd, long long a)
 static void cider_spy_void_object(id self, SEL _cmd, id a)
 {
 	struct CiderSpyEntry *e = cider_spy_find(_cmd);
-	char text[256];
+	char arg[256], text[512];
 
-	snprintf(text, sizeof(text), "(void) arg=%p %s", a, a ? object_getClassName(a) : "(nil)");
+	cider_spy_arg_object(arg, sizeof(arg), a);
+	snprintf(text, sizeof(text), "(void) %s", arg);
 	cider_spy_say(e, self, text);
 	((void (*)(id, SEL, id)) e->original)(self, _cmd, a);
 }
@@ -224,14 +258,16 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 	}
 
 	if (e->arg != 0) {
+		int intarg;
 		IMP one;
+
 		switch (e->arg) {
 		case 'c': case 'C': case 'B': case 's': case 'S':
 		case 'i': case 'I': case 'l': case 'L': case 'q': case 'Q':
-			one = (IMP) cider_spy_void_int;
+			intarg = 1;
 			break;
 		case '@': case '#':
-			one = (IMP) cider_spy_void_object;
+			intarg = 0;
 			break;
 		default:
 			fprintf(stderr, "CIDER_SPY %s.%s takes %c, which this does not forward\n",
@@ -239,15 +275,29 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 			fflush(stderr);
 			return 1;
 		}
-		if (e->ret != 'v') {
-			fprintf(stderr, "CIDER_SPY %s.%s takes an argument AND returns %c; only void is "
-			        "forwarded for those\n", e->cls, e->sel, e->ret);
+
+		switch (e->ret) {
+		case 'c': case 'C': case 'B': case 's': case 'S':
+		case 'i': case 'I': case 'l': case 'L': case 'q': case 'Q':
+			one = intarg ? (IMP) cider_spy_int_int : (IMP) cider_spy_int_object;
+			break;
+		case '@': case '#':
+			one = intarg ? (IMP) cider_spy_object_int : (IMP) cider_spy_object_object;
+			break;
+		case 'v':
+			one = intarg ? (IMP) cider_spy_void_int : (IMP) cider_spy_void_object;
+			break;
+		default:
+			fprintf(stderr, "CIDER_SPY %s.%s takes an argument and returns %c, which this does "
+			        "not forward\n", e->cls, e->sel, e->ret);
 			fflush(stderr);
 			return 1;
 		}
+
 		method_setImplementation(m, one);
 		e->installed = 1;
-		fprintf(stderr, "CIDER_SPY armed on %s.%s taking %c returning v\n", e->cls, e->sel, e->arg);
+		fprintf(stderr, "CIDER_SPY armed on %s.%s taking %c returning %c\n",
+		        e->cls, e->sel, e->arg, e->ret);
 		fflush(stderr);
 		return 1;
 	}
