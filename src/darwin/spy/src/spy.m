@@ -48,9 +48,50 @@ struct CiderSpyEntry {
 static struct CiderSpyEntry cider_spy_entries[CIDER_SPY_MAX];
 static int cider_spy_count;
 
-static void cider_spy_say(struct CiderSpyEntry *e, const char *text)
+/*
+ * CIDER_SPY_DUMP=Class1,Class2 LISTS WHAT A CLASS ANSWERS TO.
+ *
+ * The class you want is often in a binary with NO ObjC symbols at all: iA Writer defines
+ * IAEditorViewController in a stripped Swift main executable, so llvm-nm finds nothing and there is
+ * no way to learn the selector names from the file. The RUNTIME still knows them, and this is the
+ * only place with a runtime inside that process.
+ *
+ * Zero argument methods are marked, because those are the ones CIDER_SPY can then watch.
+ */
+static char cider_spy_dump_names[CIDER_SPY_MAX][128];
+static int cider_spy_dump_done[CIDER_SPY_MAX];
+static int cider_spy_dump_count;
+
+static int cider_spy_dump_class(int i)
 {
-	fprintf(stderr, "CIDER_SPY %s.%s -> %s\n", e->cls, e->sel, text);
+	Class cls = objc_getClass(cider_spy_dump_names[i]);
+	unsigned int count = 0;
+	Method *methods;
+
+	if (cls == Nil) {
+		return 0;
+	}
+	methods = class_copyMethodList(cls, &count);
+	fprintf(stderr, "CIDER_SPY_DUMP %s has %u instance methods\n", cider_spy_dump_names[i], count);
+	for (unsigned int m = 0; m < count; m++) {
+		const char *name = sel_getName(method_getName(methods[m]));
+		const char *types = method_getTypeEncoding(methods[m]);
+
+		fprintf(stderr, "CIDER_SPY_DUMP   %s %-52s %s\n",
+		        strchr(name, ':') == NULL ? "watchable" : "         ", name, types ?: "?");
+	}
+	free(methods);
+	fflush(stderr);
+	cider_spy_dump_done[i] = 1;
+	return 1;
+}
+
+/* THE RECEIVER IS HALF THE ANSWER. Three IAEditorViewControllers answering three different
+ * documents are indistinguishable without it, and correlating which controller holds which document
+ * is the whole question in #194. */
+static void cider_spy_say(struct CiderSpyEntry *e, id self, const char *text)
+{
+	fprintf(stderr, "CIDER_SPY %p %s.%s -> %s\n", self, e->cls, e->sel, text);
 	fflush(stderr);
 }
 
@@ -73,7 +114,7 @@ static long long cider_spy_int(id self, SEL _cmd)
 	char text[64];
 
 	snprintf(text, sizeof(text), "%lld", v);
-	cider_spy_say(e, text);
+	cider_spy_say(e, self, text);
 	return v;
 }
 
@@ -85,7 +126,7 @@ static id cider_spy_object(id self, SEL _cmd)
 
 	snprintf(text, sizeof(text), "%s %s", v ? object_getClassName(v) : "(nil)",
 	         v ? [[v description] UTF8String] : "");
-	cider_spy_say(e, text);
+	cider_spy_say(e, self, text);
 	return v;
 }
 
@@ -96,7 +137,7 @@ static double cider_spy_double(id self, SEL _cmd)
 	char text[64];
 
 	snprintf(text, sizeof(text), "%f", v);
-	cider_spy_say(e, text);
+	cider_spy_say(e, self, text);
 	return v;
 }
 
@@ -160,6 +201,11 @@ static void *cider_spy_thread(void *unused)
 				pending = 1;
 			}
 		}
+		for (int i = 0; i < cider_spy_dump_count; i++) {
+			if (!cider_spy_dump_done[i] && !cider_spy_dump_class(i)) {
+				pending = 1;
+			}
+		}
 		if (!pending) {
 			return NULL;
 		}
@@ -172,6 +218,12 @@ static void *cider_spy_thread(void *unused)
 			        cider_spy_entries[i].cls);
 		}
 	}
+	for (int i = 0; i < cider_spy_dump_count; i++) {
+		if (!cider_spy_dump_done[i]) {
+			fprintf(stderr, "CIDER_SPY GAVE UP: class %s never appeared to dump\n",
+			        cider_spy_dump_names[i]);
+		}
+	}
 	fflush(stderr);
 	return NULL;
 }
@@ -179,9 +231,26 @@ static void *cider_spy_thread(void *unused)
 __attribute__((constructor))
 static void cider_spy_start(void)
 {
+	const char *dumpspec = getenv("CIDER_SPY_DUMP");
+
+	for (const char *p = dumpspec ?: ""; *p != '\0' && cider_spy_dump_count < CIDER_SPY_MAX; ) {
+		const char *comma = strchr(p, ',');
+		size_t len = comma ? (size_t) (comma - p) : strlen(p);
+
+		if (len >= sizeof(cider_spy_dump_names[0])) {
+			len = sizeof(cider_spy_dump_names[0]) - 1;
+		}
+		memcpy(cider_spy_dump_names[cider_spy_dump_count++], p, len);
+		if (comma == NULL) break;
+		p = comma + 1;
+	}
+
 	const char *spec = getenv("CIDER_SPY");
-	if (spec == NULL || *spec == '\0') {
+	if ((spec == NULL || *spec == '\0') && cider_spy_dump_count == 0) {
 		return;
+	}
+	if (spec == NULL) {
+		spec = "";
 	}
 
 	for (const char *p = spec; *p != '\0' && cider_spy_count < CIDER_SPY_MAX; ) {
@@ -208,7 +277,7 @@ static void cider_spy_start(void)
 		p = comma + 1;
 	}
 
-	if (cider_spy_count == 0) {
+	if (cider_spy_count == 0 && cider_spy_dump_count == 0) {
 		return;
 	}
 
