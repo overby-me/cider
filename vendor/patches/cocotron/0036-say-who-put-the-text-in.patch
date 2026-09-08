@@ -1,0 +1,64 @@
+Say WHO put the text in, not just which storage got it.
+
+CIDER_TEXTEDIT already fired on every mutation of every text storage and named the storage and the
+resulting length, which is what proved that exactly one of iA Writer's three editor storages ever
+receives the document. It could not say HOW the characters arrived, and #194 needed that: the
+application never calls -[IAEditorViewController setText:annotations:], measured with the probe
+armed as "taking @ and @ returning v" and its two neighbours firing in the same run, so the route
+could not be assumed.
+
+Two return address frames, the same pair CIDER_TRACE_FRAMES uses and for the same reason: the
+nearest caller is usually a forwarding method of ours and the interesting one is whoever called
+THAT.
+
+It answered on the first run. The 40 characters reach the editor storage through
+
+  mask=0x3 range=0+0 delta=40 len=40
+      from replaceCharactersInRangeWithAttributedString
+      <- -[NSTextStorage_concrete replaceCharactersInRange:withAttributedString:]
+  mask=0x2 range=0+40 delta=0 len=40
+      from -[IATextController parser:willStartParsingInRange:]
+      <- -[IAMarkdownLiveParser willStartInRange:]
+
+so the text is inserted normally AND iA Writer runs its own markdown live parser over it. The text
+side is working. The editor holding it is simply not the one in the window.
+
+The same trace also separates the editor storages from the one NSStringDrawer shares for menu and
+label drawing, which accounts for most of the traffic and is not a text view at all.
+
+--- a/AppKit/NSTextView.subproj/NSTextStorage.m
++++ b/AppKit/NSTextView.subproj/NSTextStorage.m
+@@ -22,6 +22,7 @@
+ #import <AppKit/NSLayoutManager.h>
+ #import <AppKit/NSTextStorage.h>
+ #import <objc/runtime.h>
++#import <dlfcn.h>
+ #import <Foundation/NSKeyedArchiver.h>
+ 
+ NSString *const NSTextStorageWillProcessEditingNotification =
+@@ -229,9 +230,23 @@
+      * different storage from the one the application filled, and the POINTER is what separates
+      * those. Task #194. */
+     if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
+-        fprintf(stderr, "CIDER_TEXTEDIT %s(%p) mask=0x%x range=%lu+%lu delta=%d len=%lu\n",
++        /* WHO PUT THE TEXT IN. Knowing WHICH storage got text left #194 one question short: iA
++         * Writer never calls -[IAEditorViewController setText:annotations:], measured with the
++         * probe armed and its neighbours firing, so the route the characters take has to be read
++         * off the stack rather than guessed at. Two frames, because the nearest caller is usually
++         * a forwarding method of ours and the interesting one is whoever called THAT. */
++        Dl_info info, infoUp;
++        void *ret = __builtin_return_address(0);
++        void *retUp = __builtin_return_address(1);
++
++        fprintf(stderr,
++                "CIDER_TEXTEDIT %s(%p) mask=0x%x range=%lu+%lu delta=%d len=%lu from %s <- %s\n",
+                 object_getClassName(self), self, editedMask, (unsigned long) range.location,
+-                (unsigned long) range.length, delta, (unsigned long) [self length]);
++                (unsigned long) range.length, delta, (unsigned long) [self length],
++                (dladdr(ret, &info) != 0 && info.dli_sname != NULL) ? info.dli_sname : "?",
++                (retUp != NULL && dladdr(retUp, &infoUp) != 0 && infoUp.dli_sname != NULL)
++                        ? infoUp.dli_sname
++                        : "?");
+         fflush(stderr);
+     }
+ 
