@@ -181,6 +181,14 @@ say "launching $APPBIN"
 	# no session ever starts. The failure never mentions size. PATH and LD_LIBRARY_PATH stay because
 	# the runtime needs them.
 	UNSET=$(env | awk -F= '/^[A-Za-z_][A-Za-z0-9_]*=/ && length($0)>400 && $1!="PATH" && $1!="LD_LIBRARY_PATH" {printf "-u %s ", $1}')
+	# AND THE HOST TOOLKIT VARIABLES, which is the locale problem below one family further out.
+	# This desktop exports QT_QPA_PLATFORM=wayland;xcb, a macOS Qt build ships only the cocoa
+	# plugin, and CMake.app read the host value, looked for a plugin it does not have and exited
+	# before drawing anything:
+	#     qt.qpa.plugin: Could not find the Qt platform plugin "wayland" in ""
+	# The 400 character rule above could never catch these; they are short. WAYLAND_DISPLAY and
+	# XDG_RUNTIME_DIR are deliberately NOT here, because cider's own backend needs them.
+	UNSET="$UNSET $(env | grep -oE '^(QT_[A-Za-z0-9_]*|GDK_BACKEND|SDL_VIDEODRIVER|CLUTTER_BACKEND|GTK_IM_MODULE|XMODIFIERS)=' | tr -d '=' | sed 's/^/-u /' | tr '\n' ' ')"
 	# PIN THE LOCALE, because the host's leaks in and decides whether an application starts. This
 	# host is en_DK.UTF-8, and Darwin ships no en_DK: iTerm2 checks locale -a for its language and
 	# country, finds nothing, and opens a MODAL prompt over the terminal before any session runs.

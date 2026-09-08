@@ -1,0 +1,47 @@
+Implement CGDisplayIsOnline, which Qt needs before it can open its platform plugin.
+
+Found by staging a QT application, CMake.app, which is the first non Cocoa, non cocotron, non
+wxWidgets toolkit this port has run. Qt reaches CoreGraphics through its own cocoa plugin, and
+that plugin refused to load:
+
+    Symbol not found: _CGDisplayIsOnline
+      Referenced from: /Applications/CMake.app/Contents/PlugIns/platforms/libqcocoa.dylib
+      Expected in: /System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics
+
+CGDirectDisplay.m already had the three sibling predicates, IsCaptured, IsInMirrorSet and IsMain,
+and CGGetOnlineDisplayList right above them, which enumerates [display screens] and numbers them
+from 1. So online means exactly what that enumeration means and the answer is derived from the
+same place rather than hardcoded: a display is online if it is one of the screens.
+
+Not a stub. CGDisplayIsInMirrorSet a few lines up prints STUB and returns FALSE, and a stub here
+would answer the same for a display that IS online, which is a wrong answer rather than a missing
+one.
+
+--- a/CoreGraphics/CGDirectDisplay.m
++++ b/CoreGraphics/CGDirectDisplay.m
+@@ -261,6 +261,15 @@
+     return display == 1;
+ }
+ 
++// Numbered from 1, the same way CGGetOnlineDisplayList above enumerates [display screens].
++boolean_t CGDisplayIsOnline(CGDirectDisplayID display) {
++    NSDisplay *current = currentDisplay();
++    if (!current)
++        return FALSE;
++
++    return display >= 1 && display <= [[current screens] count];
++}
++
+ CGDirectDisplayID CGDisplayMirrorsDisplay(CGDirectDisplayID display) {
+     // STUB!
+     // TODO: Get this from XRandR
+--- a/CoreGraphics/include/CoreGraphics/CGDirectDisplay.h
++++ b/CoreGraphics/include/CoreGraphics/CGDirectDisplay.h
+@@ -54,6 +54,7 @@
+ 
+ COREGRAPHICS_EXPORT boolean_t CGDisplayIsInMirrorSet(CGDirectDisplayID display);
+ COREGRAPHICS_EXPORT Boolean CGDisplayIsMain(CGDirectDisplayID display);
++COREGRAPHICS_EXPORT boolean_t CGDisplayIsOnline(CGDirectDisplayID display);
+ COREGRAPHICS_EXPORT CGDirectDisplayID
+ CGDisplayMirrorsDisplay(CGDirectDisplayID display);
+ 
