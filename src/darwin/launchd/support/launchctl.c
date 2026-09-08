@@ -2324,7 +2324,23 @@ system_specific_bootstrap(bool sflag)
 	EV_SET(&kev, SIGTERM, EVFILT_SIGNAL, EV_ADD, 0, 0, 0);
 	(void)posix_assumes_zero(kevent(kq, &kev, 1, NULL, 0, NULL));
 	(void)posix_assumes_zero(signal(SIGTERM, SIG_IGN));
-	(void)posix_assumes_zero(sysctl(hnmib, 2, NULL, NULL, "localhost", sizeof("localhost")));
+	/*
+	 * ONLY IF THERE IS NOT ONE ALREADY. On a Mac this sets a placeholder that configd replaces
+	 * moments later from the HostName preference; there is no configd here, so the unconditional
+	 * store left every guest called "localhost" for the whole session while a guest booted WITHOUT
+	 * launchd kept the container's real name. Anything keyed on the host name then disagrees
+	 * between the two configurations: LibreOffice writes its profile lock with the host in it and,
+	 * under launchd, read its own lock back as another machine's and asked whether to continue,
+	 * 4 runs in 4 against 0 in 4 without.
+	 */
+	{
+		char current[MAXHOSTNAMELEN] = "";
+		size_t currentlen = sizeof(current);
+
+		if (sysctl(hnmib, 2, current, &currentlen, NULL, 0) != 0 || current[0] == '\0') {
+			(void)posix_assumes_zero(sysctl(hnmib, 2, NULL, NULL, "localhost", sizeof("localhost")));
+		}
+	}
 
 	loopback_setup_ipv4();
 	loopback_setup_ipv6();
