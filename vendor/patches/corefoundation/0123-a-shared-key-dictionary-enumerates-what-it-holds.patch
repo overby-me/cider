@@ -1,0 +1,150 @@
+A shared key dictionary must enumerate what it HOLDS, not the first N keys of its key set.
+
+_values has one slot per key the shared key set was built with and only _count of them are
+occupied. countByEnumeratingWithState walked it as if slot index equalled entry index: it emitted
+keyAtIndex: for slots 0 to _count whether or not the slot held anything, so it NAMED EMPTY SLOTS
+and DROPPED every key stored past _count. getObjects:andKeys:count: in the same file already
+carries a comment about exactly this defect, fixed there and not here; keyEnumerator had the
+mirror image of it, answering every key in the key set including the unoccupied ones.
+
+The side dictionary indexing was wrong too, subtracting sideCount from a cursor that counts from
+_count.
+
+NOT THEORETICAL. Measured with CIDER_TRACE_SHAREDKEYS, added here: iA Writer builds 67 shared key
+dictionaries in one launch, 57 of them with 33 slots. A for-in over one of those listed the first
+eleven key NAMES of the key set rather than the eleven entries it held.
+
+This does NOT change what iA Writer draws. The library item attribute store that answers nil for
+excerptProvider is a plain __NSCFDictionary, measured again after this change: still 56 misses on a
+dictionary of 11. This is a separate correctness fix in a path that a roster application exercises
+heavily, not a fix for #194.
+--- a/NSSharedKeyDictionary.m
++++ b/NSSharedKeyDictionary.m
+@@ -5,6 +5,8 @@
+ //  Copyright (c) 2014 Apportable. All rights reserved.
+ //
+ 
++#import <stdio.h>
++#import <stdlib.h>
+ #import "NSSharedKeyDictionary.h"
+ #import <Foundation/NSKeyValueObserving.h>
+ 
+@@ -21,6 +23,12 @@
+ 
+     if (self)
+     {
++        /* CIDER_TRACE_SHAREDKEYS: whether an application uses shared key sets at all. Nothing on
++         * the roster was known to, so a change in this file could not be verified against a run. */
++        if (getenv("CIDER_TRACE_SHAREDKEYS") != NULL) {
++            fprintf(stderr, "CIDER_SHAREDKEYS dictionary with %lu slots\n",
++                    (unsigned long) [keySet count]);
++        }
+         _keyMap = [keySet retain];
+         _ifkIMP = (NSUInteger (*)(id,SEL,id))[keySet methodForSelector:@selector(indexForKey:)];
+         _values = calloc(sizeof(id), [keySet count]);
+@@ -90,57 +98,75 @@
+     }
+ }
+ 
+-- (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(id __unsafe_unretained [])buffer count:(NSUInteger)len
++/*
++ * THE OCCUPIED KEYS, which is not the same as the key set's keys. _keyMap knows every key the
++ * shared key set was built with; _values holds one slot per key and only _count of them are
++ * occupied. Anything that answers with the key set itself reports keys the dictionary does not
++ * have, and a caller that then asks for their values gets nil.
++ */
++- (NSArray *)_occupiedKeys
+ {
+-    NSUInteger sideCount = [_sideDic count];
+-    if (state->state == _count + sideCount)
++    NSUInteger slots = [_keyMap count];
++    NSMutableArray *keys = [NSMutableArray arrayWithCapacity:_count];
++
++    for (NSUInteger slot = 0; slot < slots; slot++)
+     {
+-        if (state->extra[1] != 0)
++        if (_values[slot] != nil)
+         {
+-            free((id *)state->extra[1]);
+-            state->extra[1] = 0;
++            [keys addObject:[_keyMap keyAtIndex:slot]];
+         }
+-
+-        return 0;
+     }
++    return [keys arrayByAddingObjectsFromArray:[_sideDic allKeys]];
++}
+ 
+-    if (state->extra[0] == 0)
+-    {
+-        state->extra[0] = _count + sideCount;
++- (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state objects:(id __unsafe_unretained [])buffer count:(NSUInteger)len
++{
++    /*
++     * SNAPSHOT THE OCCUPIED KEYS, because _values IS NOT DENSE and this walked it as if slot index
++     * equalled entry index: it emitted keyAtIndex: for slots 0 to _count whether or not they held
++     * anything, so it named empty slots and DROPPED every key stored past _count. getObjects: below
++     * carries a comment about the same defect, fixed there and not here. iA Writer builds 33 slot
++     * dictionaries and a for-in over one listed the first eleven key names of the key set rather
++     * than the eleven it actually held.
++     */
++    if (state->extra[1] == 0)
++    {
++        NSArray *keys = [self _occupiedKeys];
++        NSUInteger total = [keys count];
++        id *snapshot = malloc(sizeof(id) * (total > 0 ? total : 1));
++
++        for (NSUInteger i = 0; i < total; i++)
++        {
++            snapshot[i] = [keys objectAtIndex:i];
++        }
++        state->extra[1] = (unsigned long)snapshot;
++        state->extra[0] = total;
+     }
+-    
+-    NSUInteger num = 0;
+-    NSUInteger curr = state->state;
+ 
+-    while (num < len && curr < _count)
++    if (state->state >= state->extra[0])
+     {
+-        buffer[num] = [_keyMap keyAtIndex:curr];
+-        num++;
+-        curr++;
++        free((id *)state->extra[1]);
++        state->extra[1] = 0;
++        return 0;
+     }
+ 
+-    while (num < len && curr < _count + sideCount)
+-    {
+-        if (state->extra[1] == 0)
+-        {
+-            state->extra[1] = (unsigned long)malloc(sizeof(id) * sideCount);
+-            [_sideDic getObjects:NULL andKeys:(id *)state->extra[1] count:sideCount]; 
+-        }
++    id *snapshot = (id *)state->extra[1];
++    NSUInteger num = 0;
+ 
+-        buffer[num] = ((id *)state->extra[1])[curr - sideCount];
++    while (num < len && state->state + num < state->extra[0])
++    {
++        buffer[num] = snapshot[state->state + num];
+         num++;
+-        curr++;
+     }
+-    state->state = curr;
++    state->state += num;
+     state->itemsPtr = buffer;
+-    
+     state->mutationsPtr = (unsigned long *)&_mutations;
+     return num;
+ }
+ 
+ - (NSEnumerator *)keyEnumerator
+ {
+-    return [[[_keyMap allKeys] arrayByAddingObjectsFromArray:[_sideDic allKeys]] objectEnumerator];
++    return [[self _occupiedKeys] objectEnumerator];
+ }
+ 
+ - (void)getObjects:(id *)objects andKeys:(id *)keys count:(NSUInteger)count
