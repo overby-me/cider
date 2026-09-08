@@ -1,0 +1,145 @@
+Write the NSColor colorUsingColorSpaceName:device: case, which upstream left as a TODO.
+
+It was the ONE case in the whole suite with no body: fifty lines of commented-out intentions and
+then exit(1), so it fails in upstream CI too and this port counted it as "unwritten upstream"
+rather than as a failure.
+
+TASK #227 IS WHY IT IS WORTH WRITING NOW. CMake.app, a Qt application, dies intermittently at a
+MEASURED 3 runs in 8 with
+
+    -[__NSCFString colorUsingColorSpaceName:device:]: unrecognized selector
+
+inside a NAMED colour conversion, and the receiver class differs between runs, which is freed
+memory rather than a wrong type. A GUI race is a bad place to work on a lifetime bug. Upstream
+TODO list even names the pair that matters, NSNamedColorSpace to NSDeviceRGBColorSpace.
+
+WHAT IT ASSERTS, and deliberately not more: most of the pairs upstream listed have no portable
+answer, because what a calibrated space converts to depends on a colour profile, and asserting
+todays numbers would freeze an implementation detail rather than a contract. So this covers
+  - a conversion to the space a colour is ALREADY in keeps every component exactly,
+  - a grey converts to RGB channels that agree with each other, whatever the level is,
+  - a NAMED colour converts WITHOUT RAISING, which is the #227 failure. nil is a legitimate
+    answer for a name this system does not know and is not asserted against,
+  - and a system colour retained across an autorelease pool drain is still usable, which is the
+    shape a use-after-free would show up in.
+
+MEASURED BOTH WAYS, because a case that passes silently proves nothing on its own: as written it
+exits 0, and with one expected component changed from 0.25 to 0.99 it exits 134, the assertion
+aborting. So it does exercise the code.
+
+IT PASSES, and that is a real result rather than a fix: the deterministic path is clean, so
+whatever kills Qt is not reachable from a headless conversion of a system colour. #227 keeps the
+GUI rate as its measurement.
+
+scripts/gen-testsuite-buck.py drops it from UPSTREAM_PLACEHOLDERS in the same change, or a case
+that now passes would go on being excluded from the count.
+
+--- a/testsuite/System/Library/Frameworks/AppKit.framework/test/NSColor/test_NSColor_colorUsingColorSpaceNamedevice.m
++++ b/testsuite/System/Library/Frameworks/AppKit.framework/test/NSColor/test_NSColor_colorUsingColorSpaceNamedevice.m
+@@ -7,51 +7,60 @@
+ 
+ #include <darling-testsuite/assertion.h>
+ 
++// WHAT THIS CAN AND CANNOT ASSERT.
++//
++// Upstream left a TODO listing every colour space pair and an exit(1), and most of those pairs
++// have no portable answer: the numbers a calibrated space converts to depend on a colour profile,
++// and asserting today's output would freeze an implementation detail rather than a contract.
++//
++// So this covers what is true on any system: a conversion to the space a colour is ALREADY in
++// keeps its components, a grey converts to equal RGB channels, and a NAMED colour converts
++// without raising. The last one is the reason this file was written, see task #227.
+ int main() {
+-    // TODO: We'll need to figure out how to test the following.
+-
+-    // * NSDeviceWhiteColorSpace
+-    //     *  NSDeviceWhiteColorSpace -> NSDeviceWhiteColorSpace
+-    //     *  NSDeviceWhiteColorSpace -> NSCalibratedRGBColorSpace
+-    //     *  NSDeviceWhiteColorSpace -> NSDeviceRGBColorSpace
+-    //     *  NSDeviceWhiteColorSpace -> NSDeviceCMYKColorSpace
+-
+-    // * NSDeviceRGBColorSpace
+-    //     *  NSDeviceRGBColorSpace -> NSDeviceRGBColorSpace
+-    //     *  NSDeviceRGBColorSpace -> NSDeviceWhiteColorSpace
+-    //     *  NSDeviceRGBColorSpace -> NSDeviceCMYKColorSpace
+-    //     *  NSDeviceRGBColorSpace -> NSCalibratedRGBColorSpace
+-    //     *  NSDeviceRGBColorSpace -> NSCalibratedWhiteColorSpace
+-
+-    // * NSDeviceCMYKColorSpace
+-    //     *  NSDeviceCMYKColorSpace -> NSDeviceCMYKColorSpace
+-    //     *  NSDeviceCMYKColorSpace -> NSCalibratedRGBColorSpace
+-    //     *  NSDeviceCMYKColorSpace -> NSCalibratedWhiteColorSpace
+-
+-    // * NSCalibratedWhiteColorSpace
+-    //     *  NSCalibratedWhiteColorSpace -> NSCalibratedWhiteColorSpace
+-    //     *  NSCalibratedWhiteColorSpace -> NSCalibratedRGBColorSpace
+-    //     *  NSCalibratedWhiteColorSpace -> NSDeviceRGBColorSpace
+-    //     *  NSCalibratedWhiteColorSpace -> NSDeviceCMYKColorSpace
+-    //     *  NSCalibratedWhiteColorSpace -> NSPatternColorSpace
+-
+-    // * NSCalibratedRGBColorSpace
+-    //     *  NSCalibratedRGBColorSpace -> NSCalibratedRGBColorSpace
+-    //     *  NSCalibratedRGBColorSpace -> NSDeviceWhiteColorSpace
+-    //     *  NSCalibratedRGBColorSpace -> NSDeviceCMYKColorSpace
+-    //     *  NSCalibratedRGBColorSpace -> NSCalibratedWhiteColorSpace
+-    //     *  NSCalibratedRGBColorSpace -> NSDeviceRGBColorSpace
+-    //     *  NSCalibratedRGBColorSpace -> NSPatternColorSpace
+-
+-    // * NSNamedColorSpace
+-    //     *  NSNamedColorSpace -> NSNamedColorSpace
+-    //     *  NSNamedColorSpace -> NSPatternColorSpace
+-    //     *  NSNamedColorSpace -> NSDeviceRGBColorSpace
+-
+-    // * NSCustomColorSpace
+-    //     *  NSCustomColorSpace -> NSCustomColorSpace
+-    //     *  NSCustomColorSpace -> NSDeviceRGBColorSpace
+-    //     *  NSCustomColorSpace -> NSPatternColorSpace
+-
+-    exit(1);
++    // The space a colour is already in. NSColor returns self here, so the components must survive
++    // exactly; 0.25, 0.5 and 0.75 are representable, so this is not a float tolerance question.
++    NSColor* rgb = [NSColor colorWithDeviceRed: 0.25 green: 0.5 blue: 0.75 alpha: 1.0];
++    NSColor* sameSpace = [rgb colorUsingColorSpaceName: NSDeviceRGBColorSpace];
++
++    assert_is_true(sameSpace != nil);
++    assert_equals_NSString(NSDeviceRGBColorSpace, [sameSpace colorSpaceName]);
++    assert_equals_CGFloat("redComponent", 0.25, [sameSpace redComponent]);
++    assert_equals_CGFloat("greenComponent", 0.5, [sameSpace greenComponent]);
++    assert_equals_CGFloat("blueComponent", 0.75, [sameSpace blueComponent]);
++    assert_equals_CGFloat("alphaComponent", 1.0, [sameSpace alphaComponent]);
++
++    // Grey to RGB. The exact level depends on the profile, but a grey has no hue in any of them,
++    // so the three channels must agree with each other whatever they are.
++    NSColor* grey = [NSColor colorWithCalibratedWhite: 0.5 alpha: 1.0];
++    NSColor* greyAsRGB = [grey colorUsingColorSpaceName: NSCalibratedRGBColorSpace];
++
++    assert_is_true(greyAsRGB != nil);
++    assert_equals_CGFloat("grey red vs green", [greyAsRGB redComponent], [greyAsRGB greenComponent]);
++    assert_equals_CGFloat("grey green vs blue", [greyAsRGB greenComponent], [greyAsRGB blueComponent]);
++    assert_equals_CGFloat("grey alphaComponent", 1.0, [greyAsRGB alphaComponent]);
++
++    // A NAMED COLOUR, which is what task #227 is about.
++    //
++    // A catalog colour is a name that the running system resolves, so nil is a legitimate answer
++    // for a name this system does not know and is NOT asserted against. What must hold is that
++    // asking does not RAISE: Qt converts every system colour while building its palette, and an
++    // exception here kills the application before it draws anything. The observed failure was
++    //     -[__NSCFString colorUsingColorSpaceName:device:]: unrecognized selector
++    // so the conversion reached something that was not a colour at all.
++    NSColor* named = [NSColor textBackgroundColor];
++    assert_is_true(named != nil);
++    (void) [named colorUsingColorSpaceName: NSDeviceRGBColorSpace];
++
++    // AND IT MUST OUTLIVE THE POOL IT WAS MADE IN. The system colour arrives autoreleased and an
++    // application that retains one expects to convert it later; the receiver class in the crash
++    // above DIFFERED BETWEEN RUNS, which is what reading freed memory looks like rather than a
++    // wrong type. Retaining across a drain is the shape that would expose it.
++    NSColor* held = nil;
++    @autoreleasepool {
++        held = [[NSColor textBackgroundColor] retain];
++    }
++    assert_is_true(held != nil);
++    assert_equals_NSString(@"System", [held catalogNameComponent]);
++    (void) [held colorUsingColorSpaceName: NSDeviceRGBColorSpace];
++    [held release];
+ }

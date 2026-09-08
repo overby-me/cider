@@ -223,16 +223,16 @@ def will_fail_cases():
     return names
 
 
-# CASES WHOSE BODY IS A PLACEHOLDER UPSTREAM. test_NSColor_colorUsingColorSpaceNamedevice is fifty
-# lines of commented-out intentions and then exit(1), and CMake does NOT mark it WILL_FAIL, so it
-# fails in upstream's own CI exactly as it fails here. It was counted as an AppKit divergence of
-# this port for a while, which it never was: nothing in it touches our AppKit at all.
-# Bodies upstream has not written: every line is commented out and main just exits 1. Upstream
-# registers them as ordinary tests with no WILL_FAIL, so they fail on real macOS too. They cannot
-# pass here and are not evidence of anything about this port.
-UPSTREAM_PLACEHOLDERS = {
-    "test_NSColor_colorUsingColorSpaceNamedevice",
-}
+# CASES WHOSE BODY IS A PLACEHOLDER UPSTREAM: every line commented out and main just exits 1.
+# Upstream registers them as ordinary tests with no WILL_FAIL, so they fail in its own CI too, and
+# counting them here would read as a divergence of this port that they never were.
+#
+# EMPTY SINCE 2026-09-09, and the mechanism stays for the next one. The only entry was
+# test_NSColor_colorUsingColorSpaceNamedevice, fifty lines of commented-out intentions. It now has
+# a body, written here rather than upstream, because task #227 needed a deterministic check of the
+# NAMED colour conversion that was killing Qt intermittently in a GUI run. Leaving it listed would
+# have hidden a case that passes.
+UPSTREAM_PLACEHOLDERS = set()
 
 
 def main():
