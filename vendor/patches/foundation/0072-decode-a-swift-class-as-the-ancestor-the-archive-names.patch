@@ -1,0 +1,159 @@
+decode a missing Swift class as the ancestor the archive names
+
+iA Writer logged this once a run and lost an object every time:
+
+  Failed to decode an instance of class _TtGCs26_SwiftDeferredNSDictionarySSP__: class not found
+
+That is a Swift Dictionary<String, Any> bridged into a keyed archive. The generic specialisation
+cannot be looked up by name here, so the whole object came back NIL and the caller got nothing.
+
+$classes IS THE ANSWER AND IT WAS ALREADY BEING READ, only to check that it exists. It lists the
+class and its ancestors precisely so a reader that lacks the leaf can decode it as one of them, and
+for a bridged collection the ancestor IS the payload. Darwin raises in this position because Darwin
+always has the leaf.
+
+THREE ATTEMPTS AT ONE CHAIN, and the first two are worth recording because they replaced a silent
+nil with a dead process:
+
+  _TtGCs26_SwiftDeferredNSDictionarySSP__, Swift.__SwiftNativeNSDictionary,
+  __SwiftNativeNSDictionaryBase, NSDictionary
+
+  1  take the first name that resolves      Swift.__SwiftNativeNSDictionary resolves, and it is an
+                                            abstract base in libswiftCore: "count requires a
+                                            subclass implementation", 2 runs of 2 terminated.
+  2  skip Swift. and _Tt by name            __SwiftNativeNSDictionaryBase has neither prefix. Same
+                                            exception, 3 runs of 3. The names do not share a
+                                            prefix and a blacklist was going to keep growing.
+  3  skip a class the SWIFT RUNTIME         class_getImageName says the thing that actually
+     IMPLEMENTS                             matters: an abstract Swift shim only works on an
+                                            instance the Swift runtime built. An application's own
+                                            Swift classes live in its own binary and are untouched.
+
+MEASURED, iA Writer
+
+  before  1 class not found per run, object dropped
+  after   0 in 3, 0 faults, 0 terminations
+
+WHAT DID NOT CHANGE. The library rows still say Updating... This removes a decode that silently
+returned nil; it is not what the rows are waiting for.
+--- a/src/NSKeyedUnarchiver.m
++++ b/src/NSKeyedUnarchiver.m
+@@ -23,12 +23,71 @@
+ #import "ForFoundationOnly.h"
+ #import <dispatch/dispatch.h>
+ #import <objc/runtime.h>
++#import <string.h>
+ #import <stdlib.h>
+ 
+ static NSMutableDictionary *archiverClasses = nil;
+ 
+ NSString *const NSInvalidUnarchiveOperationException = @"NSInvalidUnarchiveOperationException";
+ 
++/* THE ARCHIVE CARRIES THE WHOLE CHAIN, and $classes is what it is for.
++ *
++ * A Swift Dictionary bridged into an archive names _TtGCs26_SwiftDeferredNSDictionarySSP__, a
++ * generic specialisation the ObjC runtime cannot look up here, and the object was DROPPED: one
++ * NSLog saying class not found and nil where a dictionary should have been. $classes lists the
++ * class and its ancestors precisely so a reader that lacks the leaf can decode it as one of them,
++ * and for a bridged collection the ancestor IS the payload. Darwin raises here instead, because
++ * Darwin always has the leaf.
++ *
++ * A CLASS THE SWIFT RUNTIME IMPLEMENTS IS SKIPPED, and that rule is the third attempt at this
++ * chain, which is
++ *
++ *   _TtGCs26_SwiftDeferredNSDictionarySSP__, Swift.__SwiftNativeNSDictionary,
++ *   __SwiftNativeNSDictionaryBase, NSDictionary
++ *
++ * Both middle names RESOLVE. They are abstract bases in libswiftCore that work only on an instance
++ * the Swift runtime built, and decoding into either replaced a silent nil with
++ * "count requires a subclass implementation" and killed the process. Skipping them BY NAME took two
++ * tries and would have taken more, because the names do not share a prefix. The image does: ask
++ * class_getImageName, which says exactly the thing that matters, that the implementation is the
++ * Swift runtime's. An application's own Swift classes live in its own binary and are unaffected. */
++static Class classFromArchivedNames(NSKeyedUnarchiver *unarchiver, NSArray *names)
++{
++    if (![names isKindOfClass:[NSArray class]])
++    {
++        return Nil;
++    }
++    for (id name in names)
++    {
++        Class candidate;
++
++        if (![name isKindOfClass:[NSString class]])
++        {
++            continue;
++        }
++        candidate = [unarchiver classForClassName:name];
++        if (candidate == Nil)
++        {
++            candidate = [[unarchiver class] classForClassName:name];
++        }
++        if (candidate == Nil)
++        {
++            candidate = NSClassFromString(name);
++        }
++        if (candidate != Nil)
++        {
++            const char *image = class_getImageName(candidate);
++
++            if (image != NULL && strstr(image, "libswift") != NULL)
++            {
++                continue;
++            }
++            return candidate;
++        }
++    }
++    return Nil;
++}
++
+ /* A SUBCLASS OF AN ALLOWED CLASS IS ALLOWED, which containsObject: alone does not say. An archive
+  * naming NSMutableArray decodes against an allowed NSArray on Darwin, and every such archive was
+  * rejected here. */
+@@ -542,11 +601,12 @@
+             return nil;
+         }
+         uint64_t unused;
++        uint64_t classesOffset;
+         if (_getOffsetForNestedValueWrap(unarchiver, @"$classhints", classOffset, &unused))
+         {
+             #warning TODO Unimplemented $classhints https://code.google.com/p/apportable/issues/detail?id=153
+         }
+-        if (!_getOffsetForNestedValueWrap(unarchiver, @"$classes", classOffset, &unused))
++        if (!_getOffsetForNestedValueWrap(unarchiver, @"$classes", classOffset, &classesOffset))
+         {
+             return nil;
+         }
+@@ -561,6 +621,21 @@
+         }
+         if (class == nil)
+         {
++            CFPropertyListRef classes = NULL;
++
++            if (__CFBinaryPlistCreateObject(unarchiver->_bytes, unarchiver->_len, classesOffset,
++                                            &unarchiver->_offsetData->trailer, NULL, 0,
++                                            unarchiver->_reservedDictionary, &classes))
++            {
++                class = classFromArchivedNames(unarchiver, (NSArray *)classes);
++                if (classes != NULL)
++                {
++                    CFRelease(classes);
++                }
++            }
++        }
++        if (class == nil)
++        {
+             NSLog(@"Failed to decode an instance of class %@: class not found", className);
+             return nil;
+         }
+@@ -713,6 +788,10 @@
+     }
+     if (class == nil)
+     {
++        class = classFromArchivedNames(unarchiver, (NSArray *)CFDictionaryGetValue(dict, @"$classes"));
++    }
++    if (class == nil)
++    {
+         @throw [NSException exceptionWithName:NSInvalidUnarchiveOperationException reason:[NSString stringWithFormat:@"Failed to convert class %@ for %@", className, key] userInfo:nil];
+         return nil;
+     }
