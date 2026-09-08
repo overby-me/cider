@@ -5,13 +5,23 @@ load("//buck/rules:install.bzl", "prefix_tree")
 # The full prefix minus the GUI frameworks, the private frameworks and the
 # scripting languages. It exists for one purpose: a prefix that boots, runs bash
 # and can run nix. Parity lives in //buck/prefix:cider_prefix, which is unchanged.
-# Entries dropped from the full prefix: 3120.
+# Entries dropped from the full prefix: 3148.
 prefix_tree(
     name = "cider_prefix_min",
     entries = {
         "bin/cider": "//src/linux/launcher:cider",
         "bin/cider-coredump": "//src/linux/hosttools:cider-coredump",
         "bin/ciderd": "//src/linux/server:ciderd",
+        # NOT UNDER System/Library, and that is where it belongs: iTunes installs this framework
+        # into /Library/Frameworks, so that is the path applications link it at. It is also a FLAT
+        # bundle, with no Versions/A, which is why there is no symlink pair for it further down.
+        # The crash handler is inserted with DYLD_INSERT_LIBRARIES, so it has to BE in the
+        # prefix: a guest that dies before it draws says nothing without it, which is exactly
+        # what a boot failure looks like (#168).
+        "libexec/cider/usr/lib/cider-crashtrace.dylib": "//src/darwin/crashtrace:crashtrace_dylib",
+        # Same reason as the crash handler: CIDER_SPY reads a value out of an application's own
+        # ivar, which needs the probe INSERTED into that application, so it has to be in the prefix.
+        "libexec/cider/usr/lib/cider-spy.dylib": "//src/darwin/spy:spy_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/bitcode_strip": "//vendor/src:bitcode_strip",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/check_dylib": "//vendor/src:check_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/checksyms": "//vendor/src:checksyms",
@@ -101,6 +111,7 @@ prefix_tree(
         "libexec/cider/usr/bin/at": "//vendor/src/system_cmds:at",
         "libexec/cider/usr/bin/awk": "//vendor/src:awk",
         "libexec/cider/usr/bin/banner": "//vendor/src:banner",
+        "libexec/cider/usr/bin/base64": "//src/darwin/base64:base64",
         "libexec/cider/usr/bin/basename": "//vendor/src:basename",
         "libexec/cider/usr/bin/bc": "//vendor/src:bc",
         "libexec/cider/usr/bin/biff": "//vendor/src:biff",
@@ -627,6 +638,16 @@ prefix_tree(
         "libexec/cider/usr/share/utf8encodings": "//vendor/src/screen:prefix_screen_utf8encodings",
     },
     files = {
+        # THE USER DATABASE, which this prefix did not have. Libinfo's file module opens
+        # /etc/master.passwd and nothing else when the effective uid is 0, which every guest here
+        # is, so getpwuid answered NULL for everyone. See src/darwin/etc/master.passwd.
+        #
+        # THEY ARE FILES AND THEY WERE IN trees, which is a real difference and not a tidy-up: the
+        # trees loop reads PrefixDirInfo off every entry and an export_file does not have one, so
+        # //buck/prefix:cider_prefix failed ANALYSIS from the day they were added. Nothing built the
+        # full prefix in between, so nothing said so.
+        "libexec/cider/private/etc/master.passwd": "//src/darwin/etc:master_passwd",
+        "libexec/cider/private/etc/group": "//src/darwin/etc:group",
         "libexec/cider/System/Library/LaunchDaemons/com.apple.FileCoordination.plist": "//vendor/src:foundation_services_filecoordinationd_com.apple.FileCoordination.plist",
         "libexec/cider/System/Library/LaunchDaemons/com.apple.aslmanager.plist": "//vendor/src/syslog:aslmanager.tproj_com.apple.aslmanager.plist",
         "libexec/cider/System/Library/LaunchDaemons/com.apple.atrun.plist": "//vendor/src/system_cmds:atrun.tproj_com.apple.atrun.plist",
@@ -823,6 +844,8 @@ prefix_tree(
         "libexec/cider/private/etc/pam.d/authorization_ctk": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_smartcard_authorization_ctk",
         "libexec/cider/private/etc/pam.d/authorization_la": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_localauthentication_authorization_la",
         "libexec/cider/private/etc/pam.d/authorization_lacont": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_localauthentication_authorization_lacont",
+        "libexec/cider/private/etc/pam.d/login": "//src/darwin/etc:pam_d_login",
+        "libexec/cider/private/etc/pam.d/login.term": "//src/darwin/etc:pam_d_login_term",
         "libexec/cider/private/etc/pam.d/screensaver_aks": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_aks_screensaver_aks",
         "libexec/cider/private/etc/pam.d/screensaver_ctk": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_smartcard_screensaver_ctk",
         "libexec/cider/private/etc/pam.d/screensaver_la": "//vendor/src/openpam:darling_submodules_pam_modules_modules_pam_localauthentication_screensaver_la",
@@ -833,6 +856,8 @@ prefix_tree(
         "libexec/cider/private/etc/screenrc": "//vendor/src/screen:screen_etc_screenrc",
         "libexec/cider/private/etc/syslog.conf": "//vendor/src/syslog:syslogd.tproj_syslog.conf",
         "libexec/cider/usr/lib/charset.alias": "//vendor/src/libiconv:libiconv_lib_charset.alias",
+        # 5.5.3, not the 5.2.2 pin the overlays beside it come from: see
+        # vendor/prebuilt/swift-5.5.3/PROVENANCE.md for the one symbol that seam costs.
         "libexec/cider/usr/sbin/periodic": "//vendor/src/crontabs:periodic_periodic.sh",
         "libexec/cider/usr/share/local/C/LC_MESSAGES/tcsh.cat": "//vendor/src/tcsh:gen_nls_C.cat",
         "libexec/cider/usr/share/local/de/LC_MESSAGES/tcsh.cat": "//vendor/src/tcsh:gen_nls_german.cat",

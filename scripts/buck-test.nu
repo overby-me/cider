@@ -1439,6 +1439,21 @@ def main [flag?: string] {
         print -e (indent7 $sr.out)
     }
 
+    # buck/prefix-min/BUCK and buck/prefix-fw/BUCK are GENERATED and COMMITTED, and until now
+    # nothing checked that the two still agreed. gen-prefix-min.nu could not even find its input
+    # (one ".." short after the move into scripts/gen/), so it exited 1 and its committed output
+    # drifted 28 entries behind the full prefix, missing /etc/master.passwd among them, which is
+    # the #143 fix. Static, and it reads only buck/prefix/BUCK.
+    for tier in ["min" "fw"] {
+        let g = (cap_rc [$"./scripts/gen/gen-prefix-($tier).nu" "--check"])
+        if $g.rc == 0 {
+            ok (last_line_no_ok $g.out)
+        } else {
+            bad $"buck/prefix-($tier)/BUCK is stale against its generator"
+            print -e (indent7 $g.out)
+        }
+    }
+
     say "== the prefix (what a Darling install actually is) =="
     # The port's product is not the link outputs, it is a laid-out prefix. This builds the
     # whole of it, which is also the broadest single check in this file: 151 targets, and a

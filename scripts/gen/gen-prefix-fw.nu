@@ -311,7 +311,7 @@ def excluded [line: string] {
   false
 }
 
-def main [] {
+def main [--check] {
   # Two levels: this script lives in scripts/gen/, and buck/prefix/BUCK is at the repo root.
   cd ($env.CURRENT_FILE | path dirname | path join ".." "..")
   let src = "buck/prefix/BUCK"
@@ -390,6 +390,18 @@ def main [] {
   # Cosmetic, and reproduced anyway: the two outputs are compared line for line.
   let dst = "buck/prefix-fw/BUCK"
   let dst_printed = (($env.CURRENT_FILE | path dirname) + "/../../buck/prefix-fw/BUCK")
+  # --check REGENERATES AND COMPARES instead of writing. buck/prefix-fw/BUCK is generated and
+  # committed, and nothing verified the two still agreed: this generator could not even find its
+  # own input for a while, and the committed file drifted 28 entries behind without a word.
+  if $check {
+    let want = (if ($dst | path exists) { open --raw $dst } else { "" })
+    if $want != $body {
+      say-err $"prefix-fw: ($dst) is STALE, regenerate it with scripts/gen/gen-prefix-fw.nu"
+      exit 1
+    }
+    say $"prefix-fw: ($dst) is up to date with its generator"
+    return
+  }
   $body | save -f $dst
 
   let total = ($all | where {|l| ($l | str trim --left) | str starts-with '"' } | length)

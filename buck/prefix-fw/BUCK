@@ -7,7 +7,7 @@ load("//buck/rules:install.bzl", "prefix_tree")
 # (JavaScriptCore, DBusKit). Unlike prefix-min it KEEPS the framework stack, so guest nix
 # can load CoreFoundation/CoreServices/SystemConfiguration/Foundation. Parity lives in
 # //buck/prefix:cider_prefix, which is unchanged.
-# Entries dropped from the full prefix: 2398.
+# Entries dropped from the full prefix: 2409.
 prefix_tree(
     name = "cider_prefix_fw",
     entries = {
@@ -19,6 +19,19 @@ prefix_tree(
         # bundle, with no Versions/A, which is why there is no symlink pair for it further down.
         "libexec/cider/Library/Frameworks/iTunesLibrary.framework/iTunesLibrary": "//src/darwin/frameworks:iTunesLibrary_dylib",
         "libexec/cider/System/Library/Frameworks/Combine.framework/Versions/A/Combine": "//src/darwin/frameworks:Combine_dylib",
+        "libexec/cider/System/Library/Frameworks/CryptoKit.framework/Versions/A/CryptoKit": "//src/darwin/frameworks:CryptoKit_dylib",
+        "libexec/cider/System/Library/Frameworks/Charts.framework/Versions/A/Charts": "//src/darwin/frameworks:Charts_dylib",
+        "libexec/cider/System/Library/Frameworks/FoundationModels.framework/Versions/A/FoundationModels": "//src/darwin/frameworks:FoundationModels_dylib",
+        "libexec/cider/System/Library/Frameworks/QuickLookUI.framework/Versions/A/QuickLookUI": "//src/darwin/frameworks:QuickLookUI_dylib",
+        "libexec/cider/System/Library/Frameworks/ScreenCaptureKit.framework/Versions/A/ScreenCaptureKit": "//src/darwin/frameworks:ScreenCaptureKit_dylib",
+        "libexec/cider/System/Library/Frameworks/SwiftUI.framework/Versions/A/SwiftUI": "//src/darwin/frameworks:SwiftUI_dylib",
+        # The crash handler is inserted with DYLD_INSERT_LIBRARIES, so it has to BE in the
+        # prefix: a guest that dies before it draws says nothing without it, which is exactly
+        # what a boot failure looks like (#168).
+        "libexec/cider/usr/lib/cider-crashtrace.dylib": "//src/darwin/crashtrace:crashtrace_dylib",
+        # Same reason as the crash handler: CIDER_SPY reads a value out of an application's own
+        # ivar, which needs the probe INSERTED into that application, so it has to be in the prefix.
+        "libexec/cider/usr/lib/cider-spy.dylib": "//src/darwin/spy:spy_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/bitcode_strip": "//vendor/src:bitcode_strip",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/check_dylib": "//vendor/src:check_dylib",
         "libexec/cider/Library/Developer/DarlingCLT/usr/bin/checksyms": "//vendor/src:checksyms",
@@ -238,6 +251,7 @@ prefix_tree(
         "libexec/cider/System/Library/PrivateFrameworks/PlugInKit.framework/Versions/A/PlugInKit": "//src/darwin/private-frameworks:PlugInKit_dylib",
         "libexec/cider/System/Library/PrivateFrameworks/PowerLog.framework/Versions/A/PowerLog": "//src/darwin/private-frameworks:PowerLog_dylib",
         "libexec/cider/System/Library/PrivateFrameworks/ProtocolBuffer.framework/Versions/A/ProtocolBuffer": "//src/darwin/private-frameworks:ProtocolBuffer_dylib",
+        "libexec/cider/System/Library/PrivateFrameworks/PubSub.framework/Versions/A/PubSub": "//src/darwin/private-frameworks:PubSub_dylib",
         "libexec/cider/System/Library/PrivateFrameworks/SecurityTokend.framework/Versions/A/SecurityTokend": "//vendor/src:SecurityTokend_dylib",
         "libexec/cider/System/Library/PrivateFrameworks/ServerInformation.framework/Versions/A/ServerInformation": "//src/darwin/private-frameworks:ServerInformation_dylib",
         "libexec/cider/System/Library/PrivateFrameworks/ShazamCore.framework/Versions/A/ShazamCore": "//src/darwin/private-frameworks:ShazamCore_dylib",
@@ -1145,6 +1159,8 @@ prefix_tree(
         "libexec/cider/private/etc/screenrc": "//vendor/src/screen:screen_etc_screenrc",
         "libexec/cider/private/etc/syslog.conf": "//vendor/src/syslog:syslogd.tproj_syslog.conf",
         "libexec/cider/usr/lib/charset.alias": "//vendor/src/libiconv:libiconv_lib_charset.alias",
+        # 5.5.3, not the 5.2.2 pin the overlays beside it come from: see
+        # vendor/prebuilt/swift-5.5.3/PROVENANCE.md for the one symbol that seam costs.
         "libexec/cider/usr/sbin/periodic": "//vendor/src/crontabs:periodic_periodic.sh",
         "libexec/cider/usr/share/local/C/LC_MESSAGES/tcsh.cat": "//vendor/src/tcsh:gen_nls_C.cat",
         "libexec/cider/usr/share/local/de/LC_MESSAGES/tcsh.cat": "//vendor/src/tcsh:gen_nls_german.cat",
@@ -1755,6 +1771,8 @@ prefix_tree(
         "libexec/cider/System/Library/PrivateFrameworks/PowerLog.framework/Versions/Current": "A",
         "libexec/cider/System/Library/PrivateFrameworks/ProtocolBuffer.framework/ProtocolBuffer": "Versions/Current/ProtocolBuffer",
         "libexec/cider/System/Library/PrivateFrameworks/ProtocolBuffer.framework/Versions/Current": "A",
+        "libexec/cider/System/Library/PrivateFrameworks/PubSub.framework/PubSub": "Versions/Current/PubSub",
+        "libexec/cider/System/Library/PrivateFrameworks/PubSub.framework/Versions/Current": "A",
         "libexec/cider/System/Library/PrivateFrameworks/SecurityTokend.framework/SecurityTokend": "Versions/Current/SecurityTokend",
         "libexec/cider/System/Library/PrivateFrameworks/SecurityTokend.framework/Versions/Current": "A",
         "libexec/cider/System/Library/PrivateFrameworks/ServerInformation.framework/ServerInformation": "Versions/Current/ServerInformation",

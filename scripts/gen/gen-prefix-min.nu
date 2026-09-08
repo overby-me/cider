@@ -297,8 +297,10 @@ def excluded [line: string] {
   false
 }
 
-def main [] {
-  cd ($env.CURRENT_FILE | path dirname | path join "..")
+def main [--check] {
+  # TWO levels: this lives in scripts/gen/, so one ".." lands in scripts/ and the read below
+  # cannot find buck/prefix/BUCK. It exited 1 there, unable to regenerate its own committed output.
+  cd ($env.CURRENT_FILE | path dirname | path join ".." "..")
   let src = "buck/prefix/BUCK"
   if not ($src | path exists) {
     say-err $"no generated prefix at ($src)"
@@ -372,7 +374,19 @@ def main [] {
   # THE PATH python PRINTS, which is os.path.join(scripts/.., ...) and keeps the "/.." in it.
   # Cosmetic, and reproduced anyway: the two outputs are compared line for line.
   let dst = "buck/prefix-min/BUCK"
-  let dst_printed = (($env.CURRENT_FILE | path dirname) + "/../buck/prefix-min/BUCK")
+  let dst_printed = (($env.CURRENT_FILE | path dirname) + "/../../buck/prefix-min/BUCK")
+  # --check REGENERATES AND COMPARES instead of writing. buck/prefix-min/BUCK is generated and
+  # committed, and nothing verified the two still agreed: this generator could not even find its
+  # own input for a while, and the committed file drifted 28 entries behind without a word.
+  if $check {
+    let want = (if ($dst | path exists) { open --raw $dst } else { "" })
+    if $want != $body {
+      say-err $"prefix-min: ($dst) is STALE, regenerate it with scripts/gen/gen-prefix-min.nu"
+      exit 1
+    }
+    say $"prefix-min: ($dst) is up to date with its generator"
+    return
+  }
   $body | save -f $dst
 
   let total = ($all | where {|l| ($l | str trim --left) | str starts-with '"' } | length)
