@@ -181,6 +181,13 @@ def main [scratch?: string] {
             DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
             DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
             LD_LIBRARY_PATH: $ld
+            # THE COMPAT LIBRARY, exactly as scripts/app-drive.sh launches an application. The
+            # 5.2.2 overlays import __swift_classIsSwiftMask, which the 5.5.3 core keeps private;
+            # libswiftCompat.dylib defines it and the loader consults it only when told to. Without
+            # these two, 27 overlays that applications load every day report "dlopen returned NULL"
+            # here, which measures the environment rather than the port.
+            DYLD_INSERT_LIBRARIES: "/usr/lib/swift/libswiftCompat.dylib"
+            CIDER_COMPAT_LIBRARY: "/usr/lib/swift/libswiftCompat.dylib"
         } {
             do -i { ^timeout 900 $"($rt)/bin/cider" shell /usr/bin/loadall_probe $"/tmp/($rn)" out+err> $log }
         }
@@ -241,19 +248,24 @@ def main [scratch?: string] {
         if ($failed | length) > 40 { say $"     ... and (($failed | length) - 40) more, not shown" }
     }
 
-    # A FLOOR set to what was MEASURED: 330 of 359, raised from 292 of 336 on 2026-09-08.
+    # A FLOOR set to what was MEASURED: 356 of 359, raised from 292 of 336 on 2026-09-08.
     #
-    # THE OLD READING IS DEAD, and it was the comfortable one: the 44 that failed were said to be
-    # exactly the git LFS pointers under usr/lib/swift, so every real artifact loaded and the only
-    # failures were files that were not libraries at all. The LFS objects have since been fetched,
-    # those files are real Mach-O, and 38 of them now load. What remains is 29 REAL FAILURES, all
-    # of them Swift overlays under usr/lib/swift (libswiftAppKit, libswiftFoundation and their
-    # siblings), which is a genuine gap and not a checkout artifact. See task #176.
+    # TWO OLD READINGS DIED HERE, and both were wrong in the same direction. The first was that the
+    # 44 failures were exactly the git LFS pointers under usr/lib/swift, so every real artifact
+    # loaded; the objects have since been fetched and those files are real Mach-O. The second was
+    # mine, one commit earlier: with the dlerror finally printed, 27 failures shared one missing
+    # symbol, __swift_classIsSwiftMask, and I wrote that up as a real gap. It was not. That symbol
+    # is delivered by libswiftCompat.dylib through CIDER_COMPAT_LIBRARY, which every launcher sets
+    # and this check did not, so it was measuring its own environment. Setting it took 330 to 356.
+    #
+    # The 3 that remain are honest: libswiftAccelerate wants _vDSP_DFT_Execute, which we do not
+    # implement, and libswiftSwiftLang and libswiftXCTest want sourcekitd and XCTest, which are
+    # development frameworks this port has no reason to ship.
     #
     # Raise it when the count goes up, the way the scripting check's floor tracks its own
     # measurement.
 
-    let floor = (($env.LOADALL_FLOOR? | default "330") | into int)
+    let floor = (($env.LOADALL_FLOOR? | default "356") | into int)
     if $ok >= $floor {
         say ""
         say $"PASS: ($ok) of ($n) installed libraries load in the guest \(floor ($floor))"
