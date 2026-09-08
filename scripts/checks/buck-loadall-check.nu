@@ -222,25 +222,38 @@ def main [scratch?: string] {
     if ($bad != 0) or ($crash != 0) or ($hang != 0) {
         say ""
         say $"   did not load \(($bad)), died in an initializer \(($crash)), or hung \(($hang)):"
-        $lines_out
-        | where {|l| ($l starts-with "LOADALL fail ") or ($l starts-with "LOADALL crash ") or ($l starts-with "LOADALL hang ") }
-        | first 24
-        | each {|l| say ("     " + ($l | str replace "LOADALL " "")) }
+        # WITH THE dlerror, which the probe has always printed and this has always thrown away:
+        # the child writes it to stderr right before the parent writes the verdict to stdout, so
+        # the nearest preceding one belongs to this library. "dlopen returned NULL" names nothing
+        # and cost a separate investigation to get behind.
+        let failed = ($lines_out | reduce --fold {last: "", rows: []} {|l, acc|
+            if ($l starts-with "dlerror: ") {
+                {last: ($l | str replace "dlerror: " ""), rows: $acc.rows}
+            } else if ($l starts-with "LOADALL fail ") or ($l starts-with "LOADALL crash ") or ($l starts-with "LOADALL hang ") {
+                let why = (if ($l starts-with "LOADALL fail ") and ($acc.last != "") and ($acc.last != "(none)") { $"  [($acc.last)]" } else { "" })
+                {last: "", rows: ($acc.rows | append (($l | str replace "LOADALL " "") + $why))}
+            } else {
+                $acc
+            }
+        } | get rows)
+        $failed | first 40 | each {|l| say $"     ($l)" }
+        # NO SILENT CAP: a list that stops at 24 with no note reads as the whole list.
+        if ($failed | length) > 40 { say $"     ... and (($failed | length) - 40) more, not shown" }
     }
 
-    # A FLOOR set to what was MEASURED. 292 of 336 load: 227 dylibs plus 109 framework binaries,
-    # and the 44 that do not are exactly the git LFS pointers under usr/lib/swift, which
-    # scripts/buck-dylib-shape.nu counts independently. So EVERY real artifact in the prefix
-    # loads in the guest, and the only failures are files that are not libraries at all.
+    # A FLOOR set to what was MEASURED: 330 of 359, raised from 292 of 336 on 2026-09-08.
     #
-    # It read 161 of 227 an hour ago, with 22 ending the guest process and 110 frameworks not
-    # swept because AppKit was thought to need a display. Both were the same missing
-    # LD_LIBRARY_PATH.
+    # THE OLD READING IS DEAD, and it was the comfortable one: the 44 that failed were said to be
+    # exactly the git LFS pointers under usr/lib/swift, so every real artifact loaded and the only
+    # failures were files that were not libraries at all. The LFS objects have since been fetched,
+    # those files are real Mach-O, and 38 of them now load. What remains is 29 REAL FAILURES, all
+    # of them Swift overlays under usr/lib/swift (libswiftAppKit, libswiftFoundation and their
+    # siblings), which is a genuine gap and not a checkout artifact. See task #176.
     #
     # Raise it when the count goes up, the way the scripting check's floor tracks its own
     # measurement.
 
-    let floor = (($env.LOADALL_FLOOR? | default "292") | into int)
+    let floor = (($env.LOADALL_FLOOR? | default "330") | into int)
     if $ok >= $floor {
         say ""
         say $"PASS: ($ok) of ($n) installed libraries load in the guest \(floor ($floor))"
