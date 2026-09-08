@@ -1,0 +1,97 @@
+On screen is more than in a window: send the disappear pair when a view is detached or hidden.
+
+_ciderSendAppearance was driven ONLY by the view joining or leaving a window. macOS also sends
+viewWillDisappear and viewDidDisappear when the view is hidden, or lifted out of the hierarchy while
+the window stays. A controller that commits its state in viewWillDisappear therefore never committed
+anything here, silently.
+
+That is not hypothetical for the roster. iA Writer IMPLEMENTS viewWillDisappear on
+IAEditorViewController, next to commitRangeChangesToDocumentIfNeeded and
+viewWillPerformAnimatedTransition; the 163 method dump that says so came from CIDER_SPY_DUMP,
+because the class lives in a stripped Swift binary with no ObjC symbols.
+
+A view is now on screen when it has a window AND neither it nor any ancestor is hidden, and the
+whole SUBTREE is notified, because hiding or detaching one view takes every controller below it off
+screen too and each of those is owed the same pair. Announced from viewDidMoveToWindow,
+removeFromSuperview and setHidden:, the last after the flag is settled and the view has been told,
+so anything the controller does sees the state it is being told about.
+
+MEASURED on an iA Writer drive that clicks a file row: viewDidDisappear goes from 0 to 1 in the run.
+
+BE CLEAR ABOUT WHAT IT DID NOT DO. The editor pane is still empty, len 0 in all sixteen draws. This
+is a correctness fix for a real divergence and it is NOT the cause of #194.
+
+Gates, because a lifecycle change reaches every application: darling-testsuite wired 67, ran 67,
+passed 66, failed 0, the recorded baseline, and all six roster applications pass the INPUT roster,
+which is the criterion a launch sweep cannot establish.
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -79,6 +79,10 @@
+ 
+ extern unsigned long cider_o2_draw_ops;
+ 
++@interface NSView (CiderAppearance)
++- (void) _ciderUpdateAppearanceTree;
++@end
++
+ @implementation NSView
+ 
+ /*
+@@ -1116,6 +1120,10 @@
+             [self viewDidHide];
+         else
+             [self viewDidUnhide];
++
++        /* AFTER the flag is settled and the view has been told, so anything the controller does in
++         * viewWillDisappear sees the state it is being told about. */
++        [self _ciderUpdateAppearanceTree];
+     }
+ }
+ 
+@@ -2368,6 +2376,7 @@
+ 
+     [removeFrom _removeViewWithoutDisplay: self];
+     [window _invalidateTrackingAreas];
++    [self _ciderUpdateAppearanceTree];
+ }
+ 
+ - (void) viewWillMoveToSuperview: (NSView *) view {
+@@ -2382,11 +2391,36 @@
+     // Intentionally empty.
+ }
+ 
++/* ON SCREEN IS MORE THAN IN A WINDOW. A view is visible when it has a window AND neither it nor any
++ * ancestor is hidden. Testing only the window meant a controller whose view was hidden or lifted out
++ * of the hierarchy never heard viewWillDisappear, and an application that commits its state there
++ * simply never commits: iA Writer implements viewWillDisappear on IAEditorViewController, next to
++ * commitRangeChangesToDocumentIfNeeded (#194). */
++- (BOOL) _ciderIsOnScreenForAppearance {
++    if (_window == nil)
++        return NO;
++
++    for (NSView *ancestor = self; ancestor != nil; ancestor = [ancestor superview])
++        if ([ancestor isHidden])
++            return NO;
++
++    return YES;
++}
++
++/* THE WHOLE SUBTREE, because hiding or detaching one view takes every controller below it off
++ * screen too, and each of those controllers is owed the same pair. */
++- (void) _ciderUpdateAppearanceTree {
++    if (_ciderViewController != nil)
++        [_ciderViewController _ciderSendAppearance: [self _ciderIsOnScreenForAppearance]];
++
++    for (NSView *child in [self subviews])
++        [child _ciderUpdateAppearanceTree];
++}
++
+ - (void) viewDidMoveToWindow {
+     /* A CONTROLLER LEARNS ITS VIEW IS ON SCREEN HERE. AppKit pairs viewWillAppear and viewDidAppear
+      * with the view joining a window, and their absence is why setup deferred to them never ran. */
+-    if (_ciderViewController != nil)
+-        [_ciderViewController _ciderSendAppearance: _window != nil];
++    [self _ciderUpdateAppearanceTree];
+ }
+ 
+ - (BOOL) shouldDelayWindowOrderingForEvent: (NSEvent *) event {
