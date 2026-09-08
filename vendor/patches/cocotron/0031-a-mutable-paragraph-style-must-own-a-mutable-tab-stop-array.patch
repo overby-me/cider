@@ -1,0 +1,85 @@
+A mutable paragraph style must own a MUTABLE tab stop array, and setTabStops must not mutate.
+
+NSMutableParagraphStyle mutates _tabStops IN PLACE: setTabStops did removeAllObjects then
+addObjectsFromArray, and addTabStop and removeTabStop still insert and remove. _initWithDefaults
+takes a -mutableCopy and gets that right. The other two initialisers did not:
+
+  -initWithParagraphStyle:  _tabStops = [other->_tabStops copy]      an IMMUTABLE NSArray
+  -initWithCoder:           _tabStops = [[... @"Tabs"] retain]       whatever the archive held
+
+So a mutable style built by copying another one, which is what -mutableCopy does and what any
+application does before adjusting indents, raised NSInternalInconsistencyException "attempting to
+mutate an immutable object" from -[__NSCFArray removeAllObjects] on the first setTabStops.
+
+MEASURED, with CIDER_TRACE_EXCEPTIONS on an iA Writer drive that opens a document:
+
+  -[__NSCFArray removeAllObjects]
+  -[NSMutableParagraphStyle setTabStops:]
+  -[IATextController adjustIndentOnParagraphStyle:shouldHang:indentWrapped:forBlockElementWithMarkerRange:]
+  -[IATextController handleHeadingInRange:markerRange:]
+  -[IAMarkdownLiveParser parseLoopInRange:]
+  -[IAMarkdownLiveParser stringDidChangeInRange:delta:]
+
+iA Writer runs that live parser on EVERY string change and CATCHES the exception, so the markdown
+parse of a heading simply stopped, silently, one frame at a time.
+
+Both initialisers now take a mutableCopy, and setTabStops REPLACES the array rather than mutating
+it, so it no longer depends on what the last initialiser happened to leave behind.
+
+AFTER: that raise goes from 1 to 0 in the same drive. BE CLEAR ABOUT WHAT THAT DID NOT FIX: the
+editor pane is still empty, because the document text and the editor view are on two different text
+storages, which is a separate defect (#194).
+--- a/AppKit/NSParagraphStyle.m
++++ b/AppKit/NSParagraphStyle.m
+@@ -99,7 +99,7 @@
+         _lineHeightMultiple = [coder decodeFloatForKey: @"LineHeightMultiple"];
+         _lineSpacing = [coder decodeFloatForKey: @"LineSpacing"];
+         _defaultTabInterval = [coder decodeFloatForKey: @"DefaultTabInterval"];
+-        _tabStops = [[coder decodeObjectForKey: @"Tabs"] retain];
++        _tabStops = [[coder decodeObjectForKey: @"Tabs"] mutableCopy];
+         _hyphenationFactor = [coder decodeFloatForKey: @"HyphenationFactor"];
+         _tighteningFactorForTruncation =
+                 [coder decodeFloatForKey: @"TighteningFactor"];
+@@ -134,7 +134,11 @@
+     _lineHeightMultiple = other->_lineHeightMultiple;
+     _lineSpacing = other->_lineSpacing;
+     _defaultTabInterval = other->_defaultTabInterval;
+-    _tabStops = [other->_tabStops copy];
++    /* MUTABLE, because NSMutableParagraphStyle mutates this array IN PLACE. -copy of an NSArray is
++     * immutable, so a mutable style built by copying another one raised "attempting to mutate an
++     * immutable object" from the first addTabStop: or removeTabStop:. _initWithDefaults above
++     * already uses -mutableCopy; this init and -initWithCoder: were the two that broke it. */
++    _tabStops = [other->_tabStops mutableCopy];
+     _hyphenationFactor = other->_hyphenationFactor;
+     _tighteningFactorForTruncation = other->_tighteningFactorForTruncation;
+     return self;
+--- a/AppKit/NSMutableParagraphStyle.m
++++ b/AppKit/NSMutableParagraphStyle.m
+@@ -137,12 +137,23 @@
+     _defaultTabInterval = interval;
+ }
+ 
++/* REPLACE rather than mutate in place, so this cannot depend on what the last init left here.
++ * iA Writer runs its markdown live parser on every string change, that calls setTabStops: through
++ * -[IATextController adjustIndentOnParagraphStyle:...], and mutating an immutable array raised
++ * inside the parse. The application catches it, so the editor simply stayed empty (#194). */
+ - (void) setTabStops: (NSArray *) tabStops {
+-    if (tabStops != _tabStops) {
+-        [_tabStops removeAllObjects];
+-        [_tabStops addObjectsFromArray: tabStops];
+-        [_tabStops sortUsingSelector: @selector(compare:)];
++    if (tabStops == _tabStops) {
++        return;
+     }
++
++    NSMutableArray *replacement = [tabStops mutableCopy];
++
++    if (replacement == nil) {
++        replacement = [[NSMutableArray alloc] init];
++    }
++    [replacement sortUsingSelector: @selector(compare:)];
++    [_tabStops release];
++    _tabStops = replacement;
+ }
+ 
+ - (void) addTabStop: (NSTextTab *) tabStop {
