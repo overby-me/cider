@@ -275,14 +275,11 @@ const EXCLUDE_DEST = [
     "libexec/cider/usr/lib/sasl2/",        # SASL plugins, for the mail and ssh world
     "libexec/cider/System/Library/Components/",  # the CoreAudio component
 
-    # THE SWIFT RUNTIME, 44 dylibs. Zero build actions, since they are file copies, so this is
-    # not a speed removal, it is a correctness one, and it is the safest removal in this file.
-    # Every one of those dylibs is a 131-byte GIT LFS POINTER rather than a library (task #39).
-    # So a 131-byte text file named libswiftCoreGraphics.dylib is either never loaded, in which
-    # case dropping it changes nothing, or it IS loaded and fails, in which case it is already
-    # broken. There is no state in which it currently works, so removal cannot regress anything.
-    # On the standing criterion it would go anyway: nix does not need Swift to start, and once
-    # nix runs it can pull a real Swift from nixpkgs rather than a pointer file.
+    # THE SWIFT RUNTIME, 55 dylibs, zero build actions since they are file copies.
+    # DO NOT REUSE THE OLD ARGUMENT: this was "they are all 131-byte git LFS pointers (task #39),
+    # so removal cannot regress anything". The objects have since been fetched and all 55 are real
+    # Mach-O, so that reason is dead and the removal now rests ONLY on this tier's goal -- nix does
+    # not need Swift to start, and once it runs it can pull Swift from nixpkgs.
     "libexec/cider/usr/lib/swift/"
 ]
 

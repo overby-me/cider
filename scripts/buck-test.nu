@@ -1476,11 +1476,11 @@ def main [flag?: string] {
         bad "Certificates.bundle EVRoots.plist has no roots"
     }
 
-    # Is every .dylib actually a library? scripts/checks/buck-loadall-check.nu found 44 that would not
-    # dlopen, and they are 131-byte git LFS pointers: the Swift runtime binaries live in LFS and
-    # the checkout never fetched them, so the port installs the pointer under the library's name.
-    # Nothing links against them, so no build-time check could see it. Free here because the
-    # prefix is already built above.
+    # Is every .dylib actually a library? Found by buck-loadall-check.nu: 44 would not dlopen
+    # because they were git LFS pointers installed under a library name, which nothing links
+    # against so no build-time check could see it. The LFS objects have since been fetched and
+    # all 243 are Mach-O, so this now guards against the state returning. Free: the prefix is
+    # already built above.
     let ds = (cap_rc [./scripts/buck-dylib-shape.nu $"($prefix)/libexec/cider"])
     if $ds.rc == 0 {
         ok (last_line_no_ok $ds.out)

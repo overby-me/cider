@@ -13,9 +13,11 @@
 # copies the same bytes. But nothing anywhere said the prefix contained text files named
 # .dylib, and "it linked" cannot catch it because nothing links against them.
 #
-# This asserts the shape rather than the count of failures: every .dylib is Mach-O, except a
-# named set that is a pointer for a known reason. If the LFS objects are ever fetched these
-# become Mach-O and the check says so, which is the signal to delete the exception.
+# THE EXCEPTION IS GONE, 2026-09-08, because the check asked for it: all 243 installed .dylib
+# files are now Mach-O and NONE is a pointer, so the LFS objects have been fetched. The rule is
+# now flat -- every .dylib is Mach-O, anywhere -- which is stricter than the version with the
+# usr/lib/swift carve-out, and a checkout that has not fetched LFS now FAILS here loudly instead
+# of passing with an excuse. That is the point: an unfetched checkout builds a broken prefix.
 #
 # The first script converted from bash to nushell (task #40). Its output is byte-identical to
 # the bash version it replaced, on the real prefix and on a crafted failing one, which is how
@@ -23,9 +25,6 @@
 #
 # Usage:
 #   scripts/buck-dylib-shape.nu <prefix root>     # the directory holding usr/ and System/
-
-# The only place a non-Mach-O .dylib is currently expected, and only as an LFS pointer.
-const EXPECTED_DIR = "usr/lib/swift"
 
 def main [root?: string] {
     if ($root | is-empty) or (not ($root | path exists)) {
@@ -74,39 +73,32 @@ def main [root?: string] {
     let macho = ($classified | where class == "macho")
     let pointers = ($classified | where class == "pointer")
 
-    # A Mach-O where a pointer was expected means the LFS objects arrived.
-    let stray = ($macho | where {|r| $r.rel | str starts-with $"($EXPECTED_DIR)/" })
-    # A pointer outside the expected directory, or anything that is neither.
+    # EVERY non Mach-O is wrong now, wherever it sits. An LFS pointer is still called out by
+    # name because it has a specific cure (fetch the objects) that the file kind alone does not
+    # suggest.
     let wrong = (
-        ($pointers | where {|r| not ($r.rel | str starts-with $"($EXPECTED_DIR)/") }
-            | each {|r| $"($r.rel) \(LFS pointer outside ($EXPECTED_DIR)\)" })
+        ($pointers | each {|r| $"($r.rel) \(git LFS pointer, the object was never fetched\)" })
         ++ ($classified | where class == "other" | each {|r| $"($r.rel) \(($r.kind)\)" })
     ) | sort
     # SORTED, because the two categories are gathered separately here while the bash version
     # appended them as it walked the sorted file list. Same set, different order, and a
     # report that reorders itself between implementations is a diff nobody can read.
 
-    print $"installed .dylib files: ($macho | length | $in + ($pointers | length))"
+    # $classified, NOT macho + pointers: a file that is neither belongs to a third class, and
+    # summing only two of them under-reported the total by exactly the files being complained about.
+    print $"installed .dylib files: ($classified | length)"
     print $"  Mach-O:               ($macho | length)"
-    print $"  git LFS pointers:     ($pointers | length)  \(all under ($EXPECTED_DIR)\)"
-
-    if ($stray | is-not-empty) {
-        print ""
-        print $"GOOD NEWS, and this check now needs updating: ($stray | length) file\(s\) under ($EXPECTED_DIR) are real"
-        print "Mach-O, so the LFS objects have been fetched. Drop the exception."
-        $stray | first 5 | each {|r| print $"  ($r.rel)" }
-        exit 1
-    }
+    print $"  git LFS pointers:     ($pointers | length)"
 
     if ($wrong | is-not-empty) {
         print ""
-        print $"FAIL: ($wrong | length) file\(s\) installed as .dylib are not Mach-O and are not the known"
-        print "Swift LFS pointers. A file that is not a library cannot be loaded, and nothing"
-        print "else here would notice, because nothing links against it:"
+        print $"FAIL: ($wrong | length) file\(s\) installed as .dylib are not Mach-O. A file that is not a"
+        print "library cannot be loaded, and nothing else here would notice, because nothing links"
+        print "against it:"
         $wrong | first 10 | each {|w| print $"  ($w)" }
         exit 1
     }
 
     print ""
-    print $"ok: every installed .dylib is Mach-O, except ($pointers | length) known Swift LFS pointers"
+    print $"ok: all ($macho | length) installed .dylib files are Mach-O"
 }
