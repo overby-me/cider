@@ -6,14 +6,20 @@
  * visibleExcerpt] is "movsbl 0x8(%rdi), %eax": an ivar read with no message send in it, and #194
  * stopped there with "nothing on our side can see it".
  *
- * This is inserted with DYLD_INSERT_LIBRARIES and swizzles NAMED ZERO ARGUMENT METHODS to log what
- * they return. That covers accessors, which is what a question of this shape almost always is.
+ * This is inserted with DYLD_INSERT_LIBRARIES and swizzles NAMED METHODS to log what they return.
+ * That covers accessors, which is what a question of this shape almost always is.
  *
- *   CIDER_SPY=Class.selector,Class.selector
+ *   CIDER_SPY=Class.selector,Class.setSelector:
  *
- * ZERO ARGUMENT ONLY, and deliberately. Forwarding an arbitrary signature safely means unpacking
- * every argument by type encoding, and a probe that can crash the thing it is measuring is worse
- * than no probe. A selector with a colon in it is refused out loud rather than half handled.
+ * ZERO OR ONE ARGUMENT, and the one argument must be an integer or an object with a void return.
+ * Forwarding an arbitrary signature safely means unpacking every argument by type encoding, and a
+ * probe that can crash the thing it is measuring is worse than no probe, so anything else is
+ * refused out loud rather than half handled.
+ *
+ * The one argument case exists because zero argument only hid the call #194 needed. The getter
+ * -presentedViewControllerIndex is watchable and answers 0; -presentViewControllerAtIndex:, which
+ * is what actually SWITCHES, has a colon and so was never seen. A getter cannot tell "asked and
+ * answered 0" from "never asked to change".
  *
  * THE CLASS IS NOT LOADED WHEN WE ARE. An inserted library initialises before the application's own
  * frameworks are guaranteed to be in, so objc_getClass fails at that point for anything but the
@@ -42,6 +48,8 @@ struct CiderSpyEntry {
 	SEL selector;
 	IMP original;
 	char ret;
+	/* 0 for a zero argument selector, else the encoding of the single argument. */
+	char arg;
 	int installed;
 };
 
@@ -56,7 +64,7 @@ static int cider_spy_count;
  * no way to learn the selector names from the file. The RUNTIME still knows them, and this is the
  * only place with a runtime inside that process.
  *
- * Zero argument methods are marked, because those are the ones CIDER_SPY can then watch.
+ * Methods CIDER_SPY can forward are marked, which is zero or one colon.
  */
 static char cider_spy_dump_names[CIDER_SPY_MAX][128];
 static int cider_spy_dump_done[CIDER_SPY_MAX];
@@ -77,8 +85,11 @@ static int cider_spy_dump_class(int i)
 		const char *name = sel_getName(method_getName(methods[m]));
 		const char *types = method_getTypeEncoding(methods[m]);
 
+		const char *first = strchr(name, ':');
+		int watchable = first == NULL || first == name + strlen(name) - 1;
+
 		fprintf(stderr, "CIDER_SPY_DUMP   %s %-52s %s\n",
-		        strchr(name, ':') == NULL ? "watchable" : "         ", name, types ?: "?");
+		        watchable ? "watchable" : "         ", name, types ?: "?");
 	}
 	free(methods);
 	fflush(stderr);
@@ -153,6 +164,36 @@ static double cider_spy_double(id self, SEL _cmd)
 	return v;
 }
 
+/*
+ * ONE ARGUMENT, VOID RETURN, and only where the argument is an integer or an object.
+ *
+ * This started as zero argument only, on the grounds that unpacking an arbitrary signature is how a
+ * probe crashes what it measures. That is still true, and everything else is still refused out
+ * loud. But the restriction hid the very call #194 needed: the getter
+ * -presentedViewControllerIndex is watchable and answers 0, while the method that actually SWITCHES,
+ * -presentViewControllerAtIndex:, has a colon and so was never seen. Watching only the getter
+ * cannot tell "asked and answered 0" from "never asked to change".
+ */
+static void cider_spy_void_int(id self, SEL _cmd, long long a)
+{
+	struct CiderSpyEntry *e = cider_spy_find(_cmd);
+	char text[64];
+
+	snprintf(text, sizeof(text), "(void) arg=%lld", a);
+	cider_spy_say(e, self, text);
+	((void (*)(id, SEL, long long)) e->original)(self, _cmd, a);
+}
+
+static void cider_spy_void_object(id self, SEL _cmd, id a)
+{
+	struct CiderSpyEntry *e = cider_spy_find(_cmd);
+	char text[256];
+
+	snprintf(text, sizeof(text), "(void) arg=%p %s", a, a ? object_getClassName(a) : "(nil)");
+	cider_spy_say(e, self, text);
+	((void (*)(id, SEL, id)) e->original)(self, _cmd, a);
+}
+
 static int cider_spy_install(struct CiderSpyEntry *e)
 {
 	Class cls = objc_getClass(e->cls);
@@ -172,6 +213,44 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 	e->ret = types ? types[0] : '?';
 	e->selector = sel;
 	e->original = method_getImplementation(m);
+
+	/* The runtime is the authority on the argument type, not the selector spelling. Argument 2 is
+	 * the first real one, after self and _cmd. */
+	e->arg = 0;
+	if (strchr(e->sel, ':') != NULL) {
+		char encoding[64] = "";
+		method_getArgumentType(m, 2, encoding, sizeof(encoding));
+		e->arg = encoding[0];
+	}
+
+	if (e->arg != 0) {
+		IMP one;
+		switch (e->arg) {
+		case 'c': case 'C': case 'B': case 's': case 'S':
+		case 'i': case 'I': case 'l': case 'L': case 'q': case 'Q':
+			one = (IMP) cider_spy_void_int;
+			break;
+		case '@': case '#':
+			one = (IMP) cider_spy_void_object;
+			break;
+		default:
+			fprintf(stderr, "CIDER_SPY %s.%s takes %c, which this does not forward\n",
+			        e->cls, e->sel, e->arg);
+			fflush(stderr);
+			return 1;
+		}
+		if (e->ret != 'v') {
+			fprintf(stderr, "CIDER_SPY %s.%s takes an argument AND returns %c; only void is "
+			        "forwarded for those\n", e->cls, e->sel, e->ret);
+			fflush(stderr);
+			return 1;
+		}
+		method_setImplementation(m, one);
+		e->installed = 1;
+		fprintf(stderr, "CIDER_SPY armed on %s.%s taking %c returning v\n", e->cls, e->sel, e->arg);
+		fflush(stderr);
+		return 1;
+	}
 
 	IMP replacement;
 	switch (e->ret) {
@@ -273,10 +352,14 @@ static void cider_spy_start(void)
 		size_t len = comma ? (size_t) (comma - p) : strlen(p);
 		const char *dot = memchr(p, '.', len);
 
+		const char *colon = dot ? memchr(dot, ':', len - (size_t) (dot - p)) : NULL;
+
 		if (dot == NULL) {
 			fprintf(stderr, "CIDER_SPY ignoring %.*s, expected Class.selector\n", (int) len, p);
-		} else if (memchr(p, ':', len) != NULL) {
-			fprintf(stderr, "CIDER_SPY refusing %.*s: zero argument selectors only\n",
+		} else if (colon != NULL && colon != p + len - 1) {
+			/* One argument at most, so exactly one colon and it must END the selector. Two would
+			 * mean unpacking a signature this cannot see the shape of. */
+			fprintf(stderr, "CIDER_SPY refusing %.*s: zero or ONE argument selectors only\n",
 			        (int) len, p);
 		} else {
 			struct CiderSpyEntry *e = &cider_spy_entries[cider_spy_count++];
