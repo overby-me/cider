@@ -56,6 +56,7 @@ cc_objects(
         "src/pipe.m",
         "src/plist.m",
         "src/pointer.m",
+        "src/rich_error.m",
         "src/reboot3.c",
         "src/runtime.m",
         "src/serialization.m",

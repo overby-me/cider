@@ -1,0 +1,252 @@
+a rich error object, which is what the last testsuite case could not build
+
+connection_client_error_no_server was the ONE case in the whole suite that did not compile:
+
+  helper/xpc_error.h:12: unknown type name 'xpc_rich_error_t'
+
+The case itself never touches a rich error. It fails because the shared helper library it links,
+libxpc_helper_tools, carries xpc_error.c, and that calls xpc_rich_error_copy_description. grep over
+this library found no xpc_rich_error and no xpc_session at all: it stops at the connection API.
+
+WHAT THIS ADDS, and it is deliberately a REAL OBJECT rather than a typedef.
+
+  xpc_rich_error_t                    an XPC object with a description and a can-retry flag
+  xpc_rich_error_copy_description()   memory the CALLER frees
+  xpc_rich_error_can_retry()          a question about the error, not about the call
+
+A typedef plus two functions would have compiled and then been wrong in a way nothing reports: the
+two functions have DIFFERENT ownership rules, and copy_description handing back a pointer the caller
+must free is the half that a stub gets wrong silently. copy_description answers an empty string
+rather than NULL when there is nothing to say, so a caller has one shape to handle and free() is
+always correct.
+
+NOTHING IN THIS LIBRARY MAKES ONE YET, and that is the honest state. xpc_rich_error_t arrived with
+xpc_session_* in macOS 12 as the replacement for reading a description out of an error dictionary.
+There are no sessions here, so the only way to hold one is to be given it by a session that does not
+exist. The type and its accessors are here so a caller that uses them compiles and links.
+
+MEASURED, scripts/run-dts-batch.sh
+
+  before  wired 67, BUILT 66, ran 66, passed 65, failed 0, did not build 1
+  after   wired 67, BUILT 67, ran 67, passed 66, failed 0, did not build 0
+
+The case does not merely build, it PASSES: connecting to a mach service that does not exist reaches
+the event handler with XPC_TYPE_ERROR, which is what macOS does. The whole suite now builds and
+passes, and the only line left is the case upstream never wrote a body for.
+--- a/include/xpc/xpc.h
++++ b/include/xpc/xpc.h
+@@ -74,6 +74,7 @@
+ XPC_EXPORT XPC_TYPE(_xpc_type_int64);
+ XPC_EXPORT XPC_TYPE(_xpc_type_null);
+ XPC_EXPORT XPC_TYPE(_xpc_type_pointer);
++XPC_EXPORT XPC_TYPE(_xpc_type_rich_error);
+ XPC_EXPORT XPC_TYPE(_xpc_type_shmem);
+ XPC_EXPORT XPC_TYPE(_xpc_type_string);
+ XPC_EXPORT XPC_TYPE(_xpc_type_uint64);
+@@ -81,6 +82,7 @@
+ 
+ XPC_DECL(xpc_connection);
+ XPC_DECL(xpc_endpoint);
++XPC_DECL(xpc_rich_error);
+ 
+ #define XPC_TYPE_ARRAY (&_xpc_type_array)
+ #define XPC_TYPE_BOOL (&_xpc_type_bool)
+@@ -95,6 +97,7 @@
+ #define XPC_TYPE_INT64 (&_xpc_type_int64)
+ #define XPC_TYPE_NULL (&_xpc_type_null)
+ #define XPC_TYPE_POINTER (&_xpc_type_pointer)
++#define XPC_TYPE_RICH_ERROR (&_xpc_type_rich_error)
+ #define XPC_TYPE_SHMEM (&_xpc_type_shmem)
+ #define XPC_TYPE_STRING (&_xpc_type_string)
+ #define XPC_TYPE_UINT64 (&_xpc_type_uint64)
+@@ -104,6 +107,19 @@
+ #define XPC_BOOL_FALSE XPC_GLOBAL_OBJECT(_xpc_bool_false)
+ #define XPC_ERROR_KEY_DESCRIPTION _xpc_error_key_description
+ 
++/*
++ * THE SESSION API's ERROR, and nothing in this library makes one yet: xpc_session_* is macOS 12 and
++ * this library stops at xpc_connection_*. The type and its two accessors exist so a caller that
++ * uses them compiles and links; the only way to hold one is to be given it by a session.
++ *
++ * The description is the CALLER's to free.
++ */
++XPC_EXPORT
++char* xpc_rich_error_copy_description(xpc_rich_error_t error);
++
++XPC_EXPORT
++bool xpc_rich_error_can_retry(xpc_rich_error_t error);
++
+ XPC_EXPORT const struct _xpc_bool_s _xpc_bool_true;
+ XPC_EXPORT const struct _xpc_bool_s _xpc_bool_false;
+ XPC_EXPORT const char * const _xpc_error_key_description;
+--- a/BUCK
++++ b/BUCK
+@@ -56,6 +56,7 @@
+         "src/pipe.m",
+         "src/plist.m",
+         "src/pointer.m",
++        "src/rich_error.m",
+         "src/reboot3.c",
+         "src/runtime.m",
+         "src/serialization.m",
+--- /dev/null
++++ b/internal-include/xpc/objects/rich_error.h
+@@ -0,0 +1,45 @@
++/**
++ * This file is part of Darling.
++ *
++ * Copyright (C) 2026 Darling developers
++ *
++ * Darling is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * Darling is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with Darling.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef _XPC_OBJECTS_RICH_ERROR_H_
++#define _XPC_OBJECTS_RICH_ERROR_H_
++
++#import <xpc/objects/base.h>
++
++XPC_CLASS_DECL(rich_error);
++
++struct xpc_rich_error_s {
++	struct xpc_object_s base;
++	const char* description;
++	BOOL freeDescriptionWhenDone;
++	BOOL canRetry;
++};
++
++@interface XPC_CLASS_INTERFACE(rich_error)
++
++@property(readonly) const char* errorDescription;
++@property(readonly) BOOL canRetry;
++
+++ (instancetype)richErrorWithDescription: (const char*)description canRetry: (BOOL)canRetry;
++
++- (instancetype)initWithDescription: (const char*)description canRetry: (BOOL)canRetry;
++
++@end
++
++#endif // _XPC_OBJECTS_RICH_ERROR_H_
+--- /dev/null
++++ b/src/rich_error.m
+@@ -0,0 +1,110 @@
++/**
++ * This file is part of Darling.
++ *
++ * Copyright (C) 2026 Darling developers
++ *
++ * Darling is free software: you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation, either version 3 of the License, or
++ * (at your option) any later version.
++ *
++ * Darling is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with Darling.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#import <xpc/objects/rich_error.h>
++#import <xpc/util.h>
++#import <xpc/xpc.h>
++
++/*
++ * THE ERROR OBJECT THE SESSION API HANDS BACK, and NOTHING IN THIS LIBRARY MAKES ONE YET.
++ *
++ * xpc_rich_error_t arrived with xpc_session_* in macOS 12, as the replacement for reading a
++ * description out of an error dictionary. This library stops at xpc_connection_*, so the only way
++ * a caller can hold one is to have been given it by a session, and there are no sessions here.
++ *
++ * It is a real object rather than a typedef because the caller of the two functions below owns what
++ * it gets back and the ownership rules differ: copy_description returns memory the CALLER frees,
++ * and can_retry answers a question about the error rather than about the call. A typedef would
++ * compile and then be wrong in a way nothing reports.
++ */
++
++XPC_CLASS_SYMBOL_DECL(rich_error);
++
++OS_OBJECT_NONLAZY_CLASS
++@implementation XPC_CLASS(rich_error)
++
++XPC_CLASS_HEADER(rich_error);
++
+++ (instancetype)richErrorWithDescription: (const char*)description canRetry: (BOOL)canRetry
++{
++	return [[[[self class] alloc] initWithDescription: description canRetry: canRetry] autorelease];
++}
++
++- (instancetype)initWithDescription: (const char*)description canRetry: (BOOL)canRetry
++{
++	if (self = [super init]) {
++		XPC_THIS_DECL(rich_error);
++		this->description = description ? strdup(description) : NULL;
++		this->freeDescriptionWhenDone = description != NULL;
++		this->canRetry = canRetry;
++	}
++	return self;
++}
++
++- (void)dealloc
++{
++	XPC_THIS_DECL(rich_error);
++	if (this->freeDescriptionWhenDone && this->description) {
++		free((void*)this->description);
++	}
++	[super dealloc];
++}
++
++- (const char*)errorDescription
++{
++	XPC_THIS_DECL(rich_error);
++	return this->description;
++}
++
++- (BOOL)canRetry
++{
++	XPC_THIS_DECL(rich_error);
++	return this->canRetry;
++}
++
++- (char*)xpcDescription
++{
++	XPC_THIS_DECL(rich_error);
++	char* output = NULL;
++	asprintf(&output, "<%s: %s>", xpc_class_name(self), this->description ?: "(no description)");
++	return output;
++}
++
++@end
++
++//
++// C API
++//
++
++XPC_EXPORT
++char* xpc_rich_error_copy_description(xpc_rich_error_t xrerror) {
++	XPC_CLASS(rich_error)* error = XPC_CAST(rich_error, xrerror);
++	const char* description = error ? error.errorDescription : NULL;
++
++	/* THE CALLER FREES THIS, which is why it is strdup'd rather than handed out. A NULL return
++	 * would be a second thing every caller has to test for, and free(NULL) is fine, so an empty
++	 * string is the answer that keeps the contract in one shape. */
++	return strdup(description ?: "");
++};
++
++XPC_EXPORT
++bool xpc_rich_error_can_retry(xpc_rich_error_t xrerror) {
++	XPC_CLASS(rich_error)* error = XPC_CAST(rich_error, xrerror);
++	return error ? (error.canRetry != NO) : false;
++};
