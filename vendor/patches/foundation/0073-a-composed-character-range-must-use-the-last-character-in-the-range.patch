@@ -1,0 +1,77 @@
+rangeOfComposedCharacterSequencesForRange must use the LAST CHARACTER IN the range.
+
+It asked for the cluster at NSMaxRange(range), which is ONE PAST THE END and, for the common case
+of a range covering the whole string, is the length itself. The cluster lookup answers nothing
+there, so the computed length collapsed and the method returned an EMPTY range for a range that
+covers real text. Out of bounds arguments were not checked either, and an empty range fell into the
+same arithmetic.
+
+WHAT IT COST, measured rather than reasoned. iA Writer builds every library row excerpt through
+this. content_excerpt(), a custom SQLite function inside Kit.framework at Kit+0x624a7, is:
+
+    if (sqlite3_value_type(argv[0]) == SQLITE_NULL) return sqlite3_result_null(ctx);
+    NSData *d = [[NSData alloc] initWithBytesNoCopy:sqlite3_value_text(argv[0]) ...];
+    IALibraryIndexContent *c = [[IALibraryIndexContent alloc] initWithColumnData:d];
+    NSRange r = c.contentRange;  r.length = MIN(r.length, 360);
+    r = [c.text safeRangeForRange:r];
+    r = [c.text rangeOfComposedCharacterSequencesForRange:r];      <- HERE
+    sqlite3_result_text64(ctx, [[c.text substringWithRange:r] UTF8String], ...);
+
+An empty range makes an empty excerpt, the excerpt column comes back null, IALibraryItem has no
+excerptProvider, and the row draws "Updating..." because that is what it draws when the excerpt
+string is empty. Every library row said Updating... for months and this was the reason.
+
+BEFORE and AFTER, from the same drive with cider-spy watching the two accessors:
+
+  before  IALibraryIndexItemResultSet.excerpt -> nil x20,  IALibraryItem.excerptProvider -> nil x56
+  after   excerpt -> "# Cider", "# Probe", "# Second", "test", and excerptProvider returns real
+          IALibraryValueProvider objects. The rows draw their text.
+
+The remaining nils are correct: a folder row and a genuinely empty document.
+--- a/src/NSString.m
++++ b/src/NSString.m
+@@ -1396,18 +1396,36 @@
+ 
+ - (NSRange)rangeOfComposedCharacterSequencesForRange:(NSRange)range
+ {
+-    NSRange composed = NSMakeRange(NSNotFound, 0);
+-    NSRange minRange = [self rangeOfComposedCharacterSequenceAtIndex:range.location];
+-    if (minRange.location == NSNotFound)
++    /*
++     * THE LAST CHARACTER IN THE RANGE IS AT NSMaxRange(range) - 1. This asked for the cluster at
++     * NSMaxRange(range), which is ONE PAST THE END and, for the common case of the whole string, is
++     * the length itself. The cluster lookup answers nothing there, so the computed length collapsed
++     * and callers got an EMPTY range for a range that covers real text.
++     *
++     * iA Writer builds every library row excerpt through this: content_excerpt() in Kit takes the
++     * body, clamps it to 360 characters, widens the range through here and takes that substring. An
++     * empty range makes an empty excerpt, and an empty excerpt is exactly when the row draws
++     * "Updating..." instead of the text.
++     */
++    NSUInteger length = [self length];
++
++    if (range.location > length || NSMaxRange(range) > length)
++    {
++        return NSMakeRange(NSNotFound, 0);
++    }
++    if (range.length == 0)
+     {
+-        return composed;
++        return NSMakeRange(range.location, 0);
+     }
+-    composed.location = minRange.location;
+ 
+-    NSRange maxRange = [self rangeOfComposedCharacterSequenceAtIndex:NSMaxRange(range)];
+-    composed.length = NSMaxRange(maxRange) - minRange.location;
++    NSRange first = [self rangeOfComposedCharacterSequenceAtIndex:range.location];
++    NSRange last = [self rangeOfComposedCharacterSequenceAtIndex:NSMaxRange(range) - 1];
+ 
+-    return composed;
++    if (first.location == NSNotFound || last.location == NSNotFound)
++    {
++        return NSMakeRange(NSNotFound, 0);
++    }
++    return NSMakeRange(first.location, NSMaxRange(last) - first.location);
+ }
+ 
+ - (NSString *)description
