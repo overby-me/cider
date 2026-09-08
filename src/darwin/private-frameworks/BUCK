@@ -4949,6 +4949,59 @@ darwin_dylib(
 )
 # END generated: TCC dylibs
 
+# BEGIN PubSub
+# HAND WRITTEN, not generated: the reference build has no PubSub target. The framework is one
+# string constant and a header of enumerations; see PubSub/include/PubSub/PubSub.h for what is
+# deliberately absent and why.
+
+cc_objects(
+    name = "PubSub_obj",
+    srcs = [
+        "PubSub/src/PubSub.m",
+    ],
+    compiler_flags = [
+        "-DPubSub_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_Security",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/private-frameworks:fw_PubSub",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "PubSub_dylib",
+    dylib_name = "PubSub",
+    install_name = "/System/Library/PrivateFrameworks/PubSub.framework/Versions/A/PubSub",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        ":PubSub_obj",
+    ],
+    siblings = [
+        "//vendor/src/objc4:objc_final",
+        "//vendor/src:system_final",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END PubSub
+
 # BEGIN generated: UIFoundation
 # GENERATED from the reference build.ninja by
 # gen-buck-from-ninja (deleted) UIFoundation   -- review before committing.

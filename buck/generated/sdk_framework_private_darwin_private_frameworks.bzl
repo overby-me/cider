@@ -2046,6 +2046,9 @@ FRAMEWORKS = {
         "ProtocolBuffer/ProtocolBuffer.h": "ProtocolBuffer/include/ProtocolBuffer/ProtocolBuffer.h",
         "ProtocolBuffer/_PBProperty.h": "ProtocolBuffer/include/ProtocolBuffer/_PBProperty.h",
     },
+    "PubSub": {
+        "PubSub/PubSub.h": "PubSub/include/PubSub/PubSub.h",
+    },
     "ServerInformation": {
         "ServerInformation/ServerInformation.h": "ServerInformation/include/ServerInformation/ServerInformation.h",
         "ServerInformation/ServerInformationComputerModelInfo.h": "ServerInformation/include/ServerInformation/ServerInformationComputerModelInfo.h",
