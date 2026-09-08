@@ -165,6 +165,11 @@ ELF_LIBS=$(grep '^elf_lib_dirs' "$REPO/.buckconfig.local" 2>/dev/null | sed 's/^
 # "Symbol not found: _$ss042_stdlib_isOSVersionAtLeastOrVariantVersion..., expected in libswiftCore".
 COMPAT=${COMPAT:-/usr/lib/swift/libswiftCompat.dylib}
 
+# RECORD WHICH CONFIGURATION THIS WAS. An unrecorded setting cannot be proven after the fact: a
+# whole roster was driven with LAUNCHD_FORCE and afterwards nothing in the captures could say
+# whether the override had taken, because the guest syslog APPENDS across runs and its daemon names
+# were left over from earlier ones.
+say "launchd $([ "${LAUNCHD:-1}" = 0 ] && echo ON || echo off) (CIDER_NO_LAUNCHD=${LAUNCHD:-1})"
 say "launching $APPBIN"
 (
 	# env, NOT an assignment prefix. An unquoted ${VAR:+NAME=value} is expanded AFTER the line is

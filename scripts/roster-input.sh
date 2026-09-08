@@ -8,6 +8,11 @@
 #
 #   scripts/roster-input.sh              drive all of them
 #   scripts/roster-input.sh mm lo        drive a subset
+#   LAUNCHD_FORCE=0 scripts/roster-input.sh    drive them all with launchd ON
+#
+# The table below runs five of six with launchd OFF, so INTERACTIVE has only ever been demonstrated
+# for iTerm2 in the faithful configuration. LAUNCHD_FORCE overrides the column so the other one can
+# be measured; an ungated launchd-only configuration is what hid #221.
 #
 # Captures land in captures/input-<tag>/. LOOK AT THEM: d2-click is after the clicks, d3-typed
 # after the keys, and d5-settled POST_SETTLE later. A byte count is not a verdict. d3 in particular
@@ -75,17 +80,21 @@ while IFS='|' read -r tag prefix app launchd clicks keys proves; do
 	fi
 	reap
 	rm -f "$prefix/ciderd.log"
-	env SETTLE="$SETTLE" POST_SETTLE="$POST_SETTLE" LIMIT="$LIMIT" LAUNCHD="$launchd" \
+	# A forced run gets its OWN capture directory, or it silently overwrites the baseline it is
+	# meant to be compared against.
+	name="input-$tag${LAUNCHD_FORCE:+-launchd$LAUNCHD_FORCE}"
+	env SETTLE="$SETTLE" POST_SETTLE="$POST_SETTLE" LIMIT="$LIMIT" \
+		LAUNCHD="${LAUNCHD_FORCE:-$launchd}" \
 		CLICK="$clicks" TYPE="$keys" \
-		scripts/app-drive.sh --prefix "$prefix" --app "$app" --name "input-$tag" \
-		>"$SHOTS/input-$tag.drive.log" 2>&1 || rc=1
+		scripts/app-drive.sh --prefix "$prefix" --app "$app" --name "$name" \
+		>"$SHOTS/$name.drive.log" 2>&1 || rc=1
 	# The last capture the run produced, since which one exists depends on whether the step clicks,
 	# types or both. Naming it beats guessing at d2 or d3.
-	last=$(ls -1 "$SHOTS/input-$tag"/d*.png 2>/dev/null | tail -1)
+	last=$(ls -1 "$SHOTS/$name"/d*.png 2>/dev/null | tail -1)
 	if [ -n "$last" ]; then
-		echo "$tag: $last   EXPECT: $proves   LOOK AT IT"
+		echo "$tag: $last   $(grep -m1 'DRIVE launchd' "$SHOTS/$name.drive.log" | sed 's/DRIVE //')   EXPECT: $proves   LOOK AT IT"
 	else
-		echo "$tag: NO CAPTURE, see $SHOTS/input-$tag.drive.log"
+		echo "$tag: NO CAPTURE, see $SHOTS/$name.drive.log"
 		rc=1
 	fi
 done < <(roster)
