@@ -1,0 +1,161 @@
+Say whether an observer was actually ENTERED, and stop the trace crashing the application.
+
+CIDER_TRACE_KVO already existed in this file and I did not find it: my grep was rewritten by the
+rtk hook and its compressed output dropped the matches, so I recorded in #194 that there was no KVO
+tracing anywhere in vendor/src. That was wrong. What was there printed didChange, an observes line
+on registration, and an array-observe with a backtrace.
+
+WHAT IT COULD NOT ANSWER, and what #194 needed: whether a notification reaches an observer. There
+was no trace on the dispatch, so "a property was set and nothing happened" could not be separated
+into "nobody observes it" and "somebody does and the notification never arrived".
+
+Added:
+  CIDER_KVO notify     an observer is about to be entered, with the observer, the key path and the
+                       observed object. This is the one that was missing.
+  CIDER_KVO subclass   an NSKVONotifying_ subclass is created, which is the moment observation
+                       actually takes effect on a class.
+  CIDER_KVO will       now carries observed=, so an announcement with no observation info is
+                       distinguishable from one with.
+  CIDER_KVO addProperty the internal registration, which is what creates the subclass.
+
+A PROBE MUST NOT BE ABLE TO CRASH WHAT IT MEASURES, and this one could. A KVO key is NOT always an
+NSString: -willChangeValueForKey: is reached with a Class object among other things, and the
+existing traces called -UTF8String on it unguarded. With CIDER_TRACE_KVO on, iA Writer died 52 lines
+into launch with
+
+  +[NSTextView UTF8String]: unrecognized selector sent to instance
+
+four runs in a row, and every conclusion I drew from those runs was void: I reported that
+addObserver was never called, that no subclass was ever created and that no observer was ever
+notified. With the guard in place the same scenario runs to completion and reports 787 registrations,
+44 subclasses and 569 notifications. The hazard was in code that predates this change; turning the
+switch on is what made it reachable.
+
+_CiderKVOText answers the class name when the object is not a string and "(nil)" when it is nil, so
+every existing call site is hardened too.
+
+Gate: darling-testsuite wired 67, built 67, ran 67, passed 66, failed 0, which is the baseline.
+
+--- a/src/NSKeyValueObserving.m
++++ b/src/NSKeyValueObserving.m
+@@ -8,6 +8,7 @@
+ #import <Foundation/NSKeyValueObserving.h>
+ #import <Foundation/NSRange.h>
+ #import <objc/runtime.h>
++#import <stdio.h>
+ #import <objc/message.h>
+ #import <alloca.h>
+ #import <CoreFoundation/CFSet.h>
+@@ -90,7 +91,20 @@
+  * whether the object announced anything and whether it had observation info at all, and NOTIFY says
+  * an observer was actually entered.
+  */
+-static int _CiderTraceKVO(void)static int _CiderTraceKVO(void)
++/* A KEY IS NOT ALWAYS A STRING. -willChangeValueForKey: is reached with a Class object among other
++ * things, and calling -UTF8String on that raises: this trace killed iA Writer 52 lines into launch,
++ * four runs in a row, and every conclusion drawn from them was void. A probe must not be able to
++ * crash what it measures. */
++static const char *_CiderKVOText(id obj)
++{
++    if (obj == nil)
++        return "(nil)";
++    if (![obj respondsToSelector:@selector(UTF8String)])
++        return object_getClassName(obj);
++    return [(NSString *)obj UTF8String] ?: "(nil)";
++}
++
++static int _CiderTraceKVO(void)
+ {
+     static int on = -1;
+ 
+@@ -106,6 +120,11 @@
+     id observationInfo = __NSKeyValueRetainedObservationInfoForObject(self, nil);
+     BOOL infoExists = (observationInfo != nil);
+ 
++    if (_CiderTraceKVO()) {
++        fprintf(stderr, "CIDER_KVO will %s(%p) key=%s observed=%d\n", object_getClassName(self),
++                self, _CiderKVOText(key), (int) infoExists);
++        fflush(stderr);
++    }
+     if (infoExists)
+     {
+         NSKeyValueObservingTSD *threadSpecificKVOStruct = NSGetOrCreateThreadSpecificKVOStruct();
+@@ -125,6 +144,11 @@
+ 
+ - (void)didChangeValueForKey:(NSString *)key
+ {
++    if (_CiderTraceKVO()) {
++        fprintf(stderr, "CIDER_KVO did  %s(%p) key=%s\n", object_getClassName(self), self,
++                _CiderKVOText(key));
++        fflush(stderr);
++    }
+ 
+     /* DID THE WATCHED KEY ACTUALLY CHANGE. An application that lays out in a KVO callback needs the
+      * key to fire; a key that never changes leaves the observer asleep and the screen empty with
+@@ -135,7 +159,7 @@
+     if (kvoTrace == -1)
+         kvoTrace = (getenv("CIDER_TRACE_KVO") != NULL) ? 1 : 0;
+     if (kvoTrace) {
+-        fprintf(stderr, "CIDER_KVO didChange %s of %s\n", [key UTF8String] ?: "(nil)",
++        fprintf(stderr, "CIDER_KVO didChange %s of %s\n", _CiderKVOText(key) ?: "(nil)",
+                 object_getClassName(self));
+         fflush(stderr);
+     }
+@@ -534,6 +558,12 @@
+ }
+ - (void)addObserver:(NSObject *)observer forProperty:(NSKeyValueProperty *)property options:(NSKeyValueObservingOptions)options context:(void *)context
+ {
++    if (_CiderTraceKVO()) {
++        fprintf(stderr, "CIDER_KVO addProperty observer=%s(%p) property=%s object=%s(%p)\n",
++                object_getClassName(observer), observer, _CiderKVOText([property description]),
++                object_getClassName(self), self);
++        fflush(stderr);
++    }
+ 
+     NSString *keyPath = property.keyPath;
+     if (options & NSKeyValueObservingOptionInitial)
+@@ -591,6 +621,12 @@
+ {
+     NSKeyValueChangeDictionary *kvChangeDict = [[NSKeyValueChangeDictionary alloc] initWithDetailsNoCopy:detailsForDictionary originalObservable:originalObservable isPriorNotification:isPriorNotification];
+     [kvChangeDict retainObjects];
++    if (_CiderTraceKVO()) {
++        fprintf(stderr, "CIDER_KVO notify observer=%s(%p) keyPath=%s object=%s(%p)\n",
++                object_getClassName(observer), observer, _CiderKVOText(keyPath),
++                object_getClassName(observable), observable);
++        fflush(stderr);
++    }
+     [observer observeValueForKeyPath:keyPath ofObject:observable change:kvChangeDict context:context];
+     [kvChangeDict release];
+ 
+@@ -604,7 +640,7 @@
+      * missing layout code. Naming the pairs is one line per registration. */
+     if (getenv("CIDER_TRACE_KVO") != NULL) {
+         fprintf(stderr, "CIDER_KVO %s observes %s of %s\n", object_getClassName(observer),
+-                [keyPath UTF8String] ?: "(nil)", object_getClassName(self));
++                _CiderKVOText(keyPath) ?: "(nil)", object_getClassName(self));
+         fflush(stderr);
+     }
+ 
+@@ -810,7 +846,7 @@
+         int count = backtrace(frames, 12);
+ 
+         fprintf(stderr, "CIDER_KVO array observe keyPath=%s observer=%s count=%lu first=%s\n",
+-                keyPath != nil ? [keyPath UTF8String] : "(nil)",
++                keyPath != nil ? _CiderKVOText(keyPath) : "(nil)",
+                 observer != nil ? object_getClassName(observer) : "(nil)",
+                 (unsigned long)[self count],
+                 [self count] > 0 ? object_getClassName([self objectAtIndex: 0]) : "(empty)");
+@@ -1079,6 +1115,13 @@
+ {
+     const char *className = class_getName(cls);
+ 
++    /* THE SUBCLASS EXISTS, SO THIS RUNS. Proving the probe is on a live path matters here: the
++     * addObserver:forKeyPath: trace stayed silent while NSKVONotifying_ subclasses were plainly
++     * being made, so the registration must arrive another way. */
++    if (_CiderTraceKVO()) {
++        fprintf(stderr, "CIDER_KVO subclass for %s\n", className);
++        fflush(stderr);
++    }
+ 
+     int len = strlen(className) + 16; // strlen("NSKVONotifying_")+1
+     char *newName = malloc(len);
