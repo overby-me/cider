@@ -1,0 +1,124 @@
+Name the view, the storage and the appearance, because three identical text stacks look alike.
+
+iA Writer builds THREE complete editor stacks, view plus clip view plus layout manager plus text
+storage, and puts all three in the window. The document lands in the third and only the first is
+ever drawn, so the editor pane stays empty (#194). Nothing in the existing traces could tell the
+three apart:
+
+  CIDER_LM container=... setLayoutManager=...     always said textView=nil, because a container is
+                                                  bound to its layout manager BEFORE the view exists
+  CIDER_TEXTDRAW ...                              only prints for a view that DRAWS, and two of the
+                                                  three never do
+  CIDER_VIEW viewDidLoad ...                      loads were traced and appearances were NOT, so a
+                                                  run showed 50 loads and 0 appearances and READ as
+                                                  "the appearance never happened"
+
+Three additions, all under switches that already exist:
+
+  NSTextContainer setTextView:   CIDER_LM setTextView=<ptr>(<class>) container= lm= storage= len=
+                                 the only point where a view and its storage are both known.
+  NSClipView setDocumentView:    CIDER_DOCVIEW clip= was=<ptr>(<class>) now=<ptr>(<class>)
+                                 which view became scrollable, and what it replaced. An application
+                                 that swaps editors this way leaves no other trace: the outgoing
+                                 view is simply never drawn again, which looks identical to a view
+                                 that was never installed.
+  NSViewController appearance    CIDER_VIEW viewDidAppear/viewDidDisappear <class> view= window=
+
+WHAT THEY MEASURED IMMEDIATELY, in one drive that clicks a file row:
+
+  setTextView=0x...183400(IAEditorTextView) storage=0x...4c4920   <- the only one DRAWN, len 0
+  setTextView=0x...229c00(IAEditorTextView) storage=0x...b6400
+  setTextView=0x...12f200(IAEditorTextView) storage=0x...b2c40    <- gets the 40 byte document
+  CIDER_DOCVIEW clip=... was=(nil) now=...(IAEditorTextView)      three times, three CLIP VIEWS
+  CIDER_VIEW viewDidAppear IAEditorViewController ... window=yes  all three, and ZERO disappears
+
+The appearance trace corrected a reading I had already made from its absence, which is the reason
+it is here: an instrument that traces one half of a pair turns silence into a false negative.
+--- a/AppKit/NSTextView.subproj/NSTextContainer.m
++++ b/AppKit/NSTextView.subproj/NSTextContainer.m
+@@ -17,6 +17,7 @@
+ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ 
++#import <objc/runtime.h>
+ #import <AppKit/NSLayoutManager.h>
+ #import <AppKit/NSRaise.h>
+ #import <AppKit/NSTextContainer.h>
+@@ -163,6 +164,17 @@
+         }
+     }
+     _textView = textView;
++    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
++        /* THE ONLY POINT WHERE A VIEW AND ITS STORAGE ARE BOTH KNOWN. The container is bound to its
++         * layout manager BEFORE the view exists, so the setLayoutManager: line above always says
++         * textView=nil, and a view that is never drawn has no other line naming its storage. */
++        NSTextStorage *storage = [_layoutManager textStorage];
++
++        fprintf(stderr, "CIDER_LM setTextView=%p(%s) container=%p lm=%p storage=%p len=%lu\n",
++                textView, textView != nil ? object_getClassName(textView) : "(nil)", self,
++                _layoutManager, storage, (unsigned long) [storage length]);
++        fflush(stderr);
++    }
+     [_textView setTextContainer: self];
+     if (_heightTracksTextView || _widthTracksTextView) {
+         if (_textView) {
+@@ -244,7 +256,15 @@
+ 
+ - (void) setLayoutManager: (NSLayoutManager *) layoutManager {
+     if (getenv("CIDER_TRACE_CONTROL") != NULL) {
+-        fprintf(stderr, "CIDER_LM container=%p setLayoutManager=%p\n", self, layoutManager);
++        /* NAME THE OWNING VIEW AND THE STORAGE. A pointer alone cannot say which of two identical
++         * text stacks is the one in the window, which is the whole question in #194. */
++        NSTextStorage *storage = [layoutManager textStorage];
++
++        fprintf(stderr,
++                "CIDER_LM container=%p setLayoutManager=%p textView=%p(%s) storage=%p len=%lu\n",
++                self, layoutManager, _textView,
++                _textView != nil ? object_getClassName(_textView) : "(nil)", storage,
++                (unsigned long) [storage length]);
+         fflush(stderr);
+     }
+     _layoutManager = layoutManager;
+--- a/AppKit/NSClipView.m
++++ b/AppKit/NSClipView.m
+@@ -19,6 +19,7 @@
+ 
+ #include <math.h>
+ #include <dlfcn.h>
++#import <objc/runtime.h>
+ #import <AppKit/NSClipView.h>
+ #import <AppKit/NSColor.h>
+ #import <AppKit/NSCursor.h>
+@@ -173,6 +174,15 @@
+ }
+ 
+ - (void) setDocumentView: (NSView *) view {
++    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
++        /* WHICH VIEW BECAME SCROLLABLE, and what it replaced. An application that swaps editors by
++         * changing the document view leaves no other trace: the outgoing view is simply never drawn
++         * again, which looks identical to a view that was never installed (#194). */
++        fprintf(stderr, "CIDER_DOCVIEW clip=%p was=%p(%s) now=%p(%s)\n", self, _docView,
++                _docView != nil ? object_getClassName(_docView) : "(nil)", view,
++                view != nil ? object_getClassName(view) : "(nil)");
++        fflush(stderr);
++    }
+     if (_docView != nil) {
+         [[NSNotificationCenter defaultCenter]
+                 removeObserver: self
+--- a/AppKit/NSViewController.m
++++ b/AppKit/NSViewController.m
+@@ -155,6 +155,14 @@
+         return;
+ 
+     _ciderDidSendViewDidAppear = appearing;
++    /* TRACED, because viewDidLoad was and this was not, and a run that shows loads with no
++     * appearances reads as "the appearance never happened" when it only means "never printed". */
++    if (getenv("CIDER_TRACE_VIEWS") != NULL && getenv("CIDER_TRACE_VIEWS")[0] != (char) 0) {
++        fprintf(stderr, "CIDER_VIEW %s %s view=%p window=%s\n",
++                appearing ? "viewDidAppear" : "viewDidDisappear", object_getClassName(self), _view,
++                (_view != nil && [_view window] != nil) ? "yes" : "NO");
++        fflush(stderr);
++    }
+     if (appearing) {
+         [self viewWillAppear];
+         [self viewDidAppear];
