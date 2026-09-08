@@ -243,24 +243,29 @@ fn build_rel(path: &str) -> Option<&str> {
 /// gone and one of src/darwin/<rest> or src/linux/<rest> is there, that is where it went. An
 /// UNMATERIALIZED PIN is absent from disk too, so a src/external path whose vendor/pins/ candidate is
 /// not there returns UNCHANGED: absence means not materialized, not moved.
+///
+/// THE src/ PREFIX IS OPTIONAL ON THE WAY IN, and that is not tidiness. source_rel returns the path
+/// INSIDE a store artifact, which for these entries is spelled from the reference's src/ directory
+/// with the src/ already stripped: darwin/frameworks/CoreServices/Info.plist. Requiring the prefix
+/// made every such entry return unchanged, resolve to no package, and land in UNMAPPED. It was five
+/// of them, all real files that the prefix already installs, and it held the UNMAPPED ceiling at
+/// FAIL so the check could no longer catch a target actually dropping out. The SOURCE_RENAMES entry
+/// for etc/resolv.conf describes exactly this failure and fixes one file; this fixes the shape.
 fn moved_path(repo: &str, rel: &str) -> String {
     for (k, v) in SOURCE_RENAMES {
         if rel == *k {
             return v.to_string();
         }
     }
-    if !rel.starts_with("src/") {
-        return rel.to_string();
-    }
     if lexists(&format!("{repo}/{rel}")) {
         return rel.to_string();
     }
-    let rest = &rel["src/".len()..];
+    let rest = rel.strip_prefix("src/").unwrap_or(rel);
     if let Some(after) = rest.strip_prefix("external/") {
         let cand = format!("vendor/pins/{after}");
         return if lexists(&format!("{repo}/{cand}")) { cand } else { rel.to_string() };
     }
-    for dest in ["src/darwin", "src/linux"] {
+    for dest in ["src", "src/darwin", "src/linux"] {
         if lexists(&format!("{repo}/{dest}/{rest}")) {
             return format!("{dest}/{rest}");
         }
