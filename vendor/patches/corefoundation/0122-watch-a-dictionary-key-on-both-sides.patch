@@ -1,0 +1,154 @@
+CIDER_TRACE_DICTKEY, which says whether a key was never produced or produced empty.
+
+A keyed attribute store is how several applications model their objects, and the two failures look
+identical from the caller: the accessor answers nil either way. This watches named keys, comma
+separated, on BOTH sides. On a read miss it lists what the dictionary does hold, which is the line
+that answers the question.
+
+It found the answer for iA Writer in one run. The library rows say Updating... because the row
+subtitle is [[self excerptProvider] value], -[IALibraryItem excerptProvider] is
+[store objectForKeyedSubscript:@"excerptProvider"], and the store is an eleven key dictionary
+holding treeIndex, indexed, annotated, dateCreated, locationIdentifier, identifier, treeLevel,
+kind, indexRow, treeExpanded and dateModified. excerptProvider is NEVER ONE OF THEM. The excerpt is
+a separate property, selected as content_excerpt(Content.body) AS excerpt, which is a custom SQLite
+function in a property set the item fetch does not ask for.
+
+TWO THINGS THIS ENCODES:
+
+respondsToSelector rather than isKindOfClass. CoreFoundation is BELOW Foundation and cannot
+reference _OBJC_CLASS_$_NSString; the first version linked against it and the build failed at the
+link step rather than the compile.
+
+description then UTF8String for the value, because a class name does not distinguish 0 from 1 and
+the NSNumber class symbol is as unreachable from here as NSString's.
+
+THE WRITE SIDE HAS A BLIND SPOT and it must be stated with any result: an immutable dictionary
+built through initWithObjects:forKeys:count: never passes setObject:forKey:, so no SET line is
+printed for it. Prove the write side can speak before reading its silence; watching dateFormat and
+dateStyle is a control that fires on any application that formats a date.
+--- a/NSDictionary.m
++++ b/NSDictionary.m
+@@ -2,6 +2,7 @@
+ #import <stdlib.h>
+ #import <objc/runtime.h>
+ #import <stdio.h>
++#import <string.h>
+ //
+ //  NSDictionary.m
+ //  CoreFoundation
+@@ -1149,9 +1150,103 @@
+     return [self getObjects: objects andKeys: keys count: [self count]];
+ }
+ 
++/*
++ * CIDER_TRACE_DICTKEY names the keys to watch, comma separated, because this is the hottest
++ * accessor here and a line per lookup is unreadable. It separates "never stored" from "stored
++ * empty": on a miss it lists what the dictionary does hold.
++ *
++ * It announces itself on the first lookup of any key, so a run that prints only the armed line has
++ * told you the dictionary is not one of ours rather than told you nothing.
++ */
++static int _CiderDictKeyWatched(const char *list, const char *key)
++{
++    size_t n = strlen(key);
++
++    for (const char *p = list; *p != '\0'; ) {
++        const char *comma = strchr(p, ',');
++        size_t len = comma ? (size_t) (comma - p) : strlen(p);
++
++        if (len == n && strncmp(p, key, n) == 0) {
++            return 1;
++        }
++        if (comma == NULL) {
++            break;
++        }
++        p = comma + 1;
++    }
++    return 0;
++}
++
++static void _CiderDictKey(NSDictionary *self, id key, id value)
++{
++    static const char *watch;
++    static int checked, announced, printed;
++
++    if (!checked) {
++        checked = 1;
++        watch = getenv("CIDER_TRACE_DICTKEY");
++    }
++    if (!watch || !*watch) {
++        return;
++    }
++    if (!announced) {
++        announced = 1;
++        fprintf(stderr, "CIDER_DICTKEY armed, watching %s\n", watch);
++    }
++    /* respondsToSelector rather than isKindOfClass: CoreFoundation is BELOW Foundation and cannot
++     * reference _OBJC_CLASS_$_NSString, which fails at link rather than at compile. */
++    if (printed > 200 || ![key respondsToSelector: @selector(UTF8String)] ||
++            !_CiderDictKeyWatched(watch, [(NSString *) key UTF8String])) {
++        return;
++    }
++    printed++;
++    /* description then UTF8String, because a class name does not distinguish 0 from 1 and the
++     * NSNumber class symbol is as unreachable from here as NSString's. */
++    id desc = value ? [value description] : nil;
++    const char *text = [desc respondsToSelector: @selector(UTF8String)]
++            ? [(NSString *) desc UTF8String] : NULL;
++    fprintf(stderr, "CIDER_DICTKEY %s -> %s %s (in %s of %lu)\n",
++            [(NSString *) key UTF8String],
++            value ? object_getClassName(value) : "(nil)", text ?: "",
++            object_getClassName(self), (unsigned long) [self count]);
++    if (value == nil) {
++        for (id k in self) {
++            fprintf(stderr, "CIDER_DICTKEY   holds %s\n",
++                    [k respondsToSelector: @selector(UTF8String)] ? [(NSString *) k UTF8String]
++                                                                  : object_getClassName(k));
++        }
++    }
++}
++
++static void _CiderDictKeyWrite(NSDictionary *self, id key, id value)
++{
++    static const char *watch;
++    static int checked, printed;
++
++    if (!checked) {
++        checked = 1;
++        watch = getenv("CIDER_TRACE_DICTKEY");
++    }
++    if (!watch || !*watch || printed > 200 ||
++            ![key respondsToSelector: @selector(UTF8String)] ||
++            !_CiderDictKeyWatched(watch, [(NSString *) key UTF8String])) {
++        return;
++    }
++    printed++;
++    id desc = value ? [value description] : nil;
++    const char *text = [desc respondsToSelector: @selector(UTF8String)]
++            ? [(NSString *) desc UTF8String] : NULL;
++    fprintf(stderr, "CIDER_DICTKEY SET %s = %s %s (into %s)\n",
++            [(NSString *) key UTF8String],
++            value ? object_getClassName(value) : "(nil)", text ?: "",
++            object_getClassName(self));
++}
++
+ - (id)objectForKeyedSubscript:(id)key
+ {
+-    return [self objectForKey:key];
++    id value = [self objectForKey:key];
++    _CiderDictKey(self, key, value);
++    return value;
+ }
+ 
+ - (void)enumerateKeysAndObjectsUsingBlock:(void (^)(id key, id obj, BOOL *stop))block
+@@ -1381,6 +1476,10 @@
+ 
+ - (void)setObject:(id)obj forKey:(id)key
+ {
++    /* The WRITE side of CIDER_TRACE_DICTKEY. A key that never appears here was never produced,
++     * which is a different defect from one produced empty, and the read side alone cannot tell
++     * them apart. */
++    _CiderDictKeyWrite(self, key, obj);
+     if (_CFDictionaryIsMutable((CFDictionaryRef)self))
+     {
+         if ((obj == nil) || (key == nil))
