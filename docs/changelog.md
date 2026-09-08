@@ -107,8 +107,15 @@ which is what separates an rpath-expansion failure from an unloadable dylib.
   outputs the reference does not read either.
 - **Build parity is not runtime parity.** buck-test is almost entirely static. What runs is
   the ten runtime checks plus `scripts/checks/buck-loadall-check.nu`, which dlopens the prefix:
-  292 of 336 installed dylibs and framework binaries load in the guest, and the 44 that do
-  not are the Swift LFS pointers (#39), which are not libraries. Past dlopen is unmeasured.
+  **357 of 359** installed dylibs and framework binaries load in the guest. The 2 that do not
+  want `sourcekitd` and `XCTest`, which are development frameworks the port does not ship, so
+  everything it does intend to ship loads. Past dlopen is unmeasured.
+
+  This number was 292 of 336 and the gap was read as harmless twice over. The 44 failures were
+  the Swift LFS pointers (#39), which are not libraries; the objects have since been fetched.
+  Then 27 of the remaining 29 shared one missing symbol, and that was the CHECK, which did not
+  set `CIDER_COMPAT_LIBRARY` the way every application launcher does. The last two were real:
+  Accelerate never reexported vecLib, and `vDSP/src/basic.c` was on disk in no srcs list.
 
 
 ### Deliberate divergences from the reference
