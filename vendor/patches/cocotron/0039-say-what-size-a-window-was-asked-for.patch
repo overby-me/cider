@@ -1,0 +1,43 @@
+Print the contentRect a window was asked for, next to what the screen says.
+
+Qt creates four windows and every one is born 1x1 (#227), and from outside the two explanations
+are indistinguishable: the caller asked for nothing, or we shrank what it asked for.
+constrainFrameRect only moves the origin and never touches the size, so it cannot be the second
+one, but that is a reading of the code rather than a measurement.
+
+This prints the rect AS IT ARRIVED beside the screen it is being constrained against, which
+answers both halves in one line. For CMake.app it said
+
+    CIDER_WINGEOM asked 1.0x1.0 at 0.0,0.0 -> frame 1.0x1.0 style 0x8000000;
+      screens=1 main frame 1256.0x684.0 visible 1256.0x684.0
+
+so the screen is right, the port loses nothing, and Qt asks for 1x1 itself. That eliminated the
+whole of our side of the question in one run.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -469,6 +469,24 @@
+     _frame = [self constrainFrameRect: _frame toScreen: [NSScreen mainScreen]];
+     _savedFrame = _frame;
+ 
++    /* WHO LOST THE SIZE. Qt creates four windows and every one is born 1x1 (#227), and the two
++     * candidates look identical from outside: the caller asked for nothing, or we shrank it.
++     * constrainFrameRect only moves the origin, so this prints the rect AS IT ARRIVED next to
++     * what the screen says, which is the other half of the question. */
++    if (getenv("CIDER_TRACE_WINGEOM") != NULL) {
++        NSScreen *main = [NSScreen mainScreen];
++        NSRect sf = main ? [main frame] : NSZeroRect;
++        NSRect sv = main ? [main visibleFrame] : NSZeroRect;
++        fprintf(stderr,
++                "CIDER_WINGEOM asked %.1fx%.1f at %.1f,%.1f -> frame %.1fx%.1f style 0x%lx; "
++                "screens=%lu main frame %.1fx%.1f visible %.1fx%.1f\n",
++                contentRect.size.width, contentRect.size.height, contentRect.origin.x,
++                contentRect.origin.y, _frame.size.width, _frame.size.height,
++                (unsigned long) styleMask, (unsigned long) [[NSScreen screens] count],
++                sf.size.width, sf.size.height, sv.size.width, sv.size.height);
++        fflush(stderr);
++    }
++
+     _level = NSNormalWindowLevel;
+     _minSize = NSZeroSize;
+     // "The default maximum size of a window is {FLT_MAX, FLT_MAX}"

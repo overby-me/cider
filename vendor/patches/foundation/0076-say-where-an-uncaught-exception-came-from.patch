@@ -1,0 +1,49 @@
+Print the call stack when an exception goes uncaught, which is what macOS does here.
+
+An uncaught ObjC exception is how a guest application dies most often, and the default handler
+printed the class and the reason and nothing else. That names WHAT failed and never WHO called
+it, so chasing one to its caller has meant adding a temporary probe every single time.
+
+The frames are already captured: corefoundation NSException fills in callStackSymbols when the
+exception is raised. This only prints what was collected anyway, and only on the path where the
+process is about to die, so it costs nothing anywhere else.
+
+It paid for itself immediately. CMake.app, a Qt application, dies intermittently on
+
+    -[__NSCFString colorUsingColorSpaceName:device:]: unrecognized selector
+
+and one run with this in place gave the whole route:
+
+    QApplicationPrivate::initializeWidgetPalettesFromTheme
+      qt_mac_toQColor(NSColor const*)
+        -[NSColor_catalog colorUsingColorSpaceName:device:]
+          the receiver of the inner call is not a colour
+
+The receiver class DIFFERS BETWEEN RUNS, O2Color once and __NSCFString the next, which is what
+freed memory looks like rather than a wrong type. See task #227.
+
+--- a/src/NSException.m
++++ b/src/NSException.m
+@@ -33,6 +33,22 @@
+ static void printExceptionInformation(id exception)
+ {
+     NSLog(@"Terminating app due to uncaught exception '%@', reason: '%@'", NSStringFromClass([exception class]), [exception reason]);
++
++    /*
++     * AND WHERE IT CAME FROM, which macOS prints here and this did not.
++     *
++     * An uncaught exception is how a guest application dies most often, and the two lines above
++     * name WHAT failed and never WHO called it. Chasing one to its caller has meant adding a
++     * temporary probe every time. The frames are already on the exception, captured by
++     * corefoundation NSException callStackSymbols; this only prints what was collected anyway.
++     */
++    NSArray *frames = nil;
++    if ([exception respondsToSelector: @selector(callStackSymbols)])
++        frames = [exception callStackSymbols];
++
++    NSUInteger count = [frames count];
++    for (NSUInteger i = 0; i < count; i++)
++        NSLog(@"  %lu %@", (unsigned long) i, [frames objectAtIndex: i]);
+ }
+ 
+ __attribute__((constructor))
