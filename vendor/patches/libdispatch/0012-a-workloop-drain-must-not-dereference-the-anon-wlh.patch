@@ -1,0 +1,51 @@
+A workloop drain must not dereference the anonymous wlh sentinel, which killed trustd.
+
+DISPATCH_INVOKE_WORKLOOP_DRAIN is supposed to imply that the draining thread adopted the workloop
+as its wlh, so both sites below cast the wlh TSD straight to a dispatch_workloop_t and read
+dwl_drained_qos out of it. This build sets DISPATCH_USE_KEVENT_WORKLOOP=0, nothing ever adopts a
+wlh, and _dispatch_get_wlh therefore answers DISPATCH_WLH_ANON, which is (void *) ~0x3ul.
+
+Measured: trustd is the only daemon on the roster that uses a dispatch workloop
+(SecTrustServerGetWorkloop is its XPC target queue), and it took SIGSEGV on the load at
+_dispatch_lane_serial_drain+499 after serving EVERY trust evaluation. RIP page offset 0x8f3 on
+every crash, CR2 0x38, and RAX 0xFFFFFFFFFFFFFFFC, which is -4 plus the 0x3c field offset. Its
+launchd LastExitStatus was 139.
+
+_dispatch_wlh_to_workloop is libdispatch's own helper for exactly this and already answers NULL for
+both NULL and the sentinel, so use it and skip the comparison when there is no workloop to compare
+against. _dispatch_source_invoke already carried a hand rolled guard for the same sentinel, under
+an ifdef DARLING that this build does not define.
+
+After: five pokes, five replies, LastExitStatus 0 on all five, zero faults in ciderd.log, and ONE
+trustd serving all five rather than five that each died.
+--- a/src/queue.c
++++ b/src/queue.c
+@@ -3678,8 +3678,13 @@
+ 			break;
+ 		}
+ 		if (likely(flags & DISPATCH_INVOKE_WORKLOOP_DRAIN)) {
+-			dispatch_workloop_t dwl = (dispatch_workloop_t)_dispatch_get_wlh();
+-			if (unlikely(_dispatch_queue_max_qos(dwl) > dwl->dwl_drained_qos)) {
++			// THE FLAG DOES NOT IMPLY A REAL WLH HERE. It is supposed to: only a thread that
++			// adopted the workloop sets WORKLOOP_DRAIN. With DISPATCH_USE_KEVENT_WORKLOOP=0
++			// nothing ever adopts one, so the plain cast dereferenced the DISPATCH_WLH_ANON
++			// sentinel (~0x3) and trustd died on this line after serving every trust evaluation.
++			// No workloop means no drained_qos to compare against, so keep draining.
++			dispatch_workloop_t dwl = _dispatch_wlh_to_workloop(_dispatch_get_wlh());
++			if (dwl && unlikely(_dispatch_queue_max_qos(dwl) > dwl->dwl_drained_qos)) {
+ 				break;
+ 			}
+ 		}
+@@ -5365,9 +5370,10 @@
+ 	if (unlikely(_dispatch_needs_to_return_to_kernel())) {
+ 		_dispatch_return_to_kernel();
+ 	}
++	// Same missing wlh guard as the drain loop above, on the channel path.
+ 	if (likely(dcic->dcic_flags & DISPATCH_INVOKE_WORKLOOP_DRAIN)) {
+-		dispatch_workloop_t dwl = (dispatch_workloop_t)_dispatch_get_wlh();
+-		if (unlikely(_dispatch_queue_max_qos(dwl) > dwl->dwl_drained_qos)) {
++		dispatch_workloop_t dwl = _dispatch_wlh_to_workloop(_dispatch_get_wlh());
++		if (dwl && unlikely(_dispatch_queue_max_qos(dwl) > dwl->dwl_drained_qos)) {
+ 			dcic->dcic_tq = dch->do_targetq;
+ 			return false;
+ 		}
