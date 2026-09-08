@@ -21,16 +21,20 @@
 
 void vDSP_vsadd(const float *__A, vDSP_Stride __IA, const float *__B, float *__C, vDSP_Stride __IC, vDSP_Length __N)
 {
+	// __B POINTS AT ONE FLOAT. vsadd adds a SCALAR to a vector; this indexed __B like a second
+	// vector, which reads past the end of a single float argument on every iteration but the first.
+	const float b = *__B;
+
 	if (__IA == 1 && __IC == 1)
 	{
 		#pragma clang loop vectorize(enable)
 		for (vDSP_Length i = 0; i < __N; i++)
-			__C[i] = __A[i] + __B[i];
+			__C[i] = __A[i] + b;
 	}
 	else
 	{
 		#pragma clang loop vectorize(enable)
 		for (vDSP_Length i = 0; i < __N; i++)
-			__C[i * __IC] = __A[i * __IA] + __B[i * __IA];
+			__C[i * __IC] = __A[i * __IA] + b;
 	}
 }

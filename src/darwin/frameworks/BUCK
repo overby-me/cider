@@ -3382,11 +3382,6 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # gen-buck-from-ninja (deleted) --dylibs Accelerate   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   vecLib
-# TODO the final pass REEXPORTS 1 more dylibs whose final
-# pass is not ported yet; without them its symbol surface is incomplete:
-#   vecLib
 
 darwin_dylib(
     name = "Accelerate_dylib",
@@ -3400,6 +3395,16 @@ darwin_dylib(
     ],
     siblings = [
         "//vendor/src:system_final",
+    ],
+    reexport = [
+        # ACCELERATE IS AN UMBRELLA AND vecLib IS UNDER IT, the same shape as Carbon over
+        # HIToolbox above. The generator left this as a TODO because vecLib had no final pass
+        # yet; it has one now, and it already reexports libvDSP and eight siblings. Without this
+        # link the Accelerate binary exported ZERO vDSP symbols, and the two level namespace
+        # demands them from Accelerate specifically, so defining them in libvDSP was not enough:
+        #     Symbol not found: _vDSP_DFT_Execute
+        # was the last real failure in scripts/checks/buck-loadall-check.nu (libswiftAccelerate).
+        "//src/darwin/frameworks:vecLib_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -14459,6 +14464,8 @@ cc_header_root(
 cc_objects(
     name = "vDSP_obj",
     srcs = [
+        # basic.c was on disk and in NO srcs list, so vDSP_vsadd was implemented and never compiled.
+        "Accelerate/vecLib/vDSP/src/basic.c",
         "Accelerate/vecLib/vDSP/src/extrema.c",
         "Accelerate/vecLib/vDSP/src/vDSP.c",
     ],

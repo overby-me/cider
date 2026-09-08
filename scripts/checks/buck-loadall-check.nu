@@ -248,7 +248,7 @@ def main [scratch?: string] {
         if ($failed | length) > 40 { say $"     ... and (($failed | length) - 40) more, not shown" }
     }
 
-    # A FLOOR set to what was MEASURED: 356 of 359, raised from 292 of 336 on 2026-09-08.
+    # A FLOOR set to what was MEASURED: 357 of 359, raised from 292 of 336 on 2026-09-08.
     #
     # TWO OLD READINGS DIED HERE, and both were wrong in the same direction. The first was that the
     # 44 failures were exactly the git LFS pointers under usr/lib/swift, so every real artifact
@@ -258,14 +258,15 @@ def main [scratch?: string] {
     # is delivered by libswiftCompat.dylib through CIDER_COMPAT_LIBRARY, which every launcher sets
     # and this check did not, so it was measuring its own environment. Setting it took 330 to 356.
     #
-    # The 3 that remain are honest: libswiftAccelerate wants _vDSP_DFT_Execute, which we do not
-    # implement, and libswiftSwiftLang and libswiftXCTest want sourcekitd and XCTest, which are
-    # development frameworks this port has no reason to ship.
+    # The 2 that remain want sourcekitd and XCTest, which are development frameworks this port has
+    # no reason to ship. EVERY library it does intend to ship now loads. libswiftAccelerate was the
+    # third, and it was two real defects: Accelerate never reexported vecLib, and vDSP/src/basic.c
+    # was on disk in no srcs list.
     #
     # Raise it when the count goes up, the way the scripting check's floor tracks its own
     # measurement.
 
-    let floor = (($env.LOADALL_FLOOR? | default "356") | into int)
+    let floor = (($env.LOADALL_FLOOR? | default "357") | into int)
     if $ok >= $floor {
         say ""
         say $"PASS: ($ok) of ($n) installed libraries load in the guest \(floor ($floor))"

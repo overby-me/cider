@@ -350,7 +350,10 @@ void* vDSP_vrsum(void);
 void* vDSP_vrsumD(void);
 void* vDSP_vrvrs(void);
 void* vDSP_vrvrsD(void);
-void* vDSP_vsadd(void);
+// THE REAL PROTOTYPE, not a typeless stub: basic.c implements this one for real, and the
+// void*(void) form conflicts with that definition, which is why basic.c was left out of the
+// build entirely and _vDSP_vsadd was missing from libvDSP.
+void vDSP_vsadd(const float *__A, vDSP_Stride __IA, const float *__B, float *__C, vDSP_Stride __IC, vDSP_Length __N);
 void* vDSP_vsaddD(void);
 void* vDSP_vsaddi(void);
 void* vDSP_vsbm(void);
