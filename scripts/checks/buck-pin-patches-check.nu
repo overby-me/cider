@@ -73,6 +73,17 @@ def main [
   })
   let mapped = ($rows | group-by key)
 
+  # A BUNDLED PIN lives under vendor/pins/<name>, is CHECKED INTO GIT, and has no manifest entry,
+  # so it never appears in $rows above. Its patches reach it by a different route entirely:
+  # scripts/buck-src.nu applies them on a local materialisation and nix/lib/bundled-pin.nix builds
+  # a patched store path for the two nix consumers (#224). Before both of those existed this
+  # directory really was an orphan; reporting it as one now would be a check that fails for
+  # something already fixed, which is as useless as one that never fires.
+  let pinsDir = ($root | path join "vendor" "pins")
+  let bundled = (if ($pinsDir | path type) == "dir" {
+    ls -a $pinsDir | where type == dir | get name | each {|q| $q | path basename }
+  } else { [] })
+
   mut problems = []
 
   for r in $rows {
@@ -81,7 +92,7 @@ def main [
     }
   }
 
-  for d in ($dirs | where {|d| not ($d in ($mapped | columns)) }) {
+  for d in ($dirs | where {|d| (not ($d in ($mapped | columns))) and (not ($d in $bundled)) }) {
     let n = (ls -a ($patches | path join $d) | length)
     $problems = ($problems | append $"vendor/patches/($d) \(($n) patches\) is an ORPHAN: no manifest entry names it and no pin basename matches it, so it has never been applied to anything")
   }
@@ -101,7 +112,13 @@ def main [
   for d in $dirs {
     let who = (if ($d in ($mapped | columns)) { $mapped | get $d | get path } else { [] })
     let n = (ls -a ($patches | path join $d) | length)
-    let to = (if ($who | is-empty) { "NOTHING" } else { $who | str join ', ' })
+    let to = (if ($who | is-not-empty) {
+      $who | str join ', '
+    } else if ($d in $bundled) {
+      $"vendor/pins/($d) \(bundled: buck-src.nu and nix/lib/bundled-pin.nix\)"
+    } else {
+      "NOTHING"
+    })
     print $"  patches/($d): ($n) patches -> ($to)"
   }
 
