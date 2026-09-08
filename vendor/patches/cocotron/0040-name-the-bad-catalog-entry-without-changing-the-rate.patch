@@ -1,0 +1,87 @@
+Name the bad catalog colour entry, without a trace that changes the failure rate.
+
+Qt dies at a MEASURED 3 runs in 8 (#227) inside a named colour conversion, and the receiver of
+the inner send is not a colour: O2Color one run, __NSCFString the next, which is freed memory
+rather than a wrong type. The obvious instrument, a trace per colour lookup, is exactly the one
+that cannot be used: with CIDER_WAYLAND_TRACE_COLORS on the rate goes to 0 in 8. The trace
+destroys what it measures.
+
+So these ask a question instead of printing an answer. respondsToSelector is cheap and SILENT
+while the entry is sound, and the only run that writes anything is the one that was about to die,
+which is the run whose name nobody could read.
+
+TWO OF THEM, placed to decide one fork that was otherwise undecidable: was the entry already
+wrong when it was stored, or did it go wrong afterwards.
+
+MEASURED, over 8 runs ending in a death:
+  BAD ON ARRIVAL   0 times, in every survivor and in the death
+  BAD ENTRY at use  fires, name=controlTextColor catalog=System class=O2Color
+
+So the entry is a VALID COLOUR WHEN STORED and is spoiled later. The resolver is exonerated: this
+is a lifetime fault on _color, not a wrong object being handed in.
+
+WHAT THAT ELIMINATES, so the next reader does not redo it: colors.rs returns nil rather than the
+name for an unknown colour; NSColor copyWithZone is "return [self retain]", so _color genuinely
+retains; controlTextColor resolves through Recipe::ClassMethod("blackColor") and blackColor
+returns a FRESH autoreleased colour each call rather than a shared singleton, so there is no
+obvious singleton to over-release. Something releases a colour it does not own.
+
+--- a/AppKit/NSColor.subproj/NSColor_catalog.m
++++ b/AppKit/NSColor.subproj/NSColor_catalog.m
+@@ -23,6 +23,7 @@
+ #include <stdlib.h>
+ #import <AppKit/NSDisplay.h>
+ #import <AppKit/NSGraphics.h>
++#import <objc/runtime.h>
+ 
+ @interface NSColor (NSAppKitPrivate)
+ - (CGColorRef) CGColorRef;
+@@ -42,6 +43,20 @@
+     _catalogName = [catalogName copy];
+     _colorName = [colorName copy];
+     _color = [color copy];
++
++    /*
++     * IS IT ALREADY WRONG HERE, OR DOES IT GO WRONG LATER? That is the whole fork for #227, and
++     * the two are indistinguishable at the point it explodes. Silent unless the answer is bad, so
++     * this costs nothing on the sound path and cannot change the failure rate the way a trace per
++     * lookup does. If this never fires and the one in colorUsingColorSpaceName:device: does, the
++     * entry was good when stored and something freed it afterwards.
++     */
++    if (_color != nil && ![_color respondsToSelector: @selector(colorUsingColorSpaceName:device:)]) {
++        fprintf(stderr, "CIDER_SYSCOLOR BAD ON ARRIVAL name=%s entry=%p class=%s\n",
++                colorName != nil ? [colorName UTF8String] : "(nil)", _color,
++                object_getClassName(_color));
++        fflush(stderr);
++    }
+     return self;
+ }
+ 
+@@ -175,6 +190,27 @@
+      * Caching was never right in any case: the answer depends on the colour space AND the device
+      * asked for, so a cache keyed on neither returns the previous caller answer to the next one.
+      */
++    /*
++     * NAME THE BAD ENTRY, and do it without costing anything on the happy path.
++     *
++     * Qt dies here at 3 runs in 8 (#227) because _color is not a colour: the receiver class in the
++     * exception DIFFERS BETWEEN RUNS, O2Color once and __NSCFString the next, which is freed memory
++     * rather than a wrong type. The obvious way to learn WHICH colour it was is to trace every
++     * lookup, and that is exactly what cannot be done: a stderr write per lookup took the failure
++     * rate to 0 in 8, so the trace destroys the thing it measures.
++     *
++     * This asks a question instead of printing an answer. respondsToSelector is cheap and silent
++     * while the entry is sound, and the ONLY run that writes anything is the one that was going to
++     * die two lines later, which is the run whose name nobody could read.
++     */
++    if (_color != nil && ![_color respondsToSelector: _cmd]) {
++        fprintf(stderr, "CIDER_SYSCOLOR BAD ENTRY name=%s catalog=%s entry=%p class=%s\n",
++                _colorName != nil ? [_colorName UTF8String] : "(nil)",
++                _catalogName != nil ? [_catalogName UTF8String] : "(nil)", _color,
++                object_getClassName(_color));
++        fflush(stderr);
++    }
++
+     NSColor *converted = [_color colorUsingColorSpaceName: colorSpace device: device];
+ 
+     /*
