@@ -1,0 +1,163 @@
+Track holders and whether an address was EVER held, and record that this is now too heavy.
+
+Three additions to the #227 instrument, and the last of them is the finding.
+
+WHAT THEY ADD:
+  ever-held   a never cleared set, because "not registered" was ambiguous: an address may never
+              have been stored in a catalog entry, or stored and then forgotten when a holder
+              deallocated. Different bugs.
+  holders     the ring now records WHICH catalog colour stored each colour, so forgetting is per
+              holder rather than per colour. Clearing every entry that shared an address made a
+              colour still held by somebody else report "not registered".
+  short       at catalog dealloc, print only when the retain count CANNOT cover the live holders,
+              which is the anomaly and nothing else.
+
+WHAT THEY MEASURED, on a death:
+  self-class=NSColor_catalog        the receiver is live and correctly classed
+  ever-held=YES                     the address WAS a registered colour at some point
+  live-holders=0                    no live entry in the ring holds that address
+  still-registered=no  evicted=0 of 46
+  COLORLIFE SHORT                   never fired: no retain count was ever short of its holders
+
+AND THE FINDING: THE INSTRUMENT NOW SUPPRESSES THE BUG. 0 of 16 with this in, against 2 of 8 and
+1 of 2 with the lighter version, and 5 of 16 with none. That is the FIFTH perturbation to make it
+vanish, after a colour trace, zombies, an extra retain and this. The comparison this patch was
+built to print, what a holder REGISTERED against what its _color reads now, cannot be obtained
+from an instrument that stops the failure happening.
+
+SO THE FORK IS STILL OPEN, and I have corrected myself twice on it. The object died under an
+intact field, or the field was overwritten with another entry colour pointer; ever-held=YES fits
+BOTH and settles nothing, which is the opposite of what I said when I first read it.
+
+The next approach must not be another probe in this path. Something outside it: a guarded
+allocator, or a reduction to a small program that provokes the same thing without Qt.
+
+--- a/AppKit/NSColor.subproj/NSColor_catalog.m
++++ b/AppKit/NSColor.subproj/NSColor_catalog.m
+@@ -51,22 +51,51 @@
+  * what was freed, and printing it at store time would be a trace per lookup, which suppresses
+  * the bug. Recorded here and printed only from the failure path. */
+ static const char *gCiderColorLifeClass[CIDER_COLORLIFE_SLOTS];
++/* NEVER CLEARED, unlike the ring above. "not registered" is ambiguous: the value may never have
++ * been stored in a catalog entry, or it may have been stored and then forgotten when a holder
++ * deallocated. Those are different bugs. This says which. */
++static id gCiderColorEverSeen[CIDER_COLORLIFE_SLOTS];
++/* The catalog colour that stored it, so the count of LIVE holders of one colour is answerable. */
++static id gCiderColorHolder[CIDER_COLORLIFE_SLOTS];
+ static unsigned gCiderColorLifeNext;
+ static unsigned gCiderColorLifeWrapped;
+ 
+ /* Nonzero while a catalog colour is releasing the colour it owns, so that free is not reported. */
+ unsigned _CiderExpectedColorRelease;
+ 
+-void _CiderForgetHeldColor(id color) {
++/* Only THIS holder forgets, not every entry that happens to share the colour. Clearing them all
++ * made a colour still held by somebody else report "not registered". */
++void _CiderForgetHeldColorFor(id color, id holder) {
+     if (color == nil)
+         return;
+     for (unsigned i = 0; i < CIDER_COLORLIFE_SLOTS; i++)
+-        if (gCiderColorLife[i] == color) {
++        if (gCiderColorLife[i] == color && gCiderColorHolder[i] == holder) {
+             gCiderColorLife[i] = nil;
+             gCiderColorLifeName[i] = nil;
++            gCiderColorHolder[i] = nil;
+         }
+ }
+ 
++/* THE DECISIVE ONE. What THIS holder stored, so it can be compared with what its _color reads
++ * now. Equal means the object died under a field that is intact; different means the FIELD was
++ * overwritten and the object is innocent. Every other question has been ambiguous between those. */
++id _CiderCatalogRegisteredColorFor(id holder) {
++    for (unsigned i = 0; i < CIDER_COLORLIFE_SLOTS; i++)
++        if (gCiderColorHolder[i] == holder)
++            return gCiderColorLife[i];
++    return nil;
++}
++
++unsigned _CiderCatalogLiveHoldersOf(id color) {
++    unsigned n = 0;
++    if (color == nil)
++        return 0;
++    for (unsigned i = 0; i < CIDER_COLORLIFE_SLOTS; i++)
++        if (gCiderColorLife[i] == color)
++            n++;
++    return n;
++}
++
+ const char *_CiderCatalogNameHoldingColor(id color) {
+     if (color == nil)
+         return NULL;
+@@ -76,6 +105,15 @@
+     return NULL;
+ }
+ 
++BOOL _CiderCatalogEverHeld(id color) {
++    if (color == nil)
++        return NO;
++    for (unsigned i = 0; i < CIDER_COLORLIFE_SLOTS; i++)
++        if (gCiderColorEverSeen[i] == color)
++            return YES;
++    return NO;
++}
++
+ const char *_CiderCatalogClassHeldAs(id color) {
+     if (color == nil)
+         return NULL;
+@@ -113,6 +151,8 @@
+         gCiderColorLife[slot] = _color;
+         gCiderColorLifeName[slot] = _colorName;
+         gCiderColorLifeClass[slot] = object_getClassName(_color);
++        gCiderColorEverSeen[slot] = _color;
++        gCiderColorHolder[slot] = self;
+     }
+ 
+     /*
+@@ -142,10 +182,27 @@
+     [_colorName release];
+     [_catalogName release];
+ 
++    if (_color != nil && getenv("CIDER_TRACE_COLORLIFE") != NULL) {
++        /*
++         * THE ANOMALY, and nothing else. Several catalog colours legitimately share one resolved
++         * colour, and each takes its own retain, so holders and retain count should move together.
++         * Printing only when the count CANNOT cover the live holders keeps this silent on the
++         * sound path, which matters because every noisy probe suppresses this bug.
++         */
++        unsigned holders = _CiderCatalogLiveHoldersOf(_color);
++        NSUInteger count = [_color retainCount];
++        if (holders > 1 && count <= holders) {
++            fprintf(stderr, "CIDER_COLORLIFE SHORT name=%s color=%p live-holders=%u retainCount=%lu\n",
++                    _colorName != nil ? [_colorName UTF8String] : "(nil)", _color, holders,
++                    (unsigned long) count);
++            fflush(stderr);
++        }
++    }
++
+     _CiderExpectedColorRelease++;
+     [_color release];
+     _CiderExpectedColorRelease--;
+-    _CiderForgetHeldColor(_color);
++    _CiderForgetHeldColorFor(_color, self);
+     NSDeallocateObject(self);
+     return;
+     [super dealloc];
+@@ -303,6 +360,18 @@
+          */
+         fprintf(stderr, "CIDER_SYSCOLOR BAD ENTRY self=%p self-class=%s\n", self,
+                 object_getClassName(self));
++        id registered = _CiderCatalogRegisteredColorFor(self);
++        fprintf(stderr, "CIDER_SYSCOLOR BAD ENTRY registered-color=%p now=%p verdict=%s\n",
++                registered, _color,
++                registered == nil ? "self was never registered"
++                                  : (registered == _color
++                                             ? "SAME pointer, so the OBJECT died"
++                                             : "DIFFERENT pointer, so the FIELD was overwritten"));
++        fprintf(stderr, "CIDER_SYSCOLOR BAD ENTRY live-holders=%u\n",
++                _CiderCatalogLiveHoldersOf(_color));
++        fprintf(stderr, "CIDER_SYSCOLOR BAD ENTRY ever-held=%s\n",
++                _CiderCatalogEverHeld(_color) ? "YES (stored then freed, so the OBJECT died)"
++                                              : "NO (this pointer was never stored, so the FIELD was written)");
+         fprintf(stderr, "CIDER_SYSCOLOR BAD ENTRY still-registered=%s was-class=%s evicted=%u of %u\n",
+                 stillHeld != NULL ? stillHeld : "no (or tracing off)",
+                 wasClass != NULL ? wasClass : "(unknown)", gCiderColorLifeWrapped,
