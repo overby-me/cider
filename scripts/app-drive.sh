@@ -208,6 +208,13 @@ say "launching $APPBIN"
 ) >"$SHOTS/app.log" 2>&1 &
 APPPID=$!
 
+# A SEGFAULT AND A CLEAN EXIT BOTH REPORT exit=0, and that has now cost days. cider shell does not
+# propagate the guest signal, so the app.log line above says 0 for a process that died on SIGSEGV.
+# The fault IS recorded, in the container-wide ciderd.log, which APPENDS across runs, so remember
+# how far it had got before this launch and only read what comes after.
+CIDERD_LOG="$PREFIX/ciderd.log"
+FAULTS_BEFORE=$(grep -c "sigexc: have RIP" "$CIDERD_LOG" 2>/dev/null || echo 0)
+
 sleep "$SETTLE"
 shoot d1-start
 
@@ -297,5 +304,17 @@ fi
 
 kill $APPPID 2>/dev/null
 kill $SWAYPID 2>/dev/null
+# THE VERDICT THE EXIT CODE CANNOT GIVE. Printed whether or not it fired, because "no fault line"
+# is the answer to a real question and an absent line reads as an unasked one.
+FAULTS_AFTER=$(grep -c "sigexc: have RIP" "$CIDERD_LOG" 2>/dev/null || echo 0)
+if [ "${FAULTS_AFTER:-0}" -gt "${FAULTS_BEFORE:-0}" ]; then
+	say "GUEST FAULTED during this drive, $(( FAULTS_AFTER - FAULTS_BEFORE )) time(s). exit=0 above is NOT a clean run:"
+	grep "sigexc: have RIP" "$CIDERD_LOG" 2>/dev/null | tail -n "$(( FAULTS_AFTER - FAULTS_BEFORE ))" \
+		| sed 's/^/DRIVE   /' >&2
+	say "symbolicate with: scripts/core-guest-stack.py --root $PREFIX --root <rt>/libexec/cider <core> <RIP>"
+else
+	say "no guest fault recorded in ciderd.log"
+fi
+
 say "captures in $SHOTS"
 ls "$SHOTS"/*.png 2>/dev/null
