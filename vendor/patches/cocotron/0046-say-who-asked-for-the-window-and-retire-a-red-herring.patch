@@ -1,0 +1,58 @@
+Backtrace the window geometry trace, and retire a red herring it exposed.
+
+CIDER_WINGEOM printed the rect a window was asked for but not WHO asked. Four windows arrive 1x1
+with a style mask matching no constant in this tree and a class of plain NSWindow rather than any
+toolkit subclass, and for several sessions task #227 was titled around them: "Qt renders nothing,
+the window is created 1x1 and never mapped".
+
+ONE FRAME LIST ENDED THAT:
+
+    -[NSWindow initWithContentRect:styleMask:backing:defer:]
+      -[NSCachedImageRep initWithSize:depth:separate:alpha:]
+        -[NSImage drawInRect:fromRect:operation:fraction:]
+          qt_mac_toQPixmap(NSImage const*, QSizeF const&)
+            qt_mac_toQBrush(NSColor const*, QPalette::ColorGroup)
+              QApplicationPrivate::basePalette()
+
+THEY ARE NOT APPLICATION WINDOWS. They are NSCachedImageRep offscreen backing, one per palette
+brush Qt rasterises, and in this port a cached image rep allocates a window. So the headline of
+that task was about something that was never going to be on screen, and the real failure, an
+application that completes QApplication init and exits without showing anything, was being read
+through the wrong lens.
+
+WHAT IS LEFT OF IT IS SMALLER AND REAL: the rasterisation is 1x1 because Qt asks a non pattern
+colour for its patternImage and this port hands back nothing to size from. That makes a brush a
+1x1 texture where a colour was meant, which is a rendering defect rather than a startup one.
+
+FOUR THINGS ELIMINATED WHILE GETTING HERE, so they are not re-derived: none of the 9 colours Qt
+asks for answers nil; colorUsingColorSpace: IS implemented and never returns nil, it falls back
+to self; NSColor_catalog colorSpaceName answers NSNamedColorSpace rather than NSPatternColorSpace;
+and the screen Qt sees is correct since ef39f657.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -44,6 +44,7 @@
+ #import <AppKit/NSViewController.h>
+ #import <AppKit/NSWindow-Private.h>
+ #import <AppKit/NSWindow.h>
++#include <execinfo.h>
+ #import <objc/runtime.h>
+ #import <dlfcn.h>
+ #import <execinfo.h>
+@@ -484,6 +485,16 @@
+                 contentRect.origin.y, _frame.size.width, _frame.size.height,
+                 (unsigned long) styleMask, (unsigned long) [[NSScreen screens] count],
+                 sf.size.width, sf.size.height, sv.size.width, sv.size.height);
++        /*
++         * AND WHO ASKED. Four windows arrive 1x1 with a style mask that matches no constant in
++         * this tree and a class of plain NSWindow rather than any toolkit subclass (#227), so the
++         * rect alone has never said whether they are application windows at all or offscreen
++         * image backing. One frame list answers that; this path runs a handful of times per
++         * launch, so the cost does not matter.
++         */
++        void *frames[16];
++        int n = backtrace(frames, 16);
++        backtrace_symbols_fd(frames, n, 2);
+         fflush(stderr);
+     }
+ 
