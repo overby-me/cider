@@ -1,0 +1,184 @@
+Share System catalog colours, because a fresh autoreleased entry per call is a lifetime bug.
+
++[NSColor controlTextColor] on macOS answers the SAME instance every time and that instance is
+never deallocated, so an application may keep the pointer without retaining it, and shipping
+applications do exactly that. This minted a NEW autoreleased NSColor_catalog on every call.
+
+Qt asks for its palette colours inside a QMacAutoReleasePool in QCoreApplicationPrivate::init and
+keeps them. At the drain the entry it kept was deallocated. Later, something sent
+colorUsingColorSpaceName:device: to that dead entry: its isa and name pointers still read correctly
+because the memory had not been reused, but its _color slot pointed at a block libobjc HAD reused,
+as the class_rw_t of O2Paint. That is why this read like a colour bug for days when it was a
+lifetime bug, and why the receiver class differed between runs.
+
+Measured, not reasoned: a one pointer watch on the resolved colour printed two releases at the same
+pool drain, the first from -[NSColor_catalog dealloc] and the second from the pool itself. Both are
+CORRECT. The colour was supposed to die there. The catalog entry was not supposed to be gone.
+
+System only. Another catalog belongs to the application, which may reuse a system name and may
+expect a fresh entry.
+
+With this in, the CMake.app fault moves out of objc_msgSend entirely and into
+QMacCGContext::initialize(QPaintDevice*) with CR2 0x24, a null dereference, which is a different
+and later defect. Task #227.
+
+--- a/AppKit/NSColor.subproj/NSColor_catalog.m
++++ b/AppKit/NSColor.subproj/NSColor_catalog.m
+@@ -63,6 +63,10 @@
+ /* Nonzero while a catalog colour is releasing the colour it owns, so that free is not reported. */
+ unsigned _CiderExpectedColorRelease;
+ 
++/* The one colour #227 follows. Defined here because this is where a catalog entry learns
++ * which object it holds; NSColor_CGColor dealloc reads it. */
++id _CiderWatchedColor = nil;
++
+ /* Only THIS holder forgets, not every entry that happens to share the colour. Clearing them all
+  * made a colour still held by somebody else report "not registered". */
+ void _CiderForgetHeldColorFor(id color, id holder) {
+@@ -154,6 +158,23 @@
+     if (getenv("CIDER_COLOR_EXTRA_RETAIN") != NULL)
+         [_color retain];
+ 
++    /* The FIRST System controlTextColor resolved, which is the one #227 finds dead. Latched, so a
++     * later entry for the same name cannot move the watch off the object already being followed. */
++    if (_CiderWatchedColor == nil && _color != nil && getenv("CIDER_WATCH_SYSCOLOR") != NULL
++        && [_colorName isEqualToString: @"controlTextColor"]) {
++        _CiderWatchedColor = _color;
++        /* THE COUNT DECIDES WHOSE BUG IT IS. The pool drain that frees this took it to zero, so
++         * either the copy above never retained (2 expected here, 1 means it did not) or somebody
++         * else released. incoming= is the argument, to separate copy returning self from a real
++         * new object. */
++        fprintf(stderr, "CIDER_SYSCOLOR WATCHING %p name=controlTextColor class=%s holder=%p"
++                        " retainCount=%lu incoming=%p incoming-count=%lu\n",
++                _color, object_getClassName(_color), self,
++                (unsigned long) [_color retainCount], color,
++                (unsigned long) [color retainCount]);
++        fflush(stderr);
++    }
++
+     if (_color != nil && getenv("CIDER_TRACE_COLORLIFE") != NULL) {
+         unsigned slot = gCiderColorLifeNext++ % CIDER_COLORLIFE_SLOTS;
+         if (gCiderColorLife[slot] != nil)
+@@ -239,15 +260,56 @@
+                                        _colorName];
+ }
+ 
++/*
++ * A SYSTEM COLOUR IS SHARED AND IMMORTAL ON macOS, AND THAT IS AN ABI AN APPLICATION RELIES ON.
++ * +[NSColor controlTextColor] there answers the same instance every time and it is never
++ * deallocated, so keeping the pointer without retaining it is safe and shipping applications do it.
++ * This returned a FRESH AUTORELEASED entry per call, so the pointer Qt kept while building its
++ * palette died at the next pool drain and every later use read freed memory. See task #227: the
++ * catalog entry was gone and its _color slot pointed at a block libobjc had already recycled into
++ * O2Paint class_rw_t, which is why the crash looked like a colour bug and was a lifetime bug.
++ *
++ * System only. Another catalog belongs to the application, which may reuse a system name for
++ * something else and may legitimately expect a fresh entry.
++ */
++static NSMutableDictionary *_CiderSystemCatalogColors(void) {
++    static NSMutableDictionary *shared;
++    if (shared == nil)
++        shared = [[NSMutableDictionary alloc] init];
++    return shared;
++}
++
++/* Returns a BORROWED reference, like the autorelease it replaces: the cache is the owner and it
++ * never gives that up. */
++static NSColor *_CiderCachedSystemColor(NSColorListName catalogName, NSColorName colorName) {
++    if (colorName == nil || ![catalogName isEqualToString: @"System"])
++        return nil;
++    return [_CiderSystemCatalogColors() objectForKey: colorName];
++}
++
++static void _CiderCacheSystemColor(NSColorListName catalogName, NSColorName colorName,
++                                   NSColor *entry) {
++    if (entry == nil || colorName == nil || ![catalogName isEqualToString: @"System"])
++        return;
++    [_CiderSystemCatalogColors() setObject: entry forKey: colorName];
++}
++
+ + (NSColor *) colorWithCatalogName: (NSColorListName) catalogName
+                          colorName: (NSColorName) colorName
+ {
+-    return [[[self alloc]
++    NSColor *cached = _CiderCachedSystemColor(catalogName, colorName);
++
++    if (cached != nil)
++        return cached;
++
++    cached = [[[self alloc]
+             initWithCatalogName: catalogName
+                       colorName: colorName
+                           color: [[NSDisplay currentDisplay]
+                                          colorWithName: colorName]]
+             autorelease];
++    _CiderCacheSystemColor(catalogName, colorName, cached);
++    return cached;
+ }
+ 
+ /*
+@@ -269,6 +331,13 @@
+                              color: (NSColor *) color
+ {
+     NSColor *resolved = nil;
++    NSColor *cached = _CiderCachedSystemColor(catalogName, colorName);
++
++    /* Same instance a live application already holds, so a nib decoding System controlTextColor and
++     * a toolkit asking for it by name cannot end up with two entries of different lifetimes. The
++     * stored fallback is only consulted when nothing resolves the name, so sharing costs nothing. */
++    if (cached != nil)
++        return cached;
+ 
+     /* Only the System catalog, because only that one is ours to answer for. An application with a
+      * catalog of its own may well use a name that collides with a system one. */
+@@ -283,9 +352,11 @@
+         resolved = color;
+     }
+ 
+-    return [[[self alloc] initWithCatalogName: catalogName
+-                                    colorName: colorName
+-                                        color: resolved] autorelease];
++    cached = [[[self alloc] initWithCatalogName: catalogName
++                                      colorName: colorName
++                                          color: resolved] autorelease];
++    _CiderCacheSystemColor(catalogName, colorName, cached);
++    return cached;
+ }
+ 
+ - (NSColorSpaceName) colorSpaceName {
+--- a/AppKit/NSColor.subproj/NSColor_CGColor.m
++++ b/AppKit/NSColor.subproj/NSColor_CGColor.m
+@@ -49,9 +49,33 @@
+ 
+ extern const char *_CiderCatalogNameHoldingColor(id color);
+ extern unsigned _CiderExpectedColorRelease;
++extern id _CiderWatchedColor;
+ 
++/*
++ * THE retain/release/autorelease LEDGER THAT SOLVED #227 IS DELIBERATELY NOT HERE. Overriding those
++ * three puts an extra dispatch on every colour retain and release, which is a hot path, and an
++ * override cannot be gated away the way a branch can. It is recorded in the task instead: each was
++ * a pointer compare against _CiderWatchedColor plus a six frame backtrace, and the two releases it
++ * printed (from NSColor_catalog dealloc, then from the pool) are what showed the CATALOG ENTRY was
++ * the dead object rather than the colour.
++ */
+ - (void) dealloc {
+     /*
++     * ONE POINTER, NOT A SEARCH. The hook below scans the holder ring on EVERY colour dealloc, and
++     * that weight is why every previous run of it took the failure rate to zero. #227 now names the
++     * single object that dies (System controlTextColor), so watching just that one costs a compare
++     * and prints one backtrace: the frame above release is the over-releaser.
++     */
++    if (self == _CiderWatchedColor && _CiderExpectedColorRelease == 0) {
++        void *frames[32];
++        int n = backtrace(frames, 32);
++        fprintf(stderr, "CIDER_SYSCOLOR WATCHED COLOUR FREED %p, and a catalog entry still holds it\n",
++                self);
++        fflush(stderr);
++        backtrace_symbols_fd(frames, n, 2);
++    }
++
++    /*
+      * FREED WHILE A CATALOG ENTRY STILL POINTS AT IT. An extra retain takes the Qt crash from 5 in
+      * 16 to 0 in 16 (#227), so something releases this colour once too often; the retain count says
+      * nothing about WHO, and a trace per colour lookup suppresses the bug entirely. This fires only
