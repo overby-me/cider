@@ -1,0 +1,44 @@
+Publish NSScreenNumber, without which no display id maps back to a screen.
+
+Qt asks CoreGraphics for the online displays, gets one with id 1, and then looks for the NSScreen
+whose deviceDescription NSScreenNumber matches it. Our deviceDescription had five keys and that
+was not one of them, so the search found nothing and Qt kept
+
+    QCocoaScreen(..., QRect(0,684 0x0), dpr=0, displayId=1) as new primary screen
+
+a screen with NO SIZE and a device pixel ratio of ZERO. Every window it then made was 1x1.
+
+INVISIBLE TO ANYTHING THAT ONLY ASKS APPKIT, which is why five roster applications never noticed:
+they take their screen from NSScreen directly and never go round by a display id. The Wayland
+backend also never set the id, so it was 0, while the X11 backend beside it does set index plus 1
+(X11Display.m). CGGetOnlineDisplayList and CGDisplayBounds both number from 1 by index, so 1 is
+the value that agrees with them.
+
+Spelled as the literal @"NSScreenNumber" because the constant is not declared in these headers.
+
+MEASURED AFTER, same run shape:
+    QCocoaScreen(..., QRect(0,0 1256x684), dpr=1, displayId=1,
+      < <NSScreen: 0x...> - frame {{0, 0}, {1256, 684}}, visible {{0, 0}, {1256, 684}} >)
+
+NOT THE WHOLE OF #227. The four windows Qt makes during QApplication init are still 1x1 and the
+application still exits without showing its own window. This removes a defect that was certainly
+wrong and would mislead any toolkit doing the same lookup; what CMake does next is still open.
+
+--- a/AppKit/NSScreen.m
++++ b/AppKit/NSScreen.m
+@@ -161,7 +161,15 @@
+ - (NSDictionary<NSDeviceDescriptionKey, id> *) deviceDescription {
+     CGFloat dpi = 72.0 * [self backingScaleFactor];
+ 
++    /*
++     * NSScreenNumber IS HOW A CALLER GETS FROM A CGDirectDisplayID BACK TO A SCREEN, and leaving it
++     * out is invisible to anything that only ever asks AppKit. Qt asks CoreGraphics for the online
++     * displays, then looks for the NSScreen whose NSScreenNumber matches; with the key absent that
++     * search finds nothing, so it kept a screen of QRect(0,684 0x0) with dpr=0 and built every
++     * window 1x1 on it. Spelled literally because the constant is not declared in these headers.
++     */
+     return @{
++        @"NSScreenNumber" : [NSNumber numberWithUnsignedInt: _directDisplayID],
+         NSDeviceResolution : [NSValue valueWithSize: NSMakeSize(dpi, dpi)],
+         NSDeviceSize : [NSValue valueWithSize: _frame.size],
+         NSDeviceIsScreen : @"YES",

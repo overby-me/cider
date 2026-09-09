@@ -554,6 +554,16 @@ extern "C-unwind" fn display_screens(_this: Object, _cmd: Sel) -> Object {
             println!("cider-wayland-appkit screens=FAILED reason=NSScreen-init-returned-nil");
             return std::ptr::null_mut();
         }
+        // THE DISPLAY ID, which the X11 backend sets and this one did not. It is what publishes
+        // NSScreenNumber, and CGGetOnlineDisplayList and CGDisplayBounds both number screens from
+        // 1 by index, so the single screen here is 1. Left at 0, no display id matches any screen,
+        // and a toolkit that maps one to the other gets nothing: Qt kept a screen of
+        // QRect(0,684 0x0) with dpr=0 and built every window 1x1 on it.
+        objc::msg_send_i64(
+            screen,
+            objc::sel_registerName(cstr!("setCgDirectDisplayID:")),
+            1,
+        );
         let with_objs = objc::sel_registerName(cstr!("arrayWithObjects:count:"));
         let one = [screen];
         let array = objc::msg_send_ptr_len(array_cls, with_objs, one.as_ptr(), 1);
