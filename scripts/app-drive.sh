@@ -213,7 +213,18 @@ APPPID=$!
 # The fault IS recorded, in the container-wide ciderd.log, which APPENDS across runs, so remember
 # how far it had got before this launch and only read what comes after.
 CIDERD_LOG="$PREFIX/ciderd.log"
-FAULTS_BEFORE=$(grep -c "sigexc: have RIP" "$CIDERD_LOG" 2>/dev/null || echo 0)
+
+# EVERY SIGNAL GOES THROUGH sigexc, NOT ONLY FATAL ONES: the unfiltered line called iTerm2 a crash
+# on a sig 28, the SIGWINCH a terminal gets when the driver resizes it. 4/6/7/8/10/11 are ILL, ABRT,
+# EMT, FPE, BUS, SEGV.
+FATAL_SIG_RE="sigexc: have RIP .* sig (4|6|7|8|10|11)\$"
+
+# grep -c prints 0 AND exits 1 on no match, so a plain "or echo 0" appends a SECOND zero and every
+# comparison below then fails on a two-line number.
+count_re() { grep -cE "$1" "$CIDERD_LOG" 2>/dev/null | head -1 | tr -dc '0-9' | grep . || echo 0; }
+
+FAULTS_BEFORE=$(count_re "$FATAL_SIG_RE")
+SIGNALS_BEFORE=$(count_re "sigexc: have RIP")
 
 sleep "$SETTLE"
 shoot d1-start
@@ -306,14 +317,20 @@ kill $APPPID 2>/dev/null
 kill $SWAYPID 2>/dev/null
 # THE VERDICT THE EXIT CODE CANNOT GIVE. Printed whether or not it fired, because "no fault line"
 # is the answer to a real question and an absent line reads as an unasked one.
-FAULTS_AFTER=$(grep -c "sigexc: have RIP" "$CIDERD_LOG" 2>/dev/null || echo 0)
-if [ "${FAULTS_AFTER:-0}" -gt "${FAULTS_BEFORE:-0}" ]; then
+FAULTS_AFTER=$(count_re "$FATAL_SIG_RE")
+SIGNALS_AFTER=$(count_re "sigexc: have RIP")
+if [ "$FAULTS_AFTER" -gt "$FAULTS_BEFORE" ]; then
 	say "GUEST FAULTED during this drive, $(( FAULTS_AFTER - FAULTS_BEFORE )) time(s). exit=0 above is NOT a clean run:"
-	grep "sigexc: have RIP" "$CIDERD_LOG" 2>/dev/null | tail -n "$(( FAULTS_AFTER - FAULTS_BEFORE ))" \
+	grep -E "$FATAL_SIG_RE" "$CIDERD_LOG" 2>/dev/null | tail -n "$(( FAULTS_AFTER - FAULTS_BEFORE ))" \
 		| sed 's/^/DRIVE   /' >&2
 	say "symbolicate with: scripts/core-guest-stack.py --root $PREFIX --root <rt>/libexec/cider <core> <RIP>"
 else
 	say "no guest fault recorded in ciderd.log"
+fi
+
+# Reported, not dropped: silence here is how a wrong FATAL_SIG_RE would hide a real crash.
+if [ "$(( SIGNALS_AFTER - FAULTS_AFTER ))" -gt "$(( SIGNALS_BEFORE - FAULTS_BEFORE ))" ]; then
+	say "non fatal guest signals this drive: $(( (SIGNALS_AFTER - FAULTS_AFTER) - (SIGNALS_BEFORE - FAULTS_BEFORE) )) (SIGWINCH and the like, not a crash)"
 fi
 
 say "captures in $SHOTS"
