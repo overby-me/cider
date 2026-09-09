@@ -1,0 +1,48 @@
+A mutation probe for the over-release, and it takes 5 in 16 to 0 in 16.
+
+Reading eliminated six suspects and named none, so this changes OWNERSHIP and nothing else: one
+extra retain on the resolved colour, which only an over-release somewhere else could consume. Off
+unless CIDER_COLOR_EXTRA_RETAIN is set, and the getenv runs in BOTH arms so the timing either
+side of the comparison is the same. That matters here more than usual, because every ordinary
+instrument suppresses this bug: a colour trace gives 0 in 8 and zombies give 0 in 8.
+
+MEASURED:
+
+  no extra retain, previous build   3 of 8 died
+  no extra retain, THIS build       2 of 8 died      <- the build still reproduces it
+  extra retain, THIS build          0 of 16 died
+
+Pooled that is 5 of 16 against 0 of 16. At a 31 percent base rate the chance of 0 in 16 by luck
+is about 0.3 percent. The middle row is the control that matters: the same binary, the same
+runs, only the environment variable different, so the rebuild is not what changed the rate.
+
+WHAT IT MEANS AND WHAT IT DOES NOT. It is a DIAGNOSTIC, not a fix, and it must not be turned on
+by default: an unconditional extra retain leaks a colour per catalog entry. What it establishes
+is that something releases the resolved colour once too often, which is where the search goes
+next, and that the catalog colour is the VICTIM rather than the culprit. Its own retain is
+genuine: NSColor copyWithZone is "return [self retain]" and there is exactly one copyWithZone in
+the whole NSColor subproj, so no subclass changes that.
+
+The guards from 0040 say the entry is a valid colour when STORED and bad at USE, so the window
+is between those two points. See task #227.
+
+--- a/AppKit/NSColor.subproj/NSColor_catalog.m
++++ b/AppKit/NSColor.subproj/NSColor_catalog.m
+@@ -45,6 +45,17 @@
+     _color = [color copy];
+ 
+     /*
++     * A MUTATION PROBE FOR THE OVER-RELEASE, off unless asked for. Reading has eliminated six
++     * suspects and named none, so this changes OWNERSHIP and nothing else: an extra retain that
++     * only an over-release could consume. The getenv runs in both configurations, so the timing
++     * either side of the comparison is the same, which matters because every ordinary trace takes
++     * the failure rate to zero. If the rate goes 3 in 8 to 0 in 8 with this set, something
++     * releases a colour it does not own and the search moves to who. See task #227.
++     */
++    if (getenv("CIDER_COLOR_EXTRA_RETAIN") != NULL)
++        [_color retain];
++
++    /*
+      * IS IT ALREADY WRONG HERE, OR DOES IT GO WRONG LATER? That is the whole fork for #227, and
+      * the two are indistinguishable at the point it explodes. Silent unless the answer is bad, so
+      * this costs nothing on the sound path and cannot change the failure rate the way a trace per
