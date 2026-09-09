@@ -1,0 +1,61 @@
+Implement CGDisplayIsAsleep, which Qt calls while updating its screen list.
+
+THE APPLICATION HAD BEEN EXITING SILENTLY AND I HAD NO NAME FOR IT. Two thirds of runs produced
+29 lines, four Qt internal windows, and a clean exit=0: no ObjC exception, so no "Terminating
+app" line, and nothing in the log to grep for.
+
+Qt keeps its own diagnostics behind a switch, and app-drive.sh applies TRACE_ENV AFTER the
+variables it unsets, so QT_LOGGING_RULES survives the QT_* unset added in c371bbd2. With it on,
+the answer was one line:
+
+    dyld: lazy symbol binding failed: Symbol not found: _CGDisplayIsAsleep
+      Referenced from: /Applications/CMake.app/Contents/PlugIns/platforms/libqcocoa.dylib
+
+immediately after "qt.qpa.screen: Updating screens with 1 online displays".
+
+LAZY IS WHY IT LOOKED LIKE NOTHING. A missing symbol bound eagerly fails at load and says so; one
+bound lazily binds when it is CALLED, so the process starts, does real work, and aborts at the
+call with no exception and an exit status of 0. This symbol was first in the 13 recorded in #227,
+where I wrote it was NOT proven to block anything because the application ran past them. It ran
+past them because it had not called them yet.
+
+FALSE IS THE TRUE ANSWER, not a placeholder: nothing here puts a display to sleep, so a caller is
+correctly told no, and a display that does not exist is not asleep either.
+
+MEASURED AFTER: no lazy bind failure remains, and the application gets further, 29 lines to 73
+with logging on. What is left is the intermittent colour crash, 2 of 8, which is a different bug
+and still open, plus an early clean exit that is next.
+
+--- a/CoreGraphics/CGDirectDisplay.m
++++ b/CoreGraphics/CGDirectDisplay.m
+@@ -270,6 +270,20 @@
+     return display >= 1 && display <= [[current screens] count];
+ }
+ 
++/*
++ * FALSE IS THE TRUE ANSWER, not a placeholder: nothing in this port ever puts a display to sleep,
++ * so a caller asking whether one is asleep is correctly told no. A display that does not exist is
++ * not asleep either, and answering TRUE for it would read as a powered down screen rather than an
++ * absent one.
++ *
++ * Qt calls this while updating its screen list and it is bound LAZILY, so a missing symbol was not
++ * a load failure: the process ran, drew nothing, and aborted the moment the call was reached, with
++ * no ObjC exception and an exit status of 0. See task #227.
++ */
++boolean_t CGDisplayIsAsleep(CGDirectDisplayID display) {
++    return FALSE;
++}
++
+ CGDirectDisplayID CGDisplayMirrorsDisplay(CGDirectDisplayID display) {
+     // STUB!
+     // TODO: Get this from XRandR
+--- a/CoreGraphics/include/CoreGraphics/CGDirectDisplay.h
++++ b/CoreGraphics/include/CoreGraphics/CGDirectDisplay.h
+@@ -55,6 +55,7 @@
+ COREGRAPHICS_EXPORT boolean_t CGDisplayIsInMirrorSet(CGDirectDisplayID display);
+ COREGRAPHICS_EXPORT Boolean CGDisplayIsMain(CGDirectDisplayID display);
+ COREGRAPHICS_EXPORT boolean_t CGDisplayIsOnline(CGDirectDisplayID display);
++COREGRAPHICS_EXPORT boolean_t CGDisplayIsAsleep(CGDirectDisplayID display);
+ COREGRAPHICS_EXPORT CGDirectDisplayID
+ CGDisplayMirrorsDisplay(CGDirectDisplayID display);
+ 
