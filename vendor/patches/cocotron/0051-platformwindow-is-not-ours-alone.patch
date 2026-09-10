@@ -1,0 +1,475 @@
+Namespace platformWindow, because Qt defines it too and means something else entirely.
+
+THE COLLISION. Cocotron NSWindow keeps its backend object behind -platformWindow, and every
+internal call site asks for it by that name. Qt subclasses NSWindow as QNSWindow and ALSO defines
+-platformWindow, returning its C++ QCocoaWindow pointer, which is not an object at all. A subclass
+method wins, so every [window platformWindow] inside AppKit reached QT and handed back a C++
+object, whose first word is a vtable pointer. objc_msgSend read that vtable as an isa.
+
+CMake.app died the first time -orderWindow:relativeTo: ordered its main window. The evidence:
+
+  CIDER_WIN orderAbove self=... class=QNSWindow platformWindow=0x0 relativeTo=0
+  CIDER_APP messaging receiver=0x... (placeAboveWindow:) isa=0x... class=unreadable (in an image)
+
+The ivar was NIL and the returned pointer was NOT, and our getter never printed its own trace, so
+the method that ran was not ours. class=unreadable IN AN IMAGE is a vtable, not a class object.
+
+AppKit now asks for cider_platformWindow, which no application defines. 30 sends across six files.
+-platformWindow stays as a forwarder for anything outside AppKit, but AppKit itself must never use
+it again: a subclass can and does override it.
+
+FOUR HYPOTHESES DIED FIRST, and one of them was mine to begin with: I had added two ivars to
+NSWindow in the previous commit for window tabbing, and adding an ivar shifts the layout every
+subclass sits on. That was a real risk and I tested it rather than argue it, by moving tabbing to
+associated objects. THE CRASH WAS IDENTICAL, so the ivars were innocent. The associated object
+version is kept anyway, because a compatibility shim is not worth a layout change to a class every
+toolkit subclasses.
+
+ALSO, THE BACKING STORE CONVERSIONS. NSView had none of the six 10.7 methods, and Qt asks
+-convertSizeToBacking: on every QNSView. The whole family goes in together, written against the
+window backing scale rather than hard coded to 1, because a caller that converts one way converts
+back and finding them one exception at a time is what this already cost.
+
+RESULT: CMake.app CREATES ITS REAL MAIN WINDOW for the first time, 614x506 at 308,126 style 0xf.
+It still paints nothing and still dies, now in objc_msgSend +0x1d sending release to a heap object
+whose isa is bad, so it is NOT on the roster. Task #227.
+
+--- a/AppKit/include/AppKit/NSView.h
++++ b/AppKit/include/AppKit/NSView.h
+@@ -232,6 +232,13 @@
+ - (NSPoint) convertPoint: (NSPoint) point toView: (NSView *) viewOrNil;
+ - (NSSize) convertSize: (NSSize) size fromView: (NSView *) viewOrNil;
+ - (NSSize) convertSize: (NSSize) size toView: (NSView *) viewOrNil;
++
++- (NSSize) convertSizeToBacking: (NSSize) size;
++- (NSSize) convertSizeFromBacking: (NSSize) size;
++- (NSPoint) convertPointToBacking: (NSPoint) point;
++- (NSPoint) convertPointFromBacking: (NSPoint) point;
++- (NSRect) convertRectToBacking: (NSRect) rect;
++- (NSRect) convertRectFromBacking: (NSRect) rect;
+ - (NSRect) convertRect: (NSRect) rect fromView: (NSView *) viewOrNil;
+ - (NSRect) convertRect: (NSRect) rect toView: (NSView *) viewOrNil;
+ - (NSRect) centerScanRect: (NSRect) rect;
+--- a/AppKit/include/AppKit/NSWindow.h
++++ b/AppKit/include/AppKit/NSWindow.h
+@@ -248,8 +248,7 @@
+     BOOL _ignoresMouseEvents;
+     BOOL _isMovableByWindowBackground;
+     BOOL _allowsToolTipsWhenApplicationIsInactive;
+-    NSWindowTabbingMode _tabbingMode;
+-    NSString *_tabbingIdentifier;
++
+     BOOL _defaultButtonCellKeyEquivalentDisabled;
+     BOOL _autorecalculatesKeyViewLoop;
+     BOOL _hasBeenOnScreen;
+@@ -736,6 +735,7 @@
+ @end
+ 
+ @interface NSWindow (Darling)
++- (CGWindow *) cider_platformWindow;
+ - (CGWindow *) platformWindow;
+ + (instancetype) windowWithContentViewController: (NSViewController *) contentViewController;
+ - (NSViewController *) contentViewController;
+--- a/AppKit/NSCachedImageRep.m
++++ b/AppKit/NSCachedImageRep.m
+@@ -57,7 +57,7 @@
+                                             defer: NO];
+ 
+     NSDictionary *entries = @{@"CGContext" : @"Onyx"};
+-    [[window platformWindow] addEntriesToDeviceDictionary: entries];
++    [[window cider_platformWindow] addEntriesToDeviceDictionary: entries];
+     [self initWithWindow: window rect: rect];
+     [window release];
+     return self;
+--- a/AppKit/NSThemeFrame.m
++++ b/AppKit/NSThemeFrame.m
+@@ -297,7 +297,7 @@
+  *
+  * A Wayland client cannot move or minimise ITSELF: it asks the compositor, and the ask carries the
+  * serial of the event that caused it. Those three requests live on the platform window, which is
+- * what -[NSWindow platformWindow] answers, and they are sent by NAME so this file does not have to
++ * what -[NSWindow cider_platformWindow] answers, and they are sent by NAME so this file does not have to
+  * know anything about the backend beyond the fact that it is the one on the other side.
+  *
+  * The geometry repeats what -_ciderDrawTitleBarInBounds: draws, deliberately: a hit target that is
+@@ -322,7 +322,7 @@
+     const CGFloat lightGap = 8.0;
+     const CGFloat lightY = NSMaxY(bounds) - barHeight + (barHeight - lightDiameter) / 2.0;
+     CGFloat lightX = bounds.origin.x + 20.0;
+-    id platform = [window platformWindow];
++    id platform = [window cider_platformWindow];
+ 
+     for (int i = 0; i < 3; i++) {
+         NSRect light = NSMakeRect(lightX, lightY, lightDiameter, lightDiameter);
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -1269,6 +1269,54 @@
+     return self;
+ }
+ 
++/*
++ * THE BACKING STORE CONVERSIONS, 10.7. A view coordinate times the window backing scale is a pixel,
++ * and this port renders at scale 1, so today these are identity; they are written against the scale
++ * rather than hard coded to 1 so a HiDPI backing later does not need them revisited.
++ *
++ * Qt asks -convertSizeToBacking: on every QNSView it creates, and the unrecognized selector killed
++ * CMake.app the first time its main window laid out. The whole family goes in together because a
++ * caller that converts one way converts back, and finding them one exception at a time is what this
++ * cost already. Task #227.
++ */
++- (CGFloat) _ciderBackingScale {
++    NSWindow *window = [self window];
++    return window != nil ? [window backingScaleFactor] : 1.0;
++}
++
++- (NSSize) convertSizeToBacking: (NSSize) size {
++    CGFloat s = [self _ciderBackingScale];
++    return NSMakeSize(size.width * s, size.height * s);
++}
++
++- (NSSize) convertSizeFromBacking: (NSSize) size {
++    CGFloat s = [self _ciderBackingScale];
++    return s != 0.0 ? NSMakeSize(size.width / s, size.height / s) : size;
++}
++
++- (NSPoint) convertPointToBacking: (NSPoint) point {
++    CGFloat s = [self _ciderBackingScale];
++    return NSMakePoint(point.x * s, point.y * s);
++}
++
++- (NSPoint) convertPointFromBacking: (NSPoint) point {
++    CGFloat s = [self _ciderBackingScale];
++    return s != 0.0 ? NSMakePoint(point.x / s, point.y / s) : point;
++}
++
++- (NSRect) convertRectToBacking: (NSRect) rect {
++    CGFloat s = [self _ciderBackingScale];
++    return NSMakeRect(rect.origin.x * s, rect.origin.y * s, rect.size.width * s,
++                      rect.size.height * s);
++}
++
++- (NSRect) convertRectFromBacking: (NSRect) rect {
++    CGFloat s = [self _ciderBackingScale];
++    if (s == 0.0) return rect;
++    return NSMakeRect(rect.origin.x / s, rect.origin.y / s, rect.size.width / s,
++                      rect.size.height / s);
++}
++
+ - (NSPoint) convertPoint: (NSPoint) point fromView: (NSView *) viewOrNil {
+     NSView *fromView =
+             (viewOrNil != nil) ? viewOrNil : [[self window] _backgroundView];
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -652,7 +652,7 @@
+ }
+ 
+ - (CGContextRef) cgContext {
+-    return [[self platformWindow] cgContext];
++    return [[self cider_platformWindow] cgContext];
+ }
+ 
+ - (void) setStyleMask: (NSWindowStyleMask) mask {
+@@ -1219,7 +1219,7 @@
+     // redisplay the views. So, doing a hard display right here is not the right
+     // thing to do, delay it.
+     if (display) {
+-        [self platformWindow];
++        [self cider_platformWindow];
+         _CiderWindowNote("setFrame needsDisplay enter", self);
+         [_backgroundView setNeedsDisplay: YES];
+         _CiderWindowNote("setFrame needsDisplay leave", self);
+@@ -1996,7 +1996,7 @@
+ }
+ 
+ - (NSInteger) windowNumber {
+-    return [[self platformWindow] windowNumber];
++    return [[self cider_platformWindow] windowNumber];
+ }
+ 
+ - (int) gState {
+@@ -2277,7 +2277,7 @@
+ }
+ 
+ - (void) makeKeyWindow {
+-    [[self platformWindow] makeKey];
++    [[self cider_platformWindow] makeKey];
+ 
+     if (_hasBeenOnScreen) {
+         return;
+@@ -2376,7 +2376,7 @@
+     }
+ 
+     NSWindow *mainWindow = [NSApp mainWindow];
+-    [[self platformWindow] makeMain];
++    [[self cider_platformWindow] makeMain];
+     [NSApp _setMainWindow: self];
+     [mainWindow resignMainWindow];
+ 
+@@ -2707,7 +2707,7 @@
+         doFlush = NO;
+     }
+     if (doFlush) {
+-        [[self platformWindow] flushBuffer];
++        [[self cider_platformWindow] flushBuffer];
+     }
+ }
+ 
+@@ -3002,7 +3002,15 @@
+     case NSWindowAbove:
+         [self update];
+         _isVisible = YES;
+-        [[self platformWindow] placeAboveWindow: relativeTo];
++        /* THE IVAR, NOT THE GETTER: reading _platformWindow directly says whether it is nil or a
++         * bad pointer, while the getter would CREATE one and hide the answer. #227 dies in the send
++         * below with a receiver whose page is not even in the core. */
++        if (getenv("CIDER_TRACE_APP") != NULL) {
++            fprintf(stderr, "CIDER_WIN orderAbove self=%p class=%s platformWindow=%p relativeTo=%ld\n",
++                    self, object_getClassName(self), _platformWindow, (long) relativeTo);
++            fflush(stderr);
++        }
++        [[self cider_platformWindow] placeAboveWindow: relativeTo];
+         /* In some instances when a COMMAND is issued from a menu item to bring
+            a window front, the window is not displayed right (black,
+            incomplete). This may be the right place to do this, maybe not,
+@@ -3020,7 +3028,7 @@
+     case NSWindowBelow:
+         [self update];
+         _isVisible = YES;
+-        [[self platformWindow] placeBelowWindow: relativeTo];
++        [[self cider_platformWindow] placeBelowWindow: relativeTo];
+         /* In some instances when a COMMAND is issued from a menu item to bring
+            a window front, the window is not displayed right (black,
+            incomplete). This may be the right place to do this, maybe not,
+@@ -3037,7 +3045,7 @@
+ 
+     case NSWindowOut:
+         _isVisible = NO;
+-        [[self platformWindow] hideWindow];
++        [[self cider_platformWindow] hideWindow];
+         if (![self isKindOfClass: [NSPanel class]]) {
+             [NSApp removeWindowsItem: self];
+         }
+@@ -3073,7 +3081,7 @@
+                             dequeue: (BOOL) dequeue
+ {
+     // This should get migrated down into event queue.
+-    [[self platformWindow] captureEvents];
++    [[self cider_platformWindow] captureEvents];
+ 
+     NSEvent *event;
+     do {
+@@ -3491,9 +3499,9 @@
+     }
+     _isVisible = visible;
+     if (visible) {
+-        [[self platformWindow] showWindowWithoutActivation];
++        [[self cider_platformWindow] showWindowWithoutActivation];
+     } else {
+-        [[self platformWindow] hideWindow];
++        [[self cider_platformWindow] hideWindow];
+     }
+ }
+ 
+@@ -3613,11 +3621,11 @@
+ }
+ 
+ - (void) miniaturize: (id) sender {
+-    [[self platformWindow] miniaturize];
++    [[self cider_platformWindow] miniaturize];
+ }
+ 
+ - (void) deminiaturize: (id) sender {
+-    [[self platformWindow] deminiaturize];
++    [[self cider_platformWindow] deminiaturize];
+ }
+ 
+ - (void) print: (id) sender {
+@@ -3677,7 +3685,7 @@
+ - (void) _showForActivation {
+     if (_hiddenForDeactivate) {
+         _hiddenForDeactivate = NO;
+-        [[self platformWindow] showWindowForAppActivation: _frame];
++        [[self cider_platformWindow] showWindowForAppActivation: _frame];
+     }
+ }
+ 
+@@ -3685,7 +3693,7 @@
+     if ([self hidesOnDeactivate] && [self isVisible] &&
+         ![self isMiniaturized]) {
+         _hiddenForDeactivate = YES;
+-        [[self platformWindow] hideWindowForAppDeactivation: _frame];
++        [[self cider_platformWindow] hideWindowForAppDeactivation: _frame];
+     }
+ }
+ 
+@@ -3693,7 +3701,7 @@
+     if ([self isVisible]) {
+         _hiddenForDeactivate = YES;
+         // _hiddenKeyWindow=[self isKeyWindow];
+-        [[self platformWindow] hideWindowForAppDeactivation: _frame];
++        [[self cider_platformWindow] hideWindowForAppDeactivation: _frame];
+     }
+ }
+ 
+@@ -3871,8 +3879,8 @@
+ 
+     sheet->_isVisible = YES;
+     [sheet display];
+-    [[sheet platformWindow] sheetOrderFrontFromFrame: sheetFrame
+-                                         aboveWindow: [self platformWindow]];
++    [[sheet cider_platformWindow] sheetOrderFrontFromFrame: sheetFrame
++                                         aboveWindow: [self cider_platformWindow]];
+     [self makeKeyWindow];
+ }
+ 
+@@ -3893,7 +3901,7 @@
+     sheetFrame.size.height = 0;
+ 
+     sheet->_isVisible = NO;
+-    [[sheet platformWindow] sheetOrderOutToFrame: sheetFrame];
++    [[sheet cider_platformWindow] sheetOrderOutToFrame: sheetFrame];
+ 
+     [_sheetContext release];
+     _sheetContext = nil;
+@@ -3901,7 +3909,7 @@
+ 
+ - (void) _flashWindow {
+     if ([self _isApplicationWindow])
+-        [[self platformWindow] flashWindow];
++        [[self cider_platformWindow] flashWindow];
+ }
+ 
+ - (void) platformWindowActivated: (CGWindow *) window
+@@ -4438,7 +4446,7 @@
+ }
+ 
+ - (void) dirtyRect: (NSRect) rect {
+-    [[self platformWindow] dirtyRect: rect];
++    [[self cider_platformWindow] dirtyRect: rect];
+ }
+ 
+ - (CGSubWindow *) _createSubWindowWithFrame: (CGRect) frame {
+@@ -4457,7 +4465,14 @@
+ 
+ @implementation NSWindow (Darling)
+ 
+-- (CGWindow *) platformWindow {
++/*
++ * NAMESPACED, BECAUSE platformWindow IS NOT OURS ALONE. Qt subclasses NSWindow as QNSWindow and
++ * defines -platformWindow to return its C++ QCocoaWindow*, which is not an object at all. Every
++ * internal [window platformWindow] then reached QT and messaged a C++ vtable pointer as an isa:
++ * CMake.app died in objc_msgSend the first time -orderWindow:relativeTo: ordered its main window.
++ * AppKit now asks for cider_platformWindow, which no application defines. Task #227.
++ */
++- (CGWindow *) cider_platformWindow {
+     if (_platformWindow == nil) {
+         /* THE CROSS THREAD HOP. Creation runs on the main thread while the caller waits, so which
+          * thread asked decides what resumes when it is done. */
+@@ -4486,6 +4501,12 @@
+     return _platformWindow;
+ }
+ 
++/* Kept for anything outside AppKit that still asks by the old name. AppKit itself must not use it:
++ * an application subclass can and does override it. */
++- (CGWindow *) platformWindow {
++    return [self cider_platformWindow];
++}
++
+ @end
+ 
+ /*
+@@ -4498,25 +4519,36 @@
+  */
+ @implementation NSWindow (CiderWindowTabbing)
+ 
+-/* Remembered and reported, nothing more: this port has no window tabbing, and reporting back what
+- * was set is the truthful shape. macOS defaults to Automatic. */
++/*
++ * ASSOCIATED OBJECTS, NOT IVARS. Adding an ivar to NSWindow shifts the layout every subclass sits
++ * on, and this class is subclassed by every toolkit we run; a compatibility shim is not worth that
++ * risk. Remembered and reported, nothing more, because this port has no window tabbing: what
++ * matters is that ASKING does not raise, which is what killed CMake.app before its window existed.
++ */
++static const void *kCiderTabbingModeKey = &kCiderTabbingModeKey;
++static const void *kCiderTabbingIdentifierKey = &kCiderTabbingIdentifierKey;
++
+ - (NSWindowTabbingMode) tabbingMode {
+-    return _tabbingMode;
++    NSNumber *stored = objc_getAssociatedObject(self, kCiderTabbingModeKey);
++    /* macOS defaults to Automatic, and a window nobody has told is still automatic. */
++    return stored != nil ? (NSWindowTabbingMode) [stored integerValue]
++                         : NSWindowTabbingModeAutomatic;
+ }
+ 
+ - (void) setTabbingMode: (NSWindowTabbingMode) tabbingMode {
+-    _tabbingMode = tabbingMode;
++    objc_setAssociatedObject(self, kCiderTabbingModeKey,
++                             [NSNumber numberWithInteger: tabbingMode],
++                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+ }
+ 
+ /* nil is a real answer: it means this window joins no named tab group. */
+ - (NSString *) tabbingIdentifier {
+-    return _tabbingIdentifier;
++    return objc_getAssociatedObject(self, kCiderTabbingIdentifierKey);
+ }
+ 
+ - (void) setTabbingIdentifier: (NSString *) identifier {
+-    if (_tabbingIdentifier == identifier) return;
+-    [_tabbingIdentifier release];
+-    _tabbingIdentifier = [identifier copy];
++    objc_setAssociatedObject(self, kCiderTabbingIdentifierKey, identifier,
++                             OBJC_ASSOCIATION_COPY_NONATOMIC);
+ }
+ 
+ @end
+--- a/AppKit/NSWindow-Private.h
++++ b/AppKit/NSWindow-Private.h
+@@ -25,6 +25,7 @@
+ #define NSAppKitPrivateWindow 0x8000000
+ 
+ @interface NSWindow (NSWindow_private)
++- (CGWindow *) cider_platformWindow;
+ - (CGWindow *) platformWindow;
+ - (CGContextRef) cgContext;
+ - (BOOL) _isActive;
+--- a/AppKit/X11.backend/X11Display.m
++++ b/AppKit/X11.backend/X11Display.m
+@@ -746,7 +746,7 @@
+ }
+ 
+ - (void) setCursor: (id) cursor {
+-    CGWindow *window = [[NSApp keyWindow] platformWindow];
++    CGWindow *window = [[NSApp keyWindow] cider_platformWindow];
+     if (window != nil) {
+         Window w = [(X11Window *) window windowHandle];
+         Cursor c = ((X11Cursor *) cursor).cursor;
+@@ -961,7 +961,7 @@
+         //
+         // this is an ugly hack because we miss FocusOut events sometimes and
+         // retaining the window causes it to keep popping back up endlessly even after dismissing it
+-        if (lastFocusedWindow && [[lastFocusedWindow platformWindow] windowHandle] == i)
++        if (lastFocusedWindow && [[lastFocusedWindow cider_platformWindow] windowHandle] == i)
+             lastFocusedWindow = nil;
+     }
+ }
+@@ -1504,7 +1504,7 @@
+         if (!nswin)
+             nswin = [NSApp mainWindow];
+ 
+-        X11Window *xwin = (X11Window *) [nswin platformWindow];
++        X11Window *xwin = (X11Window *) [nswin cider_platformWindow];
+         Window win = [xwin windowHandle];
+         // Window win = DefaultRootWindow(_display);
+         const unsigned int mask = ButtonPressMask | ButtonReleaseMask |
+--- a/AppKit/X11.backend/X11Window.m
++++ b/AppKit/X11.backend/X11Window.m
+@@ -244,7 +244,7 @@
+ 
+     if (isTransient && [NSApp mainWindow]) {
+         X11Window *mainWindow =
+-                (X11Window *) [[NSApp mainWindow] platformWindow];
++                (X11Window *) [[NSApp mainWindow] cider_platformWindow];
+         XSetTransientForHint(_display, _window, [mainWindow windowHandle]);
+     }
+ 

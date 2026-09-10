@@ -96,7 +96,7 @@ CVReturn CVDisplayLinkSetCurrentCGDisplayFromOpenGLContext(CVDisplayLinkRef disp
 
 	for (NSWindow* window in windowArray)
 	{
-		CGWindow* cgw = [window platformWindow];
+		CGWindow* cgw = [window cider_platformWindow];
 		CGLContextObj ctxt = [cgw cglContext];
 		if (ctxt == cglContext)
 		{
