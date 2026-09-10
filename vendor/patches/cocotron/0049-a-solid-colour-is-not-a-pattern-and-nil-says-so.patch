@@ -1,0 +1,158 @@
+A solid colour is not a pattern, and nil is the answer that says so.
+
+colorUsingColorSpaceName: NSPatternColorSpace is the ONLY way a caller can ask whether a colour is
+a pattern, so nil there is an answer and not a failure. This tree got that backwards in two
+independent places, and both had to go before the symptom moved.
+
+ONE: the two argument form MANUFACTURED a pattern, in four copies, one per source colour space. It
+built a blank 1x1 NSImage, wrapped it in a CGPattern, and returned a colour claiming to be in
+NSPatternColorSpace. Those four blocks are where the twelve 1x1 offscreen windows in every Qt run
+came from; the count is 0 now.
+
+TWO: the one argument form is a SEPARATE implementation, and it returned self for any space it
+could not produce, with a comment naming patterns as one of them and arguing that self was better
+than nil. Qt calls this one. Fixing only the two argument form changed the 1x1 windows and did not
+move the crash at all, which is what said there were two entry points.
+
+What Qt does with a non nil answer, from its own disassembly:
+
+    NSColor *p = [color colorUsingColorSpaceName: NSPatternColorSpace];
+    if (p) {
+        NSImage *img = [p patternImage];
+        qtBrush.setTexture(qt_mac_toQPixmap(img, QSizeF([img size].width, [img size].height)));
+    }
+
+patternImage is nil for a colour that is not really a pattern, [nil size] is 0x0, and QPixmap(0,0)
+has a null handle. QMacCGContext::initialize then reads 0x24 off that null handle and dies. Stack,
+measured from the core: QApplicationPrivate::init, initializeWidgetPalettesFromTheme, libqcocoa,
+qt_mac_toQBrush, qt_mac_toQPixmap, QMacCGContext::initialize.
+
+CMake.app now gets past its whole palette. The fault moves to CFDictionaryContainsKey with a NULL
+dictionary, under CoreText and the Qt cocoa FONT code, which is a different and later defect.
+Task #227.
+--- a/AppKit/NSColor.subproj/NSColor_CGColor.m
++++ b/AppKit/NSColor.subproj/NSColor_CGColor.m
+@@ -217,13 +217,18 @@
+     if (colorSpace == nil || [colorSpace isEqualToString: _colorSpaceName]) {
+         return self;
+     }
++    /* Nil is the ANSWER here, not a failure to answer: a caller has no other way to ask whether a
++     * colour is a pattern, and Qt asks before treating a palette entry as a texture. A real pattern
++     * returned self above. This form is the one Qt calls, so fixing only the other did nothing. */
++    if ([colorSpace isEqualToString: NSPatternColorSpace])
++        return nil;
++
+     BOOL wantRGB = [colorSpace isEqualToString: NSCalibratedRGBColorSpace] ||
+                    [colorSpace isEqualToString: NSDeviceRGBColorSpace];
+     BOOL wantWhite = [colorSpace isEqualToString: NSCalibratedWhiteColorSpace] ||
+                      [colorSpace isEqualToString: NSDeviceWhiteColorSpace];
+     if (!wantRGB && !wantWhite) {
+-        /* A space this cannot produce, patterns and CMYK among them. Answering self is better
+-         * than nil: the caller gets a usable colour in the wrong space rather than none. */
++        /* CMYK and the rest: self is a usable colour in the wrong space, which beats none. */
+         return self;
+     }
+ 
+@@ -295,6 +300,12 @@
+         [otherSpaceName isEqualToString: _colorSpaceName])
+         return self;
+ 
++    /* A solid colour is not a pattern, and nil is how macOS says so; this used to manufacture one
++     * around a blank 1x1 NSImage instead. A real pattern returned self above. See #227, and the
++     * SAME answer is owed by the one argument form below. */
++    if ([otherSpaceName isEqualToString: NSPatternColorSpace])
++        return nil;
++
+     // Most of these are crude
+ 
+     CGColorSpaceRef colorSpace = CGColorGetColorSpace(_colorRef);
+@@ -402,22 +413,6 @@
+                                           black: 1 - white
+                                           alpha: alpha];
+ 
+-        if ([otherSpaceName isEqualToString: NSPatternColorSpace]) {
+-            CGColorSpaceRef currentColorSpace = CGColorGetColorSpace(_colorRef);
+-            CGColorSpaceRef patternColorSpace =
+-                    CGColorSpaceCreatePattern(currentColorSpace);
+-            CGPatternCallbacks callbacks = {0, drawPattern, releasePatternInfo};
+-            NSImage *image =
+-                    [[NSImage alloc] initWithSize: NSMakeSize(1.0, 1.0)];
+-            CGPatternRef pattern = CGPatternCreate(
+-                    image, CGRectMake(0, 0, 1, 1), CGAffineTransformIdentity, 1,
+-                    1, kCGPatternTilingNoDistortion, YES, &callbacks);
+-            CGColorRef cgColor = CGColorCreateWithPattern(patternColorSpace,
+-                                                          pattern, components);
+-
+-            return [[[NSColor_CGColor alloc] initWithColorRef: cgColor
+-                                                    spaceName: NSPatternColorSpace] autorelease];
+-        }
+     } else if ([_colorSpaceName isEqualToString: NSCalibratedRGBColorSpace]) {
+         CGFloat red = components[0];
+         CGFloat green = components[1];
+@@ -447,43 +442,10 @@
+                                           blue: blue
+                                          alpha: alpha];
+ 
+-        if ([otherSpaceName isEqualToString: NSPatternColorSpace]) {
+-            CGColorSpaceRef currentColorSpace = CGColorGetColorSpace(_colorRef);
+-            CGColorSpaceRef patternColorSpace =
+-                    CGColorSpaceCreatePattern(currentColorSpace);
+-            CGPatternCallbacks callbacks = {0, drawPattern, releasePatternInfo};
+-            NSImage *image =
+-                    [[NSImage alloc] initWithSize: NSMakeSize(1.0, 1.0)];
+-            CGPatternRef pattern = CGPatternCreate(
+-                    image, CGRectMake(0, 0, 1, 1), CGAffineTransformIdentity, 1,
+-                    1, kCGPatternTilingNoDistortion, YES, &callbacks);
+-            CGColorRef cgColor = CGColorCreateWithPattern(patternColorSpace,
+-                                                          pattern, components);
+-
+-            return [[[NSColor_CGColor alloc] initWithColorRef: cgColor
+-                                                    spaceName: NSPatternColorSpace] autorelease];
+-        }
+     } else if ([_colorSpaceName isEqualToString: NSNamedColorSpace]) {
+         CGFloat red = components[0], green = components[1],
+                 blue = components[2], alpha = components[3];
+ 
+-        if ([otherSpaceName isEqualToString: NSPatternColorSpace]) {
+-            CGColorSpaceRef currentColorSpace = CGColorGetColorSpace(_colorRef);
+-            CGColorSpaceRef patternColorSpace =
+-                    CGColorSpaceCreatePattern(currentColorSpace);
+-            CGPatternCallbacks callbacks = {0, drawPattern, releasePatternInfo};
+-            NSImage *image =
+-                    [[NSImage alloc] initWithSize: NSMakeSize(1.0, 1.0)];
+-            CGPatternRef pattern = CGPatternCreate(
+-                    image, CGRectMake(0, 0, 1, 1), CGAffineTransformIdentity, 1,
+-                    1, kCGPatternTilingNoDistortion, YES, &callbacks);
+-            CGColorRef cgColor = CGColorCreateWithPattern(patternColorSpace,
+-                                                          pattern, components);
+-
+-            return [[[NSColor_CGColor alloc] initWithColorRef: cgColor
+-                                                    spaceName: NSPatternColorSpace] autorelease];
+-        }
+-
+         if ([otherSpaceName isEqualToString: NSDeviceRGBColorSpace])
+             return [NSColor colorWithDeviceRed: red
+                                          green: green
+@@ -498,22 +460,6 @@
+                                           blue: white
+                                          alpha: alpha];
+ 
+-        if ([otherSpaceName isEqualToString: NSPatternColorSpace]) {
+-            CGColorSpaceRef currentColorSpace = CGColorGetColorSpace(_colorRef);
+-            CGColorSpaceRef patternColorSpace =
+-                    CGColorSpaceCreatePattern(currentColorSpace);
+-            CGPatternCallbacks callbacks = {0, drawPattern, releasePatternInfo};
+-            NSImage *image =
+-                    [[NSImage alloc] initWithSize: NSMakeSize(1.0, 1.0)];
+-            CGPatternRef pattern = CGPatternCreate(
+-                    image, CGRectMake(0, 0, 1, 1), CGAffineTransformIdentity, 1,
+-                    1, kCGPatternTilingNoDistortion, YES, &callbacks);
+-            CGColorRef cgColor = CGColorCreateWithPattern(patternColorSpace,
+-                                                          pattern, components);
+-
+-            return [[[NSColor_CGColor alloc] initWithColorRef: cgColor
+-                                                    spaceName: NSPatternColorSpace] autorelease];
+-        }
+     }
+ 
+     NSLog(@"Unable to convert color to space %@ from %@", otherSpaceName,

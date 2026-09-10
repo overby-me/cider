@@ -413,6 +413,19 @@ def main [flag?: string] {
         say (indent7 ($pinpatch.stdout + $pinpatch.stderr | str substring 0..2000))
     }
 
+    # THE PINNED TOOLS MUST STILL BE ON DISK. A garbage collected store path makes buck2 say only
+    # "Failed to spawn a process", which names no cause; it has cost time twice, on the guest rust
+    # toolchain and on wayland-scanner. Cheap, and first, because a build failure downstream of a
+    # missing tool is not a real result.
+    say "== the tool paths pinned in .buckconfig.local =="
+    let toolpins = (do -i { ^nu ./scripts/checks/buck-toolpins-live-check.nu } | complete)
+    if $toolpins.exit_code == 0 {
+        ok "every pinned tool path still exists"
+    } else {
+        bad "a pinned tool path has been garbage collected, see below"
+        say (indent7 ($toolpins.stdout + $toolpins.stderr | str substring 0..2000))
+    }
+
     # A BUNDLED PIN'S PATCH SERIES MUST STILL REPRODUCE ITS TREE. cocotron is checked into git
     # and copied into vendor/src, which is not tracked, and nothing applies vendor/patches/cocotron,
     # so that directory is the ONLY record of every cocotron change. A record nobody replays rots:
