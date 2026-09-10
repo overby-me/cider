@@ -40,9 +40,11 @@ typedef struct
 	{
 		CFMutableDictionaryRef matching = IOServiceNameMatching("IOSurfaceRoot");
 
+		/* IOServiceGetMatchingService CONSUMES the matching dictionary, which macOS documents and
+		 * IOKitLib.c:509 does. The CFRelease that used to be here was a second one: Qt calls
+		 * IOSurfaceCreate, +initialize ran, and CMake.app died in objc_msgSend sending release to
+		 * the freed dictionary. Task #227. */
 		g_surfaceService = IOServiceGetMatchingService(kIOMasterPortDefault, matching);
-
-		CFRelease(matching);
 
 		if (!g_surfaceService)
 			NSLog(@"Cannot obtain IOSurfaceRoot!\n");
