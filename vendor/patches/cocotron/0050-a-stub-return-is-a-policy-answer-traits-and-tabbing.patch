@@ -1,0 +1,193 @@
+Two missing pieces the Qt font and window paths need, and both were silent absences.
+
+CTFontCopyTraits was a stub returning nil. Qt asks the theme font for its traits while building its
+font database and reads NSCTFontWeightTrait straight out of the answer, so nil became
+CFDictionaryContainsKey(NULL, NSCTFontWeightTrait) and CMake.app died there with CR2 0. macOS always
+answers a dictionary for a valid font. The traits builder that CTFontCopyFontDescriptor already had
+is now shared between the two, so a descriptor and a direct copy cannot disagree.
+
+This is the same shape as #212, where wxWidgets read the same key out of a descriptor and mmex died
+in CFDictionaryGetValue. That one was fixed by making the DESCRIPTOR complete; the direct copy next
+to it stayed a stub. Note that 36 of the 57 remaining STUB bodies in CoreText return nil, NULL or 0,
+so this class of defect is not exhausted.
+
+NSWindow tabbing did not exist. Qt sets setTabbingMode: on every window it creates, and the
+unrecognized selector killed CMake.app inside CMakeSetupDialog before its main window existed.
+Nothing in this port tabs windows, so the value is remembered and reported and changes no behaviour;
+what matters is that ASKING does not raise. tabbingIdentifier comes with it because the two are one
+API and a caller that sets one may read the other.
+
+MEASURED, each fix moving the failure further:
+  CFDictionaryContainsKey NULL dict   ->  setTabbingMode: unrecognized selector
+  setTabbingMode:                     ->  past window creation, 1560 font descriptors enumerated,
+                                          then objc_msgSend +0x29 sending placeAboveWindow: to a
+                                          libqcocoa window class whose cache pointer is unmapped
+
+Task #227.
+
+--- a/CoreText/CTFont.m
++++ b/CoreText/CTFont.m
+@@ -366,6 +366,39 @@
+     return CTFontCreateForString(currentFont, string, range);
+ }
+ 
++/*
++ * THE TRAITS DICTIONARY, which is what a descriptor carries under kCTFontTraitsAttribute and what
++ * CTFontCopyTraits hands out. One builder for both, because they must not be able to disagree.
++ *
++ * macOS puts symbolic, weight, width and slant in EVERY font derived traits dictionary, and a
++ * caller that reads one and passes the result to CFNumberGetValue has nothing to check against.
++ * The numeric three are derived from the symbolic bits, which is all this port knows: normalised,
++ * 0 meaning regular.
++ */
++static CFMutableDictionaryRef _CiderCopyTraitsForFont(CTFontRef font)
++{
++    int symbolic = (int) [font symbolicTraits];
++    CFMutableDictionaryRef traits = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
++            &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
++
++    if (traits == NULL) return NULL;
++
++    CFNumberRef n = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &symbolic);
++    if (n != NULL) {
++        CFDictionarySetValue(traits, kCTFontSymbolicTrait, n);
++        CFRelease(n);
++    }
++    _CiderSetTrait(traits, kCTFontWeightTrait,
++                   (symbolic & kCTFontTraitBold) != 0 ? 0.4 : 0.0);
++    _CiderSetTrait(traits, kCTFontWidthTrait,
++                   (symbolic & kCTFontTraitCondensed) != 0
++                           ? -0.4
++                           : ((symbolic & kCTFontTraitExpanded) != 0 ? 0.4 : 0.0));
++    _CiderSetTrait(traits, kCTFontSlantTrait,
++                   (symbolic & kCTFontTraitItalic) != 0 ? 0.2 : 0.0);
++    return traits;
++}
++
+ CTFontDescriptorRef CTFontCopyFontDescriptor(CTFontRef font)
+ {
+     /* A descriptor is the attribute dictionary, the same shape CTFontCollection builds, so
+@@ -387,27 +420,8 @@
+         CFRelease(family);
+     }
+ 
+-    int symbolic = (int) [font symbolicTraits];
+-    CFMutableDictionaryRef traits = CFDictionaryCreateMutable(kCFAllocatorDefault, 0,
+-            &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
++    CFDictionaryRef traits = CTFontCopyTraits(font);
+     if (traits != NULL) {
+-        CFNumberRef n = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &symbolic);
+-        if (n != NULL) {
+-            CFDictionarySetValue(traits, kCTFontSymbolicTrait, n);
+-            CFRelease(n);
+-        }
+-        /* THE THREE NUMERIC TRAITS ARE NOT OPTIONAL EITHER. macOS puts weight, width and slant in
+-         * every font derived traits dictionary, and a caller that reads one and passes the result
+-         * to CFNumberGetValue without checking has nothing to check against. Derived from the
+-         * symbolic traits, which is all this port knows: normalised, 0 meaning regular. */
+-        _CiderSetTrait(traits, kCTFontWeightTrait,
+-                       (symbolic & kCTFontTraitBold) != 0 ? 0.4 : 0.0);
+-        _CiderSetTrait(traits, kCTFontWidthTrait,
+-                       (symbolic & kCTFontTraitCondensed) != 0
+-                               ? -0.4
+-                               : ((symbolic & kCTFontTraitExpanded) != 0 ? 0.4 : 0.0));
+-        _CiderSetTrait(traits, kCTFontSlantTrait,
+-                       (symbolic & kCTFontTraitItalic) != 0 ? 0.2 : 0.0);
+         CFDictionarySetValue(attributes, kCTFontTraitsAttribute, traits);
+         CFRelease(traits);
+     }
+@@ -461,10 +475,16 @@
+     return (CTFontSymbolicTraits) [font symbolicTraits];
+ }
+ 
++/*
++ * A STUB RETURN IS A POLICY ANSWER, and this one said every font has no traits at all. Qt asks the
++ * theme font for its traits while building its font database and reads kCTFontWeightTrait straight
++ * out of the answer, so nil became CFDictionaryContainsKey(NULL, NSCTFontWeightTrait) and CMake.app
++ * died there with CR2 0. macOS always answers a dictionary for a valid font. Task #227.
++ */
+ CFDictionaryRef CTFontCopyTraits(CTFontRef font)
+ {
+-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+-    return nil;
++    if (font == NULL) return NULL;
++    return (CFDictionaryRef) _CiderCopyTraitsForFont(font);
+ }
+ 
+ /*
+--- a/AppKit/include/AppKit/NSWindow.h
++++ b/AppKit/include/AppKit/NSWindow.h
+@@ -74,6 +74,16 @@
+     NSWindowStyleMaskHUDWindow = 0x2000,
+ };
+ 
++/* Window tabbing, 10.12. Nothing in this port tabs windows, so the value is remembered and
++ * reported and changes no behaviour; what matters is that ASKING does not raise. Qt sets it on
++ * every window it creates and an unrecognized selector there killed CMake.app before its main
++ * window existed. Task #227. */
++typedef NS_ENUM(NSInteger, NSWindowTabbingMode) {
++    NSWindowTabbingModeAutomatic = 0,
++    NSWindowTabbingModePreferred = 1,
++    NSWindowTabbingModeDisallowed = 2,
++};
++
+ typedef NS_ENUM(NSUInteger, NSBackingStoreType) {
+     NSBackingStoreRetained = 0,
+     NSBackingStoreNonretained = 1,
+@@ -238,6 +248,8 @@
+     BOOL _ignoresMouseEvents;
+     BOOL _isMovableByWindowBackground;
+     BOOL _allowsToolTipsWhenApplicationIsInactive;
++    NSWindowTabbingMode _tabbingMode;
++    NSString *_tabbingIdentifier;
+     BOOL _defaultButtonCellKeyEquivalentDisabled;
+     BOOL _autorecalculatesKeyViewLoop;
+     BOOL _hasBeenOnScreen;
+@@ -708,6 +720,13 @@
+  * NSAnimatablePropertyContainer, which a window conforms to on Darwin. iA Writer sends -animator to
+  * its panel and the missing selector ended the process before any window was drawn.
+  */
++@interface NSWindow (CiderWindowTabbing)
++- (NSWindowTabbingMode) tabbingMode;
++- (void) setTabbingMode: (NSWindowTabbingMode) tabbingMode;
++- (NSString *) tabbingIdentifier;
++- (void) setTabbingIdentifier: (NSString *) identifier;
++@end
++
+ @interface NSWindow (CiderAnimatable)
+ - (id) animator;
+ - (NSDictionary *) animations;
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -4496,6 +4496,31 @@
+  * The dictionary is an associated object rather than an ivar: applications subclass NSWindow, and
+  * an ivar added here would shift the ones they declare.
+  */
++@implementation NSWindow (CiderWindowTabbing)
++
++/* Remembered and reported, nothing more: this port has no window tabbing, and reporting back what
++ * was set is the truthful shape. macOS defaults to Automatic. */
++- (NSWindowTabbingMode) tabbingMode {
++    return _tabbingMode;
++}
++
++- (void) setTabbingMode: (NSWindowTabbingMode) tabbingMode {
++    _tabbingMode = tabbingMode;
++}
++
++/* nil is a real answer: it means this window joins no named tab group. */
++- (NSString *) tabbingIdentifier {
++    return _tabbingIdentifier;
++}
++
++- (void) setTabbingIdentifier: (NSString *) identifier {
++    if (_tabbingIdentifier == identifier) return;
++    [_tabbingIdentifier release];
++    _tabbingIdentifier = [identifier copy];
++}
++
++@end
++
+ @implementation NSWindow (CiderAnimatable)
+ 
+ - (id) animator {
