@@ -1,0 +1,75 @@
+Make the in guest fatal handler dump what the pointers point AT, and name the symbol.
+
+Registers alone cannot say whether a pointer is a live C++ object or a buffer that happens to be
+where a pointer was expected, and a core is not always available to ask: systemd-coredump had
+written NOTHING for three of the runs this was built for, and twice before that the newest core in
+the list turned out to be from an EARLIER run, which silently answers a different question.
+
+The handler now prints four words at each callee saved register plus rdi, names the image each word
+falls in, and names the SYMBOL. The symbol is what identifies a class, because a vtable slot
+resolves to the _ZTV of its type. Readability is tested with the msync the handler already uses for
+the selector guess, so an unmapped register costs a line rather than a second fault.
+
+It paid for itself on the CMake completer crash. rbx turned out to be a live QtWidgets object, and
+the pointer that faulted turned out to be the address of the SIZE field of an NSRect whose contents
+were 0, garbage, 949 and 20.5. That rect is the completer row, 949 wide, the same 949x21 the
+invalidation trace prints, so what reaches QPlatformWindow::window is a pointer into a rectangle
+rather than a platform window. Task #227 records the rest.
+
+--- a/AppKit/NSApplication.m
++++ b/AppKit/NSApplication.m
+@@ -237,6 +237,54 @@
+                 (void *) (uintptr_t) uc->uc_mcontext->__ss.__rcx,
+                 (void *) (uintptr_t) uc->uc_mcontext->__ss.__rax,
+                 (void *) (uintptr_t) uc->uc_mcontext->__ss.__rbx);
++
++        /*
++         * WHAT THE POINTERS POINT AT. Registers alone cannot say whether a pointer is a live C++
++         * object, and a core is not always there to ask: systemd-coredump had written nothing for
++         * three of the runs this was built for. The first word of an object is its vtable or its
++         * isa, so naming the image each word falls in separates a real object from a buffer that
++         * merely looks like one. Only the callee saved registers, because those are where a
++         * compiler keeps this and the locals that outlive a call.
++         */
++        {
++            static const char *const names[] = {"rbx", "r12", "r13", "r14", "r15", "rdi"};
++            const uintptr_t values[] = {
++                    (uintptr_t) uc->uc_mcontext->__ss.__rbx, (uintptr_t) uc->uc_mcontext->__ss.__r12,
++                    (uintptr_t) uc->uc_mcontext->__ss.__r13, (uintptr_t) uc->uc_mcontext->__ss.__r14,
++                    (uintptr_t) uc->uc_mcontext->__ss.__r15, (uintptr_t) uc->uc_mcontext->__ss.__rdi};
++            unsigned which;
++
++            for (which = 0; which < sizeof(values) / sizeof(values[0]); which++) {
++                uintptr_t base = values[which];
++                unsigned word;
++
++                if (base < 0x10000 || (base & 7) != 0 ||
++                    msync((void *) (base & ~(uintptr_t) 4095), 4096, MS_ASYNC) != 0)
++                    continue;
++
++                for (word = 0; word < 4; word++) {
++                    uintptr_t value = ((const uintptr_t *) base)[word];
++                    Dl_info where;
++                    const char *image = "";
++
++                    const char *symbol = "";
++
++                    if (value > 0x10000 && dladdr((void *) value, &where) != 0 &&
++                        where.dli_fname != NULL) {
++                        const char *slash = strrchr(where.dli_fname, '/');
++
++                        image = slash != NULL ? slash + 1 : where.dli_fname;
++                        /* The NAME is what identifies the class: a vtable slot resolves to the
++                         * _ZTV symbol of the type, which no amount of guessing at offsets gives. */
++                        if (where.dli_sname != NULL)
++                            symbol = where.dli_sname;
++                    }
++                    fprintf(stderr, "CIDER_APP mem %s+%u = %p %s %s%s\n", names[which], word * 8,
++                            (void *) value, image, symbol,
++                            (word == 0 && image[0] != '\0') ? "   <- vtable or isa" : "");
++                }
++            }
++        }
+ #endif
+ 
+ #if defined(__x86_64__)
