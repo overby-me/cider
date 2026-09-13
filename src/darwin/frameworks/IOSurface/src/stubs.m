@@ -100,8 +100,10 @@ mach_port_t IOSurfaceCreateMachPort(IOSurfaceRef buffer){
 
 
 size_t IOSurfaceGetPropertyMaximum(CFStringRef property){
-    if (verbose) printf("STUB: %s called\n", __FUNCTION__);
-    return 0;
+    /* Zero here says "no surface can exist": Qt asserts width <= maximum in debug builds and a
+     * caller that sizes against it gets nothing. A generous bound is the truthful shape for a
+     * software surface whose only limit is memory. */
+    return 1 << 30;
 }
 
 size_t IOSurfaceGetPropertyAlignment(CFStringRef property){
@@ -112,8 +114,19 @@ size_t IOSurfaceGetPropertyAlignment(CFStringRef property){
 
 
 size_t IOSurfaceAlignProperty(CFStringRef property, size_t value){
-    if (verbose) printf("STUB: %s called\n", __FUNCTION__);
-    return 0;
+    /* RETURNING 0 CORRUPTED THE HEAP. Qt aligns BytesPerRow and AllocSize through this BEFORE
+     * IOSurfaceCreate, so 0 put zeros in the creation dictionary, the surface allocated zero
+     * bytes, and the first frame was written through it: a GP fault on 0xED poison one run and a
+     * tiny_malloc free list abort the next, neither anywhere near here. Task #227.
+     *
+     * Round UP like macOS does: rows to 64 bytes, sizes to a page, and never answer less than
+     * the value asked about. */
+    size_t align = 1;
+    if (property != NULL && CFEqual(property, kIOSurfaceBytesPerRow))
+        align = 64;
+    else if (property != NULL && CFEqual(property, kIOSurfaceAllocSize))
+        align = 4096;
+    return (value + align - 1) & ~(align - 1);
 }
 
 

@@ -1,0 +1,69 @@
+A combo box needs a combo box cell, and the private key Qt reads off it.
+
+NSComboBox never overrode +cellClass, so every combo box carried the NSTextFieldCell it inherited
+from NSTextField: the drop-down state lived nowhere, and NSComboBoxCell, fully present in this
+tree, was never used by the control it exists for.
+
+What made it fatal rather than cosmetic: Qt macstyle highlights the arrow of an editable combo via
+
+    [[[combo cell] valueForKey: @"_buttonCell"] setHighlighted: pressed]
+
+during EVERY QComboBox paint, and _buttonCell is a real NSComboBoxCell ivar on macOS. Here the
+cell was an NSTextFieldCell, KVC fell through to valueForUndefinedKey:, and the uncaught exception
+killed CMake.app inside its first makeKeyAndOrderFront. +cellClass now answers NSComboBoxCell, and
+NSComboBoxCell answers _buttonCell with a lazily created NSButtonCell held as an associated
+object, a METHOD rather than an ivar so the layout every archived cell depends on stays put. The
+highlight lands on a valid cell; nothing reads it back yet.
+
+With this, CMake.app RENDERS AND RESIZES for the first time: titled window, traffic lights, menu
+bar, retitles on resize, zero faults and zero exceptions. The content pane is still empty, which
+is the next defect. Task #227.
+
+--- a/AppKit/NSComboBox.m
++++ b/AppKit/NSComboBox.m
+@@ -34,6 +34,14 @@
+ 
+ @implementation NSComboBox
+ 
++/* NSTextField's cellClass was inherited, so every combo box carried a plain NSTextFieldCell: the
++ * drop-down state lived nowhere, and Qt asking the cell for its _buttonCell (a real macOS ivar)
++ * raised valueForUndefinedKey and killed CMake.app in its first paint. Task #227. */
+++ (Class) cellClass {
++    return [NSComboBoxCell class];
++}
++
++
+ - dataSource {
+     return [[self cell] dataSource];
+ }
+--- a/AppKit/NSComboBoxCell.m
++++ b/AppKit/NSComboBoxCell.m
+@@ -28,6 +28,28 @@
+ 
+ @implementation NSComboBoxCell
+ 
++/*
++ * THE PRIVATE KEY QT READS. Qt macstyle highlights the drop-down arrow of an editable combo with
++ *
++ *     [[[combo cell] valueForKey: @"_buttonCell"] setHighlighted: pressed]
++ *
++ * and on macOS NSComboBoxCell carries that ivar. This cell models its arrow as two BOOLs, so KVC
++ * fell through to valueForUndefinedKey: and the exception killed CMake.app during its FIRST paint.
++ * A METHOD satisfies the same key without touching the ivar layout every archived cell depends on;
++ * the returned cell exists so the highlight has somewhere valid to land, and nothing reads it back
++ * yet. Task #227.
++ */
++- (NSButtonCell *) _buttonCell {
++    static const void *key = &key;
++    NSButtonCell *cell = objc_getAssociatedObject(self, key);
++    if (cell == nil) {
++        cell = [[[NSButtonCell alloc] initImageCell: nil] autorelease];
++        objc_setAssociatedObject(self, key, cell, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++    }
++    return cell;
++}
++
++
+ - (void) encodeWithCoder: (NSCoder *) coder {
+     NSUnimplementedMethod();
+ }

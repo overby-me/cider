@@ -96,9 +96,16 @@ static uint32_t readUInt(NSDictionary* dict, CFStringRef key, uint32_t fallback)
 	}
 
 	uint32_t bytesPerElement = readUInt(properties, kIOSurfaceBytesPerElement, 4);
-	uint32_t bytesPerRow = readUInt(properties, kIOSurfaceBytesPerRow, width * bytesPerElement);
+	if (bytesPerElement == 0)
+		bytesPerElement = 4;
+	/* A zero stride or size in the dictionary is treated as ABSENT, not obeyed: zero is never a
+	 * valid row stride for a nonzero width, and honouring one allocated a zero byte surface that
+	 * the first frame was written straight through. Task #227. */
+	uint32_t bytesPerRow = readUInt(properties, kIOSurfaceBytesPerRow, 0);
+	if (bytesPerRow == 0)
+		bytesPerRow = width * bytesPerElement;
 	uint64_t allocSize = readUInt(properties, kIOSurfaceAllocSize, 0);
-	if (allocSize == 0)
+	if (allocSize < (uint64_t) height * bytesPerRow)
 		allocSize = (uint64_t) height * bytesPerRow;
 
 	/* calloc, not malloc: a fresh IOSurface arrives ZEROED on macOS, and Qt documents relying on

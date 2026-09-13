@@ -1,0 +1,22 @@
+Name the class in the undefined-key exception, as macOS does.
+
+The reason line read "This class is not key value coding-compliant for the key X" without saying
+WHICH class. Qt macstyle reads the private _buttonCell key off a combo box cell during every combo
+paint, and finding the receiver took a rebuild with a modified Foundation: it was NSTextFieldCell,
+which is how NSComboBox turned out to be missing its +cellClass override entirely. macOS prints
+the receiver and its class, and the one debugging round trip this line saved on macOS is the one
+it cost here. Task #227.
+
+--- a/src/NSKeyValueCoding.m
++++ b/src/NSKeyValueCoding.m
+@@ -211,7 +211,9 @@
+ 
+ - (id)valueForUndefinedKey:(id)key
+ {
+-    @throw [NSException exceptionWithName:NSUnknownKeyException reason:[NSString stringWithFormat:@"This class is not key value coding-compliant for the key %@.", key] userInfo:@{
++    /* NAME THE CLASS, as macOS does. "This class" cost a debugging round trip: the same key can
++     * be asked of several classes in one paint and the reason line was the only evidence. */
++    @throw [NSException exceptionWithName:NSUnknownKeyException reason:[NSString stringWithFormat:@"[<%@ %p> valueForUndefinedKey:]: this class is not key value coding-compliant for the key %@.", [self class], self, key] userInfo:@{
+         NSTargetObjectUserInfoKey: [self description],
+         NSUnknownUserInfoKey: key ?: @"(null)"
+     }];
