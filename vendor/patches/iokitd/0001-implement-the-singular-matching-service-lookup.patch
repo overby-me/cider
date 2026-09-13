@@ -1,0 +1,192 @@
+Implement io_service_get_matching_service, whose stub failed every IOSurfaceCreate.
+
+IOServiceGetMatchingService is the SINGULAR lookup, and all three of its wire forms (plain, ool,
+bin) were stubs returning KERN_NOT_SUPPORTED while the PLURAL iterator form worked. IOSurface
++initialize is the first caller in this system: the stub meant g_surfaceService stayed 0, every
+IOSurfaceCreate failed with MACH_SEND_INVALID_DEST, Qt retained the resulting NULL surface
+unchecked, and CMake.app died in CFRetain at its first paint.
+
+The three forms share one helper against the same ServiceRegistry the iterator uses. The
+unserializer is chosen by CONTENT rather than by wire form, because the client picks the form by
+SIZE and the encoding by its own flags, so either form can carry either encoding.
+
+No match answers success with a null port, mirroring what the client already treats as absence.
+A match hands the client one send right; a registered service keeps the right its constructor
+made, so no-senders cannot destroy it underneath the registry.
+
+Task #227.
+--- a/src/ServiceRegistry.h
++++ b/src/ServiceRegistry.h
+@@ -32,6 +32,7 @@
+ 	static ServiceRegistry* instance();
+ 	void registerService(IOService* service);
+ 	IOIterator* iteratorForMatchingServices(NSDictionary* criteria) const;
++	IOService* firstMatchingService(NSDictionary* criteria) const;
+ private:
+ 	std::list<IOService*> m_registeredServices;
+ };
+--- a/src/ServiceRegistry.mm
++++ b/src/ServiceRegistry.mm
+@@ -49,6 +49,16 @@
+ 	return new IOIterator(matching);
+ }
+ 
++IOService* ServiceRegistry::firstMatchingService(NSDictionary* criteria) const
++{
++	for (auto it = m_registeredServices.begin(); it != m_registeredServices.end(); it++)
++	{
++		if ((*it)->matches(criteria))
++			return *it;
++	}
++	return nullptr;
++}
++
+ void ServiceRegistry::registerService(IOService* service)
+ {
+ 	m_registeredServices.push_back(service);
+@@ -118,3 +128,89 @@
+     // Old unsupported API
+     return kIOReturnUnsupported;
+ }
++
++/*
++ * THE SINGULAR LOOKUP, WHICH WAS A STUB WHILE THE PLURAL WORKED. IOServiceGetMatchingService is
++ * how IOSurface finds IOSurfaceRoot, and a stub returning KERN_NOT_SUPPORTED meant every
++ * IOSurfaceCreate in the system failed while iokitd sat here running: Qt retains the resulting
++ * NULL surface unchecked and CMake.app died in CFRetain. Task #227.
++ *
++ * The unserializer is chosen by CONTENT, not by which wire form arrived: the client picks the
++ * form by SIZE (inband when the dictionary is small, ool otherwise) and the encoding by its own
++ * option flags, so either form can carry either encoding. Binary first, because that is what
++ * IOKitLib sends by default under Darling.
++ */
++static CFTypeRef unserializeMatching(const char* data, size_t length)
++{
++	CFTypeRef criteria = IOCFUnserializeBinary(data, length, nullptr, 0, nullptr);
++	if (!criteria)
++		criteria = IOCFUnserializeWithSize(data, length, nullptr, 0, nullptr);
++	return criteria;
++}
++
++static kern_return_t firstMatchingPort(const char* data, size_t length, mach_port_t* service)
++{
++	CFTypeRef criteria = unserializeMatching(data, length);
++
++	if (!criteria)
++	{
++		os_log_error(OS_LOG_DEFAULT, "io_service_get_matching_service: cannot parse matching dictionary");
++		return kIOReturnBadArgument;
++	}
++	if (CFGetTypeID(criteria) != CFDictionaryGetTypeID())
++	{
++		CFRelease(criteria);
++		return kIOReturnBadArgument;
++	}
++
++	IOService* found = ServiceRegistry::instance()->firstMatchingService((NSDictionary*) criteria);
++	CFRelease(criteria);
++
++	if (!found)
++	{
++		/* Success with a null port is the answer for NO MATCH, mirroring what the client already
++		 * treats as absence; an error here is indistinguishable from a broken transport. */
++		*service = MACH_PORT_NULL;
++		return kIOReturnSuccess;
++	}
++
++	/* One send right for the client. A registered service keeps the right its constructor made,
++	 * so no-senders cannot destroy it underneath the registry. */
++	found->retain();
++	*service = found->port();
++	return kIOReturnSuccess;
++}
++
++kern_return_t is_io_service_get_matching_service
++(
++	mach_port_t master_port,
++	io_string_t matching,
++	mach_port_t *service
++)
++{
++	return firstMatchingPort(matching, strlen(matching), service);
++}
++
++kern_return_t is_io_service_get_matching_service_bin
++(
++	mach_port_t master_port,
++	io_struct_inband_t matching,
++	mach_msg_type_number_t matchingCnt,
++	mach_port_t *service
++)
++{
++	return firstMatchingPort(matching, matchingCnt, service);
++}
++
++kern_return_t is_io_service_get_matching_service_ool
++(
++	mach_port_t master_port,
++	io_buf_ptr_t matching,
++	mach_msg_type_number_t matchingCnt,
++	kern_return_t *result,
++	mach_port_t *service
++)
++{
++	*result = firstMatchingPort(matching, matchingCnt, service);
++	return KERN_SUCCESS;
++}
+--- a/src/stubs.c
++++ b/src/stubs.c
+@@ -586,29 +586,11 @@
+     return KERN_NOT_SUPPORTED;
+ }
+ 
+-kern_return_t is_io_service_get_matching_service
+-(
+-	mach_port_t master_port,
+-	io_string_t matching,
+-	mach_port_t *service
+-)
+-{
+-    STUB();
+-    return KERN_NOT_SUPPORTED;
+-}
++/* is_io_service_get_matching_service lives in ServiceRegistry.mm now; the stub here returned
++ * KERN_NOT_SUPPORTED and made every IOSurfaceCreate in the system fail. */
+ 
+-kern_return_t is_io_service_get_matching_service_ool
+-(
+-	mach_port_t master_port,
+-	io_buf_ptr_t matching,
+-	mach_msg_type_number_t matchingCnt,
+-	kern_return_t *result,
+-	mach_port_t *service
+-)
+-{
+-    STUB();
+-    return KERN_NOT_SUPPORTED;
+-}
++/* is_io_service_get_matching_service_ool lives in ServiceRegistry.mm now; the stub here returned
++ * KERN_NOT_SUPPORTED and made every IOSurfaceCreate in the system fail. */
+ 
+ kern_return_t is_io_service_get_authorization_id
+ (
+@@ -642,17 +624,8 @@
+ }
+ 
+ 
+-kern_return_t is_io_service_get_matching_service_bin
+-(
+-	mach_port_t master_port,
+-	io_struct_inband_t matching,
+-	mach_msg_type_number_t matchingCnt,
+-	mach_port_t *service
+-)
+-{
+-    STUB();
+-    return KERN_NOT_SUPPORTED;
+-}
++/* is_io_service_get_matching_service_bin lives in ServiceRegistry.mm now; the stub here returned
++ * KERN_NOT_SUPPORTED and made every IOSurfaceCreate in the system fail. */
+ 
+ kern_return_t is_io_service_match_property_table_bin
+ (

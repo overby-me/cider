@@ -30,6 +30,13 @@ typedef struct
 {
 	struct _IOSurfaceObjectRetval* surface;
 	_Atomic int32_t localUseCount;
+	/* A LOCAL surface owns its pixels and never talks to iokitd. The daemon's create never wrote
+	 * its response and every other surface RPC answers KERN_NOT_SUPPORTED, so the round trip
+	 * bought a struct of stack garbage whose address field Qt then wrote pixels through. Nothing
+	 * we run shares a surface across processes; when something does, the sharing goes through
+	 * iokitd and this flag is how the two kinds coexist. Task #227. */
+	bool local;
+	void* pixels;
 } ImplData;
 
 @implementation IOSurface
@@ -47,7 +54,10 @@ typedef struct
 		g_surfaceService = IOServiceGetMatchingService(kIOMasterPortDefault, matching);
 
 		if (!g_surfaceService)
-			NSLog(@"Cannot obtain IOSurfaceRoot!\n");
+		{
+			fprintf(stderr, "CIDER_IOSURFACE no IOSurfaceRoot service\n");
+			fflush(stderr);
+		}
 	}
 }
 
@@ -58,6 +68,65 @@ typedef struct
 	memcpy(idata->surface, bytes, length);
 
 	idata->localUseCount = 0;
+	idata->local = false;
+	idata->pixels = NULL;
+	self->_impl = idata;
+
+	return self;
+}
+
+static uint32_t readUInt(NSDictionary* dict, CFStringRef key, uint32_t fallback)
+{
+	NSNumber* n = ((NSDictionary*) dict)[(NSString*) key];
+	return n != nil ? (uint32_t) [n unsignedIntValue] : fallback;
+}
+
+- (nullable instancetype)initLocalWithProperties:(NSDictionary <IOSurfacePropertyKey, id> *)properties
+{
+	uint32_t width = readUInt(properties, kIOSurfaceWidth, 0);
+	uint32_t height = readUInt(properties, kIOSurfaceHeight, 0);
+
+	if (width == 0 || height == 0)
+	{
+		fprintf(stderr, "CIDER_IOSURFACE local create rejected, width=%u height=%u\n", width,
+		        height);
+		fflush(stderr);
+		[self release];
+		return nil;
+	}
+
+	uint32_t bytesPerElement = readUInt(properties, kIOSurfaceBytesPerElement, 4);
+	uint32_t bytesPerRow = readUInt(properties, kIOSurfaceBytesPerRow, width * bytesPerElement);
+	uint64_t allocSize = readUInt(properties, kIOSurfaceAllocSize, 0);
+	if (allocSize == 0)
+		allocSize = (uint64_t) height * bytesPerRow;
+
+	/* calloc, not malloc: a fresh IOSurface arrives ZEROED on macOS, and Qt documents relying on
+	 * it, skipping its own clear for newly created buffers. */
+	void* pixels = calloc(1, allocSize);
+	if (pixels == NULL)
+	{
+		[self release];
+		return nil;
+	}
+
+	ImplData* idata = (ImplData*) malloc(sizeof(ImplData));
+	idata->surface = calloc(1, sizeof(struct _IOSurfaceObjectRetval));
+
+	static _Atomic uint32_t nextLocalID = 1;
+	idata->surface->surfaceID = nextLocalID++;
+	idata->surface->pixelFormat = readUInt(properties, kIOSurfacePixelFormat, 0);
+	idata->surface->address = (uint64_t) pixels;
+	idata->surface->planeCount = 1;
+	idata->surface->planes[0].memoryOffset = 0;
+	idata->surface->planes[0].bytesPerElement = bytesPerElement;
+	idata->surface->planes[0].width = width;
+	idata->surface->planes[0].height = height;
+	idata->surface->planes[0].bytesPerRow = bytesPerRow;
+
+	idata->localUseCount = 0;
+	idata->local = true;
+	idata->pixels = pixels;
 	self->_impl = idata;
 
 	return self;
@@ -65,23 +134,11 @@ typedef struct
 
 - (nullable instancetype)initWithProperties:(NSDictionary <IOSurfacePropertyKey, id> *)properties
 {
-	CFDataRef data = IOCFSerialize((CFTypeRef) properties, kIOCFSerializeToBinary);
-	uint8_t responseBuffer[3500];
-
-	const void* bytes = CFDataGetBytePtr(data);
-	size_t length = CFDataGetLength(data);
-	size_t responseLength = sizeof(responseBuffer);
-
-	kern_return_t ret = IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodCreate, NULL, 0, bytes, length, NULL, 0, responseBuffer, &responseLength);
-	CFRelease(data);
-
-	if (ret != kIOSurfaceSuccess)
-	{
-		[self release];
-		return nil;
-	}
-
-	return [self initWithResponse: responseBuffer length: responseLength];
+	/* Local, not a daemon round trip. iokitd createSurface never writes its response struct and
+	 * every other surface method there is KERN_NOT_SUPPORTED, so the RPC handed back stack
+	 * garbage whose address Qt wrote pixels through. A surface nobody shares is a pixel buffer;
+	 * cross process lookup goes back through iokitd when somebody implements it. Task #227. */
+	return [self initLocalWithProperties: properties];
 }
 
 - (nullable instancetype)initWithSurfaceID:(IOSurfaceID)surfaceID
@@ -108,10 +165,12 @@ typedef struct
 	{
 		if (data->surface != NULL)
 		{
-			IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodRelease, NULL, 0, &data->surface->surfaceID, 1, NULL, 0, NULL, 0);
+			if (!data->local)
+				IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodRelease, NULL, 0, &data->surface->surfaceID, 1, NULL, 0, NULL, 0);
 
 			free(data->surface);
 		}
+		free(data->pixels);
 
 		free(data);
 	}
@@ -241,7 +300,7 @@ typedef struct
 - (void)incrementUseCount
 {
 	ImplData* data = (ImplData*) _impl;
-	if ((data->localUseCount++) == 0)
+	if ((data->localUseCount++) == 0 && !data->local)
 	{
 		uint64_t scalar = data->surface->surfaceID;
 		IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodIncrementUseCount, &scalar, 1, NULL, 0, NULL, 0, NULL, 0);
@@ -251,11 +310,19 @@ typedef struct
 - (void)decrementUseCount
 {
 	ImplData* data = (ImplData*) _impl;
-	if (--data->localUseCount == 0)
+	if (--data->localUseCount == 0 && !data->local)
 	{
 		uint64_t scalar = data->surface->surfaceID;
 		IOConnectCallMethod(g_surfaceService, kIOSurfaceMethodDecrementUseCount, &scalar, 1, NULL, 0, NULL, 0, NULL, 0);
 	}
+}
+
+/* Whether ANOTHER holder still reads the surface is what a swapchain asks before reusing a
+ * buffer. There is no compositor holding local surfaces, so the local count is the whole truth;
+ * before this the auto synthesised property getter answered a never written ivar, a constant NO. */
+- (BOOL)isInUse
+{
+	return ((ImplData*) _impl)->localUseCount > 0;
 }
 
 - (int32_t) localUseCount
@@ -267,6 +334,11 @@ typedef struct
 - (kern_return_t)lockWithOptions:(IOSurfaceLockOptions)options seed:(nullable uint32_t *)seed
 {
 	ImplData* data = (ImplData*) _impl;
+	/* Locking arbitrates against a GPU or another process. A local surface has neither, so
+	 * success IS the correct answer, not a shortcut; failing here made Qt retry with a read-back
+	 * and then warn on every frame. */
+	if (data->local)
+		return kIOSurfaceSuccess;
 	struct _IOSurfaceLockUnlock args = {
 		.surfaceID = data->surface->surfaceID,
 		.options = options,
@@ -277,6 +349,8 @@ typedef struct
 - (kern_return_t)unlockWithOptions:(IOSurfaceLockOptions)options seed:(nullable uint32_t *)seed
 {
 	ImplData* data = (ImplData*) _impl;
+	if (data->local)
+		return kIOSurfaceSuccess;
 	struct _IOSurfaceLockUnlock args = {
 		.surfaceID = data->surface->surfaceID,
 		.options = options,

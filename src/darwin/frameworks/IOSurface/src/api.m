@@ -27,7 +27,22 @@ CFTypeID IOSurfaceGetTypeID(void)
 
 IOSurfaceRef _Nullable IOSurfaceCreate(CFDictionaryRef properties)
 {
-	return (IOSurfaceRef) [[IOSurface alloc] initWithProperties: (NSDictionary*) properties];
+	/* Whether Qt CALLED this at all is the fork for #227: its backing store retains the surface
+	 * field unchecked, and a NULL there can mean create failed OR create was never reached. */
+	if (getenv("CIDER_TRACE_IOSURFACE") != NULL)
+	{
+		/* fprintf, not NSLog: NSLog has not been proven to reach app.log from this framework, and
+		 * a probe that cannot speak reads as a path that never runs. */
+		fprintf(stderr, "CIDER_IOSURFACE create enter props=%p\n", properties);
+		fflush(stderr);
+	}
+	IOSurfaceRef surface = (IOSurfaceRef) [[IOSurface alloc] initWithProperties: (NSDictionary*) properties];
+	if (getenv("CIDER_TRACE_IOSURFACE") != NULL)
+	{
+		fprintf(stderr, "CIDER_IOSURFACE create -> %p\n", surface);
+		fflush(stderr);
+	}
+	return surface;
 }
 
 IOSurfaceRef _Nullable IOSurfaceLookupFromMachPort(mach_port_t port)

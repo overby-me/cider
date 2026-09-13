@@ -84,6 +84,17 @@ MLDR=$(ls -t "$REPO"/buck-out/v2/art/root/*/src/darwin/loader/__mldr__/mldr 2>/d
 RT=$(ls -td "$REPO"/buck-out/v2/art/root/*/buck/prefix/__cider_prefix__/cider_prefix__prefix 2>/dev/null | head -1)
 ELF_LIBS=$(grep '^elf_lib_dirs' "$REPO/.buckconfig.local" 2>/dev/null | sed 's/^elf_lib_dirs *= *//')
 
+# THE BACKEND FOLLOWS THE ENVIRONMENT, so an empty WAYLAND_DISPLAY silently flips every case to
+# the X11 backend, which has no server here and dies in its failing-init path: 10 of 67 crashed
+# with signal 11 from a shell that simply lacked the variable, and the tree was innocent. Discover
+# the socket the way app-drive.sh does rather than trust the caller's environment.
+if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+	WAYLAND_DISPLAY=$(ls "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/wayland-[0-9]* 2>/dev/null \
+		| grep -v '\.lock$' | grep -vE 'renderD' | sort | head -1 | xargs -r basename)
+	[ -n "$WAYLAND_DISPLAY" ] && export WAYLAND_DISPLAY \
+		&& echo "batch: WAYLAND_DISPLAY was empty, discovered $WAYLAND_DISPLAY"
+fi
+
 pkill -9 -x 'mldr|cider|ciderd|shellspawn' 2>/dev/null
 sleep 1
 mkdir -p /tmp/cider-dts-1000
