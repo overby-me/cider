@@ -91,6 +91,15 @@ void* TISGetInputSourceProperty(TISInputSourceRef inputSourceRef, CFStringRef ke
 	return (void*) CFDictionaryGetValue((CFDictionaryRef)inputSourceRef, key);
 }
 
+/* NULL is the ANSWER, not an absence: it means the current input method overrides no keyboard
+ * layout, which is true here since there are no input methods at all. Qt checks for it and falls
+ * back to the current layout source. The symbol MISSING was fatal in a different way: it bound
+ * lazily and aborted at the first key press CMake.app ever received. Task #227. */
+TISInputSourceRef TISCopyInputMethodKeyboardLayoutOverride(void)
+{
+	return NULL;
+}
+
 TISInputSourceRef TISCopyCurrentASCIICapableKeyboardLayoutInputSource(void)
 {
     if (verbose) {

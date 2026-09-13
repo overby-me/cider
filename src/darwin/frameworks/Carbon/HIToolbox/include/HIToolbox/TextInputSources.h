@@ -24,7 +24,8 @@ extern TISInputSourceRef TISCopyCurrentKeyboardInputSource(void);
 
 extern void* TISGetInputSourceProperty(TISInputSourceRef inputSourceRef, CFStringRef key);
 
-extern TISInputSourceRef TISCopyCurrentASCIICapableKeyboardLayoutInputSource(void);
+extern TISInputSourceRef TISCopyInputMethodKeyboardLayoutOverride(void);
+TISInputSourceRef TISCopyCurrentASCIICapableKeyboardLayoutInputSource(void);
 
 #ifdef __cplusplus
 }

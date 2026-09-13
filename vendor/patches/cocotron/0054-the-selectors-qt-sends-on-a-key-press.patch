@@ -1,0 +1,104 @@
+The AppKit selectors Qt sends on a key press, none of which existed.
+
+CMake.app rendered but ate every key press. Each of these was CAUGHT by the AppKit event loop, so
+the key vanished with no crash and the keyboard looked dead while the events all arrived:
+
+- -[NSApplication isFullKeyboardAccessEnabled]: Qt asks per key press. NO is the macOS default and
+  correct here, there being no such accessibility setting.
+- -[NSImage CGImageForProposedRect:context:hints:]: the 10.6 accessor Qt uses to hand an image to
+  CoreGraphics; returns the first bitmap rep's CGImage, or NULL, which is a documented answer.
+- -[NSEvent subtype]: RAISED. Qt reads it on every mouse event to tell a tablet from a mouse; a
+  plain mouse event is subtype 0 on macOS, the truthful answer for every event this port makes.
+- -[NSWindow setAnimationBehavior:] / -animationBehavior: remembered as an associated object;
+  nothing animates windows here, and the raise was eaten by the loop too.
+
+With these, CMake.app takes a click into the source field, shows the caret, and accepts typed text
+(verified by driving a click at 300,73 then wtype). It then crashes on the AUTOCOMPLETE popup path,
+QWindow::type on a bad QWindowPrivate reached through QCompleter, which is a separate defect. Task
+#227.
+
+--- a/AppKit/NSApplication.m
++++ b/AppKit/NSApplication.m
+@@ -517,6 +517,14 @@
+ 
+ @implementation NSApplication
+ 
++/* Full keyboard access is the macOS accessibility switch that lets Tab reach every control; there
++ * is no such system setting here, and OFF is the macOS default. Qt asks on EVERY key press, and
++ * the unrecognized selector was caught by the event loop, so each key press died silently inside
++ * the catch: the whole keyboard looked dead while the events all arrived. Task #227. */
++- (BOOL) isFullKeyboardAccessEnabled {
++    return NO;
++}
++
+ /*
+  * The application appearance, which macOS 10.14 added and current applications set as soon as they
+  * become active. LibreOffice does it from its own activation handler, so the FIRST time a window
+--- a/AppKit/NSEvent.subproj/NSEvent.m
++++ b/AppKit/NSEvent.subproj/NSEvent.m
+@@ -337,8 +337,10 @@
+ }
+ 
+ - (short) subtype {
+-    [NSException raise: NSInternalInconsistencyException
+-                format: @"No event subtype in %@", [self class]];
++    /* Raising here fed the event loop catch: Qt asks the subtype of every MOUSE event to tell a
++     * tablet from a mouse, and the raise ate the event whole. On macOS a plain mouse event
++     * answers NSEventSubtypeMouseEvent, which is 0, and that is the truthful answer for every
++     * event this port produces. Task #227. */
+     return 0;
+ }
+ 
+--- a/AppKit/NSImage.m
++++ b/AppKit/NSImage.m
+@@ -1284,6 +1284,24 @@
+     return [self initWithData: data];
+ }
+ 
++/*
++ * The 10.6 accessor Qt uses to hand an NSImage to CoreGraphics. It was absent, and the
++ * unrecognized selector was CAUGHT by the event loop, so the first key press that made Qt render
++ * a cursor image killed that key silently instead of the process. NULL is a documented answer
++ * when no representation can provide pixels; the proposed rect and hints are legitimately ignored
++ * for a port whose images are single resolution. Task #227.
++ */
++- (CGImageRef) CGImageForProposedRect: (NSRect *) proposedDestRect
++                              context: (NSGraphicsContext *) referenceContext
++                                hints: (NSDictionary *) hints
++{
++    for (NSImageRep *rep in _representations) {
++        if ([rep isKindOfClass: [NSBitmapImageRep class]])
++            return [(NSBitmapImageRep *) rep CGImage];
++    }
++    return NULL;
++}
++
+ - initWithCGImage: (CGImageRef) cgImage size: (NSSize) size; {
+     if (self = [self initWithSize: size]) {
+         NSBitmapImageRep *rep = [[[NSBitmapImageRep alloc]
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -4517,6 +4517,23 @@
+  * The dictionary is an associated object rather than an ivar: applications subclass NSWindow, and
+  * an ivar added here would shift the ones they declare.
+  */
++@implementation NSWindow (CiderWindowAnimation)
++
++/* Remembered and reported like tabbingMode above: nothing animates windows here, and the raise
++ * for an unknown selector was caught by the event loop with the event it was handling. */
++- (NSInteger) animationBehavior {
++    NSNumber *stored = objc_getAssociatedObject(self, @selector(animationBehavior));
++    return stored != nil ? [stored integerValue] : 0;
++}
++
++- (void) setAnimationBehavior: (NSInteger) behavior {
++    objc_setAssociatedObject(self, @selector(animationBehavior),
++                             [NSNumber numberWithInteger: behavior],
++                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++}
++
++@end
++
+ @implementation NSWindow (CiderWindowTabbing)
+ 
+ /*
