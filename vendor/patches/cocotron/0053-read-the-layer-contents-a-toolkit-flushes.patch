@@ -1,0 +1,132 @@
+Composite layer contents in software, because nothing ever read what a toolkit flushed there.
+
+This port has no GL: CALayerContext answers nil and CARenderer never runs, which is fine for a
+view that draws in drawRect: and a silent void for one that PAINTS INTO A BUFFER AND FLUSHES IT AS
+LAYER CONTENTS. Qt does exactly that: QCALayerBackingStore renders every widget into an IOSurface
+and its flush is layer.contents = surface. The window stayed the clear colour with the entire UI
+sitting unread on the layer, centre pixel ffededed, and QT_MAC_WANTS_LAYER=0 does not turn the
+path off in this Qt build.
+
+The read side is one hook in displayRectIgnoringOpacity: after drawRect: returns, a view whose
+layer has contents composites them into the current context. After, not before, because the
+toolkit paints and flushes INSIDE the expose that drawRect delivers, so the freshest frame is
+already on the layer at that point. The IOSurface is MESSAGED for its geometry rather than linked,
+it being an ObjC object in this port; a CGImageRef contents is drawn directly, recognised by class
+because this CG stack does not export CGImageGetTypeID. A flipped view gets the image drawn in
+unflipped coordinates, and the data provider retains the surface so the pixels outlive the image
+if the layer swaps contents mid draw.
+
+WITH THIS, THE ENTIRE CMAKE UI RENDERS AND RELAYOUTS ON RESIZE: source and build path fields,
+preset combo, search row, the cache table with alternating rows, Configure and Generate, the
+progress bar and the output pane, at both 1256x684 and 1000x600. Zero faults, zero exceptions.
+INTERACTIVE is not yet tested, so CMake is still not claimed for the roster. Task #227.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -83,6 +83,17 @@
+ - (void) _ciderUpdateAppearanceTree;
+ @end
+ 
++@interface NSObject (CiderIOSurfaceShape)
++- (void *) baseAddress;
++- (NSInteger) width;
++- (NSInteger) height;
++- (NSInteger) bytesPerRow;
++@end
++
++static void ciderReleaseSurfaceForImage(void *info, const void *data, size_t size) {
++    [(id) info release];
++}
++
+ @implementation NSView
+ 
+ /*
+@@ -2796,6 +2807,73 @@
+     return NO;
+ }
+ 
++/*
++ * THE SOFTWARE PATH FOR LAYER CONTENTS. This port has no GL, so CALayerContext answers nil and
++ * CARenderer never runs; a view that draws via drawRect: is unaffected, but a toolkit that paints
++ * into a buffer and FLUSHES it with layer.contents (Qt: QCALayerBackingStore sets an IOSurface)
++ * put every frame somewhere nothing read, and its windows stayed the clear colour. Compositing the
++ * contents when the view displays is the missing read side. Task #227.
++ *
++ * The IOSurface is messaged, not linked: it is an ObjC object in this port and AppKit asking it
++ * for its geometry avoids a new framework dependency.
++ */
++- (void) _ciderCompositeLayerContents: (id) contents inRect: (NSRect) rect {
++    CGContextRef port = (CGContextRef) [[NSGraphicsContext currentContext] graphicsPort];
++    CGImageRef image = NULL;
++    BOOL owned = NO;
++
++    if (port == NULL)
++        return;
++
++    /* A CGImageRef IS an O2Image object in this port, so a class check replaces
++     * CGImageGetTypeID, which the CG stack here does not export. */
++    if ([contents isKindOfClass: NSClassFromString(@"O2Image")]) {
++        image = (CGImageRef) contents;
++    } else if ([contents respondsToSelector: @selector(baseAddress)] &&
++               [contents respondsToSelector: @selector(bytesPerRow)]) {
++        size_t width = (size_t) [contents width];
++        size_t height = (size_t) [contents height];
++        size_t bytesPerRow = (size_t) [contents bytesPerRow];
++        void *base = [contents baseAddress];
++
++        if (base == NULL || width == 0 || height == 0)
++            return;
++
++        /* The provider retains the surface so the pixels outlive the image even if the layer
++         * swaps its contents while we draw. */
++        CGDataProviderRef provider = CGDataProviderCreateWithData(
++                [contents retain], base, bytesPerRow * height, ciderReleaseSurfaceForImage);
++        CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
++
++        /* Qt asks for BGRA; premultiplied-first little endian is that layout in memory. */
++        image = CGImageCreate(width, height, 8, 32, bytesPerRow, space,
++                              kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little,
++                              provider, NULL, false, kCGRenderingIntentDefault);
++        CGColorSpaceRelease(space);
++        CGDataProviderRelease(provider);
++        owned = YES;
++        if (image == NULL)
++            return;
++    } else {
++        return;
++    }
++
++    NSRect bounds = [self bounds];
++    CGContextSaveGState(port);
++    /* drawRect: runs with a flipped CTM for a flipped view, which would put the frame upside
++     * down; the image is drawn in unflipped coordinates instead. */
++    if ([self isFlipped]) {
++        CGContextTranslateCTM(port, 0, bounds.origin.y * 2 + bounds.size.height);
++        CGContextScaleCTM(port, 1, -1);
++    }
++    CGContextDrawImage(port, bounds, image);
++    CGContextRestoreGState(port);
++
++    if (owned)
++        CGImageRelease(image);
++}
++
++
+ - (void) _ciderDrawThroughLayerBacking: (NSRect) rect {
+     NSRect bounds = [self bounds];
+     size_t width = (size_t) ceil(bounds.size.width);
+@@ -3705,6 +3783,14 @@
+                 [self _ciderPaintLayerBackgroundInRect: rect];
+             }
+             [self drawRect: rect];
++            {
++                /* AFTER drawRect, because that is where a buffer-flushing toolkit SET the
++                 * contents: Qt paints inside the expose drawRect delivers and flushes before
++                 * returning, so the freshest frame is already on the layer here. */
++                id ciderLayerContents = [_layer contents];
++                if (ciderLayerContents != nil)
++                    [self _ciderCompositeLayerContents: ciderLayerContents inRect: rect];
++            }
+             if (ciderAlphaPort != NULL) {
+                 CGContextRestoreGState(ciderAlphaPort);
+             }
