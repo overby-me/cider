@@ -1,0 +1,145 @@
+Widen an invalidation to the bounds when the pixels come from a layer buffer, and the traces that
+found it.
+
+CMake typed text into its source field and the field showed only a caret. The text was in Qt, laid
+out correctly: the caret sat exactly where four characters end, and it moved in proportion at four
+and at twelve. Any full repaint, a compositor resize for instance, showed the text at once. Only
+incremental repaints lost it.
+
+CIDER_TRACE_LAYERBLIT prints two things: which layer buffer the software compositor is copying and
+what rectangle it was asked for, and separately what every caller asks setNeedsDisplayInRect for,
+with a backtrace when the rectangle has a zero origin. That named it in one run.
+
+During typing, 112 of the invalidations were 0,0 949x21 and not one of them covered the line edit.
+They were not Qt asking for anything. The backtrace put them in OUR OWN -[NSView addSubview:],
+which marks the parent dirty with the frame of the view being added, and QMacStyle parents a cell
+view while it draws. The size tracked the window, 949 wide at 1256 and 693 at 1000, so it looked
+plausible enough to read as a real dirty region. The caret happened to fall inside that corner and
+the text beside it did not, and that is the whole of the symptom.
+
+The reason nothing better ever arrives: Qt flushes a whole frame by assigning it to layer.contents
+and tells CoreAnimation which part changed. There is no CoreAnimation here, so every rectangle
+reaching setNeedsDisplayInRect for such a view came from somewhere else and describes something
+else. A layer buffer has no partial truth. Widening to the bounds composites the frame the toolkit
+handed over, which is what a compositor would have done.
+
+Views that draw themselves are untouched, having no layer contents.
+
+MEASURED, ink in the field rectangle, thresholded: before 5, 11, 17 over three runs, the caret
+alone; after 76, 93, 93 over three runs, the text and the caret. Resize still correct at 75, 92, 92.
+Zero faults.
+
+CMake is still NOT on the roster: typing a path pops the QCompleter and that still crashes in
+QWindow::type on a bogus platform window pointer, which is task #227 and a different defect.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -2817,6 +2817,21 @@
+  * The IOSurface is messaged, not linked: it is an ObjC object in this port and AppKit asking it
+  * for its geometry avoids a new framework dependency.
+  */
++/* Cached like the glyph traces: these sit on the per repaint path, and a getenv for every
++ * invalidation of every view is a cost a terminal repainting whole screens can measure. */
++static BOOL ciderTraceLayerBlit(void)
++{
++    static int cached = -1;
++
++    if (cached < 0) {
++        const char *value = getenv("CIDER_TRACE_LAYERBLIT");
++
++        /* Empty is OFF: a harness forwarding unset switches writes VAR= and getenv answers "". */
++        cached = (value != NULL && value[0] != '\0') ? 1 : 0;
++    }
++    return cached ? YES : NO;
++}
++
+ - (void) _ciderCompositeLayerContents: (id) contents inRect: (NSRect) rect {
+     CGContextRef port = (CGContextRef) [[NSGraphicsContext currentContext] graphicsPort];
+     CGImageRef image = NULL;
+@@ -2825,6 +2840,23 @@
+     if (port == NULL)
+         return;
+ 
++    /* WHICH BUFFER, AND HOW MUCH OF IT. Two questions decide whether a toolkit flushing a
++     * swapchain can be composited a rectangle at a time: does the surface change between frames,
++     * and is the rectangle we are asked to display the whole view or a corner of it. */
++    if (ciderTraceLayerBlit()) {
++        NSRect bounds = [self bounds];
++
++        fprintf(stderr,
++                "CIDER_LAYERBLIT view=%p cls=%s contents=%p rect=%.0f,%.0f %.0fx%.0f "
++                "bounds=%.0f,%.0f %.0fx%.0f full=%s\n",
++                (void *) self, class_getName([self class]), (void *) contents,
++                (double) rect.origin.x, (double) rect.origin.y, (double) rect.size.width,
++                (double) rect.size.height, (double) bounds.origin.x, (double) bounds.origin.y,
++                (double) bounds.size.width, (double) bounds.size.height,
++                NSEqualRects(rect, bounds) ? "yes" : "NO");
++        fflush(stderr);
++    }
++
+     /* A CGImageRef IS an O2Image object in this port, so a class check replaces
+      * CGImageGetTypeID, which the CG stack here does not export. */
+     if ([contents isKindOfClass: NSClassFromString(@"O2Image")]) {
+@@ -3245,6 +3277,62 @@
+ }
+ 
+ - (void) setNeedsDisplayInRect: (NSRect) rect {
++    /* WHAT THE CALLER ASKED FOR, before any clipping or rounding, because a dirty rectangle whose
++     * ORIGIN is wrong updates the wrong pixels and looks exactly like a missing repaint. */
++    if (ciderTraceLayerBlit()) {
++        NSRect vis = [self visibleRect];
++
++        fprintf(stderr,
++                "CIDER_INVALIDATE view=%p cls=%s asked=%.0f,%.0f %.0fx%.0f visible=%.0f,%.0f "
++                "%.0fx%.0f flipped=%s\n",
++                (void *) self, class_getName([self class]), (double) rect.origin.x,
++                (double) rect.origin.y, (double) rect.size.width, (double) rect.size.height,
++                (double) vis.origin.x, (double) vis.origin.y, (double) vis.size.width,
++                (double) vis.size.height, [self isFlipped] ? "yes" : "no");
++
++        /* WHICH WIDGET ASKED. A rectangle with the right size and a zero origin is either a
++         * caller that never translated it or a caller in another window entirely, and only the
++         * stack tells those apart. A handful is enough; the rest repeat. */
++        {
++            static int printedFrom;
++
++            if (rect.origin.x == 0 && rect.origin.y == 0 && rect.size.height < 40 &&
++                rect.size.width > 200 && printedFrom < 4) {
++                void *frames[26];
++                int depth = backtrace(frames, 26);
++
++                printedFrom++;
++                fprintf(stderr, "CIDER_INVALIDATEFROM");
++                for (int i = 1; i < depth; i++) {
++                    Dl_info info;
++
++                    if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL)
++                        fprintf(stderr, " <- %s", info.dli_sname);
++                }
++                fprintf(stderr, "\n");
++            }
++        }
++        fflush(stderr);
++    }
++    /*
++     * A LAYER BUFFER HAS NO PARTIAL TRUTH.
++     *
++     * When the pixels of a view come from a layer buffer a toolkit flushed, the only thing that
++     * knows which part of it changed is that toolkit, and it tells CoreAnimation rather than us.
++     * There is no CoreAnimation here, so every rectangle that reaches this method came from
++     * somewhere else and describes something else. Measured on CMake: 112 of the invalidations
++     * during typing were 0,0 949x21, all of them OUR OWN addSubview: marking the parent dirty with
++     * the frame of a cell view QMacStyle had just parented, and not one of them covered the line
++     * edit that had actually changed. So the caret, which happened to fall inside that corner,
++     * was painted and the text beside it never was.
++     *
++     * Widening to the bounds composites the whole frame the toolkit handed over, which is what a
++     * compositor would have done. Views that draw themselves are untouched: they have no layer
++     * contents. Task #227.
++     */
++    if (_layer != nil && [_layer contents] != nil)
++        rect = [self bounds];
++
+     // We only add rects if its not the entire view
+     if (!_needsDisplay || _invalidRects != NULL) {
+         NSRect visibleRect = [self visibleRect];
