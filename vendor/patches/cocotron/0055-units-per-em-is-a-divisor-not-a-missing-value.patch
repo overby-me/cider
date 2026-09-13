@@ -1,0 +1,40 @@
+CTFontGetUnitsPerEm was a stub returning zero, and zero is a DIVISOR.
+
+Qt scales every glyph advance by pixelSize divided by units per em, so a stub returning 0 made each
+advance an infinity. This is the same shape as IOSurfaceAlignProperty in patch 0053 and it is worth
+naming as a class: a stub that answers 0 for a size, a stride, an alignment or a divisor is not a
+harmless no-op, it is a wrong answer the caller has no way to question.
+
+The font already knows the number. KTFont reads it from its CGFont at init, and KTFont_FT has the
+FreeType face behind that, so the answer is one call away. 2048 is the OpenType default and the
+only sane fallback.
+
+The stub fired on EVERY key press in CMake, twelve times in one startup, which is how it was found.
+
+HONEST RESULT: this did NOT fix the symptom it was found under. CMake still shows no typed text in
+its line edit. Measured after the fix: keys are delivered in 4 runs of 4, the text reaches Qt (the
+caret position scales exactly with the character count, about 6.9 pixels per glyph at both 4 and 12
+characters), and no glyph is composited for the field. So this is a real defect fixed on its own
+terms, not the cause of the empty field. Task #227.
+
+--- a/CoreText/CTFont.m
++++ b/CoreText/CTFont.m
+@@ -567,8 +567,16 @@
+ 
+ unsigned int CTFontGetUnitsPerEm(CTFontRef font)
+ {
+-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+-    return 0;
++    /* ZERO IS A DIVISOR HERE, NOT A MISSING VALUE. Qt scales every glyph advance by
++     * pixelSize/unitsPerEm, so the stub made each advance an infinity: a typed character landed
++     * nowhere, the caret never moved off the left edge, and the field looked as though it had
++     * never received the key. The font already knows the number, from its CGFont. 2048 is the
++     * OpenType default and the only sane answer if it does not. Task #227. */
++    if (font == NULL)
++        return 2048;
++
++    unsigned int units = (unsigned int) CGFontGetUnitsPerEm([font graphicsFont]);
++    return units != 0 ? units : 2048;
+ }
+ 
+ CFIndex CTFontGetGlyphCount(CTFontRef font) {
