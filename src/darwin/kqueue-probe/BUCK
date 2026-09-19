@@ -1,0 +1,69 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+# A GUEST PROBE for the kqueue end-of-file question in #235. It lives here rather than under
+# vendor/src because run-dts-batch.sh builds its case list by grepping vendor/src/BUCK for names
+# beginning with dts_, and a probe that prints an absence is not a pass or a fail.
+
+cc_objects(
+    name = "kq_eof_obj",
+    srcs = ["kq_eof.c"],
+    compiler_flags = ["-O2", "-Wall"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "sigchld_obj",
+    srcs = ["sigchld.c"],
+    compiler_flags = ["-O2", "-Wall"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "sigchld",
+    objs = [
+        ":sigchld_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "kq_spawn_obj",
+    srcs = ["kq_spawn.c"],
+    compiler_flags = ["-O2", "-Wall"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "kq_spawn",
+    objs = [
+        ":kq_spawn_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "kq_eof",
+    objs = [
+        ":kq_eof_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)

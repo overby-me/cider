@@ -1,0 +1,36 @@
+Say which knote each epoll event resolved to, and when the proc filter is entered.
+
+A kevent that returns fewer events than epoll reported is invisible: the debug output named the
+filter that DID copy out and nothing about the one that did not, so a dropped event and an event
+that never arrived look the same. Two lines under the existing KQUEUE_DEBUG switch:
+
+  linux_kevent_copyout(): event I of N: kn=P filter=F events=0xE
+  evfilt_proc_copyout(): entered for ident=I requested fflags=0xF
+
+They answered the #235 question in one run: the EVFILT_PROC NOTE_EXIT event for a posix_spawn
+child IS delivered, the read events are delivered, and CMake still blocks in a kevent with no
+changes and no timeout. I had claimed the exit event was never delivered; it is, and this is what
+showed it.
+
+--- a/src/linux/platform.c	2026-09-20 00:41:50.577692962 +0200
++++ b/src/linux/platform.c	2026-09-20 00:41:50.578692966 +0200
+@@ -204,6 +204,8 @@
+         ev = &epevt_get()[i];
+         kn = (struct knote *) ev->data.ptr;
+         event = eventlist;
++        dbg_printf("event %d of %d: kn=%p filter=%d events=0x%x", i, nready, (void *) kn,
++                (int) kn->kev.filter, (unsigned) ev->events);
+         if (kn->kev.filter == 0) {
+             dbg_puts("kevent copyout for zero filter, discarding!");
+             nret--;
+--- a/src/linux/proc.c	2026-09-20 00:41:50.584692989 +0200
++++ b/src/linux/proc.c	2026-09-20 00:41:50.585692992 +0200
+@@ -73,6 +73,8 @@
+ 	};
+ 	struct cmsghdr* reply_cmsg;
+ 
++	dbg_printf("entered for ident=%d requested fflags=0x%x", (int) src->kev.ident,
++		(unsigned) src->kev.fflags);
+ 	epoll_event_dump(ev);
+ 	kevent_int_to_64(&src->kev, dst);
+ 
