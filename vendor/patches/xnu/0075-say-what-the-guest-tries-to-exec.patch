@@ -1,0 +1,116 @@
+Say what the guest tries to exec, because a process nobody asked for looks like one that failed.
+
+CIDER_TRACE_EXEC=1 prints every exec the guest attempts with its first eight arguments, and a line
+naming the step when one dies inside sys_execve: the mldr_path RPC, vchroot_expand, the open of the
+image, the read of its header, or a file too short to have a magic number.
+
+Nothing in the port traced this. The switches under src/linux/server and src/darwin/loader are
+FATAL_LOG, HOSTPID, INGUEST_IPC, KQCHAN, KQFILL, KQ_NO_INLINE, LOCK_BACKTRACE,
+MLDR_STACK_FORCE_CLASH, NO_LAUNCHD, PROCKQ, TRACE_KQUEUE, VM, VMWRITE and XNU_LOG, and none of them
+says whether a program was ever asked to run.
+
+IT ANSWERED A QUESTION TWO SESSIONS COULD NOT. iTerm2 shows a terminal with no shell, and the
+process table shows no shell, login or iTermServer process ever existing. That is consistent with
+two completely different faults: an exec that is attempted and refused, or an exec that is never
+attempted. With this on, the whole run holds THREE exec lines and all three are iTerm2 launching
+itself: bash --login, path_helper, then iTerm2. It never asks to run a shell at all, so everything
+downstream of exec is innocent and the fault is before it. See #228.
+
+FD 2, NOT __simple_printf, WHICH WRITES TO FD 1. The first version used __simple_printf and
+corrupted the output of the program it was measuring: the guest /etc/profile picked up a trace line
+and reported "CIDER_EXEC: command not found". An instrument that writes to stdout is not neutral.
+__simple_fprintf(2, ...) exists for this.
+
+The gate is read once and cached, through the same /proc/self/environ reader DSERVER_MLDR_PATH
+already uses here, so it costs one open per process and nothing per exec when off.
+
+CONTROL, because a trace that prints nothing looks exactly like a thing that did not happen:
+  cider shell /bin/sh -c '/bin/echo hi; /nonexistent/binary'
+prints try= lines for bash, path_helper, sh and echo, and then
+  CIDER_EXEC fail=open path=/nonexistent/binary code=-2
+so it is proven to speak for both an exec that works and one that does not.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
+@@ -175,6 +175,24 @@
+ 	return NULL;
+ }
+ 
++// CIDER_TRACE_EXEC=1: say what the guest tries to run and where the attempt dies.
++//
++// Every guest exec comes through here, and until this existed a process that was never created
++// looked exactly like one that was never asked for. iTerm2 spent two sessions in that gap: it
++// renders, opens a session log, and no shell process EVER appears in the process table (#228).
++static int exec_trace_on(void)
++{
++	static int cached = -1;
++	if (cached < 0)
++		cached = inguest_environ_value("CIDER_TRACE_EXEC=") != NULL;
++	return cached;
++}
++
++// FD 2, NOT __simple_printf, WHICH WRITES TO FD 1. A trace on stdout corrupts the output of the
++// program it is measuring: with it on fd 1 the guest /etc/profile ate a trace line as a command.
++#define EXEC_TRACE_FAIL(step, code) \
++	do { if (exec_trace_on()) __simple_fprintf(2, "CIDER_EXEC fail=%s path=%s code=%d\n", step, fname, (int) (code)); } while (0)
++
+ long sys_execve(const char* fname, const char** argvp, const char** envp)
+ {
+ 	int ret;
+@@ -183,6 +201,14 @@
+ 	uint64_t mldr_path_length;
+ 	const char* path_to_exec = vc.path;
+ 
++	if (exec_trace_on())
++	{
++		__simple_fprintf(2, "CIDER_EXEC try=%s", fname);
++		if (argvp != NULL)
++			for (int i = 0; i < 8 && argvp[i] != NULL; i++)
++				__simple_fprintf(2, " arg%d=%s", i, argvp[i]);
++		__simple_fprintf(2, "\n");
++	}
+ 
+ 	// Flag on with DSERVER_MLDR_PATH in the environment: skip the mldr_path RPC; otherwise fall back.
+ 	int have_mldr = 0;
+@@ -200,6 +226,7 @@
+ 	if (!have_mldr) {
+ 		ret = dserver_rpc_mldr_path(mldr_path, sizeof(mldr_path), &mldr_path_length);
+ 		if (ret < 0) {
++			EXEC_TRACE_FAIL("mldr_path", ret);
+ 			return errno_linux_to_bsd(ret);
+ 		}
+ 	}
+@@ -211,16 +238,25 @@
+ 
+ 	ret = vchroot_expand(&vc);
+ 	if (ret < 0)
++	{
++		EXEC_TRACE_FAIL("vchroot_expand", ret);
+ 		return errno_linux_to_bsd(ret);
++	}
+ 
+ 	char shebang[256];
+ 	int fd = sys_open(fname, BSD_O_RDONLY, 0);
+ 	if (fd < 0)
++	{
++		EXEC_TRACE_FAIL("open", fd);
+ 		return fd;
++	}
+ 
+ 	ret = sys_read(fd, shebang, sizeof(shebang));
+ 	if (ret < 0)
++	{
++		EXEC_TRACE_FAIL("read", ret);
+ 		return ret;
++	}
+ 
+ 	close_internal(fd);
+ 
+@@ -228,6 +264,7 @@
+ 	bool is_macho = false;
+ 
+ 	if (ret < 4) {
++		EXEC_TRACE_FAIL("too-short", ret);
+ 		return -ENOEXEC;
+ 	}
+ 
