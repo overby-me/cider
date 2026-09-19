@@ -1,0 +1,154 @@
+Six symbols CMake needs that this port declared or implied and never defined.
+
+EVERY ONE OF THESE BINDS LAZILY, which is what made them expensive to find: an absent symbol does
+not fail at launch, it aborts inside dyld_stub_binder the first time a caller reaches it, with
+signal 6 at a dyld frame and nothing naming the framework. DYLD_BIND_AT_LAUNCH=1 turns that into
+"Symbol not found: _<name>" at startup, one at a time, which is how this list was built.
+
+  CGColorSpaceCopyPropertyList   NULL is a legal answer on macOS too for a space with no property
+                                 list form; an absent symbol is not.
+  CGPathCreateWithRoundedRect    Built from the arcs CGPath.m already has. The radii are CLAMPED TO
+                                 HALF THE SIDE, as CoreGraphics does, because a corner wider than
+                                 the rectangle wraps the arcs past each other into a self
+                                 intersecting path. A zero radius degenerates to the plain rect.
+  CGEventTapCreateForPid         Delegates to CGEventTapCreate. Nothing here distinguishes taps by
+                                 pid, and pretending to filter would be worse than not filtering.
+  CGSSetWindowTags               Declared in CoreGraphicsPrivate.h and never defined. Window tags
+  CGSClearWindowTags             are a presentation hint the window server keeps, and there is no
+                                 window server here. They answer SUCCESS: a caller told its hint
+                                 failed may decide the window is unusable, while a caller whose hint
+                                 is quietly not honoured cannot tell us from a server that ignored
+                                 it.
+  NSBitsPerSampleFromDepth       Arithmetic, not a table: the depth constants carry bits per sample
+  NSColorSpaceFromDepth          in their low byte (0x208 is 8, 0x210 is 16, 0x220 is 32), and all
+                                 three depths this port offers are RGB.
+
+MEASURED: with these and CFURLEnumeratorCreateForMountedVolumes in place, CMake launches under
+DYLD_BIND_AT_LAUNCH=1 with NO missing symbol at all, where before it named one, then the next, then
+the next.
+
+--- a/AppKit/NSScreen.m
++++ b/AppKit/NSScreen.m
+@@ -200,3 +200,19 @@
+ }
+ 
+ @end
++
++/*
++ * THE DEPTH CONSTANTS ENCODE BITS PER SAMPLE IN THEIR LOW BYTE, which is why these are arithmetic
++ * rather than a table: NSWindowDepthTwentyfourBitRGB is 0x208 and carries 8, the sixty four bit one
++ * 0x210 carries 16, the hundred and twenty eight bit one 0x220 carries 32. Task #234.
++ */
++NSInteger NSBitsPerSampleFromDepth(NSWindowDepth depth)
++{
++    return (NSInteger)(depth & 0xFF);
++}
++
++/* All three depths this port offers are RGB; there is no grey or CMYK window depth among them. */
++NSString *NSColorSpaceFromDepth(NSWindowDepth depth)
++{
++    return NSCalibratedRGBColorSpace;
++}
+--- a/CoreGraphics/CGColorSpace.m
++++ b/CoreGraphics/CGColorSpace.m
+@@ -162,3 +162,13 @@
+     size_t components = O2ColorSpaceGetNumberOfComponents([indexed baseColorSpace]);
+     memcpy(table, [indexed paletteBytes], components * ([indexed hival] + 1));
+ }
++
++/*
++ * NULL IS A LEGAL ANSWER HERE and an absent symbol is not: a colour space that has no property list
++ * representation answers NULL on macOS too, and every caller has to cope with that. What callers
++ * cannot cope with is the symbol missing, because it binds lazily and the first one to reach it
++ * aborts inside dyld_stub_binder with nothing naming CoreGraphics. Task #234.
++ */
++CFPropertyListRef CGColorSpaceCopyPropertyList(CGColorSpaceRef space) {
++    return NULL;
++}
+--- a/CoreGraphics/CGEventTap.m
++++ b/CoreGraphics/CGEventTap.m
+@@ -69,3 +69,15 @@
+ {
+ 
+ }
++
++/*
++ * PER PROCESS TAP, which is the same tap with a target: nothing in this port distinguishes taps by
++ * pid yet, so it delegates rather than pretending to filter. Defined at all because the symbol
++ * binds lazily and an absent one aborts inside dyld_stub_binder with nothing naming the caller.
++ * Task #234.
++ */
++CFMachPortRef CGEventTapCreateForPid(pid_t pid, CGEventTapPlacement place,
++	CGEventTapOptions options, CGEventMask eventsOfInterest, CGEventTapCallBack callback, void *userInfo)
++{
++	return CGEventTapCreate(kCGSessionEventTap, place, options, eventsOfInterest, callback, userInfo);
++}
+--- a/CoreGraphics/CGPath.m
++++ b/CoreGraphics/CGPath.m
+@@ -450,3 +450,40 @@
+     }
+     return out;
+ }
++
++/*
++ * A rounded rectangle, built from the arcs this file already has. Task #234.
++ *
++ * The radii are CLAMPED TO HALF THE SIDE, which is what CoreGraphics does: a corner wider than the
++ * rectangle would otherwise wrap the arcs past each other and produce a self intersecting path.
++ * A zero radius degenerates to the plain rectangle rather than to nothing.
++ */
++CGPathRef CGPathCreateWithRoundedRect(CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight,
++                                      const CGAffineTransform *transform) {
++    CGMutablePathRef path = CGPathCreateMutable();
++
++    CGFloat halfWidth = CGRectGetWidth(rect) / 2;
++    CGFloat halfHeight = CGRectGetHeight(rect) / 2;
++    if (cornerWidth > halfWidth)
++        cornerWidth = halfWidth;
++    if (cornerHeight > halfHeight)
++        cornerHeight = halfHeight;
++
++    if (cornerWidth <= 0 || cornerHeight <= 0) {
++        CGPathAddRect(path, transform, rect);
++        return path;
++    }
++
++    CGFloat minX = CGRectGetMinX(rect), midX = CGRectGetMidX(rect), maxX = CGRectGetMaxX(rect);
++    CGFloat minY = CGRectGetMinY(rect), midY = CGRectGetMidY(rect), maxY = CGRectGetMaxY(rect);
++    CGFloat radius = cornerWidth < cornerHeight ? cornerWidth : cornerHeight;
++
++    CGPathMoveToPoint(path, transform, minX, midY);
++    CGPathAddArcToPoint(path, transform, minX, minY, midX, minY, radius);
++    CGPathAddArcToPoint(path, transform, maxX, minY, maxX, midY, radius);
++    CGPathAddArcToPoint(path, transform, maxX, maxY, midX, maxY, radius);
++    CGPathAddArcToPoint(path, transform, minX, maxY, minX, midY, radius);
++    CGPathCloseSubpath(path);
++
++    return path;
++}
+--- a/CoreGraphics/CGS.m
++++ b/CoreGraphics/CGS.m
+@@ -421,3 +421,23 @@
+ 
+ 	return kCGSErrorSuccess;
+ }
++
++/*
++ * WINDOW TAGS ARE A PRESENTATION HINT the window server keeps for a window: sticky, ignores cycle,
++ * no shadow and the like. There is no window server here holding them, so accepting and discarding
++ * them is the whole of the honest implementation.
++ *
++ * SUCCESS, NOT AN ERROR. A caller that gets an error back from setting a hint may decide the window
++ * is unusable; a caller whose hint is silently not honoured carries on and looks the same as a
++ * window server that chose to ignore it. Declared in CoreGraphicsPrivate.h and never defined, so it
++ * aborted inside dyld_stub_binder on first use. Task #234.
++ */
++CGError CGSSetWindowTags(CGSConnectionID cid, CGSWindowID wid, const int tags[2], size_t tag_size)
++{
++	return kCGErrorSuccess;
++}
++
++CGError CGSClearWindowTags(CGSConnectionID cid, CGSWindowID wid, const int tags[2], size_t tag_size)
++{
++	return kCGErrorSuccess;
++}

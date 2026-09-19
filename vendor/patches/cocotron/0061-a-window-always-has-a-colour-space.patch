@@ -1,0 +1,33 @@
+A window always has a colour space, and answering nil is a null nobody can trace.
+
+-[NSWindow colorSpace] was NSUnimplementedMethod() returning nil. A nil colour space becomes a NULL
+CGColorSpaceRef, and everything built from one, a bitmap context most of all, comes back NULL too;
+the dereference then lands far from here with nothing connecting it back to a window accessor.
+
+sRGB rather than a device space, because that is what a window on an ordinary display reports and
+what this compositor is handed.
+
+Found while tracing a CMake crash (#234), where it changed the failure from a null dereference into
+a missing-symbol abort, which is how the rest of that symbol gap became visible at all.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -2025,9 +2025,16 @@
+     return 0;
+ }
+ 
++/*
++ * A WINDOW ALWAYS HAS A COLOUR SPACE. Answering nil hands the caller a NULL CGColorSpaceRef, and
++ * everything built from one, a bitmap context most of all, then comes back NULL too; the
++ * dereference lands far from here with nothing to connect it back. Task #234.
++ *
++ * sRGB rather than a device space, because that is what a window on an ordinary display reports and
++ * what the compositor is given.
++ */
+ - (NSColorSpace *) colorSpace {
+-    NSUnimplementedMethod();
+-    return nil;
++    return [NSColorSpace sRGBColorSpace];
+ }
+ 
+ - (void) setColorSpace: (NSColorSpace *) newColorSpace {

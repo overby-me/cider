@@ -1,0 +1,61 @@
+The one CFURLEnumerator function this file declared and never defined.
+
+CFURLEnumerator.h declares CFURLEnumeratorCreateForMountedVolumes and CFURLEnumerator.c implements
+every other function in that header and not this one. The symbol binds LAZILY, so the failure was
+not a link error or anything naming CoreFoundation: it was an abort inside dyld_stub_binder the
+first time a caller reached it, signal 6 at a dyld frame. Qt asks for the mounted volumes while
+building a file dialog and CMake died opening its generator wizard (#234).
+DYLD_BIND_AT_LAUNCH=1 is what turned that into "Symbol not found:
+_CFURLEnumeratorCreateForMountedVolumes".
+
+/Volumes IS where mounted volumes live, so enumerating it non-recursively answers the question that
+was asked. Recursion is masked off deliberately: the volumes are the answer, not their contents.
+
+THE FALLBACK TO / IS NOT DECORATION. CFURLEnumeratorCreateForDirectoryURL answers NULL when it
+cannot push its directory, so an empty or absent /Volumes would hand the caller NULL and produce
+the same crash one step further along.
+
+--- a/CFURLEnumerator.c
++++ b/CFURLEnumerator.c
+@@ -222,6 +222,41 @@
+     return (CFURLEnumeratorRef)enumerator;
+ }
+ 
++/*
++ * THE ONE FUNCTION THIS FILE DECLARED AND NEVER DEFINED, and the symbol is bound LAZILY, so the
++ * failure was an abort inside dyld_stub_binder the first time a caller reached it rather than
++ * anything naming CoreFoundation. Qt asks for the mounted volumes while building a file dialog, and
++ * CMake died opening its generator wizard. DYLD_BIND_AT_LAUNCH=1 is what turned that into
++ * "Symbol not found: _CFURLEnumeratorCreateForMountedVolumes". Task #234.
++ *
++ * /Volumes IS where the mounted volumes are, so enumerating it non-recursively answers the question
++ * asked. The fallback to / matters: an empty or absent /Volumes would otherwise make
++ * CreateForDirectoryURL answer NULL, and a caller that does not check gets the same crash one step
++ * further on.
++ */
++CFURLEnumeratorRef CFURLEnumeratorCreateForMountedVolumes(CFAllocatorRef alloc, CFURLEnumeratorOptions option, CFArrayRef propertyKeys) {
++    /* Recursion is never right here: the volumes are the answer, not their contents. */
++    option &= ~(CFURLEnumeratorOptions)kCFURLEnumeratorDescendRecursively;
++
++    CFURLRef volumes = CFURLCreateWithFileSystemPath(alloc, CFSTR("/Volumes"), kCFURLPOSIXPathStyle, true);
++    CFURLEnumeratorRef enumerator = NULL;
++
++    if (volumes != NULL) {
++        enumerator = CFURLEnumeratorCreateForDirectoryURL(alloc, volumes, option, propertyKeys);
++        CFRelease(volumes);
++    }
++
++    if (enumerator == NULL) {
++        CFURLRef root = CFURLCreateWithFileSystemPath(alloc, CFSTR("/"), kCFURLPOSIXPathStyle, true);
++        if (root != NULL) {
++            enumerator = CFURLEnumeratorCreateForDirectoryURL(alloc, root, option, propertyKeys);
++            CFRelease(root);
++        }
++    }
++
++    return enumerator;
++}
++
+ CFURLEnumeratorResult CFURLEnumeratorGetNextURL(CFURLEnumeratorRef enumer, CFURLRef *url, CFErrorRef *error) {
+     struct __CFURLEnumerator *enumerator = (struct __CFURLEnumerator *)enumer;
+     

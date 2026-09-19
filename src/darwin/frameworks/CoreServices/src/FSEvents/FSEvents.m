@@ -62,6 +62,25 @@ FSEventStreamEventId FSEventStreamGetLatestEventId(ConstFSEventStreamRef streamR
 	return [((FSEventsImpl*) streamRef) lastEventID];
 }
 
+/*
+ * THE MOST RECENT EVENT ID ISSUED SYSTEM WIDE, which a caller stores now and passes as sinceWhen
+ * later to mean "everything after this point".
+ *
+ * NOT ZERO. Zero is kFSEventStreamEventIdSinceNow's opposite: it means the beginning of time, so a
+ * caller that stored it would ask to be replayed the whole history of the volume. A counter that
+ * only goes up is the safe answer, and it is honest here because nothing else in this port issues
+ * event ids to collide with.
+ *
+ * ABSENT, THIS DID NOT FAIL POLITELY. The symbol binds LAZILY, so the first caller to reach it
+ * aborted inside dyld_stub_binder with no name attached; CMake died opening its generator wizard
+ * and the only evidence was signal 6 at a dyld frame. Task #234.
+ */
+FSEventStreamEventId FSEventsGetCurrentEventId(void)
+{
+	static _Atomic FSEventStreamEventId counter = 1;
+	return counter++;
+}
+
 void FSEventStreamInvalidate(FSEventStreamRef streamRef)
 {
 	[((FSEventsImpl*) streamRef) invalidate];
