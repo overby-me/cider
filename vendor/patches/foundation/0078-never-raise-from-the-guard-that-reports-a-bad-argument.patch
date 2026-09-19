@@ -1,0 +1,46 @@
+Never raise from the branch that exists to report a bad argument.
+
+-[NSFileManager attributesOfItemAtPath:error:] checks for a nil path and then builds its NSError
+userInfo as @{ NSFilePathErrorKey: path } with that same nil as the value. A dictionary literal
+with a nil value RAISES, so the guard written to answer a nil path politely was what killed the
+caller:
+
+    Terminating app due to uncaught exception NSException, reason:
+    Tried to init dictionary with nil object at index 0, for key NSFilePath
+
+iTerm2 walks into it from -[iTermFileDescriptorMultiClient shouldCopyServerTo:] when it cannot work
+out where its server binary lives, and it dies there rather than taking the nil return it was
+already written to handle. Measured: 3 runs of 3 terminated before, 0 of 3 after.
+
+There is no path to report when the path is nil, so the key is left out and the code says
+NSFileReadInvalidFileNameError, which is what the caller actually wants to know.
+
+THIS IS NOT WHAT LEFT ITERM2 WITHOUT A SHELL, and the distinction cost an A/B to establish. Its
+server binary is MISSING from the staged bundle: Contents/MacOS holds iTerm2 and nothing else,
+because systemd sweeps /tmp by age and the prefixes live there, so the file went while the main
+binary stayed young by being read every run. That is the case scripts/app-stage.sh was written for.
+No iTerm2 source archive is left on this machine to re-stage from.
+
+--- a/src/NSFileManager.m
++++ b/src/NSFileManager.m
+@@ -635,9 +635,18 @@
+ {
+     if (path == nil) {
+         if (error) {
++            /* THE GUARD WAS THE CRASH. This branch exists because the path is nil, and it then
++             * built a dictionary literal with that nil as the value for NSFilePathErrorKey, which
++             * raises "Tried to init dictionary with nil object at index 0, for key NSFilePath".
++             * So every caller that asked about a nil path was killed by the code meant to answer
++             * it politely. iTerm2 does exactly that from shouldCopyServerTo: when it cannot work
++             * out where its server binary is, and died on the spot instead of taking the error
++             * return it was already written to handle.
++             *
++             * There is no path to report, so the key is simply left out. */
+             *error = [NSError errorWithDomain: NSCocoaErrorDomain
+-                                         code: NSFileReadUnknownError
+-                                     userInfo: @{ NSFilePathErrorKey: path }];
++                                         code: NSFileReadInvalidFileNameError
++                                     userInfo: nil];
+         }
+         return nil;
+     }

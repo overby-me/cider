@@ -1,0 +1,71 @@
+Ordering a window is not moving it, and saying otherwise destroyed a window mid call.
+
+-[NSWindow orderWindow:relativeTo:] posted NSWindowWillMoveNotification on EVERY ordering. The
+comment above it said the real conditions were unknown and it was done all the time until they were
+figured out. They are figured out: AppKit posts it when the frame origin is about to change, which
+ordering does not do, and platformWindowWillMove already posts it when the compositor really moves
+the window. That is the only producer left.
+
+The invented notification is delivered SYNCHRONOUSLY, so it ran arbitrary application code in the
+middle of whatever asked for the ordering. Qt closes a popup when its window moves, which is correct
+popup behaviour, so showing the completer in CMake ran
+
+  QCompleter::complete -> QWidgetPrivate::setVisible -> QWindowPrivate::setVisible ->
+  QCocoaWindow::setVisible -> our orderWindow: -> this notification -> Qt DESTROYING the popup
+  platform window
+
+and QCocoaWindow::setVisible then carried on using the object that had just been deleted underneath
+it. It faulted 1805 bytes later reading the QWindow out of freed memory, a GENERAL PROTECTION fault
+on a non canonical pointer, which is why CR2 was 0 and said nothing.
+
+HOW IT WAS PINNED DOWN, because the reasoning went wrong twice before this. QNSWindow and QNSPanel
+hold their QCocoaWindow in a QPointer, so asking a QNS window for -platformWindow answers NULL
+exactly when the C++ object has been destroyed. Bracketing this single notification with that
+question printed the object healthy before the post and gone after it. Before that, the function had
+to be identified from __unwind_info rather than from symbols: libqcocoa is stripped and every frame
+resolves to qt_plugin_instance, and reading register roles out of a disassembly started at the wrong
+address produced two confident and wrong conclusions.
+
+MEASURED: typing a path into the source field crashed on 100 percent of runs before and on 0 of 3
+after, with the path visible in the field at 142, 159, 159 ink and still correct after the resize.
+
+WITH THIS CMAKE MEETS ALL THREE CRITERIA: it renders its whole interface, it takes mouse and
+keyboard and shows what is typed, and it relayouts on a compositor resize.
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -2988,15 +2988,29 @@
+     [self setFrame: frame display: YES];
+ }
+ 
++
+ - (void) orderWindow: (NSWindowOrderingMode) place
+           relativeTo: (NSInteger) relativeTo
+ {
+-    // The move notifications are sent under unknown conditions around
+-    // orderFront: in the Apple AppKit, we do them all the time here until it's
+-    // figured out. I suspect it is a side effect of off-screen windows being at
+-    // off-screen coordinates (as opposed to just being hidden).
+-
+-    [self postNotificationName: NSWindowWillMoveNotification];
++    /*
++     * ORDERING A WINDOW IS NOT MOVING IT, and saying otherwise destroyed a window mid call.
++     *
++     * This used to post NSWindowWillMoveNotification on every ordering, with a comment saying the
++     * real conditions were unknown and it was done all the time until they were figured out. They
++     * are figured out: AppKit posts it when the frame origin is about to change, which ordering
++     * does not do. The invented notification is delivered SYNCHRONOUSLY to the application, so it
++     * runs arbitrary application code in the middle of whatever asked for the ordering.
++     *
++     * Qt closes a popup when its window moves, which is correct popup behaviour. So showing the
++     * completer in CMake ran QCocoaWindow::setVisible -> our orderWindow: -> this notification ->
++     * Qt destroying the popup platform window, and setVisible then carried on using the object it
++     * had just had deleted underneath it. Bracketing this one call showed it exactly: the C++
++     * object read healthy before the post and was gone after it, the QPointer inside QNSPanel
++     * having nulled itself, and the fault was a general protection fault 1805 bytes later on a
++     * QWindow pointer built from freed memory.
++     *
++     * A frame change still posts it, from setFrame below, which is where it belongs. Task #227.
++     */
+ 
+     switch (place) {
+     case NSWindowAbove:
