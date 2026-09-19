@@ -1,0 +1,40 @@
+The application is a menu item target like any other, and AppKit answers for it.
+
+CMake's menus did not open. Clicking File highlighted nothing and dropped nothing down, with no
+error a user could see, because -[NSApplication validateMenuItem:] did not exist: Qt targets menu
+items at NSApp, sends the validation, and the unrecognized selector RAISED inside the event loop,
+which caught it and lost the whole menu-open event with it. This is the same shape as the six
+selectors in patch 0054 and it is worth stating as a rule: a selector an application sends DURING
+event handling must not raise, because the toolkit swallows the event whole.
+
+It was NOT our own validation doing the sending. NSMenu.m already guards with respondsToSelector,
+and CIDER_TRACE_MENU confirms it: across a File menu click the 23 items it validates target QNSView
+and QCocoaMenuLoader, never the application. The send comes from Qt, which is entitled to it because
+macOS answers.
+
+The answer is the ordinary default for a validation with no opinion: whether the receiver can
+perform the action at all. Returning a flat YES would enable items the application cannot run.
+
+MEASURED: the File menu now opens, File highlights, and Reload Cache and Delete Cache are listed.
+The selector count in the log goes from 2 to 0, and there are no exceptions and no faults.
+
+--- a/AppKit/NSApplication.m
++++ b/AppKit/NSApplication.m
+@@ -573,6 +573,17 @@
+     return NO;
+ }
+ 
++/* THE APPLICATION IS A MENU ITEM TARGET LIKE ANY OTHER, and AppKit answers for it. Qt asks NSApp
++ * to validate items it has targeted there, and with no implementation the send RAISED, the event
++ * loop caught it, and CMake's File menu simply did not open: no dropdown, no error a user could
++ * see. The answer macOS gives is the ordinary default for a validation with no opinion, which is
++ * whether the receiver can perform the action at all. Task #227. */
++- (BOOL) validateMenuItem: (NSMenuItem *) item {
++    SEL action = [item action];
++
++    return action != NULL && [self respondsToSelector: action];
++}
++
+ /*
+  * The application appearance, which macOS 10.14 added and current applications set as soon as they
+  * become active. LibreOffice does it from its own activation handler, so the FIRST time a window
