@@ -1,0 +1,61 @@
+An empty archive is not an argument error, and raising for it aborted a whole drawRect.
+
+-[NSUnarchiver initForReadingWithData:] asserted data.length > 0. Swift Publisher keeps a colour in
+its user defaults as archived data and reads it back on EVERY document draw, so the raise unwound
+out of -[CCDocView drawRect:] before it had drawn anything, 277 times in one run, and the only
+evidence was a single caught-exception line with no caller in it.
+
+CIDER_TRACE_EXCEPTIONS gave the whole chain in one run, which is what that switch is for:
+
+  -[CCDocView drawRect:] -> CFTLayoutGuideline::Draw -> +[CCEnvironment unlockedLayoutGuidelineColor]
+    -> -[NSUserDefaults(myColorSupport) my_colorForKey:] -> +[NSUnarchiver unarchiveObjectWithData:]
+    -> -[NSUnarchiver initForReadingWithData:] -> NSParameterAssert -> raise
+
+THE DATA IS EMPTY BECAUSE WE WROTE IT EMPTY, and that is the real defect, recorded separately:
+-[NSArchiver encodeRootObject:] IS AN EMPTY METHOD, and every encode primitive under it,
+encodeObject:, encodeValueOfObjCType:at:, encodeArrayOfObjCType:count:at:, encodeBytes:length:, is
+an NSLog stub. So +[NSArchiver archivedDataWithRootObject:] returns ZERO BYTES for anything, and
+FTUnlockedLayoutGuidelineColor in the application's plist is an empty NSData, confirmed by reading
+the file. Every application in this port that archives an object into its defaults stores nothing.
+
+Answering nil lets a caller that checks, and this one does, fall back to its default, which is the
+same rule as the nil path guard fixed in 0078: a branch that reports a bad argument must not raise
+into an application that will have the exception swallowed.
+
+MEASURED: 277 caught exceptions before, 0 after.
+
+HONEST LIMIT: the two runs after the fix both ended on Swift Publisher's trial prompt, which appears
+periodically, so they do not prove the document draw was exercised as heavily as the failing run
+did. The fix itself is unconditional and cannot vary with timing, and the before number was taken
+with the stack that names CCDocView.
+
+--- a/src/NSUnarchiver.m
++++ b/src/NSUnarchiver.m
+@@ -106,7 +106,26 @@
+ 
+ - (id)initForReadingWithData:(NSData*)data
+ {
+-    NSParameterAssert(data.length > 0);
++    /*
++     * EMPTY IS NOT AN ARGUMENT ERROR HERE, IT IS AN EMPTY ARCHIVE, and raising for it aborted a
++     * whole drawRect.
++     *
++     * Swift Publisher keeps a colour in its defaults as archived data and reads it back on EVERY
++     * document draw. Our NSArchiver writes NOTHING (encodeRootObject: is an empty method and the
++     * whole encoding layer below it is NSLog stubs), so the stored value is zero bytes, the read
++     * raised, and -[CCDocView drawRect:] unwound before it had drawn anything: 277 times in one
++     * run, with the document area left unpainted and the only evidence a single caught-exception
++     * line. The write side is the real defect and has its own task.
++     *
++     * Answering nil lets a caller that checks, and this one does, fall back to its default. That
++     * is the same rule as the nil path guard in attributesOfItemAtPath: a branch that reports a
++     * bad argument must not raise into an application that will have the exception swallowed.
++     */
++    if (data.length == 0)
++    {
++        [self release];
++        return nil;
++    }
+     
+     if(self = [super init])
+     {
