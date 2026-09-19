@@ -42,6 +42,7 @@ mm|/tmp/cider-mm-1000/prefix|/Applications/MoneyMoney.app/Contents/MacOS/MoneyMo
 it|/tmp/cider-it-1000/prefix|/Applications/iTerm2.app/Contents/MacOS/iTerm2|0|1000x600|
 lo|/tmp/cider-lo-1000/prefix|/Applications/LibreOffice.app/Contents/MacOS/soffice|1|900x800|SAL_DISABLE_OPENCL=1
 mx|/tmp/cider-mx-1000/prefix|/Applications/mmex.app/Contents/MacOS/mmex|1|900x650|
+cm|/tmp/cider-cm-1000/prefix|/Applications/CMake.app/Contents/MacOS/CMake|1|1000x600|
 EOF
 }
 
