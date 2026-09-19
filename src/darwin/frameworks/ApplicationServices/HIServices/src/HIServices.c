@@ -2823,3 +2823,4 @@ void* _UnregisterAsSessionLauncherApplication(void)
     if (verbose) puts("STUB: _UnregisterAsSessionLauncherApplication called");
     return NULL;
 }
+

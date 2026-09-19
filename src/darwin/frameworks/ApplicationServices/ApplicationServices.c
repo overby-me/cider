@@ -19,3 +19,20 @@
 
 const char* ApplicationServicesVersionString = "Darling ApplicationServices-48";
 const unsigned long long ApplicationServicesVersionNumber = 0x4048000000000000;
+
+/*
+ * PlotIconRefInContext, in ApplicationServices because that is where the caller looks for it:
+ *   (undefined) external _PlotIconRefInContext (from ApplicationServices)
+ * while GetIconRef and ReleaseIconRef in the same caller come from CoreServices. Two-level
+ * namespace means each has to be defined in the library that is named, not in one place. Task #235.
+ *
+ * Nothing can be plotted without an icon database, and there is none. paramErr is honest for the
+ * only IconRef this port ever hands out, which is NULL.
+ */
+typedef struct OpaqueIconRef *IconRef;
+
+long PlotIconRefInContext(void *ctx, const void *rect, short align, short transform,
+                          const void *labelColor, unsigned int flags, IconRef theIconRef)
+{
+    return -50 /* paramErr */;
+}
