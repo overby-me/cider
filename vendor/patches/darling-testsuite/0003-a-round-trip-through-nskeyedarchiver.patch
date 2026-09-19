@@ -1,0 +1,68 @@
+A round trip through NSKeyedArchiver, so the modern path is tested rather than read.
+
+While fixing the non-keyed archiver I wrote that NSKeyedArchiver.m is 1236 lines with no stub
+markers and real method bodies, so the hole was PROBABLY confined to the old class. That was a
+reading of the source and not a measurement, and nothing in the suite exercised keyed archiving at
+all, which is exactly the condition that let an empty encodeRootObject: survive for years next door.
+
+Now measured: it works. The case archives a dictionary holding a string, a number and an array,
+and compares every value after a round trip.
+
+Two assertions carry more than they look:
+
+  THE MAGIC. A keyed archive is a binary property list, so the first eight bytes are "bplist00".
+  That is the cheapest available proof that something structured was written rather than merely a
+  plausible NUMBER of bytes, which is the failure the non-keyed archiver had.
+
+  THE SAME OBJECT TWICE MUST COME BACK AS ONE OBJECT, which is the uid graph doing its job and the
+  part most easily written so that it decodes without complaint and silently duplicates.
+
+MEASURED: 69 of 69.
+
+--- /dev/null
++++ b/testsuite/System/Library/Frameworks/Foundation.framework/test/NSKeyedArchiver/test_NSKeyedArchiver_roundtrip.m
+@@ -0,0 +1,44 @@
++#include <darling-testsuite/assertion.h>
++#include <Foundation/Foundation.h>
++
++// The MODERN archiver had no coverage either, which is how the non-keyed one kept an empty
++// encodeRootObject: for years: every call succeeded and nothing ever read one back. Task #230.
++int main(void) {
++    NSDictionary *root = @{
++        @"name": @"cider",
++        @"count": [NSNumber numberWithInt: 12],
++        @"list": @[ @"a", @"b" ],
++    };
++
++    NSData *data = [NSKeyedArchiver archivedDataWithRootObject: root];
++    assert_is_true(data != nil);
++    assert_is_true([data length] > 0);
++
++    // A keyed archive is a binary property list, and the magic is the cheapest proof that
++    // something structured was written rather than a plausible number of bytes.
++    assert_is_true([data length] > 8);
++    char magic[9] = {0};
++    [data getBytes: magic length: 8];
++    assert_equals_cstring("binary plist magic", "bplist00", magic);
++
++    NSDictionary *back = [NSKeyedUnarchiver unarchiveObjectWithData: data];
++    assert_is_true(back != nil);
++    assert_equals_NSUInteger("root count", [root count], [back count]);
++    assert_equals_NSString(@"cider", [back objectForKey: @"name"]);
++    assert_equals_NSUInteger("count value", 12,
++            (NSUInteger) [[back objectForKey: @"count"] intValue]);
++    assert_equals_NSUInteger("list count", 2, [[back objectForKey: @"list"] count]);
++    assert_equals_NSString(@"b", [[back objectForKey: @"list"] objectAtIndex: 1]);
++
++    // The same object twice must come back as one object: that is the keyed archiver's uid graph
++    // doing its job, and it is the part most easily written so it decodes without complaint and
++    // silently duplicates.
++    NSString *shared = [NSString stringWithFormat: @"shared %d", 2];
++    NSArray *twice = @[ shared, shared ];
++    NSArray *twiceBack = [NSKeyedUnarchiver unarchiveObjectWithData:
++            [NSKeyedArchiver archivedDataWithRootObject: twice]];
++    assert_equals_NSUInteger("twice count", 2, [twiceBack count]);
++    assert_is_true([twiceBack objectAtIndex: 0] == [twiceBack objectAtIndex: 1]);
++
++    return 0;
++}

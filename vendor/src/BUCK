@@ -65274,6 +65274,61 @@ darwin_binary(
 )
 
 cc_objects(
+    name = "dts_System_Library_Frameworks_Foundation_framework_test_NSKeyedArchiver_test_NSKeyedArchiver_roundtrip_obj",
+    srcs = [
+        "darling-testsuite/testsuite/System/Library/Frameworks/Foundation.framework/test/NSKeyedArchiver/test_NSKeyedArchiver_roundtrip.m",
+    ],
+    compiler_flags = ["-O2", "-Wall"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Security",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_CoreText",
+        "//vendor/src:fw_CoreData",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_ATS",
+        "//src/darwin/frameworks:fw_ApplicationServices",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_ColorSync",
+        "//src/darwin/frameworks:fw_ColorSyncLegacy",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_HIServices",
+        "//src/darwin/frameworks:fw_ImageIO",
+        "//src/darwin/frameworks:fw_LangAnalysis",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_OpenGL",
+        "//src/darwin/frameworks:fw_PrintCore",
+        "//src/darwin/frameworks:fw_QD",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/frameworks:fw_SpeechSynthesis",
+        ":darling_testsuite_inc",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "dts_System_Library_Frameworks_Foundation_framework_test_NSKeyedArchiver_test_NSKeyedArchiver_roundtrip",
+    objs = [
+        ":dts_System_Library_Frameworks_Foundation_framework_test_NSKeyedArchiver_test_NSKeyedArchiver_roundtrip_obj",
+        ":darling_testsuite_lib_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
     name = "dts_System_Library_Frameworks_Foundation_framework_test_NSString_NSURLUtilities_test_NSString_stringByRemovingPercentEncoding_obj",
     srcs = [
         "darling-testsuite/testsuite/System/Library/Frameworks/Foundation.framework/test/NSString(NSURLUtilities)/test_NSString_stringByRemovingPercentEncoding.m",
