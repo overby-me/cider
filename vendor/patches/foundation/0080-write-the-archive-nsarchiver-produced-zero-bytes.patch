@@ -1,0 +1,745 @@
+Write the archive: NSArchiver produced ZERO BYTES for any object.
+
+-[NSArchiver encodeRootObject:] WAS AN EMPTY METHOD, and every encode primitive under it,
+encodeObject:, encodeValueOfObjCType:at:, encodeArrayOfObjCType:count:at:, encodeBytes:length:,
+encodeValuesOfObjCTypes:, versionForClassName:, replaceObject:withObject:, data and archiverData,
+was an NSLog stub with no body. So +archivedDataWithRootObject: answered an empty NSData for
+anything at all, and every application in this port that archives an object into its defaults, a
+file or the pasteboard stored nothing. Confirmed from both ends: Swift Publisher's own plist held
+exactly one data value, FTUnlockedLayoutGuidelineColor, and it was 0 bytes.
+
+This is the write half of the format NSUnarchiver.m already reads, and it is mirrored from that
+file rather than invented: the NeXT typedstream, version 4. readHeader, readObject, _readObject,
+readClass, decodeSharedString, decodeValueOfObjCType: and readType: are the methods to read beside
+this one, and each has a counterpart here.
+
+THREE THINGS THE DECODER DECIDES AND THE WRITER MUST OBEY:
+
+  THE HEADER NAMES THE BYTE ORDER. readHeader takes "typedstream" to mean big-endian and
+  "streamtyped" to mean little-endian, and swaps every multi-byte value when it disagrees with the
+  host. Writing the one that matches this host lets everything else be written natively.
+
+  THE LABEL ORDER IS THE FORMAT. Objects and classes draw from ONE counter, and an object takes its
+  label BEFORE its class, because that is where _readObject: calls nextSharedObjectLabel. A class
+  takes its label after its name and version and before its superclass. One step out of place and
+  every back-reference in the archive names the wrong thing.
+
+  A REFERENCE IS WRITTEN AS index + SmallestLabel, which is why SmallestLabel is -110: it puts
+  every reference above the six special labels, so the reader can tell them apart. cider_writeInt
+  therefore refuses to write a bare byte for anything below it.
+
+The tables live behind the `ids` ivar rather than in new ivars, because NSArchiver.h is a public
+header and an application may subclass NSArchiver: changing the ivar layout moves where a
+subclass's own ivars land. `ids` is already a void * whose meaning is "encodeRootObject: has begun".
+
+encodeConditionalObject: was also wrong in a way worth naming. It wrote the object
+unconditionally, and a conditional reference exists precisely so that it does NOT: it is written
+only if the object is already in the archive, which is how a back-pointer avoids keeping its target
+alive. As it stood it turned every weak reference into a strong one.
+
+MEASURED: darling-testsuite goes from 67 of 68 to 68 OF 68. The round-trip case exercises an
+NSString, an NSNumber, an NSArray, an NSDictionary, and the same object stored twice, which must
+come back as one object and does.
+
+--- a/src/NSArchiver.m
++++ b/src/NSArchiver.m
+@@ -2,10 +2,46 @@
+ #import <Foundation/NSRaise.h>
+ #import <Foundation/NSMutableData.h>
+ #import <Foundation/NSMutableDictionary.h>
++#import <Foundation/NSMutableArray.h>
++#import <Foundation/NSException.h>
+ #import <Foundation/NSByteOrder.h>
+ #import <Foundation/NSGeometry.h>
+ #include <string.h>
+ #include <dispatch/dispatch.h>
++#include <objc/runtime.h>
++
++/*
++ * THE WRITE SIDE OF THE NeXT TYPEDSTREAM, MIRRORED FROM NSUnarchiver.m, WHICH IS THE SPECIFICATION.
++ * Every method here has a counterpart there; changing one without the other produces an archive
++ * that reads back as something else, silently. Task #230.
++ */
++
++static signed char const Long2Label       = -127;
++static signed char const Long4Label       = -126;
++static signed char const RealLabel        = -125;
++static signed char const NewLabel         = -124;
++static signed char const NullLabel        = -123;
++static signed char const EndOfObjectLabel = -122;
++static signed char const SmallestLabel    = -110;
++
++/* Biased so every reference lands above the six labels and cannot be mistaken for one. */
++#define UNBIAS(index) ((int) ((index) + SmallestLabel))
++
++/*
++ * Carried behind the `ids` ivar rather than in new ones: NSArchiver.h is public and an application
++ * may subclass it, so changing the ivar layout moves where a subclass's own ivars land.
++ */
++typedef struct {
++    /* The shared STRING table is a list indexed by order of first appearance. */
++    NSMutableArray *sharedStrings;
++    NSMutableDictionary *stringIndexes;
++    /*
++     * A separate counter, which objects AND classes draw from. Keyed by IDENTITY, not -isEqual:,
++     * because identity is what the reader reproduces.
++     */
++    CFMutableDictionaryRef objectLabels;
++    int objectCounter;
++} CiderArchiverContext;
+ 
+ @implementation NSObject (NSArchiverCallBack)
+ 
+@@ -21,7 +57,127 @@
+ 
+ @end
+ 
++static unsigned int ciderRoundUp(unsigned int size, unsigned int align)
++{
++    return ((size + align - 1) / align) * align;
++}
++
++static const char *ciderSkipStructName(const char *str)
++{
++    const char *type = str;
++
++    while (TRUE)
++    {
++        switch (*type++)
++        {
++            case '=':
++                return type;
++            case '}':
++            case '{':
++            case ')':
++            case '(':
++            case 0:
++                return str;
++        }
++    }
++}
++
++/* Stops after the FIRST type it finds, which is what walking a struct encoding needs. */
++static const char *ciderSizeofType(const char *type, unsigned int *size, unsigned int *align)
++{
++    char c = *type++;
++
++#define simpleCase(cc, ctype) case cc: *size = sizeof(ctype); *align = __alignof(ctype); break
++
++    switch (c)
++    {
++        simpleCase('c', char);
++        simpleCase('C', char);
++        simpleCase('s', short);
++        simpleCase('S', short);
++        simpleCase('i', int);
++        simpleCase('I', int);
++        simpleCase('!', int);
++        simpleCase('l', int);
++        simpleCase('L', int);
++        simpleCase('f', float);
++        simpleCase('d', double);
++        simpleCase('@', id);
++        simpleCase('*', char *);
++        simpleCase('%', char *);
++        simpleCase(':', SEL);
++        simpleCase('#', Class);
++        case '[':
++        {
++            unsigned int count = 0;
++            unsigned int s, a;
++
++            while ('0' <= *type && *type <= '9')
++                count = 10 * count + (*type++ - '0');
++
++            type = ciderSizeofType(type, &s, &a);
++
++            *size = count * ciderRoundUp(s, a);
++            *align = a;
++
++            c = *type++;
++            if (c != ']')
++                [NSException raise:NSInvalidArgumentException format:@"Invalid char found in array encoding, expected ], found %c", c];
++            break;
++        }
++        case '(':
++        {
++            unsigned int unionSize = 0;
++            unsigned int unionAlign = 1;
+ 
++            type = ciderSkipStructName(type);
++
++            while (*type != ')')
++            {
++                unsigned int s, a;
++
++                type = ciderSizeofType(type, &s, &a);
++                if (s > unionSize)
++                    unionSize = s;
++                if (a > unionAlign)
++                    unionAlign = a;
++            }
++
++            *size = ciderRoundUp(unionSize, unionAlign);
++            *align = unionAlign;
++            break;
++        }
++        case '{':
++        {
++            unsigned int structSize = 0;
++            unsigned int structAlign = 1;
++
++            type = ciderSkipStructName(type);
++
++            while (*type != '}')
++            {
++                unsigned int s, a;
++
++                type = ciderSizeofType(type, &s, &a);
++                structSize = ciderRoundUp(structSize, a);
++                structSize += s;
++                if (a > structAlign)
++                    structAlign = a;
++            }
++
++            *size = ciderRoundUp(structSize, structAlign);
++            *align = structAlign;
++            break;
++        }
++        default:
++            *size = 0;
++            *align = 1;
++            break;
++    }
++
++#undef simpleCase
++    return type;
++}
+ 
+ @implementation NSArchiver
+ 
+@@ -31,6 +187,17 @@
+     if (replacementTable)
+         CFRelease(replacementTable);
+ 
++    if (ids != NULL)
++    {
++        CiderArchiverContext *context = (CiderArchiverContext *)ids;
++        [context->sharedStrings release];
++        [context->stringIndexes release];
++        if (context->objectLabels)
++            CFRelease(context->objectLabels);
++        free(context);
++        ids = NULL;
++    }
++
+     [map release];
+     [super dealloc];
+ }
+@@ -103,37 +270,374 @@
+     [map setObject:encoded forKey:name];
+ }
+ 
+-- (void)encodeConditionalObject:(id)object
++- (id)initForWritingWithMutableData:(NSMutableData *)data
++{
++    self = [super init];
++    if (self)
++    {
++        mdata = [data retain];
++    }
++    return self;
++}
++
++#pragma mark - The byte layer
++
++- (CiderArchiverContext *)cider_context
++{
++    return (CiderArchiverContext *)ids;
++}
++
++- (void)cider_writeBytes:(const void *)bytes length:(NSUInteger)length
++{
++    if (mdata != nil && length > 0)
++        [mdata appendBytes:bytes length:length];
++}
++
++- (void)cider_writeChar:(signed char)value
++{
++    [self cider_writeBytes:&value length:1];
++}
++
++/*
++ * A bare byte only for a value the reader cannot confuse with a label. finishDecodeInt: would
++ * accept -125 through -122 as plain values, but every caller that matters checks for those labels
++ * BEFORE calling it, so writing one bare would be read as RealLabel or NewLabel by the caller above.
++ */
++- (void)cider_writeInt:(int)value
++{
++    if (value >= SmallestLabel && value <= 127)
++    {
++        [self cider_writeChar:(signed char)value];
++    }
++    else if (value >= -32768 && value <= 32767)
++    {
++        short small = (short)value;
++        [self cider_writeChar:Long2Label];
++        [self cider_writeBytes:&small length:2];
++    }
++    else
++    {
++        [self cider_writeChar:Long4Label];
++        [self cider_writeBytes:&value length:4];
++    }
++}
++
++- (void)cider_writeShort:(short)value
++{
++    if (value >= SmallestLabel && value <= 127)
++        [self cider_writeChar:(signed char)value];
++    else
++    {
++        [self cider_writeChar:Long2Label];
++        [self cider_writeBytes:&value length:2];
++    }
++}
++
++- (void)cider_writeFloat:(float)value
++{
++    [self cider_writeChar:RealLabel];
++    [self cider_writeBytes:&value length:sizeof(float)];
++}
++
++- (void)cider_writeDouble:(double)value
++{
++    [self cider_writeChar:RealLabel];
++    [self cider_writeBytes:&value length:sizeof(double)];
++}
++
++/* Length then ASCII bytes, no terminator. decodeCharsAsString: rejects a length of 0. */
++- (void)cider_writeCharsAsString:(const char *)string
++{
++    if (string == NULL)
++    {
++        [self cider_writeChar:NullLabel];
++        return;
++    }
++    int length = (int)strlen(string);
++    [self cider_writeInt:length];
++    [self cider_writeBytes:string length:length];
++}
++
++/* Type encodings, class names and C strings all share one table: "@" is written once per archive. */
++- (void)cider_writeSharedString:(const char *)string
++{
++    CiderArchiverContext *context = [self cider_context];
++    if (string == NULL || context == NULL)
++    {
++        [self cider_writeChar:NullLabel];
++        return;
++    }
++
++    NSString *key = [[NSString alloc] initWithUTF8String:string];
++    NSNumber *existing = [context->stringIndexes objectForKey:key];
++    if (existing != nil)
++    {
++        [self cider_writeInt:UNBIAS([existing intValue])];
++        [key release];
++        return;
++    }
++
++    [self cider_writeChar:NewLabel];
++    [self cider_writeCharsAsString:string];
++
++    NSUInteger index = [context->sharedStrings count];
++    [context->sharedStrings addObject:key];
++    [context->stringIndexes setObject:[NSNumber numberWithUnsignedInteger:index] forKey:key];
++    [key release];
++}
++
++#pragma mark - Classes and objects
++
++- (void)cider_writeClass:(Class)cls
+ {
+-    if (mdata != NULL)
++    CiderArchiverContext *context = [self cider_context];
++    if (cls == Nil || context == NULL)
++    {
++        [self cider_writeChar:NullLabel];
++        return;
++    }
++
++    void *existing = NULL;
++    if (CFDictionaryGetValueIfPresent(context->objectLabels, cls, (const void **)&existing))
++    {
++        [self cider_writeInt:UNBIAS((int)(intptr_t)existing - 1)];
++        return;
++    }
++
++    [self cider_writeChar:NewLabel];
++
++    NSString *name = [self classNameEncodedForTrueClassName:NSStringFromClass(cls)];
++    [self cider_writeSharedString:[name UTF8String]];
++    [self cider_writeInt:(int)[cls version]];
++
++    /*
++     * THE LABEL IS TAKEN HERE, after the version and before the superclass, because that is where
++     * readClass: calls nextSharedObjectLabel. A step out of place and every back-reference is wrong.
++     */
++    int label = context->objectCounter++;
++    CFDictionarySetValue(context->objectLabels, cls, (const void *)(intptr_t)(label + 1));
++
++    [self cider_writeClass:[cls superclass]];
++}
++
++- (void)cider_writeObject:(id)object
++{
++    CiderArchiverContext *context = [self cider_context];
++    if (object == nil || context == NULL)
++    {
++        [self cider_writeChar:NullLabel];
++        return;
++    }
++
++    id replacement = nil;
++    if (replacementTable == NULL)
++        replacementTable = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, NULL, NULL);
++    if (!CFDictionaryGetValueIfPresent(replacementTable, object, (const void **)&replacement))
++    {
++        replacement = [object replacementObjectForArchiver:self];
++        CFDictionarySetValue(replacementTable, object, replacement);
++    }
++    if (replacement == nil)
++    {
++        [self cider_writeChar:NullLabel];
++        return;
++    }
++
++    void *existing = NULL;
++    if (CFDictionaryGetValueIfPresent(context->objectLabels, replacement, (const void **)&existing))
+     {
+-        if (ids == NULL)
++        [self cider_writeInt:UNBIAS((int)(intptr_t)existing - 1)];
++        return;
++    }
++
++    [self cider_writeChar:NewLabel];
++
++    /* Before the class, matching _readObject: which labels the object and then reads its class. */
++    int label = context->objectCounter++;
++    CFDictionarySetValue(context->objectLabels, replacement, (const void *)(intptr_t)(label + 1));
++
++    [self cider_writeClass:[replacement classForArchiver]];
++    [replacement encodeWithCoder:self];
++    [self cider_writeChar:EndOfObjectLabel];
++}
++
++#pragma mark - Types
++
++- (void)cider_writeType:(const char *)type at:(const void *)data outType:(const char **)outType
++{
++    char ch = type[0];
++    type++;
++
++    switch (ch)
++    {
++        case 'c':
++        case 'C':
++            [self cider_writeChar:*((const char *)data)];
++            break;
++
++        case 's':
++        case 'S':
++            [self cider_writeShort:*((const short *)data)];
++            break;
++
++        case 'i':
++        case 'I':
++        case 'l':
++        case 'L':
++            [self cider_writeInt:*((const int *)data)];
++            break;
++
++        case 'f':
++            [self cider_writeFloat:*((const float *)data)];
++            break;
++
++        case 'd':
++            [self cider_writeDouble:*((const double *)data)];
++            break;
++
++        case '@':
++            [self cider_writeObject:*((id const *)data)];
++            break;
++
++        case '*':
++        case '%':
++            [self cider_writeSharedString:*((const char *const *)data)];
++            break;
++
++        case ':':
+         {
+-            // fault; throw exception here for requiring encodeRootObject:
++            SEL selector = *((const SEL *)data);
++            [self cider_writeSharedString:selector ? sel_getName(selector) : NULL];
++            break;
++        }
++
++        case '#':
++        {
++            Class cls = *((Class const *)data);
++            [self cider_writeSharedString:cls ? class_getName(cls) : NULL];
++            break;
++        }
++
++        case '[':
++        {
++            unsigned int size, align, count = 0;
++            const char *elemType;
++
++            while ('0' <= *type && *type <= '9')
++            {
++                count = 10 * count + (*type - '0');
++                type++;
++            }
++
++            elemType = type;
++            type = ciderSizeofType(elemType, &size, &align);
++
++            for (unsigned int i = 0; i < count; i++)
++                [self cider_writeType:elemType at:((const char *)data) + (i * size) outType:NULL];
++
++            if (*type == ']')
++                type++;
++            break;
++        }
++
++        case '{':
++        {
++            unsigned int off = 0;
++            type = ciderSkipStructName(type);
++
++            while (*type != '}')
++            {
++                unsigned int s, a;
++
++                ciderSizeofType(type, &s, &a);
++                off = ciderRoundUp(off, a);
++                [self cider_writeType:type at:((const char *)data) + off outType:&type];
++                off += s;
++            }
++            type++;
++            break;
+         }
++
++        case '(':
++        {
++            /* A union is written as its bytes, because only the reader's type says which member. */
++            unsigned int s, a;
++            type = ciderSkipStructName(type);
++            type = ciderSizeofType(type - 1, &s, &a);
++
++            for (unsigned int i = 0; i < s; i++)
++                [self cider_writeType:"C" at:((const char *)data) + i outType:NULL];
++            break;
++        }
++
++        default:
++            NSLog(@"unsupported archiving type %c", ch);
++            break;
++    }
++
++    if (outType)
++        *outType = type;
++}
++
++#pragma mark - NSCoder
++
++- (void)encodeRootObject:(id)object
++{
++    if (mdata == nil || ids != NULL)
++        return;
++
++    CiderArchiverContext *context = calloc(1, sizeof(CiderArchiverContext));
++    context->sharedStrings = [[NSMutableArray alloc] init];
++    context->stringIndexes = [[NSMutableDictionary alloc] init];
++    context->objectLabels = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, NULL, NULL);
++    context->objectCounter = 0;
++    ids = context;
++
++    [self cider_writeChar:4];
++
++    /*
++     * THE HEADER NAMES THE BYTE ORDER: readHeader reads "typedstream" as big-endian and
++     * "streamtyped" as little-endian and swaps against the host. Matching the host lets everything
++     * below be written natively.
++     */
++    BOOL isBig = (NSHostByteOrder() == NS_BigEndian);
++    [self cider_writeCharsAsString:isBig ? "typedstream" : "streamtyped"];
++    [self cider_writeInt:1000];
++
++    [self cider_writeSharedString:"@"];
++    [self cider_writeObject:object];
++}
++
++- (void)encodeConditionalObject:(id)object
++{
++    /*
++     * ONLY IF THE OBJECT IS ALREADY IN THE ARCHIVE. That is how a back-pointer avoids keeping its
++     * target alive; writing it unconditionally, as this did, makes every weak reference strong.
++     */
++    CiderArchiverContext *context = [self cider_context];
++    if (mdata == nil || context == NULL)
++        return;
++
++    if (object != nil)
++    {
+         id replacement = nil;
+         if (replacementTable == NULL)
+-        {
+             replacementTable = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, NULL, NULL);
+-        }
+         if (!CFDictionaryGetValueIfPresent(replacementTable, object, (const void **)&replacement))
+         {
+             replacement = [object replacementObjectForArchiver:self];
+             CFDictionarySetValue(replacementTable, object, replacement);
+         }
+ 
+-        // CFSetGetValue(ids, replacement) ?
+-        
+-        if (replacement != nil)
++        if (replacement != nil && CFDictionaryContainsKey(context->objectLabels, replacement))
+         {
+             [self encodeObject:object];
++            return;
+         }
+     }
+-}
+-
+-- (void)encodeRootObject:(id)object
+-{
+ 
++    [self cider_writeSharedString:"@"];
++    [self cider_writeChar:NullLabel];
+ }
+ 
+ - (void)encodeDataObject:(NSData *)object
+@@ -144,65 +648,93 @@
+     [self encodeArrayOfObjCType:@encode(char) count:len at:bytes];
+ }
+ 
+-- (id)initForWritingWithMutableData:(NSMutableData *)data
+-{
+-    self = [super init];
+-    if (self)
+-    {
+-        mdata = [data retain];
+-    }
+-    return self;
+-}
+-
+ - (void)encodeObject:(id)object
+ {
+-	NSLog(@"STUB: NSArchiver %@", NSStringFromSelector(_cmd));
++    [self encodeValueOfObjCType:"@" at:&object];
+ }
+ 
+ - (void)encodeBytes:(const void *)addr length:(NSUInteger)len
+ {
+-	NSLog(@"STUB: NSArchiver %@", NSStringFromSelector(_cmd));
++    if (mdata == nil)
++        return;
++    [self cider_writeSharedString:"+"];
++    [self cider_writeInt:(int)len];
++    [self cider_writeBytes:addr length:len];
+ }
+ 
+-- (void)encodeArrayOfObjCType:(const char *)type 
+-                        count:(NSUInteger)count 
++- (void)encodeArrayOfObjCType:(const char *)type
++                        count:(NSUInteger)count
+                            at:(const void *)array
+ {
+-	NSLog(@"STUB: NSArchiver %@", NSStringFromSelector(_cmd));
++    if (mdata == nil || type == NULL)
++        return;
++
++    /* ONE "[<count><type>]" encoding, not <count> values: readType: reads the count from the type. */
++    char encoding[64];
++    snprintf(encoding, sizeof(encoding), "[%lu%s]", (unsigned long)count, type);
++    [self cider_writeSharedString:encoding];
++
++    unsigned int size, align;
++    ciderSizeofType(type, &size, &align);
++    for (NSUInteger i = 0; i < count; i++)
++        [self cider_writeType:type at:((const char *)array) + (i * size) outType:NULL];
+ }
+ 
+ - (void)encodeValuesOfObjCTypes:(const char *)types, ...
+ {
+-	NSLog(@"STUB: NSArchiver %@", NSStringFromSelector(_cmd));
++    if (mdata == nil || types == NULL)
++        return;
++
++    [self cider_writeSharedString:types];
++
++    va_list arguments;
++    va_start(arguments, types);
++
++    const char *type = types;
++    while (*type != '\0')
++    {
++        const void *data = va_arg(arguments, const void *);
++        [self cider_writeType:type at:data outType:&type];
++    }
++
++    va_end(arguments);
+ }
+ 
+-- (void)encodeValueOfObjCType:(const char *)type 
++- (void)encodeValueOfObjCType:(const char *)type
+                            at:(const void *)addr
+ {
+-	NSLog(@"STUB: NSArchiver %@", NSStringFromSelector(_cmd));
++    if (mdata == nil || type == NULL)
++        return;
++
++    /* Match the reader, which forces BOOL to 'c' so an iOS archive reads on macOS and back. */
++    if (strcmp(type, @encode(BOOL)) == 0)
++        type = "c";
++
++    [self cider_writeSharedString:type];
++    [self cider_writeType:type at:addr outType:NULL];
+ }
+ 
+ - (NSInteger)versionForClassName:(NSString *)className
+ {
+-	NSLog(@"STUB: NSArchiver %@", NSStringFromSelector(_cmd));
+-	return 0;
++    Class cls = NSClassFromString(className);
++    return cls ? [cls version] : NSNotFound;
+ }
+ 
+ - (void)replaceObject:(id)object withObject:(id)replacement
+ {
+-	NSLog(@"STUB: NSArchiver %@", NSStringFromSelector(_cmd));
++    if (replacementTable == NULL)
++        replacementTable = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, NULL, NULL);
++    CFDictionarySetValue(replacementTable, object, replacement);
+ }
+ 
+ - (id)data
+ {
+-	NSLog(@"STUB: NSArchiver %@", NSStringFromSelector(_cmd));
+-	return nil;
++    return mdata;
+ }
+ 
+ - (id)archiverData
+ {
+-	NSLog(@"STUB: NSArchiver %@", NSStringFromSelector(_cmd));
+-	return nil;
++    return mdata;
+ }
+ 
+ @end

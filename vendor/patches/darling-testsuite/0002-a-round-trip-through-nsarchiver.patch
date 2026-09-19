@@ -1,0 +1,67 @@
+A round trip through NSArchiver, which had no coverage at all.
+
+Nothing in the suite exercised the old non-keyed archiver, which is how -[NSArchiver
+encodeRootObject:] stayed an empty method: every call succeeded and returned an empty NSData, and
+nothing ever read one back to find out.
+
+The case archives an NSString, an NSNumber, an NSArray and an NSDictionary and compares each value
+after a round trip, so a writer that emits plausible-looking bytes in the wrong order fails rather
+than passes. Two of the assertions are there for specific defects and should not be dropped as
+redundant:
+
+  THE SAME OBJECT STORED TWICE MUST COME BACK AS ONE OBJECT. That is the shared-object table doing
+  its job, and it is the part of the format most easily written in a way that decodes without
+  complaint and silently duplicates.
+
+  AN EMPTY ARCHIVE MUST ANSWER nil, NOT RAISE (foundation 0079). That raise unwound out of a
+  drawRect 277 times in one run, and the only evidence was one caught-exception line.
+
+Verified to FAIL against the stub encoder and PASS against the implementation: 67 of 68 before,
+68 of 68 after.
+
+--- /dev/null
++++ b/testsuite/System/Library/Frameworks/Foundation.framework/test/NSArchiver/test_NSArchiver_roundtrip.m
+@@ -0,0 +1,43 @@
++#include <darling-testsuite/assertion.h>
++#include <Foundation/Foundation.h>
++
++int main(void) {
++    NSString *string = @"cider archives a string";
++    NSData *stringData = [NSArchiver archivedDataWithRootObject: string];
++    assert_is_true(stringData != nil);
++    assert_is_true([stringData length] > 0);
++    assert_equals_NSString(string, [NSUnarchiver unarchiveObjectWithData: stringData]);
++
++    NSNumber *number = [NSNumber numberWithInt: 424242];
++    NSData *numberData = [NSArchiver archivedDataWithRootObject: number];
++    assert_is_true([numberData length] > 0);
++    assert_equals_NSUInteger("number value", 424242,
++            (NSUInteger) [[NSUnarchiver unarchiveObjectWithData: numberData] intValue]);
++
++    NSArray *array = @[ @"one", @"two", @"three" ];
++    NSData *arrayData = [NSArchiver archivedDataWithRootObject: array];
++    NSArray *arrayBack = [NSUnarchiver unarchiveObjectWithData: arrayData];
++    assert_is_true([arrayData length] > 0);
++    assert_equals_NSUInteger("array count", [array count], [arrayBack count]);
++    assert_equals_NSString(@"two", [arrayBack objectAtIndex: 1]);
++
++    NSDictionary *dictionary = @{ @"key": @"value", @"count": [NSNumber numberWithInt: 7] };
++    NSData *dictionaryData = [NSArchiver archivedDataWithRootObject: dictionary];
++    NSDictionary *dictionaryBack = [NSUnarchiver unarchiveObjectWithData: dictionaryData];
++    assert_is_true([dictionaryData length] > 0);
++    assert_equals_NSUInteger("dictionary count", [dictionary count], [dictionaryBack count]);
++    assert_equals_NSString(@"value", [dictionaryBack objectForKey: @"key"]);
++    assert_equals_NSUInteger("dictionary number", 7,
++            (NSUInteger) [[dictionaryBack objectForKey: @"count"] intValue]);
++
++    NSString *shared = [NSString stringWithFormat: @"shared %d", 1];
++    NSArray *twice = @[ shared, shared ];
++    NSArray *twiceBack = [NSUnarchiver unarchiveObjectWithData:
++            [NSArchiver archivedDataWithRootObject: twice]];
++    assert_equals_NSUInteger("twice count", 2, [twiceBack count]);
++    assert_is_true([twiceBack objectAtIndex: 0] == [twiceBack objectAtIndex: 1]);
++
++    // Empty is not an argument error and must not raise: foundation 0079.
++    assert_is_true([NSUnarchiver unarchiveObjectWithData: [NSData data]] == nil);
++    return 0;
++}
