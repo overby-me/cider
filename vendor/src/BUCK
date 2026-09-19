@@ -63497,6 +63497,7 @@ cc_header_root(
     name = "darling_testsuite_inc",
     headers = glob(["darling-testsuite/lib/darling-testsuite/include/darling-testsuite/**/*.h"]),
     root = "darling-testsuite/lib/darling-testsuite/include",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
