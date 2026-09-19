@@ -42,6 +42,9 @@ CLICK=${CLICK:-}           # "x,y" to click after the first capture, empty to sk
 CLICK_SETTLE=${CLICK_SETTLE:-1500}
 TYPE=${TYPE:-}             # text to type after the click, empty to skip
 POST_CLICK=${POST_CLICK:-}  # "x,y" to click AFTER typing, when a keyboard exists (#210)
+# STEPS replaces the fixed CLICK, TYPE, POST_CLICK order with an arbitrary one, which is the only
+# way to fill two text fields. See the sequencer below for the verbs and the reason (#235).
+STEPS=${STEPS:-}
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -232,47 +235,79 @@ shoot d1-start
 # A SEQUENCE, not a click. Showing that the keyboard works needs a text field, and a text field is
 # several clicks deep in most applications: Swift Publisher wants the welcome window closed, a
 # template picked and Choose pressed before anything will take a keystroke. Semicolons separate.
+# The vocabulary is abs/rel/press/release/scroll/sleep. "move" and "click" were ignored in
+# silence, which reads exactly like a click that landed and did nothing.
+#
+# THE POINTER HAS THE SAME RACE THE KEYBOARD DOES, and the sleep is the same trick as wtype -s.
+# This tool creates the virtual pointer when it starts and destroys it when it exits, so the seat
+# gains and loses the capability in one breath; the guest attaches its wl_pointer listener only
+# after it SEES the capability, and a press sent before that is gone. Measured on mmex: a click on
+# one button opened its dialog 9 times in 12 at 200ms and never at all in three runs under load,
+# with the guest input trace showing the pointer attached and released and NO button event between.
+press_at() {
+	printf 'abs %s %s\nsleep %s\npress left\nsleep 80\nrelease left\n' "$1" "$2" "$CLICK_SETTLE" \
+		| WAYLAND_DISPLAY=$NEW "$VPTR" "$WIDTH" "$HEIGHT" >>"$SHOTS/driver.log" 2>&1
+}
+
+# -s SLEEPS BEFORE TYPING, and that is the whole trick. wtype creates its virtual keyboard when it
+# starts and destroys it when it exits, so the seat gains and loses the capability in one breath;
+# the guest attaches its wl_keyboard listener only after it SEES the capability, and every key was
+# gone before the listener existed. Sleeping first keeps the device alive long enough for the
+# application to attach, and -d spaces the keys so none is lost to the same race.
+send_keys_spec() {
+	case "$1" in
+		# Raw wtype arguments, for a shortcut: "raw:-M logo n -m logo" is Command and N, since the
+		# backend maps Mod4 to NSCommandKeyMask. A menu item several clicks deep is not reachable
+		# any other way from here.
+		raw:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 ${1#raw:} >>"$SHOTS/driver.log" 2>&1 ;;
+		# key:<name> sends a named key rather than text. Proving the keyboard works needs something
+		# whose effect is VISIBLE, and in an application whose text fields are several clicks deep
+		# the cheapest such thing is Return on a selection.
+		key:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -k "${1#key:}" >>"$SHOTS/driver.log" 2>&1 ;;
+		*)     WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -d 120 "$1" >>"$SHOTS/driver.log" 2>&1 ;;
+	esac
+}
+
+# STEPS: AN ARBITRARY SEQUENCE, because CLICK then TYPE then POST_CLICK cannot fill two fields.
+#
+# CMake wants a click, a path, another click, another path, then Configure, and the fixed order
+# below can express none of that. Tab was tried instead and does not move focus between those two
+# fields, which produced a run that LOOKED like a hung configure and was really a build directory
+# that was never set (#235). A harness that cannot express the interaction manufactures defects.
+#
+#   STEPS="click:300,73 type:/tmp/hello click:500,137 type:/tmp/hello/build click:57,567 wait:8"
+#
+# Verbs: click:x,y   type:<text|raw:...|key:...>   wait:<seconds>   shot:<name>
+# SPACE SEPARATES STEPS, so no argument may contain a space; quote a raw: sequence with commas
+# instead. Every step is captured as sNN-<verb> so a sequence that goes wrong can be read back
+# frame by frame rather than guessed at.
+if [ -n "${STEPS:-}" ]; then
+	n=0
+	for STEP in $STEPS; do
+		n=$((n+1))
+		verb=${STEP%%:*}; arg=${STEP#*:}
+		case "$verb" in
+			click) x=${arg%,*}; y=${arg#*,}; say "step $n click at $x,$y"; press_at "$x" "$y"; sleep 4 ;;
+			type)  say "step $n type $arg"; send_keys_spec "$arg"; sleep 3 ;;
+			wait)  say "step $n wait $arg"; sleep "$arg" ;;
+			shot)  say "step $n shot $arg" ;;
+			*)     echo "unknown step verb: $STEP" >&2; exit 2 ;;
+		esac
+		shoot "$(printf 's%02d-%s' "$n" "$verb")"
+	done
+fi
+
 for STEP in ${CLICK//;/ }; do
 	x=${STEP%,*}; y=${STEP#*,}
 	say "click at $x,$y"
-	# The vocabulary is abs/rel/press/release/scroll/sleep. "move" and "click" were ignored in
-	# silence, which reads exactly like a click that landed and did nothing.
-	#
-	# THE POINTER HAS THE SAME RACE THE KEYBOARD DOES, and the sleep below is the same trick as
-	# wtype -s further down. This tool creates the virtual pointer when it starts and destroys it
-	# when it exits, so the seat gains and loses the capability in one breath; the guest attaches
-	# its wl_pointer listener only after it SEES the capability, and a press sent before that is
-	# gone. Measured on mmex: a click on one button opened its dialog 9 times in 12 at 200ms and
-	# never at all in three runs under load, with the guest input trace showing the pointer
-	# attached and released and NO button event in between.
-	printf 'abs %s %s\nsleep %s\npress left\nsleep 80\nrelease left\n' "$x" "$y" "$CLICK_SETTLE" \
-		| WAYLAND_DISPLAY=$NEW "$VPTR" "$WIDTH" "$HEIGHT" >>"$SHOTS/driver.log" 2>&1
+	press_at "$x" "$y"
 	sleep 4
 done
 [ -n "$CLICK" ] && shoot d2-click
 
 if [ -n "$TYPE" ]; then
 	say "typing $TYPE"
-	# key:<name> sends a named key rather than text. Proving the keyboard works needs something
-	# whose effect is VISIBLE, and in an application whose text fields are several clicks deep the
-	# cheapest such thing is Return on a selection.
-	send_keys() {
-		# -s SLEEPS BEFORE TYPING, and that is the whole trick. wtype creates its virtual keyboard
-		# when it starts and destroys it when it exits, so the seat gains and loses the capability in
-		# one breath; the guest attaches its wl_keyboard listener only after it SEES the capability,
-		# and every key was gone before the listener existed. Sleeping first keeps the device alive
-		# long enough for the application to attach, and -d spaces the keys so none is lost to the
-		# same race.
-		case "$TYPE" in
-			# Raw wtype arguments, for a shortcut: "raw:-M logo n -m logo" is Command and N, since
-			# the backend maps Mod4 to NSCommandKeyMask. A menu item several clicks deep is not
-			# reachable any other way from here.
-			raw:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 ${TYPE#raw:} >>"$SHOTS/driver.log" 2>&1 ;;
-			key:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -k "${TYPE#key:}" >>"$SHOTS/driver.log" 2>&1 ;;
-			*)     WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -d 120 "$TYPE" >>"$SHOTS/driver.log" 2>&1 ;;
-		esac
-	}
-	send_keys
+	send_keys_spec "$TYPE"
 	sleep 3
 	shoot d3-typed
 fi
@@ -286,8 +321,7 @@ if [ -n "${POST_CLICK:-}" ]; then
 	for STEP in ${POST_CLICK//;/ }; do
 		x=${STEP%,*}; y=${STEP#*,}
 		say "post-click at $x,$y"
-		printf 'abs %s %s\nsleep 200\npress left\nsleep 80\nrelease left\n' "$x" "$y" \
-			| WAYLAND_DISPLAY=$NEW "$VPTR" "$WIDTH" "$HEIGHT" >>"$SHOTS/driver.log" 2>&1
+		press_at "$x" "$y"
 		sleep 4
 	done
 	shoot d3b-postclick
