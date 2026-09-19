@@ -1,0 +1,91 @@
+Free the knotes when a kqueue is torn down, because ours hold DESCRIPTORS.
+
+filter_unregister_all destroyed each filter and left its knotes in place behind an XXX-FIXME.
+Upstream can afford that: on macOS a kqueue registration costs no descriptor, so an orphaned knote
+is memory. THIS PORT DUPS EVERY WATCHED DESCRIPTOR (_dup_4libkqueue), so an orphaned knote is a
+LEAKED FILE DESCRIPTOR, and when the leaked descriptor is the write end of a pipe, that pipe can
+never report end of file to anyone.
+
+THAT IS THE HANG. Measured, with a dup and close ledger, in CMake:
+
+  kqdup fd=21 -> 24        the two watched descriptors are dup'd
+  kqdup fd=25 -> 27
+  spawn=act i=1 type=2 fd=25 newfd=1     and 25 and 21 become the child's stdout and stderr
+  spawn=act i=2 type=2 fd=21 newfd=2
+  ... 24 and 27 are NEVER closed ...
+
+The application then closes its own copies and waits for the child's output to end. It cannot:
+our two dups still hold the write ends open. Reading the hung process fd table from inside the
+container shows exactly that, a write end beside every watched read end on the same pipe inode.
+The kqueue those knotes belonged to had already been closed, which is why the application's later
+EV_DELETE for the same descriptors found no entry: the knotes were orphaned, not deleted.
+
+knote_delete_all walks a filter's knote tree and deletes each one, which is what closes kn_dupfd
+through the filter's own delete. It runs BEFORE kf_destroy, because the delete still needs the
+filter and the epoll descriptor that destroy tears down, and it stops on refusal rather than
+spinning, since knote_delete only fails on a double delete.
+
+VERIFIED: a three line CMake script whose body is one execute_process hung every run before and
+completes now, with the child's output captured (23.4.0). cmake -S -B now runs system and compiler
+detection to completion instead of blocking forever in kevent.
+
+--- a/src/common/filter.c
++++ b/src/common/filter.c
+@@ -125,12 +125,13 @@
+         if (kq->kq_filt[i].kf_id == 0)
+             continue;
+ 
++        /* BEFORE kf_destroy, because each knote's delete still needs the filter and the epoll
++         * descriptor that destroy tears down. */
++        knote_delete_all(&kq->kq_filt[i]);
++
+         if (kq->kq_filt[i].kf_destroy != NULL) 
+             kq->kq_filt[i].kf_destroy(&kq->kq_filt[i]);
+ 
+-        //XXX-FIXME
+-        //knote_free_all(&kq->kq_filt[i]);
+-
+         if (kqops.filter_free != NULL)
+             kqops.filter_free(kq, &kq->kq_filt[i]);
+ 	}
+--- a/src/common/knote.c
++++ b/src/common/knote.c
+@@ -98,6 +98,28 @@
+     }
+ }
+ 
++/* TEARDOWN MUST FREE THE KNOTES, and upstream's filter_unregister_all left that as an XXX-FIXME.
++ * A kqueue registration costs no descriptor on macOS; here every watched fd gets a private dup, so
++ * upstream's leak is memory and ours is a DESCRIPTOR. Leak the write end of a pipe and its reader
++ * never sees end of file: CMake registered filters on a child's pipe ends, closed that kqueue,
++ * and then waited forever for output that could not end. Task #235. */
++void
++knote_delete_all(struct filter *filt)
++{
++    for (;;) {
++        struct knote *kn;
++
++        pthread_rwlock_rdlock(&filt->kf_knote_mtx);
++        kn = RB_MIN(knt, &filt->kf_knote);
++        pthread_rwlock_unlock(&filt->kf_knote_mtx);
++
++        /* Stop on refusal rather than spinning: knote_delete only fails on a double delete, and a
++         * knote that will not leave the tree would loop here forever. */
++        if (kn == NULL || knote_delete(filt, kn) < 0)
++            return;
++    }
++}
++
+ int
+ knote_delete(struct filter *filt, struct knote *kn)
+ {
+--- a/src/common/private.h
++++ b/src/common/private.h
+@@ -204,6 +204,7 @@
+ void knote_release(struct knote *);
+ void knote_insert(struct filter *, struct knote *);
+ int  knote_delete(struct filter *, struct knote *);
++void knote_delete_all(struct filter *);
+ int  knote_init(void);
+ int  knote_disable(struct filter *, struct knote *);
+ #define knote_get_filter(knt) &((knt)->kn_kq->kq_filt[(knt)->kev.filter])

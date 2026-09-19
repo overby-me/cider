@@ -1,0 +1,71 @@
+A ledger for the descriptors libkqueue takes and gives back.
+
+Every watched descriptor gets a private dup here (macOS needs none), so a process fd table full of
+pipe ends says nothing about who owns them. Two lines under CIDER_TRACE_EXEC, to the daemon log:
+
+  CIDER_EXEC pid=N kqdup fd=X -> Y
+  CIDER_EXEC pid=N kqclose fd=Y
+
+Matching them is what found the #235 leak: two dups made before a spawn and never closed, holding
+the write ends of the child's pipes open so the reader could never see end of file. The same
+ledger also shows a close of a descriptor libkqueue did not own at that moment, which is the same
+bookkeeping failure pointing the other way.
+
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-libkqueue.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-libkqueue.c
+@@ -5,6 +5,11 @@
+ 
+ #include <darlingserver/rpc.h>
+ 
++#include <darling/emulation/common/simple.h>
++#include <darling/emulation/xnu_syscall/bsd/impl/unistd/getpid.h>
++
++extern int __cider_exec_trace_on(void);
++
+ int _dserver_rpc_kqchan_mach_port_open_4libkqueue(uint32_t port_name, void* receive_buffer, uint64_t receive_buffer_size, uint64_t saved_filter_flags, int* out_socket) {
+ 	return dserver_rpc_kqchan_mach_port_open(port_name, receive_buffer, receive_buffer_size, saved_filter_flags, out_socket);
+ };
+@@ -13,12 +18,17 @@
+ 	return dserver_rpc_kqchan_proc_open(pid, flags, out_socket);
+ };
+ 
++/* NAME THE DESCRIPTORS WE TAKE. A kqueue registration costs no descriptor on macOS; here every
++ * watched fd gets a private dup out of the application's own descriptor space, so a table full of
++ * pipe ends says nothing about who owns them until ours are named. Task #235. */
+ int _dup_4libkqueue(int fd) {
+ 	int ret;
+ 
+ 	ret = LINUX_SYSCALL1(__NR_dup, fd);
+ 	if (ret < 0)
+ 		ret = errno_linux_to_bsd(ret);
++	else if (__cider_exec_trace_on())
++		__simple_kprintf("CIDER_EXEC pid=%d kqdup fd=%d -> %d\n", sys_getpid(), fd, ret);
+ 
+ 	return ret;
+ };
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/close.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/close.c
+@@ -6,6 +6,7 @@
+ #include <darling/emulation/xnu_syscall/bsd/helper/bsdthread/cancelable.h>
+ #include <darling/emulation/other/mach/lkm.h>
+ #include <darling/emulation/common/simple.h>
++#include <darling/emulation/xnu_syscall/bsd/impl/unistd/getpid.h>
+ #include <darling/emulation/common/guarded/table.h>
+ 
+ __attribute__((weak))
+@@ -58,9 +59,15 @@
+ 	return ret;
+ }
+ 
++extern int __cider_exec_trace_on(void);
++
+ // Special variant for libkqueue to avoid recursion into kqueue_close()/kqueue_closed_fd()
+ __attribute__((visibility("default")))
+ long __close_for_kqueue(int fd)
+ {
++	/* Paired with the kqdup line: a dup that is never closed here is a leaked descriptor, and for
++	 * the write end of a pipe that means the reader never sees end of file. Task #235. */
++	if (__cider_exec_trace_on())
++		__simple_kprintf("CIDER_EXEC pid=%d kqclose fd=%d\n", sys_getpid(), fd);
+ 	return close_internal(fd);
+ }
