@@ -1,0 +1,61 @@
+A global event monitor is a token that never fires, not a missing method.
+
++[NSEvent addGlobalMonitorForEventsMatchingMask:handler:] did not exist, so asking for one RAISED:
+
+  NSApplication got exception: +[NSEvent addGlobalMonitorForEventsMatchingMask:handler:]:
+  unrecognized selector sent to instance 0x75eceb23a930
+
+AppKit catches exceptions per event, so the raise did not stop the application; it abandoned
+whatever the caller was part way through and said nothing. Qt asks for one while bringing up a
+dialog, and CMake raises it opening its generator wizard (#234).
+
+A GLOBAL MONITOR WATCHES OTHER APPLICATIONS EVENTS, and under this port there are none, so a token
+that never fires is the truthful answer. Returning nil would also be defensible, since macOS returns
+nil when the process is not trusted for accessibility, but that sends a caller down its
+permission-denied path for a reason that is not true here.
+
+removeMonitor: is now a quiet no-op rather than NSUnimplementedMethod(). A caller balancing an add
+it never used is not doing anything wrong and should not be reported as a defect, and with the
+global monitor now handed out the balancing call happens on a normal path.
+
+addLocalMonitorForEventsMatchingMask: is left as it was. It is a REAL feature, observing this
+application own events before they are dispatched, and answering nil is already the documented
+outcome for a monitor that matches nothing. Implementing it properly is separate work.
+
+MEASURED: the unrecognized selector is gone and the run now has ZERO caught exceptions, where
+before it had one.
+
+HONEST LIMIT: this does NOT fix the CMake crash it was found through. That crash survives
+unchanged, still a null dereference at address 0x0 with the same wizard symbols on the stack, and
+#234 stays open. This is a real gap closed on the way past, not the cause.
+
+--- a/AppKit/NSEvent.subproj/NSEvent.m
++++ b/AppKit/NSEvent.subproj/NSEvent.m
+@@ -389,8 +389,26 @@
+     return nil;
+ }
+ 
++/*
++ * A GLOBAL MONITOR WATCHES OTHER APPLICATIONS EVENTS, and there are none here, so the honest
++ * answer is a token that never fires rather than no method at all.
++ *
++ * ABSENT, THIS RAISED. Qt asks for one while bringing up a dialog, AppKit catches the exception per
++ * event, and the setup around it is abandoned half done; CMake then crashed with a null dereference
++ * opening its generator wizard. Task #234.
++ *
++ * Returning nil would also be defensible, since macOS returns nil when the process is not trusted
++ * for accessibility, but that sends a caller down its permission-denied path for a reason that is
++ * not true here.
++ */
+++ (id) addGlobalMonitorForEventsMatchingMask: (NSEventMask) mask
++                                     handler: (void (^)(NSEvent *event)) block
++{
++    return [[[NSObject alloc] init] autorelease];
++}
++
++/* Quietly, because a caller balancing an add it never used should not be reported as a defect. */
+ + (void) removeMonitor: (id) eventMonitor {
+-    NSUnimplementedMethod();
+ }
+ 
+ 
