@@ -23,6 +23,7 @@ static REGISTRY: AtomicPtr<wl::WlRegistry> = AtomicPtr::new(std::ptr::null_mut()
 static COMPOSITOR: AtomicPtr<wl::WlCompositor> = AtomicPtr::new(std::ptr::null_mut());
 static SHM: AtomicPtr<wl::WlShm> = AtomicPtr::new(std::ptr::null_mut());
 static WM_BASE: AtomicPtr<wl::XdgWmBase> = AtomicPtr::new(std::ptr::null_mut());
+static ACTIVATION: AtomicPtr<wl::XdgActivation> = AtomicPtr::new(std::ptr::null_mut());
 
 /// Where the registry sweep accumulates. Only touched between the add_listener and the roundtrip
 /// that drives it, both inside connect(), so it never escapes that call.
@@ -267,14 +268,34 @@ pub fn connect() -> bool {
             }
         }
 
+        /*
+         * OPTIONAL, LIKE THE SEAT: a compositor without it is not broken, it only means
+         * -makeKeyWindow cannot move the keyboard (#231). Said out loud either way, because
+         * "asked and was refused" and "never asked" are different diagnoses.
+         */
+        if globals.xdg_activation {
+            let activation = wl::cider_wl_registry_bind_xdg_activation(
+                registry,
+                globals.bound.activation_name,
+                globals.bound.activation_version,
+            );
+            if activation.is_null() {
+                println!("cider-wayland-activation bind=failed");
+            } else {
+                ACTIVATION.store(activation, Ordering::Release);
+            }
+        } else {
+            println!("cider-wayland-activation global=absent reason=not-advertised");
+        }
+
         DISPLAY.store(display, Ordering::Release);
         REGISTRY.store(registry, Ordering::Release);
         COMPOSITOR.store(compositor, Ordering::Release);
         SHM.store(shm, Ordering::Release);
         WM_BASE.store(base, Ordering::Release);
         println!(
-            "cider-wayland-appkit init=ok display=connected globals={} seat={} output={}",
-            globals.total, globals.seat, globals.output
+            "cider-wayland-appkit init=ok display=connected globals={} seat={} output={} activation={}",
+            globals.total, globals.seat, globals.output, globals.xdg_activation
         );
         start_waker();
     true
@@ -295,6 +316,11 @@ pub fn shm() -> *mut wl::WlShm {
 
 pub fn wm_base() -> *mut wl::XdgWmBase {
     WM_BASE.load(Ordering::Acquire)
+}
+
+/// Null when the compositor does not advertise xdg_activation_v1, which is supported, not an error.
+pub fn activation() -> *mut wl::XdgActivation {
+    ACTIVATION.load(Ordering::Acquire)
 }
 
 /// Push queued requests without waiting for anything. A commit that is never flushed is a window

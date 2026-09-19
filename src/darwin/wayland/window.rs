@@ -3238,15 +3238,101 @@ extern "C" fn place_window(this: Object, _cmd: Sel, _other: i64) {
     }
 }
 
-/// A CLIENT CANNOT FOCUS ITSELF in Wayland. The compositor grants focus; xdg_activation exists for
-/// the request but needs a token from an existing focused surface, which an app being launched has
-/// not got. Presenting is the honest approximation: a mapped surface is one the compositor can
-/// choose to focus.
+/// A CLIENT CANNOT TAKE FOCUS in Wayland, and that is deliberate. It can HAND focus on: while it
+/// holds the keyboard on one surface it may spend an activation token on another (#231).
+///
+/// At launch it holds nothing, so request_activation does nothing and presenting is all there is.
 extern "C" fn make_key(this: Object, _cmd: Sel) {
     if let Some(st) = unsafe { state(this) } {
         present(st);
+        request_activation(st.surface);
     }
 }
+
+/// Ask the compositor to move the keyboard to `target`, on the strength of the focus we already
+/// hold somewhere else.
+///
+/// DO NOT MAKE THIS WAIT FOR THE TOKEN. A roundtrip here dispatches queued input and configure
+/// events back into AppKit from inside -makeKeyWindow, and a slow compositor then stalls every
+/// window change. The target rides on the listener data instead, and activate goes out from the
+/// done handler during the ordinary pump.
+fn request_activation(target: *mut wl::WlSurface) {
+    let activation = session::activation();
+    if activation.is_null() || target.is_null() {
+        return;
+    }
+
+    // THE SURFACE WE ARE SPENDING. No focus is no grounds to ask, and a compositor that would
+    // focus the new toplevel by itself still does.
+    let requester = crate::input::focused_surface();
+    if requester.is_null() || requester == target {
+        return;
+    }
+
+    let serial = crate::input::last_serial();
+    let seat = crate::input::seat();
+
+    unsafe {
+        let token = wl::cider_xdg_activation_get_token(activation);
+        if token.is_null() {
+            return;
+        }
+        wl::cider_xdg_activation_token_add_listener(
+            token,
+            &TOKEN_LISTENER,
+            target as *mut std::ffi::c_void,
+        );
+        if serial != 0 && !seat.is_null() {
+            wl::cider_xdg_activation_token_set_serial(token, serial, seat);
+        }
+        wl::cider_xdg_activation_token_set_surface(token, requester);
+        if let Ok(text) = std::ffi::CString::new(app_identifier()) {
+            wl::cider_xdg_activation_token_set_app_id(token, text.as_ptr());
+        }
+        wl::cider_xdg_activation_token_commit(token);
+        session::flush();
+        if activation_tracing() {
+            println!(
+                "cider-wayland-activation token=asked target={:?} from={:?} serial={}",
+                target, requester, serial
+            );
+        }
+    }
+}
+
+fn activation_tracing() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| crate::env_flag!("CIDER_WAYLAND_TRACE_INPUT"))
+}
+
+/// THE WINDOW MAY HAVE CLOSED since the token was asked for, so the surface is looked up again
+/// rather than trusted: activating a destroyed one is a protocol error, and that kills the whole
+/// connection silently.
+extern "C" fn on_activation_token(
+    data: *mut std::ffi::c_void,
+    token: *mut wl::XdgActivationToken,
+    text: *const std::os::raw::c_char,
+) {
+    let target = data as *mut wl::WlSurface;
+    unsafe {
+        let activation = session::activation();
+        if !text.is_null() && !activation.is_null() && window_for_surface(target).is_some() {
+            wl::cider_xdg_activation_activate(activation, text, target);
+            session::flush();
+            if activation_tracing() {
+                println!("cider-wayland-activation activate=sent target={:?}", target);
+            }
+        } else if activation_tracing() {
+            println!("cider-wayland-activation activate=dropped target={:?}", target);
+        }
+        // One token is one use: reusing it is an already_used error, keeping it leaks an object.
+        wl::cider_xdg_activation_token_destroy(token);
+    }
+}
+
+static TOKEN_LISTENER: wl::XdgActivationTokenListener = wl::XdgActivationTokenListener {
+    done: on_activation_token,
+};
 
 extern "C" fn noop(_this: Object, _cmd: Sel) {}
 

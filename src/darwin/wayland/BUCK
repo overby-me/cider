@@ -26,6 +26,19 @@ wayland_protocol(
 # wl_compositor_interface come back 0 from llvm-nm. Every protocol call needs one of those
 # interface structs, so they are generated from the same XML upstream uses. See
 # nix/wayland-core-protocol.nix for where the XML comes from, since nixpkgs ships it nowhere.
+# Passing focus between our own windows (#231); window.rs make_key is the consumer.
+#
+# STAGING RATHER THAN STABLE, which is a statement about the protocol's promise of future
+# compatibility and not about availability: sway, KDE, GNOME and wlroots have all shipped version 1
+# for years. There is no stable path to move to.
+wayland_protocol(
+    name = "xdg_activation_protocol",
+    out_c = "xdg-activation-v1-protocol.c",
+    out_h = "xdg-activation-v1-client-protocol.h",
+    protocol = "staging/xdg-activation/xdg-activation-v1.xml",
+    visibility = ["PUBLIC"],
+)
+
 wayland_protocol(
     name = "core_protocol",
     core = True,
@@ -46,6 +59,7 @@ cc_objects(
     # translation unit. gen_srcs takes GeneratedSourcesInfo, which is only the sources.
     gen_srcs = [
         ":core_protocol",
+        ":xdg_activation_protocol",
         ":xdg_shell_protocol",
     ],
     compiler_flags = [
@@ -60,6 +74,7 @@ cc_objects(
         # through GeneratedSourcesInfo, deps takes the generated .h through the include root the
         # codegen rule stages. A consumer that lists only srcs cannot find the header.
         ":core_protocol",
+        ":xdg_activation_protocol",
         ":xdg_shell_protocol",
         "//src/darwin:sdk_env",
         "//src/linux/native:host_headers",

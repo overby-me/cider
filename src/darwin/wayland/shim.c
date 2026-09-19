@@ -16,6 +16,7 @@
 #include <wayland-client-core.h>
 
 #include "wayland-client-protocol.h"
+#include "xdg-activation-v1-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
 
 struct wl_registry *cider_wl_display_get_registry(struct wl_display *display) {
@@ -376,6 +377,56 @@ int cider_wl_data_device_add_listener(struct wl_data_device *device,
 int cider_wl_data_source_add_listener(struct wl_data_source *source,
                                       const struct wl_data_source_listener *listener, void *data) {
 	return wl_data_source_add_listener(source, listener, data);
+}
+
+// Handing focus from one of our windows to another (#231). The token is a STRING because it is
+// meant to cross process boundaries, which is how a launcher hands its focus to what it starts;
+// here it goes back down the same connection.
+
+struct xdg_activation_v1 *cider_wl_registry_bind_xdg_activation(struct wl_registry *registry,
+                                                                uint32_t name, uint32_t version) {
+	return wl_registry_bind(registry, name, &xdg_activation_v1_interface, version);
+}
+
+struct xdg_activation_token_v1 *cider_xdg_activation_get_token(
+        struct xdg_activation_v1 *activation) {
+	return xdg_activation_v1_get_activation_token(activation);
+}
+
+int cider_xdg_activation_token_add_listener(
+        struct xdg_activation_token_v1 *token,
+        const struct xdg_activation_token_v1_listener *listener, void *data) {
+	return xdg_activation_token_v1_add_listener(token, listener, data);
+}
+
+/* A compositor may refuse a token with no input event behind it, and refusal is SILENT. */
+void cider_xdg_activation_token_set_serial(struct xdg_activation_token_v1 *token, uint32_t serial,
+                                           struct wl_seat *seat) {
+	xdg_activation_token_v1_set_serial(token, serial, seat);
+}
+
+/* The surface REQUESTING, which is not the surface being activated. */
+void cider_xdg_activation_token_set_surface(struct xdg_activation_token_v1 *token,
+                                            struct wl_surface *surface) {
+	xdg_activation_token_v1_set_surface(token, surface);
+}
+
+void cider_xdg_activation_token_set_app_id(struct xdg_activation_token_v1 *token,
+                                           const char *app_id) {
+	xdg_activation_token_v1_set_app_id(token, app_id);
+}
+
+void cider_xdg_activation_token_commit(struct xdg_activation_token_v1 *token) {
+	xdg_activation_token_v1_commit(token);
+}
+
+void cider_xdg_activation_token_destroy(struct xdg_activation_token_v1 *token) {
+	xdg_activation_token_v1_destroy(token);
+}
+
+void cider_xdg_activation_activate(struct xdg_activation_v1 *activation, const char *token,
+                                   struct wl_surface *surface) {
+	xdg_activation_v1_activate(activation, token, surface);
 }
 
 void cider_wl_data_source_offer(struct wl_data_source *source, const char *mime_type) {

@@ -210,6 +210,22 @@ fn tracing() -> bool {
     *ON.get_or_init(|| crate::env_flag!("CIDER_WAYLAND_TRACE_INPUT"))
 }
 
+/// The surface the compositor is sending input to, which xdg_activation needs as the requester
+/// (#231). NULL MEANS NO FOCUS ANYWHERE, and then there is nothing to hand on.
+///
+/// Pointer focus is the fallback because under focus-follows-mouse there may be no keyboard focus
+/// at all, and the surface under the pointer is still one the user is demonstrably working in.
+pub fn focused_surface() -> *mut wl::WlSurface {
+    let Ok(st) = INPUT.lock() else {
+        return std::ptr::null_mut();
+    };
+    if !st.keyboard_focus.is_null() {
+        st.keyboard_focus
+    } else {
+        st.pointer_focus
+    }
+}
+
 /// Attach to a seat. Called once, from the registry sweep.
 /// The seat itself, kept because a window management request needs it: xdg_toplevel.move and its
 /// relatives take the seat and the serial of the event that asked for them.

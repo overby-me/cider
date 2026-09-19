@@ -24,6 +24,8 @@ pub enum WlShmPool {}
 pub enum WlBuffer {}
 pub enum WlCallback {}
 pub enum WlOutput {}
+pub enum XdgActivation {}
+pub enum XdgActivationToken {}
 
 /// libwayland's intrusive list head: two pointers, and wl_list_init makes both point at it.
 #[repr(C)]
@@ -155,6 +157,7 @@ pub struct Globals {
     pub seat: bool,
     pub output: bool,
     pub data_device_manager: bool,
+    pub xdg_activation: bool,
 }
 
 impl Globals {
@@ -206,6 +209,12 @@ impl Globals {
                 // properties is complete. Below that the values are used as they come.
                 self.bound.output_version = version.min(2);
             }
+            "xdg_activation_v1" => {
+                self.xdg_activation = true;
+                self.bound.activation_name = name;
+                // Version 1 is all there has ever been.
+                self.bound.activation_version = version.min(1);
+            }
             _ => {}
         }
     }
@@ -246,6 +255,8 @@ pub struct Bound {
     pub seat_version: u32,
     pub data_device_manager_name: u32,
     pub data_device_manager_version: u32,
+    pub activation_name: u32,
+    pub activation_version: u32,
 }
 
 /// One callback: the compositor has finished with the buffer. That event is the only honest
@@ -543,4 +554,47 @@ pub struct WlDataOfferListener {
     pub offer: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, mime: *const c_char),
     pub source_actions: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, actions: u32),
     pub action: extern "C" fn(data: *mut c_void, o: *mut WlDataOffer, action: u32),
+}
+
+// ---------------------------------------------------------------------------------------------
+// xdg_activation_v1 (#231), which is how a client hands focus from one of its own surfaces to
+// another. THE CLIENT STILL CANNOT TAKE FOCUS: it asks for a token while it holds focus somewhere,
+// and the token is what gives the compositor grounds to move the keyboard. An application with no
+// focus at all gets nothing, which is the protocol working as designed.
+unsafe extern "C" {
+    pub fn cider_wl_registry_bind_xdg_activation(
+        r: *mut WlRegistry,
+        name: u32,
+        version: u32,
+    ) -> *mut XdgActivation;
+    pub fn cider_xdg_activation_get_token(a: *mut XdgActivation) -> *mut XdgActivationToken;
+    pub fn cider_xdg_activation_token_add_listener(
+        t: *mut XdgActivationToken,
+        l: *const XdgActivationTokenListener,
+        data: *mut c_void,
+    ) -> c_int;
+    pub fn cider_xdg_activation_token_set_serial(
+        t: *mut XdgActivationToken,
+        serial: u32,
+        seat: *mut WlSeat,
+    );
+    pub fn cider_xdg_activation_token_set_surface(
+        t: *mut XdgActivationToken,
+        surface: *mut WlSurface,
+    );
+    pub fn cider_xdg_activation_token_set_app_id(t: *mut XdgActivationToken, app_id: *const c_char);
+    pub fn cider_xdg_activation_token_commit(t: *mut XdgActivationToken);
+    pub fn cider_xdg_activation_token_destroy(t: *mut XdgActivationToken);
+    pub fn cider_xdg_activation_activate(
+        a: *mut XdgActivation,
+        token: *const c_char,
+        surface: *mut WlSurface,
+    );
+}
+
+/// One event: the token, as a STRING. It is a string because it is meant to be passed between
+/// processes, which is the launcher case; here it goes straight back to the same connection.
+#[repr(C)]
+pub struct XdgActivationTokenListener {
+    pub done: extern "C" fn(data: *mut c_void, t: *mut XdgActivationToken, token: *const c_char),
 }
