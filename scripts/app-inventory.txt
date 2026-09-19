@@ -1,0 +1,1000 @@
+# What each staged application is supposed to contain, relative to its Applications
+# directory. Recorded so that a file DELETED BY THE /tmp SWEEP is caught as a missing
+# file rather than as a mysterious application failure three frames deep.
+#
+# NOT A CLEAN BASELINE FOR it: iTermServer had ALREADY been swept when this was first
+# written, and no source archive remained to restore it, so the iTerm2 list here is the
+# damaged tree. Re-record it after a real re-stage.
+cm|./CMake.app/Contents/CodeResources
+cm|./CMake.app/Contents/Frameworks/QtCore.framework/Versions/5/QtCore
+cm|./CMake.app/Contents/Frameworks/QtGui.framework/Versions/5/QtGui
+cm|./CMake.app/Contents/Frameworks/QtPrintSupport.framework/Versions/5/QtPrintSupport
+cm|./CMake.app/Contents/Frameworks/QtWidgets.framework/Versions/5/QtWidgets
+cm|./CMake.app/Contents/Info.plist
+cm|./CMake.app/Contents/MacOS/CMake
+cm|./CMake.app/Contents/PlugIns/platforms/libqcocoa.dylib
+cm|./CMake.app/Contents/PlugIns/styles/libqmacstyle.dylib
+cm|./CMake.app/Contents/Resources/qt.conf
+ia|./iA Writer.app/Contents/Frameworks/AccountCore.framework/Versions/A/AccountCore
+ia|./iA Writer.app/Contents/Frameworks/AccountCore.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/AccountKit.framework/Versions/A/AccountKit
+ia|./iA Writer.app/Contents/Frameworks/AccountKit.framework/Versions/A/Resources/en.lproj/AccountKit.strings
+ia|./iA Writer.app/Contents/Frameworks/AccountKit.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/AllocatedUnfairLock_4153BF72DCB4EC8A_PackageProduct.framework/Versions/A/AllocatedUnfairLock_4153BF72DCB4EC8A_PackageProduct
+ia|./iA Writer.app/Contents/Frameworks/AllocatedUnfairLock_4153BF72DCB4EC8A_PackageProduct.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/AppKitAdditions.framework/Versions/A/AppKitAdditions
+ia|./iA Writer.app/Contents/Frameworks/AppKitAdditions.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/Commands.framework/Versions/A/Commands
+ia|./iA Writer.app/Contents/Frameworks/Commands.framework/Versions/A/Resources/en.lproj/Commands.strings
+ia|./iA Writer.app/Contents/Frameworks/Commands.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/DiffMatchPatch.framework/Versions/A/DiffMatchPatch
+ia|./iA Writer.app/Contents/Frameworks/DiffMatchPatch.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/FoundationAdditions.framework/Versions/A/FoundationAdditions
+ia|./iA Writer.app/Contents/Frameworks/FoundationAdditions.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/InterfaceFoundation.framework/Versions/A/InterfaceFoundation
+ia|./iA Writer.app/Contents/Frameworks/InterfaceFoundation.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Kit
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/556b31a1b80697010420c9112aa534a7.md5
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/Base.lproj/Kit.strings
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/ca6ef85ab050ec6adc2d7ac028cd4fb2.md5
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/copy-tex.js
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/diffHTML.js
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/KaTeX.css
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/KaTeX.js
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/mark.css
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/Math.js
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/mhchem.js
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/Numeral.js
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/Patterns/en-cliches.iapatternsc
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/Patterns/en-fillers.iapatternsc
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/Patterns/en-redundancies.iapatternsc
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/SmartTables.js
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/Template.js
+ia|./iA Writer.app/Contents/Frameworks/Kit.framework/Versions/A/Resources/Templates/Error.iatemplate/Contents/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/Markdown.framework/Versions/A/Markdown
+ia|./iA Writer.app/Contents/Frameworks/Markdown.framework/Versions/A/Resources/en.lproj/Markdown.strings
+ia|./iA Writer.app/Contents/Frameworks/Markdown.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/PanelKit.framework/Versions/A/PanelKit
+ia|./iA Writer.app/Contents/Frameworks/PanelKit.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/Sparkle.framework/Versions/B/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle
+ia|./iA Writer.app/Contents/Frameworks/Tree_6BE0DBFD4_PackageProduct.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/Tree_6BE0DBFD4_PackageProduct.framework/Versions/A/Tree_6BE0DBFD4_PackageProduct
+ia|./iA Writer.app/Contents/Frameworks/TypographyKit.framework/Versions/A/Resources/Duo.plist
+ia|./iA Writer.app/Contents/Frameworks/TypographyKit.framework/Versions/A/Resources/en.lproj/TypographyKit.strings
+ia|./iA Writer.app/Contents/Frameworks/TypographyKit.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/TypographyKit.framework/Versions/A/Resources/Mono.plist
+ia|./iA Writer.app/Contents/Frameworks/TypographyKit.framework/Versions/A/Resources/Quattro.plist
+ia|./iA Writer.app/Contents/Frameworks/TypographyKit.framework/Versions/A/TypographyKit
+ia|./iA Writer.app/Contents/Frameworks/Valet_DE9C7E33321_PackageProduct.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/Valet_DE9C7E33321_PackageProduct.framework/Versions/A/Valet_DE9C7E33321_PackageProduct
+ia|./iA Writer.app/Contents/Frameworks/WindowKit.framework/Versions/A/Resources/en.lproj/WindowKit.strings
+ia|./iA Writer.app/Contents/Frameworks/WindowKit.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/WindowKit.framework/Versions/A/WindowKit
+ia|./iA Writer.app/Contents/Frameworks/ZipZap.framework/Versions/A/Resources/Info.plist
+ia|./iA Writer.app/Contents/Frameworks/ZipZap.framework/Versions/A/ZipZap
+ia|./iA Writer.app/Contents/Info.plist
+ia|./iA Writer.app/Contents/MacOS/iA Writer
+ia|./iA Writer.app/Contents/Resources/Assets.car
+ia|./iA Writer.app/Contents/Resources/Base.lproj/Menu.nib
+ia|./iA Writer.app/Contents/Resources/CustomPatternsPreferences.nib
+ia|./iA Writer.app/Contents/Resources/en.lproj/InfoPlist.strings
+ia|./iA Writer.app/Contents/Resources/en.lproj/Localizable.strings
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-BoldItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-Bold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-ExtraLightItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-ExtraLight.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-Italic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-LightItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-Light.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-MediumItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-Medium.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-SemiBoldItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-SemiBold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-TextItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-Text.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-ThinItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSans-Thin.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-BoldItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-Bold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-ExtraLightItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-ExtraLight.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-Italic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-LightItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-Light.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-MediumItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-Medium.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-SemiBoldItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-SemiBold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-TextItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-Text.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-ThinItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/IBMPlexSerif-Thin.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_AMS-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Caligraphic-Bold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Caligraphic-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Fraktur-Bold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Fraktur-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Main-BoldItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Main-Bold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Main-Italic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Main-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Math-BoldItalic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Math-Italic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_SansSerif-Bold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_SansSerif-Italic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_SansSerif-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Script-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Size1-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Size2-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Size3-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Size4-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Additional/KaTeX_Typewriter-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core/iAWriterEmphasis-Bold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core/iAWriterEmphasis-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core/iAWriterEmphasis-Semibold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core/iAWriterEmphasisSpaced-Bold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core/iAWriterEmphasisSpaced-Regular.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core/iAWriterEmphasisSpaced-Semibold.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core/iAWriterEmphasisSpaced-Text.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core/iAWriterEmphasis-Text.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core/Keyboard.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core-Variable/CJK/iAWriterFullSpaceJA.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core-Variable/CJK/iAWriterFullSpaceKR.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core-Variable/CJK/iAWriterFullSpaceSC.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core-Variable/CJK/iAWriterFullSpaceTC.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core-Variable/Duo/iAWriterDuo-Italic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core-Variable/Duo/iAWriterDuo.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core-Variable/Mono/iAWriterMono-Italic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core-Variable/Mono/iAWriterMono.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core-Variable/Quattro/iAWriterQuattro-Italic.ttf
+ia|./iA Writer.app/Contents/Resources/Fonts/Core-Variable/Quattro/iAWriterQuattro.ttf
+ia|./iA Writer.app/Contents/Resources/Templates/Duo.iatemplate/Contents/Info.plist
+ia|./iA Writer.app/Contents/Resources/Templates/Duo.iatemplate/Contents/Resources/en.lproj/InfoPlist.strings
+ia|./iA Writer.app/Contents/Resources/Templates/GitHub.iatemplate/Contents/Info.plist
+ia|./iA Writer.app/Contents/Resources/Templates/Mono.iatemplate/Contents/Info.plist
+ia|./iA Writer.app/Contents/Resources/Templates/Mono.iatemplate/Contents/Resources/en.lproj/InfoPlist.strings
+ia|./iA Writer.app/Contents/Resources/Templates/Quattro.iatemplate/Contents/Info.plist
+ia|./iA Writer.app/Contents/Resources/Templates/Quattro.iatemplate/Contents/Resources/en.lproj/InfoPlist.strings
+ia|./iA Writer.app/Contents/Resources/Templates/Sans.iatemplate/Contents/Info.plist
+ia|./iA Writer.app/Contents/Resources/Templates/Sans.iatemplate/Contents/Resources/en.lproj/InfoPlist.strings
+ia|./iA Writer.app/Contents/Resources/Templates/Serif.iatemplate/Contents/Info.plist
+ia|./iA Writer.app/Contents/Resources/Templates/Serif.iatemplate/Contents/Resources/en.lproj/InfoPlist.strings
+ia|./iA Writer.app/Contents/Resources/Writer.icns
+it|./iTerm2.app/Contents/Frameworks/BetterFontPicker.framework/Versions/A/BetterFontPicker
+it|./iTerm2.app/Contents/Frameworks/ColorPicker.framework/Versions/A/ColorPicker
+it|./iTerm2.app/Contents/Frameworks/CoreParse.framework/Versions/A/CoreParse
+it|./iTerm2.app/Contents/Frameworks/Highlightr.framework/Versions/A/Highlightr
+it|./iTerm2.app/Contents/Frameworks/iTermSwiftPackages.framework/Versions/A/iTermSwiftPackages
+it|./iTerm2.app/Contents/Frameworks/librailroad_dsl.dylib
+it|./iTerm2.app/Contents/Frameworks/NMSSH.framework/Versions/A/NMSSH
+it|./iTerm2.app/Contents/Frameworks/SearchableComboListView.framework/Versions/A/SearchableComboListView
+it|./iTerm2.app/Contents/Frameworks/Sparkle.framework/Versions/A/Resources/Info.plist
+it|./iTerm2.app/Contents/Frameworks/Sparkle.framework/Versions/A/Sparkle
+it|./iTerm2.app/Contents/Frameworks/SwiftyMarkdown.framework/Versions/A/SwiftyMarkdown
+it|./iTerm2.app/Contents/Info.plist
+it|./iTerm2.app/Contents/MacOS/iTerm2
+it|./iTerm2.app/Contents/Resources/Assets.car
+it|./iTerm2.app/Contents/Resources/BigSurAddTab.tiff
+it|./iTerm2.app/Contents/Resources/closebutton.tiff
+it|./iTerm2.app/Contents/Resources/EncodingsWithLowerCase.plist
+it|./iTerm2.app/Contents/Resources/graphic_colors.json
+it|./iTerm2.app/Contents/Resources/graphic_icons.json
+it|./iTerm2.app/Contents/Resources/iTerm2 App Icon for Release.icns
+it|./iTerm2.app/Contents/Resources/iTermCopyModeKeyBindings.dict
+it|./iTerm2.app/Contents/Resources/iTermWindowShortcutAccessoryView.nib
+it|./iTerm2.app/Contents/Resources/MainMenu.nib
+it|./iTerm2.app/Contents/Resources/MinimalFindView.nib
+it|./iTerm2.app/Contents/Resources/overflowImagePressed.tiff
+it|./iTerm2.app/Contents/Resources/overflowImage.tiff
+it|./iTerm2.app/Contents/Resources/PseudoTerminal.nib
+it|./iTerm2.app/Contents/Resources/TabClose_Front_Pressed.tiff
+it|./iTerm2.app/Contents/Resources/TabClose_Front_Rollover.tiff
+it|./iTerm2.app/Contents/Resources/TabClose_Front.tiff
+it|./iTerm2.app/Contents/Resources/terminfo/78/xterm-256color
+it|./iTerm2.app/Contents/Resources/WindowCorner_BigSur.tiff
+it|./iTerm2.app/Contents/Resources/WindowCornerFull_BigSur.tiff
+lo|./LibreOffice.app/Contents/Frameworks/libAppleRemotelo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libassuan.9.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libCbc.3.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libCbcSolver.3.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libCgl.1.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libclewlo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libClp.1.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libClpSolver.1.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libclucene.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libCoinMP.1.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libCoinUtils.3.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libcurl.4.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libepoxy.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libetonyek-0.1.1.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libfbclient.dylib.3.0.7
+lo|./LibreOffice.app/Contents/Frameworks/libgcc3_uno.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libgpg-error.0.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libgpgme.11.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libgpgmepp.6.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libi18nlangtag.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libicudata.dylib.78
+lo|./LibreOffice.app/Contents/Frameworks/libicui18n.dylib.78
+lo|./LibreOffice.app/Contents/Frameworks/libicuuc.dylib.78
+lo|./LibreOffice.app/Contents/Frameworks/libjvmaccesslo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libjvmfwklo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/liblangtag.1.dylib
+lo|./LibreOffice.app/Contents/Frameworks/liblcms2.2.dylib
+lo|./LibreOffice.app/Contents/Frameworks/liblocaledata_en.dylib
+lo|./LibreOffice.app/Contents/Frameworks/liblpsolve55.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libmacbe1lo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libmergedlo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libmwaw-0.3.3.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libnspr4.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libnss3.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libnssutil3.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libodfgen-0.1.1.dylib
+lo|./LibreOffice.app/Contents/Frameworks/liborcus-0.21.0.dylib
+lo|./LibreOffice.app/Contents/Frameworks/liborcus-parser-0.21.0.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libOsi.1.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libOsiClp.1.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libpdfiumlo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libplc4.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libplds4.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libraptor2-lo.0.dylib
+lo|./LibreOffice.app/Contents/Frameworks/librasqal-lo.3.dylib
+lo|./LibreOffice.app/Contents/Frameworks/librdf-lo.0.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libreglo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/librevenge-0.0.0.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libskialo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libsmime3.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libstaroffice-0.0.0.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libstocserviceslo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libstorelo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libuno_cppu.dylib.3
+lo|./LibreOffice.app/Contents/Frameworks/libuno_cppuhelpergcc3.dylib.3
+lo|./LibreOffice.app/Contents/Frameworks/libunoidllo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libuno_sal.dylib.3
+lo|./LibreOffice.app/Contents/Frameworks/libuno_salhelpergcc3.dylib.3
+lo|./LibreOffice.app/Contents/Frameworks/libupdchklo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libvclplug_osxlo.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libwpd-0.10.10.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libwpg-0.3.3.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libwps-0.4.4.dylib
+lo|./LibreOffice.app/Contents/Frameworks/libxmlreaderlo.dylib
+lo|./LibreOffice.app/Contents/Info.plist
+lo|./LibreOffice.app/Contents/MacOS/soffice
+lo|./LibreOffice.app/Contents/Resources/bootstraprc
+lo|./LibreOffice.app/Contents/Resources/config/images_colibre.zip
+lo|./LibreOffice.app/Contents/Resources/config/images_sukapura_svg.zip
+lo|./LibreOffice.app/Contents/Resources/config/soffice.cfg/modules/StartModule/menubar/menubar.xml
+lo|./LibreOffice.app/Contents/Resources/config/soffice.cfg/sfx/ui/startcenter.ui
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-en/description.xml
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-en/dialog/OptionsDialog.xcs
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-en/Lightproof.components
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-en/Linguistic.xcu
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-en/META-INF/manifest.xml
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-en/package-description.txt
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-es/description.xml
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-es/META-INF/manifest.xml
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-es/package-description.txt
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-fr/description.xml
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-fr/META-INF/manifest.xml
+lo|./LibreOffice.app/Contents/Resources/extensions/dict-fr/package-description.txt
+lo|./LibreOffice.app/Contents/Resources/extensions/nlpsolver/components.rdb
+lo|./LibreOffice.app/Contents/Resources/extensions/nlpsolver/description.xml
+lo|./LibreOffice.app/Contents/Resources/extensions/nlpsolver/META-INF/manifest.xml
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Alef-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Alef-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Amiri-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Amiri-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Amiri-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/AmiriQuran.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Amiri-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Caladea-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Caladea-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Caladea-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Caladea-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Carlito-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Carlito-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Carlito-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Carlito-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DavidCLM-BoldItalic.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DavidCLM-Bold.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DavidCLM-MediumItalic.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DavidCLM-Medium.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DavidLibre-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DavidLibre-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuMathTeXGyre.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSans-BoldOblique.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSans-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSansCondensed-BoldOblique.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSansCondensed-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSansCondensed-Oblique.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSansCondensed.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSans-ExtraLight.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSansMono-BoldOblique.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSansMono-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSansMono-Oblique.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSansMono.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSans-Oblique.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSans.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSerif-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSerif-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSerifCondensed-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSerifCondensed-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSerifCondensed-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSerifCondensed.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSerif-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/DejaVuSerif.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/FrankRuehlCLM-BoldOblique.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/FrankRuehlCLM-Bold.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/FrankRuehlCLM-MediumOblique.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/FrankRuehlCLM-Medium.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/FrankRuhlHofshi-Bold.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/FrankRuhlHofshi-Regular.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/GenBasBI.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/GenBasB.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/GenBasI.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/GenBasR.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/GenBkBasBI.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/GenBkBasB.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/GenBkBasI.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/GenBkBasR.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationMono-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationMono-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationMono-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationMono-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSans-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSans-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSans-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSansNarrow-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSansNarrow-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSansNarrow-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSansNarrow-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSans-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSerif-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSerif-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSerif-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LiberationSerif-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LinBiolinum_RB_G.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LinBiolinum_R_G.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LinBiolinum_RI_G.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LinLibertine_DR_G.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LinLibertine_RB_G.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LinLibertine_RBI_G.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LinLibertine_R_G.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LinLibertine_RI_G.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LinLibertine_RZ_G.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/LinLibertine_RZI_G.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/MiriamCLM-Bold.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/MiriamCLM-Book.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/MiriamLibre-Bold.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/MiriamLibre-Regular.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/MiriamMonoCLM-BoldOblique.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/MiriamMonoCLM-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/MiriamMonoCLM-BookOblique.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/MiriamMonoCLM-Book.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NachlieliCLM-BoldOblique.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NachlieliCLM-Bold.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NachlieliCLM-LightOblique.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NachlieliCLM-Light.otf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoKufiArabic-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoKufiArabic-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoNaskhArabic-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoNaskhArabic-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansArabic-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansArabic-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansArmenian-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansArmenian-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSans-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSans-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansGeorgian-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansGeorgian-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansHebrew-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansHebrew-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSans-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansLao-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansLao-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansLisu-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSansLisu-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSans-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerifArmenian-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerifArmenian-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerif-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerif-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerifGeorgian-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerifGeorgian-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerifHebrew-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerifHebrew-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerif-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerifLao-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerifLao-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/NotoSerif-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/opens___.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/ReemKufi.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Rubik-BoldItalic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Rubik-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Rubik-Italic.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Rubik-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Scheherazade-Bold.ttf
+lo|./LibreOffice.app/Contents/Resources/fonts/truetype/Scheherazade-Regular.ttf
+lo|./LibreOffice.app/Contents/Resources/fundamentalrc
+lo|./LibreOffice.app/Contents/Resources/intro.png
+lo|./LibreOffice.app/Contents/Resources/lounorc
+lo|./LibreOffice.app/Contents/Resources/MainMenu.nib/keyedobjects.nib
+lo|./LibreOffice.app/Contents/Resources/registry/base.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/calc.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/draw.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/graphicfilter.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/impress.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/Langpack-en-US.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/librelogo.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/lingucomponent.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/main.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/math.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/ogltrans.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/onlineupdate.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/pdfimport.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/postgresql.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/reportbuilder.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/res/fcfg_langpack_en-US.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/writer.xcd
+lo|./LibreOffice.app/Contents/Resources/registry/xsltfilter.xcd
+lo|./LibreOffice.app/Contents/Resources/resource/common/fonts/opens___.ttf
+lo|./LibreOffice.app/Contents/Resources/services/postgresql-sdbc.rdb
+lo|./LibreOffice.app/Contents/Resources/services/pyuno.rdb
+lo|./LibreOffice.app/Contents/Resources/services/scriptproviderforbeanshell.rdb
+lo|./LibreOffice.app/Contents/Resources/services/scriptproviderforjavascript.rdb
+lo|./LibreOffice.app/Contents/Resources/services/scriptproviderforpython.rdb
+lo|./LibreOffice.app/Contents/Resources/services/services.rdb
+lo|./LibreOffice.app/Contents/Resources/shell/about.svg
+lo|./LibreOffice.app/Contents/Resources/shell/logo-sc.svg
+lo|./LibreOffice.app/Contents/Resources/sofficerc
+lo|./LibreOffice.app/Contents/Resources/types/offapi.rdb
+lo|./LibreOffice.app/Contents/Resources/types/oovbaapi.rdb
+lo|./LibreOffice.app/Contents/Resources/ure/etc/unorc
+lo|./LibreOffice.app/Contents/Resources/ure/share/misc/services.rdb
+lo|./LibreOffice.app/Contents/Resources/ure/share/misc/types.rdb
+lo|./LibreOffice.app/Contents/Resources/versionrc
+mm|./MoneyMoney.app/Contents/CodeResources
+mm|./MoneyMoney.app/Contents/_CodeSignature/CodeResources
+mm|./MoneyMoney.app/Contents/Info.plist
+mm|./MoneyMoney.app/Contents/MacOS/MoneyMoney
+mm|./MoneyMoney.app/Contents/MacOS/UpdateHelper
+mm|./MoneyMoney.app/Contents/Resources/AboutWindow_Illustration.tiff
+mm|./MoneyMoney.app/Contents/Resources/AboutWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/AccountErrorPopoverIcon.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountErrorPopover.nib
+mm|./MoneyMoney.app/Contents/Resources/AccountHeaderView.png
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon1.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon2.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon3.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon4.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon5.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon6.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountIcon7.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountPlaceholderView.nib
+mm|./MoneyMoney.app/Contents/Resources/AccountPropertiesPopover.nib
+mm|./MoneyMoney.app/Contents/Resources/AccountPropertiesWindow.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/AccountPropertiesWindow.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/AccountReportingWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/AccountSettingsAccount.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountSettingsDebit.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountSettingsNotes.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountSettingsOwner.tiff
+mm|./MoneyMoney.app/Contents/Resources/AccountView.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/AccountView.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/AddressTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/AmountRangePopover.nib
+mm|./MoneyMoney.app/Contents/Resources/AppIcon.icns
+mm|./MoneyMoney.app/Contents/Resources/App-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/App.tiff
+mm|./MoneyMoney.app/Contents/Resources/Assets.car
+mm|./MoneyMoney.app/Contents/Resources/BluetoothButtonTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/CalibrateBarChartWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/CategorizationWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/CategoryPopover.nib
+mm|./MoneyMoney.app/Contents/Resources/CategoryReportingWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/CategoryView.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/CategoryView.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/CertificateSheet.nib
+mm|./MoneyMoney.app/Contents/Resources/ClientDefaults.plist
+mm|./MoneyMoney.app/Contents/Resources/Comment.tiff
+mm|./MoneyMoney.app/Contents/Resources/container.nnn.001.02.xsd
+mm|./MoneyMoney.app/Contents/Resources/container.nnn.001.03.xsd
+mm|./MoneyMoney.app/Contents/Resources/container.nnn.001.xsd
+mm|./MoneyMoney.app/Contents/Resources/container.nnn.002.02.xsd
+mm|./MoneyMoney.app/Contents/Resources/container.nnn.002.xsd
+mm|./MoneyMoney.app/Contents/Resources/container.nnn.003.02.xsd
+mm|./MoneyMoney.app/Contents/Resources/CsvFile.tiff
+mm|./MoneyMoney.app/Contents/Resources/Dashboard_H.tiff
+mm|./MoneyMoney.app/Contents/Resources/Dashboard.tiff
+mm|./MoneyMoney.app/Contents/Resources/DashboardView.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/DashboardView.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/DateRangePopover.nib
+mm|./MoneyMoney.app/Contents/Resources/DefaultCategoryPopover.nib
+mm|./MoneyMoney.app/Contents/Resources/Default.css
+mm|./MoneyMoney.app/Contents/Resources/de.lproj/HbciKernel.strings
+mm|./MoneyMoney.app/Contents/Resources/de.lproj/InfoPlist.strings
+mm|./MoneyMoney.app/Contents/Resources/de.lproj/InternetAccessPolicy.plist
+mm|./MoneyMoney.app/Contents/Resources/de.lproj/Localizable.strings
+mm|./MoneyMoney.app/Contents/Resources/de.lproj/MainMenu.nib
+mm|./MoneyMoney.app/Contents/Resources/en.lproj/HbciKernel.strings
+mm|./MoneyMoney.app/Contents/Resources/en.lproj/InfoPlist.strings
+mm|./MoneyMoney.app/Contents/Resources/en.lproj/InternetAccessPolicy.plist
+mm|./MoneyMoney.app/Contents/Resources/en.lproj/Localizable.strings
+mm|./MoneyMoney.app/Contents/Resources/en.lproj/MainMenu.nib
+mm|./MoneyMoney.app/Contents/Resources/ExportTransactionsWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/ExtensionLarge.tiff
+mm|./MoneyMoney.app/Contents/Resources/Extension.tiff
+mm|./MoneyMoney.app/Contents/Resources/FusionSheet.nib
+mm|./MoneyMoney.app/Contents/Resources/ImportTransactionsWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/LicenseWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/LockscreenLockTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/LockscreenTouchIdTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/LockView.nib
+mm|./MoneyMoney.app/Contents/Resources/LogWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/MainWindow.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/MainWindow.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/MenuDirectDebitTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/MenuRefreshTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/MenuStandingOrderTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/MenuTemplateGroupTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/MenuTransactionTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/MMPopover.nib
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-2-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-3-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-4-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-5-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-6-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-7-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-8-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-9-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon1.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-2-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-3-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-4-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-5-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-6-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-7-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-8-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-9-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon2.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-2-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-3-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-4-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-5-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-6-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-7-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-8-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-9-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon3.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-2-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-3-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-4-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-5-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-6-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-7-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-8-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-9-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon4.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-2-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-3-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-4-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-5-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-6-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-7-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-8-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-9-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon5.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-2-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-3-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-4-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-5-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-6-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-7-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-8-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-9-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon6.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-2-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-2-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-2.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-3-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-3-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-3.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-4-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-4-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-4.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-5-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-5-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-5.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-6-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-6-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-6.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-7-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-7.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-8-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-8-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-8.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-9-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-9-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-9.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7-Large.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernAccountIcon7.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernDashboard_H.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernDashboard.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernOutbox_H.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernOutbox-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernOutbox.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernScheduled_H.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernScheduled-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernScheduled.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernStatementDocuments_H.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernStatementDocuments-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernStatementDocuments.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernTemplates_H.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernTemplates-LargeInverted.tiff
+mm|./MoneyMoney.app/Contents/Resources/ModernTemplates.tiff
+mm|./MoneyMoney.app/Contents/Resources/MoneyMoney.sdef
+mm|./MoneyMoney.app/Contents/Resources/NewsStatusWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/NewsWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/NotificationWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/OAuthWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/OtpSheet.nib
+mm|./MoneyMoney.app/Contents/Resources/Outbox_H.tiff
+mm|./MoneyMoney.app/Contents/Resources/Outbox.tiff
+mm|./MoneyMoney.app/Contents/Resources/OutboxView.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/OutboxView.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/pain.001.001.02.con.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.001.001.02.grp.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.001.001.02.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.001.001.03.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.001.001.08.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.001.001.09_AXZ.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.001.001.09.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.001.002.02.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.001.002.03.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.001.003.03.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.008.001.01.con.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.008.001.01.grp.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.008.001.01.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.008.001.02.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.008.001.08.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.008.002.01.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.008.002.02.xsd
+mm|./MoneyMoney.app/Contents/Resources/pain.008.003.02.xsd
+mm|./MoneyMoney.app/Contents/Resources/PasswordSheet.nib
+mm|./MoneyMoney.app/Contents/Resources/PaymentOptionsTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/PaymentWindow.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/PaymentWindow.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/PdfFile.tiff
+mm|./MoneyMoney.app/Contents/Resources/PinModifyWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/PinSheet.nib
+mm|./MoneyMoney.app/Contents/Resources/PortfolioView.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/PortfolioView.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/PreferencesWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/Printer.tiff
+mm|./MoneyMoney.app/Contents/Resources/PrintTransactionListPanel.nib
+mm|./MoneyMoney.app/Contents/Resources/PwdSheet.nib
+mm|./MoneyMoney.app/Contents/Resources/Scheduled_H.tiff
+mm|./MoneyMoney.app/Contents/Resources/Scheduled.tiff
+mm|./MoneyMoney.app/Contents/Resources/ScheduledView.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/ScheduledView.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/SecuritiesPropertiesPopover.nib
+mm|./MoneyMoney.app/Contents/Resources/ServerDefaults.plist
+mm|./MoneyMoney.app/Contents/Resources/SettingsExtensions.tiff
+mm|./MoneyMoney.app/Contents/Resources/SettingsGeneral.tiff
+mm|./MoneyMoney.app/Contents/Resources/SettingsPayments.tiff
+mm|./MoneyMoney.app/Contents/Resources/SettingsPsd2.tiff
+mm|./MoneyMoney.app/Contents/Resources/SettingsSecurity.tiff
+mm|./MoneyMoney.app/Contents/Resources/SetupStatementsWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/Signet.tiff
+mm|./MoneyMoney.app/Contents/Resources/SmartPasteIcon.tiff
+mm|./MoneyMoney.app/Contents/Resources/SoundNegative.mp3
+mm|./MoneyMoney.app/Contents/Resources/SoundNeutral.mp3
+mm|./MoneyMoney.app/Contents/Resources/SoundPositive.mp3
+mm|./MoneyMoney.app/Contents/Resources/SoundSent.mp3
+mm|./MoneyMoney.app/Contents/Resources/SplitTransactionWindow.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/SplitTransactionWindow.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/SpotlightWindow.nib
+mm|./MoneyMoney.app/Contents/Resources/StatementDocuments_H.tiff
+mm|./MoneyMoney.app/Contents/Resources/StatementDocuments.tiff
+mm|./MoneyMoney.app/Contents/Resources/StatementView.nib
+mm|./MoneyMoney.app/Contents/Resources/StatusFailed.tiff
+mm|./MoneyMoney.app/Contents/Resources/StatusItemPopoverMarkRead.tiff
+mm|./MoneyMoney.app/Contents/Resources/StatusItem.tiff
+mm|./MoneyMoney.app/Contents/Resources/StatusLarge.tiff
+mm|./MoneyMoney.app/Contents/Resources/StatusOK.tiff
+mm|./MoneyMoney.app/Contents/Resources/TemplateGroupPopover.nib
+mm|./MoneyMoney.app/Contents/Resources/TemplateGroupView.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/TemplateGroupView.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/Templates_H.tiff
+mm|./MoneyMoney.app/Contents/Resources/Templates.tiff
+mm|./MoneyMoney.app/Contents/Resources/ToolbarChartBalanceTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/ToolbarListTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/ToolbarLockTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/ToolbarPiechartTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/ToolbarRefreshTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/ToolbarReportingTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/ToolbarStandingOrderTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/ToolbarTransactionTemplate.tiff
+mm|./MoneyMoney.app/Contents/Resources/TransactionCommentPopover.nib
+mm|./MoneyMoney.app/Contents/Resources/TransactionFeedbackIconSuccess.tiff
+mm|./MoneyMoney.app/Contents/Resources/TransactionPropertiesPopover.nib/keyedobjects-101300.nib
+mm|./MoneyMoney.app/Contents/Resources/TransactionPropertiesPopover.nib/keyedobjects-110000.nib
+mm|./MoneyMoney.app/Contents/Resources/TrayPopover.nib
+mm|./MoneyMoney.app/Contents/Resources/Trial.tiff
+mm|./MoneyMoney.app/Contents/Resources/UnlockSheet.nib
+mm|./MoneyMoney.app/Contents/Resources/UpdateAvailable.tiff
+mm|./MoneyMoney.app/Contents/Resources/UserDefaults.plist
+mm|./MoneyMoney.app/Contents/Resources/Wizard.nib
+mm|./MoneyMoney.app/Contents/Resources/Wizard.tiff
+mm|./MoneyMoney.app/Contents/XPCServices/com.moneymoney-app.update.xpc/Contents/Info.plist
+mm|./MoneyMoney.app/Contents/XPCServices/com.moneymoney-app.update.xpc/Contents/MacOS/com.moneymoney-app.update
+mx|./mmex.app/Contents/Info.plist
+mx|./mmex.app/Contents/MacOS/mmex
+mx|./mmex.app/Contents/Resources/apexcharts.min.js
+mx|./mmex.app/Contents/Resources/cash.wav
+mx|./mmex.app/Contents/Resources/ChartNew.js
+mx|./mmex.app/Contents/Resources/classlist.min.js
+mx|./mmex.app/Contents/Resources/drop.wav
+mx|./mmex.app/Contents/Resources/en_US.lproj/common.mo
+mx|./mmex.app/Contents/Resources/en_US.lproj/mmex.mo
+mx|./mmex.app/Contents/Resources/findindex.min.js
+mx|./mmex.app/Contents/Resources/format.js
+mx|./mmex.app/Contents/Resources/home_page.htt
+mx|./mmex.app/Contents/Resources/jquery.min.js
+mx|./mmex.app/Contents/Resources/mmex.icns
+mx|./mmex.app/Contents/Resources/mmex.png
+mx|./mmex.app/Contents/Resources/mmex.svg
+mx|./mmex.app/Contents/Resources/polyfill.min.js
+mx|./mmex.app/Contents/Resources/resize-observer.js
+mx|./mmex.app/Contents/Resources/sorttable.js
+mx|./mmex.app/Contents/Resources/themes/default.mmextheme
+mx|./mmex.app/Contents/Resources/umd.min.js
+sp|./Swift Publisher 5.app/Contents/Frameworks/LinkBack.framework/Versions/A/LinkBack
+sp|./Swift Publisher 5.app/Contents/Frameworks/Sparkle.framework/Versions/A/Sparkle
+sp|./Swift Publisher 5.app/Contents/Info.plist
+sp|./Swift Publisher 5.app/Contents/MacOS/Swift Publisher 5
+sp|./Swift Publisher 5.app/Contents/Resources/AppIcon.icns
+sp|./Swift Publisher 5.app/Contents/Resources/ArtText2.xml
+sp|./Swift Publisher 5.app/Contents/Resources/ArtText3.xml
+sp|./Swift Publisher 5.app/Contents/Resources/ArtText4.xml
+sp|./Swift Publisher 5.app/Contents/Resources/Assets.car
+sp|./Swift Publisher 5.app/Contents/Resources/CCAssistantController.nib/keyedobjects.nib
+sp|./Swift Publisher 5.app/Contents/Resources/CCWellcomeWindowController.nib/keyedobjects.nib
+sp|./Swift Publisher 5.app/Contents/Resources/dsa_pub.pem
+sp|./Swift Publisher 5.app/Contents/Resources/en.lproj/cc.strings
+sp|./Swift Publisher 5.app/Contents/Resources/en.lproj/InfoPlist.strings
+sp|./Swift Publisher 5.app/Contents/Resources/en.lproj/TemplateCategories.xml
+sp|./Swift Publisher 5.app/Contents/Resources/en.lproj/Templates.txt
+sp|./Swift Publisher 5.app/Contents/Resources/MainMenu.nib/keyedobjects.nib

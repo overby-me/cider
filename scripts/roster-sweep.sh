@@ -59,6 +59,12 @@ reap() {
 
 want=${*:-}
 rc=0
+# KEEP THE STAGED BUNDLES YOUNG. /tmp is swept by AGE and the prefixes live there, so an
+# application file that nothing reads ages out and is deleted while the bundle still looks present.
+# That is how iTerm2 lost iTermServer on 2026-09-19 and with it its shell. The sweep runs often, so
+# doing it here costs a touch of 993 files and removes the whole failure class.
+"$(dirname "$0")/app-keep-warm.sh" >/dev/null 2>&1 || true
+
 while IFS='|' read -r tag prefix app launchd resize extra; do
 	[ -n "$tag" ] || continue
 	if [ -n "$want" ]; then case " $want " in *" $tag "*) ;; *) continue ;; esac; fi
