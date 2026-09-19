@@ -1,0 +1,66 @@
+Say which descriptors are still armed when a kevent is about to wait with no timeout.
+
+A wait with a NULL timeout means the caller believes it has work outstanding, and nothing said
+which descriptors it was still watching. A handle nobody closes and an event nobody sends look
+identical from outside, and that is exactly the state CMake ends in.
+
+Under the existing KQUEUE_DEBUG switch, every untimed wait is now preceded by one line per live
+knote:
+
+  knote_dump_armed(): still armed: filter=-1 ident=18 flags=0x1 fflags=0x0 dupfd=21
+
+The walk lives in knote.c rather than kevent.c because the red-black accessors are generated
+there; kevent.c calls it through one extern.
+
+WHAT IT SHOWED (#235): after CMake reaps its child, the kqueue is still armed on three EVFILT_READ
+descriptors and nothing else. Reading the hung process fd table from inside the container, where
+the guest is root, those descriptors are pipe read ends whose WRITE ends are still open in the
+same process, so they can never report end of file and the wait can never end.
+
+--- a/src/common/kevent.c
++++ b/src/common/kevent.c
+@@ -326,6 +326,7 @@
+ }
+ 
+ extern pthread_mutex_t kq_mtx;
++extern void knote_dump_armed(struct kqueue *);
+ 
+ int VISIBLE
+ kevent64_impl(int kqfd, const struct kevent64_s *changelist, int nchanges,
+@@ -397,6 +398,8 @@
+         /* WHAT IS THIS LOOP STILL WAITING FOR. A wait with no timeout means the caller believes it
+          * has work outstanding, and until now nothing said which descriptors were still armed: a
+          * handle nobody closes and an event nobody sends look identical from outside. Task #235. */
++        if (DEBUG_KQUEUE && ts == NULL)
++            knote_dump_armed(kq);
+         rv = kqops.kevent_wait(kq, nevents, ts);
+         dbg_printf("kqops.kevent_wait returned %d", rv);
+ 
+--- a/src/common/knote.c
++++ b/src/common/knote.c
+@@ -79,6 +79,25 @@
+     pthread_rwlock_unlock(&filt->kf_knote_mtx);
+ }
+ 
++/* WHAT IS THIS KQUEUE STILL WAITING FOR. A wait with no timeout means the caller believes it has
++ * work outstanding, and nothing said which descriptors were still armed: a handle nobody closes
++ * and an event nobody sends look identical from outside. Task #235. */
++void
++knote_dump_armed(struct kqueue *kq)
++{
++    for (int f = 0; f < EVFILT_SYSCOUNT; f++) {
++        struct filter *filt = &kq->kq_filt[f];
++        struct knote *kn;
++
++        if (filt->kf_id == 0)
++            continue;
++        RB_FOREACH(kn, knt, &filt->kf_knote)
++            dbg_printf("still armed: filter=%d ident=%d flags=0x%x fflags=0x%x dupfd=%d",
++                    (int) kn->kev.filter, (int) kn->kev.ident, (unsigned) kn->kev.flags,
++                    (unsigned) kn->kev.fflags, (int) kn->kdata.kn_dupfd);
++    }
++}
++
+ int
+ knote_delete(struct filter *filt, struct knote *kn)
+ {

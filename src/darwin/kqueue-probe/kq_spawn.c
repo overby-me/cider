@@ -26,8 +26,11 @@
 
 extern char** environ;
 
-int main(void)
+/* pipe() as well as socketpair(), because the two are different objects in the kernel and a
+ * spawning caller may use either: KWSys uses a pipe where libuv uses a socketpair. */
+int main(int argc, char** argv_in)
 {
+	int use_pipe = (argc > 1 && argv_in[1][0] == 'p');
 	int sv[2];
 	pid_t pid = -1;
 	posix_spawn_file_actions_t fa;
@@ -37,11 +40,12 @@ int main(void)
 	int kq, rv, seen_eof = 0, seen_exit = 0;
 	char* argv[] = { "/usr/bin/uname", "-r", NULL };
 
-	if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0)
+	if (use_pipe ? (pipe(sv) != 0) : (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0))
 	{
-		printf("socketpair failed errno=%d\n", errno);
+		printf("%s failed errno=%d\n", use_pipe ? "pipe" : "socketpair", errno);
 		return 0;
 	}
+	printf("child stdout is a %s\n", use_pipe ? "pipe" : "socketpair");
 
 	posix_spawn_file_actions_init(&fa);
 	posix_spawn_file_actions_adddup2(&fa, sv[1], 1);
