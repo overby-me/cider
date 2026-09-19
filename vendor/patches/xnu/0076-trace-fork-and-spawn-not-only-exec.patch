@@ -1,0 +1,120 @@
+Trace fork and posix_spawn too, because a child nobody asked for looks like one that failed.
+
+CIDER_TRACE_EXEC covered exec only, and exec is the LAST step. Two applications reach the point of
+needing a child process and attempt no exec at all, and nothing said whether they got as far as
+asking. The same switch now also prints:
+
+  CIDER_EXEC fork=try                    every sys_fork
+  CIDER_EXEC fork=failed code=N          a fork that the kernel refused
+  CIDER_EXEC spawn=try path=... arg0=... every sys_posix_spawn, with its first eight arguments
+
+Most applications spawn rather than fork and exec by hand, so spawn=try is the line that says a
+child was asked for at all.
+
+The gate is shared rather than copied: __cider_exec_trace_on is no longer static, because the
+/proc/self/environ reader it depends on lives in execve.c and three copies of that would be three
+chances to drift.
+
+CONTROL, because a trace that prints nothing looks exactly like a thing that did not happen:
+  cider shell /bin/sh -c '/bin/echo hi'
+prints two fork=try lines alongside the exec lines for bash, path_helper, sh and echo.
+
+WHAT IT ANSWERED IMMEDIATELY, and the two applications turn out NOT to share a cause:
+
+  iTerm2 (#228): fork 2, spawn 0, exec 3. The two forks and three execs are the launch chain, the
+  same pair a bare bash --login produces in the control. So iTerm2 asks for NO child process by any
+  mechanism, and every theory about a refused fork or a broken spawn is dead.
+
+  CMake (#235): fork 3, spawn 1, exec 3, and the spawn is named:
+    CIDER_EXEC spawn=try path=/usr/bin/uname arg0=/usr/bin/uname arg1=-r
+    CIDER_EXEC fork=try
+  and then NOTHING. No exec for uname, no fork=failed, and /usr/bin/uname exists and is executable
+  at 13664 bytes. So posix_spawn forks successfully and THE CHILD DIES BETWEEN FORK AND EXEC, in
+  its own setup path. That is a different defect from iTerm2 and a much narrower one.
+
+I had guessed in the previous iteration that the two might share a cause. They do not, and this is
+what shows it.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c
+@@ -180,7 +180,9 @@
+ // Every guest exec comes through here, and until this existed a process that was never created
+ // looked exactly like one that was never asked for. iTerm2 spent two sessions in that gap: it
+ // renders, opens a session log, and no shell process EVER appears in the process table (#228).
+-static int exec_trace_on(void)
++// NOT static: fork.c and posix_spawn.c want the same switch, and the /proc/self/environ reader it
++// needs is here. One gate, read once, rather than three copies of the reader.
++int __cider_exec_trace_on(void)
+ {
+ 	static int cached = -1;
+ 	if (cached < 0)
+@@ -188,6 +190,8 @@
+ 	return cached;
+ }
+ 
++static int exec_trace_on(void) { return __cider_exec_trace_on(); }
++
+ // FD 2, NOT __simple_printf, WHICH WRITES TO FD 1. A trace on stdout corrupts the output of the
+ // program it is measuring: with it on fd 1 the guest /etc/profile ate a trace line as a command.
+ #define EXEC_TRACE_FAIL(step, code) \
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c
+@@ -20,18 +20,31 @@
+ extern void __task_self_trap_reset(void); // #11: drop cached task_self in the fork child
+ extern void __host_self_trap_reset(void); // #23: drop cached host_self in the fork child
+ 
++extern int __cider_exec_trace_on(void);
++
+ long sys_fork(void)
+ {
+ 	int ret;
+ 	int wdfd = get_perthread_wd();
+ 
++	/* A FORK THAT NEVER HAPPENS AND ONE THAT FAILS LOOK THE SAME FROM OUTSIDE, which is the gap
++	 * CIDER_TRACE_EXEC closed for exec and leaves open here: two applications reach the point of
++	 * needing a child process and no exec is ever attempted, and nothing says whether they got as
++	 * far as forking. Tasks #228 and #235. */
++	if (__cider_exec_trace_on())
++		__simple_fprintf(2, "CIDER_EXEC fork=try\n");
++
+ #ifdef SYS_fork
+ 	ret = LINUX_SYSCALL(__NR_fork);
+ #else
+ 	ret = LINUX_SYSCALL(__NR_clone, LINUX_SIGCHLD, 0);
+ #endif
+ 	if (ret < 0)
++	{
++		if (__cider_exec_trace_on())
++			__simple_fprintf(2, "CIDER_EXEC fork=failed code=%d\n", ret);
+ 		ret = errno_linux_to_bsd(ret);
++	}
+ 	else if (ret == 0)
+ 	{
+ 		// in the child
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/posix_spawn.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/posix_spawn.c
+@@ -44,12 +44,24 @@
+ 
+ extern _libkernel_functions_t _libkernel_functions;
+ 
++extern int __cider_exec_trace_on(void);
++
+ long sys_posix_spawn(int* pid, const char* path, const struct _posix_spawn_args_desc* desc,
+ 		char** argvp, char** envp)
+ {
+ 	int ret, my_pid;
+ 	int pipe[2] = { -1, -1 };
+ 
++	/* Most applications spawn rather than fork and exec by hand, so this is the line that says a
++	 * child was ASKED FOR at all. Tasks #228 and #235. */
++	if (__cider_exec_trace_on())
++	{
++		__simple_fprintf(2, "CIDER_EXEC spawn=try path=%s", path ? path : "(null)");
++		if (argvp != NULL)
++			for (int i = 0; i < 8 && argvp[i] != NULL; i++)
++				__simple_fprintf(2, " arg%d=%s", i, argvp[i]);
++		__simple_fprintf(2, "\n");
++	}
+ 
+ 	if (desc && desc->attrp && desc->attrp->psa_flags & POSIX_SPAWN_SETEXEC)
+ 		goto no_fork;
