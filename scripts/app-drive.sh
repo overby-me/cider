@@ -168,6 +168,15 @@ ELF_LIBS=$(grep '^elf_lib_dirs' "$REPO/.buckconfig.local" 2>/dev/null | sed 's/^
 # "Symbol not found: _$ss042_stdlib_isOSVersionAtLeastOrVariantVersion..., expected in libswiftCore".
 COMPAT=${COMPAT:-/usr/lib/swift/libswiftCompat.dylib}
 
+# READ A VALUE OUT OF THE APPLICATION'S OWN IVARS, which no trace of ours can reach.
+#   SPY='PTYSession.insertText:' scripts/app-drive.sh ...
+# src/darwin/spy takes a comma separated Class.selector list and logs each call with its argument
+# and return. It is inserted ALONGSIDE the compat library rather than instead of it, because
+# dropping compat kills any Swift application in dyld before it draws.
+SPY=${SPY:-}
+INSERT="$COMPAT"
+[ -n "$SPY" ] && INSERT="$COMPAT:/usr/lib/cider-spy.dylib"
+
 # RECORD WHICH CONFIGURATION THIS WAS. An unrecorded setting cannot be proven after the fact: a
 # whole roster was driven with LAUNCHD_FORCE and afterwards nothing in the captures could say
 # whether the override had taken, because the guest syslog APPENDS across runs and its daemon names
@@ -200,7 +209,7 @@ say "launching $APPBIN"
 	env $UNSET LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
 		CIDERPREFIX="$PREFIX" WAYLAND_DISPLAY=$NEW XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000} \
 		CIDER_NO_LAUNCHD="${LAUNCHD:-1}" LD_LIBRARY_PATH="$ELF_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-		DYLD_INSERT_LIBRARIES="$COMPAT" CIDER_COMPAT_LIBRARY="$COMPAT" \
+		DYLD_INSERT_LIBRARIES="$INSERT" CIDER_COMPAT_LIBRARY="$COMPAT" ${SPY:+CIDER_SPY="$SPY"} \
 		${TRACE_INPUT:+CIDER_WAYLAND_TRACE_INPUT=1} ${TRACE_ENV:-} \
 		DSERVER_PATH="$(realpath "$CIDERD")" DSERVER_MLDR_PATH="$(realpath "$MLDR")" \
 		DSERVER_LIBEXEC_PATH="$(realpath "$RT")/libexec/cider" \
