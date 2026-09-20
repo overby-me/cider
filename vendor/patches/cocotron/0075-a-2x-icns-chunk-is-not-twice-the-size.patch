@@ -1,0 +1,129 @@
+A 2x icns chunk is not an icon of twice the size.
+
+SWIFT PUBLISHER OPENS A TEMPLATE END TO END because of this. Its trial licence dialog was 1316x1104
+on a 1256x684 output, placed at -30,-397 so that two edges hung off the screen, and the click that
+dismisses it could never land. It is now 804x592 at 226,115, fully on screen, and clicking Try It
+dismisses it and leaves the document on screen with its rulers, page thumbnails, zoom control and
+inspector. LOOKED AT, both before and after.
+
+THE CHAIN, measured end to end and not guessed:
+  The dialog is built IN CODE, not from a nib: its text lives in Resources/*.lproj/license.strings
+  and in the executable, and license2.nib, which I first blamed, has neither watermark nor Try It.
+  Its NSImageView was 1024x1024, and CIDER_TRACE_SVFRAME=NSImageView logged twelve frame changes in
+  the whole run with not one of them 1024, so the view was BORN that size. The only thing that
+  sizes a view to an image is +[NSImageView imageViewWithImage:], which is correct: Apple documents
+  it as returning a view sized to fit. So the size came from the IMAGE.
+
+  -[NSImage size] with no explicit size answers the LARGEST representation, and AppIcon.icns
+  carries ic10, which is 1024x1024 PIXELS. But ic10 is 512 POINTS AT 2x. ic11 through ic14 are the
+  same: their pixel dimensions are double their size in points. An NSImageRep built here carries
+  only pixels, so every 2x chunk entered the image claiming twice its real size, and the app icon
+  measured 1024x1024 instead of 512x512. Anything sized from an application icon was eight times
+  too big.
+
+THE FIX. The icns reader dispatches on the payload MAGIC, which is right, and therefore never knew
+the type; it now also reads the type tag to recognise the five 2x chunks. They are HELD BACK rather
+than dropped, and used only if no 1x chunk decoded at all, so an icns that carries only 2x variants
+still has an icon. Every icns built by iconutil carries the 1x twin of each 2x chunk, so nothing is
+lost in practice: the point sizes 16, 32, 128, 256 and 512 all remain.
+
+This is not specific to one application. Any code path that asks an application icon how big it is
+was getting the wrong answer.
+
+Task #246.
+--- a/Onyx2D/include/Onyx2D/O2ImageSource_ICNS.h
++++ b/Onyx2D/include/Onyx2D/O2ImageSource_ICNS.h
+@@ -27,6 +27,8 @@
+     struct O2ICNSNode *_iconNodes;
+     struct O2ICNSNode *_maskNodes;
+     NSMutableArray *_images;
++    /* The 2x chunks, held back rather than dropped: see -parseImages. */
++    NSMutableArray *_retinaImages;
+     bool _parsed;
+ }
+ 
+--- a/Onyx2D/O2ImageSource_ICNS.m
++++ b/Onyx2D/O2ImageSource_ICNS.m
+@@ -164,12 +164,14 @@
+     _length = [_data length];
+     _position = 0;
+     _images = [NSMutableArray new];
++    _retinaImages = [NSMutableArray new];
+     return self;
+ }
+ 
+ - (void) dealloc {
+     [_data release];
+     [_images release];
++    [_retinaImages release];
+     [super dealloc];
+ }
+ 
+@@ -306,7 +308,10 @@
+ 
+ /* ic07 through ic14 hold a whole PNG. Hand it to whichever source recognises it rather than
+  * decoding it here: O2ImageSource sniffs the data and picks the subclass. */
+-- (void) addImageFromEncodedPayload: (const uint8_t *) bytes length: (uint32_t) length {
++- (void) addImageFromEncodedPayload: (const uint8_t *) bytes
++                             length: (uint32_t) length
++                             retina: (BOOL) retina
++{
+     NSData *data = [[NSData alloc] initWithBytes: bytes length: length];
+     O2ImageSourceRef source = [O2ImageSource newImageSourceWithData: (CFDataRef) data
+                                                             options: NULL];
+@@ -316,7 +321,7 @@
+             O2Image *image = [source createImageAtIndex: 0 options: NULL];
+ 
+             if (image != NULL) {
+-                [_images addObject: image];
++                [(retina ? _retinaImages : _images) addObject: image];
+                 O2ImageRelease(image);
+             }
+         }
+@@ -384,10 +389,26 @@
+         const uint8_t *payload = _bytes + _position;
+ 
+         if (memcmp(payload, pngMagic, sizeof(pngMagic)) == 0) {
++            /*
++             * A 2x CHUNK IS NOT AN IMAGE OF TWICE THE SIZE. ic10 through ic14 are the Retina
++             * variants and their pixel dimensions are DOUBLE their size in points: ic10 is 512
++             * points at 2x, not a 1024 point icon. An NSImageRep here carries only pixels, so
++             * admitting one made the image report twice its real size, and -[NSImage size] answers
++             * the largest representation: an application icon came back as 1024x1024 and anything
++             * sized from it was eight times too big. Held back rather than dropped, because an
++             * icns that carries ONLY 2x chunks would otherwise have no icon at all. Task #246.
++             */
++            BOOL retina = (type == BigEndianOSType('i', 'c', '1', '0') ||
++                           type == BigEndianOSType('i', 'c', '1', '1') ||
++                           type == BigEndianOSType('i', 'c', '1', '2') ||
++                           type == BigEndianOSType('i', 'c', '1', '3') ||
++                           type == BigEndianOSType('i', 'c', '1', '4'));
++
+             if (getenv("CIDER_TRACE_ICNS"))
+-                fprintf(stderr, "icns: %c%c%c%c is a PNG payload of %u bytes\n",
+-                        type >> 24, type >> 16, type >> 8, type, length);
+-            [self addImageFromEncodedPayload: payload length: length];
++                fprintf(stderr, "icns: %c%c%c%c is a PNG payload of %u bytes%s\n",
++                        type >> 24, type >> 16, type >> 8, type, length,
++                        retina ? " (2x, held back)" : "");
++            [self addImageFromEncodedPayload: payload length: length retina: retina];
+             _position += length;
+             return;
+         }
+@@ -756,6 +777,16 @@
+     while (_position < _length)
+         [self parseIcon];
+ 
++    /* The 2x chunks are used only when nothing else decoded, so a file that carries no 1x icon
++     * still has one. Every icns built by iconutil carries the 1x twin of each. */
++    if ([_images count] == 0 && [_retinaImages count] > 0) {
++        if (getenv("CIDER_TRACE_ICNS"))
++            fprintf(stderr, "icns: no 1x chunk decoded, falling back to %lu 2x chunks\n",
++                    (unsigned long) [_retinaImages count]);
++        [_images addObjectsFromArray: _retinaImages];
++    }
++    [_retinaImages removeAllObjects];
++
+     O2ICNSNode *iconNode;
+ 
+     for (iconNode = _iconNodes; iconNode != NULL; iconNode = iconNode->next) {
