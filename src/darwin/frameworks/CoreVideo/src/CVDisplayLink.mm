@@ -4,9 +4,13 @@
  * SetOutputCallback discarded the callback, Start started nothing, and IsRunning answered YES: an
  * application that draws from the link was told registered, started and running, and its callback
  * was never called once. That is the worst shape a stub can take, because nothing reports an error
- * and the frame simply never arrives. iTerm2 3.5 draws its terminal that way and never marked the
- * text view dirty, so every keystroke reached the shell, the echo came back, and the window kept
- * showing whatever the first layout had painted.
+ * and the frame simply never arrives.
+ *
+ * CORRECTION. This file first said iTerm2 3.5 draws its terminal that way, which was a guess from
+ * the symptom and is wrong: measured with the trace below, it loads CoreVideo and never creates a
+ * link at all. Its blank window is task #239 and not this. The stub was still a real defect, and
+ * 3.5 is still the reason it was found, but no application on the roster is known to draw from a
+ * display link today.
  *
  * There is no vertical blank to follow here, so the link fires from its own thread at the nominal
  * refresh rate. It runs OFF THE MAIN THREAD, which is where macOS calls it and what callers expect.
@@ -31,6 +35,20 @@
 
 static const NSString* kDirectDisplayArray = @"CGDirectDisplay";
 static const NSString* kCiderLinkState = @"CiderLinkState";
+
+static int cider_link_tracing(void)
+{
+	return getenv("CIDER_TRACE_DISPLAY") != NULL;
+}
+
+/* SO THAT SILENCE MEANS SOMETHING: without this, a log with no display link in it reads the same
+ * whether the application never asked for one or this library was never loaded, and those have
+ * opposite answers. */
+__attribute__((constructor)) static void cider_link_announce(void)
+{
+	if (cider_link_tracing())
+		fprintf(stderr, "cider-displaylink armed, CoreVideo loaded\n");
+}
 
 /*
  * The link's own state. It hangs off the dictionary the Ref already is, so CVDisplayLinkRelease
@@ -143,15 +161,21 @@ CVReturn CVDisplayLinkCreateWithActiveCGDisplays(CVDisplayLinkRef* displayLinkOu
 	std::unique_ptr<CGDirectDisplayID[]> displays;
 
 	CGError err = CGGetActiveDisplayList(0, nullptr, &displayCount);
-	if (err != kCGErrorSuccess)
+	if (err != kCGErrorSuccess) {
+		if (cider_link_tracing())
+			fprintf(stderr, "cider-displaylink create FAILED counting displays err=%d\n", err);
 		return err;
+	}
 
 	displays.reset(new CGDirectDisplayID[displayCount]);
 
 	err = CGGetActiveDisplayList(displayCount, displays.get(), &displayCount);
-	if (err != kCGErrorSuccess)
+	if (err != kCGErrorSuccess) {
+		if (cider_link_tracing())
+			fprintf(stderr, "cider-displaylink create FAILED listing displays err=%d\n", err);
 		return err;
-	
+	}
+
 	NSMutableDictionary* self = [[NSMutableDictionary alloc] init];
 	NSMutableArray* array = [NSMutableArray arrayWithCapacity: displayCount];
 
@@ -162,6 +186,9 @@ CVReturn CVDisplayLinkCreateWithActiveCGDisplays(CVDisplayLinkRef* displayLinkOu
 			forKey: kDirectDisplayArray];
 
 	*displayLinkOut = (CVDisplayLinkRef) self;
+	if (cider_link_tracing())
+		fprintf(stderr, "cider-displaylink created link=%p displays=%u\n", *displayLinkOut,
+			displayCount);
 	return kCVReturnSuccess;
 }
 
