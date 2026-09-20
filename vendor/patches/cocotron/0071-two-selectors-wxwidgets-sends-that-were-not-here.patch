@@ -1,0 +1,131 @@
+Two selectors wxWidgets sends that were not here, and each one killed the application.
+
+AN UNRECOGNIZED SELECTOR IS NOT A DEGRADED ANSWER IN A wxWidgets APPLICATION. It raises, wx catches
+it with catch(...), cannot name it, and prints Unhandled unknown exception; terminating the
+application. There is no ObjC Terminating app line and the process exits 0, so from outside it looks
+like the user quit.
+
+Money Manager EX did exactly that when its Currency Manager panel was built, reproducibly:
+
+  cider: UNRECOGNIZED -[NSLayoutManager setTypesetterBehavior:]
+  cider: UNRECOGNIZED -[wxDVCNSTableColumn setHidden:]
+  Unhandled unknown exception; terminating the application.
+
+NSLayoutManager setTypesetterBehavior: and typesetterBehavior. The behaviour lives on the typesetter,
+which already had both accessors and the enum; what was missing is the convenience macOS puts on the
+layout manager in front of it, so these forward. DECLARED IN NSTypesetter.h, not NSLayoutManager.h,
+because NSTypesetterBehavior is declared in the former and the former is what imports the latter.
+Declared the other way round the compiler answers expected a type, which it did.
+
+NSTableColumn setHidden: and isHidden. A hidden column is still in the table, it is only not drawn,
+so this is a flag rather than a removal, and the setter tiles the table when the flag changes.
+wxWidgets subclasses NSTableColumn as wxDVCNSTableColumn and sends it.
+
+MEASURED, and only what was measured: the terminating exception is GONE, 1 to 0, and both
+UNRECOGNIZED lines are gone, 2 to 0, on the same scenario.
+
+WHAT IS NOT FIXED, stated plainly: the application still exits on that click. It now does so
+SILENTLY, with no exception and no unrecognized selector, and the Currency Manager window is not
+created at all where before it was created twice. That is a different and quieter cause on the same
+path, and task #243 carries it.
+
+Gates: run-dts-batch, buck-bundled-patch-record-check, roster-sweep and roster-input.
+
+--- a/AppKit/NSTextView.subproj/NSLayoutManager.m
++++ b/AppKit/NSTextView.subproj/NSLayoutManager.m
+@@ -205,6 +205,21 @@
+     return [[_typesetter retain] autorelease];
+ }
+ 
++/*
++ * THE BEHAVIOUR LIVES ON THE TYPESETTER, and the layout manager is the convenience macOS puts in
++ * front of it. Missing, it is not a degraded answer but a fatal one: an unrecognized selector raises,
++ * wxWidgets catches it with catch(...), cannot name it, and prints Unhandled unknown exception;
++ * terminating the application. Money Manager EX died exactly there when its Currency Manager panel
++ * was built. Task #243.
++ */
++- (NSTypesetterBehavior) typesetterBehavior {
++    return [_typesetter typesetterBehavior];
++}
++
++- (void) setTypesetterBehavior: (NSTypesetterBehavior) behavior {
++    [_typesetter setTypesetterBehavior: behavior];
++}
++
+ - delegate {
+     return _delegate;
+ }
+--- a/AppKit/include/AppKit/NSTypesetter.h
++++ b/AppKit/include/AppKit/NSTypesetter.h
+@@ -18,6 +18,14 @@
+     NSTypesetterContainerBreakAction,
+ } NSTypesetterControlCharacterAction;
+ 
++/* THE LAYOUT MANAGER CONVENIENCE IS DECLARED HERE, not in NSLayoutManager.h, because
++ * NSTypesetterBehavior is declared in this header and this header is the one that imports
++ * NSLayoutManager.h. The other way round the type is not reachable at the point of use. */
++@interface NSLayoutManager (NSTypesetterBehavior)
++- (NSTypesetterBehavior) typesetterBehavior;
++- (void) setTypesetterBehavior: (NSTypesetterBehavior) behavior;
++@end
++
+ @interface NSTypesetter : NSObject <NSGlyphStorage> {
+     NSTypesetterBehavior _behavior;
+     CGFloat _hyphenationFactor;
+--- a/AppKit/NSTableColumn.m
++++ b/AppKit/NSTableColumn.m
+@@ -141,6 +141,14 @@
+     return _isEditable;
+ }
+ 
++/* A HIDDEN COLUMN IS STILL IN THE TABLE, it is only not drawn, which is why this is a flag here and
++ * not a removal. Missing, it is fatal rather than cosmetic: wxWidgets subclasses NSTableColumn as
++ * wxDVCNSTableColumn and sends this, the unrecognized selector raises, and wx catch(...) prints
++ * Unhandled unknown exception and terminates. Task #243. */
++- (BOOL) isHidden {
++    return _isHidden;
++}
++
+ - (NSUInteger) resizingMask {
+     return _resizingMask;
+ }
+@@ -193,6 +201,13 @@
+     [_dataCell setEditable: flag];
+ }
+ 
++- (void) setHidden: (BOOL) flag {
++    if (_isHidden == flag)
++        return;
++    _isHidden = flag;
++    [[self tableView] tile];
++}
++
+ - (void) setResizingMask: (NSUInteger) value {
+     _resizingMask = value;
+ }
+--- a/AppKit/include/AppKit/NSTableColumn.h
++++ b/AppKit/include/AppKit/NSTableColumn.h
+@@ -39,6 +39,7 @@
+     CGFloat _maxWidth;
+     BOOL _isResizable;
+     BOOL _isEditable;
++    BOOL _isHidden;
+     NSUInteger _resizingMask;
+     NSSortDescriptor *_sortDescriptorPrototype;
+ }
+@@ -55,6 +56,7 @@
+ - (CGFloat) maxWidth;
+ - (BOOL) isResizable;
+ - (BOOL) isEditable;
++- (BOOL) isHidden;
+ - (NSUInteger) resizingMask;
+ 
+ - (void) setTableView: (NSTableView *) tableView;
+@@ -67,6 +69,7 @@
+ - (void) setMaxWidth: (CGFloat) width;
+ - (void) setResizable: (BOOL) flag;
+ - (void) setEditable: (BOOL) flag;
++- (void) setHidden: (BOOL) flag;
+ - (void) setResizingMask: (NSUInteger) value;
+ 
+ - (NSCell *) dataCellForRow: (NSInteger) row;
