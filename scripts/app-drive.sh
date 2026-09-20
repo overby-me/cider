@@ -390,5 +390,16 @@ if [ "$(( SIGNALS_AFTER - FAULTS_AFTER ))" -gt "$(( SIGNALS_BEFORE - FAULTS_BEFO
 	say "non fatal guest signals this drive: $(( (SIGNALS_AFTER - FAULTS_AFTER) - (SIGNALS_BEFORE - FAULTS_BEFORE) )) (SIGWINCH and the like, not a crash)"
 fi
 
+# THE RUN THAT MEASURED NOTHING, said out loud. The launcher gives up waiting for the guest often
+# enough to hit any single comparison (2 of 5 attempts in one batch), and it exits 120 leaving a
+# fully black capture, which is byte for byte what a crash after a bad click leaves. On 2026-09-21
+# that pair was read as "the crash reproduced" and a two sided A/B was recorded on a run where the
+# application had never started. An instrument that cannot say it measured nothing will be believed
+# when it did. Task #248.
+if grep -aq "timed out waiting for the guest program to start" "$SHOTS/app.log" 2>/dev/null; then
+	say "RUN VOID: the guest never started, so every capture above is black for that reason alone."
+	say "RUN VOID: exit=120 here is the LAUNCHER timing out. A crash is exit=139 with a full log."
+fi
+
 say "captures in $SHOTS"
 ls "$SHOTS"/*.png 2>/dev/null
