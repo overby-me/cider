@@ -817,11 +817,37 @@ static TOPLEVEL_LISTENER: wl::XdgToplevelListener = wl::XdgToplevelListener {
     wm_capabilities: on_wm_capabilities,
 };
 
+/// AN OFFSCREEN DRAWING SURFACE IS NOT A WINDOW, and must never reach the compositor.
+///
+/// NSCachedImageRep backs an NSImage with a real NSWindow marked NSAppKitPrivateWindow
+/// (0x8000000), so everything drawn into an image through lockFocus arrives here looking like a
+/// window. It has no role, it is never shown, and nobody ever sees it: what it needs is pixels to
+/// draw into, which is the mapping, and nothing else.
+///
+/// Giving each one a wl_surface, an xdg_surface, a toplevel, an shm pool and two wl_buffers is what
+/// ends the session. Swift Publisher makes 1630 of them to draw the thumbnails in its template
+/// gallery, all between 9x6 and 96x16, and the compositor then closes the socket: errno 32 in one
+/// run and 104 in another, both with protocol_error 0, 3 runs of 3. Task #244.
+fn is_offscreen(st: &WindowState) -> bool {
+    st.style_mask & 0x0800_0000 != 0
+}
+
 /// Create the surface, the xdg_surface and the toplevel, then complete the configure handshake.
 ///
 /// AN EMPTY COMMIT COMES FIRST. That is the protocol: committing with no buffer asks the
 /// compositor for a configure, and only after acking it may pixels be attached.
 fn create_surface(st: &mut WindowState) -> bool {
+    if is_offscreen(st) {
+        if crate::env_flag!("CIDER_WAYLAND_TRACE_GEOMETRY") {
+            println!(
+                "cider-wayland-window offscreen number={} size={}x{} style={:#x} no-surface",
+                st.number, st.frame.size.width as i32, st.frame.size.height as i32, st.style_mask
+            );
+        }
+        // Success with no surface. present() already returns early for a window that was never
+        // shown, and one of these never is, so nothing downstream has to learn a new state.
+        return true;
+    }
     let compositor = session::compositor();
     let base = session::wm_base();
     if compositor.is_null() || base.is_null() {
@@ -1723,6 +1749,22 @@ style=0x{:x} panel={} level={} alpha={} margin={}",
             println!("cider-wayland-window backing=FAILED reason=no-pool");
             munmap(map, total);
             return false;
+        }
+        // AN OFFSCREEN SURFACE KEEPS THE MAPPING AND NOTHING ELSE. The pool and the two present
+        // buffers exist so the compositor can read the pixels, and there is no compositor in this
+        // window's life. Skipping them is most of the per image cost. See is_offscreen. Task #244.
+        if is_offscreen(st) {
+            wl::cider_wl_shm_pool_destroy(pool);
+            st.backing = Some(file);
+            st.pixels = map as *mut u8;
+            st.map_len = size;
+            st.present_next = 0;
+            st.buffer_w = w;
+            st.buffer_h = h;
+            st.draw_w = dw;
+            st.draw_h = dh;
+            st.margin = margin;
+            return true;
         }
         let format = if wants_alpha(st) {
             wl::cider_wl_shm_format_argb8888()
