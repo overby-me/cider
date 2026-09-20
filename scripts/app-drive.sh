@@ -396,9 +396,15 @@ fi
 # that pair was read as "the crash reproduced" and a two sided A/B was recorded on a run where the
 # application had never started. An instrument that cannot say it measured nothing will be believed
 # when it did. Task #248.
-if grep -aq "timed out waiting for the guest program to start" "$SHOTS/app.log" 2>/dev/null; then
-	say "RUN VOID: the guest never started, so every capture above is black for that reason alone."
-	say "RUN VOID: exit=120 here is the LAUNCHER timing out. A crash is exit=139 with a full log."
+# The criterion is the SIZE of the log, not one known message. The first version matched only the
+# timeout text and the very next void run said "Cannot open mnt namespace of pid" instead, exit=1,
+# and slipped through: a guard that lists the failures it knows about cannot report the one nobody
+# has seen yet. A guest that ran produces hundreds of lines whatever it then does.
+APPLOG_LINES=$(wc -l < "$SHOTS/app.log" 2>/dev/null || echo 0)
+if [ "$APPLOG_LINES" -lt 10 ]; then
+	say "RUN VOID: the guest never started ($APPLOG_LINES lines of log), so every capture above is"
+	say "RUN VOID: black for that reason alone, and the exit code is the LAUNCHER's, not the app's."
+	sed 's/^/DRIVE   /' "$SHOTS/app.log" >&2 2>/dev/null
 fi
 
 say "captures in $SHOTS"

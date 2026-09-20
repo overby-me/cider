@@ -53,6 +53,9 @@ struct CiderSpyEntry {
 	 * argument selector, which is forwarded for a void return only. */
 	char arg;
 	char arg2;
+	/* The FULL encoding of argument 2. A single character cannot tell one struct from another, and
+	 * whether a struct is forwardable depends entirely on what is inside it. */
+	char argenc[64];
 	int installed;
 };
 
@@ -191,6 +194,24 @@ static char cider_spy_bare(const char *encoding)
 	return *encoding != (char) 0 ? *encoding : '?';
 }
 
+/* TWO INTS IN A STRUCT ARE PASSED IN ONE REGISTER, so forwarding them as one integer is EXACT
+ * rather than a reinterpretation: the System V AMD64 ABI classifies an eight byte all integer
+ * struct as INTEGER and passes it in a single general purpose register, which is the same place a
+ * long long arrives in. -[PTYSession setSize:] takes a VT100GridSize, two ints, and it is the one
+ * call that says whether the terminal is ever re-gridded (#247).
+ *
+ * Deliberately narrow: ONLY {Name=ii}. Anything larger, or mixing floats, is classified
+ * differently by the ABI and would arrive somewhere else entirely. */
+static int cider_spy_is_int_pair(const char *encoding)
+{
+	const char *eq;
+
+	if (encoding == NULL || *encoding != '{')
+		return 0;
+	eq = strchr(encoding, '=');
+	return eq != NULL && eq[1] == 'i' && eq[2] == 'i' && eq[3] == '}';
+}
+
 /* 1 integer family, 0 object, -1 anything this cannot unpack safely. */
 static int cider_spy_is_int(char encoding)
 {
@@ -316,6 +337,18 @@ static void cider_spy_void_int(id self, SEL _cmd, long long a)
 	((void (*)(id, SEL, long long)) e->original)(self, _cmd, a);
 }
 
+/* The struct arrives in the register a long long would, so it is taken as one and split for
+ * printing. Forwarded byte for byte: the original sees exactly what the caller passed. */
+static void cider_spy_void_pair(id self, SEL _cmd, long long a)
+{
+	struct CiderSpyEntry *e = cider_spy_find(_cmd);
+	char text[512];
+
+	snprintf(text, sizeof(text), "(void) arg=%dx%d", (int) (a & 0xffffffff), (int) (a >> 32));
+	cider_spy_say(e, self, text);
+	((void (*)(id, SEL, long long)) e->original)(self, _cmd, a);
+}
+
 static void cider_spy_void_object(id self, SEL _cmd, id a)
 {
 	struct CiderSpyEntry *e = cider_spy_find(_cmd);
@@ -355,7 +388,12 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 		char encoding[64] = "";
 
 		method_getArgumentType(m, 2, encoding, sizeof(encoding));
+		snprintf(e->argenc, sizeof(e->argenc), "%s", encoding);
 		e->arg = cider_spy_bare(encoding);
+		/* P for packed, a synthetic code so the rest of the dispatch can treat a two int struct
+		 * as the single register it actually arrives in. */
+		if (cider_spy_is_int_pair(encoding))
+			e->arg = 'P';
 		if (method_getNumberOfArguments(m) > 3) {
 			encoding[0] = (char) 0;
 			method_getArgumentType(m, 3, encoding, sizeof(encoding));
@@ -393,6 +431,21 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 		e->installed = 1;
 		fprintf(stderr, "CIDER_SPY armed on %s.%s taking %c and %c returning v\n",
 		        e->cls, e->sel, e->arg, e->arg2);
+		fflush(stderr);
+		return 1;
+	}
+
+	if (e->arg == 'P') {
+		if (e->ret != 'v') {
+			fprintf(stderr, "CIDER_SPY %s.%s takes %s and returns %c; the pair is forwarded for a "
+			        "void return only\n", e->cls, e->sel, e->argenc, e->ret);
+			fflush(stderr);
+			return 1;
+		}
+		method_setImplementation(m, (IMP) cider_spy_void_pair);
+		e->installed = 1;
+		fprintf(stderr, "CIDER_SPY armed on %s.%s taking %s as an int pair returning v\n",
+		        e->cls, e->sel, e->argenc);
 		fflush(stderr);
 		return 1;
 	}
