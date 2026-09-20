@@ -1,0 +1,77 @@
+Say which window notification went out, and whether the delegate was listening.
+
+A DIAGNOSTIC, NOT A FIX. It exists because the two ways a delegate can fail to react are
+indistinguishable from outside: a notification nobody observes and a notification never posted both
+end with the application doing nothing.
+
+WHY IT WAS NEEDED. -setDelegate: wires a delegate to these notifications ONE SELECTOR AT A TIME and
+only if the delegate responds AT THAT MOMENT, so a delegate installed before its class is ready, or
+swapped later, ends up registered for a different set than it implements. Nothing said so.
+
+WHAT IT SETTLED IMMEDIATELY, in task #247. iTerm2 loses its terminal text on a HEIGHT resize and
+keeps it on a width resize, and the suspect was that our compositor path never tells the window it
+resized. It does:
+
+    CIDER_WINNOTE window=1 name=NSWindowDidResizeNotification delegate=PseudoTerminal responds=1
+
+five times, on the window the compositor actually resized. So the notification, the delegate and
+the selector are all correct and the defect is further in. That is a hypothesis killed in one run.
+
+The mapping from notification to delegate selector covers the ones worth asking the question about.
+The rest print responds=0, which means nothing for them and is documented at the call site.
+
+Task #247.
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -691,6 +691,24 @@
+ }
+ 
+ - (void) postNotificationName: (NSNotificationName) name {
++    /*
++     * WHICH WINDOW NOTIFICATION WENT OUT, AND WHETHER ANYONE WAS LISTENING. A delegate is wired to
++     * these one selector at a time in -setDelegate:, and only if it responds at that moment, so a
++     * delegate installed early or swapped later is registered for a DIFFERENT set than it
++     * implements. From outside, a notification nobody observes and a notification never posted look
++     * identical: the application simply does not react. Printing the post AND whether the current
++     * delegate answers the matching selector separates them in one line. Only the notifications
++     * worth asking that about are mapped; the rest print responds=0 and mean nothing. Task #247.
++     */
++    if (getenv("CIDER_TRACE_WINNOTE") != NULL && getenv("CIDER_TRACE_WINNOTE")[0] != (char) 0) {
++        SEL selector = [self _ciderDelegateSelectorForNotification: name];
++
++        fprintf(stderr, "CIDER_WINNOTE window=%ld name=%s delegate=%s responds=%d\n",
++                (long) [self windowNumber], [name UTF8String],
++                _delegate != nil ? object_getClassName(_delegate) : "nil",
++                (selector != NULL && [_delegate respondsToSelector: selector]) ? 1 : 0);
++        fflush(stderr);
++    }
+     [[NSNotificationCenter defaultCenter] postNotificationName: name
+                                                         object: self];
+ }
+@@ -1004,6 +1022,26 @@
+     }
+ }
+ 
++/* Which delegate method a window notification is delivered as, for the CIDER_TRACE_WINNOTE line.
++ * The pairs are the ones -setDelegate: registers just below. */
++- (SEL) _ciderDelegateSelectorForNotification: (NSNotificationName) name {
++    if ([name isEqualToString: NSWindowDidResizeNotification])
++        return @selector(windowDidResize:);
++    if ([name isEqualToString: NSWindowDidMoveNotification])
++        return @selector(windowDidMove:);
++    if ([name isEqualToString: NSWindowDidEndLiveResizeNotification])
++        return @selector(windowDidEndLiveResize:);
++    if ([name isEqualToString: NSWindowWillStartLiveResizeNotification])
++        return @selector(windowWillStartLiveResize:);
++    if ([name isEqualToString: NSWindowDidBecomeKeyNotification])
++        return @selector(windowDidBecomeKey:);
++    if ([name isEqualToString: NSWindowDidBecomeMainNotification])
++        return @selector(windowDidBecomeMain:);
++    if ([name isEqualToString: NSWindowDidUpdateNotification])
++        return @selector(windowDidUpdate:);
++    return NULL;
++}
++
+ - (void) setDelegate: (id<NSWindowDelegate>) delegate {
+     struct note {
+         NSNotificationName name;
