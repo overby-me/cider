@@ -1,0 +1,140 @@
+A view messaged after its superview let go of it, and two selectors that were not here.
+
+THE CURRENCY MANAGER OPENS. Money Manager EX crashed every time its New Database Wizard tried to
+build that panel; it now shows its currency list, Online Update, Show All, Search, Select and Close,
+LOOKED AT. Three defects were between here and there and the first one is ours outright.
+
+ONE, A USE AFTER FREE THAT THIS PORT INTRODUCED. removeFromSuperview ends with
+
+    [removeFrom _removeViewWithoutDisplay: self];   removeObjectIdenticalTo:, usually the last ref
+    [window _invalidateTrackingAreas];
+    [self _ciderUpdateAppearanceTree];              ours, added so a controller hears it went away
+
+so the view could be deallocated by the removal and then messaged. The core named it exactly:
+objc_msgSend+29, and the selector register read out of the AppKit image at that address gives
+_ciderUpdateAppearanceTree. A retain across the tail and a release at the end, which is the point
+where dying is safe. Not autorelease, so it does not depend on a pool being in place.
+
+TWO, NSCell controlTint and setControlTint:. Stored and answered, which is all the tint ever was
+here: every control draws from the colour table rather than from it. It has to EXIST because an
+unrecognized selector in a wxWidgets application becomes Unhandled unknown exception and terminates
+the process. Money Manager EX sent it to an NSTableHeaderCell.
+
+THREE, NSDatePicker presentsCalendarOverlay and its setter. Same shape: the overlay is a popover
+this port does not have, so the flag changes nothing drawn, and wx subclasses the class as
+wxNSDatePicker and sets it.
+
+MEASURED ACROSS THE FOUR RUNS IT TOOK: SIGSEGV 4 of 4 runs to 0, UNRECOGNIZED selectors 2 then 1
+then 1 then 0, the terminating exception 1 to 0, and the capture from 2578 bytes of black to 125887
+with the dialog on it. Each fix moved the failure to the next one, which is why they are one commit.
+
+Gates: run-dts-batch, buck-bundled-patch-record-check, roster-sweep and roster-input.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -2480,9 +2480,20 @@
+     [self _setSuperview: nil];
+     [self _setWindow: nil];
+ 
++    /* THE SUBVIEWS ARRAY USUALLY HOLDS THE LAST REFERENCE, and _removeViewWithoutDisplay: is a
++     * removeObjectIdenticalTo:, so it can be the release that deallocates self. Everything after it
++     * here is ours, added so a controller hears it went off screen, and it was messaging a freed
++     * view: Money Manager EX died at objc_msgSend+29 with the selector read out of the core as
++     * _ciderUpdateAppearanceTree. Retain across the tail and release at the end, which is the point
++     * where dying is safe. Not autorelease, so this does not depend on a pool being in place.
++     * Task #243. */
++    [self retain];
++
+     [removeFrom _removeViewWithoutDisplay: self];
+     [window _invalidateTrackingAreas];
+     [self _ciderUpdateAppearanceTree];
++
++    [self release];
+ }
+ 
+ - (void) viewWillMoveToSuperview: (NSView *) view {
+--- a/AppKit/NSCell.m
++++ b/AppKit/NSCell.m
+@@ -715,6 +715,19 @@
+     return _controlSize;
+ }
+ 
++/* STORED AND ANSWERED, WHICH IS ALL IT EVER WAS. The tint picks the accent an aqua control draws
++ * itself in, and every control here draws from the colour table rather than from this, so keeping
++ * it is the whole contract. Missing, it is fatal rather than ignored, because a wxWidgets
++ * application turns an unrecognized selector into Unhandled unknown exception and terminates:
++ * Money Manager EX died on -[NSTableHeaderCell setControlTint:]. Task #243. */
++- (NSControlTint) controlTint {
++    return _controlTint;
++}
++
++- (void) setControlTint: (NSControlTint) tint {
++    _controlTint = tint;
++}
++
+ - (NSFocusRingType) focusRingType {
+     return _focusRingType;
+ }
+--- a/AppKit/include/AppKit/NSCell.h
++++ b/AppKit/include/AppKit/NSCell.h
+@@ -121,6 +121,7 @@
+     id _titleOrAttributedTitle;
+     id _representedObject;
+     NSControlSize _controlSize;
++    NSControlTint _controlTint;
+     NSFocusRingType _focusRingType;
+     NSLineBreakMode _lineBreakMode;
+     NSBackgroundStyle _backgroundStyle;
+@@ -205,6 +206,8 @@
+ - (NSAttributedString *) attributedStringValue;
+ - (id) representedObject;
+ - (NSControlSize) controlSize;
++- (NSControlTint) controlTint;
++- (void) setControlTint: (NSControlTint) tint;
+ - (NSFocusRingType) focusRingType;
+ - (NSBackgroundStyle) backgroundStyle;
+ 
+--- a/AppKit/NSDatePicker.m
++++ b/AppKit/NSDatePicker.m
+@@ -164,6 +164,19 @@
+     [self setNeedsDisplay: YES];
+ }
+ 
++/* STORED AND ANSWERED. The overlay is the calendar popover a textual picker shows on macOS 10.15
++ * and later; there is no popover here, so the flag changes nothing that is drawn and keeping it is
++ * the whole contract. It has to EXIST, though: a wxWidgets application turns an unrecognized
++ * selector into Unhandled unknown exception and terminates, and wx subclasses this as
++ * wxNSDatePicker and sets it. Task #243. */
++- (BOOL) presentsCalendarOverlay {
++    return _ciderPresentsCalendarOverlay;
++}
++
++- (void) setPresentsCalendarOverlay: (BOOL) flag {
++    _ciderPresentsCalendarOverlay = flag;
++}
++
+ - (void) setDrawsBackground: (BOOL) flag {
+     [[self _pickerCell] setDrawsBackground: flag];
+     [self setNeedsDisplay: YES];
+--- a/AppKit/include/AppKit/NSDatePicker.h
++++ b/AppKit/include/AppKit/NSDatePicker.h
+@@ -22,7 +22,9 @@
+ 
+ @class NSCalendar;
+ 
+-@interface NSDatePicker : NSControl
++@interface NSDatePicker : NSControl {
++    BOOL _ciderPresentsCalendarOverlay;
++}
+ 
+ - (BOOL) isBezeled;
+ - (BOOL) isBordered;
+@@ -65,6 +67,8 @@
+ - (void) setTimeZone: (NSTimeZone *) timeZone;
+ 
+ - (void) setDrawsBackground: (BOOL) flag;
++- (BOOL) presentsCalendarOverlay;
++- (void) setPresentsCalendarOverlay: (BOOL) flag;
+ - (void) setBackgroundColor: (NSColor *) color;
+ - (void) setTextColor: (NSColor *) color;
+ 
