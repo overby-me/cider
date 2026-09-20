@@ -1,0 +1,47 @@
+Name the responder that receives a key, because the keys arrive and nothing happens.
+
+iTerm2 3.5.14 receives every key press, its window is key, its key equivalents work, and typing
+inserts nothing; 3.4.23 in the same rig types normally. No instrument in the tree could tell a
+responder that ignores keyDown: from a responder that is the wrong object entirely, so this names
+the receiver at the moment of delivery and names who took first responder on the way there.
+
+A REFUSED becomeFirstResponder is the case worth seeing: makeFirstResponder: falls back to the
+window itself, an NSWindow ignores keyDown:, and the result looks exactly like a key that was never
+delivered.
+
+Under the existing CIDER_TRACE_KEYS switch, so it costs a getenv per key when off.
+
+Task #239.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -2254,8 +2254,15 @@
+     _firstResponder = responder;
+ 
+     if ([_firstResponder becomeFirstResponder]) {
++        if (getenv("CIDER_TRACE_KEYS") != NULL)
++            NSLog(@"cider-keys firstResponder=%@ window=%@", [responder class], [self title]);
+         return YES;
+     } else {
++        /* A REFUSED becomeFirstResponder LEAVES THE WINDOW ITSELF HOLDING THE KEYBOARD, and an
++         * NSWindow ignores keyDown:, so the keys arrive and nothing happens. Task #239. */
++        if (getenv("CIDER_TRACE_KEYS") != NULL)
++            NSLog(@"cider-keys firstResponder=REFUSED by=%@ window=%@", [responder class],
++                    [self title]);
+         _firstResponder = self;
+         return NO;
+     }
+@@ -3345,6 +3352,13 @@
+         break;
+ 
+     case NSKeyDown:
++        /* WHO ACTUALLY GETS THE KEY, which is the one fact that separates an application that types
++         * from one that does not. iTerm2 3.5 receives every key and inserts nothing, and no other
++         * instrument can tell a responder that ignores keyDown: from a responder that is the wrong
++         * object entirely. Task #239. */
++        if (getenv("CIDER_TRACE_KEYS") != NULL)
++            NSLog(@"cider-keys keyDown responder=%@ window=%@ chars=%@", [_firstResponder class],
++                    [self title], [event charactersIgnoringModifiers]);
+         [_firstResponder keyDown: event];
+         break;
+ 
