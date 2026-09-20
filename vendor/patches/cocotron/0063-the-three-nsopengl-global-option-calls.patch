@@ -1,0 +1,90 @@
+The three NSOpenGL global option calls, which an application needs whether or not it draws.
+
+libswiftAppKit.dylib binds NSOpenGLGetOption, NSOpenGLSetOption and NSOpenGLGetVersion, EXPECTED IN
+AppKit, so any application that loads the Swift AppKit overlay dies on the first of them. iTerm2
+did, and nothing about the symptom said so: a lazy bind abort is signal 6 at a dyld frame naming
+nothing. The header did not even declare them, so no caller in this tree could have been compiled
+against them either.
+
+WHAT YOU SET IS WHAT YOU GET is all these can honestly promise here. There is no renderer library
+behind them to cache pixel formats for or to reset, so the two cache actions are no-ops, the three
+settings round trip, and the defaults are the documented macOS ones so a caller that reads before
+writing sees a sane cache size rather than zero. NSOpenGLGetVersion answers the NSOpenGL API
+version, 1.0, which is not the OpenGL version and never was.
+
+Task #228.
+
+--- a/AppKit/include/AppKit/NSOpenGL.h
++++ b/AppKit/include/AppKit/NSOpenGL.h
+@@ -4,3 +4,18 @@
+ #import <AppKit/NSOpenGLPixelBuffer.h>
+ #import <AppKit/NSOpenGLPixelFormat.h>
+ #import <AppKit/NSOpenGLView.h>
++
++/* The three global option calls. libswiftAppKit.dylib binds all three EXPECTED IN AppKit, so an
++ * application that loads the Swift overlay dies on the first of them whether or not it ever draws
++ * with OpenGL: iTerm2 died opening a menu. Task #228. */
++typedef enum {
++    NSOpenGLGOFormatCacheSize = 501,
++    NSOpenGLGOClearFormatCache = 502,
++    NSOpenGLGORetainRenderers = 503,
++    NSOpenGLGOResetLibrary = 504,
++    NSOpenGLGOUseBuildCache = 506,
++} NSOpenGLGlobalOption;
++
++APPKIT_EXPORT void NSOpenGLSetOption(NSOpenGLGlobalOption pname, GLint param);
++APPKIT_EXPORT void NSOpenGLGetOption(NSOpenGLGlobalOption pname, GLint *param);
++APPKIT_EXPORT void NSOpenGLGetVersion(GLint *major, GLint *minor);
+--- a/AppKit/NSOpenGL/NSOpenGLContext.m
++++ b/AppKit/NSOpenGL/NSOpenGLContext.m
+@@ -17,6 +17,7 @@
+ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ #import <AppKit/NSGraphicsContext.h>
++#import <AppKit/NSOpenGL.h>
+ #import <AppKit/NSOpenGLContext.h>
+ #import <AppKit/NSOpenGLPixelFormat.h>
+ #import <AppKit/NSRaise.h>
+@@ -261,3 +262,42 @@
+ }
+ 
+ @end
++
++/*
++ * WHAT YOU SET IS WHAT YOU GET, which is all these can honestly promise here: there is no renderer
++ * library behind them to cache formats for or to reset. The defaults are the documented macOS ones
++ * so a caller that reads before writing sees a sane cache size rather than zero. Task #228.
++ */
++static GLint _NSOpenGLFormatCacheSize = 5;
++static GLint _NSOpenGLRetainRenderers = 0;
++static GLint _NSOpenGLUseBuildCache = 0;
++
++void NSOpenGLSetOption(NSOpenGLGlobalOption pname, GLint param) {
++    switch (pname) {
++        case NSOpenGLGOFormatCacheSize: _NSOpenGLFormatCacheSize = param; break;
++        case NSOpenGLGORetainRenderers: _NSOpenGLRetainRenderers = param; break;
++        case NSOpenGLGOUseBuildCache: _NSOpenGLUseBuildCache = param; break;
++        /* Actions, not settings: clearing a cache that does not exist is a no-op, not an error. */
++        case NSOpenGLGOClearFormatCache:
++        case NSOpenGLGOResetLibrary: break;
++    }
++}
++
++void NSOpenGLGetOption(NSOpenGLGlobalOption pname, GLint *param) {
++    if (param == NULL)
++        return;
++    switch (pname) {
++        case NSOpenGLGOFormatCacheSize: *param = _NSOpenGLFormatCacheSize; break;
++        case NSOpenGLGORetainRenderers: *param = _NSOpenGLRetainRenderers; break;
++        case NSOpenGLGOUseBuildCache: *param = _NSOpenGLUseBuildCache; break;
++        default: *param = 0; break;
++    }
++}
++
++/* The NSOpenGL API version, 1.0 since it was introduced, NOT the OpenGL version. */
++void NSOpenGLGetVersion(GLint *major, GLint *minor) {
++    if (major != NULL)
++        *major = 1;
++    if (minor != NULL)
++        *minor = 0;
++}

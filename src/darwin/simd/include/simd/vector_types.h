@@ -20,6 +20,10 @@
 #ifndef VECTOR_TYPE_H
 #define VECTOR_TYPE_H
 
+/* simd_bool is bool, and nothing here declared it, so every C caller failed on the typedef below.
+ * Nothing in the tree included these headers until #228, which is why it went unnoticed. */
+#include <stdbool.h>
+
 // typedef  __attribute__((ext_vector_type())) ;
 #define simd_struct(NAME_TYPE, A, B) \
 typedef struct { \

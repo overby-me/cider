@@ -1,0 +1,31 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+
+# The simd headers have been in the tree with nothing on any include path pointing at them, which
+# is why nothing here has ever used them.
+
+cc_header_root(
+    name = "simd_inc_include",
+    headers = glob(["include/*.h", "include/**/*.h"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+# These objects go straight into libSystem.B.dylib rather than into a dylib of their own: the
+# binding in libswiftsimd.dylib names libSystem as the library the symbol must come from, and a
+# two-level namespace binding is not satisfied by a definition anywhere else. Task #228.
+
+cc_objects(
+    name = "simd_obj",
+    srcs = ["invert.c"],
+    compiler_flags = [
+        "-O2",
+        "-Wall",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        ":simd_inc_include",
+    ],
+    visibility = ["PUBLIC"],
+)

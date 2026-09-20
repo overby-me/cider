@@ -2,6 +2,11 @@
 # directory. Recorded so that a file DELETED BY THE /tmp SWEEP is caught as a missing
 # file rather than as a mysterious application failure three frames deep.
 #
+# SUPERSEDED FOR it, 2026-09-20: the bundle WAS restored, from the official zip at
+# iterm2.com/downloads/stable (iTerm2 3.5.14), and went from 33 files to 751. The note below
+# described the state before that and is kept because it explains what a 33 file bundle looks
+# like: present to every ordinary check and missing the resources an application asserts on.
+#
 # NOT A CLEAN BASELINE FOR it: iTermServer had ALREADY been swept when this was first
 # written, and no source archive remained to restore it, so the iTerm2 list here is the
 # damaged tree. Re-record it after a real re-stage.

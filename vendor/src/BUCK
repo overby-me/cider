@@ -3219,6 +3219,8 @@ darwin_dylib(
         # system_obj
         "//vendor/src/libsystem:system_obj",
         "//vendor/src/libsystem:system_obj2",
+        # simd: libswiftsimd binds __invert_* as expected in libSystem.B.dylib (#228)
+        "//src/darwin/simd:simd_obj",
     ],
     linker_flags = [
         "-Wl,-bind_at_load",
@@ -3240,6 +3242,8 @@ darwin_dylib(
         # system_obj
         "//vendor/src/libsystem:system_obj",
         "//vendor/src/libsystem:system_obj2",
+        # simd: libswiftsimd binds __invert_* as expected in libSystem.B.dylib (#228)
+        "//src/darwin/simd:simd_obj",
     ],
     reexport = [
         "//src/darwin/sandbox:system_sandbox_final",
