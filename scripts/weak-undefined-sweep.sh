@@ -7,6 +7,12 @@
 # 2026-09-20 iTerm2 bound cleanly while libswiftFoundation had 21 unresolved Combine symbols, every
 # one of them marked "(undefined) weak external". Task #238.
 #
+# THE APPLICATIONS ARE SCANNED TOO, and until 2026-09-20 they were not. Scanning only the runtime
+# tree answers "what do our own libraries fail to resolve", which is a different question from "what
+# does a real application ask for and not get". The loader trace added in vendor/patches/dyld/0010
+# caught three in iTerm2's main binary that this script reported zero of, because the binary was
+# never opened. Every staged prefix is included now.
+#
 #   scripts/weak-undefined-sweep.sh            # count, ranking, and the full list
 #   scripts/weak-undefined-sweep.sh --quiet    # just the count, for a gate
 set -u
@@ -22,11 +28,14 @@ RT="$RT/libexec/cider"
 NM=$(command -v llvm-nm || ls -d /nix/store/*llvm-binutils*/bin/llvm-nm 2>/dev/null | head -1)
 [ -x "$NM" ] || { echo "no llvm-nm; plain nm reads nothing useful in a Mach-O tree" >&2; exit 3; }
 
-export RT NM QUIET
+APPS=$(ls -d /tmp/cider-*-1000/prefix/Applications 2>/dev/null | tr '\n' ':')
+
+export RT NM QUIET APPS
 python3 - <<'PY'
 import os, subprocess, collections, sys
 
 RT=os.environ["RT"]; NM=os.environ["NM"]; quiet=bool(os.environ.get("QUIET"))
+APPS=[d for d in os.environ.get("APPS","").split(":") if d]
 
 # A FRAMEWORK BINARY IS A SYMLINK (X.framework/X -> Versions/Current/X), so `find -type f` skips
 # every one of them and `find -L` loops on Versions/Current. Walk without following links and take
@@ -44,6 +53,23 @@ for dirpath, dirnames, filenames in os.walk(RT, followlinks=False):
         if fw and fn == fw[-1][:-len(".framework")]:
             libs.add(p)
 libs=sorted(libs)
+
+# The applications, kept apart from the runtime tree because they are the QUESTION, not the answer:
+# nothing they fail to resolve can be blamed on them, and a symbol only they want still counts.
+apps=set()
+for root in APPS:
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        if "/Contents/MacOS" not in dirpath and not dirpath.endswith(".framework/Versions/A"):
+            continue
+        for fn in filenames:
+            p=os.path.join(dirpath, fn)
+            if os.path.islink(p) or not os.access(p, os.X_OK):
+                continue
+            with open(p, "rb") as fh:
+                if fh.read(4) not in (b"\xcf\xfa\xed\xfe", b"\xce\xfa\xed\xfe", b"\xca\xfe\xba\xbe"):
+                    continue
+            apps.add(p)
+apps=sorted(apps)
 
 def nm(args, path):
     try:
@@ -64,26 +90,41 @@ for control in ("_CFRetain", "_NSLog", "_objc_msgSend"):
         print(f"CONTROL FAILED: {control} is not in the defined set, so the scan is wrong", file=sys.stderr)
         raise SystemExit(3)
 
+# An application's own frameworks define symbols its main binary imports, so they join the defined
+# set. They are NOT added for the runtime tree's benefit: a runtime library that resolved against an
+# application bundle would be a defect, and none does.
+for f in apps:
+    for line in nm(["-gU"], f).splitlines():
+        parts=line.split()
+        if parts: defined.add(parts[-1])
+
 weak=collections.defaultdict(set)
-for f in libs:
+appweak=collections.defaultdict(set)
+for f, bucket in [(f, weak) for f in libs] + [(f, appweak) for f in apps]:
     for line in nm(["-m"], f).splitlines():
         if "(undefined)" in line and "weak external" in line:
             sym=line.split("weak external",1)[1].strip().split(" (from")[0].strip()
             if sym and sym not in defined:
-                weak[sym].add(os.path.basename(f))
+                bucket[sym].add(os.path.basename(f))
 
-print(f"{len(libs)} Mach-O files, {len(defined)} defined symbols, "
-      f"{len(weak)} weak undefined symbols nothing defines")
+print(f"{len(libs)} runtime Mach-O files and {len(apps)} application binaries, "
+      f"{len(defined)} defined symbols, "
+      f"{len(weak)} weak undefined in the runtime and {len(appweak)} in applications "
+      f"that nothing defines")
 if quiet:
     raise SystemExit(0)
 
-per=collections.Counter()
-for sym, refs in weak.items():
-    for r in refs: per[r]+=1
-print("\nby referencing library:")
-for lib, n in per.most_common():
-    print(f"  {n:5d}  {lib}")
-print("\nsymbol, then who references it:")
-for sym in sorted(weak):
-    print(f"  {sym}\t{','.join(sorted(weak[sym]))}")
+for title, table in (("runtime", weak), ("applications", appweak)):
+    if not table:
+        print(f"\n{title}: none")
+        continue
+    per=collections.Counter()
+    for sym, refs in table.items():
+        for r in refs: per[r]+=1
+    print(f"\n{title}, by referencing binary:")
+    for lib, n in per.most_common():
+        print(f"  {n:5d}  {lib}")
+    print(f"\n{title}, symbol then who references it:")
+    for sym in sorted(table):
+        print(f"  {sym}\t{','.join(sorted(table[sym]))}")
 PY
