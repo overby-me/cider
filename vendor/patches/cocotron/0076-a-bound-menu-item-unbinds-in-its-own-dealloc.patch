@@ -1,0 +1,54 @@
+A bound menu item must unbind in its own dealloc, not leave it to the reaper.
+
+23 MENU ITEMS PER RUN DIED COMPLAINING, and the complaint was accurate:
+
+    An instance of class NSKVONotifying_NSMenuItem was deallocated while key value observers were
+    still registered with it. Observation Info was leaked, and may even become mistakenly re-used
+    by another object.
+
+WHOSE OBSERVERS. Ours. With CIDER_TRACE_KVO=1 the registrations are 154 _NSKVOBinder observations
+of objectValue on NSMenuItem, 18 of title, and 15 more: our own Cocoa bindings machinery, watching
+the menu item as the SOURCE of a binding so that changes can be written back. Swift Publisher binds
+its menu items to a controller, which the binding log shows as
+
+    start observing binding between NSMenuItem.value alias objectValue and
+    NSApplication.delegate.mainWCController.selection.nextPage
+
+WHY THE EXISTING REAPER DOES NOT COVER IT. NSObject+BindingSupport attaches an associated object to
+a bound source so that a class which never unbinds still gets its table entry reaped, and its own
+comment names NSMenuItem as the reason it exists. That reaper does stop the dangling source crash.
+But the runtime releases associated objects AFTER -dealloc has run, and KVO checks for surviving
+observers DURING it, so at the moment of the check the binder was still registered. The reaper was
+never too weak, only too late.
+
+THE FIX IS THE ONE NSVIEW AND NSCONTROL ALREADY USE: call -_unbindAllBindings first thing in
+-dealloc, which is early enough for the check to see a clean object. The reaper stays, because it
+still covers every other class that can be bound and never unbinds.
+
+MEASURED, same scenario, same instrument, one variable:
+    warnings before   23
+    warnings after     0
+Both runs reach the same endpoint, exit=133 under zombies, with an identical 49603 byte starting
+capture, so the scenario that produced the warnings still happened.
+
+Task #250.
+--- a/AppKit/NSMenu.subproj/NSMenuItem.m
++++ b/AppKit/NSMenu.subproj/NSMenuItem.m
+@@ -167,6 +167,17 @@
+ }
+ 
+ - (void) dealloc {
++    /*
++     * UNBIND BEFORE ANYTHING ELSE, which NSView and NSControl already do and this class did not.
++     *
++     * The reaper in NSObject+BindingSupport exists because of that omission, and it does stop the
++     * dangling source crash, but it is an ASSOCIATED OBJECT: the runtime releases those AFTER
++     * -dealloc has run, and KVO checks for surviving observers DURING it. So the binder was still
++     * registered at the moment of the check and every bound menu item died complaining that its
++     * observation info had leaked, 23 of them in one Swift Publisher run. Unbinding here happens
++     * early enough for the check to see a clean object. Task #250.
++     */
++    [self _unbindAllBindings];
+     [_title release];
+     [_atitle release];
+     [_keyEquivalent release];
