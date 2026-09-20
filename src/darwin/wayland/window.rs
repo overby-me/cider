@@ -1904,7 +1904,23 @@ fn release_backing(st: &mut WindowState) {
 ///
 /// Whatever AppKit has drawn is already in those pages, so this is attach, damage and commit and
 /// nothing else. That is the point of mapping rather than copying.
+/// Say that a present was asked for, and say which gate turned it away.
+///
+/// A window that stops appearing on screen looks the same in the log whether AppKit stopped asking
+/// or we stopped agreeing: both just go quiet. The entry line is the control that separates them,
+/// so it is printed before any gate can return. Task #245.
+fn trace_present_gate(st: &WindowState, why: &str) {
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_DISPLAY") {
+        println!(
+            "cider-wayland-window presentgate number={} why={} visible={} configured={} mapped={} surface={} presents={} t={:.2}",
+            st.number, why, st.visible as u8, st.configured as u8, st.mapped as u8,
+            !st.surface.is_null() as u8, st.presents, elapsed()
+        );
+    }
+}
+
 fn present(st: &mut WindowState) {
+    trace_present_gate(st, "enter");
     /*
      * A WINDOW APPKIT HAS NOT SHOWN MUST NOT BE MAPPED, and this is the whole of that rule.
      *
@@ -1919,14 +1935,25 @@ fn present(st: &mut WindowState) {
      * which is what -[NSWindow setIsVisible:] calls.
      */
     if !st.visible {
+        trace_present_gate(st, "invisible");
         return;
     }
     /* A HIDDEN WINDOW HAS NO SURFACE AT ALL NOW, so showing it again means building the role from
      * scratch, exactly as it was built the first time. */
     if st.surface.is_null() && st.visible && !create_surface(st) {
+        trace_present_gate(st, "create-failed");
         return;
     }
-    if st.surface.is_null() || !st.configured || !ensure_backing(st) {
+    if st.surface.is_null() {
+        trace_present_gate(st, "no-surface");
+        return;
+    }
+    if !st.configured {
+        trace_present_gate(st, "unconfigured");
+        return;
+    }
+    if !ensure_backing(st) {
+        trace_present_gate(st, "no-backing");
         return;
     }
     /*

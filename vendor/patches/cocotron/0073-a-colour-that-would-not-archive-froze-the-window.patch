@@ -1,0 +1,187 @@
+A colour that would not archive left a window permanently unflushable.
+
+THE DOCUMENT WINDOW WAS PRESENTED EXACTLY ONCE. Swift Publisher opens a template, draws it, hands
+it to the compositor, and from then on draws forever into a buffer nobody is ever shown: its half
+of the screen keeps the one frame it got. Measured before: 33469 dirty marks, 20573 of them that
+window, 1756 draw traversals, ONE present.
+
+IT IS TWO DEFECTS AND THEY MEET IN THE MIDDLE.
+
+ONE, THE ENCODER WAS MISSING A HALF THE DECODER ALWAYS HAD. -[NSColor initWithCoder:] reads a
+non-keyed archive: a uint8 space code, then the components, per space. -[NSColor encodeWithCoder:]
+handled only the keyed case and RAISED for everything else, so a colour could be read back but
+never written. Swift Publisher archives colours with the typedstream, and it raised 1094 times in
+one run. The encoder added here writes exactly what that decoder reads, in the same two calls, for
+all six space codes. A catalog colour encodes its RESOLVED colour and not self, because self would
+recurse until the stack ran out. An unknown space still raises, so a colour the decoder could not
+read is never silently written.
+
+TWO, AND THIS IS THE ONE THAT DID THE DAMAGE. -[NSWindow displayIfNeeded] brackets its descent:
+
+    [self disableFlushWindow];      _flushDisabled++
+    [_backgroundView displayIfNeeded];
+    [self enableFlushWindow];       _flushDisabled--
+
+_flushDisabled is a COUNTER, not a flag. The raise above unwound out of the middle of that, the
+decrement never ran, and -flushWindow tests _flushDisabled > 0 and returns early. So ONE exception
+anywhere in ANY draw, in any application, puts a window beyond presentation for the rest of the
+session, and nothing says so: the window keeps answering events and keeps drawing. Both display
+methods now bracket with @try/@finally, all four sites, so the enable happens on the way out
+whatever the draw did. The exception still propagates to NSApplication, which is where it was
+already reported.
+
+MEASURED AFTER, same scenario, LOOKED AT:
+
+    exceptions            1094 -> 0
+    descents, window 36      0 -> 7, 855 views visited
+    presents, window 36      1 -> 3 and climbing
+
+Swift Publisher now runs past the freeze and reaches its own trial licence dialog, which is the
+next thing in front of the document and is the application asking, not the port failing.
+
+Task #245.
+--- a/AppKit/NSColor.subproj/NSColor.m
++++ b/AppKit/NSColor.subproj/NSColor.m
+@@ -118,9 +118,70 @@
+         }
+ 
+     } else {
+-        [NSException raise: NSInvalidArgumentException
+-                    format: @"%@ can not encodeWithCoder:%@", [self class],
+-                            [coder class]];
++        /*
++         * THE DECODER HAS ALWAYS READ THIS FORMAT; only the encoder was missing, so every
++         * non-keyed archive of a colour raised instead of writing one. A space code, then the
++         * components, in the two separate calls -initWithCoder: reads them back with.
++         *
++         * WHAT IT COST, and why it is worth more than an archive: a raise here unwinds out of
++         * -drawRect:, and -[NSWindow displayIfNeeded] brackets its descent with
++         * -disableFlushWindow / -enableFlushWindow. The enable is skipped, _flushDisabled never
++         * returns to zero, and from that moment -flushWindow returns early forever: the window
++         * goes on drawing and is never presented again. Swift Publisher raised it 1094 times and
++         * its document window was handed to the compositor exactly once. Task #245.
++         */
++        NSColorSpaceName spaceName = [self colorSpaceName];
++        uint8_t space;
++
++        if ([spaceName isEqualToString: NSCalibratedRGBColorSpace] ||
++            [spaceName isEqualToString: NSDeviceRGBColorSpace]) {
++            CGFloat r, g, b, a;
++            float values[4];
++
++            space = [spaceName isEqualToString: NSCalibratedRGBColorSpace] ? 1 : 2;
++            [self getRed: &r green: &g blue: &b alpha: &a];
++            values[0] = r, values[1] = g, values[2] = b, values[3] = a;
++            [coder encodeValuesOfObjCTypes: "c", &space];
++            [coder encodeValuesOfObjCTypes: "ffff", &values[0], &values[1],
++                                           &values[2], &values[3]];
++        } else if ([spaceName isEqualToString: NSCalibratedWhiteColorSpace] ||
++                   [spaceName isEqualToString: NSDeviceWhiteColorSpace]) {
++            CGFloat w, a;
++            float values[2];
++
++            space = [spaceName isEqualToString: NSCalibratedWhiteColorSpace] ? 3 : 4;
++            [self getWhite: &w alpha: &a];
++            values[0] = w, values[1] = a;
++            [coder encodeValuesOfObjCTypes: "c", &space];
++            [coder encodeValuesOfObjCTypes: "ff", &values[0], &values[1]];
++        } else if ([spaceName isEqualToString: NSDeviceCMYKColorSpace]) {
++            CGFloat c, m, y, k, a;
++            float values[5];
++
++            space = 5;
++            [self getCyan: &c magenta: &m yellow: &y black: &k alpha: &a];
++            values[0] = c, values[1] = m, values[2] = y, values[3] = k,
++            values[4] = a;
++            [coder encodeValuesOfObjCTypes: "c", &space];
++            [coder encodeValuesOfObjCTypes: "fffff", &values[0], &values[1],
++                                           &values[2], &values[3], &values[4]];
++        } else if ([spaceName isEqualToString: NSNamedColorSpace]) {
++            NSColorListName catalogName = [self catalogNameComponent];
++            NSColorName colorName = [self colorNameComponent];
++            /* The resolved colour, NOT self: a catalog colour encoding itself here would recurse
++             * until the stack ran out. */
++            NSColor *resolved =
++                    [self colorUsingColorSpaceName: NSCalibratedRGBColorSpace];
++
++            space = 6;
++            [coder encodeValuesOfObjCTypes: "c", &space];
++            [coder encodeValuesOfObjCTypes: "@@@", &catalogName, &colorName,
++                                           &resolved];
++        } else {
++            [NSException raise: NSInvalidArgumentException
++                        format: @"%@ can not encodeWithCoder:%@ in space %@",
++                                [self class], [coder class], spaceName];
++        }
+     }
+ }
+ 
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -2816,8 +2816,11 @@
+             // Show all the views getting redrawn.
+             [NSGraphicsContext setQuartzDebugMode: YES];
+             [self disableFlushWindow];
+-            [_backgroundView displayIfNeeded];
+-            [self enableFlushWindow];
++            @try {
++                [_backgroundView displayIfNeeded];
++            } @finally {
++                [self enableFlushWindow];
++            }
+             [self flushWindowIfNeeded];
+         }
+ 
+@@ -2825,13 +2828,23 @@
+         [self disableFlushWindow];
+         extern unsigned long cider_display_descent_visits;
+         unsigned long ciderVisitsBefore = cider_display_descent_visits;
+-        [_backgroundView displayIfNeeded];
++        /*
++         * THE ENABLE MUST HAPPEN EVEN IF THE DRAW RAISES. _flushDisabled is a counter, not a flag,
++         * so one unwind past the enable leaves it above zero for the life of the window and
++         * -flushWindow returns early from then on: the window keeps drawing and is never presented
++         * again. One NSColor that would not archive froze Swift Publisher document window that
++         * way, after exactly one present. Task #245.
++         */
++        @try {
++            [_backgroundView displayIfNeeded];
++        } @finally {
++            [self enableFlushWindow];
++        }
+         if (getenv("CIDER_TRACE_DIRTY") != NULL && getenv("CIDER_TRACE_DIRTY")[0] != (char) 0) {
+             fprintf(stderr, "cider-descent window=%ld visited=%lu\n", (long) [self windowNumber],
+                     cider_display_descent_visits - ciderVisitsBefore);
+             fflush(stderr);
+         }
+-        [self enableFlushWindow];
+         [self flushWindowIfNeeded];
+         [self setViewsNeedDisplay: NO];
+     }
+@@ -2860,15 +2873,22 @@
+             // Show all the views getting redrawn.
+             [NSGraphicsContext setQuartzDebugMode: YES];
+             [self disableFlushWindow];
+-            [_backgroundView display];
+-            [self enableFlushWindow];
++            @try {
++                [_backgroundView display];
++            } @finally {
++                [self enableFlushWindow];
++            }
+             [self flushWindowIfNeeded];
+         }
+ 
+         [NSGraphicsContext setQuartzDebugMode: NO];
+         [self disableFlushWindow];
+-        [_backgroundView display];
+-        [self enableFlushWindow];
++        /* Same counter, same unwind, same permanently unflushable window. See -displayIfNeeded. */
++        @try {
++            [_backgroundView display];
++        } @finally {
++            [self enableFlushWindow];
++        }
+         [self flushWindowIfNeeded];
+     }
+ }
