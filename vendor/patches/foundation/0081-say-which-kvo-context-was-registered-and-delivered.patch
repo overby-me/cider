@@ -1,0 +1,55 @@
+Say which context a KVO observer registered with, and which one it was handed.
+
+A DIAGNOSTIC, NOT A FIX. A KVO context is an arbitrary pointer the application gives us and we hand
+back untouched, so if we ever hand back the WRONG one the application dereferences OUR mistake and
+the crash looks entirely like its own.
+
+Swift Publisher registers NSString CONTEXTS and passes them straight to a function that scans them:
+its observer takes the sixth argument, the context, and calls binding2Value(NSString*) with it,
+which is visible in three instructions of the disassembly. When that string is dead the application
+dies inside +[NSScanner scannerWithString:]. So the first question is whether the pointer we
+deliver is the pointer that was registered, and nothing could answer it.
+
+Both KVO trace lines now carry the context, printed as a BARE POINTER and never dereferenced,
+because a context need not be an object at all and a probe must not be able to crash what it
+measures. The existing _CiderKVOText helper says as much about the keyPath above it.
+
+WHAT IT SETTLED IMMEDIATELY, in task #249:
+    CCSegmentedControl observes selectedObjects.textIncreseFontSize ... context=0x72fc5eb4e770
+    notify observer=CCSegmentedControl keyPath=selectedObjects.textIncreseFontSize ... context=0x72fc5eb4e770
+Registered and delivered are the same pointer, so we are NOT losing or swapping contexts, and that
+hypothesis is dead. It also made the shape of the real defect visible: 17 of this application
+registrations use a context inside the image, which is a constant string and immortal, 802 use a
+HEAP pointer and 743 pass null. Exactly one of the 802 is dead by notification time.
+
+Task #249.
+--- a/src/NSKeyValueObserving.m
++++ b/src/NSKeyValueObserving.m
+@@ -622,9 +622,14 @@
+     NSKeyValueChangeDictionary *kvChangeDict = [[NSKeyValueChangeDictionary alloc] initWithDetailsNoCopy:detailsForDictionary originalObservable:originalObservable isPriorNotification:isPriorNotification];
+     [kvChangeDict retainObjects];
+     if (_CiderTraceKVO()) {
+-        fprintf(stderr, "CIDER_KVO notify observer=%s(%p) keyPath=%s object=%s(%p)\n",
++        /* THE CONTEXT AS A BARE POINTER, never dereferenced: an application is entitled to pass
++         * anything at all as a context, it is handed back untouched, and if we hand back the wrong
++         * one the application dereferences OUR mistake. Swift Publisher registers NSString
++         * contexts and passes them straight to a function that scans them. Compare this pointer
++         * against the one the matching addObserver line printed. Task #249. */
++        fprintf(stderr, "CIDER_KVO notify observer=%s(%p) keyPath=%s object=%s(%p) context=%p\n",
+                 object_getClassName(observer), observer, _CiderKVOText(keyPath),
+-                object_getClassName(observable), observable);
++                object_getClassName(observable), observable, context);
+         fflush(stderr);
+     }
+     [observer observeValueForKeyPath:keyPath ofObject:observable change:kvChangeDict context:context];
+@@ -639,8 +644,8 @@
+      * other instrument: nothing is drawn, nothing raises, and the missing notification looks like
+      * missing layout code. Naming the pairs is one line per registration. */
+     if (getenv("CIDER_TRACE_KVO") != NULL) {
+-        fprintf(stderr, "CIDER_KVO %s observes %s of %s\n", object_getClassName(observer),
+-                _CiderKVOText(keyPath) ?: "(nil)", object_getClassName(self));
++        fprintf(stderr, "CIDER_KVO %s observes %s of %s context=%p\n", object_getClassName(observer),
++                _CiderKVOText(keyPath) ?: "(nil)", object_getClassName(self), context);
+         fflush(stderr);
+     }
+ 
