@@ -1,0 +1,98 @@
+Two instruments that separate a lost repaint from a repaint nobody asked for.
+
+An application that paints once and never again gives no evidence at all by itself, and the two
+explanations want opposite fixes: either nothing marks the view dirty, or something marks it and
+the mark is lost on the way to the window. Neither existing trace could tell them apart.
+
+PER WINDOW, NOT GLOBALLY. cider-dirty kept ONE static timestamp for every window, so whichever
+window was asked first in each interval printed and the rest were invisible. iTerm2 reported one
+dirty invisible window 93 times and said nothing at all about the window actually on screen, and I
+read that as the terminal window never being dirty. It is per window now, and it also prints the
+key flag and the frame, which is what tells the real window from the offscreen ones.
+
+THE WHOLE VIEW MARK WAS UNTRACED. setNeedsDisplayInRect: has named its caller for a long time;
+setNeedsDisplay:, which is what a terminal uses, named nothing. It now prints the view, the flag,
+the window number or -1, the frame and the visible rect. The visible rect matters because
+setNeedsDisplay:YES empties the invalid rect list to mean the whole view, and the display then
+draws unionOfInvalidRects, which for an empty list IS the visible rect: a view marked dirty whose
+visible rect is empty is marked and redrawn to nothing, and looks exactly like a mark never made.
+
+WHAT THEY MEASURED FOR iTerm2 3.5.14, all of it new and none of it guessable from the old traces:
+  - the terminal view IS marked dirty, 482 times in one run
+  - 313 of those marks arrive while the view has NO window and are silently dropped, because
+    setNeedsDisplay: sends setViewsNeedDisplay: to nil
+  - it is ONE view, not two: the same pointer, windowless for 313 consecutive marks and then in
+    window 3 for 169
+  - its visible rect is real, 1241x632, so the empty-rect failure above is NOT what is happening
+  - 91 marks arrive after the keyboard does, and the window they reach is visible
+Task #239 carries the chain and what is still open.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -2735,17 +2735,27 @@
+     [self _ciderRunConstraintSolves];
+ 
+     /* IS THE WINDOW EVER DIRTY. An application that processes events and paints nothing is either
+-     * not marking anything or not reaching the flush, and only this tells the two apart. Throttled,
+-     * because every window is asked on every pass through the event loop. */
++     * not marking anything or not reaching the flush, and only this tells the two apart.
++     *
++     * THROTTLED PER WINDOW, NOT GLOBALLY, and that distinction is the whole value of the line. One
++     * shared timestamp meant whichever window was asked first in each interval printed and the
++     * others were invisible to the instrument: iTerm2 reported one dirty invisible window 93 times
++     * and said nothing at all about the window actually on screen. An instrument that hides all but
++     * one of the things it is comparing cannot answer the question it was written for. */
+     if (getenv("CIDER_TRACE_DIRTY") != NULL && getenv("CIDER_TRACE_DIRTY")[0] != (char) 0) {
+-        static NSTimeInterval last = 0.0;
++        static struct { long number; NSTimeInterval last; } seen[32];
+         NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
++        long number = (long) [self windowNumber];
++        size_t slot = (size_t) (number & 31);
+ 
+-        if (now - last >= 0.5) {
+-            last = now;
+-            fprintf(stderr, "cider-dirty window=%ld visible=%d mini=%d viewsNeed=%d t=%.1f\n",
+-                    (long) [self windowNumber], (int) [self isVisible],
+-                    (int) [self isMiniaturized], (int) [self viewsNeedDisplay], now);
++        if (seen[slot].number != number || now - seen[slot].last >= 0.5) {
++            seen[slot].number = number;
++            seen[slot].last = now;
++            fprintf(stderr, "cider-dirty window=%ld visible=%d mini=%d viewsNeed=%d key=%d "
++                    "frame=%.0fx%.0f t=%.1f\n",
++                    number, (int) [self isVisible], (int) [self isMiniaturized],
++                    (int) [self viewsNeedDisplay], (int) [self isKeyWindow],
++                    [self frame].size.width, [self frame].size.height, now);
+             fflush(stderr);
+         }
+     }
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -3301,6 +3301,28 @@
+     // reasons
+     clearInvalidRects(self);
+ 
++    /* THE WHOLE VIEW MARK, which setNeedsDisplayInRect: traces and this did not. A view marked
++     * while its window is nil loses the mark silently, and that is indistinguishable from an
++     * application that never marked anything: iTerm2 3.5 paints its terminal once and never again,
++     * and only this line separates the two. Task #239. */
++    if (ciderTraceLayerBlit()) {
++        NSRect vis = [self visibleRect];
++        NSRect frame = [self frame];
++
++        /* THE VISIBLE RECT IS WHAT GETS DRAWN. setNeedsDisplay:YES empties the invalid rect list
++         * to mean the whole view, and the display then draws unionOfInvalidRects, which for an
++         * empty list IS the visible rect. A view marked dirty whose visible rect is empty is
++         * therefore marked and redrawn to nothing, which looks exactly like a mark that was never
++         * made. */
++        fprintf(stderr, "CIDER_NEEDSDISPLAY view=%p cls=%s flag=%d window=%ld "
++                "frame=%.0fx%.0f visible=%.0f,%.0f %.0fx%.0f\n", (void *) self,
++                class_getName([self class]), (int) flag,
++                [self window] != nil ? (long) [[self window] windowNumber] : -1L,
++                frame.size.width, frame.size.height, vis.origin.x, vis.origin.y,
++                vis.size.width, vis.size.height);
++        fflush(stderr);
++    }
++
+     if (_needsDisplay)
+         [[self window] setViewsNeedDisplay: YES];
+ }
