@@ -127,6 +127,24 @@ darwin_binary(
 )
 
 cc_objects(
+    name = "timers_obj",
+    srcs = ["timers.c"],
+    compiler_flags = ["-O2", "-Wall"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "timers_probe",
+    objs = [":timers_obj", "//vendor/src/csu:crt1.10.6_obj2"],
+    dylibs = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
     name = "pty_obj",
     srcs = ["pty.c"],
     compiler_flags = ["-O2", "-Wall"],

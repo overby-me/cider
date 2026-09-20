@@ -2032,6 +2032,7 @@ fn present(st: &mut WindowState) {
         );
     }
     report_commit(st);
+    report_ink(st);
     report_pixels(st);
     // WHAT IS ACTUALLY IN THE BUFFER AT THE MENU BAR, sampled at present time. The compositor kept
     // showing a highlighted menu title after Escape while every trace above said the bar had been
@@ -2216,6 +2217,36 @@ fn report_commit(st: &mut WindowState) {
             st.number, st.commits, elapsed()
         );
     }
+}
+
+/// HOW MUCH INK IS IN THE BUFFER BEING COMMITTED, counted at present time.
+///
+/// Every counter can agree that a frame was drawn, committed and not dropped, and the screen can
+/// still disagree with all of them. Then the only thing left to ask is what is actually in the
+/// pixels. Dark pixels are text: a terminal on a light background has a few thousand of them and a
+/// blank one has none, so the count rising when a line is typed says the glyphs reached the buffer
+/// and the loss is after it. Task #239.
+fn report_ink(st: &mut WindowState) {
+    if !crate::env_flag!("CIDER_WAYLAND_TRACE_INK") || st.pixels.is_null() {
+        return;
+    }
+    let total = st.map_len / 4;
+    if total == 0 {
+        return;
+    }
+    let words = unsafe { std::slice::from_raw_parts(st.pixels as *const u32, total) };
+    let mut ink = 0usize;
+    for &w in words {
+        let (r, g, b) = ((w >> 16) & 0xff, (w >> 8) & 0xff, w & 0xff);
+        // Rough luminance, and a threshold well below any background this port paints.
+        if (r * 30 + g * 59 + b * 11) / 100 < 110 {
+            ink += 1;
+        }
+    }
+    println!(
+        "cider-wayland-window ink number={} commit={} dark={ink}/{total} t={:.2}",
+        st.number, st.commits, elapsed()
+    );
 }
 
 fn report_pixels(st: &mut WindowState) {
