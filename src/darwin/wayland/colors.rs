@@ -75,9 +75,20 @@ fn recipe_for(name: &str) -> Option<Recipe> {
         "selectedMenuItemTextColor" => Recipe::ClassMethod("whiteColor"),
         "selectedMenuItemColor" => ACCENT,
         "selectedControlTextColor" => Recipe::ClassMethod("blackColor"),
-        "windowFrameColor" => Recipe::ClassMethod("lightGrayColor"),
-        // The TEXT on the frame, black on the light frame above, which is what a light mode macOS
-        // title bar looks like.
+        // DARK, AND IT IS READ AS TEXT. wxWidgets maps wxSYS_COLOUR_CAPTIONTEXT and
+        // INACTIVECAPTIONTEXT onto windowFrameColor, not onto windowFrameTextColor, which its
+        // binaries do not even reference. So this value is what a wxAUI pane caption is WRITTEN in.
+        // Cocotron's X11 table answers lightGrayColor, 0.667, and Money Manager EX drew Navigator
+        // at 169 on a 185 background: a contrast ratio of 1.08, measured, invisible. Proved by
+        // mutation, not inference, by giving four candidate colours distinct hues and reading back
+        // which one the caption took.
+        //
+        // The exact macOS value could not be verified from here, so this is a choice and not a
+        // measurement: dark enough to read as text, dark enough to be a frame line, and not the
+        // pure black that would make a frame look drawn on rather than structural.
+        "windowFrameColor" => Recipe::Grey(0.25),
+        // The TEXT on the frame. Our own title bars draw with this, and they are light, so it
+        // stays black.
         "windowFrameTextColor" => Recipe::ClassMethod("blackColor"),
         "shadowColor" => Recipe::ClassMethod("blackColor"),
         "alternateSelectedControlTextColor" => Recipe::ClassMethod("whiteColor"),
