@@ -78,6 +78,55 @@ darwin_binary(
 )
 
 cc_objects(
+    name = "displaylink_obj",
+    srcs = ["displaylink.c"],
+    compiler_flags = ["-O2", "-Wall"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//src/darwin/frameworks:fw_CoreVideo",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_CoreText",
+        # CVDisplayLink.h reaches ApplicationServices, and that pulls the same cascade every
+        # framework consumer in this tree carries.
+        "//src/darwin/frameworks:fw_ApplicationServices",
+        "//src/darwin/frameworks:fw_ATS",
+        "//src/darwin/frameworks:fw_ColorSync",
+        "//src/darwin/frameworks:fw_ColorSyncLegacy",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_HIServices",
+        "//src/darwin/frameworks:fw_ImageIO",
+        "//src/darwin/frameworks:fw_LangAnalysis",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_PrintCore",
+        "//src/darwin/frameworks:fw_QD",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/frameworks:fw_SpeechSynthesis",
+        "//src/darwin/frameworks:fw_OpenGL",
+        "//vendor/src:fw_Security",
+        "//vendor/src:fw_CFNetwork",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "displaylink_probe",
+    objs = [":displaylink_obj", "//vendor/src/csu:crt1.10.6_obj2"],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//src/darwin/frameworks:CoreVideo_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
     name = "pty_obj",
     srcs = ["pty.c"],
     compiler_flags = ["-O2", "-Wall"],

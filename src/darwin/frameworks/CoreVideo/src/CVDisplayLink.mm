@@ -1,4 +1,26 @@
+/*
+ * THE DISPLAY LINK IS A TIMER HERE, and until #239 it was not even that.
+ *
+ * SetOutputCallback discarded the callback, Start started nothing, and IsRunning answered YES: an
+ * application that draws from the link was told registered, started and running, and its callback
+ * was never called once. That is the worst shape a stub can take, because nothing reports an error
+ * and the frame simply never arrives. iTerm2 3.5 draws its terminal that way and never marked the
+ * text view dirty, so every keystroke reached the shell, the echo came back, and the window kept
+ * showing whatever the first layout had painted.
+ *
+ * There is no vertical blank to follow here, so the link fires from its own thread at the nominal
+ * refresh rate. It runs OFF THE MAIN THREAD, which is where macOS calls it and what callers expect.
+ *
+ * A PLAIN THREAD AND nanosleep, NOT a dispatch timer source: the first version used
+ * DISPATCH_SOURCE_TYPE_TIMER, which this port creates and resumes happily and then never fires,
+ * and src/darwin/kqueue-probe/displaylink.c caught it with verdict=NEVER-FIRED before it shipped.
+ * A display link that silently never fires is the exact defect this file exists to remove.
+ */
 #include <CoreVideo/CVDisplayLink.h>
+#include <mach/mach_time.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <memory>
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSWindow.h>
@@ -8,6 +30,112 @@
 #include <CoreGraphics/CGDirectDisplay.h>
 
 static const NSString* kDirectDisplayArray = @"CGDirectDisplay";
+static const NSString* kCiderLinkState = @"CiderLinkState";
+
+/*
+ * The link's own state. It hangs off the dictionary the Ref already is, so CVDisplayLinkRelease
+ * and CVDisplayLinkGetCurrentCGDisplay keep working unchanged.
+ */
+@interface CiderDisplayLinkState : NSObject
+{
+@public
+	CVDisplayLinkOutputCallback callback;
+	void *userInfo;
+	pthread_t thread;
+	/* The thread reads this every frame and exits when it clears, so Stop never has to kill a
+	 * thread in the middle of a callback. */
+	volatile int running;
+	int64_t frame;
+}
+@end
+
+@implementation CiderDisplayLinkState
+- (void) dealloc
+{
+	running = 0;
+	if (thread != NULL) {
+		pthread_join(thread, NULL);
+		thread = NULL;
+	}
+	[super dealloc];
+}
+@end
+
+static CiderDisplayLinkState *cider_link_state(CVDisplayLinkRef displayLink, BOOL create)
+{
+	NSMutableDictionary *self = (NSMutableDictionary *) displayLink;
+	CiderDisplayLinkState *state = [self objectForKey: kCiderLinkState];
+
+	if (state == nil && create) {
+		state = [[[CiderDisplayLinkState alloc] init] autorelease];
+		[self setObject: state forKey: kCiderLinkState];
+	}
+	return state;
+}
+
+/* The refresh period as a duration, falling back to 60Hz when the display cannot say. */
+static uint64_t cider_link_interval_ns(CVDisplayLinkRef displayLink)
+{
+	CVTime period = CVDisplayLinkGetNominalOutputVideoRefreshPeriod(displayLink);
+
+	if ((period.flags & kCVTimeIsIndefinite) == 0 && period.timeScale > 0 && period.timeValue > 0)
+		return (uint64_t) ((double) period.timeValue / (double) period.timeScale * 1000000000.0);
+	return 1000000000ull / 60ull;
+}
+
+static void cider_link_fire(CVDisplayLinkRef displayLink)
+{
+	CiderDisplayLinkState *state = cider_link_state(displayLink, NO);
+	if (state == nil || state->callback == NULL)
+		return;
+
+	uint64_t interval = cider_link_interval_ns(displayLink);
+	CVTimeStamp now = { 0 };
+	now.version = 0;
+	now.videoTimeScale = 1000000000;
+	now.videoTime = state->frame * (int64_t) interval;
+	now.hostTime = mach_absolute_time();
+	now.rateScalar = 1.0;
+	now.videoRefreshPeriod = (int64_t) interval;
+	now.flags = kCVTimeStampVideoTimeValid | kCVTimeStampHostTimeValid |
+			kCVTimeStampVideoRefreshPeriodValid | kCVTimeStampRateScalarValid;
+
+	/* The OUTPUT time is one frame ahead: it is when what is drawn now will be shown, and a caller
+	 * that animates against it rather than against inNow is right to. */
+	CVTimeStamp output = now;
+	output.videoTime += (int64_t) interval;
+	output.hostTime += interval;
+
+	state->frame++;
+
+	CVOptionFlags flagsOut = 0;
+	if (state->frame == 1 && getenv("CIDER_TRACE_DISPLAY") != NULL)
+		fprintf(stderr, "cider-displaylink first fire link=%p\n", displayLink);
+	state->callback(displayLink, &now, &output, 0, &flagsOut, state->userInfo);
+}
+
+static void *cider_link_thread(void *context)
+{
+	CVDisplayLinkRef displayLink = (CVDisplayLinkRef) context;
+	uint64_t interval = cider_link_interval_ns(displayLink);
+
+	for (;;) {
+		CiderDisplayLinkState *state = cider_link_state(displayLink, NO);
+		if (state == nil || !state->running)
+			break;
+
+		struct timespec ts;
+		ts.tv_sec = (time_t) (interval / 1000000000ull);
+		ts.tv_nsec = (long) (interval % 1000000000ull);
+		nanosleep(&ts, NULL);
+
+		state = cider_link_state(displayLink, NO);
+		if (state == nil || !state->running)
+			break;
+		cider_link_fire(displayLink);
+	}
+	return NULL;
+}
 
 CVReturn CVDisplayLinkCreateWithActiveCGDisplays(CVDisplayLinkRef* displayLinkOut)
 {
@@ -41,7 +169,21 @@ CVReturn CVDisplayLinkStart(CVDisplayLinkRef displayLink)
 {
 	if (!displayLink)
 		return kCVReturnInvalidArgument;
-	// TODO
+
+	CiderDisplayLinkState *state = cider_link_state(displayLink, YES);
+	if (state->running)
+		return kCVReturnSuccess;
+
+	state->running = 1;
+	if (pthread_create(&state->thread, NULL, cider_link_thread, displayLink) != 0) {
+		state->running = 0;
+		state->thread = NULL;
+		return kCVReturnError;
+	}
+	if (getenv("CIDER_TRACE_DISPLAY") != NULL)
+		fprintf(stderr, "cider-displaylink started link=%p interval=%lluns callback=%p\n",
+				displayLink, (unsigned long long) cider_link_interval_ns(displayLink),
+				(void *) state->callback);
 	return kCVReturnSuccess;
 }
 
@@ -49,7 +191,16 @@ CVReturn CVDisplayLinkStop(CVDisplayLinkRef displayLink)
 {
 	if (!displayLink)
 		return kCVReturnInvalidArgument;
-	// TODO
+
+	CiderDisplayLinkState *state = cider_link_state(displayLink, NO);
+	if (state == nil || !state->running)
+		return kCVReturnSuccess;
+
+	/* Join rather than detach: when Stop returns, no callback is in flight, which is what a caller
+	 * tearing down the objects the callback touches is entitled to assume. */
+	state->running = 0;
+	pthread_join(state->thread, NULL);
+	state->thread = NULL;
 	return kCVReturnSuccess;
 }
 
@@ -57,8 +208,9 @@ Boolean CVDisplayLinkIsRunning(CVDisplayLinkRef displayLink)
 {
 	if (!displayLink)
 		return false;
-	// TODO
-	return true;
+
+	CiderDisplayLinkState *state = cider_link_state(displayLink, NO);
+	return state != nil && state->running != 0;
 }
 
 void CVDisplayLinkRelease(CVDisplayLinkRef displayLink)
@@ -69,7 +221,15 @@ void CVDisplayLinkRelease(CVDisplayLinkRef displayLink)
 
 CVReturn CVDisplayLinkSetOutputCallback(CVDisplayLinkRef displayLink, CVDisplayLinkOutputCallback callback, void *userInfo)
 {
-	// TODO
+	if (!displayLink)
+		return kCVReturnInvalidArgument;
+
+	CiderDisplayLinkState *state = cider_link_state(displayLink, YES);
+	state->callback = callback;
+	state->userInfo = userInfo;
+	if (getenv("CIDER_TRACE_DISPLAY") != NULL)
+		fprintf(stderr, "cider-displaylink callback set link=%p fn=%p\n", displayLink,
+				(void *) callback);
 	return kCVReturnSuccess;
 }
 
