@@ -17,6 +17,13 @@ The default is unchanged: the flag is off unless the variable is set, and the re
 still 0. Binding a stub instead of NULL would break weak linking, whose entire purpose is that the
 address compares equal to zero.
 
+CONSIDERED AND REJECTED, recorded so it is not tried again: letting a weak import fall through to
+CIDER_COMPAT_LIBRARY before giving up. That library is mostly POISON ADDRESSES rather than
+implementations, by design, so feeding them to weak imports would hand a non-null address to the
+very null checks weak linking exists for, on roughly eighty symbols across the roster. A weakly
+imported back-deployed entry point is SUPPOSED to be null: the compiler emits the check and the
+older path beside it.
+
 --- a/src/ImageLoaderMachOCompressed.cpp
 +++ b/src/ImageLoaderMachOCompressed.cpp
 @@ -643,6 +643,9 @@
