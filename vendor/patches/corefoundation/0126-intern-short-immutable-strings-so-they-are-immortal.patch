@@ -1,0 +1,149 @@
+Make short immutable strings immortal by interning them, replacing the experiment in 0125.
+
+WHAT WAS WRONG. On macOS a short ASCII string is a TAGGED POINTER: no allocation, nothing to
+deallocate, immortal. Applications rely on that without knowing they do. Swift Publisher hands six
+character strings to -addObserver:forKeyPath:options:context: and never retains them, which is
+correct on a Mac and fatal here, because we allocated a real object and the pool freed it. Clicking
+the page in its document editor killed the application 4 of 4.
+
+WHAT THIS DOES. It reproduces the LIFETIME rather than the representation. A short, ASCII,
+inline, default allocator immutable string is looked up in a content keyed CFSet on the way out of
+the creation funnel. The set retains its members and never removes one, so every member is immortal
+and equal strings are shared. Cost is bounded by DISTINCT short strings, not by how many are made.
+Tagged pointers would be the faithful fix, but they touch pointer encoding, the objc runtime and
+every place that assumes a pointer is dereferenceable; this buys the same safety for this class of
+bug at a fraction of the risk.
+
+WHICH STRINGS ARE EXCLUDED, and why. Inline contents only: a string that points at bytes it does
+not own would, once immortal, outlive the buffer it was handed, which is a promise its caller never
+made. Non default allocators are left alone so nothing is held in an allocator past its zone.
+Unicode and anything over nine characters never qualifies, which matches the macOS criterion.
+
+WHAT IT COSTS, measured in the guest with tests/foundation/bench_string_intern.c, 400000 creates,
+three runs interned against two runs not, wall clock:
+    strings too long to qualify     0.115 -> 0.116 s    no measurable change, and this is the control
+    short, already interned         0.111 -> 0.151 s    +100 ns per create, 1.36x
+    short, all 400000 distinct      0.110 -> 0.429 s    +800 ns per create, 3.9x
+The last line is the honest downside: a workload that creates unbounded DISTINCT short strings pays
+about four times per create and grows the table. Memory on three real applications moved by single
+digit megabytes with a cruder version of this that did not even share duplicates.
+
+THE A/B IS KEPT. CIDER_IMMORTAL_SHORT_STRINGS overrides the length and 0 turns interning off
+entirely, which re-validates the diagnosis in both directions: on, the editor survives the click and
+renders; off, the same build dies and captures black.
+
+Task #249.
+
+--- a/CFString.c
++++ b/CFString.c
+@@ -1244,6 +1244,73 @@
+    !!! Various flags should be combined to reduce number of arguments, if possible
+ */
+ 
++/* On macOS a short ASCII string is a tagged pointer, so it never deallocates, and applications
++ * register one somewhere and never retain it. Swift Publisher does exactly that with a KVO context.
++ * We have no tagged pointers, so reproduce the LIFETIME rather than the representation: intern such
++ * a string in a content keyed set that retains its members and never drops one. Cost is bounded by
++ * DISTINCT short strings, not by how many are created. Task #249.
++ */
++#define __kCFCiderInternedStringMax 9	/* what macOS can hold in a tagged ASCII pointer */
++
++static CFMutableSetRef __CFCiderInternedStrings = NULL;
++static CFLock_t __CFCiderInternLock = CFLockInit;
++
++/* Returns +1, like the funnel it serves. Returns str itself when the string does not qualify. */
++static CFStringRef __CFCiderInternShortString(CFStringRef str) {
++    static int max = -1;
++    /* A string created while we hold the lock would deadlock it, and during CF's own start up the
++     * set cannot be built at all. Both are the same guard. */
++    static __thread Boolean interning = false;
++    const uint8_t *contents;
++    CFIndex length;
++    CFStringRef found;
++
++    if (max < 0) {
++        const char *value = getenv("CIDER_IMMORTAL_SHORT_STRINGS");
++
++        max = (value != NULL && value[0] != '\0') ? atoi(value) : __kCFCiderInternedStringMax;
++    }
++    if (max <= 0 || interning) return str;
++
++    /* Inline contents only: a string pointing at bytes it does not own would, once immortal, hold
++     * a promise the caller never made, and outlive the buffer it was handed. */
++    if (!__CFStrIsEightBit(str) || !__CFStrIsInline(str)) return str;
++    if (__CFGetAllocator(str) != __CFGetDefaultAllocator()) return str;
++
++    length = __CFStrLength(str);
++    if (length < 1 || length > max) return str;
++
++    contents = (const uint8_t *)__CFStrContents(str) + __CFStrSkipAnyLengthByte(str);
++    if (!__CFBytesInASCII(contents, length)) return str;
++
++    interning = true;
++
++    if (__CFCiderInternedStrings == NULL) {
++        CFMutableSetRef table = CFSetCreateMutable(kCFAllocatorSystemDefault, 0, &kCFTypeSetCallBacks);
++
++        __CFLock(&__CFCiderInternLock);
++        if (__CFCiderInternedStrings == NULL) __CFCiderInternedStrings = table;
++        __CFUnlock(&__CFCiderInternLock);
++        if (__CFCiderInternedStrings != table) CFRelease(table);
++    }
++
++    __CFLock(&__CFCiderInternLock);
++    found = (CFStringRef)CFSetGetValue(__CFCiderInternedStrings, str);
++    if (found == NULL) {
++        CFSetAddValue(__CFCiderInternedStrings, str);
++        found = str;
++    }
++    __CFUnlock(&__CFCiderInternLock);
++
++    interning = false;
++
++    if (found != str) {
++        CFRetain(found);
++        CFRelease(str);
++    }
++    return found;
++}
++
+ CF_PRIVATE CFStringRef __CFStringCreateImmutableFunnel3(
+                         CFAllocatorRef alloc, const void *bytes, CFIndex numBytes, CFStringEncoding encoding,
+                         Boolean possiblyExternalFormat, Boolean tryToReduceUnicode, Boolean hasLengthByte, Boolean hasNullByte, Boolean noCopy,
+@@ -1552,34 +1619,8 @@
+     }
+ #endif
+ 
+-    /*
+-     * AN EXPERIMENT, NOT A FIX, AND IT LEAKS BY DESIGN. Task #249.
+-     *
+-     * On macOS a short ASCII string is a TAGGED POINTER: no allocation, nothing to deallocate,
+-     * immortal. Applications rely on that without knowing it. Swift Publisher hands six character
+-     * strings to -addObserver:forKeyPath:options:context: without retaining them, which is safe
+-     * there and fatal here, because we allocate a real object that the pool then frees.
+-     *
+-     * Retaining every short string once more makes them immortal the crude way. It proves or
+-     * disproves the whole diagnosis in one run WITHOUT building tagged pointers, which touches
+-     * pointer encoding, the objc runtime and every place that assumes a pointer is
+-     * dereferenceable. If the crash survives this, the diagnosis is wrong and no one should spend
+-     * a week on tagged pointers.
+-     *
+-     * OFF unless CIDER_IMMORTAL_SHORT_STRINGS names a maximum length, because it is a deliberate
+-     * leak of every short string the process ever makes.
+-     */
+-    if (str != NULL) {
+-        static int limit = -1;
+-
+-        if (limit < 0) {
+-            const char *v = getenv("CIDER_IMMORTAL_SHORT_STRINGS");
+-
+-            limit = (v != NULL && v[0] != '\0') ? atoi(v) : 0;
+-        }
+-        if (limit > 0 && __CFStrLength((CFStringRef) str) <= limit)
+-            CFRetain(str);
+-    }
++    /* CIDER_IMMORTAL_SHORT_STRINGS=0 turns this off, which is the A/B for task #249. */
++    if (str != NULL) return __CFCiderInternShortString((CFStringRef)str);
+ 
+     return str;
+ }
