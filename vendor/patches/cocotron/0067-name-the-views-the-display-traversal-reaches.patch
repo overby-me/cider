@@ -1,0 +1,36 @@
+Name the views the display traversal actually reaches, which is the other half of the mark.
+
+CIDER_NEEDSDISPLAY says a view was MARKED dirty. It cannot say whether anything then redrew it,
+and a view marked and never reached looks on screen exactly like a view never marked: both are a
+region that does not change. This prints the class and the rectangle at the moment the traversal
+decides to redraw, under the same switch.
+
+It answered task #239 in one run. iTerm2 3.5.14 marks its terminal view 482 times and the
+traversal redraws it ONCE, rect=0,0 1241x632, out of 232 redraws in the whole run. The glyph trace
+agrees from the other side: 128 glyph runs, all at startup, none afterwards. So the application
+asks for the repaint and the repaint does not happen, which is a much smaller question than the
+one this task started with.
+
+Task #239 carries the chain, the next measurement and the mechanism to suspect once it is settled.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -3764,6 +3764,18 @@
+ 
+ - (void) _displayIfNeededWithoutViewWillDraw {
+     if ([self needsDisplay]) {
++        /* THE OTHER HALF OF CIDER_NEEDSDISPLAY. That trace says a view was MARKED; this one says
++         * the traversal reached it and what rectangle it was redrawn with. A view marked and never
++         * reached, and a view reached and redrawn to nothing, are the same absence on screen and
++         * want different fixes. Task #239. */
++        if (ciderTraceLayerBlit()) {
++            NSRect draw = unionOfInvalidRects(self);
++
++            fprintf(stderr, "CIDER_DISPLAYRECT view=%p cls=%s rect=%.0f,%.0f %.0fx%.0f\n",
++                    (void *) self, class_getName([self class]), draw.origin.x, draw.origin.y,
++                    draw.size.width, draw.size.height);
++            fflush(stderr);
++        }
+         [self displayRect: unionOfInvalidRects(self)];
+         clearNeedsDisplay(self);
+     }
