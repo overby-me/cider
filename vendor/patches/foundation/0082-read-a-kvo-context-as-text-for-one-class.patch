@@ -1,0 +1,52 @@
+Read a KVO context as text, for one named observer class only.
+
+A DIAGNOSTIC, AND A DELIBERATELY NARROW ONE. A context is an ARBITRARY pointer: AppKit own bindings
+machinery passes things through here that are not objects, so a probe that messaged every context
+would crash the very run it is measuring. CIDER_TRACE_KVO_CONTEXT holds a substring of an OBSERVER
+CLASS NAME and nothing outside that class is touched, which keeps the probe to registrations
+already known to carry objects.
+
+It reads at REGISTRATION, where the context is still alive. Reading it at notification time is the
+thing under investigation and would be a probe that crashes on exactly the bug it is looking for.
+
+WHAT IT ESTABLISHED, and it is the whole of task #249. Every context CCSegmentedControl registers:
+
+    __NSCFConstantString   len=5   value      the literal, in the image, immortal
+    __NSCFString           len=6   value1     heap
+    __NSCFString           len=6   value2     heap
+    __NSCFString           len=6   value3     heap
+
+Swift Publisher uses the literal for segment 0 and COMPUTES the rest, and every computed one is six
+ASCII characters. On macOS a string that short is a TAGGED POINTER: no allocation, nothing to
+deallocate, so registering it as a context without retaining it is harmless, which is why the
+application does it. Here it is a real heap object, it is autoreleased, the pool drains, and the
+context the application still holds becomes garbage. That is the crash, and the missing feature is
+tagged pointer string CREATION, which vendor/src/corefoundation/CFString.c does not have at all.
+
+Task #249.
+--- a/src/NSKeyValueObserving.m
++++ b/src/NSKeyValueObserving.m
+@@ -647,6 +647,23 @@
+         fprintf(stderr, "CIDER_KVO %s observes %s of %s context=%p\n", object_getClassName(observer),
+                 _CiderKVOText(keyPath) ?: "(nil)", object_getClassName(self), context);
+ 
++        /*
++         * AND WHAT THE CONTEXT SAYS, FOR ONE NAMED OBSERVER CLASS ONLY.
++         *
++         * A context is an ARBITRARY pointer. AppKit own bindings machinery passes things through
++         * here that are not objects at all, so messaging every context would crash the run that is
++         * trying to measure it. CIDER_TRACE_KVO_CONTEXT holds a substring of an observer class
++         * name and nothing else is touched, which keeps the probe to registrations already known
++         * to carry objects. It is read at REGISTRATION, where the context is still alive; reading
++         * it at notification time is the very thing under investigation. Task #249.
++         */
++        const char *want = getenv("CIDER_TRACE_KVO_CONTEXT");
++
++        if (want != NULL && want[0] != (char) 0 && context != NULL &&
++            strstr(object_getClassName(observer), want) != NULL) {
++            fprintf(stderr, "CIDER_KVO   context %p is %s text=%s\n", context,
++                    object_getClassName((id) context), _CiderKVOText((id) context));
++        }
+         fflush(stderr);
+     }
+ 
