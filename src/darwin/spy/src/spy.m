@@ -177,6 +177,20 @@ static double cider_spy_double(id self, SEL _cmd)
 	return v;
 }
 
+/* SKIP THE TYPE QUALIFIERS. An encoding may be prefixed by r n N o O R V for const, in, inout,
+ * out, bycopy, byref and oneway, and reading only the first character sees the QUALIFIER instead of
+ * the type: -[PTYTextView drawingHelperLineAtIndex:] returns r^{screen_char_t}, and this refused it
+ * as "returns r". A qualifier changes nothing about how a value is passed. */
+static char cider_spy_bare(const char *encoding)
+{
+	if (encoding == NULL)
+		return '?';
+	while (*encoding == 'r' || *encoding == 'n' || *encoding == 'N' || *encoding == 'o' ||
+	       *encoding == 'O' || *encoding == 'R' || *encoding == 'V')
+		encoding++;
+	return *encoding != (char) 0 ? *encoding : '?';
+}
+
 /* 1 integer family, 0 object, -1 anything this cannot unpack safely. */
 static int cider_spy_is_int(char encoding)
 {
@@ -329,7 +343,7 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 	}
 
 	const char *types = method_getTypeEncoding(m);
-	e->ret = types ? types[0] : '?';
+	e->ret = cider_spy_bare(types);
 	e->selector = sel;
 	e->original = method_getImplementation(m);
 
@@ -341,11 +355,11 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 		char encoding[64] = "";
 
 		method_getArgumentType(m, 2, encoding, sizeof(encoding));
-		e->arg = encoding[0];
+		e->arg = cider_spy_bare(encoding);
 		if (method_getNumberOfArguments(m) > 3) {
 			encoding[0] = (char) 0;
 			method_getArgumentType(m, 3, encoding, sizeof(encoding));
-			e->arg2 = encoding[0];
+			e->arg2 = cider_spy_bare(encoding);
 		}
 	}
 
@@ -397,6 +411,12 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 		switch (e->ret) {
 		case 'c': case 'C': case 'B': case 's': case 'S':
 		case 'i': case 'I': case 'l': case 'L': case 'q': case 'Q':
+		/* A RETURNED POINTER COMES BACK IN THE SAME REGISTER AS AN INTEGER, so reporting it as one
+		 * is exact and needs no knowledge of what it points at. Printing the ADDRESS is often the
+		 * whole answer: a method that hands the drawing code a line of the screen, asked before and
+		 * after new text arrives, says whether the drawing side is being given the same stale
+		 * buffer. Never dereferenced, for the same reason as the argument case. */
+		case '^':
 			one = intarg ? (IMP) cider_spy_int_int : (IMP) cider_spy_int_object;
 			break;
 		case '@': case '#':
@@ -424,6 +444,7 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 	switch (e->ret) {
 	case 'c': case 'C': case 'B': case 's': case 'S':
 	case 'i': case 'I': case 'l': case 'L': case 'q': case 'Q':
+	case '^':
 		replacement = (IMP) cider_spy_int;
 		break;
 	case '@': case '#':
