@@ -286,10 +286,15 @@ send_keys_spec() {
 #
 #   STEPS="click:300,73 type:/tmp/hello click:500,137 type:/tmp/hello/build click:57,567 wait:8"
 #
-# Verbs: click:x,y   type:<text|raw:...|key:...>   wait:<seconds>   shot:<name>
+# Verbs: click:x,y   type:<text|raw:...|key:...>   wait:<seconds>   shot:<name>   size:WxH
 # SPACE SEPARATES STEPS, so no argument may contain a space; quote a raw: sequence with commas
 # instead. Every step is captured as sNN-<verb> so a sequence that goes wrong can be read back
 # frame by frame rather than guessed at.
+#
+# size: RESIZES MORE THAN ONCE, which the single RESIZE_W/RESIZE_H step below cannot. A layout that
+# is one resize BEHIND and a layout that is dead look identical after a single resize: both show
+# the wrong geometry. Only a second resize separates them, because a one-behind layout then shows
+# what the FIRST resize should have produced. Task #247.
 if [ -n "${STEPS:-}" ]; then
 	n=0
 	for STEP in $STEPS; do
@@ -300,6 +305,10 @@ if [ -n "${STEPS:-}" ]; then
 			type)  say "step $n type $arg"; send_keys_spec "$arg"; sleep 3 ;;
 			wait)  say "step $n wait $arg"; sleep "$arg" ;;
 			shot)  say "step $n shot $arg" ;;
+			size)  say "step $n resize the output to $arg"
+			       WAYLAND_DISPLAY=$NEW "$SWAYMSG" output '*' mode "$arg" \
+			               >>"$SHOTS/driver.log" 2>&1
+			       sleep 5 ;;
 			*)     echo "unknown step verb: $STEP" >&2; exit 2 ;;
 		esac
 		shoot "$(printf 's%02d-%s' "$n" "$verb")"
