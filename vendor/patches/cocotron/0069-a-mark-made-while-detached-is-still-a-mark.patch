@@ -1,0 +1,41 @@
+A mark made while a view is detached is still a mark.
+
+-[NSView setNeedsDisplay:] records the flag on the view and then tells the window, by sending
+setViewsNeedDisplay: to [self window]. For a view whose tree is still being assembled that window
+is nil, the message goes nowhere, and the view is left dirty with nothing that will ever notice.
+The next display pass walks from the window and finds a flag no window was told about.
+
+It is not a rare corner. iTerm2 3.5 marks its terminal view 482 times in one run and 313 of those
+arrive before the view has a window, measured with the CIDER_NEEDSDISPLAY trace, which prints the
+window number or -1.
+
+Joining a window is the moment to deliver them, so _setWindow: now tells the new window when the
+view it is adopting is already dirty. It recurses into subviews, so a whole subtree assembled
+offscreen and then installed delivers every mark it accumulated.
+
+WHAT IT DOES NOT FIX: iTerm2 3.5, measured before and after at 482 marks and 1 traversal redraw.
+Its windowless marks all arrive before the first attach, and that attach already redraws the view
+once, so there is nothing left for this to deliver. Task #239 has the evidence that the remaining
+fault there is inside the application.
+
+Gates: run-dts-batch, buck-bundled-patch-record-check, roster-sweep and roster-input.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -1816,6 +1816,16 @@
+             [_layerContext setSubwindow: [_window _createSubWindowWithFrame: [self frame]]];
+         }
+ 
++        /* A MARK MADE WHILE DETACHED IS STILL A MARK. setNeedsDisplay: records it on the view and
++         * then sends setViewsNeedDisplay: to [self window], which is nil for a view whose tree is
++         * still being assembled: the view stays dirty and no window ever hears about it, so it is
++         * never redrawn. iTerm2 3.5 marks its terminal view 482 times in a run and 313 of those
++         * arrive before the view has a window. Joining a window is the moment to deliver them.
++         * Task #239. */
++        if (_window != nil && _needsDisplay) {
++            [_window setViewsNeedDisplay: YES];
++        }
++
+         [_subviews makeObjectsPerformSelector: _cmd withObject: window];
+         _validTrackingAreas = NO;
+         [_window invalidateCursorRectsForView: self]; // this also invalidates
