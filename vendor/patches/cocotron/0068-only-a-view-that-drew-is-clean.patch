@@ -1,0 +1,139 @@
+Only a view that drew is clean, and three numbers that show where a repaint goes.
+
+THE FIX. displayRectIgnoringOpacity: retired a view's dirty rectangles whether or not canDraw had
+let drawRect: run. canDraw is NO for a windowless or hidden view, which is exactly the state a view
+is in while its tree is being assembled, so a display request arriving then was answered by marking
+the view clean and painting nothing. The request was gone and the next pass saw nothing to do.
+Retiring is now conditional on canDraw, which is the only reading under which the word clean means
+anything.
+
+THE INSTRUMENTS, all on the existing CIDER_TRACE_LAYERBLIT and CIDER_TRACE_DIRTY switches:
+  - the view tree dump prints the POINTER and the dirty flag. It named views by class alone, so
+    with two instances of a class there was no way to tell whether the view being marked was the
+    one in the tree. It is the same view: 0x72a6803b4e20 in both.
+  - cider-descent counts the views each display pass walks, so a pass that stops early is a number
+    rather than an absence. iTerm2 walks 81 views 20 times out of a tree of exactly 81, which is
+    how the raise-unwinds-the-traversal theory died.
+  - CIDER_RETIRE names every view marked clean by the rect bookkeeping rather than by a draw, with
+    the rectangle drawn and the visible rectangle.
+
+WHAT THEY MEASURED, and it moves task #239 across the boundary. iTerm2 3.5.14 marks its terminal
+view 482 times. The traversal visits it every pass. It is retired 8 times with why=covered and
+drew=0,0 1241x632 visible=0,0 1241x632, which is the FULL rect with canDraw true, so its drawRect:
+ran 8 times. It produced glyphs exactly once: 128 glyph runs at startup and none after.
+
+So the repaint is not being lost on our side. It is delivered, in full, and the application draws
+nothing into it. THE canDraw FIX IS NOT THE FIX FOR #239 AND I AM NOT CLAIMING IT IS: measured
+before and after, the terminal is still marked 482 times and redrawn once.
+
+Gates: run-dts-batch 69 targets built 69 failed 0, buck-bundled-patch-record-check 68 patches with
+0 files differing, roster-sweep all seven render, roster-input six of seven type with iTerm2 the
+failure this task tracks.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -3186,6 +3186,8 @@
+     return result;
+ }
+ 
++static BOOL ciderTraceLayerBlit(void);
++
+ static void removeRectFromInvalidInVisibleRect(NSView *self, NSRect rect,
+                                                NSRect visibleRect)
+ {
+@@ -3204,15 +3206,31 @@
+         }
+     }
+     if (self->_invalidRectCount == 0) {
++        BOOL wasDirty = self->_needsDisplay;
++        const char *why = NULL;
++
+         if (self->_invalidRects != NULL) {
+             NSZoneFree(NULL, self->_invalidRects);
+             self->_invalidRects = NULL;
+             // We killed the last invalidRect - we're clean now
+             self->_needsDisplay = NO;
++            why = "last-rect";
+         } else if (NSContainsRect(rect, visibleRect)) {
+             // We had no invalidRect, which means the full visibleRect was dirty
+             // We're now clean
+             self->_needsDisplay = NO;
++            why = "covered";
++        }
++        /* WHO RETIRES A DIRTY VIEW. This is the only place other than a completed draw that marks a
++         * view clean, and a view retired here without its content having been painted is a repaint
++         * the application asked for and never got. Same switch as the mark and the descent. */
++        if (why != NULL && wasDirty && ciderTraceLayerBlit()) {
++            fprintf(stderr, "CIDER_RETIRE view=%p cls=%s why=%s drew=%.0f,%.0f %.0fx%.0f "
++                    "visible=%.0f,%.0f %.0fx%.0f\n", (void *) self,
++                    class_getName([self class]), why, rect.origin.x, rect.origin.y,
++                    rect.size.width, rect.size.height, visibleRect.origin.x, visibleRect.origin.y,
++                    visibleRect.size.width, visibleRect.size.height);
++            fflush(stderr);
+         }
+     }
+ }
+@@ -3762,7 +3780,15 @@
+     return [[NSArray arrayWithArray: _subviews] objectEnumerator];
+ }
+ 
++/* HOW FAR THE DESCENT GETS. A view can be in the tree, dirty, in a visible window, and still never
++ * redrawn, and none of the other traces can say why: they watch the mark and the draw, not the walk
++ * between them. This counts every view the walk visits, and NSWindow prints the total per pass, so
++ * a pass that visits five views instead of two hundred is visible as a number instead of as an
++ * absence. Task #239. */
++unsigned long cider_display_descent_visits;
++
+ - (void) _displayIfNeededWithoutViewWillDraw {
++    cider_display_descent_visits++;
+     if ([self needsDisplay]) {
+         /* THE OTHER HALF OF CIDER_NEEDSDISPLAY. That trace says a view was MARKED; this one says
+          * the traversal reached it and what rectangle it was redrawn with. A view marked and never
+@@ -3981,7 +4007,13 @@
+ 
+     // Don't do anything to interfere with what will be drawn in non-debug mode
+     if ([NSGraphicsContext inQuartzDebugMode] == NO) {
+-        removeRectFromInvalidInVisibleRect(self, rect, visibleRect);
++        /* ONLY A VIEW THAT ACTUALLY DREW IS CLEAN. This retired the dirty rectangles whether or not
++         * canDraw let drawRect: run, so a view asked to display while it has no window was marked
++         * clean without painting anything, and the request was gone: the next pass saw nothing to
++         * do and the content never appeared. canDraw is NO for a windowless or hidden view, which
++         * is exactly the state a view is in while its tree is being assembled. Task #239. */
++        if ([self canDraw])
++            removeRectFromInvalidInVisibleRect(self, rect, visibleRect);
+ 
+         // Rects being drawn are only valid while we redraw
+         clearRectsBeingRedrawn(self);
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -2617,9 +2617,13 @@
+ 
+     /* TRANSLATES ANSWERS WHO OWNS THE FRAME. A view nothing ever sized and a view whose constraints
+      * nobody solved are the same zero without it, and they need opposite fixes. */
++    /* THE POINTER AND THE DIRTY FLAG, because the other traces name a view by POINTER and this one
++     * named it only by class. With two instances of a class there was no way to tell whether the
++     * view being marked dirty was the one in this tree, and task #239 turns on exactly that. */
+     fprintf(stderr,
+-            "CIDER_TREE %s%s %.0fx%.0f@%.0f,%.0f win %.0fx%.0f@%.0f,%.0f top %.0f..%.0f hidden=%d opaque=%d mask=%lu translates=%d cons=%lu%s%s%s\n",
+-            indent, object_getClassName(view), frame.size.width, frame.size.height,
++            "CIDER_TREE %s%s view=%p needs=%d %.0fx%.0f@%.0f,%.0f win %.0fx%.0f@%.0f,%.0f top %.0f..%.0f hidden=%d opaque=%d mask=%lu translates=%d cons=%lu%s%s%s\n",
++            indent, object_getClassName(view), (void *) view, (int) [view needsDisplay],
++            frame.size.width, frame.size.height,
+             frame.origin.x, frame.origin.y, win.size.width, win.size.height, win.origin.x,
+             win.origin.y, top, top + win.size.height, (int) [view isHidden], (int) [view isOpaque],
+             (unsigned long) [view autoresizingMask],
+@@ -2819,7 +2823,14 @@
+ 
+         [NSGraphicsContext setQuartzDebugMode: NO];
+         [self disableFlushWindow];
++        extern unsigned long cider_display_descent_visits;
++        unsigned long ciderVisitsBefore = cider_display_descent_visits;
+         [_backgroundView displayIfNeeded];
++        if (getenv("CIDER_TRACE_DIRTY") != NULL && getenv("CIDER_TRACE_DIRTY")[0] != (char) 0) {
++            fprintf(stderr, "cider-descent window=%ld visited=%lu\n", (long) [self windowNumber],
++                    cider_display_descent_visits - ciderVisitsBefore);
++            fflush(stderr);
++        }
+         [self enableFlushWindow];
+         [self flushWindowIfNeeded];
+         [self setViewsNeedDisplay: NO];
