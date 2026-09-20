@@ -108,6 +108,20 @@ struct UCKeyToCharTableIndex {
 };
 typedef struct UCKeyToCharTableIndex    UCKeyToCharTableIndex;
 
+/* The keyAction and keyTranslateOptions arguments of UCKeyTranslate below, which this header
+ * declared the function for without ever naming. A caller cannot spell kUCKeyActionDown. */
+enum {
+  kUCKeyActionDown              = 0,
+  kUCKeyActionUp                = 1,
+  kUCKeyActionAutoKey           = 2,
+  kUCKeyActionDisplay           = 3
+};
+
+enum {
+  kUCKeyTranslateNoDeadKeysBit  = 0,
+  kUCKeyTranslateNoDeadKeysMask = 1L << kUCKeyTranslateNoDeadKeysBit
+};
+
 extern OSStatus  UCKeyTranslate(
   const UCKeyboardLayout *  keyLayoutPtr,
   UInt16                    virtualKeyCode,

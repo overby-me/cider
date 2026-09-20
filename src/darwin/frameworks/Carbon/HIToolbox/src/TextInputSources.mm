@@ -69,15 +69,21 @@ TISInputSourceRef TISCopyCurrentKeyboardLayoutInputSource(void)
 	if (data)
 		CFRelease(data);
 
-	os_unfair_lock_lock(&g_keyboardLock);
+	/* DO NOT CACHE A SOURCE WITH NO LAYOUT DATA. The display has no keymap until the compositor
+	 * sends one, which is after the first application asks, and a cached layout-less source is then
+	 * the answer for the life of the process however honest the layout id becomes. Task #239. */
+	if (data)
+	{
+		os_unfair_lock_lock(&g_keyboardLock);
 
-	if (g_lastKeyboardLayout)
-		CFRelease(g_lastKeyboardLayout);
+		if (g_lastKeyboardLayout)
+			CFRelease(g_lastKeyboardLayout);
 
-	g_lastKeyboardLayout = (TISInputSourceRef) CFRetain(dict);
-	g_lastKeyboardLayoutId = curLayoutId;
+		g_lastKeyboardLayout = (TISInputSourceRef) CFRetain(dict);
+		g_lastKeyboardLayoutId = curLayoutId;
 
-	os_unfair_lock_unlock(&g_keyboardLock);
+		os_unfair_lock_unlock(&g_keyboardLock);
+	}
 
 	return (TISInputSourceRef) dict;
 }

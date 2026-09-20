@@ -145,6 +145,8 @@ unsafe extern "C" {
     /// modifier that is never reported.
     fn xkb_keymap_mod_get_index(keymap: *mut XkbKeymap, name: *const c_char) -> u32;
     fn xkb_state_mod_index_is_active(state: *mut XkbState, idx: u32, components: u32) -> c_int;
+    #[link_name = "malloc"]
+    fn libc_malloc(size: usize) -> *mut c_void;
 }
 
 /// xkb_keymap_format: the only text format there is.
@@ -176,6 +178,8 @@ struct InputState {
     xkb_context: *mut XkbContext,
     xkb_keymap: *mut XkbKeymap,
     xkb_state: *mut XkbState,
+    /// Bumped on every keymap, and read as the AppKit keyboard layout id.
+    keymap_serial: i32,
     /// The last key pressed, to recognise auto repeat the way the X11 backend does.
     last_key: u32,
     /// Which surface each held key was delivered to. A wl_keyboard.key event carries no surface,
@@ -201,6 +205,7 @@ static INPUT: std::sync::Mutex<InputState> = std::sync::Mutex::new(InputState {
     xkb_context: std::ptr::null_mut(),
     xkb_keymap: std::ptr::null_mut(),
     xkb_state: std::ptr::null_mut(),
+    keymap_serial: 0,
     last_key: 0,
     key_targets: Vec::new(),
 });
@@ -601,6 +606,8 @@ extern "C" fn on_keyboard_keymap(
         }
         st.xkb_keymap = keymap;
         st.xkb_state = state;
+        /* What invalidates Carbon's cached input source; see keymap_serial below. Task #239. */
+        st.keymap_serial += 1;
     }
     println!("cider-wayland-input keymap=ok bytes={size}");
 }
@@ -1080,6 +1087,192 @@ pub fn modifier_flags() -> u64 {
         Ok(st) => st.modifiers,
         Err(_) => 0,
     }
+}
+
+/*
+ * THE CARBON uchr LAYOUT, BUILT FROM THE KEYMAP WE ALREADY HAVE.
+ *
+ * UCKeyTranslate walks this resource to turn a virtual key code into characters, and an application
+ * that asks TISGetInputSourceProperty for it and gets NULL, which is what this backend answered
+ * until #239, simply produces nothing. src/darwin/kqueue-probe/uchr.m is what asks, and it measures
+ * a right answer for every key the compositor's keymap defines. NO ROSTER APPLICATION IS KNOWN TO
+ * NEED IT: iTerm2 3.5 was the suspect and was measured NOT to call keyboardLayout: at all.
+ *
+ * NOT FABRICATED. The tables are filled from the compositor's own xkb keymap: for each key we ask
+ * what character it produces unshifted and shifted, exactly as the live input path does, and file
+ * it under the Carbon code that path reports. A US table hard coded here would answer confidently
+ * and wrongly on every other layout, which is the failure the keysym mapping above exists to avoid.
+ */
+#[repr(C)]
+struct UchrLayout {
+    header_format: u16,
+    data_version: u16,
+    feature_info_offset: u32,
+    keyboard_type_count: u32,
+    /* UCKeyboardTypeHeader[1] */
+    kt_first: u32,
+    kt_last: u32,
+    mods_to_table_offset: u32,
+    table_index_offset: u32,
+    state_records_offset: u32,
+    state_terminators_offset: u32,
+    sequence_data_offset: u32,
+    /* UCKeyModifiersToTableNum, with room for the three entries we use */
+    mods_format: u16,
+    default_table: u16,
+    mods_count: u32,
+    table_num: [u8; 4],
+    /* UCKeyToCharTableIndex, with two table offsets */
+    index_format: u16,
+    table_size: u16,
+    table_count: u32,
+    table_offsets: [u32; 2],
+    /* The tables themselves, indexed by Carbon virtual key code */
+    unshifted: [u16; UCHR_TABLE_ENTRIES],
+    shifted: [u16; UCHR_TABLE_ENTRIES],
+}
+
+const UCHR_TABLE_ENTRIES: usize = 128;
+const K_UC_KEY_LAYOUT_HEADER_FORMAT: u16 = 0x1002;
+const K_UC_KEY_MODIFIERS_TO_TABLE_NUM_FORMAT: u16 = 0x3001;
+const K_UC_KEY_TO_CHAR_TABLE_INDEX_FORMAT: u16 = 0x4001;
+
+/// The first character a key produces in the given state, or 0 when it produces none.
+fn key_character(state: *mut XkbState, xkb_keycode: u32) -> u16 {
+    let mut buf = [0i8; 16];
+    let n = unsafe { xkb_state_key_get_utf8(state, xkb_keycode, buf.as_mut_ptr(), buf.len()) };
+    if n <= 0 {
+        return 0;
+    }
+    let bytes: Vec<u8> = buf[..n as usize].iter().map(|&b| b as u8).collect();
+    match std::str::from_utf8(&bytes) {
+        /* One UTF-16 unit only: a UCKeyOutput is sixteen bits, and a key that produces more than
+         * that is beyond what this table can say. */
+        Ok(text) => text.chars().next().and_then(|c| {
+            let mut units = [0u16; 2];
+            let encoded = c.encode_utf16(&mut units);
+            if encoded.len() == 1 { Some(encoded[0]) } else { None }
+        }).unwrap_or(0),
+        Err(_) => 0,
+    }
+}
+
+/// The layout id AppKit compares across calls, which is this keymap's serial.
+///
+/// Carbon's TextInputSources caches the keyboard input source and rebuilds it ONLY when this
+/// changes. A constant made that cache permanent: a source built before the compositor sent its
+/// keymap has no uchr layout, and every later call got that same layout-less source back.
+pub fn keymap_serial() -> i32 {
+    match INPUT.lock() {
+        Ok(st) => st.keymap_serial,
+        Err(_) => 0,
+    }
+}
+
+/// Build the layout the Carbon side hands to UCKeyTranslate. The caller owns it and frees it.
+pub fn build_uchr_layout(byte_length: *mut u32) -> *const c_void {
+    if !byte_length.is_null() {
+        unsafe { *byte_length = 0 };
+    }
+    let st = match INPUT.lock() {
+        Ok(st) => st,
+        Err(_) => return std::ptr::null(),
+    };
+    if st.xkb_keymap.is_null() {
+        /* SAY SO. This returned NULL in silence, so a run with no keyboard on the seat looked
+         * exactly like a layout nobody asked for, and I read the silence as the latter. */
+        if tracing() {
+            println!("cider-wayland-input uchr none reason=no-keymap");
+        }
+        return std::ptr::null();
+    }
+
+    /* Two fresh states rather than the live one: asking a question must not disturb the modifier
+     * state the compositor has been feeding us. */
+    let plain = unsafe { xkb_state_new(st.xkb_keymap) };
+    let shifted = unsafe { xkb_state_new(st.xkb_keymap) };
+    if plain.is_null() || shifted.is_null() {
+        unsafe {
+            if !plain.is_null() { xkb_state_unref(plain) };
+            if !shifted.is_null() { xkb_state_unref(shifted) };
+        }
+        return std::ptr::null();
+    }
+    let shift_index = unsafe { xkb_keymap_mod_get_index(st.xkb_keymap, cstr!("Shift")) };
+    if shift_index != u32::MAX {
+        unsafe { xkb_state_update_mask(shifted, 1 << shift_index, 0, 0, 0, 0, 0) };
+    }
+
+    let size = std::mem::size_of::<UchrLayout>();
+    let raw = unsafe { libc_malloc(size) } as *mut UchrLayout;
+    if raw.is_null() {
+        unsafe { xkb_state_unref(plain); xkb_state_unref(shifted) };
+        return std::ptr::null();
+    }
+    let layout = unsafe { &mut *raw };
+    let base = raw as usize;
+    layout.header_format = K_UC_KEY_LAYOUT_HEADER_FORMAT;
+    layout.data_version = 0;
+    layout.feature_info_offset = 0;
+    layout.keyboard_type_count = 1;
+    layout.kt_first = 0;
+    layout.kt_last = 0;
+    layout.mods_to_table_offset = (&layout.mods_format as *const u16 as usize - base) as u32;
+    layout.table_index_offset = (&layout.index_format as *const u16 as usize - base) as u32;
+    layout.state_records_offset = 0;
+    layout.state_terminators_offset = 0;
+    layout.sequence_data_offset = 0;
+
+    layout.mods_format = K_UC_KEY_MODIFIERS_TO_TABLE_NUM_FORMAT;
+    layout.default_table = 0;
+    /* UCKeyTranslate indexes this by modifierKeyState >> 8, so 0 is plain, 1 is command and 2 is
+     * shift. Command types the unshifted character, which is what a key equivalent expects. */
+    layout.mods_count = 3;
+    layout.table_num = [0, 0, 1, 0];
+
+    layout.index_format = K_UC_KEY_TO_CHAR_TABLE_INDEX_FORMAT;
+    layout.table_size = UCHR_TABLE_ENTRIES as u16;
+    layout.table_count = 2;
+    layout.table_offsets = [
+        (layout.unshifted.as_ptr() as usize - base) as u32,
+        (layout.shifted.as_ptr() as usize - base) as u32,
+    ];
+    layout.unshifted = [0; UCHR_TABLE_ENTRIES];
+    layout.shifted = [0; UCHR_TABLE_ENTRIES];
+
+    /* Walk the keymap, not a table of our own: the Carbon code comes from the keysym, which is
+     * what the layout resolved, and the character comes from the same state machine that feeds the
+     * live key path. */
+    let mut filled = 0usize;
+    for xkb_keycode in 9u32..=255u32 {
+        let keysym = unsafe { xkb_state_key_get_one_sym(plain, xkb_keycode) };
+        if keysym == 0 {
+            continue;
+        }
+        let carbon = unsafe { cider_wayland_carbon_for_keysym(keysym) };
+        if carbon < 0 || carbon as usize >= UCHR_TABLE_ENTRIES {
+            continue;
+        }
+        let plain_char = key_character(plain, xkb_keycode);
+        let shifted_char = key_character(shifted, xkb_keycode);
+        if plain_char != 0 && layout.unshifted[carbon as usize] == 0 {
+            layout.unshifted[carbon as usize] = plain_char;
+            filled += 1;
+        }
+        if shifted_char != 0 && layout.shifted[carbon as usize] == 0 {
+            layout.shifted[carbon as usize] = shifted_char;
+        }
+    }
+
+    unsafe { xkb_state_unref(plain); xkb_state_unref(shifted) };
+
+    if tracing() {
+        println!("cider-wayland-input uchr built bytes={size} keys={filled}");
+    }
+    if !byte_length.is_null() {
+        unsafe { *byte_length = size as u32 };
+    }
+    raw as *const c_void
 }
 
 /// Referenced so the constant is not dead code while the keymap path is the only user of cstr.

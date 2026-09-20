@@ -1,14 +1,77 @@
 load("//buck/rules:cc.bzl", "cc_objects")
 load("//buck/rules:darwin.bzl", "darwin_binary")
 
-# A GUEST PROBE for the kqueue end-of-file question in #235. It lives here rather than under
-# vendor/src because run-dts-batch.sh builds its case list by grepping vendor/src/BUCK for names
+# GUEST PROBES. The directory is named for the first of them, the kqueue end-of-file question in
+# #235; uchr.m asks a keyboard question and shares nothing with it but the reason they all live
+# here. That reason: run-dts-batch.sh builds its case list by grepping vendor/src/BUCK for names
 # beginning with dts_, and a probe that prints an absence is not a pass or a fail.
 
 cc_objects(
     name = "kq_eof_obj",
     srcs = ["kq_eof.c"],
     compiler_flags = ["-O2", "-Wall"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "uchr_obj",
+    srcs = ["uchr.m"],
+    compiler_flags = ["-O2", "-Wall"],
+    toolchain = "toolchains//:darwin_cc",
+    # THE WHOLE FRAMEWORK ROOT SET, for the same reason every dts case carries it: Foundation.h
+    # reaches NSURLCredential.h which imports Security/Security.h, and the headers then cascade one
+    # missing framework per build.
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_Foundation",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Security",
+        "//vendor/src:fw_CFNetwork",
+        "//vendor/src:fw_CoreGraphics",
+        "//vendor/src:fw_CoreText",
+        "//vendor/src:fw_CoreData",
+        "//vendor/src:fw_AppKit",
+        "//vendor/src:fw_Onyx2D",
+        "//vendor/src:fw_QuartzCore",
+        "//src/darwin/frameworks:fw_AE",
+        "//src/darwin/frameworks:fw_ATS",
+        "//src/darwin/frameworks:fw_ApplicationServices",
+        "//src/darwin/frameworks:fw_Carbon",
+        "//src/darwin/frameworks:fw_CarbonCore",
+        "//src/darwin/frameworks:fw_ColorSync",
+        "//src/darwin/frameworks:fw_ColorSyncLegacy",
+        "//src/darwin/frameworks:fw_CoreServices",
+        "//src/darwin/frameworks:fw_FSEvents",
+        "//src/darwin/frameworks:fw_HIServices",
+        "//src/darwin/frameworks:fw_HIToolbox",
+        "//src/darwin/frameworks:fw_ImageIO",
+        "//src/darwin/frameworks:fw_LangAnalysis",
+        "//src/darwin/frameworks:fw_LaunchServices",
+        "//src/darwin/frameworks:fw_OpenGL",
+        "//src/darwin/frameworks:fw_PrintCore",
+        "//src/darwin/frameworks:fw_QD",
+        "//src/darwin/frameworks:fw_SearchKit",
+        "//src/darwin/frameworks:fw_SpeechSynthesis",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "uchr_probe",
+    objs = [
+        ":uchr_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+        "//vendor/src:AppKit_dylib",
+        "//src/darwin/frameworks:Carbon_dylib",
+        "//src/darwin/frameworks:CoreServices_dylib",
+    ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//src/darwin:sdk_env"],
     visibility = ["PUBLIC"],
