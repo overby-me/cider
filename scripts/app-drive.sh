@@ -305,9 +305,14 @@ if [ -n "${STEPS:-}" ]; then
 			type)  say "step $n type $arg"; send_keys_spec "$arg"; sleep 3 ;;
 			wait)  say "step $n wait $arg"; sleep "$arg" ;;
 			shot)  say "step $n shot $arg" ;;
+			# WIDTH AND HEIGHT MOVE WITH THE OUTPUT, because press_at maps a click against them.
+			# Left stale, every click after a resize lands somewhere else: a click aimed at an
+			# inspector field on a 1100x800 capture was delivered as if the output were still
+			# 1256x684 and hit the page instead, which reads as a field that ignores clicks.
 			size)  say "step $n resize the output to $arg"
 			       WAYLAND_DISPLAY=$NEW "$SWAYMSG" output '*' mode "$arg" \
 			               >>"$SHOTS/driver.log" 2>&1
+			       WIDTH=${arg%x*}; HEIGHT=${arg#*x}
 			       sleep 5 ;;
 			*)     echo "unknown step verb: $STEP" >&2; exit 2 ;;
 		esac
