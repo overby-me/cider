@@ -1,0 +1,61 @@
+A weak import that binds to NULL now says so.
+
+A weak undefined symbol does not stop the loader. It binds to NULL, the process runs, and the first
+call through it faults at 0x0 with nothing attached to say which symbol it was. There are four
+places here where that happens and all four returned 0 in silence: flat namespace, weak, two level,
+and the case where the dependent dylib itself is not loaded, which NULLs every symbol from it at
+once.
+
+Each now logs under the loader existing switch, DYLD_PRINT_WEAK_BINDINGS, rather than a new one.
+The line names the symbol, the image that wanted it and which of the four paths it took, so a 0x0
+fault can be matched against a list of names instead of guessed at.
+
+Task #238 counted 66 such symbols across 454 Mach-O files and then could not say whether any
+application reaches one, because there was no way to ask. This is the way to ask.
+
+The default is unchanged: the flag is off unless the variable is set, and the returned value is
+still 0. Binding a stub instead of NULL would break weak linking, whose entire purpose is that the
+address compares equal to zero.
+
+--- a/src/ImageLoaderMachOCompressed.cpp
++++ b/src/ImageLoaderMachOCompressed.cpp
+@@ -643,6 +643,9 @@
+ 	}
+ 	if ( weak_import ) {
+ 		// definition can't be found anywhere, ok because it is weak, just return 0
++		if ( context.verboseWeakBind )
++			dyld::log("dyld: weak import %s NOT FOUND, bound to NULL in %s (flat namespace)\n",
++					  symbolName, this->getPath());
+ 		return 0;
+ 	}
+ 	throwSymbolNotFound(context, symbolName, this->getPath(), "", "flat namespace");
+@@ -741,6 +744,9 @@
+ 	}
+ 	if ( weak_import ) {
+ 		// definition can't be found anywhere, ok because it is weak, just return 0
++		if ( context.verboseWeakBind )
++			dyld::log("dyld: weak import %s NOT FOUND, bound to NULL in %s (weak)\n",
++					  symbolName, this->getPath());
+ 		return 0;
+ 	}
+ 	throwSymbolNotFound(context, symbolName, this->getPath(), "", "weak");
+@@ -758,6 +764,9 @@
+ 
+ 	if ( weak_import ) {
+ 		// definition can't be found anywhere, ok because it is weak, just return 0
++		if ( context.verboseWeakBind )
++			dyld::log("dyld: weak import %s NOT FOUND in %s, bound to NULL in %s (two level)\n",
++					  symbolName, definedInImage->getPath(), this->getPath());
+ 		return 0;
+ 	}
+ 
+@@ -862,6 +871,9 @@
+ 		if ( *targetImage == NULL ) {
+ 			if ( weak_import ) {
+ 				// if target library not loaded and reference is weak or library is weak return 0
++				if ( context.verboseWeakBind )
++					dyld::log("dyld: weak import %s bound to NULL in %s because dylib #%ld is not loaded\n",
++							  symbolName, this->getPath(), libraryOrdinal);
+ 				symbolAddress = 0;
+ 			}
+ 			else {
