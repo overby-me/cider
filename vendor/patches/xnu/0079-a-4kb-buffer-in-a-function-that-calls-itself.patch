@@ -1,0 +1,71 @@
+A 4KB buffer in a function that calls itself.
+
+vchroot_run resolves symlinks BY CALLING ITSELF, up to MAX_SYMLINK_DEPTH of 10, and it held char
+dirents[4096] in its frame. Measured from the built dylib, the frame was over 0x1038 bytes; it is
+now 0x2e8. Five and a half times less stack per level, on the function every single path
+translation in the guest goes through.
+
+The buffer moves into struct context, which the caller allocates once. Safe to share across the
+recursion, which is the only thing that had to be checked: the getdents scan that uses it finishes
+at done_getdents, the symlink branch that recurses comes after, and nothing reads it once the scan
+is done.
+
+WHY IT WAS LOOKED AT. Money Manager EX segfaulted when its Currency Manager panel was built, and the
+core named the instruction:
+
+  _vchroot_run+106:  mov qword ptr [rbp - 0x1038], rax
+
+a write into its own frame, which only faults on a guard page. The chain into it is entirely
+ordinary: the application calls wcsftime, which calls tzset, which faccessats the timezone file,
+which goes through this translation.
+
+WHAT IT DID AND DID NOT DO, measured rather than hoped. The vchroot fault site is GONE from the
+core, and the application now gets further. It still does not open the Currency Manager: it now
+crashes LATER and somewhere else, at objc_msgSend+29, which is a message to an object that is not
+there. So this is a real reduction in a real risk and it is NOT the fix for that scenario. Task #243
+carries what is left.
+
+Gates: run-dts-batch, buck-bundled-patch-record-check, roster-sweep and roster-input.
+
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c
+@@ -99,6 +99,14 @@
+ 	char current_path[4096];
+ 	int current_path_len;
+ 
++	/* HOISTED OUT OF vchroot_run BECAUSE THAT FUNCTION RECURSES. It resolves symlinks by calling
++	 * itself, and a 4096 byte buffer in its frame cost over 4KB per level: Money Manager EX died
++	 * with a write to its own frame at vchroot_run+106, which is a guard page, about three levels
++	 * down while tzset checked the timezone file. The context is allocated once by the caller, so
++	 * this costs nothing and every level loses the 4KB. Safe to share: the scan that uses it
++	 * finishes at done_getdents, before the symlink branch that recurses, and nothing reads it
++	 * afterwards. Task #243. */
++	char dirents[4096];
+ 
+ 	int symlink_depth;
+ 	bool unknown_component;
+@@ -440,7 +448,6 @@
+ 						#else
+ 							int dfd = LINUX_SYSCALL(__NR_openat, LINUX_AT_FDCWD, (prevlen > 1) ? ctxt->current_path : "/", LINUX_O_RDONLY);
+ 						#endif
+-						char dirents[4096]; // buffer space for struct linux_dirent64 entries
+ 						int len;
+ 
+ 						if (dfd < 0)
+@@ -450,14 +457,14 @@
+ 						}
+ 						
+ 						// Get a batch of directory entries
+-						while ((len = LINUX_SYSCALL(__NR_getdents64, dfd, dirents, sizeof(dirents))) > 0)
++						while ((len = LINUX_SYSCALL(__NR_getdents64, dfd, ctxt->dirents, sizeof(ctxt->dirents))) > 0)
+ 						{
+ 							int pos = 0;
+ 
+ 							// Iterate through directory entries
+ 							while (pos < len)
+ 							{
+-								struct linux_dirent64* de = (struct linux_dirent64*) &dirents[pos];
++								struct linux_dirent64* de = (struct linux_dirent64*) &ctxt->dirents[pos];
+ 								if (strcasecmp(de->d_name, ctxt->current_path + prevlen) == 0)
+ 								{
+ 									// Fix up the case and be done with it
