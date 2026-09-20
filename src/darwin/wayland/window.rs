@@ -122,6 +122,9 @@ pub struct WindowState {
     /// Whether the drawn-pixel count has been printed. Once is enough: it answers a question about
     /// whether drawing works at all, not one about every frame.
     pub reported_drawn: bool,
+    /// Commits made for this surface, and when that count was last reported.
+    pub commits: u64,
+    pub commits_reported_at: Option<std::time::Instant>,
     /// When this window last wrote a dump, so the rate limit has something to compare against.
     pub last_dump: Option<std::time::Instant>,
     /// How many times this window has been committed to the compositor.
@@ -216,6 +219,8 @@ impl WindowState {
             present_pending: false,
             context: std::ptr::null_mut(),
             reported_drawn: false,
+            commits: 0,
+            commits_reported_at: None,
             last_dump: None,
             presents: 0,
             flushes: 0,
@@ -2026,6 +2031,7 @@ fn present(st: &mut WindowState) {
             st.number, st.buffer_w, st.buffer_h, elapsed()
         );
     }
+    report_commit(st);
     report_pixels(st);
     // WHAT IS ACTUALLY IN THE BUFFER AT THE MENU BAR, sampled at present time. The compositor kept
     // showing a highlighted menu title after Escape while every trace above said the bar had been
@@ -2187,6 +2193,29 @@ fn bottom_row_is_clear(st: &WindowState) -> bool {
     let words = unsafe { std::slice::from_raw_parts(st.pixels as *const u32, total) };
     let clear = clear_value(st);
     words[total - width..].iter().all(|&w| w == clear)
+}
+
+/// COUNT THE COMMITS, because report_pixels below reports ONCE PER WINDOW and nothing counted them.
+///
+/// "Three frames in a hundred seconds" was three WINDOWS each reporting their first drawn frame,
+/// and I read it as a commit rate and built an argument on it. A latch is not a counter. Task #239.
+fn report_commit(st: &mut WindowState) {
+    if !crate::env_flag!("CIDER_WAYLAND_TRACE_COMMITS") {
+        return;
+    }
+    st.commits += 1;
+    let now = std::time::Instant::now();
+    let due = match st.commits_reported_at {
+        Some(then) => now.duration_since(then).as_secs_f64() >= 2.0,
+        None => true,
+    };
+    if due {
+        st.commits_reported_at = Some(now);
+        println!(
+            "cider-wayland-window commits=running number={} total={} t={:.2}",
+            st.number, st.commits, elapsed()
+        );
+    }
 }
 
 fn report_pixels(st: &mut WindowState) {
