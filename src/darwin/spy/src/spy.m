@@ -196,6 +196,31 @@ static void cider_spy_arg_int(char *out, size_t n, long long a)
 	snprintf(out, n, "arg=%lld", a);
 }
 
+/* A C STRING, PRINTED AND BOUNDED. A read hand-off is a pointer and a length, and the pointer is
+ * the only argument shape that carries the DATA rather than a description of it: seeing the bytes
+ * is the whole reason to watch such a method. Printable ASCII only, because terminal traffic is
+ * full of escapes and a raw write would reformat the log. */
+static void cider_spy_arg_bytes(char *out, size_t n, const char *a, int len)
+{
+	size_t used = 0;
+
+	if (a == NULL) {
+		snprintf(out, n, "arg=(null)");
+		return;
+	}
+	used = (size_t) snprintf(out, n, "arg=%p len=%d text=", (const void *) a, len);
+	for (int i = 0; i < len && used + 5 < n; i++) {
+		unsigned char c = (unsigned char) a[i];
+
+		if (c >= 0x20 && c < 0x7f)
+			out[used++] = (char) c;
+		else
+			used += (size_t) snprintf(out + used, n - used, "\\x%02x", c);
+	}
+	if (used < n)
+		out[used] = (char) 0;
+}
+
 static void cider_spy_arg_object(char *out, size_t n, id a)
 {
 	snprintf(out, n, "arg=%p %s %s", a, a ? object_getClassName(a) : "(nil)",
@@ -243,6 +268,18 @@ CIDER_SPY_TWO(cider_spy_void_oo, id, id, cider_spy_arg_object, cider_spy_arg_obj
 CIDER_SPY_TWO(cider_spy_void_oi, id, long long, cider_spy_arg_object, cider_spy_arg_int)
 CIDER_SPY_TWO(cider_spy_void_io, long long, id, cider_spy_arg_int, cider_spy_arg_object)
 CIDER_SPY_TWO(cider_spy_void_ii, long long, long long, cider_spy_arg_int, cider_spy_arg_int)
+
+/* THE COUNTED BUFFER SHAPE, written out rather than generated, because it is the only one whose
+ * two arguments are read TOGETHER: the length says how much of the pointer to believe. */
+static void cider_spy_void_bytes(id self, SEL _cmd, const char *a, int len)
+{
+	struct CiderSpyEntry *e = cider_spy_find(_cmd);
+	char text[600];
+
+	cider_spy_arg_bytes(text, sizeof(text), a, len);
+	cider_spy_say(e, self, text);
+	((void (*)(id, SEL, const char *, int)) e->original)(self, _cmd, a, len);
+}
 
 /* Void needs its own pair: the macro declares a return value, and it also logs BEFORE the call so a
  * setter that never returns still shows the argument it was given. */
@@ -311,6 +348,14 @@ static int cider_spy_install(struct CiderSpyEntry *e)
 		if (e->ret != 'v') {
 			fprintf(stderr, "CIDER_SPY %s.%s takes two arguments and returns %c; only void is "
 			        "forwarded for those\n", e->cls, e->sel, e->ret);
+			fflush(stderr);
+			return 1;
+		}
+		if (e->arg == '*' && i2 == 1) {
+			method_setImplementation(m, (IMP) cider_spy_void_bytes);
+			e->installed = 1;
+			fprintf(stderr, "CIDER_SPY armed on %s.%s taking a counted buffer returning v\n",
+			        e->cls, e->sel);
 			fflush(stderr);
 			return 1;
 		}
