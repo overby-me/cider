@@ -184,6 +184,14 @@ static int cider_spy_is_int(char encoding)
 	case 'c': case 'C': case 'B': case 's': case 'S':
 	case 'i': case 'I': case 'l': case 'L': case 'q': case 'Q':
 		return 1;
+	/* A BARE POINTER IS FORWARDED BUT NEVER DEREFERENCED. It occupies the same register as an
+	 * integer, so passing it through is exact; printing the address answers the question a probe
+	 * usually has, which is WHETHER the method was called at all. Reading through it would need
+	 * the struct layout and would turn a probe into a way to crash the thing being measured.
+	 * iTerm2 appends plain ASCII through appendAsciiDataAtCursor:, which takes one of these, and
+	 * that call being absent or present is the difference between two opposite diagnoses. */
+	case '^':
+		return 1;
 	case '@': case '#':
 		return 0;
 	default:
