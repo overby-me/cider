@@ -1,0 +1,63 @@
+An experiment that makes short strings immortal, and it LEAKS BY DESIGN.
+
+OFF UNLESS CIDER_IMMORTAL_SHORT_STRINGS NAMES A MAXIMUM LENGTH. It retains every string at or under
+that length once more at creation, which never frees them, including duplicates. It is not a fix
+and must not become one.
+
+WHAT IT IS FOR. On macOS a short ASCII string is a TAGGED POINTER: no allocation, nothing to
+deallocate, immortal. Applications rely on that without knowing they do. Swift Publisher hands six
+character strings to -addObserver:forKeyPath:options:context: without retaining them, which is safe
+on a Mac and fatal here, because we allocate a real object and the pool frees it.
+
+Implementing tagged pointers properly touches pointer encoding, the objc runtime and every place
+that assumes a pointer is dereferenceable. Before anyone spends that, this answers the only
+question that matters: is the diagnosis right. Same scenario, same build, one variable:
+
+    OFF   exit=139 SIGSEGV, capture after the click 2639 bytes, fully black
+    ON    no crash, capture after the click 107570 bytes, LOOKED AT: the document editor intact,
+          title bar, menu bar, toolbar, page thumbnails, rulers, text and inspector
+
+So the cause was removed and the effect went with it. The real fix is then a choice between tagged
+pointer strings, which is what macOS does, and immortal short immutable strings, which buys the
+same safety for far less risk. The memory cost of the second has to be measured first, and this
+switch is an UPPER BOUND on it rather than the cost itself, because it retains duplicates too.
+
+Task #249.
+--- a/CFString.c
++++ b/CFString.c
+@@ -1551,6 +1551,35 @@
+     }
+ #endif
+ 
++    /*
++     * AN EXPERIMENT, NOT A FIX, AND IT LEAKS BY DESIGN. Task #249.
++     *
++     * On macOS a short ASCII string is a TAGGED POINTER: no allocation, nothing to deallocate,
++     * immortal. Applications rely on that without knowing it. Swift Publisher hands six character
++     * strings to -addObserver:forKeyPath:options:context: without retaining them, which is safe
++     * there and fatal here, because we allocate a real object that the pool then frees.
++     *
++     * Retaining every short string once more makes them immortal the crude way. It proves or
++     * disproves the whole diagnosis in one run WITHOUT building tagged pointers, which touches
++     * pointer encoding, the objc runtime and every place that assumes a pointer is
++     * dereferenceable. If the crash survives this, the diagnosis is wrong and no one should spend
++     * a week on tagged pointers.
++     *
++     * OFF unless CIDER_IMMORTAL_SHORT_STRINGS names a maximum length, because it is a deliberate
++     * leak of every short string the process ever makes.
++     */
++    if (str != NULL) {
++        static int limit = -1;
++
++        if (limit < 0) {
++            const char *v = getenv("CIDER_IMMORTAL_SHORT_STRINGS");
++
++            limit = (v != NULL && v[0] != '\0') ? atoi(v) : 0;
++        }
++        if (limit > 0 && __CFStrLength((CFStringRef) str) <= limit)
++            CFRetain(str);
++    }
++
+     return str;
+ }
+ 
