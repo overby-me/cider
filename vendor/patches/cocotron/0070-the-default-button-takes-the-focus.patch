@@ -1,0 +1,58 @@
+The default button takes the focus, and without this the message text did.
+
+An NSAlert builds two text fields and makes both SELECTABLE, which is right: macOS alert text can be
+selected. Neither is editable. But the panel had no initial first responder, so when it opened the
+first selectable view in the key view loop became one, and a selectable field answers that by handing
+out its field editor with the WHOLE STRING SELECTED.
+
+So an alert came up with its message painted as selected text. Measured in Money Manager EX, behind
+the words New Database: (178,214,255), which is exactly selectedTextBackgroundColor from the table,
+while the informative line below it sat on the ordinary (237,237,237). One label looked highlighted
+and the other did not, in the same panel.
+
+macOS gives the focus to the DEFAULT BUTTON, which is why Return dismisses an alert. Both entry
+points, runModal and beginSheetModalForWindow, now set it, next to the setDefaultButtonCell: that was
+already there. Measured after: zero selection coloured pixels behind the message, black glyphs on
+the panel background, and the OK button draws its focus ring.
+
+Task #242. Gates: run-dts-batch, buck-bundled-patch-record-check, roster-sweep and roster-input.
+
+--- a/AppKit/NSAlert.m
++++ b/AppKit/NSAlert.m
+@@ -656,6 +656,7 @@
+     [_window setStyleMask: NSDocModalWindowMask];
+     [self layoutIfNeeded];
+     [_window setDefaultButtonCell: [[_buttons objectAtIndex: 0] cell]];
++    [self _focusDefaultButton];
+     _sheetDelegate = delegate;
+     _sheetDidEnd = selector;
+ 
+@@ -678,11 +679,28 @@
+                        contextInfo: 0];
+ }
+ 
++/*
++ * THE DEFAULT BUTTON TAKES THE FOCUS, and without this the message text did.
++ *
++ * Both text fields are selectable, which is what macOS alerts are, and the first selectable view in
++ * the key view loop becomes first responder when the panel opens. A selectable field answers that
++ * by handing out its field editor with the WHOLE STRING SELECTED, so the message came up painted in
++ * selectedTextBackgroundColor: measured at (178,214,255) behind New Database in Money Manager EX,
++ * while the informative text below it sat on the ordinary (237,237,237). Task #242.
++ *
++ * macOS focuses the default button instead, which is why Return dismisses an alert.
++ */
++- (void) _focusDefaultButton {
++    if ([_buttons count] > 0)
++        [_window setInitialFirstResponder: [_buttons objectAtIndex: 0]];
++}
++
+ - (NSModalResponse) runModal {
+     [_window setLevel: NSModalPanelWindowLevel];
+     [_window setStyleMask: NSTitledWindowMask];
+     [self layoutIfNeeded];
+     [_window setDefaultButtonCell: [[_buttons objectAtIndex: 0] cell]];
++    [self _focusDefaultButton];
+     return [NSApp runModalForWindow: _window];
+ }
+ 
