@@ -2008,6 +2008,23 @@ fn present(st: &mut WindowState) {
     st.buffer = st.present_buf[slot];
     unsafe {
         if st.margin > 0 && !st.xdg.is_null() {
+            /* WHAT WE SEND AND WHAT THE BUFFER IS, both, because the compositor complains about the
+             * EFFECTIVE geometry and that is the intersection of the two. sway logs an invalid
+             * effective window geometry of 0x0 and then disconnects us; the numbers here are never
+             * zero, so the emptiness has to come from the rectangle missing the buffer. Task #244. */
+            if crate::env_flag!("CIDER_TRACE_GEOMETRY") {
+                eprintln!(
+                    "cider-wayland-geometry number={} margin={} buffer={}x{} sending=({},{} {}x{})",
+                    st.number,
+                    st.margin,
+                    st.buffer_w,
+                    st.buffer_h,
+                    st.margin,
+                    st.margin,
+                    st.buffer_w.max(1),
+                    st.buffer_h.max(1)
+                );
+            }
             // The size is part of the geometry, so a resized window has to say so again.
             wl::cider_xdg_surface_set_window_geometry(
                 st.xdg,
