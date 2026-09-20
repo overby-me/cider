@@ -1,0 +1,105 @@
+A view that can take text gets an input context, and the key path says where it stopped.
+
+-[NSView inputContext] was NSUnimplementedMethod and answered nil for every view. Nil is the right
+answer only for a view that cannot be a text input client, and answering it for one that can is
+silent: an application that asks for the context and hands it the event gets nothing back and
+nothing logged. iTerm2 3.5 does exactly that. So a context is now made on demand for any view that
+implements insertText:replacementRange: or insertText:, which is how macOS decides it, and nil for
+the rest. An associated object rather than an ivar, because that is the idiom this port already
+uses for per view state.
+
+THE TRACES, all under the existing CIDER_TRACE_KEYS switch and all worth keeping, because they are
+what turned this from a guess into a measurement:
+  - NSView names the view it makes a context for
+  - NSTextInputContext names every handleEvent: ON ITS FIRST LINE, before the guards. A trace after
+    an early return cannot tell a call that bailed from a call that never happened, and reading one
+    as the other cost task #239 a wrong conclusion twice in one day.
+  - NSResponder names which branch interpretKeyEvents: takes, the key binding or the insert, and
+    what string reaches insertText:
+
+What they measured for iTerm2 3.5.14: the character reaches -[PTYTextView insertText:] correctly on
+every key, handleEvent: is never called on the context it asked for, and -[PTYSession writeTask:] is
+never sent. The remaining gap is inside the application.
+
+Task #239.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -2337,9 +2337,38 @@
+     [self removeTrackingArea: tag];
+ }
+ 
++/*
++ * The text input context for this view, made on demand.
++ *
++ * NIL IS ONLY THE RIGHT ANSWER FOR A VIEW THAT CANNOT TAKE TEXT, and answering it for one that can
++ * is silent: iTerm2 3.5 asks its text view for this on every key press and hands the event to it,
++ * so with nil the keys arrived at the correct first responder and produced nothing at all, with no
++ * exception and nothing in any log. Its 3.4 release computed the bytes from the event itself, which
++ * is why the older build typed and the newer one did not. Task #239.
++ *
++ * WHO GETS ONE is decided the way macOS decides it, by whether the view can act as an
++ * NSTextInputClient. insertText:replacementRange: is the method the context calls, so a view that
++ * has neither it nor the older insertText: gets nil, as it should.
++ *
++ * An associated object rather than an ivar, because NSView is a bundled pin and this is the idiom
++ * the rest of the port already uses for per-view state.
++ */
+ - (NSTextInputContext *) inputContext {
+-    NSUnimplementedMethod();
+-    return nil;
++    static const char kCiderInputContext;
++
++    if (![self respondsToSelector: @selector(insertText:replacementRange:)] &&
++        ![self respondsToSelector: @selector(insertText:)]) {
++        return nil;
++    }
++
++    NSTextInputContext *context = objc_getAssociatedObject(self, &kCiderInputContext);
++    if (context == nil) {
++        context = [[[NSTextInputContext alloc] initWithClient: self] autorelease];
++        objc_setAssociatedObject(self, &kCiderInputContext, context, OBJC_ASSOCIATION_RETAIN);
++        if (getenv("CIDER_TRACE_KEYS") != NULL)
++            NSLog(@"cider-keys inputContext made for=%@", [self class]);
++    }
++    return context;
+ }
+ 
+ - (void) registerForDraggedTypes: (NSArray *) types {
+--- a/AppKit/NSTextInput.m
++++ b/AppKit/NSTextInput.m
+@@ -57,6 +57,12 @@
+  * go through it.
+  */
+ - (BOOL) handleEvent: (NSEvent *) event {
++    /* TRACED ON THE FIRST LINE, not past the guards: a trace after an early return cannot tell a
++     * call that bailed from a call that never happened, and reading one as the other cost #239 a
++     * wrong conclusion twice. */
++    if (getenv("CIDER_TRACE_KEYS") != NULL)
++        NSLog(@"cider-keys handleEvent client=%@ type=%ld", [_client class],
++                event != nil ? (long) [event type] : -1L);
+     if (event == nil || [event type] != NSKeyDown) {
+         return NO;
+     }
+--- a/AppKit/NSResponder.m
++++ b/AppKit/NSResponder.m
+@@ -111,6 +111,9 @@
+                                modifierFlags: [event modifierFlags]];
+         NSArray *selectorNames = [keyBinding selectorNames];
+ 
++        if (getenv("CIDER_TRACE_KEYS") != NULL)
++            NSLog(@"cider-keys interpret self=%@ chars=%@ binding=%@", [self class], string,
++                    selectorNames != nil ? (id) selectorNames : (id) @"none");
+         if (selectorNames != nil) {
+             int j = 0, jcount = [selectorNames count];
+ 
+@@ -155,6 +158,9 @@
+                  * insertText:replacementRange: and not insertText:, so it received every key event
+                  * and inserted no characters, with nothing anywhere reporting a problem.
+                  */
++                if (getenv("CIDER_TRACE_KEYS") != NULL)
++                    NSLog(@"cider-keys insert self=%@ string=%@ old=%d", [self class], string,
++                            (int) [self respondsToSelector: @selector(insertText:)]);
+                 if ([self respondsToSelector: @selector(insertText:)]) {
+                     [self insertText: string];
+                 } else {
