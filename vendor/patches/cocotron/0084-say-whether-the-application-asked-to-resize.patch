@@ -1,0 +1,62 @@
+Say whether the application asked to resize.
+
+#255 comes down to one question that no amount of reading settles: MoneyMoney's Preferences window
+never changes size when its pane changes, and the pane that visibly overflows is the one whose
+overflow exceeds its own top padding. Either the application asks and the request dies somewhere,
+or it never asks.
+
+-[NSWindow setFrame:display:animate:] now prints the requested frame, whether it is a resize, and
+whether there is a platform window to carry it, gated on CIDER_TRACE_TOOLBAR. That last field
+matters: a request made before the window is mapped reaches nothing, and printing only the request
+would make it look delivered.
+
+It answers. Driving Preferences and clicking Security, every request for that window is:
+
+    CIDER_SETFRAME class=MMWindow to={697.0,-24.0 406.0x346.0} didSize=1 platform=NIL
+    CIDER_SETFRAME class=MMWindow to={697.0,-56.0 406.0x378.0} didSize=1 platform=NIL
+    CIDER_SETFRAME class=MMWindow to={697.0,-9.0  406.0x331.0} didSize=1 platform=NIL
+
+Three, all during setup, all before the platform window exists, ending at 331 which is the General
+pane content of 253 plus 56 toolbar plus 22 title bar. AFTER THE CLICK THERE ARE NONE. The
+application sizes this window once, to the first pane, and never again.
+
+So the missing resize is not a request we drop. The surface faithfully carries the frame it is
+given, which patch 0083 already established.
+
+WHY THE PANES STILL MOSTLY LOOK RIGHT, measured from the nib by reading each pane by its CONTENTS
+rather than by order, which is the mistake that made me withdraw this account once:
+
+    obj[377] 406x253 six checkbox rows and a popup           GENERAL     overflow  0
+    obj[352] 406x261 a scroll view and a help button         EXTENSIONS  overflow  8
+    obj[423] 406x265 three checkboxes with captions          PAYMENTS    overflow 12
+    obj[444] 406x286 one 371x40 label and a centred button   SECURITY    overflow 33
+
+Every pane carries about 20 points of empty space above its topmost subview, so an overflow of 8 or
+12 is absorbed and 33 is not. Four panes, four correct predictions, including the two that looked
+like counterexamples when the sizes were assigned to the wrong panes.
+
+Off by default.
+
+Task #255.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -1256,6 +1256,18 @@
+     [_backgroundView setFrameSize: _frame.size];
+     [_platformWindow setFrame: _frame];
+ 
++    /* DOES THE APPLICATION ASK. MoneyMoney's Preferences never resizes when its pane changes, and
++     * the only pane that visibly overflows is the one whose overflow exceeds its own top padding
++     * (#255). This says whether the request arrives at all, and whether there was a platform
++     * window to carry it, because a request made before the window is mapped reaches nothing. */
++    if (getenv("CIDER_TRACE_TOOLBAR") != NULL) {
++        fprintf(stderr, "CIDER_SETFRAME class=%s to={%.1f,%.1f %.1fx%.1f} didSize=%d platform=%s\n",
++                object_getClassName(self), (double) newFrame.origin.x, (double) newFrame.origin.y,
++                (double) newFrame.size.width, (double) newFrame.size.height, (int) didSize,
++                _platformWindow != nil ? "yes" : "NIL");
++        fflush(stderr);
++    }
++
+     if (didSize) {
+         [self resetCursorRects];
+         [self postNotificationName: NSWindowDidResizeNotification];
