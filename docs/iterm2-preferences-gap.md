@@ -1284,3 +1284,25 @@ time in this document that a harness property was mistaken for a defect. The fir
 loop spin.
 
 **Status of the Settings window: all three criteria met, with no known defect.**
+
+## The MoneyMoney Preferences pane is fixed too, by the same patch
+
+This document refers three times to "the MoneyMoney Preferences pane that never resizes" as the
+same shape as the iTerm2 one, and says to take the two together. Taking them together is now the
+answer: the premise changed when cocotron 0092 landed, so the measurement was re-taken.
+
+Driven with Command comma on a 1600x1000 output, MoneyMoney Preferences renders correctly:
+
+- the toolbar shows General, Security, Payments, PSD2 and Extensions, each with its icon above its
+  label, and **no label overlap**;
+- the pane below is properly sized and draws all of its content: four checkboxes, the Language
+  popup set to English, the new version notification checkbox and its nested beta test checkbox.
+
+That is the same defect and the same fix. `-[NSCustomView initWithCoder:]` never announced that it
+had replaced itself, so any reference resolved during the decode kept the bare placeholder with a
+zero frame; both applications build their preference panes out of custom view placeholders, so both
+lost them the same way.
+
+Two items this document has carried are therefore closed by one patch, and the honest lesson is
+that they should have been treated as one defect the first time the phrase "the same shape as"
+was written down three times without anyone testing it.
