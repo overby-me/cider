@@ -557,3 +557,48 @@ and the spy is not catching it.** Both are testable and neither needs new instru
    and uses the panel creation line as the shared marker.
 2. For the second: prove the `showWindow:` swizzle can speak by spying it against an application
    that definitely calls it, before reading its silence here again.
+
+## The window is not merely unshown: Command comma sends the application into a SPIN
+
+Two branches were left open above. Both are now closed, and they close onto something bigger.
+
+**`[self window]` does hand back the panel.** With `PreferencePanel.window` as the only spy, all
+six calls return the SAME pointer and it is an `iTermPrefsPanel`. So `run` is not being handed the
+terminal, and `isVisible` inside it is being asked of the panel.
+
+**The panel is never ordered front, on an instrument proven to speak.**
+`iTermPrefsPanel.makeKeyAndOrderFront:` resolves to the inherited `NSWindow` implementation, so it
+fires for every window, and it fires three times in the same run with the TERMINAL as receiver and
+never with the panel. A silent instrument would prove nothing; this one is demonstrably firing.
+
+**And the panel is asked `isVisible` TWENTY SIX MILLION TIMES.** In one run with that single spy:
+
+```
+app.log                26,402,805 lines, 1.7 GB
+isVisible calls        26,653,823
+of them on the panel    1,710,391      every one answering 0
+event pump reached      ~1,150,000 iterations
+```
+
+That is a busy loop, and it is NOT an artefact of the spy. Measured without it, by the pump counter
+alone:
+
+| run | keystroke | pump iterations |
+|-----|-----------|-----------------|
+| it-nokey | no | **81,000** |
+| it-show | yes | 466,000 |
+| it-nospyrun | yes | 1,064,200 |
+| it-final | yes | 2,777,000 |
+
+So Command comma multiplies the event rate by roughly 13 to 34 against the idle control on the same
+build, and the terminal keeps rendering throughout (every capture in the control run is CONTENT).
+
+### What that reframes
+
+The question is no longer only why a window is not ordered front. Something after `showPrefWindow:`
+enters a loop that never completes, and it polls the panel for a visibility that nothing will ever
+set. A wait loop around a window that is never shown would look exactly like this.
+
+Next: name the loop. The pump counter is already in the log, so a backtrace taken at a high pump
+count, or a single `CIDER_TRACE_APP` sample while the count is climbing, will say who is spinning.
+Do not read `isVisible` again without a plan for 1.7 GB of log.
