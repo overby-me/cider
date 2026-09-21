@@ -1,0 +1,98 @@
+Print who asks a window whether it is visible.
+
+isVisible is the whole of several "the window never appeared" defects, because a window that was
+never shown and a window whose owner was told it is already shown are indistinguishable from the
+answer alone. The answer is also useless on its own here: the event loop asks every window on every
+pass, so the interesting call is one in thousands.
+
+CIDER_TRACE_VISIBLE names one class, or star for all, prints the receiver, the answer and a
+backtrace, and stops after 60 stacks. It skips the two event loop pollers, _makeSureIsOnAScreen and
+displayIfNeeded, which otherwise spend the whole budget before the caller being looked for has
+asked once. Both frames are checked because whether the caller sits at slot one or two depends on
+inlining, and picking one index got it wrong on the first attempt.
+
+WHAT IT SETTLED IMMEDIATELY. -[PreferencePanel run] was believed to take its early return, the one
+that reads "if ([[self window] isVisible]) return;", with isVisible answering true. This says it
+never asks at all: with the pollers filtered, the count of stacks on iTermPrefsPanel is ZERO in a
+run where PreferencePanel run demonstrably executed, which is the control that makes the zero mean
+something. run is taken out by a raise inside [self window] long before the test. See
+vendor/patches/foundation/0085 for the raise and docs/iterm2-preferences-gap.md for the history.
+
+An earlier attempt at this same question used a spy on isVisible and produced a 1.7 GB log, which
+is why this one is bounded and filtered rather than general.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -290,6 +290,22 @@
+         _CiderDumpViewTree(child, depth + 1);
+ }
+ 
++static void _CiderVisibleStack(void)
++{
++    void *frames[24];
++    int count = backtrace(frames, 24);
++
++    for (int i = 0; i < count; i++) {
++        Dl_info info;
++
++        if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL)
++            fprintf(stderr, "CIDER_VIS   #%d %s\n", i, info.dli_sname);
++        else
++            fprintf(stderr, "CIDER_VIS   #%d %p\n", i, frames[i]);
++    }
++    fflush(stderr);
++}
++
+ static void _CiderWindowStack(const char *what)
+ {
+     if (getenv("CIDER_TRACE_APP") == NULL)
+@@ -2160,6 +2176,49 @@
+ }
+ 
+ - (BOOL) isVisible {
++    /*
++     * WHO ASKS, AND WHAT THEY ARE TOLD. A window that is never shown and a window whose owner is
++     * told it is already shown look identical from outside, and iTerm2 Preferences is one of the
++     * two: -[PreferencePanel run] ends in "if ([[self window] isVisible]) return;" and the panel
++     * never appears. The answer alone cannot separate them, because the panel is polled thousands
++     * of times per run by the window list; only the CALLER can, so print the stack with it.
++     *
++     * CIDER_TRACE_VISIBLE names one class, or "*" for all, and stops after 40 stacks. An earlier
++     * attempt at this question used a spy on isVisible and produced a 1.7 GB log.
++     */
++    const char *want = getenv("CIDER_TRACE_VISIBLE");
++
++    if (want != NULL && want[0] != '\0') {
++        static int printed = 0;
++        const char *cls = object_getClassName(self);
++
++        if ((strcmp(want, "*") == 0 || strcmp(want, cls) == 0) && printed < 60) {
++            /* SKIP THE TWO POLLERS. The event loop asks every window on every pass, through
++             * _makeSureIsOnAScreen and displayIfNeeded, which spent a 40 stack budget before the
++             * caller being looked for had asked once. */
++            void *frames[4];
++            int n = backtrace(frames, 4);
++            int poller = 0;
++
++            /* Both slots, because whether this frame is the caller or its caller depends on
++             * whether the compiler inlined the helper, and picking one index got it wrong. */
++            for (int i = 1; i < n && i < 3; i++) {
++                Dl_info info;
++
++                if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL &&
++                    (strstr(info.dli_sname, "_makeSureIsOnAScreen") != NULL ||
++                     strstr(info.dli_sname, "displayIfNeeded") != NULL))
++                    poller = 1;
++            }
++
++            if (!poller) {
++                printed++;
++                fprintf(stderr, "CIDER_VIS %s(%p) isVisible -> %d\n",
++                        cls, (void *) self, (int) _isVisible);
++                _CiderVisibleStack();
++            }
++        }
++    }
+     return _isVisible;
+ }
+ 

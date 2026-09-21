@@ -1,0 +1,98 @@
+A path that will not become a URL must read as nil, not raise.
+
+dataWithContentsOfFile: reached initWithContentsOfURL: with whatever fileURLWithPath: returned, and
+that method raises NSInvalidArgumentException on a nil url. fileURLWithPath: hands back nil for
+input it will not accept, so a caller that only ever asked to read a file got an exception instead
+of the nil every caller is written against. macOS returns nil from dataWithContentsOfFile: for
+anything it cannot read.
+
+The plain initWithContentsOfFile: already guarded a nil PATH. It did not guard a nil URL built from
+a non nil path, and the options:error: form guarded neither. Both do now.
+
+MEASURED, and it cost iTerm2 its entire Preferences window for as long as the port has existed.
+ProfilesGeneralPreferencesViewController awakeFromNib calls updateImageWell, which builds an
+NSImage from the profile background image path. With no background image configured that path is
+the EMPTY STRING, fileURLWithPath: returns nil for it, and the raise walked out of awakeFromNib,
+out of the nib load, out of -[NSWindowController window], and out of -[PreferencePanel run] before
+run could reach its own code. The trace is exact:
+
+  cider: RAISE NSInvalidArgumentException: cannot create data from nil url
+  cider:   Foundation   -[NSData(NSData) initWithContentsOfURL:options:error:]
+  cider:   Foundation   +[NSData(NSData) dataWithContentsOfFile:]
+  cider:   AppKit       +[NSImageRep imageRepsWithContentsOfFile:]
+  cider:   AppKit       -[NSImage initWithContentsOfFile:]
+  cider:   iTerm2       -[ProfilesGeneralPreferencesViewController updateImageWell]
+  cider:   iTerm2       -[ProfilesGeneralPreferencesViewController awakeFromNib]
+  cider:   AppKit       -[NSNib instantiateNibWithExternalNameTable:]
+  cider:   AppKit       -[NSWindowController loadWindow]
+  cider:   AppKit       -[NSWindowController window]
+  cider:   iTerm2       -[PreferencePanel window]
+  cider:   iTerm2       -[PreferencePanel run]
+
+Before: the panel nib prints loadNibFile enter and never loadNibFile leave, while three other
+window controllers in the same run reach done. After: no raise in the run at all, and the awake
+walk goes on past the object that used to end it into defineControl and updateEnabledState.
+
+This also corrects the account this defect had been given for weeks. run was believed to bail on
+"if ([[self window] isVisible]) return;" with isVisible answering true. It does not: with the two
+event loop pollers filtered out, run asks the panel isVisible ZERO times, because the raise takes
+it out before it gets there. The disassembly of run is right, the reading of the branch is right,
+and run simply never arrives at it.
+
+CIDER_TRACE_DATAFILE names a path that would not convert, which is how the empty string was found.
+
+--- a/src/NSData.m
++++ b/src/NSData.m
+@@ -850,7 +850,15 @@
+ 
+ - (id)initWithContentsOfFile:(NSString *)path options:(NSDataReadingOptions)readOptionsMask error:(NSError **)errorPtr
+ {
+-    return [self initWithContentsOfURL:[NSURL fileURLWithPath:path] options:readOptionsMask error:errorPtr];
++    /* The same rule as the plain form above, which had the guard while this one did not. */
++    NSURL *url = (path == nil) ? nil : [NSURL fileURLWithPath:path];
++
++    if (url == nil)
++    {
++        [self release];
++        return nil;
++    }
++    return [self initWithContentsOfURL:url options:readOptionsMask error:errorPtr];
+ }
+ 
+ - (id)initWithContentsOfURL:(NSURL *)url options:(NSDataReadingOptions)readOptionsMask error:(NSError **)errorPtr
+@@ -925,7 +933,34 @@
+         [self release];
+         return nil;
+     }
+-    return [self initWithContentsOfURL:[NSURL fileURLWithPath:path] options:0 error:NULL];
++    /*
++     * A PATH THAT WILL NOT BECOME A URL MUST READ AS nil, NOT RAISE.
++     *
++     * initWithContentsOfURL: raises on a nil url, and fileURLWithPath: hands back nil for inputs
++     * it will not accept, so a caller that only ever asked to read a file got an exception. macOS
++     * returns nil from dataWithContentsOfFile: for anything it cannot read, which is what callers
++     * are written against.
++     *
++     * This cost iTerm2 its whole Preferences window. ProfilesGeneralPreferencesViewController
++     * awakeFromNib calls updateImageWell, which builds an NSImage from the profile background
++     * image path; the raise unwound out of awakeFromNib, out of the nib load, out of
++     * -[NSWindowController window] and out of -[PreferencePanel run] before anything could be
++     * shown, and nothing reported it. See docs/iterm2-preferences-gap.md.
++     */
++    NSURL *url = [NSURL fileURLWithPath:path];
++
++    if (url == nil)
++    {
++        if (getenv("CIDER_TRACE_DATAFILE") != NULL)
++        {
++            fprintf(stderr, "CIDER_DATA no url for path len=%u [%s]\n",
++                    (unsigned)[path length], [path UTF8String] ?: "(no utf8)");
++            fflush(stderr);
++        }
++        [self release];
++        return nil;
++    }
++    return [self initWithContentsOfURL:url options:0 error:NULL];
+ }
+ 
+ - (id)initWithContentsOfURL:(NSURL *)url

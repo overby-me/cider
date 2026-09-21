@@ -956,3 +956,92 @@ the answer, because the premise that there was a live-session spin at all went u
 The lesson worth keeping: **a measurement taken from a long tail of a driven run must first prove
 the harness was still up.** `nextevent` carries a timestamp and sway logs its own shutdown, so the
 check is one `grep` and a subtraction, and it was available from the first sample.
+
+## SOLVED, mostly: run is not bailing, it is being unwound by a raise
+
+Everything above this point that explains the missing Preferences window by the early return in
+`-[PreferencePanel run]` is WRONG, and the correction is measured rather than argued.
+
+### The measurement that broke the old account
+
+`CIDER_TRACE_VISIBLE` (cocotron patch 0088) prints the receiver, the answer and the BACKTRACE for
+`-[NSWindow isVisible]`, filtered so the two event loop pollers (`_makeSureIsOnAScreen` and
+`displayIfNeeded`) cannot spend the budget. In a run where `-[PreferencePanel run]` demonstrably
+executed, which is the control that makes a zero mean anything:
+
+```
+stacks on iTermPrefsPanel with the pollers filtered   0
+frames naming -[PreferencePanel run]                  6, all inside [self window]
+```
+
+`run` never asks. Every one of the six backtraces that names `run` is inside
+`-[PreferencePanel window]` to `-[NSWindowController loadWindow]` to the nib, and not one shows it
+past that call: no `updateEnabledState`, no `selectFirstProfileIfNecessary`, no second `window`, no
+`isVisible`.
+
+The disassembly was right all along and so was the reading of the branch. The selrefs were resolved
+from the binary to be sure of it: `0x100ec8818` is `isVisible`, `0x100edf450` is `window`,
+`0x100ed9148` is `showWindow:`. `run` simply never arrives at the test.
+
+### The five step trace names the step, and the control is in the same run
+
+`CIDER_TRACE_CONTROL` announces the five steps of `-[NSWindowController window]`:
+
+```
+PseudoTerminal    ... loadNibFile enter -> setWindow -> loadNibFile leave -> adopted -> done
+PreferencePanel   ... loadNibFile enter -> setWindow -> (nothing)
+```
+
+Three controllers reach `done` in that run (`PseudoTerminal`, `iTermAdvancedGPUSettingsWindowController`,
+`TriggerController`) and the panel is the only one that does not. A nib load that stops with no
+leave marker while the main thread is back in the event loop is an unwind, not a hang, which is
+exactly what the comment in `NSNib.m` says it is.
+
+### The raise, named
+
+`CIDER_TRACE_NIB` walks the awake list and stops at the same object every time, object 811,
+`ProfilesGeneralPreferencesViewController`. The nib loader catches the escaping exception where it
+leaves and re-raises, and it prints:
+
+```
+cider: RAISE NSInvalidArgumentException: cannot create data from nil url
+  -[NSData(NSData) initWithContentsOfURL:options:error:]
+  +[NSData(NSData) dataWithContentsOfFile:]
+  +[NSImageRep imageRepsWithContentsOfFile:]
+  -[NSImage initWithContentsOfFile:]
+  -[ProfilesGeneralPreferencesViewController updateImageWell]
+  -[ProfilesGeneralPreferencesViewController awakeFromNib]
+  ...
+  -[PreferencePanel run]
+```
+
+`updateImageWell` asks for the profile background image. With none configured the path is the
+**empty string**, `fileURLWithPath:` returns nil for it, and our `initWithContentsOfURL:` raises
+where macOS returns nil. Foundation patch 0085 makes both file entry points answer nil for a path
+that will not convert, which is the documented behaviour every caller is written against.
+
+### What the fix changed, and what it did not
+
+After it: **no raise anywhere in the run**, and the awake walk continues past object 811 into
+`defineControl:`, `updateValueForInfo:` and `updateEnabledState`, with the Preferences view
+controllers alive and running work off the main queue.
+
+The window still does not appear, and `PreferencePanel` still does not print `loadNibFile leave`.
+So this is one defect of at least two, and the honest statement is that the first has been found,
+named and fixed, and the second is now reachable for the first time. The next question is narrow:
+the awake walk stops printing at 811 with no exception and with the event loop still turning at 60
+per second, which by the same reasoning as above is a NESTED RUN LOOP on the main thread rather
+than a block. Find what `awakeFromNib` enters that does not come back.
+
+### Instrument notes worth keeping
+
+- A spy on a method the event loop polls is useless without a caller filter. The first attempt cost
+  1.7 GB of log and the second spent a 40 stack budget on `_makeSureIsOnAScreen` before the call
+  being hunted happened once.
+- Picking the backtrace slot for "the caller" by a single index is wrong: inlining moves it. Check
+  slots one and two.
+- `grep` for lowercase `dead` does not match `display=DEAD`, and that alone made a reporter that
+  worked look silent for several runs.
+- GNU `nm` cannot read a Mach-O universal binary and says only "file format not recognized". Use
+  `llvm-objdump --macho`, and note that `--macho` IGNORES `--start-address`; extract the thin slice
+  from the fat header first, then ordinary `--disassemble --start-address` works.
