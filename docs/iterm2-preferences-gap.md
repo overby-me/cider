@@ -1045,3 +1045,64 @@ than a block. Find what `awakeFromNib` enters that does not come back.
 - GNU `nm` cannot read a Mach-O universal binary and says only "file format not recognized". Use
   `llvm-objdump --macho`, and note that `--macho` IGNORES `--start-address`; extract the thin slice
   from the fat header first, then ordinary `--disassemble --start-address` works.
+
+## RESOLVED: Command comma opens the Preferences window
+
+Three defects sat between Command comma and a window, each hidden behind the one in front of it.
+All three are ours, all three are fixed, and the window is on screen.
+
+| # | defect | where | patch |
+|---|--------|-------|-------|
+| 1 | `dataWithContentsOfFile:` RAISES on a path that will not convert, instead of answering nil | `NSData.m` | foundation 0085 |
+| 2 | `NSView` answers none of the four gesture recognizer methods, though the classes exist | `NSView.m` | cocotron 0089 |
+| 3 | `+[NSString availableStringEncodings]` returns nil where the contract is a zero terminated array | `NSString.m` | foundation 0086 |
+
+### The walk, measured at each step
+
+`CIDER_TRACE_NIB` counts the awake list of `PreferencePanel.nib`, which holds 3104 objects:
+
+| state | last object reached | how it ended |
+|---|---|---|
+| before any fix | **811** `ProfilesGeneralPreferencesViewController` | NSInvalidArgumentException, cannot create data from nil url |
+| fix 1 only | **811** | unrecognized selector `addGestureRecognizer:` |
+| fixes 1 and 2 | **922** `ProfilesTerminalPreferencesViewController` | SIGSEGV, reported by the harness as `cider-app exit=0` |
+| all three | **3103 of 3104** | completes |
+
+Each fix made the next defect reachable for the first time, which is the pattern this document has
+now seen four times. Two of the three were invisible by construction: a raise inside a nib decode
+is caught, and a guest SIGSEGV is reported as a clean exit.
+
+### The window
+
+```
+CIDER_WC PreferencePanel loadNibFile leave
+CIDER_WC PreferencePanel windowDidLoad
+CIDER_WC PreferencePanel done
+CIDER_DOC showWindow ENTER      controller=PreferencePanel
+CIDER_DOC showWindow HAVE-WINDOW controller=PreferencePanel window=0x75dc83e25cb0
+CIDER_DOC showWindow ORDERED    controller=PreferencePanel
+```
+
+`-[PreferencePanel run]` reaches `showWindow:` and the capture shows the Settings window with its
+title bar, all eight toolbar items (General, Appearance, Profiles, Keys, Arrangements, Pointer,
+Shortcuts, Advanced) and the full tab row (Startup, Closing, Magic, AI, Software Update, Selection,
+Window, Settings, tmux).
+
+**What is still wrong:** the window is far too short. The tab row is there and the pane below it is
+collapsed to nothing, so no setting is visible or reachable. That is the same shape as the
+MoneyMoney Preferences pane that never resizes, and the two should be looked at together rather
+than separately. RENDERS is met, INTERACTIVE and RESIZABLE are not yet demonstrated for this
+window.
+
+### How the crash was named, since it reports as a clean exit
+
+`ciderd.log` carries `sigexc: handler (11)` and the register dump. The tail of that dump is RIP,
+EFLAGS, then CS and SS, so `0x1006D9EDD` next to `0x10246` is the faulting address. Subtracting the
+image base and looking it up in the symbol table of the thin slice names it outright:
+
+```
+RIP 0x1006D9EDD -> -[ProfilesTerminalPreferencesViewController sortedEncodings] +0x42
+```
+
+and at +0x42 the instruction is `movq (%rax), %rdx` on the result of a class method send, which is
+the walk of a zero terminated array. The selector at that send resolves to `availableStringEncodings`.

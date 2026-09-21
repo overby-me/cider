@@ -1,0 +1,94 @@
+A view must accept the gesture recognizers it is given.
+
+NSClickGestureRecognizer and its four siblings are implemented in this tree. NSView answered none
+of the four methods that attach one, so every nib carrying a recognizer raised an unrecognized
+selector, and the raise is caught during a decode, which makes it invisible.
+
+  CIDER_NIB ESCAPED at object 811/3104: NSInvalidArgumentException:
+    -[NSImageView addGestureRecognizer:]: unrecognized selector sent to instance
+
+Storage is an associated object rather than an ivar, so the NSView layout is untouched.
+
+THIS IS A KEEP AND HAND BACK, NOT GESTURE SUPPORT, and the comment in the code says so. Events are
+not dispatched to the recognizers. A recognizer that is attached and never fires is a smaller and
+more honest gap than a selector that raises, and the two want separate work.
+
+MEASURED on iTerm2 Preferences, which is where it was found. The nib awake walk stopped at object
+811 of 3104 before this and reaches 922 after it, with the escaping exception gone. Object 922 then
+died for an unrelated reason, fixed separately in foundation patch 0086, and with both in place the
+walk completes at 3103 of 3104 and the window opens.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -33,6 +33,7 @@
+ #import <AppKit/NSDragging.h>
+ #import <AppKit/NSDraggingManager.h>
+ #import <AppKit/NSEvent.h>
++#import <AppKit/NSGestureRecognizer.h>
+ #import <AppKit/NSGraphics.h>
+ #import <AppKit/NSGraphicsContextFunctions.h>
+ #import <AppKit/NSMenu.h>
+@@ -2174,6 +2175,63 @@
+     NSUnimplementedMethod();
+ }
+ 
++/*
++ * GESTURE RECOGNIZERS: THE CLASSES WERE HERE AND THE VIEW SIDE WAS NOT.
++ *
++ * NSClickGestureRecognizer and its four siblings are implemented, but NSView answered none of the
++ * four methods that attach one, so every nib that carries a recognizer raised. iTerm2 loses its
++ * whole Preferences window to it: ProfilesGeneralPreferencesViewController awakeFromNib sends
++ * addGestureRecognizer: to an NSImageView and the unrecognized selector unwinds the nib load, then
++ * -[NSWindowController window], then -[PreferencePanel run].
++ *
++ * ASSOCIATED STORAGE, NOT AN IVAR, so the NSView layout is untouched.
++ *
++ * These KEEP the recognizers and hand them back, which is what a nib decode and a caller reading
++ * the property need. They do not dispatch events to them yet: a recognizer that is attached and
++ * never fires is a smaller and more honest gap than a selector that raises, and the two want
++ * separate work. Nothing here should be read as gesture support.
++ */
++static const void *kCiderGestureRecognizersKey = &kCiderGestureRecognizersKey;
++
++- (NSArray *) gestureRecognizers {
++    NSArray *list = objc_getAssociatedObject(self, kCiderGestureRecognizersKey);
++
++    return (list != nil) ? list : [NSArray array];
++}
++
++- (void) setGestureRecognizers: (NSArray *) recognizers {
++    objc_setAssociatedObject(self, kCiderGestureRecognizersKey,
++                             (recognizers != nil) ? [NSArray arrayWithArray: recognizers] : nil,
++                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++}
++
++- (void) addGestureRecognizer: (NSGestureRecognizer *) recognizer {
++    if (recognizer == nil)
++        return;
++
++    NSMutableArray *list = [[[self gestureRecognizers] mutableCopy] autorelease];
++
++    if ([list indexOfObjectIdenticalTo: recognizer] != NSNotFound)
++        return;
++
++    [list addObject: recognizer];
++    [self setGestureRecognizers: list];
++}
++
++- (void) removeGestureRecognizer: (NSGestureRecognizer *) recognizer {
++    if (recognizer == nil)
++        return;
++
++    NSMutableArray *list = [[[self gestureRecognizers] mutableCopy] autorelease];
++    NSUInteger where = [list indexOfObjectIdenticalTo: recognizer];
++
++    if (where == NSNotFound)
++        return;
++
++    [list removeObjectAtIndex: where];
++    [self setGestureRecognizers: list];
++}
++
+ - (void) setToolTip: (NSString *) string {
+     [self removeAllToolTips];
+     if (string != nil && ![string isEqualToString: @""])

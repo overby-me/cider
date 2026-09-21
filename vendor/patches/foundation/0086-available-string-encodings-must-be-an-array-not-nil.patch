@@ -1,0 +1,110 @@
+Available string encodings must be an array, not nil.
+
++[NSString availableStringEncodings] returned nil behind a TODO. The contract is a pointer to a
+ZERO TERMINATED array, and callers walk it with no null check because the documentation promises
+one, so nil is not a missing feature, it is a guaranteed crash in correct calling code.
+
+iTerm2 does exactly that, and it is right to:
+
+  callq  *objc_msgSend      ; +[NSString availableStringEncodings]
+  movq   (%rax), %rdx       ; SIGSEGV on the nil this used to return
+  testq  %rdx, %rdx         ; the zero terminator it was walking towards
+
+That is -[ProfilesTerminalPreferencesViewController sortedEncodings] +0x42, reached from
+awakeFromNib at object 922 of 3104 of the Preferences nib. The process died with signal 11 while
+the harness reported cider-app exit=0, which is why it read for a long time as a nib that simply
+stopped.
+
+THE LIST IS ONLY WHAT THIS PORT CAN CONVERT. A caller asks so it can offer the user a choice, so
+advertising an encoding whose conversion is not implemented only moves the failure to the moment
+the user picks it. These ten are the ones named by the conversion paths in NSString.m.
+
+localizedNameOfStringEncoding: returned nil too, and the same caller asks for one name per entry to
+label its menu. It now answers for every encoding the list advertises, plus the common ones it does
+not. The names are English: there are no localization tables here, and a name is a better answer
+than none.
+
+MEASURED, and this is the last of three defects between Command comma and a window. The Preferences
+nib awake walk reached object 811 before any of this, 922 with the first two fixed, and 3103 of
+3104 with this one. PreferencePanel prints loadNibFile leave and done for the first time,
+-[PreferencePanel run] reaches showWindow: and the trace reads ENTER, HAVE-WINDOW, ORDERED, and the
+Settings window is on screen with its eight toolbar items and its tab row.
+
+--- a/src/NSString.m
++++ b/src/NSString.m
+@@ -907,16 +907,71 @@
+     return NSISOLatin1StringEncoding;
+ }
+ 
++/*
++ * NIL HERE IS A GUARANTEED CRASH IN THE CALLER, NOT A MISSING FEATURE.
++ *
++ * The contract is a pointer to a ZERO TERMINATED array, and callers walk it without a null check
++ * because the documentation promises one. iTerm2 does exactly that, and it is correct to:
++ *
++ *   callq  *objc_msgSend          ; +[NSString availableStringEncodings]
++ *   movq   (%rax), %rdx           ; <- SIGSEGV on the nil this used to return
++ *   testq  %rdx, %rdx             ; the zero terminator it was walking towards
++ *
++ * That is -[ProfilesTerminalPreferencesViewController sortedEncodings] +0x42, and it killed iTerm2
++ * outright during its Preferences nib decode, at object 922 of 3104. The process died with signal
++ * 11 while the harness reported exit=0.
++ *
++ * THE LIST IS ONLY WHAT THIS PORT CAN ACTUALLY CONVERT, which is the point of the call: a caller
++ * asks so it can offer the user a choice, and advertising an encoding whose conversion is not
++ * implemented moves the failure to where the user picks it. These are the encodings named by the
++ * conversion paths in this file.
++ */
+ + (const NSStringEncoding *)availableStringEncodings
+ {
+-#warning TODO https://code.google.com/p/apportable/issues/detail?id=269
+-    return nil;
++    static const NSStringEncoding encodings[] = {
++        NSASCIIStringEncoding,
++        NSUTF8StringEncoding,
++        NSISOLatin1StringEncoding,
++        NSISOLatin2StringEncoding,
++        NSUnicodeStringEncoding,
++        NSWindowsCP1250StringEncoding,
++        NSWindowsCP1251StringEncoding,
++        NSWindowsCP1252StringEncoding,
++        NSWindowsCP1253StringEncoding,
++        NSWindowsCP1254StringEncoding,
++        0
++    };
++
++    return encodings;
+ }
+ 
++/*
++ * A NAME FOR EVERY ENCODING THE LIST ABOVE ADVERTISES, because the same caller asks for one per
++ * entry to label its menu, and nil there is an empty row at best. Not localized: there are no
++ * tables for it here, and an English name is a better answer than none.
++ */
+ + (NSString *)localizedNameOfStringEncoding:(NSStringEncoding)encoding
+ {
+-#warning TODO https://code.google.com/p/apportable/issues/detail?id=269
+-    return nil;
++    switch (encoding) {
++        case NSASCIIStringEncoding:         return @"Western (ASCII)";
++        case NSUTF8StringEncoding:          return @"Unicode (UTF-8)";
++        case NSISOLatin1StringEncoding:     return @"Western (ISO Latin 1)";
++        case NSISOLatin2StringEncoding:     return @"Central European (ISO Latin 2)";
++        case NSUnicodeStringEncoding:       return @"Unicode (UTF-16)";
++        case NSWindowsCP1250StringEncoding: return @"Central European (Windows Latin 2)";
++        case NSWindowsCP1251StringEncoding: return @"Cyrillic (Windows)";
++        case NSWindowsCP1252StringEncoding: return @"Western (Windows Latin 1)";
++        case NSWindowsCP1253StringEncoding: return @"Greek (Windows)";
++        case NSWindowsCP1254StringEncoding: return @"Turkish (Windows Latin 5)";
++        case NSNonLossyASCIIStringEncoding: return @"Non-lossy ASCII";
++        case NSMacOSRomanStringEncoding:    return @"Western (Mac OS Roman)";
++        case NSUTF16BigEndianStringEncoding:    return @"Unicode (UTF-16BE)";
++        case NSUTF16LittleEndianStringEncoding: return @"Unicode (UTF-16LE)";
++        case NSUTF32StringEncoding:             return @"Unicode (UTF-32)";
++        case NSUTF32BigEndianStringEncoding:    return @"Unicode (UTF-32BE)";
++        case NSUTF32LittleEndianStringEncoding: return @"Unicode (UTF-32LE)";
++        default:                            return nil;
++    }
+ }
+ 
+ + (id)string
