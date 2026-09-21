@@ -1224,3 +1224,34 @@ MoneyMoney, iA Writer, LibreOffice and CMake looked at individually.
 content than Startup will clip, and INTERACTIVE and RESIZABLE are still not demonstrated for the
 Settings window itself. The next step is to click a toolbar item and a tab and see whether the pane
 swaps and the window resizes with it.
+
+## The Settings window meets all three criteria, and one defect is left
+
+Driven with Command comma, then a click on the Appearance toolbar item, then one on Profiles:
+
+| step | window asked for | what the capture shows |
+|---|---|---|
+| Command comma | 689x284 | General to Startup: restoration policy popup, three checkboxes |
+| click Appearance | 689x299 | pane swaps |
+| click Profiles | **1060x588** | profile list with Default selected, the eight tab row, and the full form |
+
+The Profiles pane draws Name, Shortcut key, Tags, Badge, Title with its "Applications in terminal
+may change the title" checkbox ticked, Subtitle, Icon, Command set to Login Shell and /bin/zsh,
+Send text at start, and Initial directory with Home directory selected.
+
+- **RENDERS CORRECTLY**: yes, looked at.
+- **INTERACTIVE**: yes, a toolbar click swaps the pane.
+- **RESIZABLE**: yes, and the application resizes the window itself for each pane, `asked` equal to
+  `got` every time.
+
+### The one defect left: a window that grows is not moved back onto the screen
+
+At 1060 wide from x=332 the window runs to 1392 on a 1256 wide screen and the capture is clipped on
+the right, losing the right hand column of every field. The application asked for that frame and we
+gave it exactly, so this is not a frame we mangled; what is missing is the step that keeps a window
+on screen after it changes size.
+
+`-[NSWindow _makeSureIsOnAScreen]` exists and the event loop calls it on every pass (it is one of
+the two pollers the `CIDER_TRACE_VISIBLE` filter had to skip), so the question is why it does not
+move this one. That is the next thing to measure, and it is a general defect rather than an iTerm2
+one: any window that grows near a screen edge will be clipped the same way.
