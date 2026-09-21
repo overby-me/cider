@@ -1,0 +1,53 @@
+A mutable character set must not inherit an immutable one's init.
+
+WHAT WAS WRONG. -[NSCharacterSet init] hands back a set made with
+CFCharacterSetCreateWithCharactersInRange, which is IMMUTABLE. NSMutableCharacterSet defined no
+init of its own, so it inherited that one, and every alloc init mutable character set in the whole
+process was immutable. Every mutator on __NSCFCharacterSet is gated on __CFCharacterSetIsMutable,
+so addCharactersInRange:, addCharactersInString: and the rest silently did NOTHING and the set
+stayed empty for as long as it lived. No error, no exception, no log line.
+
+MEASURED BEFORE AND AFTER with tests/foundation/probe_charset_membership.m, which asks exactly what
+iTerm2 asks. Before, 6 of 10 assertions failed: every character added was reported absent, the copy
+was empty, and the inverted set contained everything. After, 10 of 10 pass. The two controls, a
+character never added and that same character in the inverted set, pass in BOTH runs, so the set
+did not simply become everything.
+
+WHAT IT COST, which is how it was found. -[VT100Grid numberOfNonEmptyLinesIncludingWhitespaceAsEmpty:]
+builds an NSMutableCharacterSet of the cell codes that count as empty, by addCharactersInRange: for
+0, 2 and 4 and addCharactersInString: for the rest, then scans the grid against it. With an empty
+set NO cell is ever empty, so numberOfLinesUsed returned the FULL grid height, 44 where 4 lines held
+text. Shrinking the window from 44 rows to 38 therefore archived six rows of real output into
+scrollback to preserve content that was not there, the document stayed taller than the clip, and a
+terminal bottom aligns its document, so iTerm2 blanked its own screen on every height reduction.
+
+    before   window 1256x600   numberOfLinesUsed 44   scrollback 6   terminal BLANK
+    after    window 1256x600   numberOfLinesUsed 4    scrollback 0   terminal INTACT, LOOKED AT
+Survives a second shrink to 1256x560 as well.
+
+THE REACH IS MUCH WIDER THAN ONE TERMINAL. A mutable character set is how applications build
+tokenisers, trimming sets and escaping sets, and every one of them has been silently empty in this
+port. iTerm2 is simply the first application that made the failure visible.
+
+Task #247.
+
+--- a/NSCharacterSet.m
++++ b/NSCharacterSet.m
+@@ -416,6 +416,17 @@
+     NSRequestConcreteImplementation();
+ }
+ 
++/* A MUTABLE SET MUST NOT INHERIT AN IMMUTABLE ONE'S init. NSCharacterSet init hands back a
++ * CFCharacterSet created with CFCharacterSetCreateWithCharactersInRange, which is IMMUTABLE, and
++ * with no init here NSMutableCharacterSet inherited it. Every mutator on __NSCFCharacterSet is
++ * gated on __CFCharacterSetIsMutable, so addCharactersInRange: and friends silently did nothing
++ * and the set stayed empty for the life of the process. Task #247. */
++- (id)init
++{
++    [self release];
++    return (id)CFCharacterSetCreateMutable(kCFAllocatorDefault);
++}
++
+ - (BOOL)isMutable
+ {
+     return YES;

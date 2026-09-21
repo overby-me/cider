@@ -191,3 +191,38 @@ darwin_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+
+# Does a mutable character set remember what was added to it? The question behind #247: iTerm2 uses
+# one to decide which grid lines are empty. See the header of probe_charset_membership.m.
+cc_objects(
+    name = "probe_charset_membership_obj",
+    srcs = ["probe_charset_membership.m"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION", "-fno-objc-arc"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "probe_charset_membership",
+    objs = [
+        ":probe_charset_membership_obj",
+        "//vendor/src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
