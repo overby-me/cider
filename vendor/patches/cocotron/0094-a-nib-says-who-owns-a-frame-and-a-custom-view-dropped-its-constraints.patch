@@ -1,0 +1,128 @@
+A nib says who owns a frame, and a custom view dropped its constraints.
+
+Two decode gaps, both reached from the same measurement, and neither is application specific.
+
+ONE. -[NSCustomView initWithCoder:] builds a different object by hand and never calls
+[super initWithCoder:], so everything -[NSView initWithCoder:] decodes beyond the frame, the
+vFlags, the tag, the subviews and the layer settings is lost. The expensive loss is
+NSViewConstraints. A view laid out in Interface Builder has no autoresizing mask to fall back on,
+so every subview stays at the frame IB last wrote, and IB writes overlapping frames freely because
+constraints were going to move them.
+
+TWO. -[NSView initWithCoder:] never decoded who owns the frame. The line read
+_translatesAutoresizingMaskIntoConstraints = YES with a TODO above it, so every nib view claimed
+to own its own frame and constraints on a container could not move anything. The archive spells it
+as a NEGATION, NSDoNotTranslateAutoresizingMask, so translates is the complement of that key.
+
+MEASURED, with a control in the same run of the same application. Summing the constraint count over
+every view, per window:
+
+  iA Writer document window      212 constraints over 145 views     worked all along
+  iA Writer Preferences window     0 constraints over  46 views     before
+  iA Writer Preferences window    58 constraints over  46 views     after
+
+58 is exactly the number of NSLayoutConstraint objects in GeneralPreferences.nib, and parsing that
+nib says why they were lost: of its 550 objects exactly ONE carries NSViewConstraints, and its
+class is NSCustomView. The translates key is carried by 43 objects in that nib and is true on every
+one of them; the pane now reports 33 of 46 views owned by auto layout where it reported none.
+
+WHAT THIS DOES NOT FIX, said plainly. iA Writer Preferences still draws Appearance and Dock icon on
+top of each other, two NSTextFields at the same y=417. The constraints are attached and the views
+are owned, so the solver entry condition is met and it runs, and it still does not place them.
+That is a third link and a much larger one: a solver able to satisfy these constraints. The two
+gaps here are strictly more correct than before and are what makes that work reachable.
+
+RISK, since this flips layout ownership for every nib view in every application and autoresizing
+was at least approximating something before. Gates after it: dts 69 of 69, roster sweep 7 of 7 and
+roster input 7 of 7 with BYTE IDENTICAL captures to the run before, and iA Writer and Swift
+Publisher looked at individually because they are the two that lean hardest on nib layout.
+
+CIDER_TRACE_CONSTRAINTS prints what the NSViewConstraints key hands back per view, which is how
+"the key is never found" was told apart from "an empty array" and from "one object where an array
+was expected".
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -430,7 +430,37 @@
+          * out in Interface Builder carries them here and has no autoresizing mask to fall back on,
+          * so every subview of one stayed at the size it was archived with, usually 1x1.
+          */
+-        for (NSLayoutConstraint *constraint in [keyed decodeObjectForKey: @"NSViewConstraints"])
++        /* WHAT THE ARCHIVE HANDS BACK FOR THAT KEY, because a nib whose views all report cons=0
++         * while the file plainly contains NSLayoutConstraint objects could be a key that is never
++         * found, an empty array, or a single object where an array was expected. Those want
++         * different fixes. CIDER_TRACE_CONSTRAINTS. */
++        /*
++         * WHO OWNS THIS FRAME, which was a TODO above and defaulted to the mask every time.
++         *
++         * The archive spells it as a NEGATION: NSDoNotTranslateAutoresizingMask true means the
++         * view does NOT translate, so it is auto layout that places it. Defaulting every nib view
++         * to YES told this framework that each one owns its own frame, so constraints on the
++         * container could never move anything and every view stayed where Interface Builder last
++         * wrote it. IB writes overlapping frames freely, because constraints were going to sort
++         * them out, which is why iA Writer draws Appearance and Dock icon on top of each other.
++         *
++         * 43 of the 550 objects in that nib carry the key and every one of them is true.
++         */
++        if ([keyed containsValueForKey: @"NSDoNotTranslateAutoresizingMask"])
++            _translatesAutoresizingMaskIntoConstraints =
++                    ![keyed decodeBoolForKey: @"NSDoNotTranslateAutoresizingMask"];
++
++        id decodedConstraints = [keyed decodeObjectForKey: @"NSViewConstraints"];
++
++        if (getenv("CIDER_TRACE_CONSTRAINTS") != NULL && decodedConstraints != nil) {
++            fprintf(stderr, "CIDER_CONSTRAINTS %s got %s count=%ld\n", object_getClassName(self),
++                    object_getClassName(decodedConstraints),
++                    [decodedConstraints respondsToSelector: @selector(count)]
++                            ? (long) [decodedConstraints count] : -1L);
++            fflush(stderr);
++        }
++
++        for (NSLayoutConstraint *constraint in decodedConstraints)
+             [self addConstraint: constraint];
+ 
+         // TODO: NSViewLayoutGuides, ...
+--- a/AppKit/nib.subproj/NSCustomView.m
++++ b/AppKit/nib.subproj/NSCustomView.m
+@@ -20,6 +20,7 @@
+ #import <Foundation/NSKeyedArchiver.h>
+ #import <Foundation/NSString.h>
+ #import <objc/runtime.h>
++#import <Foundation/NSLayoutConstraint.h>
+ 
+ @implementation NSCustomView
+ 
+@@ -94,6 +95,33 @@
+             // the flags, it should always be on
+             newView->_autoresizesSubviews = YES;
+ 
++            /*
++             * THE CONSTRAINTS, which this method dropped because it never calls
++             * [super initWithCoder:].
++             *
++             * -[NSView initWithCoder:] decodes NSViewConstraints and adds each one. This method
++             * builds a different object by hand and copies over only the frame, the vFlags, the
++             * tag, the subviews and the layer settings, so anything else NSView decodes is lost.
++             * The constraints are the expensive loss: a view laid out in Interface Builder has no
++             * autoresizing mask to fall back on, and every subview stays at the frame IB last
++             * wrote, which may overlap because constraints were going to move it.
++             *
++             * MEASURED. iA Writer GeneralPreferences.nib holds 58 NSLayoutConstraint objects and
++             * exactly ONE object carries NSViewConstraints: an NSCustomView. Per window sums in a
++             * single run said the document window holds 212 constraints over 145 views while the
++             * Preferences window held ZERO over 46, and two labels drew on top of each other at
++             * the same y because both kept their archived frames.
++             */
++            for (NSLayoutConstraint *constraint in
++                         [coder decodeObjectForKey: @"NSViewConstraints"])
++                [newView addConstraint: constraint];
++
++            /* The same negation NSView decodes, and for the same reason: this method builds the
++             * view itself, so nothing else sets it. */
++            if ([coder containsValueForKey: @"NSDoNotTranslateAutoresizingMask"])
++                [newView setTranslatesAutoresizingMaskIntoConstraints:
++                                 ![coder decodeBoolForKey: @"NSDoNotTranslateAutoresizingMask"]];
++
+             if ([coder containsValueForKey: @"NSTag"])
+                 newView->_tag = [coder decodeIntForKey: @"NSTag"];
+             NSArray *subviews = [coder decodeObjectForKey: @"NSSubviews"];

@@ -1407,3 +1407,52 @@ with, because it turns "auto layout seems broken" into a number with a control b
 
 Until then, iA Writer Preferences RENDERS with one visibly wrong row and is otherwise complete:
 nine toolbar items, the appearance radios, all the checkboxes, both popups and the shortcut button.
+
+## The constraints were dropped by NSCustomView, and nothing decoded who owns a frame
+
+Following the handoff above, both halves are now measured and fixed (cocotron 0094), and the
+remaining gap is named.
+
+### Where the constraints went
+
+Parsing `GeneralPreferences.nib` directly: 550 objects, **58 NSLayoutConstraint** among them, and
+exactly **ONE** object carries the `NSViewConstraints` key. Its class is **`NSCustomView`**.
+
+`-[NSCustomView initWithCoder:]` never calls `[super initWithCoder:]`. It builds a different object
+by hand and copies over the frame, the vFlags, the tag, the subviews and the layer settings, so
+everything else `NSView` decodes is dropped, constraints included. The same method that cost the
+window its pane (patch 0092) was also costing it every constraint in the nib.
+
+| | constraints | views |
+|---|---|---|
+| iA Writer document window | 212 | 145 |
+| Preferences, before | **0** | 46 |
+| Preferences, after | **58** | 46 |
+
+### Who owns a frame was never decoded at all
+
+`-[NSView initWithCoder:]` read `_translatesAutoresizingMaskIntoConstraints = YES` with a
+`// TODO: decode this` above it. Every nib view therefore claimed to own its own frame, so
+constraints on a container could not move anything even once they were attached.
+
+The archive spells it as a NEGATION: `NSDoNotTranslateAutoresizingMask`. 43 objects in that nib
+carry it and it is **true on every one**. The pane now reports **33 of 46** views owned by auto
+layout where it reported none.
+
+### What is still wrong, and it is the bigger half
+
+The overlap remains: two `NSTextField`s at y=417. The constraints are attached, the views are
+owned, the solver's entry condition (`selfHolds` with `translates=NO` subviews) is met and it runs,
+and it still does not place them. **A solver able to satisfy these constraints is the third link**,
+and it is a much larger piece of work than either gap here.
+
+So iA Writer Preferences is unchanged on screen and strictly more correct underneath. That is worth
+saying plainly rather than claiming a fix: what these two patches buy is that the layout problem is
+now a layout problem, instead of being hidden behind a decode that threw the inputs away.
+
+### Risk, and why the gates mattered more than usual
+
+This flips layout ownership for every nib view in every application, and autoresizing was at least
+approximating something before. Gates: dts 69 of 69, roster sweep 7 of 7 and roster input 7 of 7
+with **byte identical** captures to the run before, iA Writer and Swift Publisher looked at
+individually as the two that lean hardest on nib layout.
