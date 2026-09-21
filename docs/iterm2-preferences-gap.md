@@ -692,3 +692,36 @@ AppKit.
 
 What remains true and measured: the poll asks for 16 ms and takes about 0.28 ms, it watches only
 the Wayland display fd, and the event rate is 13 to 34 times idle from the keystroke onward.
+
+### And it is not compositor traffic either
+
+Comparing the idle control against a spinning run, on the compositor side:
+
+```
+              present  flush  frame callbacks  sway log lines
+it-nokey   idle     3      3         2              533
+it-nospyrun spin    3      3         2              552
+```
+
+Identical. The Wayland fd is not carrying more data in the run that spins, so the poll is not
+returning early because the compositor is talking to us.
+
+### The candidate that fits what is left: EINTR
+
+The poll is
+
+```rust
+let mut fds = PollFd { fd, events: POLLIN, revents: 0 };
+unsafe { poll(&mut fds as *mut PollFd, 1, ms) };
+```
+
+and **the return value is discarded**. A poll interrupted by a signal returns -1 with EINTR
+immediately, and this loop cannot tell that from a timeout: it just comes back around. The guest
+delivers signals through its own sigexc machinery, so a signal arriving often after the keystroke
+would produce exactly the measured shape, a 16 ms request served in 0.28 ms with no traffic to
+explain it.
+
+WHAT SETTLES IT, and it is small: capture the return value and `errno`, and count the EINTR returns
+against the timeouts. If EINTR dominates, the fix is the standard one, retry the poll with the
+remaining budget rather than treating an interruption as an elapsed wait. Discarding the result is
+what made this invisible for the whole investigation.
