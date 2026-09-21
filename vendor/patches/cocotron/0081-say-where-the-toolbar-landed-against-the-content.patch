@@ -1,0 +1,58 @@
+Say where the toolbar landed against the content.
+
+MoneyMoney draws its Preferences pane text straight through the toolbar item labels (#255), and
+nothing said where either one was. The height itself looked correct on reading:
+-[NSToolbarItem sizeForSizeMode:...] adds the label height for IconAndLabel and Default and the
+min and max clamp happens before that addition, so the reported height should include the labels.
+That left the placement, and placement needed numbers.
+
+-[NSWindow _toolbarSizeDidChangeFromOldHeight:] now prints the old and new heights, the delta, the
+toolbar origin it chose, the content view frame and the window size, gated on CIDER_TRACE_TOOLBAR.
+
+It answered immediately. MoneyMoney's Preferences window, 406 by 300 content:
+
+    CIDER_TOOLBAR old=0.0  new=24.0 delta=24.0 toolbarY=276.0 content={0,0 406x300} window=406x346
+    CIDER_TOOLBAR old=24.0 new=56.0 delta=32.0 toolbarY=268.0 content={0,0 406x300} window=406x378
+
+The content view never moves. It is pinned with NSViewNotSizable while the window frame grows, so
+the space the window gains is entirely above it, and the toolbar is placed at
+NSMaxY(content) - delta. With a content top of 300 and a toolbar 56 tall that puts the toolbar at
+268 to 324, so it sits 32 pixels INSIDE the content rather than on top of it.
+
+WHAT THIS DOES NOT SHOW, and I tried it: moving the toolbar to NSMaxY(content) does place it
+correctly, the trace then reads toolbarY=300.0 for Preferences and 680.0 for the main window, and
+THE VISIBLE OVERLAP IS UNCHANGED. So the placement is wrong, and it is not what the eye is seeing.
+Something else decides where the labels and the pane are drawn. That change is therefore NOT in
+this patch; only the instrument is, because a behaviour change on a path every window takes should
+not land on the strength of reasoning when the measurement says it changes nothing.
+
+Off by default: this runs on every toolbar size change.
+
+Task #255.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -1717,6 +1717,23 @@
+     [self setFrame: frame display: NO animate: NO];
+ 
+     [[self contentView] setAutoresizingMask: mask];
++
++    /* WHETHER THE CONTENT EVER MOVED. Only the toolbar origin is set here and the content view is
++     * pinned while the window frame grows, so a delta of zero on the call that matters leaves the
++     * toolbar sitting on top of the content. MoneyMoney draws its Preferences pane through the
++     * toolbar labels. Task #255. */
++    if (getenv("CIDER_TRACE_TOOLBAR") != NULL) {
++        NSRect content = [[self contentView] frame];
++
++        fprintf(stderr,
++                "CIDER_TOOLBAR old=%.1f new=%.1f delta=%.1f toolbarY=%.1f "
++                "content={%.1f,%.1f %.1fx%.1f} window=%.1fx%.1f\n",
++                (double) oldHeight, (double) newHeight, (double) contentHeightDelta,
++                (double) toolbarOrigin.y, (double) content.origin.x, (double) content.origin.y,
++                (double) content.size.width, (double) content.size.height,
++                (double) frame.size.width, (double) frame.size.height);
++        fflush(stderr);
++    }
+ }
+ 
+ - (void) setToolbar: (NSToolbar *) toolbar {
