@@ -333,3 +333,32 @@ darwin_binary(
     deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
     visibility = ["PUBLIC"],
 )
+
+
+# Do sorting and filtering answer correctly? Every table driven application on the roster goes
+# through NSSortDescriptor and NSPredicate, and neither is covered by the testsuite.
+cc_objects(
+    name = "probe_sort_and_filter_obj",
+    srcs = ["probe_sort_and_filter.m"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION", "-fno-objc-arc"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "probe_sort_and_filter",
+    objs = [":probe_sort_and_filter_obj", "//vendor/src/csu:crt1.10.6_obj2"],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
+    visibility = ["PUBLIC"],
+)
