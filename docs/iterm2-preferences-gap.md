@@ -1255,3 +1255,32 @@ on screen after it changes size.
 the two pollers the `CIDER_TRACE_VISIBLE` filter had to skip), so the question is why it does not
 move this one. That is the next thing to measure, and it is a general defect rather than an iTerm2
 one: any window that grows near a screen edge will be clipped the same way.
+
+### CORRECTION: the clipping is the output size, not a missing constrain step
+
+The section above called the right hand clipping a defect and named
+`-[NSWindow _makeSureIsOnAScreen]` as the thing that should have prevented it. **That is wrong and
+it is withdrawn.**
+
+Driven identically on a 1600x1000 output, the Profiles pane renders COMPLETELY: the profile list,
+the eight tab row, and every field including Badge with its Edit button, Subtitle with Enable Tall
+Tab Bar, Icon, Command, Send text at start, all four Initial directory options with
+`/Users/root`, URL schemes, and the Tags, plus, minus and Other Actions footer. Nothing is cut off.
+
+What gave it away is that the frame cannot explain the picture. The last frame in that run is
+`1060x588@676,-103`, and no later frame moves it. Read as a screen position that puts the window
+past the right edge and 103 points below the bottom, yet the capture shows it whole and roughly
+centred.
+
+**A Wayland client does not position its own toplevel.** There is no request for it in the
+protocol; the compositor places the surface. So the origin in an NSWindow frame reaches nothing,
+only the SIZE is honoured, and reasoning from that origin to where the window will appear is
+reasoning about a number nobody reads. Every earlier line in this document that treats a window
+origin as a screen position is suspect for the same reason.
+
+The 1256x684 clipping is therefore just an output too small for a 1060x588 window placed where the
+compositor put it. It is a property of the test harness, not of the port, and it is the second
+time in this document that a harness property was mistaken for a defect. The first was the event
+loop spin.
+
+**Status of the Settings window: all three criteria met, with no known defect.**
