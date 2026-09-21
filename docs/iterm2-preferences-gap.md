@@ -927,3 +927,32 @@ produces this spin is unmeasured**, and the way to measure it is a long `SETTLE`
 `protocol_error=0` alongside `errno=32` is the same pair `window.rs` records for the offscreen
 window flood (task #244). Here it means only that the socket closed without the compositor sending
 a protocol error, which is what a normal compositor shutdown looks like from the client side.
+
+### Answered: a live compositor never spun, so the spin was never a user-facing defect
+
+The previous section left one question open and named the experiment for it, a long `SETTLE`
+instead of a long `LIMIT`, so that the application idles while sway is still up. Run that way
+(`SETTLE=150 LIMIT=260`) one run contains both phases and is its own control:
+
+| phase | window | rate |
+|---|---|---|
+| live compositor, idle | t 20.6 to 147.1 | 7600 calls in 126.59 s = **60.0 per second** |
+| live compositor, late idle | t 100.4 to 147.1 | 2800 calls in 46.70 s = **60.0 per second** |
+| dead compositor, after the fix | t 167.0 to 183.5 | 1000 calls in 16.48 s = **60.7 per second** |
+
+sway logged its shutdown at t 158.9, between the second and third windows. The live rate is the
+designed 60 per second and never varies, so **the event loop has never spun while the compositor
+was alive.** Everything measured in this thread, the 76000 poll returns, the 0.28 ms budget, the
+failing reads, came from the stretch after the compositor exited and before the harness limit
+killed the process.
+
+That retires the spin as a defect. It was a property of how the runs were driven, not of the port.
+The fix stays because a process should not burn a core once its display is gone, and because
+`display_failed()` is the honest test for that, but it speeds up nothing a user would meet. The
+cost of the confusion was several iterations spent on pump re-entry, EINTR, compositor traffic,
+stray descriptors and the skip_work fast path, every one of them correctly refuted and none of them
+the answer, because the premise that there was a live-session spin at all went unchecked.
+
+The lesson worth keeping: **a measurement taken from a long tail of a driven run must first prove
+the harness was still up.** `nextevent` carries a timestamp and sway logs its own shutdown, so the
+check is one `grep` and a subtraction, and it was available from the first sample.
