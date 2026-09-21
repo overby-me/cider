@@ -151,6 +151,23 @@ extern "C-unwind" fn display_next_event(
             .ok()
             .and_then(|last| *last)
             .is_some_and(|last| now.duration_since(last).as_micros() < 2000);
+    /* HOW OFTEN THE PUMP IS SKIPPED. The 2 ms throttle above returns without draining the Wayland
+     * socket, and an undrained socket stays readable, so the next wait returns at once and the next
+     * call lands inside the throttle again. Counted to find out whether that feedback is what the
+     * measured spin actually is. See docs/iterm2-preferences-gap.md. */
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_SPIN") {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static SKIPPED: AtomicU64 = AtomicU64::new(0);
+        static PUMPED: AtomicU64 = AtomicU64::new(0);
+        let slot = if skip_work { &SKIPPED } else { &PUMPED };
+        let n = slot.fetch_add(1, Ordering::Relaxed) + 1;
+        if n % 2000 == 0 {
+            println!(
+                "cider-wayland-appkit pass skipped={} pumped={}",
+                SKIPPED.load(Ordering::Relaxed), PUMPED.load(Ordering::Relaxed)
+            );
+        }
+    }
     if skip_work {
         let super_class = unsafe { objc::class_getSuperclass(objc::object_getClass(this)) };
         let mut sup = ObjcSuper { receiver: this, super_class };
@@ -381,6 +398,26 @@ fn wait_for_something(until: Object) {
     }
     let mut fds = PollFd { fd, events: POLLIN, revents: 0 };
     let rc = unsafe { poll(&mut fds as *mut PollFd, 1, ms) };
+    /*
+     * DO NOT SPIN ON A DEAD DISPLAY. Once the connection is gone the socket reports POLLIN|POLLHUP
+     * for ever, wl_display_read_events fails every time, nothing drains the descriptor, and this
+     * wait returns in 0.28 ms instead of its 16 ms budget. The loop then turns about twenty times
+     * its idle rate, burning a core, until the process is killed.
+     *
+     * Measured that way at first, and the cause was NOT what the shape suggested: in the run that
+     * showed it, sway logged "Shutting down sway" at t=33.897 and the successful-read counter
+     * froze at 1866 in that same second. The compositor had exited and the application was still
+     * running, because the harness limit outlives the drive's own steps. POLLHUP was the corpse,
+     * not the killer, and an earlier note here blamed a resize; that is withdrawn.
+     *
+     * So key on the real condition, which the session already detects and reports once. A live
+     * connection is untouched by this branch, and the budget is genuinely free to sleep when the
+     * peer is gone. Whether a live compositor ever produces this spin is a separate question and
+     * is not answered here. See docs/iterm2-preferences-gap.md.
+     */
+    if rc > 0 && ms > 0 && session::display_failed() {
+        unsafe { poll(std::ptr::null_mut(), 0, ms) };
+    }
     /* WHY THE WAIT ENDED. This return was discarded, and a poll cut short by a signal returns -1
      * with EINTR immediately, which this loop cannot tell from an elapsed timeout: it just comes
      * back around. That is invisible and it is exactly the shape of a 16 ms request served in

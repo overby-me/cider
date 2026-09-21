@@ -409,7 +409,31 @@ pub fn pump() {
             }
         }
         wl::wl_display_flush(d);
-        if wl::wl_display_read_events(d) < 0 {
+        let rd = wl::wl_display_read_events(d);
+        // Immediately: any call below, println included, overwrites errno.
+        let rd_errno = if rd < 0 { std::io::Error::last_os_error().raw_os_error().unwrap_or(-1) } else { 0 };
+        /* WHETHER THE SOCKET IS ACTUALLY BEING DRAINED. read_events failing leaves the data on the
+         * fd, the fd readable, and every later wait returning at once, which is the measured spin.
+         * A bail here is silent, so count both outcomes. See docs/iterm2-preferences-gap.md. */
+        if crate::env_flag!("CIDER_WAYLAND_TRACE_SPIN") {
+            use std::sync::atomic::{AtomicU64, Ordering};
+            static OK: AtomicU64 = AtomicU64::new(0);
+            static FAIL: AtomicU64 = AtomicU64::new(0);
+            let slot = if rd < 0 { &FAIL } else { &OK };
+            let n = slot.fetch_add(1, Ordering::Relaxed) + 1;
+            if n % 2000 == 0 {
+                /* errno, NOT dispatch_pending. An earlier version of this trace printed
+                 * wl_display_dispatch_pending here, which dispatches as a side effect and was
+                 * called with a read prepared and not yet cancelled. Its -1 said nothing about
+                 * the connection and was withdrawn; see docs/iterm2-preferences-gap.md. */
+                println!(
+                    "cider-wayland-session readevents ok={} fail={} errno={} displayerr={}",
+                    OK.load(Ordering::Relaxed), FAIL.load(Ordering::Relaxed),
+                    rd_errno, wl::wl_display_get_error(d)
+                );
+            }
+        }
+        if rd < 0 {
             wl::wl_display_cancel_read(d);
             return;
         }

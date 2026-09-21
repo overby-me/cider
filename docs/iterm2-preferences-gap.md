@@ -852,3 +852,78 @@ POLLHUP on a socket whose peer is alive is the remaining oddity and it may be a 
 spin even though it is real. Separate the two: the spin is explained by unread POLLIN data, and the
 fix for it is that the event wait must either read or not treat pending-and-unread as a reason to
 return immediately, exactly as the waker already does.
+
+## The spin is an application outliving its compositor, and four of my claims were wrong
+
+The read side was finally counted, and it settles the spin. In a 300 second idle run of iTerm2 with
+`CIDER_WAYLAND_TRACE_SPIN=1`:
+
+```
+cider-wayland-session readevents ok=1866 fail=2000 errno=0 displayerr=32
+cider-wayland-session readevents ok=1866 fail=4000 errno=0 displayerr=32
+cider-wayland-session readevents ok=1866 fail=6000 errno=0 displayerr=32
+cider-wayland-session readevents ok=1866 fail=8000 errno=0 displayerr=32
+```
+
+`ok` is FROZEN at 1866 while `fail` climbs without bound. Every successful read happened before one
+instant, and none after it. `wl_display_read_events` failing leaves the data on the descriptor,
+`pump()` calls `wl_display_cancel_read` and returns, POLLIN stays set, and the next poll returns at
+once. That is the whole spin, and it is why the 16 ms budget was being served in 0.28 ms.
+
+### What actually killed the connection
+
+Not a resize, and not anything the port did. The compositor exited:
+
+```
+00:00:33.897 [INFO] [sway/main.c:399] Shutting down sway
+```
+
+The successful-read counter froze in that same second. `app-drive.sh` tears the nested compositor
+down once it has taken its captures, but `LIMIT` keeps the application running long after that, so
+the process spends the remainder of the run pumping an event loop against a socket whose peer is
+gone. The measured spin is that tail. It is real, it burns a core, and it is worth not doing, but it
+is NOT evidence of a defect that a user would ever meet.
+
+### Four claims withdrawn
+
+1. **"The display error is 0, so the connection is healthy."** Wrong, and repeated over several
+   runs. The `err=0` I kept citing is the `pollret` line's count of `poll` itself returning -1. The
+   display error is a different number entirely, and it is 32, EPIPE. The two fields were never the
+   same thing and I read one as the other.
+2. **"`dispatch_pending` returns -1, so the connection is in an error state."** Withdrawn as an
+   artifact of my own instrument. The trace called `wl_display_dispatch_pending` inside its
+   `println!` while a read was prepared and not yet cancelled, which is an invalid state for
+   libwayland, and dispatching is a side effect no trace should have. The field is now `errno` and
+   `displayerr`, both read at the call site.
+3. **"The connection carries input while POLLHUP is set."** Not established. Input works in runs
+   where the compositor is alive; the POLLHUP samples come from after it exits. Those were separate
+   phases of a run and I treated them as simultaneous.
+4. **"POLLHUP on a live peer is the remaining oddity."** There is no oddity. The peer is dead.
+
+A fifth error was in the searching, not the reasoning: `display_failed()` DID report the death,
+printing `display=DEAD errno=32 protocol_error=0`, and I concluded it had stayed silent because I
+grepped for lowercase `dead` against an uppercase `DEAD`. The instrument spoke and the reader was
+broken, which is the same lesson as `truncated-list-is-a-lying-instrument` wearing a different hat.
+
+### The fix, and what it does not claim
+
+The event wait now sleeps its remaining budget instead of returning instantly, keyed on
+`session::display_failed()` rather than on POLLHUP, because the dead connection is the real
+condition and POLLHUP was only its shape. A live connection never reaches the branch.
+
+Measured on iTerm2, same instrument, same units:
+
+| | poll ready | poll timeout | reads ok | reads failed | nextevent rate |
+|---|---|---|---|---|---|
+| before | 76000 | 4189 | 4202 | 76000 | not sampled |
+| after | 4000 | 1853 | 1866 | 4000 | 60.3 per second over 23.2 s |
+
+The 16 ms budget specifies 62.5 passes per second and the loop now turns at 60.3, so the idle rate
+is the designed one. What this does NOT show is any improvement to a live session: every sample
+above comes from a run whose compositor had already exited. **Whether a live compositor ever
+produces this spin is unmeasured**, and the way to measure it is a long `SETTLE` rather than a long
+`LIMIT`, because the settle happens while sway is still up.
+
+`protocol_error=0` alongside `errno=32` is the same pair `window.rs` records for the offscreen
+window flood (task #244). Here it means only that the socket closed without the compositor sending
+a protocol error, which is what a normal compositor shutdown looks like from the client side.
