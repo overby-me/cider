@@ -366,3 +366,51 @@ ordered: the instrument is demonstrably firing for other receivers in the same r
 `-[PreferencePanel run]` gets its window and then does not show it. Disassemble it and find what it
 does between `[self window]` and the ordering call it never makes, the same way `showPreferences:`
 was read in #254. The stack above gives the exact entry point.
+
+## Why the window is never shown: `run` bails on `isVisible`
+
+`-[PreferencePanel run]` disassembles to, in order:
+
+```objc
+[NSApp activateIgnoringOtherApps:YES];
+[ivarA updateEnabledState];
+[ivarB selectFirstProfileIfNecessary];
+NSWindow *w = [self window];
+BOOL visible = [w isVisible];
+if (visible) return;          // <- the bail
+[self showWindow:self];       // tail call, the only thing that shows the window
+```
+
+(Selectors resolved from the selrefs: `activateIgnoringOtherApps:`, `updateEnabledState`,
+`selectFirstProfileIfNecessary`, `window`, `isVisible`, `showWindow:`.)
+
+Measured, in one run each:
+
+- `PreferencePanel run` IS called.
+- `PreferencePanel showWindow:` is armed and **never fires**. So `run` takes the bail.
+- Therefore `isVisible` answered TRUE at that instant.
+
+### The contradiction that is still open
+
+A separate spy on `iTermPrefsPanel.isVisible` shows **0** for the real panel instance, which is the
+correct answer for a window nobody has ordered front. But in the correlated run the last
+`isVisible` before `run` returns is on the **iTermWindow**, the terminal, answering **1**.
+
+And `PreferencePanel.window` was separately measured returning a real `iTermPrefsPanel`, six times,
+never nil.
+
+So either `[self window]` inside `run` hands back the TERMINAL rather than the panel, or the
+`isVisible` send lands on a different receiver than the one `window` returned. Those are different
+defects and the next step is to separate them: spy `PreferencePanel.window` and
+`iTermPrefsPanel.isVisible` TOGETHER and read the receiver pointers, which must match if the code
+is doing what it looks like.
+
+### Two instrument traps met here, both worth keeping
+
+- `CIDER_SPY` on `Subclass.method` resolves through to the INHERITED implementation when the
+  subclass does not override it. So `iTermPrefsPanel.makeKeyAndOrderFront:` swizzles `NSWindow` and
+  fires for every window, and `PreferencePanel.showWindow:` swizzles `NSWindowController` and fires
+  for every controller. That cuts both ways: a silent spy is only meaningful once you know the
+  swizzle is firing for SOMETHING in the same run.
+- The spy prints on RETURN, so a call made inside a method appears BEFORE that method's own line.
+  Reading the order without knowing that inverts the nesting.
