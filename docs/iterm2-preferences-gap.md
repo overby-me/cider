@@ -221,3 +221,42 @@ to fix; the trio is only what exposes it.
 - The event pump log is a liveness signal in itself: `nextevent calls=` stops at t=53.96, about
   three seconds after the keystroke, while the drive runs twenty seconds longer. A pump that stops
   is a process that stopped.
+
+## The crash, as far as it is pinned down
+
+Reproduced and preserved once more, with the container log saved before anything truncated it. The
+`gregs` block is the full Linux `gregset_t`, 23 entries, so the mapping is not guesswork:
+
+| reg | value | |
+|-----|-------|---|
+| RIP | `0x7C2A0647DF10` | equals **R11**, so this is an indirect call through a register |
+| RDI | `0x0` | first argument NULL |
+| RSI | `0x0` | second argument NULL |
+| RSP | `0x7FFFFFDFBF58` | |
+| ERR | `0x7` | present + write + user: a WRITE to a page that is not writable |
+| TRAPNO | `0xE` | page fault |
+| CR2 | `0x7C2A006566C0` | faulting address, adjacent to RCX `...656700` and RDX `...656820` |
+
+Two things follow without further measurement:
+
+- **RIP is in the dylib region, not the application.** An app binary loads around `0x1_0000_0000`
+  here; `0x7C2A...` is where our frameworks land. So the faulting code is OURS.
+- **RDI and RSI are both zero.** For an `objc_msgSend` those are the receiver and the selector, so
+  either this is not a message send, or it is one made with nothing.
+
+### Cleared, so the next attempt does not redo it
+
+- The three `localized*String` methods are CORRECT. `tests/foundation/probe_localized_case.m` runs
+  all three `WithLocale:` conversions against a real `__NSCFLocale` and passes 5 of 5 with no
+  crash. They only let the decode reach whatever faults.
+- `-[NSString lowercaseStringWithLocale:]` does not mutate its receiver: it copies into a
+  `CFMutableString` first. A write into a constant string was the obvious reading of ERR 0x7 and it
+  is wrong.
+
+### What is missing to go further
+
+Symbolication. There is no guest core (`prefix/cores` is empty; the cores under
+`/var/lib/systemd/coredump` are unrelated portal crashes) and the container log carries no image
+load map, so `RIP` cannot yet be turned into a framework and a symbol. Getting either a core or a
+load map out of a guest SIGSEGV is the next step, and it unblocks this immediately: the register
+dump already says which instruction shape to look for, an indirect call whose target came from R11.
