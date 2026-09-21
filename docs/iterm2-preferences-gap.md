@@ -166,3 +166,58 @@ commit in that window with no buffer is plausible and would unmap it exactly thi
 reads exactly like an empty compositor tree and nearly cost a wrong conclusion. The binary sits
 beside the running sway in its nix store bin directory; take the socket from
 `/run/user/1000/sway-ipc.1000.<pid>.sock`, newest first, while a drive is still running.
+
+## CORRECTION: the application CRASHES. It is not alive, and the screen is not the defect
+
+Two claims made earlier in this document are WRONG and are withdrawn here.
+
+**Wrong: "The application is ALIVE and DRAWING."** It paints once and then dies. The app log ends
+immediately after the last window is created, and `cider-app exit=0` follows. That exit code means
+nothing: `cider shell` does not propagate the guest signal, so a SIGSEGV and a clean exit report
+the same 0, which is why this looked survivable for several rounds.
+
+**Wrong: framing this as a blank screen at all.** The container log has it:
+
+```
+[guest kprintf] sigexc: emulating default signal effects
+[guest kprintf] sigexc: handler (11) returning
+CIDER_PROCKQ target died, nsid=17 host pid=731833
+```
+
+Signal **11, SIGSEGV**. The workspace is empty because the CLIENT IS DEAD and the compositor
+dropped its surfaces. Nothing unmapped anything; there was nothing left to unmap.
+
+### The fault
+
+From the `sigexc` register dump, reading the tail of the x86_64 `gregs` block:
+
+```
+TRAPNO   0xE                 page fault
+ERR      0x7                 present + write + user, so a WRITE to a protected page
+CR2      0x7B4854D576C0      faulting address
+RIP      0x7B485AB56F10
+RSP      0x7FFFFFDFBF38
+```
+
+It fires right after the last two windows are created, which is the point the nib decode reaches
+once the three missing selectors are supplied.
+
+### What this means for the three fixes
+
+The two that landed, patches 0085 and 0086, are still right: they remove selectors our own code
+sends and never implemented. The third, the `localized*String` trio, stays out, but the reason is
+now sharper than "a blank screen is worse". Supplying it walks the application into a SEGV that was
+always there and was simply unreachable while the decode stopped earlier. The crash is the defect
+to fix; the trio is only what exposes it.
+
+### Instruments that misled, and the rule each one breaks
+
+- `cider-app exit=0` is not evidence of a clean exit. The harness says so in its own comment.
+  Read the container `ciderd.log` for the fault, and remember it APPENDS across runs, so take the
+  LAST occurrence.
+- `display_failed()` only ever ran from `roundtrip()`, so a dead connection was invisible to a
+  client that stopped asking. A periodic check now runs from the event pump. In this run it proved
+  the connection was ALIVE, which is what pointed at the process instead.
+- The event pump log is a liveness signal in itself: `nextevent calls=` stops at t=53.96, about
+  three seconds after the keystroke, while the drive runs twenty seconds longer. A pump that stops
+  is a process that stopped.
