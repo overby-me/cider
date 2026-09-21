@@ -456,3 +456,35 @@ So `run` takes the early return, `isVisible` answered true to it, and the panel 
 elsewhere in the same run return exactly that. Establish WHEN those six happen relative to `run`:
 the spy prints on return, so a call inside `run` prints before `run` own line, and none of the six
 sit there.
+
+### The ordering says `run` never called `window`, which cannot be right
+
+Timing the two spies against each other in one run, by line number:
+
+```
+PreferencePanel run returns      line 16295
+PreferencePanel window calls     lines 16637 16689 16690 16697 16698 16699
+window calls occurring INSIDE run (before its own line): 0
+```
+
+The spy prints on return, so any call made inside `run` prints before `run` own line. None do.
+
+That contradicts two things that are not in doubt. The disassembly calls `[self window]` TWICE,
+unconditionally, before it reaches `isVisible`. And the creator backtrace for the Preferences
+window has `-[PreferencePanel window]` and `-[PreferencePanel run]` on the stack together, which is
+how the window gets built in the first place.
+
+So in the instrumented run, `run` did not do what `run` does. The most likely explanation is now
+THE SPY ITSELF: swizzling a void-returning method and forwarding it may not be invoking the
+original, in which case spying `PreferencePanel.run` silently turns it into a no-op and every
+conclusion drawn from a run that spied it is about the spy, not the application.
+
+THE EXPERIMENT THAT SEPARATES THEM, and it must come before anything else here:
+
+1. Spy ONLY `PreferencePanel.window`, never `run`, and drive the keystroke. If `window` now fires
+   during the keystroke, `run` is executing normally and spying it was the distortion.
+2. Then spy only `PreferencePanel.showWindow:` the same way.
+
+Until that is done, treat every conclusion in this section as provisional. The findings ABOVE this
+section do not depend on spying `run`: the crash, the TIS fixes, the window identification from
+`CIDER_WAYLAND_TRACE_CREATOR`, and the fact that only window 7 is ever mapped all stand.
