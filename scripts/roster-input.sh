@@ -93,7 +93,14 @@ while IFS='|' read -r tag prefix app launchd clicks keys proves; do
 	# types or both. Naming it beats guessing at d2 or d3.
 	last=$(ls -1 "$SHOTS/$name"/d*.png 2>/dev/null | tail -1)
 	if [ -n "$last" ]; then
-		echo "$tag: $last   $(grep -m1 'DRIVE launchd' "$SHOTS/$name.drive.log" | sed 's/DRIVE //')   EXPECT: $proves   LOOK AT IT"
+		# A BYTE COUNT CANNOT SEE A BLACK CAPTURE. One seven application pass came back black for
+		# four of them while their own logs showed the applications alive and doing the work, and
+		# only a by-hand re-run of every case kept that from reading as a regression (#256).
+		# UNCHECKED counts as a failure on purpose: a checker that cannot run is not a pass.
+		verdict=$(python3 scripts/checks/capture-is-black.py "$last" 2>/dev/null | cut -d' ' -f1)
+		[ -n "$verdict" ] || verdict=UNCHECKED
+		[ "$verdict" = CONTENT ] || rc=1
+		echo "$tag: $verdict $last   $(grep -m1 'DRIVE launchd' "$SHOTS/$name.drive.log" | sed 's/DRIVE //')   EXPECT: $proves   LOOK AT IT"
 	else
 		echo "$tag: NO CAPTURE, see $SHOTS/$name.drive.log"
 		rc=1

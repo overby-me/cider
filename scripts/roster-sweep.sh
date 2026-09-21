@@ -80,7 +80,13 @@ while IFS='|' read -r tag prefix app launchd resize extra; do
 		>"$SHOTS/sweep-$tag.drive.log" 2>&1 || rc=1
 	shot="$SHOTS/sweep-$tag/d1-start.png"
 	if [ -f "$shot" ]; then
-		echo "$tag: $(stat -c %s "$shot") bytes  $shot   LOOK AT IT"
+		# THE BYTE COUNT ABOVE CANNOT SEE A BLACK CAPTURE, which is what this line used to offer
+		# on its own; an empty iA Writer capture is 2578 bytes and so is a black one (#256).
+		# UNCHECKED counts as a failure on purpose: a checker that cannot run is not a pass.
+		verdict=$(python3 scripts/checks/capture-is-black.py "$shot" 2>/dev/null | cut -d' ' -f1)
+		[ -n "$verdict" ] || verdict=UNCHECKED
+		[ "$verdict" = CONTENT ] || rc=1
+		echo "$tag: $verdict $(stat -c %s "$shot") bytes  $shot   LOOK AT IT"
 	else
 		echo "$tag: NO CAPTURE, see $SHOTS/sweep-$tag.drive.log"
 		rc=1
