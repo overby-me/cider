@@ -488,3 +488,44 @@ THE EXPERIMENT THAT SEPARATES THEM, and it must come before anything else here:
 Until that is done, treat every conclusion in this section as provisional. The findings ABOVE this
 section do not depend on spying `run`: the crash, the TIS fixes, the window identification from
 `CIDER_WAYLAND_TRACE_CREATOR`, and the fact that only window 7 is ever mapped all stand.
+
+### CORRECTION: spying `run` does not make it a no-op
+
+The section above suspected that spying a void-returning method stops the original from running.
+That is WRONG and the check is one line: the `iTermPrefsPanel` surface is created in every run,
+whether `run` was spied or not.
+
+```
+it-pair      run spied      iTermPrefsPanel created
+it-corr      run spied      iTermPrefsPanel created
+it-nospyrun  run NOT spied  iTermPrefsPanel created
+it-show      run NOT spied  iTermPrefsPanel created
+```
+
+The panel is built by `[self window]` inside `run`, so `run` ran in all four.
+
+And with `run` unspied, the ordering is exactly what the disassembly predicts. The six
+`PreferencePanel.window` calls BRACKET the panel creation:
+
+```
+window calls   471  523  524      530  531  532
+iTermPrefsPanel role line 525, create line 529
+```
+
+Three before the surface exists and three after, which is what two `[self window]` sends around a
+lazy window load look like.
+
+### So the account stands, minus the ordering anomaly
+
+- `run` executes and calls `[self window]`, which builds the panel.
+- `showWindow:` is never called by anyone, measured in runs that did NOT spy `run`.
+- `run` has exactly two exits, verified in the disassembly down to the `objc_msgSend` tail call.
+- Therefore `run` takes the early return and `isVisible` answered true to it.
+
+What is still unexplained is narrow: in the two runs that spied `run`, its six `window` calls print
+AFTER `run` own line instead of before it. That does not change any conclusion above, since the
+panel is created either way, but it means the interleaving of the spy output in those two runs
+cannot be used for ordering. Use a run that spies one method only.
+
+The next question is unchanged and is now the only one: which object does `isVisible` land on
+inside `run`, given the panel itself answers 0.
