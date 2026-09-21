@@ -768,3 +768,39 @@ and stop pretending the wait succeeded. But FIRST establish WHEN the hangup happ
 predates the keystroke, because the idle control also spins, at 81,000 pump iterations rather than
 1,064,200. If the fd is already hung up before Command comma, the keystroke is not the trigger and
 this defect is much wider than Preferences.
+
+### The hangup PREDATES the keystroke, and the connection is not actually dead
+
+The check the section above demanded, run before touching anything:
+
+```
+with Command comma  pollret ready=64000 timeout=4679 err=0 revents=0x11
+IDLE, no keystroke  pollret ready=78000 timeout=4346 err=0 revents=0x11
+```
+
+Identical. POLLHUP is set with no keystroke at all, so Command comma is NOT the trigger and this is
+not a Preferences defect. Every iTerm2 run spins on a descriptor that claims to be hung up.
+
+**And the connection is demonstrably alive.** `roster-input` drives iTerm2 and the typed command
+appears at the prompt, which it cannot do unless keyboard events are arriving over that same
+Wayland connection. A client whose peer has closed receives nothing.
+
+So POLLHUP is being reported on a working connection. `POLLIN | POLLHUP` together, with data still
+flowing, is the shape of a `poll` whose revents are not trustworthy, and this is an EMULATED
+syscall: it goes through the guest libsystem_kernel rather than the host kernel directly.
+
+### What this now costs, beyond Preferences
+
+Every event wait ends immediately instead of after 16 ms, in every application on the roster, so
+the whole port burns CPU waiting. The idle iTerm2 control reaches 81,000 pump iterations where the
+design intends roughly 60 per second. Nothing renders wrongly because POLLIN is set too and the
+data really is there, which is exactly why this has never shown up as a visible defect.
+
+### Next, in order
+
+1. Check the guest `poll` emulation for how it fills `revents`, and whether POLLHUP can be set
+   spuriously for a socket that merely has data. That is one file and it decides everything below.
+2. If it is spurious, the poll here should stop trusting POLLHUP alone; if it is real, find what
+   half-closes the socket during startup.
+3. Either way, measure the CPU cost before and after against the idle control, since the point of
+   the 16 ms cap was to bound exactly this.
