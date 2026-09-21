@@ -529,3 +529,31 @@ cannot be used for ordering. Use a run that spies one method only.
 
 The next question is unchanged and is now the only one: which object does `isVisible` land on
 inside `run`, given the panel itself answers 0.
+
+### The panel answers 0, measured cleanly
+
+With `iTermPrefsPanel.isVisible` as the ONLY spy, so the ordering is trustworthy, and looking only
+at calls after the panel surface exists:
+
+```
+(iTermWindow)      isVisible -> 1
+(NSWindow)         isVisible -> 0
+(NSPanel)          isVisible -> 0
+(iTermPrefsPanel)  isVisible -> 0      <- the panel itself
+```
+
+The panel says 0, which is correct for a window nobody has ordered front, and by the disassembly
+that should send `run` to `showWindow:`.
+
+So the thread ends this session on one question, with everything around it measured:
+
+**Either `[self window]` inside `run` hands back the iTermWindow rather than the panel, in which
+case `isVisible` correctly answers 1 and `run` correctly bails; or `showWindow:` IS being called
+and the spy is not catching it.** Both are testable and neither needs new instruments:
+
+1. For the first: `CIDER_TRACE_UNRECOGNIZED` style backtracing is not needed, a `CIDER_SPY` on
+   `PreferencePanel.window` alone already prints the RETURNED pointer. Compare it against the
+   `iTermPrefsPanel` pointer that `isVisible` reports, in a run that spies one of them at a time
+   and uses the panel creation line as the shared marker.
+2. For the second: prove the `showWindow:` swizzle can speak by spying it against an application
+   that definitely calls it, before reading its silence here again.
