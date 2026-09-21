@@ -414,3 +414,22 @@ is doing what it looks like.
   swizzle is firing for SOMETHING in the same run.
 - The spy prints on RETURN, so a call made inside a method appears BEFORE that method's own line.
   Reading the order without knowing that inverts the nesting.
+
+### The disassembly is verified, so the contradiction is real
+
+The tail call was read from a block that ended at the register pops, which left the jump target
+assumed rather than seen. It is now checked: `0x100327391` is `jmpq *0x100cc0e60`, the same pointer
+the function loads into `%r15` for its earlier `callq *%r15`, which is `objc_msgSend`. With
+`%rsi = showWindow:`, `%rdi = self` and `%rdx = self`, the tail call is exactly
+`[self showWindow:self]`.
+
+So `run` has two exits and only two, and `showWindow:` never firing means it took the other one.
+The panel measuring `isVisible` 0 in the same runs is not yet reconciled with that, and one of the
+two measurements is lying. Candidates, cheapest first:
+
+1. The `PreferencePanel.showWindow:` spy may not intercept. If that class does not override
+   `showWindow:`, the swizzle lands on `NSWindowController` and should fire for every controller in
+   the process. It fired for NONE, which is itself suspicious: prove that swizzle can speak by
+   spying a controller that certainly shows a window, before trusting its silence here.
+2. `[self window]` inside `run` and the six `PreferencePanel.window` calls the spy sees may not be
+   the same sends; compare receiver AND returned pointer at the instant `run` is on the stack.
