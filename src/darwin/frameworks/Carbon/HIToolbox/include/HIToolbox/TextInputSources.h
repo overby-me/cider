@@ -13,6 +13,9 @@ extern const CFStringRef kTISPropertyUnicodeKeyLayoutData;
 extern const CFStringRef kTISCategoryKeyboardInputSource;
 extern const CFStringRef kTISPropertyInputSourceCategory;
 extern const CFStringRef kTISPropertyInputSourceType;
+/* Defined in constants.c and used when a source is built. */
+extern const CFStringRef kTISPropertyInputSourceIsASCIICapable;
+extern const CFStringRef kTISPropertyInputSourceIsFromSystem;
 extern const CFStringRef kTISTypeKeyboardLayout;
 extern const CFStringRef kTISPropertyInputSourceLanguages;
 extern const CFStringRef kTISPropertyLocalizedName;
@@ -24,6 +27,7 @@ extern TISInputSourceRef TISCopyCurrentKeyboardInputSource(void);
 
 extern void* TISGetInputSourceProperty(TISInputSourceRef inputSourceRef, CFStringRef key);
 
+extern CFArrayRef TISCreateInputSourceList(CFDictionaryRef properties, Boolean includeAllInstalled);
 extern TISInputSourceRef TISCopyInputMethodKeyboardLayoutOverride(void);
 TISInputSourceRef TISCopyCurrentASCIICapableKeyboardLayoutInputSource(void);
 

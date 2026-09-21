@@ -88,7 +88,6 @@ CIDER_COMPAT_SYMBOL(60, "_LSCanURLAcceptURL");
 CIDER_COMPAT_SYMBOL(62, "_LSSetDefaultRoleHandlerForContentType");
 CIDER_COMPAT_SYMBOL(63, "_NSAccessibilityRoleDescriptionForUIElement");
 CIDER_COMPAT_SYMBOL(64, "_SecTrustCopyCertificateChain");
-CIDER_COMPAT_SYMBOL(65, "_TISCreateInputSourceList");
 CIDER_COMPAT_SYMBOL(66, "_TISSelectInputSource");
 CIDER_COMPAT_SYMBOL(67, "__swift_FORCE_LOAD_$_swiftCoreMIDI");
 CIDER_COMPAT_SYMBOL(68, "__swift_FORCE_LOAD_$_swiftOSLog");
