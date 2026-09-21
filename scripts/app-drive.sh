@@ -268,12 +268,22 @@ send_keys_spec() {
 		# Raw wtype arguments, for a shortcut: "raw:-M logo n -m logo" is Command and N, since the
 		# backend maps Mod4 to NSCommandKeyMask. A menu item several clicks deep is not reachable
 		# any other way from here.
-		raw:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 ${1#raw:} >>"$SHOTS/driver.log" 2>&1 ;;
+		# COMMAS BECOME SPACES, because STEPS splits on whitespace so a raw sequence cannot contain
+		# one. The comment above the sequencer has promised this since the verb was added and the
+		# code never did it: "raw:-M,logo,comma,-m,logo" reached wtype as ONE argument, wtype
+		# rejected it, no virtual keyboard was ever created, and the run looked exactly like an
+		# application ignoring a shortcut. A harness that cannot express the interaction
+		# manufactures defects.
+		raw:*) rawargs=$(printf '%s' "${1#raw:}" | tr ',' ' ')
+		       WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 $rawargs >>"$SHOTS/driver.log" 2>&1 \
+		           || say "WTYPE FAILED on raw sequence [$rawargs]: no keys were sent" ;;
 		# key:<name> sends a named key rather than text. Proving the keyboard works needs something
 		# whose effect is VISIBLE, and in an application whose text fields are several clicks deep
 		# the cheapest such thing is Return on a selection.
-		key:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -k "${1#key:}" >>"$SHOTS/driver.log" 2>&1 ;;
-		*)     WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -d 120 "$1" >>"$SHOTS/driver.log" 2>&1 ;;
+		key:*) WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -k "${1#key:}" >>"$SHOTS/driver.log" 2>&1 \
+		           || say "WTYPE FAILED on key [${1#key:}]: no keys were sent" ;;
+		*)     WAYLAND_DISPLAY=$NEW "$WTYPE" -s 1500 -d 120 "$1" >>"$SHOTS/driver.log" 2>&1 \
+		           || say "WTYPE FAILED on text [$1]: no keys were sent" ;;
 	esac
 }
 
