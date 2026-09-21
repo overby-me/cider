@@ -928,7 +928,20 @@ fn create_surface(st: &mut WindowState) -> bool {
                     0,
                 ),
             };
-        let transient = st.level > 0 || st.style_mask == 0;
+        /*
+         * AND A WINDOW WITH CHROME IS NOT TRANSIENT, whatever its level.
+         *
+         * Level alone said otherwise and that cost iTerm2 its Preferences. That window is an
+         * NSPanel at level 1, 940x396, style 0x5f: titled, closable, miniaturizable and resizable.
+         * The level rule made it an xdg_popup, popups here are never mapped, and the window simply
+         * never appeared. A menu, a tooltip and a combo box list carry NO chrome bits at all, so
+         * asking for chrome separates them from a floating utility window without touching the
+         * two signals above. See docs/iterm2-preferences-gap.md.
+         */
+        const CHROME: u64 = 0x1 /* titled */ | 0x2 /* closable */ | 0x4 /* miniaturizable */
+            | 0x8 /* resizable */;
+        let chromeless = (st.style_mask as u64) & CHROME == 0;
+        let transient = chromeless && (st.level > 0 || st.style_mask == 0);
         let wants_popup = transient && !parent_xdg.is_null() && parent_xdg != st.xdg;
         if wants_popup {
             let base = session::wm_base();
