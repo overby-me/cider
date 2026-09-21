@@ -666,3 +666,29 @@ it drains. If the early returns dominate, this is the mechanism.
 If it is confirmed, note that the guard is not the defect and must not simply be removed: the
 reader count really does break. The fix is for a nested pump to leave the queue in a state the
 outer one will drain, or for the poll to stop treating an undrained fd as work.
+
+### REFUTED: it is not pump re-entry
+
+The hypothesis above is wrong, and settling it needed no rebuild because the counter already exists
+and is unconditional: `session::pump` prints `pump=reentered count=N skipped=yes` on the first
+three re-entries and every five hundredth after.
+
+```
+it-spin       pump=reentered lines: 0
+it-nospyrun   pump=reentered lines: 0
+it-nokey      pump=reentered lines: 0
+it-final      pump=reentered lines: 0
+no capture in the tree contains that string at all
+```
+
+A zero from an instrument that has never been seen to fire is not evidence, so the string was
+checked in the built backend rather than trusted: `pump=reentered` is present in
+`Wayland.backend/Contents/MacOS/Wayland`, alongside `wait=none`, whose sibling branch printed 85
+lines in the same run. The code is there and the branch simply does not execute.
+
+So the queue is not being left undrained by a nested pump, because there is no nested pump. The
+spin has another cause and the search should start from the poll returning early rather than from
+AppKit.
+
+What remains true and measured: the poll asks for 16 ms and takes about 0.28 ms, it watches only
+the Wayland display fd, and the event rate is 13 to 34 times idle from the keystroke onward.
