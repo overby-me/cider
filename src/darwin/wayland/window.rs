@@ -616,6 +616,15 @@ pub fn deliver_pending_configures() {
                     objc::msg_send_rect_ret(st.delegate, objc::sel_registerName(cstr!("frame")));
                 let aw = actual.size.width as i32;
                 let ah = actual.size.height as i32;
+                /* WHAT THE WINDOW SAYS IT IS, against what we just gave it. A frame that reads back
+                 * as the PREVIOUS size is indistinguishable here from one clamped to a minimum, and
+                 * both grow the bitmap, so print the pair rather than infer it from insist. */
+                if crate::env_flag!("CIDER_WAYLAND_TRACE_GEOMETRY") {
+                    println!(
+                        "cider-wayland-frameback number={} gave={}x{} frame={}x{} insist={}x{}",
+                        st.number, width, height, aw, ah, st.insist_w, st.insist_h
+                    );
+                }
                 if aw > width || ah > height {
                     st.insist_w = aw.max(width);
                     st.insist_h = ah.max(height);

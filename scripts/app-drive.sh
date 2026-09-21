@@ -265,9 +265,16 @@ press_at() {
 # application to attach, and -d spaces the keys so none is lost to the same race.
 send_keys_spec() {
 	case "$1" in
-		# Raw wtype arguments, for a shortcut: "raw:-M logo n -m logo" is Command and N, since the
+		# Raw wtype arguments, for a shortcut: "raw:-M,logo,n,-m,logo" is Command and N, since the
 		# backend maps Mod4 to NSCommandKeyMask. A menu item several clicks deep is not reachable
 		# any other way from here.
+		#
+		# A NAMED KEY NEEDS -k, AND A BARE WORD IS TYPED AS TEXT. "raw:-M,logo,comma,-m,logo" does
+		# NOT send Command and comma: wtype types the five letters c, o, m, m, a with Command held,
+		# so the application receives Command C, Command O, Command M, Command M and Command A.
+		# Command M minimised the window, which then stopped updating its frame on every later
+		# resize, and I filed that as a two window resize defect before finding the cause was my own
+		# shortcut. The correct form is "raw:-M,logo,-k,comma,-m,logo". A single letter is fine bare.
 		# COMMAS BECOME SPACES, because STEPS splits on whitespace so a raw sequence cannot contain
 		# one. The comment above the sequencer has promised this since the verb was added and the
 		# code never did it: "raw:-M,logo,comma,-m,logo" reached wtype as ONE argument, wtype

@@ -1,0 +1,56 @@
+Name who asked a window to miniaturize.
+
+A window that believes it is miniaturized never updates its frame again:
+-platformWindow:frameChanged:didSize: skips the assignment for a miniaturized window, so every
+later resize reads back the old size, the backing bitmap is grown to hold a window that is no
+longer that big, and the compositor is shown the wrong rows of it. From outside that looks exactly
+like a resize defect.
+
+It reached that state with the window MAIN, KEY and VISIBLE, and as its own sender, so the caller
+was the whole question and no state dump could answer it. The backtrace named it in one run:
+
+    CIDER_MINI miniaturize: window=0x7087febf1a00 sender=iTermWindow
+    CIDER_MINI   AppKit    -[NSApplication sendAction:to:from:]
+    CIDER_MINI   AppKit    -[NSMenu performKeyEquivalent:]
+    CIDER_MINI   iTerm2    -[PTYTextView performKeyEquivalent:]
+
+which is the Minimize item matching a Command M that the harness sent by accident. So the trace
+earned its place by exonerating the port rather than by finding a defect in it, and it stays
+because the next window that miniaturizes itself will raise the same question.
+
+Gated on CIDER_TRACE_MINIATURIZE, and miniaturize: is rare enough that a getenv per call costs
+nothing.
+
+Task #252.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -3735,6 +3735,28 @@
+ }
+ 
+ - (void) miniaturize: (id) sender {
++    /* WHO ASKED. A window that believes it is miniaturized never updates its frame again, because
++     * -platformWindow:frameChanged:didSize: skips the assignment for a miniaturized window, and
++     * that leaves every later resize stale. iTerm2 reaches this with the window as its own sender
++     * while it is main, key and visible, so the caller is the whole question. Task #252. */
++    if (getenv("CIDER_TRACE_MINIATURIZE") != NULL) {
++        void *frames[24];
++        int count = backtrace(frames, 24);
++
++        fprintf(stderr, "CIDER_MINI miniaturize: window=%p sender=%s\n", self,
++                sender != nil ? object_getClassName(sender) : "(nil)");
++        for (int i = 1; i < count; i++) {
++            Dl_info info;
++
++            if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL) {
++                const char *image = info.dli_fname ? strrchr(info.dli_fname, '/') : NULL;
++
++                fprintf(stderr, "CIDER_MINI   %-26s %s\n", image ? image + 1 : "?",
++                        info.dli_sname);
++            }
++        }
++        fflush(stderr);
++    }
+     [[self cider_platformWindow] miniaturize];
+ }
+ 
