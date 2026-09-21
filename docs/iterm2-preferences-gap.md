@@ -826,3 +826,29 @@ Test it directly, and it is cheap: log the fd number that `cider_wl_display_get_
 time alongside `revents`, and compare it against the guest process fd table, which
 `read-the-guest-fd-table-from-inside` describes how to read. If the number moves, or if it names
 something that is not a socket to the compositor, that is the defect.
+
+### The fd is the Wayland socket, not a stray descriptor
+
+The poll prints its descriptor now, and it is fd 23 in every sample. Startup prints
+`waker=started fd=23`, which looked at first like a collision with a waker pipe. IT IS NOT, and the
+waker source says so: it takes `wl_display_get_fd(display())`, the same Wayland socket the main
+poll uses, deliberately, because waking when that socket is readable is the entire point of that
+thread. So there is no fd reuse and no stray descriptor. Both pollers are on the real connection.
+
+That makes the measurement stranger, not simpler, and it is worth stating plainly rather than
+resolving by assertion:
+
+- fd 23 is the Wayland display socket.
+- `poll` on it returns `POLLIN | POLLHUP` essentially every time, 74,000 ready against 4,198
+  timeouts in one idle run.
+- Yet the connection carries input: `roster-input` types into iTerm2 and the command appears.
+
+The waker comment names the POLLIN half exactly: *the socket stays readable until the main thread
+reads it*, and that thread throttles itself with a 4 ms poll for precisely that reason. The main
+event wait has no such throttle, so whenever data is pending and unread it spins at full speed.
+That accounts for the spin without needing POLLHUP at all.
+
+POLLHUP on a socket whose peer is alive is the remaining oddity and it may be a red herring for the
+spin even though it is real. Separate the two: the spin is explained by unread POLLIN data, and the
+fix for it is that the event wait must either read or not treat pending-and-unread as a reason to
+return immediately, exactly as the waker already does.

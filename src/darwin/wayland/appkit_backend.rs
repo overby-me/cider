@@ -394,9 +394,9 @@ fn wait_for_something(until: Object) {
         let n = slot.fetch_add(1, Ordering::Relaxed) + 1;
         if n % 2000 == 0 {
             println!(
-                "cider-wayland-appkit pollret ready={} timeout={} err={} last_rc={} revents={:#x}",
+                "cider-wayland-appkit pollret ready={} timeout={} err={} last_rc={} revents={:#x} fd={}",
                 READY.load(Ordering::Relaxed), TIMEOUT.load(Ordering::Relaxed),
-                INTR.load(Ordering::Relaxed), rc, fds.revents
+                INTR.load(Ordering::Relaxed), rc, fds.revents, fd
             );
         }
     }
