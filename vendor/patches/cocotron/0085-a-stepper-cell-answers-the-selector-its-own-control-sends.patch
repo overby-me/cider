@@ -1,0 +1,85 @@
+A stepper cell answers the selector its own control sends.
+
+NSStepper.m declares a private category on NSStepperCell,
+
+    - (NSImage *) _stepUpImage;
+    - (NSImage *) _stepDownImage;
+
+and -[NSStepper sizeToFit] sends both. NSStepperCell implements NEITHER, and it never could:
+it draws both arrows procedurally through NSGraphicsStyleForView drawStepperButtonInRect: and owns
+no images at all. So our own code sends a method we never wrote, and any application that lays out
+a stepper takes an unrecognized selector.
+
+THAT IS NOT A CRASH, WHICH IS WHY IT SURVIVED. The raise is caught by whatever is building the UI,
+so the application simply stops partway and the log shows nothing but one line. iTerm2 raises it
+while decoding its Preferences nib and gets NO PREFERENCES WINDOW AT ALL, the same shape as #254
+where one caught selector cost MoneyMoney the same window.
+
+The cell now answers nil for both, because nil is the truth: there are no images. sizeToFit treats
+nil as nothing to measure and leaves the control at the size it has, rather than computing from a
+zero size, which would have set the width to 12 points. No invented metrics.
+
+MEASURED, driving Command comma on iTerm2 3.5.14 with launchd on:
+  before   UNRECOGNIZED -[NSStepperCell _stepUpImage], no Preferences
+  after    that raise is gone and the decode reaches the NEXT missing thing,
+           +[NSFontCollection fontCollectionWithAllAvailableDescriptors]
+  2 of 2 runs render CONTENT, so nothing regressed on screen.
+
+PREFERENCES STILL DOES NOT OPEN. This is one link of a chain and the task records the rest,
+including the important part: implementing all three known links together makes the whole display
+go black, 3 of 3, against a control of 3 of 3 clean without the keystroke. That is why only this
+one lands. #257 carries the evidence and the bisect.
+
+Gates: darling-testsuite 69 of 69, buck-bundled-patch-record-check 85 cocotron patches with 0 files
+differing, roster-sweep 7 of 7 CONTENT, roster-input 7 of 7 CONTENT.
+
+Task #257.
+
+--- a/AppKit/NSStepper.m
++++ b/AppKit/NSStepper.m
+@@ -73,10 +73,20 @@
+ }
+ 
+ - (void) sizeToFit {
++    NSImage *up = [_cell _stepUpImage];
++    NSImage *down = [_cell _stepDownImage];
+     NSSize size = _bounds.size;
+-    NSSize size1 = [[_cell _stepUpImage] size];
+-    NSSize size2 = [[_cell _stepDownImage] size];
++    NSSize size1, size2;
+ 
++    /* NOTHING TO MEASURE IS NOT A REASON TO RESIZE TO NOTHING. The cell draws its arrows through
++     * the graphics style and owns no images, so these answer nil and computing from a zero size
++     * would shrink the control to 12 points wide. Task #257. */
++    if (up == nil && down == nil) {
++        return;
++    }
++
++    size1 = [up size];
++    size2 = [down size];
+     size.width = MAX(size1.width, size2.width);
+     size.width += 12;
+     size.height = size1.height + size.height;
+--- a/AppKit/NSStepperCell.m
++++ b/AppKit/NSStepperCell.m
+@@ -96,6 +96,20 @@
+     _valueWraps = flag;
+ }
+ 
++/*
++ * THE SELECTOR HAS TO EXIST EVEN WHEN THE ANSWER IS NOTHING. -[NSStepper sizeToFit] asks its cell
++ * for these and this cell draws both arrows through the graphics style rather than from images, so
++ * the pair was declared in NSStepper.m and implemented nowhere. Sending them raised, and a raise
++ * during a nib decode is caught and silently loses the rest of the window. Task #257.
++ */
++- (NSImage *) _stepUpImage {
++    return nil;
++}
++
++- (NSImage *) _stepDownImage {
++    return nil;
++}
++
+ - (NSRect) _upArrowFrameForFrame: (NSRect) frame {
+     int half = frame.size.height / 2;
+     if (![_controlView isFlipped])
