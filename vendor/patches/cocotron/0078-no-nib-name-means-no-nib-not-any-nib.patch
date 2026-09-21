@@ -1,0 +1,57 @@
+No nib name means no nib, not any nib.
+
+-[NSWindowController windowNibPath] asked the bundle for a nib WITHOUT CHECKING THAT IT HAD A NAME
+TO ASK FOR. pathForResource:nil ofType: is not a failed lookup on macOS, it is a request for the
+first resource of that type in the bundle, and it answers one. So a controller with no nib name
+did not decline to load a nib: it loaded whichever nib happened to come first, with itself as the
+File's Owner.
+
+MoneyMoney's PreferencesWindowController has no nib name, and Preferences never opened. Measured
+before, with CIDER_TRACE_CONTROL and a spy on the two accessors:
+
+    PreferencesWindowController windowNibName -> (nil)
+    PreferencesWindowController windowNibPath -> /Applications/MoneyMoney.app/Contents/Resources/TemplateGroupView.nib
+    CIDER_WC PreferencesWindowController loadNibFile enter
+    CIDER_WC PreferencesWindowController adopted window=0x0 controller=0x0
+
+and after:
+
+    PreferencesWindowController windowNibName -> (nil)
+    PreferencesWindowController windowNibPath -> (nil)
+    (no loadNibFile for that controller at all)
+
+MainWindowController is the control in both runs and is unaffected: it names MainWindow and still
+resolves it.
+
+A nib loaded against the wrong owner is a silent wrong answer of the shape this port keeps
+finding. It runs awakeFromNib on objects the controller never asked for and offers its outlets to
+connections meant for another owner, and nothing in it raises. This does not by itself open
+MoneyMoney's Preferences, which is blocked separately by a caught unrecognized selector, so the
+fix is recorded on its own terms rather than as the cure for that window.
+
+Task #254.
+
+--- a/AppKit/NSWindowController.m
++++ b/AppKit/NSWindowController.m
+@@ -408,8 +408,19 @@
+         return _nibPath;
+     else {
+         NSString *name = [self windowNibName];
+-        NSBundle *bundle = [NSBundle bundleForClass: [_owner class]];
+-        NSString *path = [bundle pathForResource: name ofType: @"nib"];
++        NSBundle *bundle;
++        NSString *path;
++
++        /* NO NAME MEANS NO NIB, NOT ANY NIB. pathForResource:nil answers the FIRST resource of
++         * that type in the bundle, so a controller with no nib name loaded an arbitrary one with
++         * itself as File's Owner: MoneyMoney's PreferencesWindowController loaded
++         * TemplateGroupView.nib, adopted no window from it, and lost its Preferences window to the
++         * connections that nib made instead. Task #254. */
++        if ([name length] == 0) {
++            return nil;
++        }
++        bundle = [NSBundle bundleForClass: [_owner class]];
++        path = [bundle pathForResource: name ofType: @"nib"];
+
+         if (path == nil)
+             path = [[NSBundle mainBundle] pathForResource: name ofType: @"nib"];
