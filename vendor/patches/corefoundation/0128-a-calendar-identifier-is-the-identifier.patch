@@ -1,0 +1,96 @@
+A calendar identifier is the identifier, not the name of the symbol.
+
+Every NSCalendarIdentifier constant held its own spelling: NSCalendarIdentifierGregorian was the
+string "NSCalendarIdentifierGregorian", not "gregorian". -[NSCalendar initWithCalendarIdentifier:]
+hands that to CFCalendarCreateWithIdentifier, which compares against the real CLDR identifiers and
+returns NULL for anything else, so the documented call returned nil. An application then read year,
+month and day FROM NIL and got ZERO for each, with no error, no exception and no log line. All
+sixteen were wrong.
+
+And +calendarWithIdentifier: did not exist, neither declared nor implemented, although it has been
+the documented way to get a calendar since 10.9. Calling it took doesNotRecognizeSelector: and an
+uncaught exception, which exits 0.
+
+MEASURED with tests/foundation/probe_date_formatting.m, before and after:
+    before   13 checks, 4 mismatched: year 0, month 0, day 0, and the control day 0
+    after    18 checks, 0 mismatched: 2001, 9, 9, and the control 10
+The probe separates NIL from ZERO on purpose, because a message to nil answers 0 and the two need
+different fixes. That is what turned "the calendar is wrong" into "the calendar is nil", and
+printing the constant next to the literal @"gregorian" named the rest in one run.
+
+ALREADY CORRECT AND RE-CONFIRMED: NSDateFormatter formats, parses and round trips; NSNumberFormatter
+handles decimals, fraction digits and negatives. The kCF constants hold the right CLDR values
+already; only the NS wrappers were placeholders.
+
+A LIMITATION LEFT IN PLACE AND NAMED RATHER THAN PAPERED OVER: CFCalendarCreateWithIdentifier
+accepts only gregorian, buddhist, japanese, islamic, islamic-civil and hebrew. The other ten
+constants are now CORRECT constants for a calendar this port cannot construct.
+
+Task #253.
+
+--- a/NSCalendar.m
++++ b/NSCalendar.m
+@@ -32,22 +32,33 @@
+ extern Boolean _CFCalendarDecomposeAbsoluteTimeV(CFCalendarRef calendar, CFAbsoluteTime at, const char *componentDesc, int **componentVector, int count);
+ extern Boolean _CFCalendarGetComponentDifferenceV(CFCalendarRef calendar, CFAbsoluteTime startingAT, CFAbsoluteTime resultAT, CFOptionFlags options, const char *componentDesc, int **vector, int count);
+ 
+-const NSCalendarIdentifier NSCalendarIdentifierGregorian = @"NSCalendarIdentifierGregorian";
+-const NSCalendarIdentifier NSCalendarIdentifierISO8601 = @"NSCalendarIdentifierISO8601";
+-const NSCalendarIdentifier NSCalendarIdentifierBuddhist = @"NSCalendarIdentifierBuddhist";
+-const NSCalendarIdentifier NSCalendarIdentifierChinese = @"NSCalendarIdentifierChinese";
+-const NSCalendarIdentifier NSCalendarIdentifierCoptic = @"NSCalendarIdentifierCoptic";
+-const NSCalendarIdentifier NSCalendarIdentifierEthiopicAmeteAlem = @"NSCalendarIdentifierEthiopicAmeteAlem";
+-const NSCalendarIdentifier NSCalendarIdentifierEthiopicAmeteMihret = @"NSCalendarIdentifierEthiopicAmeteMihret";
+-const NSCalendarIdentifier NSCalendarIdentifierHebrew = @"NSCalendarIdentifierHebrew";
+-const NSCalendarIdentifier NSCalendarIdentifierIndian = @"NSCalendarIdentifierIndian";
+-const NSCalendarIdentifier NSCalendarIdentifierIslamic = @"NSCalendarIdentifierIslamic";
+-const NSCalendarIdentifier NSCalendarIdentifierIslamicCivil = @"NSCalendarIdentifierIslamicCivil";
+-const NSCalendarIdentifier NSCalendarIdentifierIslamicTabular = @"NSCalendarIdentifierIslamicTabular";
+-const NSCalendarIdentifier NSCalendarIdentifierIslamicUmmAlQura = @"NSCalendarIdentifierIslamicUmmAlQura";
+-const NSCalendarIdentifier NSCalendarIdentifierJapanese = @"NSCalendarIdentifierJapanese";
+-const NSCalendarIdentifier NSCalendarIdentifierPersian = @"NSCalendarIdentifierPersian";
+-const NSCalendarIdentifier NSCalendarIdentifierRepublicOfChina = @"NSCalendarIdentifierRepublicOfChina";
++/* THE VALUE IS THE IDENTIFIER, NOT THE NAME OF THE SYMBOL. These were every one of them a
++ * placeholder equal to its own spelling, so -[NSCalendar initWithCalendarIdentifier:] with the
++ * documented constant handed CFCalendarCreateWithIdentifier a string it has never heard of and got
++ * NULL back. An application then read year, month and day from nil and got ZERO for each, with no
++ * error anywhere. The literal @"gregorian" worked all along, which is how the placeholder was
++ * caught. These are the CLDR identifiers Apple documents and the ones the CF layer compares
++ * against. Task #253.
++ *
++ * ONLY SIX ARE CONSTRUCTIBLE HERE. CFCalendarCreateWithIdentifier accepts gregorian, buddhist,
++ * japanese, islamic, islamic-civil and hebrew and returns NULL for the rest, so the other ten are
++ * correct constants for an unsupported calendar rather than a promise that it works. */
++const NSCalendarIdentifier NSCalendarIdentifierGregorian = @"gregorian";
++const NSCalendarIdentifier NSCalendarIdentifierISO8601 = @"iso8601";
++const NSCalendarIdentifier NSCalendarIdentifierBuddhist = @"buddhist";
++const NSCalendarIdentifier NSCalendarIdentifierChinese = @"chinese";
++const NSCalendarIdentifier NSCalendarIdentifierCoptic = @"coptic";
++const NSCalendarIdentifier NSCalendarIdentifierEthiopicAmeteAlem = @"ethiopic-amete-alem";
++const NSCalendarIdentifier NSCalendarIdentifierEthiopicAmeteMihret = @"ethiopic";
++const NSCalendarIdentifier NSCalendarIdentifierHebrew = @"hebrew";
++const NSCalendarIdentifier NSCalendarIdentifierIndian = @"indian";
++const NSCalendarIdentifier NSCalendarIdentifierIslamic = @"islamic";
++const NSCalendarIdentifier NSCalendarIdentifierIslamicCivil = @"islamic-civil";
++const NSCalendarIdentifier NSCalendarIdentifierIslamicTabular = @"islamic-tbla";
++const NSCalendarIdentifier NSCalendarIdentifierIslamicUmmAlQura = @"islamic-umalqura";
++const NSCalendarIdentifier NSCalendarIdentifierJapanese = @"japanese";
++const NSCalendarIdentifier NSCalendarIdentifierPersian = @"persian";
++const NSCalendarIdentifier NSCalendarIdentifierRepublicOfChina = @"roc";
+ 
+ 
+ @implementation NSCalendar
+@@ -74,6 +85,13 @@
+     return [(NSCalendar *)CFCalendarCopyCurrent() autorelease];
+ }
+ 
++/* DECLARED SINCE 10.9 AND MISSING HERE, so an application that used the documented way to get a
++ * calendar took doesNotRecognizeSelector: and an uncaught exception instead. Task #253. */
+++ (id)calendarWithIdentifier:(NSCalendarIdentifier)ident
++{
++    return [[[self alloc] initWithCalendarIdentifier:ident] autorelease];
++}
++
+ - (CFTypeID)_cfTypeID
+ {
+     return CFCalendarGetTypeID();

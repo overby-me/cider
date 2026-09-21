@@ -304,3 +304,32 @@ darwin_binary(
     deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
     visibility = ["PUBLIC"],
 )
+
+
+# Does date and number formatting answer correctly? Nothing in the testsuite touches
+# NSDateFormatter, and three roster applications format a date or an amount on every row.
+cc_objects(
+    name = "probe_date_formatting_obj",
+    srcs = ["probe_date_formatting.m"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION", "-fno-objc-arc"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "probe_date_formatting",
+    objs = [":probe_date_formatting_obj", "//vendor/src/csu:crt1.10.6_obj2"],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
+    visibility = ["PUBLIC"],
+)

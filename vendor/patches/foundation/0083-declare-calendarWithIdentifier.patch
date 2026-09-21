@@ -1,0 +1,19 @@
+Declare +calendarWithIdentifier:, which has existed since 10.9.
+
+It was neither declared nor implemented, so the documented way to get a calendar for an identifier
+took doesNotRecognizeSelector: and an uncaught exception, which exits 0. The implementation goes in
+with corefoundation patch 0128; this is the declaration so callers compile against it.
+
+Task #253.
+
+--- a/include/Foundation/NSCalendar.h
++++ b/include/Foundation/NSCalendar.h
+@@ -71,6 +71,8 @@
+ @interface NSCalendar : NSObject <NSCopying, NSSecureCoding>
+ 
+ + (id)currentCalendar;
++/* 10.9 and later, and the documented way to get a calendar for an identifier. */
+++ (id)calendarWithIdentifier:(NSCalendarIdentifier)calendarIdentifierConstant;
+ + (id)autoupdatingCurrentCalendar;
+ 
+ - (id)initWithCalendarIdentifier:(NSCalendarIdentifier)ident;
