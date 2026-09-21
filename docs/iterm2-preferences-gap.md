@@ -1456,3 +1456,47 @@ This flips layout ownership for every nib view in every application, and autores
 approximating something before. Gates: dts 69 of 69, roster sweep 7 of 7 and roster input 7 of 7
 with **byte identical** captures to the run before, iA Writer and Swift Publisher looked at
 individually as the two that lean hardest on nib layout.
+
+## CORRECTION: the solver was never the problem, the constraints were empty
+
+The section above named "a solver able to satisfy these constraints" as the third link. **That was
+wrong by one step.** With the constraints finally attached, turning on `CIDER_TRACE_LAYOUT` shows
+the solver running on the right container with all of them, and shows what they contain:
+
+```
+cider-layout container=NSView bounds=600x456 apply=1 n=58
+cider-layout   all: nil 0x0 .none == nil 0x0 .none * 0 + 0 active=1 prio=1000     (x58)
+```
+
+No items, no attributes, a multiplier of zero and a constant of zero. `-[NSLayoutConstraint
+initWithCoder:]` set a priority and returned; **every constraint in every nib has been empty**.
+
+Reading the keys out of the archive rather than guessing them: all 58 carry `NSFirstItem`,
+`NSSecondItem` and both attributes in two spellings, 34 carry a constant, 15 a relation, 1 a
+priority, and **nothing carries a multiplier**, so it defaults to 1. After foundation 0087 the same
+60 read as real rules:
+
+```
+NSView .trailing     == NSBox .trailing * 1 + 20
+NSBox .leading       == NSView .leading * 1 + 20
+NSBox .top           == NSStackView .bottom * 1 + 15
+NSTextField .leading >= NSView .leading * 1 + 20
+```
+
+### This makes one window worse, and that is not a fix
+
+iA Writer Preferences **gains** the full text of both explanatory paragraphs, which were truncated,
+and **loses** its Light and Dark radio buttons and its Get Ready-Made Shortcuts button, which are
+no longer drawn at all. The Appearance and Dock icon labels still overlap and the two popups now
+read "Fade In/..." truncated. The solver acts on real rules for the first time and places some
+views off the pane or at no size; the stale IB frames were accidentally hiding that.
+
+It is landed regardless, because an empty constraint is never correct and nothing above it can be
+fixed while the inputs are blank. The blast radius is measured, not assumed: **the roster is byte
+identical**. The reason matters and explains why this hid for so long. Constraints built in CODE
+were always populated, so iA Writer's 212 constraint document window never depended on this, and no
+gated roster path loads a nib that carries constraints. Only nib decoded constraints were empty.
+
+**Next, with real inputs for the first time:** a view that vanishes is being given a frame off the
+pane or of zero size. `CIDER_TRACE_LAYOUT` prints every rule the solver applies, so the next step
+is to follow one vanished control, the Light radio, from its rules to the frame it ends up with.

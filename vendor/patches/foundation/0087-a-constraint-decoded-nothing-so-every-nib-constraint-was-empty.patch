@@ -1,0 +1,122 @@
+A constraint decoded nothing, so every constraint in every nib was empty.
+
+-[NSLayoutConstraint initWithCoder:] set a priority and returned. No items, no attributes, no
+relation, no constant, and a multiplier left at the zero from alloc. The layout trace says exactly
+what that produced, 58 times over in one window:
+
+  cider-layout   all: nil 0x0 .none == nil 0x0 .none * 0 + 0 active=1 prio=1000
+
+THE SOLVER WAS NEVER THE PROBLEM. It runs, it is handed the constraints, and there is nothing in
+them to solve. That is worth saying because the previous patch left "a solver able to satisfy these
+constraints" as the next link, and the measurement says the link was one step earlier.
+
+THE KEYS ARE READ OUT OF THE ARCHIVE, not guessed. Every one of the 58 NSLayoutConstraint objects
+in iA Writer GeneralPreferences.nib carries NSFirstItem, NSSecondItem and both attributes in two
+spellings; 34 carry a constant, 15 a relation, 1 a priority. NOTHING carries a multiplier, so it
+defaults to 1: the zero from alloc would otherwise cancel every relation that has a second item.
+The V2 spelling wins where both are present. Items are stored WITHOUT retaining, as the designated
+initialiser does, because a constraint that retained its views would keep the whole tree alive.
+
+After it, the same 60 constraints read as real rules:
+
+  NSView .trailing  == NSBox .trailing * 1 + 20
+  NSBox .leading    == NSView .leading * 1 + 20
+  NSBox .top        == NSStackView .bottom * 1 + 15
+  NSTextField .leading >= NSView .leading * 1 + 20
+
+Zero of them are empty where all 58 were before.
+
+THIS MAKES ONE WINDOW WORSE AND I AM NOT GOING TO CALL IT A FIX. iA Writer Preferences gains the
+full text of its two explanatory paragraphs, which were truncated, and LOSES its Light and Dark
+radio buttons and its Get Ready-Made Shortcuts button, which are no longer drawn at all. The
+Appearance and Dock icon labels still overlap. The solver now acts on real rules and places some
+views off the pane or at no size, which the stale Interface Builder frames were accidentally
+hiding.
+
+It is landed anyway because an empty constraint is never correct, because nothing can be fixed
+above this while the inputs are blank, and because the blast radius is measured rather than
+assumed: the roster is BYTE IDENTICAL after it. The reason is worth recording. Constraints built in
+CODE were always populated, so iA Writer 212 constraint document window never depended on this, and
+the roster gated paths load no nib that carries constraints. Only nib decoded constraints were
+empty, which is why this hid.
+
+NEXT: the solver, with real inputs for the first time. A view that vanishes is being given a frame
+off the pane or of zero size, and CIDER_TRACE_LAYOUT prints every rule it applies.
+
+--- a/src/NSLayoutConstraint.m
++++ b/src/NSLayoutConstraint.m
+@@ -17,6 +17,7 @@
+  along with Darling.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#import <Foundation/NSKeyedUnarchiver.h>
+ #import <Foundation/NSValue.h>
+ #import <Foundation/NSScanner.h>
+ #import <Foundation/NSCharacterSet.h>
+@@ -242,11 +243,64 @@
+     }
+ }
+ 
++/*
++ * A CONSTRAINT DECODED NOTHING, so every constraint in every nib was empty.
++ *
++ * This method set a priority and returned. The layout trace says exactly what that produced, 58
++ * times over in one window:
++ *
++ *   cider-layout   all: nil 0x0 .none == nil 0x0 .none * 0 + 0 active=1 prio=1000
++ *
++ * No items, no attributes, a multiplier of zero and a constant of zero. The solver was never the
++ * problem: it was being handed nothing to solve. iA Writer Preferences draws two labels on top of
++ * each other for this reason, and the same emptiness reached every other application.
++ *
++ * THE KEYS ARE WHAT THE ARCHIVE ACTUALLY HOLDS, read out of GeneralPreferences.nib rather than
++ * guessed. All 58 carry NSFirstItem, NSSecondItem and both attributes in two spellings; 34 carry a
++ * constant, 15 a relation and 1 a priority. NOTHING carries a multiplier, so it defaults to 1: the
++ * zero left by alloc would otherwise cancel every relation that has a second item.
++ *
++ * The V2 spelling wins where both are present, which is what a newer Interface Builder writes.
++ * Items are stored WITHOUT retaining, as the designated initialiser above does, because a
++ * constraint that retained its views would keep the whole tree alive.
++ */
+ - (id) initWithCoder: (NSCoder *) coder
+ {
+     self = [super init];
+-    if (self != nil) {
+-        _priority = NSLayoutPriorityRequired;
++    if (self == nil)
++        return nil;
++
++    _priority = NSLayoutPriorityRequired;
++    _relation = NSLayoutRelationEqual;
++    _multiplier = 1.0;
++
++    if ([coder allowsKeyedCoding]) {
++        NSKeyedUnarchiver *keyed = (NSKeyedUnarchiver *) coder;
++
++        _firstItem = [keyed decodeObjectForKey: @"NSFirstItem"];
++        _secondItem = [keyed decodeObjectForKey: @"NSSecondItem"];
++
++        if ([keyed containsValueForKey: @"NSFirstAttributeV2"])
++            _firstAttribute = [keyed decodeIntegerForKey: @"NSFirstAttributeV2"];
++        else if ([keyed containsValueForKey: @"NSFirstAttribute"])
++            _firstAttribute = [keyed decodeIntegerForKey: @"NSFirstAttribute"];
++
++        if ([keyed containsValueForKey: @"NSSecondAttributeV2"])
++            _secondAttribute = [keyed decodeIntegerForKey: @"NSSecondAttributeV2"];
++        else if ([keyed containsValueForKey: @"NSSecondAttribute"])
++            _secondAttribute = [keyed decodeIntegerForKey: @"NSSecondAttribute"];
++
++        if ([keyed containsValueForKey: @"NSConstantV2"])
++            _constant = [keyed decodeDoubleForKey: @"NSConstantV2"];
++        else if ([keyed containsValueForKey: @"NSConstant"])
++            _constant = [keyed decodeDoubleForKey: @"NSConstant"];
++
++        if ([keyed containsValueForKey: @"NSRelation"])
++            _relation = [keyed decodeIntegerForKey: @"NSRelation"];
++        if ([keyed containsValueForKey: @"NSMultiplier"])
++            _multiplier = [keyed decodeDoubleForKey: @"NSMultiplier"];
++        if ([keyed containsValueForKey: @"NSPriority"])
++            _priority = (float) [keyed decodeDoubleForKey: @"NSPriority"];
+     }
+     return self;
+ }
