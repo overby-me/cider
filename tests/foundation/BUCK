@@ -275,3 +275,32 @@ darwin_binary(
     deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
     visibility = ["PUBLIC"],
 )
+
+
+# Do the STANDARD character sets, and the string and scanner methods that consume them, answer
+# correctly? The #247 fix covered sets built with alloc and init; these were never tested.
+cc_objects(
+    name = "probe_charset_consumers_obj",
+    srcs = ["probe_charset_consumers.m"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION", "-fno-objc-arc"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "probe_charset_consumers",
+    objs = [":probe_charset_consumers_obj", "//vendor/src/csu:crt1.10.6_obj2"],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
+    visibility = ["PUBLIC"],
+)
