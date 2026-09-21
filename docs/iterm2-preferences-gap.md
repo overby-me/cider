@@ -602,3 +602,40 @@ set. A wait loop around a window that is never shown would look exactly like thi
 Next: name the loop. The pump counter is already in the log, so a backtrace taken at a high pump
 count, or a single `CIDER_TRACE_APP` sample while the count is climbing, will say who is spinning.
 Do not read `isVisible` again without a plan for 1.7 GB of log.
+
+## Naming the spin: the 16 ms wait is asked for and not honoured
+
+`CIDER_WAYLAND_TRACE_SPIN` already exists for exactly this and needed no rebuild. It answers two
+things at once.
+
+**It is NOT the poll-with-no-wait case.** Zero `wait=none` ticks and no `poll-with-no-wait`
+backtrace, so no caller is passing a date already in the past. The switch is demonstrably speaking
+in the same run, 85 lines of output from its other branch, so that zero is evidence and not
+silence.
+
+**Every wait asks for 16 ms and none of them takes 16 ms.**
+
+```
+wait n=2000    ms=16 budget=0.016
+wait n=280000  ms=16 budget=0.016
+140 samples, every one ms=16
+```
+
+280,000 waits inside a run of roughly 80 seconds is about 3,500 per second, or 0.28 ms each,
+against the 16 ms each one asked for. So the budget is computed correctly and the poll returns
+almost immediately anyway.
+
+That moves the question off AppKit and onto what wakes the poll. The session runs a waker thread
+whose only job is to poke the main thread, because a sleeping client cannot be reached by the
+compositor. A waker that fires continuously produces exactly this shape: a correct 16 ms budget, a
+poll that returns at once, and an event pump running thirteen to thirty four times its idle rate.
+
+### Next
+
+Find what makes the poll return. In order, cheapest first:
+
+1. Log the `revents` the poll comes back with, and whether the wake came from the Wayland fd or the
+   waker pipe. Those are different causes with different fixes.
+2. If it is the waker, find what re-arms it after Command comma. The keystroke is the trigger: the
+   idle control sits at 81,000 pump iterations and the same build with the keystroke reaches
+   1,064,200.
