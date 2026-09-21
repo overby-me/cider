@@ -313,3 +313,56 @@ further" was wrong on both counts. The core was there; the listing I used hid it
 `coredumpctl list`, then `coredumpctl dump <pid> --output=<file>`, then
 `scripts/core-guest-stack.py --root <prefix> --root <runtime>/libexec/cider <core> <addresses>`,
 with the roots BEFORE `--threads` and the core before the addresses.
+
+## Which window is Preferences, and how far the application gets
+
+`CIDER_WAYLAND_TRACE_CREATOR=1` names the creator of every surface, which settles what guessing
+from sizes could not. In one run of Command comma:
+
+| # | class | size | created by |
+|---|-------|------|------------|
+| 1 | NSWindow | 400x450 | `-[PseudoTerminal(WindowStyle) setWindowWithWindowType:...]` |
+| 7 | iTermWindow | 585x405 | the terminal, and the ONLY one ever mapped |
+| 10 | **iTermPrefsPanel** | 689x141 | `-[iTermPrefsPanel setFrame:display:]` under `PreferencePanel awakeFromNib` |
+| 11 | NSWindow | 390x139 | `-[GeneralPreferencesViewController awakeFromNib]` |
+| 12 | NSPanel | 940x396 | `-[ProfilesAdvancedPreferencesViewController closeTriggersSheet]` |
+
+**Window 10 is Preferences.** Windows 11 and 12 are a helper and the Triggers sheet, both
+materialised as a side effect of a preferences view controller asking for a window.
+
+The creation stack for window 10 shows the application getting a long way:
+
+```
+-[iTermApplicationDelegate showPrefWindow:]
+-[PreferencePanel run]
+-[PreferencePanel window]  ->  -[NSWindowController loadWindow]
+  +[NSBundle loadNibFile:externalNameTable:withZone:]
+  -[NSNib instantiateNibWithExternalNameTable:]
+  -[PreferencePanel awakeFromNib]
+  -[PreferencePanel resizeWindowForTabViewItem:animated:]
+  -[iTermPrefsPanel setFrame:display:]
+```
+
+So the menu action fires, the nib loads, `awakeFromNib` runs, and the panel is even resized for its
+current tab. Nothing is missing at that level.
+
+### What does not happen
+
+Spying `PreferencePanel run`, `PreferencePanel window` and the ordering entry points:
+
+- `run` IS called.
+- `window` returns a real `iTermPrefsPanel`, six times, never nil.
+- `makeKeyAndOrderFront:` is called three times and the receiver is the TERMINAL every time. The
+  panel is never ordered front, never made visible, and so never presents, which is why
+  `mapped=yes` only ever names window 7.
+
+A CAUTION ON THAT LAST POINT, because it nearly went in the other direction. `CIDER_SPY` on
+`iTermPrefsPanel.makeKeyAndOrderFront:` resolves to the inherited `NSWindow` implementation, so it
+catches every window, not only that class. That is why it can be trusted to say the panel was NOT
+ordered: the instrument is demonstrably firing for other receivers in the same run.
+
+### Next
+
+`-[PreferencePanel run]` gets its window and then does not show it. Disassemble it and find what it
+does between `[self window]` and the ordering call it never makes, the same way `showPreferences:`
+was read in #254. The stack above gives the exact entry point.
