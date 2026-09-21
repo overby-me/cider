@@ -1,0 +1,64 @@
+Print where the toolbar ended up, not where it was put, and correct patch 0081.
+
+PATCH 0081 STATES A CONCLUSION THAT IS WRONG AND THIS PATCH WITHDRAWS IT. It says the toolbar is
+placed at NSMaxY(content) - delta and therefore sits 32 pixels INSIDE the content. The first half
+is what the code assigns. The second half is false, and I could only tell because the trace printed
+the value assigned rather than the value that survived.
+
+-[NSWindow _toolbarSizeDidChangeFromOldHeight:] assigns the origin and THEN calls
+setFrame:display:animate: on the window, which resizes the background view and autoresizes its
+subviews. The toolbar view carries mask 0xa, NSViewWidthSizable plus NSViewMinYMargin, so that
+resize moves it. Printing the frame after everything:
+
+    setY=268.0 actual={0.0,300.0 406.0x56.0} mask=0xa content={0,0 406x300} window=406x378
+
+The toolbar ends at y=300, which is exactly NSMaxY(content). It was ALREADY correct, autoresizing
+put it there, and the subtraction of the delta never reached the screen. That is also why changing
+the assignment to NSMaxY(content) moved nothing: I compared the two captures pixel for pixel and
+got ZERO differing pixels out of 859104. A change that the trace confirmed had no effect on the
+render at all, which is exactly what it should be if the assignment was already being overwritten.
+
+So the placement is not the defect and #255 is not a toolbar geometry bug.
+
+WHAT THE SAME RUN DID FIND. The Preferences window frame is 406x378 by the time the toolbar has
+grown, and its Wayland surface is created at
+
+    cider-wayland-window create=ok number=4 size=406x331 at=697,-9 level=0 style=0x3
+
+406 by 331, FORTY SEVEN PIXELS SHORTER than the frame AppKit is laying out for, and it is never
+resized afterwards. The surface is created at t=48.3, long after the toolbar sizing, so this is not
+a race with the toolbar; the size the surface is born with is simply not the frame. That is the
+open question in #255 now.
+
+THE LESSON, and it is one this port has recorded before under set then unset looks exactly like
+never set: an assignment is not a measurement. Print the state the consumer reads, after everything
+that can touch it has run.
+
+Task #255.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -1724,12 +1724,20 @@
+      * toolbar labels. Task #255. */
+     if (getenv("CIDER_TRACE_TOOLBAR") != NULL) {
+         NSRect content = [[self contentView] frame];
++        /* WHERE IT ACTUALLY ENDED UP, not where it was put. setFrame: on the window above resizes
++         * the background view and autoresizes its subviews, so the origin assigned a few lines
++         * earlier can be overwritten before anything draws. Printing the assigned value alone made
++         * a corrected placement look effective while the render did not move by a single pixel. */
++        NSRect actual = [toolbarView frame];
+ 
+         fprintf(stderr,
+-                "CIDER_TOOLBAR old=%.1f new=%.1f delta=%.1f toolbarY=%.1f "
+-                "content={%.1f,%.1f %.1fx%.1f} window=%.1fx%.1f\n",
++                "CIDER_TOOLBAR old=%.1f new=%.1f delta=%.1f setY=%.1f actual={%.1f,%.1f %.1fx%.1f} "
++                "mask=0x%lx content={%.1f,%.1f %.1fx%.1f} window=%.1fx%.1f\n",
+                 (double) oldHeight, (double) newHeight, (double) contentHeightDelta,
+-                (double) toolbarOrigin.y, (double) content.origin.x, (double) content.origin.y,
++                (double) toolbarOrigin.y, (double) actual.origin.x, (double) actual.origin.y,
++                (double) actual.size.width, (double) actual.size.height,
++                (unsigned long) [toolbarView autoresizingMask],
++                (double) content.origin.x, (double) content.origin.y,
+                 (double) content.size.width, (double) content.size.height,
+                 (double) frame.size.width, (double) frame.size.height);
+         fflush(stderr);
