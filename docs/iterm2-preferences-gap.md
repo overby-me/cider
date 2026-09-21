@@ -1306,3 +1306,57 @@ lost them the same way.
 Two items this document has carried are therefore closed by one patch, and the honest lesson is
 that they should have been treated as one defect the first time the phrase "the same shape as"
 was written down three times without anyone testing it.
+
+## A preferences sweep across the roster, and what it found
+
+With cocotron 0092 landed, Preferences is a path most of the roster had never been driven down, so
+Command comma was sent to iA Writer, Swift Publisher and CMake on a 1600x1000 output.
+
+| app | result |
+|---|---|
+| Swift Publisher | Preferences opens and lays out correctly, but a radio group drew TWO filled dots |
+| iA Writer | Preferences opens with its nine item toolbar and full General pane, but two label rows are drawn on top of each other |
+| CMake | nothing, and correctly so: it is Qt and Command comma is not its Preferences shortcut |
+
+### The radio group: every nib loaded matrix had lost its mode and all its flags
+
+`-[NSMatrix initWithCoder:]` decodes `NSMatrixFlags` into a local in its KEYED branch, and the code
+that INTERPRETS that local sits inside the non keyed `else` branch, together with the selected cell
+normalisation. For every modern nib none of it runs, so a matrix keeps the zeros from `alloc` for
+`_mode`, `_allowsEmptySelection`, `_autosizesCells`, `_drawsBackground`, `_drawsCellBackground`,
+`_selectionByRect`, `_isAutoscroll`, `_tabKeyTraversesCells` and `_selectedIndex`, and
+`-selectCell:` is never called.
+
+**The zero that `_mode` keeps happens to equal `NSRadioModeMatrix`**, which is why this hid: every
+matrix in every application has been in radio mode by accident, so a real radio group looked right
+while track and list mode ones did not.
+
+```
+before   [0] state=1 Template Gallery   [1] state=1 Blank Document   [2] state=0 Radio
+after    [0] state=1 Template Gallery   [1] state=0 Blank Document   [2] state=0 Radio
+```
+
+and the decode now reports real modes where every matrix used to report the same accidental zero:
+`mode=0` radio, `mode=1` highlight, `mode=3` track. cocotron patch 0093.
+
+### How it was cornered, because the instrument kept not reaching
+
+Worth recording, since four builds went into aiming it:
+
+1. A spy on the matrix said `selectedCell index=0` while the picture showed two dots. That cannot
+   separate a state defect from a drawing one, so a cell list dump was added at draw time. It said
+   two cells really did hold `state=1`.
+2. A `setState:` trace with a backtrace then showed those two cells are **never sent setState at
+   all**, while `US`/`Metric` in the same window are correctly driven through `_deselectAllCells`.
+   That moved the suspicion from the application to the decode.
+3. A trace inside the keyed branch printed NOTHING, with the string proven present in the built
+   binary, while an entry trace ABOVE the branch fired seven times with `coder=NSKeyedUnarchiver
+   keyed=1`. A trace inside a branch cannot tell a branch not taken from a method not called; the
+   one above it can.
+4. Six checkpoints through the decode all fired, and the one after them did not, which put the
+   boundary exactly at the `} else {`.
+
+Two instrument traps met on the way: `TRACE_ENV` is injected into an `env` command line, so a value
+containing a space (`CIDER_TRACE_CELLSTATE=Blank Document`) silently breaks the launch; and a
+budgeted trace spent its whole allowance on a 33 cell gallery of untitled cells before the two
+cells being hunted were touched once, so the budget had to skip untitled cells.

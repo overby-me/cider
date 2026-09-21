@@ -1,0 +1,247 @@
+Every nib loaded matrix lost its mode and all of its flags.
+
+-[NSMatrix initWithCoder:] decodes NSMatrixFlags into a local in its KEYED branch, and then the
+code that INTERPRETS that local sits inside the non keyed ELSE branch along with the selected cell
+normalisation. So for every modern nib, which is every keyed archive, none of it runs:
+
+  _mode                    never set, so it keeps the zero from alloc
+  _allowsEmptySelection    never set
+  _autosizesCells          never set
+  _drawsBackground         never set
+  _drawsCellBackground     never set
+  _selectionByRect         never set
+  _isAutoscroll            never set
+  _tabKeyTraversesCells    never set
+  _selectedIndex           never set, and -selectCell: is never called
+
+The zero that _mode keeps happens to equal NSRadioModeMatrix, which is why this hid for so long:
+every matrix in every application has been in radio mode by accident, and a matrix that really is a
+radio group looked correct while a track mode or list mode one did not.
+
+HOW IT SHOWS. A radio group draws TWO filled dots. Swift Publisher preferences has For New
+Documents with Template Gallery and Blank Document both encoded on, and nothing normalises them
+because the normalisation is in the branch that does not run:
+
+  before   CIDER_MATRIX cells rows=3 cols=1 count=3 selected=0
+             [0] state=1 title=Template Gallery
+             [1] state=1 title=Blank Document
+             [2] state=0 title=Radio
+  after    [1] state=0
+
+The fix is to move the shared block out of the else so it runs for both coders. The locals are
+initialised too, because the non keyed branch can raise before setting either of them and the
+shared block reads both.
+
+WHAT THE TRACES SAID, and they are kept because this took several builds to corner. The decode
+trace now reports real modes where before every matrix reported the same accidental zero:
+
+  CIDER_MATRIX decode mode=0 cells=2 on=1     radio
+  CIDER_MATRIX decode mode=1 cells=7 on=1     highlight
+  CIDER_MATRIX decode mode=3 cells=4 on=1     track
+
+CIDER_TRACE_CONTROL also dumps a matrix cell list at draw time with each title and state, which is
+what separated a state defect from a drawing one, and CIDER_TRACE_CELLSTATE names who sets a cell
+state with a backtrace. That one proved the two on cells were never sent setState at all, which is
+what pointed at the decode rather than at the application.
+
+The radio normalisation added next to the selected cell lookup is belt and braces: it adopts the
+first cell that is on when NSSelectedCell is absent or names a cell that is not in NSCells. It did
+NOT fire in any measured run here, because NSSelectedCell was present every time, and the hoist
+alone is what fixed the defect above. It is kept because a radio matrix having at most one cell on
+is an invariant the archive does not guarantee.
+
+--- a/AppKit/NSMatrix.m
++++ b/AppKit/NSMatrix.m
+@@ -39,8 +39,8 @@
+ - initWithCoder: (NSCoder *) coder {
+     [super initWithCoder: coder];
+ 
+-    id selectedCell;
+-    int flags;
++    id selectedCell = nil;
++    int flags = 0;
+ 
+     if ([coder allowsKeyedCoding]) {
+         NSKeyedUnarchiver *keyed = (NSKeyedUnarchiver *) coder;
+@@ -93,27 +93,68 @@
+                                 [self class], sel_getName(_cmd), coder];
+         }
+ 
+-        _tabKeyTraversesCells = (flags & 0x00200000) ? YES : NO;
+-        _autosizesCells = (flags & 0x00800000) ? YES : NO;
+-        _drawsBackground = (flags & 0x01000000) ? YES : NO;
+-        _drawsCellBackground = (flags & 0x02000000) ? YES : NO;
+-        _selectionByRect = (flags & 0x04000000) ? YES : NO;
+-        _isAutoscroll = (flags & 0x08000000) ? YES : NO;
+-        _allowsEmptySelection = (flags & 0x10000000) ? YES : NO;
+-
+-        _mode = NSTrackModeMatrix;
+-        if (flags & 0x20000000)
+-            _mode = NSListModeMatrix;
+-        if (flags & 0x40000000)
+-            _mode = NSRadioModeMatrix;
+-        if (flags & 0x80000000)
+-            _mode = NSHighlightModeMatrix;
+-
+-        if ((_selectedIndex = [_cells indexOfObjectIdenticalTo: selectedCell]) != NSNotFound)
+-            [self selectCell: selectedCell];
+-        else
+-            _selectedIndex = -1;
+     }
++
++    _tabKeyTraversesCells = (flags & 0x00200000) ? YES : NO;
++    _autosizesCells = (flags & 0x00800000) ? YES : NO;
++    _drawsBackground = (flags & 0x01000000) ? YES : NO;
++    _drawsCellBackground = (flags & 0x02000000) ? YES : NO;
++    _selectionByRect = (flags & 0x04000000) ? YES : NO;
++    _isAutoscroll = (flags & 0x08000000) ? YES : NO;
++    _allowsEmptySelection = (flags & 0x10000000) ? YES : NO;
++
++    _mode = NSTrackModeMatrix;
++    if (flags & 0x20000000)
++        _mode = NSListModeMatrix;
++    if (flags & 0x40000000)
++        _mode = NSRadioModeMatrix;
++    if (flags & 0x80000000)
++        _mode = NSHighlightModeMatrix;
++
++    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
++        NSUInteger on = 0, k;
++
++        for (k = 0; k < [_cells count]; k++)
++            if ([[_cells objectAtIndex: k] state] != NSOffState)
++                on++;
++        fprintf(stderr, "CIDER_MATRIX decode self=%p mode=%ld cells=%lu on=%lu selectedCell=%p\n",
++                self, (long) _mode, (unsigned long) [_cells count], (unsigned long) on,
++                (void *) selectedCell);
++        fflush(stderr);
++    }
++
++    if ((_selectedIndex = [_cells indexOfObjectIdenticalTo: selectedCell]) != NSNotFound)
++        [self selectCell: selectedCell];
++    else {
++        _selectedIndex = -1;
++
++        /*
++         * A RADIO MATRIX HAS AT MOST ONE CELL ON, and the archive alone does not guarantee it.
++         *
++         * When NSSelectedCell is absent or names a cell that is not in NSCells, nothing above
++         * normalises anything, and every cell keeps whatever state it was encoded with. Swift
++         * Publisher preferences carries two: Template Gallery and Blank Document both come out
++         * with state 1, so the group draws two filled dots and no click can clear the stale one,
++         * because the matrix believes only the cell it later selects is on.
++         *
++         * Adopt the first cell that is on as the selection, which routes through
++         * -selectCell: and clears the rest. A group with none on is left alone: empty is a
++         * legitimate state and allowsEmptySelection decides it, not this.
++         */
++        if (_mode == NSRadioModeMatrix) {
++            NSUInteger i, count = [_cells count];
++
++            for (i = 0; i < count; i++) {
++                NSCell *cell = [_cells objectAtIndex: i];
++
++                if ([cell state] != NSOffState) {
++                    [self selectCell: cell];
++                    break;
++                }
++            }
++        }
++    }
++
+     return self;
+ }
+ 
+@@ -1063,7 +1104,40 @@
+     }
+ }
+ 
++/*
++ * WHICH CELLS THINK THEY ARE ON, at the moment they are drawn.
++ *
++ * A radio group showing TWO filled dots is either two cells whose state is on, which is a state
++ * defect, or one cell drawn wrong, which is a drawing defect, and the selection traces cannot tell
++ * them apart: they report what the MATRIX believes, and the matrix can believe one thing while a
++ * cell holds another. Swift Publisher preferences draws Template Gallery and Blank Document both
++ * filled while selectedCell reports index 0.
++ *
++ * Bounded to 12 dumps so a redisplay loop cannot fill a log.
++ */
++static void _CiderMatrixCells(NSMatrix *matrix, NSArray *cells, NSInteger selectedIndex,
++                              NSInteger rows, NSInteger cols)
++{
++    static int dumped = 0;
++
++    if (getenv("CIDER_TRACE_CONTROL") == NULL || dumped >= 12)
++        return;
++    dumped++;
++    fprintf(stderr, "CIDER_MATRIX cells self=%p rows=%ld cols=%ld count=%lu selected=%ld\n",
++            (void *) matrix, (long) rows, (long) cols, (unsigned long) [cells count],
++            (long) selectedIndex);
++    for (NSUInteger i = 0; i < [cells count]; i++) {
++        NSCell *cell = [cells objectAtIndex: i];
++        NSString *title = [cell respondsToSelector: @selector(title)] ? [cell title] : nil;
++
++        fprintf(stderr, "CIDER_MATRIX   [%lu] state=%ld title=%s\n", (unsigned long) i,
++                (long) [cell state], [title UTF8String] ?: "(none)");
++    }
++    fflush(stderr);
++}
++
+ - (void) drawRect: (NSRect) rect {
++    _CiderMatrixCells(self, _cells, _selectedIndex, _numberOfRows, _numberOfColumns);
+     NSInteger row, col;
+ 
+     if ([self drawsBackground]) {
+--- a/AppKit/NSButtonCell.m
++++ b/AppKit/NSButtonCell.m
+@@ -23,6 +23,8 @@
+ #include <stdlib.h>
+ 
+ #import <AppKit/NSButtonCell.h>
++#include <execinfo.h>
++#include <dlfcn.h>
+ #import <AppKit/NSAlert.h>
+ #import <AppKit/NSButtonImageSource.h>
+ #import <AppKit/NSColor.h>
+@@ -774,6 +776,40 @@
+ }
+ 
+ - (void) setState: (NSControlStateValue) value {
++    /*
++     * WHO TURNS A RADIO ON, with the caller. A radio group drawing two filled dots while its matrix
++     * reports one selected index means a cell was set on by someone the matrix does not know about,
++     * and only the caller can say who. CIDER_TRACE_CELLSTATE matches a title substring, or star for
++     * every cell, and stops after 20 so a redisplay cannot fill a log.
++     */
++    const char *want = getenv("CIDER_TRACE_CELLSTATE");
++
++    if (want != NULL && want[0] != '\0') {
++        static int printed = 0;
++        NSString *title = [self title];
++        const char *name = [title UTF8String] ?: "";
++
++        /* A TITLELESS CELL CANNOT BE THE ONE BEING HUNTED, and a gallery full of them spent a
++         * whole budget before the radios were touched once. */
++        if (name[0] != '\0' && (strcmp(want, "*") == 0 || strstr(name, want) != NULL) &&
++            printed < 30) {
++            void *frames[12];
++            int count = backtrace(frames, 12);
++
++            printed++;
++            fprintf(stderr, "CIDER_CELLSTATE title=%s %ld -> %ld\n", name,
++                    (long) [self state], (long) value);
++            for (int i = 1; i < count; i++) {
++                Dl_info info;
++
++                if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL)
++                    fprintf(stderr, "CIDER_CELLSTATE   #%d %s\n", i, info.dli_sname);
++                else
++                    fprintf(stderr, "CIDER_CELLSTATE   #%d %p\n", i, frames[i]);
++            }
++            fflush(stderr);
++        }
++    }
+     [self setIntValue: value];
+ }
+ 
