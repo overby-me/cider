@@ -260,3 +260,56 @@ Symbolication. There is no guest core (`prefix/cores` is empty; the cores under
 load map, so `RIP` cannot yet be turned into a framework and a symbol. Getting either a core or a
 load map out of a guest SIGSEGV is the next step, and it unblocks this immediately: the register
 dump already says which instruction shape to look for, an indirect call whose target came from R11.
+
+## SOLVED: the crash is a compat placeholder being CALLED
+
+`TISCreateInputSourceList`.
+
+A guest core does exist, and an earlier claim here that none did was wrong: it came from an
+`ls | tail -2` that showed two unrelated portal crashes. `coredumpctl` lists the real one, and
+**305** mldr cores are on this machine. `scripts/core-guest-stack.py` resolves it:
+
+```
+0x7C2A0647DF10  libswiftCompat.dylib+0xf10  _TISCreateInputSourceList
+0x7C2A006566C0  libobjc.A.dylib+0x76c0      _objc_autoreleaseReturnValue
+```
+
+`src/darwin/swiftshim/libswiftCompatSymbols.c` line 91:
+
+```c
+CIDER_COMPAT_SYMBOL(65, "_TISCreateInputSourceList");
+```
+
+and that file says precisely what this is, in its own header:
+
+> THEY ARE ADDRESSES, NOT IMPLEMENTATIONS, and that distinction is the whole point: a placeholder
+> gets a process past dyld and faults at the FIRST REAL USE. The poison base makes that fault say
+> so rather than look like a wild pointer. A symbol that turns out to be called needs a real
+> implementation, and the fault address names which one.
+
+So this is the mechanism working as designed. The placeholder is a `const uintptr_t` **data**
+symbol holding a poison value; iTerm2 calls it as a **function**, so control lands on the symbol
+itself and the process executes that data as instructions. That is why RIP is exactly the symbol
+address, and why the byte soup it ran included something that WROTE, giving ERR 0x7 with CR2
+pointing into another library's read-only text.
+
+### Why the three selectors matter at all
+
+They do not cause this. They let the Preferences nib finish decoding, and iTerm2's Preferences
+enumerates keyboard input sources, which is what reaches `TISCreateInputSourceList` for the first
+time. The crash was always there and simply unreachable.
+
+### What this needs
+
+A real `TISCreateInputSourceList`, in Text Input Sources. See the memory note "A Mac always has an
+input source" for what this surface already assumes. Once it exists, re-test the three
+`localized*String` methods: they are proven correct by `tests/foundation/probe_localized_case.m`
+and are only held back because they walk the application into this fault.
+
+### Correction to this document
+
+The earlier entry that said "there is no guest core" and "symbolication is what blocks going
+further" was wrong on both counts. The core was there; the listing I used hid it. Use
+`coredumpctl list`, then `coredumpctl dump <pid> --output=<file>`, then
+`scripts/core-guest-stack.py --root <prefix> --root <runtime>/libexec/cider <core> <addresses>`,
+with the roots BEFORE `--threads` and the core before the addresses.
