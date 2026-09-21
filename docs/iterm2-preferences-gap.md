@@ -117,3 +117,52 @@ compositor surface, which is the intended handling.
 That leaves `windowNumber` as the ask worth chasing. Asking a never shown window for its NUMBER
 should not cost a compositor surface, and it is the cheapest thing on this list to make answer
 without materialising one.
+
+## The blanking, located: the workspace is empty
+
+Asking the nested compositor what it is showing settles what every log comparison could not. At the
+black moment:
+
+```
+output      'HEADLESS-1'   rect=1256x684+0+0
+  workspace '1'            rect=1256x684+0+0
+                                              <- nothing
+```
+
+and the control, the SAME build with no keystroke, at the same point in the drive:
+
+```
+output      'HEADLESS-1'   rect=1256x684+0+0
+  workspace '1'            rect=1256x684+0+0
+    con     ' '  vis=True  rect=1256x684+0+0
+```
+
+The terminal view is REMOVED from the compositor tree. Our backend does not know: it still reports
+`mapped=yes` for that window, logs no unmap, no hide and no destroy, and its last paint is a full
+white 940762 pixels. So the screen is black because there is nothing on the workspace, not because
+anything drew black.
+
+That also explains why every log-level comparison came out equal. Both runs map one window, both
+present three times, both resize and paint. The divergence is only visible from the compositor.
+
+### Ruled out as the remover
+
+- `on_popup_done`, which destroys the popup, its xdg_surface and its wl_surface. It prints
+  `popup=dismissed` and that line NEVER appears in a black run, so it does not fire.
+- `windowNumber` materialising a surface. Fixed in cocotron patch 0087, which takes the surface
+  count from five to four, and the screen is still black 2 of 2.
+
+### Where to look next
+
+Something makes the terminal's toplevel leave sway's tree. In Wayland a surface is UNMAPPED by
+committing a NULL buffer, so the first thing to check is whether the terminal's `wl_surface` takes
+a commit with no buffer attached around the keystroke. The backend resizes that window to 1256x684,
+reallocates its backing (`context=ok`), paints it white, and does NOT present afterwards, so a
+commit in that window with no buffer is plausible and would unmap it exactly this way.
+
+## Instrument note: swaymsg is not on PATH
+
+`swaymsg` is not on PATH in this environment. Run with stderr suppressed it prints NOTHING, which
+reads exactly like an empty compositor tree and nearly cost a wrong conclusion. The binary sits
+beside the running sway in its nix store bin directory; take the socket from
+`/run/user/1000/sway-ipc.1000.<pid>.sock`, newest first, while a drive is still running.
