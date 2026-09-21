@@ -364,6 +364,35 @@ darwin_binary(
 )
 
 
+# Does a case conversion survive being given a locale? iTerm2 SEGVs the moment the localized forms
+# exist (#257), and the only difference from the working path is the locale argument.
+cc_objects(
+    name = "probe_localized_case_obj",
+    srcs = ["probe_localized_case.m"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION", "-fno-objc-arc"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "probe_localized_case",
+    objs = [":probe_localized_case_obj", "//vendor/src/csu:crt1.10.6_obj2"],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
+    visibility = ["PUBLIC"],
+)
+
+
 # Does the runtime consult its own dispatch hooks before giving up? A selector missing from a
 # class's method list is not yet an error on macOS, and an application that supplies it in
 # resolveInstanceMethod: is ordinary Cocoa. MoneyMoney loses a window to one raise (#254).
