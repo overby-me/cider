@@ -1,0 +1,71 @@
+The three localized case properties.
+
+localizedUppercaseString, localizedLowercaseString and localizedCapitalizedString, 10.11 and later,
+were absent entirely: the header carried the three plain forms and the three WithLocale: forms and
+none of these, so every caller took an unrecognized selector. iTerm2 lost its whole Preferences nib
+decode to one of them, silently, because the raise is caught during a decode.
+
+Each is the WithLocale: form taken against currentLocale, which is the documented difference and
+the one that matters for Turkish dotless i and German sharp s.
+
+HELD BACK DELIBERATELY FOR SEVERAL ROUNDS, and the reason belongs with them. Supplying these let
+iTerm2 finish its Preferences decode, and finishing walked it into a SIGSEGV that had always been
+there and was unreachable: TISCreateInputSourceList was a compat placeholder being CALLED as a
+function, and once that was implemented, an input source that could not say what it was took
+CFStringCompare into a NULL. Both are fixed. Landing these first would have turned a window that
+does not open into an application that dies and takes the display with it.
+
+The methods were never in doubt. tests/foundation/probe_localized_case.m runs all three WithLocale:
+conversions against a real __NSCFLocale and passes 5 of 5, with the nil form as a control in every
+case.
+
+Verified on Command comma against iTerm2 3.5.14 with launchd on: UNRECOGNIZED 0, signal 11 count 0,
+capture CONTENT. Preferences still does not open, which is a separate thread.
+
+COST NOTE: declaring these in NSString.h rebuilds about 5900 actions, as far out as JavaScriptCore.
+While bisecting, put a method in the .m alone, which rebuilds 4 and behaves identically because an
+unrecognized selector is a runtime send.
+
+--- a/src/NSString.m
++++ b/src/NSString.m
+@@ -1616,6 +1616,27 @@
+     return [self capitalizedStringWithLocale:nil];
+ }
+ 
++/*
++ * THE LOCALE AWARE TRIO, 10.11 and later: the plain conversions taken against the CURRENT locale
++ * rather than none, which is the difference that matters for Turkish dotless i and German sharp s.
++ * Absent entirely, so any caller took an unrecognized selector; iTerm2 lost its whole Preferences
++ * nib decode to one. See docs/iterm2-preferences-gap.md.
++ */
++- (NSString *)localizedUppercaseString
++{
++    return [self uppercaseStringWithLocale:[NSLocale currentLocale]];
++}
++
++- (NSString *)localizedLowercaseString
++{
++    return [self lowercaseStringWithLocale:[NSLocale currentLocale]];
++}
++
++- (NSString *)localizedCapitalizedString
++{
++    return [self capitalizedStringWithLocale:[NSLocale currentLocale]];
++}
++
+ - (NSString *)stringByTrimmingCharactersInSet:(NSCharacterSet *)set
+ {
+     if (set == nil)
+--- a/include/Foundation/NSString.h
++++ b/include/Foundation/NSString.h
+@@ -168,6 +168,10 @@
+ - (NSString *)uppercaseStringWithLocale:(NSLocale *)locale;
+ - (NSString *)lowercaseStringWithLocale:(NSLocale *)locale;
+ - (NSString *)capitalizedStringWithLocale:(NSLocale *)locale;
++/* The same three against the CURRENT locale, 10.11 and later. */
++- (NSString *)localizedUppercaseString;
++- (NSString *)localizedLowercaseString;
++- (NSString *)localizedCapitalizedString;
+ - (NSString *)stringByTrimmingCharactersInSet:(NSCharacterSet *)set;
+ - (NSString *)stringByPaddingToLength:(NSUInteger)newLength withString:(NSString *)padString startingAtIndex:(NSUInteger)padIndex;
+ - (void)getLineStart:(NSUInteger *)startPtr end:(NSUInteger *)lineEndPtr contentsEnd:(NSUInteger *)contentsEndPtr forRange:(NSRange)range;
