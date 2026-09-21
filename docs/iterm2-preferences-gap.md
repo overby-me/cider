@@ -639,3 +639,30 @@ Find what makes the poll return. In order, cheapest first:
 2. If it is the waker, find what re-arms it after Command comma. The keystroke is the trigger: the
    idle control sits at 81,000 pump iterations and the same build with the keystroke reaches
    1,064,200.
+
+## A mechanism that fits: the pump guard bails and the queue is never drained
+
+The poll watches exactly ONE descriptor, the Wayland display fd, and asks for 16 ms. A poll on a
+readable fd returns at once, so a fd that is never drained turns this into a busy loop without any
+caller doing anything wrong.
+
+`session::pump()` carries a non-reentrancy guard, and its own comment says why it must:
+`prepare_read`, `read_events` and `cancel_read` have a reader COUNT behind them, and re-entering
+before the previous pair finishes leaves that count wrong. It also says re-entry is not
+hypothetical: pump runs from `-nextEventMatchingMask:`, an event handler can call back into AppKit,
+and AppKit asks for the next event whenever it likes, so the call nests inside itself. Getting it
+wrong was measured once as a fault inside `free()`, which is why the guard is there.
+
+The consequence is the part that matters here. When the guard bails, THE QUEUE IS NOT DRAINED. The
+fd stays readable, the next poll returns immediately rather than after 16 ms, and the pump comes
+straight back around. That is exactly the measured shape: a correct 16 ms budget, 0.28 ms actual,
+and an event rate 13 to 34 times idle that begins at the keystroke, which is when a preferences nib
+full of view controllers starts calling back into AppKit.
+
+THIS IS A HYPOTHESIS, not a measurement, and it is written down as one. What settles it is a
+counter on the guard: how many times `pump` returns early during the spin, against how many times
+it drains. If the early returns dominate, this is the mechanism.
+
+If it is confirmed, note that the guard is not the defect and must not simply be removed: the
+reader count really does break. The fix is for a nested pump to leave the queue in a state the
+outer one will drain, or for the poll to stop treating an undrained fd as work.
