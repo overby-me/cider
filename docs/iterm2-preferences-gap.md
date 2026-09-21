@@ -804,3 +804,25 @@ data really is there, which is exactly why this has never shown up as a visible 
    half-closes the socket during startup.
 3. Either way, measure the CPU cost before and after against the idle control, since the point of
    the 16 ms cap was to bound exactly this.
+
+### The POLLHUP is genuine: the guest poll does not mangle it
+
+`sys_poll_nocancel` passes the `pollfd` array straight to the Linux `poll`/`ppoll` syscall and
+converts only the errno. No `events` or `revents` translation happens at all.
+
+That pass-through is CORRECT for these bits, which is the point: Darwin and Linux agree on
+`POLLIN` 0x0001, `POLLERR` 0x0008, `POLLHUP` 0x0010 and `POLLNVAL` 0x0020. So the emulation is not
+inventing the flag and the host kernel really is reporting POLLHUP on the descriptor being polled.
+
+### Which leaves one shape that fits everything
+
+A hung-up descriptor AND a working Wayland connection cannot both be true of the SAME descriptor.
+They can easily both be true if the descriptor being polled is not the live Wayland socket: a
+closed fd whose number has been reused, or a display handle that is not the one the rest of the
+backend dispatches on. The poll would then spin on a dead fd for ever while the real connection
+carries input and frames normally, which is precisely what is measured.
+
+Test it directly, and it is cheap: log the fd number that `cider_wl_display_get_fd` returns each
+time alongside `revents`, and compare it against the guest process fd table, which
+`read-the-guest-fd-table-from-inside` describes how to read. If the number moves, or if it names
+something that is not a socket to the compositor, that is the defect.
