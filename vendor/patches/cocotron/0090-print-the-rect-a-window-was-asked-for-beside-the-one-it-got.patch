@@ -1,0 +1,55 @@
+Print the rect a window was asked for beside the one it got.
+
+The setFrame trace said only that setFrame happened. A window that comes out the wrong size was
+either ASKED for the wrong size or handed the right one and applied it badly, and those want
+opposite work, so the trace could not start the investigation it existed for.
+
+It answers immediately. iTerm2 Preferences opens far too short, and with both rects printed the
+port is exonerated in one line:
+
+  CIDER_WIN setFrame iTermPrefsPanel asked=924x539@332,-54 got=924x539@332,-54
+  CIDER_WIN setFrame iTermPrefsPanel asked=689x141@332,344 got=689x141@332,344
+
+The panel comes up at its nib size and the application itself then asks for 689x141. Every asked
+equals its got, so setFrame is faithful and the wrong number is computed upstream.
+
+WHERE IT COMES FROM, so the next attempt does not redo this.
+-[PreferencePanel resizeWindowForTabViewItem:animated:] leads to
+-[iTermPreferencesBaseViewController resizeWindowForCurrentTabAnimated:], which takes
+[[[tabView selectedTabViewItem] view] subviews] firstObject and sizes the window to it. The tree
+dump under CIDER_TRACE_VIEWS says what that view is:
+
+  NSTabView              648x36 at 8,22
+    NSView               644x8  at 2,2
+      NSCustomView       0x0 at 0,0 mask=0x0 hidden=0 translates=0 cons=0
+
+The pane is zero by zero. It is the only view in the whole panel with translates=0, it holds no
+constraints, and the Preferences nib builds 4210 objects with not one NSLayoutConstraint among
+them, so nothing in that nib uses auto layout at all. Something must size that view and nothing
+does. Not the visual format API, which is implemented in Foundation NSLayoutConstraint.m and was
+checked before being suspected.
+
+This is the same shape as the MoneyMoney Preferences pane that never resizes and the two should be
+taken together.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -1316,6 +1316,18 @@
+         [self _animateWithContext: context];
+         _CiderWindowNote("setFrame animate leave", self);
+     }
++    /* THE RECT, because "setFrame leave" alone cannot say whether a window came out the wrong size
++     * because it was ASKED for the wrong size or because we applied the right one badly. iTerm2
++     * Preferences opens far too short and those two want opposite work. */
++    if (getenv("CIDER_TRACE_APP") != NULL) {
++        NSRect got = [self frame];
++
++        fprintf(stderr, "CIDER_WIN setFrame %s asked=%.0fx%.0f@%.0f,%.0f got=%.0fx%.0f@%.0f,%.0f\n",
++                object_getClassName(self),
++                newFrame.size.width, newFrame.size.height, newFrame.origin.x, newFrame.origin.y,
++                got.size.width, got.size.height, got.origin.x, got.origin.y);
++        fflush(stderr);
++    }
+     _CiderWindowNote("setFrame leave", self);
+     _CiderWindowStack("setFrame leave");
+ }

@@ -1106,3 +1106,51 @@ RIP 0x1006D9EDD -> -[ProfilesTerminalPreferencesViewController sortedEncodings] 
 
 and at +0x42 the instruction is `movq (%rax), %rdx` on the result of a class method send, which is
 the walk of a zero terminated array. The selector at that send resolves to `availableStringEncodings`.
+
+## The window is too short, and the port is not the one choosing that size
+
+Measured first, because "the window is the wrong size" has two opposite causes. The setFrame trace
+now prints both rects (cocotron patch 0090):
+
+```
+CIDER_WIN setFrame iTermPrefsPanel asked=924x539@332,-54  got=924x539@332,-54
+CIDER_WIN setFrame iTermPrefsPanel asked=689x141@332,344  got=689x141@332,344
+```
+
+The panel opens at its nib size and **the application then asks for 689x141**. Every `asked` equals
+its `got`, so `setFrame` is faithful and the number is computed upstream. Nothing here is a frame
+we mangled.
+
+### Where 141 comes from
+
+`-[PreferencePanel resizeWindowForTabViewItem:animated:]` leads to
+`-[iTermPreferencesBaseViewController resizeWindowForCurrentTabAnimated:]`, whose selectors resolve
+to `tabView`, `selectedTabViewItem`, `view`, `subviews`, `firstObject`,
+`resizeWindowForView:tabView:animated:`. It sizes the window to the FIRST SUBVIEW of the selected
+tab page. `CIDER_TRACE_VIEWS` says what that is:
+
+```
+NSTabView              648x36 at 8,22
+  NSView               644x8  at 2,2
+    NSCustomView       0x0 at 0,0 mask=0x0 hidden=0 translates=0 cons=0
+```
+
+The pane is **zero by zero**, and the window is exactly as tall as the chrome around it.
+
+### What is known about that view, so the next attempt does not redo it
+
+- It is the ONLY view in the whole panel with `translates=0`. Every other one is 1.
+- It holds **no constraints**, and the Preferences nib builds **4210 objects with not one
+  NSLayoutConstraint among them**, so nothing in that nib uses auto layout at all.
+- `+[NSLayoutConstraint constraintsWithVisualFormat:options:metrics:views:]` IS implemented, in
+  Foundation `NSLayoutConstraint.m`. It was checked before being suspected.
+- iTerm2 does reference `addConstraint:`, `addConstraints:`, `activateConstraints:` and
+  `constraintEqualToAnchor:`, so it may be building constraints in code rather than in the nib.
+- `iTermSizeRememberingView` and `resetToOriginalSize` are iTerm2 machinery in the same chain and
+  the remembered size is captured from the nib, so a pane that decoded small stays small.
+
+A view with `translates=0` and no constraints can only be sized by someone setting its frame, and
+on this path nobody does. Whether the flag itself is decoded correctly is the first thing to test:
+in a nib with no constraints anywhere, macOS would leave such a view translating its mask.
+
+This is the same shape as the MoneyMoney Preferences pane that never resizes. Take the two together.
