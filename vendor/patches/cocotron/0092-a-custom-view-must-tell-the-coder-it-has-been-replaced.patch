@@ -1,0 +1,97 @@
+A custom view must tell the coder it has been replaced.
+
+-[NSCustomView initWithCoder:] returns a DIFFERENT object from the one the unarchiver allocated,
+and the unarchiver stores that raw allocation in its table BEFORE calling us, deliberately, so that
+a cycle terminates. Anything that resolves this reference while the method is still running
+therefore receives the bare NSCustomView. It never calls [super initWithCoder:], so that object has
+nothing: frame zero, autoresizing mask zero, translatesAutoresizingMaskIntoConstraints NO, no
+subviews.
+
+The decode of NSSubviews is where the re-entrant reference is taken, so the swap has to come before
+it. -[NSClassSwapper initWithCoder:] is the only other caller of replaceObject:withObject: and does
+the same thing for the same reason. The unarchiver already expects a slot that no longer holds what
+it allocated: the branch reading inSlot != instance && inSlot == initialised is written for exactly
+this and drops the extra retain.
+
+PROVEN BY POINTER, not inferred. iTerm2 Preferences decodes
+iTermPreferencesInnerTabContainerView, the real view is built, and the object actually wired into
+the view tree is the bare one:
+
+  CIDER_CUSTOMVIEW name=iTermPreferencesInnerTabContainerView self=0x7128abd28120 new=0x7128abd28430
+  CIDER_VIEW       NSCustomView(0x7128abd28120) 0x0 at 0,0 mask=0x0 translates=0 cons=0
+
+The tree pointer and the placeholder self are the same address. Finding that is what the pointers
+added to both traces here are for.
+
+WHAT IT COST AND WHAT IT FIXES. iTerm2 sizes its Settings window to that pane, so a pane of zero
+collapsed the whole window to the height of its own chrome: toolbar, tab row, and nothing under it.
+
+  before   NSView 644x8    NSCustomView 0x0                        window 689x141
+  after    NSView 644x151  iTermPreferencesInnerTabContainerView    window 689x284
+                             569x143 at 38,15 mask=0xd translates=1
+                             NSTextField, NSButton, NSButton, NSButton, NSButton
+
+The General to Startup pane now draws its Window restoration policy label, its popup button and its
+three checkboxes. Six other explanations for the zero sized pane were measured and refuted first;
+they are listed in cocotron patch 0091 and in docs/iterm2-preferences-gap.md.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -277,8 +277,8 @@
+     /* TRANSLATES ANSWERS WHO OWNS THE FRAME, which is the question a degenerate view raises: a mask
+      * owner that nothing sized and a constraint owner nothing solved look the same without it. */
+     fprintf(stderr,
+-            "CIDER_VIEW %*s%s %.0fx%.0f at %.0f,%.0f mask=0x%x hidden=%d translates=%d cons=%lu%s%s\n",
+-            depth * 2, "", object_getClassName(view), frame.size.width, frame.size.height,
++            "CIDER_VIEW %*s%s(%p) %.0fx%.0f at %.0f,%.0f mask=0x%x hidden=%d translates=%d cons=%lu%s%s\n",
++            depth * 2, "", object_getClassName(view), (void *) view, frame.size.width, frame.size.height,
+             frame.origin.x, frame.origin.y, (unsigned) [view autoresizingMask], (int) [view isHidden],
+             (int) [view translatesAutoresizingMaskIntoConstraints],
+             (unsigned long) [[view constraints] count],
+--- a/AppKit/nib.subproj/NSCustomView.m
++++ b/AppKit/nib.subproj/NSCustomView.m
+@@ -46,13 +46,43 @@
+              * once the object exists. CIDER_TRACE_CUSTOMVIEW. */
+             if (getenv("CIDER_TRACE_CUSTOMVIEW") != NULL) {
+                 fprintf(stderr,
+-                        "CIDER_CUSTOMVIEW name=%s became=%s %gx%g at %g,%g hasNSFrame=%d hasNSFrameSize=%d\n",
++                        "CIDER_CUSTOMVIEW name=%s became=%s self=%p new=%p %gx%g at %g,%g hasNSFrame=%d hasNSFrameSize=%d\n",
+                         [className UTF8String] ?: "(nil)", object_getClassName(newView),
++                        (void *) self, (void *) newView,
+                         frame.size.width, frame.size.height, frame.origin.x, frame.origin.y,
+                         (int) [coder containsValueForKey: @"NSFrame"],
+                         (int) [coder containsValueForKey: @"NSFrameSize"]);
+                 fflush(stderr);
+             }
++            /*
++             * TELL THE CODER NOW, BEFORE THE SUBVIEWS ARE DECODED.
++             *
++             * This method returns a DIFFERENT object from the one the unarchiver allocated, and the
++             * unarchiver stores that raw allocation in its table BEFORE calling us, deliberately,
++             * so a cycle terminates. Anything that resolves this reference while we are still
++             * running therefore receives the bare NSCustomView: frame zero, autoresizing mask zero,
++             * translates NO, no subviews, because nothing has initialised it and this method never
++             * calls [super initWithCoder:].
++             *
++             * That is not hypothetical. iTerm2 Preferences decodes
++             * iTermPreferencesInnerTabContainerView here, the real view is built, and the object
++             * actually wired into the view tree is the bare one, proven by pointer:
++             *
++             *   CIDER_CUSTOMVIEW name=iTermPreferencesInnerTabContainerView self=0x7128abd28120 new=0x7128abd28430
++             *   CIDER_VIEW       NSCustomView(0x7128abd28120) 0x0 at 0,0 mask=0x0 translates=0
++             *
++             * A pane that is zero by zero makes the whole Settings window collapse to the height of
++             * its own chrome, because iTerm2 sizes that window to this view.
++             *
++             * The decode of NSSubviews below is where the re-entrant reference is taken, so the
++             * swap has to come first. -[NSClassSwapper initWithCoder:] is the other caller and does
++             * the same thing for the same reason, and the unarchiver already expects a slot that no
++             * longer holds what it allocated.
++             */
++            if ([coder respondsToSelector: @selector(replaceObject:withObject:)]) {
++                [(id) coder replaceObject: self withObject: newView];
++            }
++
+             if ([coder containsValueForKey: @"NSvFlags"]) {
+                 unsigned vFlags = [coder decodeIntForKey: @"NSvFlags"];
+ 

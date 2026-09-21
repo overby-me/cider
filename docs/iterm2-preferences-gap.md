@@ -1179,3 +1179,48 @@ are the instruments to do it with.
 Worth noting for whoever picks this up: `-[NSCustomView initWithCoder:]` never calls
 `[super initWithCoder:]` on its keyed path, which is why a trace added to `-[NSView initWithCoder:]`
 reports nothing for this class. That cost a build to learn.
+
+## SOLVED: the pane was the bare placeholder, and the swap was never announced
+
+The seventh candidate was the right one, and it was proven by pointer rather than argued.
+
+`-[NSCustomView initWithCoder:]` returns a DIFFERENT object from the one the unarchiver allocated.
+The unarchiver stores that raw allocation in its table BEFORE calling it, deliberately, so a cycle
+terminates. Anything resolving that reference while the method is still running gets the bare
+`NSCustomView`, and because the method never calls `[super initWithCoder:]`, that object has
+nothing at all: frame zero, mask zero, `translates` NO, no subviews. Every symptom in the table
+above falls out of that one fact.
+
+The two pointers are the proof:
+
+```
+CIDER_CUSTOMVIEW name=iTermPreferencesInnerTabContainerView self=0x7128abd28120 new=0x7128abd28430
+CIDER_VIEW       NSCustomView(0x7128abd28120) 0x0 at 0,0 mask=0x0 translates=0 cons=0
+```
+
+The object wired into the view tree IS the placeholder `self`. The real pane at `…430` was built
+and thrown away.
+
+The fix (cocotron patch 0092) is one call, `[coder replaceObject: self withObject: newView]`, placed
+**before** the `NSSubviews` decode, because that decode is where the re-entrant reference is taken.
+`-[NSClassSwapper initWithCoder:]` is the only other caller and does the same thing for the same
+reason, and the unarchiver already expects a slot that no longer holds what it allocated: the
+branch reading `inSlot != instance && inSlot == initialised` is written for exactly this.
+
+| | before | after |
+|---|---|---|
+| tab page | `NSView 644x8` | `NSView 644x151` |
+| pane | `NSCustomView 0x0`, no children | `iTermPreferencesInnerTabContainerView 569x143`, five controls |
+| window | 689x141 | 689x284 |
+
+The General to Startup pane now draws its "Window restoration policy" label, its popup button and
+its three checkboxes.
+
+This is a nib decode change, so it reaches every application. Gates after it: roster sweep 7 of 7
+and roster input 7 of 7, with byte identical captures to the run before it, and Swift Publisher,
+MoneyMoney, iA Writer, LibreOffice and CMake looked at individually.
+
+**What remains for this window:** it is still shorter than a Mac would draw it, so panes with more
+content than Startup will clip, and INTERACTIVE and RESIZABLE are still not demonstrated for the
+Settings window itself. The next step is to click a toolbar item and a tab and see whether the pane
+swaps and the window resizes with it.
