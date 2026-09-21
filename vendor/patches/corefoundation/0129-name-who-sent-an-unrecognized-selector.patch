@@ -1,0 +1,91 @@
+Name who sent an unrecognized selector.
+
+doesNotRecognizeSelector: already prints the class, the selector and the whole superclass chain,
+which says WHERE the method should have come from. It cannot say WHO asked for it, and that is the
+half that matters when the sender catches the exception: the raise then leaves no trace anywhere,
+and the application simply does less than it should.
+
+MoneyMoney loses its entire Preferences window to exactly this. showPreferences: builds the window,
+sets it on the controller, and then raises on one selector; cocotron wraps action delivery in @try,
+so the raise is swallowed, the window is never ordered front, and the process runs on for thousands
+more log lines with ZERO occurrences of the word Exception. The three existing lines named
+MMHelpButton and setHasPriority: and still could not say which code sent it.
+
+With CIDER_TRACE_UNRECOGNIZED set, one run answers it:
+
+    cider: UNRECOGNIZED -[MMHelpButton setHasPriority:]
+    cider:   sent by:
+    0   CoreFoundation  -[NSObject(NSObject) doesNotRecognizeSelector:] + 360
+    1   CoreFoundation  ___forwarding___ + 623
+    3   MoneyMoney      MoneyMoney + 1139901
+    4   MoneyMoney      MoneyMoney + 1126337
+    5   AppKit          -[NSApplication sendAction:to:from:] + 98
+    6   AppKit          -[NSMenu performKeyEquivalent:] + 819
+
+Frame 4 resolves to showPreferences: + 1825 against the objc metadata, which placed the loss inside
+that method rather than anywhere else in the run, and frame 3 led to the exact call site.
+
+OFF BY DEFAULT, on both the class and the instance variant. This fires on a path that is already
+throwing and an application is entitled to probe for a selector by sending it, so a backtrace per
+raise would be noise in every other run.
+
+Task #254.
+
+--- a/NSObject.m
++++ b/NSObject.m
+@@ -14,8 +14,10 @@
+ #import "NSZombie.h"
+ #import <objc/runtime.h>
+ #import <objc/message.h>
++#include <execinfo.h>
+ #include <stdio.h>
+ #include <malloc/malloc.h>
++#include <stdlib.h>
+ 
+ //#import <libv/libv.h>
+ #define _GETENV(a,b) 0
+@@ -74,6 +76,28 @@
+ 
+ static void NSUnrecognizedForwarding() { __asm__("int3"); }
+ 
++/*
++ * WHO SENT IT. The superclass chain says where the method should have come from and cannot say
++ * who asked for it, and when the sender catches the exception there is no other trace at all:
++ * MoneyMoney loses its whole Preferences window to one caught raise. Off by default, because an
++ * application is allowed to probe for a selector this way.
++ */
++static void _CiderTraceUnrecognizedSender(void)
++{
++    const char *on = getenv("CIDER_TRACE_UNRECOGNIZED");
++    void *frames[32];
++    int n;
++
++    if (on == NULL || on[0] == '\0')
++    {
++        return;
++    }
++    n = backtrace(frames, 32);
++    fprintf(stderr, "cider:   sent by:\n");
++    fflush(stderr);
++    backtrace_symbols_fd(frames, n, 2);
++}
++
+ @implementation NSObject (NSObject)
+ 
+ + (void)doesNotRecognizeSelector:(SEL)sel
+@@ -95,6 +119,7 @@
+         fprintf(stderr, "cider: UNRECOGNIZED -[%s %s]\n",
+                 class_getName([self class]), sel_getName(sel));
+         fflush(stderr);
++        _CiderTraceUnrecognizedSender();
+         // DONT EVEN THINK ABOUT REMOVING/HACKING AROUND THIS!
+         // EVER!
+         // ...
+@@ -159,6 +184,7 @@
+             walk = next;
+         }
+         fflush(stderr);
++        _CiderTraceUnrecognizedSender();
+         // DONT EVEN THINK ABOUT REMOVING/HACKING AROUND THIS!
+         // EVER!
+         // ...

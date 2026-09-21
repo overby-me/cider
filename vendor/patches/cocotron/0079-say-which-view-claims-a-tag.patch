@@ -1,0 +1,56 @@
+Say which view claims a tag.
+
+viewWithTag: returns one object, and when that object is the wrong one the return value cannot say
+why. The caller then sends a selector belonging to the class it expected and raises on a class it
+never asked for, which names the receiver but not the search that produced it, and the tags of the
+views that were passed over are exactly what is missing.
+
+MoneyMoney's showPreferences: does
+
+    [[[self popoverController] view] viewWithTag: 1]
+
+and then sends setTitle: and setHasPriority: to the result. setHasPriority: belongs to MMButton, the
+result was an MMHelpButton, and the raise is caught by the @try around action delivery, so
+Preferences simply never appears and nothing is logged. With the trace the search is not a guess:
+
+    CIDER_VIEWTAG visit NSView         tag=-1 want=1 subviews=8
+    CIDER_VIEWTAG visit MMLabel        tag=4  want=1 subviews=0
+    CIDER_VIEWTAG visit MMButton       tag=3  want=1 subviews=0
+    CIDER_VIEWTAG visit MMHelpButton   tag=1  want=1 subviews=0
+
+which EXONERATES the search and the tag decoding both. The help button really does carry tag 1 in
+the decoded tree, its siblings carry 4, 3, 0 and 2, and the walk stops at the first match as it
+should. That moves the question to the search root or to the class, and it took one run rather
+than a rebuild per hypothesis.
+
+Off by default. viewWithTag: is called during layout, and a per visit line is only wanted while a
+wrong view is being hunted.
+
+Task #254.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -22,6 +22,8 @@
+ #import <objc/message.h>
+ #import <AppKit/NSViewController.h>
+ #import <objc/runtime.h>
++#include <stdio.h>
++#include <stdlib.h>
+ #import <AppKit/NSApplication.h>
+ #import <AppKit/NSClipView.h>
+ #import <AppKit/NSColor.h>
+@@ -1240,6 +1242,15 @@
+ - viewWithTag: (NSInteger) tag {
+     int i, count = [_subviews count];
+
++    /* WHICH VIEW CLAIMS THE TAG. The answer is one object and the search cannot say whether the
++     * others were wrong, absent or merely later in the array, and a caller that gets the wrong
++     * view raises on a selector belonging to the class it expected. Task #254. */
++    if (getenv("CIDER_TRACE_VIEWTAG") != NULL) {
++        fprintf(stderr, "CIDER_VIEWTAG visit %-28s tag=%ld want=%ld subviews=%d\n",
++                object_getClassName(self), (long) _tag, (long) tag, count);
++        fflush(stderr);
++    }
++
+     if (_tag == tag)
+         return self;
