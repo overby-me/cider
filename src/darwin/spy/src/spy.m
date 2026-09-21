@@ -567,7 +567,19 @@ static void *cider_spy_thread(void *unused)
 __attribute__((constructor))
 static void cider_spy_start(void)
 {
-	const char *dumpspec = getenv("CIDER_SPY_DUMP");
+	const char *dumpspec;
+
+	/* STAY OUT OF A PROCESS WHOSE STDERR IS A TERMINAL, because DYLD_INSERT_LIBRARIES is INHERITED
+	 * and the application under test may be the thing rendering that terminal. Measuring iTerm2,
+	 * the spy loaded into the shell iTerm2 spawned, found no VT100Screen there, and wrote six
+	 * CIDER_SPY GAVE UP lines onto the pty, which iTerm2 then drew: the probe typed into the window
+	 * it was explaining. Six lines, and the number being measured was a scrollback of six.
+	 * Every driven run captures stderr to app.log, which is not a tty, so nothing real is lost.
+	 * CIDER_SPY_FORCE_TTY=1 overrides it for a guest command line tool. */
+	if (isatty(2) && getenv("CIDER_SPY_FORCE_TTY") == NULL)
+		return;
+
+	dumpspec = getenv("CIDER_SPY_DUMP");
 
 	for (const char *p = dumpspec ?: ""; *p != '\0' && cider_spy_dump_count < CIDER_SPY_MAX; ) {
 		const char *comma = strchr(p, ',');
