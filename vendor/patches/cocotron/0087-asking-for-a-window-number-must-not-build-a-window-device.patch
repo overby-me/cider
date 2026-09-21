@@ -1,0 +1,56 @@
+Asking for a window number must not build a window device.
+
+-[NSWindow cider_platformWindow] is LAZY: it creates the platform window, and therefore a
+compositor surface, on the first ask. -[NSWindow windowNumber] asked it unconditionally, so reading
+an INTEGER off a window that is never shown created a Wayland surface for it.
+
+Measured with CIDER_TRACE_APP on a run of iTerm2 Command comma, the twelve asks for a platform
+window break down as
+
+    7  -[NSCachedImageRep initWithSize:depth:separate:alpha:]
+    2  -[NSWindow windowNumber]
+    2  -[NSWindow setFrame:display:animate:]
+    1  -[NSWindow orderWindow:relativeTo:]
+
+The seven image cache asks are fine: NSCachedImageRep backs an NSImage with a real NSWindow
+carrying NSAppKitPrivateWindow, 0x8000000, and those get backing without a compositor surface,
+which is the handling they are supposed to get. windowNumber is the one that should never have
+cost anything.
+
+AppKit answers 0 for a window with no window device, which is exactly what a deferred or never
+shown window is, so that is what this answers. Measured: the compositor sees FOUR xdg_surfaces in
+that run instead of five.
+
+THIS DOES NOT FIX THE BLANK SCREEN and it is not claimed to. iTerm2 Preferences still blanks the
+display once the nib decode completes, 2 of 2 runs with the guard in. What the guard does is remove
+one spurious surface and stop every future never shown window from paying for an integer.
+
+WHAT THE SAME SESSION LEARNED ABOUT THE BLANKING, recorded in docs/iterm2-preferences-gap.md: the
+compositor tree at the black moment has an EMPTY workspace. There is an output HEADLESS-1 at
+1256x684 and a workspace 1 at 1256x684 and NOT ONE CONTAINER on it, while our backend still reports
+the terminal mapped and logs no unmap and no destroy. The control, the same build with no
+keystroke, has con vis=True rect=1256x684+0+0. So the terminal view is being removed from the
+compositor side. on_popup_done is NOT the path: it prints popup=dismissed and that line never
+appears in a black run.
+
+Gates: darling-testsuite 69 of 69, buck-bundled-patch-record-check 87 cocotron patches with 0 files
+differing, roster-sweep 7 of 7 CONTENT, roster-input 7 of 7 CONTENT, captures looked at.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -2084,7 +2084,14 @@
+ }
+ 
+ - (NSInteger) windowNumber {
+-    return [[self cider_platformWindow] windowNumber];
++    /* ASKING FOR A NUMBER MUST NOT BUILD A WINDOW DEVICE. cider_platformWindow is lazy and
++     * creating it creates a compositor surface, so a window that is never shown got one purely
++     * because something read this. AppKit answers 0 for a window with no device, which is what a
++     * deferred window is. See docs/iterm2-preferences-gap.md. */
++    if (_platformWindow == nil) {
++        return 0;
++    }
++    return [_platformWindow windowNumber];
+ }
+ 
+ - (int) gState {
