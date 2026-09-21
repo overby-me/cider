@@ -226,3 +226,23 @@ darwin_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+
+# Does CLOCK_MONOTONIC ever go backwards? Task #251. See the header of probe_monotonic_clock.c.
+cc_objects(
+    name = "probe_monotonic_clock_obj",
+    srcs = ["probe_monotonic_clock.c"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION", "-O2"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env", "//vendor/src:fw_CoreFoundation"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "probe_monotonic_clock",
+    objs = [":probe_monotonic_clock_obj", "//vendor/src/csu:crt1.10.6_obj2"],
+    dylibs = ["//vendor/src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
+    visibility = ["PUBLIC"],
+)

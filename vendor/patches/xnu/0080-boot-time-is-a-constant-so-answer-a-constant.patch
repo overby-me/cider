@@ -1,0 +1,127 @@
+Boot time is a constant, so answer a constant, and CLOCK_MONOTONIC becomes monotonic.
+
+WHAT WAS WRONG. kern.boottime was recomputed on every call as gettimeofday() minus
+sysinfo().uptime, and sysinfo reports uptime in WHOLE SECONDS. The two floors step at different
+moments, so the answer alternated between two values ONE SECOND apart. libc derives CLOCK_MONOTONIC
+as gettimeofday() minus this, so CLOCK_MONOTONIC WAS NOT MONOTONIC: it returned a smaller value
+later in the same thread, and a timed loop measured a NEGATIVE elapsed time, -0.857 s for work that
+took 0.156 s. Anything pacing itself off it, animation timing, a timeout, a retry backoff, can see
+a second appear or vanish, and a negative interval is the kind of value that makes a loop spin or a
+deadline fire immediately.
+
+The old code already knew the value was unstable. It forced tv_usec to 0 with the comment that
+jittering microseconds cause an infinite loop in _mach_boottime_usec, which retries until two reads
+agree. Zeroing the microseconds stopped the spin and left the whole second jitter.
+
+THE FIX. Compute boot time ONCE from the Linux monotonic clock, which has nanosecond resolution,
+and cache it for the life of the process. Boot time IS a constant, so a cache is not an
+optimisation, it is the correct answer. Caching is also what makes it safe to return real
+microseconds again: a value that never changes cannot spin the retry loop. First writer wins under
+a compare and exchange, because two threads computing microseconds apart would otherwise cache two
+different constants and put the jitter straight back.
+
+MEASURED, with a control that FAILS BY CONSTRUCTION. tests/foundation/probe_monotonic_clock.c
+samples in a tight loop and counts backward steps, and feeds a synthetic sequence with ONE planted
+backward step to the same counter first, because a zero from a detector nobody has seen fire is not
+evidence.
+    CONTROL planted    backward=1 of 4        worst=-500 ns   the detector fires
+    CLOCK_MONOTONIC    backward=0 of 299999   worst=0 ns
+Three runs, so 0 of 899997 real samples. And in the four clock benchmark the monotonic column now
+agrees with wall, mach and cpu to the millisecond on 9 of 9 lines, where it used to be wrong by
+exactly 1.000 s on most of them.
+
+Task #251.
+
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_kern.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_kern.c
+@@ -5,6 +5,7 @@
+ #include <darling/emulation/xnu_syscall/bsd/helper/misc/sysctl_proc.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/misc/getrlimit.h>
+ #include <darling/emulation/linux_premigration/ext/sysinfo.h>
++#include <darling/emulation/linux_premigration/ext/sys/linux_time.h>
+ #include <darling/emulation/linux_premigration/ext/syslog.h>
+ #include <darling/emulation/linux_premigration/ext/sys/utsname.h>
+ #include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
+@@ -134,31 +135,71 @@
+ 	return 0;
+ }
+ 
++/* BOOT TIME IS A CONSTANT, SO ANSWER A CONSTANT. It used to be recomputed per call as
++ * gettimeofday() minus sysinfo().uptime, and sysinfo reports uptime in WHOLE SECONDS, so the two
++ * floors stepped at different moments and the answer alternated between two values ONE SECOND
++ * apart. libc derives CLOCK_MONOTONIC as gettimeofday() minus this, so CLOCK_MONOTONIC was NOT
++ * MONOTONIC: it returned a smaller value later in the same thread, and a timed loop measured a
++ * NEGATIVE elapsed time. Anything pacing itself off it can spin or fire a deadline immediately.
++ *
++ * Computed once from the Linux monotonic clock, which has nanosecond resolution, then cached for
++ * the life of the process. Caching is what makes it safe to return real microseconds: the old code
++ * had to force tv_usec to 0 because a jittering value spun the retry loop in _mach_boottime_usec,
++ * and a value that never changes cannot spin it. Task #251. */
++static uint64_t _cider_boottime_usec(void)
++{
++	static uint64_t cached = 0;
++	uint64_t boot, expected = 0;
++	struct bsd_timeval now;
++	struct timespec mono;
++
++	boot = __atomic_load_n(&cached, __ATOMIC_ACQUIRE);
++	if (boot != 0)
++		return boot;
++
++	if (sys_gettimeofday(&now, NULL) < 0)
++		return 0;
++	if (__linux_clock_gettime(CLOCK_MONOTONIC, &mono) < 0)
++		return 0;
++
++	boot = (uint64_t) now.tv_sec * 1000000ull + (uint64_t) now.tv_usec;
++	boot -= (uint64_t) mono.tv_sec * 1000000ull + (uint64_t) mono.tv_nsec / 1000ull;
++
++	/* Zero is the not-computed sentinel, and it is also a boot time of the epoch, which cannot
++	 * happen here. Nudging it by one microsecond keeps the sentinel unambiguous. */
++	if (boot == 0)
++		boot = 1;
++
++	/* FIRST WRITER WINS, because two threads computing microseconds apart would otherwise cache
++	 * two different constants and put the jitter straight back. */
++	if (!__atomic_compare_exchange_n(&cached, &expected, boot, 0, __ATOMIC_ACQ_REL,
++	                                 __ATOMIC_ACQUIRE))
++		boot = expected;
++
++	return boot;
++}
++
+ sysctl_handler(handle_boottime)
+ {
+ 	// Fill in struct timeval { tv_sec, tv_usec }
+-	struct sysinfo info;
+ 	struct bsd_timeval* tv;
+-
+-	if (__linux_sysinfo(&info) == -1)
+-		return -errno;
++	uint64_t boot;
+ 
+ 	tv = (struct bsd_timeval*) old;
+ 	if (tv != NULL)
+ 	{
+ 		if (*oldlen < sizeof(*tv))
+ 			return -EINVAL;
+-		sys_gettimeofday(tv, NULL);
+ 
+-		tv->tv_sec -= info.uptime;
++		boot = _cider_boottime_usec();
++		if (boot == 0)
++			return -errno;
+ 
+-		// we don't want the microseconds to be constantly jumping around
+-		// (that actually causes an infinite loop in `_mach_boottime_usec` in libc)
+-		// but Linux doesn't give us microseconds, so just settle for 0
+-		tv->tv_usec = 0;
++		tv->tv_sec = boot / 1000000ull;
++		tv->tv_usec = boot % 1000000ull;
+ 	}
+ 	*oldlen = sizeof(*tv);
+-	
++
+ 	return 0;
+ }
+ 
