@@ -433,3 +433,26 @@ two measurements is lying. Candidates, cheapest first:
    spying a controller that certainly shows a window, before trusting its silence here.
 2. `[self window]` inside `run` and the six `PreferencePanel.window` calls the spy sees may not be
    the same sends; compare receiver AND returned pointer at the instant `run` is on the stack.
+
+### The swizzle does speak, and the spy is not the cause
+
+Both doubts raised above are now closed, which leaves the contradiction sharper rather than softer.
+
+**The inherited-method swizzle fires for subclasses.** In the same family of runs,
+`NSWindowController.window` fired with a `PseudoTerminal` receiver. So spying a method a subclass
+does not override does reach that subclass.
+
+**`showWindow:` is never called by anyone.** Spying `NSWindowController.showWindow:` across a whole
+run yields the armed line and **nothing else**, in an application that plainly shows windows.
+
+**The `isVisible` spy is not perturbing the result.** A run carrying `PreferencePanel.showWindow:`
+with NO `isVisible` spy at all also never reaches `showWindow:`. So the bail is not an artefact of
+instrumenting a BOOL-returning method, which was the obvious way for a measurement to change its
+own answer.
+
+So `run` takes the early return, `isVisible` answered true to it, and the panel separately answers
+0. The only remaining shape that fits all four observations is that the `[self window]` inside
+`run` is not yielding the panel at that instant, even though six `PreferencePanel.window` calls
+elsewhere in the same run return exactly that. Establish WHEN those six happen relative to `run`:
+the spy prints on return, so a call inside `run` prints before `run` own line, and none of the six
+sit there.
