@@ -1,0 +1,79 @@
+A forwarding stub must cover the class side too.
+
+NSFontCollection is a stub whose whole job is to absorb whatever an application asks of it: it
+implements methodSignatureForSelector: and forwardInvocation: and answers nil to everything. It
+implemented them as INSTANCE methods only.
+
+A class method send does not go through those. It goes through the METACLASS, which has no
+forwarding at all, so every class method on this class raised an unrecognized selector no matter
+what the stub did for instances. Since the class methods are the interesting ones here, the stub
+was absorbing nothing worth absorbing.
+
+iTerm2 asks +fontCollectionWithAllAvailableDescriptors while decoding its Preferences nib. The
+raise is caught, so there is no crash and no exception text: the decode simply stops and the window
+never appears, the same shape as #254 and as the stepper selector in patch 0085.
+
+The class side now has the same pair, using the same arity rule as the instance side: one object
+argument per colon in the selector. That rule is not decoration. The comment already in this file
+records why: a signature of v@: claims every method takes nothing and returns nothing, so a caller
+passing arguments writes through slots the invocation does not have.
+
+MEASURED on Command comma against iTerm2 3.5.14 with launchd on, with patch 0085 already in:
+  before  UNRECOGNIZED -[NSFontCollection fontCollectionWithAllAvailableDescriptors]
+  after   the log carries "Stub called: +fontCollectionWithAllAvailableDescriptors in
+          NSFontCollection" and the decode reaches the next missing thing,
+          -[NSString localizedLowercaseString]
+  2 of 2 runs render CONTENT, so nothing regressed on screen.
+
+A DEFECT IN OUR OWN DIAGNOSTIC, worth knowing: both doesNotRecognizeSelector: variants in
+corefoundation NSObject.m print "UNRECOGNIZED -[%s %s]", so a CLASS method send is reported with a
+minus sign. That is why this read as an instance method until the stub proved otherwise.
+
+PREFERENCES STILL DOES NOT OPEN. One known gap is left, the three localized case properties on
+NSString, and #257 records why it is NOT landing yet: with it in, the decode completes and the
+whole display goes black, 3 of 3, against 3 of 3 clean without the keystroke. This patch and 0085
+were each verified clean on their own by bisecting that.
+
+Gates: darling-testsuite 69 of 69, buck-bundled-patch-record-check 86 cocotron patches with 0 files
+differing, roster-sweep 7 of 7 CONTENT, roster-input 7 of 7 CONTENT.
+
+Task #257.
+
+--- a/AppKit/NSFontCollection.m
++++ b/AppKit/NSFontCollection.m
+@@ -22,6 +22,35 @@
+ 
+ @implementation NSFontCollection
+ 
++/* A STUB THAT ONLY COVERS INSTANCES LEAVES EVERY CLASS METHOD RAISING, because a class method send
++ * goes through the METACLASS, which has none of this. iTerm2 asks NSFontCollection for
++ * fontCollectionWithAllAvailableDescriptors while decoding its Preferences nib. Task #257. */
+++ (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
++{
++    /* The same arity rule as the instance side: one @ per colon, or an invocation with too few
++     * slots lets a caller write past them. */
++    const char *name = sel_getName(aSelector);
++    char types[256];
++    size_t n = 0;
++
++    types[n++] = '@';
++    types[n++] = '@';
++    types[n++] = ':';
++    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
++        if (*p == ':')
++            types[n++] = '@';
++    }
++    types[n] = '\0';
++    return [NSMethodSignature signatureWithObjCTypes: types];
++}
++
+++ (void)forwardInvocation:(NSInvocation *)anInvocation
++{
++    id nothing = nil;
++    [anInvocation setReturnValue: &nothing];
++    NSLog(@"Stub called: +%@ in %@", NSStringFromSelector([anInvocation selector]), self);
++}
++
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+     /* The arity comes from the selector's colons and the return is an object: "v@:" claimed every
