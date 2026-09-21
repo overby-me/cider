@@ -1500,3 +1500,39 @@ gated roster path loads a nib that carries constraints. Only nib decoded constra
 **Next, with real inputs for the first time:** a view that vanishes is being given a frame off the
 pane or of zero size. `CIDER_TRACE_LAYOUT` prints every rule the solver applies, so the next step
 is to follow one vanished control, the Light radio, from its rules to the frame it ends up with.
+
+### Done: the vanished controls, followed from their rules to their frames
+
+`CIDER_TRACE_LAYOUT` prints the before and after frame for every subview the solver touches. Three
+of them explain the whole regression:
+
+```
+NSStackView  {205 395 182 38}  ->  {207 395   0 38}
+NSButton     {205 145 189 24}  ->  {-314 145 176 23}
+NSTextField  {203  95 379 42}  ->  {-314  95 914 42}
+```
+
+- The stack view holding **Light and Dark is given width ZERO**, which is why those radios are not
+  drawn. Nothing is hidden or missing; it is 0 points wide.
+- **Get Ready-Made Shortcuts** is moved to x = -314, entirely off the pane.
+- The shortcuts paragraph is given width **914** in a **600** wide container, and its x follows from
+  that: 600 - 914 = -314, the same number, which is the tell. The solver is pinning a trailing edge
+  and deriving the leading one from a width it computed too large, rather than solving both edges
+  together.
+
+So the next question is narrow and does not need another instrument. Among the rules on that
+container are both orientations:
+
+```
+NSView .trailing     == NSBox .trailing * 1 + 20      container is the FIRST item
+NSBox .leading       == NSView .leading * 1 + 20      container is the SECOND item
+NSTextField .leading >= NSView .leading * 1 + 20      a GREATER THAN OR EQUAL relation
+```
+
+`CiderConstraintSuperview` already documents that the inverted form, where the container is the
+first item, is how a container pins a child's far edge, and that getting it wrong files the
+constraint a level too high. Filing was fixed; **solving the inverted form, and honouring `>=`
+rather than treating it as `==`, are the two candidates for the 914.**
+
+Three views with wrong frames, two suspects, and the trace prints the rule and the result side by
+side. That is where the next attempt starts.
