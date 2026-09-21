@@ -95,3 +95,25 @@ implementation only build reproduces the blanking exactly, 2 of 2, with the same
   is why gap 2 read as an instance method until the forwarding stub proved otherwise.
 - Guest stderr interleaves, so grepping a whole line for `UNRECOGNIZED` can print a line whose
   visible text is about something else entirely. Use `grep -o` for the selector itself.
+
+## Who asks for a compositor surface, measured
+
+`-[NSWindow cider_platformWindow]` is LAZY: the surface is created on first ask, not at init. So
+the question is who asks for the two windows that are never shown. With `CIDER_TRACE_APP=1`, the
+twelve asks in one black run break down as:
+
+```
+7  -[NSCachedImageRep initWithSize:depth:separate:alpha:]
+2  -[NSWindow windowNumber]
+2  -[NSWindow setFrame:display:animate:]
+1  -[NSWindow orderWindow:relativeTo:]
+```
+
+The seven image-cache asks are NOT the blanking. `NSCachedImageRep` backs an `NSImage` with a real
+`NSWindow` carrying style mask `NSAppKitPrivateWindow` (0x8000000), and no surface in these runs
+has that style: the five are 0xf, 0x5f, 0x10f, 0x7 and 0x0. Those windows get backing without a
+compositor surface, which is the intended handling.
+
+That leaves `windowNumber` as the ask worth chasing. Asking a never shown window for its NUMBER
+should not cost a compositor surface, and it is the cheapest thing on this list to make answer
+without materialising one.
