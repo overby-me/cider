@@ -1,0 +1,94 @@
+Say what a custom view placeholder became, and what the nib sized a view to.
+
+Two traces for one question: the iTerm2 Preferences pane is zero by zero, so the window that now
+opens is only as tall as its own chrome. A view that is zero and is never sent setFrame: afterwards
+has only its decode, and nothing printed what that decode produced.
+
+CIDER_TRACE_CUSTOMVIEW prints, for every NSCustomView placeholder, the NSClassName it carried, the
+class it actually became, the frame, and whether the archive held NSFrame or NSFrameSize.
+CIDER_TRACE_SVFRAME, which already selected a class for the setFrame traces, now also prints the
+frame decoded by -[NSView initWithCoder:] for that class, which is the only other place a nib
+decoded view can get a size.
+
+WHAT THEY MEASURED, so the next attempt starts from evidence and not from this list again. Every
+one of these is a refuted explanation for the zero sized pane:
+
+  104 placeholders decode in the Preferences nib and every one becomes a real class at a real size
+      (NSView, ProfileListView, sizes from 525x279 to 922x420). Not one is zero.
+  NSCustomView is sent setFrame: or setFrameSize: ZERO times in a whole run. The control is the
+      same trace widened to any class name containing View, which prints 1360 frame events across
+      NSClipView, NSTableHeaderView, NSImageView, NSView and nine others in the same run, so the
+      silence is real and not a dead instrument.
+  No class in that nib fails to resolve. CIDER_NIB archive NO CLASS never fires and the NSCustomView
+      unknown class log never fires, with 479 other NSLog lines in the same capture proving the
+      channel works.
+  Nothing in this tree sets translatesAutoresizingMaskIntoConstraints to NO. Both assignments in
+      NSView.m set it to YES, and -[NSView init] gives 1x1 rather than zero, so the application
+      turned it off itself.
+
+So the pane is an NSCustomView instance carrying the zero initialised ivars of a bare alloc: frame
+zero, autoresizing mask zero, translates NO, no subviews. Every path in this framework that builds
+one from an archive sets at least one of those, and none of them ran for it. Where it comes from is
+the open question, and the traces above are what will answer it.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -319,6 +319,8 @@
+     }
+ }
+ 
++static BOOL _CiderTraceFrameFor(NSView *view);
++
+ - initWithCoder: (NSCoder *) coder {
+     [super initWithCoder: coder];
+ 
+@@ -349,6 +351,18 @@
+         _subviews = [NSMutableArray new];
+         _postsNotificationOnFrameChange = YES;
+         _postsNotificationOnBoundsChange = YES;
++        /* WHAT THE NIB ACTUALLY GAVE THIS VIEW. A view nobody ever sends setFrame: to has only
++         * this one chance at a size, so "it is zero by zero" has to be traced to the decode or to
++         * the absence of a key. CIDER_TRACE_SVFRAME selects the class. */
++        if (_CiderTraceFrameFor(self)) {
++            fprintf(stderr,
++                    "CIDER_SVFRAME %s initWithCoder -> %gx%g at %g,%g hasNSFrame=%d hasNSFrameSize=%d\n",
++                    object_getClassName(self), _frame.size.width, _frame.size.height,
++                    _frame.origin.x, _frame.origin.y,
++                    (int) [keyed containsValueForKey: @"NSFrame"],
++                    (int) [keyed containsValueForKey: @"NSFrameSize"]);
++            fflush(stderr);
++        }
+         _autoresizingMask = vFlags & 0x3F;
+         if ([keyed containsValueForKey: @"NSvFlags"])
+             _autoresizesSubviews = (vFlags & 0x100) ? YES : NO;
+--- a/AppKit/nib.subproj/NSCustomView.m
++++ b/AppKit/nib.subproj/NSCustomView.m
+@@ -19,6 +19,7 @@
+ #import "NSCustomView.h"
+ #import <Foundation/NSKeyedArchiver.h>
+ #import <Foundation/NSString.h>
++#import <objc/runtime.h>
+ 
+ @implementation NSCustomView
+ 
+@@ -38,6 +39,20 @@
+                 frame.size = [coder decodeSizeForKey: @"NSFrameSize"];
+ 
+             NSView *newView = [[class alloc] initWithFrame: frame];
++
++            /* WHAT THE PLACEHOLDER TURNED INTO, AND AT WHAT SIZE. A pane that arrives zero by zero
++             * and is never sent setFrame: afterwards has only this moment, and the two ways it can
++             * go wrong, an unresolved class name and a frame key that was not there, are invisible
++             * once the object exists. CIDER_TRACE_CUSTOMVIEW. */
++            if (getenv("CIDER_TRACE_CUSTOMVIEW") != NULL) {
++                fprintf(stderr,
++                        "CIDER_CUSTOMVIEW name=%s became=%s %gx%g at %g,%g hasNSFrame=%d hasNSFrameSize=%d\n",
++                        [className UTF8String] ?: "(nil)", object_getClassName(newView),
++                        frame.size.width, frame.size.height, frame.origin.x, frame.origin.y,
++                        (int) [coder containsValueForKey: @"NSFrame"],
++                        (int) [coder containsValueForKey: @"NSFrameSize"]);
++                fflush(stderr);
++            }
+             if ([coder containsValueForKey: @"NSvFlags"]) {
+                 unsigned vFlags = [coder decodeIntForKey: @"NSvFlags"];
+ 

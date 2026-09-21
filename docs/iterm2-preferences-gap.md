@@ -1154,3 +1154,28 @@ on this path nobody does. Whether the flag itself is decoded correctly is the fi
 in a nib with no constraints anywhere, macOS would leave such a view translating its mask.
 
 This is the same shape as the MoneyMoney Preferences pane that never resizes. Take the two together.
+
+### Six explanations for the zero sized pane, all refuted by measurement
+
+The pane is `NSCustomView 0x0 at 0,0 mask=0x0 translates=0 cons=0`, and the window is exactly as
+tall as the chrome around it. Each of these was checked rather than argued, and each is now closed:
+
+| candidate | what was measured | verdict |
+|---|---|---|
+| the nib gives the placeholder no size | 104 placeholders decode, every one a real class at a real size, 525x279 up to 922x420 | refuted |
+| something sizes it later and we drop that | `NSCustomView` gets `setFrame:`/`setFrameSize:` **zero** times in a whole run | it is never sized, by anyone |
+| the frame trace is simply dead | same trace widened to any class containing View prints **1360** events across twelve classes in the same run | the instrument speaks |
+| a class in the nib does not resolve | `CIDER_NIB archive NO CLASS` never fires; the `NSCustomView unknown class` log never fires, with 479 other NSLog lines in the capture | every class resolves |
+| we turn off `translatesAutoresizingMaskIntoConstraints` | both assignments in `NSView.m` set it to **YES**, and the decode has a `// TODO: decode this` above it | the application turns it off |
+| it is a plain `alloc`/`init` | `-[NSView init]` gives **1x1**, not 0x0 | refuted |
+| iTerm2 sizes it by constraints we drop | `cons=0` on every view in the panel; the nib builds 4210 objects with **no** NSLayoutConstraint; `setActive:` correctly calls `addConstraint:`; only 11 visual format strings exist in the binary and none is for this pane | no constraints are ever created |
+
+What that leaves is precise: the pane carries the **zero initialised ivars of a bare alloc** (frame
+zero, mask zero, translates NO, no subviews). Every path in this framework that builds a view from
+an archive sets at least one of those, and none of them ran for this object. Finding who allocates
+it is the next step, and `CIDER_TRACE_CUSTOMVIEW` plus `CIDER_TRACE_SVFRAME` (cocotron patch 0091)
+are the instruments to do it with.
+
+Worth noting for whoever picks this up: `-[NSCustomView initWithCoder:]` never calls
+`[super initWithCoder:]` on its keyed path, which is why a trace added to `-[NSView initWithCoder:]`
+reports nothing for this class. That cost a build to learn.
