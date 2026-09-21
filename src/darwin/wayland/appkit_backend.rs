@@ -380,7 +380,26 @@ fn wait_for_something(until: Object) {
         return;
     }
     let mut fds = PollFd { fd, events: POLLIN, revents: 0 };
-    unsafe { poll(&mut fds as *mut PollFd, 1, ms) };
+    let rc = unsafe { poll(&mut fds as *mut PollFd, 1, ms) };
+    /* WHY THE WAIT ENDED. This return was discarded, and a poll cut short by a signal returns -1
+     * with EINTR immediately, which this loop cannot tell from an elapsed timeout: it just comes
+     * back around. That is invisible and it is exactly the shape of a 16 ms request served in
+     * 0.28 ms with no compositor traffic to explain it. Counted, not guessed. */
+    if crate::env_flag!("CIDER_WAYLAND_TRACE_SPIN") {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static TIMEOUT: AtomicU64 = AtomicU64::new(0);
+        static READY: AtomicU64 = AtomicU64::new(0);
+        static INTR: AtomicU64 = AtomicU64::new(0);
+        let slot = if rc > 0 { &READY } else if rc == 0 { &TIMEOUT } else { &INTR };
+        let n = slot.fetch_add(1, Ordering::Relaxed) + 1;
+        if n % 2000 == 0 {
+            println!(
+                "cider-wayland-appkit pollret ready={} timeout={} err={} last_rc={} revents={:#x}",
+                READY.load(Ordering::Relaxed), TIMEOUT.load(Ordering::Relaxed),
+                INTR.load(Ordering::Relaxed), rc, fds.revents
+            );
+        }
+    }
 }
 
 /// The longest this backend will let the application sleep inside one event wait, in seconds.

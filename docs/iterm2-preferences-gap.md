@@ -725,3 +725,46 @@ WHAT SETTLES IT, and it is small: capture the return value and `errno`, and coun
 against the timeouts. If EINTR dominates, the fix is the standard one, retry the poll with the
 remaining budget rather than treating an interruption as an elapsed wait. Discarding the result is
 what made this invisible for the whole investigation.
+
+## ROOT CAUSE OF THE SPIN: the Wayland fd is hung up and nothing notices
+
+Counting why the poll returns, rather than discarding the result:
+
+```
+pollret ready=64000 timeout=4679 err=0 last_rc=1 revents=0x11
+```
+
+- `err=0`. Not one interrupted poll, so **EINTR is refuted** as well.
+- `ready=64000` against `timeout=4679`. The overwhelming majority of waits end because the
+  descriptor is READY, not because 16 ms elapsed.
+- `revents=0x11` is **POLLIN | POLLHUP**.
+
+**POLLHUP means the peer closed the connection.** A hung-up descriptor is permanently ready, so
+`poll` returns immediately every single time, for ever. That is the spin, completely: a correct
+16 ms budget, 0.28 ms actual, no compositor traffic to explain it, and no signal involved.
+
+### Why nothing reported it
+
+`session::display_failed()` asks `wl_display_get_error`, and that only reports an error once a read
+or dispatch has actually failed. A client that never successfully reads again never sets it. So the
+liveness check added earlier in this session ran sixteen times, found 0, and correctly reported the
+display as alive by the only measure it had. POLLHUP is the measure it did not have.
+
+And the poll discarded its return value, so the one place that could see `revents` threw it away.
+Two instruments looking straight at a dead connection, both silent, for the same reason: neither
+was looking at the descriptor.
+
+### What this explains
+
+The Preferences window cannot ever map, because the connection it would map on is gone. The
+terminal still appears in captures only because the compositor holds its last buffer. This is the
+same family as the earlier finding that the compositor workspace was empty, and it is consistent
+with everything measured since.
+
+### The fix, and the check that must come first
+
+Treat POLLHUP as a dead display: report it once, the way `display_failed` reports a protocol error,
+and stop pretending the wait succeeded. But FIRST establish WHEN the hangup happens and whether it
+predates the keystroke, because the idle control also spins, at 81,000 pump iterations rather than
+1,064,200. If the fd is already hung up before Command comma, the keystroke is not the trigger and
+this defect is much wider than Preferences.
