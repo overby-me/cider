@@ -191,6 +191,13 @@ extern "C-unwind" fn display_next_event(
         // HOW OFTEN, not just whether. NSApplication redisplays between events, so the rate of this
         // call IS the frame rate available to the application, and a rate of a few per second looks
         // exactly like a window that does not repaint.
+        // AND WHETHER THE CONNECTION IS STILL THERE. display_failed only ever ran from
+        // roundtrip(), so a client that stops asking never learns it is dead: every request is
+        // dropped, the compositor has already discarded the surfaces, and the screen is black
+        // while this loop keeps turning. It prints once. See docs/iterm2-preferences-gap.md.
+        if n % 200 == 0 {
+            session::display_failed();
+        }
         if n <= 3 || n % 200 == 0 {
             // THE MASK IS THE INTERESTING PART. NSDisplay does not merely skip a queued event that
             // does not match it, it DISCARDS it, so an application asking with a narrow mask
