@@ -1,0 +1,59 @@
+Say what frame the surface is born with, and withdraw the claim in patch 0082.
+
+PATCH 0082 STATES THAT THE WAYLAND SURFACE IS 47 PIXELS SHORTER THAN THE WINDOW. IT IS NOT. The
+surface is faithful, and this trace is what showed it.
+
+-[NSWindow _createPlatformWindowOnMainThread] now prints the frame and the content rect at the
+moment the platform window is created, gated on CIDER_TRACE_TOOLBAR. For MoneyMoney Preferences:
+
+    CIDER_WINCREATE class=MMWindow frame={697.0,-9.0 406.0x331.0} content={406.0x253.0}
+    cider-wayland-window create=ok number=4 size=406x331 at=697,-9 level=0 style=0x3
+
+The frame IS 406x331 when the surface is born. The compositor gets exactly what AppKit asked for.
+
+The 406x378 I compared it against in 0082 was measured EARLIER, during toolbar setup, when the
+content was still 300. The application resized its own window in between, which is what a
+preferences window with panes does. 331 is 253 content plus 56 toolbar plus 22 title bar, and the
+on screen interior measures about 309, which is 253 plus 56. Every number agrees.
+
+THAT IS THE SECOND TIME ON THIS TASK I HAVE COMPARED TWO VALUES THAT WERE NEVER TRUE AT THE SAME
+MOMENT. The first was an assigned origin against a surviving one (0081, withdrawn in 0082). This
+was a frame from setup against a frame at show time. The rule both times: a comparison needs both
+sides sampled at the same instant, and a trace that prints only one side invites exactly this.
+
+WHAT IS LEFT OF #255, now narrow. The window is exactly as AppKit intends, so the overlap is INSIDE
+it: the pane view draws above the content view, into the toolbar strip. The overflow is 47 points,
+which is 300 minus 253, the difference between the size the nib gives the pane and the size of the
+content view it is placed in.
+
+Also ruled out by reading, so nobody repeats it: frameRectForContentRect: and
+contentRectForFrameRect: are symmetric. Both adjust by the main menu height and by the toolbar view
+height, so they do invert each other and a setContentSize: does not lose the toolbar. And
+constrainFrameRect:toScreen: only moves the origin, never the size.
+
+Off by default.
+
+Task #255.
+
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -644,6 +644,19 @@
+     _platformWindow = [[NSDisplay currentDisplay] newWindowWithDelegate: self];
+     _CiderWindowNote("platform created", self);
+ 
++    /* THE SIZE THE SURFACE IS BORN WITH. MoneyMoney's Preferences frame is 406x378 and its Wayland
++     * surface is created at 406x331 and never resized, so the compositor is shown a window 47
++     * pixels shorter than the one AppKit lays out for. This says what the frame was at the moment
++     * the platform window asked for it. Task #255. */
++    if (getenv("CIDER_TRACE_TOOLBAR") != NULL) {
++        fprintf(stderr, "CIDER_WINCREATE class=%s frame={%.1f,%.1f %.1fx%.1f} content={%.1fx%.1f}\n",
++                object_getClassName(self), (double) _frame.origin.x, (double) _frame.origin.y,
++                (double) _frame.size.width, (double) _frame.size.height,
++                (double) [self contentRectForFrameRect: _frame].size.width,
++                (double) [self contentRectForFrameRect: _frame].size.height);
++        fflush(stderr);
++    }
++
+     [self _updatePlatformWindowTitle];
+     _CiderWindowNote("title set", self);
+ 
