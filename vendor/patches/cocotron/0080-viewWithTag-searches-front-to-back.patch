@@ -1,0 +1,77 @@
+viewWithTag: searches front to back, which is what decides a tie.
+
+-[NSView viewWithTag:] walked the subview array forwards. For a tag that appears once, the
+direction cannot be observed at all: forwards and backwards return the same view. It decides
+exactly one thing, which of several siblings sharing a tag is returned, and that is the case
+MoneyMoney has.
+
+MoneyMoney lost its entire Preferences window to it. showPreferences: does
+
+    id v = [[[self popoverController] view] viewWithTag: 1];
+    [v setTitle: ...];
+    [v setHasPriority: YES];
+
+and the popover it searches is PreferencesWindow.nib obj[91], an NSCustomView whose subviews in
+ARCHIVE ORDER begin
+
+    [ 0] obj[ 93] MMHelpButton NSTag=1
+    [ 1] obj[ 83] MMButton     NSTag=2
+    [ 2] obj[ 97] MMButton     NSTag=1
+
+Searching forwards hands the caller the help button at index 0. setHasPriority: is MMButton's, so
+it raises, cocotron catches it in the @try around action delivery, and the rest of showPreferences:
+never runs: no ordering call, no surface, and ZERO occurrences of the word Exception in the log.
+Searching front to back returns obj[97], the price button, which is the only view tagged 1 in the
+whole bundle that is an MMButton.
+
+EVERYTHING ELSE WAS EXONERATED FIRST, by measurement rather than by reasoning. With
+CIDER_TRACE_VIEWTAG the walk visits the tags the archive says it should, in the order the archive
+says, for both roots the application searches, so the nib decode, the class swapping, the tag
+values and the subview order are all faithful. probe_dynamic_method showed the runtime consults
+resolveInstanceMethod:, forwardingTargetForSelector: and forwardInvocation:, so it is not a
+dispatch hook. Nothing removes the help button in our run: 47 removeFromSuperview calls, 0 on
+MMHelpButton. What was left was the direction of the search.
+
+THE APPLICATION IS THE ARBITER and the direction is not documented. With this change Preferences
+opens, renders its toolbar and General pane, and a click on Security switches to that pane. That is
+the evidence; the ordering is a deliberate choice to match the shipping application rather than a
+fact read out of a header.
+
+THE BLAST RADIUS IS MEASURED, not assumed. Across 41 nibs in three roster applications there are
+293 parents with subviews and exactly 3 hold a duplicate tag among their children, all in
+MoneyMoney. Every other search in the roster returns the same view either way.
+
+The trace gained the receiver pointer, the superview class and the window, because two searches ran
+back to back and only the identity separated which one fed the raise.
+
+Task #254.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -1246,15 +1246,23 @@
+      * others were wrong, absent or merely later in the array, and a caller that gets the wrong
+      * view raises on a selector belonging to the class it expected. Task #254. */
+     if (getenv("CIDER_TRACE_VIEWTAG") != NULL) {
+-        fprintf(stderr, "CIDER_VIEWTAG visit %-28s tag=%ld want=%ld subviews=%d\n",
+-                object_getClassName(self), (long) _tag, (long) tag, count);
++        fprintf(stderr,
++                "CIDER_VIEWTAG visit %-24s %p tag=%ld want=%ld subviews=%d super=%s window=%p\n",
++                object_getClassName(self), self, (long) _tag, (long) tag, count,
++                _superview != nil ? object_getClassName(_superview) : "nil", _window);
+         fflush(stderr);
+     }
+ 
+     if (_tag == tag)
+         return self;
+ 
+-    for (i = 0; i < count; i++) {
++    /* FRONT TO BACK, which is the order every other search of a subview array uses. With a tag
++     * that appears once the direction cannot be observed at all; it decides only a tie, and a tie
++     * is exactly what MoneyMoney has. Its Pro popover holds two siblings tagged 1, a help button
++     * at index 0 and the price button at index 2, and searching forwards hands the caller the
++     * help button, which then raises on setHasPriority: and costs the whole Preferences window.
++     * Task #254. */
++    for (i = count - 1; i >= 0; i--) {
+         NSView *view = [[_subviews objectAtIndex: i] viewWithTag: tag];
+ 
+         if (view != nil)
