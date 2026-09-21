@@ -246,3 +246,32 @@ darwin_binary(
     deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
     visibility = ["PUBLIC"],
 )
+
+
+# Does every mutable class actually mutate? NSMutableCharacterSet did not, silently, for the whole
+# life of the port (#247). See the header of probe_mutable_classes.m.
+cc_objects(
+    name = "probe_mutable_classes_obj",
+    srcs = ["probe_mutable_classes.m"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION", "-fno-objc-arc"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "probe_mutable_classes",
+    objs = [":probe_mutable_classes_obj", "//vendor/src/csu:crt1.10.6_obj2"],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
+    visibility = ["PUBLIC"],
+)
