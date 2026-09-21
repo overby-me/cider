@@ -1360,3 +1360,50 @@ Two instrument traps met on the way: `TRACE_ENV` is injected into an `env` comma
 containing a space (`CIDER_TRACE_CELLSTATE=Blank Document`) silently breaks the launch; and a
 budgeted trace spent its whole allowance on a 33 cell gallery of untitled cells before the two
 cells being hunted were touched once, so the budget had to skip untitled cells.
+
+## iA Writer Preferences: the overlap is stale IB frames, and the constraints never arrive
+
+The second defect the sweep found. Two label rows draw on top of each other, reading as
+"AbDeckraicoen:" where a Mac shows "Appearance:" above "Dock icon:".
+
+Measured rather than eyeballed. In the General pane there is exactly ONE overlapping pair among the
+content view's nineteen children:
+
+```
+NSTextField 68x16 at 131,417
+NSTextField 81x16 at 118,417
+```
+
+Both right aligned to x=199, both at the same y. And they are not moved there by anything: the
+decode trace shows the ARCHIVE placing them exactly so, and of 603 setFrame calls on text fields in
+that run not one targets y=417.
+
+```
+CIDER_SVFRAME NSTextField initWithCoder -> 68x16 at 131,417 hasNSFrame=1
+CIDER_SVFRAME NSTextField initWithCoder -> 81x16 at 118,417 hasNSFrame=1
+```
+
+That is normal for a nib built with auto layout: IB writes the last frames it had and the
+constraints move everything at runtime. **The constraints are what is missing.**
+
+### The control that makes the zero mean something
+
+Summing `cons=` over every view, per window, in one run of one application:
+
+| window | constraints | views |
+|---|---|---|
+| `IATitlebarWindow` (the document window) | **212** | 145 |
+| `NSWindow title=General` (Preferences) | **0** | 46 |
+
+Constraint decoding works: the document window is full of them. The Preferences window has none at
+all, while `GeneralPreferences.nib` and `Menu.nib` between them carry **406 NSLayoutConstraint
+objects**. So the objects are built and never reach the views that need them.
+
+`-[NSView initWithCoder:]` does decode `NSViewConstraints` and add each one, so the question is not
+whether that code exists but why this nib does not go through it: the two nibs may use different
+archive formats, or this one may hang its constraints off `NSIBObjectData` rather than per view.
+That is the next thing to measure, and the per window sum above is the instrument to measure it
+with, because it turns "auto layout seems broken" into a number with a control beside it.
+
+Until then, iA Writer Preferences RENDERS with one visibly wrong row and is otherwise complete:
+nine toolbar items, the appearance radios, all the checkboxes, both popups and the shortcut button.
