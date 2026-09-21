@@ -116,6 +116,33 @@ int main(void) {
 		         [[cal components:NSCalendarUnitDay fromDate:d2] day], 10);
 	}
 
+	/* CONSTRUCTING A CALENDAR AND COMPUTING WITH ONE ARE DIFFERENT QUESTIONS, and #253 only
+	 * answered the first. Adding an interval and taking a difference is what a finance application
+	 * does to build a statement period. */
+	{
+		NSCalendar *cal = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
+		NSDateComponents *oneDay = [[[NSDateComponents alloc] init] autorelease];
+		NSDateComponents *noDays = [[[NSDateComponents alloc] init] autorelease];
+		NSDate *plus;
+		NSDate *same;
+
+		[cal setTimeZone:[NSTimeZone timeZoneWithName:@"GMT"]];
+		[oneDay setDay:1];
+		[noDays setDay:0];
+
+		plus = [cal dateByAddingComponents:oneDay toDate:d1 options:0];
+		same = [cal dateByAddingComponents:noDays toDate:d1 options:0];
+		checkInt("dateByAddingComponents one day lands on d2",
+		         (plus != nil && [plus timeIntervalSince1970] == [d2 timeIntervalSince1970]), 1);
+		checkInt("CONTROL adding zero days does not move the date",
+		         (same != nil && [same timeIntervalSince1970] == [d1 timeIntervalSince1970]), 1);
+
+		checkInt("components:fromDate:toDate: is one day",
+		         [[cal components:NSCalendarUnitDay fromDate:d1 toDate:d2 options:0] day], 1);
+		checkInt("CONTROL the same date is zero days apart",
+		         [[cal components:NSCalendarUnitDay fromDate:d1 toDate:d1 options:0] day], 0);
+	}
+
 	/* Number formatting, which every row of a finance application goes through. The decimal
 	 * separator is locale dependent, so this fixes the locale and asserts exact output. */
 	{
