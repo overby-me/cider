@@ -22,6 +22,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 static int verbose = 0;
 
@@ -80,6 +81,9 @@ extern void CGContextSetLineWidth(CiderCGContextRef, CiderCGFloat);
 extern void CGContextSetRGBStrokeColor(CiderCGContextRef, CiderCGFloat, CiderCGFloat, CiderCGFloat,
                                        CiderCGFloat);
 extern void CGContextStrokeRect(CiderCGContextRef, CiderCGRect);
+extern void CGContextSetRGBFillColor(CiderCGContextRef, CiderCGFloat, CiderCGFloat, CiderCGFloat,
+                                     CiderCGFloat);
+extern void CGContextFillRect(CiderCGContextRef, CiderCGRect);
 
 /*
  * HOW BIG THE SYSTEM SAYS ITS CONTROLS ARE, which decides layout rather than drawing.
@@ -180,6 +184,164 @@ OSStatus HIThemeDrawFrame(const void *inRect, const void *inDrawInfo, void *inCo
         CGContextStrokeRect(context, ring);
     }
     CGContextRestoreGState(context);
+    return 0;
+}
+
+/*
+ * THE FOUR OTHER THEME DRAWS MONEY MANAGER EX IMPORTS, AND THE BRUSH.
+ *
+ * None of these existed, in any form. A function that is declared and never defined does not give
+ * a wrong answer, it kills the process on the lazy bind the first time it is reached, and wx draws
+ * a button, a focus ring, a splitter and a track through exactly these. They are deliberately
+ * plain: a shape in the right place in the right grey beats an application that exits, and it is
+ * obvious on a capture that they are not the real thing.
+ *
+ * Every one draws in the CALLER context and restores the state, for the same reason
+ * HIThemeDrawFrame does: this runs inside the application own drawing.
+ */
+OSStatus HIThemeDrawButton(const void *inRect, const void *inDrawInfo, void *inContext,
+                           UInt32 inOrientation, void *outLabelRect)
+{
+    const CiderCGRect *rect = (const CiderCGRect *) inRect;
+    CiderCGContextRef context = (CiderCGContextRef) inContext;
+
+    if (verbose) puts("STUB: HIThemeDrawButton called");
+    if (rect == NULL || context == NULL)
+        return cider_unimpErr;
+
+    CGContextSaveGState(context);
+    CGContextSetRGBFillColor(context, 0.93, 0.93, 0.94, 1.0);
+    CGContextFillRect(context, *rect);
+    CGContextSetLineWidth(context, 1.0);
+    CGContextSetRGBStrokeColor(context, 0.70, 0.70, 0.72, 1.0);
+    CiderCGRect edge = { rect->x + 0.5, rect->y + 0.5, rect->width - 1.0, rect->height - 1.0 };
+    CGContextStrokeRect(context, edge);
+    CGContextRestoreGState(context);
+
+    /* The label rect is the button less its bezel, and a caller that positions text from it puts
+     * the text outside the button if this is left untouched. */
+    if (outLabelRect != NULL) {
+        CiderCGRect *label = (CiderCGRect *) outLabelRect;
+
+        label->x = rect->x + 2.0;
+        label->y = rect->y + 2.0;
+        label->width = (rect->width > 4.0) ? rect->width - 4.0 : 0.0;
+        label->height = (rect->height > 4.0) ? rect->height - 4.0 : 0.0;
+    }
+    return 0;
+}
+
+OSStatus HIThemeDrawFocusRect(const void *inRect, Boolean inHasFocus, void *inContext,
+                              UInt32 inOrientation)
+{
+    const CiderCGRect *rect = (const CiderCGRect *) inRect;
+    CiderCGContextRef context = (CiderCGContextRef) inContext;
+
+    if (verbose) puts("STUB: HIThemeDrawFocusRect called");
+    if (rect == NULL || context == NULL)
+        return cider_unimpErr;
+    if (!inHasFocus)
+        return 0;
+
+    CGContextSaveGState(context);
+    CGContextSetRGBStrokeColor(context, 0.0, 0.48, 1.0, 0.85);
+    CGContextSetLineWidth(context, 2.0);
+    CiderCGRect ring = { rect->x + 1.0, rect->y + 1.0, rect->width - 2.0, rect->height - 2.0 };
+    CGContextStrokeRect(context, ring);
+    CGContextRestoreGState(context);
+    return 0;
+}
+
+OSStatus HIThemeDrawPaneSplitter(const void *inRect, const void *inDrawInfo, void *inContext,
+                                 UInt32 inOrientation)
+{
+    const CiderCGRect *rect = (const CiderCGRect *) inRect;
+    CiderCGContextRef context = (CiderCGContextRef) inContext;
+
+    if (verbose) puts("STUB: HIThemeDrawPaneSplitter called");
+    if (rect == NULL || context == NULL)
+        return cider_unimpErr;
+
+    CGContextSaveGState(context);
+    CGContextSetRGBFillColor(context, 0.87, 0.87, 0.88, 1.0);
+    CGContextFillRect(context, *rect);
+    CGContextRestoreGState(context);
+    return 0;
+}
+
+OSStatus HIThemeDrawTrack(const void *inDrawInfo, const void *inGhostRect, void *inContext,
+                          UInt32 inOrientation)
+{
+    CiderCGContextRef context = (CiderCGContextRef) inContext;
+    const CiderCGRect *bounds = (const CiderCGRect *) inDrawInfo;
+
+    if (verbose) puts("STUB: HIThemeDrawTrack called");
+    if (context == NULL || bounds == NULL)
+        return cider_unimpErr;
+
+    /* HIThemeTrackDrawInfo begins with a version then the bounds, so the rectangle is one 32 bit
+     * field in. Reading it wrong draws in the wrong place, which is visible; reading nothing at all
+     * and returning an error is what killed the caller. */
+    const CiderCGRect *rect = (const CiderCGRect *) (const void *) ((const char *) inDrawInfo + 8);
+
+    CGContextSaveGState(context);
+    CGContextSetRGBFillColor(context, 0.80, 0.80, 0.82, 1.0);
+    CGContextFillRect(context, *rect);
+    CGContextRestoreGState(context);
+    return 0;
+}
+
+/*
+ * A THEME BRUSH AS A COLOUR. Returning NULL is safe for a caller that checks and fatal for one that
+ * does not, so this answers a real grey for every brush rather than nothing for most of them.
+ */
+extern void *CGColorCreateGenericRGB(CiderCGFloat, CiderCGFloat, CiderCGFloat, CiderCGFloat);
+
+OSStatus HIThemeBrushCreateCGColor(UInt32 inBrush, void **outColor)
+{
+    if (verbose) puts("STUB: HIThemeBrushCreateCGColor called");
+    if (outColor == NULL)
+        return cider_unimpErr;
+
+    CiderCGFloat grey = 0.93;
+
+    switch (inBrush) {
+    case 1:  /* kThemeBrushWhite */
+        grey = 1.00;
+        break;
+    case 2:  /* kThemeBrushBlack */
+        grey = 0.00;
+        break;
+    default:
+        break;
+    }
+
+    *outColor = CGColorCreateGenericRGB(grey, grey, grey, 1.0);
+    return (*outColor != NULL) ? 0 : cider_unimpErr;
+}
+
+/*
+ * TWO MORE CARBON ENTRY POINTS MONEY MANAGER EX IMPORTS AND NOTHING DEFINED.
+ *
+ * GetEventTime is a clock, and answering it from the same clock everything else here uses is not a
+ * stub at all, it is the right answer. SetSystemUIMode asks for the Dock and the menu bar to be
+ * hidden or shown; there is no window server here to ask, and the compositor owns what is on
+ * screen, so it reports success without doing anything. An application that is told this failed
+ * usually tries again or refuses to go full screen.
+ */
+double GetEventTime(void)
+{
+    struct timespec ts;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+        return 0.0;
+
+    return (double) ts.tv_sec + (double) ts.tv_nsec / 1000000000.0;
+}
+
+OSStatus SetSystemUIMode(UInt32 inMode, UInt32 inOptions)
+{
+    if (verbose) puts("STUB: SetSystemUIMode called");
     return 0;
 }
 

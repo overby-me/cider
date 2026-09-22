@@ -1,0 +1,57 @@
+--- a/CoreGraphics/CGDataProvider.m
++++ b/CoreGraphics/CGDataProvider.m
+@@ -78,3 +78,16 @@
+ 
+     return (CGDataProviderRef)O2DataProviderCreateWithCFData((CFDataRef)data);
+ }
++
++/*
++ * A PROVIDER OVER A URL, which Onyx2D already knows how to make and CoreGraphics never exported.
++ * Declared and undefined is not a stub: it kills the caller on the lazy bind. Money Manager Ex
++ * imports it.
++ */
++CGDataProviderRef CGDataProviderCreateWithURL(CFURLRef url) {
++    if (url == NULL) {
++        return NULL;
++    }
++
++    return (CGDataProviderRef) O2DataProviderCreateWithURL((NSURL *) url);
++}
+--- a/CoreGraphics/CGColor.m
++++ b/CoreGraphics/CGColor.m
+@@ -63,6 +63,21 @@
+     return (CGColorRef)O2ColorCreateCopyWithAlpha((O2ColorRef)self, a);
+ }
+ 
++/*
++ * MATCHING A COLOUR TO ANOTHER SPACE. There is one working colour space in this port, so the match
++ * is the colour itself, copied so the caller owns what it is handed. Answering NULL would be
++ * within the contract and is the wrong default: a caller that does not check paints with nothing.
++ */
++CGColorRef CGColorCreateCopyByMatchingToColorSpace(CGColorSpaceRef space, unsigned int intent,
++                                                   CGColorRef color, CFDictionaryRef options)
++{
++    if (color == NULL) {
++        return NULL;
++    }
++
++    return (CGColorRef) O2ColorCreateCopy((O2ColorRef) color);
++}
++
+ bool CGColorEqualToColor(CGColorRef self, CGColorRef other) {
+     return O2ColorEqualToColor((O2ColorRef)self, (O2ColorRef)other);
+ }
+--- a/CoreGraphics/CGDisplayConfiguration.m
++++ b/CoreGraphics/CGDisplayConfiguration.m
+@@ -9,3 +9,11 @@
+     printf("STUB %s\n", __PRETTY_FUNCTION__);
+     return kCGErrorSuccess;
+ }
++
++/*
++ * PUT THE DISPLAYS BACK THE WAY THE USER HAD THEM. Nothing here ever changed them: the compositor
++ * owns the mode and this port does not reconfigure displays, so there is nothing to restore and
++ * saying so is the truth rather than a stub with a wrong answer in it.
++ */
++void CGRestorePermanentDisplayConfiguration(void) {
++}

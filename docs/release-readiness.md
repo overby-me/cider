@@ -549,3 +549,40 @@ Nothing has been sent. The document ends with what has to happen before it could
 on current buck2, write a reproducer that is not Cider, and file the two separately, since one is
 a rendering change and the other is a data-model gap with a closed three-year-old issue behind it
 ([facebook/buck2#475](https://github.com/facebook/buck2/issues/475), no maintainer reply).
+
+## Every roster application now resolves every strong import
+
+A function that is declared and never defined is not a stub. A stub gives a wrong answer that can
+be measured and corrected; an undefined symbol kills the process on the lazy bind the first time
+the application reaches it, with exit code 0, a black capture and the symbol named on the LAST line
+of the log. Money Manager Ex died exactly that way on the first keystroke into its transaction
+dialog, through `CGEventSourceKeyState`.
+
+`scripts/checks/undefined-imports-check.sh` answers the question before an application does. For
+every `.app` in every `/tmp/cider-*-1000/prefix`, it lists the STRONG undefined imports that
+neither the prefix nor the application bundle defines, and compares them against
+`scripts/checks/undefined-imports-baseline.txt`.
+
+**Two blind spots, both deliberate and both stated by the script.** Nothing in the prefix exports
+`_memcpy` or `_strlen`, yet every application calls them and runs, so the C library is resolved by
+the loader rather than by a prefix dylib and those names are filtered out. And a weak undefined
+symbol is allowed to be missing at runtime, which is how an application links a framework it may
+not have, so weak imports are excluded; they are the bulk of what a Swift application imports.
+
+**It has to be written carefully or it invents defects.** The first version ran `llvm-nm` under
+`xargs -P 16` into a single pipe. Sixteen writers interleave once a write exceeds PIPE_BUF, and a
+symbol torn in half reads as undefined: it reported `_objc_setProperty_atomic_copy` missing across
+four applications, and that symbol is defined and always was. It now writes one file per library
+and concatenates.
+
+**What it found, and what was done.** Money Manager Ex had ten undefined imports beyond the five
+HITheme draws already fixed alongside it: the five `AudioServices` system sound calls, three
+CoreGraphics entry points and two Carbon ones. All are now defined, honestly rather than
+optimistically: there is no audio device here so a system sound is not played and the create call
+returns `kAudioServicesUnsupportedPropertyError`; `GetEventTime` is answered from the same clock
+everything else uses, which is not a stub at all; `SetSystemUIMode` reports success because the
+compositor owns what is on screen and an application told this failed usually refuses to go full
+screen.
+
+The result is cm, ia, it, it34, lo, mm, mx and sp all at UNDEFINED 0, and a baseline that is empty
+on purpose so any regression fails.

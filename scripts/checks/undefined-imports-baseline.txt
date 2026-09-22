@@ -1,0 +1,10 @@
+# Strong undefined imports, per application, that neither the prefix nor the application bundle
+# defines. Written by scripts/checks/undefined-imports-check.sh as "<tag> <symbol>".
+#
+# THIS FILE IS EMPTY ON PURPOSE. As of the run that added it, every roster application resolves
+# every strong import it has: cm, ia, it, it34, lo, mm, mx and sp all report UNDEFINED 0. A line
+# appearing here means an application gained an import that nothing defines, and that is not a
+# cosmetic problem: the process dies on the lazy bind the first time it reaches the symbol, with
+# exit code 0 and the symbol named on the last line of its log.
+#
+# Add a line only when the symbol genuinely cannot be provided, and say why next to it.
