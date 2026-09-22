@@ -232,6 +232,34 @@ the three that have children. The toolbar draws its full row of icons on both si
 That is all three criteria on the surface this whole sequence was aimed at, reached by clicking
 through five dialogs: it renders, it is interactive, it resizes.
 
+## Two things found past the main window
+
+**Opening the last database works, and its instance alert renders.** The start dialog entry that was
+greyed out is live once a database has been opened cleanly. Because the previous runs were killed,
+the file is still marked open and Money Manager Ex puts up an MMEX Instance Check alert: warning
+icon, bold title, four wrapped paragraphs and Yes and No. It renders correctly, Yes dismisses it and
+the main window comes up populated.
+
+**A window left alone on the output is tiled to fill it, and the newly exposed area is not painted.**
+That alert is the only mapped toplevel at that moment, so sway gives it the whole output:
+
+    cider-wayland-window create=ok number=2 size=324x353 at=466,165 level=5 style=0x1
+    cider-wayland-window resized number=2 size=1256x684
+
+The alert content then sits at the BOTTOM of the enlarged window, which is what a bottom-left origin
+does when a window grows, and the top of the capture still holds the pixels from before the resize,
+with black either side. So the screenshot shows the alert twice. The click that dismisses it is at
+the live copy, 137,654, not at the stale one. Worth its own measurement: this is a repaint gap after
+a compositor-driven resize, not something specific to alerts.
+
+**All Transactions raises a fatal exception the application catches.** Clicking it in the Navigator
+puts up the wxWidgets crash reporter, `Debug report "MoneyManagerEx"`, naming
+`/private/tmp/MoneyManagerEx_dbgrpt-2-20260922T094854.zip`. That dialog itself renders correctly,
+group boxes, a checked file list, a notes field and Cancel and OK. The daemon log carries one
+`sigexc: have RIP 0x75E1CD6473AF pid 2 sig 11` for the run, and no core, because wx handles the
+signal itself. The report xml it writes has no stack in it. Symbolicating that RIP needs a run whose
+image map is captured, which has not been done yet.
+
 ## What this still does not cover
 
 The Dashboard pane on the right is empty. Money Manager Ex renders it as HTML in a `wxWebView`,
