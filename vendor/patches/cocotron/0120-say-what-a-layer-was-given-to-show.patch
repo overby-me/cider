@@ -1,0 +1,20 @@
+--- a/QuartzCore/CALayer.m
++++ b/QuartzCore/CALayer.m
+@@ -187,6 +187,17 @@
+ }
+ 
+ - (void) setContents: (id) value {
++    /* WHAT A LAYER IS GIVEN TO SHOW. On a backend with no OpenGL a layer has no renderer, so
++     * anything an application puts HERE rather than drawing in -drawRect: has nowhere to go and the
++     * view shows only the layer background. A photograph that decodes correctly and never appears
++     * is this, and it is indistinguishable from a decode failure without the trace. */
++    if (getenv("CIDER_TRACE_LAYERCONTENTS") != NULL) {
++        fprintf(stderr, "CIDER_LAYERCONTENTS layer=%p contents=%s bounds=%.0fx%.0f\n", self,
++                value != nil ? object_getClassName(value) : "nil", _bounds.size.width,
++                _bounds.size.height);
++        fflush(stderr);
++    }
++
+     value = [value retain];
+     [_contents release];
+     _contents = value;

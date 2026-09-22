@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 #import <ImageIO/CGImageSource.h>
 #import <Onyx2D/O2ImageSource.h>
 #import <Onyx2D/O2BitmapContext.h>
@@ -28,6 +30,26 @@ size_t CGImageSourceGetCount(CGImageSourceRef self) {
 
 CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef self,size_t index,CFDictionaryRef options) {
    CGImageRef image = (CGImageRef)[self createImageAtIndex:index options:options];
+
+   /*
+    * WHETHER A DECODER THAT MATCHED ACTUALLY PRODUCED AN IMAGE, which is a different question from
+    * the one CIDER_TRACE_IMAGESOURCE already answers. That trace says a decoder class recognised
+    * the bytes; it does not say the decode worked. An application that is handed NULL here draws
+    * its own broken image placeholder, and a flat grey rectangle where a photograph belongs reads
+    * as OUR drawing failing when nothing of ours has been asked to draw anything.
+    *
+    * It goes HERE and not in O2ImageSourceCreateImageAtIndex, which is the same operation one
+    * level down and which applications never reach: this function sends -createImageAtIndex: to
+    * the source itself. The trace put there printed nothing at all, out of 3011 other image lines.
+    */
+   if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL && getenv("CIDER_TRACE_IMAGESOURCE")[0] != '\0') {
+    fprintf(stderr, "CIDER_IMAGESOURCE createImageAtIndex %s index=%lu -> %s %lux%lu\n",
+            object_getClassName(self), (unsigned long)index, image ? "ok" : "NIL",
+            image ? (unsigned long)O2ImageGetWidth((O2ImageRef)image) : 0UL,
+            image ? (unsigned long)O2ImageGetHeight((O2ImageRef)image) : 0UL);
+    fflush(stderr);
+   }
+
    // The source is the only thing that knows which decoder produced these pixels, and
    // CGImageGetUTType is how a caller asks the IMAGE afterwards. Hand it over here or the answer
    // is lost with the source.
