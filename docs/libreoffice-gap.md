@@ -309,3 +309,42 @@ implementation is "there is no address book" or "this platform draws its own wid
 
 That is worth stating plainly because it changes what to do next: finishing the Wayland input
 rung and filling this list are independent, and the second one is what `soffice` is waiting for.
+
+## Calc and Impress, driven for the first time
+
+The roster has only ever driven Writer. Calc and Impress are different VCL widget sets and neither
+had been exercised, so both were driven from the Start Center on a 1256x684 output and then resized
+to 1000x600.
+
+### Calc meets all three criteria
+
+Clicking "Calc Spreadsheet" and typing into the grid:
+
+- **RENDERS**: the full grid with column headers A to R and rows 1 to 42, both icon toolbars, the
+  formatting bar with Liberation Sans 10pt, the Name Box, the formula bar, the right hand sidebar,
+  the Sheet1 tab, and a status bar reading "Sheet 1 of 1", "English (Denmark)", "Average: ; Sum: 0"
+  and 100 percent.
+- **INTERACTIVE**: "Cider" typed after the click lands in cell A1 AND in the formula bar, with the
+  caret in the cell. The Name Box reads A1.
+- **RESIZABLE**: at 1000x600 the grid reflows from R to N columns and 42 to 31 rows, the title bar
+  "Untitled 1" and the menu bar come into view, the toolbars reflow with overflow chevrons, and
+  "Cider" is still in A1.
+
+### Impress renders its template chooser and filters it live
+
+Clicking "Impress Presentation" opens "Select a Template" with **twelve template previews in full
+colour**: Beehive, Blue Curve, Blueprint Plans, Candy, DNA, Focus, Forestbird, Freshes, Grey
+Elegant, Growing Liberty, Inspiration and Lights. Behind it the Slides panel holds slide 1 and the
+sidebar its layout thumbnails.
+
+Typing "Cider" into the search field filters the grid to **zero results**, which is correct since
+no template matches, and the Filter control greys out as it does while searching. That is a live
+search round trip through the dialog, not just text arriving in a field.
+
+On resize the main window reflows correctly at 1000x600, title bar, menu bar, Slides panel and
+toolbars all present. **The template dialog keeps its size and is clipped at the right edge.** That
+is not called a defect here: a dialog does not shrink because the screen did, on this platform or
+on a Mac, and a Wayland client cannot reposition its own toplevel anyway.
+
+Nothing in either run needed a fix. Both modules were already working and simply had never been
+looked at.
