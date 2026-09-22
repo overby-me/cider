@@ -1,0 +1,14 @@
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -2889,7 +2889,10 @@
+ 
+ - (void) flushWindow {
+     [self _ciderDumpViewTreeIfAsked];
+-    if (getenv("CIDER_TRACE_MENU") != NULL) {
++    /* ITS OWN SWITCH. This fires once per flush, which is a firehose that cripples the application
++     * it is watching: a drive with CIDER_TRACE_MENU set for the MENU trace hit its limit two clicks
++     * short because of these lines, and the menu question could not be asked at all. */
++    if (getenv("CIDER_TRACE_FLUSH") != NULL) {
+         fprintf(stderr, "CIDER_FLUSH window=%p disabled=%d needed=%d visible=%d viewsNeed=%d\n",
+                 self, (int) _flushDisabled, (int) _flushNeeded, (int) [self isVisible],
+                 (int) [self viewsNeedDisplay]);

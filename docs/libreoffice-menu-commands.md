@@ -38,10 +38,37 @@ posting to itself to wake its own loop, 119 times in one drive. A window does no
 those on a Mac either. cocotron 0121 handles that case explicitly, and names the type in the
 message for anything genuinely unknown, so the next reader is not sent after it again.
 
+## Measured: tracking ends on the bar item, and the second click is not tracked at all
+
+`CIDER_TRACE_MENU` answers it. The whole run contains exactly ONE tracking result:
+
+    CIDER_MENU track item=Table enabled=1 action=menuItemTriggered: target=SalNSMenuItem
+    CIDER_MENU trackDone on NSMainMenuView item=Table
+
+So the first click, on the menu bar, tracks and finishes with the bar item `Table`, whose action
+`menuItemTriggered:` is then sent to its `SalNSMenuItem`. The submenu opens
+(`CIDER_MENU submenuNow index=7 branch=yes`). And the SECOND click, the one on `Insert Table…`
+inside the open menu, produces no `track` line and no `trackDone` line at all: the menu view never
+tracks it.
+
+The items themselves are fine. `CIDER_MENUITEM` prints each one with a real action and a real
+target, for example
+
+    CIDER_MENUITEM Check for Updates... action=menuItemTriggered: itemtarget=SalNSMenuItem ...
+    ... keyWindow=(nil) mainWindow=Untitled 1 controller=(nil)
+
+so nothing is missing from the menu; what is missing is the click reaching it.
+
+That is also why the accelerator fails for a different reason and the two look alike from outside:
+one path never tracks the item, the other never matches the key equivalent.
+
+**`CIDER_TRACE_MENU` could not be used for this until now.** It also gated a `CIDER_FLUSH` line in
+`-[NSWindow flushWindow]`, which fires once per flush and crippled the application it was watching.
+cocotron 0122 gives that line its own `CIDER_TRACE_FLUSH`.
+
 ## Where to look next
 
-The menu opens, so the menu bar, the tracking window and the item titles and enablement all reach
-AppKit. What does not happen is the item being chosen. The next measurement is the selection path
-itself: what `-[NSMenu performActionForItemAtIndex:]` is given, and whether the item carries the
-target and action LibreOffice set on it, because an item whose action is dispatched down a
-responder chain that cannot find its target fails exactly this way and fails silently.
+A menu opened from the menu bar and left open is sticky, and the click that follows has to be
+tracked by the submenu's own `NSMenuView`, not by `NSMainMenuView`. Here nothing tracks it. The next
+measurement is which view, if any, receives that second mouse down, because Money Manager Ex takes
+the identical two-click sequence through Tools then Date Range Manager and opens its dialog.
