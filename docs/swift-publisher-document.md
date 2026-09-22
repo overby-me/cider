@@ -72,12 +72,30 @@ an image in a layer.
 **It is not a hollow bundle.** The staged application is 770M and the template is a 304K plist of
 base64 data.
 
-## The next thing to measure
+## The properties, tried and REFUTED
 
-The application decodes the photograph and then decides to fill a rectangle rather than draw it. The
-question is what it asks about the image between those two points. `CGImageSourceCopyPropertiesAtIndex`
-is the candidate: an earlier round already had to add PixelWidth and PixelHeight there because Swift
-Publisher logged `key 'PixelWidth' ... returns nil` a hundred times per document load, and a layout
-application that cannot learn something else it needs about a picture has the same reason to refuse
-to place it. Nothing in the current log complains, so whatever it is, it is being answered without
-protest and answered wrongly.
+`CGImageSourceCopyPropertiesAtIndex` was the obvious candidate. Ours answers only PixelWidth and
+PixelHeight; macOS answers those plus DPIWidth, DPIHeight, Depth, ColorModel, HasAlpha and
+Orientation, and a page layout application cannot place a picture from a dot count alone because it
+needs the resolution to turn dots into inches. An earlier round had already had to add PixelWidth
+and PixelHeight here for this same application.
+
+Adding the other six changed NOTHING: the image rectangle came back byte for byte identical,
+`27391` pixels of `srgb(42,43,43)` before and after. The change was WITHDRAWN rather than kept,
+because every value in it was a guess this port cannot actually read from the file: 72 dpi is only
+the default a format means when it carries no density, and a JPEG that carries one would have been
+answered wrongly. A missing key an application can fall back from is better than a confident wrong
+one.
+
+This also corrects something said above. The fifty nine decodes of the same photograph are NOT the
+application trying to draw it: `-addPixelSizeAtIndex:toProperties:` decodes the entire image on
+every property query, so they are the cost of asking how big the picture is. That is a real
+inefficiency on its own and it is not the reason the picture is missing.
+
+## What is left
+
+Three hypotheses are now refuted with their controls: the layer path, a decode failure, and the
+property dictionary. What remains is to find what Swift Publisher does between decoding the image
+and filling the rectangle. The flat fill is issued by the application, so the answer is a decision
+inside it, and the way to see that decision is its own disassembly rather than another guess at
+which of our answers it disliked.
