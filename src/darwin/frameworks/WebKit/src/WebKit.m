@@ -7595,3 +7595,40 @@ void* _ZN6WebKit44setCrashReportApplicationSpecificInformationEPK10__CFString(vo
     if (verbose) puts("STUB: _ZN6WebKit44setCrashReportApplicationSpecificInformationEPK10__CFString called");
     return NULL;
 }
+
+/*
+ * WHAT A STUB ANSWERS WHEN IT IS ASKED FOR A SIGNATURE.
+ *
+ * Every class in this framework answered "v@:" for every selector: no arguments and no return. The
+ * forwarding machinery clamps the arguments it copies, so nothing is written past the invocation,
+ * but the RETURN is read out of whatever the register happened to hold. Money Manager Ex creates
+ * its home page with [[WXWKWebView alloc] initWithFrame:configuration:], took that leftover value
+ * for a web view, and died a moment later inside CoreFoundation on a null collection.
+ *
+ * One @ per colon and an object return: the arity then matches what the caller pushed, and a caller
+ * that uses the result gets nil, which is the answer a stub should give.
+ */
+NSMethodSignature *CiderWebKitStubSignature(SEL aSelector)
+{
+    const char *name = sel_getName(aSelector);
+    char types[256];
+    size_t n = 0;
+
+    types[n++] = '@';
+    types[n++] = '@';
+    types[n++] = ':';
+    for (const char *p = name; *p != '\0' && n < sizeof(types) - 1; p++) {
+        if (*p == ':')
+            types[n++] = '@';
+    }
+    types[n] = '\0';
+    return [NSMethodSignature signatureWithObjCTypes: types];
+}
+
+void CiderWebKitStubForward(id target, NSInvocation *invocation)
+{
+    id nothing = nil;
+
+    [invocation setReturnValue: &nothing];
+    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([invocation selector]), [target class]);
+}

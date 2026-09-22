@@ -19,14 +19,17 @@
 
 #import <WebKit/_WKActivatedElementInfo.h>
 
+extern NSMethodSignature *CiderWebKitStubSignature(SEL aSelector);
+extern void CiderWebKitStubForward(id target, NSInvocation *invocation);
+
 @implementation _WKActivatedElementInfo
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector {
-    return [NSMethodSignature signatureWithObjCTypes: "v@:"];
+    return CiderWebKitStubSignature(aSelector);
 }
 
 - (void)forwardInvocation:(NSInvocation *)anInvocation {
-    NSLog(@"Stub called: %@ in %@", NSStringFromSelector([anInvocation selector]), [self class]);
+    CiderWebKitStubForward(self, anInvocation);
 }
 
 @end
