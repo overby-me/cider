@@ -1,0 +1,113 @@
+An edge bound shrinks a pinned view, and a zero intrinsic is not a size.
+
+Two defects in the axis resolver, both found by following one vanished control from its rules to
+the frame it was given. They are what made real constraints, arriving for the first time after
+foundation 0087, place controls off the pane and at no size.
+
+ONE. AN EDGE BOUND MOVES A VIEW ONLY WHILE ITS ORIGIN IS FREE. The resolver read:
+
+  /* An edge bound moves the view rather than resizing it: the size is already settled. */
+  if (axis->hasMaxFar && axis->origin + axis->size > axis->maxFar)
+      axis->origin = axis->maxFar - axis->size;
+
+which is right for an unpinned origin and wrong for a pinned one: it throws away the EQUALITY that
+fixed the origin in order to satisfy an INEQUALITY, and the inequality is the weaker statement. A
+label pinned leading to 205 with an intrinsic width of 914 inside a 600 wide container has a far
+edge of 1119 against a maxFar of 600, so it was moved to 600 - 914 = -314. The Get Ready-Made
+Shortcuts button went the same way and to the same x, which is the tell that one rule did both.
+
+  NSButton     {205 145 189 24}  ->  {-314 145 176 23}   before
+  NSButton     {205 145 189 24}  ->  { 205 145 176 23}   after
+  NSTextField  {203  95 379 42}  ->  {-314  95 914 42}   before
+  NSTextField  {203  95 379 42}  ->  { 205  95 395 42}   after, and 395 is 600 - 205
+
+TWO. A ZERO INTRINSIC IS NOT A SIZE, it is a view that cannot answer yet. The fall through accepted
+intrinsic >= 0, so a container whose intrinsic size comes from arranged subviews that have not been
+laid out reported 0 and was resolved to nothing. The NSStackView holding iA Writer Light and Dark
+radio buttons is pinned leading at 207 with a trailing bound of 580 and carries no size rule, so 0
+won over its archived 182 and the radios were 0 points wide. Falling through to the current size
+keeps what the archive or the last layout said, which is the conservative answer; a view that
+genuinely wants no width says so with a constraint, and that path is above this one.
+
+MEASURED ON THE WINDOW THAT FOUND THEM. iA Writer Preferences now draws its Light and Dark radios
+with Light selected, its Get Ready-Made Shortcuts button correctly sized and placed, and BOTH
+explanatory paragraphs complete and wrapped inside the pane where they were truncated before. That
+is better than the window has rendered at any point, including before this series began.
+
+STILL WRONG THERE, and not claimed as fixed: the Appearance and Dock icon labels still overlap, and
+the two popups read Fade In slash dot dot dot. Those are the next thing.
+
+Gates: dts 69 of 69, patch record PASS, roster sweep 7 of 7 CONTENT and roster input 7 of 7, byte
+identical to the run before, with iA Writer looked at as the application that leans hardest on this
+code.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -4911,10 +4911,23 @@
+         } else if (axis->hasCenter && axis->hasFar) {
+             axis->size = 2 * (axis->far - axis->center);
+             axis->hasSize = YES;
+-        } else if (intrinsic >= 0) {
++        } else if (intrinsic > 0) {
+             axis->size = intrinsic;
+             axis->hasSize = YES;
+         } else {
++            /*
++             * AN INTRINSIC OF ZERO IS NOT A SIZE, it is a view that cannot answer yet.
++             *
++             * This accepted intrinsic >= 0, so a container whose intrinsic size is computed from
++             * arranged subviews that have not been laid out yet reported 0 and was resolved to
++             * nothing. iA Writer Preferences loses its Light and Dark radio buttons exactly so:
++             * the NSStackView holding them is pinned leading at 207 with a trailing bound of 580
++             * and no size rule, and 0 won over its archived 182.
++             *
++             * Falling through to the current size keeps what the archive or the last layout said,
++             * which is the conservative answer. A view that genuinely wants no width says so with
++             * a constraint, and that path is above this one.
++             */
+             axis->size = currentSize;
+         }
+     }
+@@ -4933,15 +4946,37 @@
+     if (axis->hasMaxSize && axis->size > axis->maxSize)
+         axis->size = axis->maxSize;
+ 
+-    /* An edge bound moves the view rather than resizing it: the size is already settled. */
++    /*
++     * AN EDGE BOUND MOVES A VIEW ONLY WHILE ITS ORIGIN IS FREE. A pinned origin must not be
++     * discarded to honour the far edge; the view has to SHRINK instead.
++     *
++     * The comment here used to say an edge bound always moves the view because the size is already
++     * settled, and that is right only for the unpinned case. With both, moving throws away the
++     * equality that fixed the origin in order to satisfy an inequality, which is backwards: the
++     * inequality is the weaker statement.
++     *
++     * Measured on iA Writer Preferences, where it put two controls off the pane. A label pinned
++     * leading to 205 with an intrinsic width of 914 inside a 600 wide container has a far edge of
++     * 1119 against a maxFar of 600, so this moved it to 600 - 914 = -314. Its Get Ready-Made
++     * Shortcuts button went the same way and to the same x, which is the tell that one rule did
++     * both.
++     */
+     if (axis->hasMinOrigin && axis->origin < axis->minOrigin)
+         axis->origin = axis->minOrigin;
+     if (axis->hasMaxOrigin && axis->origin > axis->maxOrigin)
+         axis->origin = axis->maxOrigin;
+-    if (axis->hasMinFar && axis->origin + axis->size < axis->minFar)
+-        axis->origin = axis->minFar - axis->size;
+-    if (axis->hasMaxFar && axis->origin + axis->size > axis->maxFar)
+-        axis->origin = axis->maxFar - axis->size;
++    if (axis->hasMinFar && axis->origin + axis->size < axis->minFar) {
++        if (axis->hasOrigin)
++            axis->size = axis->minFar - axis->origin;
++        else
++            axis->origin = axis->minFar - axis->size;
++    }
++    if (axis->hasMaxFar && axis->origin + axis->size > axis->maxFar) {
++        if (axis->hasOrigin)
++            axis->size = axis->maxFar - axis->origin;
++        else
++            axis->origin = axis->maxFar - axis->size;
++    }
+ 
+     if (axis->size < 0)
+         axis->size = 0;

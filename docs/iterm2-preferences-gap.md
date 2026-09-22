@@ -1536,3 +1536,53 @@ rather than treating it as `==`, are the two candidates for the 914.**
 
 Three views with wrong frames, two suspects, and the trace prints the rule and the result side by
 side. That is where the next attempt starts.
+
+## Both solver defects fixed, and the pane is better than it has ever been
+
+Following the two suspects named above to their code, neither was about the inverted form or the
+`>=` relation: both of those are handled correctly. The resolver was.
+
+**One. An edge bound moves a view only while its origin is free.** The code read
+
+```c
+/* An edge bound moves the view rather than resizing it: the size is already settled. */
+if (axis->hasMaxFar && axis->origin + axis->size > axis->maxFar)
+    axis->origin = axis->maxFar - axis->size;
+```
+
+That throws away the EQUALITY that fixed the origin in order to satisfy an INEQUALITY, and the
+inequality is the weaker statement. Pinned leading at 205, intrinsic width 914, container 600: far
+edge 1119 against maxFar 600, so origin became 600 - 914 = **-314**. Both vanished controls went to
+the same x, which is the tell that one rule did both.
+
+**Two. A zero intrinsic is not a size.** The fall through accepted `intrinsic >= 0`, so an
+`NSStackView` whose intrinsic size comes from arranged subviews that have not been laid out yet
+reported 0 and was resolved to nothing: the Light and Dark radios were 0 points wide.
+
+| view | before | after |
+|---|---|---|
+| shortcuts button | `{-314 145 176 23}` | `{205 145 176 23}` |
+| shortcuts paragraph | `{-314 95 914 42}` | `{205 95 395 42}` (395 = 600 - 205) |
+| appearance stack | `{207 395 0 38}` | keeps its width |
+
+iA Writer Preferences now draws its Light and Dark radios with Light selected, its Get Ready-Made
+Shortcuts button correctly placed, and **both explanatory paragraphs complete and wrapped inside
+the pane** where they were truncated before. That is better than this window has rendered at any
+point, including before the series began.
+
+**Still wrong, and not claimed as fixed:** the Appearance and Dock icon labels still overlap, and
+the two popups read "Fade In/...". Those are the next thing, and the trace that found these will
+find them: follow the label at y=417 from its rules to its frame, exactly as here.
+
+### The whole chain, for the record
+
+Four defects stood between a nib and a laid out preferences pane, each hiding the next:
+
+1. `NSCustomView` never announced its substitution, so the bare placeholder was wired into the tree (0092).
+2. `NSCustomView` dropped `NSViewConstraints` because it never calls `[super initWithCoder:]` (0094).
+3. Nothing decoded `NSDoNotTranslateAutoresizingMask`, so no view was auto layout owned (0094).
+4. `NSLayoutConstraint initWithCoder:` decoded nothing, so every constraint was empty (foundation 0087).
+
+and then the resolver had two defects of its own, which only became reachable once real constraints
+arrived (0095). Every one was found by measurement with a control, and two of my own intermediate
+conclusions had to be withdrawn along the way.
