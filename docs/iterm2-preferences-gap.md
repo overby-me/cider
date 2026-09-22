@@ -1716,3 +1716,33 @@ together, or at least an ordering that knows which views are anchored to the con
 merely follow their neighbours.
 
 Until then the pane is legible and compressed, which is where cocotron 0097 left it.
+
+## Five Settings panes driven, four correct and one defect
+
+Only General/Startup and Profiles had ever been looked at. Driven on a 1600x1000 output, clicking
+through the toolbar:
+
+| pane | result |
+|---|---|
+| General | correct, verified earlier |
+| Appearance | **correct**: five tabs (General, Windows, Tabs, Panes, Dimming), Theme, Tab bar location and Status bar location popups, three checkboxes with a correctly greyed and indented sub-option |
+| Profiles | correct, verified earlier |
+| Keys | **correct**: the key bindings table with fourteen rows and their modifier glyphs, the five tab row, the Presets popup, Touch Bar buttons, and the Leader field |
+| Advanced | **DEFECT** |
+
+The Keys pane is worth calling out because the glyphs are non trivial and they are all right:
+`^Tab`, `⌘↑`, `⌘↓`, `⌘←`, `⇧⌘←`, `⌘→`, `⇧⌘→`, `⌘Home`, `⌘End`, `⇧Page Up`, `⌘Page Up`,
+`⇧Page Down`, `⌘Page Down`.
+
+### The Advanced pane draws its values and none of its descriptions
+
+The Advanced pane is a two column table: a setting description on the left, its value on the right.
+The **value column renders**: `10`, `10`, `Helvetica`, `0.20000000000000001`, `0.5`, then a run of
+Yes/No popup buttons. The search field and the "Show only non-default values" checkbox render.
+
+**The entire description column is blank.** Not clipped, not misplaced: white, for the full height
+of the table. Every setting is unlabelled, so the pane is unusable even though the controls work.
+
+That is the next thing to measure, and it is a narrow question: whether the description cells exist
+with text that is not drawn, or do not exist at all. `CIDER_TRACE_VIEWS` answers it directly, and
+[[text-in-model-not-on-screen]] is the shape to check first.
