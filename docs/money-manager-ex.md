@@ -146,9 +146,9 @@ and 56 for 4, all correct. cocotron 0103 adds the y offset back and they answer 
 
 After it, all three paragraphs render complete, both lines each, on the surface that showed one.
 
-**Opening Date has no control at all** in the Edit Account dialog, only its label. `wxNSDatePicker`
-is one of the classes this binary defines, so an unimplemented NSDatePicker is the first thing to
-check there.
+**Opening Date had no control at all** in the Edit Account dialog, only its label. FIXED by
+cocotron 0117: it now reads `9/22/2026` in a bezeled field with its stepper, confirmed on the
+dialog itself. The cause is written up under the date field that was never there, below.
 
 ## An intermittent that kills the Wayland connection, and what it correlates with
 
@@ -542,6 +542,17 @@ that measures what the cell actually draws.
 **After it** the Date row reads `9/22/2026` in a bezeled field with its stepper, and the weekday
 label beside it reads Tuesday, which is what that date is. It had read Saturday before, from a
 control the application could never fill.
+
+**Confirmed on both surfaces.** Edit Account, reached from the populated main window by expanding
+Bank Accounts, selecting CiderBank, then Accounts and Edit Account and choosing the account in the
+Choose Account to Edit list, shows Account Name, Account Type, Account Status, Initial Balance,
+`Opening Date: 9/22/2026`, Currency: Australian dollar, a ticked Favorite Account, a notes area and
+OK and Cancel.
+
+**And the account register is new coverage.** Selecting CiderBank in the tree opens Account View:
+CiderBank with its balance line, an All filter, a date range field, the column header row of SN,
+ID, Date, Number, Category, Tags and Withdrawal, and New, Edit, Duplicate, Delete, Enter and Skip
+along the bottom with a Search field.
 
 ## What this still does not cover
 
