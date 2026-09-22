@@ -16625,3 +16625,29 @@ trades one broken pane for another. What this establishes for the next attempt:
 
 The next attempt should order the solve by dependency rather than by subview index, so a view is
 resolved only after the views its constraints name.
+
+## Swift Publisher Preferences, both panes, and one string that reads (null)
+
+Command comma from the welcome window opens it: a floating General panel with a two item toolbar,
+over the Welcome Window and the Template Gallery, both of which keep drawing.
+
+**General** renders: For New Documents with three radios and Template Gallery selected, a greyed
+Customize button, Default Format for Templates with US and Metric, Autosave documents reading
+Every 5 minutes, Measurement Units reading Inches (in), a checked Check for updates daily, and
+Reset to Defaults. The third radio is labelled Radio, which is what the nib says.
+
+**Design** renders and the toolbar switches to it: the title becomes Design, Smart Guides with two
+checkboxes and their caption, Color of Guides with two colour wells drawn in pink and blue beside
+Locked and Unlocked, Default Zoom reading 25 percent, and a Set button.
+
+**One thing reads wrong.** Design shows
+
+    Default Font: (null) - 10.0
+
+The size is there and the name is not. Zero unrecognized selectors in the run, and
+`-[NSFont displayName]` is implemented and answers through the type face, so this is not a missing
+method. Whether the application is formatting a font it never had, which a fresh installation would
+also do on a Mac, or a font whose display name came back nil, is NOT established. Recorded as
+unclear rather than as a defect.
+
+Nothing was applied on either pane and Reset to Defaults was not clicked.
