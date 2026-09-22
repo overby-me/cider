@@ -16651,3 +16651,36 @@ also do on a Mac, or a font whose display name came back nil, is NOT established
 unclear rather than as a defect.
 
 Nothing was applied on either pane and Reset to Defaults was not clicked.
+
+## The iA Writer Appearance squeeze, fixed, and what it cost to find the size of the fix
+
+The Appearance and Dock icon rows of iA Writer Preferences had rendered as two overlapping,
+vertically clipped lines for a long time. The cause was recorded earlier: the stack is pinned by
+
+    NSStackView.top == NSView.top * 1 + 23            -> top = 433
+    NSBox.top       == NSStackView.bottom * 1 + 15    -> bottom = 395
+
+and the second of those is a statement about the BOX. Read backwards as a statement about the
+stack, it gave the stack 38 points for two rows, 12 per row and 3 per control.
+
+**cocotron 0116 is two lines of behaviour.** A sibling owns its own edge: the backward solve is
+kept only when the first item is the container, not when it is another subview. And eight passes
+instead of three, because a view pinned to a sibling settles after the sibling does, so a chain of
+five needs five passes.
+
+**Both halves were measured, and one alternative was withdrawn.** The sibling rule is applied on
+the VERTICAL axis only: on the horizontal axis it lost the DATE from all 45 file rows of the iA
+Writer library, 31129 bytes down to 27160. Ordering the solve by dependency instead of by subview
+index was tried, and it did place the dependents better, but the roster caught it: the iA Writer
+library lost the second line of every file row, 31129 down to 24583, and the Swift Publisher
+welcome window moved and resized, 49610 up to 85482. Iterating more times in the same order costs
+passes and changes no order, and the roster comes back 7 of 7 unchanged.
+
+**What it fixes.** Appearance now shows Match system appearance checked with Light and Dark greyed
+below it, and Dock icon shows Match app appearance unchecked with Light selected. File extensions
+and the three Window checkboxes follow correctly instead of overlapping the rows above them.
+
+**What it does not fix.** The Shortcuts group still overlaps: the Get Ready-Made Shortcuts button
+and its description sit behind the Title bar and Toolbar popups, and the Shortcuts label is
+missing. That chain is longer than the one that now settles, and it is the next thing to measure
+here.

@@ -1,0 +1,51 @@
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -5240,8 +5240,15 @@
+                     (double) [constraint priority]);
+     }
+ 
+-    /* Three passes, so a view pinned to a sibling settles after the sibling does. */
+-    for (int pass = 0; pass < 3; pass++) {
++    /*
++     * MORE PASSES, BECAUSE A CHAIN IS LONGER THAN A PAIR. A view pinned to a sibling settles after
++     * the sibling does, so a chain of five needs five passes; three left the separator, File
++     * extensions and three labels under the iA Writer Appearance rows reading frames the archive
++     * wrote. Ordering the solve by dependency instead was tried and WITHDRAWN: it cost the second
++     * line of every iA Writer file row, 31129 bytes down to 24583, and moved the Swift Publisher
++     * welcome window. Iterating in the same order costs passes and changes no order.
++     */
++    for (int pass = 0; pass < 8; pass++) {
+         for (NSView *subview in [self subviews]) {
+             CiderAxisSolution x = { 0 }, y = { 0 };
+             NSRect frame = [subview frame];
+@@ -5273,7 +5280,7 @@
+ 
+                 NSLayoutRelation relation = [constraint relation];
+ 
+-                BOOL deep = (pass == 2);
++                BOOL deep = (pass >= 2);
+                 NSView *firstOwner = deep ? CiderScopeSubview(self, firstItem) : nil;
+                 NSView *secondOwner = deep ? CiderScopeSubview(self, secondItem) : nil;
+ 
+@@ -5322,6 +5329,21 @@
+                     CGFloat multiplier = [constraint multiplier];
+                     CGFloat other = 0;
+ 
++                    /*
++                     * BUT A SIBLING OWNS ITS OWN EDGE. Solving NSBox.top == NSStackView.bottom + 15
++                     * backwards makes it a statement about the STACK, and it is not: it places the
++                     * box, from a stack bottom the box cannot know yet. Two edges fix a size only
++                     * when both belong to this view or to its container, and read that way the iA
++                     * Writer Appearance stack got 38 points for two rows, 3 per control.
++                     *
++                     * VERTICAL ONLY, because it was measured on both: the same rule on the
++                     * horizontal axis lost the DATE from all 45 file rows of the iA Writer library,
++                     * 31129 bytes down to 27160, and vertical alone restored it byte for byte.
++                     */
++                    if (firstOwner != nil &&
++                        !CiderAxisIsHorizontal([constraint secondAttribute]))
++                        continue;
++
+                     if (multiplier == 0)
+                         continue;
+                     if (!CiderAttributeValue(self, firstItem, [constraint firstAttribute], &other))
