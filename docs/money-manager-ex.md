@@ -29,12 +29,40 @@ is what a dialog does when the screen shrinks under it, here and on a Mac.
 All three criteria, on a surface that had never been exercised. Zero unrecognized selectors in
 either run.
 
-## What this does not cover
+## The wizard past page one, its validation, and the Currency Manager
 
-The wizard was opened and not completed, so everything past its first page is still unexercised:
-the currency and account pages, and the main window populated with real data. The Navigator panel
-is empty because no database was loaded before this, and whether it fills correctly after the
-wizard finishes is unmeasured.
+Driven further, three more surfaces and all of them correct. Zero unrecognized selectors in every
+run.
+
+**Wizard page two renders.** A "Base Currency for account" label with a Set Currency button, two
+explanatory paragraphs, a User Name field, and the action button correctly changed from `Next >` to
+**Finish**, with Back now enabled.
+
+**Its validation works and draws.** Clicking Finish with no currency chosen puts up a modal alert,
+"New Database" over "Base Currency Not Set", with OK as the blue default carrying a focus ring.
+That is a wxWidgets application driving an NSAlert, and it is correct behaviour rather than a
+failure: the wizard refuses to finish without a currency.
+
+**The Currency Manager renders a populated table.** Clicking Set Currency opens it: an Online
+Update control, a checked Show All box, a two column scrolling list of real data (AFN Afghan
+afghani, ALL Albanian lek, DZD Algerian dinar, AOA Angolan kwanza, ARS Argentine peso, AMD Armenian
+dram, AWG Aruban florin, AUD Australian dollar) with alternating row striping and a scrollbar, a
+Search field, and Select greyed with Close beside it.
+
+That table is worth noting for a second reason: it is a many row NSTableView in a non AppKit
+toolkit, so it exercises the row view machinery added in cocotron 0100 from a completely different
+direction.
+
+**One thing left unresolved rather than claimed.** In the Currency Manager the centred title sits
+immediately against the third traffic light at this dialog width. macOS centres a title too and
+would crowd it in a narrow window, so this is recorded as unclear rather than as a defect; it wants
+a comparison against a real Mac before anyone spends a build on it.
+
+## What this still does not cover
+
+The wizard was never completed, because finishing it needs a currency selected in the Currency
+Manager and that click was not driven. So the populated main window, the Navigator filled with
+accounts, and everything past the wizard remain unexercised.
 
 No credentials of any kind are involved here. Money Manager Ex is a local finance tracker with a
 SQLite file; it is not MoneyMoney and it talks to no bank.
