@@ -86,7 +86,20 @@ while IFS='|' read -r tag prefix app launchd resize extra; do
 		verdict=$(python3 scripts/checks/capture-is-black.py "$shot" 2>/dev/null | cut -d' ' -f1)
 		[ -n "$verdict" ] || verdict=UNCHECKED
 		[ "$verdict" = CONTENT ] || rc=1
-		echo "$tag: $verdict $(stat -c %s "$shot") bytes  $shot   LOOK AT IT"
+		size=$(stat -c %s "$shot")
+		# AGAINST A BASELINE, because CONTENT cannot see a window that lost half its contents.
+		# See the header of the baseline file for the incident that asked for this.
+		base=$(awk -v t="$tag" '$1==t {print $2}' scripts/checks/roster-capture-baseline.txt 2>/dev/null)
+		if [ -n "${ROSTER_BASELINE_UPDATE:-}" ]; then
+			note="baseline=$size (recorded)"
+			printf '%s %s\n' "$tag" "$size" >>"$SHOTS/baseline.new"
+		elif [ -z "$base" ]; then
+			note="NEW, no baseline"
+		else
+			delta=$(( size - base )); [ "$delta" -lt 0 ] && delta=$(( -delta ))
+			if [ "$delta" -le 256 ]; then note="unchanged"; else note="CHANGED from $base, LOOK AT IT"; fi
+		fi
+		echo "$tag: $verdict $size bytes  $shot   $note"
 	else
 		echo "$tag: NO CAPTURE, see $SHOTS/sweep-$tag.drive.log"
 		rc=1

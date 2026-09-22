@@ -1,0 +1,22 @@
+# Byte size of captures/sweep-<tag>/d1-start.png for a known good build.
+#
+# WHY THIS EXISTS. capture-is-black.py answers one question, whether anything was drawn, and a
+# window that loses its entire file list still answers CONTENT. That happened: an attempt at stack
+# view sizing emptied the iA Writer library column and the sweep passed 7 of 7 without a murmur.
+#
+# A grim capture of identical pixels is byte identical, measured across many runs of this session,
+# so a changed size means the rendering changed and the capture wants looking at. It does not mean
+# failure: most changes here have been improvements.
+#
+# THE TOLERANCE IS MEASURED, not guessed. cm alternates between 35846 and 35854 across runs, a
+# jitter of 8 bytes, while a real regression moves thousands. 256 absorbs the first and catches the
+# second.
+#
+# Refresh with ROSTER_BASELINE_UPDATE=1 scripts/roster-sweep.sh after looking at every capture.
+ia 31129
+sp 49610
+mm 15860
+it 16578
+lo 137276
+mx 31713
+cm 35850
