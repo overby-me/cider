@@ -1931,3 +1931,27 @@ It is called suspect and not proven because nothing here says what macOS draws f
 list, and zero unrecognized selectors were logged, so it is not a missing method. The next step is
 the one that worked for Advanced: ask what the delegate returns per row, with
 `CIDER_TABLE viewForColumn`, and whether a table exists in the pane at all.
+
+### Shortcuts: not a missing table, and not a frame we mangled
+
+Two measurements narrow it.
+
+**No table is ever queried for that pane.** With `CIDER_TRACE_CONTROL` on, the only table in the
+whole run is `ProfileTableView`. A table with zero rows makes no per row calls, so this is
+consistent with an Actions list that genuinely has no entries, which is right for a fresh install.
+It does not explain the missing buttons.
+
+**The window frame is faithful.** iTerm2 asks for `910x485` for this pane and gets exactly that:
+
+```
+CIDER_WIN setFrame iTermPrefsPanel asked=910x485@676,0 got=910x485@676,0
+```
+
+So the application sized its own window for this pane and the port honoured it. What is missing is
+inside that pane: the content box runs to the bottom edge of the window with no room left for the
+row of buttons underneath it.
+
+That is the same shape as the iA Writer Preferences rows that are legible but compressed: a pane
+whose internal layout does not leave its last row any space. Both are downstream of the constraint
+solver work that is still open, so this is recorded as one more symptom of that rather than as a
+separate defect to chase.
