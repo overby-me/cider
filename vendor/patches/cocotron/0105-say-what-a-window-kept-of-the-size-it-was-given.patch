@@ -1,0 +1,33 @@
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -4289,6 +4289,8 @@
+            frameChanged: (NSRect) frame
+                 didSize: (BOOL) didSize
+ {
++    NSRect asked = frame;
++
+     // Don't allow the platform window changes to violate our window size limits
+     // (if we have them). Windows (for example) likes to make the platform
+     // window very small so it fits in the task bar...
+@@ -4316,6 +4318,21 @@
+     [_drawers makeObjectsPerformSelector: @selector(parentWindowDidChangeFrame:)
+                               withObject: self];
+ 
++    /* WHAT THE WINDOW KEPT OF THE SIZE IT WAS GIVEN. A compositor resizes a window whether or not
++     * the window wants it, the clamps above then take some of that back, and the difference is
++     * area that belongs to the window and is painted by nobody: a tiling compositor gave an NSAlert
++     * panel the whole output and the capture showed the alert twice, once stale, with black either
++     * side. Nothing else prints the three numbers together. CIDER_WAYLAND_TRACE_GEOMETRY. */
++    if (getenv("CIDER_WAYLAND_TRACE_GEOMETRY") != NULL) {
++        fprintf(stderr,
++                "CIDER_WINFRAME %s asked=%.0fx%.0f kept=%.0fx%.0f min=%.0fx%.0f max=%.0fx%.0f "
++                "didSize=%d\n",
++                object_getClassName(self), asked.size.width, asked.size.height, frame.size.width,
++                frame.size.height, [self minSize].width, [self minSize].height,
++                [self maxSize].width, [self maxSize].height, (int) didSize);
++        fflush(stderr);
++    }
++
+     if (didSize) {
+         // Don't redraw everything unless we really have to.
+         [_backgroundView setFrameSize: _frame.size];

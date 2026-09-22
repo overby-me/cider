@@ -240,17 +240,28 @@ the file is still marked open and Money Manager Ex puts up an MMEX Instance Chec
 icon, bold title, four wrapped paragraphs and Yes and No. It renders correctly, Yes dismisses it and
 the main window comes up populated.
 
-**A window left alone on the output is tiled to fill it, and the newly exposed area is not painted.**
-That alert is the only mapped toplevel at that moment, so sway gives it the whole output:
+**A window left alone on the output was tiled to fill it, and never said it would not resize.**
+That alert is the only mapped toplevel at that moment, so sway gave it the whole output:
 
     cider-wayland-window create=ok number=2 size=324x353 at=466,165 level=5 style=0x1
     cider-wayland-window resized number=2 size=1256x684
 
-The alert content then sits at the BOTTOM of the enlarged window, which is what a bottom-left origin
-does when a window grows, and the top of the capture still holds the pixels from before the resize,
-with black either side. So the screenshot shows the alert twice. The click that dismisses it is at
-the live copy, 137,654, not at the stale one. Worth its own measurement: this is a repaint gap after
-a compositor-driven resize, not something specific to alerts.
+The alert content then sat at the BOTTOM of the enlarged window, which is what a bottom-left origin
+does, the top of the capture still held the pixels from before the resize, and there was black
+either side, so the screenshot showed the alert twice.
+
+The trace that named it prints what the window KEPT of what it was given:
+
+    CIDER_WINFRAME NSPanel asked=1256x684 kept=324x353 min=324x353 max=324x353 didSize=1
+
+`-[NSWindow platformWindow:frameChanged:didSize:]` clamps the frame back to the window's own min and
+max, paints the size it kept, and the rest of the surface belongs to the window and is painted by
+nobody. A compositor cannot know that, because nothing ever told it: this port never sent
+`xdg_toplevel.set_min_size` or `set_max_size`. It does now, for any window without
+`NSResizableWindowMask`, and equal min and max is also what a compositor reads to FLOAT a window
+rather than tile it. The Money Manager Ex start dialog now appears as a 350x527 window with its
+shadow, centred, which is what it looks like on a Mac. That is the one roster capture the change
+moves, from 31713 bytes to 32124.
 
 **All Transactions raises a fatal exception the application catches.** Clicking it in the Navigator
 puts up the wxWidgets crash reporter, `Debug report "MoneyManagerEx"`, naming

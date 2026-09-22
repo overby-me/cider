@@ -1103,6 +1103,34 @@ fn create_surface(st: &mut WindowState) -> bool {
             }
         }
         /*
+         * AND WHAT SIZES IT WILL ACCEPT, for a window that will not resize.
+         *
+         * A compositor that tiles gives a lone toplevel the whole output and does not ask. AppKit
+         * does not take it: -platformWindow:frameChanged:didSize: clamps the frame back to the
+         * window's own min and max, paints the size it kept, and the rest of the surface belongs to
+         * the window and is painted by nobody. A Money Manager Ex alert was handed 1256x684, kept
+         * 324x353, and the capture showed the alert twice, once stale, with black either side:
+         *
+         *     CIDER_WINFRAME NSPanel asked=1256x684 kept=324x353 min=324x353 max=324x353
+         *
+         * Equal min and max is also what a compositor reads to FLOAT a window instead of tiling it,
+         * which is what a dialog does on a Mac, so this puts the picture in the right place rather
+         * than papering over the unpainted area.
+         *
+         * NSResizableWindowMask is the bit that says a window can be resized at all. Its absence is
+         * a statement by the application, not a guess.
+         */
+        if !st.toplevel.is_null() && st.style_mask & 0x8 == 0 && st.popup.is_null() {
+            let w = (st.frame.size.width as i32).max(1);
+            let h = (st.frame.size.height as i32).max(1);
+
+            wl::cider_xdg_toplevel_set_min_size(st.toplevel, w, h);
+            wl::cider_xdg_toplevel_set_max_size(st.toplevel, w, h);
+            if crate::env_flag!("CIDER_WAYLAND_TRACE_GEOMETRY") {
+                println!("cider-wayland-window fixed number={} size={}x{}", st.number, w, h);
+            }
+        }
+        /*
          * WHICH PART OF THE SURFACE IS THE WINDOW, before the first commit.
          *
          * A window with a shadow has a surface bigger than itself, and without this the compositor
@@ -2124,6 +2152,16 @@ fn present(st: &mut WindowState) {
                 st.buffer_w.max(1),
                 st.buffer_h.max(1),
             );
+            // AND SO IS THE LIMIT, for a window that will not resize. A dialog that lays itself out
+            // after it is created would otherwise be held at the size it had when the role was
+            // assigned, which is the wrong one for anything that grows to fit its text.
+            if !st.toplevel.is_null() && st.style_mask & 0x8 == 0 && st.popup.is_null() {
+                let w = st.buffer_w.max(1);
+                let h = st.buffer_h.max(1);
+
+                wl::cider_xdg_toplevel_set_min_size(st.toplevel, w, h);
+                wl::cider_xdg_toplevel_set_max_size(st.toplevel, w, h);
+            }
         }
         wl::cider_wl_surface_attach(st.surface, st.buffer, 0, 0);
         wl::cider_wl_surface_damage(st.surface, 0, 0, st.buffer_w + st.margin * 2,

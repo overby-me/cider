@@ -350,6 +350,24 @@ void cider_xdg_toplevel_set_app_id(struct xdg_toplevel *toplevel, const char *ap
 	xdg_toplevel_set_app_id(toplevel, app_id);
 }
 
+// WHAT SIZES THE WINDOW WILL ACCEPT, which is how a fixed size dialog stays the size it is.
+//
+// A compositor that tiles gives a lone toplevel the whole output and the client has no say in it.
+// AppKit does have a say: a window with min and max equal simply CLAMPS the frame back in
+// -platformWindow:frameChanged:didSize:, paints the size it kept, and everything else in the
+// surface belongs to the window and is painted by nobody. A Money Manager Ex alert was given
+// 1256x684, kept 324x353, and the capture showed the alert twice with black either side.
+//
+// Equal min and max is also the signal a compositor uses to FLOAT a window rather than tile it,
+// which is what a dialog does on a Mac, so saying it fixes the picture in the right place.
+void cider_xdg_toplevel_set_min_size(struct xdg_toplevel *toplevel, int32_t width, int32_t height) {
+	xdg_toplevel_set_min_size(toplevel, width, height);
+}
+
+void cider_xdg_toplevel_set_max_size(struct xdg_toplevel *toplevel, int32_t width, int32_t height) {
+	xdg_toplevel_set_max_size(toplevel, width, height);
+}
+
 // THE CLIPBOARD BETWEEN APPLICATIONS, which is wl_data_device and nothing to do with the seat
 // beyond needing one. A selection is OWNED by a client: the owner advertises MIME types and writes
 // the bytes down a pipe when someone asks, so there is no clipboard daemon and no data at rest.
