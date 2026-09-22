@@ -554,6 +554,30 @@ CiderBank with its balance line, an All filter, a date range field, the column h
 ID, Date, Number, Category, Tags and Withdrawal, and New, Edit, Duplicate, Delete, Enter and Skip
 along the bottom with a Search field.
 
+## The keystroke that killed the application
+
+Typing into the New Transaction dialog ended the process. Not a crash and not an exception: a clean
+`cider-app exit=0` with every capture from the first keystroke onward black, and the reason printed
+at the very end of the log:
+
+    abort_with_payload: reason: dyld cache load error: shared cache file open() failed
+    Symbol not found: _CGEventSourceKeyState
+      Referenced from: /Applications/mmex.app/Contents/MacOS/mmex
+      Expected in: /System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics
+
+`CGEventSourceKeyState` is DECLARED in our own `CGEventSource.h` and was never defined, so the
+first application to reach it died on the lazy bind rather than getting a wrong answer. cocotron
+0118 defines it.
+
+Only the modifiers can be answered at all. Input in this port arrives from the compositor straight
+into AppKit as NSEvents and never passes through a CGEvent source, so there is no table of pressed
+keys; an ordinary key answers NO, which is what it is for all but the instant it is held, and the
+modifier keys are answered from the flag state the file already keeps.
+
+After it, typing works: Amount takes `12.34` and shows it right aligned, and the Payee combo takes
+its text. Save with Account and Category still empty leaves the dialog open, which is Money Manager
+Ex refusing an incomplete transaction rather than anything about the port.
+
 ## What this still does not cover
 
 The Dashboard pane on the right is empty. Money Manager Ex renders it as HTML in a `wxWebView`,

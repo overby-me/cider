@@ -1,0 +1,56 @@
+--- a/CoreGraphics/CGEventSource.m
++++ b/CoreGraphics/CGEventSource.m
+@@ -73,6 +73,53 @@
+     return g_sourceStates[stateID + 1];
+ }
+ 
++/*
++ * WHETHER ONE VIRTUAL KEY IS DOWN, ANSWERED FROM THE FLAGS THIS FILE ALREADY KEEPS.
++ *
++ * Declared in the header and never defined, so the first application to reach it died on a lazy
++ * bind rather than getting a wrong answer: Money Manager Ex aborted with
++ * Symbol not found: _CGEventSourceKeyState the moment a character was typed into its transaction
++ * dialog.
++ *
++ * Only the modifiers can be answered at all. Input in this port arrives from the compositor
++ * straight into AppKit as NSEvents and never passes through a CGEvent source, so there is no table
++ * of pressed keys to consult; an ordinary key therefore answers NO, which is what it is for all but
++ * the instant it is held. The modifier answers are only as good as whatever fills g_sourceStates.
++ */
++bool CGEventSourceKeyState(CGEventSourceStateID stateID, CGKeyCode key) {
++    CGEventFlags flags = CGEventSourceFlagsState(stateID);
++    CGEventFlags wanted = 0;
++
++    switch (key) {
++    case 54:
++    case 55:
++        wanted = kCGEventFlagMaskCommand;
++        break;
++    case 56:
++    case 60:
++        wanted = kCGEventFlagMaskShift;
++        break;
++    case 57:
++        wanted = kCGEventFlagMaskAlphaShift;
++        break;
++    case 58:
++    case 61:
++        wanted = kCGEventFlagMaskAlternate;
++        break;
++    case 59:
++    case 62:
++        wanted = kCGEventFlagMaskControl;
++        break;
++    case 63:
++        wanted = kCGEventFlagMaskSecondaryFn;
++        break;
++    default:
++        return false;
++    }
++
++    return (flags & wanted) != 0;
++}
++
+ void CGEventSourceSetLocalEventsSuppressionInterval(CGEventSourceRef source, CFTimeInterval seconds) {
+     printf("STUB %s\n", __PRETTY_FUNCTION__);
+ }
