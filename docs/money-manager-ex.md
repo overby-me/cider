@@ -323,6 +323,74 @@ as the first.
 its selection. A wx modal dialog is fixed by construction, so keeping its size IS the correct answer
 here; what had to be shown was that the window behind it resizes with the dialog up, and it does.
 
+## New Transaction, and the graphics context that was freed under the caller
+
+Clicking the plus button on the toolbar of the populated main window killed the application with
+SIGSEGV, five times out of five. wxWidgets installs its own fatal signal handler, so there was no
+core, cocotron's `_CiderAppFatalSignal` never ran (wx had replaced it), and the wx debug report
+zip contained one line of XML and no stack at all.
+
+**How the stack was recovered.** The process does not actually exit: it sits showing its Debug
+report dialog. A watcher polled `ciderd.log` for `sigexc: have RIP`, and the moment it appeared
+copied `/proc/<pid>/maps` and 8 KB of `/proc/<pid>/mem` around rsp for every cider process. Several
+processes match; the right one is the one whose libobjc base equals `RIP` minus the offset of the
+faulting function. Then the frame pointer chain walks cleanly.
+
+**Where it died.** libobjc `objc_retain` plus 0x2f:
+
+    439f: movq (%rdi), %rax                 ; rax = obj->isa
+    43a2: movabsq $0x7ffffffffff8, %rcx
+    43ac: andq %rax, %rcx                   ; rcx = isa & ISA_MASK
+    43af: movq 0x20(%rcx), %rdx             ; FAULT
+
+The registers confirm it arithmetically: the isa word read back as 0x3000076D29919093, masking
+gives 0x76D29919090, and CR2, the last and unlabelled greg in the sigexc dump, is exactly that plus
+0x20. On a second run the isa read back as 0. Different garbage each run, which is what a freed
+object looks like.
+
+**The full stack:**
+
+    objc_retain
+    __CFBasicHashReplaceValue + 0x5d
+    -[__NSCFDictionary setObject:forKey:] + 0x246
+    wxRendererMac::DrawMacCell + 0x3f8
+    wxRendererMac::DrawComboBox + 0x6d
+    mmTagTextCtrl::createDropButton + 0x28b
+    mmTagTextCtrl::mmTagTextCtrl + 0xa23
+    TrxDialog::createControls + 0x289b
+    TrxDialog::create + 0x73
+    TrxDialog::TrxDialog + 0x339
+    mmFrame::OnNewTransaction + 0xec
+    ... wxEvtHandler::ProcessEvent ... wxAuiToolBar::OnLeftUp
+
+**The defect.** Disassembling DrawMacCell and resolving its selrefs and classrefs gives the exact
+idiom, the one every drawing routine uses:
+
+    e4a: objc_msgSend NSGraphicsContext currentContext            -> r13 = prev
+    e69: objc_msgSend NSGraphicsContext graphicsContextWithCGContext:flipped:
+    e83: objc_msgSend NSGraphicsContext setCurrentContext: new
+    eb7: objc_msgSend cell drawWithFrame:inView:
+    f32: objc_msgSend NSGraphicsContext setCurrentContext: r13    -> return address 0x...f38
+
+`+[NSGraphicsContext currentContext]` returned the object straight out of the thread dictionary
+with no retain and no autorelease. The thread dictionary was its only owner. So the call at e83
+replaced the dictionary entry, released the old value, and freed the context the caller was still
+holding in r13; the restore at f32 then retained freed memory.
+
+cocotron 0109 returns `[[current retain] autorelease]` instead. The fix is four lines and the
+idiom it repairs is not specific to Money Manager Ex: every wx native cell render goes through
+DrawMacCell, and save, set, draw, restore is how AppKit drawing is written everywhere.
+
+**After cocotron 0109, measured.** Five runs before the fix, five crashes. After it: `sigexc` count
+0 in a 293 line `ciderd.log` (the crashing runs produced over 3000 lines, so the log is not silent,
+it simply has nothing to report), and the New Transaction dialog appears, with its title bar, a
+Transaction Details group box, and Save, Save and New and Cancel.
+
+**It is not finished.** The Transaction Details box is EMPTY. Every field the dialog is supposed to
+carry, date, account, payee, category, amount, notes and the tag control whose construction was
+crashing, is missing. So the application no longer dies and the dialog is now reachable, but it
+does not yet render correctly. That is the next thread, not a completed one.
+
 ## What this still does not cover
 
 The Dashboard pane on the right is empty. Money Manager Ex renders it as HTML in a `wxWebView`,

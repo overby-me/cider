@@ -1,0 +1,14 @@
+--- a/AppKit/NSGraphicsContext.m
++++ b/AppKit/NSGraphicsContext.m
+@@ -179,7 +179,10 @@
+ + (NSGraphicsContext *) currentContext {
+     NSGraphicsContext *current = _currentContext();
+ 
+-    return current;
++    /* THE THREAD DICTIONARY IS USUALLY THE ONLY OWNER. Handing this out unretained makes the
++     * ordinary save, set, draw, restore idiom a use after free: the caller's -setCurrentContext:
++     * replaces the dictionary entry, which releases the context the caller is still holding. */
++    return [[current retain] autorelease];
+ }
+ 
+ + (void) setCurrentContext: (NSGraphicsContext *) context {
