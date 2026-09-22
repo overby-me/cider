@@ -513,6 +513,36 @@ scrollbar state changes during a paint: it then returns having drawn nothing, re
 window instead, and the buffered DC blits its untouched buffer over the top. That would explain
 every measurement above, and this port has two scrollers on that control that are both hidden.
 
+## The date field that was never there
+
+Both the Edit Account Opening Date row and the New Transaction Date row had a label and no control.
+The tree said why in one line: `wxNSDatePicker 16x16@0,0`, inside a parent that was also 16x16.
+
+**Three defects in a row, each one hiding the next.**
+
+`NSDatePicker` never overrode `+cellClass`. `-[NSControl initWithFrame:]` builds its cell from that,
+and `NSControl` answers it out of a dictionary keyed by the class NAME, so registering one would
+have missed the subclass anyway: wxWidgets instantiates `wxNSDatePicker`. With no cell the control
+measures nothing, wx reads 0 from `GetBestRect`, which calls `sizeToFit`, and falls back to 16x16.
+
+Giving it `NSDatePickerCell` then terminated the application, because that class had ONLY
+`-initWithCoder:`. A cell built in code had no calendar, no text colour and no elements, and the
+first thing `-_attributedStrings` does with those is put the text colour into an attributes
+dictionary, which raises on nil.
+
+With an initialiser it terminated again, and `CIDER_TRACE_EXCEPTIONS` named it without any
+guessing: `-[__NSCFConstantString timeIntervalSinceReferenceDate]: unrecognized selector`. An
+`NSCell` object value is whatever was set, and a cell that starts life as a text cell holds an empty
+STRING; `-dateValue` handed that straight to `NSCalendar`.
+
+cocotron 0117 adds the cell class, an initialiser with the same defaults the archive path ends up
+with, a `-dateValue` that insists on a date, a `-textColor` that never answers nil, and a `-cellSize`
+that measures what the cell actually draws.
+
+**After it** the Date row reads `9/22/2026` in a bezeled field with its stepper, and the weekday
+label beside it reads Tuesday, which is what that date is. It had read Saturday before, from a
+control the application could never fill.
+
 ## What this still does not cover
 
 The Dashboard pane on the right is empty. Money Manager Ex renders it as HTML in a `wxWebView`,

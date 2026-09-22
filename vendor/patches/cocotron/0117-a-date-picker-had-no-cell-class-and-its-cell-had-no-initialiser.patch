@@ -1,0 +1,110 @@
+--- a/AppKit/NSDatePicker.m
++++ b/AppKit/NSDatePicker.m
+@@ -23,6 +23,17 @@
+ 
+ @implementation NSDatePicker
+ 
++/*
++ * WITHOUT THIS THERE IS NO CELL AT ALL. -[NSControl initWithFrame:] builds its cell from
++ * +cellClass, and NSControl answers that out of a dictionary keyed by the class NAME, so a
++ * registration would miss a subclass anyway: wxNSDatePicker is what wxWidgets instantiates.
++ * A date picker with no cell measures 0x0, which is why wxWidgets gave Money Manager Ex a 16x16
++ * date field with nothing drawn in it, on both Edit Account and New Transaction.
++ */
+++ (Class) cellClass {
++    return [NSDatePickerCell class];
++}
++
+ - (BOOL) acceptsFirstResponder {
+     return YES;
+ }
+--- a/AppKit/NSDatePickerCell.m
++++ b/AppKit/NSDatePickerCell.m
+@@ -28,6 +28,23 @@
+ 
+ @implementation NSDatePickerCell
+ 
++/*
++ * THE CODE PATH HAD NO INITIALISER AT ALL, only -initWithCoder:. A cell built by
++ * -[NSControl initWithFrame:] therefore had no calendar, no date, no text colour and no elements,
++ * and the first thing -_attributedStrings does with those is
++ * [attributes setObject: [self textColor] ...], which raises on nil and took Money Manager Ex down
++ * the moment a date picker was created outside a nib.
++ */
++- init {
++    [super init];
++    _elements = NSYearMonthDayDatePickerElementFlag;
++    _calendar = [[NSCalendar currentCalendar] copy];
++    _textColor = [[NSColor controlTextColor] copy];
++    [self setObjectValue: [NSDate date]];
++    [self setEnabled: YES];
++    return self;
++}
++
+ - initWithCoder: (NSCoder *) coder {
+     [super initWithCoder: coder];
+ 
+@@ -83,7 +100,16 @@
+ }
+ 
+ - (NSDate *) dateValue {
+-    return [self objectValue];
++    id value = [self objectValue];
++
++    /* AN NSCell OBJECT VALUE IS WHATEVER WAS SET, and a cell that starts life as a text cell holds
++     * an empty STRING. Handing that to NSCalendar raises
++     * -[__NSCFConstantString timeIntervalSinceReferenceDate], which is an unrecognised selector
++     * inside a draw and therefore an application that terminates. */
++    if (![value isKindOfClass: [NSDate class]])
++        return [NSDate date];
++
++    return value;
+ }
+ 
+ - (NSTimeInterval) timeInterval {
+@@ -103,7 +129,8 @@
+ }
+ 
+ - (NSColor *) textColor {
+-    return _textColor;
++    /* NEVER NIL: it goes straight into an attributes dictionary, which raises. */
++    return (_textColor != nil) ? _textColor : [NSColor controlTextColor];
+ }
+ 
+ - (void) setDelegate: delegate {
+@@ -439,6 +466,35 @@
+     return frame;
+ }
+ 
++/*
++ * THE SIZE THIS CELL ACTUALLY DRAWS. NSCell answers 10000 when it does not measure itself, which
++ * -[NSControl intrinsicContentSize] rejects, so a date picker had no natural size at all and
++ * wxWidgets gave Money Manager Ex a 16x16 one: a date field with no date in it on both the Edit
++ * Account and New Transaction dialogs. The arithmetic is -drawWithFrame: read backwards: the text
++ * sits inside the bezel inset by 2, the bezel is the frame less the stepper and inset by 1 and 3,
++ * and the stepper is always drawn.
++ */
++- (NSSize) cellSize {
++    NSArray *array = [self _attributedStrings];
++    NSInteger i, count = [array count];
++    CGFloat width = 0, height = 0;
++
++    for (i = 0; i < count; i++) {
++        NSAttributedString *string = [array objectAtIndex: i];
++        NSSize size = [string size];
++        NSNumber *fixed = [[string attributesAtIndex: 0 effectiveRange: NULL]
++                objectForKey: @"_width"];
++
++        width += (fixed != nil) ? [fixed floatValue] : size.width;
++        height = MAX(height, size.height);
++    }
++
++    if (count == 0)
++        return [super cellSize];
++
++    return NSMakeSize(ceil(width) + 2 * 2 + 2 * 1 + 15, ceil(height) + 2 * 3);
++}
++
+ - (void) drawWithFrame: (NSRect) frame inView: (NSView *) view {
+     NSRect stepper = [self _stepperFrameForFrame: frame];
+     NSRect bezel = [self _bezelFrameForFrame: frame];
