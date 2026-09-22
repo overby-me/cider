@@ -1,0 +1,35 @@
+--- a/Onyx2D/O2Surface.m
++++ b/Onyx2D/O2Surface.m
+@@ -445,6 +445,17 @@
+ {
+     self->_writeargb32f = O2SurfaceWrite_argb32f_to_argb8u_to_ANY; // default
+ 
++    /*
++     * THE SAME DEFAULT THE READER USES. O2Image already treats an unspecified byte order as the
++     * order the components are named in, A then R then G then B in memory; this picked the host
++     * order instead, so one surface read its own pixels back in an order it had not written them
++     * in. Measured on the Money Manager Ex tag drop button, which wx draws into a bitmap it asks
++     * for with no byte order: accent blue, correct everywhere else in the port as srgb(0,122,255),
++     * came out srgb(122,0,255), which is BGRA written and ARGB read, exactly.
++     */
++    if ((bitmapInfo & kO2BitmapByteOrderMask) == kO2BitmapByteOrderDefault)
++        bitmapInfo |= kO2BitmapByteOrder32Big;
++
+     switch (bitsPerComponent) {
+ 
+     case 32:
+@@ -515,6 +526,14 @@
+                     case kO2BitmapByteOrder32Little:
+                         self->_writeargb8u = O2SurfaceWrite_argb8u_to_BGRA8888;
+                         return YES;
++
++                    /* Alpha first and big endian IS the argb8u layout, the same as the SkipFirst
++                     * case below. Without this the coerced default falls through to no writer. */
++                    case kO2BitmapByteOrder16Big:
++                    case kO2BitmapByteOrder32Big:
++                        self->_writeargb32f = O2SurfaceWrite_argb32f_to_ARGB8888;
++                        self->_writeargb8u = O2SurfaceWrite_argb8u_to_ARGB8888;
++                        return YES;
+                     }
+                     break;
+ 

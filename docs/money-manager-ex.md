@@ -445,6 +445,32 @@ reflows behind it and the dialog keeps its size and every field.
 should be. And the Date row shows only the weekday, Saturday, with no date and no visible
 `wxNSDatePicker`, which is the same missing control as Opening Date in Edit Account.
 
+## A surface that wrote its pixels in an order it did not read them in
+
+The tag drop button next to the Tags row came out bright purple. The numbers name it without any
+guessing:
+
+    the button          srgb(122,0,255)
+    accent blue, as it renders in iA Writer and in the mmex table selection    srgb(0,122,255)
+
+Red and green swapped, exactly. As one 32-bit pixel that is the bytes FF 00 7A FF written alpha
+first and read back as B, G, R, A.
+
+`CIDER_TRACE_IMAGESOURCE` says wx asks for that button as `18x18 info=0x6`, which is
+`kCGImageAlphaNoneSkipFirst` with byte order **Default**, and for the tag text area as `210x18` in
+the same format. `O2Image.m` already treats Default as the order the components are named in, A
+then R then G then B in memory, on every machine, with a long comment about the LibreOffice folder
+icon that came out violet. `O2Surface.m` still picked the host order for the same value. So a single
+surface object read its own pixels back in an order it had not written them in.
+
+cocotron 0114 gives the writer the same default as the reader, and adds the big endian case to
+`kCGImageAlphaPremultipliedFirst`, which had none and would otherwise have fallen through to no
+writer at all once the default was coerced. After it the button is exactly `srgb(0,122,255)`, the
+same 106 pixels, so only the colour moved.
+
+**The black Tags box is a different defect** and is still open: 3570 pixels of pure black inside the
+control border, unchanged by the byte order fix.
+
 ## What this still does not cover
 
 The Dashboard pane on the right is empty. Money Manager Ex renders it as HTML in a `wxWebView`,
