@@ -303,6 +303,26 @@ too: Edit goes from greyed to enabled and Delete from enabled to greyed the mome
 That is the row click of cocotron 0101 working on a tree rather than a flat list, and the selection
 notification reaching the application behind it.
 
+## The Date Range Manager
+
+Tools then Date Range Manager, a third surface off the same menu.
+
+**Manage checking date ranges renders complete**: a two column table of thirty named ranges with
+their shorthand, alternating stripes, from All to week and All to month down through Current
+financial year, Today, From statement, a ==== More date ranges separator row, the From current year
+family, the Previous family, From 1 year ago down to Year before last; a column of Top, an up
+chevron, Edit, a down chevron, Bottom, New and Delete down the right side; and Save, Restore
+default ranges and Cancel along the bottom.
+
+**A row click reaches the application.** Clicking From current year to week paints it full width in
+blue, and Edit and Bottom go from grey to black in the same frame. Top stays grey. That is again
+cocotron 0101, this time on a two column list where the click lands in the second column as often
+as the first.
+
+**Resized to 1000x600** the main window behind reflows its toolbar and the dialog keeps its size and
+its selection. A wx modal dialog is fixed by construction, so keeping its size IS the correct answer
+here; what had to be shown was that the window behind it resizes with the dialog up, and it does.
+
 ## What this still does not cover
 
 The Dashboard pane on the right is empty. Money Manager Ex renders it as HTML in a `wxWebView`,
