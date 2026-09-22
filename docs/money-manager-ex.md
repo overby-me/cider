@@ -280,6 +280,29 @@ that way rather than claimed.
 shadow and rounded corners, centred, exactly once, with nothing stale above it and no black column
 beside it.
 
+## The Tools menu and the Category Manager
+
+Reached from the populated main window, both never driven before.
+
+**The Tools menu opens complete**: Download Rates, Payee Manager, Category Manager, Tag Manager,
+Currency Manager, a Merge submenu, Budget Planner, Scheduled Transactions, Assets, Theme Manager,
+Date Range Manager, Transaction Report, General Report Manager, Custom Field Manager, a greyed
+Refresh WebApp and a Database submenu, with its separators and both submenu arrows.
+
+**The Category Manager is a populated tree** in a floating 462x570 panel: a toolbar of Collapse All,
+Expand All, a toggled Show All, a tree button and Clear Settings; the Categories root expanded over
+Automobile, Bills, Education, Food, Gifts, Healthcare, Homeneeds, Income, Insurance, Investment,
+Leisure, Miscellaneous, Other Expenses, Other Income and Taxes, each with its disclosure triangle
+where it has children; a scrollbar, a Search field, and New, Edit, Delete and Close.
+
+**And it is interactive in the two ways that matter for a tree.** Clicking Food selects it, full
+width in blue. Clicking the disclosure triangle beside Automobile expands it in place, adding Gas,
+Maintenance, Parking and Registration and pushing the rest down. The application sees the selection
+too: Edit goes from greyed to enabled and Delete from enabled to greyed the moment a row is picked.
+
+That is the row click of cocotron 0101 working on a tree rather than a flat list, and the selection
+notification reaching the application behind it.
+
 ## What this still does not cover
 
 The Dashboard pane on the right is empty. Money Manager Ex renders it as HTML in a `wxWebView`,
