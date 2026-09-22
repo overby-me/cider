@@ -1674,3 +1674,45 @@ one when the other end is itself underdetermined.**
 Seven defects fixed in series, each one only reachable after the previous. The roster stayed
 byte identical throughout, because constraints built in code were always populated and no gated
 path loads a nib carrying constraints.
+
+## WITHDRAWN: letting a stack view own its stacking axis size breaks the file list
+
+The obvious next move was tried and it is wrong. Recording it so nobody spends the build cycle
+again.
+
+The idea: the archive says `NSStackViewVerticalClippingResistance` is 1000, which is required, so a
+stack must not be compressed below what it arranges. The stack already reports its arranged size as
+its intrinsic size. So in the resolver, for a stack view that actually arranges something, along
+its own stacking axis only, and never over an explicit size constraint, adopt the intrinsic size
+instead of deriving it from both ends.
+
+It does exactly what it says. The Preferences stacks stop being squashed:
+
+```
+before   NSStackView 172x38 at 207,395    rows 172x12
+after    NSStackView 172x103 at 207,395   rows 172x44, inner rows 172x19
+```
+
+and the Dock icon row draws correctly, Light and Dark properly spaced for the first time.
+
+**And it breaks the document window.** iA Writer's library rows are stack views, so forcing every
+stack to its arranged height pushed the file list out of view entirely: `EmptyProbe.md`,
+`IndexProbe.md`, `probe.txt`, `Second.md` and `Cider.md` all present before, an empty column after.
+In the Preferences pane itself the "Appearance:" row went off the top and "File extensions:" was
+overlapped, so it did not even fix the pane it was aimed at.
+
+Withdrawn. A fix that breaks a working surface does not land, and the roster gates would not have
+caught this one on their own: the file list is inside the window the sweep captures, but the sweep
+only asks whether the capture is black.
+
+### What the next attempt needs
+
+Not a per view rule. The stack case and the library case differ in which end is authoritative, and
+a greedy per subview pass cannot tell them apart from one view's constraints alone. The rules
+around the Preferences stack are genuinely circular (`stack.top == container.top + 23` and
+`NSBox.top == stack.bottom + 15`, with the box's own position coming back from the stack), so three
+passes agree on whatever the archive happened to say. Resolving that wants the system solved
+together, or at least an ordering that knows which views are anchored to the container and which
+merely follow their neighbours.
+
+Until then the pane is legible and compressed, which is where cocotron 0097 left it.
