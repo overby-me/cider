@@ -1,0 +1,163 @@
+NSLayoutManager usesDefaultHyphenation, and the two traces that found it.
+
+A 10.15 property was missing, asking for it raised, the raise is caught, and an entire preferences
+pane came out half blank with nothing anywhere to say why.
+
+iTerm2 measures every row of its Advanced settings table by laying the row description out and
+asking how tall it is. The path is exact:
+
+  -[NSAttributedString(iTerm) heightForWidth:]
+  -[iTermAdvancedSettingsViewController tableView:heightOfRow:]
+  -[NSTableView noteHeightOfRowsWithIndexesChanged:]
+
+and it sets this switch on the layout manager first. With the selector missing the measurement
+threw, every row fell back to a default 17 points, and the pane drew its values and none of its
+descriptions.
+
+Stored and answered, which is the whole contract. This framework does not hyphenate either way, so
+the value changes no layout here; what matters is that asking does not raise.
+
+AFTER IT: zero unrecognized selectors and zero raises in the run, where there had been one of each,
+and the row heights are right, so heightForWidth: is measuring real text now. The value fields are
+full width instead of cramped.
+
+NOT FIXED, AND NOT CLAIMED: the description column is still blank. The row heights prove the
+description text exists and can be measured, so something else loses it between the model and the
+field. That is the next thing.
+
+TWO TRACES KEPT, because aiming at this pane took six runs and three of them were spent on
+instruments that could not see it.
+
+  CIDER_TABLE viewForColumn prints, per column and row, what the delegate answers and the string it
+  carries AT RETURN TIME, before this table touches it. That is what separates "the application
+  never set it" from "we cleared it", and it says the description field comes back EMPTY from the
+  delegate while the value column comes back populated.
+
+  CIDER_FRAME now prints the cell view OWN stringValue, not just its subviews'. The loop only asked
+  subviews, which covers a wrapper holding a field and misses a cell view that IS the field, so a
+  correct 557x17 frame printed with no text beside it and "the column is blank" could not be told
+  from "the trace does not ask".
+
+Gates: dts 69 of 69, patch record PASS, roster sweep 7 of 7 CONTENT and all seven unchanged against
+the capture baseline, roster input 7 of 7, with iTerm2 looked at.
+
+--- a/AppKit/include/AppKit/NSLayoutManager.h
++++ b/AppKit/include/AppKit/NSLayoutManager.h
+@@ -54,6 +54,7 @@
+     BOOL _layoutInvalid;
+     BOOL _allowsNonContiguousLayout;
+     BOOL _usesFontLeading;
++    BOOL _usesDefaultHyphenation;
+     BOOL _showsInvisibleCharacters;
+     BOOL _showsControlCharacters;
+     BOOL _backgroundLayoutEnabled;
+@@ -312,6 +313,8 @@
+ - (void) setHyphenationFactor: (CGFloat) factor;
+ - (BOOL) usesFontLeading;
+ - (void) setUsesFontLeading: (BOOL) value;
++- (BOOL) usesDefaultHyphenation;
++- (void) setUsesDefaultHyphenation: (BOOL) value;
+ - (BOOL) showsInvisibleCharacters;
+ - (void) setShowsInvisibleCharacters: (BOOL) value;
+ - (BOOL) showsControlCharacters;
+--- a/AppKit/NSTextView.subproj/NSLayoutManager.m
++++ b/AppKit/NSTextView.subproj/NSLayoutManager.m
+@@ -3315,6 +3315,28 @@
+     _hyphenationFactor = factor;
+ }
+ 
++/*
++ * 10.15 AND AN ENTIRE PANE HUNG ON IT. Absent, this raised, and the raise is caught, so the loss
++ * is invisible from outside.
++ *
++ * iTerm2 measures every row of its Advanced settings table by laying the row description out and
++ * asking how tall it is. The path is -[NSAttributedString(iTerm) heightForWidth:] from
++ * -[iTermAdvancedSettingsViewController tableView:heightOfRow:], and it sets this switch on the
++ * layout manager first. With the selector missing the measurement threw, every row fell back to a
++ * default height, and the description column came back from the delegate EMPTY: the whole left
++ * half of that pane was blank while the values on the right drew correctly.
++ *
++ * Stored and answered, which is the whole contract. This framework does not hyphenate either way,
++ * so the value changes no layout here; what matters is that asking does not raise.
++ */
++- (BOOL) usesDefaultHyphenation {
++    return _usesDefaultHyphenation;
++}
++
++- (void) setUsesDefaultHyphenation: (BOOL) value {
++    _usesDefaultHyphenation = value;
++}
++
+ - (BOOL) usesFontLeading {
+     return _usesFontLeading;
+ }
+--- a/AppKit/NSTableView.m
++++ b/AppKit/NSTableView.m
+@@ -1419,7 +1419,42 @@
+ - (NSView *) _viewForTableColumn: (NSTableColumn *) column row: (NSInteger) row {
+     if (![self _isViewBased])
+         return nil;
+-    return [_delegate tableView: self viewForTableColumn: column row: row];
++
++    NSView *view = [_delegate tableView: self viewForTableColumn: column row: row];
++
++    /*
++     * WHAT THE DELEGATE ANSWERS PER COLUMN, because a table that draws one column and not the
++     * other cannot be told apart from outside.
++     *
++     * iTerm2 Settings Advanced draws every value and NO description: the whole left column is
++     * blank for the full height of the table. The frame trace says the only view backed cells in
++     * that pane are 62 points wide near x=557, which is the value column, so either the delegate
++     * answers nil for the description column or what it answers never gets placed. Those want
++     * opposite work and only this line separates them.
++     */
++    if (getenv("CIDER_TRACE_CONTROL") != NULL) {
++        static int budget = 60;
++
++        if (budget-- > 0) {
++            /* AT RETURN TIME, which is before this table touches it. The delegate configures a
++             * bare text field before handing it over, so a string that is empty HERE was never
++             * set by the application, and one that is empty later was cleared by us. Those want
++             * opposite work. */
++            NSString *text = [view respondsToSelector: @selector(stringValue)]
++                                     ? [(id) view stringValue] : nil;
++
++            fprintf(stderr, "CIDER_TABLE viewForColumn %s col=%s row=%ld -> %s %gx%g string=\"%s\" len=%u\n",
++                    object_getClassName(self),
++                    [[column identifier] UTF8String] ?: "(nil)", (long) row,
++                    view != nil ? object_getClassName(view) : "NIL",
++                    view != nil ? NSWidth([view frame]) : 0.0,
++                    view != nil ? NSHeight([view frame]) : 0.0,
++                    text != nil ? ([text UTF8String] ?: "(no utf8)") : "(no selector)",
++                    (unsigned) [text length]);
++            fflush(stderr);
++        }
++    }
++    return view;
+ }
+ 
+ static NSString *_CiderCellViewKey(NSInteger column, NSInteger row) {
+@@ -1469,6 +1504,23 @@
+                 fprintf(stderr, "CIDER_FRAME   cell %s %p %gx%g at %g,%g\n",
+                         object_getClassName(view), view, f.size.width, f.size.height,
+                         f.origin.x, f.origin.y);
++                /*
++                 * THE CELL VIEW'S OWN STRING, not just its subviews'. The loop below asks every
++                 * SUBVIEW for a stringValue, which covers a wrapper holding a field and misses a
++                 * cell view that IS the field. iTerm2 Settings Advanced is the second shape: its
++                 * description column is a bare iTermTableViewTextField with no subviews, so the
++                 * trace printed a correct 557x17 frame and never a word of text, and "the column
++                 * is blank" could not be told from "the trace does not ask".
++                 */
++                if ([view respondsToSelector: @selector(stringValue)]) {
++                    NSString *own = [(id) view stringValue];
++                    NSSize ownFit = [view fittingSize];
++
++                    fprintf(stderr, "CIDER_FRAME     own string=\"%s\" len=%u fitting=%gx%g hidden=%d alpha=%g\n",
++                            [own UTF8String] ?: "(nil)", (unsigned) [own length],
++                            ownFit.width, ownFit.height, (int) [view isHidden],
++                            (double) [view alphaValue]);
++                }
+                 for (NSView *sub in [view subviews]) {
+                     NSRect sf = [sub frame];
+ 

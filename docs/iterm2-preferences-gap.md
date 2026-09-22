@@ -1775,3 +1775,53 @@ repeat it.** Neither view tree dumper can capture that pane:
 So the next attempt needs either a dump triggered by something other than a flush, or a trace on the
 table cell draw itself. The second is probably the shorter path, since the question is whether the
 description cell is asked to draw at all.
+
+## The Advanced pane: a 10.15 property, found by fixing the trace first
+
+`-[NSLayoutManager setUsesDefaultHyphenation:]` was missing. Asking for it raised, the raise is
+caught, and an entire pane came out half blank with nothing anywhere to say why. The stack is
+exact:
+
+```
+-[NSAttributedString(iTerm) heightForWidth:]
+-[iTermAdvancedSettingsViewController tableView:heightOfRow:]
+-[NSTableView noteHeightOfRowsWithIndexesChanged:]
+```
+
+iTerm2 measures every row by laying its description out and asking how tall it is, setting that
+switch on the layout manager first. The measurement threw, every row fell back to 17 points, and
+the pane drew its values and none of its descriptions. Implemented in cocotron 0098.
+
+**After it:** zero unrecognized selectors and zero raises where there had been one of each, and the
+row heights are right, so `heightForWidth:` is measuring real text. The value fields are full width
+instead of cramped.
+
+**NOT fixed and not claimed: the description column is still blank.** The corrected row heights
+prove the description text exists and can be measured, so something else loses it between the model
+and the field.
+
+### Getting there took fixing the instruments twice, which is the transferable part
+
+Six runs, three of them spent on instruments that could not see this pane:
+
+1. `CIDER_TRACE_VIEWS` dumps a window once, before the pane exists. `CIDER_VIEW_REDUMP` shares one
+   timestamp so the terminal takes every slot. `CIDER_TRACE_TREE` is per window but hangs off
+   `-flushWindow` and never fires after a click. **No tree dumper can capture a pane swapped in by
+   a click.**
+2. `CIDER_TRACE_SVFRAME=View` did speak, 1536 events, and showed `iTermTableViewTextField` views at
+   62x17 near x=557. I read that as "the descriptions are not views". **That was right about the
+   value column and told me nothing about the description column**, which is a different set of
+   views entirely.
+3. A new `CIDER_TABLE viewForColumn` trace printed the frame of the returned view as **1x1** and I
+   read it as a defect. **Wrong, and withdrawn:** the trace runs before the table calls
+   `setFrame:`, so 1x1 is simply how the view was born.
+4. `CIDER_FRAME` printed a correct 557x17 frame with no text beside it, because its loop asks only
+   SUBVIEWS for a `stringValue` and the description cell IS the field, with no subviews. Fixing the
+   trace to ask the cell view itself is what finally produced `own string="" len=0`.
+
+Only then did adding the string to the `viewForColumn` trace show the field comes back **empty from
+the delegate**, which pointed at a failure inside iTerm2, which pointed at the caught raise.
+
+The lesson is the one this document keeps relearning: **a trace that prints the wrong field, or
+prints at the wrong moment, reads exactly like evidence.** Two of the four readings above were mine
+and both were wrong.
