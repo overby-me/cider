@@ -471,6 +471,48 @@ same 106 pixels, so only the colour moved.
 **The black Tags box is a different defect** and is still open: 3570 pixels of pure black inside the
 control border, unchanged by the byte order fix.
 
+## The black Tags box, characterised
+
+The Tags row is a solid black rectangle. It is not dead: clicking it and typing `food` brings up a
+`New tag entered` dialog asking `Create new tag 'food'?`, so the control takes keyboard input and
+the application sees it. Only the painting is wrong.
+
+**What it is.** `mmTagTextCtrl` embeds a `wxStyledTextCtrl`, which is Scintilla. The tree shows it
+as a `wxNSView 210x18` with two hidden `wxNSScroller`s, which is that shape exactly.
+
+**What is drawn there, in order**, from `CIDER_TRACE_PAINT=110,250,230,60` on the dialog surface:
+
+    path   blend=17  229x18 at 116,278   c=1.000,1.000     the white background, correct
+    image  blend=0   210x18 at 117,255                     an image blitted over it
+
+So a correct white fill is covered by a 210x18 image. And that image is all zeros, which as an
+opaque XRGB pixel is black.
+
+**Nothing is ever written into it.** `CIDER_TRACE_SURFACE_WIDTH=210` (cocotron 0115) counts every
+span that reaches a surface of that width: ZERO. The same probe with `=18` reports 60 writes to the
+drop button surface with pixels `a=ff,r=00,g=7a,b=ff`, so the instrument speaks and the port writes
+pixels correctly when anything asks it to. `CIDER_TRACE_PAINT` agrees: no path, image or shading
+ever targets a 210x18 surface.
+
+**Who makes the buffer**, from the creation backtrace also added in cocotron 0115:
+
+    wxStyledTextCtrl::OnPaint -> wxBufferedPaintDC -> wxSharedDCBufferManager::GetBuffer   x1
+    ScintillaWX::DoPaint -> Scintilla::Editor::Paint -> SurfaceImpl::InitPixMap            x2
+    wxBufferedDC::UnMask -> wxGCDCImpl::DoBlit -> wxBitmap::GetSubBitmap                   x3
+
+So Scintilla really does reach `Editor::Paint` and allocate its own pixmaps, and then draws into
+none of them.
+
+**What is NOT the cause.** The update region is correct: `CIDER_TRACE_FRAMES=wxNSView` prints
+`CIDER_RECTS wxNSView count=1 first=210x18 at 0,0` for that view, so wx is told its whole client
+area is dirty. The byte order fix of cocotron 0114 does not touch it either.
+
+**The next step** is why `Editor::Paint` returns without drawing when it has a non empty area and a
+pixmap. The candidate worth measuring first is `paintAbandoned`, which Scintilla sets when the
+scrollbar state changes during a paint: it then returns having drawn nothing, repaints to the
+window instead, and the buffered DC blits its untouched buffer over the top. That would explain
+every measurement above, and this port has two scrollers on that control that are both hidden.
+
 ## What this still does not cover
 
 The Dashboard pane on the right is empty. Money Manager Ex renders it as HTML in a `wxWebView`,

@@ -1,0 +1,67 @@
+--- a/Onyx2D/O2Surface.m
++++ b/Onyx2D/O2Surface.m
+@@ -898,6 +898,30 @@
+     if (length == 0)
+         return;
+ 
++    /* WHETHER ANYTHING REACHED A BUFFER AT ALL. A caller drawing into its own bitmap cannot tell a
++     * draw that produced nothing from one that produced black, because a zeroed XRGB buffer IS
++     * black. CIDER_TRACE_SURFACE_WIDTH names one width so a single control can be watched without
++     * the rest of the screen burying it. */
++    static int ciderWantedWidth = -2;
++
++    if (ciderWantedWidth == -2) {
++        const char *spec = getenv("CIDER_TRACE_SURFACE_WIDTH");
++
++        ciderWantedWidth = (spec != NULL) ? atoi(spec) : -1;
++    }
++    if (ciderWantedWidth >= 0 && (int) self->_width == ciderWantedWidth) {
++        static int printed;
++
++        if (printed < 60) {
++            printed++;
++            fprintf(stderr,
++                    "CIDER_SURFACE write %dx%d at %d,%d len=%d first=%02x,%02x,%02x,%02x\n",
++                    (int) self->_width, (int) self->_height, x, y, length, span[0].a, span[0].r,
++                    span[0].g, span[0].b);
++            fflush(stderr);
++        }
++    }
++
+     self->_writeargb8u(self, x, y, span, length);
+ }
+ 
+--- a/Onyx2D/O2BitmapContext.m
++++ b/Onyx2D/O2BitmapContext.m
+@@ -17,6 +17,7 @@
+ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ 
++#include <execinfo.h>
+ #import <Onyx2D/O2BitmapContext.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -111,10 +112,22 @@
+     if (getenv("CIDER_TRACE_IMAGESOURCE") != NULL &&
+         getenv("CIDER_TRACE_IMAGESOURCE")[0] != '\0') {
+         fprintf(stderr,
+-                "CIDER_IMAGESOURCE O2BitmapContextCreate %lux%lu bpc=%lu bpr=%lu data=%p info=0x%lx -> %s\n",
++                "CIDER_IMAGESOURCE O2BitmapContextCreate %lux%lu bpc=%lu bpr=%lu data=%p info=0x%lx -> %s",
+                 (unsigned long) width, (unsigned long) height,
+                 (unsigned long) bitsPerComponent, (unsigned long) bytesPerRow, data,
+                 (unsigned long) bitmapInfo, result ? "ok" : "NULL");
++
++        /* AND WHO ASKED. A buffer that is created and never drawn into blits as black, and the
++         * only way to tell which of several callers made it is the stack that made it. */
++        void *frames[8];
++        int count = backtrace(frames, 8);
++        char **names = backtrace_symbols(frames, count);
++
++        for (int i = 1; i < count && names != NULL; i++)
++            fprintf(stderr, " <- %s", names[i]);
++        if (names != NULL)
++            free(names);
++        fprintf(stderr, "\n");
+         fflush(stderr);
+     }
+     return result;
