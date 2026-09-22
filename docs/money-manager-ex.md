@@ -391,6 +391,60 @@ carry, date, account, payee, category, amount, notes and the tag control whose c
 crashing, is missing. So the application no longer dies and the dialog is now reachable, but it
 does not yet render correctly. That is the next thread, not a completed one.
 
+## The New Transaction dialog, and the box that was not a container
+
+After cocotron 0109 the dialog appeared and its Transaction Details box was empty. Four more defects
+stood between that and a form, and three of them were in my own instruments.
+
+**The tree dumper killed the application it was watching.** Every run with `CIDER_TRACE_TREE` set
+ended `cider-app exit=255` on Unhandled unknown exception, 4 of 4, against 2 of 2 healthy without
+it. `CiderDumpViewTree` sends `-fontName` to whatever a control answers for `-font`, a wx control
+answers a CoreText `KTFont_FT`, which does not implement it, and the raise escaped through
+`-flushWindow` into the application draw, where wx terminates. cocotron 0111 asks only a real
+`NSFont` and wraps the whole dump in `@try`, so a probe can no longer take the application down.
+I had also patched the guard into the wrong function twice: there are two dumpers in `NSWindow.m`
+and a first-match replace kept landing on the one nothing calls.
+
+**With the dumper alive, the tree named it in one line:**
+
+    wxNSBox            397x469@10,10
+      wxNSBoxContentView   1x1@0,0
+      wxNSStaticTextView   30x14@46,-1008   text: Date
+      wxNSPopUpButton     233x22@130,-1045
+      ... every field, down to 28x24@335,-1294
+
+Every control existed, none was hidden, and all of them sat about a thousand points below the box.
+
+**Two defects, and a refuted guess.** The content view was 1x1: `-[NSBox setContentView:]` carried
+a comment reading FIX, adjust size and never sized the view it adopted, so a view created in code
+kept its 1x1 frame forever. That is cocotron 0113, which also computes the content rect from the
+same groove geometry `-drawRect:` paints. Fixing it did not change the picture. I also guessed the
+box was painting over its own fields because `-sortSubviewsUsingFunction:context:` was
+unimplemented, which is how wx raises and lowers a control; implementing it (cocotron 0112) was
+right on its own terms and made no difference here. That guess is withdrawn.
+
+**What actually moved them** is that wx converts a top down y into a bottom up one using the parent
+bounds height, and only when the parent is NOT flipped. Disassembling `wxToNSRect` confirms the
+arithmetic exactly: `y_out = boundsHeight - (y + height)`. `CIDER_TRACE_BOXKIDS`, added in cocotron
+0112, printed the box as correct at the time of every call:
+
+    CIDER_BOXKID wxNSStaticTextView asked={46,-1255 48x14} box=wxNSBox bounds=397x469@0,0 flipped=0
+
+An `NSBox` is the only unflipped container an application like this has. `wxNSBoxContentView` IS
+flipped, and on a Mac these children never get converted at all, because a box puts what you add to
+it inside its content view. Ours added them to the box. cocotron 0113 forwards `-addSubview:` to
+the content view, and the count of children landing on the box went from 301 to 7 in the same
+drive.
+
+**The dialog now renders**: Date, Type, Amount, Account, Payee, Category, Tags, Status, Number,
+Notes and Color, with their combo boxes, popups, text fields, the round buttons down the right
+side, a Notes text area, and Save, Save and New and Cancel. Resized to 1000x600 the main window
+reflows behind it and the dialog keeps its size and every field.
+
+**Two defects remain on it.** The Tags row draws a solid black rectangle where its text control
+should be. And the Date row shows only the weekday, Saturday, with no date and no visible
+`wxNSDatePicker`, which is the same missing control as Opening Date in Edit Account.
+
 ## What this still does not cover
 
 The Dashboard pane on the right is empty. Money Manager Ex renders it as HTML in a `wxWebView`,

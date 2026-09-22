@@ -1,0 +1,39 @@
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -1504,6 +1504,22 @@
+ }
+ 
+ - (void) setFrame: (NSRect) frame {
++    /* WHAT A CHILD OF AN NSBox IS ASKED FOR, AND WHAT THE BOX MEASURED AT THE TIME. wx converts a
++     * top-down y into a bottom-up one using the parent bounds height, but only when the parent is
++     * NOT flipped, and an NSBox is the only unflipped container an application like this has. */
++    if (getenv("CIDER_TRACE_BOXKIDS") != NULL && _superview != nil &&
++        [_superview isKindOfClass: NSClassFromString(@"NSBox")]) {
++        fprintf(stderr,
++                "CIDER_BOXKID %s asked={%.0f,%.0f %.0fx%.0f} box=%s bounds=%.0fx%.0f@%.0f,%.0f frame=%.0fx%.0f flipped=%d\n",
++                object_getClassName(self), frame.origin.x, frame.origin.y, frame.size.width,
++                frame.size.height, object_getClassName(_superview),
++                [_superview bounds].size.width, [_superview bounds].size.height,
++                [_superview bounds].origin.x, [_superview bounds].origin.y,
++                [_superview frame].size.width, [_superview frame].size.height,
++                (int) [_superview isFlipped]);
++        fflush(stderr);
++    }
++
+     /* EVERY SIZE A SCROLL VIEW IS GIVEN, WITH THE CALLER. The document scroll view of Swift
+      * Publisher arrives at zero and nothing in AppKit can size it (no mask, plain superview), so
+      * the question is whether the application sizes it later and from where. Subtract the image
+@@ -2130,7 +2146,12 @@
+                  (NSComparisonResult (*)(id, id, void *)) compareFunction
+                            context: (void *) context
+ {
+-    NSUnimplementedMethod();
++    /* THIS IS HOW wx RAISES AND LOWERS A CONTROL. A wxStaticBox is a SIBLING of the controls it
++     * appears to contain, and wx lowers it so it draws behind them; unimplemented, the box drew
++     * last and painted over every field inside it. */
++    [_subviews sortUsingFunction: (NSInteger (*)(id, id, void *)) compareFunction
++                        context: context];
++    [self setNeedsDisplay: YES];
+ }
+ 
+ - (void) didAddSubview: (NSView *) subview {

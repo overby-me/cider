@@ -1,0 +1,117 @@
+--- a/AppKit/NSBox.m
++++ b/AppKit/NSBox.m
+@@ -35,6 +35,9 @@
+ #import <AppKit/NSTextFieldCell.h>
+ #import <Foundation/NSKeyedArchiver.h>
+ 
++/* MOVED UP FROM BESIDE -titleRect so the content frame helper can use it too. */
++#define TEXTGAP 4
++
+ @implementation NSBox
+ 
+ - (void) encodeWithCoder: (NSCoder *) coder {
+@@ -150,7 +153,7 @@
+     contentview = [[NSView alloc]
+             initWithFrame: NSMakeRect(0, 0, NSWidth(frame), NSHeight(frame))];
+     [contentview setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable];
+-    [self addSubview: contentview];
++    [super addSubview: contentview];
+     [contentview release];
+     [self setAutoresizesSubviews: YES];
+     return self;
+@@ -213,13 +216,84 @@
+     [_titleCell setFont: font];
+ }
+ 
++/* THE RECTANGLE INSIDE THE GROOVE, matching the groove -drawRect: paints, less the margins. */
++- (NSRect) _ciderContentFrame {
++    NSRect content = _bounds;
++    NSRect title = [self titleRect];
++
++    switch (_titlePosition) {
++
++    case NSNoTitle:
++    case NSBelowTop:
++    case NSAboveBottom:
++        break;
++
++    case NSAboveTop:
++        content.size.height -= title.size.height + TEXTGAP;
++        break;
++
++    case NSAtTop:
++        content.size.height -= floor(title.size.height / 2);
++        break;
++
++    case NSAtBottom:
++        content.origin.y += floor(title.size.height / 2);
++        content.size.height -= floor(title.size.height / 2);
++        break;
++
++    case NSBelowBottom:
++        content.origin.y += title.size.height + TEXTGAP;
++        content.size.height -= title.size.height + TEXTGAP;
++        break;
++    }
++
++    content = NSInsetRect(content, _contentViewMargins.width, _contentViewMargins.height);
++
++    if (content.size.width < 0)
++        content.size.width = 0;
++    if (content.size.height < 0)
++        content.size.height = 0;
++
++    return content;
++}
++
++- (void) _ciderSizeContentView {
++    NSView *content = [self contentView];
++
++    if (content != nil)
++        [content setFrame: [self _ciderContentFrame]];
++}
++
++/* EVERYTHING ADDED TO A BOX BELONGS TO ITS CONTENT VIEW. A box keeps exactly one subview, so
++ * -contentView can go on answering the last one; more importantly the content view is the one an
++ * application flips, and a child that lands on the box instead gets its y converted against the
++ * box and drifts a thousand points off the dialog. */
++- (void) addSubview: (NSView *) view {
++    NSView *content = [self contentView];
++
++    if (content != nil && view != content)
++        [content addSubview: view];
++    else
++        [super addSubview: view];
++}
++
+ - (void) setContentView: (NSView *) view {
+     if (![[self subviews] containsObject: view]) {
+         [[self subviews]
+                 makeObjectsPerformSelector: @selector(removeFromSuperview)];
+-        // FIX, adjust size
+-        [self addSubview: view];
++        [super addSubview: view];
+     }
++
++    /* AND GIVE IT THE BOX TO FILL. A view adopted here keeps the frame it was created with, and a
++     * view created in code starts 1x1: wx built the whole New Transaction dialog inside a content
++     * view one pixel square, so the box drew and every field in it was clipped away. */
++    [view setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable];
++    [self _ciderSizeContentView];
++}
++
++- (void) setFrameSize: (NSSize) size {
++    [super setFrameSize: size];
++    [self _ciderSizeContentView];
+ }
+ 
+ - (void) setContentViewMargins: (NSSize) value {
+@@ -266,8 +340,6 @@
+             autorelease];
+ }
+ 
+-#define TEXTGAP 4
+-
+ - (NSRect) titleRect {
+     // Obtain the size the title cell prefers
+     NSSize size = [_titleCell cellSize];

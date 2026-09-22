@@ -1,0 +1,62 @@
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -258,7 +258,10 @@
+     if ([view respondsToSelector: @selector(font)] && text != nil && [text length] > 0) {
+         id font = [(id) view font];
+ 
+-        if (font != nil && [font respondsToSelector: @selector(pointSize)]) {
++        /* ONLY A REAL NSFont. A control can hand back a CoreText font, KTFont_FT, and measuring
++         * with one of those in NSFontAttributeName raises inside the text system, which killed
++         * Money Manager Ex outright before the dump was wrapped. */
++        if ([font isKindOfClass: [NSFont class]]) {
+             NSSize measured = [text sizeWithAttributes:
+                                        [NSDictionary dictionaryWithObject: font
+                                                                    forKey: NSFontAttributeName]];
+@@ -266,6 +269,8 @@
+             snprintf(fontNote, sizeof(fontNote), " font=%s %.1f measured=%.0f",
+                      [[font fontName] UTF8String] ?: "?", (double) [font pointSize],
+                      (double) measured.width);
++        } else if (font != nil) {
++            snprintf(fontNote, sizeof(fontNote), " font=%s", object_getClassName(font));
+         }
+     }
+ 
+@@ -2770,7 +2775,10 @@
+     if ([view respondsToSelector: @selector(font)] && text != nil && [text length] > 0) {
+         id font = [(id) view font];
+ 
+-        if (font != nil && [font respondsToSelector: @selector(pointSize)]) {
++        /* ONLY A REAL NSFont. A control can hand back a CoreText font, KTFont_FT, which answers
++         * neither -fontName nor the text system, and the raise took Money Manager Ex down with it
++         * before the dump was wrapped. */
++        if ([font isKindOfClass: [NSFont class]]) {
+             NSSize measured = [text sizeWithAttributes:
+                                        [NSDictionary dictionaryWithObject: font
+                                                                    forKey: NSFontAttributeName]];
+@@ -2778,6 +2786,8 @@
+             snprintf(fontNote, sizeof(fontNote), " font=%s %.1f measured=%.0f",
+                      [[font fontName] UTF8String] ?: "?", (double) [font pointSize],
+                      (double) measured.width);
++        } else if (font != nil) {
++            snprintf(fontNote, sizeof(fontNote), " font=%s", object_getClassName(font));
+         }
+     }
+ 
+@@ -2865,8 +2875,15 @@
+             (long) [self windowNumber], _frame.size.width, _frame.size.height, _frame.origin.x,
+             _frame.origin.y, now, (int) [self isKeyWindow], (int) [self isMainWindow],
+             [self firstResponder] != nil ? object_getClassName([self firstResponder]) : "none");
+-    CiderDumpViewTree(_backgroundView != nil ? _backgroundView : _contentView, 0,
+-                      _frame.size.height);
++    /* A PROBE MUST NOT BE LOAD BEARING. This runs from -flushWindow, inside the application's own
++     * draw, and wx turns any escaping raise into Unhandled unknown exception and terminates. */
++    @try {
++        CiderDumpViewTree(_backgroundView != nil ? _backgroundView : _contentView, 0,
++                          _frame.size.height);
++    } @catch (NSException *e) {
++        fprintf(stderr, "CIDER_TREE dump raised %s: %s\n", [[e name] UTF8String] ?: "?",
++                [[e reason] UTF8String] ?: "?");
++    }
+     fflush(stderr);
+ }
+ 

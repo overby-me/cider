@@ -1,0 +1,25 @@
+--- a/AppKit/NSApplication.m
++++ b/AppKit/NSApplication.m
+@@ -1584,6 +1584,22 @@
+              * per pass and nothing at all when the variable is unset.
+              */
+             if (getenv("CIDER_TRACE_TREE") != NULL) {
++                /* THE ROSTER FIRST, BECAUSE isVisible DECIDES WHETHER ANYTHING IS DUMPED AT ALL.
++                 * A silent dumper and a dumper whose every window answers not visible look the
++                 * same from the log, and they are opposite faults. */
++                static NSTimeInterval lastRoster = 0.0;
++
++                if (nowInterval - lastRoster >= 4.0) {
++                    lastRoster = nowInterval;
++                    fprintf(stderr, "CIDER_TREE roster count=%lu t=%.2f\n",
++                            (unsigned long) [[NSApp windows] count], nowInterval);
++                    for (NSWindow *window in [NSApp windows])
++                        fprintf(stderr, "CIDER_TREE roster window=%ld visible=%d %s\n",
++                                (long) [window windowNumber], (int) [window isVisible],
++                                object_getClassName(window));
++                    fflush(stderr);
++                }
++
+                 for (NSWindow *window in [NSApp windows])
+                     if ([window isVisible])
+                         [window performSelector: @selector(_ciderDumpViewTreeIfAsked)];
