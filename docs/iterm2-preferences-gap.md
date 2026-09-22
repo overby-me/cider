@@ -1955,3 +1955,27 @@ That is the same shape as the iA Writer Preferences rows that are legible but co
 whose internal layout does not leave its last row any space. Both are downstream of the constraint
 solver work that is still open, so this is recorded as one more symptom of that rather than as a
 separate defect to chase.
+
+## The Shortcuts pane is two empty NSViews, and the dumper could not see it until now
+
+CIDER_TRACE_TREE hung off `-flushWindow`, so a window that has settled and stopped drawing could
+never be dumped. A pane swapped in by a click is exactly such a window: the Shortcuts pane was
+driven four times and dumped zero times. cocotron 0106 moves the call into
+`-[NSApplication nextEventMatchingMask:untilDate:inMode:dequeue:]`, which comes round whatever the
+windows are doing, and leaves the per-window throttle inside the dumper alone.
+
+With that, the pane dumps for the first time, at the size it actually has:
+
+    CIDER_TREE ==== window 10 910x485 at 332,0 responder=iTermSizeRememberingView
+    ...
+    CIDER_TREE   NSView 0x7158ec27e4a0  852x352@2,2      the tab content view
+    CIDER_TREE     NSView 0x7158ec280120 852x344@-3,5
+    CIDER_TREE     NSView 0x7158e7c2c1a0 846x344@0,0
+
+**Two bare NSViews with no subviews at all.** Not a table sized to nothing, not buttons off the
+edge: there is nothing in the pane to lay out. That agrees with the earlier measurement that no
+table is ever queried for this pane, and it moves the question off the constraint solver entirely.
+The General pane in the same window has a full tree of real controls under the same containers.
+
+So the next question is where the Actions and Snippets content is supposed to come from, and why
+the two containers come back empty while their siblings in other panes do not.

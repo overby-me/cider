@@ -1,0 +1,25 @@
+--- a/AppKit/NSApplication.m
++++ b/AppKit/NSApplication.m
+@@ -1572,6 +1572,22 @@
+ 
+             [self _checkForAppActivation];
+             [self _displayAllWindowsIfNeeded];
++
++            /*
++             * AND DUMP THE TREES FROM HERE, NOT FROM A FLUSH.
++             *
++             * CIDER_TRACE_TREE used to hang off -flushWindow, so a window that has settled and
++             * stopped drawing could never be dumped, and a pane swapped in by a click is exactly
++             * such a window: the iTerm2 Shortcuts pane was driven four times and dumped zero. The
++             * event pump comes round whatever the windows are doing, and the per window throttle
++             * inside the dumper is unchanged, so this costs one timestamp comparison per window
++             * per pass and nothing at all when the variable is unset.
++             */
++            if (getenv("CIDER_TRACE_TREE") != NULL) {
++                for (NSWindow *window in [NSApp windows])
++                    if ([window isVisible])
++                        [window performSelector: @selector(_ciderDumpViewTreeIfAsked)];
++            }
+         }
+ 
+         nextEvent = [[_display nextEventMatchingMask: mask
