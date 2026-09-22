@@ -263,13 +263,22 @@ rather than tile it. The Money Manager Ex start dialog now appears as a 350x527 
 shadow, centred, which is what it looks like on a Mac. That is the one roster capture the change
 moves, from 31713 bytes to 32124.
 
-**All Transactions raises a fatal exception the application catches.** Clicking it in the Navigator
-puts up the wxWidgets crash reporter, `Debug report "MoneyManagerEx"`, naming
-`/private/tmp/MoneyManagerEx_dbgrpt-2-20260922T094854.zip`. That dialog itself renders correctly,
-group boxes, a checked file list, a notes field and Cancel and OK. The daemon log carries one
-`sigexc: have RIP 0x75E1CD6473AF pid 2 sig 11` for the run, and no core, because wx handles the
-signal itself. The report xml it writes has no stack in it. Symbolicating that RIP needs a run whose
-image map is captured, which has not been done yet.
+**All Transactions raised a fatal signal once and has not since.** In the run where the alert had
+been stretched across the output, clicking All Transactions put up the wxWidgets crash reporter,
+`Debug report "MoneyManagerEx"`, and the daemon log carried one `sigexc: have RIP 0x75E1CD6473AF pid
+2 sig 11`. There was no core, because wx handles the signal itself, and the report xml it writes has
+no stack in it. That dialog at least renders correctly: group boxes, a checked file list, a notes
+field, Cancel and OK.
+
+Three runs of the same two clicks after the fixed-size window change: no signal, no new debug report,
+and the capture byte identical at 43318 each time, with All Transactions selected in the Navigator
+and an empty transaction pane, which is right for a database with no transactions in it. One
+occurrence against three clean runs is not a proof that the geometry caused it, and it is recorded
+that way rather than claimed.
+
+**And the alert now floats.** The same MMEX Instance Check appears as a 324x353 panel with its
+shadow and rounded corners, centred, exactly once, with nothing stale above it and no black column
+beside it.
 
 ## What this still does not cover
 
