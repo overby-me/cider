@@ -97,11 +97,77 @@ A static check of every staged roster binary found mmex the only one defining
 shouldSelectTableColumn:, so no other application on the roster was losing clicks this way. The fix
 is still the right one on AppKit semantics rather than for this one application.
 
+## Past the wizard: the Add Account Wizard and the Edit Account dialog
+
+Finishing the New Database Wizard opens the **Add Account Wizard** over the main window, whose title
+is now `cider8.mmb - Money Manager Ex (1.9.3 64-bit) macOS Sonoma 14.4.1`. Driven through it:
+
+- **Page one renders**, the introductory paragraphs wrapped over two lines each, with Back greyed,
+  Next blue and Cancel beside them.
+- **Page two is Account Type**, a label, a small pop-up control, and three explanatory paragraphs.
+- **Page three is Name of the Account**, a focused text field with the caret in it, and the action
+  button correctly changed from Next to Finish.
+- **Typing lands and Finish completes it.** The wizard closes and the **Edit Account** dialog opens
+  carrying what was entered: Account Name `CiderBank`, Currency **Australian dollar** picked up from
+  the base currency chosen two dialogs earlier, Initial Balance 0.00, a checked Favorite Account box,
+  a notes text area, and OK and Cancel.
+
+Two defects are visible on those surfaces and both are recorded rather than claimed fixed.
+
+**The Account Type control draws an empty box.** It is empty on wizard page two and both the Account
+Type and Account Status controls are empty in the Edit Account dialog. It is not an
+`NSPopUpButton` reached through `-[NSPopUpButtonCell setMenu:]`, because a trace on that selector and
+on every menu item added to a pop-up printed nothing for it while printing four lines for the save
+panel. What it actually is has not been established.
+
+**The paragraphs on page two are cut off.** "General bank accounts cover a wide variety of account",
+"Investment and Share accounts are specialized accounts that" and "Term and asset accounts are
+specialized bank accounts. They are intended for monitoring assets or term" each stop mid sentence,
+at a different x, on one line. The intro paragraphs on page one wrap correctly over two lines, so
+multi line static text works in general; these three look like text that was never wrapped and is
+clipped by a view narrower than the line, which points at text measurement rather than at drawing.
+
+**Opening Date has no control at all** in the Edit Account dialog, only its label. `wxNSDatePicker`
+is one of the classes this binary defines, so an unimplemented NSDatePicker is the first thing to
+check there.
+
+## An intermittent that kills the Wayland connection, and what it correlates with
+
+The transition that opens the Add Account Wizard failed in 2 of the 4 runs that reached it, before
+any change. The failure is total: the screen goes black, every later capture is 2578 bytes, the
+application keeps running and its log fills with
+
+    cider-wayland-session display=DEAD errno=104 protocol_error=0
+    cider-wayland-window create=FAILED reason=never-configured number=6 display_dead=true
+
+seven times over, while sway logs `error in client communication (pid ...)`. errno 104 is
+ECONNRESET: the compositor killed the client. libwayland-server logs that line only after
+`wl_resource_post_error`, so a request of ours was invalid, and the error event never reached us
+because the socket was reset first.
+
+**What separates the four runs is one line.** The two that died each sent exactly one
+`cider-wayland-activation token=asked` in the whole run, at that transition, and never got an
+`activate=sent` back. The two that survived sent none at all. The window creation sequence is
+otherwise byte for byte identical in all four, down to the same object numbers.
+
+`request_activation` spends the focused surface as the requester of an xdg-activation token. Pointer
+focus is remembered from `wl_pointer.enter`, and a client that destroys its own surface gets no
+leave, so the remembered surface can outlive the object: the wizard is hidden, which destroys its
+surface, and the new dialog is made key in the same breath.
+`xdg_activation_token_v1.set_surface` on a destroyed surface is a protocol error, and the
+done handler in the same file already guards its own target against exactly this, with a comment
+saying it costs the whole connection. The requester was never guarded. It is now.
+
+**Honest status of that fix.** Three runs of the transition after it: all three opened the dialog,
+and none of them took the activation path at all, so they neither exercise the guard nor prove it.
+The case for it is the correlation above and the protocol rule, not a converted failure. The guard
+prints `cider-wayland-activation ask=dropped requester=... gone` when it fires, so the next run that
+would have died says so instead.
+
 ## What this still does not cover
 
-Past the New Database Wizard sits the Add Account Wizard, which is open and unexercised. The
-populated main window and the Navigator filled with accounts are reachable from there and have not
-been driven yet.
+The populated main window past the Edit Account dialog, the Navigator filled with accounts, and
+everything after that.
 
 No credentials of any kind are involved here. Money Manager Ex is a local finance tracker with a
 SQLite file; it is not MoneyMoney and it talks to no bank.

@@ -1,0 +1,131 @@
+--- a/AppKit/NSPopUpButtonCell.m
++++ b/AppKit/NSPopUpButtonCell.m
+@@ -27,6 +27,8 @@
+ #import <AppKit/NSPopUpWindow.h>
+ #import <AppKit/NSRaise.h>
+ #import <Foundation/NSKeyedArchiver.h>
++#import <Foundation/NSNotification.h>
++#import <stdio.h>
+ 
+ static const void *kCiderSelectingItemKey = &kCiderSelectingItemKey;
+ 
+@@ -39,6 +41,7 @@
+     _selectedIndex = -1;
+     _arrowPosition = NSPopUpArrowAtCenter;
+     _preferredEdge = NSMaxYEdge;
++    [self _ciderWatchMenu];
+     return self;
+ }
+ 
+@@ -56,12 +59,14 @@
+         _preferredEdge = [coder decodeIntForKey: @"NSPreferredEdge"];
+         _usesItemFromMenu = [coder decodeBoolForKey: @"NSUsesItemFromMenu"];
+ 
++        [self _ciderWatchMenu];
+         [self synchronizeTitleAndSelectedItem];
+     } else {
+         int flags; // TODO: Handle flags
+         [coder decodeValuesOfObjCTypes:"i@i", &flags, &_menu, &_selectedIndex];
+ 
+         // We can't call synchronizeTitleAndSelectedItem, as the _menu may not be finished decoding and we can't access the items
++        [self _ciderWatchMenu];
+         _syncTitleNeeded = YES;
+     }
+     return self;
+@@ -71,6 +76,7 @@
+     NSPopUpButtonCell *copy = [super copyWithZone: zone];
+ 
+     copy->_menu = [_menu copy];
++    [copy _ciderWatchMenu];
+ 
+     return copy;
+ }
+@@ -82,10 +88,55 @@
+     _arrowPosition = NSPopUpArrowAtCenter;
+     _preferredEdge = NSMaxYEdge;
+     _pullsDown = pullDown;
++    [self _ciderWatchMenu];
+     return self;
+ }
+ 
++/* AN ITEM PUT STRAIGHT INTO THE MENU MUST STILL REACH THE BUTTON. AppKit's pop-up follows its own
++ * menu: give it an empty one and add items to that menu afterwards, and the button selects the
++ * first item and draws its title. This cell only looked at the menu in -setMenu:, so a pop-up built
++ * that way stayed on selectedIndex -1 with a nil title and drew an EMPTY BOX for ever.
++ *
++ * That is how every wxWidgets choice is built. -[wxChoiceCocoaImpl wxChoiceCocoaImpl] makes an empty
++ * wxMenu, sends setMenu: with it, and -[wxChoiceCocoaImpl InsertItem] then calls wxMenuBase::Insert
++ * and sends the button NOTHING AT ALL, which is correct on a Mac. Money Manager Ex showed an empty
++ * Account Type and an empty Account Status because of it. */
++- (void) _ciderMenuDidAddItem: (NSNotification *) notification
++{
++    if (getenv("CIDER_TRACE_POPUP") != NULL)
++        fprintf(stderr, "CIDER_POPUP additem menu=%p items=%ld selected=%ld pulls=%d\n", _menu,
++                (long) [_menu numberOfItems], (long) _selectedIndex, (int) _pullsDown);
++
++    if (_pullsDown || _selectedIndex >= 0 || [_menu numberOfItems] == 0)
++        return;
++
++    _selectedIndex = 0;
++    [self synchronizeTitleAndSelectedItem];
++}
++
++- (void) _ciderWatchMenu
++{
++    if (_menu == nil)
++        return;
++
++    [[NSNotificationCenter defaultCenter] addObserver: self
++                                             selector: @selector(_ciderMenuDidAddItem:)
++                                                 name: NSMenuDidAddItemNotification
++                                               object: _menu];
++}
++
++- (void) _ciderStopWatchingMenu
++{
++    if (_menu == nil)
++        return;
++
++    [[NSNotificationCenter defaultCenter] removeObserver: self
++                                                    name: NSMenuDidAddItemNotification
++                                                  object: _menu];
++}
++
+ - (void) dealloc {
++    [self _ciderStopWatchingMenu];
+     [_menu release];
+     [super dealloc];
+ }
+@@ -197,9 +248,11 @@
+ }
+ 
+ - (void) setMenu: (NSMenu *) menu {
++    [self _ciderStopWatchingMenu];
+     menu = [menu retain];
+     [_menu release];
+     _menu = menu;
++    [self _ciderWatchMenu];
+ 
+     /*
+      * A POP-UP'S ITEMS ARE NOT AUTOENABLED, and letting them be made every pop-up menu unusable.
+@@ -223,6 +276,10 @@
+     else
+         _selectedIndex = -1;
+ 
++    if (getenv("CIDER_TRACE_POPUP") != NULL)
++        fprintf(stderr, "CIDER_POPUP setmenu cell=%p menu=%p items=%ld selected=%ld\n", self, _menu,
++                (long) [_menu numberOfItems], (long) _selectedIndex);
++
+     [self synchronizeTitleAndSelectedItem];
+ }
+ 
+@@ -416,6 +473,9 @@
+         item = [itemArray objectAtIndex: _selectedIndex];
+     }
+     [super setTitle: [item title]];
++    if (getenv("CIDER_TRACE_POPUP") != NULL)
++        fprintf(stderr, "CIDER_POPUP sync cell=%p selected=%ld title=%s\n", self,
++                (long) _selectedIndex, [[item title] UTF8String] ?: "(nil)");
+     // For a redraw of the control
+     [(NSControl *) [self controlView] updateCell: self];
+ }

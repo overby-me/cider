@@ -3436,6 +3436,25 @@ fn request_activation(target: *mut wl::WlSurface) {
     if requester.is_null() || requester == target {
         return;
     }
+    /*
+     * AND IT MUST STILL EXIST. Pointer focus is remembered from wl_pointer.enter and a client that
+     * destroys its own surface gets no leave, so the remembered surface outlives the object: this
+     * asked for a token on a destroyed one and xdg_activation_token_v1.set_surface is a protocol
+     * error, which costs the whole connection. The done handler below already checks the target for
+     * the same reason; the requester was never checked.
+     *
+     * Money Manager Ex finishing its New Database Wizard is the case. The wizard is hidden, which
+     * destroys its surface, and the new Add Account Wizard is made key in the same breath. Four runs
+     * of that transition: the two that sent this request died with ECONNRESET and seven windows
+     * reporting never-configured behind a black screen, and the two that did not send it opened the
+     * dialog.
+     */
+    if window_for_surface(requester).is_none() {
+        if activation_tracing() {
+            println!("cider-wayland-activation ask=dropped requester={:?} gone", requester);
+        }
+        return;
+    }
 
     let serial = crate::input::last_serial();
     let seat = crate::input::seat();
