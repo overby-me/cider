@@ -1,0 +1,153 @@
+An application does ask for a row view, and nil costs it a whole column.
+
+-[NSTableView rowViewAtRow:makeIfNecessary:] returned nil unconditionally. The note beside it said
+that whether any application ASKS is what decides how much of this is worth building, and that iA
+Writer asks zero times. iTerm2 asks for every row of its Advanced settings table, and its own
+disassembly says exactly what nil costs:
+
+  callq  *objc_msgSend        ; [tableView rowViewAtRow:row makeIfNecessary:NO]
+  testq  %rax, %rax
+  je     ...                  ; IF NIL, SKIP THE NEXT TWO
+         interiorBackgroundStyle
+         setBackgroundStyle:
+
+-[iTermTableViewTextField setBackgroundStyle:] is what applies the regular or selected attributed
+string the application handed the field earlier, through its own setRegularAttributedString: and
+setSelectedAttributedString:. Skipping it left every description field empty. That is why the pane
+drew its values and NONE of its descriptions, and why no text setter was ever called on those
+fields at all: the application was waiting for a row view that never came.
+
+  before   5 text setter calls in the run, every one a value
+  after   13, including setAttributed len=245, len=243, len=27
+
+and the pane now draws every setting name with its explanation beside its control.
+
+NSTableRowView was a forwarding stub, so every message answered nil, and -interiorBackgroundStyle
+answering nil happens to mean NSBackgroundStyleNormal, which is right for an unselected row and
+wrong for the selected one. Selection is the only state that property depends on, so it is stored
+and answered rather than left to the forwarder.
+
+WHAT THIS IS AND IS NOT, because the gap matters to whoever reads it next. It vends a real
+NSTableRowView per row, cached, with the row frame and the current selection, which answers what
+applications ask a row view. It is NOT the macOS container: this table adds cell views to ITSELF,
+not to a row view, so the vended view holds no subviews and is deliberately not inserted into the
+hierarchy. Anything walking it expecting cell views inside will still find none. Associated storage
+is used on both sides so no AppKit header changes and the rebuild stays small.
+
+Gates: dts 69 of 69, patch record PASS, roster sweep 7 of 7 CONTENT and all seven unchanged against
+the capture baseline, roster input 7 of 7, with iA Writer looked at because its library is the
+heaviest table in the roster.
+
+--- a/AppKit/NSTableView.m
++++ b/AppKit/NSTableView.m
+@@ -1345,15 +1345,61 @@
+     return [_cellViews objectForKey: _CiderCellViewKey(column, row)];
+ }
+ 
++/*
++ * AN APPLICATION DOES ASK, AND nil COSTS IT A WHOLE COLUMN.
++ *
++ * The note here used to say that whether any application asks decides how much of this is worth
++ * building, and that iA Writer asks zero times. iTerm2 asks for every row of its Advanced settings
++ * table, and its disassembly shows what nil costs:
++ *
++ *   callq  *objc_msgSend        ; [tableView rowViewAtRow:row makeIfNecessary:NO]
++ *   testq  %rax, %rax
++ *   je     ...                  ; IF NIL, SKIP THE NEXT TWO
++ *          interiorBackgroundStyle
++ *          setBackgroundStyle:
++ *
++ * -[iTermTableViewTextField setBackgroundStyle:] is what applies the regular or selected attributed
++ * string the application handed the field earlier, so skipping it leaves every description field
++ * empty: that pane drew its values and none of its descriptions, and no setter was ever called on
++ * those fields at all.
++ *
++ * WHAT THIS IS AND IS NOT. It vends a real NSTableRowView per row, cached, with the row frame and
++ * the current selection, which answers what applications ask a row view. It is NOT the macOS
++ * container: this table adds cell views to ITSELF, not to a row view, so the vended view holds no
++ * subviews and is deliberately not inserted into the hierarchy. Anything that walks it expecting
++ * cell views inside will still find none.
++ */
++static const void *kCiderRowViewsKey = &kCiderRowViewsKey;
++
+ - (id) rowViewAtRow: (NSInteger) row makeIfNecessary: (BOOL) makeIfNecessary {
+-    /* Whether any application ASKS for a row view is what decides how much of #211 is worth
+-     * building. iA Writer asks zero times across a launch and a click. */
++    if (row < 0 || row >= [self numberOfRows])
++        return nil;
++
++    NSMutableDictionary *rowViews = objc_getAssociatedObject(self, kCiderRowViewsKey);
++
++    if (rowViews == nil) {
++        rowViews = [NSMutableDictionary dictionary];
++        objc_setAssociatedObject(self, kCiderRowViewsKey, rowViews,
++                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++    }
++
++    NSNumber *key = [NSNumber numberWithInteger: row];
++    NSTableRowView *view = [rowViews objectForKey: key];
++
++    if (view == nil) {
++        view = [[[NSTableRowView alloc] initWithFrame: [self rectOfRow: row]] autorelease];
++        [rowViews setObject: view forKey: key];
++    }
++    [view setFrame: [self rectOfRow: row]];
++    [view setSelected: [self isRowSelected: row]];
++
+     if (getenv("CIDER_TRACE_CONTROL") != NULL && getenv("CIDER_TRACE_CONTROL")[0] != '\0') {
+-        fprintf(stderr, "CIDER_TABLE rowViewAtRow %s row=%ld make=%d -> nil\n",
+-                object_getClassName(self), (long) row, (int) makeIfNecessary);
++        fprintf(stderr, "CIDER_TABLE rowViewAtRow %s row=%ld make=%d -> %p selected=%d\n",
++                object_getClassName(self), (long) row, (int) makeIfNecessary, (void *) view,
++                (int) [view isSelected]);
+         fflush(stderr);
+     }
+-    return nil;
++    return view;
+ }
+ 
+ /*
+--- a/AppKit/NSTableRowView.m
++++ b/AppKit/NSTableRowView.m
+@@ -19,9 +19,41 @@
+ 
+ #import <objc/runtime.h>
+ #import <AppKit/NSTableRowView.h>
++#import <Foundation/NSValue.h>
++
++static const void *kCiderRowSelectedKey = &kCiderRowSelectedKey;
+ 
+ @implementation NSTableRowView
+ 
++/*
++ * ENOUGH OF A ROW VIEW TO ANSWER THE ONE QUESTION APPLICATIONS ASK IT.
++ *
++ * This class was a forwarding stub, so every message answered nil, and -interiorBackgroundStyle
++ * answering nil happens to mean NSBackgroundStyleNormal, which is right for an unselected row and
++ * wrong for the selected one. Selection is the only state the property depends on, so it is stored
++ * and answered here rather than left to the forwarder.
++ *
++ * WHAT ASKS. iTerm2 asks for the row view of every row in its Advanced settings table and uses it
++ * for exactly this: [rowView interiorBackgroundStyle] then [field setBackgroundStyle:]. See
++ * -[NSTableView rowViewAtRow:makeIfNecessary:], which used to answer nil and made the application
++ * skip both calls.
++ */
++- (BOOL) isSelected {
++    return [objc_getAssociatedObject(self, kCiderRowSelectedKey) boolValue];
++}
++
++- (void) setSelected: (BOOL) selected {
++    objc_setAssociatedObject(self, kCiderRowSelectedKey,
++                             [NSNumber numberWithBool: selected],
++                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++}
++
++- (NSInteger) interiorBackgroundStyle {
++    /* NSBackgroundStyleNormal is 0 and NSBackgroundStyleEmphasized is 1. */
++    return [self isSelected] ? 1 : 0;
++}
++
++
+ - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
+ {
+     /* The arity comes from the selector's colons and the return is an object: "v@:" claimed every

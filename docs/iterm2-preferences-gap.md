@@ -1854,3 +1854,51 @@ another AppKit trace.
 
 **Status of that pane:** the raise is gone, the row heights are right, the values render, and the
 descriptions are blank for a reason that is now located on the application side of the boundary.
+
+## SOLVED: the Advanced pane was waiting for a row view that never came
+
+The previous entry left this on the application side of the boundary. It was not: the application
+was waiting for something the port refuses to give.
+
+`-[iTermAdvancedSettingsViewController viewForImmutableAttributedString:selected:]` does not call
+`setAttributedStringValue:` at all. It calls iTerm2's own `setRegularAttributedString:` and
+`setSelectedAttributedString:` on the field, and **which one gets applied is driven by
+`setBackgroundStyle:`**. And `tableView:viewForTableColumn:row:` only sends that when it has a row
+view:
+
+```asm
+callq  *objc_msgSend        ; [tableView rowViewAtRow:row makeIfNecessary:NO]
+testq  %rax, %rax
+je     ...                  ; IF NIL, SKIP THE NEXT TWO
+       interiorBackgroundStyle
+       setBackgroundStyle:
+```
+
+`-[NSTableView rowViewAtRow:makeIfNecessary:]` returned **nil unconditionally**, and the note beside
+it posed exactly the question this answers: *"Whether any application ASKS for a row view is what
+decides how much of #211 is worth building. iA Writer asks zero times."* **iTerm2 asks, for every
+row.**
+
+| | text setter calls in the run |
+|---|---|
+| before | **5**, every one a value |
+| after | **13**, including `setAttributed len=245`, `len=243`, `len=27` |
+
+The pane now draws every setting name with its explanation beside its control: "Default value for
+right margin for the badge" with its paragraph and `10`, "Maximum height of the badge" with its
+paragraph and `0.20000000000000001`, "Should the badge render in bold type?" with `Yes`.
+cocotron 0100.
+
+**What the fix is and is not.** It vends a real cached `NSTableRowView` per row with the row frame
+and the current selection, which answers what applications ask a row view; `NSTableRowView` was a
+forwarding stub, so `interiorBackgroundStyle` answered nil, which happens to mean Normal and is
+wrong for a selected row. It is NOT the macOS container: this table adds cell views to itself, so
+the vended view holds no subviews and is not in the hierarchy.
+
+### Correcting the previous entry
+
+It said the blank column was "located on the application side of the boundary". **That was wrong**,
+and it was wrong in a specific, avoidable way: I concluded from "nothing is sending text" that the
+application was at fault, without asking what the application was waiting for. The disassembly
+answered that in one branch instruction. A missing answer from the port looks exactly like an
+application that never tried.
