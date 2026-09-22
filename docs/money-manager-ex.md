@@ -114,11 +114,22 @@ is now `cider8.mmb - Money Manager Ex (1.9.3 64-bit) macOS Sonoma 14.4.1`. Drive
 
 Two defects are visible on those surfaces and both are recorded rather than claimed fixed.
 
-**The Account Type control draws an empty box.** It is empty on wizard page two and both the Account
-Type and Account Status controls are empty in the Edit Account dialog. It is not an
-`NSPopUpButton` reached through `-[NSPopUpButtonCell setMenu:]`, because a trace on that selector and
-on every menu item added to a pop-up printed nothing for it while printing four lines for the save
-panel. What it actually is has not been established.
+**The Account Type control draws an empty box, and that turned out to be correct.** I recorded it
+first as a defect and as not being an `NSPopUpButton`, and both claims were wrong. Clicking it opens
+a nine item menu: an empty first item carrying the tick, then Checking, Credit Card, Cash, Loan,
+Term, Investment, Shares and Asset. The application itself puts that empty item at index 0, an
+`NSPopUpButton` with no selection of its own selects the first item, and so the button draws empty
+until something is chosen. A Mac does the same. The trace that settled it reads
+
+    CIDER_POPUP setmenu cell=0x... menu=0x... items=0 selected=-1
+    CIDER_POPUP additem menu=0x... items=1 selected=-1 pulls=0
+    CIDER_POPUP title  cell=0x... items=9 selected=0 item= super=
+
+which is the empty menu wxWidgets hands over, the first item arriving, and the drawing reading an
+item whose title really is the empty string.
+
+The only thing cocotron 0102 changes here is that the selection exists at all: before it the cell
+stayed at selectedIndex -1 for ever, so `selectedItem` was nil and nothing carried the tick.
 
 **The paragraphs on page two are cut off.** "General bank accounts cover a wide variety of account",
 "Investment and Share accounts are specialized accounts that" and "Term and asset accounts are

@@ -96,7 +96,52 @@
      [_menu release];
      [super dealloc];
  }
-@@ -197,9 +248,11 @@
+@@ -188,6 +239,44 @@
+     return [[self selectedItem] title];
+ }
+ 
++/* AND IT IS READ FROM THE MENU, NEVER COPIED OUT OF IT. AppKit's pop-up shows whatever its selected
++ * item says NOW. This cell copied the title into itself in -synchronizeTitleAndSelectedItem, which
++ * is only correct if the item already carries its final title.
++ *
++ * wxWidgets inserts a menu item and gives it its title afterwards, so the copy took the empty string
++ * the item had at insertion and nothing ever replaced it. The trace of Money Manager Ex building its
++ * Account Type control reads: setmenu items=0, additem items=1, sync title= (empty), then eight more
++ * additem lines and four more sync lines all still empty, while the nine real titles go into the
++ * items. That is why Account Type and Account Status draw as empty boxes. */
++- (NSString *) title
++{
++    NSArray *itemArray = [_menu itemArray];
++    NSMenuItem *item = nil;
++    NSString *title;
++
++    if (_selectedIndex < 0 || _pullsDown) {
++        if ([itemArray count] > 0)
++            item = [itemArray objectAtIndex: 0];
++    } else if (_selectedIndex < (NSInteger) [itemArray count]) {
++        item = [itemArray objectAtIndex: _selectedIndex];
++    }
++
++    title = [item title];
++
++    if (getenv("CIDER_TRACE_POPUP") != NULL) {
++        static int budget = 60;
++
++        if (budget-- > 0) {
++            fprintf(stderr, "CIDER_POPUP title cell=%p items=%ld selected=%ld item=%s super=%s\n",
++                    self, (long) [itemArray count], (long) _selectedIndex,
++                    [title UTF8String] ?: "(nil)", [[super title] UTF8String] ?: "(nil)");
++            fflush(stderr);
++        }
++    }
++
++    return title != nil ? title : [super title];
++}
++
+ - (NSInteger) indexOfSelectedItem {
+     return _selectedIndex;
+ }
+@@ -197,9 +286,11 @@
  }
  
  - (void) setMenu: (NSMenu *) menu {
@@ -108,7 +153,7 @@
  
      /*
       * A POP-UP'S ITEMS ARE NOT AUTOENABLED, and letting them be made every pop-up menu unusable.
-@@ -223,6 +276,10 @@
+@@ -223,6 +314,10 @@
      else
          _selectedIndex = -1;
  
@@ -119,7 +164,7 @@
      [self synchronizeTitleAndSelectedItem];
  }
  
-@@ -416,6 +473,9 @@
+@@ -416,6 +511,9 @@
          item = [itemArray objectAtIndex: _selectedIndex];
      }
      [super setTitle: [item title]];
