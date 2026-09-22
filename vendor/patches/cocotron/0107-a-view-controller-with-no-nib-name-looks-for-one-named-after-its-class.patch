@@ -1,0 +1,54 @@
+--- a/AppKit/NSViewController.m
++++ b/AppKit/NSViewController.m
+@@ -232,6 +232,41 @@
+     NSString *name = [self nibName];
+     NSBundle *bundle = [self nibBundle];
+ 
++    if (bundle == nil)
++        bundle = [NSBundle mainBundle];
++
++    /*
++     * A NIB NAMED AFTER THE CLASS, which is what AppKit looks for when nibName is nil, and the only
++     * way a controller archived without one ever gets its contents.
++     *
++     * iTerm2 puts iTermActionsEditingViewController and iTermSnippetsEditingViewController in
++     * PreferencePanel.nib through an NSClassSwapper, and that archive carries no NSNibName at all:
++     * the string does not appear in the file. Their views live in
++     * iTermActionsEditingViewController.nib and iTermSnippetsEditingViewController.nib, named after
++     * the classes, and neither was ever opened. Both controllers took the empty view below, so the
++     * Settings Shortcuts pane was two bare NSViews with no subviews and nothing to lay out, which
++     * had been filed under the constraint solver for want of a tree dump.
++     *
++     * The walk stops at NSViewController: a subclass inherits its superclass's nib on a Mac, and
++     * the base class has none.
++     */
++    if (name == nil) {
++        Class walk = [self class];
++
++        while (walk != Nil && walk != [NSViewController class]) {
++            NSString *candidate = NSStringFromClass(walk);
++
++            if ([bundle pathForResource: candidate ofType: @"nib"] != nil) {
++                name = candidate;
++                break;
++            }
++            walk = class_getSuperclass(walk);
++        }
++        if (getenv("CIDER_TRACE_VIEWS") != NULL)
++            fprintf(stderr, "CIDER_VIEW loadView controller=%s nibName=(nil) byClass=%s\n",
++                    object_getClassName(self), [name UTF8String] ?: "(none)");
++    }
++
+     /*
+      * NO NIB IS NOT AN ERROR. AppKit says so: a view controller with no nib gets a plain NSView,
+      * and a controller built in code is expected either to take that view or to override this
+@@ -253,9 +288,6 @@
+         return;
+     }
+ 
+-    if (bundle == nil)
+-        bundle = [NSBundle mainBundle];
+-
+     NSString *path = [bundle pathForResource: name ofType: @"nib"];
+     NSDictionary *nameTable = [NSDictionary dictionaryWithObject: self
+                                                           forKey: NSNibOwner];

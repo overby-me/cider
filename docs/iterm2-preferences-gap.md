@@ -1979,3 +1979,31 @@ The General pane in the same window has a full tree of real controls under the s
 
 So the next question is where the Actions and Snippets content is supposed to come from, and why
 the two containers come back empty while their siblings in other panes do not.
+
+## And the pane was a nib named after its class
+
+`-[NSViewController loadView]` loaded the nib named by `nibName` and, when that was nil, handed back
+an empty `NSView`. AppKit does one more thing first: **when `nibName` is nil it looks for a nib named
+after the CLASS**, and that is the whole of this defect.
+
+iTerm2 puts `iTermActionsEditingViewController` and `iTermSnippetsEditingViewController` into
+`PreferencePanel.nib` through an `NSClassSwapper`, and that archive carries no nib name at all: the
+string `NSNibName` does not appear anywhere in the file. Their views live in
+`iTermActionsEditingViewController.nib` and `iTermSnippetsEditingViewController.nib`, named after the
+classes, and neither was ever opened:
+
+    CIDER_NIB swapper class=iTermActionsEditingViewController original=NSViewController
+    CIDER_VIEW setView controller=iTermActionsEditingViewController view=NSView loadViewOverridden=0
+
+A plain `NSView`, and the controller does not override `loadView`, so it took the empty one. cocotron
+0107 walks the class chain up to `NSViewController` looking for a nib of that name, which is what a
+Mac does, and stops there because the base class has none.
+
+**After it, both tabs of the pane render.** Actions: a table with Title and Action column headers, a
+white body, a horizontal scroller, and the plus, minus and Edit buttons below it with Edit correctly
+greyed for an empty selection. Snippets: a search field, a table with Title and Text, the same three
+buttons. That is the eighth and last Settings pane.
+
+**And it was filed in the wrong place for weeks.** The pane was recorded as the same family as the iA
+Writer compressed rows, downstream of the constraint solver. It never was: there was nothing in the
+pane to lay out, and only a tree dump of a settled window could say so.
