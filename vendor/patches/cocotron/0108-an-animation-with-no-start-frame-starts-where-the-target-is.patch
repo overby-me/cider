@@ -1,0 +1,104 @@
+--- a/AppKit/NSAnimation/NSViewAnimation.m
++++ b/AppKit/NSAnimation/NSViewAnimation.m
+@@ -18,6 +18,9 @@
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ #import <AppKit/NSView.h>
+ #import <AppKit/NSViewAnimation.h>
++#import <objc/runtime.h>
++#include <stdio.h>
++#include <stdlib.h>
+ #import <AppKit/NSWindow.h>
+ #import <Foundation/NSArray.h>
+ #import <Foundation/NSDictionary.h>
+@@ -78,11 +81,47 @@
+         NSValue *endFrame = [info objectForKey: NSViewAnimationEndFrameKey];
+         NSString *effect = [info objectForKey: NSViewAnimationEffectKey];
+ 
+-        if (isFinalFrame && startFrame != nil && endFrame != nil) {
+-            NSRect startRect = [startFrame rectValue];
+-            NSRect endRect = [endFrame rectValue];
++        /* WHAT EACH TARGET WAS GIVEN. A window resized through an animation is resized by nothing
++         * else, so when it does not move the question is whether this ran at all, whether the
++         * window was a target, and which of the two frames the application supplied. MoneyMoney
++         * resizes its Preferences window exactly this way and it never moved. CIDER_TRACE_ANIM. */
++        if (getenv("CIDER_TRACE_ANIM") != NULL) {
++            fprintf(stderr, "CIDER_ANIM progress=%.2f final=%d target=%s start=%d end=%d effect=%s\n",
++                    (double) progress, (int) isFinalFrame,
++                    target != nil ? object_getClassName(target) : "(nil)", startFrame != nil,
++                    endFrame != nil, effect != nil ? [effect UTF8String] : "(none)");
++            fflush(stderr);
++        }
++
++        /*
++         * A MISSING START FRAME IS THE TARGET'S OWN FRAME, not a reason to do nothing.
++         *
++         * AppKit says so: NSViewAnimationStartFrameKey is optional and the animation begins from
++         * wherever the target already is. Requiring both keys meant an animation written the
++         * ordinary way, end frame only, moved nothing at all.
++         *
++         * MoneyMoney resizes its Preferences window for each pane through exactly such an
++         * animation, and nothing else in that application ever calls setFrame: on that window, so
++         * the window stayed 406x331 while the pane views changed to 253, 265 and 286 points tall
++         * and the taller ones drew up over the toolbar. Measured on the wire:
++         *
++         *     CIDER_ANIM progress=0.51 final=0 target=MMWindow start=0 end=1 effect=(none)
++         *
++         * The same for an end frame that is absent while a start frame is given, which is how an
++         * animation that only fades is written.
++         */
++        if (isFinalFrame && (startFrame != nil || endFrame != nil)) {
++            NSRect own = NSZeroRect;
++            NSRect startRect, endRect;
+             NSRect currentRect;
+ 
++            if ((startFrame == nil || endFrame == nil) &&
++                [target respondsToSelector: @selector(frame)])
++                own = [(NSView *) target frame];
++
++            startRect = (startFrame != nil) ? [startFrame rectValue] : own;
++            endRect = (endFrame != nil) ? [endFrame rectValue] : own;
++
+             currentRect.origin.x =
+                     startRect.origin.x +
+                     (endRect.origin.x - startRect.origin.x) * progress;
+--- a/AppKit/NSAnimation/NSAnimation.m
++++ b/AppKit/NSAnimation/NSAnimation.m
+@@ -17,6 +17,9 @@
+ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ #import <AppKit/NSAnimation.h>
++#import <objc/runtime.h>
++#include <stdio.h>
++#include <stdlib.h>
+ #import <AppKit/NSRaise.h>
+ #import <Foundation/NSArray.h>
+ #import <Foundation/NSRunLoop.h>
+@@ -183,6 +186,12 @@
+ }
+ 
+ - (void) startAnimation {
++    if (getenv("CIDER_TRACE_ANIM") != NULL) {
++        fprintf(stderr, "CIDER_ANIM start class=%s mode=%d duration=%.2f animating=%d\n",
++                object_getClassName(self), (int) _blockingMode, (double) _duration,
++                (int) _isAnimating);
++        fflush(stderr);
++    }
+     if (!_isAnimating) {
+ 
+         if ([_delegate respondsToSelector: @selector(animationShouldStart:)])
+@@ -223,7 +232,14 @@
+             break;
+ 
+         case NSAnimationNonblockingThreaded:
+-            NSUnimplementedMethod();
++            /* A THREAD IS NOT REQUIRED TO ANIMATE, and refusing outright means the animation never
++             * runs and whatever it was going to do never happens. Treated as non blocking: the
++             * timer drives it on this thread, which is what every other mode here does. */
++            _timer = [NSTimer scheduledTimerWithTimeInterval: 1.0 / _frameRate
++                                                      target: self
++                                                    selector: @selector(timer:)
++                                                    userInfo: nil
++                                                     repeats: YES];
+             break;
+         }
+     }
