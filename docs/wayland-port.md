@@ -16570,3 +16570,58 @@ windows, one tiled and one floating, which is what a Mac shows.
 
 The roster sweep moved one capture of seven, Money Manager Ex from 31713 to 32124 bytes, because it
 is the only application whose FIRST window is not resizable.
+
+## The constraint solver squeeze, measured and then withdrawn
+
+iA Writer Preferences renders its Appearance and Dock icon rows as two overlapping lines. Now that
+the window floats at its own 600x562 the measurement is clean, and the tree says exactly what is
+wrong:
+
+    NSStackView 172x38  cons=2          the two rows
+      NSStackView 172x12               Appearance
+        NSButton  172x3                 Match system appearance
+        NSStackView 172x3               Light and Dark
+      NSStackView 172x12               Dock icon
+        ...
+
+**Every control in that group is three points tall.** The flat stack beside it, three checkboxes in
+234x60, is right, and both are laid out by the same rule: `-[NSStackView layout]` shares its bounds
+out among its arranged subviews, so 38 - 14 spacing over two rows is 12 each, and 12 - 6 over two
+children is 3. The flat one looks correct only because 60 - 12 over three children happens to be 16.
+
+**Where the 38 comes from.** The stack has two vertical constraints:
+
+    NSStackView.top == NSView.top * 1 + 23            -> top = 433
+    NSBox.top == NSStackView.bottom * 1 + 15          -> bottom = 395
+
+The second is a statement about the BOX, solved backwards to reach the stack, and the box's position
+is the one the archive gave it before anything was laid out. Two edges fix a size, and one of those
+edges did not belong to this view.
+
+**What was tried, and what it cost.** A rule in `CiderResolveAxis`: when one edge came from a
+constraint owned by this view or its container and the other from a sibling, keep the owned edge and
+take the natural size. Measured on the pane:
+
+- the group grows from 38 to 103, each row from 12 to 44, each radio pair from 3 to 19, and the
+  Appearance and Dock icon rows render correctly for the first time;
+- the flat stack beside it grows from 60 to 69, which is its three checkboxes at their own height;
+- and the views BELOW the group do not follow. The separator collapses to zero, File extensions
+  overlaps Dock icon, and lower down the Window, Title bar and Toolbar labels sit 65 points above
+  the controls they name.
+
+On the horizontal axis it is worse: the iA Writer library capture drops from 31129 bytes to 27160,
+and the 45 rows that differ are all in columns 515 to 548, which is the DATE on every file row.
+Restricted to the vertical axis the library capture is byte identical again, so the date is a purely
+horizontal casualty, but the pane is still better at the top and worse at the bottom.
+
+**Withdrawn.** A rule that fixes the size of one view and cannot move the views that depend on it
+trades one broken pane for another. What this establishes for the next attempt:
+
+1. the squeeze is sibling-owned edges, not stack view arithmetic;
+2. sizing alone is not enough, the dependents have to be re-placed in the same solve;
+3. the horizontal axis has its own casualty in the date column, so it is not a symmetric fix;
+4. three passes over the subviews do not converge, because the value each pass reads is the frame
+   the previous pass wrote, and the two views disagree about who owns the edge between them.
+
+The next attempt should order the solve by dependency rather than by subview index, so a view is
+resolved only after the views its constraints name.
