@@ -1746,3 +1746,32 @@ of the table. Every setting is unlabelled, so the pane is unusable even though t
 That is the next thing to measure, and it is a narrow question: whether the description cells exist
 with text that is not drawn, or do not exist at all. `CIDER_TRACE_VIEWS` answers it directly, and
 [[text-in-model-not-on-screen]] is the shape to check first.
+
+### What is known about the blank description column, and the instrument that could not answer it
+
+Three runs went into aiming an instrument at the Advanced pane and the honest result is partial.
+
+**What the frame trace says.** `CIDER_TRACE_SVFRAME=View` speaks loudly in that run, 1536 frame
+events across twelve classes, so its coverage is not in doubt. iTerm2 does build view backed table
+cells, class `iTermTableViewTextField`, and 33 of them are framed. But their frames are **62x17 at
+x=557** and **100x23**, which is the narrow right hand VALUE column, not the wide description
+column on the left. So the descriptions are not views at all.
+
+That points at cell drawing: the value column is views (popups and small fields) and renders, while
+the description column is drawn by the table through its cells and produces nothing. It is a
+hypothesis with one piece of evidence, not a conclusion.
+
+**The instrument that could not answer it, which is worth recording so the next attempt does not
+repeat it.** Neither view tree dumper can capture that pane:
+
+- `CIDER_TRACE_VIEWS` dumps a window ONCE. The Advanced pane does not exist at that moment.
+- `CIDER_VIEW_REDUMP=<seconds>` shares one timestamp across all windows, so the terminal, which
+  redraws constantly, takes every slot.
+- `CIDER_TRACE_TREE=<seconds>` is per window and was added for exactly this, but it hangs off
+  `-flushWindow`. The Settings window dumps twice, both times at 689x284 showing the Startup
+  controls, and never again after the click, even with a 35 second wait and a 3 second interval.
+  A pane swapped in by a click does not produce a flush that reaches it.
+
+So the next attempt needs either a dump triggered by something other than a flush, or a trace on the
+table cell draw itself. The second is probably the shorter path, since the question is whether the
+description cell is asked to draw at all.
