@@ -194,10 +194,51 @@ was already gone and all 6 opened the dialog.
 I recorded this one commit earlier as correlation that neither exercised nor proved the guard. That
 was accurate then and is superseded now.
 
+## The populated main window, and the font descriptor that had no size
+
+Clicking OK in the Edit Account dialog used to kill the application: black screen, and
+
+    [guest kprintf] sigexc: have RIP 0x7187E8F01621 pid 2 sig 11
+
+The core symbolicates to `CFDictionaryGetValue` and the stack to
+
+    wxOSX_drawRect -> wxWidgetCocoaImpl::drawRect -> wxWindow::MacDoRedraw
+      -> wxGenericTreeCtrl::OnPaint -> PaintLevel -> PaintItem
+        -> wxGCDCImpl::DoDrawText -> wxMacCoreGraphicsContext::DoDrawText
+          -> CFDictionaryGetValue(NULL, kCTStrokeWidthAttributeName)
+
+The Navigator tree is the first thing in this application to draw text through Core Graphics rather
+than through an AppKit control, which is why nothing before it failed this way.
+
+The NULL is the font attributes dictionary. wxFontRefData builds it in SetFont, and
+`wxFontRefData::Alloc` returns at its first branch when `GetPointSize()` is not positive:
+
+    callq wxNativeFontInfo::GetPointSize
+    testl %eax, %eax
+    jle   <the end of the function>
+
+`wxNativeFontInfo` keeps that size as a plain double filled in from the font descriptor, and
+`CTFontCopyFontDescriptor` in this port built a descriptor with the family name and the traits and
+**no size at all**. So the size was zero, Alloc never created the CTFont or the attributes, and the
+first line of tree text dereferenced NULL. cocotron 0104 puts `kCTFontSizeAttribute` in the
+descriptor, which is what a descriptor carries on macOS.
+
+**After it, the populated main window.** The Navigator renders its whole tree with icons: Dashboard
+selected in blue, All Transactions, Scheduled Transactions, Favorites, Bank Accounts, Assets, Budget
+Planner, Transaction Report, Reports, General Report Manager and Help, with disclosure triangles on
+the three that have children. The toolbar draws its full row of icons on both sides. Resized to
+1000x600 the window reflows, the toolbar regroups and the tree is untouched.
+
+That is all three criteria on the surface this whole sequence was aimed at, reached by clicking
+through five dialogs: it renders, it is interactive, it resizes.
+
 ## What this still does not cover
 
-The populated main window past the Edit Account dialog, the Navigator filled with accounts, and
-everything after that.
+The Dashboard pane on the right is empty. Money Manager Ex renders it as HTML in a `wxWebView`,
+which is `WKWebView` here, and this port stubs WebKit, so there is nothing to draw. The stubs at
+least answer nil now rather than a leftover register.
+
+Opening an account register, entering a transaction, and everything reached from the Navigator tree.
 
 No credentials of any kind are involved here. Money Manager Ex is a local finance tracker with a
 SQLite file; it is not MoneyMoney and it talks to no bank.

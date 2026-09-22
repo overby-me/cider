@@ -1,0 +1,23 @@
+--- a/CoreText/CTFont.m
++++ b/CoreText/CTFont.m
+@@ -425,6 +425,20 @@
+         CFDictionarySetValue(attributes, kCTFontTraitsAttribute, traits);
+         CFRelease(traits);
+     }
++
++    /* AND THE SIZE, which a font descriptor carries on macOS and this one did not. wxWidgets keeps
++     * its point size in wxNativeFontInfo as a plain double filled in from the descriptor, so a
++     * descriptor with no size gave it zero, wxFontRefData::Alloc returns at its first branch when
++     * GetPointSize is not positive, and the font attributes dictionary it would have built stayed
++     * NULL. Money Manager Ex then died in CFDictionaryGetValue(NULL, kCTStrokeWidthAttributeName)
++     * the moment its Navigator tree painted its first item, which is the first text in that
++     * application drawn through Core Graphics rather than through an AppKit control. */
++    CGFloat size = CTFontGetSize(font);
++    CFNumberRef number = CFNumberCreate(kCFAllocatorDefault, kCFNumberCGFloatType, &size);
++    if (number != NULL) {
++        CFDictionarySetValue(attributes, kCTFontSizeAttribute, number);
++        CFRelease(number);
++    }
+     return (CTFontDescriptorRef) attributes;
+ }
+ 
