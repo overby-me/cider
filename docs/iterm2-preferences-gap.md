@@ -1586,3 +1586,47 @@ Four defects stood between a nib and a laid out preferences pane, each hiding th
 and then the resolver had two defects of its own, which only became reachable once real constraints
 arrived (0095). Every one was found by measurement with a control, and two of my own intermediate
 conclusions had to be withdrawn along the way.
+
+## The labels were innocent: a stack view arranges nothing
+
+Following the overlapping labels from their rules to their frames, as the previous entry said to.
+
+First, an instrument defect that cost part of the investigation. `CiderAttributeName` had no case
+for the two baseline attributes and fell through to `"other"`, so the rule that vertically aligns
+every label with its control read
+
+```
+all: NSTextField .other == NSButton .other * 1 + 0
+```
+
+and an attribute the solver **does** support (both `CiderRecordAttribute` and `CiderAttributeValue`
+handle it) looked like one it had dropped. The nib says the value is 12, `firstBaseline`, used 8
+times. Fixed in cocotron 0096; a name that lies costs an investigation.
+
+With the name right, the pass 2 line shows the rule applied and resolving. **Both labels correctly
+follow their own button by baseline, and both resolve to y=417** because the two buttons really are
+at the same y:
+
+```
+NSStackView(0x…250cb0) 182x38 at 207,395     outer stack, a direct child of the pane
+  NSStackView(0x…5ce40) 182x38 at 0,0        child A
+  NSStackView(0x…53270) 161x38 at 0,0        child B
+```
+
+Two arranged subviews at the same local origin, exactly on top of each other.
+
+### Why nothing places them
+
+`-[NSStackView initWithCoder:]` creates an **empty** `_arrangedSubviews` and decodes only
+orientation and spacing. Every nib loaded stack view therefore has nothing to arrange, and
+`-layout` walks an empty list. The constraint solver deliberately skips arranged subviews, because
+the stack is supposed to own them, so **nobody places them at all** and they keep the archived
+origin.
+
+The archive says what the arranged views are: there is no `NSStackViewViews` key, but
+`NSStackViewHasFlatViewHierarchy` is **true**, which means the arranged views ARE the decoded
+subviews. Each stack also carries orientation, spacing, alignment, distribution, edge insets and
+hugging priorities, all of which are currently ignored except the first two.
+
+That is the next fix, and it is bounded: populate `_arrangedSubviews` from the subviews when the
+archive says the hierarchy is flat.

@@ -1,0 +1,54 @@
+Name the baseline attributes in the layout trace.
+
+CiderAttributeName had no case for NSLayoutAttributeFirstBaseline or NSLayoutAttributeLastBaseline
+and fell through to "other". Both are handled by CiderRecordAttribute and by CiderAttributeValue,
+so the solver supports them; only the NAME was missing.
+
+A name that lies costs an investigation. The trace read
+
+  all: NSTextField 0x... .other == NSButton 0x... .other * 1 + 0
+
+for the rule that vertically aligns every label in iA Writer Preferences with its control, and an
+attribute the solver supports looked like one it had dropped. The nib says the value is 12, which
+is firstBaseline, used 8 times in GeneralPreferences.nib. With the name in place the same line
+reads
+
+  all: NSTextField .firstBaseline == NSButton .firstBaseline * 1 + 0
+
+and the pass 2 line below it shows the rule being applied and resolving, which is what said the
+labels were innocent.
+
+WHAT THAT THEN FOUND, recorded here because the trace is what found it. Both labels correctly
+follow their own button by baseline, and both resolve to y=417, because the two buttons really are
+at the same y. The tree says why:
+
+  NSStackView(0x...250cb0) 182x38 at 207,395      the outer stack, a direct child of the pane
+    NSStackView(0x...5ce40) 182x38 at 0,0         child A
+    NSStackView(0x...53270) 161x38 at 0,0         child B
+
+Two arranged subviews at the same local origin, exactly on top of each other. -[NSStackView
+initWithCoder:] creates an EMPTY _arrangedSubviews and decodes only orientation and spacing, so
+every nib loaded stack view has nothing to arrange and -layout walks an empty list. The constraint
+solver deliberately skips arranged subviews because the stack is supposed to own them, so nothing
+places these at all. The archive carries NSStackViewHasFlatViewHierarchy true, which says the
+arranged views ARE the decoded subviews, and that is the next fix.
+
+Gates: dts 69 of 69, patch record PASS, roster sweep 7 of 7 CONTENT and roster input 7 of 7, byte
+identical, with Money Manager Ex looked at.
+
+--- a/AppKit/NSView.m
++++ b/AppKit/NSView.m
+@@ -5146,7 +5146,13 @@
+     case NSLayoutAttributeHeight:   return "height";
+     case NSLayoutAttributeCenterX:  return "centerX";
+     case NSLayoutAttributeCenterY:  return "centerY";
++    case NSLayoutAttributeFirstBaseline: return "firstBaseline";
++    case NSLayoutAttributeLastBaseline:  return "lastBaseline";
+     case NSLayoutAttributeNotAnAttribute: return "none";
++    /* A NAME THAT LIES COSTS AN INVESTIGATION. Both baselines are handled by the recorder and by
++     * CiderAttributeValue, and only this switch was missing them, so the trace read
++     * "NSTextField .other == NSButton .other" and an attribute the solver supports looked like one
++     * it had dropped. iA Writer label rows were chased on that reading. */
+     default: return "other";
+     }
+ }
