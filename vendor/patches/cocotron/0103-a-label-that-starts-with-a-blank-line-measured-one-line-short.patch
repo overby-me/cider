@@ -1,0 +1,66 @@
+--- a/AppKit/NSStringDrawer.m
++++ b/AppKit/NSStringDrawer.m
+@@ -177,7 +177,49 @@
+ 
+     [_textContainer setContainerSize: maxSize];
+     [_textStorage setAttributedString: astring];
+-    NSSize result = [_layoutManager usedRectForTextContainer: _textContainer].size;
++
++    /*
++     * THE SIZE IS MEASURED FROM THE CONTAINER, NOT FROM THE FIRST GLYPH.
++     *
++     * usedRectForTextContainer unions the line fragments, and a line with no glyphs in it has no
++     * fragment, so a string whose FIRST line is empty gets a used rect that starts one line down.
++     * Taking only its size then answers one line short, while the layout still draws from the top,
++     * and the last line of the label falls outside the frame that answer produced.
++     *
++     * Money Manager Ex writes its wizard text as a leading newline and then the paragraphs. Measured
++     * against the hard line breaks in each string: 5 lines answered 56, 3 answered 28, 3 answered
++     * 28, all exactly one line of 14 short, while the strings that did not begin with a newline
++     * answered 112 for 8 lines, 42 for 3 and 56 for 4, all correct.
++     *
++     * THE Y OFFSET ONLY. Adding the x offset as well was tried and is plainly wrong: centred text in
++     * a container a million points wide has a fragment origin near 500000, and every label came back
++     * half a million points wide, which is a buffer no compositor will take. The connection died on
++     * a wl_shm protocol error, error 1, invalid stride, within a second of the first label.
++     */
++    NSRect used = [_layoutManager usedRectForTextContainer: _textContainer];
++    NSSize result = NSMakeSize(used.size.width, used.origin.y + used.size.height);
++
++    /* THE HEIGHT IS WHAT SIZES A LABEL, and a height that is one line short clips the last line of
++     * every multi line message with nothing else out of place. Counts the hard line breaks so the
++     * answer can be read against them. CIDER_TRACE_TEXT. */
++    if (getenv("CIDER_TRACE_TEXT") != NULL) {
++        NSString *text = [astring string];
++        NSUInteger breaks = 0;
++
++        for (NSUInteger i = 0, n = [text length]; i < n; i++) {
++            unichar c = [text characterAtIndex: i];
++
++            if (c == '\n' || c == '\r' || c == 0x2028 || c == 0x2029)
++                breaks++;
++        }
++        fprintf(stderr,
++                "CIDER_TEXTSIZE len=%u breaks=%u container=%.0fx%.0f used=%.2fx%.2f@%.2f,%.2f -> "
++                "%.2fx%.2f\n",
++                (unsigned) [text length], (unsigned) breaks, maxSize.width, maxSize.height,
++                used.size.width, used.size.height, used.origin.x, used.origin.y, result.width,
++                result.height);
++        fflush(stderr);
++    }
+ 
+     NSStringDrawer_CacheItem* realCacheKey = [[NSStringDrawer_CacheItem alloc] initWithAttributedString: astring
+                                                                                             maxSize: maxSize];
+@@ -261,9 +303,9 @@
+     /* THE TWO NUMBERS THAT DECIDE AN ELLIPSIS, which is one measurement of the string against a rect
+      * that was computed from ANOTHER measurement of it, in -[NSTextFieldCell cellSize]. */
+     if (getenv("CIDER_TRACE_TEXT") != NULL && [string length] > 0) {
+-        fprintf(stderr, "CIDER_TEXTFIT \"%s\" measures %.2f, rect %.2f, truncate=%d\n",
+-                [[string string] UTF8String] ?: "(nil)", size.width, rect.size.width,
+-                (int) (truncateTail && size.width > rect.size.width));
++        fprintf(stderr, "CIDER_TEXTFIT \"%s\" measures %.2fx%.2f, rect %.2fx%.2f, truncate=%d\n",
++                [[string string] UTF8String] ?: "(nil)", size.width, size.height, rect.size.width,
++                rect.size.height, (int) (truncateTail && size.width > rect.size.width));
+         fflush(stderr);
+     }
+ 

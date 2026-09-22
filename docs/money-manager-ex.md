@@ -131,12 +131,20 @@ item whose title really is the empty string.
 The only thing cocotron 0102 changes here is that the selection exists at all: before it the cell
 stayed at selectedIndex -1 for ever, so `selectedItem` was nil and nothing carried the tick.
 
-**The paragraphs on page two are cut off.** "General bank accounts cover a wide variety of account",
-"Investment and Share accounts are specialized accounts that" and "Term and asset accounts are
-specialized bank accounts. They are intended for monitoring assets or term" each stop mid sentence,
-at a different x, on one line. The intro paragraphs on page one wrap correctly over two lines, so
-multi line static text works in general; these three look like text that was never wrapped and is
-clipped by a view narrower than the line, which points at text measurement rather than at drawing.
+**The paragraphs on page two were cut off, and that one was ours.** Each stopped at a word boundary
+part way through, which reads as wrapping rather than as loss. The three strings in the binary each
+begin with a newline and carry one more hard line break, and every one of them lost its LAST line.
+
+`usedRectForTextContainer` unions the line fragments, and a line with no glyphs has no fragment, so
+a string whose first line is empty gets a used rect that starts one line down:
+`used=296.00x56.00@0.00,14.00` for five lines of text. `sizeOfAttributedString` took only the size,
+answered 56, wx asked the cell for its best size and gave the label a frame four lines tall, and the
+layout still drew from the top of the container, so the fifth line fell outside the frame. Measured
+against the hard line breaks: 5 lines answered 56, 3 answered 28, 3 answered 28, all exactly one
+line of 14 short, while strings that did not begin with a newline answered 112 for 8 lines, 42 for 3
+and 56 for 4, all correct. cocotron 0103 adds the y offset back and they answer 70, 42 and 42.
+
+After it, all three paragraphs render complete, both lines each, on the surface that showed one.
 
 **Opening Date has no control at all** in the Edit Account dialog, only its label. `wxNSDatePicker`
 is one of the classes this binary defines, so an unimplemented NSDatePicker is the first thing to
