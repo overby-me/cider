@@ -1,0 +1,20 @@
+--- a/AppKit/NSTableView.m
++++ b/AppKit/NSTableView.m
+@@ -2282,8 +2282,15 @@
+     NSTableColumn *clickedColumnObject =
+             [_tableColumns objectAtIndex: _clickedColumn];
+ 
+-    if (![self delegateShouldSelectTableColumn: clickedColumnObject])
+-        return;
++    /* A DELEGATE THAT FORBIDS COLUMN SELECTION MUST NOT KILL THE ROW CLICK. AppKit asks
++     * tableView:shouldSelectTableColumn: only when a COLUMN is about to be selected, from a header
++     * click or selectColumnIndexes:, never for a click on a row; selectColumn:byExtendingSelection:
++     * below is the place that asks. Asking it here made every row click a silent no-op for any
++     * application whose delegate answers NO, which is the normal way to say this table has no
++     * column selection. wxWidgets does exactly that: -[wxCocoaOutlineView
++     * outlineView:shouldSelectTableColumn:] is xorl %eax,%eax; ret, so not one row in any
++     * wxDataViewCtrl could ever be selected by a click. Money Manager Ex could not pick a base
++     * currency, so its New Database Wizard could not finish. */
+     if (![self delegateShouldSelectRow: _clickedRow])
+         return;
+ 

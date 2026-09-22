@@ -58,11 +58,50 @@ immediately against the third traffic light at this dialog width. macOS centres 
 would crowd it in a narrow window, so this is recorded as unclear rather than as a defect; it wants
 a comparison against a real Mac before anyone spends a build on it.
 
+## The wizard finishes, and why it could not before
+
+Driving the last two clicks of the wizard, pick a currency then Finish, did not complete it. The
+click on the AUD row landed (CIDER_TABLE mouseDown class=wxCocoaOutlineView at=116.0,142.0 column=2
+row=7 rows=168 columns=4, which is exactly the Australian dollar row) and nothing happened: no
+highlight, no redraw, Select still greyed. Clicking Finish then put up the Base Currency Not Set
+alert again, because from the application side no currency had ever been chosen.
+
+The defect was ours and it was one line. NSTableView mouseDown: gated the whole click on the
+delegate:
+
+    if (![self delegateShouldSelectTableColumn: clickedColumnObject])
+        return;
+
+AppKit asks tableView:shouldSelectTableColumn: only when a COLUMN is about to be selected, from a
+header click or from selectColumnIndexes:. It is never consulted for a click on a row.
+selectColumn:byExtendingSelection: in the same file already asks it in the right place.
+
+The arbiter is the shipping binary. In mmex, -[wxCocoaOutlineView
+outlineView:shouldSelectTableColumn:] disassembles to
+
+    pushq %rbp ; movq %rsp, %rbp ; xorl %eax, %eax ; popq %rbp ; retq
+
+which is an unconditional NO, and it is the correct thing for wxWidgets to say: a wxDataViewCtrl has
+no column selection. So in this port not one row of any wxDataViewCtrl in any wxWidgets application
+could ever be selected by a mouse click, and the reason was invisible, because a guarded return
+prints nothing and raises nothing. cocotron 0101 removes the gate.
+
+**After the fix, measured on the same four clicks.** The AUD row highlights blue the moment it is
+clicked. Select becomes usable. Clicking it closes the Currency Manager and the wizard button that
+read Set Currency now reads **Australian dollar**, so the choice crossed back into the wizard.
+Finish then completes: the main window title becomes `cider6.mmb - Money Manager Ex (1.9.3 64-bit)
+macOS Sonoma 14.4.1` and the **Add Account Wizard** opens on top of it. The database was created.
+Zero unrecognized selectors.
+
+A static check of every staged roster binary found mmex the only one defining
+shouldSelectTableColumn:, so no other application on the roster was losing clicks this way. The fix
+is still the right one on AppKit semantics rather than for this one application.
+
 ## What this still does not cover
 
-The wizard was never completed, because finishing it needs a currency selected in the Currency
-Manager and that click was not driven. So the populated main window, the Navigator filled with
-accounts, and everything past the wizard remain unexercised.
+Past the New Database Wizard sits the Add Account Wizard, which is open and unexercised. The
+populated main window and the Navigator filled with accounts are reachable from there and have not
+been driven yet.
 
 No credentials of any kind are involved here. Money Manager Ex is a local finance tracker with a
 SQLite file; it is not MoneyMoney and it talks to no bank.
