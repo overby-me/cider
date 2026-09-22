@@ -348,3 +348,34 @@ on a Mac, and a Wayland client cannot reposition its own toplevel anyway.
 
 Nothing in either run needed a fix. Both modules were already working and simply had never been
 looked at.
+
+## Tools Options, a surface never driven before
+
+Command comma opens it, which is where LibreOffice puts Tools Options on a Mac. The dialog is
+967x640, floating with its shadow over the Start Center, and it renders completely.
+
+**The tree.** LibreOffice expanded with User Data selected, then General, View, Print, Paths, Fonts,
+Security, Appearance, Accessibility, Advanced, Basic IDE and Online Update, then Load/Save,
+Languages and Locales, LibreOffice Base, Charts and Internet collapsed with their disclosure
+triangles. A search field above it, and Help, Reset, Apply, Cancel and OK along the bottom with OK
+blue.
+
+**User Data**, the pane it opens on: an Address group of eleven fields laid out in rows of one, three
+and two, the Use data for document properties checkbox, then ODF Cryptography with two key fields
+showing their No key placeholders, a red X and a Select button each, and the always encrypt to self
+checkbox.
+
+**It is interactive, and the title follows.** Clicking Security selects it in the tree and the title
+becomes `Options - LibreOffice - Security`; the pane draws six groups, each with its explanatory
+paragraph and a right aligned button, Options, Connections, Master Password, Macro Security,
+Certificate, TSAs and Browse, plus a checkbox pair and a text field.
+
+Clicking the Load/Save disclosure triangle expands it in place, adding General, VBA Properties,
+Microsoft Office and HTML Compatibility, and clicking General gives `Options - Load/Save - General`:
+nine checkboxes at three indent levels, a spinner reading 10 minutes, and three pop-ups reading
+1.4 Extended (recommended), Text documents (Writer) and ODF Text Document (*.odt).
+
+**Resized to 1000x600** the dialog keeps its 967x640 and clips at the bottom, which is what a dialog
+larger than the screen does here and on a Mac. The Start Center behind it reflows.
+
+Nothing was typed into any field and nothing was applied: Cancel and OK were not clicked.
