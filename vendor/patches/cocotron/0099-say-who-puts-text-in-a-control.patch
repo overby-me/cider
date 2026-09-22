@@ -1,0 +1,82 @@
+Say who puts text in a control.
+
+A field that draws nothing is either never given text or given it and losing it, and nothing
+outside the control can tell those apart. CIDER_TRACE_CONTROLTEXT names a class substring, or star
+for all, prints every setStringValue: and setAttributedStringValue: with the receiver and the
+string, and stops after 40.
+
+WHAT IT SETTLED IMMEDIATELY, and the answer was the opposite of what was expected. iTerm2 Settings
+Advanced draws its values and none of its descriptions. With the trace watching every
+iTermTableViewTextField in the run there are FIVE setter calls and every one is a value:
+
+  iTermTableViewTextField setString len=2  "10"
+  iTermTableViewTextField setString len=2  "10"
+  iTermTableViewTextField setString len=9  "Helvetica"
+  iTermTableViewTextField setString len=19 "0.20000000000000001"
+  iTermTableViewTextField setString len=3  "0.5"
+
+The description fields are never given text AT ALL, by any setter, and the trace firing five times
+for that exact class is the control that makes the silence mean something.
+
+SO THE PORT IS NOT LOSING THE TEXT. Both paths that could lose it are ruled out: NSControl
+implements setAttributedStringValue: and forwards to the cell, and -[NSCell stringValue] derives
+correctly from an attributed object value. Nothing is being dropped; nothing is being sent.
+
+WHAT IS STILL UNEXPLAINED, stated as such. iTerm2 CAN measure those descriptions: with
+usesDefaultHyphenation implemented in the previous patch, tableView:heightOfRow: returns real
+heights computed from the description text, so the model has it. The population path for the
+description column simply does not run. That is inside the application and the next step is a spy
+on its own delegate method rather than another AppKit trace.
+
+Gates: dts 69 of 69, patch record PASS, roster sweep 7 of 7 CONTENT and all seven unchanged against
+the capture baseline, roster input 7 of 7.
+
+--- a/AppKit/NSControl.m
++++ b/AppKit/NSControl.m
+@@ -472,6 +472,18 @@
+ }
+ 
+ - (void) setStringValue: (NSString *) value {
++    if (getenv("CIDER_TRACE_CONTROLTEXT") != NULL) {
++        const char *want = getenv("CIDER_TRACE_CONTROLTEXT");
++        static int printed = 0;
++        const char *cls = object_getClassName(self);
++
++        if ((strcmp(want, "*") == 0 || strstr(cls, want) != NULL) && printed < 40) {
++            printed++;
++            fprintf(stderr, "CIDER_CONTROLTEXT %s(%p) setString len=%u \"%.60s\"\n", cls,
++                    (void *) self, (unsigned) [value length], [value UTF8String] ?: "");
++            fflush(stderr);
++        }
++    }
+     [self abortEditing];
+     [[self selectedCell] setStringValue: value];
+     [self setNeedsDisplay: YES];
+@@ -502,6 +514,27 @@
+ }
+ 
+ - (void) setAttributedStringValue: (NSAttributedString *) value {
++    /*
++     * WHO PUTS TEXT IN A CONTROL. A field that draws nothing is either never given text or given it
++     * and losing it, and nothing outside the control can tell those apart.
++     *
++     * CIDER_TRACE_CONTROLTEXT names a class substring, or star for all, and stops after 40. iTerm2
++     * Settings Advanced hands back description fields whose stringValue is already empty, so the
++     * question is whether the application ever sets one at all.
++     */
++    if (getenv("CIDER_TRACE_CONTROLTEXT") != NULL) {
++        const char *want = getenv("CIDER_TRACE_CONTROLTEXT");
++        static int printed = 0;
++        const char *cls = object_getClassName(self);
++
++        if ((strcmp(want, "*") == 0 || strstr(cls, want) != NULL) && printed < 40) {
++            printed++;
++            fprintf(stderr, "CIDER_CONTROLTEXT %s(%p) setAttributed len=%u \"%.60s\"\n", cls,
++                    (void *) self, (unsigned) [[value string] length],
++                    [[value string] UTF8String] ?: "");
++            fflush(stderr);
++        }
++    }
+     [self abortEditing];
+     [[self selectedCell] setAttributedStringValue: value];
+     [self setNeedsDisplay: YES];

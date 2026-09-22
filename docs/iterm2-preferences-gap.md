@@ -1825,3 +1825,32 @@ the delegate**, which pointed at a failure inside iTerm2, which pointed at the c
 The lesson is the one this document keeps relearning: **a trace that prints the wrong field, or
 prints at the wrong moment, reads exactly like evidence.** Two of the four readings above were mine
 and both were wrong.
+
+### The port is not losing the description text: nothing is sending it
+
+With `CIDER_TRACE_CONTROLTEXT` (cocotron 0099) watching every `iTermTableViewTextField` in the run,
+there are **five** setter calls and every one is a value:
+
+```
+setString len=2  "10"
+setString len=2  "10"
+setString len=9  "Helvetica"
+setString len=19 "0.20000000000000001"
+setString len=3  "0.5"
+```
+
+The description fields are never given text **at all**, by any setter. The trace firing five times
+for that exact class is the control that makes the silence mean something.
+
+Both ways the port could have lost it are ruled out: `NSControl` implements
+`setAttributedStringValue:` and forwards to the cell, and `-[NSCell stringValue]` derives correctly
+from an attributed object value. Nothing is being dropped, because nothing is being sent.
+
+**What is still unexplained.** iTerm2 CAN measure those descriptions: with `usesDefaultHyphenation`
+implemented, `tableView:heightOfRow:` returns real heights computed from the description text, so
+the model holds it. The population path for the description column simply does not run. That is
+inside the application, so the next step is a `CIDER_SPY` on its own delegate method rather than
+another AppKit trace.
+
+**Status of that pane:** the raise is gone, the row heights are right, the values render, and the
+descriptions are blank for a reason that is now located on the application side of the boundary.
