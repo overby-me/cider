@@ -1902,3 +1902,32 @@ and it was wrong in a specific, avoidable way: I concluded from "nothing is send
 application was at fault, without asking what the application was waiting for. The disassembly
 answered that in one branch instruction. A missing answer from the port looks exactly like an
 application that never tried.
+
+## All eight Settings panes driven
+
+Completing the sweep. Zero unrecognized selectors across the whole run.
+
+| pane | result |
+|---|---|
+| General | correct |
+| Appearance | correct |
+| Profiles | correct |
+| Keys | correct, with the full bindings table and its modifier glyphs |
+| Arrangements | **correct**: empty arrangements list, Preview box, and the minus and Set Default buttons correctly greyed with nothing selected |
+| Pointer | **correct**: General and Bindings tabs, three grouped sections, correct checkbox states and `⌘` `⌥` `^` glyphs |
+| Shortcuts | **suspect**, below |
+| Advanced | correct since cocotron 0098 and 0100 |
+
+### Shortcuts shows its tabs and nothing else
+
+The Actions and Snippets tabs draw, and the content area below is entirely empty: no table rows, no
+column headers, and **no add or remove buttons**.
+
+The reason this is flagged rather than dismissed as "no actions defined" is that **Arrangements is
+the control**. It also has an empty list, and it still draws its list frame, its Preview box and
+its two buttons. An empty list is not supposed to take the buttons with it.
+
+It is called suspect and not proven because nothing here says what macOS draws for an empty Actions
+list, and zero unrecognized selectors were logged, so it is not a missing method. The next step is
+the one that worked for Advanced: ask what the delegate returns per row, with
+`CIDER_TABLE viewForColumn`, and whether a table exists in the pane at all.
