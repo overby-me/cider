@@ -177,11 +177,22 @@ surface, and the new dialog is made key in the same breath.
 done handler in the same file already guards its own target against exactly this, with a comment
 saying it costs the whole connection. The requester was never guarded. It is now.
 
-**Honest status of that fix.** Three runs of the transition after it: all three opened the dialog,
-and none of them took the activation path at all, so they neither exercise the guard nor prove it.
-The case for it is the correlation above and the protocol rule, not a converted failure. The guard
-prints `cider-wayland-activation ask=dropped requester=... gone` when it fires, so the next run that
-would have died says so instead.
+**Then it was proved.** Six further runs of the same transition, all six with the guard firing:
+
+    cider-wayland-window hide number=4 visible=true title="New Database Wizard"
+    cider-wayland-activation ask=dropped requester=0x5c7be33c64c0 gone
+    cider-wayland-window role number=6 ... title="Add Account Wizard"
+    cider-wayland-window create=ok number=6 size=761x366
+    cider-wayland-window mapped=yes number=6 size=761x366 t=194.61
+
+The requester is the surface of the window hidden on the line above, and the line the guard replaced
+is exactly where `token=asked` sat in the two runs that died. Six of six opened the dialog, none
+died. Counting everything at that transition: before the guard 4 runs reached it, the 2 that sent
+the request died and the 2 that did not lived; after it, 6 of 6 dropped a request whose requester
+was already gone and all 6 opened the dialog.
+
+I recorded this one commit earlier as correlation that neither exercised nor proved the guard. That
+was accurate then and is superseded now.
 
 ## What this still does not cover
 
