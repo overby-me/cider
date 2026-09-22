@@ -16537,3 +16537,36 @@ The final layout, from the cell dump:
 
 All five applications re-run and every capture looked at: MoneyMoney 15657, Swift Publisher's gallery
 151460, LibreOffice 135528, iTerm2 with a live prompt, and iA Writer at 25875 with the rows in order.
+
+## A window that will not resize now says so, and every dialog on the roster moved
+
+Nothing in this port had ever sent `xdg_toplevel.set_min_size` or `set_max_size`. A tiling
+compositor therefore gave every dialog whatever size it liked, usually the whole output, and
+`-[NSWindow platformWindow:frameChanged:didSize:]` clamped the frame straight back to the window's
+own limits, painted the size it kept, and left the rest of the surface to whatever the reused buffer
+held. The trace that named it prints the three numbers together:
+
+    CIDER_WINFRAME NSPanel asked=1256x684 kept=324x353 min=324x353 max=324x353 didSize=1
+
+Both are sent now whenever `NSResizableWindowMask` is clear, at creation and again when the geometry
+is republished, and equal min and max is also what a compositor reads to FLOAT a window instead of
+tiling it. Three surfaces, re-measured after:
+
+**Money Manager Ex.** The start dialog is a 350x527 window with its shadow, centred on the output,
+instead of stretched across it. The MMEX Instance Check alert is a 324x353 panel with rounded
+corners, drawn once, where before the capture held two copies of it, one stale, with black either
+side.
+
+**iA Writer Preferences**, `cider-wayland-window fixed number=4 size=600x562`. The window floats at
+600x562 over the document window. Its toolbar shows all nine panes, General renders its checkboxes,
+its two pop-ups, its Get Ready-Made Shortcuts button and both explanatory paragraphs. The two rows
+at the top, Appearance and Dock icon, still overlap their radio buttons, which is the constraint
+solver work and not this.
+
+**iTerm2 Settings**, `cider-wayland-window fixed number=10 size=689x284`. The window floats at
+689x284 over a live terminal that keeps its own tile: eight toolbar icons with labels, the nine tabs
+of the General pane, and Startup with its restoration policy pop-up and three checkboxes. Two
+windows, one tiled and one floating, which is what a Mac shows.
+
+The roster sweep moved one capture of seven, Money Manager Ex from 31713 to 32124 bytes, because it
+is the only application whose FIRST window is not resizable.
