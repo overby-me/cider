@@ -1630,3 +1630,47 @@ hugging priorities, all of which are currently ignored except the first two.
 
 That is the next fix, and it is bounded: populate `_arrangedSubviews` from the subviews when the
 archive says the hierarchy is flat.
+
+## The overlap is gone: a stack view now arranges its children
+
+`-[NSStackView initWithCoder:]` created an empty `_arrangedSubviews`, so `-layout` walked nothing
+and every child kept the origin IB wrote. Populating it from the subviews when
+`NSStackViewHasFlatViewHierarchy` is true (cocotron 0097):
+
+```
+before   NSStackView 182x38 at 207,395        after   NSStackView 172x38 at 207,395
+           NSStackView 182x38 at 0,0                    NSStackView 172x12 at 0,26
+           NSStackView 161x38 at 0,0                    NSStackView 172x12 at 0,0
+```
+
+Overlapping sibling pairs in that pane go from **1 to 0**, and "Appearance:" and "Dock icon:" are
+legible on separate lines where they were drawn through each other. That is the defect this whole
+thread started from.
+
+### Still wrong, and the next link is named
+
+The rows are now **squashed**: the stack is 38 points tall and its two rows want about 91, so the
+checkboxes and the Light/Dark radios are clipped to 12 points.
+
+That is a solver ordering problem, not a stack view one. The stack already reports its arranged
+size as its intrinsic size. The solver derives its height from BOTH ends, pinning the top at 433
+and solving the bottom from the `NSBox` beneath it (`NSBox.top == stack.bottom + 15`), when the box
+should instead follow the stack's intrinsic height. **An intrinsic size has to win over a derived
+one when the other end is itself underdetermined.**
+
+### Where this thread stands
+
+| | state |
+|---|---|
+| placeholder wired into the tree | fixed, 0092 |
+| constraints dropped by NSCustomView | fixed, 0094 |
+| frame ownership never decoded | fixed, 0094 |
+| constraints decoded empty | fixed, foundation 0087 |
+| edge bound moved a pinned view; zero intrinsic taken as a size | fixed, 0095 |
+| baselines unnamed in the trace | fixed, 0096 |
+| stack view arranged nothing | fixed, 0097 |
+| **stack height derived from both ends instead of its intrinsic size** | **open** |
+
+Seven defects fixed in series, each one only reachable after the previous. The roster stayed
+byte identical throughout, because constraints built in code were always populated and no gated
+path loads a nib carrying constraints.

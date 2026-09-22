@@ -1,0 +1,76 @@
+A stack view decoded with nothing to arrange arranges nothing.
+
+-[NSStackView initWithCoder:] created an EMPTY _arrangedSubviews and decoded only orientation and
+spacing. Every nib loaded stack view therefore had nothing to arrange, -layout walked an empty
+list, and the children kept the origin Interface Builder wrote. For a vertical stack that is every
+child at the same place.
+
+NOTHING ELSE PLACES THEM EITHER, which is what makes this total rather than cosmetic. The
+constraint solver deliberately skips arranged subviews, because the stack is supposed to own them,
+so an empty arranged list means no owner at all.
+
+THE ARCHIVE SAYS WHAT THEY ARE. There is no NSStackViewViews key. The flag
+NSStackViewHasFlatViewHierarchy says the arranged views ARE the decoded subviews rather than living
+inside gravity containers, and it is true on all six stacks in iA Writer GeneralPreferences.nib.
+The non flat form, where NSStackViewBeginningContainer holds them, is NOT handled and will still
+arrange nothing.
+
+MEASURED. iA Writer Preferences had two 38 point rows at the same local origin, one exactly on top
+of the other:
+
+  before   NSStackView 182x38 at 207,395
+             NSStackView 182x38 at 0,0
+             NSStackView 161x38 at 0,0
+  after    NSStackView 172x38 at 207,395
+             NSStackView 172x12 at 0,26
+             NSStackView 172x12 at 0,0
+
+Overlapping sibling pairs in that pane go from 1 to 0, and the two labels that follow those rows by
+firstBaseline now sit on separate lines: Appearance and Dock icon are legible where they were drawn
+through each other.
+
+WHAT IS STILL WRONG, and it is visible. The rows are now SQUASHED. The stack is 38 points tall and
+its two rows want about 91, so the checkboxes and the Light and Dark radios inside them are clipped
+to 12 points. That is the next link and it is a solver ordering problem, not a stack view one: the
+stack reports its arranged size as its intrinsic size already, but the solver derives its height
+from BOTH ends, pinning the top at 433 and solving the bottom from the NSBox beneath it, when the
+box should instead follow the stack intrinsic height. An intrinsic size has to win over a derived
+one when the other end is itself underdetermined.
+
+So this trades an unreadable overlap for a legible but compressed pair of rows. It is landed
+because a stack view that arranges nothing is never correct, and because the roster is unaffected.
+
+Gates: dts 69 of 69, patch record PASS, roster sweep 7 of 7 CONTENT and roster input 7 of 7, with
+iA Writer looked at.
+
+--- a/AppKit/NSStackView.m
++++ b/AppKit/NSStackView.m
+@@ -78,6 +78,28 @@
+         _orientation = [coder decodeIntegerForKey: @"NSStackViewOrientation"];
+         if ([coder containsValueForKey: @"NSStackViewSpacing"])
+             _spacing = [coder decodeDoubleForKey: @"NSStackViewSpacing"];
++
++        /*
++         * A STACK VIEW DECODED WITH NOTHING TO ARRANGE ARRANGES NOTHING.
++         *
++         * This left _arrangedSubviews empty, so -layout walked an empty list and every nib loaded
++         * stack view placed none of its children. They keep the origin Interface Builder wrote,
++         * which for a vertical stack is every child at the same place: iA Writer Preferences has
++         * two 38 point rows both at local 0,0, one exactly on top of the other, and the labels
++         * that follow those rows by firstBaseline both land on y=417.
++         *
++         * Nothing else places them either. The constraint solver deliberately skips arranged
++         * subviews, because the stack is supposed to own them, so an empty arranged list means no
++         * owner at all.
++         *
++         * THE ARCHIVE SAYS WHAT THEY ARE. There is no NSStackViewViews key; the flag
++         * NSStackViewHasFlatViewHierarchy says the arranged views ARE the decoded subviews rather
++         * than living inside gravity containers, and it is true on all six stacks in that nib. The
++         * non flat form, where NSStackViewBeginningContainer holds them, is NOT handled here and
++         * will still arrange nothing.
++         */
++        if ([coder decodeBoolForKey: @"NSStackViewHasFlatViewHierarchy"])
++            [_arrangedSubviews addObjectsFromArray: [self subviews]];
+     }
+     return self;
+ }
