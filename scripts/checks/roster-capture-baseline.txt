@@ -13,10 +13,17 @@
 # second.
 #
 # Refresh with ROSTER_BASELINE_UPDATE=1 scripts/roster-sweep.sh after looking at every capture.
+#
+# cm MOVED from 35850 to 33544 on 2026-09-23, and the move was mine. CMake persists its settings in
+# Users/root/Library/Preferences, so driving it through a real Configure left the source path, the
+# generator and five red cache entries behind, and the NEXT startup capture showed all of them. The
+# old number had the same shape of residue in it from an earlier session: a remembered build
+# directory in the title bar. 33544 is CMake with its preferences and the stale build tree removed,
+# which is the state a fresh machine produces, so it is the one worth comparing against.
 ia 31129
 sp 49610
 mm 15860
 it 16578
 lo 137276
 mx 32124
-cm 35850
+cm 33544

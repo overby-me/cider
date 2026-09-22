@@ -1,0 +1,25 @@
+--- a/AppKit/NSWindow.m
++++ b/AppKit/NSWindow.m
+@@ -3608,9 +3608,21 @@
+         // Nothing special to do.
+         break;
+ 
++    /* AN APPLICATION POSTS THESE TO ITSELF to wake its own loop, and a window does nothing with
++     * one on a Mac either. LibreOffice posts 119 of them in one drive and every one printed as
++     * unimplemented, which reads as a gap and is not one. */
++    case NSApplicationDefined:
++    case NSSystemDefined:
++    case NSPeriodic:
++        break;
++
+     default:
+         shouldValidateToolbarItems = NO;
+-        NSUnimplementedMethod();
++        /* WHICH TYPE, because the bare unimplemented message names only the selector and every
++         * event this switch does not know reads as the same line. LibreOffice logs two of these
++         * every half second and the log could not say what it was dropping. */
++        NSLog(@"-[%@ sendEvent:] unimplemented for event type %ld", [self class],
++              (long) [event type]);
+         break;
+     }
+     if (shouldValidateToolbarItems && [self toolbar]) {
