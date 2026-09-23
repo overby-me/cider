@@ -379,3 +379,54 @@ nine checkboxes at three indent levels, a spinner reading 10 minutes, and three 
 larger than the screen does here and on a Mac. The Start Center behind it reflows.
 
 Nothing was typed into any field and nothing was applied: Cancel and OK were not clicked.
+
+## The Writer menu bar and title bar are MISSING before a resize, and no gate can see it
+
+Found 2026-09-24 while driving LibreOffice down a path the roster has never exercised: a dialog.
+
+### What is measured
+
+Driving Start Center, then Writer Document, at the default drive geometry:
+
+- the screen is `frame=1256x684` (`cider-wayland-appkit screens=1 frame=1256x684 source=wl_output`)
+- the Writer window is created at `1004x597` and **mapped at `1256x740`**, which is **56 points
+  taller than the screen**
+- the capture at that moment has **no title bar and no menu bar**: the toolbar is at y=0
+- after the drive resizes the output to 1000x600, the same window shows `Untitled 1` in its title
+  bar and the full menu bar, LibreOffice through Help
+
+**2 of 2 drives**, both with the same shape.
+
+### Input still lands where the paint is not
+
+A click at output (290, 35), which is where the menu bar WOULD be, opens the Format menu:
+`CIDER_MENU bar drawRect ... index=5`, and 5 is Format counting LibreOffice as 0. So the hit test
+puts the bar at y=35 while nothing is drawn there. **The input geometry is right and the paint is
+missing**, which is the opposite way round from the usual oversize-window symptom.
+
+### Why no gate catches it
+
+Every roster capture of LibreOffice is either the Start Center, which legitimately has no menu bar,
+or a capture taken AFTER the end-of-drive resize, which is exactly the event that makes the chrome
+appear. The sweep and the input gate both pass with the bar missing for the whole run.
+
+### What is NOT established
+
+Whether the top 56 rows are being cut by the compositor because the surface is oversize, or whether
+the chrome is simply never painted and the resize forces the repaint that draws it. The two are
+distinguishable: an oversize surface anchored at its bottom would lose the top, and 56 is close to
+a 22 point title bar plus a 28 point menu bar.
+
+A caution against generalising from this: MoneyMoney also maps a window larger than its output
+(`create=ok 1124x730` then `mapped=yes 1124x784`) and its title bar and menu bar both draw
+correctly, so oversize alone is not sufficient to lose the top.
+
+### The dialog itself renders, and is the other half of the finding
+
+Format then Character opens the Character dialog, and `CIDER_MENU track item=Character... enabled=1
+action=menuItemTriggered:` confirms the command fired. It renders complete: six tab icons down the
+left (Font, Font Effects, Position, Asian Layout, Background, Border), Western and Asian and Complex
+segments, two font family lists with real font names, Typeface, Size and Language rows with combo
+boxes and Features buttons, Help, Reset, Cancel and OK with OK as the blue default, and a preview
+pane showing Latin, CJK and Hebrew sample text side by side. Zero unrecognised selectors on the
+whole path.
