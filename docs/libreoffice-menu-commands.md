@@ -405,3 +405,39 @@ raw=0x100000` (a comma, so NOT a letter, so Shift is compared for it under 0128)
 exactly. Its General preferences window opens with both toolbar panes, the For New Documents and
 Default Format radio groups, the Autosave and Measurement Units popups, the update checkbox and
 Reset to Defaults.
+
+## MoneyMoney: the nib is complete, so the loss is at runtime
+
+The open question on this thread was a set of MoneyMoney menu items that end up with a real target
+and a NULL action. Counting the archive settles where they do NOT come from.
+
+`scripts/nibdump.py` on `en.lproj/MainMenu.nib`, which is the old `NSIBObjectData` format and so
+carries an explicit connection list:
+
+| what | count |
+|---|---|
+| `NSMenuItem` objects | 140 |
+| of those, separators (`NSIsSeparator`) | 36 |
+| items carrying `NSTarget` and `NSAction` as archive keys | 11 each |
+| items carrying `NSSubmenu` | 11 |
+| `NSNibControlConnector` | 81 |
+| `NSNibOutletConnector` | 10 |
+| `NSNibBindingConnector` | 230 |
+
+36 separators plus 11 direct plus 81 connected plus the submenu parents accounts for all 140. **Every
+item that should have an action has one in the archive**, either as its own `NSAction` key or as a
+control connector's label.
+
+Eleven `NSNibControlConnector` entries have a `NSSource` and a `NSLabel` and **no `NSDestination`**.
+Named, they are exactly the responder-chain items a Mac application never targets itself:
+
+    undo: redo: cut: copy: paste: delete: selectAll:
+    performZoom: performClose: performMiniaturize: arrangeInFront:
+
+That is not a defect: a control connection with no destination is the responder chain, target nil,
+and `-[NSNibControlConnector establishConnection]` here sets the action first and the target second,
+so a nil destination cannot cost the action.
+
+So an item that ends up with a target and no action lost the action at RUNTIME, and the next
+measurement is `CIDER_TRACE_MENUITEM_DECODE` on a drive, comparing `CIDER_ITEMDECODE` against
+`CIDER_CONNECT` per title, rather than any further reading of the archive.
