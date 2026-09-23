@@ -707,7 +707,31 @@ nothing. That is exactly the shape every earlier measurement had: pixmaps create
 `RefreshPixMaps` ones written, the 210x18 buffer blitted untouched, and the control still accepting
 input.
 
-**What is left is which of the two conditions holds**, and they want different work. The view tree
-shows two `wxNSScroller` children under that 210x18 view, which argues the scrollbar objects exist
-and therefore that the `0x138` bit 3 early return is what fires. Naming that flag needs wx headers
-for this exact build, or the object read out of the live process. It is NOT guessed at here.
+**CORRECTION, within the hour: "the chain is complete" was too strong.** Two more measurements
+contradict it, and they are recorded here rather than left in a commit message.
+
+**The scrollbar objects DO exist.** Dumped rather than taken from an earlier note:
+
+    wxNSView   210x18@1,0                      <- the Tags control
+      wxNSView 15x15@185,85     hidden=1
+      wxNSScroller 15x18@195,0  hidden=1       <- vertical
+      wxNSScroller 210x15@0,3   hidden=1       <- horizontal
+
+So `m_vScrollBar` is not NULL for this control.
+
+**And the flag is never set.** Searching the whole slice for a write of bit 3 to offset `0x138`
+finds ZERO `orb $0x8` instructions and exactly one `andb $-0x9`, inside `wxWindowBase::wxWindowBase()`
+where it is CLEARED. So the early return in `wxWindow::SetScrollbar` cannot be what fires either.
+
+Those two together say `wxWindow::SetScrollbar` should reach `wxScrollBar::SetScrollbar`, which
+stores range and thumb at `0x2e8` and `0x2e4` and then calls the peer, with no hidden check anywhere
+in it. If that ran, the readback would agree and Scintilla would stop abandoning. **It keeps
+abandoning, so something in that reasoning is wrong**, and the missing native writes do not settle it
+because the stores happen BEFORE the peer calls: a peer that ignores a hidden scroller would leave
+the wx side correct and still produce no `CIDER_SCROLLER` line.
+
+What is solid: Scintilla abandons after `RefreshPixMaps`; what it compares and where a zero can come
+from; that the Tags scrollers are never written natively. What is NOT solid is the step from that
+last fact to "nothing is stored". The next measurement has to read `m_range` at `0x2e8` of one of
+those two `wxScrollBar` objects out of the live process, which the crash reading technique already
+does for `/proc/<pid>/mem`, or instrument the peer rather than `NSScroller`.
