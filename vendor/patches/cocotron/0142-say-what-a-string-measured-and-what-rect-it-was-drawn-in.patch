@@ -1,0 +1,73 @@
+Say what a string measured, and what rect it was drawn in.
+
+NSStringDrawer had a trace on one of its four paths: CIDER_TRACE_TEXT prints CIDER_TEXTSIZE for
+sizeOfAttributedString:, added when a used rect one line short was clipping wizard text. The plain
+string size and both draws had nothing.
+
+That gap cost a wrong conclusion within the hour it was found. Money Manager Ex draws a weekday
+label as Wednesda, eight complete glyphs and then blank space, and the obvious suspect was our own
+string measurement answering short. Tracing sizeOfString: showed 53 measurements and no weekday in
+them, which reads as "not measured here" and is only worth believing because the same trace proves
+it can speak at all.
+
+WHAT THE THREE TRACES TOGETHER ESTABLISH, on one drive of the New Transaction dialog:
+
+    CIDER_MEASURE        53 calls, all digits and menu titles
+    CIDER_TEXTSIZE       39 calls, and one of them is len=9 answering used=65.00x14.00
+    CIDER_MEASURE draw   51 calls, all title bar and menu bar
+
+Wednesday is nine characters and 65 points is right for it: the eight glyphs actually drawn occupy
+about 58 in the capture, and the ninth needs about seven more. SO THE MEASUREMENT IS CORRECT AND
+THE DEFECT IS NOT HERE. wx draws that label by a route none of these four paths covers, and the
+next person chasing it should start from that rather than from our text measurement, which is where
+I started and lost a drive to.
+
+CIDER_TRACE_MEASURE, off by default, one getenv per call on paths that already build a layout
+manager and run it.
+
+--- a/AppKit/NSStringDrawer.m
++++ b/AppKit/NSStringDrawer.m
+@@ -44,6 +44,9 @@
+                                  maxSize: (NSSize) size;
+ @end
+ 
++#import <stdio.h>
++#import <stdlib.h>
++
+ @implementation NSStringDrawer
+ 
+ + (NSStringDrawer *) sharedStringDrawer {
+@@ -98,6 +101,16 @@
+     [_textStorage endEditing];
+     NSSize result = [_layoutManager usedRectForTextContainer: _textContainer].size;
+ 
++    /* WHAT A STRING MEASURES, and what the caller will round it to. Money Manager Ex draws a
++     * weekday label as Wednesda, eight complete glyphs then blank, so the question is whether the
++     * width answered here is short of what the ninth needs. */
++    if (getenv("CIDER_TRACE_MEASURE") != NULL) {
++        fprintf(stderr, "CIDER_MEASURE \"%.40s\" len=%lu -> %.3f x %.3f max=%.0f\n",
++                [string UTF8String] ?: "(nil)", (unsigned long) [string length],
++                result.width, result.height, maxSize.width);
++        fflush(stderr);
++    }
++
+     NSStringDrawer_CacheItem* cacheKey = [[NSStringDrawer_CacheItem alloc] initWithString: string
+                                                                                attributes: attributes
+                                                                                   maxSize: maxSize];
+@@ -114,6 +127,16 @@
+ {
+     NSRange glyphRange;
+ 
++    /* THE RECT THE CALLER GIVES, against the width the same string measured. A label one glyph
++     * short is either a rect narrower than the measurement or a measurement that lied, and only
++     * printing both separates them. */
++    if (getenv("CIDER_TRACE_MEASURE") != NULL) {
++        fprintf(stderr, "CIDER_MEASURE draw \"%.40s\" len=%lu inRect=%.2fx%.2f@%.2f,%.2f\n",
++                [string UTF8String] ?: "(nil)", (unsigned long) [string length],
++                rect.size.width, rect.size.height, rect.origin.x, rect.origin.y);
++        fflush(stderr);
++    }
++
+     [_textContainer setContainerSize: rect.size];
+     [_textStorage beginEditing];
+     [_textStorage

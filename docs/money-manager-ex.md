@@ -794,3 +794,32 @@ the obvious suspect and the measurement that sizes it is the thing to check. Not
 The Tags row is still 3570 pixels of pure `(0,0,0)` against `(255,255,255)` for the Category field
 one row up, with only its top border drawn. The chain for it is worked out at length above and its
 next measurement is named there.
+
+### The weekday label: our measurement is CORRECT, and the defect is not in our text path
+
+Chased the same evening, with a negative result worth more than the guess it replaced.
+
+The suspicion was that our string measurement answers short, because that would explain a label
+showing eight of nine glyphs. `NSStringDrawer` had a trace on one of its four paths only, so
+cocotron 0142 adds `CIDER_TRACE_MEASURE` to the plain size and to the draw. One drive of the New
+Transaction dialog:
+
+| trace | calls | what they are |
+| --- | --- | --- |
+| `CIDER_MEASURE` | 53 | digits 0 to 9, four times each, and menu titles |
+| `CIDER_TEXTSIZE` | 39 | including one `len=9` answering `used=65.00x14.00` |
+| `CIDER_MEASURE draw` | 51 | title bar and menu bar only |
+
+**Wednesday is nine characters and 65 points is the right answer for it.** The eight glyphs that
+do get drawn occupy about 58 points in the capture and the ninth needs roughly seven more. So the
+measurement is correct, and neither the size nor the draw of that label goes through
+`NSStringDrawer` at all: wx draws it by some other route.
+
+Three separate silences here, and each one is only worth believing because the same trace was
+loudly alive at the same moment: 53 measurements with no weekday among them, 51 draws with no
+weekday among them, and a correct 65 sitting in the third trace the whole time.
+
+**Where the next person should start:** not in our text measurement, which is where I started and
+lost a drive to. Find what wx uses to draw a `wxStaticText` on this port, since it is not
+`-[NSStringDrawer drawString:withAttributes:inRect:]`, and check the width it is given against the
+65 that is available to it.
