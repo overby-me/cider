@@ -202,3 +202,26 @@ Only visible because the pane opens at all, neither chased:
 - the line length row shows the raw key `Editor_Preferences_Line_Lengt` beside the popup, so a
   localised string is not being looked up
 - the `Highlight color:` label sits far above its swatches
+
+## What the pane leads to next: the whole view controller presentation family is absent
+
+With the pane open, the Custom Patterns button is reachable. Its frame came from the tree
+(`win 129x23@253,35 top 798..821`) and the window origin from a row scan of the capture that finds
+a run exactly 600 wide at x 200..799 and a 28 tall menu band at y 144..171, which against the
+tree's `top 22..50` puts the window top at 122. The click at output (517, 931) lands dead on the
+button, which the capture shows highlighted.
+
+Nothing opens. The log says why:
+
+    cider: UNRECOGNIZED -[IAEditorPreferencesContentViewController presentViewControllerAsSheet:]
+
+`-[NSViewController presentViewControllerAsSheet:]` does not exist in this AppKit, and neither
+does any of its family: `presentViewController:animator:`, `dismissViewController:`,
+`presentViewControllerAsModalWindow:`, `presentViewController:asPopoverRelativeToRect:...`.
+`grep` for any of them in `NSViewController.m` and its header returns nothing at all.
+
+So the two `target` bindings in `CustomPatternsPreferences.nib`, which are the only `NSControl`
+cases of cocotron 0138 in the roster that are safe to drive, are still out of reach: not because
+of the binding, and no longer because of the crash, but because the sheet that would carry them
+cannot be presented. That family is the next thing to implement if the `NSControl` half of 0138 is
+to be exercised at all.
