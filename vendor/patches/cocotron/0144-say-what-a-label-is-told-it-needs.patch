@@ -1,0 +1,55 @@
+Say what a label is told it needs.
+
+The weekday label in the Money Manager Ex New Transaction dialog reads Wednesda, and cocotron 0143
+established that the string measures 65.00 while the draw is handed a rect 64.00 wide. The
+remaining question was whether the toolkit ever asked us for a width at all.
+
+-[NSTextFieldCell cellSize] is the one place to ask that, because -sizeToFit,
+-[NSControl intrinsicContentSize] and -[NSView fittingSize] all funnel through it. One trace there
+covers every route.
+
+MEASURED: 56 cellSize calls on that drive, and EVERY ONE of them is on a cell whose string is
+empty, answering 1.00 for the string width. Not one is for the weekday, or for any other text.
+
+So wx never asks our cell how wide that label should be, and the 68 point control the text is drawn
+into, which is the 64 point rect plus the two point inset on each side, is arrived at by its own
+arithmetic. Nothing we answer is wrong here: cocotron 0143 showed the measurement is 65 and
+correct, the commit after it showed our size and draw insets agree on 4, and this shows the size
+was never requested.
+
+That closes the question of whether the truncation is ours. It does not say what wx does instead,
+which is the next thing to find and is on the wx side of the line.
+
+The trace is alive on 56 calls, which is what makes the absence of the weekday worth reading at
+all.
+
+--- a/AppKit/NSTextFieldCell.m
++++ b/AppKit/NSTextFieldCell.m
+@@ -39,6 +39,9 @@
+ #import <objc/runtime.h>
+ #import <Foundation/NSKeyedArchiver.h>
+ 
++#import <stdio.h>
++#import <stdlib.h>
++
+ @implementation NSTextFieldCell
+ 
+ @synthesize allowedInputSourceLocales = _allowedInputSourceLocales;
+@@ -318,6 +321,17 @@
+ - (NSSize) cellSize {
+     NSSize size = [[self attributedStringValue] size];
+ 
++    /* WHAT A LABEL IS TOLD IT NEEDS. -sizeToFit, -intrinsicContentSize and -fittingSize all funnel
++     * through here, so this one line covers every route a toolkit can ask a width by. Money
++     * Manager Ex draws a nine character weekday into a 64 point rect when the string measures 65,
++     * and the question is whether it ever asked. */
++    if (getenv("CIDER_TRACE_MEASURE") != NULL) {
++        fprintf(stderr, "CIDER_MEASURE cellSize \"%.40s\" string=%.2f bezeled=%d bordered=%d\n",
++                [[self stringValue] UTF8String] ?: "(nil)", size.width, (int) [self isBezeled],
++                (int) [self isBordered]);
++        fflush(stderr);
++    }
++
+     if ([self isBezeled]) {
+         size.width += 6;
+         size.height += 6;

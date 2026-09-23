@@ -1,0 +1,39 @@
+The base nib connector is instantiated, so it cannot be abstract.
+
+-[NSNibConnector establishConnection] was NSInvalidAbstractInvocation(), on the assumption that
+only subclasses are ever created. Modern nibs create the base class directly.
+
+Interface Builder emits a plain NSNibConnector with a NIL DESTINATION as a decode ORDERING MARKER,
+one per NSStackView, and its label says so in words:
+
+    Encoding NSStackView requires being decoded before other connections with an early decoding
+    order priority of 999990.
+
+Establishing one is meant to do nothing. Apple documents the default implementation of
+establishConnection as doing nothing, and every application that puts a stack view in a nib would
+die here otherwise, so the evidence for that is every shipping application.
+
+Counted in iA Writer alone: GeneralPreferences.nib has 6, EditorPreferences.nib has 9,
+CustomPatternsPreferences.nib has 0.
+
+MEASURED, same drive before and after: 9 ABSTRACT lines to 0, with the Editor pane and the Custom
+Patterns sheet rendering identically and 0 unrecognised selectors either way. It was only log noise,
+because NSInvalidAbstractInvocation logs and returns rather than raising, but it is 15 lines per
+full preferences visit and it says a defect where there is none.
+
+--- a/AppKit/nib.subproj/NSNibConnector.m
++++ b/AppKit/nib.subproj/NSNibConnector.m
+@@ -99,8 +99,12 @@
+         [self setDestination: replacement];
+ }
+ 
++/* THE BASE CLASS IS INSTANTIATED DIRECTLY by modern nibs, so this cannot be abstract. Interface
++ * Builder emits a plain NSNibConnector with a NIL DESTINATION as a decode ORDERING MARKER, one per
++ * NSStackView, whose label reads that encoding NSStackView requires being decoded before other
++ * connections. Establishing one is meant to do nothing, which is what Apple documents for the
++ * default implementation, and every application using a stack view would die here otherwise. */
+ - (void) establishConnection {
+-    NSInvalidAbstractInvocation();
+ }
+ 
+ @end

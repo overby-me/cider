@@ -877,3 +877,24 @@ is **68**: the draw rect is 64 at x=2.00.
 is decided outside them, and the remaining question is what wx asks for and what it does with the
 answer: whether it reads `cellSize` at all, and whether a sizer then shrinks the control below the
 best size it was given. That is the next measurement, and it is one trace on `cellSize` away.
+
+### And wx never asks us for that width at all
+
+The last place the missing point could have been ours is the size request itself.
+`-[NSTextFieldCell cellSize]` is the one place to instrument for that, because `-sizeToFit`,
+`-[NSControl intrinsicContentSize]` and `-[NSView fittingSize]` all funnel through it, so one trace
+covers every route a toolkit can ask a width by.
+
+**56 `cellSize` calls on that drive, and every one is on a cell whose string is empty**, answering
+1.00 for the string width. Not one for the weekday, or for any other text.
+
+So the chain is closed on our side, in three measurements:
+
+| question | answer |
+| --- | --- |
+| is the measurement wrong? | no, 65.00 is right for nine glyphs |
+| do our size and draw insets disagree? | no, both are 4 for a plain label |
+| were we ever asked for the size? | no, 56 calls and all of them empty |
+
+The 68 point control is wx's own arithmetic. What it does instead is the next thing to find, and it
+is on the wx side of the line rather than ours.
