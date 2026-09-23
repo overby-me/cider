@@ -421,3 +421,34 @@ darwin_binary(
     deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
     visibility = ["PUBLIC"],
 )
+
+
+# Where does a bookmark identifier go nil? iA Writer terminates on every document opened from the
+# panel because -[IAFileBookmarkHistory willUpdate:] removes a nil key, and the shipping
+# disassembly leaves exactly three ways for that key to be nil: NSUUID, a keyed decode, or the
+# reverse enumeration that hands the bookmark to the block.
+cc_objects(
+    name = "probe_bookmark_identity_obj",
+    srcs = ["probe_bookmark_identity.m"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION", "-fno-objc-arc"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//src/darwin:sdk_env",
+        "//vendor/src:fw_CoreFoundation",
+        "//vendor/src:fw_Foundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "probe_bookmark_identity",
+    objs = [":probe_bookmark_identity_obj", "//vendor/src/csu:crt1.10.6_obj2"],
+    dylibs = [
+        "//vendor/src:system_final",
+        "//vendor/src/corefoundation:CoreFoundation_dylib",
+        "//vendor/src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//src/darwin:sdk_env", "//vendor/src:crt1.10.6"],
+    visibility = ["PUBLIC"],
+)
