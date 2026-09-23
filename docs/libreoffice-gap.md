@@ -430,3 +430,25 @@ segments, two font family lists with real font names, Typeface, Size and Languag
 boxes and Features buttons, Help, Reset, Cancel and OK with OK as the blue default, and a preview
 pane showing Latin, CJK and Hebrew sample text side by side. Zero unrecognised selectors on the
 whole path.
+
+### SETTLED by experiment: the surface is oversize, and one fix was tried and REVERTED
+
+**The decisive experiment.** Same drive, screen raised to 1256x850. The window maps at `1256x740`
+in BOTH runs, so at 850 it fits, and the capture then shows the title bar and the full menu bar.
+At 684 it does not fit and both are gone. So the chrome is not failing to paint: the surface is
+taller than the screen and the top is what falls off.
+
+**One fix tried and reverted.** `-[NSWindow constrainFrameRect:toScreen:]` only moves the origin
+and never shrinks, which pins the bottom edge and puts the excess off the TOP, exactly where the
+title bar and menu bar are. macOS shrinks. Adding a size clamp there changed nothing: the window
+still maps at `1256x740`, because that size is decided AFTER the init path where
+`constrainFrameRect` is called. Reverted, because a change to the geometry path every window in
+the roster goes through does not earn its place on a hypothesis that did not pay out.
+
+**Where the 740 probably comes from, not yet proved.** 1256 is exactly the screen width and 740 is
+the screen height plus 56. In this port the menu bar lives INSIDE the window rather than at the top
+of the screen, so a frame computed from a content rect of screen size is taller than the screen by
+the title bar plus the menu bar. That would make every maximised window in every application too
+tall by the menu bar height, which is a design consequence rather than a local bug, and it is the
+thing to measure next: what does `frameRectForContentRect:` add, and what does the application ask
+for.
