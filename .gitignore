@@ -154,3 +154,7 @@ __pycache__/
 # GUI captures from scripts/app-drive.sh
 captures/
 .cache/
+
+# Test binaries the dts batch leaves in the repository root, one per case, under both spellings.
+/dts_*
+/testsuite_*
