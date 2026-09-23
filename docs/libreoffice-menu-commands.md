@@ -1,4 +1,8 @@
-# LibreOffice menu commands, from a dead menu to a table on the page
+# Menu commands: three defects between a click and an action
+
+(The file is named after LibreOffice because that is where the thread started. It now covers
+LibreOffice, iA Writer and MoneyMoney, because each application found a different one of the three.)
+
 
 Driven on the Writer document window at the roster size. The end state, measured:
 
@@ -158,3 +162,65 @@ is the stronger witness, and here it arrived as a baseline regression on an unre
 It also means a drive that invokes a real command can move a roster baseline, because these
 applications remember what was done to them. The library was toggled back and the sweep re-measured
 before anything was committed.
+
+## Two things left open by this thread
+
+**The show path leaves ghost text.** Driving View then Show Library back on works, and the sidebar
+returns live this time, but every label is drawn TWICE, offset by about seven points: Locations at
+y=94 and again at y=101, Favorites at 131 and 139, and so on. The control is free and decisive: the
+end of run resize forces a full repaint and the sidebar is drawn once. So this is incremental
+repaint residue, not a layout error, and a fresh launch is clean too (the sweep re-measured at 31136
+unchanged). What has NOT been measured is which rect was invalidated when the pane came back.
+
+**NSMainMenuView has the same two arrays as NSSubmenuView and has not been unified.** Its
+`-drawRect:` and its geometry both walk `[[self menu] itemArray]`, so they agree with each other,
+but the inherited `-itemAtSelectedIndex` reads `-visibleItemArray`. That is the identical defect
+0124 fixed one level down, waiting for a menu BAR with a hidden item in it. No roster application
+has one: iA Writer measured `all=10 visible=10`. It is left alone deliberately, because fixing it
+means moving the drawing as well as the hit test, and nothing available can show the difference.
+
+## The third defect: a cached rect belongs to the view it was measured in
+
+Found by driving a THIRD application. MoneyMoney, application menu then About MoneyMoney:
+
+    CIDER_MENU check NSSubmenuView#4 windowframe=196x395@0,157 point=76,15 bounds=196x395 inside=1
+    CIDER_MENU stack depth=2 [0 NSMainMenuView sel=0] [1 NSSubmenuView sel=9223372036854775807]
+    CIDER_MENU track item=nil enabled=-1 action=none target=nil
+
+The release landed inside the menu and selected NOTHING. `-itemIndexAtPoint:` was never reached.
+
+The tracking loop caches the rect of the item it last hit, to skip the lookup while the pointer
+stays in the same row:
+
+    if (NSMouseInRect(checkPoint, lastRect, [self isFlipped]))
+        break;
+
+`lastRect` is in the coordinate space of whichever view produced it, and `checkPoint` is in the
+space of whichever view is being tested now. When the two are different views the comparison is
+meaningless, and it silently means yes whenever the numbers happen to overlap.
+
+That is why the APPLICATION menu is the one that broke. It is the leftmost item in the bar, so its
+rect starts at x 0 and is about 108 points wide and 28 tall. The point in its own open menu was
+(76,15), which is inside that. `View` in iA Writer sits at x 275 and `Table` in LibreOffice at
+x 369, so their bar rects contain nothing near the left edge of the menus they open, and both
+worked by luck of position.
+
+cocotron 0125 remembers which view the rect came from and only trusts it for that view, and tests
+with `[checkView isFlipped]` rather than the tracking view's. After it:
+
+    CIDER_MENU stack depth=2 [0 NSMainMenuView sel=0] [1 NSSubmenuView sel=0]
+    CIDER_MENU track item=About MoneyMoney enabled=1 action=none target=NSKVONotifying_AboutWindowController
+
+**Three applications, three different defects, all between the click and the action.** None of them
+was visible in a capture: every menu drew correctly throughout.
+
+## Still open: an item with a target and no action
+
+`About MoneyMoney` above ends with `action=none` and a real target. `-[NSMenuView mouseDown:]` then
+calls `[NSApp sendAction: NULL to: target from: item]`, which does nothing, and no About window
+appears. This is not the tracking loop: tracking now returns exactly the right item.
+
+Of the 93 MoneyMoney menu items the `CIDER_MENUITEM` trace covers, NONE has a null action, and one
+carries `makeKeyAndOrderFront:` with a window controller target, which is what About wants. So the
+selector exists somewhere in the nib and did not reach this item. That is a nib decoding question,
+not a menu question, and it is where this thread goes next.

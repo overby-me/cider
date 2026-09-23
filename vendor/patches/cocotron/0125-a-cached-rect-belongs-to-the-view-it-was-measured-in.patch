@@ -1,0 +1,45 @@
+--- a/AppKit/NSMenu.subproj/NSMenuView.m
++++ b/AppKit/NSMenu.subproj/NSMenuView.m
+@@ -312,6 +312,7 @@
+     BOOL cancelled = NO;
+     NSTimer* delaySubmenu = nil;
+     NSRect lastRect = NSMakeRect(0,0,0,0);
++    NSMenuView *lastRectView = nil;
+ 
+     MENUDEBUG(@"entering outer loop");
+ 
+@@ -382,14 +383,24 @@
+ 
+                     MENUDEBUG(@"found a menu: %@", checkView);
+ 
+-                    // Performance optimization - break if we're still in the same menu item rect as last time
+-                    if (NSMouseInRect(checkPoint, lastRect, [self isFlipped]))
++                    /*
++                     * A CACHED RECT BELONGS TO THE VIEW IT WAS MEASURED IN. This compared a point
++                     * in the menu now under the cursor against a rect left over from the BAR, so
++                     * it skipped the lookup whenever the two happened to overlap numerically. The
++                     * application menu is the leftmost bar item, so its rect starts at x 0 and
++                     * contains most of the menu it opens: MoneyMoney selected nothing at all in
++                     * its own menu, while View and Table worked because they sit further right.
++                     */
++                    if (checkView == lastRectView &&
++                        NSMouseInRect(checkPoint, lastRect, [checkView isFlipped]))
+                         break;
+ 
+                     // Which item is the cursor on top of?
+                     NSUInteger itemIndex =
+                             [checkView itemIndexAtPoint: checkPoint rect: &lastRect];
+ 
++                    lastRectView = checkView;
++
+                     MENUDEBUG(@"found an item index: %u", itemIndex);
+ 
+                     // If it's not the currently selected item
+@@ -487,6 +498,7 @@
+                     }
+ 
+                     lastRect = NSMakeRect(0,0,0,0);
++                    lastRectView = nil;
+                     
+                     // We've wandered off the menu so don't show anything
+                     // selected if it's the deepest visible view
