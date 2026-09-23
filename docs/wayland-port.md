@@ -16684,3 +16684,35 @@ and the three Window checkboxes follow correctly instead of overlapping the rows
 and its description sit behind the Title bar and Toolbar popups, and the Shortcuts label is
 missing. That chain is longer than the one that now settles, and it is the next thing to measure
 here.
+
+
+## A popup parent must also be able to HOLD the popup (2026-09-23)
+
+Third wrong menu on the same rule, and the first one found by driving the LEFTMOST bar item of a
+fifth application.
+
+iA Writer's application menu drew 460 points right and 320 down of the item that opened it. AppKit
+had it right: `CIDER_MENU check NSSubmenuView#5 windowframe=194x242@0,310` is directly under the bar
+item in a 600 high screen. The placement trace says what happened:
+
+    cider-wayland-window popup=create number=5 asked=0,310 size=194x242 parent=3
+                         parent-left=0 parent-top=600 local=0,48
+
+**`parent=3` is a 75x50 `IAPanel`.** `mapped_toplevel_anchor` requires a candidate to CONTAIN the
+anchor point and lets recency decide between those that do, and that panel is mapped after the
+document window and does contain (0,552) by two points. Only the compositor knows where a toplevel
+really is, so a popup goes wherever its PARENT went, and a 194x242 menu handed to a 75x50 surface
+lands wherever that surface happens to be.
+
+The rule now also requires the candidate to be at least as wide and as tall as the popup, falling
+back to a container that is too small only when nothing better exists. After it:
+
+    cider-wayland-window popup=create number=5 asked=0,310 size=194x242 parent=2
+                         parent-left=0 parent-top=600 local=0,48
+
+and the menu drops directly below its bar item, with About iA Writer, a greyed Check for Updates…,
+Preferences… ⌘,, Services, the three hide items and Quit iA Writer ⌘Q.
+
+**A candidate that cannot contain the popup cannot place it**, which is the same lesson as the two
+before it in a different disguise: the anchor is expressed in the parent coordinate space, so the
+parent has to be able to express the whole thing, not just the point.

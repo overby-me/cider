@@ -919,7 +919,12 @@ fn create_surface(st: &mut WindowState) -> bool {
         let popup_left = st.frame.origin.x as i64;
         let popup_top = (st.frame.origin.y + st.frame.size.height) as i64;
         let (parent_xdg, parent_left, parent_top, parent_number) =
-            match mapped_toplevel_anchor(popup_left, popup_top) {
+            match mapped_toplevel_anchor(
+                popup_left,
+                popup_top,
+                st.frame.size.width as i64,
+                st.frame.size.height as i64,
+            ) {
                 Some((xdg, left, top, number)) => (xdg, left, top, number),
                 None => (
                     std::ptr::null_mut(),
@@ -2748,6 +2753,8 @@ fn reposition_popup(st: &mut WindowState) {
     let Some((_, parent_left, parent_top, parent_number)) = mapped_toplevel_anchor(
         st.frame.origin.x as i64,
         (st.frame.origin.y + st.frame.size.height) as i64,
+        st.frame.size.width as i64,
+        st.frame.size.height as i64,
     ) else { return };
     let base = session::wm_base();
     if base.is_null() {
@@ -2791,9 +2798,15 @@ fn reposition_popup(st: &mut WindowState) {
 /// that do contain it, which is what puts a menu on the window in front rather than one behind. If
 /// none contains it the largest is the least wrong, since a bigger window expresses more of the
 /// coordinate space.
-fn mapped_toplevel_anchor(popup_left: i64, popup_top: i64) -> Option<(*mut wl::XdgSurface, i64, i64, i64)> {
+fn mapped_toplevel_anchor(
+    popup_left: i64,
+    popup_top: i64,
+    popup_width: i64,
+    popup_height: i64,
+) -> Option<(*mut wl::XdgSurface, i64, i64, i64)> {
     let list = WINDOWS.lock().ok()?;
     let mut largest: Option<(*mut wl::XdgSurface, i64, i64, i64, i64)> = None;
+    let mut contains: Option<(*mut wl::XdgSurface, i64, i64, i64)> = None;
 
     for &p in list.iter().rev() {
         let Some(st) = (unsafe { (p as *mut WindowState).as_ref() }) else { continue };
@@ -2807,14 +2820,27 @@ fn mapped_toplevel_anchor(popup_left: i64, popup_top: i64) -> Option<(*mut wl::X
         if (left..=left + width).contains(&popup_left)
             && (top - height..=top).contains(&popup_top)
         {
-            return Some((st.xdg, left, top, st.number));
+            /* AND IT HAS TO BE ABLE TO HOLD THE POPUP, which is the third wrong menu on this rule.
+             *
+             * Only the compositor knows where a toplevel really is, so a popup goes wherever its
+             * PARENT went. iA Writer maps a 75x50 IAPanel after its document window, and that panel
+             * contains the anchor point of the application menu, so recency handed a 194x242 menu
+             * to a 75x50 surface whose real position is nowhere near where AppKit thinks it is: the
+             * menu drew 460 points right and 320 down of the bar item that opened it. A candidate
+             * that cannot even contain the popup cannot place it, so it is not a parent. */
+            if width >= popup_width && height >= popup_height {
+                return Some((st.xdg, left, top, st.number));
+            }
+            if contains.is_none() {
+                contains = Some((st.xdg, left, top, st.number));
+            }
         }
         let area = width * height;
         if largest.map_or(true, |(_, _, _, _, best)| area > best) {
             largest = Some((st.xdg, left, top, st.number, area));
         }
     }
-    largest.map(|(xdg, left, top, number, _)| (xdg, left, top, number))
+    contains.or_else(|| largest.map(|(xdg, left, top, number, _)| (xdg, left, top, number)))
 }
 
 /// The toplevel of a window that is actually MAPPED, which is the only parent a compositor will
