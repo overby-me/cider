@@ -259,3 +259,42 @@ Changed to `[sheet makeKeyWindow]`, rebuilt, re-driven: the capture changes slig
 change is not inert, and `addPattern:` is still never sent. **Reverted**, because a change to the
 path every sheet in the roster uses does not earn its place on a hypothesis that did not pay out.
 Recorded here so the next reader does not spend the same hour on it.
+
+## CORRECTION: the action DOES fire, and the failure above was my own aim
+
+The section above says the add button sends no action. That is wrong, and the way it went wrong is
+worth more than the conclusion was.
+
+`CIDER_TRACE_CONTROL` on a drive clicking output (337, 666):
+
+```
+CIDER_CONTROL mouseDown self=0x… class=NSKVONotifying_NSButton title=Add Pattern… enabled=1 frame={{20, 38}, {25, 19}}
+CIDER_CONTROL send class=NSKVONotifying_NSButton action=addPattern: target=NSKVONotifying_IACustomPatternsTableViewController enabled=1
+```
+
+The button receives the click, is enabled, and sends `addPattern:` to the controller its target
+binding names. **That verifies the NSControl half of cocotron 0138 end to end**, which had been
+open since the binding fix landed.
+
+**How I talked myself out of a working click.** The nib gives `addButton` the frame
+`{{20, 20}, {25, 21}}`. The LAID OUT frame, which `CIDER_CONTROL drawRect` prints, is
+`{{20, 38}, {25, 19}}`, eighteen points higher and two shorter. My first click at output y 666
+arrived at content y 48, inside the real span of 38 to 57, and was on target all along. I then
+measured the arrival with `TRACE_INPUT`, compared it against the NIB frame rather than the live
+one, decided it was seven points high, and "corrected" it to y 683, which is content y 31 and
+lands BELOW the button. The drive that reported `addPattern:` never sent was that corrected one.
+
+So the rule in memory, never measure a coordinate by eye, has a second half: **a frame from the
+archive is not the frame on screen.** Take it from a trace of the running view, which is what
+`CIDER_TRACE_TREE` and `CIDER_CONTROL drawRect` are for. An eighteen point error from the nib is
+just as wrong as an eighteen point error from the eye, and it cost two drives and one confident
+false conclusion.
+
+The two buttons behave correctly in one more respect: `Remove Pattern` is drawn disabled, because
+its `enabled` binding reads `canRemovePattern` and the list is empty.
+
+## What is still open on this pane
+
+`addPattern:` fires and no row appears in the table. Whether that is a table view that does not
+reload or an add that needs something else has not been measured. The pattern list is still empty
+afterwards, so these drives leave no persisted state behind.
