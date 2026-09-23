@@ -452,3 +452,41 @@ the title bar plus the menu bar. That would make every maximised window in every
 tall by the menu bar height, which is a design consequence rather than a local bug, and it is the
 thing to measure next: what does `frameRectForContentRect:` add, and what does the application ask
 for.
+
+### THE MECHANISM, measured: a minimum size taller than the screen beats the compositor
+
+`CIDER_WAYLAND_TRACE_GEOMETRY` on the same drive, and it needed no new instrument because this one
+already existed:
+
+```
+CIDER_WINFRAME SalFrameWindow asked=1256x684 kept=1256x740 min=212x740 didSize=1   (twice)
+CIDER_WINFRAME SalFrameWindow asked=1256x683 kept=1256x740 min=212x740 didSize=1
+CIDER_WINFRAME SalFrameWindow asked=1000x600 kept=1000x600 min=1x51    didSize=1
+```
+
+**The compositor asks for exactly the screen, 1256x684, and is right.** The window keeps 1256x740
+because its MINIMUM height is 740, which is 56 more than the screen it has to live on. A minimum
+larger than the output can never be satisfied, and the clamp takes the compositor answer back every
+time.
+
+**And the last line is why a resize fixes it.** By then the minimum has relaxed from `212x740` to
+`1x51`, so the 1000x600 configure is kept in full and the chrome comes back. The window was only
+ever stuck during the window of time when its own minimum was impossible.
+
+**Where the 740 comes from, partly.** At creation LibreOffice asks for a content rect of
+`1004x547` and `CIDER_WINGEOM` shows the frame come out `1004x597` for style `0xf`: **exactly 50
+more**, which is the 22 point title bar plus the 28 point menu bar. In this port the menu bar lives
+inside the window, so every titled window is 28 points taller than the same window on macOS, and
+that 28 is inside the minimum as well as the frame. It is not the whole 56, so the application
+asks for the rest itself, but it is the part this port adds.
+
+### What is still not explained
+
+MoneyMoney maps `1124x784` on the same 684 screen, 100 points too tall, and **keeps** its title bar
+and menu bar, while LibreOffice at 56 too tall loses both. So oversize alone does not decide which
+edge is lost, and whatever does decide it is not measured yet. That is the next thing to find, and
+it matters more than the minimum size does, because macOS keeps the title bar on screen and cuts
+the bottom.
+
+No fix attempted here. Two geometry fixes were tried and reverted on this symptom already today,
+and a third guess at a path every window goes through would be worth less than this measurement.
