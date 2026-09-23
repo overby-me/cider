@@ -1,0 +1,17 @@
+# Patches that do NOT reverse-apply to the materialised tree, and are expected not to.
+#
+# Every one of these is overlapped by a LATER patch that edits the same lines. Once the later one
+# is undone the earlier one's context is the original upstream text rather than what it produced,
+# so it cannot reverse. That is a property of an overlapping series, not rot.
+#
+# Recorded 2026-09-23. A patch appearing here that is not in this list is a finding: either the
+# tree was edited without recording it, or a patch was rewritten to describe something else.
+cocotron 0018-a-font-can-be-asked-for-one-attribute.patch
+cocotron 0020-one-selector-two-element-widths-the-other-side.patch
+cocotron 0028-the-rasteriser-needs-the-fallback-face.patch
+cocotron 0029-six-selectors-a-modern-application-sends.patch
+foundation 0020-name-who-observes-a-collection.patch
+foundation 0024-two-instruments-the-caller-and-the-observer.patch
+foundation 0061-say-whether-a-watched-kvo-key-changes.patch
+foundation 0075-say-whether-an-observer-was-actually-entered.patch
+foundation 0081-say-which-kvo-context-was-registered-and-delivered.patch
