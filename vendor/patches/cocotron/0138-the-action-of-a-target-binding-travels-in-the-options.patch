@@ -1,0 +1,74 @@
+The action of a target binding travels in the options.
+
+Interface Builder offers two ways to wire a menu item to code. The familiar one is a control
+connector, which carries the selector directly and which we decode. The other is the target
+BINDING, where the destination object arrives as the binding destination and the selector arrives
+as the NSSelectorName entry of the options dictionary.
+
+We established the binding and applied its value, so the item ended up with the right target, and
+then we dropped the options on the floor. An item with a target and no action is disabled, so the
+command was not merely wrong, it was unreachable.
+
+MoneyMoney binds exactly ten menu items this way, and those ten are exactly the ten that measured
+with a real target and no action from any setter:
+
+    About MoneyMoney              AboutWindowController    showAboutWindow:
+    Encrypt File for Sending...   MainWindowController     encryptFileForSupport:
+    Help and FAQ...               MainWindowController     openGeneralHelp:
+    Imprint...                    MainWindowController     showImprint:
+    License Agreement...          MainWindowController     showLicenseAgreement:
+    Privacy Policy...             MainWindowController     showPrivacyPolicy:
+    Report an Issue...            MainWindowController     reportIssue:
+    Show Database in Finder...    MainWindowController     openDatabaseInFinder:
+    Supported Banks (Europe)...   MainWindowController     openPsd2Help:
+    Supported Banks (Germany)...  MainWindowController     openBankHelp:
+
+The whole application menu and the whole Help menu, which is why the symptom looked like a menu
+defect rather than a bindings one.
+
+doubleClickTarget is the documented sibling and takes the same option, so it is handled here for
+the same reason, but no roster application exercises it yet and this change does not claim it
+measured.
+
+--- a/AppKit/NSKeyValueBinding/NSObject+BindingSupport.m
++++ b/AppKit/NSKeyValueBinding/NSObject+BindingSupport.m
+@@ -301,6 +301,39 @@
+     [binder setOptions: options];
+ 
+     [binder bind];
++
++    [self _bindingApplySelectorNameOption: binding options: options];
++}
++
++/* THE SELECTOR TRAVELS IN THE OPTIONS, not in a control connector, which is the only wiring this
++ * port used to understand. Ten MoneyMoney commands reached us with a target and no action, and a
++ * menu item with no action is disabled and dead. */
++- (void) _bindingApplySelectorNameOption: (NSString *) binding
++                                 options: (NSDictionary *) options
++{
++    SEL setter;
++
++    if ([binding isEqualToString: @"target"])
++        setter = @selector(setAction:);
++    else if ([binding isEqualToString: @"doubleClickTarget"])
++        setter = @selector(setDoubleAction:);
++    else
++        return;
++
++    NSString *name = [options objectForKey: @"NSSelectorName"];
++
++    if (![name isKindOfClass: [NSString class]] || [name length] == 0)
++        return;
++    if (![self respondsToSelector: setter])
++        return;
++
++    SEL action = NSSelectorFromString(name);
++
++    if (action == NULL)
++        return;
++
++    void (*apply)(id, SEL, SEL) = (void (*)(id, SEL, SEL)) objc_msgSend;
++    apply(self, setter, action);
+ }
+ 
+ - (void) unbind: (id) binding {

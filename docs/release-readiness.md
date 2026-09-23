@@ -719,3 +719,40 @@ in `_ciderDrawTitleBarInBounds:` and hit-tests them with arithmetic in
 `_ciderHandleTitleBarMouseDown:`, deliberately computed the same way so the target cannot drift from
 the paint. Answering `standardWindowButton:` therefore means creating buttons that do not exist yet
 and making the paint consult them, which is a bigger change than the one line it looks like.
+
+## A menu command can be wired without a control connector, and we read only one wiring
+
+`NSNibBindingConnector` with `NSBinding` equal to `target` carries the receiver as the binding
+destination and the SELECTOR as the `NSSelectorName` entry of its options dictionary. We
+established the binding, applied the value to `target`, and dropped the options, so the item ended
+up with a correct target and no action. An `NSMenuItem` with a target and no action is DISABLED,
+so those commands were unreachable rather than merely mis-wired.
+
+Neither `NSTargetBinding` nor `NSSelectorNameBindingOption` existed anywhere in this AppKit before
+cocotron 0138, so nothing had ever read that option.
+
+Counted across the staged roster rather than asserted:
+
+| application | nibs read | target bindings |
+| --- | --- | --- |
+| MoneyMoney | 90 | 23 |
+| iA Writer | 47 | 2 |
+| Swift Publisher 5 | 104 | 0 |
+| iTerm2 | 451 | 0 |
+| CMake | 0 | 0 |
+
+MoneyMoney's 23 are its whole application menu and whole Help menu in both languages, plus two
+buttons in `PreferencesWindow.nib` and one in `SpotlightWindow.nib`. iA Writer's two are Add
+Pattern and Remove Pattern. Swift Publisher's zero covers the 104 of its 222 nibs that
+`scripts/nibdump.py` can read; the other 118 are the older keyed archive format, nearly all inside
+Sparkle.
+
+Verified end to end on MoneyMoney: choosing About MoneyMoney now returns
+`enabled=1 action=showAboutWindow:` from tracking, loads `AboutWindow.nib`, connects its six
+outlets, and maps an `MMPanel` titled About MoneyMoney which the capture shows complete.
+
+The whole history, including the two wrong turns that preceded it, is in
+[target-binding-actions.md](target-binding-actions.md).
+
+STILL TO DRIVE: the three MoneyMoney buttons and the two iA Writer buttons, which are the same
+defect on `NSControl` rather than `NSMenuItem` and have not been exercised.
