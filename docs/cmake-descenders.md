@@ -119,3 +119,33 @@ was used (`CIDER_TEXTDRAW`), and `CIDER_TRACE_GLYPHRUN` prints the FreeType slot
 (`CIDER_GLYPHSLOT`) so a bitmap rendered too small can be told from one placed too low. Their per
 line caps went from 40 to 400, because 40 hid the descender glyphs behind the ordinary ones three
 separate times.
+
+
+## FIXED, on the second attempt, and the difference is one line
+
+The first attempt above offset each glyph by the current text position. That was the right rule with
+a missing half. `O2ContextShowGlyphsAtPoint` SETS the text position as it draws, so every call
+measured from where the last one ended and LibreOffice walked off its own cells.
+
+The callers say what the rule has to be. Adding the frames to `CIDER_TEXTPOS` names them:
+
+    CIDER_TEXTPOS set=1.00,1.27 <- QTextureGlyphCache::calculateSubPixelPositionCount
+    CIDER_TEXTDRAW ctfont count=1 first=0.00,0.00
+
+Qt sets the position and passes zero, once per subpixel variant, x stepping 1.00, 1.08, 1.16, 1.25
+with y fixed at the lift it wants under the baseline. LibreOffice arrives through SKIA, which never
+sets the position and passes the offsets itself:
+
+    CIDER_TEXTDRAW ctfont count=1 first=1.00,2.00 <- SkScalerContext_Mac::Offscreen::getCG
+
+One rule serves both: **a glyph position is an offset from the text position, and the call must not
+move it.** cocotron 0134 reads the base once, offsets every glyph by it, and restores it at the end.
+
+Measured after: the roster sweep has LibreOffice unchanged at 137276 and CMake moved from 33544 to
+34456, which is more ink because the descenders are there. The window now reads
+
+    Press Configure to update and display new values in red, then press Generate to generate
+    selected build files.
+
+with Grouped, Advanced and the rest correct, where it read ConfiQure, uDdate, disDlav, Dress and
+Qenerate for weeks. The baseline is updated with the reason beside it.

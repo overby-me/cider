@@ -14,6 +14,12 @@
 #
 # Refresh with ROSTER_BASELINE_UPDATE=1 scripts/roster-sweep.sh after looking at every capture.
 #
+# cm MOVED AGAIN from 33544 to 34456 on 2026-09-23, and this time it is an IMPROVEMENT, not residue.
+# cocotron 0134 fixed the glyph position rule, so every descender that CMake had been drawing three
+# rows too low now renders in place: Configure, update, display, press, Generate and Grouped all
+# read correctly where they used to read ConfiQure, uDdate, disDlav, Dress, Qenerate and GrouDed.
+# More ink is more bytes. See docs/cmake-descenders.md.
+#
 # cm MOVED from 35850 to 33544 on 2026-09-23, and the move was mine. CMake persists its settings in
 # Users/root/Library/Preferences, so driving it through a real Configure left the source path, the
 # generator and five red cache entries behind, and the NEXT startup capture showed all of them. The
@@ -26,4 +32,4 @@ mm 15860
 it 16578
 lo 137276
 mx 32124
-cm 33544
+cm 34456

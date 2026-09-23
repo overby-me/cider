@@ -1,0 +1,70 @@
+--- a/CoreText/KTFont.m
++++ b/CoreText/KTFont.m
+@@ -112,12 +112,26 @@
+     O2ContextSetFont(context, _font);
+     O2ContextSetFontSize(context, _size);
+     /*
+-     * A GLYPH POSITION HERE IS ABSOLUTE, and adding the current text position to it was tried and
+-     * WITHDRAWN. Quartz documents these as user space, and LibreOffice relies on that: offsetting
+-     * them by the text position fixed the CMake descenders and destroyed the LibreOffice Start
+-     * Centre, whose labels came back as scattered fragments. The CMake improvement was a
+-     * coincidence of whatever value happened to be left in the text position.
++     * A GLYPH POSITION IS AN OFFSET FROM THE TEXT POSITION, AND THIS CALL MUST NOT MOVE IT.
++     *
++     * The two applications that arrive here with their own glyphs disagree about which half they
++     * use, and both are served by the same rule. Qt sets the position and passes zero:
++     *
++     *     CIDER_TEXTPOS set=1.00,1.27 <- QTextureGlyphCache::calculateSubPixelPositionCount
++     *     CIDER_TEXTDRAW ctfont count=1 first=0.00,0.00
++     *
++     * one call per subpixel variant, x stepping 1.00, 1.08, 1.16, 1.25 with y fixed at the lift it
++     * wants under the baseline. LibreOffice goes through Skia, which never sets the position and
++     * passes the offsets itself:
++     *
++     *     CIDER_TEXTDRAW ctfont count=1 first=1.00,2.00 <- SkScalerContext_Mac::Offscreen::getCG
++     *
++     * Adding the base was tried ALONE first and destroyed the LibreOffice Start Centre, because
++     * O2ContextShowGlyphsAtPoint sets the text position as it draws: each call then measured from
++     * where the last one ended and the text walked off the cell. The restore is what makes the rule
++     * hold for both, and it is why this is not simply the earlier change again.
+      */
++    O2Point base = O2ContextGetTextPosition(context);
+     /* WHETHER THIS ENTRY POINT IS THE ONE IN USE AT ALL. CTFontDrawGlyphs and
+      * CGContextShowGlyphsWithAdvances reach the same rasteriser by different routes, and only one
+      * of them carries a position per glyph. */
+@@ -133,8 +147,10 @@
+         }
+     }
+     for (NSUInteger i = 0; i < count; i++) {
+-        O2ContextShowGlyphsAtPoint(context, positions[i].x, positions[i].y, &glyphs[i], 1);
++        O2ContextShowGlyphsAtPoint(context, base.x + positions[i].x, base.y + positions[i].y,
++                                   &glyphs[i], 1);
+     }
++    O2ContextSetTextPosition(context, base.x, base.y);
+ }
+ 
+ - (uint32_t) symbolicTraits {
+--- a/Onyx2D/O2Context.m
++++ b/Onyx2D/O2Context.m
+@@ -1032,8 +1032,20 @@
+         static int printedPos;
+ 
+         if (printedPos < 400) {
++            void *frames[8];
++            int depth = backtrace(frames, 8);
++
+             printedPos++;
+-            fprintf(stderr, "CIDER_TEXTPOS set=%.2f,%.2f\n", (double) x, (double) y);
++            fprintf(stderr, "CIDER_TEXTPOS set=%.2f,%.2f", (double) x, (double) y);
++            /* WHO set it, because a value left over from an earlier draw and a value the caller
++             * means to be used look identical in the number alone. */
++            for (int i = 1; i < depth; i++) {
++                Dl_info info;
++
++                if (dladdr(frames[i], &info) != 0 && info.dli_sname != NULL)
++                    fprintf(stderr, " <- %s", info.dli_sname);
++            }
++            fprintf(stderr, "\n");
+             fflush(stderr);
+         }
+     }
