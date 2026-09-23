@@ -1,0 +1,36 @@
+addObject: must refuse nil, the way its own two neighbours already do.
+
+-[__NSCFArray insertObject:atIndex:] and -[__NSCFArray replaceObjectAtIndex:withObject:] both raise
+Attempt to insert nil object, which is what macOS does. addObject: alone passed the NULL straight
+to CFArrayAppendValue.
+
+A NULL in a CFArray is not a stored nil, it is undefined behaviour with a delayed fuse: the array
+callbacks are handed NULL, every later read gives an object back to a caller that cannot tell,
+and the crash lands somewhere with no relation to the mistake. iA Writer added a nil bookmark here
+and died four layers later inside removeObjectForKey: on a dictionary it had never touched. Had
+this raised, the exception would have named the site.
+
+This is a behaviour change with a roster-wide blast radius, so it is deliberately NOT folded into
+the bookmark fix that made it visible.
+
+--- a/NSArray.m
++++ b/NSArray.m
+@@ -2097,6 +2097,18 @@
+ 
+ - (void)addObject:(id)object
+ {
++    /* Both neighbours here already refuse nil as macOS does. Storing the NULL instead moves the
++     * crash to an unrelated frame: iA Writer added a nil bookmark through this method and died
++     * four layers later on a nil dictionary key. */
++    if (object == nil)
++    {
++        CFStringRef reason = CFStringCreateWithFormat(kCFAllocatorDefault, NULL,
++                                                      CFSTR("Attempt to insert nil object at index %ld"),
++                                                      (long) CFArrayGetCount((CFArrayRef)self));
++        @throw [NSException exceptionWithName:NSInvalidArgumentException
++                                       reason:(NSString *)reason
++                                     userInfo:nil];
++    }
+     if (_CFArrayIsMutable((CFArrayRef)self))
+     {
+         CFArrayAppendValue((CFMutableArrayRef)self, (const void *)object);
