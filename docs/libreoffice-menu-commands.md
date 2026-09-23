@@ -399,3 +399,9 @@ terminal window at startup. All over a live `Cider [~]#` prompt.
 That thread was open for a long time as a crash, then a blank screen, then a window that never
 mapped. It is closed, and it is worth noting that the last step of it was reached by the KEYBOARD
 path, which did not work at all until 0128.
+
+Swift Publisher makes four on the keyboard path. `⌘,` there carries `key=U+002C mods=0x100000
+raw=0x100000` (a comma, so NOT a letter, so Shift is compared for it under 0128) and it still matches
+exactly. Its General preferences window opens with both toolbar panes, the For New Documents and
+Default Format radio groups, the Autosave and Measurement Units popups, the update checkbox and
+Reset to Defaults.
