@@ -1,0 +1,40 @@
+The initialiser is an action setter too, and the trace could not see it.
+
+CIDER_TRACE_MENUITEM_DECODE hooks -[NSMenuItem setTarget:] and -[NSMenuItem setAction:], and
+-[NSMenuItem initWithTitle:action:keyEquivalent:] assigns _action directly without going through
+either. Every menu item an application builds in CODE therefore read as having no action at all.
+
+THAT SILENCE WAS RECORDED AS A DEFECT. The standing note on MoneyMoney says about eighteen items
+end up with a real target and a NULL action. Measured with the trace as it was, on a settle only
+drive: 108 distinct item titles, 25 of them ending with a real target and no action. Ten of the
+twenty five are menu BAR items whose target is their own NSMenu and which correctly have no action;
+four more are popup button items whose target is the cell. The remaining ten are real commands,
+About MoneyMoney and eight Help menu entries and Encrypt File for Sending, all of them targeting
+MainWindowController.
+
+And all ten decode as action=ABSENT target=nil with ZERO control connectors, which means the nib
+never gave them anything and the application builds them itself. An item built with
+initWithTitle:action:keyEquivalent: has its action from birth and this trace never saw it.
+
+So the number is an artefact of an incomplete instrument, not evidence of a defect. Adding the
+initialiser to the trace is what makes the next measurement mean anything.
+
+Instrument only, behind the same environment variable, no behaviour change.
+
+--- a/AppKit/NSMenu.subproj/NSMenuItem.m
++++ b/AppKit/NSMenu.subproj/NSMenuItem.m
+@@ -160,6 +160,14 @@
+     _title = [title copy];
+     _target = nil;
+     _action = action;
++    /* THE INITIALISER IS AN ACTION SETTER, and leaving it out of the trace made every item an
++     * application creates in code read as having no action at all. Ten MoneyMoney commands were
++     * recorded as a defect on that silence. */
++    if (getenv("CIDER_TRACE_MENUITEM_DECODE") != NULL) {
++        fprintf(stderr, "CIDER_ITEMSET init title=%s sel=%s\n",
++                [_title UTF8String] ?: "(nil)", action != NULL ? sel_getName(action) : "NULL");
++        fflush(stderr);
++    }
+     _keyEquivalent = [keyEquivalent copy];
+     /* COMMAND IS THE DEFAULT, as it is on Apple systems. An application that writes
+      * setKeyEquivalent: @"h" means Command H and does not say so; LibreOffice sets Hide, Hide
