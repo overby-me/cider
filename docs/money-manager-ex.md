@@ -651,3 +651,24 @@ So the redundant invalidation is real, and it is not what abandons the paint. Th
 rather than landed, because a behaviour change that fixes nothing measurable is how this port
 acquires regressions. The PROBE is kept: the 107 of 132 number is what makes the next reader stop
 suspecting this.
+
+### What the 107 redundant writes DO point at
+
+`ScintillaWX::ModifyScrollBars` decides whether the scrollbars changed by reading them back from the
+wx window and comparing against what it is about to set:
+
+    sbMax = stc->GetScrollRange(wxVERTICAL); sbThumb = stc->GetScrollThumb(wxVERTICAL);
+    if (sbMax != vertEnd || sbThumb != nPage) { stc->SetScrollbar(...); modified = true; }
+
+and `Editor::SetScrollBars` turns `modified` into `AbandonPaint()`. So a readback that never agrees
+with the write abandons EVERY paint, for ever, which is exactly the symptom.
+
+The 107 unchanged native writes are the fingerprint of that: wx would not call `SetScrollbar` at all
+if its own comparison said nothing had changed, yet the values reaching `NSScroller` are identical
+every time. Something between `SetScrollbar` and `GetScrollRange` is not round tripping, and the
+`wxNSScroller`s on this control are both HIDDEN, which is the obvious place for a scrollbar that is
+never really created to look like one whose range reads back as zero.
+
+That is where the next reader should start, and it needs the wx side: either wx sources for this
+build or the disassembly of `wxWindowMac::GetScrollRange`. Nothing further can be settled from the
+AppKit side alone, which is why this stops here rather than guessing at another local change.
