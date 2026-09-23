@@ -1,0 +1,38 @@
+--- a/AppKit/NSMenu.subproj/NSSubmenuView.m
++++ b/AppKit/NSMenu.subproj/NSSubmenuView.m
+@@ -333,8 +333,16 @@
+     }
+ }
+ 
++/*
++ * THE ROWS A HIT TEST WALKS MUST BE THE ROWS THAT WERE DRAWN, and the index must mean the same
++ * thing to whoever reads it. -drawRect: and the sizing walk -visibleItemArray; this walked the
++ * menu's full array, so a HIDDEN item both took a row that is never painted and shifted the index
++ * into a different array than -itemAtSelectedIndex reads. iA Writer hides Enable Dark Mode at the
++ * head of its View menu: the click on Hide Library landed in the 24 point band of an invisible row
++ * and chose a separator.
++ */
+ - (NSUInteger) itemIndexAtPoint: (NSPoint) point {
+-    NSArray *items = [[self menu] itemArray];
++    NSArray *items = [self visibleItemArray];
+     NSUInteger i, count = [items count];
+     NSRect check = boundsToTitleAreaRect([self bounds]);
+ 
+@@ -353,7 +361,7 @@
+ }
+ 
+ - (NSUInteger) itemIndexAtPoint: (NSPoint) point rect: (NSRect*) rect {
+-    NSArray *items = [[self menu] itemArray];
++    NSArray *items = [self visibleItemArray];
+     NSUInteger i, count = [items count];
+     NSRect check = boundsToTitleAreaRect([self bounds]);
+ 
+@@ -376,7 +384,7 @@
+ /* THE SAME WALK AS -itemIndexAtPoint:, from the other end: rows accumulate from the title area
+  * downwards, each as tall as its own item. */
+ - (NSRect) rectOfItemAtIndex: (NSUInteger) index {
+-    NSArray *items = [[self menu] itemArray];
++    NSArray *items = [self visibleItemArray];
+     NSUInteger i, count = [items count];
+     NSRect check = boundsToTitleAreaRect([self bounds]);
+ 

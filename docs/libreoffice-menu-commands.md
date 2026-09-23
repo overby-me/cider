@@ -101,3 +101,60 @@ again, which has not been done, so it is left open rather than guessed at a seco
 
 iA Writer, Swift Publisher, MoneyMoney, iTerm2, LibreOffice, Money Manager Ex and CMake all pass
 roster-input after the change, with every capture looked at.
+
+## And driving iA Writer found a second, independent defect
+
+With 0123 in place the first native AppKit menu command driven was iA Writer, View then Hide
+Library. It chose a SEPARATOR:
+
+    CIDER_MENU stack depth=2 [0 NSMainMenuView sel=5] [1 NSSubmenuView sel=0]
+    CIDER_MENU track item=(null) enabled=1 action=none target=nil
+
+`item=(null)` with `enabled=1` is the tell. The item was not nil; it had a nil title, no action and
+no target, which is a separator that also reports itself enabled.
+
+The probe that settled it printed both arrays:
+
+    CIDER_MENU atSelected NSSubmenuView sel=0 visible=23 menu=View all=26
+    CIDER_MENU   visible[0] title=(nil) sep=1 hidden=0 action=none
+    CIDER_MENU   visible[1] title=Hide Library sep=0 hidden=0 action=toggleLibrary:
+    CIDER_MENU row[0] y=3.0..27.0 h=24.0 flipped=1 point=26.0 title=Enable Dark Mode
+
+Twenty six items in the menu, twenty three visible. `-drawRect:` and the sizing walk
+`-visibleItemArray`; `-itemIndexAtPoint:` and `-rectOfItemAtIndex:` walked `[[self menu] itemArray]`.
+So a HIDDEN item did two things at once: it took a 24 point band at the top of the menu that is
+never painted, and it shifted every index after it into a different array than
+`-itemAtSelectedIndex` reads. iA Writer hides `Enable Dark Mode` at the head of its View menu, so a
+click on the first drawn row landed in the invisible row above it.
+
+cocotron 0124 walks `-visibleItemArray` in all three. After it:
+
+    CIDER_MENU stack depth=2 [0 NSMainMenuView sel=5] [1 NSSubmenuView sel=1]
+    CIDER_MENU track item=Hide Library enabled=1 action=toggleLibrary: target=nil
+
+**This one needed no hidden item to be visible in the capture.** The menu drew correctly the whole
+time. Only the mapping from a point back to an item was wrong, and nothing on screen said so.
+
+## The action fires, and the proof arrived as a failing gate
+
+`toggleLibrary:` with a nil target goes to `-[NSApplication sendAction:to:from:]`, which walks the
+key window responder chain, the main window chain, the current document, NSApp, the application
+delegate and the document controller.
+
+**A claim made here first and withdrawn within the hour:** that the action was dispatched and
+nothing happened, because the Locations pane was still in the shot taken thirty steps after the
+click. It was not nothing. The very next roster sweep reported
+
+    ia: CONTENT 10064 bytes  captures/sweep-ia/d1-start.png   CHANGED from 31129, LOOK AT IT
+
+and the capture is iA Writer with the library GONE: no Locations pane, no file list. The command had
+worked, iA Writer had persisted the hidden library, and the fresh launch came up without it. The
+shot right after the click was simply taken before the window redrew.
+
+So the lesson is the one about instruments again, in a new shape: **a shot taken n steps after an
+action bounds how long the effect may take, and nothing more.** The state that outlives the process
+is the stronger witness, and here it arrived as a baseline regression on an unrelated gate.
+
+It also means a drive that invokes a real command can move a roster baseline, because these
+applications remember what was done to them. The library was toggled back and the sweep re-measured
+before anything was committed.
