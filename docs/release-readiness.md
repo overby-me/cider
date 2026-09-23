@@ -606,3 +606,18 @@ it fail with exit 1 naming what it got instead.
 
 Not covered, and each wants its own case if this grows: the LEFTMOST bar item, which is the only one
 that met 0125, and key equivalents, which met 0128.
+
+## Reading a capture, rather than guessing at it
+
+`scripts/checks/capture-zoom.py` crops a region of a capture and either magnifies it to a PNG or
+prints its ink as characters, one per pixel, with the row number down the side.
+
+    scripts/checks/capture-zoom.py shot.png --at 232,450 --size 58x22
+    scripts/checks/capture-zoom.py shot.png --at 200,448 --size 260x20 --out zoom.png --scale 6
+
+It exists because LOOK AT THE CAPTURE is not achievable at 11 points by eye, and looking harder
+makes it worse. CMake drew every descender three rows too low for weeks and every gate passed it;
+the first write up of that defect said the letters were SUBSTITUTED, `p` by `D` and `g` by `q`,
+which is what an eye does with a shape it cannot resolve. The ink map gave the vertical extent of
+each letter as a NUMBER and the real defect in one minute. It reads PNGs the same way
+`capture-is-black.py` does, so it needs nothing installed.
