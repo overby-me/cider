@@ -1,0 +1,96 @@
+A NULL colour space must answer, not crash.
+
+Three C accessors in O2ColorSpace read an ivar straight out of their argument with no NULL check.
+Two of them are reached with NULL by a path this port has always had, and iA Writer dies there:
+opening Preferences and clicking the Editor pane is a SIGSEGV, three of three before this and four
+of four counting a run with eager binding.
+
+The chain, measured rather than reasoned:
+
+    +[NSColor colorWithCGColor:]  guards the COLOUR and not its colour space:
+
+        if (cgColor == NULL)
+            return nil;
+        switch (CGColorSpaceGetModel(CGColorGetColorSpace(cgColor))) {
+
+    CGColorGetColorSpace answers NULL, CGColorSpaceGetModel is O2ColorSpaceGetModel, and that is
+    "return self->_type" with nothing in front of it. The faulting instruction is the load itself,
+    movl 0x8(%rdi), %eax, at O2ColorSpaceGetModel+4.
+
+CoreGraphics answers kCGColorSpaceModelUnknown, which is -1, for a NULL colour space, and this
+enum has no member for it, so the cast is deliberate. Minus one sends the switch above to its
+default, which picks NSDeviceRGBColorSpace. O2ColorSpaceGetNumberOfComponents answers 0, which is
+also what CoreGraphics does.
+
+After this the Editor pane opens and renders: text size, typeface, typography, line length limit,
+and the seven highlight colour swatches, which are the colours that needed a colour space at all.
+The guards fire 20 times each in one drive, so the NULL is common on that path rather than an
+edge.
+
+WHAT THIS DOES NOT FIX, and it is the real gap: something is creating a CGColor with no colour
+space. O2ColorCreate is reached with a NULL colour space too, at O2ColorCreate+60. The trace here,
+behind CIDER_TRACE_COLORSPACE, prints the return address of whoever passes NULL so that gap can be
+found next. This change stops an application dying four layers from the cause; it does not close
+the cause.
+
+O2ColorSpaceIsPlatformRGB is the third accessor with the same shape. Nothing reaches it with NULL
+today and this does not claim otherwise; it is guarded because its two neighbours both were.
+
+--- a/Onyx2D/O2ColorSpace.m
++++ b/Onyx2D/O2ColorSpace.m
+@@ -51,6 +51,9 @@
+ const CFStringRef kO2ColorSpaceExtendedLinearGray =
+         CFSTR("kCGColorSpaceExtendedLinearGray");
+ 
++#import <stdlib.h>
++#import <stdio.h>
++
+ @implementation O2ColorSpace
+ 
+ - initWithDeviceGray {
+@@ -182,10 +185,26 @@
+ }
+ 
+ BOOL O2ColorSpaceIsPlatformRGB(O2ColorSpaceRef self) {
++    /* The third of these accessors to read an ivar out of a colour space that may be NULL. Nothing
++     * reaches this one with NULL today; it is guarded because its two neighbours both did. */
++    if (self == NULL)
++        return NO;
++
+     return self->_isPlatformRGB;
+ }
+ 
+ size_t O2ColorSpaceGetNumberOfComponents(O2ColorSpaceRef self) {
++    /* A NULL COLOUR SPACE IS A MISSING ANSWER FROM SOMEWHERE ELSE, and reading _type out of it
++     * turns that into a segfault with no connection to the cause. CoreGraphics answers 0. The
++     * trace names the caller so the real gap is still findable. */
++    if (self == NULL) {
++        if (getenv("CIDER_TRACE_COLORSPACE") != NULL) {
++            fprintf(stderr, "CIDER_CSNULL components ret=%p\n", __builtin_return_address(0));
++            fflush(stderr);
++        }
++        return 0;
++    }
++
+     switch (self->_type) {
+ 
+     case kO2ColorSpaceModelMonochrome:
+@@ -209,6 +228,18 @@
+ }
+ 
+ O2ColorSpaceModel O2ColorSpaceGetModel(O2ColorSpaceRef self) {
++    /* CoreGraphics answers kCGColorSpaceModelUnknown, which is -1, and this enum has no member for
++     * it. +[NSColor colorWithCGColor:] guards the colour but not its colour space, so a NULL one
++     * reached here and killed iA Writer opening the Editor preferences pane; -1 sends that switch
++     * to its default instead. */
++    if (self == NULL) {
++        if (getenv("CIDER_TRACE_COLORSPACE") != NULL) {
++            fprintf(stderr, "CIDER_CSNULL model ret=%p\n", __builtin_return_address(0));
++            fflush(stderr);
++        }
++        return (O2ColorSpaceModel) -1;
++    }
++
+     return self->_type;
+ }
+ 

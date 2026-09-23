@@ -137,3 +137,68 @@ are the only `NSControl` cases of the cocotron 0138 fix anywhere in the roster t
 drive, and the Editor pane is the way in. Until this crash is fixed the fix is verified on
 `NSMenuItem` only. The other three `NSControl` cases are in MoneyMoney, and two of them are
 `purchase:`, which probably leaves the application.
+
+## SOLVED, and the instrument that solved it first had to be fixed
+
+### The instrument was lying, and that is why two theories died
+
+`scripts/core-guest-stack.py` resolved the RIP to `_O2ColorSpaceRetain+4`, and after a rebuild to
+`-[O2ColorSpace initWithPattern]+4`. Both were wrong, and both put the fault on an instruction that
+touches no memory, which is what should have given it away.
+
+The symbols came from the wrong file. There are two Onyx2D binaries in the tree and only one is
+loaded:
+
+    buck-out/.../buck-src/__Onyx2D_dylib__/Onyx2D                       md5 8ead2718   NOT loaded
+    buck-out/.../buck/prefix/__cider_prefix__/.../Onyx2D                md5 230e8616   loaded
+
+Passing `buck-src` as a `--root` makes the script resolve to the first one silently. Against the
+binary that actually ran, the same offset is a different function entirely.
+
+**A fault attributed to an instruction that cannot fault is a fact about the instrument, not about
+the bug.** Two paragraphs were written reconciling the impossible before the md5s were compared.
+
+### The real chain
+
+Against the loaded binary the fault is `_O2ColorSpaceGetModel+4`, and that offset is
+
+    4a54:  8b 47 08   movl 0x8(%rdi), %eax
+
+which is `self->_type`, a load that certainly can fault. The caller, from the stack, is
+`+[NSColor colorWithCGColor:]+0x1e`:
+
+```objc
++ (NSColor *) colorWithCGColor: (CGColorRef) cgColor {
+    if (cgColor == NULL)
+        return nil;
+
+    switch (CGColorSpaceGetModel(CGColorGetColorSpace(cgColor))) {
+```
+
+It guards the COLOUR and not its COLOUR SPACE. `CGColorGetColorSpace` answers NULL,
+`CGColorSpaceGetModel` is `O2ColorSpaceGetModel`, and that was `return self->_type;` with nothing
+in front of it.
+
+### The fix, and what it does not fix
+
+cocotron 0139 makes the three C accessors answer for NULL the way CoreGraphics does:
+`O2ColorSpaceGetModel` returns `kCGColorSpaceModelUnknown`, which is -1 and sends the switch above
+to its default, `O2ColorSpaceGetNumberOfComponents` returns 0, and `O2ColorSpaceIsPlatformRGB`
+returns NO. `O2ColorSpaceGetName` already guarded.
+
+After it the Editor pane opens and renders: text size, typeface, typography, line length limit,
+indentation, and the seven highlight colour swatches, which are the colours that needed a colour
+space at all. The guards fire 20 times each in one drive, so the NULL is ordinary on that path.
+
+THE CAUSE IS STILL UPSTREAM. Something creates a CGColor with no colour space: `O2ColorCreate` is
+reached with a NULL colour space too, at `O2ColorCreate+60`. `CIDER_TRACE_COLORSPACE` prints the
+return address of whoever passes NULL, which is how the next person finds it. This change stops an
+application dying four layers from the cause; it does not close the cause.
+
+### Two rendering defects now visible on that pane
+
+Only visible because the pane opens at all, neither chased:
+
+- the line length row shows the raw key `Editor_Preferences_Line_Lengt` beside the popup, so a
+  localised string is not being looked up
+- the `Highlight color:` label sits far above its swatches
