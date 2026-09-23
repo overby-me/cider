@@ -252,10 +252,53 @@ selector exists somewhere in the nib and did not reach this item.
 
 Swift Publisher sharpens it into a contrast worth keeping: its About carries
 `action=aboutWindow: target=nil` and works, MoneyMoney carries `action=none` and a REAL target and
-does nothing. An item with a target but no action is the shape of a connection that was half
-applied. `-[NSNibControlConnector establishConnection]` sets the action and then the target, and it
-raises rather than returning quietly if either fails, so a half applied connection did not come from
-there. `-[NSMenuItem initWithCoder:]` reads the selector with
-`[coder decodeObjectForKey: @"NSAction"]` and the target with `NSTarget`, so the next measurement is
-whether that key is absent from the archive for this item or present in a form the decoder returns
-nil for. That is a nib decoding question, not a menu question.
+does nothing.
+
+Four hypotheses were put to it, with the instruments cocotron 0126 adds. All four are refuted, and
+the answer is not yet known.
+
+**1. The decoder loses the NSAction key.** Refuted. `CIDER_TRACE_NIB` now dumps the keys a menu item
+carries, and the About item carries exactly nine:
+
+    CIDER_NIB container 16 NSMenuItem values=9 at=381 of 7934
+    CIDER_NIB   itemkey NSMenu kind=10
+    CIDER_NIB   itemkey NSAllowsKeyEquivalentLocalization kind=5
+    CIDER_NIB   itemkey NSAllowsKeyEquivalentMirroring kind=5
+    CIDER_NIB   itemkey NSTitle kind=10
+    CIDER_NIB   itemkey NSKeyEquiv kind=10
+    CIDER_NIB   itemkey NSMnemonicLoc kind=2
+    CIDER_NIB   itemkey NSOnImage kind=10
+    CIDER_NIB   itemkey NSMixedImage kind=10
+    CIDER_NIB   itemkey NSHiddenInRepresentation kind=4
+
+There is no `NSAction` and no `NSTarget` in the archive at all. Across the whole MainMenu, only 17 of
+146 items carry an action key, and all 17 are `submenuAction:` on a submenu parent.
+
+**2. A control connector carries it and did not run.** Refuted. `CIDER_CONNECT` prints every
+connection by kind with the source and its title. There are 105 control connectors, 81 of them with
+an `NSMenuItem` source, and exactly 81 `setAction:` calls land on menu items. Every connector that
+exists ran. None of them names About, Imprint, Help and FAQ, Report an Issue or Show Database in
+Finder.
+
+**3. The application sets it at runtime.** Refuted. `CIDER_ITEMSET` traces both setters. The About
+item receives `setTarget: nil` during decode and `setTarget: AboutWindowController` later, and
+`setAction:` is NEVER called on it. The late write comes in a burst with Help and FAQ, Report an
+Issue, Show Database in Finder and Supported Banks, all re-targeted to `MainWindowController`, with
+no connector firing anywhere near it. That is the shape of an application loop that re-targets items
+whose action it already expects to be there.
+
+**4. A menu delegate fills the items in lazily.** Refuted. `CIDER_MENUUPDATE` now prints the
+delegate and which of the three population selectors it answers:
+
+    CIDER_MENUUPDATE MoneyMoney items=20 autoenables=1 delegate=NSKVONotifying_MainWindowController needsUpdate=0 count=0 updateItem=0
+
+The delegate is real and implements none of them. (Worth keeping anyway: `-[NSMenu update]` calls
+`menuNeedsUpdate:` and never the `numberOfItemsInMenu:` plus `menu:updateItem:atIndex:shouldCancel:`
+pair, so an application that populates a menu that way would get nothing. No roster application does,
+so that gap is recorded rather than filled.)
+
+So a group of about eighteen MoneyMoney items have no action from the archive, no action from a
+connector, no action from the application and no delegate to supply one, and on a Mac they work.
+Something supplies that selector and this port has not found it. The next candidate is the
+application binary itself: disassemble the re-targeting loop and see what it reads before it writes
+the target.

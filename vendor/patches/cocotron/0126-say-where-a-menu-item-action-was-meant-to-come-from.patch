@@ -1,0 +1,137 @@
+--- a/AppKit/NSMenu.subproj/NSMenuItem.m
++++ b/AppKit/NSMenu.subproj/NSMenuItem.m
+@@ -81,6 +81,20 @@
+         id target = [coder decodeObjectForKey: @"NSTarget"];
+         [self setTarget: target];
+ 
++        /* WHAT THE ARCHIVE ACTUALLY HELD FOR THIS ITEM. An item that decodes a target and no action
++         * is a connection that arrived half applied, and only the keys can say which half. */
++        if (getenv("CIDER_TRACE_MENUITEM_DECODE") != NULL) {
++            fprintf(stderr,
++                    "CIDER_ITEMDECODE title=%s action=%s actionclass=%s target=%s sub=%d sep=%d\n",
++                    [title UTF8String] ?: "(nil)",
++                    actionString != nil ? ([actionString UTF8String] ?: "(unprintable)") : "ABSENT",
++                    actionString != nil ? object_getClassName(actionString) : "-",
++                    target != nil ? object_getClassName(target) : "nil",
++                    (int) ([keyed decodeObjectForKey: @"NSSubmenu"] != nil),
++                    (int) [keyed decodeBoolForKey: @"NSIsSeparator"]);
++            fflush(stderr);
++        }
++
+         [self setKeyEquivalentModifierMask:
+                         [keyed decodeIntForKey: @"NSKeyEquivModMask"]];
+         [self setSubmenu: [keyed decodeObjectForKey: @"NSSubmenu"]];
+@@ -408,10 +422,24 @@
+ }
+ 
+ - (void) setTarget: (id) target {
++    if (getenv("CIDER_TRACE_MENUITEM_DECODE") != NULL) {
++        fprintf(stderr, "CIDER_ITEMSET target title=%s to=%s\n",
++                [_title UTF8String] ?: "(nil)",
++                target != nil ? object_getClassName(target) : "nil");
++        fflush(stderr);
++    }
+     _target = target;
+ }
+ 
+ - (void) setAction: (SEL) action {
++    /* WHO SETS WHAT, IN ORDER. MoneyMoney About ends up with a real target and a NULL action, and
++     * the only thing that can separate a connection that never ran from one that ran and was
++     * undone is the sequence of writes. */
++    if (getenv("CIDER_TRACE_MENUITEM_DECODE") != NULL) {
++        fprintf(stderr, "CIDER_ITEMSET action title=%s sel=%s\n",
++                [_title UTF8String] ?: "(nil)", action != NULL ? sel_getName(action) : "NULL");
++        fflush(stderr);
++    }
+     _action = action;
+ }
+ 
+--- a/AppKit/NSMenu.subproj/NSMenu.m
++++ b/AppKit/NSMenu.subproj/NSMenu.m
+@@ -645,9 +645,15 @@
+      * item states carries NSNoAutoenable, and getting that flag wrong greys out every item whose
+      * action is a placeholder, which is exactly what a bound menu item looks like. */
+     if (getenv("CIDER_TRACE_MENU") != NULL) {
+-        fprintf(stderr, "CIDER_MENUUPDATE %s items=%ld autoenables=%d\n",
++        fprintf(stderr,
++                "CIDER_MENUUPDATE %s items=%ld autoenables=%d delegate=%s needsUpdate=%d count=%d updateItem=%d\n",
+                 [[self title] UTF8String] ?: "(none)", (long) [_itemArray count],
+-                (int) _autoenablesItems);
++                (int) _autoenablesItems,
++                _delegate != nil ? object_getClassName(_delegate) : "nil",
++                (int) [_delegate respondsToSelector: @selector(menuNeedsUpdate:)],
++                (int) [_delegate respondsToSelector: @selector(numberOfItemsInMenu:)],
++                (int) [_delegate respondsToSelector: @selector
++                              (menu:updateItem:atIndex:shouldCancel:)]);
+         fflush(stderr);
+     }
+ 
+--- a/AppKit/nib.subproj/NSNibControlConnector.m
++++ b/AppKit/nib.subproj/NSNibControlConnector.m
+@@ -19,11 +19,24 @@
+ 
+ // Original - Christopher Lloyd <cjwl@objc.net>
+ #import <AppKit/NSNibControlConnector.h>
++#import <objc/runtime.h>
+ 
+ @implementation NSNibControlConnector
+ 
+ - (void) establishConnection {
+     NSString *selectorName = _label;
++
++    /* EVERY CONNECTION THE NIB ASKS FOR, by kind. An item that ends up with a target and no action
++     * was either never given a control connection or given one that did not arrive here. */
++    if (getenv("CIDER_TRACE_MENUITEM_DECODE") != NULL) {
++        fprintf(stderr, "CIDER_CONNECT control label=%s source=%s title=%s dest=%s\n",
++                [_label UTF8String] ?: "(nil)", object_getClassName(_source),
++                [_source respondsToSelector: @selector(title)]
++                        ? ([[_source performSelector: @selector(title)] UTF8String] ?: "(nil)")
++                        : "-",
++                _destination != nil ? object_getClassName(_destination) : "nil");
++        fflush(stderr);
++    }
+     NSUInteger length = [selectorName length];
+     SEL selector;
+ 
+--- a/AppKit/nib.subproj/NSNibOutletConnector.m
++++ b/AppKit/nib.subproj/NSNibOutletConnector.m
+@@ -23,6 +23,13 @@
+ @implementation NSNibOutletConnector
+ 
+ - (void) establishConnection {
++    if (getenv("CIDER_TRACE_MENUITEM_DECODE") != NULL) {
++        fprintf(stderr, "CIDER_CONNECT outlet label=%s source=%s dest=%s\n",
++                [_label UTF8String] ?: "(nil)", object_getClassName(_source),
++                _destination != nil ? object_getClassName(_destination) : "nil");
++        fflush(stderr);
++    }
++
+     NSString *methodName = [NSString
+             stringWithFormat: @"set%@%@:",
+                               [[_label substringToIndex: 1] uppercaseString],
+--- a/AppKit/nib.subproj/NSNIBArchiveUnarchiver.m
++++ b/AppKit/nib.subproj/NSNIBArchiveUnarchiver.m
+@@ -408,6 +408,23 @@
+         fflush(stderr);
+     }
+ 
++    /* THE KEYS AN ITEM ACTUALLY CARRIES. A decoder that hands back nil for NSAction cannot say
++     * whether the key is missing from the archive or present in a kind it does not read, and those
++     * want opposite work. */
++    if (NIBTracing() && [className isEqualToString: @"NSMenuItem"]) {
++        NSUInteger k;
++
++        for (k = 0; k < object->valueCount; k++) {
++            struct _NIBValue *v = &_values[object->valueIndex + k];
++
++            fprintf(stderr, "CIDER_NIB   itemkey %s kind=%d\n",
++                    (v->keyIndex < _keyCount) ? ([_keys[v->keyIndex] UTF8String] ?: "(nil)")
++                                              : "(out of range)",
++                    (int) v->kind);
++        }
++        fflush(stderr);
++    }
++
+     if ([className isEqualToString: @"NSString"] ||
+         [className isEqualToString: @"NSMutableString"]) {
+         NSUInteger i;
