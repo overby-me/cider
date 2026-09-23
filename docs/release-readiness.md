@@ -586,3 +586,23 @@ screen.
 
 The result is cm, ia, it, it34, lo, mm, mx and sp all at UNDEFINED 0, and a baseline that is empty
 on purpose so any regression fails.
+
+## Menu commands have a check of their own
+
+`scripts/checks/menu-command-check.sh` drives iA Writer View, Text Size, Make Text Normal Size and
+asserts on the tracking trace rather than on pixels, because a capture cannot see this class at all:
+every menu drew perfectly through all six of the menu defects fixed on 2026-09-23.
+
+One drive, chosen because that menu is the sharpest case available. It HIDES an item at its head, so
+a hit test that walks the full item array instead of the visible one picks a separator (0124); Text
+Size is a PARENT, so releasing on it has to leave the menu open instead of ending tracking (0123);
+and the item is three levels down, the only path with a viewStack deeper than two. Make Text Normal
+Size sets the default, so a pass leaves no persisted state and cannot move a roster baseline.
+
+It refuses to be silent about its own health: fewer than 100 lines of guest log is a FAIL with the
+reason, because a guest that never started and a menu that chose nothing look identical from here.
+Proved both ways before it was committed, by asking it for an item that does not exist and watching
+it fail with exit 1 naming what it got instead.
+
+Not covered, and each wants its own case if this grows: the LEFTMOST bar item, which is the only one
+that met 0125, and key equivalents, which met 0128.
