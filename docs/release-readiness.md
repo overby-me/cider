@@ -689,3 +689,33 @@ the four it is about, while its controls passed. Rebuilt with it: **46 checks, 0
 The first version of that section was itself wrong and the note is worth keeping: it used
 `NSURLFileSizeKey` as the key the port implements, and that key has no branch at all, so the
 control failed for the same reason the subject did.
+
+## How many unimplemented AppKit methods the roster actually reaches
+
+`NSUnimplementedMethod()` prints a line naming the class it was sent to, so the run logs answer this
+directly rather than by reading the source. AppKit here has **367** of them. Across the seven sweep
+captures and the seven input captures, the roster reaches **29**, and only four are reached by more
+than one application:
+
+| reached by | selector | applications |
+|---|---|---|
+| 3 | `standardWindowButton:` | CMake, iTerm2, MoneyMoney |
+| 2 | `addLocalMonitorForEventsMatchingMask:handler:` | iA Writer, MoneyMoney |
+| 2 | `animator` | iA Writer, iTerm2 |
+| 2 | `setPreventsApplicationTerminationWhenModal:` | iA Writer, MoneyMoney |
+
+The rest are single-application: spell checking and find bar on iA Writer, icon lookup and an
+IOSurface attachment on CMake, resting touches and a represented URL on iTerm2, a depth limit on
+LibreOffice.
+
+**The scope of that number is the scope of those captures**: one start state and one input step per
+application. A path nobody drives reaches nothing, so this is a lower bound and it will move as new
+paths are exercised. It is worth keeping because it turns 367 into a list short enough to read, and
+because it says which one to do first: `-[NSWindow standardWindowButton:]`, asked for by
+`QNSWindow`, `iTermWindow` and `MMWindow`, all three of them the applications own window subclass.
+
+There are no `NSButton` views behind the title bar to return: `NSThemeFrame` PAINTS the three lights
+in `_ciderDrawTitleBarInBounds:` and hit-tests them with arithmetic in
+`_ciderHandleTitleBarMouseDown:`, deliberately computed the same way so the target cannot drift from
+the paint. Answering `standardWindowButton:` therefore means creating buttons that do not exist yet
+and making the paint consult them, which is a bigger change than the one line it looks like.
