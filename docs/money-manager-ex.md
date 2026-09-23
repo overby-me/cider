@@ -859,3 +859,21 @@ width the caller derived is right, or the caller narrows what it was told and ou
 a glyph that macOS would have clipped. Both are testable; neither is tested. The rect origin is
 x=2.00, so a two point inset on each side of a 68 point control would give exactly this 64, which
 is the first thing to check.
+
+### And our own size and draw insets AGREE, so the 68 comes from outside them
+
+Checked immediately after, because a size path and a draw path that disagree by a point is the
+obvious shape for this and would have been ours:
+
+- `-[NSTextFieldCell cellSize]` adds **4** to the width for a label that is neither bezeled nor
+  bordered.
+- `-[NSTextFieldCell _valueRectForBounds:]`, which `titleRectForBounds:` returns directly, insets
+  by **2 on each side** for the same case, which is the same 4.
+
+They agree. So `cellSize` for `Wednesday` is 65 + 4 = **69**, and the control the text is drawn into
+is **68**: the draw rect is 64 at x=2.00.
+
+**So nothing in our text measurement or our cell geometry accounts for the missing point.** The 68
+is decided outside them, and the remaining question is what wx asks for and what it does with the
+answer: whether it reads `cellSize` at all, and whether a sizer then shrinks the control below the
+best size it was given. That is the next measurement, and it is one trace on `cellSize` away.
