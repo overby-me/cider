@@ -39,9 +39,62 @@ O2ColorSpaceRef O2ColorSpaceRetain(O2ColorSpaceRef self) {
 }
 ```
 
-The function guards NULL, so the argument is a non-NULL pointer that is not a live object: a freed
-or garbage colour space whose isa is dereferenced by `CFRetain`. An over-release somewhere earlier
-is the shape of it. Not yet narrowed to a caller.
+### The caller
+
+Walking the crashing thread stack out of the core gives the return address at `rsp+8`, which is
+`Onyx2D+0x31ec`. The nearest preceding symbol is `_O2ColorCreateGenericGray` at `0x31e0`, so the
+call is twelve bytes into:
+
+```objc
+O2ColorRef O2ColorCreateGenericGray(O2Float gray, O2Float a) {
+    return [[O2Color alloc] initWithDeviceGray: gray alpha: a];
+}
+
+- initWithDeviceGray: (O2Float) gray alpha: (O2Float) alpha {
+    O2Float components[2] = {gray, alpha};
+    O2ColorSpaceRef colorSpace = O2ColorSpaceCreateDeviceGray();
+    O2ColorInitWithColorSpace(self, colorSpace, components);   /* the retain is in here */
+    [colorSpace release];
+    return self;
+}
+```
+
+Both `initWithDeviceGray:alpha:` and `O2ColorInitWithColorSpace` are inlined into
+`O2ColorCreateGenericGray`, which is why the call appears to come from there.
+
+### And here the obvious reading BREAKS, which is worth saying rather than hiding
+
+`O2ColorSpaceCreateDeviceGray()` is `[[O2ColorSpace alloc] initWithDeviceGray]` and
+`-initWithDeviceGray` only sets two ivars. There is no shared instance and no cache, so the colour
+space being retained is freshly allocated on the line above and cannot be a stale pointer. The
+over-release reading does not survive contact with the code.
+
+Disassembling makes it worse rather than better. `_O2ColorSpaceRetain` begins:
+
+```
+    4ad0:  55              pushq  %rbp
+    4ad1:  48 89 e5        movq   %rsp, %rbp
+    4ad4:  48 83 ec 10     subq   $0x10, %rsp     <- the reported RIP
+    4ad8:  48 89 7d f8     movq   %rdi, -0x8(%rbp)
+```
+
+**The instruction at the faulting address touches no memory.** `sub $0x10, %rsp` cannot raise
+SIGSEGV on real hardware. The recorded `rsp` is consistent with the two instructions before it
+having run (16 byte aligned at a call boundary, minus the 8 of the push), so the machine state and
+the fault do not agree.
+
+Nor is it a stack overflow: the `PT_LOAD` holding `rsp` runs `0x7fffff600000` for `0x800000`, and
+`rsp` is `0x7fffffdfb130`, about 20 KB below the top of an 8 MB region. The stack is nearly empty,
+which also rules out runaway recursion.
+
+What IS established is that it is deterministic and tied to this path: three runs, three faults,
+the same offset every time. What is NOT established is which access actually faults. The guest
+emulation layer is the remaining suspect for the RIP attribution.
+
+**The next step is an instrument, not more inference:** print the pointer and
+`__builtin_return_address(0)` from `O2ColorSpaceRetain` under an environment switch, drive it
+again, and read the last line. Ground truth beats another theory here, and two theories have
+already died on this one.
 
 ## How the click was proved to land on the right item
 
