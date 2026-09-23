@@ -214,6 +214,32 @@ with `[checkView isFlipped]` rather than the tracking view's. After it:
 **Three applications, three different defects, all between the click and the action.** None of them
 was visible in a capture: every menu drew correctly throughout.
 
+## Swift Publisher confirms the fix on a second leftmost bar item
+
+Swift Publisher 5 was driven next precisely because its application menu is also the leftmost item,
+the case 0125 fixed. It works end to end:
+
+    CIDER_MENU mouseDown on NSMainMenuView at 62,13 bounds=1000x28 items=9
+    CIDER_MENU submenuNow index=0 branch=yes
+    CIDER_MENU track item=About Swift Publisher 5 enabled=1 action=aboutWindow: target=nil
+
+and the About panel renders: the application icon, Swift Publisher 5, Version 5.7.8 (v4827) and the
+BeLight copyright line, in a rounded floating panel with its shadow. Four applications now invoke
+menu commands: LibreOffice, Money Manager Ex, iA Writer and Swift Publisher.
+
+**WITHDRAWN, and it cost four drives.** Swift Publisher was first reported here as an application
+whose menu bar receives no clicks at all, because clicking at capture y 17 produced no `mouseDown`
+while clicks elsewhere in the same window worked. That was wrong, and so was the oversize window
+theory built on top of it. The bar is simply NOT at y 17. Its own trace said so all along:
+
+    CIDER_MENU bar drawRect ... inwindow=1000x28@0,568      window height 618
+
+which places it at capture rows 22 to 50. A click at y 35 opens it every time. The y 17 came from
+reading the text position off the rendered image by eye, and the estimate was 18 points high.
+
+**Never take a coordinate off a capture by eye when a trace can give it exactly.** The frame is in
+the log; the picture is for deciding whether something looks right, not for measuring where it is.
+
 ## Still open: an item with a target and no action
 
 `About MoneyMoney` above ends with `action=none` and a real target. `-[NSMenuView mouseDown:]` then
@@ -222,5 +248,14 @@ appears. This is not the tracking loop: tracking now returns exactly the right i
 
 Of the 93 MoneyMoney menu items the `CIDER_MENUITEM` trace covers, NONE has a null action, and one
 carries `makeKeyAndOrderFront:` with a window controller target, which is what About wants. So the
-selector exists somewhere in the nib and did not reach this item. That is a nib decoding question,
-not a menu question, and it is where this thread goes next.
+selector exists somewhere in the nib and did not reach this item.
+
+Swift Publisher sharpens it into a contrast worth keeping: its About carries
+`action=aboutWindow: target=nil` and works, MoneyMoney carries `action=none` and a REAL target and
+does nothing. An item with a target but no action is the shape of a connection that was half
+applied. `-[NSNibControlConnector establishConnection]` sets the action and then the target, and it
+raises rather than returning quietly if either fails, so a half applied connection did not come from
+there. `-[NSMenuItem initWithCoder:]` reads the selector with
+`[coder decodeObjectForKey: @"NSAction"]` and the target with `NSTarget`, so the next measurement is
+whether that key is absent from the archive for this item or present in a form the decoder returns
+nil for. That is a nib decoding question, not a menu question.
