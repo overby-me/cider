@@ -225,3 +225,37 @@ cases of cocotron 0138 in the roster that are safe to drive, are still out of re
 of the binding, and no longer because of the crash, but because the sheet that would carry them
 cannot be presented. That family is the next thing to implement if the `NSControl` half of 0138 is
 to be exercised at all.
+
+## The sheet now presents, and the remaining defect is between the click and the action
+
+cocotron 0140 implements the presentation family. Same drive, after it: no UNRECOGNIZED, and
+window 26 maps at 390x329, which is the 390x307 view of `CustomPatternsPreferences.nib` plus a
+title bar. The capture shows the sheet over the Editor pane with its introduction label, an empty
+pattern table, the add and remove buttons, and a blue Done.
+
+**The add button still does nothing, and three things rule out the obvious explanations.**
+
+1. **The binding is established and carries its selector.** `CIDER_TRACE_CONTROL` shows
+   `target -> ...self.customPatternsTableViewController ... options=NSSelectorName` on both
+   buttons, so cocotron 0138 gave them their actions and pointed them at the table controller.
+2. **The click lands on the button.** `TRACE_INPUT` shows it arriving at the sheet surface, window
+   26, at `x=32 y=298`. The sheet is 390x329 with a 22 point title bar, so that is content y 276
+   from the top of a 307 tall view, which is 31 from the bottom, and `addButton` spans 20 to 41.
+   Dead centre. The first attempt at `y=666` arrived at content y 48, seven points above the
+   button, and that miss is how the offset was measured rather than guessed.
+3. **The action is never sent.** `CIDER_TRACE_MSGSEND=IACustomPatterns` prints 207 messages to that
+   class over the drive and not one of them is `addPattern:`.
+
+So the sheet is presented, the control is wired, and the click arrives: what fails is between the
+click and the action.
+
+### One hypothesis tested and REFUTED
+
+`-[NSWindow _attachSheetContextOrderFrontAndAnimate:]` ends with `[self makeKeyWindow]`, which
+makes the PARENT key rather than the sheet. On macOS the sheet takes key, and a control on a
+non-key window does not track the mouse, so this looked like the whole answer.
+
+Changed to `[sheet makeKeyWindow]`, rebuilt, re-driven: the capture changes slightly, so the
+change is not inert, and `addPattern:` is still never sent. **Reverted**, because a change to the
+path every sheet in the roster uses does not earn its place on a hypothesis that did not pay out.
+Recorded here so the next reader does not spend the same hour on it.

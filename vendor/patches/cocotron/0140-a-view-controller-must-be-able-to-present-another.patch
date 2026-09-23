@@ -1,0 +1,124 @@
+A view controller must be able to present another.
+
+The whole NSViewController presentation family was missing. Not stubbed, not partial: grepping
+NSViewController.m and its header for presentViewControllerAsSheet:, presentViewController:animator:,
+dismissViewController: or presentViewControllerAsModalWindow: returned nothing at all.
+
+iA Writer opens its Custom Patterns editor that way. Measured before this change, with the click
+aimed from traces rather than by eye:
+
+    cider: UNRECOGNIZED -[IAEditorPreferencesContentViewController presentViewControllerAsSheet:]
+
+The button worked, the action ran, and nothing appeared.
+
+NSApplication already has beginSheet: and endSheet:, so this only has to build the window that
+carries the presented controller and remember which window that was, because dismissViewController:
+is handed the controller and nothing else. The association lives on the presented controller.
+
+MEASURED AFTER, same drive: UNRECOGNIZED count for present is 0, and window 26 maps at 390x329,
+which is the 390x307 view of CustomPatternsPreferences plus a title bar. The capture shows the
+sheet over the Editor pane with its introduction label, an empty pattern table, the add and remove
+buttons and a blue Done.
+
+presentViewControllerAsModalWindow: is the same machinery with no parent. No roster application
+reaches it, and this does not claim otherwise; it is here because an application that reached for
+it would die exactly the way iA Writer did.
+
+WHAT IS STILL WRONG, and it is not this: the add button on that sheet receives its click, at the
+right point in the right surface, and sends no action. Measured, in this order: the target binding
+IS established with its NSSelectorName option, so cocotron 0138 gave it an action; the click
+arrives at the sheet surface at content y 31 against a button spanning 20 to 41, so it lands; and
+CIDER_TRACE_MSGSEND on the target class shows 207 messages and not one addPattern:. So the sheet
+is presented and the control is wired, and something between the click and the action is not.
+
+--- a/AppKit/NSViewController.m
++++ b/AppKit/NSViewController.m
+@@ -1,5 +1,8 @@
+ #include <string.h>
++#import <AppKit/NSApplication.h>
+ #import <AppKit/NSNib.h>
++#import <AppKit/NSWindow.h>
++#import <AppKit/NSView.h>
+ #import <AppKit/NSNibLoading.h>
+ #import <AppKit/NSRaise.h>
+ #import <AppKit/NSViewController.h>
+@@ -442,6 +445,79 @@
+  * view ends up in the old one's place and the handler runs, and doing it immediately keeps that
+  * contract. Animating it is a separate question from being correct.
+  */
++/* THE PRESENTATION FAMILY, none of which existed. iA Writer opens Custom Patterns with
++ * presentViewControllerAsSheet: and the selector was UNRECOGNIZED, so the button worked, the
++ * action ran, and nothing appeared.
++ *
++ * The presented controller owns nothing here, so the window that carries it is remembered on the
++ * controller itself; dismissViewController: has only the controller to go on. */
++static const char kCiderPresentationWindow;
++
++- (NSWindow *) _ciderWindowCarrying: (NSViewController *) viewController {
++    return objc_getAssociatedObject(viewController, &kCiderPresentationWindow);
++}
++
++- (NSWindow *) _ciderMakeWindowFor: (NSViewController *) viewController {
++    NSView *content = [viewController view];
++    NSRect frame = (content != nil) ? [content frame] : NSMakeRect(0, 0, 320, 200);
++    NSWindow *window = [[NSWindow alloc] initWithContentRect: frame
++                                                  styleMask: NSTitledWindowMask
++                                                    backing: NSBackingStoreBuffered
++                                                      defer: NO];
++
++    if (content != nil)
++        [window setContentView: content];
++    if ([viewController title] != nil)
++        [window setTitle: [viewController title]];
++
++    objc_setAssociatedObject(viewController, &kCiderPresentationWindow, window,
++                             OBJC_ASSOCIATION_RETAIN);
++    [window release];
++
++    return window;
++}
++
++- (void) presentViewControllerAsSheet: (NSViewController *) viewController {
++    NSWindow *sheet = [self _ciderMakeWindowFor: viewController];
++
++    [viewController _ciderSendViewDidLoadIfNeeded];
++    [NSApp beginSheet: sheet
++            modalForWindow: [[self view] window]
++             modalDelegate: nil
++            didEndSelector: NULL
++               contextInfo: NULL];
++    [viewController _ciderSendAppearance: YES];
++}
++
++/* The same machinery with no parent, which is what a modal window is. Not exercised by any roster
++ * application, and this does not claim it is; it is here because an application that reaches for it
++ * would otherwise die the same way iA Writer did. */
++- (void) presentViewControllerAsModalWindow: (NSViewController *) viewController {
++    NSWindow *window = [self _ciderMakeWindowFor: viewController];
++
++    [viewController _ciderSendViewDidLoadIfNeeded];
++    [viewController _ciderSendAppearance: YES];
++    [NSApp runModalForWindow: window];
++}
++
++- (void) dismissViewController: (NSViewController *) viewController {
++    NSWindow *window = [self _ciderWindowCarrying: viewController];
++
++    if (window == nil)
++        return;
++
++    [viewController _ciderSendAppearance: NO];
++
++    if ([window isSheet])
++        [NSApp endSheet: window];
++    else
++        [NSApp stopModal];
++
++    [window orderOut: self];
++    objc_setAssociatedObject(viewController, &kCiderPresentationWindow, nil,
++                             OBJC_ASSOCIATION_RETAIN);
++}
++
+ - (void) transitionFromViewController: (NSViewController *) fromViewController
+                      toViewController: (NSViewController *) toViewController
+                               options: (NSViewControllerTransitionOptions) options
