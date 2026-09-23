@@ -298,3 +298,22 @@ its `enabled` binding reads `canRemovePattern` and the list is empty.
 `addPattern:` fires and no row appears in the table. Whether that is a table view that does not
 reload or an add that needs something else has not been measured. The pattern list is still empty
 afterwards, so these drives leave no persisted state behind.
+
+## The empty pattern table: one suspect eliminated by reading, and the next measurement named
+
+`addPattern:` is delivered (see the correction above) and no row appears. The obvious suspect is a
+stale row count, because `-[NSTableView numberOfRows]` caches in `_numberOfRows` and answers from
+the cache until something sets it to -1.
+
+**Eliminated.** `-reloadData` calls `-noteNumberOfRowsChanged`, and that is one of the three places
+that sets `_numberOfRows = -1`. So a table that is reloaded does ask its data source again.
+
+What is NOT measured, and is the next step: whether `addPattern:` reloads at all, and what
+`numberOfRowsInTableView:` answers afterwards. A trace on `-[NSTableView numberOfRows]` printing
+the data source class and the answer settles both in one drive, and the drive already exists:
+Preferences, click Custom Patterns at output (517, 931), click add at (337, 666), which is the
+coordinate the `CIDER_CONTROL` trace confirmed lands on the button.
+
+Worth remembering when reading that: the button frame from the NIB is `{{20, 20}, {25, 21}}` and
+the LAID OUT frame is `{{20, 38}, {25, 19}}`, so aim from `CIDER_CONTROL drawRect` and not from the
+archive.
