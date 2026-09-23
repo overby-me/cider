@@ -1,0 +1,41 @@
+--- a/AppKit/NSScroller.m
++++ b/AppKit/NSScroller.m
+@@ -151,7 +151,21 @@
+     return _isEnabled;
+ }
+ 
++/* WHETHER A SETTER WAS TOLD ANYTHING NEW. Scintilla abandons a paint when the scrollbar state
++ * changes during it, so a caller that writes the same values over and over is indistinguishable
++ * from one that never writes at all unless the old value is printed beside the new. */
++static void CiderNoteScroller(id self, const char *what, double was, double now, double was2,
++                              double now2)
++{
++    if (getenv("CIDER_TRACE_SCROLLER") == NULL)
++        return;
++    fprintf(stderr, "CIDER_SCROLLER %s self=%p %g->%g %g->%g same=%d\n", what, self, was, now,
++            was2, now2, (was == now && was2 == now2));
++    fflush(stderr);
++}
++
+ - (void) setEnabled: (BOOL) flag {
++    CiderNoteScroller(self, "enabled", _isEnabled, flag, 0, 0);
+     _isEnabled = flag;
+     [self setNeedsDisplay: YES];
+ }
+@@ -195,6 +209,8 @@
+ - (void) setFloatValue: (float) zeroToOneValue
+         knobProportion: (CGFloat) zeroToOneKnob
+ {
++    CiderNoteScroller(self, "value+knob", _floatValue, zeroToOneValue, _knobProportion,
++                      zeroToOneKnob);
+     if (zeroToOneValue > 1)
+         zeroToOneValue = 1;
+     if (zeroToOneValue < 0)
+@@ -217,6 +233,7 @@
+ }
+ 
+ - (void) setDoubleValue: (double) zeroToOneValue {
++    CiderNoteScroller(self, "value", _floatValue, zeroToOneValue, 0, 0);
+     if (zeroToOneValue > 1)
+         zeroToOneValue = 1;
+     if (zeroToOneValue < 0)

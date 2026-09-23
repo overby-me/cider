@@ -630,3 +630,24 @@ Opening an account register, entering a transaction, and everything reached from
 
 No credentials of any kind are involved here. Money Manager Ex is a local finance tracker with a
 SQLite file; it is not MoneyMoney and it talks to no bank.
+
+## The redundant scroller writes are real, and they are NOT the cause
+
+The mechanism `paintAbandoned` needs is something changing the scrollbar state during the paint, so
+the wx to AppKit boundary was instrumented: `CIDER_TRACE_SCROLLER` (cocotron 0130) prints every write
+to `-setEnabled:`, `-setFloatValue:knobProportion:` and `-setDoubleValue:` with the value that was
+there before it.
+
+Driving the New Transaction dialog gives **132 writes, and 107 of them set exactly what was already
+there.** Every one of those marked the scroller for display, because the setters call
+`-setNeedsDisplay: YES` whatever they are told, which real AppKit does not do for an unchanged value.
+
+**Suppressing them changes nothing.** Guarding all three setters on an actual change was built and
+driven, and the written widths came back identical, 210 still absent:
+
+    737x38  744x38  1256x38  1000x38  18x18  1x19  8x8
+
+So the redundant invalidation is real, and it is not what abandons the paint. The guard was reverted
+rather than landed, because a behaviour change that fixes nothing measurable is how this port
+acquires regressions. The PROBE is kept: the 107 of 132 number is what makes the next reader stop
+suspecting this.
