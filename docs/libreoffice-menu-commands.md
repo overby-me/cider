@@ -348,3 +348,41 @@ sponsors banner with the Whitebox link and the CodeRabbit logo, over a live `Cid
 **Five applications now invoke menu commands**: LibreOffice, Money Manager Ex, iA Writer, Swift
 Publisher and iTerm2. Four of the five found a defect nobody had seen, and none of the four was
 visible in any capture.
+
+## The keyboard shortcut was a different defect again, and it was one bit
+
+With the mouse path working, `⌘F12` for Insert Table was driven, because this file recorded it as
+failing for its own reasons. It did. `CIDER_TRACE_KEYEQ` names what each menu was matched against.
+
+**Not the event.** A first reading of the trace said the event carried no characters, because the
+field printed as empty:
+
+    CIDER_KEYEQ menu=Main Menu items=12 chars= mods=0x900000
+
+`od -c` says otherwise: `chars=357 234 217` is U+F70F, the AppKit code point for F12, and
+`mods=0x900000` is Command plus the function bit. The event was perfect. **A field that prints as
+nothing is not an empty field when the value is a private use character**, and that nearly sent this
+after the Wayland key translation, which was right all along.
+
+**Not the modifier comparison being too strict.** It was too loose. The search walked 51 menus and
+stopped, never reaching Table, Form, Tools, Window or Help, because it had already matched:
+
+    CIDER_KEYEQ   item=No List key=U+F70F mods=0x100000 raw=0x120000 enabled=1
+
+`raw=0x120000` is Command plus SHIFT. Format, Lists, No List is `⌘⇧F12`, and the comparison masked
+both sides down to Command and Alternate, so Shift could not distinguish them. It sits before the
+Table menu, so it answered every plain `⌘F12`, sent its own action and returned. Every pair of
+shortcuts differing only by Shift collided this way, in every application, and the first in menu
+order won.
+
+cocotron 0128 compares Control and Shift as well, with one exception that keeps existing shortcuts
+working: **for a LETTER the case of the key equivalent already is the Shift**, and an item may spell
+it either way, so the bit is not compared there. A function key has no case, so there the bit is the
+only thing separating the two shortcuts. Caps Lock, the function bit and the numeric pad are never
+compared, because those are states of the event rather than parts of a shortcut.
+
+After it the search reaches 64 menus and finds
+
+    CIDER_KEYEQ   item=Insert Table… key=U+F70F mods=0x100000 raw=0x100000 enabled=1
+
+and the Insert Table dialog opens from the keyboard.

@@ -1,0 +1,52 @@
+--- a/AppKit/NSMenu.subproj/NSMenu.m
++++ b/AppKit/NSMenu.subproj/NSMenu.m
+@@ -716,19 +716,42 @@
+ 
+     for (i = 0; i < count; i++) {
+         NSMenuItem *item = [_itemArray objectAtIndex: i];
+-        unsigned itemModifiers = [item keyEquivalentModifierMask] &
+-                                 (NSCommandKeyMask | NSAlternateKeyMask);
+         NSString *key = [item keyEquivalent];
++        /*
++         * SHIFT IS PART OF THE SHORTCUT UNLESS THE CHARACTER ALREADY CARRIES IT.
++         *
++         * Only Command and Alternate were compared, so every pair that differs by Shift alone
++         * collided and the first one in menu order won. LibreOffice Format, Lists, No List is
++         * Command Shift F12 (raw=0x120000) and sits before the Table menu, so it answered every
++         * plain Command F12 and Insert Table could never be reached by its own shortcut. The search
++         * stopped there: 51 menus were walked and Table, Form, Tools, Window and Help never were.
++         *
++         * For a LETTER the case of the key equivalent is the shift, and an item may spell it either
++         * way, so comparing the bit as well would refuse shortcuts that work today. A function key
++         * has no case, so there the bit is the only thing that distinguishes them. Control is always
++         * compared: it never changes -charactersIgnoringModifiers. Caps Lock, Function and the
++         * numeric pad never are: those are states of the event, not of the shortcut.
++         */
++        unsigned compared =
++                NSCommandKeyMask | NSAlternateKeyMask | NSControlKeyMask | NSShiftKeyMask;
++
++        if ([key length] == 1 &&
++            [[NSCharacterSet letterCharacterSet]
++                    characterIsMember: [key characterAtIndex: 0]])
++            compared &= ~NSShiftKeyMask;
++
++        unsigned itemModifiers = [item keyEquivalentModifierMask] & compared;
+ 
+         if (trace && [key length] > 0) {
+-            fprintf(stderr, "CIDER_KEYEQ   item=%s key=%s mods=%#x enabled=%d action=%s\n",
+-                    [[item title] UTF8String] ?: "(none)", [key UTF8String] ?: "(none)",
+-                    itemModifiers, itemIsEnabled(item) ? 1 : 0,
++            fprintf(stderr,
++                    "CIDER_KEYEQ   item=%s key=U+%04X mods=%#x raw=%#x enabled=%d action=%s\n",
++                    [[item title] UTF8String] ?: "(none)",
++                    (unsigned) [key characterAtIndex: 0], itemModifiers,
++                    (unsigned) [item keyEquivalentModifierMask], itemIsEnabled(item) ? 1 : 0,
+                     [item action] != NULL ? sel_getName([item action]) : "(none)");
+         }
+ 
+-        if ((modifiers & (NSCommandKeyMask | NSAlternateKeyMask)) ==
+-            itemModifiers) {
++        if ((modifiers & compared) == itemModifiers) {
+ 
+             if ([key isEqualToString: characters]) {
+                 /* This *must* accurately reflect menu validation when ignoring
