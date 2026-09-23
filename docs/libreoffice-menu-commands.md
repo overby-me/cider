@@ -386,3 +386,16 @@ After it the search reaches 64 menus and finds
     CIDER_KEYEQ   item=Insert Table… key=U+F70F mods=0x100000 raw=0x100000 enabled=1
 
 and the Insert Table dialog opens from the keyboard.
+
+## And the same shortcut path in iTerm2, which closes an older thread
+
+`⌘,` in iTerm2 opens its Settings window: the toolbar with all eight panes (General, Appearance,
+Profiles, Keys, Arrangements, Pointer, Shortcuts, Advanced), the General tab row (Startup, Closing,
+Magic, AI, Software Update, Selection, Window, Settings, tmux) and the Startup controls, the window
+restoration popup reading Use System Window Restoration Setting, the Open profiles window checkbox
+with its focus ring, Restore windows to same Spaces correctly greyed, and Always open at least one
+terminal window at startup. All over a live `Cider [~]#` prompt.
+
+That thread was open for a long time as a crash, then a blank screen, then a window that never
+mapped. It is closed, and it is worth noting that the last step of it was reached by the KEYBOARD
+path, which did not work at all until 0128.
