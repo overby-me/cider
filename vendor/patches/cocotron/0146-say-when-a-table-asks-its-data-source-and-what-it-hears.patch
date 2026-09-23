@@ -1,0 +1,81 @@
+Say when a table asks its data source, and what it hears.
+
+iA Writer adds a custom pattern and no row appears. The action is delivered, which cocotron 0140
+and the correction after it established, so the question was whether the table ever reloads and
+what its data source says when it does.
+
+-[NSTableView numberOfRows] caches in _numberOfRows and answers from the cache until something
+clears it, so from outside a table that never reloads and a data source that answers zero are
+indistinguishable. Two traces separate them, and between them they cover every runtime path:
+noteNumberOfRowsChanged is the ONLY runtime invalidation, reached from reloadData, which
+reloadDataForRowIndexes, insertRowsAtIndexes, removeRowsAtIndexes and moveRowAtIndex all call; and
+numberOfRows prints only when it actually asks, so a redraw does not flood the log.
+
+MEASURED, and the drive carries its own control because a second table of the same class is on
+screen at the same time:
+
+    CIDER_ROWS ask IATableView source=IACustomPatternsTableViewController -> 0     5 times
+    CIDER_ROWS ask IATableView source=Writer.LibraryTreeViewController    -> 5    24 times
+
+Five is exactly the number of files the library list shows in the capture. So the table machinery
+reloads, asks, believes the answer and draws it, demonstrably, in the same process and the same
+class as the one that stays empty.
+
+THE CUSTOM PATTERNS TABLE IS NOT THE DEFECT. It invalidates and asks five times and hears zero
+every time, so addPattern: runs, the reload happens, and the application has no pattern to show.
+Whatever fails is inside the application between the action and its model, and it is not this
+table, not the row cache, and not the data source protocol.
+
+--- a/AppKit/NSTableView.m
++++ b/AppKit/NSTableView.m
+@@ -86,6 +86,9 @@
+     }
+ }
+ 
++#import <stdio.h>
++#import <stdlib.h>
++
+ @implementation NSTableView
+ 
+ - (id) _replacementKeyPathForBinding: (id) binding {
+@@ -342,6 +345,11 @@
+ }
+ 
+ - (NSInteger) numberOfRows {
++    /* WHAT THE TABLE BELIEVES, and whether it asked. The cached answer is returned until
++     * noteNumberOfRowsChanged clears it, so a table that never reloads and a data source that
++     * answers zero look identical from outside. Prints only when it actually ASKS, which is the
++     * interesting event; the cached returns are silent on purpose or this floods every redraw. */
++    BOOL ciderAsking = (_numberOfRows < 0) && (getenv("CIDER_TRACE_TABLE_ROWS") != NULL);
+ 
+     if (_numberOfRows < 0) {
+         id binding = [self _binderForBinding: @"content"];
+@@ -367,6 +375,13 @@
+         }
+     }
+ 
++    if (ciderAsking) {
++        fprintf(stderr, "CIDER_ROWS ask %s source=%s binder=%d -> %ld\n", object_getClassName(self),
++                _dataSource != nil ? object_getClassName(_dataSource) : "(nil)",
++                [self _binderForBinding: @"content"] != nil, (long) _numberOfRows);
++        fflush(stderr);
++    }
++
+     return _numberOfRows;
+ }
+ 
+@@ -1243,6 +1258,14 @@
+     NSSize size = [self frame].size;
+     NSSize headerSize = [_headerView frame].size;
+ 
++    /* EVERY runtime invalidation goes through here: reloadData calls it, and reloadDataForRowIndexes,
++     * insertRowsAtIndexes, removeRowsAtIndexes and moveRowAtIndex all call reloadData. */
++    if (getenv("CIDER_TRACE_TABLE_ROWS") != NULL) {
++        fprintf(stderr, "CIDER_ROWS invalidate %s had=%ld\n", object_getClassName(self),
++                (long) _numberOfRows);
++        fflush(stderr);
++    }
++
+     _numberOfRows = -1;
+     NSInteger numberOfRows = [self numberOfRows];
+ 

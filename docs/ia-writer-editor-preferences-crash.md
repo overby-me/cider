@@ -317,3 +317,32 @@ coordinate the `CIDER_CONTROL` trace confirmed lands on the button.
 Worth remembering when reading that: the button frame from the NIB is `{{20, 20}, {25, 21}}` and
 the LAID OUT frame is `{{20, 38}, {25, 19}}`, so aim from `CIDER_CONTROL drawRect` and not from the
 archive.
+
+## MEASURED: the table is not the defect, and the drive carries its own control
+
+cocotron 0146 adds two traces that between them cover every runtime path:
+`noteNumberOfRowsChanged` is the only runtime invalidation of the row cache, reached from
+`reloadData`, which `reloadDataForRowIndexes`, `insertRowsAtIndexes`, `removeRowsAtIndexes` and
+`moveRowAtIndex` all call; and `numberOfRows` prints only when it actually asks.
+
+One drive, and a second table of the same class happens to be on screen at the same time, which
+makes it a control rather than a lone measurement:
+
+```
+CIDER_ROWS ask IATableView source=IACustomPatternsTableViewController -> 0      5 times
+CIDER_ROWS ask IATableView source=Writer.LibraryTreeViewController    -> 5     24 times
+```
+
+**Five is exactly the number of files the library list shows in the capture.** So the table
+machinery reloads, asks, believes the answer and draws it, demonstrably, in the same process and
+the same class as the one that stays empty.
+
+**The Custom Patterns table is therefore not the defect.** It invalidates and asks five times and
+hears zero every time. `addPattern:` runs, the reload happens, and the application has no pattern
+to show. What fails is inside the application between the action and its model, and it is not this
+table, not the row cache and not the data source protocol.
+
+Three things are now eliminated on this one symptom: the binding (established with its selector),
+the click (lands dead centre, confirmed by `TRACE_INPUT` and `CIDER_CONTROL mouseDown`), and the
+table. The next measurement is on the application side: what `addPattern:` does with the pattern it
+makes.
