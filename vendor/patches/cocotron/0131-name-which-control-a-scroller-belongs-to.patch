@@ -1,0 +1,34 @@
+--- a/AppKit/NSScroller.m
++++ b/AppKit/NSScroller.m
+@@ -25,6 +25,7 @@
+ #import <AppKit/NSImage.h>
+ #import <AppKit/NSRaise.h>
+ #import <AppKit/NSScroller.h>
++#import <objc/runtime.h>
+ #import <AppKit/NSWindow.h>
+ #import <Foundation/NSKeyedArchiver.h>
+ 
+@@ -159,8 +160,21 @@
+ {
+     if (getenv("CIDER_TRACE_SCROLLER") == NULL)
+         return;
+-    fprintf(stderr, "CIDER_SCROLLER %s self=%p %g->%g %g->%g same=%d\n", what, self, was, now,
+-            was2, now2, (was == now && was2 == now2));
++    {
++        NSRect f = [(NSScroller *) self frame];
++        id parent = [(NSScroller *) self superview];
++
++        /* WHICH scroller, because the interesting question is whether one PARTICULAR control ever
++         * reaches this at all, and every list in the window is writing too. The superview frame
++         * names it: the Money Manager Ex Tags field is a 210x18 view. */
++        fprintf(stderr,
++                "CIDER_SCROLLER %s self=%p frame=%.0fx%.0f@%.0f,%.0f in=%s %.0fx%.0f %g->%g %g->%g same=%d\n",
++                what, self, f.size.width, f.size.height, f.origin.x, f.origin.y,
++                parent != nil ? object_getClassName(parent) : "nil",
++                parent != nil ? [parent frame].size.width : 0,
++                parent != nil ? [parent frame].size.height : 0, was, now, was2, now2,
++                (was == now && was2 == now2));
++    }
+     fflush(stderr);
+ }
+ 

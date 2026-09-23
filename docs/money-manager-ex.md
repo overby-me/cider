@@ -672,3 +672,42 @@ never really created to look like one whose range reads back as zero.
 That is where the next reader should start, and it needs the wx side: either wx sources for this
 build or the disassembly of `wxWindowMac::GetScrollRange`. Nothing further can be settled from the
 AppKit side alone, which is why this stops here rather than guessing at another local change.
+
+## THE CHAIN IS COMPLETE: the Tags scrollbar is never stored, so every paint is abandoned
+
+Settled by disassembling the shipping binary (it is fat, so extract the x86_64 slice first or every
+address flag is silently ignored) and by one more measurement from this side.
+
+**What Scintilla compares.** `ScintillaWX::ModifyScrollBars` reads `0x530(stc)`, the control's own
+optional external scrollbar, finds it NULL, and takes the built in branch: two virtual calls on the
+window, `wxWindow::GetScrollRange` and `GetScrollThumb`, compared against `nMax+1` and `nPage`. A
+difference means `modified`, and `Editor::SetScrollBars` turns that into `AbandonPaint()`.
+
+**What the readback does.** `wxWindow::GetScrollRange` is eight instructions: pick `0x260` or `0x268`
+by orientation, and if that pointer is NULL **return 0**, else a virtual call to
+`wxScrollBar::GetRange`.
+
+**What the write does.** `wxWindow::SetScrollbar` begins `testb $0x8, 0x138(%rdi); jne ret`: with that
+bit set it returns having stored NOTHING. If it gets past that and the scrollbar pointer is NULL it
+only calls `DoUpdateScrollbarVisibility` and again stores nothing. Only when both pass does it reach
+`wxScrollBar::SetScrollbar`, which stores pageSize, thumb and range at `0x2e0`, `0x2e4` and `0x2e8`
+unconditionally and then pushes the value into the native scroller.
+
+**And the native scroller for this control is never written.** `CIDER_TRACE_SCROLLER` now prints the
+scroller frame and its parent (cocotron 0131). Driving the New Transaction dialog gives 133 writes,
+and the parents are
+
+    wxNSView 200x549, 200x587, 200x465, 200x381, 200x100, 20x20, 16x16, 1x20, 147x85
+    wxNSTextScrollView 355x101, 345x133, 105x100, 20x100 and three NSScrollViews
+
+**with ZERO for the 210x18 view that is the Tags control.** So `wxScrollBar::SetScrollbar` is never
+reached for it, nothing is ever stored, `GetScrollRange` keeps returning what it returned before, the
+comparison differs on EVERY call, and `Editor::Paint` returns after `RefreshPixMaps` having drawn
+nothing. That is exactly the shape every earlier measurement had: pixmaps created, only the
+`RefreshPixMaps` ones written, the 210x18 buffer blitted untouched, and the control still accepting
+input.
+
+**What is left is which of the two conditions holds**, and they want different work. The view tree
+shows two `wxNSScroller` children under that 210x18 view, which argues the scrollbar objects exist
+and therefore that the `0x138` bit 3 early return is what fires. Naming that flag needs wx headers
+for this exact build, or the object read out of the live process. It is NOT guessed at here.
