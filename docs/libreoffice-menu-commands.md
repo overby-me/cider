@@ -302,3 +302,49 @@ connector, no action from the application and no delegate to supply one, and on 
 Something supplies that selector and this port has not found it. The next candidate is the
 application binary itself: disassemble the re-targeting loop and see what it reads before it writes
 the target.
+
+## iTerm2 is the fifth, and its About window was a crash
+
+Two corrections first, both mine, both from this one application.
+
+**`LAUNCHD` unset is launchd OFF, not ON.** `app-drive.sh` reads
+`CIDER_NO_LAUNCHD="${LAUNCHD:-1}"`, so omitting the variable disables launchd. iTerm2 needs it, so
+three drives in a row came back with the Session Ended warning and I blamed, in order, the size of
+the guest environment (refuted: the dialog appears without `TRACE_ENV` too) and a targeted container
+kill versus roster-input global reap (refuted: the dialog appears after a global reap too). The
+roster row passes `0` explicitly and that is why the gate has always worked. `LAUNCHD=0` fixes it.
+
+**That dialog blocking the menu bar is correct, and dismissing it quits the application.** Clicking
+OK closes the last window and iTerm2 exits 0. A black capture after that is an application that
+ended, not a fault.
+
+With launchd on, the application menu opens complete: About iTerm2, Show Tip of the Day, Check for
+Updates…, Toggle Debug Logging, Copy Performance Stats, Preferences… ⌘,, Services, the three hide
+items, Secure Keyboard Entry ⌥⌘S, the two default-term items with their four-modifier equivalents,
+Install Shell Integration, Remove Recent Profiles from Dock Menu and Quit iTerm2 ⌘Q.
+
+And choosing About killed the application:
+
+    cider: UNRECOGNIZED -[NSTextView setAlignment:range:]
+    Terminating app due to uncaught exception ... unrecognized selector sent to instance
+
+The backtrace is the whole menu path working perfectly and then falling off the end of AppKit:
+
+    +[iTermAboutWindowController sharedInstance]
+    -[iTermApplicationDelegate showAbout:]
+    -[NSApplication sendAction:to:from:]
+    -[NSMenuView mouseDown:]
+
+cocotron 0127 implements it. The private `-_setAlignment:range:` already did the work, but it is
+written for the SELECTED range: it overwrites the typing attributes to match, and it indexes the
+storage without checking the range. A public entry point can afford neither, so the new method
+clamps the range to the storage and restores the typing attributes when the range does not contain
+the insertion point.
+
+After it, UNRECOGNIZED is 0 and the About window renders: the icon, iTerm2, By George Nachman and
+Contributors, Build 3.5.14, the What's New and Home Page and Report a bug and Credits links, and the
+sponsors banner with the Whitebox link and the CodeRabbit logo, over a live `Cider [~]#` prompt.
+
+**Five applications now invoke menu commands**: LibreOffice, Money Manager Ex, iA Writer, Swift
+Publisher and iTerm2. Four of the five found a defect nobody had seen, and none of the four was
+visible in any capture.

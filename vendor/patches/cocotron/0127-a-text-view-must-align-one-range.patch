@@ -1,0 +1,44 @@
+--- a/AppKit/NSTextView.subproj/NSTextView.m
++++ b/AppKit/NSTextView.subproj/NSTextView.m
+@@ -2821,6 +2821,31 @@
+     _textAlignment = alignment;
+ }
+ 
++/*
++ * THE PARAGRAPHS ONE RANGE TOUCHES, which is not the same thing as the selection.
++ *
++ * Declared and never defined, so iTerm2 died of an unrecognized selector inside
++ * +[iTermAboutWindowController sharedInstance] and its About window never appeared. The private
++ * worker below already existed; it assumes it was handed the SELECTED range and updates the typing
++ * attributes to match, which is wrong for an arbitrary one, and it indexes the storage without
++ * checking, which a public entry point cannot afford.
++ */
++- (void) setAlignment: (NSTextAlignment) alignment range: (NSRange) range {
++    NSUInteger length = [[self textStorage] length];
++    NSDictionary *typing = [[[self typingAttributes] retain] autorelease];
++    NSRange selected = [self selectedRange];
++
++    if (range.location > length)
++        range.location = length;
++    if (NSMaxRange(range) > length)
++        range.length = length - range.location;
++
++    [self _setAlignment: alignment range: range];
++
++    if (!NSLocationInRange(selected.location, range))
++        [self setTypingAttributes: typing];
++}
++
+ - (void) setTextColor: (NSColor *) color {
+     color = [color copy];
+     [_textColor release];
+--- a/AppKit/include/AppKit/NSTextView.h
++++ b/AppKit/include/AppKit/NSTextView.h
+@@ -282,6 +282,7 @@
+ - (void) setAllowsDocumentBackgroundColorChange: (BOOL) value;
+ 
+ - (void) setSpellingState: (NSInteger) value range: (NSRange) characterRange;
++- (void) setAlignment: (NSTextAlignment) alignment range: (NSRange) range;
+ 
+ - (BOOL) isIncrementalSearchingEnabled;
+ - (BOOL) usesFindPanel;
