@@ -655,3 +655,10 @@ error**. corefoundation 0131 implements them, and the error half is not a detail
 still nil is a combination macOS never produces, and an application is entitled to read it as no
 failure. iA Writer did, stored the nil bookmark it was given, and died four layers away on a nil
 dictionary key. `docs/open-panel.md` carries the whole chain.
+
+Two more roster applications reach that family. `strings` on the shipping binaries finds
+`bookmarkDataWithOptions...` referenced twice each in **Swift Publisher 5** and **MoneyMoney**, and
+zero times in iA Writer's own binary because its calls live inside `FoundationAdditions.framework`.
+Before corefoundation 0131 all three got nil with no error from it. Neither of the other two has
+been driven down a path that reaches it; Swift Publisher's `Open Recent` is the obvious one and is
+not yet exercised.
