@@ -735,3 +735,62 @@ from; that the Tags scrollers are never written natively. What is NOT solid is t
 last fact to "nothing is stored". The next measurement has to read `m_range` at `0x2e8` of one of
 those two `wxScrollBar` objects out of the live process, which the crash reading technique already
 does for `/proc/<pid>/mem`, or instrument the peer rather than `NSScroller`.
+## Re-measured 2026-09-23: the dictionary storm is gone, and the dialog is reached in three clicks
+
+### The 213655 unrecognised selectors are not there any more
+
+Across every capture in the tree, `-[__NSCFDictionary saveGraphicsState]` appears 213655 times, and
+all of them are in two captures dated 2026-09-22: `mx-rate3` 156719 and `mx-seg` 56936. That is
+`+[NSGraphicsContext currentContext]` handing back the thread dictionary instead of the context,
+the same family as the over-release that cocotron 0109 fixed.
+
+Driving the New Transaction dialog today: **0**. Also 0 unrecognised selectors of any kind on that
+whole path, and no guest fault.
+
+A caveat that matters, because today's roster drives would have given the same zero for the wrong
+reason: `sweep-mx`, `input-mx` and `menuact-mx` all stop at the startup dialog and never open a
+database at all, so their zero proves nothing. This zero comes from a drive that reaches the dialog
+the 2026-09-22 stack names, which is where those calls came from.
+
+### The path, three clicks, and the coordinates measured rather than guessed
+
+There are 59 databases left in the prefix from earlier sessions, so Open Last Opened Database is
+enough and nothing new is created.
+
+1. **Open Last Opened Database** at (627, 298). The seven startup buttons were measured out of the
+   capture by scanning for their face colour: all at x 547..707, rows starting y 288, 320, 352,
+   384, 416, 448, 480.
+2. **An MMEX Instance Check alert appears**, because a previous run left the database marked open.
+   It renders correctly: warning icon, bold title, four paragraphs with proper apostrophes, Yes and
+   No with No as the blue default carrying its focus ring. Yes is at (602, 488), taking the OUTER
+   bounds of the two face-colour runs the label splits, which is the trap recorded in
+   `chrome-fidelity-by-measurement`.
+3. **The toolbar New Transaction button** at (191, 69).
+
+Note for anyone repeating this: `CIDER_TRACE_CONTROL` is alive here, 22 lines, but prints no
+`mouseDown` for the startup buttons. wx draws those itself, so they are not `NSControl`s and that
+trace cannot see them. It DOES see native alerts and sheets.
+
+### The main window on a populated database
+
+Title `cider52.mmb - Money Manager Ex (1.9.3 64-bit) macOS Sonoma 14.4.1`, the full menu bar, a
+toolbar of fifteen green icons in two groups, and a Navigator tree that renders every row with its
+icon: Dashboard selected, All Transactions, Scheduled Transactions, Favorites, Bank Accounts,
+Assets, Budget Planner, Transaction Report, Reports, General Report Manager, Help. The content
+area beside it is empty.
+
+### The weekday label loses its last letter, and it is NOT clipped
+
+The Date row reads `9/23/2026` with the weekday beside it as **Wednesda**. Zooming the capture
+shows eight complete glyphs and then blank space: the `y` is not half drawn, it is absent, so the
+run stops at a glyph boundary rather than being cut by a clip rectangle.
+
+This is new. The doc above records the same label reading `Tuesday` correctly after cocotron 0117,
+and Tuesday is seven characters where Wednesday is nine, so a label sized for the shorter string is
+the obvious suspect and the measurement that sizes it is the thing to check. Not chased yet.
+
+### Still open, unchanged
+
+The Tags row is still 3570 pixels of pure `(0,0,0)` against `(255,255,255)` for the Category field
+one row up, with only its top border drawn. The chain for it is worked out at length above and its
+next measurement is named there.
