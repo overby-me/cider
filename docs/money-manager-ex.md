@@ -513,6 +513,48 @@ scrollbar state changes during a paint: it then returns having drawn nothing, re
 window instead, and the buffered DC blits its untouched buffer over the top. That would explain
 every measurement above, and this port has two scrollers on that control that are both hidden.
 
+## paintAbandoned now has a POSITIVE control, and the old probe was half blind
+
+Two things were wrong with the measurement above, and fixing them makes the answer much sharper.
+
+**The write probe sat on ONE of the two entry points.** `O2SurfaceWriteSpan_argb8u_PRE` carried it;
+`O2SurfaceWriteSpan_largb32f_PRE`, which is where O2 sends anything the 8 bit fast path does not
+cover, carried nothing. A control drawn through the float path would report ZERO writes and read
+exactly like a control nothing ever drew into. Both carry it now (cocotron 0129).
+
+**And a filter that matches nothing prints the same as a port that draws nothing.** The probe took
+one width, so the answer was always either "that width" or silence, and silence could not be told
+from a width that never existed. `CIDER_TRACE_SURFACE_WIDTH=any` now prints one line for each
+distinct width the process ever writes to. For the New Transaction dialog the whole list is:
+
+    CIDER_SURFACE firstwrite argb8u 737x38 at 0,0 len=737
+    CIDER_SURFACE firstwrite argb8u 744x38 at 0,0 len=744
+    CIDER_SURFACE firstwrite argb8u 1256x38 at 0,0 len=1256
+    CIDER_SURFACE firstwrite argb8u 1000x38 at 0,0 len=1000
+    CIDER_SURFACE firstwrite argb8u 18x18 at 17,0 len=1
+    CIDER_SURFACE firstwrite argb8u 1x19 at 0,0 len=1
+    CIDER_SURFACE firstwrite argb8u 8x8 at 0,0 len=8
+
+Seven widths in the entire run, and 210 is still not among them. But **1x19 and 8x8 are**, and those
+are not incidental: they are Scintilla's OWN pixmaps, and the creation backtraces name where they
+come from, inside the same `Editor::Paint` call as the 210x18 one:
+
+    1x19   SurfaceImpl::InitPixMap <- EditView::RefreshPixMaps   <- Editor::Paint + 82 and + 111
+    8x8    SurfaceImpl::InitPixMap <- MarginView::RefreshPixMaps <- Editor::Paint + 150
+    210x18 SurfaceImpl::InitPixMap                               <- Editor::Paint + 239
+    1x18   SurfaceImpl::InitPixMap                               <- Editor::Paint + 298
+
+So Scintilla enters `Editor::Paint`, creates every pixmap it needs, DRAWS INTO the ones
+`RefreshPixMaps` makes, and then draws into nothing else. The window surfaces are never written
+through these functions at all, which is worth knowing separately: 350x527, 324x353 and 1000x600 do
+not appear, so window painting takes another route and the absence of 210 cannot be read as
+"the port writes nothing here".
+
+That is a positive control for `paintAbandoned` rather than an absence: the pixmaps filled are the
+ones filled BEFORE the abandon check, and everything after it is empty. What is still not measured
+is what changes the scrollbar state mid paint, and the wx to AppKit boundary is where this port can
+watch for it: the two `wxNSScroller`s on that control are ours to trace.
+
 ## The date field that was never there
 
 Both the Edit Account Opening Date row and the New Transaction Date row had a label and no control.

@@ -1,0 +1,100 @@
+--- a/Onyx2D/O2Surface.m
++++ b/Onyx2D/O2Surface.m
+@@ -29,6 +29,7 @@
+ #import <Onyx2D/O2ColorSpace.h>
+ #import <Onyx2D/O2DataProvider.h>
+ #import <Onyx2D/O2Surface.h>
++#include <string.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ 
+@@ -892,22 +893,43 @@
+     return result;
+ }
+ 
+-void O2SurfaceWriteSpan_argb8u_PRE(O2Surface *self, int x, int y,
+-                                   O2argb8u *span, int length)
++/* WHETHER ANYTHING REACHED A BUFFER AT ALL. A caller drawing into its own bitmap cannot tell a
++ * draw that produced nothing from one that produced black, because a zeroed XRGB buffer IS black.
++ * CIDER_TRACE_SURFACE_WIDTH names one width so a single control can be watched without the rest of
++ * the screen burying it.
++ *
++ * BOTH ENTRY POINTS, because there are two. This sat only on the 8 bit one, and O2 renders through
++ * the 32 bit float path for anything the fast path does not cover, so a control drawn that way
++ * reported ZERO writes and read exactly like a control nothing ever drew into. */
++static void CiderNoteSurfaceWrite(O2Surface *self, const char *kind, int x, int y, int length,
++                                  unsigned a, unsigned r, unsigned g, unsigned b)
+ {
+-    if (length == 0)
+-        return;
+-
+-    /* WHETHER ANYTHING REACHED A BUFFER AT ALL. A caller drawing into its own bitmap cannot tell a
+-     * draw that produced nothing from one that produced black, because a zeroed XRGB buffer IS
+-     * black. CIDER_TRACE_SURFACE_WIDTH names one width so a single control can be watched without
+-     * the rest of the screen burying it. */
+     static int ciderWantedWidth = -2;
+ 
+     if (ciderWantedWidth == -2) {
+         const char *spec = getenv("CIDER_TRACE_SURFACE_WIDTH");
+ 
+-        ciderWantedWidth = (spec != NULL) ? atoi(spec) : -1;
++        /* ANY NAMES THE WIDTHS INSTEAD OF FILTERING ON ONE, because a filter that matches nothing
++         * and a port that draws nothing print the same thing. One line per width the process ever
++         * writes to answers which it is, and 210 reported zero here while the control could not say
++         * whether ANY surface was being written. */
++        ciderWantedWidth = (spec == NULL) ? -1
++                                          : (strcmp(spec, "any") == 0 ? -3 : atoi(spec));
++    }
++    if (ciderWantedWidth == -3) {
++        static int seen[64], seenCount;
++        int i;
++
++        for (i = 0; i < seenCount; i++)
++            if (seen[i] == (int) self->_width)
++                return;
++        if (seenCount < 64) {
++            seen[seenCount++] = (int) self->_width;
++            fprintf(stderr, "CIDER_SURFACE firstwrite %s %dx%d at %d,%d len=%d\n", kind,
++                    (int) self->_width, (int) self->_height, x, y, length);
++            fflush(stderr);
++        }
++        return;
+     }
+     if (ciderWantedWidth >= 0 && (int) self->_width == ciderWantedWidth) {
+         static int printed;
+@@ -915,12 +937,21 @@
+         if (printed < 60) {
+             printed++;
+             fprintf(stderr,
+-                    "CIDER_SURFACE write %dx%d at %d,%d len=%d first=%02x,%02x,%02x,%02x\n",
+-                    (int) self->_width, (int) self->_height, x, y, length, span[0].a, span[0].r,
+-                    span[0].g, span[0].b);
++                    "CIDER_SURFACE write %s %dx%d at %d,%d len=%d first=%02x,%02x,%02x,%02x\n",
++                    kind, (int) self->_width, (int) self->_height, x, y, length, a, r, g, b);
+             fflush(stderr);
+         }
+     }
++}
++
++void O2SurfaceWriteSpan_argb8u_PRE(O2Surface *self, int x, int y,
++                                   O2argb8u *span, int length)
++{
++    if (length == 0)
++        return;
++
++    CiderNoteSurfaceWrite(self, "argb8u", x, y, length, span[0].a, span[0].r, span[0].g,
++                          span[0].b);
+ 
+     self->_writeargb8u(self, x, y, span, length);
+ }
+@@ -931,6 +962,10 @@
+     if (length == 0)
+         return;
+ 
++    CiderNoteSurfaceWrite(self, "argb32f", x, y, length, (unsigned) (span[0].a * 255.0f),
++                          (unsigned) (span[0].r * 255.0f), (unsigned) (span[0].g * 255.0f),
++                          (unsigned) (span[0].b * 255.0f));
++
+     self->_writeargb32f(self, x, y, span, length);
+ }
+ 
