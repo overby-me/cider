@@ -1,0 +1,260 @@
+--- a/AppKit/NSMenu.subproj/NSMenuView.m
++++ b/AppKit/NSMenu.subproj/NSMenuView.m
+@@ -326,6 +326,18 @@
+ 
+         point = [[event window] convertBaseToScreen: point];
+ 
++        /* THE POINT EVERY HIT TEST BELOW IS MEASURED FROM. Both conversions go through a window
++         * origin, and under Wayland a window is never told where the compositor put it, so a menu
++         * that selects nothing may simply be measuring from the wrong place. */
++        if (getenv("CIDER_TRACE_MENU") != NULL && [event type] != NSMouseMoved) {
++            fprintf(stderr, "CIDER_MENU point type=%d eventwindow=%s#%ld base=%.0f,%.0f screen=%.0f,%.0f\n",
++                    (int) [event type],
++                    [event window] != nil ? object_getClassName([event window]) : "nil",
++                    [event window] != nil ? (long) [[event window] windowNumber] : -1L,
++                    [event locationInWindow].x, [event locationInWindow].y, point.x, point.y);
++            fflush(stderr);
++        }
++
+         // We've not pushed any views yet so the screen is where our window is
+         if (count == 1) {
+             screen = [self _screenForPoint: point];
+@@ -347,6 +359,23 @@
+ 
+                 checkPoint = [checkView convertPoint: checkPoint fromView: nil];
+ 
++                /* AND WHERE THAT LANDS IN EACH CANDIDATE, with the window it was measured against.
++                 * A menu that selects nothing is either a point in the wrong place or a bounds that
++                 * is not where it is drawn, and one line per candidate separates them. */
++                if (getenv("CIDER_TRACE_MENU") != NULL && [event type] != NSMouseMoved) {
++                    NSRect wf = [[checkView window] frame];
++
++                    fprintf(stderr,
++                            "CIDER_MENU check %s#%ld windowframe=%.0fx%.0f@%.0f,%.0f point=%.0f,%.0f bounds=%.0fx%.0f inside=%d\n",
++                            object_getClassName(checkView),
++                            (long) [[checkView window] windowNumber], wf.size.width,
++                            wf.size.height, wf.origin.x, wf.origin.y, checkPoint.x, checkPoint.y,
++                            [checkView bounds].size.width, [checkView bounds].size.height,
++                            (int) NSMouseInRect(checkPoint, [checkView bounds],
++                                                [checkView isFlipped]));
++                    fflush(stderr);
++                }
++
+                 // If it's inside the menu view
+                 if (NSMouseInRect(checkPoint, [checkView bounds],
+                                   [checkView isFlipped])) {
+@@ -475,6 +504,97 @@
+                 MENUDEBUG(@"clearing all selection");
+                 [[viewStack lastObject] setSelectedItemIndex: NSNotFound];
+             }
++        } else {
++            // We didn't enter the mouse handling loop that predecrements count
++            // - so do it here...
++            count--;
++        }
++        keyboardNavigationAction = kNSMenuKeyboardNavigationNone;
++
++        /*
++         * MUST FOLLOW THE HIT TEST OF THE SAME EVENT. This ran below the fetch, where it read the
++         * selection the PREVIOUS event left. Only motion moves the selection first, and a click
++         * sends none between press and release, so LibreOffice released over Insert Table, was
++         * judged against the bar item Table, and every menu command chose its own menu title.
++         */
++        if (cancelled == NO && [event type] != NSAppKitDefined &&
++            [event type] != NSKeyDown) {
++
++            // Don't test for "== 0." - we tend to receive some delta with some
++            // .000000... values while the mouse doesn't move
++            BOOL mouseMoved = ([event type] != NSAppKitDefined) &&
++                              (fabs([event deltaX]) > kMouseMovementThreshold ||
++                               fabs([event deltaY]) > kMouseMovementThreshold);
++
++            NSMenuView *activeView = nil;
++
++            // We may not have a menuview here - so be cautious - and we may
++            // have added a cascading menu so lastObject is also not the right
++            // thing to look at - we need to look at the menuview found in the
++            // preceeding block (if there was one found - the user could have
++            // moused somewhere else entirely remember)
++            if (count >= 0) {
++                activeView = [viewStack objectAtIndex: count];
++            }
++
++            switch (state) {
++            case STATE_FIRSTMOUSEDOWN:
++                // Let's take a look at the item under the cursor (if there is
++                // one)
++                item = [activeView itemAtSelectedIndex];
++
++                if ([event type] == NSLeftMouseUp) {
++                    // The menu is really active after a mouse up (which means
++                    // the menu will stay sticky)... The timestamp is to avoid
++                    // false clicks - make sure there's a delay so the user can
++                    if ([event timestamp] - firstTimestamp >
++                                kMenuInitialClickThreshold &&
++                        [viewStack count] == 1 && [item isEnabled]) {
++                        MENUDEBUG(@"Handling selected item - exiting");
++                        state = STATE_EXIT;
++                    } else {
++                        MENUDEBUG(@"mouse up - continuing");
++                        state = STATE_MOUSEUP;
++                    }
++                } else if ([event type] == NSLeftMouseDown || mouseMoved) {
++                    // .. Or a mouse down (second click after the sticky menu)
++                    // or a real move
++                    state = STATE_MOUSEDOWN;
++                }
++                break;
++
++            default:
++                item = [activeView itemAtSelectedIndex];
++                if ([event type] == NSLeftMouseUp) {
++                    MENUDEBUG(@"mouseUp on item: %@", item);
++                    /*
++                     * A RELEASE OVER A PARENT LEAVES THE MENU OPEN, which is how a menu becomes
++                     * sticky, and the click after it chooses. The stack is exactly 2 the instant a
++                     * submenu opens, so without this the <= 2 below ends tracking on that very
++                     * release holding the BAR item. A drag is unaffected: a leaf owns no submenu.
++                     */
++                    if (item != nil && [item hasSubmenu]) {
++                        MENUDEBUG(@"mouse up on a parent - staying open");
++                        state = STATE_MOUSEUP;
++                    } else if (item == nil || ([viewStack count] <= 2) ||
++                        [item isEnabled]) {
++                        MENUDEBUG(@"mouse up - exiting because of many "
++                                  @"possible reasons...");
++                        state = STATE_EXIT;
++                    } else {
++                        MENUDEBUG(@"mouse up");
++                        state = STATE_MOUSEUP;
++                    }
++                }
++                break;
++            }
++        }
++
++        /* THE while TEST IS PAST THE NEXT FETCH, so running on blocks for an event that will
++         * never come: LibreOffice chose Insert Table and hung with the menu still up. */
++        if (cancelled || state == STATE_EXIT) {
++            [pool release];
++            break;
+         }
+ 
+         [event release];
+@@ -506,14 +626,6 @@
+                                        NSAppKitDefinedMask];
+         [event retain];
+ 
+-        if (keyboardNavigationAction != kNSMenuKeyboardNavigationNone) {
+-            // We didn't enter the mouse handling loop that predecrements count
+-            // - so do it here...
+-            count--;
+-        }
+-        // Reset the keyboard navigation state
+-        keyboardNavigationAction = kNSMenuKeyboardNavigationNone;
+-
+         // Sometimes we can get key events with no characters (if the user
+         // has invoked an accelerator while the menu is open for example)
+         if ([event type] == NSKeyDown && [[event characters] length] > 0) {
+@@ -817,71 +929,10 @@
+             }
+         }
+ 
++        /* THE NEXT PASS HIT TESTS THIS LOCATION, converted through the window it was measured in. */
+         if (cancelled == NO && [event type] != NSAppKitDefined &&
+             [event type] != NSKeyDown) {
+-
+-            // looks like we can keep rolling
+-
+             point = [event locationInWindow];
+-            // Don't test for "== 0." - we tend to receive some delta with some
+-            // .000000... values while the mouse doesn't move
+-            BOOL mouseMoved = ([event type] != NSAppKitDefined) &&
+-                              (fabs([event deltaX]) > kMouseMovementThreshold ||
+-                               fabs([event deltaY]) > kMouseMovementThreshold);
+-
+-            NSMenuView *activeView = nil;
+-
+-            // We may not have a menuview here - so be cautious - and we may
+-            // have added a cascading menu so lastObject is also not the right
+-            // thing to look at - we need to look at the menuview found in the
+-            // preceeding block (if there was one found - the user could have
+-            // moused somewhere else entirely remember)
+-            if (count >= 0) {
+-                activeView = [viewStack objectAtIndex: count];
+-            }
+-
+-            switch (state) {
+-            case STATE_FIRSTMOUSEDOWN:
+-                // Let's take a look at the item under the cursor (if there is
+-                // one)
+-                item = [activeView itemAtSelectedIndex];
+-
+-                if ([event type] == NSLeftMouseUp) {
+-                    // The menu is really active after a mouse up (which means
+-                    // the menu will stay sticky)... The timestamp is to avoid
+-                    // false clicks - make sure there's a delay so the user can
+-                    if ([event timestamp] - firstTimestamp >
+-                                kMenuInitialClickThreshold &&
+-                        [viewStack count] == 1 && [item isEnabled]) {
+-                        MENUDEBUG(@"Handling selected item - exiting");
+-                        state = STATE_EXIT;
+-                    } else {
+-                        MENUDEBUG(@"mouse up - continuing");
+-                        state = STATE_MOUSEUP;
+-                    }
+-                } else if ([event type] == NSLeftMouseDown || mouseMoved) {
+-                    // .. Or a mouse down (second click after the sticky menu)
+-                    // or a real move
+-                    state = STATE_MOUSEDOWN;
+-                }
+-                break;
+-
+-            default:
+-                item = [activeView itemAtSelectedIndex];
+-                if ([event type] == NSLeftMouseUp) {
+-                    MENUDEBUG(@"mouseUp on item: %@", item);
+-                    if (item == nil || ([viewStack count] <= 2) ||
+-                        [item isEnabled]) {
+-                        MENUDEBUG(@"mouse up - exiting because of many "
+-                                  @"possible reasons...");
+-                        state = STATE_EXIT;
+-                    } else {
+-                        MENUDEBUG(@"mouse up");
+-                        state = STATE_MOUSEUP;
+-                    }
+-                }
+-                break;
+-            }
+         }
+         [pool release];
+     } while (cancelled == NO && state != STATE_EXIT);
+--- a/AppKit/NSApplication.m
++++ b/AppKit/NSApplication.m
+@@ -1493,6 +1493,26 @@
+         }
+     }
+ 
++    /* AND THE SAME QUESTION FOR A MOUSE EVENT, which the key branch above already answers for the
++     * keyboard. Delivery is [[event window] sendEvent:], so an event whose window is nil, or is not
++     * the window the backend attributed the click to, is dropped in silence and looks exactly like
++     * a control that ignores clicks. A click the backend reports and this does not print has
++     * either been dropped or taken by a tracking loop, which reads its own events. */
++    if (getenv("CIDER_TRACE_MOUSE") != NULL && getenv("CIDER_TRACE_MOUSE")[0] != (char) 0) {
++        NSEventType type = [event type];
++
++        if (type == NSLeftMouseDown || type == NSLeftMouseUp || type == NSRightMouseDown) {
++            NSWindow *target = [event window];
++            NSPoint where = [event locationInWindow];
++
++            fprintf(stderr, "cider-appmouse type=%d at=%.0f,%.0f window=%s number=%ld\n",
++                    (int) type, where.x, where.y,
++                    target != nil ? object_getClassName(target) : "NIL",
++                    target != nil ? (long) [target windowNumber] : -1L);
++            fflush(stderr);
++        }
++    }
++
+     [[event window] sendEvent: event];
+ }
+ 

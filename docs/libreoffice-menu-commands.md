@@ -1,8 +1,15 @@
-# LibreOffice menus open, and no item in them can be invoked
+# LibreOffice menu commands, from a dead menu to a table on the page
 
-Driven on the Writer document window, launchd on, at the roster size.
+Driven on the Writer document window at the roster size. The end state, measured:
 
-## The menus themselves are right
+    CIDER_MENU track item=Insert Table… enabled=1 action=menuItemTriggered: target=SalNSMenuItem
+    CIDER_MENU trackDone on NSMainMenuView item=Insert Table…
+
+and the Insert Table dialog opens, and its Insert button puts a 2x2 table on the page with the
+cursor in `Table1:A1` and the Table toolbar along the bottom. Before this, no menu command in
+LibreOffice could be invoked at all, by mouse or by keyboard.
+
+## The menus themselves were always right
 
 The Table menu opens complete and with correct state: `Insert Table…` with its `⌘F12`, the Insert,
 Delete, Select and Size submenus with their arrows, then Merge Cells, Split Cells…, Merge Table,
@@ -11,64 +18,72 @@ Repeat Across Pages, Row to Break Across Pages and Sort… all GREYED because no
 and Number Recognition, Convert and Edit Formula black because they do not need one. That is real
 enablement read from the application, not a flat list.
 
-## Nothing in it can be invoked
+## The defect: tracking judged the event BEFORE the one it had just hit tested
 
-Three separate attempts, all measured:
+`-[NSMenuView trackForEvent:]` runs one pass per event, and the pass was built in this order:
 
-1. **Click `Insert Table…`.** The click lands on the item; the item never highlights; the menu
-   closes; no window is created; no dialog appears.
-2. **Press its accelerator `⌘F12`** instead, with the menu closed. Same: no window, no dialog.
-3. **Click `Number Recognition`**, a plain toggle that needs no selection, then reopen the menu. The
-   item is unchanged.
+1. hit test the event, select the item under the pointer, open or close submenus
+2. release the event, redisplay
+3. **fetch the next event**, blocking
+4. decide what the fetched event means, using the view and the selection from step 1
 
-The window list is the strongest part of it. LibreOffice creates seven windows in a run and maps
-two: the splash and the document window. Windows 3 to 7 are never mapped, one of them a
-`dialog=true` `SalFrameWindow` of 1004x569. Crucially, **no window at all is created after the
-command**, so the application is not failing to show a dialog it built. It never gets that far.
+Step 4 therefore judged an event against the selection the PREVIOUS event had established. That is
+invisible while the pointer is being dragged, because the stream of mouse-moved events keeps the
+selection one step ahead of the release. It is fatal for a plain click: press and release arrive
+back to back with no motion between them, so the selection has never moved to the item being
+clicked.
 
-By contrast a menu item click works elsewhere: Money Manager Ex Tools then Date Range Manager opens
-its dialog from exactly the same kind of click. So this is specific to LibreOffice.
+Two symptoms came out of that one cause:
 
-## What was ruled out on the way
+- The release over the bar item was judged with a stack of exactly 2 (the bar plus the submenu that
+  had just opened), so the `[viewStack count] <= 2` arm ended tracking and returned the BAR item.
+  LibreOffice received the action of `Table` for every item in the Table menu. A menu bar menu could
+  never be sticky.
+- After the first fix that kept a parent open, the release over `Insert Table…` was judged against
+  that same stale bar item, which has a submenu, so tracking stayed open forever instead.
 
-`-[SalFrameWindow sendEvent:] unimplemented` appears in the log twice every half second and looks
-like the obvious culprit. It is not. That message comes from the default case of the event type
-switch in `-[NSWindow sendEvent:]`, and the type is 15, `NSApplicationDefined`: an application
-posting to itself to wake its own loop, 119 times in one drive. A window does nothing with one of
-those on a Mac either. cocotron 0121 handles that case explicitly, and names the type in the
-message for anything genuinely unknown, so the next reader is not sent after it again.
+## The fix, cocotron 0123
 
-## Measured: tracking ends on the bar item, and the second click is not tracked at all
+Three changes to `trackForEvent:`, all about ordering:
 
-`CIDER_TRACE_MENU` answers it. The whole run contains exactly ONE tracking result:
+- The decision moves to sit immediately after the hit test of the SAME event, before the fetch. The
+  `count--` compensation for the keyboard path moves with it.
+- A release over an item that owns a submenu leaves the menu open rather than ending tracking. That
+  is how a menu becomes sticky, and the click after it is what chooses.
+- The loop breaks as soon as the decision is `STATE_EXIT`. The `while` test is past the blocking
+  fetch, so deciding early and running on meant blocking for an event that would never come. This
+  one only appeared after the reorder, and it looked exactly like the original hang.
 
-    CIDER_MENU track item=Table enabled=1 action=menuItemTriggered: target=SalNSMenuItem
-    CIDER_MENU trackDone on NSMainMenuView item=Table
+## What was ruled out on the way, and one claim withdrawn
 
-So the first click, on the menu bar, tracks and finishes with the bar item `Table`, whose action
-`menuItemTriggered:` is then sent to its `SalNSMenuItem`. The submenu opens
-(`CIDER_MENU submenuNow index=7 branch=yes`). And the SECOND click, the one on `Insert Table…`
-inside the open menu, produces no `track` line and no `trackDone` line at all: the menu view never
-tracks it.
+`-[SalFrameWindow sendEvent:] unimplemented` appears twice every half second and looks like the
+obvious culprit. It is not. The type is 15, `NSApplicationDefined`: an application posting to itself
+to wake its own loop, 119 times in one drive. cocotron 0121 handles that case and names the type for
+anything genuinely unknown.
 
-The items themselves are fine. `CIDER_MENUITEM` prints each one with a real action and a real
-target, for example
+**Withdrawn:** an earlier reading of the `cider-appmouse` probe said LibreOffice loses every click
+into an open menu, because the backend reported 8 button events for window 8 while
+`-[NSApplication sendEvent:]` saw 4. That was wrong. A tracking loop reads its own events straight
+out of the queue with `nextEventMatchingMask:`, so a click into an open menu is SUPPOSED to bypass
+`-[NSApplication sendEvent:]`. Nothing was being dropped.
 
-    CIDER_MENUITEM Check for Updates... action=menuItemTriggered: itemtarget=SalNSMenuItem ...
-    ... keyWindow=(nil) mainWindow=Untitled 1 controller=(nil)
+**Withdrawn:** the tracking loop was said not to process the second click's mouse up. It did. The
+loop fetches with a mask of `0x2464`, which has no `NSLeftMouseDown` bit in it, so it never sees a
+press at all and the one hit test per click IS the release.
 
-so nothing is missing from the menu; what is missing is the click reaching it.
+## Driving it reproducibly
 
-That is also why the accelerator fails for a different reason and the two look alike from outside:
-one path never tracks the item, the other never matches the key equivalent.
+The Start Center click that opens Writer is position dependent and the window resizes during
+startup. At 1000x600 after a 40 step settle, `Writer Document` is at `100,189`;  `100,273` lands on
+`Impress Presentation` and gives you the template picker instead. Full sequence:
 
-**`CIDER_TRACE_MENU` could not be used for this until now.** It also gated a `CIDER_FLUSH` line in
-`-[NSWindow flushWindow]`, which fires once per flush and crippled the application it was watching.
-cocotron 0122 gives that line its own `CIDER_TRACE_FLUSH`.
+    wait:40 click:100,189 wait:45 click:393,35 wait:20 click:428,16 wait:30 shot:dialog
+    click:685,518 wait:30 shot:tableinserted
 
-## Where to look next
+## What this unblocks
 
-A menu opened from the menu bar and left open is sticky, and the click that follows has to be
-tracked by the submenu's own `NSMenuView`, not by `NSMainMenuView`. Here nothing tracks it. The next
-measurement is which view, if any, receives that second mouse down, because Money Manager Ex takes
-the identical two-click sequence through Tools then Date Range Manager and opens its dialog.
+Every menu driven command in every AppKit application on the roster went through this path, so the
+same defect was costing far more than LibreOffice. iA Writer, Swift Publisher and MoneyMoney all
+still open their menus correctly after the change, and Money Manager Ex still reaches Date Range
+Manager, which is the control: it worked before because wx opens that dialog from a menu whose
+stack is 1, never 2.
