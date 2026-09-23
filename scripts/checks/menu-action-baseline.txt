@@ -1,0 +1,12 @@
+# MENU ITEMS THAT CORRECTLY HAVE A TARGET AND NO ACTION.
+#
+# One entry per line: <title>\t<reason>. Matched on the title exactly.
+#
+# The two targets that are always correct, NSMenu for a menu bar item and NSPopUpButtonCell for a
+# popup item, are excluded in the script itself rather than listed here, because they are a
+# property of the target rather than of any one application.
+#
+# Anything listed here was checked individually. Do not add a title to silence the check without
+# saying, in the reason, what proved it benign.
+
+Tags	iTerm2, a section header in the profile search field menu template, immediately before Search Syntax Help; a header is meant to be unselectable

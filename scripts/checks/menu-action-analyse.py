@@ -15,6 +15,19 @@
 import re, sys, os
 
 EXPECTED_ACTIONLESS = ("NSMenu", "NSPopUpButtonCell")
+BASELINE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "menu-action-baseline.txt")
+
+def baselined():
+    """Titles checked individually and found correctly actionless, with the reason beside each."""
+    out = {}
+    if not os.path.exists(BASELINE):
+        return out
+    for line in open(BASELINE):
+        if line.startswith("#") or not line.strip():
+            continue
+        title, _, reason = line.rstrip("\n").partition("\t")
+        out[title] = reason
+    return out
 
 def analyse(path):
     action, target, titles = set(), {}, set()
@@ -36,6 +49,7 @@ if len(sys.argv) < 2:
     print("usage: menu-action-analyse.py <app.log> [app.log...]")
     sys.exit(2)
 
+known = baselined()
 rc = 0
 for path in sys.argv[1:]:
     if not os.path.exists(path):
@@ -46,10 +60,14 @@ for path in sys.argv[1:]:
         # not set, and both are silent in exactly the same way an application with no defect is.
         print("NOTRACE %-34s no CIDER_ITEMSET lines at all, was CIDER_TRACE_MENUITEM_DECODE set" % path)
         rc = 1; continue
-    print("%-7s %-34s titles=%-4d unreachable=%d"
-          % ("DEAD" if dead else "OK", path, len(titles), len(dead)))
+    allowed = [t for t in dead if t in known]
+    dead = [t for t in dead if t not in known]
+    print("%-7s %-34s titles=%-4d unreachable=%-2d baselined=%d"
+          % ("DEAD" if dead else "OK", path, len(titles), len(dead), len(allowed)))
     for t in dead:
         print("          %s" % t)
+    for t in allowed:
+        print("          (baselined) %s: %s" % (t, known[t]))
     if dead:
         rc = 1
 sys.exit(rc)

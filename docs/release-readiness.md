@@ -756,3 +756,35 @@ The whole history, including the two wrong turns that preceded it, is in
 
 STILL TO DRIVE: the three MoneyMoney buttons and the two iA Writer buttons, which are the same
 defect on `NSControl` rather than `NSMenuItem` and have not been exercised.
+
+## The three window lights are drawn without asking whether the window has them
+
+`-[NSThemeFrame _ciderDrawTitleBarInBounds:]` checks `NSTitledWindowMask` and then draws exactly
+three lights, in a `for (int i = 0; i < 3; i++)` loop, with no reference to
+`NSClosableWindowMask`, `NSMiniaturizableWindowMask` or `NSResizableWindowMask`. Both
+`-[NSWindow standardWindowButton:]` and the class method are `NSUnimplementedMethod` stubs
+returning nil, so there are no button objects to consult either.
+
+The style masks the roster actually uses, counted across every sweep and input log:
+
+| mask | meaning | windows |
+| --- | --- | --- |
+| `0xf` | titled, closable, miniaturizable, resizable | NSWindow, MMWindow, SalFrameWindow, QNSWindow, iTermWindow, wxNSWindow |
+| `0xb` | titled, closable, resizable, NO miniaturize | SalFrameWindow, wxNSPanel |
+| `0x3` | titled, closable only | NSWindow, wxNSPanel |
+| `0x1` | titled only | MMPanel, the About MoneyMoney panel |
+| `0x0`, `0x8000`, `0x8000000` | not titled, no bar drawn | SalFrameWindow, NSMenuWindow, IAPanel |
+
+So at least four window classes across three applications draw a light for a button the window
+does not have, and the About panel draws three for a window that has none.
+
+NOT FIXED, deliberately, because the right appearance is not established. macOS certainly does not
+draw a live green zoom light on a window that cannot zoom, but whether it omits the light entirely
+or draws it dimmed in place is the part that decides the code, and guessing would trade one wrong
+rendering for another. The two macOS references in `~/Downloads/macos-images/` do not settle it:
+the alert sheet and the save sheet both have no lights at all, and the iTerm2 window behind the
+alert is a full `0xf`. WHAT WOULD SETTLE IT is one reference capture of a titled window that is not
+closable or not resizable, for example a Font panel or a fixed size preferences window.
+
+How many times the roster asks for a button object it cannot get, per drive:
+MoneyMoney 22, CMake 10, iTerm2 3. What each does with the nil has not been disassembled yet.

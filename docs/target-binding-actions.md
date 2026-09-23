@@ -208,6 +208,35 @@ A log with no `CIDER_ITEMSET` lines reports `NOTRACE` and fails rather than pass
 drive that never ran and an application with no defect are otherwise identical, and a missing file
 reports `MISSING`. All four outcomes were exercised before the script was committed.
 
+## The whole roster, measured
+
+With the check in hand the obvious question is whether any other application has an unreachable
+command. Every roster application was driven to settle with `CIDER_TRACE_MENUITEM_DECODE=1` and
+the log analysed:
+
+| application | menu item titles | unreachable |
+| --- | --- | --- |
+| iTerm2 | 302 | 0, plus 1 baselined |
+| iA Writer | 220 | 0 |
+| Swift Publisher 5 | 154 | 0 |
+| Money Manager Ex | 142 | 0 |
+| MoneyMoney | 110 | 0, was 10 |
+| LibreOffice | 67 | 0 |
+| CMake | 40 | 0 |
+
+**1035 menu item titles across seven applications, and no unreachable command left.**
+
+The one candidate the sweep turned up was iTerm2's `Tags`, created in code with a NULL action and
+given a target of `ProfileListView`. It is benign: the trace shows it immediately before
+`Search Syntax Help` in a search field menu template, so it is a section header, and a header is
+meant to be unselectable. It is recorded in `scripts/checks/menu-action-baseline.txt` with that
+reason rather than silenced, and the baseline requires a reason beside every entry.
+
+A caveat on what this covers: a settle only drive builds the menus an application constructs at
+launch, which is most of them, but an application that builds a menu when a window opens will have
+items no drive of this shape ever sees. The 302 for iTerm2 against 40 for CMake is mostly a real
+difference in menu size, not in coverage, but it is not proof of completeness.
+
 It is not wired into the roster sweep yet. Doing so means adding `CIDER_TRACE_MENUITEM_DECODE=1`
 to the sweep environment and running the analyser over each `captures/sweep-*/app.log`, which
 would give the whole roster this coverage for the cost of one extra environment variable.
