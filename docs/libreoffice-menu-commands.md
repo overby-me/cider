@@ -80,10 +80,24 @@ startup. At 1000x600 after a 40 step settle, `Writer Document` is at `100,189`; 
     wait:40 click:100,189 wait:45 click:393,35 wait:20 click:428,16 wait:30 shot:dialog
     click:685,518 wait:30 shot:tableinserted
 
-## What this unblocks
+## What this unblocks, and the control
 
-Every menu driven command in every AppKit application on the roster went through this path, so the
-same defect was costing far more than LibreOffice. iA Writer, Swift Publisher and MoneyMoney all
-still open their menus correctly after the change, and Money Manager Ex still reaches Date Range
-Manager, which is the control: it worked before because wx opens that dialog from a menu whose
-stack is 1, never 2.
+Every menu driven command in every AppKit application on the roster goes through this one loop.
+
+**Money Manager Ex is the regression control and it passes.** Tools then Date Range Manager, driven
+after the change:
+
+    CIDER_MENU track item=Date Range Manager… enabled=1 action=clickedAction: target=wxNSMenuItem
+    CIDER_MENU trackDone on NSMainMenuView item=Date Range Manager…
+
+and Manage checking date ranges opens with all thirty ranges. The Tools menu also stays open after
+the click that opens it, which is the new sticky behaviour, and `CIDER_MENU submenuNow index=3
+branch=yes` shows the stack does reach 2 there just as it does in LibreOffice.
+
+**Why that command worked BEFORE the fix is not explained here, and no explanation is offered.** An
+earlier draft of this file claimed wx opened it from a menu whose stack was 1 rather than 2. The
+trace above refutes that outright. Deciding it would mean rebuilding the old tree and driving it
+again, which has not been done, so it is left open rather than guessed at a second time.
+
+iA Writer, Swift Publisher, MoneyMoney, iTerm2, LibreOffice, Money Manager Ex and CMake all pass
+roster-input after the change, with every capture looked at.
