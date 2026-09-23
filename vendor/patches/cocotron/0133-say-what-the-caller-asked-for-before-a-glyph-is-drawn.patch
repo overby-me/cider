@@ -1,0 +1,101 @@
+--- a/CoreText/KTFont.m
++++ b/CoreText/KTFont.m
+@@ -111,6 +111,27 @@
+     }
+     O2ContextSetFont(context, _font);
+     O2ContextSetFontSize(context, _size);
++    /*
++     * A GLYPH POSITION HERE IS ABSOLUTE, and adding the current text position to it was tried and
++     * WITHDRAWN. Quartz documents these as user space, and LibreOffice relies on that: offsetting
++     * them by the text position fixed the CMake descenders and destroyed the LibreOffice Start
++     * Centre, whose labels came back as scattered fragments. The CMake improvement was a
++     * coincidence of whatever value happened to be left in the text position.
++     */
++    /* WHETHER THIS ENTRY POINT IS THE ONE IN USE AT ALL. CTFontDrawGlyphs and
++     * CGContextShowGlyphsWithAdvances reach the same rasteriser by different routes, and only one
++     * of them carries a position per glyph. */
++    if (getenv("CIDER_TRACE_TEXTCTM") != NULL) {
++        static int printedDraw;
++
++        if (printedDraw < 400) {
++            printedDraw++;
++            fprintf(stderr, "CIDER_TEXTDRAW ctfont count=%lu first=%.2f,%.2f size=%.2f\n",
++                    (unsigned long) count, (double) positions[0].x, (double) positions[0].y,
++                    (double) _size);
++            fflush(stderr);
++        }
++    }
+     for (NSUInteger i = 0; i < count; i++) {
+         O2ContextShowGlyphsAtPoint(context, positions[i].x, positions[i].y, &glyphs[i], 1);
+     }
+--- a/Onyx2D/O2Context.m
++++ b/Onyx2D/O2Context.m
+@@ -1025,6 +1025,19 @@
+     if (self == nil)
+         return;
+ 
++    /* WHAT THE CALLER ASKED FOR, before the CTM turns it into a device point. The rendering matrix
++     * trace prints the two combined, and a baseline in the wrong place is either the request or the
++     * combination, which that one line cannot separate. */
++    if (getenv("CIDER_TRACE_TEXTCTM") != NULL) {
++        static int printedPos;
++
++        if (printedPos < 400) {
++            printedPos++;
++            fprintf(stderr, "CIDER_TEXTPOS set=%.2f,%.2f\n", (double) x, (double) y);
++            fflush(stderr);
++        }
++    }
++
+     self->_textMatrix.tx = x;
+     self->_textMatrix.ty = y;
+ }
+--- a/Onyx2D/O2Context_builtin_FT.m
++++ b/Onyx2D/O2Context_builtin_FT.m
+@@ -362,11 +362,17 @@
+     if (getenv("CIDER_TRACE_TEXTCTM") != NULL) {
+         static int printedFT;
+ 
+-        if (printedFT < 40) {
++        if (printedFT < 400) {
+             printedFT++;
+-            fprintf(stderr, "CIDER_TEXTTRM trm=[%.2f %.2f %.2f %.2f %.1f %.1f] origin=%.1f,%.1f\n",
++            /* AND THE SURFACE IT LANDS IN, because a baseline is only right or wrong relative to
++             * the height of what it is being drawn into. Qt renders each glyph into its own cell,
++             * so the pair is the whole question. */
++            fprintf(stderr,
++                    "CIDER_TEXTTRM trm=[%.2f %.2f %.2f %.2f %.1f %.1f] origin=%.1f,%.1f surface=%dx%d\n",
+                     (double) Trm.a, (double) Trm.b, (double) Trm.c, (double) Trm.d,
+-                    (double) Trm.tx, (double) Trm.ty, (double) point.x, (double) point.y);
++                    (double) Trm.tx, (double) Trm.ty, (double) point.x, (double) point.y,
++                    _surface != NULL ? (int) O2SurfaceGetWidth(_surface) : -1,
++                    _surface != NULL ? (int) O2SurfaceGetHeight(_surface) : -1);
+             fflush(stderr);
+         }
+     }
+@@ -500,6 +506,25 @@
+                 ? (NSInteger) (point.y + slot->bitmap_top - (NSInteger) slot->bitmap.rows + 1)
+                 : (NSInteger) (point.y - slot->bitmap_top);
+ 
++        /* THE FREETYPE SLOT ITSELF, per glyph. The blit trace says what was copied and where, and
++         * that cannot separate a bitmap rendered too small from one placed too low. bitmap_top is
++         * the rows ABOVE the baseline, so a descender glyph must report fewer of them than its
++         * total rows and an x height glyph must report all of them. */
++        if (ciderTraceGlyphRun()) {
++            static int printedSlot;
++
++            if (printedSlot < 120) {
++                printedSlot++;
++                fprintf(stderr,
++                        "CIDER_GLYPHSLOT glyph=%u bitmap=%dx%d top=%d left=%d baseline=%.1f "
++                        "glyphTop=%ld size=%.2f\n",
++                        (unsigned) glyphs[i], (int) slot->bitmap.width, (int) slot->bitmap.rows,
++                        (int) slot->bitmap_top, (int) slot->bitmap_left, (double) point.y,
++                        (long) glyphTop, (double) fontSize.height);
++                fflush(stderr);
++            }
++        }
++
+         renderFreeTypeBitmap(self, _surface, &slot->bitmap,
+                              (whole >> 6) + slot->bitmap_left, glyphTop, paint, flipped);
+ 

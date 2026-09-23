@@ -71,3 +71,51 @@ showing the glyph; `O2ContextSetTextPosition` stores that into `_textMatrix.tx/t
 measurement is what the rasteriser does with it: if the baseline lands on the bottom edge of the
 cell rather than `-rect.origin.y` above it, everything below the line falls outside and everything
 above survives, which is exactly the shape on screen.
+
+
+## What it really is, and a fix that was tried and WITHDRAWN
+
+**Withdrawn: the letters are not substituted and the descenders are not missing.** The first write
+up above says `p` reads as `D`, `g` as `q` and `y` as `v`, as though the part below the baseline
+were gone. That came from reading 11 point antialiased text by eye at 1:1, which this repository
+already carries a note against. Magnified 14 times and then printed as an ink map, the truth is
+different: the descender glyphs are drawn at the RIGHT size but THREE ROWS TOO LOW, so the bowl of a
+`g` sits where its tail belongs and the tail runs off the bottom of its cell. That is why it reads
+as a smaller letter.
+
+**Withdrawn twice more, both the same sampling trap.** `uniq -c | sort -rn | head` showed
+`top == rows` for every glyph and `render == bitmap` for every blit, and I read both as "all". They
+were the most FREQUENT rows, which are the letters with no descender. Counted properly, **7 blits of
+200 are short and every one loses exactly its descender rows** (`bitmap=6x10 ... render=6x7`).
+
+So the measured facts are: the glyph bitmap is correct, the bounding box is correct, the cell has
+room, and the baseline is placed on the cell floor so the rows below it are clipped.
+
+**And the fix that follows from that was wrong.** Qt sets a text position immediately before the
+draw and passes zero to `CTFontDrawGlyphs`:
+
+    CIDER_TEXTPOS set=0.00,2.17
+    CIDER_TEXTDRAW ctfont count=1 first=0.00,0.00 size=12.00
+    CIDER_TEXTPOS set=0.00,0.00      <- ours, overwriting it
+
+Offsetting each glyph by the current text position fixed CMake completely: short blits 0 of 200, the
+`g` bowl the same seven rows as the `o` beside it, and the sentence reading `Press Configure to
+update and display new valu`. **It also destroyed LibreOffice.** The roster sweep caught it at once,
+`lo CHANGED from 137276 to 124510`, and the Start Centre came back with almost every label reduced
+to scattered fragments.
+
+Quartz documents these positions as USER SPACE, absolute, which is what LibreOffice relies on, so
+the offsetting is simply wrong and the CMake improvement was a coincidence of whatever value
+happened to be sitting in the text position. Reverted, and all seven baselines re-measured
+unchanged.
+
+**What is still not known** is where the 2.17 comes from and why Qt expects it to survive. That is
+the next measurement, and it is a question about the ORDER of the two calls rather than about the
+rasteriser, which every instrument here now agrees is correct.
+
+The instruments are kept, because they are what made the above measurable rather than arguable:
+`CIDER_TRACE_TEXTCTM` now prints what the caller asked for (`CIDER_TEXTPOS`) and which entry point
+was used (`CIDER_TEXTDRAW`), and `CIDER_TRACE_GLYPHRUN` prints the FreeType slot per glyph
+(`CIDER_GLYPHSLOT`) so a bitmap rendered too small can be told from one placed too low. Their per
+line caps went from 40 to 400, because 40 hid the descender glyphs behind the ordinary ones three
+separate times.
