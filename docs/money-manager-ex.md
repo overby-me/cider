@@ -823,3 +823,39 @@ weekday among them, and a correct 65 sitting in the third trace the whole time.
 lost a drive to. Find what wx uses to draw a `wxStaticText` on this port, since it is not
 `-[NSStringDrawer drawString:withAttributes:inRect:]`, and check the width it is given against the
 65 that is available to it.
+
+### CORRECTION: it IS drawn through NSStringDrawer, and the numbers are 65 measured against 64 given
+
+The section directly above concludes that neither the size nor the draw of that label goes through
+`NSStringDrawer`. **That is wrong**, and the reason is the same mistake twice in one evening:
+`NSStringDrawer` has SIX entry points and cocotron 0142 traced two of them.
+
+| entry point | traced by 0142 |
+| --- | --- |
+| `sizeOfString:withAttributes:inSize:` | yes |
+| `drawString:withAttributes:inRect:` | yes |
+| `drawString:withAttributes:atPoint:inSize:` | **no** |
+| `sizeOfAttributedString:inSize:` | already, `CIDER_TRACE_TEXT` |
+| `drawAttributedString:inRect:` | **no** |
+| `drawAttributedString:atPoint:inSize:` | **no** |
+
+cocotron 0143 prints on all six, and the same drive answers at once:
+
+```
+CIDER_MEASURE drawAttrRect "Wednesday" len=9 inRect=64.00x14.00@2.00,0.00
+```
+
+It goes through `drawAttributedString:inRect:`, one of the three left dark. The earlier silence
+meant only that the wrong half was instrumented.
+
+**And the numbers line up.** `sizeOfAttributedString:` answers **65.00** for a nine character
+string; the draw is handed a rect **64.00** wide. That the two are the same string is an inference,
+because `CIDER_TEXTSIZE` prints a length and not the text: the drive holds exactly one `len=9`
+measurement and exactly one nine character string drawn, `Wednesday`, three times. One point short, and the ninth glyph is not
+placed at all rather than drawn clipped, which is exactly what the capture shows.
+
+What that one point means is not settled. Either the measurement over-reports by a point and the
+width the caller derived is right, or the caller narrows what it was told and our layout then drops
+a glyph that macOS would have clipped. Both are testable; neither is tested. The rect origin is
+x=2.00, so a two point inset on each side of a 68 point control would give exactly this 64, which
+is the first thing to check.

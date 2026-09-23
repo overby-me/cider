@@ -1,0 +1,81 @@
+Trace all six string drawer paths, not two.
+
+cocotron 0142 traced sizeOfString: and drawString:withAttributes:inRect:, and its commit message
+concluded that a Money Manager Ex weekday label reading Wednesda is drawn by some route outside
+NSStringDrawer entirely. THAT CONCLUSION WAS WRONG and this is the patch that shows it.
+
+NSStringDrawer has SIX entry points, not the two that were traced:
+
+    sizeOfString:withAttributes:inSize:              traced by 0142
+    drawString:withAttributes:inRect:                traced by 0142
+    drawString:withAttributes:atPoint:inSize:        NOT traced
+    sizeOfAttributedString:inSize:                   traced already, CIDER_TRACE_TEXT
+    drawAttributedString:inRect:                     NOT traced
+    drawAttributedString:atPoint:inSize:             NOT traced
+
+With all six printing, the same drive answers immediately:
+
+    CIDER_MEASURE drawAttrRect "Wednesday" len=9 inRect=64.00x14.00@2.00,0.00
+
+So it goes through drawAttributedString:inRect:, which is one of the three I had left dark, and
+the earlier silence meant only that I had instrumented the wrong half.
+
+AND THE NUMBERS NOW LINE UP. sizeOfAttributedString: answers 65.00 for that same nine character
+string, and the draw is given a rect 64.00 wide. One point short, and the last glyph is not placed
+at all rather than drawn clipped, which is exactly the capture: eight complete glyphs and then
+blank space where the ninth belongs.
+
+What that one point means is NOT settled here. Either the measurement over reports and the width
+the caller derived from it is right, or the caller narrows what it was told and our layout then
+drops a glyph macOS would have clipped. Both are testable and neither is tested yet, so this patch
+claims only the measurement.
+
+Counts from that drive, so the instrument can be seen to be alive on every path that fired: 53
+sizeOfString, 51 drawString inRect, 135 drawAttributedString inRect.
+
+--- a/AppKit/NSStringDrawer.m
++++ b/AppKit/NSStringDrawer.m
+@@ -160,6 +160,15 @@
+ {
+     NSRange glyphRange;
+ 
++    /* Same switch as the other paths. Instrumenting two of the SIX entry points here produced a
++     * confident wrong claim about where a label is drawn, so all of them print. */
++    if (getenv("CIDER_TRACE_MEASURE") != NULL) {
++        fprintf(stderr, "CIDER_MEASURE drawAt \"%.40s\" len=%lu at=%.2f,%.2f max=%.0f\n",
++                [string UTF8String] ?: "(nil)", (unsigned long) [string length], point.x, point.y,
++                maxSize.width);
++        fflush(stderr);
++    }
++
+     if (maxSize.width == NSZeroSize.width &&
+         maxSize.height == NSZeroSize.height)
+         maxSize = NSMakeSize(NSStringDrawerLargeDimension,
+@@ -258,6 +267,13 @@
+ {
+     NSRange glyphRange;
+ 
++    if (getenv("CIDER_TRACE_MEASURE") != NULL) {
++        fprintf(stderr, "CIDER_MEASURE drawAttrRect \"%.40s\" len=%lu inRect=%.2fx%.2f@%.2f,%.2f\n",
++                [[astring string] UTF8String] ?: "(nil)", (unsigned long) [astring length],
++                rect.size.width, rect.size.height, rect.origin.x, rect.origin.y);
++        fflush(stderr);
++    }
++
+     [_textContainer setContainerSize: rect.size];
+     [_textStorage setAttributedString: astring];
+ 
+@@ -273,6 +289,13 @@
+ {
+     NSRange glyphRange;
+ 
++    if (getenv("CIDER_TRACE_MEASURE") != NULL) {
++        fprintf(stderr, "CIDER_MEASURE drawAttrAt \"%.40s\" len=%lu at=%.2f,%.2f max=%.0f\n",
++                [[astring string] UTF8String] ?: "(nil)", (unsigned long) [astring length],
++                point.x, point.y, maxSize.width);
++        fflush(stderr);
++    }
++
+     if (maxSize.width == NSZeroSize.width &&
+         maxSize.height == NSZeroSize.height)
+         maxSize = NSMakeSize(NSStringDrawerLargeDimension,
