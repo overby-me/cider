@@ -1,0 +1,66 @@
+--- a/AppKit/NSTextView.subproj/NSLayoutManager.m
++++ b/AppKit/NSTextView.subproj/NSLayoutManager.m
+@@ -478,8 +478,31 @@
+         return 0;
+ 
+     [(KTFont *) font getGlyphs: narrowGlyphs forCharacters: characters length: length];
+-    for (NSUInteger i = 0; i < length; i++)
+-        glyphs[i] = narrowGlyphs[i];
++    for (NSUInteger i = 0; i < length; i++) {
++        unichar check = characters[i];
++
++        /*
++         * AND A CONTROL CHARACTER IS NOT A GLYPH, which only the wide side of this pair knew.
++         *
++         * -[NSFont getGlyphs:forCharacters:length:] answers NSControlGlyph for everything below
++         * space; KTFont answers a table lookup, which is 0 for a character no face draws. The
++         * typesetter acts on a paragraph break inside if (glyph == NSControlGlyph), so a newline
++         * that arrives as 0 breaks nothing and the next line is appended to the current one.
++         *
++         * iA Writer showed it: a document reading "# Cider", blank line, "A document iA Writer can
++         * open." drew as one line, "# CiderA document iA Writer can open.", because 89 of its runs
++         * carry a CoreText font under NSFontAttributeName and its three newlines all fell in them:
++         *
++         *     CIDER_TEXTCTL char=U+000A glyph=0 isControlGlyph=0 index=7
++         *
++         * while U+0000 and U+0008 in NSFont runs arrived as 16777215 with isControlGlyph=1.
++         */
++        if (check < ' ' || (check >= 0x7F && check <= 0x9F) || check == 0x200B ||
++            check == 0x2028 || check == 0x2029)
++            glyphs[i] = NSControlGlyph;
++        else
++            glyphs[i] = narrowGlyphs[i];
++    }
+     free(narrowGlyphs);
+     return length;
+ }
+--- a/AppKit/NSTextView.subproj/NSTypesetter_concrete.m
++++ b/AppKit/NSTextView.subproj/NSTypesetter_concrete.m
+@@ -273,6 +273,27 @@
+ 
+         glyph = _glyphCache[glyphIndex - _glyphCacheRange.location];
+         character = _characterCache[glyphIndex - _glyphCacheRange.location];
++
++        /* WHETHER A NEWLINE EVER REACHES THE CONTROL BRANCH. Everything around this loop reads
++         * correctly for a paragraph break and the line still does not break, so the question is
++         * whether the glyph arrives as NSControlGlyph for THIS character. Only the interesting
++         * characters print: an editor lays out thousands and the newline is what is being asked
++         * about. */
++        if (character < ' ' || character == 0x2028 || character == 0x2029) {
++            if (getenv("CIDER_TRACE_TEXT") != NULL && getenv("CIDER_TRACE_TEXT")[0] != (char) 0) {
++                static int printedCtl;
++
++                if (printedCtl < 80) {
++                    printedCtl++;
++                    fprintf(stderr,
++                            "CIDER_TEXTCTL char=U+%04X glyph=%lu isControlGlyph=%d index=%lu\n",
++                            (unsigned) character, (unsigned long) glyph,
++                            (int) (glyph == NSControlGlyph), (unsigned long) glyphIndex);
++                    fflush(stderr);
++                }
++            }
++        }
++
+         // TODO: there must be other chars to check for word wrapping
+         if (character == ' ') {
+ 

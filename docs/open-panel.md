@@ -79,8 +79,51 @@ What is measured so far, and where it stops:
 - `NSTypesetter_concrete` acts on that only inside `if (glyph == NSControlGlyph)`, and on a break it
   sets `_paragraphBreak` and advances the scan rect.
 
-So every link in the chain reads correctly and the line still does not break, which means the next
-measurement has to be inside that loop rather than around it: whether the newline glyph reaches
-`glyph == NSControlGlyph` at all for THIS run. The document is laid out in short runs split by iA
-Writer own markdown attributes, so it cannot be picked out of the log by length alone; the probe has
-to name the character.
+Every link in the chain read correctly and the line still did not break, so the probe went INSIDE
+that loop and named the character. `CIDER_TEXTCTL`, on the run that opens the document:
+
+    CIDER_TEXTCTL char=U+000A glyph=0        isControlGlyph=0 index=7
+    CIDER_TEXTCTL char=U+000A glyph=0        isControlGlyph=0 index=8
+    CIDER_TEXTCTL char=U+000A glyph=0        isControlGlyph=0 index=39
+    CIDER_TEXTCTL char=U+0000 glyph=16777215 isControlGlyph=1 index=13
+    CIDER_TEXTCTL char=U+0008 glyph=16777215 isControlGlyph=1 index=15
+
+Indices 7, 8 and 39 are exactly the three newlines in the file. They arrive as glyph 0; other
+control characters arrive as `NSControlGlyph`. So the mapping happens for some runs and not others,
+and the difference is the FONT: `CIDER_TEXTGLYPH` counts **1861 runs answered by NSFont and 89 by
+KTFont_FT**, and the document newlines fall in the KTFont ones.
+
+`-[NSFont getGlyphs:forCharacters:length:]` maps everything below space to `NSControlGlyph` inside
+its own method. `-[KTFont getGlyphs:forCharacters:length:]` is a two level table lookup and answers
+0 for a character no face draws. `_CiderGetGlyphsFromFont` already knew these two disagree, and
+adapts the ELEMENT WIDTH between them, but it copied the narrow glyphs straight across. cocotron
+0135 applies the same control character rule where that widening happens.
+
+After it the three newlines arrive as `glyph=16777215 isControlGlyph=1` and the editor draws
+
+    # Cider
+
+    A document iA Writer ca
+
+which is the file, with the heading on its own line and the blank line kept. The tail is off screen
+because the compositor tiles the window narrow.
+
+## AND THE APPLICATION DIES SHORTLY AFTER, which is not the fix
+
+Correcting the section above: the round trip opens a document window that shows its text, and then
+iA Writer terminates.
+
+    Terminating app due to uncaught exception NSException, reason: Cannot remove a nil key
+      -[__NSCFDictionary removeObjectForKey:]
+      __36-[IAFileBookmarkHistory willUpdate:]_block_invoke
+      -[IAFileBookmarkStore update:]
+      __64-[IAFileBookmarkStore addURL:progressHandler:completionHandler:]_block_invoke_3
+      -[NSBlockOperation main]
+
+**It is not caused by 0135.** All four runs of this sequence terminate the same way, including the
+three taken BEFORE that change, and the earlier captures simply landed before the operation queue
+got there. Shortening the wait after Open from 32 to 10 catches the window every time.
+
+So opening a document from the panel always ends in that exception, on an operation queue, inside iA
+Writer own bookmark history. The key it removes comes from something this port answers nil for, and
+naming that is the next measurement on this thread.
