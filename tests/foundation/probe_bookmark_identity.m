@@ -316,6 +316,22 @@ static void probeResourceValues(void)
 	checkBool("a file that is not there does not report success", got, 0);
 	checkBool("and sets the error", error != nil, 1);
 
+	/*
+	 * NSURLNameKey IS THE FILE SYSTEM NAME, extension and all; NSURLLocalizedNameKey is the display
+	 * name and is the one allowed to hide it. This port answered Cider for Cider.md from both.
+	 */
+	value = nil;
+	got = [file getResourceValue:&value forKey:NSURLNameKey error:NULL];
+	checkStr("the name key keeps the extension", value, "cider-probe-resource.txt");
+
+	/* The control: a name with no extension must come back unchanged. */
+	NSURL *bare = [NSURL fileURLWithPath:@"/tmp/cider-probe-bare"];
+	[@"bare" writeToFile:[bare path] atomically:YES encoding:NSUTF8StringEncoding error:NULL];
+	value = nil;
+	got = [bare getResourceValue:&value forKey:NSURLNameKey error:NULL];
+	checkStr("and a name with no extension is unchanged", value, "cider-probe-bare");
+	[[NSFileManager defaultManager] removeItemAtPath:[bare path] error:NULL];
+
 	[[NSFileManager defaultManager] removeItemAtPath:[file path] error:NULL];
 }
 

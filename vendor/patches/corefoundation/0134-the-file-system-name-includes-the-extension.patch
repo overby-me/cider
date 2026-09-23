@@ -1,0 +1,29 @@
+The file system name includes the extension.
+
+kCFURLNameKey deleted the path extension before taking the last component, so NSURLNameKey answered
+Cider for Cider.md. macOS documents that key as the name the FILE SYSTEM provides, which includes
+the extension; kCFURLLocalizedNameKey is the display name and is the one allowed to hide it.
+
+Found while writing the resource value section of the probe for 0133, not from an application
+symptom, and every application on the roster asks for resource values.
+
+probe_bookmark_identity checks it with a control: a name that HAS no extension must come back
+unchanged, so a fix that simply stopped trimming anything could not pass by accident.
+
+--- a/NSURL.m
++++ b/NSURL.m
+@@ -228,10 +228,10 @@
+     // NOTE: not all of the properties are currently supported, however the most common ones should have quasi-reasonable implementations
+     if (CFEqual(key, kCFURLNameKey))
+     {
+-        //Key for the resource’s name in the file system, returned as a CFString object.
+-        CFURLRef trimmed = CFURLCreateCopyDeletingPathExtension(kCFAllocatorDefault, url);
+-        value = CFURLCopyLastPathComponent(trimmed);
+-        CFRelease(trimmed);
++        /* THE NAME IN THE FILE SYSTEM, which includes the extension. Deleting it here answered
++         * Cider for Cider.md. NSURLLocalizedNameKey below is the display name, and that is the one
++         * allowed to hide an extension. */
++        value = CFURLCopyLastPathComponent(url);
+     }
+     else if (CFEqual(key, kCFURLLocalizedNameKey))
+     {
