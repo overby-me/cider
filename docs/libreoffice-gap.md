@@ -490,3 +490,28 @@ the bottom.
 
 No fix attempted here. Two geometry fixes were tried and reverted on this symptom already today,
 and a third guess at a path every window goes through would be worth less than this measurement.
+
+### The contrast that confirms it: MoneyMoney asks for a minimum that fits
+
+Same trace, same screen, MoneyMoney:
+
+```
+CIDER_WINFRAME NSKVONotifying_MMWindow asked=1000x600 kept=1000x600 min=640x508 didSize=1
+```
+
+**Its minimum is 640x508, comfortably inside the screen, so the configure is kept in full and
+nothing is clamped.** LibreOffice asks for `min=212x740` on a 684 tall screen and every configure
+is taken back to 740.
+
+So the deciding factor is not how large the window is, it is whether its MINIMUM fits the output.
+That also explains the timing exactly: LibreOffice relaxes its minimum to `1x51` later in the
+launch, and from that moment configures are honoured and the chrome appears.
+
+One loose end recorded rather than explained away: an earlier sweep capture has MoneyMoney mapping
+`1124x784` on this same 684 tall screen with its chrome intact, which this reading does not cover,
+because a 784 tall window on a 684 screen should lose an edge whatever its minimum is. That
+observation and this trace were taken from different runs and the sweep one has not been repeated
+with the geometry trace on, so it is a loose end and not a contradiction yet.
+
+The sway config the drives use, for anyone repeating this: `default_border none`,
+`focus_follows_mouse yes`, `output * mode 1256x684`.
