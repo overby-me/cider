@@ -621,3 +621,37 @@ the first write up of that defect said the letters were SUBSTITUTED, `p` by `D` 
 which is what an eye does with a shape it cannot resolve. The ink map gave the vertical extent of
 each letter as a NUMBER and the real defect in one minute. It reads PNGs the same way
 `capture-is-black.py` does, so it needs nothing installed.
+
+## A patch series with no pin now has a check too
+
+`scripts/checks/patch-series-reverse-check.sh` covers the four components
+`buck-bundled-patch-record-check.nu` cannot reach. That one replays a series FORWARD out of
+`vendor/pins` and compares, which is the stronger check, and only **cocotron** has a pin here:
+corefoundation, foundation, objc4 and security are materialised from a nix source path that is not
+on this machine, so there was nothing to replay from and **172 patches between them were checked by
+nothing at all.**
+
+Reversing needs no base. A patch that reverse-applies to the materialised tree is a patch whose
+hunks are still present in it, so a series that reverses whole describes that tree's delta exactly.
+Newest first, because a later patch may edit lines an earlier one added.
+
+A failure is not always rot, and pretending otherwise would make it useless: two patches that touch
+the same lines cannot both reverse, because undoing the newer one restores the ORIGINAL upstream
+text rather than what it produced. Nine such pairs exist today and live in the baseline beside the
+script; only a patch that is not in the baseline is a finding.
+
+    cocotron: 131 of 135    corefoundation: 56 of 56    foundation: 82 of 87
+    objc4: 5 of 5           security: 29 of 29
+
+Proved both ways before it was committed. Editing one line of `vendor/src/corefoundation/NSArray.m`
+without recording it makes it exit 1 naming exactly `corefoundation 0130`; restoring the line makes
+it pass. Its own first run reported 56 of 56 FAILING, because the loop `cd`s into the copy and the
+relative patch paths stopped resolving: a check that has only ever passed has not been tested.
+
+## The bookmark family, and what a silent nil costs
+
+Every `CFURL` bookmark primitive was a `#warning TODO` returning `NULL` or `false` and **touching no
+error**. corefoundation 0131 implements them, and the error half is not a detail: nil with the error
+still nil is a combination macOS never produces, and an application is entitled to read it as no
+failure. iA Writer did, stored the nil bookmark it was given, and died four layers away on a nil
+dictionary key. `docs/open-panel.md` carries the whole chain.

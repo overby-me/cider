@@ -21,6 +21,7 @@
 #import <Foundation/NSData.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSError.h>
+#import <Foundation/NSFileManager.h>
 #import <Foundation/NSKeyedArchiver.h>
 #import <Foundation/NSObject.h>
 #import <Foundation/NSSet.h>
@@ -197,6 +198,81 @@ static void probeEnumerationAndKeyPath(void)
 	          [set containsObject:@"ID-NOT-THERE"], 0);
 }
 
+static void probeBookmarkData(void)
+{
+	printf("\n-- NSURL bookmark data, which is how a bookmark gets made at all --\n");
+
+	NSURL *file = [NSURL fileURLWithPath:@"/tmp/cider-probe-bookmark.txt"];
+	[@"bookmarked" writeToFile:[file path] atomically:YES
+	                  encoding:NSUTF8StringEncoding error:NULL];
+
+	checkBool("the probe file is reachable",
+	          [file checkResourceIsReachableAndReturnError:NULL], 1);
+	/* The control: a path nothing wrote must answer NO, or reachability is a constant. */
+	checkBool("a path that does not exist is NOT reachable",
+	          [[NSURL fileURLWithPath:@"/tmp/cider-probe-absent-9c1f"]
+	              checkResourceIsReachableAndReturnError:NULL], 0);
+
+	NSError *error = nil;
+	NSData *data = [file bookmarkDataWithOptions:0
+	              includingResourceValuesForKeys:nil
+	                               relativeToURL:nil
+	                                       error:&error];
+	checkBool("bookmarkDataWithOptions: produced data", data != nil && [data length] > 0, 1);
+	/*
+	 * NIL WITH NO ERROR IS THE COMBINATION THAT KILLED iA WRITER: its addURL: reads it as "no
+	 * failure" and stores the nil bookmark. Whichever way this call goes, exactly one of the two
+	 * must be set.
+	 */
+	checkBool("data and error are never both nil", (data != nil) || (error != nil), 1);
+
+	BOOL stale = YES;
+	error = nil;
+	NSURL *back = [NSURL URLByResolvingBookmarkData:data
+	                                        options:0
+	                                  relativeToURL:nil
+	                            bookmarkDataIsStale:&stale
+	                                          error:&error];
+	checkBool("URLByResolvingBookmarkData: returned a URL", back != nil, 1);
+	checkStr("the resolved URL is the file that was bookmarked", [back path],
+	         "/tmp/cider-probe-bookmark.txt");
+	checkBool("a bookmark to an unchanged file is NOT stale", stale, 0);
+
+	/* The control: refusing garbage must both fail AND say why. */
+	error = nil;
+	NSData *junk = [@"not a bookmark at all" dataUsingEncoding:NSUTF8StringEncoding];
+	NSURL *none = [NSURL URLByResolvingBookmarkData:junk
+	                                        options:0
+	                                  relativeToURL:nil
+	                            bookmarkDataIsStale:NULL
+	                                          error:&error];
+	checkBool("resolving junk answers nil", none == nil, 1);
+	checkBool("and SETS the error rather than staying silent", error != nil, 1);
+
+	/* A bookmark to a file that has been replaced resolves, and says it is stale. */
+	[[NSFileManager defaultManager] removeItemAtPath:[file path] error:NULL];
+	[@"a different file at the same path" writeToFile:[file path] atomically:YES
+	                                         encoding:NSUTF8StringEncoding error:NULL];
+	stale = NO;
+	NSURL *again = [NSURL URLByResolvingBookmarkData:data
+	                                         options:0
+	                                   relativeToURL:nil
+	                             bookmarkDataIsStale:&stale
+	                                           error:NULL];
+	checkBool("a replaced file still resolves", again != nil, 1);
+	checkBool("and the bookmark is reported STALE", stale, 1);
+
+	[[NSFileManager defaultManager] removeItemAtPath:[file path] error:NULL];
+	error = nil;
+	NSURL *gone = [NSURL URLByResolvingBookmarkData:data
+	                                        options:0
+	                                  relativeToURL:nil
+	                            bookmarkDataIsStale:NULL
+	                                          error:&error];
+	checkBool("a deleted file does not resolve", gone == nil, 1);
+	checkBool("and that failure SETS the error too", error != nil, 1);
+}
+
 int main(int argc, const char *argv[])
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -204,6 +280,7 @@ int main(int argc, const char *argv[])
 	probeUUID();
 	probeKeyedDecode();
 	probeEnumerationAndKeyPath();
+	probeBookmarkData();
 
 	printf("\nPROBE SUMMARY %d checks, %d mismatched\n", gChecks, gBad);
 	[pool release];

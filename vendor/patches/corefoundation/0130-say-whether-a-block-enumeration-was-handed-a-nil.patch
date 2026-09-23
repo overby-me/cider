@@ -1,0 +1,90 @@
+Say whether a block enumeration was handed a nil element.
+
+An element that IS nil and an element whose property ANSWERS nil are the same crash from the
+callers side. iA Writer raises Cannot remove a nil key inside a block that
+enumerateObjectsWithOptions: drives, and nothing above that line can tell the two apart: a message
+to nil answers nil, so [nil identifier] and [realObject identifier] with an unset ivar arrive at
+removeObjectForKey: identically.
+
+CIDER_TRACE_ENUM prints one line per enumeration with the count, the options, how many elements
+were nil, the index of the first one and the class of element zero. One line per call keeps it
+cheap enough to leave on for a five minute drive.
+
+It announces itself on the first call, so silence means the method was never reached rather than
+the switch was never read.
+
+--- a/NSArray.m
++++ b/NSArray.m
+@@ -20,6 +20,9 @@
+ #import "CFInternal.h"
+ #import "CFSortFunctions.h"
+ 
++#include <stdio.h>
++#include <stdlib.h>
++
+ CF_EXPORT Boolean _CFArrayIsMutable(CFArrayRef array);
+ CF_EXPORT NSUInteger _CFArrayFastEnumeration(CFArrayRef array, NSFastEnumerationState *state, id __unsafe_unretained stackbuffer[], NSUInteger count);
+ CF_EXPORT CFDataRef _CFPropertyListCreateXMLData(CFAllocatorRef allocator, CFPropertyListRef propertyList, Boolean checkValidPlist);
+@@ -1361,6 +1364,54 @@
+     return [self objectAtIndex:idx];
+ }
+ 
++/*
++ * CIDER_TRACE_ENUM reports the shape of every block enumeration: its count, and how many elements
++ * arrived nil. An element that IS nil and an element whose property ANSWERS nil are the same crash
++ * from the caller's side, and nothing above this line can tell them apart.
++ *
++ * It announces itself on the first call so silence means "not reached" rather than "not armed".
++ */
++static BOOL CiderEnumTraceArmed(void)
++{
++    static BOOL looked = NO;
++    static BOOL armed = NO;
++
++    if (!looked)
++    {
++        const char *value = getenv("CIDER_TRACE_ENUM");
++        looked = YES;
++        armed = (value != NULL && value[0] != '\0' && value[0] != '0');
++        if (armed)
++        {
++            fprintf(stderr, "CIDER_ENUM armed\n");
++            fflush(stderr);
++        }
++    }
++    return armed;
++}
++
++static void CiderNoteEnumeration(NSArray *array, NSUInteger count, NSEnumerationOptions opts)
++{
++    NSUInteger nils = 0;
++    NSUInteger firstNil = NSNotFound;
++
++    for (NSUInteger i = 0; i < count; i++)
++    {
++        if ([array objectAtIndex:i] == nil)
++        {
++            if (nils == 0) firstNil = i;
++            nils++;
++        }
++    }
++
++    id first = (count > 0) ? [array objectAtIndex:0] : nil;
++    fprintf(stderr, "CIDER_ENUM count=%lu opts=%#lx nils=%lu firstNil=%ld first=%s\n",
++            (unsigned long) count, (unsigned long) opts, (unsigned long) nils,
++            (nils == 0) ? -1L : (long) firstNil,
++            (first != nil) ? object_getClassName(first) : "(nil)");
++    fflush(stderr);
++}
++
+ - (void)enumerateObjectsUsingBlock:(void (^)(id obj, NSUInteger idx, BOOL *stop))block
+ {
+     [self enumerateObjectsWithOptions:0 usingBlock:block];
+@@ -1369,6 +1420,7 @@
+ - (void)enumerateObjectsWithOptions:(NSEnumerationOptions)opts usingBlock:(void (^)(id obj, NSUInteger idx, BOOL *stop))block
+ {
+     NSUInteger len = [self count];
++    if (CiderEnumTraceArmed()) CiderNoteEnumeration(self, len, opts);
+     if (opts & NSEnumerationConcurrent)
+     {
+         __block BOOL stop = NO;

@@ -1,0 +1,304 @@
+A URL bookmark must round trip, and a failure must say so.
+
+Every bookmark primitive in this port returned NULL or false with a TODO beside it, and none of
+them set the error. CFURLCreateBookmarkData, CFURLCreateByResolvingBookmarkData,
+CFURLCreateBookmarkDataFromFile, CFURLWriteBookmarkDataToFile, the two resource property readers
+and CFURLResourceIsReachable. A document application cannot remember a file without them.
+
+RETURNING NIL WITHOUT SETTING THE ERROR IS A COMBINATION macOS NEVER PRODUCES, and it is the half
+that made this fatal rather than merely missing. Measured end to end in iA Writer:
+
+  +[IAFileBookmark bookmarkDataWithURL:error:] answers nil and leaves the error nil
+  its addURL: block reads the nil data, skips the create, and because the error is ALSO nil takes
+  the branch that adds the bookmark to the array, so it adds a NIL
+  -[NSMutableArray addObject:] here calls CFArrayAppendValue with NULL rather than raising as
+  macOS does, so the nil lands in the array
+  -[IAFileBookmarkHistory willUpdate:] enumerates that array, [nil identifier] answers nil, and
+  removeObjectForKey: raises Cannot remove a nil key
+
+CIDER_ENUM printed the deciding line on the run that died:
+
+  CIDER_ENUM count=1 opts=0x2 nils=1 firstNil=0 first=(nil)
+
+opts 0x2 is NSEnumerationReverse, which is the enumeration in willUpdate:, and the one element is
+nil. The element was never a bookmark with a missing identifier, which is what three earlier
+theories assumed and what the probe had already refuted.
+
+BOOKMARK DATA IS OPAQUE ON macOS, which is what makes this implementable at all: nothing outside
+the framework parses one, so any format round trips as long as create and resolve agree. The blob
+here records a magic, a version, the device and inode at creation, and the path. Staleness is then
+answered rather than guessed: the file is stale when it exists at the path but is a different inode.
+
+Every exit either returns a blob or fills the error, including the ones that refuse.
+
+tests/foundation/probe_bookmark_identity.m covers it with controls on both sides: an absent path is
+NOT reachable, junk fails AND sets an error, a replaced file resolves and reports stale, and a
+deleted file fails and sets an error. 36 checks, 0 mismatched.
+
+--- a/NSURL.m
++++ b/NSURL.m
+@@ -18,6 +18,8 @@
+ #include <sys/statvfs.h>
+ #include <sys/stat.h>
+ #include <dlfcn.h>
++#include <stdio.h>
++#include <string.h>
+ 
+ #define STACK_BUFFER_SIZE 100 // pretty safe bet this will be quite unlikely to use more than this since there are only 94 properties
+ 
+@@ -1008,46 +1010,235 @@
+     CFURLResourceInfoRelease(resourceInfo);
+ }
+ 
+-CFDataRef CFURLCreateBookmarkDataFromFile(CFAllocatorRef allocator, CFURLRef fileURL, CFErrorRef *errorRef)
++/*
++ * BOOKMARK DATA IS OPAQUE, AND THAT IS WHAT MAKES THIS POSSIBLE. macOS documents the blob as
++ * private and nothing outside the framework parses one, so any format round trips as long as
++ * create and resolve agree. This records the path, and the device and inode at creation so
++ * staleness can be answered rather than guessed.
++ *
++ * RETURNING NULL WITHOUT SETTING THE ERROR IS A COMBINATION macOS NEVER PRODUCES, and an
++ * application is entitled to read it as "no failure". iA Writer does exactly that: on a nil
++ * bookmark with a nil error its addURL: adds the nil to its bookmarks array, and four layers later
++ * a nil key reaches removeObjectForKey: and the process dies. Every exit below therefore either
++ * returns a blob or fills *error.
++ */
++#define CIDER_BOOKMARK_MAGIC 0x6B6D6263  /* "cbmk" little endian */
++#define CIDER_BOOKMARK_VERSION 1
++
++struct CiderBookmarkHeader {
++    uint32_t magic;
++    uint32_t version;
++    uint64_t device;
++    uint64_t inode;
++    uint32_t pathLength;    /* bytes, no terminator */
++    uint32_t reserved;
++};
++
++static void bookmarkError(CFErrorRef *error, CFIndex code, CFStringRef reason)
+ {
+-#warning TODO: FIXME
+-    return NULL;
++    if (error == NULL)
++    {
++        return;
++    }
++
++    const CFStringRef key = kCFErrorLocalizedDescriptionKey;
++    CFTypeRef value = reason;
++    *error = CFErrorCreateWithUserInfoKeysAndValues(kCFAllocatorDefault, kCFErrorDomainCocoa, code,
++                                                    (const void *const *) &key,
++                                                    (const void *const *) &value, 1);
+ }
+ 
+-Boolean CFURLWriteBookmarkDataToFile(CFDataRef bookmarkRef, CFURLRef fileURL, CFURLBookmarkFileCreationOptions options, CFErrorRef *errorRef)
++CFDataRef CFURLCreateBookmarkData(CFAllocatorRef allocator, CFURLRef url, CFURLBookmarkCreationOptions options, CFArrayRef resourcePropertiesToInclude, CFURLRef relativeToURL, CFErrorRef *error)
+ {
+-#warning TODO: FIXME
+-    return false;
++    UInt8 path[PATH_MAX] = { 0 };
++
++    if (url == NULL || !CFURLGetFileSystemRepresentation(url, true, path, PATH_MAX))
++    {
++        bookmarkError(error, 256 /* NSFileReadUnknownError */, CFSTR("the URL has no file system path"));
++        return NULL;
++    }
++
++    struct stat info;
++    struct CiderBookmarkHeader header = {
++        .magic = CIDER_BOOKMARK_MAGIC,
++        .version = CIDER_BOOKMARK_VERSION,
++        .device = 0,
++        .inode = 0,
++        .pathLength = (uint32_t) strlen((const char *) path),
++        .reserved = 0,
++    };
++
++    if (stat((const char *) path, &info) == 0)
++    {
++        header.device = (uint64_t) info.st_dev;
++        header.inode = (uint64_t) info.st_ino;
++    }
++
++    CFMutableDataRef data = CFDataCreateMutable(allocator, 0);
++    CFDataAppendBytes(data, (const UInt8 *) &header, sizeof(header));
++    CFDataAppendBytes(data, path, header.pathLength);
++    return data;
+ }
+ 
+-CFTypeRef CFURLCreateResourcePropertyForKeyFromBookmarkData(CFAllocatorRef allocator, CFStringRef resourcePropertyToReturn, CFDataRef bookmark)
++/* Shared by resolution and by the two resource-property readers, which differ only in what they
++ * ask the resolved URL for. */
++static CFURLRef bookmarkCopyURL(CFDataRef bookmark, Boolean *isStale, CFErrorRef *error)
+ {
+-#warning TODO: FIXME
+-    return NULL;
++    struct CiderBookmarkHeader header;
++
++    if (bookmark == NULL || CFDataGetLength(bookmark) < (CFIndex) sizeof(header))
++    {
++        bookmarkError(error, 4864 /* NSCoderReadCorruptError */, CFSTR("the bookmark data is too short"));
++        return NULL;
++    }
++
++    memcpy(&header, CFDataGetBytePtr(bookmark), sizeof(header));
++    if (header.magic != CIDER_BOOKMARK_MAGIC || header.version != CIDER_BOOKMARK_VERSION ||
++        header.pathLength == 0 || header.pathLength >= PATH_MAX ||
++        CFDataGetLength(bookmark) < (CFIndex)(sizeof(header) + header.pathLength))
++    {
++        bookmarkError(error, 4864, CFSTR("the bookmark data was not written by this framework"));
++        return NULL;
++    }
++
++    UInt8 path[PATH_MAX] = { 0 };
++    memcpy(path, CFDataGetBytePtr(bookmark) + sizeof(header), header.pathLength);
++
++    struct stat info;
++    if (stat((const char *) path, &info) != 0)
++    {
++        bookmarkError(error, 260 /* NSFileNoSuchFileError */, CFSTR("the bookmarked file no longer exists"));
++        return NULL;
++    }
++
++    if (isStale != NULL)
++    {
++        /* The file is there but is not the one that was bookmarked, so the caller should make a
++         * fresh blob. A bookmark written before the file had an inode recorded is never stale. */
++        *isStale = (header.inode != 0) &&
++                   ((uint64_t) info.st_ino != header.inode || (uint64_t) info.st_dev != header.device);
++    }
++
++    return CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, path, header.pathLength,
++                                                   S_ISDIR(info.st_mode));
+ }
+ 
+-CFDictionaryRef CFURLCreateResourcePropertiesForKeysFromBookmarkData(CFAllocatorRef allocator, CFArrayRef resourcePropertiesToReturn, CFDataRef bookmark)
++CFURLRef CFURLCreateByResolvingBookmarkData(CFAllocatorRef allocator, CFDataRef bookmark, CFURLBookmarkResolutionOptions options, CFURLRef relativeToURL, CFArrayRef resourcePropertiesToInclude, Boolean* isStale, CFErrorRef* error)
+ {
+-#warning TODO: FIXME
+-    return NULL;
++    return bookmarkCopyURL(bookmark, isStale, error);
+ }
+ 
+-CFURLRef CFURLCreateByResolvingBookmarkData(CFAllocatorRef allocator, CFDataRef bookmark, CFURLBookmarkResolutionOptions options, CFURLRef relativeToURL, CFArrayRef resourcePropertiesToInclude, Boolean* isStale, CFErrorRef* error)
++CFDataRef CFURLCreateBookmarkDataFromFile(CFAllocatorRef allocator, CFURLRef fileURL, CFErrorRef *errorRef)
+ {
+-#warning TODO: FIXME
+-    return NULL;
++    UInt8 path[PATH_MAX] = { 0 };
++
++    if (fileURL == NULL || !CFURLGetFileSystemRepresentation(fileURL, true, path, PATH_MAX))
++    {
++        bookmarkError(errorRef, 256, CFSTR("the alias file URL has no file system path"));
++        return NULL;
++    }
++
++    FILE *handle = fopen((const char *) path, "rb");
++    if (handle == NULL)
++    {
++        posixError(errorRef);
++        return NULL;
++    }
++
++    CFMutableDataRef data = CFDataCreateMutable(allocator, 0);
++    UInt8 chunk[4096];
++    size_t got;
++    while ((got = fread(chunk, 1, sizeof(chunk), handle)) > 0)
++    {
++        CFDataAppendBytes(data, chunk, (CFIndex) got);
++    }
++    fclose(handle);
++
++    if (bookmarkCopyURL(data, NULL, errorRef) == NULL)
++    {
++        CFRelease(data);
++        return NULL;
++    }
++    return data;
+ }
+ 
+-CFDataRef CFURLCreateBookmarkData(CFAllocatorRef allocator, CFURLRef url, CFURLBookmarkCreationOptions options, CFArrayRef resourcePropertiesToInclude, CFURLRef relativeToURL, CFErrorRef *error)
++Boolean CFURLWriteBookmarkDataToFile(CFDataRef bookmarkRef, CFURLRef fileURL, CFURLBookmarkFileCreationOptions options, CFErrorRef *errorRef)
++{
++    UInt8 path[PATH_MAX] = { 0 };
++
++    if (bookmarkRef == NULL || fileURL == NULL ||
++        !CFURLGetFileSystemRepresentation(fileURL, true, path, PATH_MAX))
++    {
++        bookmarkError(errorRef, 512 /* NSFileWriteUnknownError */, CFSTR("no alias file path to write to"));
++        return false;
++    }
++
++    FILE *handle = fopen((const char *) path, "wb");
++    if (handle == NULL)
++    {
++        posixError(errorRef);
++        return false;
++    }
++
++    size_t length = (size_t) CFDataGetLength(bookmarkRef);
++    size_t wrote = fwrite(CFDataGetBytePtr(bookmarkRef), 1, length, handle);
++    fclose(handle);
++
++    if (wrote != length)
++    {
++        bookmarkError(errorRef, 512, CFSTR("the alias file was written short"));
++        return false;
++    }
++    return true;
++}
++
++CFTypeRef CFURLCreateResourcePropertyForKeyFromBookmarkData(CFAllocatorRef allocator, CFStringRef resourcePropertyToReturn, CFDataRef bookmark)
+ {
+-#warning TODO: FIXME
+-    return NULL;
++    CFURLRef url = bookmarkCopyURL(bookmark, NULL, NULL);
++    if (url == NULL)
++    {
++        return NULL;
++    }
++
++    CFTypeRef value = NULL;
++    if (!CFURLCopyResourcePropertyForKey(url, resourcePropertyToReturn, &value, NULL))
++    {
++        value = NULL;
++    }
++    CFRelease(url);
++    return value;
++}
++
++CFDictionaryRef CFURLCreateResourcePropertiesForKeysFromBookmarkData(CFAllocatorRef allocator, CFArrayRef resourcePropertiesToReturn, CFDataRef bookmark)
++{
++    CFURLRef url = bookmarkCopyURL(bookmark, NULL, NULL);
++    if (url == NULL)
++    {
++        return NULL;
++    }
++
++    CFDictionaryRef values = CFURLCopyResourcePropertiesForKeys(url, resourcePropertiesToReturn, NULL);
++    CFRelease(url);
++    return values;
+ }
+ 
+ Boolean CFURLResourceIsReachable(CFURLRef url, CFErrorRef *error)
+ {
+-#warning TODO: FIXME
+-    return false;
++    UInt8 path[PATH_MAX] = { 0 };
++
++    if (url == NULL || !CFURLGetFileSystemRepresentation(url, true, path, PATH_MAX))
++    {
++        bookmarkError(error, 256, CFSTR("the URL has no file system path"));
++        return false;
++    }
++
++    struct stat info;
++    if (stat((const char *) path, &info) != 0)
++    {
++        posixError(error);
++        return false;
++    }
++    return true;
+ }
+ 
+ @implementation NSURL

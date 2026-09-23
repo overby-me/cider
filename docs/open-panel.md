@@ -209,3 +209,57 @@ the next thing to look at: the store restores its `bookmarks` through `IAKeyValu
 `underlyingStore`, `registerDefaults:`, `valueTransformerNames` and
 `_readValueFromUnderlyingStoreKey:forKey:` all in the trace, and that is a fourth construction path
 the probe does not cover.
+
+## SOLVED: the element was nil, and the cause was a stub that failed silently
+
+`CIDER_TRACE_ENUM`, added to `-[NSArray enumerateObjectsWithOptions:usingBlock:]`, printed one line
+on the run that died:
+
+    CIDER_ENUM count=1 opts=0x2 nils=1 firstNil=0 first=(nil)
+
+`opts=0x2` is `NSEnumerationReverse`, which is the enumeration in `willUpdate:`. The array holds one
+element and **that element is nil**. So `[bm identifier]` was never a bookmark answering nil; it was
+a message to nothing. Three theories about a missing identifier, and the probe that refuted all
+three, were aimed at the wrong half of the expression.
+
+The whole chain, measured rather than inferred:
+
+1. Every `CFURL` bookmark primitive in this port was a `#warning TODO` returning `NULL` or `false`
+   and touching no error: `CFURLCreateBookmarkData`, `CFURLCreateByResolvingBookmarkData`,
+   `CFURLCreateBookmarkDataFromFile`, `CFURLWriteBookmarkDataToFile`, both
+   `...ResourcePropert...FromBookmarkData` readers, and `CFURLResourceIsReachable`.
+2. So `+[IAFileBookmark bookmarkDataWithURL:error:]` answers nil **with the error still nil**.
+   `CIDER_TRACE_MSGSEND=IAFileBookmark` shows that call arriving and nothing after it: no
+   `initWithIdentifier:URL:data:`, no instance created at all.
+3. The `addURL:` block skips the create because the data is nil (`cmpq $0x0, -0x40(%rbp)` at
+   `0x6502`, `je 0x67d3`, which sets `r15 = nil`), then branches on the ERROR at `0x67de`. That is
+   nil too, so it takes `je 0x685d`, the success path, which does `[bookmarks addObject: r15]` with
+   `r15` nil.
+4. `-[NSMutableArray addObject:]` here calls `CFArrayAppendValue` with `NULL` rather than raising
+   the way macOS does, so the nil lands in the array.
+5. `willUpdate:` enumerates it, `[nil identifier]` answers nil, `removeObjectForKey:` raises.
+
+**nil with no error is a combination macOS never produces**, and an application is entitled to read
+it as "no failure". That is what made a missing feature fatal instead of merely missing.
+
+corefoundation 0131 implements the family. Bookmark data is opaque on macOS, which is what makes
+this possible: nothing outside the framework parses one, so any format round trips as long as
+create and resolve agree. The blob records a magic, a version, the device and inode at creation and
+the path, so staleness is answered rather than guessed, and every exit either returns a blob or
+fills the error.
+
+`tests/foundation/probe_bookmark_identity.m` covers it with a control on each side: an absent path
+is NOT reachable, junk fails AND sets an error, a replaced file resolves and reports stale, a
+deleted file fails and sets an error. **36 checks, 0 mismatched.**
+
+After it, the same drive run past `t=311` (the terminations were at 229, 269 and 299) shows
+`+[IAFileBookmark bookmarkDataWithURL:error:]`, `-[IAFileBookmark initWithIdentifier:URL:data:]`,
+`setIdentifier:`, `setURL:` and `setData:` all sent, **no nil in any enumeration, and no
+termination**. iA Writer opens a document from the panel and keeps running.
+
+### Still true, and worth its own step
+
+`-[NSMutableArray addObject:]` and `insertObject:atIndex:` accept nil here. macOS raises
+`attempt to insert nil object`, and had this port raised, the exception would have named the real
+site instead of a dictionary four layers away. That is a separate change with a roster-wide blast
+radius, so it is not folded into this one.
