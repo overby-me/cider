@@ -1,0 +1,18 @@
+--- a/CoreText/KTFont.m
++++ b/CoreText/KTFont.m
+@@ -77,6 +77,15 @@
+         } else {
+             rects[i] = CGRectZero;
+         }
++        /* WHETHER A BOX HAS ANY ROOM UNDER THE BASELINE. Qt sizes the cell it renders each glyph
++         * into from this, so a box whose origin y is never negative cannot hold a descender and
++         * every p, g and y loses the part below the line. */
++        if (getenv("CIDER_TRACE_GLYPHBOX") != NULL) {
++            fprintf(stderr, "CIDER_GLYPHBOX glyph=%u rect=%.2f,%.2f %.2fx%.2f\n",
++                    (unsigned) glyphs[i], rects[i].origin.x, rects[i].origin.y,
++                    rects[i].size.width, rects[i].size.height);
++            fflush(stderr);
++        }
+     }
+ }
+ 
