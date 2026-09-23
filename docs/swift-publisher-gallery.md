@@ -78,3 +78,22 @@ that.**
 which is the whole point of a popup button, and then set it without asking whether the result is on
 the screen. cocotron 0136 clamps it to the screen visible frame, keeping the near edge when a menu
 is larger than the screen rather than pushing it off the far one.
+
+## And the whole round trip works
+
+One step further, with `CIDER_TRACE_MENU` on. Click the button, then click the item:
+
+    button=0x110 pressed=true x=100 y=660 window=1     the button
+    pointer=enter x=35 y=20 window=3                    the menu surface
+    button=0x110 pressed=true x=35 y=20 window=3        the item
+    CIDER_POPUPPICK index=0 title=(none) pullsDown=1
+
+So the popup is created, placed, painted, tracked, clicked and chosen, and the capture after it shows
+the menu gone and the gallery intact with the application still running. An hour earlier the same
+sequence produced a surface nobody could see.
+
+`index=0 pullsDown=1` is correct: a pull-down popup removes its first item from the displayed copy,
+and `-[NSPopUpButtonCell trackMouse...]` adds the one back afterwards. `title=(none)` is the trace
+reading the title off that truncated copy and getting nil, while the item draws as `File…` on
+screen, so the item carries an attributed title and no plain one. Recorded rather than chased: it
+is a property of the trace, not of the pick.
