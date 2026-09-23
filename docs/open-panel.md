@@ -127,3 +127,85 @@ got there. Shortening the wait after Open from 32 to 10 catches the window every
 So opening a document from the panel always ends in that exception, on an operation queue, inside iA
 Writer own bookmark history. The key it removes comes from something this port answers nil for, and
 naming that is the next measurement on this thread.
+
+## Correcting the paragraph above: the rate is 4 of 5, and the crash arrives LATE
+
+Two things in the section above are wrong and both were found by re-measuring rather than by
+re-reading.
+
+**It is not every run.** A fifth recorded drive of the same sequence, `captures/ia-fixed2`, ran to
+`t=281.62` and did not terminate. So the rate is 4 of 5, not 5 of 5.
+
+**It arrives between four and five minutes in.** The termination timestamps, read against the
+`nextevent ... t=` clock in the same log:
+
+| capture | last t | terminated at |
+|---|---|---|
+| `ia-openfile` | 299.23 | 299.23 |
+| `ia-textline` | 269.38 | 269.38 |
+| `ia-fixed` | (log truncated) | 229.13 |
+| `ia-fixed2` | 281.62 | never |
+
+Four drives taken today with `LIMIT=110` all ended at `t≈108` with a live document window and no
+exception. **That is the harness stopping short, not the defect going away**, and it is worth
+writing down because those four runs look exactly like a fix. Any drive meant to reach this needs
+`LIMIT` above 300.
+
+## The crash site, arithmetic rather than assertion
+
+`__36-[IAFileBookmarkHistory willUpdate:]_block_invoke + 266` against the extracted x86_64 slice:
+the block begins at `0x33bd`, and `0x33bd + 0x10a = 0x34c7`, the return address of the
+`removeObjectForKey:` call at `0x34c5`. `-[IAFileBookmarkHistory willUpdate:] + 423` lands the same
+way on the `enumerateObjectsWithOptions:usingBlock:` call. So the block is
+
+```objc
+[[changeSet bookmarks] enumerateObjectsWithOptions:NSEnumerationReverse
+                                        usingBlock:^(IAFileBookmark *bm, NSUInteger idx, BOOL *stop) {
+    if ([knownIdentifiers containsObject:[bm identifier]] &&
+        errors[[bm identifier]] != nil)
+        return;
+    [mutableBookmarks removeObjectAtIndex:idx];
+    [errors removeObjectForKey:[bm identifier]];   // <- raises here
+}];
+```
+
+and the nil key is `[bm identifier]`. The block descriptor names the argument type `IAFileBookmark`,
+and both `-[IAFileBookmark identifier]` and `-[IAFileBookmarkHistoryItem identifier]` are plain
+stored-ivar loads, `movq 0x8(%rdi), %rax`.
+
+## Where the identifier comes from, and the three port answers that could be nil
+
+`-[IAFileBookmarkStore addURL:progressHandler:completionHandler:]` runs on a background queue and
+reads, in order: `_refreshBookmarks:errors:`, then `indexOfObjectPassingTest:` with a block that
+compares `[[bm URL] isSanitizedPathEqual:]`, then `_validateURL:bookmarkIdentifier:bookmarks:...`.
+On a miss it takes the CREATE branch, `bookmarkDataWithURL:error:` then `[[NSUUID UUID] UUIDString]`
+then `initWithIdentifier:URL:data:`; on a hit it takes the REPLACE branch, which reuses
+`[existing identifier]`. `_block_invoke_3` then builds the change set with `initWithBookmarks:errors:`
+and calls `update:`, whose first act is `[self willUpdate:changeSet]`.
+
+That leaves exactly three ways this port could hand the application a nil identifier, and
+`tests/foundation/probe_bookmark_identity.m` asks all three directly.
+
+**All three answer correctly. 23 checks, 0 mismatched, each with a control.** `NSUUID` produces a
+36 character string and two calls DIFFER; the identifier survives both a plain and a
+`requiringSecureCoding` archive round trip, while the control asking for the wrong class answers
+nil; reverse enumeration visits every element, starts at the last index, hands out no nil element
+and no nil identifier, and `valueForKey:` plus `NSSet` behave on both sides of a membership test.
+
+So the nil identifier is not NSUUID, not the keyed decode and not the enumeration, and the next
+measurement has to come from the running application.
+
+## What a run with the bookmark classes traced showed, and what it does not settle
+
+`CIDER_TRACE_MSGSEND=IAFileBookmark` on a full open sequence: `addURL:progressHandler:completionHandler:`
+ran, `willUpdate:` ran, `applyChangeSet:` ran, and **not one `IAFileBookmark` instance was ever
+created** in that process. The only sends to the class were `+class` and `+initialize`; neither
+`+bookmarkDataWithURL:error:` nor `-initWithIdentifier:URL:data:` appears. The bookmarks the change
+set carried were therefore empty, which is why that run did not raise.
+
+**That run reached only `t=138`,** so it is inside the window where a non-crashing run and a
+crashing one look the same, and it bounds less than it appears to. It is recorded because it names
+the next thing to look at: the store restores its `bookmarks` through `IAKeyValueStore`, with
+`underlyingStore`, `registerDefaults:`, `valueTransformerNames` and
+`_readValueFromUnderlyingStoreKey:forKey:` all in the trace, and that is a fourth construction path
+the probe does not cover.
