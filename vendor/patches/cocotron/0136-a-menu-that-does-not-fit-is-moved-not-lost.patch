@@ -1,0 +1,92 @@
+A menu that does not fit is moved, not lost.
+
+NSPopUpWindow shifts its frame so the SELECTED item sits over the button, which is the whole point
+of a popup button, and then set it without ever asking whether the result is on the screen. For a
+button near the bottom of a window that puts the menu past the edge.
+
+MEASURED ON A PATH NOBODY HAD DRIVEN. Swift Publisher Open Recent, with the button frame taken from
+CIDER_TRACE_TREE rather than read off a capture:
+
+  NSPopUpButton 160x25@20,11 win 160x25@20,11 top 648..673
+
+so the click goes to 100,660 in window coordinates, and CIDER_WAYLAND_TRACE_INPUT confirms it
+arrives there. The menu is then built, mapped and PAINTED:
+
+  popup=ok number=3 size=72x38 level=6
+  create=ok number=3 size=72x38 at=20,-27 level=6
+  mapped=yes number=3 size=72x38
+  pixels=drawn number=3 changed=2766/6600 colours=41
+  present number=3 count=1 size=72x38
+
+at=20,-27 is twenty seven points ABOVE the top of the output. The pointer then enters it and the
+conversion to screen answers a negative y:
+
+  pointer=enter x=80 y=34 window=3
+  screenloc local=80,34 focusWindow=3 frame=Some((20.0, -18.0, 38.0)) -> 100,-14
+  hide number=3 visible=true
+
+The tracking loop reads that as outside the menu and hides it one event later. So the menu was
+never missing: it was drawn, off screen, and then closed by its own tracking loop. Nothing in the
+capture could have shown that, and three earlier attempts at this button failed on coordinates
+before ever reaching it.
+
+The clamp keeps the near edge when a menu is bigger than the screen, rather than pushing it off the
+far one.
+
+--- a/AppKit/NSPopUpWindow.m
++++ b/AppKit/NSPopUpWindow.m
+@@ -18,6 +18,7 @@
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ #import <AppKit/NSPopUpView.h>
+ #import <AppKit/NSPopUpWindow.h>
++#import <AppKit/NSScreen.h>
+ 
+ @implementation NSPopUpWindow
+ 
+@@ -58,6 +59,38 @@
+     [_view selectItemAtIndex: index];
+ }
+ 
++/*
++ * A MENU THAT DOES NOT FIT IS MOVED, NOT LOST. Placing the selected item over the button is the
++ * whole point of the shift above, and for a button near the bottom of a window it puts the menu
++ * past the edge of the screen. macOS slides it back on; here nothing did, so Swift Publisher
++ * Open Recent opened at y -27, the pointer-to-screen conversion answered a negative y, and the
++ * tracking loop read that as outside the menu and hid it one event later. Measured, not inferred:
++ * create=ok number=3 size=72x38 at=20,-27 followed by hide number=3 visible=true.
++ */
++- (NSRect) _ciderFrameClampedToScreen: (NSRect) frame {
++    NSScreen *screen = [self screen];
++    NSRect visible;
++
++    if (screen == nil)
++        screen = [NSScreen mainScreen];
++    if (screen == nil)
++        return frame;
++
++    visible = [screen visibleFrame];
++    /* A menu taller or wider than the screen keeps its origin at the near edge rather than being
++     * pushed off the far one. */
++    if (NSMaxX(frame) > NSMaxX(visible))
++        frame.origin.x = NSMaxX(visible) - frame.size.width;
++    if (frame.origin.x < visible.origin.x)
++        frame.origin.x = visible.origin.x;
++    if (NSMaxY(frame) > NSMaxY(visible))
++        frame.origin.y = NSMaxY(visible) - frame.size.height;
++    if (frame.origin.y < visible.origin.y)
++        frame.origin.y = visible.origin.y;
++
++    return frame;
++}
++
+ - (NSInteger) runTrackingWithEvent: (NSEvent *) event {
+     NSSize size = [_view sizeForContents];
+     NSRect selectedRect = [_view rectForSelectedItem];
+@@ -67,6 +100,7 @@
+     frame.size = size;
+     frame.origin.y -=
+             (size.height - selectedRect.origin.y) - selectedRect.size.height;
++    frame = [self _ciderFrameClampedToScreen: frame];
+     [self setFrame: frame display: NO];
+ 
+     [_view setFrameSize: size];

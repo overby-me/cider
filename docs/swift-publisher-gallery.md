@@ -34,3 +34,47 @@ this up should get the button frame from a trace first.
 `strings` finds `bookmarkDataWithOptions...` referenced twice in the Swift Publisher binary and
 twice in its ArtText plug-in. Before corefoundation 0131 every one of those calls answered nil with
 no error. `Open Recent` is the obvious path that reaches them, and it is still unexercised.
+
+## SOLVED: Open Recent was drawn off the screen and closed by its own tracking loop
+
+The button frame came from `CIDER_TRACE_TREE` instead of from my eye, and settled the coordinate
+question in one line:
+
+    CIDER_TREE NSPopUpButton view=0x... 160x25@20,11 win 160x25@20,11 top 648..673
+
+So the target is window x 20..180, top 648..673, and its centre is **100,660**. The window is
+1256x684 at 0,0, the same size and origin as the capture, so for this window capture coordinates ARE
+window coordinates. The two earlier misses were mine.
+
+`CIDER_WAYLAND_TRACE_INPUT` then proved the click arrives exactly there, and proved something else
+worth keeping: **the coordinates an application sees are local to the surface under the pointer.**
+The welcome window close, aimed at output 1022,619, arrived as
+
+    button=0x110 pressed=true x=849 y=572 window=2
+
+and window 2 is at output 173,47. 1022-173 = 849, 619-47 = 572.
+
+With the click landing on the button, the menu is created, mapped and **painted**:
+
+    popup=ok number=3 size=72x38 level=6
+    role number=3 ... class=NSPopUpWindow
+    create=ok number=3 size=72x38 at=20,-27 level=6
+    mapped=yes number=3 size=72x38
+    pixels=drawn number=3 changed=2766/6600 colours=41
+    present number=3 count=1 size=72x38
+
+`at=20,-27` is twenty seven points **above the top of the output**. The pointer enters it, the
+conversion to screen answers a negative y, and the menu closes:
+
+    pointer=enter x=80 y=34 window=3
+    screenloc local=80,34 focusWindow=3 frame=Some((20.0, -18.0, 38.0)) -> 100,-14
+    hide number=3 visible=true
+
+So the menu was never missing. It was built, painted, placed off screen, and then hidden by its own
+tracking loop reading a nonsense mouse location. **Nothing in a capture could have shown any of
+that.**
+
+`-[NSPopUpWindow runTrackingWithEvent:]` shifts the frame so the selected item sits over the button,
+which is the whole point of a popup button, and then set it without asking whether the result is on
+the screen. cocotron 0136 clamps it to the screen visible frame, keeping the near edge when a menu
+is larger than the screen rather than pushing it off the far one.
