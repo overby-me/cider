@@ -273,6 +273,52 @@ static void probeBookmarkData(void)
 	checkBool("and that failure SETS the error too", error != nil, 1);
 }
 
+static void probeResourceValues(void)
+{
+	printf("\n-- getResourceValue:forKey:error:, where absent and failed must look different --\n");
+
+	NSURL *file = [NSURL fileURLWithPath:@"/tmp/cider-probe-resource.txt"];
+	[@"resource" writeToFile:[file path] atomically:YES
+	                encoding:NSUTF8StringEncoding error:NULL];
+	/* Without this every answer below could be about a file that was never written. */
+	checkBool("the probe file was written",
+	          [[NSFileManager defaultManager] fileExistsAtPath:[file path]], 1);
+
+	id value = nil;
+	NSError *error = nil;
+	BOOL got = [file getResourceValue:&value forKey:NSURLNameKey error:&error];
+	checkBool("a key this port implements reports success", got, 1);
+	checkBool("and hands back a value", value != nil, 1);
+
+	value = nil;
+	error = nil;
+	got = [file getResourceValue:&value forKey:NSURLFileResourceTypeKey error:&error];
+	checkBool("the file resource type reports success", got, 1);
+	checkStr("and says the file is a regular file", value, "NSURLFileResourceTypeRegular");
+
+	/*
+	 * A KEY WITH NO VALUE IS NOT A FAILURE. macOS answers true with the value NULL when a property
+	 * is simply not defined for the URL, and reserves false for a real error, which it then
+	 * reports. Answering NO with a nil error is the shape that made iA Writer store a nil bookmark.
+	 */
+	value = nil;
+	error = nil;
+	got = [file getResourceValue:&value forKey:NSURLLabelNumberKey error:&error];
+	checkBool("a key with no implementation still reports success", got, 1);
+	checkBool("with no value", value == nil, 1);
+	checkBool("and no error", error == nil, 1);
+
+	/* The control: a real failure must answer NO AND say why. */
+	value = nil;
+	error = nil;
+	NSURL *absent = [NSURL fileURLWithPath:@"/tmp/cider-probe-absent-4d81"];
+	got = [absent getResourceValue:&value forKey:NSURLFileResourceTypeKey error:&error];
+	checkBool("a file that is not there does not report success", got, 0);
+	checkBool("and sets the error", error != nil, 1);
+
+	[[NSFileManager defaultManager] removeItemAtPath:[file path] error:NULL];
+}
+
 int main(int argc, const char *argv[])
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -281,6 +327,7 @@ int main(int argc, const char *argv[])
 	probeKeyedDecode();
 	probeEnumerationAndKeyPath();
 	probeBookmarkData();
+	probeResourceValues();
 
 	printf("\nPROBE SUMMARY %d checks, %d mismatched\n", gChecks, gBad);
 	[pool release];

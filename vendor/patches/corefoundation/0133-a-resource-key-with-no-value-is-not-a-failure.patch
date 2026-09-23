@@ -1,0 +1,181 @@
+A resource key with no value is not a failure, and three keys that stat already answers.
+
+CFURLCopyResourcePropertyForKey returned FALSE whenever it produced no value, leaving the error it
+was handed still NULL. macOS answers true with the value NULL when a property is simply not defined
+for the URL and keeps false for a real error, which it then reports.
+
+THIRTEEN OF THE THIRTY EIGHT KEYS in CFURLCreatePropertyForKey have no implementation at all, so
+every one of them told the caller its request had FAILED, silently:
+
+  IsVolume IsPackage VolumeURL LocalizedTypeDescription LabelNumber LabelColor LocalizedLabel
+  EffectiveIcon CustomIcon FileResourceIdentifier VolumeIdentifier FileSecurity FileResourceType
+
+This is not theoretical. getResourceValue:forKey:error: is referenced from six images inside
+iA Writer, four inside Swift Publisher, three inside iTerm2 and one in MoneyMoney. Four of iA
+Writer six are Sparkle; the other two are its own Kit and FoundationAdditions frameworks, which is
+where the nil bookmark came from. It is the same shape as the bookmark family in
+0131: nil with no error is a combination macOS never produces, and a caller is entitled to read it
+as no failure.
+
+The fix keeps its own error, so a caller that passes NULL for the error still gets the right
+Boolean.
+
+Three of the thirteen are answered here because one stat already has everything they need.
+FileResourceIdentifier is documented as opaque and compared with CFEqual, so device and inode
+together are exactly its promise: equal for two paths that link to the same file and unequal
+otherwise. VolumeIdentifier is the device. FileResourceType is the S_IFMT bits mapped to the
+constants CFURLConstants.c already defines, and it reads the link ITSELF with lstat, because stat
+would report what a symlink points at and NSURLFileResourceTypeSymbolicLink could never be
+answered.
+
+The remaining ten stay unimplemented, and they now say so honestly rather than reporting failure.
+
+--- a/NSURL.m
++++ b/NSURL.m
+@@ -198,6 +198,19 @@
+     return false;
+ }
+ 
++/* The file resource type has to see the link itself; stat would report what it points at and
++ * NSURLFileResourceTypeSymbolicLink could never be answered. */
++static Boolean CFURLLStat(CFURLRef url, struct stat *info) {
++    UInt8 path[PATH_MAX] = { 0 };
++
++    if (CFURLGetFileSystemRepresentation(url, true, path, PATH_MAX))
++    {
++        return lstat(path, info) != -1;
++    }
++
++    return false;
++}
++
+ /* stat reports seconds since 1970 and CFDateCreate takes seconds since 2001. */
+ static CFDateRef CFDateCreateFromFileTime(time_t seconds, long nanoseconds)
+ {
+@@ -451,15 +464,29 @@
+     }
+     else if (CFEqual(key, kCFURLFileResourceIdentifierKey))
+     {
+-        // Key for the resource’s unique identifier, returned as a CFType object.
+-        // This identifier can be used to determine equality between file system resources with the CFEqual function. Two resources are equal if they have the same file-system path or if their paths link to the same inode on the same file system.
+-        // The value of this identifier is not persistent across system restarts.
+-        // Available in iOS 5.0 and later.
+-
++        /* Documented as opaque and compared with CFEqual, so device and inode together are exactly
++         * the promise: equal for two paths that link to the same file, unequal otherwise. */
++        if (CFURLStat(url, &info))
++        {
++            uint64_t pair[2] = { (uint64_t) info.st_dev, (uint64_t) info.st_ino };
++            value = CFDataCreate(kCFAllocatorDefault, (const UInt8 *) pair, sizeof(pair));
++        }
++        else
++        {
++            posixError(error);
++        }
+     }
+     else if (CFEqual(key, kCFURLVolumeIdentifierKey))
+     {
+-        
++        if (CFURLStat(url, &info))
++        {
++            uint64_t device = (uint64_t) info.st_dev;
++            value = CFDataCreate(kCFAllocatorDefault, (const UInt8 *) &device, sizeof(device));
++        }
++        else
++        {
++            posixError(error);
++        }
+     }
+     else if (CFEqual(key, kCFURLPreferredIOBlockSizeKey))
+     {
+@@ -519,7 +546,22 @@
+     }
+     else if (CFEqual(key, kCFURLFileResourceTypeKey))
+     {
+-        // Key for the resource’s object type, returned as a CFString object. See “File Resource Types” for possible values.
++        if (CFURLLStat(url, &info))
++        {
++            mode_t kind = info.st_mode & S_IFMT;
++            value = CFRetain(kind == S_IFREG  ? kCFURLFileResourceTypeRegular
++                           : kind == S_IFDIR  ? kCFURLFileResourceTypeDirectory
++                           : kind == S_IFLNK  ? kCFURLFileResourceTypeSymbolicLink
++                           : kind == S_IFSOCK ? kCFURLFileResourceTypeSocket
++                           : kind == S_IFCHR  ? kCFURLFileResourceTypeCharacterSpecial
++                           : kind == S_IFBLK  ? kCFURLFileResourceTypeBlockSpecial
++                           : kind == S_IFIFO  ? kCFURLFileResourceTypeNamedPipe
++                                              : kCFURLFileResourceTypeUnknown);
++        }
++        else
++        {
++            posixError(error);
++        }
+     }
+     else if (CFEqual(key, kCFURLVolumeAvailableCapacityKey))
+     {
+@@ -674,9 +716,10 @@
+     CFMutableDictionaryRef resourceInfo = CFURLResourceInfo(url);
+     CFTypeRef value = (CFTypeRef)CFDictionaryGetValue(resourceInfo, key);
+ 
++    CFErrorRef localError = NULL;
+     if (value == NULL)
+     {
+-        value = CFURLCreatePropertyForKey(url, key, error);
++        value = CFURLCreatePropertyForKey(url, key, &localError);
+     }
+     else
+     {
+@@ -688,15 +731,38 @@
+         *(CFTypeRef *)propertyValueTypeRefPtr = value;
+     }
+     
+-    CFURLResourceInfoUpdateRelease(resourceInfo, key, value);
++    /* Caching a NULL would put it in a CFDictionary with retaining callbacks, and there is no
++     * answer to cache for a key with no implementation anyway. */
++    if (value != NULL)
++    {
++        CFURLResourceInfoUpdateRelease(resourceInfo, key, value);
++    }
++    else
++    {
++        CFURLResourceInfoRelease(resourceInfo);
++    }
++
++    /* A KEY WITH NO VALUE IS NOT A FAILURE: macOS answers true with the value NULL when a property
++     * is not defined for the URL, and keeps false for a real error, which it reports. Thirteen of
++     * the keys above have no implementation, so false here told the whole roster they FAILED. */
++    if (localError != NULL)
++    {
++        if (error != NULL)
++        {
++            *error = localError;
++        }
++        else
++        {
++            CFRelease(localError);
++        }
++        return false;
++    }
+ 
+     if (value != NULL)
+     {
+         CFRelease(value);
+-        return true;
+     }
+-
+-    return false;
++    return true;
+ }
+ 
+ CFDictionaryRef CFURLCopyResourcePropertiesForKeys(CFURLRef url, CFArrayRef keys, CFErrorRef *error)
+@@ -743,7 +809,10 @@
+             value = CFRetain(value);
+         }
+ 
+-        CFURLResourceInfoUpdate(resourceInfo, key, value);
++        if (value != NULL)
++        {
++            CFURLResourceInfoUpdate(resourceInfo, key, value);
++        }
+ 
+         if (value != NULL)
+         {

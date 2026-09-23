@@ -662,3 +662,30 @@ zero times in iA Writer's own binary because its calls live inside `FoundationAd
 Before corefoundation 0131 all three got nil with no error from it. Neither of the other two has
 been driven down a path that reaches it; Swift Publisher's `Open Recent` is the obvious one and is
 not yet exercised.
+
+## A resource key with no value was reported as a failed call
+
+`CFURLCopyResourcePropertyForKey` returned **false** whenever it produced no value, with the error
+it had been handed still NULL. macOS answers true with the value NULL when a property is simply not
+defined for the URL, and keeps false for a real error, which it then reports.
+
+Thirteen of the thirty eight keys in `CFURLCreatePropertyForKey` have no implementation, so every
+one of them told its caller the request had FAILED:
+
+    IsVolume IsPackage VolumeURL LocalizedTypeDescription LabelNumber LabelColor LocalizedLabel
+    EffectiveIcon CustomIcon FileResourceIdentifier VolumeIdentifier FileSecurity FileResourceType
+
+`getResourceValue:forKey:error:` is referenced from six images inside iA Writer, four inside Swift
+Publisher, three inside iTerm2 and one in MoneyMoney, so the whole roster was reading a missing
+implementation as a failed call. corefoundation 0133 fixes the contract and answers three of the
+thirteen from the stat it already has: `FileResourceIdentifier` (device and inode, which is exactly
+what a value compared with `CFEqual` has to promise), `VolumeIdentifier` and `FileResourceType`,
+the last with `lstat` so a symlink can be reported as one.
+
+**Measured both ways with one binary.** `probe_bookmark_identity` gained a resource value section
+and was run first against the prefix built WITHOUT the change: **46 checks, 4 mismatched**, exactly
+the four it is about, while its controls passed. Rebuilt with it: **46 checks, 0 mismatched.**
+
+The first version of that section was itself wrong and the note is worth keeping: it used
+`NSURLFileSizeKey` as the key the port implements, and that key has no branch at all, so the
+control failed for the same reason the subject did.
