@@ -1,4 +1,24 @@
-# iTerm2 Preferences: what is fixed, and the blank screen that blocks the rest
+# iTerm2 Preferences: CLOSED 2026-09-23, and the history that got there
+
+> **CLOSED. `⌘,` opens the Settings window and it renders.** Driven on 2026-09-23 with
+> `LAUNCHD=0` (which is what turns launchd ON; omitting the variable disables it) and a plain
+> `type:raw:-M,logo,-k,comma,-m,logo`. The window shows its toolbar with all eight panes (General,
+> Appearance, Profiles, Keys, Arrangements, Pointer, Shortcuts, Advanced), the General tab row
+> (Startup, Closing, Magic, AI, Software Update, Selection, Window, Settings, tmux) and the Startup
+> controls: the window restoration popup reading Use System Window Restoration Setting, the Open
+> profiles window checkbox with its focus ring, Restore windows to same Spaces correctly greyed, and
+> Always open at least one terminal window at startup. All over a live `Cider [~]#` prompt.
+>
+> The last step was the keyboard path itself, which did not work in ANY application until cocotron
+> 0128: the key equivalent comparison masked Shift away, so the first shortcut in menu order that
+> matched on Command alone answered every event. See `docs/libreoffice-menu-commands.md`.
+>
+> **Everything below this line is the history of how it got here and is kept for that reason.**
+> The opening sentence of it, that Command comma does not open Preferences, has been false since the
+> cocotron 0085 to 0087 and foundation 0084 work landed; it is left in place because the chain of
+> measurements under it is what found those.
+
+## History
 
 Command comma on iTerm2 3.5.14 (launchd ON) does not open Preferences. The window never appears
 and the terminal is all that is on screen. The application does not crash.

@@ -71,3 +71,16 @@ the AppKit constraint solver. An immediate re-run gave 69 of 69. That is the SEC
 has produced a one off failure in a case unrelated to the change under test (the first was a SIGFPE
 inside libsystem_malloc during dyld init in a CoreGraphics only case). Recorded rather than hidden:
 a single red case in this batch is worth re-running before it is believed.
+
+## A separate defect on the same window, characterised and not fixed
+
+Showing the Library again leaves GHOST TEXT: every sidebar label drawn twice, about seven points
+apart, Locations at y 94 and again at 101, Favorites at 131 and 139. The end of run resize forces a
+full repaint and it comes back clean, so it is incremental repaint residue rather than a layout
+error, and a fresh launch is clean too.
+
+It only happens ONE WAY. Driving Hide Library and then Show Library inside a single process is
+clean: the sidebar returns with every label drawn once. The ghost appears when the library was
+hidden AT LAUNCH (iA Writer persists the setting) and is then shown, which is a different path,
+because the sidebar was never laid out at full size in that process. What has not been measured is
+which rect was invalidated when the pane came back.
