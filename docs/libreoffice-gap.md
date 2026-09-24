@@ -706,3 +706,23 @@ had noticed, because the only capture that would show it is taken after a resize
 
 This also matches macOS, which keeps the title bar on screen and cuts the bottom, and it makes the
 paint agree with the input side, which already flipped by `draw_h` and so already assumed the top.
+
+### The chrome fix did NOT break the input gate aim, checked rather than assumed
+
+Drawing the chrome moves the Start Center list down by the title bar plus menu bar, and
+`roster-input.sh` clicks a fixed `100,273` to open a Writer document, so the obvious worry is that
+the gate now clicks a dead zone and passes for some other reason.
+
+Measured three ways:
+
+- the label rows, scanned out of the capture rather than read by eye: Open File 79, Remote Files
+  125, Recent Documents 190, Templates 240, `Create:` 291, **Writer Document 328**, Calc 378,
+  Impress 426, Draw 472, Math 520, Base 568
+- the click as the application receives it, with `TRACE_INPUT`: `button pressed=true x=100 y=273`,
+  unshifted
+- **a control drive with no click at all**: the Start Center is still there at the end
+
+So the click is doing the work, Writer does not open by itself, and LibreOffice hit-tests
+`(100, 273)` onto its Writer Document tile even though that tile carries its label 55 points lower.
+The gate passes for the right reason. Worth having written down, because the arithmetic says it
+should miss and it does not.
