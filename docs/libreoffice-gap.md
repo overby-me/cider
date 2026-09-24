@@ -675,3 +675,34 @@ state while AppKit has already relaid out at 600, so `dh - insist_h` is wrong th
 `dh - frame_h` is wrong in the first. Either the backend is told AppKit layout height directly, or
 the stale copy is cleared when the bitmap is reused at a smaller layout so that showing the top is
 always safe. The second is the same missing piece the reverted attempt needed.
+
+## FIXED 2026-09-24: drop the insist when the window accepts, and show the top
+
+Both halves, and neither works without the other, which is why the first attempt was reverted.
+
+**Half one: the insist was only ever RAISED.** On every configure the backend asks the window what
+it made of the size and records a larger frame in `insist_w`/`insist_h` so the bitmap can hold the
+whole window. Nothing dropped it. So once LibreOffice relaxed its minimum and accepted 1000x600,
+the bitmap stayed at the 740 of its earlier refusal, AppKit drew the new 600 tall window at the
+BOTTOM of it, and the rows above kept the previous frame. The insist is now cleared when the window
+accepts, which is safe by construction because that branch is only reached when the window did NOT
+refuse the size.
+
+**Half two: `top_row = 0`.** With the insist dropped, a bitmap taller than the buffer only happens
+while the window genuinely insists, and then AppKit lays out at that full height and draws from the
+top, so the first row is the right one.
+
+**Measured after, in both states**, which is what the reverted attempt could not manage:
+
+- before any resize, LibreOffice draws `Untitled 1` in a title bar and the full menu bar,
+  LibreOffice through Help, for the first time
+- after the resize, a single clean window with no duplicate band
+- the Start Center gains its chrome as well
+
+**And Swift Publisher gained its title bar too**, which is the application the replaced comment
+names. Its input capture used to begin with the menu bar at y=17 and no title bar; it now shows
+`Template Gallery` in a title bar above it. It had been losing its top in the same way and nobody
+had noticed, because the only capture that would show it is taken after a resize.
+
+This also matches macOS, which keeps the title bar on screen and cuts the bottom, and it makes the
+paint agree with the input side, which already flipped by `draw_h` and so already assumed the top.
