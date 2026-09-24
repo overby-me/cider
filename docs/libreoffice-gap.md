@@ -726,3 +726,44 @@ So the click is doing the work, Writer does not open by itself, and LibreOffice 
 `(100, 273)` onto its Writer Document tile even though that tile carries its label 55 points lower.
 The gate passes for the right reason. Worth having written down, because the arithmetic says it
 should miss and it does not.
+
+## REVERTED, and the reason is the other half of the coupling
+
+The fix above was landed and then reverted the same night. What it did right was real: an oversize
+window showed its title bar and menu bar for the first time, on LibreOffice and Swift Publisher
+both, with the other five byte-identical and the input gate passing.
+
+**What it broke: clicking what you SEE opens the item one row below it.** All measured in one
+capture, so no cross-run variation is in it:
+
+| labels, scanned from the capture | click | opens |
+| --- | --- | --- |
+| Writer Document 328, Calc 378, Impress 426 | 273 | Writer |
+| | 328 | **Calc** |
+| | 378 | **Impress** |
+
+Each click lands about 56 points below where it was aimed, which is exactly the overhang between
+the 740 the window insists on and the 684 the screen has.
+
+**The control that settles it.** Driven at 1256x850, where the same 740 tall window FITS and
+`backing=oversize` never fires, clicking Calc at 378 opens **Calc**. Oversize it opens Impress; not
+oversize it opens Calc. So the misalignment belongs to the path the change touched.
+
+The paint now starts 56 rows earlier in the bitmap and the input still maps as though it did not.
+`cider_wayland_post_mouse` flips by `draw_h`, which by arithmetic should already agree with the new
+paint, and the measurement says otherwise. Where the other 56 enters is not found, and that is the
+work a correct fix has to do FIRST, before moving the paint at all.
+
+**And the gates did not catch it.** `roster-input.sh` clicks a fixed `100,273` for LibreOffice, and
+that coordinate lands on Writer Document both with and without the misalignment, so the gate passed
+7 of 7 with clicking-what-you-see broken. **A fixed coordinate that still hits something is not
+evidence that aim is correct.** The check that would have caught it is the one used here: click a
+row, name which item opened, and compare against the label scanned out of the same capture.
+
+## Calc renders, which is new coverage either way
+
+Reached by clicking the Start Center, on both the fixed and the reverted build: title bar, the full
+menu bar with Sheet and Data, two toolbars, the Name Box reading A1, the formula bar with its fx,
+sigma and equals, column headers A to R, rows 1 to 51, the grid, cell A1 selected with its blue
+border, the Sheet1 tab and the status bar reading `Sheet 1 of 1`, `Default`, `English (Denmark)`
+and `Average: ; Sum: 0`. Zero unrecognised selectors on the whole path.
