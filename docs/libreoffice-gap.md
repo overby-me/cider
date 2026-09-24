@@ -610,3 +610,33 @@ CORRECTION to the memory that sent me looking in the wrong place: the note
 compositor "shows the top of the bitmap at the top of the screen with the rest hanging off the
 BOTTOM". The code takes the bottom. Whether the note was always wrong or describes an earlier state,
 it is wrong about the tree as it stands today.
+
+### The fix was TRIED, it works before a resize, and it breaks the resize. REVERTED.
+
+Setting `top_row = 0` so the compositor is shown the top of the bitmap:
+
+**What it fixed.** At the default geometry, with no resize, LibreOffice draws its title bar
+`Untitled 1` and its full menu bar, LibreOffice through Help, for the first time. A click at
+(290, 35) still opens the Format menu, now with the bar visible behind it. The Start Center gains
+its chrome too, and the roster sweep shows the other six applications byte-identical, Swift
+Publisher included, which is the application the original comment names.
+
+**What it broke.** The roster INPUT capture for LibreOffice comes back with the window drawn twice:
+a stale band carrying the title bar, menu bar, toolbars and ruler occupying the top 140 rows, and
+the live window starting below it. The typed text still lands, so input is unaffected, but the
+render is wrong.
+
+**That is precisely the artefact the comment being replaced describes**: "drew its title bar 139
+pixels down, with the previous frame still above it". So the offset is load-bearing for the RESIZE
+path, and the reasoning behind it survives even though its stated premise about where the title bar
+sits no longer does.
+
+Reverted, and the backend rebuilt from the reverted source. **Third revert of the day on the same
+rule**, and it earned its place every time: the sweep alone would have passed this change, because
+every sweep capture of LibreOffice is taken before the resize that exposes the damage. Only the
+input gate saw it.
+
+**What a real fix has to do**, now that both halves are known: show the top so the chrome survives,
+AND clear or repaint the region the old larger buffer occupied when the buffer shrinks, so the
+stale band cannot remain. The two are separable, and the second is the part this attempt did not
+do.
