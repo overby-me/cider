@@ -1,0 +1,53 @@
+The menu bar must not flip a tall menu above itself, because there is nothing above it.
+
+Driving iA Writer at a 1256x500 output, a path no gate had taken, put the whole View menu over the
+title bar and the menu bar, covering the View title that opened it.
+
+-[NSMainMenuView positionBranchForSelectedItem:screen:] hangs a branch below the bar item and, when
+it would not fit, flips it to hang ABOVE instead. That is right for a pop up button in the middle of
+the screen and never right for the main menu bar, which is at the top: there is no room above it by
+construction, so the flip puts the menu off the screen.
+
+MEASURED, the same View menu at three output heights, as the positioner receives it:
+
+    684   asked=271,182  size=196x454  parent-top=684  local=271,48
+    600   asked=271,98   size=196x454  parent-top=600  local=271,48
+    500   asked=271,478  size=196x454  parent-top=500  local=271,-432
+
+454 of menu plus 48 of chrome is 502, so at 500 it misses by two and the flip fires: the item top at
+screen 476 plus the 454 height is 930, which is 430 above a 500 high screen. The compositor slid it
+back on screen, which is why this read as a menu drawn in the wrong place rather than as a menu that
+vanished.
+
+Now the flip happens only when the flipped position is actually on the screen. After, with the other
+two heights unchanged, which is the control:
+
+    500   asked=271,-2   size=196x454  parent-top=500  local=271,48
+
+so the menu hangs under its own title and runs two points off the bottom. macOS would scroll it
+instead, which needs the arrows NSMenuView does not have here; below and clipped beats above and
+gone.
+--- a/AppKit/NSMenu.subproj/NSMainMenuView.m
++++ b/AppKit/NSMenu.subproj/NSMainMenuView.m
+@@ -478,12 +478,17 @@
+     topLeft = [[self window] convertBaseToScreen: topLeft];
+ 
+     if (topLeft.y - branchFrame.size.height < NSMinY(screenVisible)) {
+-        topLeft = NSMakePoint(itemRect.origin.x, NSMinY(itemRect));
++        NSPoint above = NSMakePoint(itemRect.origin.x, NSMinY(itemRect));
+ 
+-        topLeft = [self convertPoint: topLeft toView: nil];
+-        topLeft = [[self window] convertBaseToScreen: topLeft];
++        above = [self convertPoint: above toView: nil];
++        above = [[self window] convertBaseToScreen: above];
+ 
+-        topLeft.y += branchFrame.size.height;
++        above.y += branchFrame.size.height;
++        /* ONLY IF HANGING IT ABOVE PUTS IT ON THE SCREEN. The menu bar is at the top, so for it
++         * the flip never can, and flipping anyway put the iA Writer View menu 432 points above the
++         * screen on a 500 high output. Below and clipped beats above and gone. */
++        if (NSMaxY(screenVisible) >= above.y)
++            topLeft = above;
+     }
+ 
+     if (topLeft.x + branchFrame.size.width > NSMaxX(screenVisible))
