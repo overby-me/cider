@@ -2098,7 +2098,11 @@ fn present(st: &mut WindowState) {
                 .split(',')
                 .filter_map(|t| t.trim().parse::<i32>().ok())
                 .collect();
-            let stride = (st.buffer_w + st.margin * 2) as i32;
+            /* THE BITMAP STRIDE IS draw_w, NOT buffer_w, and they differ in exactly the case this
+             * trace exists to debug: an oversize window whose compositor buffer is narrower than
+             * what AppKit draws. Using buffer_w walked the rows at the wrong pitch and printed
+             * pixels from nowhere in particular, which is worse than printing nothing. */
+            let stride = (st.draw_w + st.margin * 2) as i32;
             let mut out = String::new();
 
             for pair in nums.chunks(2) {

@@ -640,3 +640,38 @@ input gate saw it.
 AND clear or repaint the region the old larger buffer occupied when the buffer shrinks, so the
 stale band cannot remain. The two are separable, and the second is the part this attempt did not
 do.
+
+### BOTH STATES MEASURED, and the sample trace had to be fixed first to see the second
+
+`CIDER_WAYLAND_SAMPLE` computed its row pitch from `buffer_w` while the mapping is strided by
+`draw_w`. Those differ in exactly the case the trace exists to debug, so after the drive resized
+the output to 1000 wide the samples were walking the bitmap at the wrong pitch and printing pixels
+from nowhere in particular. Fixed to use `draw_w`, and only then does the second state read.
+
+With the corrected stride, the same column at the same rows, in each state the window goes through:
+
+| buffer | bitmap | row 30 | row 60 | row 170 |
+| --- | --- | --- | --- | --- |
+| 1256x740 | 1256x740 | transparent | transparent | `d9d9d9` |
+| 1256x684 | 1256x740 | **title bar** | **menu bar** | `d9d9d9` |
+| 1000x600 | 1256x740 | **title bar** | **menu bar** | **title bar again** |
+
+**The last row is the whole thing.** After the resize the bitmap holds the window TWICE: a stale
+copy at the top from the 740 tall layout, and the live 600 tall window starting at row 140, which
+is `740 - 600`. So `top_row = dh - h = 140` is exactly right there: it skips the stale copy and
+shows the live one.
+
+**And in the oversize state before any resize, the window fills the bitmap from the top**, so the
+same formula gives 56 and skips real chrome.
+
+So the two states genuinely need different offsets, and the code has one formula:
+
+- buffer 684, bitmap 740: AppKit laid out at 740 and drew from the top. Correct offset **0**.
+- buffer 600, bitmap 740: AppKit laid out at 600 and drew at the bottom. Correct offset **140**.
+
+**What a correct fix needs.** The offset is `bitmap height minus the height AppKit actually laid
+out in`, and the backend does not reliably know that number: `insist_h` is still 740 in the second
+state while AppKit has already relaid out at 600, so `dh - insist_h` is wrong there and
+`dh - frame_h` is wrong in the first. Either the backend is told AppKit layout height directly, or
+the stale copy is cleared when the bitmap is reused at a smaller layout so that showing the top is
+always safe. The second is the same missing piece the reverted attempt needed.
