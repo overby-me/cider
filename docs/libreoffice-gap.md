@@ -540,3 +540,38 @@ That is the quantified design consequence, and it is the part this port is respo
 So the menu bar costs 28 points of vertical screen on every titled window, and on a screen close to
 what the application wants that is the difference between the chrome fitting and being pushed off.
 It does not on its own explain which EDGE is lost, which is still open.
+
+### WHICH EDGE, measured on both sides: the chrome is DRAWN and then not shown
+
+The open question was which edge is lost. Both sides of the comparison can be measured, and neither
+is a guess.
+
+**The bitmap, with `CIDER_WAYLAND_SAMPLE`, in its own top-down coordinates, while oversize:**
+
+```
+cider-wayland-sample number=2 stride=1304 buffer=1256x684 bitmap=1256x740
+   600,5=0x00000000   600,20=0x1a000000   <- the 24 point shadow margin
+   600,40=0xffececec                      <- TITLE BAR grey, 236
+   600,60=0xfff5f5f5                      <- MENU BAR, 245
+   600,80=0xffededed   600,100=0xff0044e0 <- toolbar, and a blue toolbar icon
+```
+
+**The capture at the same moment, read by pixel rather than by eye:** x=600 is `(237,237,237)`,
+the toolbar colour, at EVERY y from 0 to 80.
+
+So the title bar and the menu bar are drawn, in the buffer, in the right place, and the compositor
+shows the window starting about 52 rows below them. **Output y=0 is bitmap y≈76, where
+`xdg_surface.set_window_geometry` says it should be bitmap y=24.**
+
+That rules out the two obvious readings. It is NOT a paint failure, because the pixels are there.
+It is NOT the buffer being taken from the wrong end of the bitmap, because the present path is a
+single `copy_nonoverlapping` of the whole mapping from its start.
+
+**What both `set_window_geometry` calls say:** `(margin, margin, buffer_w, buffer_h)`, which for
+this window is `(24, 24, 1256, 684)`. Bitmap row 24 is the top of the title bar. So the geometry
+the client declares and the rows the compositor shows disagree by about 52, and finding what
+imposes that offset is the next step: the candidates are the `dy` of the buffer attach, the value
+of `buffer_h` at the moment of the geometry call, and whatever the compositor does with a surface
+whose attached buffer is taller than the geometry it was given.
+
+This is a better-posed question than the one it replaces, and it is the one a fix has to answer.
