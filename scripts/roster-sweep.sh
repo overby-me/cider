@@ -74,6 +74,8 @@ while IFS='|' read -r tag prefix app launchd resize extra; do
 	fi
 	reap
 	rm -f "$prefix/ciderd.log"
+	# A drive on another output size leaves a frame behind that moves this capture by 8038 bytes.
+	[ "$tag" = lo ] && "$(dirname "$0")/lo-clear-window-geometry.sh" "$prefix"
 	env SETTLE="$SETTLE" LIMIT="$LIMIT" LAUNCHD="$launchd" \
 		RESIZE_W="${resize%x*}" RESIZE_H="${resize#*x}" ${extra:+TRACE_ENV="$extra"} \
 		scripts/app-drive.sh --prefix "$prefix" --app "$app" --name "sweep-$tag" \

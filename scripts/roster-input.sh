@@ -24,6 +24,12 @@
 # which looks exactly like a click that was never delivered. When a step stops working, re-read the
 # coordinate off a fresh d1-start before assuming the input path broke.
 #
+# AND A COORDINATE THAT STILL HITS SOMETHING IS NOT EVIDENCE THE AIM IS RIGHT. The LibreOffice step
+# clicked 273 for a Writer Document row whose label is at 328, and passed, because an oversize
+# window offset every click by the 56 it overhung by. With that fixed the same 273 opened nothing
+# and the gate still passed: it only asks whether the capture is black. The coordinate is now the
+# measured label row, so a click that misses shows a Start Center where Writer should be.
+#
 # NEVER USE REAL CREDENTIALS WITH MONEYMONEY. It talks to banks. The step here types into the
 # TOOLBAR SEARCH FIELD, which is a local filter over accounts and contacts nothing.
 #
@@ -53,7 +59,7 @@ ia|/tmp/cider-ia-1000/prefix|/Applications/iA Writer.app/Contents/MacOS/iA Write
 sp|/tmp/cider-sp-1000/prefix|/Applications/Swift Publisher 5.app/Contents/MacOS/Swift Publisher 5|1|1022,619;72,174||welcome window closes, Brochures selects
 mm|/tmp/cider-mm-1000/prefix|/Applications/MoneyMoney.app/Contents/MacOS/MoneyMoney|1|1130,75|cider|search field focuses and shows cider
 it|/tmp/cider-it-1000/prefix|/Applications/iTerm2.app/Contents/MacOS/iTerm2|0||echo cider types here|the command appears at the prompt
-lo|/tmp/cider-lo-1000/prefix|/Applications/LibreOffice.app/Contents/MacOS/soffice|1|100,273;813,434;600,550|Cider types into Writer|Writer opens and the text lands on the page
+lo|/tmp/cider-lo-1000/prefix|/Applications/LibreOffice.app/Contents/MacOS/soffice|1|100,328;813,434;600,550|Cider types into Writer|Writer opens and the text lands on the page
 mx|/tmp/cider-mx-1000/prefix|/Applications/mmex.app/Contents/MacOS/mmex|1|627,313|key:Escape|the User Interface Language dialog opens, then Escape closes it again
 cm|/tmp/cider-cm-1000/prefix|/Applications/CMake.app/Contents/MacOS/CMake|1|300,73|/tmp/hello|the source field focuses and shows /tmp/hello, completer popup and all
 EOF
@@ -81,6 +87,8 @@ while IFS='|' read -r tag prefix app launchd clicks keys proves; do
 	fi
 	reap
 	rm -f "$prefix/ciderd.log"
+	# The lo coordinates were read off the Start Center at its default frame.
+	[ "$tag" = lo ] && "$(dirname "$0")/lo-clear-window-geometry.sh" "$prefix"
 	# A forced run gets its OWN capture directory, or it silently overwrites the baseline it is
 	# meant to be compared against.
 	name="input-$tag${LAUNCHD_FORCE:+-launchd$LAUNCHD_FORCE}"

@@ -32,7 +32,6 @@ fn note_serial(serial: u32) {
     }
 }
 use crate::objc::Object;
-use crate::session;
 use crate::window;
 use crate::wl;
 
@@ -486,7 +485,7 @@ extern "C" fn on_pointer_button(
      * tell them apart. */
     if tracing() {
         println!(
-            "cider-wayland-input button={button:#x} pressed={pressed} x={px} y={py} type={event_type} clicks={clicks} window={window_number}"
+            "cider-wayland-input button={button:#x} pressed={pressed} x={px} y={py} type={event_type} clicks={clicks} window={window_number} flip={height}"
         );
     }
     unsafe {
@@ -1036,21 +1035,12 @@ pub fn pointer_screen_location() -> (f64, f64) {
         Ok(st) => (st.pointer_focus, st.pointer_x, st.pointer_y),
         Err(_) => return (0.0, 0.0),
     };
-    /*
-     * THE WINDOW TOP, AND THE SCREEN CANNOT BE BELOW IT. A window whose application refuses to
-     * shrink keeps a bitmap taller than the screen, and its frame still claims origin y 0, so
-     * origin + height puts its top ABOVE the screen top and every answer here came out by exactly
-     * the overhang. What the compositor actually shows is the top of that bitmap at the top of the
-     * screen, and the rest hangs off the bottom.
-     */
+    /* NO CLAMP ON THE WINDOW TOP. This is the counterpart of top_row in window.rs: the buffer
+     * starts at bitmap row 0, so the screen top IS the window top however far the window overhangs.
+     * Clamping to the screen height subtracted the overhang a second time, and a LibreOffice Start
+     * Center 740 high on a 684 screen then opened Calc when its Writer Document row was clicked. */
     let result = match window::frame_for_surface(surface) {
-        Some((origin_x, origin_y, height)) => {
-            let mut top = origin_y + height;
-            if let Some((_, screen_h)) = session::output_size() {
-                top = top.min(screen_h);
-            }
-            (origin_x + x, top - y)
-        }
+        Some((origin_x, origin_y, height)) => (origin_x + x, origin_y + height - y),
         None => (x, y),
     };
     /*

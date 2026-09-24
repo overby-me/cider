@@ -48,6 +48,23 @@ void cider_wayland_post_mouse(int type, double x, double y, double windowHeight,
 	}
 	cider_wayland_trace_vcl();
 	NSPoint location = NSMakePoint(x, windowHeight - y);
+	/* WHAT THE FLIP TURNED THE CLICK INTO, and what AppKit then makes of it. A click that opens the
+	 * item one row below the one under the pointer can be a wrong flip height, a window frame that is
+	 * not the size we think, or a content view placed somewhere unexpected. This said all three were
+	 * right, which is what sent the search to pointer_screen_location instead. CIDER_TRACE_MOUSEPT. */
+	if (getenv("CIDER_TRACE_MOUSEPT") != NULL) {
+		NSRect wf = [delegate frame];
+		NSView *cv = [delegate contentView];
+		NSRect cf = cv != nil ? [cv frame] : NSZeroRect;
+		NSPoint inContent = cv != nil ? [cv convertPoint: location fromView: nil] : NSZeroPoint;
+		NSView *hit = cv != nil ? [cv hitTest: inContent] : nil;
+		NSLog(@"CIDER_MOUSEPT flip=%.0f in=%.0f,%.0f loc=%.0f,%.0f frame=%.0fx%.0f content=%.0fx%.0f at %.0f,%.0f inContent=%.0f,%.0f hit=%s",
+			windowHeight, x, y, location.x, location.y,
+			wf.size.width, wf.size.height,
+			cf.size.width, cf.size.height, cf.origin.x, cf.origin.y,
+			inContent.x, inContent.y,
+			hit != nil ? object_getClassName(hit) : "(nil)");
+	}
 	NSEvent *event = [NSEvent mouseEventWithType: (NSEventType) type
 									   location: location
 								  modifierFlags: (NSEventModifierFlags) modifiers

@@ -722,12 +722,16 @@ Measured three ways:
   unshifted
 - **a control drive with no click at all**: the Start Center is still there at the end
 
-So the click is doing the work, Writer does not open by itself, and LibreOffice hit-tests
-`(100, 273)` onto its Writer Document tile even though that tile carries its label 55 points lower.
-The gate passes for the right reason. Worth having written down, because the arithmetic says it
-should miss and it does not.
+So the click is doing the work and Writer does not open by itself.
 
-## REVERTED, and the reason is the other half of the coupling
+**WITHDRAWN, the last sentence of it.** What this went on to conclude, that LibreOffice hit-tests
+`(100, 273)` onto a Writer Document tile whose label sits 55 points lower, is not true. The 55 was
+ours: an oversize window offset every click by the amount it overhung the screen by, so 273 arrived
+as the 328 the label is actually at. The gate was passing on a coordinate tuned to a defect. See
+the two sections at the end of this file.
+
+## REVERTED, then re-landed with the other half, which is below. The measurements here all stand
+
 
 The fix above was landed and then reverted the same night. What it did right was real: an oversize
 window showed its title bar and menu bar for the first time, on LibreOffice and Swift Publisher
@@ -767,3 +771,74 @@ menu bar with Sheet and Data, two toolbars, the Name Box reading A1, the formula
 sigma and equals, column headers A to R, rows 1 to 51, the grid, cell A1 selected with its blue
 border, the Sheet1 tab and the status bar reading `Sheet 1 of 1`, `Default`, `English (Denmark)`
 and `Average: ; Sum: 0`. Zero unrecognised selectors on the whole path.
+
+## The lo sweep baseline moved twice more, and both moves were mine
+
+The number for `lo` in `scripts/checks/roster-capture-baseline.txt` has now read 137276, 136647 and
+128609. Only the first move was the port.
+
+LibreOffice persists the Start Center frame in its own profile, in
+`registrymodifications.xcu`, as `ooSetupFactoryWindowAttributes` for
+`com.sun.star.frame.StartModule`. One drive of mine on a 1256x850 output left `0,50,1256,634`
+there. Every later run at the default 1256x684 then FITS, because 634 of content plus 50 of title
+bar and menu bar is exactly the screen, so the window stops overhanging and keeps its Help and
+Donate row.
+
+Measured rather than argued: **three consecutive drives at 128609, byte identical**, then the one
+key deleted and **two consecutive drives at 136647, byte identical**. Nothing in the port changed
+between them. `scripts/lo-clear-window-geometry.sh` removes that key and `roster-sweep.sh` and
+`roster-input.sh` call it before driving LibreOffice, so the number means one state.
+
+This also explains a control that misled me for a whole night. The test that persuaded me to
+re-land the chrome fix drove three label rows on each of two builds and found them identical. Every
+one of those six drives ran with the persisted 634 high frame, so `backing=oversize` never fired
+and the test could not see the case the claim was about. **A control has to reproduce the STATE, not
+only the build.**
+
+## The other half of the coupling, found: pointer_screen_location clamped the window top
+
+With the residue cleared the aim question could be asked properly. In the state a fresh profile
+produces, at 1256x684, where the Start Center insists on 740 and overhangs by 56:
+
+| build | click | opens |
+| --- | --- | --- |
+| chrome fix | 328 (Writer Document) | Calc |
+| chrome fix | 378 (Calc) | Impress |
+| chrome fix | 426 (Impress) | Draw |
+| reverted | 328 (Writer Document) | **Calc** |
+
+The last row is the one that settles it. **The reverted build opens Calc too**, from the same click,
+with the same event: `flip=740`, `loc=100,412`, `frame=1256x740`, `content=1256x690`,
+`inContent=100,412`, hit `SalFrameView`, identical on both builds. The fix never moved the aim. What
+it moved is the PAINT, and the old paint was wrong by the same 56 in the same direction, so the two
+errors cancelled and clicking what you saw worked by accident.
+
+Every label row is at the same place in both builds' bitmaps, scanned out of the captures rather
+than read by eye: 79, 125, 190, 240, 328, 378, 426, 472, 520, 568. The reverted build simply shows
+them 56 higher on screen, with the title bar and menu bar cut off above them.
+
+The event path was therefore innocent, which is what pointed at the other one. `pointer_screen_location`
+answers `-[NSEvent mouseLocation]`, and VCL asks it rather than reading `locationInWindow`. It had:
+
+    let mut top = origin_y + height;
+    if let Some((_, screen_h)) = session::output_size() { top = top.min(screen_h); }
+
+That clamp is the exact counterpart of `top_row = dh - h`. While the buffer was taken from the
+BOTTOM of an oversize bitmap, the screen top showed bitmap row `dh - h` and the window top really
+was off screen, so clamping was right. The buffer now starts at row 0, the screen top IS the window
+top, and the clamp subtracted the overhang a second time. Removing it is the whole fix.
+
+Measured after, same fresh oversize state, clicking the label row scanned out of that same capture:
+
+| click | opens |
+| --- | --- |
+| 328 (Writer Document) | **Writer** |
+| 378 (Calc Spreadsheet) | **Calc** |
+| 426 (Impress Presentation) | **Impress** |
+
+Chrome drawn and clicking what you see, together, for the first time.
+
+**And the input gate was measuring neither.** `roster-input.sh` clicked a fixed `100,273`, which is
+the Writer row only while the 56 offset exists; with the offset gone it hit nothing and the gate
+still passed, because the only thing it checks is that the capture is not black. It now clicks the
+measured label row, 328, so a miss shows a Start Center where Writer should be.

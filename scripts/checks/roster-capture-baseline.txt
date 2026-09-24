@@ -26,10 +26,21 @@
 # old number had the same shape of residue in it from an earlier session: a remembered build
 # directory in the title bar. 33544 is CMake with its preferences and the stale build tree removed,
 # which is the state a fresh machine produces, so it is the one worth comparing against.
+# lo MOVED from 137276 to 136647 on 2026-09-24, and it is an improvement. An oversize window used
+# to take its buffer from the BOTTOM of the bitmap and so lost its title bar and menu bar off the
+# top. Both now draw: the Start Center gained a title bar and a menu bar reading LibreOffice, File,
+# Tools, Help, and loses the Help and Donate row off the bottom instead, which is what macOS does.
+# lo IS ONLY COMPARABLE WITH ITS PERSISTED START CENTER FRAME CLEARED, which roster-sweep.sh now
+# does before driving it. LibreOffice keeps that frame in registrymodifications.xcu as
+# ooSetupFactoryWindowAttributes for com.sun.star.frame.StartModule, and ONE drive of mine on a
+# 1256x850 output left 0,50,1256,634 behind. Every later run at 1256x684 then FITS where it used to
+# overhang, keeps its Help and Donate row, and measures 128609. Three runs at 128609 and two at
+# 136647 after clearing the key, every one byte identical, so the 8038 was residue I made and not
+# rendering. See scripts/lo-clear-window-geometry.sh.
 ia 31129
 sp 49610
 mm 15860
 it 16578
-lo 137276
+lo 136647
 mx 32124
 cm 34456

@@ -630,6 +630,19 @@ pub fn deliver_pending_configures() {
                     st.insist_h = ah.max(height);
                     ensure_backing(st);
                     st.needs_full_display = true;
+                } else if st.insist_w != 0 || st.insist_h != 0 {
+                    /* AND DROP THE INSIST WHEN THE WINDOW ACCEPTS, which nothing used to do. It was
+                     * only ever raised, so a window that once refused to shrink kept a bitmap the
+                     * size of its old refusal for the rest of its life. AppKit then drew the new
+                     * smaller window at the BOTTOM of that bitmap, bottom left origin, and the rows
+                     * above it kept the previous frame: measured on LibreOffice after a resize to
+                     * 600, the title bar appears at bitmap row 30 AND again at row 170, and 170
+                     * minus 30 is the 140 the bitmap was too tall by. Safe by construction, because
+                     * this branch is only reached when the window did NOT refuse the size. */
+                    st.insist_w = 0;
+                    st.insist_h = 0;
+                    ensure_backing(st);
+                    st.needs_full_display = true;
                 }
             }
         }
@@ -1830,17 +1843,11 @@ style=0x{:x} panel={} level={} alpha={} margin={}",
         // draws and is never attached; frames 1 and 2 are the presentation pair. A stride wider
         // than the buffer takes the left of each row, so the compositor is shown the top left of a
         // window larger than its surface rather than the bottom right.
-        /*
-         * AND THE ROW PICKS THE TOP EDGE, when the bitmap is taller than the window.
-         *
-         * AppKit draws with the origin at the BOTTOM left, so a window h high inside a bitmap dh
-         * high has its title bar at bitmap row dh - h, not at row 0. Taking the top of the bitmap
-         * therefore shows rows the application never drew into and pushes everything it did draw
-         * down by the difference: measured on LibreOffice, a document that insisted on 739 and was
-         * given a 600 high output drew its title bar 139 pixels down, with the previous frame still
-         * above it. The same mismatch on the input side is why clicks landed 69 points low.
-         */
-        let top_row = (dh - h).max(0);
+        /* AND THE ROW PICKS THE TOP EDGE: the window fills the bitmap, so show the first row.
+         * Its counterpart is the clamp in pointer_screen_location, which must stay OUT for the
+         * same reason. Change one without the other and the paint leaves the aim behind by the
+         * overhang, which reads as a window that opens the item below the one you clicked. */
+        let top_row = 0;
         for slot in 0..2 {
             let offset = (size * (slot + 1)) as i32 + top_row * stride;
             let buf = wl::cider_wl_shm_pool_create_buffer(pool, offset, w + margin * 2,
