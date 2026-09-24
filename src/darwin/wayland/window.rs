@@ -630,6 +630,19 @@ pub fn deliver_pending_configures() {
                     st.insist_h = ah.max(height);
                     ensure_backing(st);
                     st.needs_full_display = true;
+                } else if st.insist_w != 0 || st.insist_h != 0 {
+                    /* AND DROP THE INSIST WHEN THE WINDOW ACCEPTS, which nothing used to do. It was
+                     * only ever raised, so a window that once refused to shrink kept a bitmap the
+                     * size of its old refusal for the rest of its life. AppKit then drew the new
+                     * smaller window at the BOTTOM of that bitmap, bottom left origin, and the rows
+                     * above it kept the previous frame: measured on LibreOffice after a resize to
+                     * 600, the title bar appears at bitmap row 30 AND again at row 170, and 170
+                     * minus 30 is the 140 the bitmap was too tall by. Safe by construction, because
+                     * this branch is only reached when the window did NOT refuse the size. */
+                    st.insist_w = 0;
+                    st.insist_h = 0;
+                    ensure_backing(st);
+                    st.needs_full_display = true;
                 }
             }
         }
@@ -1840,7 +1853,13 @@ style=0x{:x} panel={} level={} alpha={} margin={}",
          * given a 600 high output drew its title bar 139 pixels down, with the previous frame still
          * above it. The same mismatch on the input side is why clicks landed 69 points low.
          */
-        let top_row = (dh - h).max(0);
+        /* THE WINDOW FILLS THE BITMAP, so the row to show is the first one. dh is max(h, insist_h)
+         * and the insist is now dropped as soon as the window accepts a size, so a bitmap taller
+         * than the buffer only happens while the window genuinely insists, and then AppKit lays out
+         * at that full height and draws from the TOP. Skipping dh - h rows there skipped the title
+         * bar and the menu bar: measured on LibreOffice, bitmap row 40 is title bar grey and row 60
+         * is the menu bar, both inside the 56 that were being skipped. */
+        let top_row = 0;
         for slot in 0..2 {
             let offset = (size * (slot + 1)) as i32 + top_row * stride;
             let buf = wl::cider_wl_shm_pool_create_buffer(pool, offset, w + margin * 2,
