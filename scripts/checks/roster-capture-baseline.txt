@@ -26,15 +26,10 @@
 # old number had the same shape of residue in it from an earlier session: a remembered build
 # directory in the title bar. 33544 is CMake with its preferences and the stale build tree removed,
 # which is the state a fresh machine produces, so it is the one worth comparing against.
-# lo MOVED from 137276 to 136647 on 2026-09-24, and it is an improvement. The Wayland backend used
-# to take an oversize window buffer from the BOTTOM of the bitmap, so a window taller than the
-# screen lost its title bar and its menu bar off the top. Both now draw: the Start Center capture
-# gained a title bar and a menu bar reading LibreOffice, File, Tools, Help, and lost the Help and
-# Donate row off the bottom instead, which is what macOS does with a window that does not fit.
 ia 31129
 sp 49610
 mm 15860
 it 16578
-lo 136647
+lo 137276
 mx 32124
 cm 34456
