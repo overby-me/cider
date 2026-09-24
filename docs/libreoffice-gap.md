@@ -515,3 +515,28 @@ with the geometry trace on, so it is a loose end and not a contradiction yet.
 
 The sway config the drives use, for anyone repeating this: `default_border none`,
 `focus_follows_mouse yes`, `output * mode 1256x684`.
+
+### The loose end, closed: every titled window here is 28 points taller than on macOS
+
+The MoneyMoney observation needed the CREATION trace rather than the configure one, because
+`1124x784` is reached before any `setFrame:` and so prints no `CIDER_WINFRAME` line at all. With
+`CIDER_TRACE_WINGEOM` instead:
+
+```
+CIDER_WINGEOM asked 1124.0x680.0 ... -> frame 1124.0x730.0 style 0xf; main frame 1256.0x684.0
+```
+
+**Exactly +50 again**, the same as LibreOffice's `1004x547 -> 1004x597`. Measured on two
+applications now: `frameRectForContentRect:` adds 22 for the title bar and **28 for the menu bar**,
+because in this port the menu bar lives inside the window.
+
+That is the quantified design consequence, and it is the part this port is responsible for:
+
+- MoneyMoney asks for a content area of 680 on a 684 point screen. On macOS its frame would be
+  702, already 18 too tall for this small test screen. Here it is 730, another 28 worse.
+- LibreOffice asks for 547 and would fit easily on macOS at 569. Here it is 597, still fitting, and
+  what makes it fail is the separate minimum of 212x740.
+
+So the menu bar costs 28 points of vertical screen on every titled window, and on a screen close to
+what the application wants that is the difference between the chrome fitting and being pushed off.
+It does not on its own explain which EDGE is lost, which is still open.
