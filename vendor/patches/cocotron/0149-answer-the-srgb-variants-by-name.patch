@@ -1,0 +1,72 @@
+Answer the sRGB variants by name, and print the name when one is still unknown.
+
+cocotron 0148 traced the NULL colour space in iA Writer back to IFColorSampleColor, which passes its
+own first argument through, so the NULL came from the application. This says where the application
+got it.
+
+O2ColorSpaceCreateWithName already printed "unknown color space name" and then CFShow(name), and the
+CFShow output does not appear in the log at all: the message that there WAS an unknown name arrived
+every time and the name never did. Printed on the same line as a C string it is one word:
+
+    unknown color space name: kCGColorSpaceLinearSRGB
+
+kO2ColorSpaceLinearSRGB, kO2ColorSpaceExtendedSRGB and kO2ColorSpaceExtendedLinearSRGB are all
+declared at the top of this file and none of the three was ever answered, so asking for one got NULL.
+They join the RGB branch with the other three. The gamma and the extended range are still not
+modelled, which is the same honest limitation the greys above already carry.
+
+MEASURED on the Editor preferences pane, the path 0139 and 0148 were driven on:
+
+    before   60 CIDER_CSNULL lines, 1 unknown color space name
+    after     0 CIDER_CSNULL lines, 0 unknown color space names
+
+AND THE RENDERING DOES NOT CHANGE, which is worth saying because I expected it to. The six highlight
+colour swatches are the colours that needed a colour space at all, and the capture of that pane is
+BYTE IDENTICAL across the two builds, 46360 bytes either way. A colour built on a NULL space kept
+its components and drew correctly regardless; what this closes is a NULL that three guards were
+holding up, not a visible defect.
+--- a/Onyx2D/O2ColorSpace.m
++++ b/Onyx2D/O2ColorSpace.m
+@@ -18,6 +18,7 @@
+ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
+ 
+ #import <CoreFoundation/CFBase.h>
++#import <CoreFoundation/CFString.h>
+ #import <Foundation/NSString.h>
+ #import <Onyx2D/O2ColorSpace.h>
+ #include <dlfcn.h>
+@@ -168,8 +169,16 @@
+         cs->_name = (CFStringRef) [(id) name copy];
+         return cs;
+     }
++    /* THE sRGB VARIANTS TOO. All four are declared above and none of them was answered here, so
++     * asking for one got NULL: iA Writer asks for kCGColorSpaceLinearSRGB opening the Editor
++     * preferences pane, and that NULL travelled through colorWithSample:colorSpace: into
++     * O2ColorCreate. The gamma and the extended range are still not modelled, which is the same
++     * honest limitation as the greys above. */
+     if (CFStringCompare(name, kO2ColorSpaceGenericRGB, 0) == kCFCompareEqualTo ||
+         CFStringCompare(name, kO2ColorSpaceGenericRGBLinear, 0) == kCFCompareEqualTo ||
++        CFStringCompare(name, kO2ColorSpaceLinearSRGB, 0) == kCFCompareEqualTo ||
++        CFStringCompare(name, kO2ColorSpaceExtendedSRGB, 0) == kCFCompareEqualTo ||
++        CFStringCompare(name, kO2ColorSpaceExtendedLinearSRGB, 0) == kCFCompareEqualTo ||
+         CFStringCompare(name, kO2ColorSpaceAdobeRGB1998, 0) == kCFCompareEqualTo) {
+         O2ColorSpaceRef cs = [[O2ColorSpace alloc] initWithDeviceRGB];
+         cs->_name = (CFStringRef) [(id) name copy];
+@@ -181,8 +190,15 @@
+         return cs;
+     }
+ 
+-    printf("unknown color space name\n");
+-    CFShow(name);
++    /* THE NAME ON THE SAME LINE. CFShow printed nothing at all here, so the one unknown name in an
++     * iA Writer run stayed unnamed while the message that there WAS one arrived every time. */
++    {
++        char buf[128];
++        if (!CFStringGetCString(name, buf, sizeof(buf), kCFStringEncodingUTF8))
++            buf[0] = '\0';
++        fprintf(stderr, "unknown color space name: %s\n", buf);
++        fflush(stderr);
++    }
+     return NULL;
+ }
+ 
