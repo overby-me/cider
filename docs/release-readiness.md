@@ -788,3 +788,32 @@ closable or not resizable, for example a Font panel or a fixed size preferences 
 
 How many times the roster asks for a button object it cannot get, per drive:
 MoneyMoney 22, CMake 10, iTerm2 3. What each does with the nil has not been disassembled yet.
+
+## Menus at an output height no gate uses
+
+Both roster gates drive 1256x684, so everything that only misbehaves when a window or a menu does
+not FIT was untested. Driving the whole roster at 1256x500 found two defects, now fixed, and one
+limitation worth naming.
+
+What each application does at that height, as the positioner receives the menu:
+
+| app | window | menu | anchor |
+| --- | --- | --- | --- |
+| iA Writer | 1256x500 accepted | View, 454 tall | `local=271,48` |
+| Swift Publisher | insists 618, overhangs by 18 | File, 362 tall | `local=134,48`, submenu `local=321,286` |
+| LibreOffice | insists 740 at 684, overhangs by 56 | Tools, 78 tall | `local=130,48` |
+| MoneyMoney | insists 508, overhangs by 8 | Account, 312 tall | `local=296,48` |
+| CMake | 1256x500 accepted | Tools, 264 tall | `local=101,48` |
+| Money Manager Ex | 350x500 accepted | startup dialog, no bar | n/a |
+| iTerm2 | 1256x500 accepted | Session, **513 tall** | `local=195,48` |
+
+Every one of them anchors at 48, which is the title bar plus the menu bar, and every capture shows
+the menu under its own highlighted title. Three of the seven windows are oversize at that height,
+which is the case the anchor fix is about, and MoneyMoney and Swift Publisher are the applications
+that show it is not a LibreOffice quirk.
+
+**THE LIMITATION: a menu taller than the whole screen.** The iTerm2 Session menu is 513 points tall
+on a 500 point screen. It is correctly anchored at 48 and then slid up by the compositor until it
+fits, so it covers the title bar and the menu bar. macOS scrolls such a menu instead, with an arrow
+at each end, and `NSMenuView` here has no scrolling. The item list is complete and readable, so this
+is cosmetic, but it is the reason a menu can still be drawn over the bar that opened it.
