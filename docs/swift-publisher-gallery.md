@@ -97,3 +97,25 @@ and `-[NSPopUpButtonCell trackMouse...]` adds the one back afterwards. `title=(n
 reading the title off that truncated copy and getting nil, while the item draws as `File…` on
 screen, so the item carries an attributed title and no plain one. Recorded rather than chased: it
 is a property of the trace, not of the pick.
+
+## The File menu in an oversize window, and three items that read as their own keys
+
+Driven at 1256x600, below the 618 Swift Publisher answers as its minimum, so the window overhangs
+the screen by 18 and `backing=oversize` fires. New coverage on both counts: no gate had opened a
+menu in a window taller than the screen, and this is the second toolkit to take that path after
+LibreOffice.
+
+What works: the Welcome Window closes from a click on its Close button at 1022,577, the File menu
+drops from under its own title, the full item list draws with the right enabled and disabled states,
+and the Page submenu opens beside its parent item. The positioner says `parent-top=618 local=134,48`
+for the menu and `local=321,286` for the submenu, both against the height AppKit laid out in.
+
+**Three items in the Page submenu read ADD_PAGE, REMOVE_PAGE and DUPLICATE_PAGE**, which look like
+a localisation failure of ours and are not. The table the application uses is
+`Contents/Resources/en.lproj/cc.strings`, and it has no entry for any of the three; there is no key
+containing PAGE in it at all. The item between them resolves, which is the control:
+
+    "INSERT_AS_VERB" = "Insert";
+
+is in the table and draws as Insert. A missing entry makes `NSLocalizedString` answer the key, which
+is what macOS does, so a real Mac shows the same three words. Nothing to fix here.
