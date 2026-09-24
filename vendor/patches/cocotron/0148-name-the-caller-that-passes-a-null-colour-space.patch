@@ -1,0 +1,120 @@
+Name the caller that passes a NULL colour space, and the one that made the colour.
+
+cocotron 0139 guards three O2ColorSpace entry points and prints __builtin_return_address(0) on the
+NULL path. Nobody had read one, for a good reason: a bare return address needs the load map of a
+process that has already exited. dladdr answers the image and the nearest exported symbol from
+inside the run, so one drive names it.
+
+DRIVEN, iA Writer to the Editor preferences pane, the path 0139 was written for. Forty NULL colour
+spaces reach the guards, from exactly two places:
+
+    CIDER_CSNULL model      image=AppKit  sym=+[NSColor colorWithCGColor:]+30      20 times
+    CIDER_CSNULL components image=Onyx2D  sym=O2ColorCreate+263                    20 times
+
+Both are downstream of one colour, so O2ColorCreate now says who built it when the space is NULL,
+and that is the whole answer:
+
+    CIDER_CSNULL create     image=InterfaceFoundation sym=IFColorSampleColor+35    20 times
+
+InterfaceFoundation is a framework iA Writer ships inside its own bundle. Its IFColorSampleColor
+passes NULL as the colour space, and the guards are what keep that survivable rather than a segfault
+in a switch on a dereferenced NULL.
+
+AND THE SILENCE ELSEWHERE IS NOW BOUNDED. The same switch over the other six roster applications on
+the launch and resize path prints nothing, and that means something here because the instrument was
+shown able to speak first: CIDER_TRACE_VIEWS uses the same fprintf to stderr from the same
+framework, and 28 of its lines reach app.log in a run where CIDER_CSNULL prints none.
+--- a/Onyx2D/O2ColorSpace.m
++++ b/Onyx2D/O2ColorSpace.m
+@@ -20,6 +20,8 @@
+ #import <CoreFoundation/CFBase.h>
+ #import <Foundation/NSString.h>
+ #import <Onyx2D/O2ColorSpace.h>
++#include <dlfcn.h>
++#include <string.h>
+ 
+ const CFStringRef kO2ColorSpaceDisplayP3 = CFSTR("kCGColorSpaceDisplayP3");
+ const CFStringRef kO2ColorSpaceGenericGray = CFSTR("kCGColorSpaceGenericGray");
+@@ -193,15 +195,33 @@
+     return self->_isPlatformRGB;
+ }
+ 
++/* NAME THE CALLER, not its address. A bare return address needs the load map of a process that has
++ * already exited to mean anything, and two of them went unread for that reason. dladdr answers the
++ * image and the nearest exported symbol, which is enough to say whose gap this is. */
++static void CiderTraceNullColorSpace(const char *what, void *ret)
++{
++    if (getenv("CIDER_TRACE_COLORSPACE") == NULL)
++        return;
++
++    Dl_info info;
++    if (dladdr(ret, &info) != 0 && info.dli_fname != NULL) {
++        const char *base = strrchr(info.dli_fname, '/');
++        fprintf(stderr, "CIDER_CSNULL %s ret=%p image=%s sym=%s+%ld\n", what, ret,
++                base != NULL ? base + 1 : info.dli_fname,
++                info.dli_sname != NULL ? info.dli_sname : "(none)",
++                info.dli_saddr != NULL ? (long) ((char *) ret - (char *) info.dli_saddr) : 0L);
++    } else {
++        fprintf(stderr, "CIDER_CSNULL %s ret=%p image=(unknown)\n", what, ret);
++    }
++    fflush(stderr);
++}
++
+ size_t O2ColorSpaceGetNumberOfComponents(O2ColorSpaceRef self) {
+     /* A NULL COLOUR SPACE IS A MISSING ANSWER FROM SOMEWHERE ELSE, and reading _type out of it
+      * turns that into a segfault with no connection to the cause. CoreGraphics answers 0. The
+      * trace names the caller so the real gap is still findable. */
+     if (self == NULL) {
+-        if (getenv("CIDER_TRACE_COLORSPACE") != NULL) {
+-            fprintf(stderr, "CIDER_CSNULL components ret=%p\n", __builtin_return_address(0));
+-            fflush(stderr);
+-        }
++        CiderTraceNullColorSpace("components", __builtin_return_address(0));
+         return 0;
+     }
+ 
+@@ -233,10 +253,7 @@
+      * reached here and killed iA Writer opening the Editor preferences pane; -1 sends that switch
+      * to its default instead. */
+     if (self == NULL) {
+-        if (getenv("CIDER_TRACE_COLORSPACE") != NULL) {
+-            fprintf(stderr, "CIDER_CSNULL model ret=%p\n", __builtin_return_address(0));
+-            fflush(stderr);
+-        }
++        CiderTraceNullColorSpace("model", __builtin_return_address(0));
+         return (O2ColorSpaceModel) -1;
+     }
+ 
+--- a/Onyx2D/O2Color.m
++++ b/Onyx2D/O2Color.m
+@@ -21,6 +21,7 @@
+ #include <stdio.h>
+ #include <dlfcn.h>
+ #include <execinfo.h>
++#include <string.h>
+ #include <stdlib.h>
+ #import <Onyx2D/O2ColorSpace.h>
+ 
+@@ -96,6 +97,22 @@
+ 
+ O2ColorRef O2ColorCreate(O2ColorSpaceRef colorSpace, const O2Float *components)
+ {
++    /* WHO BUILDS A COLOUR WITH NO SPACE. The guards in O2ColorSpace keep that survivable and name
++     * this function as the caller; one more frame is what says whose colour it is. */
++    if (colorSpace == NULL && getenv("CIDER_TRACE_COLORSPACE") != NULL) {
++        void *ret = __builtin_return_address(0);
++        Dl_info info;
++        if (dladdr(ret, &info) != 0 && info.dli_fname != NULL) {
++            const char *base = strrchr(info.dli_fname, '/');
++            fprintf(stderr, "CIDER_CSNULL create ret=%p image=%s sym=%s+%ld\n", ret,
++                    base != NULL ? base + 1 : info.dli_fname,
++                    info.dli_sname != NULL ? info.dli_sname : "(none)",
++                    info.dli_saddr != NULL ? (long) ((char *) ret - (char *) info.dli_saddr) : 0L);
++        } else {
++            fprintf(stderr, "CIDER_CSNULL create ret=%p image=(unknown)\n", ret);
++        }
++        fflush(stderr);
++    }
+     return O2ColorInitWithColorSpace([O2Color alloc], colorSpace, components);
+ }
+ 
