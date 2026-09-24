@@ -575,3 +575,38 @@ of `buffer_h` at the moment of the geometry call, and whatever the compositor do
 whose attached buffer is taller than the geometry it was given.
 
 This is a better-posed question than the one it replaces, and it is the one a fix has to answer.
+
+### THE LINE: the buffer is deliberately taken from the BOTTOM of the bitmap
+
+`src/darwin/wayland/window.rs`, in the backing allocation:
+
+```rust
+let top_row = (dh - h).max(0);                                  // 740 - 684 = 56
+let offset = (size * (slot + 1)) as i32 + top_row * stride;
+let buf = wl_shm_pool_create_buffer(pool, offset, w + margin*2, h + margin*2, stride, format);
+```
+
+`dh` is the bitmap height and `h` the buffer height, so `top_row` is the overhang and the wl_buffer
+begins **56 rows into the bitmap**. The compositor is therefore shown the LAST 684 rows, and the
+first 56 are exactly the shadow margin, the title bar and most of the menu bar. That accounts for
+the whole measurement: output y=0 lands at bitmap y≈76, not the y=24 that `set_window_geometry`
+declares.
+
+The variable is named `top_row` but it is the index of the first row SHOWN, which for an oversize
+window is the top of the BOTTOM portion.
+
+**It is deliberate, and the comment above it says why:** a window "given a 600 high output drew its
+title bar 139 pixels down, with the previous frame still above it", and the same mismatch on the
+input side is what made clicks land 69 points low. So the bottom was chosen to fix a different
+symptom.
+
+**And it disagrees with macOS**, which keeps the title bar on screen and cuts the bottom. That is
+the trade-off a fix has to make deliberately rather than by accident, and it is a shared path: the
+comment names Swift Publisher, so any change has to be measured on that application too, not only
+on LibreOffice.
+
+CORRECTION to the memory that sent me looking in the wrong place: the note
+`oversize-window-input-offset` says the buffer is "taken from the TOP of the bitmap" and that the
+compositor "shows the top of the bitmap at the top of the screen with the rest hanging off the
+BOTTOM". The code takes the bottom. Whether the note was always wrong or describes an earlier state,
+it is wrong about the tree as it stands today.
