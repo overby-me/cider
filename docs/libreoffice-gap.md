@@ -842,3 +842,33 @@ Chrome drawn and clicking what you see, together, for the first time.
 the Writer row only while the 56 offset exists; with the offset gone it hit nothing and the gate
 still passed, because the only thing it checks is that the capture is not black. It now clicks the
 measured label row, 328, so a miss shows a Start Center where Writer should be.
+
+## A third place the overhang bites: the popup anchor
+
+Driving the Tools menu in the oversize state, which is a path the gates had never taken, put the
+menu at the TOP LEFT of the screen instead of under the bar item that opened it. The positioner
+trace names it in one line:
+
+    popup=create number=4 asked=130,614 size=152x78 parent=2 parent-left=0 parent-top=684 local=130,-8
+
+`parent-top` is 684 for a window whose `frame` reads back as 1256x740. `mapped_toplevel_anchor` took
+the parent top from `st.frame`, which holds the size the COMPOSITOR configured, while NSWindow had
+clamped to its own minimum and laid everything out at 740. The menu bar item sits at window row 24
+to 48, so its bottom is at AppKit screen y 692 against a 740 high window, and `684 - 692` is -8,
+clamped to 0: the top of the surface.
+
+This had been cancelling with the old paint exactly as the aim did. While the buffer came from the
+bottom of the bitmap, surface row 0 WAS window row 56, so a menu placed at surface row 0 landed 8
+points under the menu bar and looked right.
+
+Fixed by taking the height AppKit laid out in, `max(frame height, insist_h)`. After:
+
+    popup=create number=4 asked=130,614 size=152x78 parent=2 parent-left=0 parent-top=740 local=130,48
+
+and the same 48 in the state where the window fits, which is unchanged. **Then clicking Extensions
+where it is drawn opens the Extension Manager**, four extensions listed, in the oversize window. The
+tracking loop reads `-[NSEvent mouseLocation]`, so that is the menu half of the clamp measurement as
+well.
+
+Three places had to agree about the overhang and now do: the row the buffer starts at, the pointer
+location, and the popup anchor.

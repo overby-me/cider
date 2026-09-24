@@ -2824,10 +2824,15 @@ fn mapped_toplevel_anchor(
         if !(st.mapped && st.popup.is_null() && !st.xdg.is_null()) {
             continue;
         }
+        /* THE HEIGHT APPKIT LAID OUT IN, not the one the compositor gave. A window that refuses
+         * to shrink keeps st.frame at the size it was configured with while NSWindow clamps to its
+         * minimum, and a menu anchored against the smaller one lands above the bar that opened it:
+         * measured on LibreOffice, parent-top 684 for a 740 high window put the Tools menu at the
+         * top of the screen. Same overhang as top_row and the pointer flip, third place it bites. */
         let left = st.frame.origin.x as i64;
-        let top = (st.frame.origin.y + st.frame.size.height) as i64;
-        let width = st.frame.size.width as i64;
-        let height = st.frame.size.height as i64;
+        let height = (st.frame.size.height as i64).max(st.insist_h as i64);
+        let top = st.frame.origin.y as i64 + height;
+        let width = (st.frame.size.width as i64).max(st.insist_w as i64);
         if (left..=left + width).contains(&popup_left)
             && (top - height..=top).contains(&popup_top)
         {
