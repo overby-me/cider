@@ -817,3 +817,32 @@ on a 500 point screen. It is correctly anchored at 48 and then slid up by the co
 fits, so it covers the title bar and the menu bar. macOS scrolls such a menu instead, with an arrow
 at each end, and `NSMenuView` here has no scrolling. The item list is complete and readable, so this
 is cosmetic, but it is the reason a menu can still be drawn over the bar that opened it.
+
+## RESIZABLE, measured with TWO resizes rather than one
+
+`roster-sweep.sh` resizes each application once, and `app-drive.sh` says in its own comment why that
+cannot settle the criterion: a layout that is one resize BEHIND and a layout that is dead look
+identical after a single resize, because both show the wrong geometry. Only a second resize
+separates them, since a one-behind layout then shows what the FIRST resize should have produced.
+
+Driven 1256x684 to 1000x600 to 1180x640, every capture looked at:
+
+| app | after 1000x600 | after 1180x640 |
+| --- | --- | --- |
+| iA Writer | fills, sidebar and file list laid out | fills, columns re-laid out wider |
+| Swift Publisher | gallery fills, Welcome Window keeps its own 910x590 | same, both on screen |
+| MoneyMoney | fills, toolbar and source list follow | fills |
+| iTerm2 | grid recomputed | grid recomputed, title reads 139x38 |
+| LibreOffice | fills the width, welcome graphic re-centred | same, re-centred again |
+| Money Manager Ex | fixed 350x530 startup dialog, unchanged | unchanged |
+| CMake | fields stretch | fields stretch |
+
+**Seven of seven follow BOTH resizes.** Nothing is one behind: the LibreOffice welcome graphic is
+centred at x 606 after the first and x 696 after the second, and the iTerm2 grid is recomputed each
+time. Money Manager Ex is the only one that does not change, and that is correct: its startup dialog
+is a fixed size modal.
+
+**One thing that is the harness, not the port.** At 1000x600 the Swift Publisher Welcome Window
+overhangs the right edge. It asked for 910x590 and got it; what decides where a toplevel lands is
+sway, because a window origin never crosses the Wayland protocol. At 1256 the same window is fully
+on screen. Not a port defect and not worth chasing here.
